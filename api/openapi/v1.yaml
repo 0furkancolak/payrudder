@@ -1,0 +1,434 @@
+openapi: 3.1.0
+info:
+  title: Quotify API
+  version: v1
+  description: |
+    Public HTTP/JSON API of the Quotify gateway (docs/03-services/gateway.md).
+
+    - Tenant routes authenticate with `Authorization: Bearer qk_{test|live}_<prefix>_<secret>`. `qk_test_` keys act on the
+      account's sandbox tenant, `qk_live_` keys on its live tenant.
+    - `/admin/v1` routes require `Authorization: Bearer <operator token>`.
+    - Field names are snake_case. Enums are strings. Per the protobuf JSON mapping, int64 values (`*_minor`) are
+      rendered as JSON strings and accepted as strings or numbers. Decimal quantities and prices are strings.
+    - Errors always use the `Error` envelope. 429 responses carry `Retry-After` (seconds).
+
+    This file is hand-maintained. A contract test fails if a route in the gateway's route table is missing here or vice versa.
+servers:
+  - url: http://localhost:8000
+security:
+  - apiKey: []
+
+paths:
+  /v1/customers:
+    post:
+      operationId: createCustomer
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCustomerRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listCustomers
+      summary: List customers (ordered by external_id)
+      parameters:
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customers: { type: array, items: { $ref: "#/components/schemas/Customer" } }
+                  next_page_token: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}:
+    get:
+      operationId: getCustomer
+      summary: Get a customer by external id
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/payment-method:
+    put:
+      operationId: setPaymentMethod
+      summary: Set the customer's PSP token (sandbox accepts only pm_sandbox_* tokens)
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [payment_method], properties: { payment_method: { type: string } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /v1/meters:
+    post:
+      operationId: createMeter
+      summary: Create a meter, or the next version of an existing code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMeterRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Meter" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listMeters
+      summary: List meters (latest version of each code)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, properties: { meters: { type: array, items: { $ref: "#/components/schemas/Meter" } } } }
+  /v1/meters/{code}:
+    get:
+      operationId: getMeter
+      summary: Get the latest version of a meter
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Meter" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /v1/plans:
+    post:
+      operationId: createPlan
+      summary: Create a plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [code, name], properties: { code: { type: string }, name: { type: string } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Plan" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listPlans
+      summary: List plans
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, properties: { plans: { type: array, items: { $ref: "#/components/schemas/Plan" } } } }
+  /v1/plans/{code}/versions:
+    post:
+      operationId: publishPlanVersion
+      summary: Publish the next immutable plan version
+      parameters: [{ $ref: "#/components/parameters/PlanCode" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                base_fee_minor: { type: string, description: int64 minor units }
+                prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
+                entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/PlanVersion" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/plans/{code}/versions/{version}:
+    get:
+      operationId: getPlanVersion
+      summary: Get a plan version (a number or "latest")
+      parameters:
+        - { $ref: "#/components/parameters/PlanCode" }
+        - { name: version, in: path, required: true, schema: { type: string, examples: ["1", "latest"] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PlanVersion" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /v1/subscriptions:
+    post:
+      operationId: createSubscription
+      summary: Subscribe a customer to a plan version (at most one overlapping subscription per customer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_external_id, plan_code]
+              properties:
+                customer_external_id: { type: string }
+                plan_code: { type: string }
+                plan_version: { type: integer, description: 0 = latest }
+                start_time: { type: string, format: date-time }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/subscriptions/{id}:
+    delete:
+      operationId: cancelSubscription
+      summary: End a subscription (now, or at end_time)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: end_time, in: query, schema: { type: string, format: date-time } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /v1/sandbox/customers/{external_id}/payment-scenario:
+    post:
+      operationId: setPaymentScenario
+      summary: Sandbox only — choose the mock payment outcome for a customer
+      description: '`{"scenario": "declined"}` sets `pm_sandbox_declined`. Live keys get 403.'
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenario]
+              properties:
+                scenario:
+                  type: string
+                  enum: [success, declined, insufficient_funds_once, error_then_success, timeout_committed, timeout_not_committed]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /admin/v1/accounts:
+    post:
+      operationId: createAccount
+      summary: Create an account with its sandbox and live tenants
+      security: [{ operatorToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, currency, timezone, grace_period]
+              properties:
+                name: { type: string }
+                currency: { type: string, enum: [CHF, EUR, GBP, JPY, KWD, TRY, USD], description: Required, no default. Immutable. }
+                timezone: { type: string, examples: [Europe/Istanbul], description: Required IANA name, no default. Immutable. }
+                grace_period: { type: string, examples: ["86400s"], description: "Required, protobuf Duration JSON, 0s..604800s" }
+                tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Account" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{id}:
+    get:
+      operationId: getTenant
+      summary: Get a tenant
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateTenant
+      summary: Change grace period or tier (currency and time zone are immutable)
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grace_period: { type: string, examples: ["172800s"] }
+                tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{id}/api-keys:
+    post:
+      operationId: createApiKey
+      summary: Create an API key (qk_test_ for sandbox tenants, qk_live_ for live). The plaintext is returned once.
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_key: { $ref: "#/components/schemas/ApiKey" }
+                  plaintext: { type: string }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/api-keys/{id}:
+    delete:
+      operationId: revokeApiKey
+      summary: Revoke an API key (takes effect on the next request)
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ApiKey" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    apiKey: { type: http, scheme: bearer, description: "qk_{test|live}_<prefix>_<secret>" }
+    operatorToken: { type: http, scheme: bearer, description: Operator token (QUOTIFY_OPERATOR_TOKEN) }
+  parameters:
+    ExternalID: { name: external_id, in: path, required: true, schema: { type: string } }
+    PlanCode: { name: code, in: path, required: true, schema: { type: string } }
+    ID: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Error:
+      description: Error envelope
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, examples: [INVALID_ARGUMENT, UNAUTHENTICATED, RESOURCE_EXHAUSTED] }
+            message: { type: string }
+            details:
+              type: array
+              items: { type: object, properties: { field: { type: string }, description: { type: string } } }
+            request_id: { type: string }
+    CreateCustomerRequest:
+      type: object
+      required: [external_id, name, email]
+      properties:
+        external_id: { type: string, maxLength: 128 }
+        name: { type: string }
+        email: { type: string, format: email }
+        payment_method: { type: string }
+    Customer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        external_id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        payment_method: { type: string }
+        create_time: { type: string, format: date-time }
+    CreateMeterRequest:
+      type: object
+      required: [code, aggregation, unit_label]
+      properties:
+        code: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$" }
+        aggregation: { type: string, enum: [AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX] }
+        value_property: { type: string, description: Required for SUM and MAX }
+        filter: { type: object, additionalProperties: { type: object, properties: { values: { type: array, items: { type: string } } } } }
+        quantity_scale: { type: integer, minimum: 0, maximum: 6, description: Decimal places, fixed per code }
+        unit_label: { type: string }
+    Meter:
+      allOf:
+        - $ref: "#/components/schemas/CreateMeterRequest"
+        - type: object
+          properties:
+            version: { type: integer }
+            create_time: { type: string, format: date-time }
+    Plan:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        latest_version: { type: integer }
+        create_time: { type: string, format: date-time }
+    Price:
+      type: object
+      required: [meter_code]
+      properties:
+        meter_code: { type: string }
+        per_unit: { type: object, properties: { unit_price: { type: string, examples: ["0.002"] } } }
+        tiered:
+          type: object
+          properties:
+            tiers:
+              type: array
+              items:
+                type: object
+                properties:
+                  up_to: { type: string, description: Empty on the last (unbounded) tier }
+                  unit_price: { type: string }
+                  flat_fee_minor: { type: string }
+        package:
+          type: object
+          properties:
+            package_size: { type: string }
+            package_price_minor: { type: string }
+    Entitlement:
+      type: object
+      required: [meter_code, limit]
+      properties:
+        meter_code: { type: string }
+        limit: { type: string, description: Decimal in meter units; "0" = unlimited }
+        alert_thresholds_pct: { type: array, items: { type: integer } }
+    PlanVersion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        plan_id: { type: string, format: uuid }
+        plan_code: { type: string }
+        version: { type: integer }
+        base_fee_minor: { type: string }
+        prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
+        entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
+        publish_time: { type: string, format: date-time }
+    Subscription:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        plan_version_id: { type: string, format: uuid }
+        start_time: { type: string, format: date-time }
+        end_time: { type: [string, "null"], format: date-time }
+        create_time: { type: string, format: date-time }
+    Tenant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        account_id: { type: string, format: uuid }
+        environment: { type: string, enum: [ENVIRONMENT_SANDBOX, ENVIRONMENT_LIVE] }
+        name: { type: string }
+        tier: { type: string }
+        currency: { type: string }
+        timezone: { type: string }
+        grace_period: { type: string }
+        create_time: { type: string, format: date-time }
+    Account:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
+        create_time: { type: string, format: date-time }
+    ApiKey:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        prefix: { type: string }
+        environment: { type: string, enum: [ENVIRONMENT_SANDBOX, ENVIRONMENT_LIVE] }
+        status: { type: string, enum: [STATUS_ACTIVE, STATUS_REVOKED] }
+        create_time: { type: string, format: date-time }
+        revoke_time: { type: string, format: date-time }
