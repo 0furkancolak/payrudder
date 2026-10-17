@@ -19,13 +19,15 @@ AMQP sink, `pkg/rabbitx` (connection, topology, confirms), reply consumer, `bill
 
 - [ ] `proto/quotify/commands/v1` (envelopes + payloads), `proto/quotify/billing/v1`, `InvoiceFact` event
 - [ ] Migrations per [05-data-model.md](../05-data-model.md#billing_db)
-- [ ] `rating` package: PER_UNIT, TIERED_GRADUATED, PACKAGE, FLAT. `apd` decimals. Half-even line rounding. Incremental late pricing
+- [ ] `rating` package: PER_UNIT, TIERED_GRADUATED, PACKAGE, FLAT. `apd` decimals, scaled-unit → decimal conversion, currency exponent table. Half-even line rounding. Incremental late pricing
 - [ ] Property tests for rating (monotonicity, non-negative increments)
-- [ ] Scheduler: find due `(tenant, period)` (`now ≥ cutoff + 30 s`), advisory lock, `billing_runs` state machine
+- [ ] Scheduler: find due `(tenant, period)` (`now ≥ cutoff + 30 s`, cutoff from tenant-time-zone period bounds), advisory lock, `billing_runs` state machine
 - [ ] Watermark: `GetOutboxWatermark` → end-offset snapshot → `GetIngestWatermark` until caught up
 - [ ] Stream usage + late usage + subscriptions. Draft invoices in pages of 500. Pin generation
 - [ ] `FreezePeriod` call after rating
-- [ ] Finalize: `invoice_number_seq … FOR UPDATE`, `INV-{year}-{seq:06}`
+- [ ] Finalize: `invoice_number_seq … FOR UPDATE`, `INV-{year}-{seq:06}` (live), `SBX-{year}-{seq:06}` (sandbox)
+- [ ] `SandboxService.ClosePeriodNow` → `aggregator.ClosePeriodEarly` → normal run. Compressed dunning for sandbox
+- [ ] `CommandEnvelope.environment` set from the tenant on every command
 - [ ] Saga engine: transition table, guarded `UPDATE`, `saga_events`, outbox command with `uuidv5` command ID
 - [ ] `pkg/rabbitx`: topology declaration from one Go definition, publisher confirms, consumer with manual ack
 - [ ] `pkg/outbox` AMQP sink (same relay, second sink)
@@ -54,6 +56,8 @@ AMQP sink, `pkg/rabbitx` (connection, topology, confirms), reply consumer, `bill
 - [ ] Integration: `PaymentErrored` → `PAYMENT_UNKNOWN` → status query → `PAID` without a second charge command
 - [ ] Integration: `ClosePeriod` called twice → one billing run, one invoice per customer
 - [ ] Invoice numbers are gap-free under 20 concurrent finalizations (test)
+- [ ] Integration: sandbox `ClosePeriodNow` mid-month → invoice `SBX-…` reaches `COMPLETED` with the stub worker within 2 min. The same call with a live key → `403`
+- [ ] Unit: fractional usage `1.2345` GB-h × `"12.5"` → `15.43` (half-even at line level) in a 2-decimal currency, and `15` in `JPY`
 
 ## Dependencies
 

@@ -16,6 +16,8 @@ read-only views, plus two actions: DLQ redrive and saga retry.
 
 - [ ] `web/admin` scaffold (Next.js, TypeScript strict, ESLint), typed API client generated from an OpenAPI spec exported by gateway
 - [ ] Gateway: `GET /admin/v1/openapi.json` (hand-maintained or generated from route table)
+- [ ] Onboarding form: create an account with **required** currency (supported list), time zone (IANA picker) and grace. No preselected values
+- [ ] Sandbox/live toggle per account. Sandbox actions: set payment scenario per customer, "close period now"
 - [ ] Views: tenants list, tenant detail (meters, plans, customers), customer usage chart (analytics API), invoices list
 - [ ] Invoice detail: lines, saga state, `saga_events` timeline, PDF link
 - [ ] DLQ view (both brokers) with redrive action (confirmation dialog)

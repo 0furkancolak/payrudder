@@ -19,6 +19,9 @@ gateway `POST /v1/events`, topic creation (`make topics`), `GetOutboxWatermark`.
 - [ ] `IngestService.IngestEvents` + `GetOutboxWatermark` protos
 - [ ] Migrations: `idempotency_keys` (monthly partitions, bucketed `created_at`), `outbox`, `enqueue_outbox` SECURITY DEFINER function
 - [ ] Partition maintenance job: create next 2 months, drop partitions older than 45 days
+- [ ] Exact decimal quantity parsing → scaled `int64` (`pkg/quantity`, no floats, `forbidigo`), `INVALID_QUANTITY_PRECISION`
+- [ ] Stamp `period_id` with `pkg/period.PeriodOf(event_time, tz)` (tenant time zone from metadata)
+- [ ] Idempotency key required for live keys (`IDEMPOTENCY_KEY_REQUIRED`). Sandbox: generated `auto:` key
 - [ ] Validation rules + error codes per [ingest-svc.md](../03-services/ingest-svc.md#validation-rules)
 - [ ] Cached `GetMeter` / `ResolveCustomer` clients (LRU + TTL)
 - [ ] Canonical payload hash (sorted properties) + key-reuse detection
@@ -45,7 +48,9 @@ gateway `POST /v1/events`, topic creation (`make topics`), `GetOutboxWatermark`.
 - [ ] Integration: Kafka container paused for 60 s while ingesting 10k events → every `ACCEPTED` event appears in Kafka after unpause, count exact
 - [ ] Integration: `RELAY_CRASH_AFTER_PRODUCE=0.2` → every event in Kafka ≥ 1 time, and duplicates share `event_id`
 - [ ] Integration: `GetOutboxWatermark` returns the oldest unpublished `ingested_at`, and unset when drained
-- [ ] Unit: validation table (too old, future, negative quantity, unknown meter/customer)
+- [ ] Unit: validation table (too old, future, negative quantity, too many decimals, unknown meter/customer, live without key)
+- [ ] Unit/property: decimal → scaled units → decimal round-trips exactly for every scale 0–6. JSON number `1.1` never goes through `float64`
+- [ ] Unit: `PeriodOf` for `Europe/Istanbul`, `America/New_York` (DST transitions), `Pacific/Kiritimati` around month boundaries
 - [ ] Kafka record headers contain `traceparent`, `ce-type=quotify.events.v1.UsageEvent`, `tenant-id`
 
 ## Dependencies
@@ -54,6 +59,6 @@ Phase 01 (tenants, meters, customers, gateway auth).
 
 ## Risks / open questions
 
-- Partitioned idempotency table complexity vs. an unpartitioned table with batched `DELETE`. Benchmark both briefly and record the decision in an ADR addendum.
+- **Decided:** partitioned idempotency table (default). Still benchmark vs. an unpartitioned table with batched `DELETE` and record the numbers in an ADR addendum.
 - Relay ordering across concurrent relays is "mostly ordered". Confirm no consumer relies on strict order (by design none should).
-- Should `idempotency_key` be mandatory for live keys? (Planned: yes.)
+- **Decided:** `idempotency_key` is mandatory for live keys, optional in sandbox.

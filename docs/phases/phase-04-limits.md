@@ -18,6 +18,7 @@ threshold, and reconciliation that makes Redis converge to aggregator's totals.
 - [ ] `EntitlementState`, `LimitExceeded` protos + golden fixtures
 - [ ] plans-svc: write outbox rows on subscription create/cancel and plan version publish. Run `pkg/outbox` relay. Tombstones on end
 - [ ] limits-svc entitlement consumer: per-pod group, read from earliest, in-memory map + Redis mirror. Readiness waits for catch-up
+- [ ] Counters in scaled units. Overflow guard (2⁵³) + `limits_counter_overflow_total`
 - [ ] `apply_batch.lua` with offset guard. Loaded via `SCRIPT LOAD`, called with `EVALSHA`
 - [ ] Per-partition apply loop. Late-event skip using `pkg/period.Classify`
 - [ ] Threshold crossing in Go from `(before, after, limit)`. `SET NX` fired key. `uuidv5` event ID
@@ -39,6 +40,7 @@ threshold, and reconciliation that makes Redis converge to aggregator's totals.
 - [ ] Integration: Redis flushed → after reconciliation all active counters equal aggregator totals
 - [ ] Integration: a late event doesn't increment the current period's counter
 - [ ] Integration: entitlement change (new subscription) visible in `CheckEntitlement` within 5 s
+- [ ] Integration: fractional meter limit `"10.5"` → 100% threshold fires on the event that reaches `10.500`
 - [ ] Unit: reconciliation skips when limits is ahead (`O_l > O_a`), and corrects at the checkpoint otherwise (fake apply loop)
 
 ## Dependencies

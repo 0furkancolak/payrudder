@@ -7,18 +7,19 @@ generation, then polish the repo into a portfolio piece with a scripted demo.
 
 ## Scope
 
-**In:** aggregator `ReplayService` (generations, replay consumer group, verification diff, promotion with catch-up),
+**In:** aggregator `ReplayService` (per-tenant generations, replay consumer group, verification diff, promotion with dual-write catch-up),
 billing-svc `StartRerating` (delta → correction invoice or credit balance, credit applied on the next invoice),
 `quotifyctl replay|rerate`, demo script, README overhaul, architecture diagram export, final docs pass.
 
-**Out of scope:** automated replay triggers, partial-tenant generations (replay is per tenant or all, and promotion is global per generation).
+**Out of scope:** automated replay triggers, replays narrower than one tenant (e.g. one customer).
 
 ## Tasks
 
-- [ ] `StartReplay`: create generation N+1 (`building`), compute start offsets via `ListOffsetsAfterMilli(start(from) − 35d)`, snapshot end offsets
+- [ ] `StartReplay(tenant)`: create `(tenant, N+1, building)`, compute start offsets via `ListOffsetsAfterMilli(start(from) − 35d)`, snapshot end offsets. "All tenants" = batch of jobs
 - [ ] Replay consumer: same apply code path, generation-parameterized, its own consumer group and offsets, tenant/period filter
 - [ ] Verification: per-(customer, meter, period) diff N vs N+1 stored on the job
-- [ ] `PromoteGeneration`: pause live, catch replay up to live offsets, flip `active`, resume. Generation-pinned billing runs unaffected
+- [ ] `catching_up`: live consumer dual-writes the tenant into N and N+1 and records `dual_write_from`. Replay stops there
+- [ ] `PromoteGeneration`: per-tenant flip in one transaction, no pause of live traffic. `DiscardGeneration`. Generation-pinned billing runs unaffected
 - [ ] `StartRerating`: require COMPLETED run, pin generation, rate with the new plan version, compute delta vs already billed
 - [ ] `CORRECTION` invoice through the normal saga. `credit_balances` + `CREDIT` line on the next regular invoice
 - [ ] Idempotency: unique `(tenant, period, plan_version)` on `rerating_jobs`
@@ -39,6 +40,7 @@ billing-svc `StartRerating` (delta → correction invoice or credit balance, cre
 - [ ] Integration: the same re-rating requested twice → one job, one correction
 - [ ] Integration: a meter-filter bug fixed via a new meter version + replay → generation N+1 totals equal the corrected expectation. Promotion happens with live traffic flowing and no lost or double-counted live events (chaos-v0 style ledger check)
 - [ ] Integration: a billing run pinned to generation N re-reads identical totals after N+1 is promoted
+- [ ] Integration: replay + promotion of tenant A leaves tenant B's rows, generation and consumer lag untouched (B's ingest p99 recorded)
 - [ ] `make up && make demo` completes in < 5 min on a laptop (success criterion S6)
 
 ## Dependencies
@@ -48,5 +50,5 @@ Phase 03 (generation-aware schema), Phase 05 (rating, saga), Phase 09 (ledger to
 ## Risks / open questions
 
 - Promotion pause duration under heavy traffic: measure. Bound with a max catch-up lag before allowing promotion.
-- Replay of all tenants vs. one tenant with a global generation: with per-tenant replays, a global flip also "replays" untouched tenants
-  (copied). Alternative: per-tenant active generation. **Needs a decision before Phase 03 locks the schema.**
+- **Decided:** per-tenant active generation ([ADR 0012](../adr/0012-per-tenant-aggregate-generations.md)), schema in Phase 03.
+- Dual-write doubles write load for the replayed tenant during catch-up. Bound by allowing one open replay per tenant.

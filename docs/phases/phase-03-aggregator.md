@@ -15,11 +15,13 @@ DB-stored offsets plus an event-ID inbox, and deterministic on-time/late classif
 
 ## Tasks
 
-- [ ] Migrations: `aggregate_generations` (seed generation 1 active), `usage_aggregates`, `late_usage`, `processed_events` (LIST partitions), `consumer_offsets`, `period_settings`
-- [ ] `pkg/period`: `PeriodOf(t)`, `Cutoff(period, grace)`, `Classify(eventTime, ingestedAt, grace)` + exhaustive boundary tests
+- [ ] Migrations: `aggregate_generations` **keyed by tenant** ([ADR 0012](../adr/0012-per-tenant-aggregate-generations.md); no row ⇒ generation 1), `usage_aggregates`, `late_usage`, `processed_events` (LIST partitions), `consumer_offsets`, `period_settings`
+- [ ] `pkg/period`: `PeriodOf(t, tz)`, `Bounds(period, tz)`, `Cutoff(period, grace)`, `Classify(period, ingestedAt, cutoff)` + exhaustive boundary tests (DST, year end)
 - [ ] `pkg/kafkax` consumer: `OnPartitionsAssigned` loads offsets from DB and seeks. Per-partition apply loop. Advisory Kafka commit
 - [ ] Batch apply transaction: dedup insert → pre-summed upserts (SUM/COUNT/MAX merge) → offset upsert with fencing
-- [ ] `period_settings` snapshot of tenant grace on first event of a period (grace fetched from plans-svc, cached)
+- [ ] `period_settings` snapshot of tenant timezone, period bounds and grace on first event of a period (fetched from plans-svc, cached). Read `FOR SHARE` in the batch transaction
+- [ ] Per-tenant generation cache in the apply loop (single target in this phase; dual-write path stubbed behind an interface)
+- [ ] `ClosePeriodEarly` (sandbox tenants only) per [aggregator.md](../03-services/aggregator.md#sandbox-early-close)
 - [ ] Meter-aware value extraction (`value_property`, `filter`) using cached meter definitions
 - [ ] Error classification: record error → in-process retries → DLQ with headers. Infra error → pause partition + backoff
 - [ ] `pkg/kafkax` DLQ producer + header schema
@@ -41,7 +43,9 @@ DB-stored offsets plus an event-ID inbox, and deterministic on-time/late classif
 - [ ] Integration: two consumers on the same partition (forced zombie) → offsets never move backwards, totals exact
 - [ ] Integration: a malformed record in the middle of a batch → in `usage.events.dlq.v1` with all `x-dlq-*` headers. The other records are applied
 - [ ] Integration: Postgres stopped for 20 s → no DLQ writes, partition paused, lag recovers to 0 after restart, totals exact
-- [ ] Unit: `Classify` on-time at `cutoff − 1ms`, late at `cutoff`, across month/year boundaries
+- [ ] Unit: `Classify` on-time at `cutoff − 1ms`, late at `cutoff`, across month/year boundaries, for a non-UTC tenant
+- [ ] Integration: fractional meter (scale 3): events `0.001` × 1000 → aggregate `1.000` exactly
+- [ ] Integration: `ClosePeriodEarly` concurrent with a running batch → every event classified against exactly one cutoff, live tenant gets `FAILED_PRECONDITION`
 - [ ] Integration: late event lands in `late_usage` with correct `origin_period_id` and `billed_period_id`
 - [ ] Chaos v0 (100k events, 5% duplicates, retries, fault hooks): A1–A3 hold exactly
 
@@ -52,5 +56,6 @@ Phase 02.
 ## Risks / open questions
 
 - `processed_events` write amplification at volume: measure. Fallback is a bloom-filter pre-check (no correctness change).
+- Per-tenant generation lookup is on the hot loop: measure the cache hit path.
 - Should meter `filter` be applied at ingest (reject non-matching) or at aggregation (ignore)? Planned: aggregation, so events stay facts.
 - Rebalance with franz-go cooperative-sticky + DB offsets: verify the revoke callback waits for in-flight transactions.

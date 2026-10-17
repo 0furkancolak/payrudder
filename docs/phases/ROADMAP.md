@@ -45,6 +45,22 @@ flowchart LR
    a migration on the largest tables and touching every query.
 5. Phases 04 and 07 are independent of 05/06 and can be swapped if one runs long.
 
+## Decisions confirmed before Phase 0 (2026-10-17)
+
+| # | Question | Decision | Where |
+|---|---|---|---|
+| 1 | PDF storage | S3-compatible object storage via the S3 API only. MinIO in Compose and kind, any S3 endpoint by config | [ADR 0013](../adr/0013-s3-compatible-object-storage.md) |
+| 2 | Payment testing | Per-account **sandbox** tenant with mock-psp, deterministic `pm_sandbox_*` scenarios, early period close. Also deployable on Kubernetes (`values-sandbox.yaml`) | [ADR 0011](../adr/0011-sandbox-environment.md) |
+| 3 | Currency and periods | Chosen explicitly at account creation, no defaults: currency (immutable), time zone (immutable, calendar months in it), grace 0–7 days | [plans-svc](../03-services/plans-svc.md), [ADR 0010](../adr/0010-money-and-quantity-representation.md) |
+| 4 | Replay source | Kafka retention (400 d on `usage.events.v1`, 30 d locally). No object-storage archive in v1 | [04-messaging.md](../04-messaging.md) |
+| 5 | Quantities | **Fractional** quantities: per-meter `quantity_scale` 0–6, exact decimals in the API, scaled `int64` internally | [ADR 0010](../adr/0010-money-and-quantity-representation.md) |
+| 6 | Idempotency key | Mandatory for live keys, optional in sandbox | [ingest-svc](../03-services/ingest-svc.md) |
+| 7 | Generation scope | Per-tenant active generation, dual-write promotion without pausing live traffic | [ADR 0012](../adr/0012-per-tenant-aggregate-generations.md) |
+| 8 | Idempotency table | Monthly partitions (benchmark vs. `DELETE` job recorded in Phase 02) | [05-data-model.md](../05-data-model.md#ingest_db) |
+| 9 | Gateway HTTP layer | Hand-written `net/http` + hand-maintained OpenAPI with a contract test | [gateway](../03-services/gateway.md#why-a-hand-written-http-layer-not-grpc-gateway) |
+| 10 | Schema registry | None in v1. `buf breaking` + golden fixtures in CI | [ADR 0007](../adr/0007-protobuf-event-schemas.md) |
+| 11 | License | Apache-2.0, added when the repo goes public | [README](../../README.md) |
+
 ## Buffer and scope control
 
 - ~12 weeks total. If behind schedule, cut in this order: Phase 12 → Phase 07 query API breadth (keep ingestion) →
