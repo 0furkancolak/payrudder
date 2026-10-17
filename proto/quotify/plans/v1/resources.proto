@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package quotify.plans.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+// Environment of a tenant. qk_test_ keys resolve to the sandbox tenant, qk_live_ keys to the live tenant (ADR 0011).
+enum Environment {
+  ENVIRONMENT_UNSPECIFIED = 0;
+  ENVIRONMENT_SANDBOX = 1;
+  ENVIRONMENT_LIVE = 2;
+}
+
+// Rate-limit and quota tier of a tenant (docs/06-multi-tenancy.md#quotas-and-fairness).
+enum TenantTier {
+  TENANT_TIER_UNSPECIFIED = 0;
+  TENANT_TIER_FREE = 1;
+  TENANT_TIER_STANDARD = 2;
+  TENANT_TIER_ENTERPRISE = 3;
+}
+
+// Account is a company using Quotify. It owns one sandbox and one live tenant.
+message Account {
+  string id = 1;
+  string name = 2;
+  repeated Tenant tenants = 3;
+  google.protobuf.Timestamp create_time = 4;
+}
+
+// Tenant is one environment of an account and the unit of isolation.
+message Tenant {
+  string id = 1;
+  string account_id = 2;
+  Environment environment = 3;
+  string name = 4;
+  TenantTier tier = 5;
+  // ISO 4217 code, chosen at creation, immutable.
+  string currency = 6;
+  // IANA time zone, chosen at creation, immutable. Billing periods are calendar months in it.
+  string timezone = 7;
+  // 0..7 days. Changes apply from the next period.
+  google.protobuf.Duration grace_period = 8;
+  google.protobuf.Timestamp create_time = 9;
+}
+
+// ApiKey metadata. The plaintext key is returned once, by CreateApiKey.
+message ApiKey {
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_ACTIVE = 1;
+    STATUS_REVOKED = 2;
+  }
+  string id = 1;
+  string tenant_id = 2;
+  // 8 characters, the non-secret lookup part of qk_{env}_{prefix}_{secret}.
+  string prefix = 3;
+  Environment environment = 4;
+  Status status = 5;
+  google.protobuf.Timestamp create_time = 6;
+  google.protobuf.Timestamp revoke_time = 7;
+}
+
+// Customer is a tenant's end customer, the entity that gets invoiced.
+message Customer {
+  string id = 1;
+  string external_id = 2;
+  string name = 3;
+  string email = 4;
+  // Opaque PSP token. In sandbox, one of the pm_sandbox_* scenario tokens.
+  string payment_method = 5;
+  google.protobuf.Timestamp create_time = 6;
+}
+
+enum Aggregation {
+  AGGREGATION_UNSPECIFIED = 0;
+  AGGREGATION_SUM = 1;
+  AGGREGATION_COUNT = 2;
+  AGGREGATION_MAX = 3;
+}
+
+// FilterValues is the set of accepted values for one event property (equality only).
+message FilterValues {
+  repeated string values = 1;
+}
+
+// Meter defines what is measured. Versions are append-only; quantity_scale is fixed per code.
+message Meter {
+  string code = 1;
+  int32 version = 2;
+  Aggregation aggregation = 3;
+  // Event property holding the quantity. Empty for COUNT.
+  string value_property = 4;
+  map<string, FilterValues> filter = 5;
+  // Decimal places accepted in event quantities (0..6, ADR 0010).
+  uint32 quantity_scale = 6;
+  string unit_label = 7;
+  google.protobuf.Timestamp create_time = 8;
+}
+
+message Plan {
+  string id = 1;
+  string code = 2;
+  string name = 3;
+  // 0 until the first version is published.
+  int32 latest_version = 4;
+  google.protobuf.Timestamp create_time = 5;
+}
+
+// PriceTier is one band of a graduated price. Quantities are decimals in meter units.
+message PriceTier {
+  // Inclusive upper bound. Empty means unbounded; only the last tier may be unbounded.
+  string up_to = 1;
+  // Decimal in minor units per meter unit, e.g. "0.002".
+  string unit_price = 2;
+  int64 flat_fee_minor = 3;
+}
+
+message PerUnitPrice {
+  string unit_price = 1;
+}
+
+message TieredGraduatedPrice {
+  repeated PriceTier tiers = 1;
+}
+
+message PackagePrice {
+  // Decimal in meter units, > 0.
+  string package_size = 1;
+  int64 package_price_minor = 2;
+}
+
+// Price turns a meter's quantity into money within a plan version.
+message Price {
+  string meter_code = 1;
+  oneof model {
+    PerUnitPrice per_unit = 2;
+    TieredGraduatedPrice tiered = 3;
+    PackagePrice package = 4;
+  }
+}
+
+// Entitlement is a per-period limit on a meter.
+message Entitlement {
+  string meter_code = 1;
+  // Decimal in meter units. "0" means unlimited.
+  string limit = 2;
+  repeated int32 alert_thresholds_pct = 3;
+}
+
+// PlanVersion is an immutable snapshot of prices and entitlements.
+message PlanVersion {
+  string id = 1;
+  string plan_id = 2;
+  string plan_code = 3;
+  int32 version = 4;
+  int64 base_fee_minor = 5;
+  repeated Price prices = 6;
+  repeated Entitlement entitlements = 7;
+  google.protobuf.Timestamp publish_time = 8;
+}
+
+// Subscription links a customer to a plan version over [start_time, end_time).
+message Subscription {
+  string id = 1;
+  string customer_id = 2;
+  string customer_external_id = 3;
+  string plan_version_id = 4;
+  google.protobuf.Timestamp start_time = 5;
+  // Unset means open-ended.
+  google.protobuf.Timestamp end_time = 6;
+  google.protobuf.Timestamp create_time = 7;
+}
