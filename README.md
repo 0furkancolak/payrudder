@@ -2,7 +2,13 @@
 
 > Multi-tenant usage metering & billing platform in Go — Kafka, RabbitMQ, gRPC, Postgres RLS.
 
-**Status: planning.** No implementation code yet. The design lives in [`docs/`](docs/README.md).
+**Status: Phase 00 (foundation).** Workspace, shared `pkg/` libraries, local stack and CI are in place.
+No business services yet. The design lives in [`docs/`](docs/README.md), and the plan in the [roadmap](docs/phases/ROADMAP.md).
+
+```bash
+make tools && make up      # local stack + hello service; Grafana http://localhost:3000
+make test test-integration
+```
 
 Quotify lets SaaS companies (tenants) send usage events — "customer X used 1,500 AI tokens",
 "customer Y made 1 API call" — and turns them into correct, auditable invoices.

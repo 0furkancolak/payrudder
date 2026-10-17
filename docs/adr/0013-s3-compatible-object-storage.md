@@ -25,6 +25,12 @@ invoice-worker produces PDFs that must be stored durably, served through short-l
 - `pkg/blob` therefore also exposes `CreateMultipart`, `PresignPart`, `ListParts`, `CompleteMultipart`, `AbortMultipart` and a
   streaming `PutStream` (SDK upload manager). MinIO implements all of these S3 operations, so local and cloud behave the same.
 
+**Image note (2026-10-17).** MinIO no longer publishes community images to Docker Hub or Quay. Compose and testkit use
+Chainguard's MinIO build (`cgr.dev/chainguard/minio`), pinned by digest because its free tier only tags `:latest`. MinIO doesn't
+implement the `AbortIncompleteMultipartUpload` lifecycle element, so locally `MINIO_API_STALE_UPLOADS_EXPIRY=48h` is the
+backstop for abandoned multipart uploads (on AWS S3 it's the lifecycle rule). If the image becomes unavailable, any S3-compatible
+server works without code changes, because services only speak the S3 API.
+
 ## Alternatives considered
 
 | Option | Why not |

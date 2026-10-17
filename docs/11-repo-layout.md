@@ -5,7 +5,7 @@ so dependencies and builds stay independent. Shared code lives in a small set of
 
 ```
 quotify/
-├── go.work                         # use ./pkg ./gen/go ./services/* ./tools ./tests
+├── go.work                         # use ./pkg ./gen/go ./services/* ./tests (tools/ is outside: see 10-local-dev)
 ├── Makefile
 ├── buf.yaml / buf.gen.yaml         # buf v2 config, lint + breaking rules
 ├── proto/
