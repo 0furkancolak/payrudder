@@ -1,0 +1,179 @@
+syntax = "proto3";
+
+package quotify.plans.v1;
+
+import "google/protobuf/timestamp.proto";
+import "quotify/plans/v1/resources.proto";
+
+// PlansService is the tenant-facing control plane. Every call carries the tenant in metadata (set by the gateway).
+service PlansService {
+  rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse);
+  // GetCustomer looks a customer up by external_id.
+  rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse);
+  // ResolveCustomer is the internal hot-path lookup (external_id → internal id). Callers cache it.
+  rpc ResolveCustomer(ResolveCustomerRequest) returns (ResolveCustomerResponse);
+  rpc ListCustomers(ListCustomersRequest) returns (ListCustomersResponse);
+  // SetPaymentMethod sets the PSP token. Sandbox tenants accept only pm_sandbox_* tokens.
+  rpc SetPaymentMethod(SetPaymentMethodRequest) returns (SetPaymentMethodResponse);
+
+  // CreateMeter creates version 1 of a code, or the next version of an existing code.
+  rpc CreateMeter(CreateMeterRequest) returns (CreateMeterResponse);
+  // GetMeter returns the latest version of a code.
+  rpc GetMeter(GetMeterRequest) returns (GetMeterResponse);
+  rpc ListMeters(ListMetersRequest) returns (ListMetersResponse);
+
+  rpc CreatePlan(CreatePlanRequest) returns (CreatePlanResponse);
+  rpc ListPlans(ListPlansRequest) returns (ListPlansResponse);
+  // PublishPlanVersion appends an immutable version.
+  rpc PublishPlanVersion(PublishPlanVersionRequest) returns (PublishPlanVersionResponse);
+  rpc GetPlanVersion(GetPlanVersionRequest) returns (GetPlanVersionResponse);
+
+  rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
+  rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
+  // ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
+  rpc ListSubscriptionsForPeriod(ListSubscriptionsForPeriodRequest) returns (stream ListSubscriptionsForPeriodResponse);
+}
+
+message CreateCustomerRequest {
+  string external_id = 1;
+  string name = 2;
+  string email = 3;
+  string payment_method = 4;
+}
+
+message CreateCustomerResponse {
+  Customer customer = 1;
+}
+
+message GetCustomerRequest {
+  string external_id = 1;
+}
+
+message GetCustomerResponse {
+  Customer customer = 1;
+}
+
+message ResolveCustomerRequest {
+  string external_id = 1;
+}
+
+message ResolveCustomerResponse {
+  Customer customer = 1;
+}
+
+message ListCustomersRequest {
+  // 1..500, default 100.
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListCustomersResponse {
+  repeated Customer customers = 1;
+  string next_page_token = 2;
+}
+
+message SetPaymentMethodRequest {
+  string external_id = 1;
+  string payment_method = 2;
+}
+
+message SetPaymentMethodResponse {
+  Customer customer = 1;
+}
+
+message CreateMeterRequest {
+  string code = 1;
+  Aggregation aggregation = 2;
+  string value_property = 3;
+  map<string, FilterValues> filter = 4;
+  uint32 quantity_scale = 5;
+  string unit_label = 6;
+}
+
+message CreateMeterResponse {
+  Meter meter = 1;
+}
+
+message GetMeterRequest {
+  string code = 1;
+}
+
+message GetMeterResponse {
+  Meter meter = 1;
+}
+
+message ListMetersRequest {}
+
+message ListMetersResponse {
+  // Latest version of each code.
+  repeated Meter meters = 1;
+}
+
+message CreatePlanRequest {
+  string code = 1;
+  string name = 2;
+}
+
+message CreatePlanResponse {
+  Plan plan = 1;
+}
+
+message ListPlansRequest {}
+
+message ListPlansResponse {
+  repeated Plan plans = 1;
+}
+
+message PublishPlanVersionRequest {
+  string plan_code = 1;
+  int64 base_fee_minor = 2;
+  repeated Price prices = 3;
+  repeated Entitlement entitlements = 4;
+}
+
+message PublishPlanVersionResponse {
+  PlanVersion plan_version = 1;
+}
+
+message GetPlanVersionRequest {
+  // Either plan_version_id, or plan_code + version (0 = latest).
+  string plan_version_id = 1;
+  string plan_code = 2;
+  int32 version = 3;
+}
+
+message GetPlanVersionResponse {
+  PlanVersion plan_version = 1;
+}
+
+message CreateSubscriptionRequest {
+  string customer_external_id = 1;
+  string plan_code = 2;
+  // 0 = latest published version.
+  int32 plan_version = 3;
+  // Unset = now.
+  google.protobuf.Timestamp start_time = 4;
+}
+
+message CreateSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message CancelSubscriptionRequest {
+  string subscription_id = 1;
+  // Unset = now.
+  google.protobuf.Timestamp end_time = 2;
+}
+
+message CancelSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message ListSubscriptionsForPeriodRequest {
+  google.protobuf.Timestamp period_start = 1;
+  google.protobuf.Timestamp period_end = 2;
+}
+
+message ListSubscriptionsForPeriodResponse {
+  Subscription subscription = 1;
+}
