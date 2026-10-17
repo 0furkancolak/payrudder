@@ -49,7 +49,10 @@ linters:
       - std-error-handling
     rules:
       - path: _test\.go
-        linters: [gosec, errcheck]
+        linters: [gosec, errcheck, bodyclose]
+      # Methods implementing generated gRPC interfaces must keep protoc's names (ResolveApiKey, CreateApiKey).
+      - linters: [revive]
+        text: "var-naming: method \\w*Api\\w* should be"
 
 formatters:
   enable:

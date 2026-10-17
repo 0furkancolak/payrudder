@@ -14,6 +14,9 @@ scrape_configs:
   # Each service adds its target here when it joins the compose `app` profile.
   - job_name: quotify
     static_configs:
-      - targets: ["hello:9099"]
+      - targets: ["gateway:9100"]
         labels:
-          service: hello
+          service: gateway
+      - targets: ["plans-svc:9101"]
+        labels:
+          service: plans-svc
