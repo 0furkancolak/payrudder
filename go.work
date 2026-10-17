@@ -1,0 +1,8 @@
+go 1.27.2
+
+use (
+	./gen/go
+	./pkg
+	./services/hello
+	./tests
+)
