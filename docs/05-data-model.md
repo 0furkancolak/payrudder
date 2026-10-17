@@ -1,0 +1,408 @@
+# 05 — Data model
+
+Database-per-service on one Postgres 17 instance locally (separate databases, separate roles).
+Migrations live in `services/<svc>/migrations` (`goose`, SQL files), queries in
+`services/<svc>/internal/store/queries/*.sql` compiled by `sqlc` against `pgx/v5`.
+
+## Common conventions
+
+| Convention | Rule |
+|---|---|
+| IDs | `uuid` (UUIDv7, generated in Go, time-ordered → index-friendly). Event IDs are ULID strings (`text`) |
+| Tenant column | Every tenant-owned table has `tenant_id uuid NOT NULL` as the **first** column of its PK or of a leading index |
+| Time | `timestamptz`, always UTC |
+| Money | `bigint` minor units (`*_minor`). Unit prices `numeric(30,12)` ([ADR 0010](adr/0010-money-and-quantity-representation.md)) |
+| Quantities | `bigint` (aggregates: `numeric(38,0)` to survive `SUM` overflow) |
+| Period | `period_id text` `'YYYY-MM'`, with `CHECK (period_id ~ '^\d{4}-(0[1-9]|1[0-2])$')` |
+| Soft delete | Not used. Append-only versions instead |
+| Roles | `<svc>_app` (RLS enforced, used by request handlers), `<svc>_system` (`BYPASSRLS`, used by consumers, relays, schedulers), `<svc>_migrator` (owner) |
+
+### RLS template
+
+Applied to every tenant-owned table:
+
+```sql
+ALTER TABLE <t> ENABLE ROW LEVEL SECURITY;
+ALTER TABLE <t> FORCE ROW LEVEL SECURITY;          -- applies to the owner too
+CREATE POLICY tenant_isolation ON <t>
+  USING      (tenant_id = current_setting('app.tenant_id', true)::uuid)
+  WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+GRANT SELECT, INSERT, UPDATE, DELETE ON <t> TO <svc>_app;
+```
+
+`current_setting(..., true)` returns NULL when the setting is unset, so a forgotten `SET LOCAL` returns
+**zero rows** instead of erroring or leaking. The Go helper `pkg/pgxx.InTenantTx(ctx, pool, tenantID, fn)`
+is the only way handlers open a transaction. It runs `SELECT set_config('app.tenant_id', $1, true)` first.
+Details: [06-multi-tenancy.md](06-multi-tenancy.md#row-level-security).
+
+---
+
+## `plans_db`
+
+```sql
+CREATE TABLE tenants (
+  id            uuid PRIMARY KEY,
+  name          text NOT NULL,
+  tier          text NOT NULL CHECK (tier IN ('free','standard','enterprise')),
+  currency      char(3) NOT NULL DEFAULT 'TRY',
+  grace_period  interval NOT NULL DEFAULT '24 hours' CHECK (grace_period BETWEEN '0' AND '7 days'),
+  created_at    timestamptz NOT NULL DEFAULT now()
+);  -- not RLS'd: operator-only via AdminService (plans_system role)
+
+CREATE TABLE api_keys (
+  id          uuid PRIMARY KEY,
+  tenant_id   uuid NOT NULL REFERENCES tenants(id),
+  prefix      char(8) NOT NULL UNIQUE,
+  key_hash    bytea NOT NULL,                       -- sha256(secret)
+  env         text NOT NULL CHECK (env IN ('live','test')),
+  status      text NOT NULL CHECK (status IN ('active','revoked')),
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  revoked_at  timestamptz
+);
+CREATE INDEX ON api_keys (tenant_id);
+
+CREATE TABLE customers (
+  tenant_id    uuid NOT NULL,
+  id           uuid NOT NULL,
+  external_id  text NOT NULL,
+  name         text NOT NULL,
+  email        text NOT NULL,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, id),
+  UNIQUE (tenant_id, external_id)
+);
+
+CREATE TABLE meters (
+  tenant_id       uuid NOT NULL,
+  code            text NOT NULL,                     -- e.g. 'ai_tokens'
+  version         int  NOT NULL,
+  aggregation     text NOT NULL CHECK (aggregation IN ('SUM','COUNT','MAX')),
+  value_property  text,                              -- NULL for COUNT
+  filter          jsonb,                             -- {"model": ["gpt-x"]} equality-only
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, code, version)
+);
+
+CREATE TABLE plans (
+  tenant_id  uuid NOT NULL, id uuid NOT NULL, code text NOT NULL, name text NOT NULL,
+  PRIMARY KEY (tenant_id, id), UNIQUE (tenant_id, code)
+);
+
+CREATE TABLE plan_versions (
+  tenant_id       uuid NOT NULL,
+  id              uuid NOT NULL,
+  plan_id         uuid NOT NULL,
+  version         int  NOT NULL,
+  base_fee_minor  bigint NOT NULL DEFAULT 0 CHECK (base_fee_minor >= 0),
+  published_at    timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, id),
+  UNIQUE (tenant_id, plan_id, version),
+  FOREIGN KEY (tenant_id, plan_id) REFERENCES plans (tenant_id, id)
+);
+
+CREATE TABLE plan_prices (
+  tenant_id        uuid NOT NULL,
+  plan_version_id  uuid NOT NULL,
+  meter_code       text NOT NULL,
+  model            text NOT NULL CHECK (model IN ('PER_UNIT','TIERED_GRADUATED','PACKAGE')),
+  config           jsonb NOT NULL,   -- validated in Go; e.g. {"tiers":[{"up_to":10000,"unit_price":"0"},{"up_to":null,"unit_price":"0.002"}]}
+  PRIMARY KEY (tenant_id, plan_version_id, meter_code)
+);
+
+CREATE TABLE plan_entitlements (
+  tenant_id            uuid NOT NULL,
+  plan_version_id      uuid NOT NULL,
+  meter_code           text NOT NULL,
+  limit_quantity       bigint NOT NULL CHECK (limit_quantity >= 0),   -- 0 = unlimited
+  alert_thresholds_pct int[]  NOT NULL DEFAULT '{80,100}',
+  PRIMARY KEY (tenant_id, plan_version_id, meter_code)
+);
+
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+CREATE TABLE subscriptions (
+  tenant_id        uuid NOT NULL,
+  id               uuid NOT NULL,
+  customer_id      uuid NOT NULL,
+  plan_version_id  uuid NOT NULL,
+  active           tstzrange NOT NULL,                -- [starts_at, ends_at)
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, id),
+  EXCLUDE USING gist (tenant_id WITH =, customer_id WITH =, active WITH &&)  -- one active sub per customer
+);
+
+CREATE TABLE outbox (                                  -- shared outbox shape, see ingest_db
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tenant_id uuid NOT NULL, topic text NOT NULL, partition_key text NOT NULL,
+  payload bytea, headers jsonb NOT NULL DEFAULT '{}', created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+RLS: on all tables except `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey) and `outbox`.
+
+---
+
+## `ingest_db`
+
+```sql
+CREATE TABLE idempotency_keys (
+  tenant_id        uuid NOT NULL,
+  idempotency_key  text NOT NULL,
+  event_id         text NOT NULL,                     -- ULID
+  payload_hash     bytea NOT NULL,                    -- sha256 of canonical event; detects key reuse
+  created_at       timestamptz NOT NULL,
+  PRIMARY KEY (tenant_id, idempotency_key, created_at)  -- see note
+) PARTITION BY RANGE (created_at);
+-- monthly partitions created ahead by a maintenance job; dropped after 45 days
+
+CREATE TABLE outbox (
+  id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tenant_id      uuid NOT NULL,
+  topic          text NOT NULL,                       -- 'usage.events.v1'
+  partition_key  text NOT NULL,                       -- tenant_id
+  payload        bytea NOT NULL,                      -- serialized UsageEvent
+  headers        jsonb NOT NULL,                      -- traceparent, ce-type, ...
+  ingested_at    timestamptz NOT NULL
+);
+CREATE INDEX outbox_ingested_at ON outbox (ingested_at);  -- GetOutboxWatermark = SELECT min(ingested_at)
+```
+
+**Partitioned-PK note.** Postgres requires the partition key to be in a partitioned table's PK. So uniqueness
+is on `(tenant_id, idempotency_key, created_at)`, which **isn't** uniqueness on the key alone.
+Resolution: `created_at` isn't `now()` but the **start of the dedup window bucket**, i.e. `date_trunc('month', now())`.
+A key is then unique within its month's partition, and the insert path checks the previous month's partition too
+(`ON CONFLICT` covers the current month, plus an explicit `SELECT` against the previous one). The dedup window is therefore
+"≥ 1 month, < 2 months", which comfortably covers the 35-day max lateness. Covered by a unit + integration test.
+(Alternative: unpartitioned table plus a batched `DELETE` job. Simpler, but `DELETE` bloat at volume. Open question in the roadmap.)
+
+RLS: `idempotency_keys` RLS'd for `ingest_app`. `outbox` accessed only by `ingest_system` (relay), with insert granted to `ingest_app`
+through a `SECURITY DEFINER` function `enqueue_outbox(...)` so handlers can't read other tenants' rows.
+
+---
+
+## `aggregator_db`
+
+```sql
+CREATE TABLE aggregate_generations (
+  generation   int PRIMARY KEY,
+  status       text NOT NULL CHECK (status IN ('building','active','retired')),
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  promoted_at  timestamptz
+);
+CREATE UNIQUE INDEX one_active_generation ON aggregate_generations ((true)) WHERE status = 'active';
+
+CREATE TABLE usage_aggregates (
+  tenant_id    uuid NOT NULL,
+  customer_id  uuid NOT NULL,
+  meter_code   text NOT NULL,
+  period_id    text NOT NULL,
+  generation   int  NOT NULL,
+  quantity     numeric(38,0) NOT NULL,
+  event_count  bigint NOT NULL,
+  updated_at   timestamptz NOT NULL,
+  PRIMARY KEY (tenant_id, period_id, customer_id, meter_code, generation)
+);
+
+CREATE TABLE late_usage (
+  tenant_id         uuid NOT NULL,
+  customer_id       uuid NOT NULL,
+  meter_code        text NOT NULL,
+  origin_period_id  text NOT NULL,                     -- period by event_time
+  billed_period_id  text NOT NULL,                     -- period by ingested_at
+  generation        int  NOT NULL,
+  quantity          numeric(38,0) NOT NULL,
+  event_count       bigint NOT NULL,
+  PRIMARY KEY (tenant_id, billed_period_id, customer_id, meter_code, origin_period_id, generation)
+);
+
+CREATE TABLE processed_events (
+  tenant_id   uuid NOT NULL,
+  event_id    text NOT NULL,
+  generation  int  NOT NULL,
+  period_id   text NOT NULL,                           -- partition key: period by event_time
+  PRIMARY KEY (period_id, tenant_id, event_id, generation)
+) PARTITION BY LIST (period_id);
+-- partitions per month; dropped when period_end + 45 days < now()
+
+CREATE TABLE consumer_offsets (
+  consumer_group  text NOT NULL,                       -- 'aggregator' or 'aggregator-replay-<job>'
+  topic           text NOT NULL,
+  partition       int  NOT NULL,
+  next_offset     bigint NOT NULL,
+  updated_at      timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (consumer_group, topic, partition)
+);
+
+CREATE TABLE period_settings (                         -- grace snapshot per tenant+period
+  tenant_id     uuid NOT NULL,
+  period_id     text NOT NULL,
+  grace_period  interval NOT NULL,
+  cutoff_at     timestamptz NOT NULL,                  -- period_end + grace
+  frozen_at     timestamptz,                           -- set by billing via FreezePeriod after rating
+  PRIMARY KEY (tenant_id, period_id)
+);
+
+CREATE TABLE replay_jobs (
+  id               uuid PRIMARY KEY,
+  tenant_id        uuid,                               -- NULL = all tenants
+  from_period_id   text NOT NULL,
+  to_period_id     text NOT NULL,
+  target_generation int NOT NULL REFERENCES aggregate_generations(generation),
+  status           text NOT NULL CHECK (status IN ('pending','running','verifying','ready','promoted','failed')),
+  start_offsets    jsonb,                              -- partition → offset (from ListOffsetsAfterMilli)
+  end_offsets      jsonb,                              -- snapshot of end offsets at start
+  reason           text NOT NULL,
+  created_at       timestamptz NOT NULL DEFAULT now()
+);
+```
+
+`period_id` is the leading PK column of `processed_events` because of `LIST` partitioning. Lookups always know the period
+(it's derived from `event_time`), so the index is still selective.
+
+RLS: `usage_aggregates`, `late_usage` RLS'd for `aggregator_app` (read APIs). Consumers use `aggregator_system`.
+Reads always filter `generation = (SELECT generation FROM aggregate_generations WHERE status='active')`, or the
+generation pinned by a billing run.
+
+---
+
+## `billing_db`
+
+```sql
+CREATE TABLE billing_runs (
+  tenant_id         uuid NOT NULL,
+  period_id         text NOT NULL,
+  status            text NOT NULL CHECK (status IN ('SCHEDULED','WAITING_WATERMARK','RATING','INVOICING','COMPLETED','FAILED')),
+  cutoff_at         timestamptz NOT NULL,
+  generation        int,                               -- aggregate generation used; pinned at RATING
+  required_offsets  jsonb,
+  started_at        timestamptz, completed_at timestamptz,
+  PRIMARY KEY (tenant_id, period_id)
+);
+
+CREATE TABLE invoices (
+  tenant_id        uuid NOT NULL,
+  id               uuid NOT NULL,
+  customer_id      uuid NOT NULL,
+  period_id        text NOT NULL,
+  kind             text NOT NULL CHECK (kind IN ('REGULAR','CORRECTION')),
+  number           text,                               -- 'INV-2026-000123', set at FINALIZED
+  plan_version_id  uuid NOT NULL,
+  currency         char(3) NOT NULL,
+  subtotal_minor   bigint NOT NULL,
+  total_minor      bigint NOT NULL CHECK (total_minor >= 0),
+  status           text NOT NULL,                      -- mirrors saga coarse state: draft/open/paid/uncollectible/void
+  version          int NOT NULL DEFAULT 1,
+  pdf_object_key   text,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  finalized_at     timestamptz,
+  PRIMARY KEY (tenant_id, id),
+  UNIQUE (tenant_id, number)
+);
+CREATE UNIQUE INDEX one_regular_invoice ON invoices (tenant_id, customer_id, period_id) WHERE kind = 'REGULAR';
+
+CREATE TABLE invoice_lines (
+  tenant_id        uuid NOT NULL,
+  invoice_id       uuid NOT NULL,
+  line_no          int  NOT NULL,
+  kind             text NOT NULL CHECK (kind IN ('BASE_FEE','USAGE','LATE_USAGE','CREDIT','CORRECTION')),
+  meter_code       text,
+  origin_period_id text,                               -- for LATE_USAGE
+  quantity         numeric(38,0),
+  unit_price       numeric(30,12),                     -- display only for tiered
+  amount_minor     bigint NOT NULL,                    -- may be negative for CREDIT
+  description      text NOT NULL,
+  PRIMARY KEY (tenant_id, invoice_id, line_no)
+);
+
+CREATE TABLE invoice_number_seq (
+  tenant_id uuid NOT NULL, year int NOT NULL, next_value bigint NOT NULL,
+  PRIMARY KEY (tenant_id, year)
+);  -- SELECT ... FOR UPDATE at finalize → gap-free per tenant/year
+
+CREATE TABLE invoice_sagas (
+  tenant_id        uuid NOT NULL,
+  id               uuid NOT NULL,                      -- saga_id
+  invoice_id       uuid NOT NULL,
+  state            text NOT NULL,                      -- see billing-svc state machine
+  version          int  NOT NULL,                      -- optimistic concurrency
+  attempt          int  NOT NULL DEFAULT 0,
+  step_deadline    timestamptz,
+  dunning_attempt  int  NOT NULL DEFAULT 0,
+  next_attempt_at  timestamptz,
+  last_error       text,
+  updated_at       timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, id),
+  UNIQUE (tenant_id, invoice_id)
+);
+CREATE INDEX saga_deadlines ON invoice_sagas (step_deadline) WHERE state LIKE '%\_REQUESTED';
+CREATE INDEX saga_dunning   ON invoice_sagas (next_attempt_at) WHERE state = 'PAYMENT_DECLINED';
+
+CREATE TABLE saga_events (                              -- append-only audit log
+  tenant_id uuid NOT NULL, saga_id uuid NOT NULL, seq int NOT NULL,
+  from_state text NOT NULL, to_state text NOT NULL, cause text NOT NULL,   -- e.g. 'reply:PaymentDeclined'
+  command_id uuid, at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, saga_id, seq)
+);
+
+CREATE TABLE inbox_replies (message_id uuid PRIMARY KEY, received_at timestamptz NOT NULL DEFAULT now());
+
+CREATE TABLE credit_balances (
+  tenant_id uuid NOT NULL, customer_id uuid NOT NULL, id uuid NOT NULL,
+  amount_minor bigint NOT NULL CHECK (amount_minor > 0), source_rerating_job_id uuid NOT NULL,
+  applied_invoice_id uuid,                              -- NULL = unapplied
+  PRIMARY KEY (tenant_id, id)
+);
+
+CREATE TABLE rerating_jobs (
+  tenant_id uuid NOT NULL, id uuid NOT NULL, period_id text NOT NULL, plan_version_id uuid NOT NULL,
+  generation int NOT NULL, status text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, id),
+  UNIQUE (tenant_id, period_id, plan_version_id)       -- idempotent re-rating
+);
+
+CREATE TABLE outbox (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tenant_id uuid NOT NULL,
+  destination text NOT NULL CHECK (destination IN ('rabbitmq','kafka')),
+  exchange_or_topic text NOT NULL, routing_key text NOT NULL,
+  message_id uuid NOT NULL UNIQUE, payload bytea NOT NULL, headers jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+RLS on all tenant tables for `billing_app`. Scheduler, sweeper, reply consumer and relay use `billing_system`.
+
+---
+
+## Worker stores
+
+```sql
+-- payments_db
+CREATE TABLE payment_attempts (
+  command_id uuid PRIMARY KEY, tenant_id uuid NOT NULL, invoice_id uuid NOT NULL,
+  idempotency_key text NOT NULL, kind text NOT NULL CHECK (kind IN ('charge','refund','status')),
+  amount_minor bigint, status text NOT NULL, psp_response jsonb, created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ON payment_attempts (tenant_id, invoice_id);
+
+-- notifier_db
+CREATE TABLE sent_notifications (
+  dedup_key text PRIMARY KEY, tenant_id uuid NOT NULL, template text NOT NULL,
+  status text NOT NULL CHECK (status IN ('SENDING','SENT')), smtp_message_id text,
+  created_at timestamptz NOT NULL DEFAULT now(), sent_at timestamptz
+);
+```
+
+Workers are internal and single-purpose, and are not RLS'd: every row is keyed by a command ID from billing-svc.
+`tenant_id` is still stored for audit and per-tenant metrics.
+
+## Index rationale (hot paths)
+
+| Query | Index |
+|---|---|
+| Ingest dedup | PK `idempotency_keys (tenant_id, idempotency_key, created_at)` |
+| Outbox relay | PK `outbox (id)` + `SKIP LOCKED`. Watermark via `outbox_ingested_at` |
+| Aggregator dedup | PK `processed_events (period_id, tenant_id, event_id, generation)` |
+| Aggregator upsert | PK `usage_aggregates` |
+| Billing stream period usage | PK prefix `(tenant_id, period_id)` |
+| Saga timeout sweeper | partial `saga_deadlines` |
+| Dunning scheduler | partial `saga_dunning` |
