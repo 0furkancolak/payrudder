@@ -1,0 +1,155 @@
+// Package convert maps store rows to API messages and store errors to gRPC status codes.
+package convert
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/pgxx"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+)
+
+// Err maps store errors to status errors. Status errors pass through unchanged; unknown errors become Internal
+// without leaking SQL details. what names the entity for NotFound/AlreadyExists messages.
+func Err(err error, what string) error {
+	if err == nil {
+		return nil
+	}
+	if _, ok := status.FromError(err); ok {
+		return err
+	}
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return status.Errorf(codes.NotFound, "%s not found", what)
+	case errors.Is(err, context.Canceled):
+		return status.Error(codes.Canceled, "request cancelled")
+	case errors.Is(err, context.DeadlineExceeded):
+		return status.Error(codes.DeadlineExceeded, "deadline exceeded")
+	}
+	switch pgxx.ErrCode(err) {
+	case pgxx.CodeUniqueViolation:
+		return status.Errorf(codes.AlreadyExists, "%s already exists", what)
+	case pgxx.CodeExclusionViolation:
+		return status.Error(codes.AlreadyExists, "customer already has a subscription overlapping that period")
+	case pgxx.CodeForeignKeyViolation:
+		return status.Errorf(codes.FailedPrecondition, "%s refers to something that doesn't exist", what)
+	case pgxx.CodeRaiseException:
+		return status.Error(codes.FailedPrecondition, "currency, timezone and environment of a tenant are immutable")
+	case pgxx.CodeInsufficientPriv:
+		return status.Error(codes.PermissionDenied, "not allowed")
+	}
+	return status.Error(codes.Internal, "internal error")
+}
+
+// Interval converts a duration to a Postgres interval (microseconds only, so it round-trips exactly).
+func Interval(d time.Duration) pgtype.Interval {
+	return pgtype.Interval{Microseconds: d.Microseconds(), Valid: true}
+}
+
+// Duration converts a Postgres interval back. Months are not used by Quotify and count as 30 days.
+func Duration(iv pgtype.Interval) time.Duration {
+	return time.Duration(iv.Microseconds)*time.Microsecond +
+		time.Duration(iv.Days)*24*time.Hour + time.Duration(iv.Months)*30*24*time.Hour
+}
+
+func ts(t time.Time) *timestamppb.Timestamp { return timestamppb.New(t) }
+
+func str(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+// Tenant maps a tenant row.
+func Tenant(t sqlc.Tenant) *plansv1.Tenant {
+	return &plansv1.Tenant{
+		Id: t.ID.String(), AccountId: t.AccountID.String(), Environment: domain.EnvironmentFromDB(t.Environment),
+		Name: t.Name, Tier: domain.TierFromDB(t.Tier), Currency: t.Currency, Timezone: t.Timezone,
+		GracePeriod: durationpb.New(Duration(t.GracePeriod)), CreateTime: ts(t.CreatedAt),
+	}
+}
+
+// APIKeyEnvironment maps the key env ("test"/"live") to the tenant environment.
+func APIKeyEnvironment(env string) plansv1.Environment {
+	if env == "test" {
+		return plansv1.Environment_ENVIRONMENT_SANDBOX
+	}
+	return plansv1.Environment_ENVIRONMENT_LIVE
+}
+
+// APIKeyStatus maps a stored key status.
+func APIKeyStatus(s string) plansv1.ApiKey_Status {
+	if s == "active" {
+		return plansv1.ApiKey_STATUS_ACTIVE
+	}
+	return plansv1.ApiKey_STATUS_REVOKED
+}
+
+// APIKey maps a key row (never the hash).
+func APIKey(k sqlc.ApiKey) *plansv1.ApiKey {
+	out := &plansv1.ApiKey{
+		Id: k.ID.String(), TenantId: k.TenantID.String(), Prefix: k.Prefix,
+		Environment: APIKeyEnvironment(k.Env), Status: APIKeyStatus(k.Status), CreateTime: ts(k.CreatedAt),
+	}
+	if k.RevokedAt != nil {
+		out.RevokeTime = ts(*k.RevokedAt)
+	}
+	return out
+}
+
+// Customer maps a customer row.
+func Customer(c sqlc.Customer) *plansv1.Customer {
+	return &plansv1.Customer{
+		Id: c.ID.String(), ExternalId: c.ExternalID, Name: c.Name, Email: c.Email,
+		PaymentMethod: str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
+	}
+}
+
+// Meter maps a meter row.
+func Meter(m sqlc.Meter) (*plansv1.Meter, error) {
+	filter, err := domain.FilterFromDB(m.Filter)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.Meter{
+		Code: m.Code, Version: m.Version, Aggregation: domain.AggregationFromDB(m.Aggregation),
+		ValueProperty: str(m.ValueProperty), Filter: filter, QuantityScale: uint32(max(m.QuantityScale, 0)), //nolint:gosec // 0..6 by CHECK
+		UnitLabel: m.UnitLabel, CreateTime: ts(m.CreatedAt),
+	}, nil
+}
+
+// Plan maps a plan row with its latest version number.
+func Plan(id, code, name string, created time.Time, latest int32) *plansv1.Plan {
+	return &plansv1.Plan{Id: id, Code: code, Name: name, LatestVersion: latest, CreateTime: ts(created)}
+}
+
+// SubscriptionFields is the common shape of the subscription query rows.
+type SubscriptionFields struct {
+	ID, CustomerID, PlanVersionID string
+	CustomerExternalID            string
+	Start, End, Created           time.Time
+	OpenEnded                     bool
+}
+
+// Subscription maps subscription fields.
+func Subscription(s SubscriptionFields) *plansv1.Subscription {
+	out := &plansv1.Subscription{
+		Id: s.ID, CustomerId: s.CustomerID, CustomerExternalId: s.CustomerExternalID, PlanVersionId: s.PlanVersionID,
+		StartTime: ts(s.Start), CreateTime: ts(s.Created),
+	}
+	if !s.OpenEnded {
+		out.EndTime = ts(s.End)
+	}
+	return out
+}
