@@ -8,7 +8,8 @@ It holds **no business logic** and **no database**.
 
 ## Public HTTP API (v1)
 
-All routes require `Authorization: Bearer qk_live_<prefix>_<secret>`. JSON bodies, UTF-8.
+All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `qk_test_` key resolves to the account's
+**sandbox** tenant, a `qk_live_` key to its live tenant ([ADR 0011](../adr/0011-sandbox-environment.md)). JSON bodies, UTF-8.
 
 | Method & path | Maps to | Rate class |
 |---|---|---|
@@ -21,7 +22,9 @@ All routes require `Authorization: Bearer qk_live_<prefix>_<secret>`. JSON bodie
 | `GET /v1/customers/{external_id}/usage?period=2026-11` | `aggregator.v1.UsageQueryService/GetCustomerUsage` | `read` |
 | `GET /v1/invoices` · `GET /v1/invoices/{id}` · `GET /v1/invoices/{id}/pdf` | `billing.v1.BillingService/*` | `read` |
 | `GET /v1/analytics/usage?…` | `analytics.v1.AnalyticsService/QueryUsage` | `analytics` |
-| `POST /admin/v1/tenants` · `POST /admin/v1/tenants/{id}/api-keys` | `plans.v1.AdminService/*` | operator token only |
+| `POST /v1/sandbox/periods/{period}/close` | `billing.v1.SandboxService/ClosePeriodNow` (sandbox keys only, else `403`) | `write` |
+| `POST /v1/sandbox/customers/{external_id}/payment-scenario` | `plans.v1.PlansService/SetPaymentMethod` with a `pm_sandbox_*` token | `write` |
+| `POST /admin/v1/accounts` · `POST /admin/v1/tenants/{id}/api-keys` | `plans.v1.AdminService/*` | operator token only |
 
 `POST /v1/events` request sketch:
 
@@ -32,7 +35,7 @@ All routes require `Authorization: Bearer qk_live_<prefix>_<secret>`. JSON bodie
       "idempotency_key": "req_8f2c…",
       "customer_external_id": "cus_42",
       "meter_code": "ai_tokens",
-      "quantity": 1500,
+      "quantity": "1500",
       "event_time": "2026-11-03T10:15:00Z",
       "properties": { "model": "gpt-x", "region": "eu" }
     }
@@ -40,9 +43,18 @@ All routes require `Authorization: Bearer qk_live_<prefix>_<secret>`. JSON bodie
 }
 ```
 
-The response is always `202` for a structurally valid batch, with a per-event result
+`quantity` may be a JSON string or number. Either way it's decoded with `json.Decoder.UseNumber` and parsed as an exact decimal
+(`"1.25"` for a meter with scale ≥ 2). The response is always `202` for a structurally valid batch, with a per-event result
 (`accepted` | `duplicate` | `rejected` + `error_code`). Whole-batch errors: `400` (malformed),
 `401`, `413` (> 500 events or > 1 MiB), `429` (with `Retry-After`), `503`.
+
+### Why a hand-written HTTP layer (not grpc-gateway)
+
+Decided: `net/http` with Go 1.22+ `ServeMux` patterns, one handler per route that maps JSON to the gRPC client.
+- The public API is small (~20 routes) and has shapes grpc-gateway handles awkwardly: per-event partial success in a `202`,
+  `Retry-After` and rate-limit headers, exact decimal decoding of `quantity`, and one stable error envelope.
+- Rate limiting must charge **per event** after decoding, so it lives in the handler anyway.
+- The cost is a hand-maintained OpenAPI spec (`api/openapi/v1.yaml`), checked in CI by a contract test that calls every documented route.
 
 ## Middleware chain
 
@@ -51,13 +63,13 @@ The response is always `202` for a structurally valid batch, with a per-event re
 ## Authentication & tenant resolution
 
 1. Parse key `qk_{env}_{prefix}_{secret}`. `prefix` is 8 chars and indexed. `secret` is 32 random bytes, base62.
-2. Look up `gw:apikey:{prefix}` in Redis → `{tenant_id, key_hash, status, tier}`.
+2. Look up `gw:apikey:{prefix}` in Redis → `{tenant_id, environment, timezone, key_hash, status, tier}`.
    On a miss, call `plans.v1.AdminService/ResolveApiKey(prefix)` and cache for 60 s.
 3. Constant-time compare `sha256(secret)` with `key_hash`. SHA-256 is enough because secrets are
    high-entropy random values, not passwords (see [06-multi-tenancy.md](../06-multi-tenancy.md#api-keys)).
 4. Revocation: plans-svc deletes the cache key on revoke, so revocation takes effect immediately.
    The 60 s TTL only bounds how stale the cache can get if the delete fails.
-5. Set gRPC metadata `x-quotify-tenant-id`, `x-quotify-api-key-id`, `x-request-id`. Downstream services
+5. Set gRPC metadata `x-quotify-tenant-id`, `x-quotify-environment`, `x-quotify-timezone`, `x-quotify-api-key-id`, `x-request-id`. Downstream services
    trust this metadata only from the gateway (network policy in K8s. mTLS is out of scope).
 
 ## Rate limiting

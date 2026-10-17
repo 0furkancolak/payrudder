@@ -134,7 +134,9 @@ can't stay open forever, and a finalized invoice must not change.
 **Definitions.**
 - `event_time` (tenant clock) → assigns the **period**.
 - `ingested_at` (server clock, set once at ingest) → decides **lateness**.
-- `cutoff(P) = end(P) + grace(tenant, P)`, where grace is snapshotted per period (default 24 h).
+- `period(event)` is the calendar month of `event_time` in the tenant's (immutable) time zone, stamped as `period_id` at ingest.
+- `cutoff(P) = end(P) + grace(tenant, P)`, where period bounds and grace are snapshotted per period (grace chosen by the tenant, 0–7 days).
+  Sandbox tenants may lower a cutoff with an early close. The new cutoff is recorded, so this rule still holds ([aggregator.md](03-services/aggregator.md#sandbox-early-close)).
 - **On-time** iff `ingested_at < cutoff(period(event_time))`. Otherwise **late**.
 
 This is a pure function of the event plus snapshotted config. A replay, a redrive or a slow consumer always
@@ -164,7 +166,7 @@ commit. A transaction that stamped `ingested_at = cutoff − 1 ms` and commits 2
   The cost is that it breaks replay determinism for that single event, which the alert makes visible.
 
 **What happens to late events.**
-- Stored in `late_usage` keyed by `(origin_period, billed_period = month(ingested_at))`.
+- Stored in `late_usage` keyed by `(origin_period, billed_period = period of ingested_at in the tenant's time zone)`.
 - Billed on the invoice of `billed_period` as a `LATE_USAGE` line, rated with the **origin period's** plan version and
   priced incrementally (`rate(qty+late) − rate(qty)`), so tiers are honoured.
 - Events older than 35 days are rejected at ingest (`EVENT_TOO_OLD`). That's the hard bound.
@@ -287,17 +289,18 @@ Two different operations, deliberately separated:
 `delta = new − already_billed`, and is unique per `(tenant, period, plan_version)`, so running it twice changes nothing.
 Usage is never re-counted.
 
-**Replay safety (generations).**
-1. `StartReplay(tenant?, from, to)` creates generation `N+1` with status `building` and a consumer group `aggregator-replay-{job}`.
+**Replay safety (per-tenant generations, [ADR 0012](adr/0012-per-tenant-aggregate-generations.md)).**
+1. `StartReplay(tenant, from, to)` creates the tenant's generation `N+1` with status `building` and a consumer group `aggregator-replay-{job}`.
 2. Start offsets: `ListOffsetsAfterMilli(start_of(from) − 35 days)` (the earliest `ingested_at` that can belong to `from`, given max lateness).
    End offsets: the end-offset snapshot at job start.
 3. The replay consumer applies the **same code path** as live aggregation into generation `N+1`, with its own `processed_events`
    rows (the `generation` column) and its own `consumer_offsets` group. Live aggregation continues on generation `N`.
    Records outside `[from, to]` or of other tenants are skipped.
 4. After the end offsets are reached → `verifying`: diff report N vs N+1 per (customer, meter, period), stored in the job.
-5. `PromoteGeneration` (operator) atomically flips `active`, after which live consumption writes to N+1 as well. *Catch-up subtlety:* events
-   that arrived after the end-offset snapshot exist in N only. Promotion therefore first runs the replay consumer up to the
-   **current** live offsets with live consumption paused (seconds), then flips.
+5. *Catch-up subtlety:* events that arrive after the end-offset snapshot would exist in N only. So once the snapshot is reached
+   (`catching_up`), the live consumer dual-writes the tenant's events into N and N+1 and records the first dual-written offset
+   per partition. The replay consumer stops there. Overlap is deduped per generation by `processed_events`.
+   `PromoteGeneration` (operator) then flips the tenant's `active` row in one transaction. Live traffic is never paused, and other tenants are untouched.
 6. Billing runs pin the generation they used. A re-rating job on a promoted generation produces the correction invoices.
 
 **Tests.** Seed period with known totals, then introduce a "bug" (meter filter) → replay → promoted generation equals the corrected expectation.

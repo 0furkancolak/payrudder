@@ -17,7 +17,8 @@ service PlansService {
   rpc ResolveCustomer(ResolveCustomerRequest) returns (Customer);  // internal, hot path, cached by callers
   rpc ListCustomers(ListCustomersRequest) returns (ListCustomersResponse);
 
-  rpc CreateMeter(CreateMeterRequest) returns (Meter);
+  rpc SetPaymentMethod(SetPaymentMethodRequest) returns (Customer); // sandbox: only pm_sandbox_* tokens accepted
+  rpc CreateMeter(CreateMeterRequest) returns (Meter);              // quantity_scale (0..6) + unit_label, fixed per code
   rpc GetMeter(GetMeterRequest) returns (Meter);                   // by code, latest version
   rpc ListMeters(ListMetersRequest) returns (ListMetersResponse);
 
@@ -32,12 +33,22 @@ service PlansService {
 }
 
 service AdminService {                                               // operator token only
-  rpc CreateTenant(CreateTenantRequest) returns (Tenant);
-  rpc UpdateTenantSettings(UpdateTenantSettingsRequest) returns (Tenant); // grace period, tier
+  rpc CreateAccount(CreateAccountRequest) returns (Account);       // creates the sandbox + live tenant pair
+  rpc UpdateTenantSettings(UpdateTenantSettingsRequest) returns (Tenant); // grace period, tier (currency, timezone immutable)
   rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse);   // returns plaintext once
   rpc RevokeApiKey(RevokeApiKeyRequest) returns (ApiKey);
   rpc ResolveApiKey(ResolveApiKeyRequest) returns (ResolvedApiKey);       // gateway only
 }
+
+message CreateAccountRequest {
+  string name = 1;
+  string currency = 2;        // required, ISO 4217 from the supported list (TRY, USD, EUR, GBP, JPY, KWD…); no default
+  string timezone = 3;        // required, IANA name (e.g. "Europe/Istanbul"); defines period boundaries; no default
+  google.protobuf.Duration grace_period = 4;  // required, 0..7 days
+  string tier = 5;
+}
+// Both tenants of an account get the same currency/timezone/grace. CreateAccount rejects a missing field with
+// INVALID_ARGUMENT: the operator (or the onboarding form in the admin UI) must choose explicitly.
 
 message Price {
   string meter_code = 1;
@@ -49,20 +60,23 @@ message Price {
 }
 message Entitlement {
   string meter_code = 1;
-  int64 limit_quantity = 2;            // per period
+  string limit = 2;                    // per period, decimal string in meter units (stored as scaled units)
   repeated int32 alert_thresholds_pct = 3; // e.g. [80, 100]
 }
 ```
 
 ## Owned data (`plans_db`)
 
-`tenants`, `tenant_settings`, `api_keys`, `customers`, `meters`, `plans`, `plan_versions`,
+`accounts`, `tenants`, `api_keys`, `customers`, `meters`, `plans`, `plan_versions`,
 `plan_prices`, `plan_entitlements`, `subscriptions`, `outbox`. DDL is in [05-data-model.md](../05-data-model.md#plans_db).
 
 Rules:
 - `meters` and `plan_versions` are **append-only**. Changing a price means publishing a new version.
   This is what makes historic invoices reproducible and re-rating explicit.
 - A customer has **at most one active subscription** at a time (exclusion constraint on `tstzrange`).
+- Tenant `currency` and `timezone` are **immutable** (DB trigger). Changing them would re-cut periods and re-price history.
+  `grace_period` may change and applies from the next period (snapshotted by aggregator).
+- A meter's `quantity_scale` is fixed for its code: a new meter version with a different scale is rejected.
 
 ## Produced messages
 

@@ -15,6 +15,8 @@ Correctness is the product:
 - **Replayable history.** Kafka is the event log. A pricing change re-rates a closed period
   without touching raw events; a meter change re-aggregates from the log.
 - **Near-real-time limits.** Redis atomic counters, reconciled against the authoritative aggregates.
+- **A sandbox for every account.** Test keys hit an isolated sandbox tenant with a mock payment provider,
+  deterministic payment scenarios and on-demand period close, locally and on Kubernetes.
 
 ## Why this repo exists
 
@@ -29,6 +31,7 @@ Every technology choice has an ADR that explains *why* — see [`docs/adr/`](doc
 | OLTP | PostgreSQL, `pgx` + `sqlc`, database-per-service, Row Level Security |
 | Counters / rate limits | Redis (Lua) |
 | Analytics | ClickHouse |
+| Object storage | S3 API (MinIO locally and in kind) |
 | Observability | OpenTelemetry, Prometheus, Grafana, Tempo, `slog` |
 | Testing | `testcontainers-go`, k6, chaos/correctness suite |
 | Deploy | Docker Compose, kind + Helm, GitHub Actions |
@@ -42,4 +45,4 @@ Every technology choice has an ADR that explains *why* — see [`docs/adr/`](doc
 
 ## License
 
-TODO: choose a license (Apache-2.0 or MIT) before the repository goes public.
+TODO: add the Apache-2.0 `LICENSE` file when the repository goes public (decided, not yet added while the repo is private).

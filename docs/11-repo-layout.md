@@ -26,7 +26,10 @@ quotify/
 │   ├── kafkax/                     # franz-go client factory, DB-offset consumer, DLQ producer, redrive filter
 │   ├── rabbitx/                    # connection mgmt, topology, publisher confirms, retry/DLX helpers, worker skeleton
 │   ├── period/                     # period ids, cutoff, Classify() — shared by aggregator + limits
-│   ├── money/                      # Amount (int64 minor), decimal unit prices, rounding
+│   ├── money/                      # Amount (int64 minor), decimal unit prices, rounding, currency exponent table
+│   ├── quantity/                   # exact decimal ↔ scaled int64 units (per-meter scale)
+│   ├── blob/                       # S3 API client (Put/Head/PresignGet), works with MinIO and any S3
+│   ├── payments/                   # PaymentProvider interface + environment routing (sandbox ⇒ mockpsp)
 │   ├── idgen/                      # UUIDv7, ULID, uuidv5 helpers
 │   ├── health/                     # /healthz /readyz
 │   └── testkit/                    # testcontainers helpers, fixtures, fake clock
@@ -65,7 +68,9 @@ quotify/
 │   ├── prometheus/{prometheus.yml,rules/}
 │   ├── otel/collector.yaml
 │   ├── kind/cluster.yaml
-│   └── helm/quotify/               # umbrella chart, one subchart per service
+│   └── helm/quotify/               # umbrella chart, one subchart per service (incl. mock-psp)
+│       ├── values-kind.yaml        # sandbox + live tenants, in-cluster MinIO
+│       └── values-sandbox.yaml     # sandbox-only deployment (namespace quotify-sandbox)
 ├── .github/workflows/              # ci.yml, e2e.yml, nightly.yml, release.yml
 └── docs/
 ```

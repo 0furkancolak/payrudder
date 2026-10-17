@@ -51,11 +51,14 @@ message UsageEvent {
   string customer_id = 4;                      // internal UUID
   string customer_external_id = 5;
   string meter_code = 6;
-  int64 quantity = 7;
+  reserved 7;                                  // was int64 quantity (pre-v1 draft); never reuse
   google.protobuf.Timestamp event_time = 8;
   google.protobuf.Timestamp ingested_at = 9;   // server clock, decides lateness
   map<string, string> properties = 10;
-  // reserved for future: 11..19
+  int64 quantity_units = 11;                   // quantity × 10^quantity_scale (ADR 0010)
+  uint32 quantity_scale = 12;                  // 0..6, copied from the meter
+  string period_id = 13;                       // 'YYYY-MM' in the tenant's time zone, stamped at ingest
+  // reserved for future: 14..19
 }
 
 message LimitExceeded {
@@ -65,18 +68,20 @@ message LimitExceeded {
   string meter_code = 4;
   string period_id = 5;                        // "2026-11"
   int32 threshold_pct = 6;
-  int64 limit_quantity = 7;
-  int64 used_quantity = 8;
+  int64 limit_units = 7;                       // scaled units (ADR 0010)
+  int64 used_units = 8;
   google.protobuf.Timestamp detected_at = 9;
+  uint32 quantity_scale = 10;
 }
 
 message EntitlementState {
   string tenant_id = 1; string customer_id = 2; string meter_code = 3;
   string plan_version_id = 4;
-  int64 limit_quantity = 5;                    // 0 = unlimited
+  int64 limit_units = 5;                       // scaled units; 0 = unlimited
   repeated int32 alert_thresholds_pct = 6;
   google.protobuf.Timestamp valid_from = 7;
   google.protobuf.Timestamp valid_until = 8;   // unset = open-ended
+  uint32 quantity_scale = 9;
 }
 
 message InvoiceFact {
@@ -184,7 +189,7 @@ Kafka has no per-message ack, so a poison record would block its partition forev
 | `LimitExceeded` | analytics-svc | `event_id` | `limit_events` |
 | `EntitlementState` | limits-svc | key (compaction = latest wins) | in-memory map + Redis mirror |
 | `InvoiceFact` | analytics-svc | `(invoice_id, version)` | `invoice_facts` |
-| `RenderInvoicePdf` | invoice-worker | `command_id` + deterministic object key | PDF in MinIO |
+| `RenderInvoicePdf` | invoice-worker | `command_id` + deterministic object key | PDF in S3 object storage (MinIO locally) |
 | `ChargePayment` | payments-worker | `command_id` + PSP `Idempotency-Key` | charge |
 | `SendNotification` | notifier | `command_id` | email |
 | `*Reply` | billing-svc | saga `version`/`state` guard + `inbox_replies.message_id` | saga transition |

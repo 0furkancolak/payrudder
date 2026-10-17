@@ -3,7 +3,8 @@
 ## Responsibility
 
 Accept usage events **durably and exactly once per idempotency key**, then publish them to Kafka.
-It validates, dedups, stamps `event_id` and `ingested_at`, and writes to the transactional outbox.
+It validates, dedups, stamps `event_id`, `ingested_at` and `period_id`, converts the decimal quantity to scaled units,
+and writes to the transactional outbox.
 It never aggregates.
 
 ## gRPC API (sketch)
@@ -19,10 +20,10 @@ service IngestService {
 
 message IngestEventsRequest { repeated IncomingEvent events = 1; }  // tenant from metadata
 message IncomingEvent {
-  string idempotency_key = 1;           // 1..128 chars, [A-Za-z0-9_.:-]
+  string idempotency_key = 1;           // 1..128 chars, [A-Za-z0-9_.:-]; required for live keys, optional in sandbox
   string customer_external_id = 2;
   string meter_code = 3;
-  int64 quantity = 4;                   // ≥ 0, base units of the meter
+  string quantity = 4;                  // decimal string, ≥ 0, ≤ meter.quantity_scale decimal places (ADR 0010)
   google.protobuf.Timestamp event_time = 5;
   map<string, string> properties = 6;   // ≤ 32 entries, ≤ 4 KiB total
 }
@@ -31,7 +32,8 @@ message EventResult {
   enum Status { STATUS_UNSPECIFIED = 0; ACCEPTED = 1; DUPLICATE = 2; REJECTED = 3; }
   Status status = 1;
   string event_id = 2;                  // set for ACCEPTED and DUPLICATE (original id)
-  string error_code = 3;                // UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_QUANTITY, IDEMPOTENCY_KEY_REUSED
+  string error_code = 3;                // UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_QUANTITY,
+                                        // INVALID_QUANTITY_PRECISION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_REUSED
 }
 message GetOutboxWatermarkResponse {
   google.protobuf.Timestamp oldest_unpublished_ingested_at = 1; // unset = outbox empty
@@ -47,8 +49,20 @@ message GetOutboxWatermarkResponse {
 | Customer exists (cached `ResolveCustomer`) | `UNKNOWN_CUSTOMER` |
 | `event_time ≥ now − 35 days` (max lateness) | `EVENT_TOO_OLD` |
 | `event_time ≤ now + 5 min` (clock skew allowance) | `EVENT_IN_FUTURE` |
-| `quantity ≥ 0` | `INVALID_QUANTITY` |
+| `quantity` is a valid decimal, `≥ 0`, and `quantity × 10^scale` fits in `int64` | `INVALID_QUANTITY` |
+| At most `quantity_scale` decimal places (no silent rounding) | `INVALID_QUANTITY_PRECISION` |
+| Live key (`qk_live_`) without `idempotency_key`. Sandbox keys get a generated key (`auto:{event_id}`, no dedup) | `IDEMPOTENCY_KEY_REQUIRED` |
 | Same idempotency key, **different payload hash** | `IDEMPOTENCY_KEY_REUSED` |
+
+## Derived fields
+
+| Field | Rule |
+|---|---|
+| `quantity_units`, `quantity_scale` | Exact decimal → scaled `int64` with the meter's scale ([ADR 0010](../adr/0010-money-and-quantity-representation.md)). Never via `float64` |
+| `period_id` | `pkg/period.PeriodOf(event_time, tenant.timezone)`: calendar month in the tenant's time zone. The time zone is immutable, so this is stable under replay |
+| `ingested_at` | `clock_timestamp()` of the ingest DB, inside the transaction |
+
+Tenant settings (time zone, environment) come from the API-key resolution metadata, so there's no extra lookup.
 
 ## Write path (one transaction per request batch)
 

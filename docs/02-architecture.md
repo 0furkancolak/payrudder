@@ -58,7 +58,7 @@ flowchart LR
         pgBill[(billing_db)]
         redis[(Redis)]
         ch[(ClickHouse)]
-        minio[(MinIO<br/>PDFs)]
+        minio[(S3 / MinIO<br/>PDFs)]
     end
 
     psp[mock-psp]
@@ -119,11 +119,11 @@ flowchart LR
 | [aggregator](03-services/aggregator.md) | Kafka consumer + gRPC | `aggregator_db` | `usage.events.v1` | gRPC reads, `usage.events.dlq.v1` |
 | [limits-svc](03-services/limits-svc.md) | Kafka consumer + gRPC | Redis `lim:*` keys | `usage.events.v1`, `plans.entitlements.v1` | `usage.limit-exceeded.v1` |
 | [billing-svc](03-services/billing-svc.md) | Saga orchestrator + gRPC | `billing_db` | gRPC, `billing.replies` | `billing.commands`, `billing.invoices.v1` |
-| [invoice-worker](03-services/workers.md#invoice-worker) | RabbitMQ worker | MinIO bucket `invoices` | `invoice.render` | `billing.replies` |
+| [invoice-worker](03-services/workers.md#invoice-worker) | RabbitMQ worker | S3 bucket `invoices` (MinIO locally, [ADR 0013](adr/0013-s3-compatible-object-storage.md)) | `invoice.render` | `billing.replies` |
 | [payments-worker](03-services/workers.md#payments-worker) | RabbitMQ worker | `payments_db` | `payment.charge` | `billing.replies` |
 | [notifier](03-services/workers.md#notifier) | RabbitMQ worker | `notifier_db` | `notification.send` | `billing.replies` |
 | [analytics-svc](03-services/analytics-svc.md) | Kafka consumer + gRPC | ClickHouse `quotify` DB | `usage.events.v1`, `usage.limit-exceeded.v1`, `billing.invoices.v1` | gRPC reads |
-| mock-psp (tool) | Fake external HTTP API | own Postgres schema | HTTP | — |
+| mock-psp | Fake external HTTP API; the sandbox payment provider ([ADR 0011](adr/0011-sandbox-environment.md)) | own Postgres schema | HTTP | — |
 
 ## Flow 1 — Ingest
 
@@ -222,6 +222,13 @@ Full state machine: [03-services/billing-svc.md](03-services/billing-svc.md#saga
 | billing-svc | ingest-svc, aggregator, plans-svc | watermark, usage, subscriptions | Billing run waits (state `WAITING_WATERMARK`) and retries with backoff |
 
 The hot path (ingest) has exactly one synchronous hop after the gateway. Plans lookups on it are cached.
+
+## Environments
+
+| Level | Sandbox | Live |
+|---|---|---|
+| Tenant (every deployment) | `qk_test_` keys → sandbox tenant. Payments always via mock-psp with scenario tokens. Early period close. `SBX-` invoices | `qk_live_` keys → live tenant. Payments via `PAYMENTS_LIVE_PROVIDER` (v1: mock-psp in the local demo only) |
+| Deployment | Compose default and kind `values-kind.yaml` run both. `values-sandbox.yaml` (namespace `quotify-sandbox`) runs sandbox-only, for a public demo | — (no production deployment in scope) |
 
 ## Deployment shape
 

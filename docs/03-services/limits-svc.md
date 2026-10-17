@@ -20,7 +20,7 @@ to counter). It is not the billing source of truth. See [ADR 0006](../adr/0006-e
 
 | Key | Type | TTL |
 |---|---|---|
-| `lim:c:{tenant}:{customer}:{meter}:{period}` | string int (counter) | period end + 40 days |
+| `lim:c:{tenant}:{customer}:{meter}:{period}` | string int (counter, scaled units of the meter) | period end + 40 days |
 | `lim:off:{partition}` | string int (next offset applied) | none |
 | `lim:fired:{tenant}:{customer}:{meter}:{period}:{pct}` | string `1` | period end + 40 days |
 
@@ -43,6 +43,10 @@ end
 redis.call('SET', KEYS[1], ARGV[2])
 return crossed
 ```
+
+Counters hold scaled integer units ([ADR 0010](../adr/0010-money-and-quantity-representation.md)), so `INCRBY` stays exact for
+fractional meters. Lua's `tonumber` is a double, so the script compares values only below 2⁵³ and Go rejects a delta that would
+push a counter past that (logged, counted in `limits_counter_overflow_total`, and the key is left for reconciliation).
 
 Late events (classified with the same function as aggregator, shared package `pkg/period`) are
 **not** counted against the current period's limit. They count toward their origin period, which is usually closed.

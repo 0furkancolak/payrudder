@@ -25,7 +25,9 @@ CREATE TABLE usage_events
     event_id       String,
     customer_id    UUID,
     meter_code     LowCardinality(String),
-    quantity       Int64,
+    quantity_units Int64,                    -- scaled units (ADR 0010)
+    quantity_scale UInt8,
+    period_id      LowCardinality(String),   -- tenant time zone, from the event
     event_time     DateTime64(3, 'UTC'),
     ingested_at    DateTime64(3, 'UTC'),
     properties     Map(LowCardinality(String), String)
@@ -39,14 +41,14 @@ TTL toDateTime(event_time) + INTERVAL 13 MONTH;
 CREATE TABLE usage_hourly
 (
     tenant_id UUID, meter_code LowCardinality(String), customer_id UUID,
-    hour DateTime('UTC'), quantity_sum Int64, event_count UInt64
+    hour DateTime('UTC'), quantity_units_sum Int64, quantity_scale UInt8, event_count UInt64
 )
-ENGINE = SummingMergeTree
+ENGINE = SummingMergeTree((quantity_units_sum, event_count))   -- quantity_scale is constant per meter, never summed
 ORDER BY (tenant_id, meter_code, customer_id, hour);
 
 CREATE MATERIALIZED VIEW usage_hourly_mv TO usage_hourly AS
 SELECT tenant_id, meter_code, customer_id, toStartOfHour(event_time) AS hour,
-       sum(quantity) AS quantity_sum, count() AS event_count
+       sum(quantity_units) AS quantity_units_sum, any(quantity_scale) AS quantity_scale, count() AS event_count
 FROM usage_events GROUP BY tenant_id, meter_code, customer_id, hour;
 
 CREATE TABLE limit_events (...) ENGINE = ReplacingMergeTree ORDER BY (tenant_id, event_id);

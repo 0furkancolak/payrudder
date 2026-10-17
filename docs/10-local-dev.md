@@ -17,7 +17,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | rabbitmq | `rabbitmq:4-management` | 5672, 15672 (UI) | `definitions.json` loaded at boot |
 | redis | `redis:7` | 6379 | `appendonly yes`, `appendfsync everysec` |
 | clickhouse | `clickhouse/clickhouse-server` | 8123 (HTTP), 9000 (native) | |
-| minio | `minio/minio` | 9001 (API), 9002 (console) | bucket `invoices` created by init container |
+| minio | `minio/minio` | 9001 (S3 API), 9002 (console) | S3-compatible store ([ADR 0013](adr/0013-s3-compatible-object-storage.md)). Bucket `invoices` + sandbox lifecycle rule created by an init container (`mc`) |
 | mailpit | `axllent/mailpit` | 1025 (SMTP), 8025 (UI) | |
 | toxiproxy | `ghcr.io/shopify/toxiproxy` | 8474 (API) | `profile: chaos` only |
 
@@ -44,7 +44,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | invoice-worker | — | — | 9107 |
 | payments-worker | — | — | 9108 |
 | notifier | — | — | 9109 |
-| mock-psp | — | 8090 | 9110 |
+| mock-psp | — | 8090 | 9110 | (sandbox payment provider, also used for live tenants in the local demo)
 
 Every service exposes `/healthz` (liveness), `/readyz` (readiness: DB, broker reachable, partitions assigned) and `/metrics`
 on its metrics port.
@@ -62,6 +62,17 @@ QUOTIFY_PG_APP_DSN=postgres://ingest_app:…@postgres:5432/ingest_db
 QUOTIFY_PG_SYSTEM_DSN=postgres://ingest_system:…@postgres:5432/ingest_db
 QUOTIFY_KAFKA_BROKERS=redpanda:9092
 QUOTIFY_OTLP_ENDPOINT=otel-collector:4317
+QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox,live      # plans-svc, gateway; 'sandbox' only in values-sandbox.yaml
+
+# invoice-worker, billing-svc (presign): any S3-compatible endpoint
+S3_ENDPOINT=http://minio:9000
+S3_REGION=us-east-1
+S3_BUCKET=invoices
+S3_FORCE_PATH_STYLE=true
+
+# payments-worker: sandbox always uses mock-psp (not configurable)
+MOCKPSP_URL=http://mock-psp:8090
+PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live charges fail with PROVIDER_NOT_CONFIGURED
 ```
 
 `.env.example` is committed. `.env` is git-ignored.
@@ -79,12 +90,13 @@ QUOTIFY_OTLP_ENDPOINT=otel-collector:4317
 | `make up-infra` | Only infrastructure (run services from your IDE) |
 | `make migrate` | Run goose migrations for every service DB |
 | `make topics` | Create Kafka topics with the configs from [04-messaging.md](04-messaging.md) (`rpk topic create …`) |
-| `make seed` | Create a demo tenant, API key, meters, plan, 10 customers |
-| `make demo` | Seed → send events → force period close → open Mailpit/Grafana links |
+| `make seed` | Create a demo account (currency/time zone/grace passed explicitly: `CURRENCY=TRY TZ=Europe/Istanbul GRACE=24h`), sandbox + live keys, meters (one fractional), plan, 10 customers covering every `pm_sandbox_*` scenario |
+| `make demo` | Seed → send events → sandbox `ClosePeriodNow` → every payment scenario plays out → open Mailpit/Grafana links |
 | `make e2e` | Run `tests/e2e` against the compose stack |
 | `make chaos N=100000` | Run the correctness suite with N events |
 | `make load SCENARIO=ingest_steady` | Run a k6 scenario |
-| `make kind-up` / `make helm-install` | Phase 10 |
+| `make kind-up` / `make helm-install` | Phase 10. `HELM_VALUES=values-kind.yaml` (default) or `values-sandbox.yaml` |
+| `make demo-k8s` | `make demo` against the kind cluster (port-forwarded gateway) |
 | `make clean` | Remove volumes in `.data/` |
 
 ## Typical loop

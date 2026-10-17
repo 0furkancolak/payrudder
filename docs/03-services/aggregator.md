@@ -22,6 +22,7 @@ INSERT INTO processed_events (tenant_id, event_id, generation, period_id)
 SELECT * FROM unnest(...) ON CONFLICT DO NOTHING
 RETURNING event_id;
 -- 2. apply only the returned (new) events, pre-summed in Go per key
+-- (one row per target generation: the tenant's active one, plus its catching_up one during a promotion)
 INSERT INTO usage_aggregates (tenant_id, customer_id, meter_code, period_id, generation, quantity, event_count, updated_at)
 VALUES ... ON CONFLICT (tenant_id, customer_id, meter_code, period_id, generation)
 DO UPDATE SET quantity = <SUM/MAX merge>, event_count = usage_aggregates.event_count + EXCLUDED.event_count;
@@ -42,15 +43,34 @@ Read APIs run as `aggregator_app` with `SET LOCAL app.tenant_id`.
 ## On-time vs late classification
 
 ```
-period  = calendar_month_utc(event.event_time)
-cutoff  = period.end + grace(tenant, period)     -- grace snapshotted in period_settings
+period  = event.period_id                         -- stamped at ingest: calendar month in the tenant's time zone
+cutoff  = period_settings(tenant, period).cutoff_at   -- period_end + grace, snapshotted
 if event.ingested_at < cutoff → usage_aggregates (period)
-else                          → late_usage (origin_period = period, billed_in_period = month(ingested_at))
+else                          → late_usage (origin_period = period,
+                                            billed_in_period = PeriodOf(ingested_at, tenant.timezone))
 ```
 
 This depends only on event fields plus snapshotted config, so replaying the log always reproduces it.
-Grace is copied into `period_settings` when the first event of a tenant's period arrives. Later
-changes to the tenant setting affect only future periods.
+Time zone, period bounds and grace are copied into `period_settings` when the first event of a tenant's period arrives
+(settings fetched from plans-svc, cached). The time zone is immutable. A grace change affects only future periods.
+Quantities are already scaled integers (`quantity_units`), so the upsert is plain integer arithmetic.
+
+### Sandbox early close
+
+Sandbox tenants can close the current period on demand to try the whole invoice and payment flow without waiting a month
+([ADR 0011](../adr/0011-sandbox-environment.md)). billing-svc calls `ClosePeriodEarly(tenant, period)`, which runs:
+
+```sql
+UPDATE period_settings
+SET cutoff_at = clock_timestamp() + interval '5 seconds', early_closed_at = clock_timestamp()
+WHERE tenant_id = $1 AND period_id = $2 AND frozen_at IS NULL AND cutoff_at > clock_timestamp() + interval '5 seconds'
+RETURNING cutoff_at;
+```
+
+The live batch transaction reads the tenant's `period_settings` row `FOR SHARE`, so the update waits for in-flight batches and
+every batch after it sees the new cutoff. The 5 s margin absorbs clock skew between the ingest and aggregator databases.
+Events ingested after the new cutoff go to `late_usage` and are billed on the next sandbox invoice. The new cutoff is recorded,
+so replays stay deterministic. Rejected with `FAILED_PRECONDITION` for live tenants (checked from the tenant's environment, not from a flag in the request).
 
 ## gRPC API (sketch)
 
@@ -64,12 +84,14 @@ service UsageQueryService {
   rpc StreamLateUsage(StreamLateUsageRequest) returns (stream LateUsage);             // billing: late usage billed in period
   rpc GetIngestWatermark(GetIngestWatermarkRequest) returns (GetIngestWatermarkResponse);
   rpc FreezePeriod(FreezePeriodRequest) returns (FreezePeriodResponse);              // billing, after rating; idempotent
+  rpc ClosePeriodEarly(ClosePeriodEarlyRequest) returns (ClosePeriodEarlyResponse);  // billing, sandbox tenants only
 }
 
 service ReplayService {                                                               // operator only
-  rpc StartReplay(StartReplayRequest) returns (ReplayJob);   // tenant, period range, reason
+  rpc StartReplay(StartReplayRequest) returns (ReplayJob);   // one tenant (required), period range, reason
   rpc GetReplayJob(GetReplayJobRequest) returns (ReplayJob);
-  rpc PromoteGeneration(PromoteGenerationRequest) returns (ReplayJob); // atomic switch after verification
+  rpc PromoteGeneration(PromoteGenerationRequest) returns (ReplayJob); // per-tenant switch after verification
+  rpc DiscardGeneration(DiscardGenerationRequest) returns (ReplayJob); // abandon a building generation
 }
 
 message GetIngestWatermarkRequest {
@@ -80,6 +102,21 @@ message GetIngestWatermarkResponse {
   map<int32, int64> committed_offsets = 2;
 }
 ```
+
+## Per-tenant generations
+
+Each tenant has its own active generation ([ADR 0012](../adr/0012-per-tenant-aggregate-generations.md)). A replay for tenant T
+never touches other tenants' rows, and promotion flips only T. Live traffic is not paused.
+
+1. `StartReplay(T, from, to)` creates `(T, N+1, building)` and a replay consumer group `aggregator-replay-{job}` that reads from
+   `ListOffsetsAfterMilli(period_start(from) − 35 d)` and skips records of other tenants or periods.
+2. When it reaches the end-offset snapshot, the job moves to `catching_up`. From then on the **live** consumer writes T's events
+   to **both** N and N+1, and records per partition the first offset it dual-wrote (`replay_jobs.dual_write_from`).
+3. The replay consumer keeps going until it reaches `dual_write_from` on every partition. Overlap between the two consumers is
+   harmless: `processed_events` is keyed by generation, so each event is applied to N+1 exactly once.
+4. Verification diff N vs N+1 → `ready`. `PromoteGeneration` flips T's `active` row in one transaction. The live consumer
+   picks this up in its next batch (generation rows are read `FOR SHARE` in the batch transaction) and stops dual-writing.
+5. Billing runs pinned to N keep reading N. Retired generations are dropped after 90 days.
 
 ## Owned data (`aggregator_db`)
 

@@ -18,7 +18,11 @@ package quotify.billing.v1;
 service BillingService {
   rpc GetInvoice(GetInvoiceRequest) returns (Invoice);
   rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);       // by customer / period / status
-  rpc GetInvoicePdfUrl(GetInvoicePdfUrlRequest) returns (GetInvoicePdfUrlResponse); // presigned MinIO URL, 5 min
+  rpc GetInvoicePdfUrl(GetInvoicePdfUrlRequest) returns (GetInvoicePdfUrlResponse); // presigned S3 URL, 5 min
+}
+
+service SandboxService {                                                     // sandbox tenants only (FAILED_PRECONDITION otherwise)
+  rpc ClosePeriodNow(ClosePeriodNowRequest) returns (BillingRun);            // early close → normal run → normal saga
 }
 
 service BillingAdminService {                                                // operator
@@ -33,7 +37,8 @@ service BillingAdminService {                                                // 
 
 ## Period close (billing run)
 
-One `billing_runs` row per `(tenant_id, period_id)`. A scheduler loop (every 1 min) picks tenants
+One `billing_runs` row per `(tenant_id, period_id)`. Periods are calendar months in the **tenant's time zone**
+(`period_settings.period_end` is local midnight on the 1st, stored as a UTC instant). A scheduler loop (every 1 min) picks tenants
 whose `cutoff = period_end + grace` has passed and takes a Postgres advisory lock on
 `hashtext(tenant_id || period_id)`, so one pod drives each run.
 
@@ -63,6 +68,8 @@ stateDiagram-v2
 
 `rating.Rate(planVersion, usage []UsageAggregate, late []LateUsage) ([]InvoiceLine, error)` is a pure function.
 No I/O, table-tested, property-tested (e.g. tiered total is monotonic in quantity).
+Aggregates arrive as scaled integer units. Rating converts them once, `qty = units × 10^−scale` in `apd`, so fractional
+meters (e.g. `1.250 GB-h`) are priced exactly. Tier boundaries (`up_to`) and package sizes are decimals in meter units.
 
 | Model | Formula |
 |---|---|
@@ -71,7 +78,7 @@ No I/O, table-tested, property-tested (e.g. tiered total is monotonic in quantit
 | `PACKAGE` | `ceil(qty / size) × package_price` |
 | `FLAT` | `amount` (plan base fee) |
 
-Prices are decimals in minor units (`"0.002"` kuruş/token). Each line is rounded half-even to an integer
+Prices are decimals in minor units of the tenant's currency (`"0.002"` kuruş/token for a `TRY` tenant). Each line is rounded half-even to an integer
 minor unit **once, at line level** ([ADR 0010](../adr/0010-money-and-quantity-representation.md)).
 
 **Late usage lines** for origin period `O`, billed on period `P`'s invoice:
@@ -136,6 +143,17 @@ stateDiagram-v2
   This is the classic "did my timed-out charge go through?" problem.
 - **Dunning** delays are days long, so they're scheduled in Postgres (`next_attempt_at`), not as RabbitMQ TTLs.
   RabbitMQ TTL retries handle **seconds to minutes** of transient failure inside a worker.
+
+### Sandbox
+
+Sandbox tenants run the **same** close, rating and saga code. Two things differ:
+- `ClosePeriodNow` calls `aggregator.ClosePeriodEarly`, then schedules the run immediately. The watermark check still runs
+  (from the new cutoff + 30 s), so the flow under test is the real one.
+- `ChargePayment` carries `environment = sandbox`. payments-worker routes it to mock-psp regardless of configuration
+  ([ADR 0011](../adr/0011-sandbox-environment.md)). The outcome follows the customer's `pm_sandbox_*` scenario token.
+- Invoice numbers use a separate prefix (`SBX-2026-000001`) so a sandbox PDF can't be mistaken for a real invoice.
+  The PDF carries a "SANDBOX — not a real invoice" watermark.
+- Dunning delays are compressed to +1 min / +3 min / +7 min, so a full decline → retry → uncollectible cycle fits in a demo.
 
 ## Re-rating
 

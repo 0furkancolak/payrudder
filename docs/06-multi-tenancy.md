@@ -21,8 +21,9 @@
   This matches common practice (GitHub, Stripe-style tokens).
 - Lookup by `prefix` (indexed, non-secret), then constant-time compare of the hash.
 - Plaintext is shown once, at creation. Revocation deletes the gateway cache key immediately.
-- `test` keys hit the same system but are tagged. Enforcing a separate `test` mode with isolated data is out of scope.
-  Open question: a `livemode` flag per event, like Stripe.
+- `test` keys resolve to the account's **sandbox tenant** and `live` keys to its live tenant. A sandbox is a separate `tenant_id`,
+  so sandbox and live data are isolated by the same RLS and partitioning as any two tenants ([ADR 0011](adr/0011-sandbox-environment.md)).
+  plans-svc rejects creating a `live` key for a sandbox tenant and vice versa.
 
 ## Row Level Security
 
@@ -78,8 +79,12 @@ Fairness beyond rate limits (partition hot-spotting, lag isolation) is in [07-co
 
 ## Tenant lifecycle
 
-1. Operator: `POST /admin/v1/tenants` → tenant row + default settings.
-2. Operator: `POST /admin/v1/tenants/{id}/api-keys` → plaintext key returned once.
-3. Tenant: create meters, plans, customers, subscriptions → send events.
-4. Off-boarding (out of scope for v1): documented as revoke keys → final billing run → data export → delete by
+1. Operator (or the admin UI onboarding form): `POST /admin/v1/accounts` with **explicitly chosen** `currency`, `timezone`,
+   `grace_period` and `tier`. No defaults. Creates the account plus its sandbox and live tenants with the same settings.
+   Currency and time zone are immutable afterwards, and grace can change for future periods.
+2. Operator: `POST /admin/v1/tenants/{id}/api-keys` → plaintext key returned once (`qk_test_` for the sandbox, `qk_live_` for live).
+3. Tenant integrates in the sandbox: meters, plans, customers with `pm_sandbox_*` scenarios, events, `POST /v1/sandbox/periods/{p}/close`.
+   Then it repeats the setup in live. Copying config from sandbox to live is a documented extension, not in v1.
+4. A deployment running `values-sandbox.yaml` (`QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox`) creates only the sandbox tenant.
+5. Off-boarding (out of scope for v1): documented as revoke keys → final billing run → data export → delete by
    `tenant_id` per service. RLS makes "delete everything of tenant X" a straightforward `DELETE ... WHERE tenant_id = $1` as `_system`.

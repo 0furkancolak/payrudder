@@ -13,10 +13,19 @@
 
 - `rating`: table tests for each price model, incremental late-usage pricing, rounding (half-even at line level).
   Properties: total is monotonic in quantity, and `rate(a+b) − rate(a) ≥ 0`.
-- `period`: `Classify(eventTime, ingestedAt, grace)` around month boundaries, leap years, `23:59:59.999Z`.
+- `period`: `PeriodOf(t, tz)` and `Classify(period, ingestedAt, cutoff)` around month boundaries, leap years, `23:59:59.999` local time,
+  DST transitions and far-offset zones (`Pacific/Kiritimati`, `America/St_Johns`).
+- `quantity`: decimal ↔ scaled units round-trip for every scale 0–6, precision rejection, `int64` overflow, no `float64` path (fuzz test on JSON input).
+- `payments`: routing table. A `SANDBOX` command never reaches the live provider, whatever the config.
 - `saga`: exhaustive `(state × reply)` table. Unknown pairs → no transition and an error.
   Property: random sequences of duplicated or reordered replies never emit two `ChargePayment` with different idempotency keys for the same dunning attempt.
 - `gateway/ratelimit`: GCRA against a fake clock.
+
+## Sandbox end-to-end
+
+`tests/e2e/sandbox_test.go`, run on Compose in every PR and on kind in Phase 10 (`make demo-k8s`): create an account → sandbox key →
+one customer per `pm_sandbox_*` token → fractional and integer events → `ClosePeriodNow` → assert each saga's terminal state,
+`SBX-` numbering, PDF in MinIO, `[SANDBOX]` emails in Mailpit, and zero calls to the live provider.
 
 ## Integration tests (per service)
 

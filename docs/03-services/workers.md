@@ -23,6 +23,7 @@ message CommandEnvelope {
   string tenant_id = 3;
   int32 attempt = 4;
   google.protobuf.Timestamp issued_at = 5;
+  Environment environment = 6;    // SANDBOX | LIVE, from the tenant; workers never infer it
   oneof command {
     RenderInvoicePdf render_invoice_pdf = 10;
     ChargePayment charge_payment = 11;
@@ -46,31 +47,51 @@ message ReplyEnvelope {
 ## invoice-worker
 
 **Responsibility.** Render an invoice PDF from the invoice snapshot carried *in the command* (lines,
-totals, customer name, number), so the worker needs no billing DB access. It stores the PDF in MinIO.
+totals, customer name, number), so the worker needs no billing DB access. It stores the PDF in **S3-compatible object
+storage**: MinIO in Compose and kind, any S3 endpoint elsewhere.
 
 | | |
 |---|---|
 | Consumes | queue `invoice.render` (`RenderInvoicePdf`) |
 | Replies | `PdfRendered{object_key, sha256, size}` or `PdfFailed{reason}` |
-| Owned data | MinIO bucket `invoices`, key `{tenant_id}/{invoice_id}/v{invoice_version}.pdf` |
+| Owned data | Bucket `invoices` (`S3_BUCKET`), key `{tenant_id}/{invoice_id}/v{invoice_version}.pdf`. Sandbox tenants share the bucket under their own tenant IDs, with an S3 lifecycle rule expiring them after 30 days (object tag `environment=sandbox`) |
+| Storage client | `pkg/blob` interface (`Put`, `Head`, `PresignGet`) over `aws-sdk-go-v2/service/s3` with `S3_ENDPOINT`, `S3_REGION`, `S3_FORCE_PATH_STYLE=true` for MinIO. Only S3 API calls, no MinIO-specific SDK, so switching to AWS S3, R2 or Ceph is configuration only. CI runs the integration tests against MinIO |
 | Idempotency | Deterministic object key. If the object exists with the same `sha256` → reply success without re-rendering. Rendering is deterministic (fixed fonts, no timestamps in content) |
 | Library | `github.com/go-pdf/fpdf` (pure Go, no headless browser) |
 
-Failure modes: MinIO unavailable → transient (retry). Template or data error → permanent (`PdfFailed`).
+A "SANDBOX" watermark is drawn on sandbox invoices.
+
+Failure modes: object storage unavailable → transient (retry). Template or data error → permanent (`PdfFailed`).
 Scaling: CPU-bound, scale on queue depth (KEDA in Phase 10 is optional).
 
 ---
 
 ## payments-worker
 
-**Responsibility.** Call the **mock-psp** HTTP API to charge, refund or query payments. It translates PSP
-responses into replies. It holds no money logic: amounts come from the command.
+**Responsibility.** Charge, refund or query payments through a `PaymentProvider` and translate the result into replies.
+It holds no money logic: amounts come from the command.
+
+```go
+// pkg/payments (sketch)
+type PaymentProvider interface {
+    Charge(ctx context.Context, r ChargeRequest) (ChargeResult, error)   // r.IdempotencyKey is mandatory
+    Refund(ctx context.Context, r RefundRequest) (RefundResult, error)
+    Status(ctx context.Context, idempotencyKey string) (StatusResult, error)
+}
+```
+
+**Routing by environment** ([ADR 0011](../adr/0011-sandbox-environment.md)):
+
+| Command `environment` | Provider | Configurable? |
+|---|---|---|
+| `SANDBOX` | `mockpsp` (sandbox endpoint) | **No.** Hard-coded, so a sandbox tenant can never reach a real provider, whatever the config says |
+| `LIVE` | `PAYMENTS_LIVE_PROVIDER` | Yes. v1 ships only `mockpsp`, used for live tenants in the local demo. Real adapters are a non-goal. The interface is where one plugs in. If unset, live charges reply `PaymentErrored{retryable=false, code=PROVIDER_NOT_CONFIGURED}` |
 
 | | |
 |---|---|
 | Consumes | queue `payment.charge`, `payment.refund`, `payment.status` |
 | Replies | `PaymentSucceeded{psp_charge_id}`, `PaymentDeclined{decline_code}`, `PaymentErrored{retryable}`, `PaymentRefunded`, `PaymentStatus{found, state}` |
-| Owned data | `payments_db.payment_attempts(command_id PK, invoice_id, idempotency_key, request, response, status)` |
+| Owned data | `payments_db.payment_attempts(command_id PK, invoice_id, environment, provider, idempotency_key, request, response, status)` |
 | Idempotency | `Idempotency-Key` header to mock-psp = `invoice_id:charge:{dunning_attempt}`. Retries of the same command reuse it. `payment_attempts` stores the reply for redeliveries |
 
 **mock-psp** (`tools/mockpsp`, its own container) simulates a real provider:
@@ -79,7 +100,20 @@ responses into replies. It holds no money logic: amounts come from the command.
 - Env-configurable `MOCKPSP_DECLINE_RATE`, `MOCKPSP_ERROR_RATE`, `MOCKPSP_TIMEOUT_RATE`, `MOCKPSP_LATENCY_MS`.
 - `MOCKPSP_TIMEOUT_RATE` **commits the charge and then hangs**. This is how `PAYMENT_UNKNOWN` gets tested.
 - `GET /v1/charges?idempotency_key=…` for status queries. `POST /v1/refunds`.
-- Magic customer IDs force outcomes (`cus_decline`, `cus_timeout`) for deterministic tests.
+- **Sandbox payment scenarios.** A sandbox customer's `payment_method` is a scenario token that makes the outcome deterministic,
+  so tenants can rehearse their own handling of every case (the same idea as test card numbers):
+
+  | Token | Behaviour | Saga path it exercises |
+  |---|---|---|
+  | `pm_sandbox_success` (default) | Charge succeeds | `PAID` |
+  | `pm_sandbox_declined` | `402 card_declined` on every attempt | dunning ×3 → `UNCOLLECTIBLE` |
+  | `pm_sandbox_insufficient_funds_once` | First attempt declined, then succeeds | dunning retry → `PAID` |
+  | `pm_sandbox_error_then_success` | 5xx twice, then succeeds | worker TTL retries (5 s, 30 s) → `PAID` |
+  | `pm_sandbox_timeout_committed` | Commits the charge, then hangs past the client timeout | `PAYMENT_UNKNOWN` → status query → `PAID` |
+  | `pm_sandbox_timeout_not_committed` | Hangs without committing | `PAYMENT_UNKNOWN` → status query → re-charge → `PAID` |
+
+  In sandbox, dunning delays are compressed (+1 min, +3 min, +7 min instead of days), so a full dunning cycle is visible in minutes.
+- The env-wide rates above stay for chaos and load tests. Scenario tokens take precedence over them.
 
 Error mapping: HTTP 402 → `PaymentDeclined` (permanent). 5xx / connection reset → transient retry
 (3 attempts with 5 s, 30 s, 2 min TTL). Client timeout → `PaymentErrored{retryable=false}`, which makes billing go
@@ -90,7 +124,8 @@ Error mapping: HTTP 402 → `PaymentDeclined` (permanent). 5xx / connection rese
 ## notifier
 
 **Responsibility.** Send transactional emails (invoice available, payment failed, limit threshold
-reached) through SMTP to **Mailpit** locally.
+reached) through SMTP to **Mailpit** locally. Sandbox notifications get a `[SANDBOX]` subject prefix and, in any non-local
+deployment, are delivered only to Mailpit (`SANDBOX_SMTP_URL`), never to the customer's real address.
 
 | | |
 |---|---|

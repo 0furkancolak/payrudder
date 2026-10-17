@@ -12,8 +12,8 @@ Migrations live in `services/<svc>/migrations` (`goose`, SQL files), queries in
 | Tenant column | Every tenant-owned table has `tenant_id uuid NOT NULL` as the **first** column of its PK or of a leading index |
 | Time | `timestamptz`, always UTC |
 | Money | `bigint` minor units (`*_minor`). Unit prices `numeric(30,12)` ([ADR 0010](adr/0010-money-and-quantity-representation.md)) |
-| Quantities | `bigint` (aggregates: `numeric(38,0)` to survive `SUM` overflow) |
-| Period | `period_id text` `'YYYY-MM'`, with `CHECK (period_id ~ '^\d{4}-(0[1-9]|1[0-2])$')` |
+| Quantities | Scaled integer units of the meter (`quantity × 10^quantity_scale`): `bigint` per event, `numeric(38,0)` for aggregates ([ADR 0010](adr/0010-money-and-quantity-representation.md)) |
+| Period | `period_id text` `'YYYY-MM'`, a calendar month **in the tenant's billing time zone**, with `CHECK (period_id ~ '^\d{4}-(0[1-9]|1[0-2])$')` |
 | Soft delete | Not used. Append-only versions instead |
 | Roles | `<svc>_app` (RLS enforced, used by request handlers), `<svc>_system` (`BYPASSRLS`, used by consumers, relays, schedulers), `<svc>_migrator` (owner) |
 
@@ -40,13 +40,23 @@ Details: [06-multi-tenancy.md](06-multi-tenancy.md#row-level-security).
 ## `plans_db`
 
 ```sql
-CREATE TABLE tenants (
+CREATE TABLE accounts (                               -- the customer of Quotify; owns one sandbox + one live tenant
+  id          uuid PRIMARY KEY,
+  name        text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE tenants (                                -- the isolation unit everywhere (RLS, partition key)
   id            uuid PRIMARY KEY,
+  account_id    uuid NOT NULL REFERENCES accounts(id),
+  environment   text NOT NULL CHECK (environment IN ('sandbox','live')),
   name          text NOT NULL,
   tier          text NOT NULL CHECK (tier IN ('free','standard','enterprise')),
-  currency      char(3) NOT NULL DEFAULT 'TRY',
-  grace_period  interval NOT NULL DEFAULT '24 hours' CHECK (grace_period BETWEEN '0' AND '7 days'),
-  created_at    timestamptz NOT NULL DEFAULT now()
+  currency      char(3) NOT NULL,                     -- chosen at creation, immutable (trigger), from the supported list
+  timezone      text NOT NULL,                        -- IANA name, chosen at creation, immutable; defines period boundaries
+  grace_period  interval NOT NULL CHECK (grace_period BETWEEN '0' AND '7 days'),  -- chosen at creation, mutable, snapshotted per period
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (account_id, environment)
 );  -- not RLS'd: operator-only via AdminService (plans_system role)
 
 CREATE TABLE api_keys (
@@ -54,7 +64,7 @@ CREATE TABLE api_keys (
   tenant_id   uuid NOT NULL REFERENCES tenants(id),
   prefix      char(8) NOT NULL UNIQUE,
   key_hash    bytea NOT NULL,                       -- sha256(secret)
-  env         text NOT NULL CHECK (env IN ('live','test')),
+  env         text NOT NULL CHECK (env IN ('live','test')),  -- must match the tenant: test ↔ sandbox, live ↔ live
   status      text NOT NULL CHECK (status IN ('active','revoked')),
   created_at  timestamptz NOT NULL DEFAULT now(),
   revoked_at  timestamptz
@@ -67,6 +77,7 @@ CREATE TABLE customers (
   external_id  text NOT NULL,
   name         text NOT NULL,
   email        text NOT NULL,
+  payment_method text,                               -- opaque PSP token; in sandbox one of the pm_sandbox_* scenario tokens
   created_at   timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, id),
   UNIQUE (tenant_id, external_id)
@@ -78,6 +89,8 @@ CREATE TABLE meters (
   version         int  NOT NULL,
   aggregation     text NOT NULL CHECK (aggregation IN ('SUM','COUNT','MAX')),
   value_property  text,                              -- NULL for COUNT
+  quantity_scale  smallint NOT NULL CHECK (quantity_scale BETWEEN 0 AND 6),  -- decimal places; same for all versions of a code
+  unit_label      text NOT NULL,                     -- 'GB-h', 'tokens'; shown on invoices
   filter          jsonb,                             -- {"model": ["gpt-x"]} equality-only
   created_at      timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, code, version)
@@ -113,7 +126,7 @@ CREATE TABLE plan_entitlements (
   tenant_id            uuid NOT NULL,
   plan_version_id      uuid NOT NULL,
   meter_code           text NOT NULL,
-  limit_quantity       bigint NOT NULL CHECK (limit_quantity >= 0),   -- 0 = unlimited
+  limit_units          bigint NOT NULL CHECK (limit_units >= 0),      -- scaled units of the meter; 0 = unlimited
   alert_thresholds_pct int[]  NOT NULL DEFAULT '{80,100}',
   PRIMARY KEY (tenant_id, plan_version_id, meter_code)
 );
@@ -137,7 +150,7 @@ CREATE TABLE outbox (                                  -- shared outbox shape, s
 );
 ```
 
-RLS: on all tables except `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey) and `outbox`.
+RLS: on all tables except `accounts`, `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey) and `outbox`.
 
 ---
 
@@ -172,7 +185,7 @@ Resolution: `created_at` isn't `now()` but the **start of the dedup window bucke
 A key is then unique within its month's partition, and the insert path checks the previous month's partition too
 (`ON CONFLICT` covers the current month, plus an explicit `SELECT` against the previous one). The dedup window is therefore
 "≥ 1 month, < 2 months", which comfortably covers the 35-day max lateness. Covered by a unit + integration test.
-(Alternative: unpartitioned table plus a batched `DELETE` job. Simpler, but `DELETE` bloat at volume. Open question in the roadmap.)
+(Alternative: unpartitioned table plus a batched `DELETE` job. Simpler, but `DELETE` bloat at volume. Decided: partitions. The Phase 02 benchmark of both is recorded as an ADR addendum.)
 
 RLS: `idempotency_keys` RLS'd for `ingest_app`. `outbox` accessed only by `ingest_system` (relay), with insert granted to `ingest_app`
 through a `SECURITY DEFINER` function `enqueue_outbox(...)` so handlers can't read other tenants' rows.
@@ -182,13 +195,17 @@ through a `SECURITY DEFINER` function `enqueue_outbox(...)` so handlers can't re
 ## `aggregator_db`
 
 ```sql
-CREATE TABLE aggregate_generations (
-  generation   int PRIMARY KEY,
-  status       text NOT NULL CHECK (status IN ('building','active','retired')),
+CREATE TABLE aggregate_generations (                  -- generations are per tenant
+  tenant_id    uuid NOT NULL,
+  generation   int  NOT NULL,
+  status       text NOT NULL CHECK (status IN ('building','catching_up','active','retired','discarded')),
   created_at   timestamptz NOT NULL DEFAULT now(),
-  promoted_at  timestamptz
+  promoted_at  timestamptz,
+  PRIMARY KEY (tenant_id, generation)
 );
-CREATE UNIQUE INDEX one_active_generation ON aggregate_generations ((true)) WHERE status = 'active';
+CREATE UNIQUE INDEX one_active_generation ON aggregate_generations (tenant_id) WHERE status = 'active';
+CREATE UNIQUE INDEX one_open_replay       ON aggregate_generations (tenant_id) WHERE status IN ('building','catching_up');
+-- a tenant without a row reads/writes generation 1 (no row needed until its first replay)
 
 CREATE TABLE usage_aggregates (
   tenant_id    uuid NOT NULL,
@@ -196,7 +213,7 @@ CREATE TABLE usage_aggregates (
   meter_code   text NOT NULL,
   period_id    text NOT NULL,
   generation   int  NOT NULL,
-  quantity     numeric(38,0) NOT NULL,
+  quantity     numeric(38,0) NOT NULL,               -- scaled units
   event_count  bigint NOT NULL,
   updated_at   timestamptz NOT NULL,
   PRIMARY KEY (tenant_id, period_id, customer_id, meter_code, generation)
@@ -207,7 +224,7 @@ CREATE TABLE late_usage (
   customer_id       uuid NOT NULL,
   meter_code        text NOT NULL,
   origin_period_id  text NOT NULL,                     -- period by event_time
-  billed_period_id  text NOT NULL,                     -- period by ingested_at
+  billed_period_id  text NOT NULL,                     -- period by ingested_at (tenant time zone)
   generation        int  NOT NULL,
   quantity          numeric(38,0) NOT NULL,
   event_count       bigint NOT NULL,
@@ -232,24 +249,29 @@ CREATE TABLE consumer_offsets (
   PRIMARY KEY (consumer_group, topic, partition)
 );
 
-CREATE TABLE period_settings (                         -- grace snapshot per tenant+period
+CREATE TABLE period_settings (                         -- settings snapshot per tenant+period
   tenant_id     uuid NOT NULL,
   period_id     text NOT NULL,
+  timezone      text NOT NULL,
+  period_start  timestamptz NOT NULL,                  -- local midnight on the 1st, as UTC instant
+  period_end    timestamptz NOT NULL,
   grace_period  interval NOT NULL,
-  cutoff_at     timestamptz NOT NULL,                  -- period_end + grace
+  cutoff_at     timestamptz NOT NULL,                  -- period_end + grace; sandbox early close may lower it (aggregator.md)
+  early_closed_at timestamptz,                         -- sandbox only
   frozen_at     timestamptz,                           -- set by billing via FreezePeriod after rating
   PRIMARY KEY (tenant_id, period_id)
 );
 
 CREATE TABLE replay_jobs (
   id               uuid PRIMARY KEY,
-  tenant_id        uuid,                               -- NULL = all tenants
+  tenant_id        uuid NOT NULL,                      -- one job per tenant; "all tenants" = a batch of jobs
   from_period_id   text NOT NULL,
   to_period_id     text NOT NULL,
-  target_generation int NOT NULL REFERENCES aggregate_generations(generation),
+  target_generation int NOT NULL,                      -- FK (tenant_id, target_generation) → aggregate_generations
   status           text NOT NULL CHECK (status IN ('pending','running','verifying','ready','promoted','failed')),
   start_offsets    jsonb,                              -- partition → offset (from ListOffsetsAfterMilli)
   end_offsets      jsonb,                              -- snapshot of end offsets at start
+  dual_write_from  jsonb,                              -- partition → first live offset written to both generations (catch-up)
   reason           text NOT NULL,
   created_at       timestamptz NOT NULL DEFAULT now()
 );
@@ -259,8 +281,9 @@ CREATE TABLE replay_jobs (
 (it's derived from `event_time`), so the index is still selective.
 
 RLS: `usage_aggregates`, `late_usage` RLS'd for `aggregator_app` (read APIs). Consumers use `aggregator_system`.
-Reads always filter `generation = (SELECT generation FROM aggregate_generations WHERE status='active')`, or the
-generation pinned by a billing run.
+Reads always filter `generation = active_generation(tenant_id)` (the tenant's `active` row, else 1), or the
+generation pinned by a billing run. The live consumer caches each tenant's active and catching-up generation and refreshes it
+inside the batch transaction (`FOR SHARE` on the tenant's generation rows), so a promotion can't race a batch.
 
 ---
 
@@ -306,7 +329,8 @@ CREATE TABLE invoice_lines (
   kind             text NOT NULL CHECK (kind IN ('BASE_FEE','USAGE','LATE_USAGE','CREDIT','CORRECTION')),
   meter_code       text,
   origin_period_id text,                               -- for LATE_USAGE
-  quantity         numeric(38,0),
+  quantity         numeric(38,0),                      -- scaled units; displayed with the meter's scale + unit_label
+  quantity_scale   smallint,
   unit_price       numeric(30,12),                     -- display only for tiered
   amount_minor     bigint NOT NULL,                    -- may be negative for CREDIT
   description      text NOT NULL,
@@ -379,6 +403,7 @@ RLS on all tenant tables for `billing_app`. Scheduler, sweeper, reply consumer a
 -- payments_db
 CREATE TABLE payment_attempts (
   command_id uuid PRIMARY KEY, tenant_id uuid NOT NULL, invoice_id uuid NOT NULL,
+  environment text NOT NULL CHECK (environment IN ('sandbox','live')), provider text NOT NULL,   -- sandbox ⇒ provider = 'mockpsp'
   idempotency_key text NOT NULL, kind text NOT NULL CHECK (kind IN ('charge','refund','status')),
   amount_minor bigint, status text NOT NULL, psp_response jsonb, created_at timestamptz NOT NULL DEFAULT now()
 );

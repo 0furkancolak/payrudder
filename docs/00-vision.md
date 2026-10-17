@@ -47,11 +47,13 @@ and handle each one with a named, tested mechanism.
 
 These are out of scope on purpose, to keep the project to ~12 weeks for one developer:
 
-- Real payment providers (Stripe, Adyen…). Payments are **mocked** by `mock-psp`.
+- Real payment providers (Stripe, Adyen…). Payments are **mocked** by `mock-psp`, behind a `PaymentProvider` interface.
+  Every account gets a **sandbox** with deterministic payment scenarios ([ADR 0011](adr/0011-sandbox-environment.md)).
 - Taxes, VAT, tax engines.
-- Multi-currency and FX. One currency per deployment (configurable, default `TRY`).
+- Multi-currency and FX. Each tenant **chooses one currency** at creation (immutable). There's no conversion, and an invoice
+  never mixes currencies.
 - Proration, mid-period plan changes, anchored (non-calendar) billing periods.
-  Periods are **calendar months in UTC**.
+  Periods are **calendar months in the time zone the tenant chooses** at creation (immutable). Grace is also chosen at creation (0–7 days).
 - Credit notes beyond the single "adjustment line" mechanism used for late events and re-rating.
 - Prepaid credits / wallets, commitments, minimums.
 - Per-event pricing functions beyond: per-unit, tiered (graduated), package, flat fee.
