@@ -11,7 +11,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 
 | Service | Image (pinned in compose) | Ports (host) | Notes |
 |---|---|---|---|
-| postgres | `postgres:17` | 5432 | one instance. Init script creates `plans_db`, `ingest_db`, `aggregator_db`, `billing_db`, `payments_db`, `notifier_db`, `mockpsp_db` and the per-service roles |
+| postgres | `postgres:17` | 5432 | one instance. Init script creates `plans_db`, `ingest_db`, `aggregator_db`, `billing_db`, `payments_db`, `notifier_db`, `assets_db`, `mockpsp_db` and the per-service roles |
 | redpanda | `redpandadata/redpanda` | 19092 (Kafka), 18081 (schema registry, unused), 9644 (admin) | single node, `--mode dev-container` |
 | redpanda-console | `redpandadata/console` | 8080 | topic browser |
 | rabbitmq | `rabbitmq:4-management` | 5672, 15672 (UI) | `definitions.json` loaded at boot |
@@ -44,6 +44,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | invoice-worker | — | — | 9107 |
 | payments-worker | — | — | 9108 |
 | notifier | — | — | 9109 |
+| assets-svc | 7007 | — | 9111 |
 | mock-psp | — | 8090 | 9110 | (sandbox payment provider, also used for live tenants in the local demo)
 
 Every service exposes `/healthz` (liveness), `/readyz` (readiness: DB, broker reachable, partitions assigned) and `/metrics`

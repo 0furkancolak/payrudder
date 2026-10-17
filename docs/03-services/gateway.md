@@ -22,6 +22,9 @@ All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `
 | `GET /v1/customers/{external_id}/usage?period=2026-11` | `aggregator.v1.UsageQueryService/GetCustomerUsage` | `read` |
 | `GET /v1/invoices` · `GET /v1/invoices/{id}` · `GET /v1/invoices/{id}/pdf` | `billing.v1.BillingService/*` | `read` |
 | `GET /v1/analytics/usage?…` | `analytics.v1.AnalyticsService/QueryUsage` | `analytics` |
+| `POST /v1/assets` (`multipart/form-data`, ≤ 20 files, streamed) | `assets.v1.AssetsService/UploadAsset` (one client stream per file) | `write` (per file) |
+| `POST /v1/assets/uploads` · `POST /v1/assets/uploads/{session}/files/{asset}/complete` · `…/parts` · `DELETE /v1/assets/uploads/{session}` | `CreateUploadSession`, `CompleteFile`, `PresignParts`, `AbortUpload` (direct multipart to S3) | `write` |
+| `GET /v1/assets` · `GET /v1/assets/{id}` · `GET /v1/assets/{id}/download` · `DELETE /v1/assets/{id}` | `ListAssets`, `GetAsset`, `GetDownloadUrl`, `DeleteAsset` | `read` / `write` |
 | `POST /v1/sandbox/periods/{period}/close` | `billing.v1.SandboxService/ClosePeriodNow` (sandbox keys only, else `403`) | `write` |
 | `POST /v1/sandbox/customers/{external_id}/payment-scenario` | `plans.v1.PlansService/SetPaymentMethod` with a `pm_sandbox_*` token | `write` |
 | `POST /admin/v1/accounts` · `POST /admin/v1/tenants/{id}/api-keys` | `plans.v1.AdminService/*` | operator token only |
@@ -46,7 +49,7 @@ All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `
 `quantity` may be a JSON string or number. Either way it's decoded with `json.Decoder.UseNumber` and parsed as an exact decimal
 (`"1.25"` for a meter with scale ≥ 2). The response is always `202` for a structurally valid batch, with a per-event result
 (`accepted` | `duplicate` | `rejected` + `error_code`). Whole-batch errors: `400` (malformed),
-`401`, `413` (> 500 events or > 1 MiB), `429` (with `Retry-After`), `503`.
+`401`, `413` (> 500 events or > 1 MiB; `POST /v1/assets` has its own limits, see [assets-svc.md](assets-svc.md#b-proxied-multipartform-data)), `429` (with `Retry-After`), `503`.
 
 ### Why a hand-written HTTP layer (not grpc-gateway)
 

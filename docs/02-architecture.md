@@ -123,6 +123,7 @@ flowchart LR
 | [payments-worker](03-services/workers.md#payments-worker) | RabbitMQ worker | `payments_db` | `payment.charge` | `billing.replies` |
 | [notifier](03-services/workers.md#notifier) | RabbitMQ worker | `notifier_db` | `notification.send` | `billing.replies` |
 | [analytics-svc](03-services/analytics-svc.md) | Kafka consumer + gRPC | ClickHouse `quotify` DB | `usage.events.v1`, `usage.limit-exceeded.v1`, `billing.invoices.v1` | gRPC reads |
+| [assets-svc](03-services/assets-svc.md) | gRPC service | `assets_db` + S3 prefix `{tenant}/assets/` | gRPC (incl. client streaming) | presigned S3 URLs |
 | mock-psp | Fake external HTTP API; the sandbox payment provider ([ADR 0011](adr/0011-sandbox-environment.md)) | own Postgres schema | HTTP | — |
 
 ## Flow 1 — Ingest

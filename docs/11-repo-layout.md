@@ -50,6 +50,7 @@ quotify/
 │   ├── invoice-worker/             # + internal/render, templates/
 │   ├── payments-worker/            # + internal/psp
 │   ├── notifier/                   # + internal/{smtp,templates}
+│   ├── assets-svc/                 # + internal/{upload,sweeper,verifier}
 │   └── analytics-svc/              # + internal/{consumer,chquery}, migrations/ (ClickHouse SQL)
 ├── tools/
 │   ├── go.mod                      # pinned dev tools (tools directive)

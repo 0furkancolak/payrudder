@@ -397,6 +397,55 @@ RLS on all tenant tables for `billing_app`. Scheduler, sweeper, reply consumer a
 
 ---
 
+## `assets_db`
+
+```sql
+CREATE TABLE upload_sessions (
+  tenant_id        uuid NOT NULL,
+  id               uuid NOT NULL,
+  idempotency_key  text,
+  status           text NOT NULL CHECK (status IN ('OPEN','COMPLETED','EXPIRED','ABORTED')),
+  expires_at       timestamptz NOT NULL,                -- created_at + 24 h
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, id),
+  UNIQUE (tenant_id, idempotency_key)
+);
+CREATE INDEX upload_sessions_expiry ON upload_sessions (expires_at) WHERE status = 'OPEN';
+
+CREATE TABLE assets (
+  tenant_id        uuid NOT NULL,
+  id               uuid NOT NULL,
+  session_id       uuid,                                -- NULL for proxied form-data uploads
+  purpose          text NOT NULL CHECK (purpose IN ('invoice_logo','invoice_attachment','general')),
+  filename         text NOT NULL,                       -- sanitized, display only
+  content_type     text NOT NULL,
+  declared_size    bigint,
+  size_bytes       bigint,                              -- from HeadObject after completion
+  sha256           bytea,                               -- declared or computed
+  object_key       text NOT NULL,                       -- {tenant_id}/assets/{id}
+  s3_upload_id     text,                                -- multipart UploadId while uploading
+  part_size        bigint,
+  part_count       int,
+  status           text NOT NULL CHECK (status IN ('PENDING','UPLOADING','SCANNING','READY','REJECTED','ABORTED','CORRUPT','DELETED')),
+  reject_reason    text,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  completed_at     timestamptz,
+  PRIMARY KEY (tenant_id, id),
+  FOREIGN KEY (tenant_id, session_id) REFERENCES upload_sessions (tenant_id, id)
+);
+CREATE INDEX assets_by_session ON assets (tenant_id, session_id);
+
+CREATE TABLE storage_usage (                            -- quota accounting, updated in the completion transaction
+  tenant_id uuid PRIMARY KEY, bytes_used bigint NOT NULL DEFAULT 0 CHECK (bytes_used >= 0)
+);
+```
+
+RLS on all three for `assets_app`. Sweeper (expiry → `AbortMultipartUpload`), verifier and orphan reconciler run as `assets_system`.
+Quota check: `UPDATE storage_usage SET bytes_used = bytes_used + $size WHERE tenant_id = $t AND bytes_used + $size <= $quota`
+(0 rows → `STORAGE_QUOTA_EXCEEDED`), in the same transaction that marks the asset `READY`.
+
+---
+
 ## Worker stores
 
 ```sql

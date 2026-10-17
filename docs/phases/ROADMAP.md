@@ -12,7 +12,7 @@ updated `docs/` (design changes discovered while building are written back into 
 | 04 | [limits-svc](phase-04-limits.md) | Redis counters, limit-exceeded events, reconciliation | 03 | Thresholds fired once. Drift corrected |
 | 05 | [billing-svc](phase-05-billing-saga.md) | Period close, watermark, late events, rating, saga with stub workers | 03 (04 optional) | Late event on next invoice. Saga state table tested |
 | 06 | [RabbitMQ workers](phase-06-workers.md) | invoice-worker, payments-worker + mock-psp, notifier, TTL/DLX retries | 05 | `PAYMENT_UNKNOWN` never double-charges. DLQ after delivery limit |
-| 07 | [analytics-svc](phase-07-analytics.md) | ClickHouse ingestion + query API | 02 | Totals match aggregator after FINAL |
+| 07 | [analytics-svc + assets-svc](phase-07-analytics.md) | ClickHouse ingestion + query API. Multipart multi-file uploads to S3 | 02, 06 | Totals match aggregator after FINAL. Resumable parallel multipart upload |
 | 08 | [Observability](phase-08-observability.md) | End-to-end traces incl. message headers, dashboards, SLOs, alerts | 00–07 | Single trace HTTP → Kafka → RabbitMQ → worker |
 | 09 | [Correctness & load](phase-09-correctness-load.md) | 1M-event chaos suite, k6 scenarios, published benchmarks | 00–08 | All A1–A9 assertions pass nightly |
 | 10 | [Kubernetes](phase-10-kubernetes.md) | kind cluster + Helm charts, chaos via pod deletion | 09 | Chaos suite passes on kind |
@@ -24,7 +24,8 @@ flowchart LR
     P0[00 Foundation] --> P1[01 Plans + Gateway] --> P2[02 Ingest] --> P3[03 Aggregator]
     P3 --> P4[04 Limits]
     P3 --> P5[05 Billing saga] --> P6[06 Workers]
-    P2 --> P7[07 Analytics]
+    P2 --> P7[07 Analytics + Assets]
+    P6 --> P7
     P4 --> P8[08 Observability]
     P6 --> P8
     P7 --> P8
@@ -60,6 +61,7 @@ flowchart LR
 | 9 | Gateway HTTP layer | Hand-written `net/http` + hand-maintained OpenAPI with a contract test | [gateway](../03-services/gateway.md#why-a-hand-written-http-layer-not-grpc-gateway) |
 | 10 | Schema registry | None in v1. `buf breaking` + golden fixtures in CI | [ADR 0007](../adr/0007-protobuf-event-schemas.md) |
 | 11 | License | Apache-2.0, added when the repo goes public | [README](../../README.md) |
+| 12 | Asset uploads | Multipart and multi-file: presigned S3 multipart sessions (≤ 50 files, parallel, resumable) plus streamed `multipart/form-data` (≤ 20 small files) | [assets-svc](../03-services/assets-svc.md), [ADR 0013](../adr/0013-s3-compatible-object-storage.md) |
 
 ## Buffer and scope control
 

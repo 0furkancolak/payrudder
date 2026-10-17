@@ -31,6 +31,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | billing-svc | [03-services/billing-svc.md](03-services/billing-svc.md) |
 | invoice-worker, payments-worker, notifier | [03-services/workers.md](03-services/workers.md) |
 | analytics-svc | [03-services/analytics-svc.md](03-services/analytics-svc.md) |
+| assets-svc | [03-services/assets-svc.md](03-services/assets-svc.md) |
 
 ## Architecture Decision Records
 
@@ -48,7 +49,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [0010](adr/0010-money-and-quantity-representation.md) | Money and quantity representation |
 | [0011](adr/0011-sandbox-environment.md) | Sandbox environment with a mock payment flow |
 | [0012](adr/0012-per-tenant-aggregate-generations.md) | Per-tenant aggregate generations |
-| [0013](adr/0013-s3-compatible-object-storage.md) | S3-compatible object storage for invoice PDFs |
+| [0013](adr/0013-s3-compatible-object-storage.md) | S3-compatible object storage (PDFs, multipart multi-file asset uploads) |
 
 ## Delivery plan
 

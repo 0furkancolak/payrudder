@@ -59,7 +59,8 @@ storage**: MinIO in Compose and kind, any S3 endpoint elsewhere.
 | Idempotency | Deterministic object key. If the object exists with the same `sha256` → reply success without re-rendering. Rendering is deterministic (fixed fonts, no timestamps in content) |
 | Library | `github.com/go-pdf/fpdf` (pure Go, no headless browser) |
 
-A "SANDBOX" watermark is drawn on sandbox invoices.
+A "SANDBOX" watermark is drawn on sandbox invoices. If the tenant has a `READY` `invoice_logo` asset, the command carries its
+object key and the worker reads it with `Get` from the same bucket.
 
 Failure modes: object storage unavailable → transient (retry). Template or data error → permanent (`PdfFailed`).
 Scaling: CPU-bound, scale on queue depth (KEDA in Phase 10 is optional).
