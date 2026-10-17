@@ -46,6 +46,9 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [0008](adr/0008-clickhouse-for-analytics.md) | ClickHouse for analytics |
 | [0009](adr/0009-transactional-outbox-and-inbox.md) | Transactional outbox + inbox (offsets in the DB transaction) |
 | [0010](adr/0010-money-and-quantity-representation.md) | Money and quantity representation |
+| [0011](adr/0011-sandbox-environment.md) | Sandbox environment with a mock payment flow |
+| [0012](adr/0012-per-tenant-aggregate-generations.md) | Per-tenant aggregate generations |
+| [0013](adr/0013-s3-compatible-object-storage.md) | S3-compatible object storage for invoice PDFs |
 
 ## Delivery plan
 
