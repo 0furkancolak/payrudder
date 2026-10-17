@@ -6,7 +6,9 @@
 No business services yet. The design lives in [`docs/`](docs/README.md), and the plan in the [roadmap](docs/phases/ROADMAP.md).
 
 ```bash
-make tools && make up      # local stack + hello service; Grafana http://localhost:3000
+make tools && make up                                    # local stack + gateway + plans-svc
+make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h   # demo account, sandbox + live keys
+make e2e
 make test test-integration
 ```
 

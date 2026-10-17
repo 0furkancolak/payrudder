@@ -37,7 +37,8 @@
 
 Cross-tenant work (a consumer batch that spans tenants, the billing scheduler) is legitimate and runs as `_system`.
 The rule: **code that handles a tenant's request never holds a `_system` connection.** Each service has two
-`pgxpool.Pool`s (`appPool`, `systemPool`). Only packages under `internal/worker/` and `internal/relay/` receive the
+`pgxpool.Pool`s (`appPool`, `systemPool`). Only packages under `internal/worker/`, `internal/relay/` and (plans-svc) `internal/admin/` — the operator API, cross-tenant
+by nature — receive the
 `systemPool`. A `depguard`/`go-arch-lint` rule in CI enforces the import boundary.
 
 ### Transaction helper

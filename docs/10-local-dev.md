@@ -39,7 +39,6 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 
 | Service | gRPC | HTTP | Metrics/health |
 |---|---|---|---|
-| hello (Phase 00 only) | 7099 | — | 9099 |
 | gateway | — | **8000** (public API) | 9100 |
 | plans-svc | 7001 | — | 9101 |
 | ingest-svc | 7002 | — | 9102 |
