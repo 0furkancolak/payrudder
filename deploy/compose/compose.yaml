@@ -255,24 +255,54 @@ services:
       retries: 20
 
   # --- app profile -------------------------------------------------------------------------------
-  hello:
+  # Local-only secrets: role passwords from postgres/01-databases.sh and a fixed operator token.
+  plans-svc:
     <<: *defaults
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/hello/Dockerfile
-    image: quotify/hello:dev
+      dockerfile: services/plans-svc/Dockerfile
+    image: quotify/plans-svc:dev
     environment:
       QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: hello
-      QUOTIFY_GRPC_ADDR: ":7099"
-      QUOTIFY_METRICS_ADDR: ":9099"
-      QUOTIFY_KAFKA_BROKERS: redpanda:9092
+      QUOTIFY_SERVICE_NAME: plans-svc
+      QUOTIFY_GRPC_ADDR: ":7001"
+      QUOTIFY_METRICS_ADDR: ":9101"
+      QUOTIFY_PG_APP_DSN: postgres://plans_app:plans_app_local@postgres:5432/plans_db
+      QUOTIFY_PG_SYSTEM_DSN: postgres://plans_system:plans_system_local@postgres:5432/plans_db
+      QUOTIFY_PG_MIGRATOR_DSN: postgres://plans_migrator:plans_migrator_local@postgres:5432/plans_db
+      QUOTIFY_MIGRATE_ON_START: "true"
+      QUOTIFY_REDIS_URL: redis://redis:6379/0
+      QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
-    ports: ["7099:7099", "9099:9099"]
+    ports: ["7001:7001", "9101:9101"]
     depends_on:
-      redpanda: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 64m } } }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 128m } } }
+
+  gateway:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: services/gateway/Dockerfile
+    image: quotify/gateway:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: gateway
+      QUOTIFY_HTTP_ADDR: ":8000"
+      QUOTIFY_METRICS_ADDR: ":9100"
+      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
+      QUOTIFY_REDIS_URL: redis://redis:6379/0
+      QUOTIFY_OPERATOR_TOKEN: ${QUOTIFY_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
+      QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
+      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    ports: ["8000:8000", "9100:9100"]
+    depends_on:
+      plans-svc: { condition: service_started }
+      redis: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 128m } } }
 
 volumes:
   postgres-data:

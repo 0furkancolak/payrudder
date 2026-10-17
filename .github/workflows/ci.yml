@@ -85,3 +85,22 @@ jobs:
         run: docker compose -f deploy/compose/compose.yaml ps -a && docker compose -f deploy/compose/compose.yaml logs --tail 50
       - if: always()
         run: make down
+
+  e2e:
+    name: end-to-end (compose)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - name: make up (infra + obs + gateway + plans-svc)
+        run: timeout 600 make up
+      - run: make e2e
+      - name: seed demo account
+        run: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h > /dev/null
+      - if: failure()
+        run: docker compose -f deploy/compose/compose.yaml --profile obs --profile app ps -a && docker compose -f deploy/compose/compose.yaml --profile obs --profile app logs --tail 80 gateway plans-svc
+      - if: always()
+        run: make down
