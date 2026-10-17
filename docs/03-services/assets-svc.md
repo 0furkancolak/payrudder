@@ -46,7 +46,7 @@ sequenceDiagram
 | Max file size | Per purpose (below). Hard cap 5 GiB in v1 |
 | Presigned URL TTL | 15 min. More URLs via `POST …/files/{asset}/parts?from=101` (also for refreshing expired ones) |
 | Integrity | Each part URL is signed with `x-amz-checksum-sha256` when the client declares per-part checksums. Otherwise `CompleteFile` checks that `Σ part sizes == declared size` from `ListParts` (it never trusts client-reported sizes). Optional whole-file `sha256` is checked by a background verifier, which marks the asset `CORRUPT` on mismatch |
-| Session expiry | 24 h. The sweeper aborts open multipart uploads (`AbortMultipartUpload`) and marks the files `ABORTED`. A bucket lifecycle rule `AbortIncompleteMultipartUpload: 2 days` is the backstop |
+| Session expiry | 24 h. The sweeper aborts open multipart uploads (`AbortMultipartUpload`) and marks the files `ABORTED`. A bucket lifecycle rule `AbortIncompleteMultipartUpload: 2 days` is the backstop (on MinIO: `MINIO_API_STALE_UPLOADS_EXPIRY=48h`) |
 | Idempotency | `Idempotency-Key` on session creation (same key → same session and asset IDs). `CompleteFile` on a `READY` asset returns it unchanged |
 | Resume | `GET /v1/assets/uploads/{session}/files/{asset}` returns the parts S3 already has (`ListParts`), so a client can re-upload only the missing ones |
 

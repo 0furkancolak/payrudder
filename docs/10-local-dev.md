@@ -1,7 +1,12 @@
 # 10 — Local development (planned)
 
 Prerequisites: Docker (≥ 8 GB RAM for the full stack), Go 1.27+, `make`, `buf`, `sqlc`, `golangci-lint`, `k6` (optional),
-`kind` + `helm` (Phase 10). `make tools` installs the Go-based tools pinned in `tools/go.mod`.
+`kind` + `helm` (Phase 10). `make tools` builds the Go-based tools pinned in `tools/go.mod` into `./bin`
+(`go build tool`). `tools/` is **not** in `go.work`: golangci-lint, buf and sqlc pull hundreds of dependencies, and in a
+workspace they would raise the versions selected for every service.
+
+Docker memory: the infrastructure profile measured ~0.8 GiB resident at idle on Docker Desktop (arm64). Every container has
+a memory limit, and the limits add up to ~3.6 GiB.
 
 ## Compose stack
 
@@ -11,13 +16,13 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 
 | Service | Image (pinned in compose) | Ports (host) | Notes |
 |---|---|---|---|
-| postgres | `postgres:17` | 5432 | one instance. Init script creates `plans_db`, `ingest_db`, `aggregator_db`, `billing_db`, `payments_db`, `notifier_db`, `assets_db`, `mockpsp_db` and the per-service roles |
+| postgres | `postgres:17.11-alpine` | 5432 (`QUOTIFY_PG_HOST_PORT`) | one instance. Init script creates `plans_db`, `ingest_db`, `aggregator_db`, `billing_db`, `payments_db`, `notifier_db`, `assets_db`, `mockpsp_db` and the per-service roles |
 | redpanda | `redpandadata/redpanda` | 19092 (Kafka), 18081 (schema registry, unused), 9644 (admin) | single node, `--mode dev-container` |
-| redpanda-console | `redpandadata/console` | 8080 | topic browser |
+| redpanda-console | `redpandadata/console` | 8080 (`QUOTIFY_CONSOLE_HOST_PORT`) | topic browser |
 | rabbitmq | `rabbitmq:4-management` | 5672, 15672 (UI) | `definitions.json` loaded at boot |
 | redis | `redis:7` | 6379 | `appendonly yes`, `appendfsync everysec` |
 | clickhouse | `clickhouse/clickhouse-server` | 8123 (HTTP), 9000 (native) | |
-| minio | `minio/minio` | 9001 (S3 API), 9002 (console) | S3-compatible store ([ADR 0013](adr/0013-s3-compatible-object-storage.md)). Bucket `invoices` + sandbox lifecycle rule created by an init container (`mc`) |
+| minio | `cgr.dev/chainguard/minio@sha256:…` | 9001 (S3 API), 9002 (console) | S3-compatible store ([ADR 0013](adr/0013-s3-compatible-object-storage.md)). Bucket `invoices` + sandbox lifecycle rule created by an init container (`mc`) |
 | mailpit | `axllent/mailpit` | 1025 (SMTP), 8025 (UI) | |
 | toxiproxy | `ghcr.io/shopify/toxiproxy` | 8474 (API) | `profile: chaos` only |
 
@@ -34,6 +39,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 
 | Service | gRPC | HTTP | Metrics/health |
 |---|---|---|---|
+| hello (Phase 00 only) | 7099 | — | 9099 |
 | gateway | — | **8000** (public API) | 9100 |
 | plans-svc | 7001 | — | 9101 |
 | ingest-svc | 7002 | — | 9102 |
