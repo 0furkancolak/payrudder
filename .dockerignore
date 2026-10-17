@@ -1,0 +1,6 @@
+.git
+bin
+docs
+.data
+**/*_test.go
+tests/load/results
