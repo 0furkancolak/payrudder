@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "name": "quotify",
+      "password": "quotify_local",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [
+    { "user": "quotify", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }
+  ],
+  "exchanges": [],
+  "queues": [],
+  "bindings": []
+}
