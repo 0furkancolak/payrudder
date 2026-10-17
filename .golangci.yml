@@ -1,0 +1,61 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - depguard
+    - errcheck
+    - errorlint
+    - forbidigo
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - revive
+    - staticcheck
+    - unused
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/sirupsen/logrus
+              desc: use log/slog (pkg/logx)
+            - pkg: go.uber.org/zap
+              desc: use log/slog (pkg/logx)
+            # Phase 01: services may not import other services' packages, and only internal/{worker,relay,consumer,scheduler}
+            # may take the _system Postgres pool (docs/11-repo-layout.md).
+    forbidigo:
+      forbid:
+        - pattern: ^fmt\.Print(f|ln)?$
+          msg: use slog (pkg/logx)
+        # Phase 05: ban float32/float64 in money, quantity and rating packages (ADR 0010).
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+        - name: var-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: unused-parameter
+          disabled: true
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [gosec, errcheck]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/0furkancolak/quotify
