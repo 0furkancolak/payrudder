@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yaml
+
+scrape_configs:
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8888"]
+
+  # Quotify services expose /metrics on their metrics port (docs/10-local-dev.md).
+  # Each service adds its target here when it joins the compose `app` profile.
+  - job_name: quotify
+    static_configs:
+      - targets: ["hello:9099"]
+        labels:
+          service: hello
