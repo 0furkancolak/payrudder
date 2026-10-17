@@ -15,10 +15,11 @@ All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `
 |---|---|---|
 | `POST /v1/events` | `ingest.v1.IngestService/IngestEvents` | `ingest` |
 | `GET /v1/customers/{external_id}/entitlements/{meter_code}` | `limits.v1.LimitsService/CheckEntitlement` | `read_hot` |
-| `POST /v1/customers` · `GET /v1/customers/{external_id}` | `plans.v1.PlansService/CreateCustomer`, `GetCustomer` | `write` / `read` |
-| `POST /v1/meters` · `GET /v1/meters` | `CreateMeter`, `ListMeters` | `write` / `read` |
-| `POST /v1/plans` · `POST /v1/plans/{id}/versions` | `CreatePlan`, `PublishPlanVersion` | `write` |
-| `POST /v1/subscriptions` · `DELETE /v1/subscriptions/{id}` | `CreateSubscription`, `CancelSubscription` | `write` |
+| `POST /v1/customers` · `GET /v1/customers` · `GET /v1/customers/{external_id}` | `plans.v1.PlansService/CreateCustomer`, `ListCustomers`, `GetCustomer` | `write` / `read` |
+| `PUT /v1/customers/{external_id}/payment-method` | `SetPaymentMethod` | `write` |
+| `POST /v1/meters` · `GET /v1/meters` · `GET /v1/meters/{code}` | `CreateMeter`, `ListMeters`, `GetMeter` | `write` / `read` |
+| `POST /v1/plans` · `GET /v1/plans` · `POST /v1/plans/{code}/versions` · `GET /v1/plans/{code}/versions/{version\|latest}` | `CreatePlan`, `ListPlans`, `PublishPlanVersion`, `GetPlanVersion` | `write` / `read` |
+| `POST /v1/subscriptions` · `DELETE /v1/subscriptions/{id}?end_time=` | `CreateSubscription`, `CancelSubscription` | `write` |
 | `GET /v1/customers/{external_id}/usage?period=2026-11` | `aggregator.v1.UsageQueryService/GetCustomerUsage` | `read` |
 | `GET /v1/invoices` · `GET /v1/invoices/{id}` · `GET /v1/invoices/{id}/pdf` | `billing.v1.BillingService/*` | `read` |
 | `GET /v1/analytics/usage?…` | `analytics.v1.AnalyticsService/QueryUsage` | `analytics` |
@@ -26,8 +27,19 @@ All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `
 | `POST /v1/assets/uploads` · `POST /v1/assets/uploads/{session}/files/{asset}/complete` · `…/parts` · `DELETE /v1/assets/uploads/{session}` | `CreateUploadSession`, `CompleteFile`, `PresignParts`, `AbortUpload` (direct multipart to S3) | `write` |
 | `GET /v1/assets` · `GET /v1/assets/{id}` · `GET /v1/assets/{id}/download` · `DELETE /v1/assets/{id}` | `ListAssets`, `GetAsset`, `GetDownloadUrl`, `DeleteAsset` | `read` / `write` |
 | `POST /v1/sandbox/periods/{period}/close` | `billing.v1.SandboxService/ClosePeriodNow` (sandbox keys only, else `403`) | `write` |
-| `POST /v1/sandbox/customers/{external_id}/payment-scenario` | `plans.v1.PlansService/SetPaymentMethod` with a `pm_sandbox_*` token | `write` |
-| `POST /admin/v1/accounts` · `POST /admin/v1/tenants/{id}/api-keys` | `plans.v1.AdminService/*` | operator token only |
+| `POST /v1/sandbox/customers/{external_id}/payment-scenario` `{"scenario":"declined"}` | `plans.v1.PlansService/SetPaymentMethod` with `pm_sandbox_<scenario>` (sandbox keys only, else `403`) | `write` |
+| `POST /admin/v1/accounts` · `GET`/`PATCH /admin/v1/tenants/{id}` · `POST /admin/v1/tenants/{id}/api-keys` · `DELETE /admin/v1/api-keys/{id}` | `plans.v1.AdminService/*` | operator token only |
+
+**Implemented in Phase 01:** the plans, sandbox payment-scenario and admin routes. The machine-readable contract is
+[`api/openapi/v1.yaml`](../../api/openapi/v1.yaml); a contract test fails when it and the route table disagree.
+
+JSON shapes follow the protobuf JSON mapping (`protojson`, snake_case, enums as strings such as `AGGREGATION_SUM`).
+`int64` fields (`*_minor`) are rendered as JSON strings and accepted as strings or numbers. Single-resource responses return
+the resource itself (`201` + `Customer`), list responses an object (`{"customers": [...], "next_page_token": "..."}`).
+Error envelope: `{"error": {"code": "INVALID_ARGUMENT", "message": "...", "details": [{"field": "...", "description": "..."}], "request_id": "..."}}`.
+gRPC → HTTP: `INVALID_ARGUMENT` 400, `UNAUTHENTICATED` 401, `PERMISSION_DENIED` 403, `NOT_FOUND` 404,
+`ALREADY_EXISTS`/`ABORTED`/`FAILED_PRECONDITION` 409, body over 1 MiB 413 (`REQUEST_TOO_LARGE`), `RESOURCE_EXHAUSTED` 429,
+`UNAVAILABLE` 503, `DEADLINE_EXCEEDED` 504. `INTERNAL` messages are never passed through.
 
 `POST /v1/events` request sketch:
 
@@ -81,11 +93,14 @@ Decided: `net/http` with Go 1.22+ `ServeMux` patterns, one handler per route tha
   `gw:rl:{tenant_id}:{rate_class}`. It's O(1), stores one timestamp per key, and never sleeps.
 - Limits come from the tenant **tier** (`free`, `standard`, `enterprise`) in the API key cache entry:
 
-  | Tier | `ingest` events/s (burst) | `read_hot` req/s | `write` req/s |
-  |---|---|---|---|
-  | free | 100 (500) | 50 | 5 |
-  | standard | 2,000 (10,000) | 500 | 50 |
-  | enterprise | 10,000 (50,000) | 2,000 | 200 |
+  | Tier | `ingest` events/s (burst) | `read_hot` req/s (burst) | `read` req/s (burst) | `write` req/s (burst) | `analytics` req/s (burst) |
+  |---|---|---|---|---|---|
+  | free | 100 (500) | 50 (100) | 20 (40) | 5 (10) | 0.5 (5) |
+  | standard | 2,000 (10,000) | 500 (1,000) | 200 (400) | 50 (100) | 5 (20) |
+  | enterprise | 10,000 (50,000) | 2,000 (4,000) | 800 (1,600) | 200 (400) | 20 (50) |
+
+  The same GCRA step runs as a Lua script in Redis (using Redis `TIME`, so replicas share one clock) and in Go for the
+  fallback. An integration test drives both with an identical sequence and asserts identical decisions.
 
 - `ingest` is charged **per event**, not per request, so batching gives no bypass.
 - If Redis is unavailable, **fail open** with a local in-memory token bucket per pod

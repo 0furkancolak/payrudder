@@ -12,7 +12,7 @@ of per-tenant databases.
 ## Decision
 
 - **Shared schema**: every tenant-owned table has `tenant_id uuid NOT NULL`, leading its PK or primary index.
-- **Postgres RLS**: `ENABLE` + `FORCE ROW LEVEL SECURITY`, with a policy comparing `tenant_id` to `current_setting('app.tenant_id', true)`.
+- **Postgres RLS**: `ENABLE` + `FORCE ROW LEVEL SECURITY`, with a policy comparing `tenant_id` to `NULLIF(current_setting('app.tenant_id', true), '')::uuid` (wrapped as `app_tenant_id()` in each database).
 - Request handlers use role `<svc>_app` (RLS enforced) via `pgxx.InTenantTx`, which sets the setting **transaction-locally**.
 - Cross-tenant background work uses role `<svc>_system` (`BYPASSRLS`) through a separate pool. Import boundaries are lint-enforced.
 - CI checks that every table with `tenant_id` has RLS forced, and a generated test suite verifies isolation for every policy.

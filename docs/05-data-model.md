@@ -25,13 +25,15 @@ Applied to every tenant-owned table:
 ALTER TABLE <t> ENABLE ROW LEVEL SECURITY;
 ALTER TABLE <t> FORCE ROW LEVEL SECURITY;          -- applies to the owner too
 CREATE POLICY tenant_isolation ON <t>
-  USING      (tenant_id = current_setting('app.tenant_id', true)::uuid)
-  WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+  USING      (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
+  WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
 GRANT SELECT, INSERT, UPDATE, DELETE ON <t> TO <svc>_app;
 ```
 
-`current_setting(..., true)` returns NULL when the setting is unset, so a forgotten `SET LOCAL` returns
-**zero rows** instead of erroring or leaking. The Go helper `pkg/pgxx.InTenantTx(ctx, pool, tenantID, fn)`
+`current_setting(..., true)` returns NULL when the setting was never defined in the session, but **`''`** on a pooled
+connection where an earlier transaction set it locally (found by the Phase 01 pgxx integration test). `''::uuid` would raise
+an error, so the policy wraps it in `NULLIF(…, '')`. Either way, a forgotten tenant context returns **zero rows** instead of
+erroring or leaking. The Go helper `pkg/pgxx.InTenantTx(ctx, pool, tenantID, fn)`
 is the only way handlers open a transaction. It runs `SELECT set_config('app.tenant_id', $1, true)` first.
 Details: [06-multi-tenancy.md](06-multi-tenancy.md#row-level-security).
 
@@ -40,6 +42,9 @@ Details: [06-multi-tenancy.md](06-multi-tenancy.md#row-level-security).
 ## `plans_db`
 
 ```sql
+-- Every database defines app_tenant_id() = NULLIF(current_setting('app.tenant_id', true), '')::uuid; policies use it.
+-- plans_app reads its own tenant row only through SECURITY DEFINER current_tenant(). Implemented: services/plans-svc/migrations.
+
 CREATE TABLE accounts (                               -- the customer of Quotify; owns one sandbox + one live tenant
   id          uuid PRIMARY KEY,
   name        text NOT NULL,
@@ -127,6 +132,7 @@ CREATE TABLE plan_entitlements (
   plan_version_id      uuid NOT NULL,
   meter_code           text NOT NULL,
   limit_units          bigint NOT NULL CHECK (limit_units >= 0),      -- scaled units of the meter; 0 = unlimited
+  -- plan_prices.config stores quantities as scaled units too: {"tiers":[{"up_to_units":10500,"unit_price":"0","flat_fee_minor":0},…]}
   alert_thresholds_pct int[]  NOT NULL DEFAULT '{80,100}',
   PRIMARY KEY (tenant_id, plan_version_id, meter_code)
 );
