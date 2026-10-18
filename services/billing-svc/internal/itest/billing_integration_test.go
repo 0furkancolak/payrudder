@@ -601,6 +601,9 @@ func testSandbox(t *testing.T) {
 		t.Fatalf("sandbox invoice number = %q, want SBX-2026-000001", number)
 	}
 	for _, c := range e.stubs[0].Commands() {
+		if c.GetTenantId() != e.tid.String() {
+			continue // RabbitMQ is shared by the subtests: commands of other tenants may reach this stub
+		}
 		if c.GetEnvironment().String() != "ENVIRONMENT_SANDBOX" {
 			t.Fatalf("command environment = %v, want SANDBOX on every command", c.GetEnvironment())
 		}
