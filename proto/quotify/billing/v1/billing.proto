@@ -8,6 +8,8 @@ import "google/protobuf/timestamp.proto";
 service BillingService {
   rpc GetInvoice(GetInvoiceRequest) returns (GetInvoiceResponse);
   rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
+  // GetInvoicePdfUrl returns a presigned link to the invoice PDF (valid for 5 minutes).
+  rpc GetInvoicePdfUrl(GetInvoicePdfUrlRequest) returns (GetInvoicePdfUrlResponse);
 }
 
 // SandboxService is for sandbox tenants only (FAILED_PRECONDITION otherwise).
@@ -105,6 +107,15 @@ message ListInvoicesResponse {
   // Without lines.
   repeated Invoice invoices = 1;
   string next_page_token = 2;
+}
+
+message GetInvoicePdfUrlRequest {
+  string invoice_id = 1;
+}
+
+message GetInvoicePdfUrlResponse {
+  string url = 1;
+  google.protobuf.Timestamp expire_time = 2;
 }
 
 message ClosePeriodNowRequest {

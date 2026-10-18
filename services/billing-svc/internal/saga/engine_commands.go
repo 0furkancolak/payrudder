@@ -52,7 +52,7 @@ func (e *Engine) invoiceSnapshot(s *saga, lines []lineRow) *commandsv1.InvoiceSn
 		InvoiceId: s.InvoiceID.String(), Version: int32(s.InvoiceVersion), Number: s.Number, PeriodId: s.PeriodID, Currency: s.Currency, //nolint:gosec // small
 		CurrencyExponent: int32(s.Snap.CurrencyExponent), //nolint:gosec // 0..3
 		TenantName:       s.Snap.TenantName, CustomerName: s.Snap.CustomerName, CustomerEmail: s.Snap.CustomerEmail,
-		IssuedAt: timestamppb.New(e.cfg.Now()), TotalMinor: s.TotalMinor, LogoObjectKey: s.Snap.LogoObjectKey,
+		IssuedAt: timestamppb.New(s.FinalizedAt), TotalMinor: s.TotalMinor, LogoObjectKey: s.Snap.LogoObjectKey,
 	}
 	var sub int64
 	for _, l := range lines {

@@ -141,3 +141,10 @@ This is the one place a worker reads Kafka, and it's justified: the input is a *
 and the email is the consumer's own side effect.
 
 Templates: Go `html/template`, embedded with `embed.FS`, versioned by name (`invoice_paid.v1.html`).
+
+## As built (Phase 06)
+
+Packages: `pkg/workerx` (skeleton), `pkg/payments` (provider interface + mock-psp client), `pkg/blob` (S3), services
+`services/{invoice-worker,payments-worker,notifier}` and `tools/mockpsp`. Metrics: `worker_commands_handled{queue,result}`,
+`worker_commands_replayed`. See the notes in [phase 06](../phases/phase-06-workers.md#notes-as-built) for the decisions that
+differ from the sketches above.

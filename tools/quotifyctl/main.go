@@ -2,7 +2,7 @@
 //
 //	quotifyctl seed --currency TRY --timezone Europe/Istanbul --grace 24h
 //
-// Later phases add dlq, replay, rerate and close-period subcommands.
+// dlq is the exception: it talks to RabbitMQ directly. Later phases add replay, rerate and close-period subcommands.
 package main
 
 import (
@@ -26,6 +26,8 @@ func main() {
 	switch os.Args[1] {
 	case "seed":
 		err = seed(os.Args[2:])
+	case "dlq":
+		err = dlq(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -42,7 +44,8 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `usage: quotifyctl <command> [flags]
 
 commands:
-  seed    create a demo account (sandbox + live), API keys, meters, a plan and customers`)
+  seed    create a demo account (sandbox + live), API keys, meters, a plan and customers
+  dlq     ls | show | redrive | purge the RabbitMQ dead-letter queues (talks to the broker directly)`)
 }
 
 type client struct {

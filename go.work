@@ -7,8 +7,12 @@ use (
 	./services/billing-svc
 	./services/gateway
 	./services/ingest-svc
+	./services/invoice-worker
 	./services/limits-svc
+	./services/notifier
+	./services/payments-worker
 	./services/plans-svc
 	./tests
+	./tools/mockpsp
 	./tools/quotifyctl
 )

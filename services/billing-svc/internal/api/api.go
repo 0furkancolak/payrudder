@@ -25,6 +25,14 @@ import (
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
 )
 
+// PDFSigner presigns downloads of invoice PDFs (pkg/blob.Store).
+type PDFSigner interface {
+	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
+}
+
+// PDFLinkTTL is how long a presigned PDF link works.
+const PDFLinkTTL = 5 * time.Minute
+
 // Server implements the three billing services.
 type Server struct {
 	billingv1.UnimplementedBillingServiceServer
@@ -35,11 +43,58 @@ type Server struct {
 	system *pgxpool.Pool
 	runs   *runs.Manager
 	eng    *saga.Engine
+	pdfs   PDFSigner
 }
 
 // New returns the API. app is the billing_app pool, system the billing_system pool.
 func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server {
 	return &Server{app: app, system: system, runs: mgr, eng: eng}
+}
+
+// WithPDFs enables GetInvoicePdfUrl.
+func (s *Server) WithPDFs(p PDFSigner) *Server {
+	s.pdfs = p
+	return s
+}
+
+// GetInvoicePdfUrl implements billingv1.BillingServiceServer.
+func (s *Server) GetInvoicePdfUrl(ctx context.Context, req *billingv1.GetInvoicePdfUrlRequest) (*billingv1.GetInvoicePdfUrlResponse, error) {
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, err := parseUUID("invoice_id", req.GetInvoiceId())
+	if err != nil {
+		return nil, err
+	}
+	if s.pdfs == nil {
+		return nil, status.Error(codes.Unimplemented, "object storage is not configured")
+	}
+	var key string
+	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
+		var k *string
+		if err := tx.QueryRow(ctx, `SELECT pdf_object_key FROM invoices WHERE id = $1`, id).Scan(&k); err != nil {
+			return err
+		}
+		if k != nil {
+			key = *k
+		}
+		return nil
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, status.Error(codes.NotFound, "invoice not found")
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	if key == "" {
+		return nil, status.Error(codes.FailedPrecondition, "the invoice PDF is not rendered yet")
+	}
+	url, err := s.pdfs.PresignGet(ctx, key, PDFLinkTTL)
+	if err != nil {
+		return nil, status.Error(codes.Unavailable, "could not sign the download link")
+	}
+	return &billingv1.GetInvoicePdfUrlResponse{Url: url, ExpireTime: timestamppb.New(time.Now().Add(PDFLinkTTL))}, nil
 }
 
 func invalid(msg string) error { return status.Error(codes.InvalidArgument, msg) }

@@ -39,6 +39,7 @@ func (s *Server) routes() []Route {
 		// Invoices
 		{"GET", "/v1/invoices", AccessTenant, ratelimit.ClassRead, s.listInvoices},
 		{"GET", "/v1/invoices/{id}", AccessTenant, ratelimit.ClassRead, s.getInvoice},
+		{"GET", "/v1/invoices/{id}/pdf", AccessTenant, ratelimit.ClassRead, s.getInvoicePDF},
 		// Sandbox
 		{"POST", "/v1/sandbox/close-period", AccessSandbox, ratelimit.ClassWrite, s.sandboxClosePeriod},
 		{"POST", "/v1/sandbox/customers/{external_id}/payment-scenario", AccessSandbox, ratelimit.ClassWrite, s.setPaymentScenario},
