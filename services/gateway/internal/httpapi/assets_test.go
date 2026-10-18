@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -68,7 +69,7 @@ func (fakeAssets) UploadAsset(stream grpc.ClientStreamingServer[assetsv1.UploadA
 	var n int64
 	for {
 		m, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
