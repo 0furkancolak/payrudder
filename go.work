@@ -6,6 +6,7 @@ use (
 	./services/aggregator
 	./services/gateway
 	./services/ingest-svc
+	./services/limits-svc
 	./services/plans-svc
 	./tests
 	./tools/quotifyctl

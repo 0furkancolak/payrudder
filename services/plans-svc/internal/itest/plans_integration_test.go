@@ -14,11 +14,14 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/apikey"
+	"github.com/0furkancolak/quotify/pkg/outbox"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 )
 
@@ -35,6 +38,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("APIKeysFollowEnvironmentAndRevocationEvicts", testAPIKeysFollowEnvironmentAndRevocationEvicts)
 	t.Run("SandboxPaymentMethods", testSandboxPaymentMethods)
 	t.Run("Subscriptions", testSubscriptions)
+	t.Run("EntitlementOutbox", testEntitlementOutbox)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
 }
 
@@ -355,5 +359,103 @@ func testPlanVersionsAndValidation(t *testing.T) {
 		ValueProperty: "gb_h", QuantityScale: 2, UnitLabel: "GB-h"})
 	if code(t, err) != codes.InvalidArgument {
 		t.Fatalf("scale change: %v", err)
+	}
+}
+
+type captureSink struct{ rows []outbox.Row }
+
+func (c *captureSink) Publish(_ context.Context, rows []outbox.Row) error {
+	c.rows = append(c.rows, rows...)
+	return nil
+}
+
+// Subscribing and cancelling write plans.entitlements.v1 rows in the same transaction, and the relay (running as
+// plans_system) can claim, publish and delete them.
+func testEntitlementOutbox(t *testing.T) {
+	e := newEnv(t)
+	live := e.account(t, "Outbox")[plansv1.Environment_ENVIRONMENT_LIVE]
+	tenantID := live.GetId()
+	seed(t, e, tenantID, "o") // creates cus_o, plan "pro" with a 100.5 gb_hours limit, and a subscription
+	ctx := as(tenantID)
+
+	relayAll := func() []outbox.Row {
+		sink := &captureSink{}
+		relay, err := outbox.NewRelay(e.system, sink, outbox.Config{}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for {
+			n, err := relay.RelayOnce(context.Background())
+			if err != nil {
+				t.Fatalf("relay: %v", err)
+			}
+			if n == 0 {
+				// The database is shared with the other subtests: keep this tenant's rows.
+				var mine []outbox.Row
+				for _, r := range sink.rows {
+					if r.TenantID == tenantID {
+						mine = append(mine, r)
+					}
+				}
+				return mine
+			}
+		}
+	}
+	rows := relayAll()
+	if len(rows) != 1 || rows[0].Topic != "plans.entitlements.v1" || rows[0].TenantID != tenantID {
+		t.Fatalf("after subscribing: %+v", rows)
+	}
+	var st eventsv1.EntitlementState
+	if err := proto.Unmarshal(rows[0].Payload, &st); err != nil {
+		t.Fatal(err)
+	}
+	custID := st.GetCustomerId()
+	if rows[0].PartitionKey != tenantID+"/"+custID+"/gb_hours" || st.GetLimitUnits() != 100500 || st.GetQuantityScale() != 3 ||
+		st.GetValidUntil() != nil || st.GetValidFrom() == nil || len(st.GetAlertThresholdsPct()) == 0 {
+		t.Fatalf("entitlement state = %v (key %s)", &st, rows[0].PartitionKey)
+	}
+	if again := relayAll(); len(again) != 0 {
+		t.Fatalf("relayed rows were not deleted: %v", again)
+	}
+
+	// Cancelling in the future publishes the state with its end; cancelling now publishes a tombstone.
+	list, err := e.plans.ListSubscriptionsForPeriod(ctx, &plansv1.ListSubscriptionsForPeriodRequest{
+		PeriodStart: timestamppb.New(time.Now().Add(-time.Hour)), PeriodEnd: timestamppb.New(time.Now().Add(time.Hour))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := list.Recv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	subID := r.GetSubscription().GetId()
+	end := time.Now().Add(time.Hour).Truncate(time.Microsecond)
+	if _, err := e.plans.CancelSubscription(ctx, &plansv1.CancelSubscriptionRequest{SubscriptionId: subID, EndTime: timestamppb.New(end)}); err != nil {
+		t.Fatal(err)
+	}
+	rows = relayAll()
+	if len(rows) != 1 || rows[0].Payload == nil {
+		t.Fatalf("future cancel: %+v", rows)
+	}
+	st.Reset()
+	if err := proto.Unmarshal(rows[0].Payload, &st); err != nil || !st.GetValidUntil().AsTime().Equal(end) {
+		t.Fatalf("future cancel state = %v, %v", &st, err)
+	}
+
+	if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_o2", Name: "O2", Email: "o2@example.com"}); err != nil {
+		t.Fatal(err)
+	}
+	sub, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_o2", PlanCode: "pro",
+		StartTime: timestamppb.New(time.Now().Add(-time.Minute))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	relayAll()
+	if _, err := e.plans.CancelSubscription(ctx, &plansv1.CancelSubscriptionRequest{SubscriptionId: sub.GetSubscription().GetId()}); err != nil {
+		t.Fatal(err)
+	}
+	rows = relayAll()
+	if len(rows) != 1 || rows[0].Payload != nil {
+		t.Fatalf("cancel now must publish a tombstone: %+v", rows)
 	}
 }

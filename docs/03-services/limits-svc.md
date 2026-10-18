@@ -116,3 +116,16 @@ Tenants call `CheckEntitlement` before serving their customer and decide what to
 
 One Lua call per batch per partition. Parallelism = partitions. Redis single-node ceiling is far above
 our ingest **targets**. `CheckEntitlement` is a single `MGET` (counter + entitlement).
+
+## As built (Phase 04)
+
+- Code: `services/limits-svc` (`internal/engine` = Lua apply, thresholds, checkpoints, reconciler; `internal/entitlements` =
+  in-memory map + Redis mirror; `internal/query` = gRPC). Configuration is environment-only (`QUOTIFY_REDIS_URL`,
+  `QUOTIFY_KAFKA_BROKERS`, `QUOTIFY_PLANS_ADDR`, `QUOTIFY_AGGREGATOR_ADDR`, `QUOTIFY_RECONCILE_INTERVAL`, `QUOTIFY_POD_NAME`).
+- The script takes `(key, op, delta, expireat)` per counter (`op` `I` increments, `M` keeps the maximum for `MAX` meters),
+  writes `lim:off:{p}`, `lim:active:{p}` and `lim:ts:{tenant}` (the `as_of` of `CheckEntitlement`) in the same call, and
+  refuses to pass 2^53 (`limits_counter_overflow`).
+- `CheckEntitlement` answers from the in-memory entitlement and one `MGET` (counter + `as_of`). The readiness probe fails
+  until the entitlement map has read the topic up to the end offsets recorded at start.
+- Metrics: `limits_events_applied`, `limits_events_skipped{reason}`, `limits_reconcile_corrections{reason}`,
+  `limits_reconcile_skipped{reason}`, `limits_reconcile_keys_checked`, `limits_thresholds_fired`.

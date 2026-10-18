@@ -161,6 +161,44 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/entitlements:
+    get:
+      operationId: listEntitlements
+      summary: Usage against the limits of every meter the customer has an entitlement on
+      description: See `getEntitlement` for the semantics of each item.
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { name: period, in: query, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$", examples: ["2026-11"] } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/entitlements/{meter}:
+    get:
+      operationId: getEntitlement
+      summary: Usage of one meter against the customer's limit
+      description: |
+        Answered from near-real-time counters. They are eventually consistent (typically well under 2 s behind ingest):
+        `as_of` is the ingest time of the newest event reflected in `used`. Quotify never blocks ingest on a limit; call
+        this before serving your customer and decide what to do. A customer without an entitlement on the meter is
+        `unlimited`. `period` defaults to the current period in the tenant's time zone.
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { name: meter, in: path, required: true, schema: { type: string } }
+        - { name: period, in: query, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$", examples: ["2026-11"] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Entitlement" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   /v1/plans:
     post:
       operationId: createPlan
@@ -354,6 +392,17 @@ components:
       description: Error envelope
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    Entitlement:
+      type: object
+      properties:
+        customer_external_id: { type: string }
+        meter_code: { type: string }
+        period_id: { type: string, examples: ["2026-11"] }
+        used: { type: string, description: Exact decimal with the meter's scale, examples: ["10.500"] }
+        limit: { type: [string, "null"], description: Exact decimal; null when unlimited, examples: ["10.500"] }
+        unlimited: { type: boolean }
+        allowed: { type: boolean, description: "unlimited, or used < limit" }
+        as_of: { type: [string, "null"], format: date-time }
     IngestEventsRequest:
       type: object
       required: [events]

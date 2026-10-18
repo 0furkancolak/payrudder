@@ -21,6 +21,8 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/customers", AccessTenant, ratelimit.ClassRead, s.listCustomers},
 		{"GET", "/v1/customers/{external_id}", AccessTenant, ratelimit.ClassRead, s.getCustomer},
 		{"GET", "/v1/customers/{external_id}/usage", AccessTenant, ratelimit.ClassRead, s.getCustomerUsage},
+		{"GET", "/v1/customers/{external_id}/entitlements", AccessTenant, ratelimit.ClassRead, s.listEntitlements},
+		{"GET", "/v1/customers/{external_id}/entitlements/{meter}", AccessTenant, ratelimit.ClassRead, s.getEntitlement},
 		{"PUT", "/v1/customers/{external_id}/payment-method", AccessTenant, ratelimit.ClassWrite, s.setPaymentMethod},
 		// Meters
 		{"POST", "/v1/meters", AccessTenant, ratelimit.ClassWrite, s.createMeter},

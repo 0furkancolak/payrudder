@@ -1,0 +1,444 @@
+package engine
+
+import (
+	"context"
+	_ "embed"
+	"errors"
+	"fmt"
+	"log/slog"
+	"sort"
+	"strconv"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
+	"github.com/twmb/franz-go/pkg/kgo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
+	"github.com/0furkancolak/quotify/pkg/period"
+	"github.com/0furkancolak/quotify/services/limits-svc/internal/domain"
+	"github.com/0furkancolak/quotify/services/limits-svc/internal/entitlements"
+	"github.com/0furkancolak/quotify/services/limits-svc/internal/meters"
+	"github.com/0furkancolak/quotify/services/limits-svc/internal/tenants"
+)
+
+//go:embed apply_batch.lua
+var applyBatchLua string
+
+// KeyTTL is how long a counter outlives the end of its period.
+const KeyTTL = 40 * 24 * time.Hour
+
+// firedTTL outlives any counter key, so a threshold is never fired twice for the same period.
+const firedTTL = 80 * 24 * time.Hour
+
+// ErrRedisReset means the offset key vanished while this pod had applied records: Redis lost its data. The partition
+// is replayed from the start of the log.
+var ErrRedisReset = errors.New("redis lost its offsets: replaying the partition")
+
+// Config configures an Applier.
+type Config struct {
+	Redis      *redis.Client
+	Meters     meters.Source
+	Tenants    tenants.Source
+	Ents       *entitlements.Store
+	Producer   *kgo.Client // LimitExceeded producer
+	LimitTopic string
+	Log        *slog.Logger
+	Now        func() time.Time
+	// AfterLua runs after the script committed a batch and before thresholds are evaluated. An error aborts the
+	// batch the way a crash at that point would. Chaos tests only.
+	AfterLua func() error
+}
+
+// Applier applies usage.events.v1 batches to the Redis counters. It implements kafkax.PartitionHandler.
+type Applier struct {
+	cfg    Config
+	log    *slog.Logger
+	script *redis.Script
+	cps    *checkpoints
+
+	mu    sync.Mutex
+	parts map[int32]*partState
+
+	applied    metric.Int64Counter
+	skipped    metric.Int64Counter
+	overflow   metric.Int64Counter
+	fired      metric.Int64Counter
+	fireErrors metric.Int64Counter
+}
+
+type partState struct {
+	mu     sync.Mutex
+	expect int64 // next offset this pod believes Redis holds; 0 = none
+}
+
+// NewApplier validates cfg and registers metrics.
+func NewApplier(cfg Config) (*Applier, error) {
+	if cfg.Redis == nil || cfg.Meters == nil || cfg.Tenants == nil || cfg.Ents == nil {
+		return nil, errors.New("engine: Redis, Meters, Tenants and Ents are required")
+	}
+	if cfg.Log == nil {
+		cfg.Log = slog.Default()
+	}
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
+	m := otel.Meter("github.com/0furkancolak/quotify/services/limits-svc")
+	a := &Applier{cfg: cfg, log: cfg.Log, script: redis.NewScript(applyBatchLua), cps: newCheckpoints(), parts: map[int32]*partState{}}
+	var err error
+	if a.applied, err = m.Int64Counter("limits_events_applied", metric.WithDescription("Usage events added to a counter")); err != nil {
+		return nil, err
+	}
+	if a.skipped, err = m.Int64Counter("limits_events_skipped", metric.WithDescription("Usage events not counted, by reason")); err != nil {
+		return nil, err
+	}
+	if a.overflow, err = m.Int64Counter("limits_counter_overflow", metric.WithDescription("Counter updates refused because they would pass 2^53")); err != nil {
+		return nil, err
+	}
+	if a.fired, err = m.Int64Counter("limits_thresholds_fired", metric.WithDescription("LimitExceeded events produced")); err != nil {
+		return nil, err
+	}
+	if a.fireErrors, err = m.Int64Counter("limits_threshold_publish_failures", metric.WithDescription("LimitExceeded events that could not be produced")); err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
+// Load registers the script with Redis (SCRIPT LOAD); calls then use EVALSHA.
+func (a *Applier) Load(ctx context.Context) error {
+	return a.script.Load(ctx, a.cfg.Redis).Err()
+}
+
+func (a *Applier) part(p int32) *partState {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	ps := a.parts[p]
+	if ps == nil {
+		ps = &partState{}
+		a.parts[p] = ps
+	}
+	return ps
+}
+
+// LoadOffsets is the kafkax.OffsetLoader of the usage consumer: the offsets live in Redis, next to the counters they
+// describe. A partition without a key starts at the beginning of the log.
+func (a *Applier) LoadOffsets(ctx context.Context, _ string, partitions []int32) (map[int32]int64, error) {
+	out := make(map[int32]int64, len(partitions))
+	for _, p := range partitions {
+		v, err := a.cfg.Redis.Get(ctx, OffsetKey(p)).Result()
+		switch {
+		case errors.Is(err, redis.Nil):
+			out[p] = 0
+		case err != nil:
+			return nil, err
+		default:
+			n, perr := strconv.ParseInt(v, 10, 64)
+			if perr != nil {
+				return nil, fmt.Errorf("%s holds %q: %w", OffsetKey(p), v, perr)
+			}
+			out[p] = n
+		}
+	}
+	return out, nil
+}
+
+// Apply applies the records of one partition, in order, serving any reconciliation checkpoint that falls inside them.
+func (a *Applier) Apply(ctx context.Context, p int32, recs []*kgo.Record) error {
+	if len(recs) == 0 {
+		return nil
+	}
+	ps := a.part(p)
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	last := recs[len(recs)-1].Offset
+	for {
+		cp := a.cps.first(p)
+		if cp == nil || cp.At > last+1 {
+			break
+		}
+		a.cps.remove(p, cp)
+		cur := recs[0].Offset
+		if cp.At < cur {
+			cp.finish(Result{Skipped: 1, SkipReason: "ahead"})
+			continue
+		}
+		n := 0
+		for n < len(recs) && recs[n].Offset < cp.At {
+			n++
+		}
+		if n > 0 {
+			if err := a.applyRecords(ctx, p, recs[:n]); err != nil {
+				a.cps.add(p, cp) // not reached yet
+				return err
+			}
+		}
+		a.resolve(ctx, cp)
+		recs = recs[n:]
+		if len(recs) == 0 {
+			return nil
+		}
+	}
+	return a.applyRecords(ctx, p, recs)
+}
+
+type cell struct {
+	ref      Ref
+	isMax    bool
+	delta    int64
+	over     bool
+	expireAt int64
+}
+
+func (a *Applier) skip(ctx context.Context, reason string) {
+	a.skipped.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", reason)))
+}
+
+func (a *Applier) applyRecords(ctx context.Context, p int32, recs []*kgo.Record) error {
+	if len(recs) == 0 {
+		return nil
+	}
+	cells := map[string]*cell{}
+	stamps := map[uuid.UUID]time.Time{}
+	var counted int64
+	for _, rec := range recs {
+		ev, err := domain.Decode(rec)
+		if err != nil {
+			a.skip(ctx, "invalid")
+			continue
+		}
+		m, err := a.cfg.Meters.Get(ctx, ev.TenantID, ev.Meter)
+		if errors.Is(err, meters.ErrNotFound) {
+			a.skip(ctx, "unknown_meter")
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("meter lookup: %w", err)
+		}
+		if !m.Matches(ev.Props) {
+			a.skip(ctx, "filtered")
+			continue
+		}
+		tn, err := a.cfg.Tenants.Tenant(ctx, ev.TenantID)
+		if err != nil {
+			return fmt.Errorf("tenant lookup: %w", err)
+		}
+		cutoff, err := period.Cutoff(ev.Period, tn.Location, tn.Grace)
+		if err != nil {
+			a.skip(ctx, "invalid")
+			continue
+		}
+		// Late events are billed in the period of their ingestion, not counted against this one's limit.
+		if period.Classify(ev.IngestedAt, cutoff) == period.Late {
+			a.skip(ctx, "late")
+			continue
+		}
+		_, end, _ := period.Bounds(ev.Period, tn.Location)
+		ref := Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: ev.Period}
+		k := ref.Key()
+		c := cells[k]
+		if c == nil {
+			c = &cell{ref: ref, isMax: m.Aggregation == domain.Max, expireAt: end.Add(KeyTTL).Unix()}
+			cells[k] = c
+		}
+		v := m.Value(ev)
+		switch {
+		case c.isMax:
+			c.delta = max(c.delta, v)
+		case c.delta > domain.MaxCounter-v:
+			c.over = true
+		default:
+			c.delta += v
+		}
+		if ev.IngestedAt.After(stamps[ev.TenantID]) {
+			stamps[ev.TenantID] = ev.IngestedAt
+		}
+		counted++
+	}
+
+	keys := make([]string, 0, len(cells))
+	for k, c := range cells {
+		if c.over {
+			a.overflow.Add(ctx, 1)
+			a.log.ErrorContext(ctx, "counter delta too large, leaving the key to reconciliation", "key", k)
+			continue
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	tenantsSorted := make([]uuid.UUID, 0, len(stamps))
+	for t := range stamps {
+		tenantsSorted = append(tenantsSorted, t)
+	}
+	sort.Slice(tenantsSorted, func(i, j int) bool { return tenantsSorted[i].String() < tenantsSorted[j].String() })
+
+	ps := a.part(p)
+	first, next := recs[0].Offset, recs[len(recs)-1].Offset+1
+	args := make([]any, 0, 6+4*len(keys)+2*len(tenantsSorted))
+	args = append(args, first, next, a.cfg.Now().UnixMilli(), ps.expect, len(keys), len(tenantsSorted))
+	for _, k := range keys {
+		c := cells[k]
+		op := "I"
+		if c.isMax {
+			op = "M"
+		}
+		args = append(args, k, op, c.delta, c.expireAt)
+	}
+	for _, t := range tenantsSorted {
+		args = append(args, TSKey(t), stamps[t].UnixMilli())
+	}
+
+	res, err := a.script.Run(ctx, a.cfg.Redis, []string{OffsetKey(p), ActiveKey(p)}, args...).Slice()
+	if err != nil {
+		return fmt.Errorf("apply_batch: %w", err)
+	}
+	status, _ := res[0].(string)
+	switch status {
+	case "SKIP":
+		a.skip(ctx, "redelivered")
+		ps.expect = max(ps.expect, next)
+		return nil
+	case "PARTIAL":
+		applied, _ := strconv.ParseInt(fmt.Sprint(res[1]), 10, 64)
+		rest := recs
+		for len(rest) > 0 && rest[0].Offset < applied {
+			rest = rest[1:]
+		}
+		return a.applyRecords(ctx, p, rest)
+	case "GAP":
+		return fmt.Errorf("offset gap on partition %d: redis is at %v, batch starts at %d", p, res[1], first)
+	case "RESET":
+		a.log.WarnContext(ctx, "redis lost its offset key, replaying partition", "partition", p)
+		ps.expect = 0
+		return ErrRedisReset
+	case "OK":
+	default:
+		return fmt.Errorf("apply_batch: unexpected reply %v", res)
+	}
+	ps.expect = next
+	a.applied.Add(ctx, counted)
+
+	if a.cfg.AfterLua != nil {
+		if err := a.cfg.AfterLua(); err != nil {
+			return err
+		}
+	}
+	for _, item := range res[1:] {
+		row, ok := item.([]any)
+		if !ok || len(row) != 3 {
+			continue
+		}
+		key, _ := row[0].(string)
+		if row[1] == "OVERFLOW" {
+			a.overflow.Add(ctx, 1)
+			a.log.ErrorContext(ctx, "counter would pass 2^53, leaving the key to reconciliation", "key", key)
+			continue
+		}
+		before, err1 := strconv.ParseInt(fmt.Sprint(row[1]), 10, 64)
+		after, err2 := strconv.ParseInt(fmt.Sprint(row[2]), 10, 64)
+		ref, okRef := ParseCounterKey(key)
+		if err1 != nil || err2 != nil || !okRef {
+			continue
+		}
+		a.thresholds(ctx, ref, before, after, false)
+	}
+	return nil
+}
+
+// thresholds fires the LimitExceeded events for the thresholds a counter crossed from before to after. With sweep it
+// fires every threshold the counter has already reached (before is ignored): the repair path of reconciliation.
+func (a *Applier) thresholds(ctx context.Context, ref Ref, before, after int64, sweep bool) {
+	now := a.cfg.Now()
+	ent, ok := a.cfg.Ents.Get(ref.Tenant, ref.Customer, ref.Meter, now)
+	if !ok || ent.Limit <= 0 || !a.overlaps(ctx, ent, ref.Period) {
+		return
+	}
+	for _, pct := range ent.Thresholds {
+		hit := domain.Crossed(before, after, ent.Limit, pct)
+		if sweep {
+			hit = domain.Reached(after, ent.Limit, pct)
+		}
+		if hit {
+			a.fire(ctx, ent, ref, pct, after, now)
+		}
+	}
+}
+
+// overlaps reports whether the entitlement existed during the period.
+func (a *Applier) overlaps(ctx context.Context, ent entitlements.State, periodID string) bool {
+	tn, err := a.cfg.Tenants.Tenant(ctx, ent.Tenant)
+	if err != nil {
+		return false
+	}
+	start, end, err := period.Bounds(periodID, tn.Location)
+	if err != nil {
+		return false
+	}
+	return ent.From.Before(end) && (ent.Until.IsZero() || ent.Until.After(start))
+}
+
+// fire produces one LimitExceeded event unless this threshold of this period already fired. A lost marker (Redis
+// failover) re-fires, and consumers dedup on the deterministic event id.
+func (a *Applier) fire(ctx context.Context, ent entitlements.State, ref Ref, pct int32, used int64, now time.Time) {
+	fk := FiredKey(ref.Tenant, ref.Customer, ref.Meter, ref.Period, pct)
+	won, err := a.cfg.Redis.SetNX(ctx, fk, "1", firedTTL).Result()
+	if err != nil {
+		a.fireErrors.Add(ctx, 1)
+		a.log.WarnContext(ctx, "threshold marker failed, the next reconciliation retries", "key", fk, "error", err)
+		return
+	}
+	if !won {
+		return
+	}
+	if a.cfg.Producer == nil {
+		return
+	}
+	pb := &eventsv1.LimitExceeded{
+		EventId: domain.LimitEventID(ref.Tenant, ref.Customer, ref.Meter, ref.Period, pct), TenantId: ref.Tenant.String(),
+		CustomerId: ref.Customer.String(), MeterCode: ref.Meter, PeriodId: ref.Period, ThresholdPct: pct,
+		LimitUnits: ent.Limit, UsedUnits: used, DetectedAt: timestamppb.New(now), QuantityScale: uint32(ent.Scale), //nolint:gosec // 0..6
+	}
+	payload, err := proto.Marshal(pb)
+	if err == nil {
+		err = a.cfg.Producer.ProduceSync(ctx, &kgo.Record{Topic: a.cfg.LimitTopic, Key: []byte(ref.Tenant.String()), Value: payload}).FirstErr()
+	}
+	if err != nil {
+		// Un-mark so that the reconciliation sweep produces it.
+		a.cfg.Redis.Del(context.WithoutCancel(ctx), fk)
+		a.fireErrors.Add(ctx, 1)
+		a.log.WarnContext(ctx, "LimitExceeded not produced, the next reconciliation retries", "event_id", pb.GetEventId(), "error", err)
+		return
+	}
+	a.fired.Add(ctx, 1, metric.WithAttributes(attribute.Int("threshold_pct", int(pct))))
+}
+
+// Sweep fires every threshold the given counters have reached and not yet fired. It repairs a crash between the
+// script and the produce, and a failed produce.
+func (a *Applier) Sweep(ctx context.Context, keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	vals, err := a.cfg.Redis.MGet(ctx, keys...).Result()
+	if err != nil {
+		return err
+	}
+	for i, k := range keys {
+		ref, ok := ParseCounterKey(k)
+		s, isStr := vals[i].(string)
+		if !ok || !isStr {
+			continue
+		}
+		used, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			continue
+		}
+		a.thresholds(ctx, ref, 0, used, true)
+	}
+	return nil
+}

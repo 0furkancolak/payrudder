@@ -15,3 +15,9 @@ services:
       AGG_CRASH_AFTER_COMMIT: "${AGG_CRASH_AFTER_COMMIT:-0.1}"
       # A killed member holds its partitions until the session expires; keep that short so a crash loop still progresses.
       QUOTIFY_CONSUMER_SESSION_TIMEOUT: "6s"
+  limits-svc:
+    build:
+      args: { GO_TAGS: chaos }
+    image: quotify/limits-svc:chaos
+    environment:
+      LIMITS_CRASH_AFTER_LUA: "${LIMITS_CRASH_AFTER_LUA:-0}"
