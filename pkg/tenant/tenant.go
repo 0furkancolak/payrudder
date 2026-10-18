@@ -21,6 +21,7 @@ const (
 	MDEnvironment = "x-quotify-environment"
 	MDTimezone    = "x-quotify-timezone"
 	MDAPIKeyID    = "x-quotify-api-key-id" //nolint:gosec // metadata key name, not a credential
+	MDTier        = "x-quotify-tier"
 	MDOperator    = "x-quotify-operator"
 )
 
@@ -35,7 +36,9 @@ type Info struct {
 	ID          uuid.UUID
 	Environment string
 	Timezone    string
-	APIKeyID    string
+	// Tier is "free", "standard" or "enterprise" (rate limits, storage quota).
+	Tier     string
+	APIKeyID string
 }
 
 type infoKey struct{}
@@ -108,6 +111,7 @@ func fromIncoming(ctx context.Context) (context.Context, error) {
 		ID:          id,
 		Environment: first(md, MDEnvironment),
 		Timezone:    first(md, MDTimezone),
+		Tier:        first(md, MDTier),
 		APIKeyID:    first(md, MDAPIKeyID),
 	}), nil
 }
@@ -152,6 +156,9 @@ func OutgoingContext(ctx context.Context) context.Context {
 		}
 		if info.Timezone != "" {
 			kv = append(kv, MDTimezone, info.Timezone)
+		}
+		if info.Tier != "" {
+			kv = append(kv, MDTier, info.Tier)
 		}
 		if info.APIKeyID != "" {
 			kv = append(kv, MDAPIKeyID, info.APIKeyID)

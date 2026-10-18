@@ -25,15 +25,16 @@ import (
 
 type Config struct {
 	config.Base
-	RabbitMQURL  string `env:"QUOTIFY_RABBITMQ_URL,required"`
-	S3Endpoint   string `env:"S3_ENDPOINT"`
-	S3Region     string `env:"S3_REGION" envDefault:"us-east-1"`
-	S3Bucket     string `env:"S3_BUCKET" envDefault:"invoices"`
-	S3AccessKey  string `env:"S3_ACCESS_KEY,required"`
-	S3SecretKey  string `env:"S3_SECRET_KEY,required"`
-	S3ForcePath  bool   `env:"S3_FORCE_PATH_STYLE" envDefault:"false"`
-	Prefetch     int    `env:"QUOTIFY_PREFETCH" envDefault:"8"`
-	EnsureBucket bool   `env:"S3_ENSURE_BUCKET" envDefault:"false"`
+	RabbitMQURL    string `env:"QUOTIFY_RABBITMQ_URL,required"`
+	S3Endpoint     string `env:"S3_ENDPOINT"`
+	S3Region       string `env:"S3_REGION" envDefault:"us-east-1"`
+	S3Bucket       string `env:"S3_BUCKET" envDefault:"invoices"`
+	S3AssetsBucket string `env:"S3_ASSETS_BUCKET" envDefault:"assets"`
+	S3AccessKey    string `env:"S3_ACCESS_KEY,required"`
+	S3SecretKey    string `env:"S3_SECRET_KEY,required"`
+	S3ForcePath    bool   `env:"S3_FORCE_PATH_STYLE" envDefault:"false"`
+	Prefetch       int    `env:"QUOTIFY_PREFETCH" envDefault:"8"`
+	EnsureBucket   bool   `env:"S3_ENSURE_BUCKET" envDefault:"false"`
 }
 
 func main() {
@@ -79,7 +80,12 @@ func run() error {
 			return err
 		}
 	}
-	w := &workerx.Worker{URL: cfg.RabbitMQURL, Prefetch: cfg.Prefetch, Handler: &handler.Handler{Store: store}, Log: log,
+	logos, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, Region: cfg.S3Region, Bucket: cfg.S3AssetsBucket,
+		AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
+	if err != nil {
+		return err
+	}
+	w := &workerx.Worker{URL: cfg.RabbitMQURL, Prefetch: cfg.Prefetch, Handler: &handler.Handler{Store: store, Logos: logos}, Log: log,
 		Queues: []string{rabbitx.QueueInvoiceRender}}
 
 	hh := health.New(reg, 2*time.Second)

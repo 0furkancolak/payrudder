@@ -65,7 +65,7 @@ func StartPostgres(t testing.TB) Postgres {
 	if err != nil {
 		t.Fatalf("testkit: postgres dsn: %v", err)
 	}
-	return Postgres{DSN: dsn, ContainerID: c.GetContainerID()}
+	return Postgres{DSN: dsn, ContainerID: c.GetContainerID()} //nolint:gosec // test container
 }
 
 // Redpanda is a running Redpanda container.
@@ -95,7 +95,7 @@ func StartRedpandaContainer(t testing.TB) Redpanda {
 	if err != nil {
 		t.Fatalf("testkit: redpanda seed broker: %v", err)
 	}
-	return Redpanda{Brokers: seed, ContainerID: c.GetContainerID()}
+	return Redpanda{Brokers: seed, ContainerID: c.GetContainerID()} //nolint:gosec // test container
 }
 
 // StartRabbitMQ starts RabbitMQ and returns its AMQP URL.
@@ -210,4 +210,46 @@ func StartMailpit(t testing.TB) Mailpit {
 		t.Fatalf("testkit: mailpit api port: %v", err)
 	}
 	return Mailpit{SMTPAddr: host + ":" + smtp.Port(), APIURL: "http://" + host + ":" + api.Port()}
+}
+
+// ClickHouseImage matches deploy/compose/compose.yaml.
+const ClickHouseImage = "clickhouse/clickhouse-server:25.8.33.6-alpine"
+
+// ClickHouse is a running ClickHouse server.
+type ClickHouse struct {
+	// Addr is host:port of the native protocol.
+	Addr        string
+	Database    string
+	User        string
+	Password    string
+	ContainerID string
+}
+
+// StartClickHouse starts ClickHouse with a database and a user.
+func StartClickHouse(t testing.TB) ClickHouse {
+	t.Helper()
+	ctx := startCtx(t)
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        ClickHouseImage,
+			ExposedPorts: []string{"9000/tcp", "8123/tcp"},
+			Env: map[string]string{"CLICKHOUSE_DB": "quotify", "CLICKHOUSE_USER": "quotify", "CLICKHOUSE_PASSWORD": "quotify_test", //nolint:gosec // test container
+				"CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT": "1"},
+			WaitingFor: wait.ForHTTP("/ping").WithPort("8123/tcp").WithStartupTimeout(startTimeout),
+		},
+		Started: true,
+	})
+	testcontainers.CleanupContainer(t, c)
+	if err != nil {
+		t.Fatalf("testkit: start clickhouse: %v", err)
+	}
+	host, err := c.Host(ctx)
+	if err != nil {
+		t.Fatalf("testkit: clickhouse host: %v", err)
+	}
+	port, err := c.MappedPort(ctx, "9000/tcp")
+	if err != nil {
+		t.Fatalf("testkit: clickhouse port: %v", err)
+	}
+	return ClickHouse{Addr: host + ":" + port.Port(), Database: "quotify", User: "quotify", Password: "quotify_test", ContainerID: c.GetContainerID()} //nolint:gosec // test container
 }

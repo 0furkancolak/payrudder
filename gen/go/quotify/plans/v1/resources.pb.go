@@ -309,10 +309,12 @@ type Tenant struct {
 	// IANA time zone, chosen at creation, immutable. Billing periods are calendar months in it.
 	Timezone string `protobuf:"bytes,7,opt,name=timezone,proto3" json:"timezone,omitempty"`
 	// 0..7 days. Changes apply from the next period.
-	GracePeriod   *durationpb.Duration   `protobuf:"bytes,8,opt,name=grace_period,json=gracePeriod,proto3" json:"grace_period,omitempty"`
-	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	GracePeriod *durationpb.Duration   `protobuf:"bytes,8,opt,name=grace_period,json=gracePeriod,proto3" json:"grace_period,omitempty"`
+	CreateTime  *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// READY invoice_logo asset (assets-svc) drawn on the tenant's invoice PDFs; empty = no logo.
+	InvoiceLogoAssetId string `protobuf:"bytes,10,opt,name=invoice_logo_asset_id,json=invoiceLogoAssetId,proto3" json:"invoice_logo_asset_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Tenant) Reset() {
@@ -406,6 +408,13 @@ func (x *Tenant) GetCreateTime() *timestamppb.Timestamp {
 		return x.CreateTime
 	}
 	return nil
+}
+
+func (x *Tenant) GetInvoiceLogoAssetId() string {
+	if x != nil {
+		return x.InvoiceLogoAssetId
+	}
+	return ""
 }
 
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.
@@ -1391,7 +1400,7 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x122\n" +
 	"\atenants\x18\x03 \x03(\v2\x18.quotify.plans.v1.TenantR\atenants\x12;\n" +
 	"\vcreate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime\"\xf1\x02\n" +
+	"createTime\"\xa4\x03\n" +
 	"\x06Tenant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1403,7 +1412,9 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\btimezone\x18\a \x01(\tR\btimezone\x12<\n" +
 	"\fgrace_period\x18\b \x01(\v2\x19.google.protobuf.DurationR\vgracePeriod\x12;\n" +
 	"\vcreate_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime\"\x8a\x03\n" +
+	"createTime\x121\n" +
+	"\x15invoice_logo_asset_id\x18\n" +
+	" \x01(\tR\x12invoiceLogoAssetId\"\x8a\x03\n" +
 	"\x06ApiKey\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x16\n" +

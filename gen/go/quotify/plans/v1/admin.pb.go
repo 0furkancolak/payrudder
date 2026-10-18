@@ -342,10 +342,13 @@ type UpdateTenantSettingsRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	// Unset leaves the value unchanged.
-	GracePeriod   *durationpb.Duration `protobuf:"bytes,2,opt,name=grace_period,json=gracePeriod,proto3" json:"grace_period,omitempty"`
-	Tier          TenantTier           `protobuf:"varint,3,opt,name=tier,proto3,enum=quotify.plans.v1.TenantTier" json:"tier,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	GracePeriod *durationpb.Duration `protobuf:"bytes,2,opt,name=grace_period,json=gracePeriod,proto3" json:"grace_period,omitempty"`
+	Tier        TenantTier           `protobuf:"varint,3,opt,name=tier,proto3,enum=quotify.plans.v1.TenantTier" json:"tier,omitempty"`
+	// Sets the invoice logo (an invoice_logo asset of assets-svc); empty leaves it unchanged. clear_invoice_logo removes it.
+	InvoiceLogoAssetId string `protobuf:"bytes,4,opt,name=invoice_logo_asset_id,json=invoiceLogoAssetId,proto3" json:"invoice_logo_asset_id,omitempty"`
+	ClearInvoiceLogo   bool   `protobuf:"varint,5,opt,name=clear_invoice_logo,json=clearInvoiceLogo,proto3" json:"clear_invoice_logo,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *UpdateTenantSettingsRequest) Reset() {
@@ -397,6 +400,20 @@ func (x *UpdateTenantSettingsRequest) GetTier() TenantTier {
 		return x.Tier
 	}
 	return TenantTier_TENANT_TIER_UNSPECIFIED
+}
+
+func (x *UpdateTenantSettingsRequest) GetInvoiceLogoAssetId() string {
+	if x != nil {
+		return x.InvoiceLogoAssetId
+	}
+	return ""
+}
+
+func (x *UpdateTenantSettingsRequest) GetClearInvoiceLogo() bool {
+	if x != nil {
+		return x.ClearInvoiceLogo
+	}
+	return false
 }
 
 type UpdateTenantSettingsResponse struct {
@@ -788,11 +805,13 @@ const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	"page_token\x18\x02 \x01(\tR\tpageToken\"q\n" +
 	"\x13ListTenantsResponse\x122\n" +
 	"\atenants\x18\x01 \x03(\v2\x18.quotify.plans.v1.TenantR\atenants\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xaa\x01\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x8b\x02\n" +
 	"\x1bUpdateTenantSettingsRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12<\n" +
 	"\fgrace_period\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\vgracePeriod\x120\n" +
-	"\x04tier\x18\x03 \x01(\x0e2\x1c.quotify.plans.v1.TenantTierR\x04tier\"P\n" +
+	"\x04tier\x18\x03 \x01(\x0e2\x1c.quotify.plans.v1.TenantTierR\x04tier\x121\n" +
+	"\x15invoice_logo_asset_id\x18\x04 \x01(\tR\x12invoiceLogoAssetId\x12,\n" +
+	"\x12clear_invoice_logo\x18\x05 \x01(\bR\x10clearInvoiceLogo\"P\n" +
 	"\x1cUpdateTenantSettingsResponse\x120\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x18.quotify.plans.v1.TenantR\x06tenant\"2\n" +
 	"\x13CreateApiKeyRequest\x12\x1b\n" +

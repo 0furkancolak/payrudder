@@ -36,6 +36,23 @@ func (s *Server) routes() []Route {
 		// Subscriptions
 		{"POST", "/v1/subscriptions", AccessTenant, ratelimit.ClassWrite, s.createSubscription},
 		{"DELETE", "/v1/subscriptions/{id}", AccessTenant, ratelimit.ClassWrite, s.cancelSubscription},
+		// Assets: direct multipart sessions, a streamed form upload, and the files themselves
+		{"POST", "/v1/assets/uploads", AccessTenant, ratelimit.ClassWrite, s.createUploadSession},
+		{"POST", "/v1/assets/uploads/{session}/files/{asset}/parts", AccessTenant, ratelimit.ClassWrite, s.presignParts},
+		{"GET", "/v1/assets/uploads/{session}/files/{asset}", AccessTenant, ratelimit.ClassRead, s.getUploadFile},
+		{"POST", "/v1/assets/uploads/{session}/files/{asset}/complete", AccessTenant, ratelimit.ClassWrite, s.completeUploadFile},
+		{"DELETE", "/v1/assets/uploads/{session}/files/{asset}", AccessTenant, ratelimit.ClassWrite, s.abortUploadFile},
+		{"DELETE", "/v1/assets/uploads/{session}", AccessTenant, ratelimit.ClassWrite, s.abortUploadSession},
+		{"PUT", "/v1/tenant/invoice-logo", AccessTenant, ratelimit.ClassWrite, s.setInvoiceLogo},
+		{"DELETE", "/v1/tenant/invoice-logo", AccessTenant, ratelimit.ClassWrite, s.clearInvoiceLogo},
+		{"POST", "/v1/assets", AccessTenant, ratelimit.ClassWrite, s.uploadAssets},
+		{"GET", "/v1/assets", AccessTenant, ratelimit.ClassRead, s.listAssets},
+		{"GET", "/v1/assets/{id}", AccessTenant, ratelimit.ClassRead, s.getAsset},
+		{"GET", "/v1/assets/{id}/download", AccessTenant, ratelimit.ClassRead, s.downloadAsset},
+		{"DELETE", "/v1/assets/{id}", AccessTenant, ratelimit.ClassWrite, s.deleteAsset},
+		// Analytics (estimates: invoices come from billing)
+		{"GET", "/v1/analytics/usage", AccessTenant, ratelimit.ClassRead, s.getAnalyticsUsage},
+		{"GET", "/v1/analytics/top-customers", AccessTenant, ratelimit.ClassRead, s.getTopCustomers},
 		// Invoices
 		{"GET", "/v1/invoices", AccessTenant, ratelimit.ClassRead, s.listInvoices},
 		{"GET", "/v1/invoices/{id}", AccessTenant, ratelimit.ClassRead, s.getInvoice},
@@ -49,6 +66,7 @@ func (s *Server) routes() []Route {
 		{"PATCH", "/admin/v1/tenants/{id}", AccessOperator, "", s.updateTenant},
 		{"POST", "/admin/v1/tenants/{id}/api-keys", AccessOperator, "", s.createAPIKey},
 		{"DELETE", "/admin/v1/api-keys/{id}", AccessOperator, "", s.revokeAPIKey},
+		{"GET", "/admin/v1/analytics/ingest-stats", AccessOperator, "", s.adminIngestStats},
 		{"POST", "/admin/v1/billing/close-period", AccessOperator, "", s.adminClosePeriod},
 		{"GET", "/admin/v1/tenants/{tenant_id}/billing-runs/{period}", AccessOperator, "", s.adminGetBillingRun},
 		{"POST", "/admin/v1/invoices/{id}/retry", AccessOperator, "", s.adminRetryInvoice},

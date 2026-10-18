@@ -171,6 +171,17 @@ func (s *Server) UpdateTenantSettings(ctx context.Context, req *plansv1.UpdateTe
 		}
 		params.Tier = &name
 	}
+	if logo := req.GetInvoiceLogoAssetId(); logo != "" {
+		if req.GetClearInvoiceLogo() {
+			return nil, domain.Invalid("clear_invoice_logo", "cannot be combined with invoice_logo_asset_id")
+		}
+		lid, err := uuid.Parse(logo)
+		if err != nil {
+			return nil, domain.Invalid("invoice_logo_asset_id", "must be a UUID")
+		}
+		params.InvoiceLogoAssetID = &lid
+	}
+	params.ClearLogo = req.GetClearInvoiceLogo()
 	t, err := s.q().UpdateTenantSettings(ctx, params)
 	if err != nil {
 		return nil, convert.Err(err, "tenant")

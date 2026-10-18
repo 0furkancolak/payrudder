@@ -104,13 +104,14 @@ type Subscription struct {
 }
 
 type Tenant struct {
-	ID          uuid.UUID
-	AccountID   uuid.UUID
-	Environment string
-	Name        string
-	Tier        string
-	Currency    string
-	Timezone    string
-	GracePeriod pgtype.Interval
-	CreatedAt   time.Time
+	ID                 uuid.UUID
+	AccountID          uuid.UUID
+	Environment        string
+	Name               string
+	Tier               string
+	Currency           string
+	Timezone           string
+	GracePeriod        pgtype.Interval
+	CreatedAt          time.Time
+	InvoiceLogoAssetID *uuid.UUID
 }

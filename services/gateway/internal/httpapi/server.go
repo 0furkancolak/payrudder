@@ -25,6 +25,8 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
+	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
+	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
@@ -55,6 +57,8 @@ type Deps struct {
 	Ingest        ingestv1.IngestServiceClient
 	Usage         aggregatorv1.UsageQueryServiceClient
 	Limits        limitsv1.LimitsServiceClient
+	Analytics     analyticsv1.AnalyticsServiceClient
+	Assets        assetsv1.AssetsServiceClient
 	Billing       billingv1.BillingServiceClient
 	Sandbox       billingv1.SandboxServiceClient
 	BillingAdmin  billingv1.BillingAdminServiceClient
@@ -115,7 +119,7 @@ func (s *Server) wrap(rt Route) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		span := trace.SpanFromContext(r.Context())
 		span.SetAttributes(attribute.String("http.route", rt.Path))
-		r.Body = http.MaxBytesReader(w, r.Body, MaxBodyBytes)
+		r.Body = http.MaxBytesReader(w, r.Body, bodyLimit(rt.Method, rt.Path))
 		ctx := r.Context()
 		switch rt.Access {
 		case AccessOperator:
@@ -139,7 +143,9 @@ func (s *Server) wrap(rt Route) http.Handler {
 				return
 			}
 			ctx = context.WithValue(ctx, principalKey{}, p)
-			ctx = tenant.NewContext(ctx, p.Tenant)
+			ti := p.Tenant
+			ti.Tier = p.Tier
+			ctx = tenant.NewContext(ctx, ti)
 			span.SetAttributes(attribute.String("quotify.tenant_id", p.Tenant.ID.String()),
 				attribute.String("quotify.environment", p.Tenant.Environment))
 		}
@@ -225,9 +231,18 @@ var (
 )
 
 // errTooLarge renders as 413.
-type errTooLarge struct{ limit int64 }
+type errTooLarge struct {
+	limit int64
+	// files means limit is a number of files, not bytes.
+	files bool
+}
 
-func (e errTooLarge) Error() string { return fmt.Sprintf("request body larger than %d bytes", e.limit) }
+func (e errTooLarge) Error() string {
+	if e.files {
+		return fmt.Sprintf("more than %d files in one request", e.limit)
+	}
+	return fmt.Sprintf("request body larger than %d bytes", e.limit)
+}
 
 // decode reads a JSON body into msg. An empty body leaves msg unchanged.
 func decode(r *http.Request, msg proto.Message) error {

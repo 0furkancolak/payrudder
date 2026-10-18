@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
@@ -26,6 +27,8 @@ type Store interface {
 // Handler renders invoices.
 type Handler struct {
 	Store Store
+	// Logos is the assets bucket the tenants' invoice logos live in (nil: no logos).
+	Logos Store
 
 	locks sync.Map // object key -> *sync.Mutex
 }
@@ -71,8 +74,9 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 
 	sandbox := cmd.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX
 	var logo []byte
-	if k := inv.GetLogoObjectKey(); k != "" {
-		if b, err := h.Store.Get(ctx, k); err == nil {
+	// The logo is only read from the command tenant's own prefix.
+	if k := inv.GetLogoObjectKey(); k != "" && h.Logos != nil && strings.HasPrefix(k, cmd.GetTenantId()+"/assets/") {
+		if b, err := h.Logos.Get(ctx, k); err == nil {
 			logo = b
 		} else if !errors.Is(err, blob.ErrNotFound) {
 			return nil, err

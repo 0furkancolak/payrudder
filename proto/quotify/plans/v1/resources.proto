@@ -42,6 +42,8 @@ message Tenant {
   // 0..7 days. Changes apply from the next period.
   google.protobuf.Duration grace_period = 8;
   google.protobuf.Timestamp create_time = 9;
+  // READY invoice_logo asset (assets-svc) drawn on the tenant's invoice PDFs; empty = no logo.
+  string invoice_logo_asset_id = 10;
 }
 
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.

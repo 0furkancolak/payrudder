@@ -77,6 +77,7 @@ func Tenant(t sqlc.Tenant) *plansv1.Tenant {
 		Id: t.ID.String(), AccountId: t.AccountID.String(), Environment: domain.EnvironmentFromDB(t.Environment),
 		Name: t.Name, Tier: domain.TierFromDB(t.Tier), Currency: t.Currency, Timezone: t.Timezone,
 		GracePeriod: durationpb.New(Duration(t.GracePeriod)), CreateTime: ts(t.CreatedAt),
+		InvoiceLogoAssetId: logoID(t.InvoiceLogoAssetID),
 	}
 }
 
