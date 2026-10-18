@@ -104,3 +104,25 @@ jobs:
         run: docker compose -f deploy/compose/compose.yaml --profile obs --profile app ps -a && docker compose -f deploy/compose/compose.yaml --profile obs --profile app logs --tail 80 gateway plans-svc ingest-svc
       - if: always()
         run: make down
+
+  chaos:
+    name: correctness (100k events)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - name: make chaos N=100000
+        run: timeout 1800 make chaos N=100000
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chaos-report
+          path: tests/chaos-report.json
+          if-no-files-found: ignore
+      - if: failure()
+        run: docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app ps -a && docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app logs --tail 80 ingest-svc aggregator
+      - if: always()
+        run: make down

@@ -41,6 +41,8 @@ func startCtx(t testing.TB) context.Context {
 type Postgres struct {
 	// DSN connects as the superuser to the default database.
 	DSN string
+	// ContainerID lets chaos tests pause and unpause the database with `docker pause`.
+	ContainerID string
 }
 
 // StartPostgres starts Postgres and waits until it accepts connections.
@@ -61,7 +63,7 @@ func StartPostgres(t testing.TB) Postgres {
 	if err != nil {
 		t.Fatalf("testkit: postgres dsn: %v", err)
 	}
-	return Postgres{DSN: dsn}
+	return Postgres{DSN: dsn, ContainerID: c.GetContainerID()}
 }
 
 // Redpanda is a running Redpanda container.

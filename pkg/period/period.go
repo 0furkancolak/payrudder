@@ -23,3 +23,37 @@ func Bounds(id string, loc *time.Location) (start, end time.Time, err error) {
 	start = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, loc)
 	return start, start.AddDate(0, 1, 0), nil
 }
+
+// Cutoff returns the instant after which events of a period count as late: the end of the period plus the grace.
+func Cutoff(id string, loc *time.Location, grace time.Duration) (time.Time, error) {
+	_, end, err := Bounds(id, loc)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return end.Add(grace), nil
+}
+
+// Class says whether an event counts in its own period or as late usage.
+type Class int
+
+const (
+	// OnTime events were ingested before the cutoff and aggregate into their own period.
+	OnTime Class = iota
+	// Late events were ingested at or after the cutoff and are billed in the period of their ingestion.
+	Late
+)
+
+func (c Class) String() string {
+	if c == OnTime {
+		return "on_time"
+	}
+	return "late"
+}
+
+// Classify is deterministic in its inputs, so replays reproduce it: on time strictly before the cutoff.
+func Classify(ingestedAt, cutoff time.Time) Class {
+	if ingestedAt.Before(cutoff) {
+		return OnTime
+	}
+	return Late
+}

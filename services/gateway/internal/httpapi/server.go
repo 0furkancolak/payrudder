@@ -24,6 +24,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/idgen"
@@ -50,6 +51,7 @@ type Deps struct {
 	Plans         plansv1.PlansServiceClient
 	Admin         plansv1.AdminServiceClient
 	Ingest        ingestv1.IngestServiceClient
+	Usage         aggregatorv1.UsageQueryServiceClient
 	Auth          Authenticator
 	Limiter       Limiter
 	OperatorToken string

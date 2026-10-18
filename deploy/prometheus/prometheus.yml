@@ -23,3 +23,6 @@ scrape_configs:
       - targets: ["ingest-svc:9102"]
         labels:
           service: ingest-svc
+      - targets: ["aggregator:9103"]
+        labels:
+          service: aggregator

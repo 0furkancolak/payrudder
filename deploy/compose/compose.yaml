@@ -313,6 +313,32 @@ services:
       plans-svc: { condition: service_started }
     deploy: { resources: { limits: { memory: 128m } } }
 
+  aggregator:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: services/aggregator/Dockerfile
+    image: quotify/aggregator:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: aggregator
+      QUOTIFY_GRPC_ADDR: ":7003"
+      QUOTIFY_METRICS_ADDR: ":9103"
+      QUOTIFY_PG_APP_DSN: postgres://aggregator_app:aggregator_app_local@postgres:5432/aggregator_db
+      QUOTIFY_PG_SYSTEM_DSN: postgres://aggregator_system:aggregator_system_local@postgres:5432/aggregator_db
+      QUOTIFY_PG_MIGRATOR_DSN: postgres://aggregator_migrator:aggregator_migrator_local@postgres:5432/aggregator_db
+      QUOTIFY_MIGRATE_ON_START: "true"
+      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
+      QUOTIFY_KAFKA_BROKERS: redpanda:9092
+      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    ports: ["7003:7003", "9103:9103"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      plans-svc: { condition: service_started }
+    deploy: { resources: { limits: { memory: 192m } } }
+
   gateway:
     <<: *defaults
     profiles: [app]
@@ -327,6 +353,7 @@ services:
       QUOTIFY_METRICS_ADDR: ":9100"
       QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
       QUOTIFY_INGEST_ADDR: dns:///ingest-svc:7002
+      QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003
       QUOTIFY_REDIS_URL: redis://redis:6379/0
       QUOTIFY_OPERATOR_TOKEN: ${QUOTIFY_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
       QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
@@ -335,6 +362,7 @@ services:
     depends_on:
       plans-svc: { condition: service_started }
       ingest-svc: { condition: service_started }
+      aggregator: { condition: service_started }
       redis: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 128m } } }
 
