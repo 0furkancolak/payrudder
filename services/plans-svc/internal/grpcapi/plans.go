@@ -105,7 +105,30 @@ func (s *Server) getCustomer(ctx context.Context, externalID string) (*plansv1.C
 	return convert.Customer(out), nil
 }
 
+func (s *Server) getCustomerByID(ctx context.Context, id string) (*plansv1.Customer, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, domain.Invalid("id", "must be a UUID")
+	}
+	var out sqlc.Customer
+	err = s.tx(ctx, func(q *sqlc.Queries) (err error) {
+		out, err = q.GetCustomerByID(ctx, uid)
+		return err
+	})
+	if err != nil {
+		return nil, convert.Err(err, "customer")
+	}
+	return convert.Customer(out), nil
+}
+
 func (s *Server) GetCustomer(ctx context.Context, req *plansv1.GetCustomerRequest) (*plansv1.GetCustomerResponse, error) {
+	if req.GetId() != "" {
+		c, err := s.getCustomerByID(ctx, req.GetId())
+		if err != nil {
+			return nil, err
+		}
+		return &plansv1.GetCustomerResponse{Customer: c}, nil
+	}
 	c, err := s.getCustomer(ctx, req.GetExternalId())
 	if err != nil {
 		return nil, err

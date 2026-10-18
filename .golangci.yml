@@ -58,7 +58,7 @@ linters:
         path-except: (^|/)(pkg/(quantity|money)|services/ingest-svc/internal/domain|services/billing-svc/internal/rating)/
       # Methods implementing generated gRPC interfaces must keep protoc's names (ResolveApiKey, CreateApiKey).
       - linters: [revive]
-        text: "var-naming: method \\w*Api\\w* should be"
+        text: "var-naming: method \\w*(Api|Url)\\w* should be"
 
 formatters:
   enable:

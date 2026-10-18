@@ -1,0 +1,8 @@
+<!doctype html>
+<html><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — this is not a real alert.</strong></p>{{end}}
+<h2>Usage alert</h2>
+<p>Hi {{index .D "customer_name"}}, you have used <strong>{{index .D "used"}}</strong> of your
+<strong>{{index .D "limit"}}</strong> {{index .D "meter_code"}} limit ({{index .D "threshold_pct"}}% reached) in period {{index .D "period"}}.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

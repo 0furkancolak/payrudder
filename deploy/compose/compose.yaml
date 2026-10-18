@@ -367,6 +367,106 @@ services:
       aggregator: { condition: service_started }
     deploy: { resources: { limits: { memory: 128m } } }
 
+  mockpsp:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: tools/mockpsp/Dockerfile
+    image: quotify/mockpsp:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: mockpsp
+      MOCKPSP_HTTP_ADDR: ":8090"
+      QUOTIFY_METRICS_ADDR: ":9109"
+      QUOTIFY_PG_APP_DSN: postgres://mockpsp_app:mockpsp_app_local@postgres:5432/mockpsp_db
+      QUOTIFY_PG_MIGRATOR_DSN: postgres://mockpsp_migrator:mockpsp_migrator_local@postgres:5432/mockpsp_db
+      QUOTIFY_MIGRATE_ON_START: "true"
+      MOCKPSP_DECLINE_RATE: ${MOCKPSP_DECLINE_RATE:-0}
+      MOCKPSP_ERROR_RATE: ${MOCKPSP_ERROR_RATE:-0}
+      MOCKPSP_TIMEOUT_RATE: ${MOCKPSP_TIMEOUT_RATE:-0}
+      MOCKPSP_LATENCY_MS: ${MOCKPSP_LATENCY_MS:-0}
+    ports: ["8090:8090"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 96m } } }
+
+  payments-worker:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: services/payments-worker/Dockerfile
+    image: quotify/payments-worker:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: payments-worker
+      QUOTIFY_METRICS_ADDR: ":9106"
+      QUOTIFY_PG_SYSTEM_DSN: postgres://payments_system:payments_system_local@postgres:5432/payments_db
+      QUOTIFY_PG_MIGRATOR_DSN: postgres://payments_migrator:payments_migrator_local@postgres:5432/payments_db
+      QUOTIFY_MIGRATE_ON_START: "true"
+      QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
+      MOCKPSP_URL: http://mockpsp:8090
+      # Live tenants use mock-psp in the local demo; sandbox tenants always do, whatever this says.
+      PAYMENTS_LIVE_PROVIDER: ${PAYMENTS_LIVE_PROVIDER:-mockpsp}
+      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      mockpsp: { condition: service_started }
+    deploy: { resources: { limits: { memory: 96m } } }
+
+  invoice-worker:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: services/invoice-worker/Dockerfile
+    image: quotify/invoice-worker:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: invoice-worker
+      QUOTIFY_METRICS_ADDR: ":9107"
+      QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: invoices
+      S3_ACCESS_KEY: quotify
+      S3_SECRET_KEY: quotify_local
+      S3_FORCE_PATH_STYLE: "true"
+      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 128m } } }
+
+  notifier:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: services/notifier/Dockerfile
+    image: quotify/notifier:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: notifier
+      QUOTIFY_METRICS_ADDR: ":9108"
+      QUOTIFY_PG_SYSTEM_DSN: postgres://notifier_system:notifier_system_local@postgres:5432/notifier_db
+      QUOTIFY_PG_MIGRATOR_DSN: postgres://notifier_migrator:notifier_migrator_local@postgres:5432/notifier_db
+      QUOTIFY_MIGRATE_ON_START: "true"
+      QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
+      QUOTIFY_KAFKA_BROKERS: redpanda:9092
+      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
+      SMTP_ADDR: mailpit:1025
+      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      mailpit: { condition: service_healthy }
+      plans-svc: { condition: service_started }
+    deploy: { resources: { limits: { memory: 96m } } }
+
   billing-svc:
     <<: *defaults
     profiles: [app]
@@ -388,10 +488,18 @@ services:
       QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003
       QUOTIFY_KAFKA_BROKERS: redpanda:9092
       QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
+      S3_ENDPOINT: http://minio:9000
+      # Presigned links are opened by clients on the host, where MinIO's S3 API is published on 9001.
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9001}
+      S3_BUCKET: invoices
+      S3_ACCESS_KEY: quotify
+      S3_SECRET_KEY: quotify_local
+      S3_FORCE_PATH_STYLE: "true"
       QUOTIFY_SCHEDULER_INTERVAL: ${QUOTIFY_SCHEDULER_INTERVAL:-1m}
       QUOTIFY_SWEEP_INTERVAL: ${QUOTIFY_SWEEP_INTERVAL:-30s}
       QUOTIFY_STEP_TIMEOUT: ${QUOTIFY_STEP_TIMEOUT:-2m}
       QUOTIFY_WATERMARK_DELAY: ${QUOTIFY_WATERMARK_DELAY:-30s}
+      QUOTIFY_DUNNING_SANDBOX: ${QUOTIFY_DUNNING_SANDBOX:-1m,3m,7m}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
     ports: ["7005:7005", "9105:9105"]
     depends_on:
@@ -401,6 +509,7 @@ services:
       plans-svc: { condition: service_started }
       ingest-svc: { condition: service_started }
       aggregator: { condition: service_started }
+      minio: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 192m } } }
 
   gateway:

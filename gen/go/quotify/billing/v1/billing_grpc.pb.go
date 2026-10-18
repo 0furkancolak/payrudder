@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	BillingService_GetInvoice_FullMethodName   = "/quotify.billing.v1.BillingService/GetInvoice"
-	BillingService_ListInvoices_FullMethodName = "/quotify.billing.v1.BillingService/ListInvoices"
+	BillingService_GetInvoice_FullMethodName       = "/quotify.billing.v1.BillingService/GetInvoice"
+	BillingService_ListInvoices_FullMethodName     = "/quotify.billing.v1.BillingService/ListInvoices"
+	BillingService_GetInvoicePdfUrl_FullMethodName = "/quotify.billing.v1.BillingService/GetInvoicePdfUrl"
 )
 
 // BillingServiceClient is the client API for BillingService service.
@@ -31,6 +32,8 @@ const (
 type BillingServiceClient interface {
 	GetInvoice(ctx context.Context, in *GetInvoiceRequest, opts ...grpc.CallOption) (*GetInvoiceResponse, error)
 	ListInvoices(ctx context.Context, in *ListInvoicesRequest, opts ...grpc.CallOption) (*ListInvoicesResponse, error)
+	// GetInvoicePdfUrl returns a presigned link to the invoice PDF (valid for 5 minutes).
+	GetInvoicePdfUrl(ctx context.Context, in *GetInvoicePdfUrlRequest, opts ...grpc.CallOption) (*GetInvoicePdfUrlResponse, error)
 }
 
 type billingServiceClient struct {
@@ -61,6 +64,16 @@ func (c *billingServiceClient) ListInvoices(ctx context.Context, in *ListInvoice
 	return out, nil
 }
 
+func (c *billingServiceClient) GetInvoicePdfUrl(ctx context.Context, in *GetInvoicePdfUrlRequest, opts ...grpc.CallOption) (*GetInvoicePdfUrlResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetInvoicePdfUrlResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetInvoicePdfUrl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BillingServiceServer is the server API for BillingService service.
 // All implementations must embed UnimplementedBillingServiceServer
 // for forward compatibility.
@@ -69,6 +82,8 @@ func (c *billingServiceClient) ListInvoices(ctx context.Context, in *ListInvoice
 type BillingServiceServer interface {
 	GetInvoice(context.Context, *GetInvoiceRequest) (*GetInvoiceResponse, error)
 	ListInvoices(context.Context, *ListInvoicesRequest) (*ListInvoicesResponse, error)
+	// GetInvoicePdfUrl returns a presigned link to the invoice PDF (valid for 5 minutes).
+	GetInvoicePdfUrl(context.Context, *GetInvoicePdfUrlRequest) (*GetInvoicePdfUrlResponse, error)
 	mustEmbedUnimplementedBillingServiceServer()
 }
 
@@ -84,6 +99,9 @@ func (UnimplementedBillingServiceServer) GetInvoice(context.Context, *GetInvoice
 }
 func (UnimplementedBillingServiceServer) ListInvoices(context.Context, *ListInvoicesRequest) (*ListInvoicesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListInvoices not implemented")
+}
+func (UnimplementedBillingServiceServer) GetInvoicePdfUrl(context.Context, *GetInvoicePdfUrlRequest) (*GetInvoicePdfUrlResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetInvoicePdfUrl not implemented")
 }
 func (UnimplementedBillingServiceServer) mustEmbedUnimplementedBillingServiceServer() {}
 func (UnimplementedBillingServiceServer) testEmbeddedByValue()                        {}
@@ -142,6 +160,24 @@ func _BillingService_ListInvoices_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_GetInvoicePdfUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInvoicePdfUrlRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetInvoicePdfUrl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetInvoicePdfUrl_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetInvoicePdfUrl(ctx, req.(*GetInvoicePdfUrlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BillingService_ServiceDesc is the grpc.ServiceDesc for BillingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +192,10 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListInvoices",
 			Handler:    _BillingService_ListInvoices_Handler,
+		},
+		{
+			MethodName: "GetInvoicePdfUrl",
+			Handler:    _BillingService_GetInvoicePdfUrl_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

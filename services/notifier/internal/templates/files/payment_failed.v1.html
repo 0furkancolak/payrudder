@@ -1,0 +1,9 @@
+<!doctype html>
+<html><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — this is not a real invoice.</strong></p>{{end}}
+<h2>We could not collect your payment</h2>
+<p>Hi {{index .D "customer_name"}}, the payment of <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> for invoice
+<strong>{{index .D "invoice_number"}}</strong> (period {{index .D "period"}}) did not go through after several attempts.
+Please update your payment method.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

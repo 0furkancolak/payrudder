@@ -4,9 +4,11 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 )
@@ -30,6 +32,13 @@ func (fakeBilling) GetInvoice(_ context.Context, req *billingv1.GetInvoiceReques
 	}
 	return &billingv1.GetInvoiceResponse{Invoice: &billingv1.Invoice{Id: req.GetInvoiceId(), Number: "INV-2026-000001",
 		Lines: []*billingv1.InvoiceLine{{LineNo: 1, Kind: "BASE_FEE", AmountMinor: 1000, Description: "Base fee"}}}}, nil
+}
+
+func (fakeBilling) GetInvoicePdfUrl(_ context.Context, req *billingv1.GetInvoicePdfUrlRequest) (*billingv1.GetInvoicePdfUrlResponse, error) {
+	if req.GetInvoiceId() == "norender" {
+		return nil, status.Error(codes.FailedPrecondition, "the invoice PDF is not rendered yet")
+	}
+	return &billingv1.GetInvoicePdfUrlResponse{Url: "http://minio.local/invoices/x.pdf?sig=1", ExpireTime: timestamppb.New(time.Date(2026, 11, 1, 0, 5, 0, 0, time.UTC))}, nil
 }
 
 func (fakeBilling) ClosePeriodNow(_ context.Context, req *billingv1.ClosePeriodNowRequest) (*billingv1.ClosePeriodNowResponse, error) {
@@ -71,6 +80,17 @@ func TestInvoices(t *testing.T) {
 	}
 	if resp, _ := do(t, ts, "GET", "/v1/invoices/missing", "live-key", ""); resp.StatusCode != 404 {
 		t.Fatalf("missing: %d", resp.StatusCode)
+	}
+}
+
+func TestInvoicePDF(t *testing.T) {
+	ts, _ := newTestServer(t)
+	resp, m := do(t, ts, "GET", "/v1/invoices/inv-1/pdf", "live-key", "")
+	if resp.StatusCode != 200 || m["url"] == "" || m["expires_at"] != "2026-11-01T00:05:00Z" {
+		t.Fatalf("pdf: %d %v", resp.StatusCode, m)
+	}
+	if resp, m := do(t, ts, "GET", "/v1/invoices/norender/pdf", "live-key", ""); resp.StatusCode != 409 || errCode(m) != "FAILED_PRECONDITION" {
+		t.Fatalf("not rendered: %d %v", resp.StatusCode, m)
 	}
 }
 

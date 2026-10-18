@@ -110,8 +110,10 @@ func consumeOnce(ctx context.Context, url, queue string, prefetch int, h Handler
 func settle(ctx context.Context, d amqp.Delivery, queue string, h Handler, retryPub *Publisher, log *slog.Logger) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error("handler panic, dead-lettering the delivery", "queue", queue, "panic", r)
-			_ = d.Nack(false, false)
+			// Requeue rather than dead-letter: the quorum queue's delivery limit (5) dead-letters a command that keeps
+			// crashing its handler, which is how a crash loop ends.
+			log.Error("handler panic, requeueing the delivery", "queue", queue, "panic", r)
+			_ = d.Nack(false, true)
 		}
 	}()
 	switch h(ctx, d) {
