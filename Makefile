@@ -4,7 +4,7 @@ SHELL := bash
 
 # Go modules in the workspace (go.work). tools/ is deliberately outside the workspace: its large dependency
 # graph (golangci-lint, buf, sqlc) must not influence the versions selected for services.
-MODULES := pkg gen/go services/plans-svc services/gateway tests tools/quotifyctl
+MODULES := pkg gen/go services/plans-svc services/ingest-svc services/gateway tests tools/quotifyctl
 BIN     := $(CURDIR)/bin
 COMPOSE := docker compose -f deploy/compose/compose.yaml $(if $(wildcard .env),--env-file .env)
 export GOPRIVATE := github.com/0furkancolak/*
@@ -54,15 +54,20 @@ seed: ## Seed a demo account: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GR
 	@test -n "$(CURRENCY)" -a -n "$(TIMEZONE)" -a -n "$(GRACE)" || { echo "usage: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h"; exit 2; }
 	cd tools/quotifyctl && go run . seed --operator-token "$(OPERATOR_TOKEN)" --currency "$(CURRENCY)" --timezone "$(TIMEZONE)" --grace "$(GRACE)"
 
+.PHONY: topics
+topics: ## Create the Kafka topics (idempotent; needs redpanda running)
+	$(COMPOSE) exec -T redpanda sh -s < deploy/compose/redpanda/topics.sh
+
 .PHONY: up-infra
 up-infra: ## Start infrastructure only (run services from your IDE)
 	$(COMPOSE) up -d --wait
 	$(COMPOSE) run --rm minio-init
+	$(MAKE) topics
 
 .PHONY: up
 up: ## Start infrastructure + observability + Quotify services
+	$(MAKE) up-infra
 	$(COMPOSE) --profile obs --profile app up -d --build --wait
-	$(COMPOSE) run --rm minio-init
 
 .PHONY: down
 down: ## Stop every profile (keeps volumes)

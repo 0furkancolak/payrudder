@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
+	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/grpcx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
@@ -50,9 +52,18 @@ func (fakeAuth) Authenticate(_ context.Context, key string) (auth.Principal, err
 	}
 }
 
-type fakeLimiter struct{}
+type fakeLimiter struct {
+	mu    sync.Mutex
+	costs map[ratelimit.Class][]int
+}
 
-func (fakeLimiter) Allow(_ context.Context, _, tier string, _ ratelimit.Class, _ int) (ratelimit.Decision, error) {
+func (f *fakeLimiter) Allow(_ context.Context, _, tier string, class ratelimit.Class, cost int) (ratelimit.Decision, error) {
+	f.mu.Lock()
+	if f.costs == nil {
+		f.costs = map[ratelimit.Class][]int{}
+	}
+	f.costs[class] = append(f.costs[class], cost)
+	f.mu.Unlock()
 	if tier == "limited" {
 		return ratelimit.Decision{Allowed: false, RetryAfter: 1500 * time.Millisecond}, nil
 	}
@@ -94,10 +105,19 @@ func (f *fakePlans) CreateAccount(ctx context.Context, req *plansv1.CreateAccoun
 
 func newTestServer(t *testing.T) (*httptest.Server, *fakePlans) {
 	t.Helper()
+	ts, f, _, _ := newFullTestServer(t)
+	return ts, f
+}
+
+func newFullTestServer(t *testing.T) (*httptest.Server, *fakePlans, *fakeIngest, *fakeLimiter) {
+	t.Helper()
 	f := &fakePlans{}
+	ing := &fakeIngest{}
+	lim := &fakeLimiter{}
 	gs, _ := grpcx.NewServer(grpcx.ServerOptions{Extra: []grpc.ServerOption{grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor())}})
 	plansv1.RegisterPlansServiceServer(gs, f)
 	plansv1.RegisterAdminServiceServer(gs, f)
+	ingestv1.RegisterIngestServiceServer(gs, ing)
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = gs.Serve(lis) }()
 	t.Cleanup(gs.Stop)
@@ -108,11 +128,12 @@ func newTestServer(t *testing.T) (*httptest.Server, *fakePlans) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cc.Close() })
-	api := New(Deps{Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc), Auth: fakeAuth{},
-		Limiter: fakeLimiter{}, OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	api := New(Deps{Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc),
+		Ingest: ingestv1.NewIngestServiceClient(cc), Auth: fakeAuth{},
+		Limiter: lim, OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	ts := httptest.NewServer(api)
 	t.Cleanup(ts.Close)
-	return ts, f
+	return ts, f, ing, lim
 }
 
 func do(t *testing.T, ts *httptest.Server, method, path, key, body string) (*http.Response, map[string]any) {

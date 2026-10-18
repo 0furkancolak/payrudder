@@ -19,6 +19,31 @@ security:
   - apiKey: []
 
 paths:
+  /v1/events:
+    post:
+      operationId: ingestEvents
+      summary: Ingest usage events (1..500 per request, at most 1 MiB)
+      description: |
+        Answers `202` with one result per event, in request order, for any structurally valid batch. A bad event does not
+        fail the batch: it comes back `rejected` with an `error_code`. Live keys must send an `idempotency_key` per event;
+        a retry with the same key and payload returns `duplicate` with the original `event_id`. `quantity` may be a JSON
+        string or number and is parsed as an exact decimal (never as a float).
+        The `ingest` rate limit is charged per event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IngestEventsRequest" }
+      responses:
+        "202":
+          description: Accepted for processing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestEventsResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/customers:
     post:
       operationId: createCustomer
@@ -297,6 +322,44 @@ components:
       description: Error envelope
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    IngestEventsRequest:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: "#/components/schemas/IncomingEvent" }
+    IncomingEvent:
+      type: object
+      required: [customer_external_id, meter_code, quantity, event_time]
+      properties:
+        idempotency_key: { type: string, pattern: "^[A-Za-z0-9_.:-]{1,128}$", description: Required for live keys. Optional in sandbox (then no dedup). }
+        customer_external_id: { type: string }
+        meter_code: { type: string }
+        quantity:
+          description: Non-negative decimal with at most the meter's quantity_scale decimal places. A string or a JSON number.
+          oneOf: [{ type: string, examples: ["1500", "1.250"] }, { type: number }]
+        event_time: { type: string, format: date-time, description: Not older than 35 days, not more than 5 minutes ahead. }
+        properties: { type: object, additionalProperties: { type: string }, description: At most 32 entries and 4 KiB in total. }
+    IngestEventsResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          description: One per request event, same order.
+          items: { $ref: "#/components/schemas/EventResult" }
+    EventResult:
+      type: object
+      properties:
+        status: { type: string, enum: [accepted, duplicate, rejected] }
+        event_id: { type: string, description: Set for accepted and duplicate (the original id). }
+        error_code:
+          type: string
+          enum: [UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME, INVALID_QUANTITY,
+                 INVALID_QUANTITY_PRECISION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES]
+        error_message: { type: string }
     Error:
       type: object
       required: [error]

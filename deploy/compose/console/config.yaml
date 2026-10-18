@@ -1,0 +1,14 @@
+# Redpanda Console: decode usage events as protobuf. The proto sources are mounted from the repository, so the
+# decoder always matches the code (there's no schema registry in v1, see docs/04-messaging.md).
+kafka:
+  brokers: ["redpanda:9092"]
+serde:
+  protobuf:
+    enabled: true
+    fileSystem:
+      enabled: true
+      paths: ["/etc/console/proto"]
+      refreshInterval: 5m
+    mappings:
+      - topicName: usage.events.v1
+        valueProtoType: quotify.events.v1.UsageEvent

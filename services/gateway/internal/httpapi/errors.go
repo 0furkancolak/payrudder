@@ -63,6 +63,12 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 			Code: "REQUEST_TOO_LARGE", Message: tooLarge.Error(), RequestID: requestID(r.Context())}})
 		return
 	}
+	var tooMany errTooManyEvents
+	if errors.As(err, &tooMany) {
+		writeJSONValue(w, http.StatusRequestEntityTooLarge, ErrorBody{Error: ErrorInfo{
+			Code: "REQUEST_TOO_LARGE", Message: tooMany.Error(), RequestID: requestID(r.Context())}})
+		return
+	}
 	st := status.Convert(err)
 	body := ErrorBody{Error: ErrorInfo{Code: codeName(st.Code()), Message: st.Message(), RequestID: requestID(r.Context())}}
 	switch st.Code() {

@@ -193,8 +193,11 @@ A key is then unique within its month's partition, and the insert path checks th
 "≥ 1 month, < 2 months", which comfortably covers the 35-day max lateness. Covered by a unit + integration test.
 (Alternative: unpartitioned table plus a batched `DELETE` job. Simpler, but `DELETE` bloat at volume. Decided: partitions. The Phase 02 benchmark of both is recorded as an ADR addendum.)
 
-RLS: `idempotency_keys` RLS'd for `ingest_app`. `outbox` accessed only by `ingest_system` (relay), with insert granted to `ingest_app`
-through a `SECURITY DEFINER` function `enqueue_outbox(...)` so handlers can't read other tenants' rows.
+RLS: `idempotency_keys` RLS'd for `ingest_app` (SELECT, INSERT only). `outbox` accessed only by `ingest_system` (relay: SELECT, DELETE and
+`UPDATE (id)`, which `FOR UPDATE SKIP LOCKED` needs), with insert for `ingest_app` only through the `SECURITY DEFINER` function
+`enqueue_outbox(tenant, topic, partition_key, payloads[], headers[], ingested_at)`, which rejects any tenant but the caller's so handlers can't
+read or forge other tenants' rows. `maintain_idempotency_partitions(now, ahead, retention)` creates and drops the monthly partitions
+and is executable by `ingest_system` only.
 
 ---
 

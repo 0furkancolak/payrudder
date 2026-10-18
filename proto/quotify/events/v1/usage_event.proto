@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package quotify.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// UsageEvent is one accepted usage event on usage.events.v1 (key: tenant_id).
+//
+// Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
+// The golden fixture proto/testdata/UsageEvent/v0.1.0.bin guards the wire format.
+message UsageEvent {
+  // 7 was an int64 quantity in a pre-v1 draft; never reuse it. 15..19 are held for future fields.
+  reserved 7, 15 to 19;
+
+  // ULID assigned by ingest-svc. Consumers dedup on (tenant_id, event_id).
+  string event_id = 1;
+  string tenant_id = 2;
+  // The client's key, or "auto:{event_id}" for sandbox events sent without one.
+  string idempotency_key = 3;
+  // Internal customer id (plans-svc), resolved at ingest.
+  string customer_id = 4;
+  string customer_external_id = 5;
+  string meter_code = 6;
+  // When the usage happened, as reported by the client.
+  google.protobuf.Timestamp event_time = 8;
+  // When ingest-svc committed the event (database clock). Late-event classification uses this, not Kafka order.
+  google.protobuf.Timestamp ingested_at = 9;
+  map<string, string> properties = 10;
+  // quantity = quantity_units / 10^quantity_scale (ADR 0010). Never a float.
+  int64 quantity_units = 11;
+  // 0..6, copied from the meter.
+  uint32 quantity_scale = 12;
+  // Billing period of event_time in the tenant's time zone, "YYYY-MM". Stable under replay.
+  string period_id = 13;
+  // Version of the meter the event was validated against.
+  int32 meter_version = 14;
+}
