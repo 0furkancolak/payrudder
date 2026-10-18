@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
+	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
@@ -38,6 +39,7 @@ type Config struct {
 	IngestAddr     string   `env:"QUOTIFY_INGEST_ADDR" envDefault:"dns:///localhost:7002"`
 	AggregatorAddr string   `env:"QUOTIFY_AGGREGATOR_ADDR" envDefault:"dns:///localhost:7003"`
 	LimitsAddr     string   `env:"QUOTIFY_LIMITS_ADDR" envDefault:"dns:///localhost:7004"`
+	BillingAddr    string   `env:"QUOTIFY_BILLING_ADDR" envDefault:"dns:///localhost:7005"`
 	RedisURL       string   `env:"QUOTIFY_REDIS_URL" envDefault:"redis://localhost:6379/0"`
 	OperatorToken  string   `env:"QUOTIFY_OPERATOR_TOKEN,required"`
 	Replicas       int      `env:"QUOTIFY_GATEWAY_REPLICAS" envDefault:"1"`
@@ -126,6 +128,13 @@ func run() error {
 	}
 	defer func() { _ = limitsConn.Close() }()
 
+	billingConn, err := grpcx.NewClient(cfg.BillingAddr,
+		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	if err != nil {
+		return fmt.Errorf("billing-svc client: %w", err)
+	}
+	defer func() { _ = billingConn.Close() }()
+
 	authn, err := auth.New(auth.NewRedisCache(rdb), auth.AdminResolver{Client: adminClient}, cfg.AllowedEnvs, log)
 	if err != nil {
 		return err
@@ -137,7 +146,9 @@ func run() error {
 	api := httpapi.New(httpapi.Deps{
 		Plans: plansv1.NewPlansServiceClient(plansConn), Admin: adminClient, Ingest: ingestv1.NewIngestServiceClient(ingestConn),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(aggConn), Limits: limitsv1.NewLimitsServiceClient(limitsConn),
-		Auth: authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
+		Billing: billingv1.NewBillingServiceClient(billingConn), Sandbox: billingv1.NewSandboxServiceClient(billingConn),
+		BillingAdmin: billingv1.NewBillingAdminServiceClient(billingConn),
+		Auth:         authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
 	})
 
 	hh := health.New(reg, 2*time.Second)

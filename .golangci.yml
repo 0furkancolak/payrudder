@@ -34,7 +34,7 @@ linters:
         - pattern: ^fmt\.Print(f|ln)?$
           msg: use slog (pkg/logx)
         # ADR 0010: no floating point in quantity, money and event-validation code. The exclusion below limits
-        # this pattern to those packages; Phase 05 adds the rating packages.
+        # this pattern to those packages (rating included).
         - pattern: ^float(32|64)$
           msg: no floating point in money and quantity code (ADR 0010)
     revive:
@@ -55,7 +55,7 @@ linters:
         linters: [gosec, errcheck, bodyclose]
       - linters: [forbidigo]
         text: "no floating point"
-        path-except: (^|/)(pkg/(quantity|money)|services/ingest-svc/internal/domain)/
+        path-except: (^|/)(pkg/(quantity|money)|services/ingest-svc/internal/domain|services/billing-svc/internal/rating)/
       # Methods implementing generated gRPC interfaces must keep protoc's names (ResolveApiKey, CreateApiKey).
       - linters: [revive]
         text: "var-naming: method \\w*Api\\w* should be"

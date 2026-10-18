@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+package quotify.commands.v1;
+
+import "google/protobuf/timestamp.proto";
+import "quotify/plans/v1/resources.proto";
+
+// CommandEnvelope is a command from billing-svc to a worker, published to the billing.commands exchange.
+// Workers dedup on command_id and never infer the environment: it is stamped from the tenant by billing-svc.
+//
+// Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
+message CommandEnvelope {
+  // uuidv5(saga_id|step|attempt).
+  string command_id = 1;
+  string saga_id = 2;
+  string tenant_id = 3;
+  // Monotonic per saga; part of the command id.
+  int32 attempt = 4;
+  google.protobuf.Timestamp issued_at = 5;
+  quotify.plans.v1.Environment environment = 6;
+  oneof command {
+    RenderInvoicePdf render_invoice_pdf = 10;
+    ChargePayment charge_payment = 11;
+    RefundPayment refund_payment = 12;
+    QueryPaymentStatus query_payment_status = 13;
+    SendNotification send_notification = 14;
+  }
+}
+
+// ReplyEnvelope is a worker's answer, published to the billing.replies exchange.
+message ReplyEnvelope {
+  string command_id = 1;
+  string saga_id = 2;
+  string tenant_id = 3;
+  // uuidv5(command_id|reply kind): the same command always yields the same reply id, so redelivered replies dedup.
+  string reply_id = 4;
+  oneof reply {
+    PdfRendered pdf_rendered = 10;
+    PdfFailed pdf_failed = 11;
+    PaymentSucceeded payment_succeeded = 12;
+    PaymentDeclined payment_declined = 13;
+    PaymentErrored payment_errored = 14;
+    PaymentRefunded payment_refunded = 15;
+    PaymentStatus payment_status = 16;
+    NotificationSent notification_sent = 17;
+  }
+}
+
+// InvoiceLine is one line of the invoice snapshot a command carries, so workers need no access to billing's database.
+message InvoiceLineSnapshot {
+  int32 line_no = 1;
+  string kind = 2;
+  string description = 3;
+  // Display quantity, an exact decimal in meter units ("1.250"); empty for a base fee.
+  string quantity = 4;
+  string unit_label = 5;
+  int64 amount_minor = 6;
+}
+
+message InvoiceSnapshot {
+  string invoice_id = 1;
+  // Bumped when the invoice is corrected; part of the PDF object key.
+  int32 version = 2;
+  string number = 3;
+  string period_id = 4;
+  string currency = 5;
+  // Minor-unit exponent of the currency (2 for USD, 0 for JPY).
+  int32 currency_exponent = 6;
+  string tenant_name = 7;
+  string customer_name = 8;
+  string customer_email = 9;
+  google.protobuf.Timestamp issued_at = 10;
+  repeated InvoiceLineSnapshot lines = 11;
+  int64 subtotal_minor = 12;
+  int64 total_minor = 13;
+  // Object key of the tenant's READY invoice_logo asset, if any.
+  string logo_object_key = 14;
+}
+
+message RenderInvoicePdf {
+  InvoiceSnapshot invoice = 1;
+}
+
+message ChargePayment {
+  string invoice_id = 1;
+  int64 amount_minor = 2;
+  string currency = 3;
+  // Opaque PSP token; in sandbox one of the pm_sandbox_* scenario tokens.
+  string payment_method = 4;
+  // 0 for the first charge, then 1..3 for dunning retries.
+  int32 dunning_attempt = 5;
+  // invoice_id:charge:dunning_attempt. Stable across retries of the same charge, so the PSP never charges twice.
+  string idempotency_key = 6;
+}
+
+message RefundPayment {
+  string invoice_id = 1;
+  int64 amount_minor = 2;
+  string currency = 3;
+  string psp_charge_id = 4;
+  string idempotency_key = 5;
+}
+
+message QueryPaymentStatus {
+  string invoice_id = 1;
+  // The idempotency key of the charge in doubt.
+  string idempotency_key = 2;
+}
+
+message SendNotification {
+  // Versioned template name, e.g. "invoice_paid.v1".
+  string template = 1;
+  string to = 2;
+  map<string, string> data = 3;
+}
+
+message PdfRendered {
+  string object_key = 1;
+  string sha256 = 2;
+  int64 size_bytes = 3;
+}
+
+message PdfFailed {
+  string reason = 1;
+}
+
+message PaymentSucceeded {
+  string psp_charge_id = 1;
+}
+
+message PaymentDeclined {
+  string decline_code = 1;
+}
+
+message PaymentErrored {
+  bool retryable = 1;
+  string code = 2;
+  string message = 3;
+}
+
+message PaymentRefunded {
+  string psp_refund_id = 1;
+}
+
+message PaymentStatus {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    // The PSP has no charge for the key.
+    STATE_NOT_FOUND = 1;
+    STATE_SUCCEEDED = 2;
+    STATE_DECLINED = 3;
+  }
+  State state = 1;
+  string psp_charge_id = 2;
+  string decline_code = 3;
+}
+
+message NotificationSent {
+  string message_id = 1;
+}

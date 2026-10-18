@@ -36,7 +36,11 @@ func (s *Server) routes() []Route {
 		// Subscriptions
 		{"POST", "/v1/subscriptions", AccessTenant, ratelimit.ClassWrite, s.createSubscription},
 		{"DELETE", "/v1/subscriptions/{id}", AccessTenant, ratelimit.ClassWrite, s.cancelSubscription},
+		// Invoices
+		{"GET", "/v1/invoices", AccessTenant, ratelimit.ClassRead, s.listInvoices},
+		{"GET", "/v1/invoices/{id}", AccessTenant, ratelimit.ClassRead, s.getInvoice},
 		// Sandbox
+		{"POST", "/v1/sandbox/close-period", AccessSandbox, ratelimit.ClassWrite, s.sandboxClosePeriod},
 		{"POST", "/v1/sandbox/customers/{external_id}/payment-scenario", AccessSandbox, ratelimit.ClassWrite, s.setPaymentScenario},
 		// Operator
 		{"POST", "/admin/v1/accounts", AccessOperator, "", s.createAccount},
@@ -44,6 +48,10 @@ func (s *Server) routes() []Route {
 		{"PATCH", "/admin/v1/tenants/{id}", AccessOperator, "", s.updateTenant},
 		{"POST", "/admin/v1/tenants/{id}/api-keys", AccessOperator, "", s.createAPIKey},
 		{"DELETE", "/admin/v1/api-keys/{id}", AccessOperator, "", s.revokeAPIKey},
+		{"POST", "/admin/v1/billing/close-period", AccessOperator, "", s.adminClosePeriod},
+		{"GET", "/admin/v1/tenants/{tenant_id}/billing-runs/{period}", AccessOperator, "", s.adminGetBillingRun},
+		{"POST", "/admin/v1/invoices/{id}/retry", AccessOperator, "", s.adminRetryInvoice},
+		{"POST", "/admin/v1/invoices/{id}/void", AccessOperator, "", s.adminVoidInvoice},
 	}
 }
 

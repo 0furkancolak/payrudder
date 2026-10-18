@@ -29,3 +29,6 @@ scrape_configs:
       - targets: ["limits-svc:9104"]
         labels:
           service: limits-svc
+      - targets: ["billing-svc:9105"]
+        labels:
+          service: billing-svc

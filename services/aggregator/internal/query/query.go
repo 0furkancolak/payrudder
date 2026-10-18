@@ -108,7 +108,9 @@ func (s *Service) GetCustomerUsage(ctx context.Context, req *aggregatorv1.GetCus
 			return err
 		}
 		for _, r := range rows {
-			resp.Usage = append(resp.Usage, usageRow(r.CustomerID, r.MeterCode, r.PeriodID, r.Quantity, r.QuantityScale, r.EventCount))
+			u := usageRow(r.CustomerID, r.MeterCode, r.PeriodID, r.Quantity, r.QuantityScale, r.EventCount)
+			u.Generation = gen
+			resp.Usage = append(resp.Usage, u)
 		}
 		return nil
 	})
@@ -216,7 +218,9 @@ func (s *Service) StreamPeriodUsage(req *aggregatorv1.StreamPeriodUsageRequest, 
 			return err
 		}
 		for _, r := range rows {
-			out = append(out, usageRow(r.CustomerID, r.MeterCode, r.PeriodID, r.Quantity, r.QuantityScale, r.EventCount))
+			u := usageRow(r.CustomerID, r.MeterCode, r.PeriodID, r.Quantity, r.QuantityScale, r.EventCount)
+			u.Generation = gen
+			out = append(out, u)
 		}
 		return nil
 	})
@@ -256,6 +260,7 @@ func (s *Service) StreamLateUsage(req *aggregatorv1.StreamLateUsageRequest, stre
 			out = append(out, &aggregatorv1.LateUsage{
 				CustomerId: r.CustomerID.String(), MeterCode: r.MeterCode, OriginPeriodId: r.OriginPeriodID, BilledPeriodId: r.BilledPeriodID,
 				Quantity: formatScaled(r.Quantity, int(r.QuantityScale)), QuantityScale: uint32(r.QuantityScale), EventCount: r.EventCount, //nolint:gosec // 0..6
+				Generation: gen,
 			})
 		}
 		return nil

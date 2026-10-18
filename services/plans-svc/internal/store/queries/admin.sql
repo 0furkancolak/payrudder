@@ -38,3 +38,6 @@ RETURNING *;
 SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, t.environment, t.tier, t.timezone
 FROM api_keys k JOIN tenants t ON t.id = k.tenant_id
 WHERE k.prefix = $1;
+
+-- name: ListTenants :many
+SELECT * FROM tenants WHERE id > @after::uuid ORDER BY id LIMIT @page_size::int;

@@ -33,6 +33,8 @@ message UsageAggregate {
   string quantity = 4;
   uint32 quantity_scale = 5;
   int64 event_count = 6;
+  // Generation the row belongs to (billing pins it for the whole run).
+  int32 generation = 7;
 }
 
 // LateUsage is usage that arrived after its period's cutoff, billed in the period of its ingestion.
@@ -44,6 +46,7 @@ message LateUsage {
   string quantity = 5;
   uint32 quantity_scale = 6;
   int64 event_count = 7;
+  int32 generation = 8;
 }
 
 message UsageKey {

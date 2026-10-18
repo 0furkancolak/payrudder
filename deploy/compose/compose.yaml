@@ -367,6 +367,42 @@ services:
       aggregator: { condition: service_started }
     deploy: { resources: { limits: { memory: 128m } } }
 
+  billing-svc:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: services/billing-svc/Dockerfile
+    image: quotify/billing-svc:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: billing-svc
+      QUOTIFY_GRPC_ADDR: ":7005"
+      QUOTIFY_METRICS_ADDR: ":9105"
+      QUOTIFY_PG_APP_DSN: postgres://billing_app:billing_app_local@postgres:5432/billing_db
+      QUOTIFY_PG_SYSTEM_DSN: postgres://billing_system:billing_system_local@postgres:5432/billing_db
+      QUOTIFY_PG_MIGRATOR_DSN: postgres://billing_migrator:billing_migrator_local@postgres:5432/billing_db
+      QUOTIFY_MIGRATE_ON_START: "true"
+      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
+      QUOTIFY_INGEST_ADDR: dns:///ingest-svc:7002
+      QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003
+      QUOTIFY_KAFKA_BROKERS: redpanda:9092
+      QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
+      QUOTIFY_SCHEDULER_INTERVAL: ${QUOTIFY_SCHEDULER_INTERVAL:-1m}
+      QUOTIFY_SWEEP_INTERVAL: ${QUOTIFY_SWEEP_INTERVAL:-30s}
+      QUOTIFY_STEP_TIMEOUT: ${QUOTIFY_STEP_TIMEOUT:-2m}
+      QUOTIFY_WATERMARK_DELAY: ${QUOTIFY_WATERMARK_DELAY:-30s}
+      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    ports: ["7005:7005", "9105:9105"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      plans-svc: { condition: service_started }
+      ingest-svc: { condition: service_started }
+      aggregator: { condition: service_started }
+    deploy: { resources: { limits: { memory: 192m } } }
+
   gateway:
     <<: *defaults
     profiles: [app]
@@ -383,6 +419,7 @@ services:
       QUOTIFY_INGEST_ADDR: dns:///ingest-svc:7002
       QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003
       QUOTIFY_LIMITS_ADDR: dns:///limits-svc:7004
+      QUOTIFY_BILLING_ADDR: dns:///billing-svc:7005
       QUOTIFY_REDIS_URL: redis://redis:6379/0
       QUOTIFY_OPERATOR_TOKEN: ${QUOTIFY_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
       QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
@@ -393,6 +430,7 @@ services:
       ingest-svc: { condition: service_started }
       aggregator: { condition: service_started }
       limits-svc: { condition: service_started }
+      billing-svc: { condition: service_started }
       redis: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 128m } } }
 

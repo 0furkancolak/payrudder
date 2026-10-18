@@ -21,3 +21,9 @@ services:
     image: quotify/limits-svc:chaos
     environment:
       LIMITS_CRASH_AFTER_LUA: "${LIMITS_CRASH_AFTER_LUA:-0}"
+  billing-svc:
+    build:
+      args: { GO_TAGS: chaos }
+    image: quotify/billing-svc:chaos
+    environment:
+      BILLING_RELAY_CRASH_AFTER_PUBLISH: "${BILLING_RELAY_CRASH_AFTER_PUBLISH:-0}"

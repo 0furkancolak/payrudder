@@ -4,7 +4,7 @@ SHELL := bash
 
 # Go modules in the workspace (go.work). tools/ is deliberately outside the workspace: its large dependency
 # graph (golangci-lint, buf, sqlc) must not influence the versions selected for services.
-MODULES := pkg gen/go services/plans-svc services/ingest-svc services/aggregator services/limits-svc services/gateway tests tools/quotifyctl
+MODULES := pkg gen/go services/plans-svc services/ingest-svc services/aggregator services/limits-svc services/billing-svc services/gateway tests tools/quotifyctl
 BIN     := $(CURDIR)/bin
 COMPOSE := docker compose -f deploy/compose/compose.yaml $(if $(wildcard .env),--env-file .env)
 export GOPRIVATE := github.com/0furkancolak/*

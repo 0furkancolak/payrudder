@@ -32,6 +32,8 @@ type UsageAggregate struct {
 	Quantity      string `protobuf:"bytes,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	QuantityScale uint32 `protobuf:"varint,5,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
 	EventCount    int64  `protobuf:"varint,6,opt,name=event_count,json=eventCount,proto3" json:"event_count,omitempty"`
+	// Generation the row belongs to (billing pins it for the whole run).
+	Generation    int32 `protobuf:"varint,7,opt,name=generation,proto3" json:"generation,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -108,6 +110,13 @@ func (x *UsageAggregate) GetEventCount() int64 {
 	return 0
 }
 
+func (x *UsageAggregate) GetGeneration() int32 {
+	if x != nil {
+		return x.Generation
+	}
+	return 0
+}
+
 // LateUsage is usage that arrived after its period's cutoff, billed in the period of its ingestion.
 type LateUsage struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -118,6 +127,7 @@ type LateUsage struct {
 	Quantity       string                 `protobuf:"bytes,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	QuantityScale  uint32                 `protobuf:"varint,6,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
 	EventCount     int64                  `protobuf:"varint,7,opt,name=event_count,json=eventCount,proto3" json:"event_count,omitempty"`
+	Generation     int32                  `protobuf:"varint,8,opt,name=generation,proto3" json:"generation,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -197,6 +207,13 @@ func (x *LateUsage) GetQuantityScale() uint32 {
 func (x *LateUsage) GetEventCount() int64 {
 	if x != nil {
 		return x.EventCount
+	}
+	return 0
+}
+
+func (x *LateUsage) GetGeneration() int32 {
+	if x != nil {
+		return x.Generation
 	}
 	return 0
 }
@@ -944,7 +961,7 @@ var File_quotify_aggregator_v1_aggregator_proto protoreflect.FileDescriptor
 
 const file_quotify_aggregator_v1_aggregator_proto_rawDesc = "" +
 	"\n" +
-	"&quotify/aggregator/v1/aggregator.proto\x12\x15quotify.aggregator.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd1\x01\n" +
+	"&quotify/aggregator/v1/aggregator.proto\x12\x15quotify.aggregator.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf1\x01\n" +
 	"\x0eUsageAggregate\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1d\n" +
@@ -954,7 +971,10 @@ const file_quotify_aggregator_v1_aggregator_proto_rawDesc = "" +
 	"\bquantity\x18\x04 \x01(\tR\bquantity\x12%\n" +
 	"\x0equantity_scale\x18\x05 \x01(\rR\rquantityScale\x12\x1f\n" +
 	"\vevent_count\x18\x06 \x01(\x03R\n" +
-	"eventCount\"\x83\x02\n" +
+	"eventCount\x12\x1e\n" +
+	"\n" +
+	"generation\x18\a \x01(\x05R\n" +
+	"generation\"\xa3\x02\n" +
 	"\tLateUsage\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1d\n" +
@@ -965,7 +985,10 @@ const file_quotify_aggregator_v1_aggregator_proto_rawDesc = "" +
 	"\bquantity\x18\x05 \x01(\tR\bquantity\x12%\n" +
 	"\x0equantity_scale\x18\x06 \x01(\rR\rquantityScale\x12\x1f\n" +
 	"\vevent_count\x18\a \x01(\x03R\n" +
-	"eventCount\"g\n" +
+	"eventCount\x12\x1e\n" +
+	"\n" +
+	"generation\x18\b \x01(\x05R\n" +
+	"generation\"g\n" +
 	"\bUsageKey\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1d\n" +

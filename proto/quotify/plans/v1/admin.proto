@@ -11,6 +11,8 @@ service AdminService {
   // CreateAccount creates the account and its sandbox + live tenants with the chosen settings.
   rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
   rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
+  // ListTenants pages through every tenant ordered by id; billing-svc's scheduler walks it.
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
   // UpdateTenantSettings changes grace period and tier. Currency and time zone are immutable.
   rpc UpdateTenantSettings(UpdateTenantSettingsRequest) returns (UpdateTenantSettingsResponse);
   // CreateApiKey returns the plaintext key once. The key environment must match the tenant's.
@@ -42,6 +44,17 @@ message GetTenantRequest {
 
 message GetTenantResponse {
   Tenant tenant = 1;
+}
+
+message ListTenantsRequest {
+  // 1..1000, default 500.
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListTenantsResponse {
+  repeated Tenant tenants = 1;
+  string next_page_token = 2;
 }
 
 message UpdateTenantSettingsRequest {
