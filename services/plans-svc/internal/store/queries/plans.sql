@@ -124,3 +124,11 @@ WHERE s.tenant_id = app_tenant_id()
   AND s.id > @after::uuid
 ORDER BY s.id
 LIMIT 500;
+
+-- name: InsertOutbox :exec
+-- A NULL payload is a Kafka tombstone.
+INSERT INTO outbox (tenant_id, topic, partition_key, payload)
+VALUES (app_tenant_id(), @topic, @partition_key, @payload);
+
+-- name: NotifyOutbox :exec
+SELECT pg_notify('outbox_new', '');

@@ -104,3 +104,9 @@ None.
 Low QPS except `ResolveCustomer` / `GetMeter`, which callers cache (LRU 10k entries, 5 min TTL,
 and invalidation is unnecessary because meters are immutable and customers are only ever added).
 Two replicas for availability.
+
+## As built: entitlement outbox (Phase 04)
+
+`CreateSubscription` and `CancelSubscription` insert the `plans.entitlements.v1` rows in their own transaction
+(`outbox.ingested_at` replaced `created_at`, migration 00002) and `NOTIFY outbox_new`. The relay (`pkg/outbox`, run with the
+system pool) starts when `QUOTIFY_KAFKA_BROKERS` is set.

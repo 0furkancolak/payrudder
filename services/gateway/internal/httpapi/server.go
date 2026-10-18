@@ -26,6 +26,7 @@ import (
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
+	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/tenant"
@@ -52,6 +53,7 @@ type Deps struct {
 	Admin         plansv1.AdminServiceClient
 	Ingest        ingestv1.IngestServiceClient
 	Usage         aggregatorv1.UsageQueryServiceClient
+	Limits        limitsv1.LimitsServiceClient
 	Auth          Authenticator
 	Limiter       Limiter
 	OperatorToken string

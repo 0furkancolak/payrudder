@@ -58,7 +58,7 @@ type Outbox struct {
 	PartitionKey string
 	Payload      []byte
 	Headers      json.RawMessage
-	CreatedAt    time.Time
+	IngestedAt   time.Time
 }
 
 type Plan struct {

@@ -23,8 +23,10 @@ import (
 	"github.com/0furkancolak/quotify/pkg/config"
 	"github.com/0furkancolak/quotify/pkg/grpcx"
 	"github.com/0furkancolak/quotify/pkg/health"
+	"github.com/0furkancolak/quotify/pkg/kafkax"
 	"github.com/0furkancolak/quotify/pkg/logx"
 	"github.com/0furkancolak/quotify/pkg/otelx"
+	"github.com/0furkancolak/quotify/pkg/outbox"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
@@ -34,12 +36,16 @@ import (
 
 type Config struct {
 	config.Base
-	GRPCAddr       string   `env:"QUOTIFY_GRPC_ADDR" envDefault:":7001"`
-	PGAppDSN       string   `env:"QUOTIFY_PG_APP_DSN,required"`
-	PGSystemDSN    string   `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string   `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool     `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
-	RedisURL       string   `env:"QUOTIFY_REDIS_URL"`
+	GRPCAddr       string `env:"QUOTIFY_GRPC_ADDR" envDefault:":7001"`
+	PGAppDSN       string `env:"QUOTIFY_PG_APP_DSN,required"`
+	PGSystemDSN    string `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
+	PGMigratorDSN  string `env:"QUOTIFY_PG_MIGRATOR_DSN"`
+	MigrateOnStart bool   `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
+	RedisURL       string `env:"QUOTIFY_REDIS_URL"`
+	// KafkaBrokers enables the outbox relay to plans.entitlements.v1. Without it, rows wait in the outbox.
+	KafkaBrokers   []string `env:"QUOTIFY_KAFKA_BROKERS" envSeparator:","`
+	RelayWorkers   int      `env:"QUOTIFY_RELAY_WORKERS" envDefault:"1"`
+	RelayBatchSize int      `env:"QUOTIFY_RELAY_BATCH_SIZE" envDefault:"200"`
 	AllowedEnvs    []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:"," envDefault:"sandbox,live"`
 }
 
@@ -131,6 +137,22 @@ func run() error {
 		log.Warn("QUOTIFY_REDIS_URL unset: revoked keys stay valid in the gateway cache until its TTL")
 	}
 
+	var relay *outbox.Relay
+	if len(cfg.KafkaBrokers) > 0 {
+		producer, err := kafkax.NewProducer(cfg.KafkaBrokers)
+		if err != nil {
+			return err
+		}
+		defer producer.Close()
+		hh.AddCheck("kafka", producer.Ping)
+		if relay, err = outbox.NewRelay(systemPool, outbox.KafkaSink{Client: producer},
+			outbox.Config{Workers: cfg.RelayWorkers, BatchSize: cfg.RelayBatchSize}, log); err != nil {
+			return err
+		}
+	} else {
+		log.Warn("QUOTIFY_KAFKA_BROKERS unset: entitlement changes stay in the outbox and limits-svc will not see them")
+	}
+
 	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
 		Logger: log, Reflection: cfg.Env == config.EnvLocal,
 		Extra: []grpc.ServerOption{
@@ -147,6 +169,9 @@ func run() error {
 	}
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
+	if relay != nil {
+		g.Go(func() error { return relay.Run(gctx) })
+	}
 	g.Go(func() error {
 		log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr, "environments", cfg.AllowedEnvs)
 		return srv.Serve(lis)

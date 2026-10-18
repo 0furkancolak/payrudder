@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package quotify.limits.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// LimitsService answers entitlement questions from Redis counters (eventually consistent, ADR 0006).
+// The tenant comes from gRPC metadata, never from a request body. Quotify never blocks ingest on a limit.
+service LimitsService {
+  // CheckEntitlement returns the usage of one customer on one meter against its limit.
+  rpc CheckEntitlement(CheckEntitlementRequest) returns (CheckEntitlementResponse);
+  // GetLimitStatus returns CheckEntitlement for every meter the customer has an entitlement on.
+  rpc GetLimitStatus(GetLimitStatusRequest) returns (GetLimitStatusResponse);
+  // ReconcileNow runs one reconciliation cycle against the aggregator and waits for it. Operator only.
+  rpc ReconcileNow(ReconcileNowRequest) returns (ReconcileNowResponse);
+}
+
+message CheckEntitlementRequest {
+  string customer_id = 1;
+  string meter_code = 2;
+  // "YYYY-MM"; empty = the current period in the tenant's time zone.
+  string period_id = 3;
+}
+
+message LimitStatus {
+  string customer_id = 1;
+  string meter_code = 2;
+  string period_id = 3;
+  // Exact decimals with quantity_scale fractional digits.
+  string used = 4;
+  string limit = 5;
+  int64 used_units = 6;
+  int64 limit_units = 7;
+  uint32 quantity_scale = 8;
+  // No entitlement, or an entitlement with limit 0.
+  bool unlimited = 9;
+  // unlimited || used < limit.
+  bool allowed = 10;
+  // Ingest time of the newest event of the tenant that is reflected in used. Unset before the first event.
+  google.protobuf.Timestamp as_of = 11;
+}
+
+message CheckEntitlementResponse {
+  LimitStatus status = 1;
+}
+
+message GetLimitStatusRequest {
+  string customer_id = 1;
+  string period_id = 2;
+}
+
+message GetLimitStatusResponse {
+  repeated LimitStatus statuses = 1;
+}
+
+message ReconcileNowRequest {}
+
+message ReconcileNowResponse {
+  int64 keys_checked = 1;
+  int64 corrections = 2;
+  // Partitions skipped because limits was ahead of the aggregator, or whose checkpoint was not reached in time.
+  int64 partitions_skipped = 3;
+}

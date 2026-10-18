@@ -26,3 +26,6 @@ scrape_configs:
       - targets: ["aggregator:9103"]
         labels:
           service: aggregator
+      - targets: ["limits-svc:9104"]
+        labels:
+          service: limits-svc

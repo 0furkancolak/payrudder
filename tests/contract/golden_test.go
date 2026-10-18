@@ -71,3 +71,75 @@ func TestUsageEventGoldenV010(t *testing.T) {
 		t.Fatalf("encoding of the reference message changed (%d bytes, fixture has %d): this breaks consumers", len(again), len(raw))
 	}
 }
+
+// entitlementStateV010 and limitExceededV010 are the reference messages of release v0.1.0 for the Phase 04 events.
+func entitlementStateV010() *eventsv1.EntitlementState {
+	return &eventsv1.EntitlementState{
+		TenantId:           "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e",
+		CustomerId:         "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d60",
+		MeterCode:          "gb_hours",
+		PlanVersionId:      "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d77",
+		LimitUnits:         10500,
+		AlertThresholdsPct: []int32{80, 100},
+		ValidFrom:          timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
+		ValidUntil:         timestamppb.New(time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)),
+		QuantityScale:      3,
+	}
+}
+
+func limitExceededV010() *eventsv1.LimitExceeded {
+	return &eventsv1.LimitExceeded{
+		EventId:       "b5a3c7a2-47d3-5f43-9d3e-3d2a8b0c9e11",
+		TenantId:      "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e",
+		CustomerId:    "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d60",
+		MeterCode:     "gb_hours",
+		PeriodId:      "2026-11",
+		ThresholdPct:  80,
+		LimitUnits:    10500,
+		UsedUnits:     8400,
+		DetectedAt:    timestamppb.New(time.Date(2026, 11, 20, 9, 30, 0, 0, time.UTC)),
+		QuantityScale: 3,
+	}
+}
+
+func checkGolden(t *testing.T, dir string, want, got proto.Message) {
+	t.Helper()
+	path := filepath.Join("..", "..", "proto", "testdata", dir, "v0.1.0.bin")
+	if *update {
+		b, err := proto.MarshalOptions{Deterministic: true}.Marshal(want)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("golden fixture missing (run with -update once): %v", err)
+	}
+	if err := proto.Unmarshal(raw, got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !proto.Equal(got, want) {
+		t.Fatalf("decoded fixture differs from the reference message:\n got: %v\nwant: %v", got, want)
+	}
+	again, err := proto.MarshalOptions{Deterministic: true}.Marshal(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(again, raw) {
+		t.Fatalf("encoding of the reference message changed (%d bytes, fixture has %d): this breaks consumers", len(again), len(raw))
+	}
+}
+
+func TestEntitlementStateGoldenV010(t *testing.T) {
+	checkGolden(t, "EntitlementState", entitlementStateV010(), &eventsv1.EntitlementState{})
+}
+
+func TestLimitExceededGoldenV010(t *testing.T) {
+	checkGolden(t, "LimitExceeded", limitExceededV010(), &eventsv1.LimitExceeded{})
+}

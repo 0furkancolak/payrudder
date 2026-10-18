@@ -306,6 +306,23 @@ func (q *Queries) InsertMeter(ctx context.Context, arg InsertMeterParams) (Meter
 	return i, err
 }
 
+const insertOutbox = `-- name: InsertOutbox :exec
+INSERT INTO outbox (tenant_id, topic, partition_key, payload)
+VALUES (app_tenant_id(), $1, $2, $3)
+`
+
+type InsertOutboxParams struct {
+	Topic        string
+	PartitionKey string
+	Payload      []byte
+}
+
+// A NULL payload is a Kafka tombstone.
+func (q *Queries) InsertOutbox(ctx context.Context, arg InsertOutboxParams) error {
+	_, err := q.db.Exec(ctx, insertOutbox, arg.Topic, arg.PartitionKey, arg.Payload)
+	return err
+}
+
 const insertPlan = `-- name: InsertPlan :one
 INSERT INTO plans (tenant_id, id, code, name) VALUES (app_tenant_id(), $1, $2, $3) RETURNING tenant_id, id, code, name, created_at
 `
@@ -704,6 +721,15 @@ func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubs
 		return nil, err
 	}
 	return items, nil
+}
+
+const notifyOutbox = `-- name: NotifyOutbox :exec
+SELECT pg_notify('outbox_new', '')
+`
+
+func (q *Queries) NotifyOutbox(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, notifyOutbox)
+	return err
 }
 
 const setPaymentMethod = `-- name: SetPaymentMethod :one

@@ -418,8 +418,12 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 		}
 		start = req.GetStartTime().AsTime()
 	}
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out *plansv1.Subscription
-	err := s.tx(ctx, func(q *sqlc.Queries) error {
+	err = s.tx(ctx, func(q *sqlc.Queries) error {
 		c, err := q.GetCustomerByExternalID(ctx, req.GetCustomerExternalId())
 		if err != nil {
 			return convert.Err(err, "customer")
@@ -438,7 +442,7 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 			ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: c.ExternalID, PlanVersionID: r.PlanVersionID.String(),
 			Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
 		})
-		return nil
+		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, nil, s.now())
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
@@ -454,6 +458,10 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 	end := s.now()
 	if req.GetEndTime() != nil {
 		end = req.GetEndTime().AsTime()
+	}
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
 	}
 	var out *plansv1.Subscription
 	err = s.tx(ctx, func(q *sqlc.Queries) error {
@@ -482,7 +490,7 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 			ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: r.CustomerExternalID,
 			PlanVersionID: r.PlanVersionID.String(), Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
 		})
-		return nil
+		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, &end, s.now())
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
