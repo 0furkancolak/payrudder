@@ -283,6 +283,54 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
 
+  /v1/invoices:
+    get:
+      operationId: listInvoices
+      summary: List invoices (ordered by id)
+      parameters:
+        - { name: customer, in: query, description: Customer external id, schema: { type: string } }
+        - { name: period, in: query, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: status, in: query, schema: { type: string, enum: [draft, open, paid, uncollectible, void] } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
+                  next_page_token: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /v1/invoices/{id}:
+    get:
+      operationId: getInvoice
+      summary: One invoice with its lines
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Invoice" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /v1/sandbox/close-period:
+    post:
+      operationId: sandboxClosePeriod
+      summary: Sandbox only — close a period now and run the real billing flow
+      description: |
+        Lowers the period's cutoff to now + 5 s, then billing runs exactly as at month end: watermark (starting 30 s after
+        the new cutoff), rating, numbering (`SBX-…`) and the invoice saga with mock payments. Poll `GET /v1/invoices`.
+        `period` defaults to the current period. Live keys get 403.
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { period: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } } }
+      responses:
+        "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/BillingRun" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   /v1/sandbox/customers/{external_id}/payment-scenario:
     post:
       operationId: setPaymentScenario
@@ -369,6 +417,58 @@ paths:
                   api_key: { $ref: "#/components/schemas/ApiKey" }
                   plaintext: { type: string }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/billing/close-period:
+    post:
+      operationId: adminClosePeriod
+      summary: Close a tenant's period now (after its cutoff). Idempotent per tenant and period
+      security: [{ operatorToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [tenant_id, period_id], properties: { tenant_id: { type: string, format: uuid }, period_id: { type: string } } }
+      responses:
+        "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/BillingRun" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/billing-runs/{period}:
+    get:
+      operationId: adminGetBillingRun
+      summary: A billing run
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: period, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BillingRun" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/invoices/{id}/retry:
+    post:
+      operationId: adminRetryInvoice
+      summary: Resume an invoice saga stuck in a *_FAILED state or PAYMENT_UNKNOWN
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [tenant_id], properties: { tenant_id: { type: string, format: uuid } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceSaga" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/invoices/{id}/void:
+    post:
+      operationId: adminVoidInvoice
+      summary: Void an invoice, refunding it first when it was paid
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [tenant_id], properties: { tenant_id: { type: string, format: uuid }, reason: { type: string } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceSaga" } } } }
+        "409": { $ref: "#/components/responses/Error" }
   /admin/v1/api-keys/{id}:
     delete:
       operationId: revokeApiKey
@@ -392,6 +492,51 @@ components:
       description: Error envelope
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    BillingRun:
+      type: object
+      properties:
+        tenant_id: { type: string }
+        period_id: { type: string }
+        status: { type: string, enum: [RUN_STATUS_SCHEDULED, RUN_STATUS_WAITING_WATERMARK, RUN_STATUS_RATING, RUN_STATUS_INVOICING, RUN_STATUS_COMPLETED, RUN_STATUS_FAILED] }
+        cutoff_time: { type: string, format: date-time }
+        invoice_count: { type: integer }
+        last_error: { type: string }
+    InvoiceSaga:
+      type: object
+      properties:
+        id: { type: string }
+        invoice_id: { type: string }
+        state: { type: string }
+        attempt: { type: integer }
+        dunning_attempt: { type: integer }
+        last_error: { type: string }
+    InvoiceLine:
+      type: object
+      properties:
+        line_no: { type: integer }
+        kind: { type: string, enum: [BASE_FEE, USAGE, LATE_USAGE, CREDIT, CORRECTION] }
+        meter_code: { type: string }
+        origin_period_id: { type: string }
+        quantity: { type: string, examples: ["1.250"] }
+        amount_minor: { type: string, description: int64 minor units as a string }
+        description: { type: string }
+    Invoice:
+      type: object
+      properties:
+        id: { type: string }
+        customer_id: { type: string }
+        customer_external_id: { type: string }
+        period_id: { type: string }
+        kind: { type: string, enum: [REGULAR, CORRECTION] }
+        number: { type: string, examples: ["INV-2026-000123"] }
+        currency: { type: string }
+        subtotal_minor: { type: string }
+        total_minor: { type: string, description: int64 minor units as a string }
+        status: { type: string, enum: [draft, open, paid, uncollectible, void] }
+        saga_state: { type: string }
+        create_time: { type: string, format: date-time }
+        finalize_time: { type: string, format: date-time }
+        lines: { type: array, items: { $ref: "#/components/schemas/InvoiceLine" } }
     Entitlement:
       type: object
       properties:

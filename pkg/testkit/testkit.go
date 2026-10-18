@@ -28,7 +28,8 @@ const (
 	RedisImage    = "redis:7.4.11-alpine"
 )
 
-const startTimeout = 2 * time.Minute
+// startTimeout bounds one container start. A busy Docker host (many projects, slow image pulls) needs minutes, not seconds.
+const startTimeout = 6 * time.Minute
 
 func startCtx(t testing.TB) context.Context {
 	t.Helper()

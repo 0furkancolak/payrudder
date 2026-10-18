@@ -113,6 +113,39 @@ func (s *Server) GetTenant(ctx context.Context, req *plansv1.GetTenantRequest) (
 	return &plansv1.GetTenantResponse{Tenant: convert.Tenant(t)}, nil
 }
 
+func (s *Server) ListTenants(ctx context.Context, req *plansv1.ListTenantsRequest) (*plansv1.ListTenantsResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	size := req.GetPageSize()
+	if size <= 0 {
+		size = 500
+	}
+	if size > 1000 {
+		return nil, domain.Invalid("page_size", "must be 1..1000")
+	}
+	after := uuid.Nil
+	if tok := req.GetPageToken(); tok != "" {
+		var err error
+		if after, err = uuid.Parse(tok); err != nil {
+			return nil, domain.Invalid("page_token", "invalid")
+		}
+	}
+	rows, err := s.q().ListTenants(ctx, sqlc.ListTenantsParams{After: after, PageSize: size + 1})
+	if err != nil {
+		return nil, convert.Err(err, "tenants")
+	}
+	resp := &plansv1.ListTenantsResponse{}
+	for i, t := range rows {
+		if int32(i) == size { //nolint:gosec // bounded by page size
+			resp.NextPageToken = rows[i-1].ID.String()
+			break
+		}
+		resp.Tenants = append(resp.Tenants, convert.Tenant(t))
+	}
+	return resp, nil
+}
+
 func (s *Server) UpdateTenantSettings(ctx context.Context, req *plansv1.UpdateTenantSettingsRequest) (*plansv1.UpdateTenantSettingsResponse, error) {
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err

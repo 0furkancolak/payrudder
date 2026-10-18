@@ -97,37 +97,49 @@ One `invoice_sagas` row per invoice. Steps are classified as **compensatable**, 
 | Charge payment | `payment.charge` | **pivot** | `payment.refund` (only via VoidInvoice after PAID) |
 | Notify customer | `notification.send` | retriable | none (best effort, retried until success or DLQ) |
 
+<!-- saga-diagram:start -->
 ```mermaid
 stateDiagram-v2
-    [*] --> DRAFT
-    DRAFT --> FINALIZED: lines frozen, number assigned
-    FINALIZED --> PDF_REQUESTED: publish RenderInvoicePdf
+    [*] --> FINALIZED
+    FINALIZED --> PDF_REQUESTED: Start
     PDF_REQUESTED --> PDF_RENDERED: PdfRendered
-    PDF_REQUESTED --> PDF_FAILED: PdfFailed or step timeout ×3
-    PDF_FAILED --> PDF_REQUESTED: operator retry
-    PDF_RENDERED --> PAYMENT_REQUESTED: publish ChargePayment (skipped when total = 0)
-    PDF_RENDERED --> NOTIFY_REQUESTED: total = 0
+    PDF_REQUESTED --> PDF_FAILED: PdfFailed / StepExhausted
+    PDF_FAILED --> PDF_REQUESTED: Retry
+    PDF_RENDERED --> PAYMENT_REQUESTED: Continue [total > 0]
+    PDF_RENDERED --> NOTIFY_REQUESTED: Continue [total = 0]
     PAYMENT_REQUESTED --> PAID: PaymentSucceeded
-    PAYMENT_REQUESTED --> PAYMENT_DECLINED: PaymentDeclined
-    PAYMENT_REQUESTED --> PAYMENT_UNKNOWN: PaymentErrored / timeout
-    PAYMENT_UNKNOWN --> PAID: status query says succeeded
-    PAYMENT_UNKNOWN --> PAYMENT_REQUESTED: status query says no charge
-    PAYMENT_DECLINED --> PAYMENT_REQUESTED: dunning retry (+1d, +3d, +7d)
-    PAYMENT_DECLINED --> UNCOLLECTIBLE: 3 dunning attempts exhausted
-    PAID --> NOTIFY_REQUESTED: publish SendNotification(invoice_paid)
-    UNCOLLECTIBLE --> NOTIFY_REQUESTED: publish SendNotification(payment_failed)
+    PAYMENT_REQUESTED --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left]
+    PAYMENT_REQUESTED --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted]
+    PAYMENT_REQUESTED --> PAYMENT_UNKNOWN: PaymentErrored / StepExhausted
+    PAYMENT_UNKNOWN --> PAID: PaymentSucceeded / StatusSucceeded
+    PAYMENT_UNKNOWN --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left] / StatusDeclined [dunning attempts left]
+    PAYMENT_UNKNOWN --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted] / StatusDeclined [dunning exhausted]
+    PAYMENT_UNKNOWN --> PAYMENT_REQUESTED: StatusNotFound
+    PAYMENT_UNKNOWN --> PAYMENT_UNKNOWN: Retry / StepExhausted
+    PAYMENT_DECLINED --> PAYMENT_REQUESTED: DunningDue
+    PAID --> NOTIFY_REQUESTED: Continue
+    UNCOLLECTIBLE --> NOTIFY_REQUESTED: Continue
     NOTIFY_REQUESTED --> COMPLETED: NotificationSent
-    NOTIFY_REQUESTED --> NOTIFY_FAILED: DLQ'd
-    NOTIFY_FAILED --> NOTIFY_REQUESTED: operator retry
-    FINALIZED --> VOIDED: VoidInvoice
-    PDF_RENDERED --> VOIDED: VoidInvoice
-    PAID --> REFUND_REQUESTED: VoidInvoice
+    NOTIFY_REQUESTED --> NOTIFY_FAILED: StepExhausted
+    NOTIFY_FAILED --> NOTIFY_REQUESTED: Retry
+    FINALIZED --> VOIDED: Void
+    PDF_REQUESTED --> VOIDED: Void
+    PDF_FAILED --> VOIDED: Void
+    PAYMENT_DECLINED --> VOIDED: Void
+    NOTIFY_REQUESTED --> REFUND_REQUESTED: Void [paid, total > 0]
+    NOTIFY_REQUESTED --> VOIDED: Void [nothing to refund]
+    NOTIFY_FAILED --> REFUND_REQUESTED: Void [paid, total > 0]
+    NOTIFY_FAILED --> VOIDED: Void [nothing to refund]
+    COMPLETED --> REFUND_REQUESTED: Void [paid, total > 0]
+    COMPLETED --> VOIDED: Void [nothing to refund]
     REFUND_REQUESTED --> REFUNDED: PaymentRefunded
-    REFUNDED --> VOIDED
-    COMPLETED --> REFUND_REQUESTED: VoidInvoice
+    REFUND_REQUESTED --> REFUND_FAILED: StepExhausted
+    REFUND_FAILED --> REFUND_REQUESTED: Retry
+    REFUNDED --> VOIDED: Continue
     COMPLETED --> [*]
     VOIDED --> [*]
 ```
+<!-- saga-diagram:end -->
 
 ### Mechanics
 
@@ -197,3 +209,16 @@ Usage is never re-counted. Only prices change. Full rationale: [07-correctness.m
 Billing is bursty (month boundary). Runs are per-tenant and parallel across pods (advisory locks).
 Customers within a run are rated in pages of 500 streamed from aggregator. **Target:** close a
 10k-customer tenant in < 5 min, excluding worker latency.
+
+## As built (Phase 05)
+
+Code: `services/billing-svc` (`internal/{rating,saga,runs,replies,api}`), commands in `proto/quotify/commands/v1`, the RabbitMQ
+topology in `pkg/rabbitx` (exported to `deploy/rabbitmq/definitions.json`, checked by a test). Configuration:
+`QUOTIFY_SCHEDULER_INTERVAL` (1m), `QUOTIFY_SWEEP_INTERVAL` (30s), `QUOTIFY_STEP_TIMEOUT` (2m), `QUOTIFY_WATERMARK_DELAY` (30s).
+Gateway routes: `GET /v1/invoices[/{id}]`, `POST /v1/sandbox/close-period`, and the operator routes under `/admin/v1`
+(`billing/close-period`, `tenants/{id}/billing-runs/{period}`, `invoices/{id}/retry|void`).
+
+Additions to the diagram above: `REFUND_FAILED` (a refund step that timed out; `Retry` resumes it) and the transient states
+`PDF_RENDERED`, `PAID`, `UNCOLLECTIBLE`, `REFUNDED`, which continue automatically in the same transaction (each hop is a
+`saga_events` row). A reply from the original charge may still arrive while the status query is in flight, so
+`PAYMENT_UNKNOWN` also accepts `PaymentSucceeded` and `PaymentDeclined`.

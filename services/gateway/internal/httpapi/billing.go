@@ -1,0 +1,97 @@
+package httpapi
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+
+	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+)
+
+// listInvoices is GET /v1/invoices?customer=&period=&status=&page_size=&page_token=. customer is the external id.
+func (s *Server) listInvoices(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := &billingv1.ListInvoicesRequest{PeriodId: q.Get("period"), Status: q.Get("status"), PageToken: q.Get("page_token")}
+	if v := q.Get("page_size"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			writeError(w, r, invalid("page_size", "must be an integer"))
+			return
+		}
+		req.PageSize = int32(n)
+	}
+	if c := q.Get("customer"); c != "" {
+		cust, err := s.d.Plans.ResolveCustomer(r.Context(), &plansv1.ResolveCustomerRequest{ExternalId: c})
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		req.CustomerId = cust.GetCustomer().GetId()
+	}
+	resp, err := s.d.Billing.ListInvoices(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// getInvoice is GET /v1/invoices/{id}, with its lines.
+func (s *Server) getInvoice(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Billing.GetInvoice(r.Context(), &billingv1.GetInvoiceRequest{InvoiceId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp.GetInvoice(), err)
+}
+
+// sandboxClosePeriod is POST /v1/sandbox/close-period: close the current (or the given) period now and run the real
+// billing flow, so a sandbox account sees invoices within a minute instead of at month end.
+func (s *Server) sandboxClosePeriod(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Period string `json:"period"`
+	}
+	if r.ContentLength != 0 {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeError(w, r, invalid("body", "must be JSON like {\"period\": \"2026-11\"}"))
+			return
+		}
+	}
+	if body.Period != "" && !periodParam.MatchString(body.Period) {
+		writeError(w, r, invalid("period", "must look like 2026-11"))
+		return
+	}
+	resp, err := s.d.Sandbox.ClosePeriodNow(r.Context(), &billingv1.ClosePeriodNowRequest{PeriodId: body.Period})
+	respond(w, r, http.StatusAccepted, resp.GetRun(), err)
+}
+
+func (s *Server) adminClosePeriod(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.ClosePeriodRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.BillingAdmin.ClosePeriod(r.Context(), req)
+	respond(w, r, http.StatusAccepted, resp.GetRun(), err)
+}
+
+func (s *Server) adminGetBillingRun(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.BillingAdmin.GetBillingRun(r.Context(), &billingv1.GetBillingRunRequest{TenantId: r.PathValue("tenant_id"), PeriodId: r.PathValue("period")})
+	respond(w, r, http.StatusOK, resp.GetRun(), err)
+}
+
+func (s *Server) adminRetryInvoice(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.RetryInvoiceSagaRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.InvoiceId = r.PathValue("id")
+	resp, err := s.d.BillingAdmin.RetryInvoiceSaga(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetSaga(), err)
+}
+
+func (s *Server) adminVoidInvoice(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.VoidInvoiceRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.InvoiceId = r.PathValue("id")
+	resp, err := s.d.BillingAdmin.VoidInvoice(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetSaga(), err)
+}

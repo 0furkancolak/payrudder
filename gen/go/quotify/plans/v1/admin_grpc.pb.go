@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	AdminService_CreateAccount_FullMethodName        = "/quotify.plans.v1.AdminService/CreateAccount"
 	AdminService_GetTenant_FullMethodName            = "/quotify.plans.v1.AdminService/GetTenant"
+	AdminService_ListTenants_FullMethodName          = "/quotify.plans.v1.AdminService/ListTenants"
 	AdminService_UpdateTenantSettings_FullMethodName = "/quotify.plans.v1.AdminService/UpdateTenantSettings"
 	AdminService_CreateApiKey_FullMethodName         = "/quotify.plans.v1.AdminService/CreateApiKey"
 	AdminService_RevokeApiKey_FullMethodName         = "/quotify.plans.v1.AdminService/RevokeApiKey"
@@ -37,6 +38,8 @@ type AdminServiceClient interface {
 	// CreateAccount creates the account and its sandbox + live tenants with the chosen settings.
 	CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*CreateAccountResponse, error)
 	GetTenant(ctx context.Context, in *GetTenantRequest, opts ...grpc.CallOption) (*GetTenantResponse, error)
+	// ListTenants pages through every tenant ordered by id; billing-svc's scheduler walks it.
+	ListTenants(ctx context.Context, in *ListTenantsRequest, opts ...grpc.CallOption) (*ListTenantsResponse, error)
 	// UpdateTenantSettings changes grace period and tier. Currency and time zone are immutable.
 	UpdateTenantSettings(ctx context.Context, in *UpdateTenantSettingsRequest, opts ...grpc.CallOption) (*UpdateTenantSettingsResponse, error)
 	// CreateApiKey returns the plaintext key once. The key environment must match the tenant's.
@@ -69,6 +72,16 @@ func (c *adminServiceClient) GetTenant(ctx context.Context, in *GetTenantRequest
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetTenantResponse)
 	err := c.cc.Invoke(ctx, AdminService_GetTenant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) ListTenants(ctx context.Context, in *ListTenantsRequest, opts ...grpc.CallOption) (*ListTenantsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTenantsResponse)
+	err := c.cc.Invoke(ctx, AdminService_ListTenants_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +138,8 @@ type AdminServiceServer interface {
 	// CreateAccount creates the account and its sandbox + live tenants with the chosen settings.
 	CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountResponse, error)
 	GetTenant(context.Context, *GetTenantRequest) (*GetTenantResponse, error)
+	// ListTenants pages through every tenant ordered by id; billing-svc's scheduler walks it.
+	ListTenants(context.Context, *ListTenantsRequest) (*ListTenantsResponse, error)
 	// UpdateTenantSettings changes grace period and tier. Currency and time zone are immutable.
 	UpdateTenantSettings(context.Context, *UpdateTenantSettingsRequest) (*UpdateTenantSettingsResponse, error)
 	// CreateApiKey returns the plaintext key once. The key environment must match the tenant's.
@@ -148,6 +163,9 @@ func (UnimplementedAdminServiceServer) CreateAccount(context.Context, *CreateAcc
 }
 func (UnimplementedAdminServiceServer) GetTenant(context.Context, *GetTenantRequest) (*GetTenantResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTenant not implemented")
+}
+func (UnimplementedAdminServiceServer) ListTenants(context.Context, *ListTenantsRequest) (*ListTenantsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTenants not implemented")
 }
 func (UnimplementedAdminServiceServer) UpdateTenantSettings(context.Context, *UpdateTenantSettingsRequest) (*UpdateTenantSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateTenantSettings not implemented")
@@ -214,6 +232,24 @@ func _AdminService_GetTenant_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AdminServiceServer).GetTenant(ctx, req.(*GetTenantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_ListTenants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTenantsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ListTenants(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_ListTenants_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ListTenants(ctx, req.(*ListTenantsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -304,6 +340,10 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTenant",
 			Handler:    _AdminService_GetTenant_Handler,
+		},
+		{
+			MethodName: "ListTenants",
+			Handler:    _AdminService_ListTenants_Handler,
 		},
 		{
 			MethodName: "UpdateTenantSettings",

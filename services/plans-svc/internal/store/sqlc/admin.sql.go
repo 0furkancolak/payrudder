@@ -184,6 +184,45 @@ func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) (
 	return items, nil
 }
 
+const listTenants = `-- name: ListTenants :many
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at FROM tenants WHERE id > $1::uuid ORDER BY id LIMIT $2::int
+`
+
+type ListTenantsParams struct {
+	After    uuid.UUID
+	PageSize int32
+}
+
+func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error) {
+	rows, err := q.db.Query(ctx, listTenants, arg.After, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Tenant{}
+	for rows.Next() {
+		var i Tenant
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.Environment,
+			&i.Name,
+			&i.Tier,
+			&i.Currency,
+			&i.Timezone,
+			&i.GracePeriod,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resolveApiKey = `-- name: ResolveApiKey :one
 SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, t.environment, t.tier, t.timezone
 FROM api_keys k JOIN tenants t ON t.id = k.tenant_id

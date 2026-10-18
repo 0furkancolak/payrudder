@@ -399,14 +399,18 @@ CREATE TABLE rerating_jobs (
   UNIQUE (tenant_id, period_id, plan_version_id)       -- idempotent re-rating
 );
 
-CREATE TABLE outbox (
+CREATE TABLE outbox (                                  -- the shared pkg/outbox shape + message_id
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   tenant_id uuid NOT NULL,
-  destination text NOT NULL CHECK (destination IN ('rabbitmq','kafka')),
-  exchange_or_topic text NOT NULL, routing_key text NOT NULL,
-  message_id uuid NOT NULL UNIQUE, payload bytea NOT NULL, headers jsonb NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
+  topic text NOT NULL,                                 -- exchange (rabbitmq) or Kafka topic
+  partition_key text NOT NULL,                         -- routing key (rabbitmq) or record key (kafka)
+  payload bytea, headers jsonb NOT NULL DEFAULT '{}',  -- headers.x-destination = 'rabbitmq' | 'kafka'
+  message_id uuid NOT NULL UNIQUE,                     -- command id / fact id: re-issuing is a no-op
+  ingested_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- As built, also: billing_runs.invoice_count/last_error/created_at; invoices.snapshot jsonb (customer + tenant data the
+-- commands need); invoice_lines.unit_label; invoice_sagas.step_attempt. See services/billing-svc/migrations.
 ```
 
 RLS on all tenant tables for `billing_app`. Scheduler, sweeper, reply consumer and relay use `billing_system`.

@@ -3,14 +3,554 @@
     {
       "name": "quotify",
       "password": "quotify_local",
-      "tags": ["administrator"]
+      "tags": [
+        "administrator"
+      ]
     }
   ],
-  "vhosts": [{ "name": "/" }],
-  "permissions": [
-    { "user": "quotify", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" }
+  "vhosts": [
+    {
+      "name": "/"
+    }
   ],
-  "exchanges": [],
-  "queues": [],
-  "bindings": []
+  "permissions": [
+    {
+      "user": "quotify",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "queues": [
+    {
+      "name": "invoice.render",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands.dlx",
+        "x-dead-letter-routing-key": "invoice.render",
+        "x-delivery-limit": 5,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "invoice.render.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "invoice.render.retry.5s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "invoice.render",
+        "x-message-ttl": 5000
+      }
+    },
+    {
+      "name": "invoice.render.retry.30s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "invoice.render",
+        "x-message-ttl": 30000
+      }
+    },
+    {
+      "name": "invoice.render.retry.2m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "invoice.render",
+        "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "payment.charge",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands.dlx",
+        "x-dead-letter-routing-key": "payment.charge",
+        "x-delivery-limit": 5,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "payment.charge.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "payment.charge.retry.5s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.charge",
+        "x-message-ttl": 5000
+      }
+    },
+    {
+      "name": "payment.charge.retry.30s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.charge",
+        "x-message-ttl": 30000
+      }
+    },
+    {
+      "name": "payment.charge.retry.2m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.charge",
+        "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "payment.refund",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands.dlx",
+        "x-dead-letter-routing-key": "payment.refund",
+        "x-delivery-limit": 5,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "payment.refund.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "payment.refund.retry.5s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.refund",
+        "x-message-ttl": 5000
+      }
+    },
+    {
+      "name": "payment.refund.retry.30s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.refund",
+        "x-message-ttl": 30000
+      }
+    },
+    {
+      "name": "payment.refund.retry.2m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.refund",
+        "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "payment.status",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands.dlx",
+        "x-dead-letter-routing-key": "payment.status",
+        "x-delivery-limit": 5,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "payment.status.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "payment.status.retry.5s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.status",
+        "x-message-ttl": 5000
+      }
+    },
+    {
+      "name": "payment.status.retry.30s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.status",
+        "x-message-ttl": 30000
+      }
+    },
+    {
+      "name": "payment.status.retry.2m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.status",
+        "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "notification.send",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands.dlx",
+        "x-dead-letter-routing-key": "notification.send",
+        "x-delivery-limit": 5,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "notification.send.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "notification.send.retry.5s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "notification.send",
+        "x-message-ttl": 5000
+      }
+    },
+    {
+      "name": "notification.send.retry.30s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "notification.send",
+        "x-message-ttl": 30000
+      }
+    },
+    {
+      "name": "notification.send.retry.2m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "notification.send",
+        "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "billing-svc.replies",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.replies.dlx",
+        "x-dead-letter-routing-key": "reply",
+        "x-delivery-limit": 5,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "billing-svc.replies.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "billing.commands",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "billing.commands.retry",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "billing.commands.dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "billing.replies",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "billing.replies.dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "billing.commands",
+      "vhost": "/",
+      "destination": "invoice.render",
+      "destination_type": "queue",
+      "routing_key": "invoice.render"
+    },
+    {
+      "source": "billing.commands.dlx",
+      "vhost": "/",
+      "destination": "invoice.render.dlq",
+      "destination_type": "queue",
+      "routing_key": "invoice.render"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "invoice.render.retry.5s",
+      "destination_type": "queue",
+      "routing_key": "invoice.render.retry.5s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "invoice.render.retry.30s",
+      "destination_type": "queue",
+      "routing_key": "invoice.render.retry.30s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "invoice.render.retry.2m",
+      "destination_type": "queue",
+      "routing_key": "invoice.render.retry.2m"
+    },
+    {
+      "source": "billing.commands",
+      "vhost": "/",
+      "destination": "payment.charge",
+      "destination_type": "queue",
+      "routing_key": "payment.charge"
+    },
+    {
+      "source": "billing.commands.dlx",
+      "vhost": "/",
+      "destination": "payment.charge.dlq",
+      "destination_type": "queue",
+      "routing_key": "payment.charge"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.charge.retry.5s",
+      "destination_type": "queue",
+      "routing_key": "payment.charge.retry.5s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.charge.retry.30s",
+      "destination_type": "queue",
+      "routing_key": "payment.charge.retry.30s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.charge.retry.2m",
+      "destination_type": "queue",
+      "routing_key": "payment.charge.retry.2m"
+    },
+    {
+      "source": "billing.commands",
+      "vhost": "/",
+      "destination": "payment.refund",
+      "destination_type": "queue",
+      "routing_key": "payment.refund"
+    },
+    {
+      "source": "billing.commands.dlx",
+      "vhost": "/",
+      "destination": "payment.refund.dlq",
+      "destination_type": "queue",
+      "routing_key": "payment.refund"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.refund.retry.5s",
+      "destination_type": "queue",
+      "routing_key": "payment.refund.retry.5s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.refund.retry.30s",
+      "destination_type": "queue",
+      "routing_key": "payment.refund.retry.30s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.refund.retry.2m",
+      "destination_type": "queue",
+      "routing_key": "payment.refund.retry.2m"
+    },
+    {
+      "source": "billing.commands",
+      "vhost": "/",
+      "destination": "payment.status",
+      "destination_type": "queue",
+      "routing_key": "payment.status"
+    },
+    {
+      "source": "billing.commands.dlx",
+      "vhost": "/",
+      "destination": "payment.status.dlq",
+      "destination_type": "queue",
+      "routing_key": "payment.status"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.status.retry.5s",
+      "destination_type": "queue",
+      "routing_key": "payment.status.retry.5s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.status.retry.30s",
+      "destination_type": "queue",
+      "routing_key": "payment.status.retry.30s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.status.retry.2m",
+      "destination_type": "queue",
+      "routing_key": "payment.status.retry.2m"
+    },
+    {
+      "source": "billing.commands",
+      "vhost": "/",
+      "destination": "notification.send",
+      "destination_type": "queue",
+      "routing_key": "notification.send"
+    },
+    {
+      "source": "billing.commands.dlx",
+      "vhost": "/",
+      "destination": "notification.send.dlq",
+      "destination_type": "queue",
+      "routing_key": "notification.send"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "notification.send.retry.5s",
+      "destination_type": "queue",
+      "routing_key": "notification.send.retry.5s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "notification.send.retry.30s",
+      "destination_type": "queue",
+      "routing_key": "notification.send.retry.30s"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "notification.send.retry.2m",
+      "destination_type": "queue",
+      "routing_key": "notification.send.retry.2m"
+    },
+    {
+      "source": "billing.replies",
+      "vhost": "/",
+      "destination": "billing-svc.replies",
+      "destination_type": "queue",
+      "routing_key": "reply"
+    },
+    {
+      "source": "billing.replies.dlx",
+      "vhost": "/",
+      "destination": "billing-svc.replies.dlq",
+      "destination_type": "queue",
+      "routing_key": "reply"
+    }
+  ]
 }

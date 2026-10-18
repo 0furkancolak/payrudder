@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
+	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
@@ -54,6 +55,9 @@ type Deps struct {
 	Ingest        ingestv1.IngestServiceClient
 	Usage         aggregatorv1.UsageQueryServiceClient
 	Limits        limitsv1.LimitsServiceClient
+	Billing       billingv1.BillingServiceClient
+	Sandbox       billingv1.SandboxServiceClient
+	BillingAdmin  billingv1.BillingAdminServiceClient
 	Auth          Authenticator
 	Limiter       Limiter
 	OperatorToken string
