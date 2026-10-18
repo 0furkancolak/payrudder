@@ -165,6 +165,11 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
 		env = "sandbox"
 	}
+	// The tenant's invoice logo is an assets-svc object under {tenant}/assets/{asset id}.
+	logoKey := ""
+	if id := t.GetInvoiceLogoAssetId(); id != "" {
+		logoKey = run.TenantID.String() + "/assets/" + id
+	}
 
 	metersResp, err := m.cfg.Plans.ListMeters(tctx, &plansv1.ListMetersRequest{})
 	if err != nil {
@@ -334,6 +339,7 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 			Snapshot: saga.Snapshot{
 				CustomerExternalID: snapExternal, CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
 				PaymentMethod: cu.GetCustomer().GetPaymentMethod(), TenantName: t.GetName(), Environment: env, CurrencyExponent: cur.Exponent,
+				LogoObjectKey: logoKey,
 			},
 		})
 		if len(drafts) >= m.cfg.PageSize {

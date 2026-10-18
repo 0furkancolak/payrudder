@@ -17,6 +17,8 @@ import (
 	"google.golang.org/grpc"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
+	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
+	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
@@ -40,6 +42,8 @@ type Config struct {
 	AggregatorAddr string   `env:"QUOTIFY_AGGREGATOR_ADDR" envDefault:"dns:///localhost:7003"`
 	LimitsAddr     string   `env:"QUOTIFY_LIMITS_ADDR" envDefault:"dns:///localhost:7004"`
 	BillingAddr    string   `env:"QUOTIFY_BILLING_ADDR" envDefault:"dns:///localhost:7005"`
+	AnalyticsAddr  string   `env:"QUOTIFY_ANALYTICS_ADDR" envDefault:"dns:///localhost:7006"`
+	AssetsAddr     string   `env:"QUOTIFY_ASSETS_ADDR" envDefault:"dns:///localhost:7007"`
 	RedisURL       string   `env:"QUOTIFY_REDIS_URL" envDefault:"redis://localhost:6379/0"`
 	OperatorToken  string   `env:"QUOTIFY_OPERATOR_TOKEN,required"`
 	Replicas       int      `env:"QUOTIFY_GATEWAY_REPLICAS" envDefault:"1"`
@@ -135,6 +139,21 @@ func run() error {
 	}
 	defer func() { _ = billingConn.Close() }()
 
+	analyticsConn, err := grpcx.NewClient(cfg.AnalyticsAddr,
+		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	if err != nil {
+		return fmt.Errorf("analytics-svc client: %w", err)
+	}
+	defer func() { _ = analyticsConn.Close() }()
+
+	assetsConn, err := grpcx.NewClient(cfg.AssetsAddr,
+		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()),
+		grpc.WithChainStreamInterceptor(tenant.StreamClientInterceptor()))
+	if err != nil {
+		return fmt.Errorf("assets-svc client: %w", err)
+	}
+	defer func() { _ = assetsConn.Close() }()
+
 	authn, err := auth.New(auth.NewRedisCache(rdb), auth.AdminResolver{Client: adminClient}, cfg.AllowedEnvs, log)
 	if err != nil {
 		return err
@@ -147,8 +166,9 @@ func run() error {
 		Plans: plansv1.NewPlansServiceClient(plansConn), Admin: adminClient, Ingest: ingestv1.NewIngestServiceClient(ingestConn),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(aggConn), Limits: limitsv1.NewLimitsServiceClient(limitsConn),
 		Billing: billingv1.NewBillingServiceClient(billingConn), Sandbox: billingv1.NewSandboxServiceClient(billingConn),
-		BillingAdmin: billingv1.NewBillingAdminServiceClient(billingConn),
-		Auth:         authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
+		BillingAdmin: billingv1.NewBillingAdminServiceClient(billingConn), Analytics: analyticsv1.NewAnalyticsServiceClient(analyticsConn),
+		Assets: assetsv1.NewAssetsServiceClient(assetsConn),
+		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
 	})
 
 	hh := health.New(reg, 2*time.Second)

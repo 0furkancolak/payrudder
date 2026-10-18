@@ -62,6 +62,9 @@ message UpdateTenantSettingsRequest {
   // Unset leaves the value unchanged.
   google.protobuf.Duration grace_period = 2;
   TenantTier tier = 3;
+  // Sets the invoice logo (an invoice_logo asset of assets-svc); empty leaves it unchanged. clear_invoice_logo removes it.
+  string invoice_logo_asset_id = 4;
+  bool clear_invoice_logo = 5;
 }
 
 message UpdateTenantSettingsResponse {

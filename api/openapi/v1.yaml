@@ -332,6 +332,290 @@ paths:
                   expires_at: { type: string, format: date-time }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /v1/assets/uploads:
+    post:
+      operationId: createUploadSession
+      summary: Open a direct multipart upload session for up to 50 files
+      description: |
+        Returns, for each file, presigned S3 `UploadPart` URLs for its first (up to 100) parts. Upload the parts in parallel
+        straight to S3 (PUT, each part `part_size` bytes except the last), keep the `ETag` of each answer, then call
+        `complete`. The session lasts 24 hours. `Idempotency-Key` makes retries return the same session.
+      parameters: [{ name: Idempotency-Key, in: header, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  maxItems: 50
+                  items:
+                    type: object
+                    required: [filename, content_type, size, purpose]
+                    properties:
+                      filename: { type: string }
+                      content_type: { type: string, examples: ["application/pdf"] }
+                      size: { type: integer, format: int64 }
+                      purpose: { type: string, enum: [invoice_logo, invoice_attachment, general] }
+                      sha256: { type: string, description: Optional hex sha256 of the whole file }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/UploadSession" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/assets/uploads/{session}:
+    delete:
+      operationId: abortUploadSession
+      summary: Abort a session and every unfinished file in it
+      parameters: [{ name: session, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/UploadSession" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/assets/uploads/{session}/files/{asset}:
+    get:
+      operationId: getUploadFile
+      summary: State of one file, including the parts S3 already holds (to resume an interrupted upload)
+      parameters:
+        - { name: session, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: asset, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/UploadFile" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: abortUploadFile
+      summary: Abort one file of a session
+      parameters:
+        - { name: session, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: asset, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/UploadSession" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/assets/uploads/{session}/files/{asset}/parts:
+    post:
+      operationId: presignParts
+      summary: More (or refreshed) presigned part URLs of a file
+      parameters:
+        - { name: session, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: asset, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: from, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: count, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 100 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  parts: { type: array, items: { $ref: "#/components/schemas/PresignedPart" } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/assets/uploads/{session}/files/{asset}/complete:
+    post:
+      operationId: completeUploadFile
+      summary: Verify the uploaded parts, assemble the object and make the asset READY
+      description: |
+        Idempotent. If the parts do not match what S3 holds (a missing part or a wrong ETag), the asset comes back
+        `REJECTED` with `reject_reason: PART_MISMATCH` and nothing is left in storage.
+      parameters:
+        - { name: session, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: asset, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [parts]
+              properties:
+                parts:
+                  type: array
+                  items:
+                    type: object
+                    required: [part_number, etag]
+                    properties:
+                      part_number: { type: integer }
+                      etag: { type: string }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Asset" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/assets:
+    post:
+      operationId: uploadAssets
+      summary: Upload up to 20 small files in one multipart/form-data request
+      description: |
+        Files are streamed through the gateway into storage (at most 25 MiB each, 100 MiB per request); use an upload
+        session for larger files. An optional first part `metadata` picks each file's purpose:
+        `{"files": {"logo.png": {"purpose": "invoice_logo"}}}` (default `general`). The answer is `200` with one result per
+        file, in order: a bad file is `rejected` with an `error_code` and does not fail the others. The `write` rate limit
+        is charged per file.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                metadata: { type: string, description: JSON }
+                file: { type: array, items: { type: string, format: binary } }
+      responses:
+        "200":
+          description: Per-file results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        filename: { type: string }
+                        status: { type: string, enum: [created, rejected] }
+                        asset: { $ref: "#/components/schemas/Asset" }
+                        error_code: { type: string, examples: ["CONTENT_TYPE_MISMATCH"] }
+                        message: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listAssets
+      summary: List READY assets
+      parameters:
+        - { name: purpose, in: query, schema: { type: string, enum: [invoice_logo, invoice_attachment, general] } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets: { type: array, items: { $ref: "#/components/schemas/Asset" } }
+                  next_page_token: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/tenant/invoice-logo:
+    put:
+      operationId: setInvoiceLogo
+      summary: Draw a READY invoice_logo asset on the tenant's invoice PDFs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [asset_id], properties: { asset_id: { type: string, format: uuid } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { invoice_logo_asset_id: { type: string } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: clearInvoiceLogo
+      summary: Remove the invoice logo
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { invoice_logo_asset_id: { type: string } } } } } }
+  /v1/assets/{id}:
+    get:
+      operationId: getAsset
+      summary: One asset
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Asset" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteAsset
+      summary: Delete a READY asset (its bytes leave the storage quota)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Asset" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/assets/{id}/download:
+    get:
+      operationId: downloadAsset
+      summary: A presigned link (5 minutes) that downloads the file as an attachment
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string, format: uri }
+                  expires_at: { type: string, format: date-time }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/analytics/usage:
+    get:
+      operationId: getAnalyticsUsage
+      summary: Usage series of one meter (estimates; invoices come from billing)
+      description: |
+        Near-real-time, from ClickHouse. The default series comes from an hourly rollup that may over-count by the duplicate
+        delivery rate (`precision: estimated`); `exact=true` recomputes it from deduplicated events and covers at most one day
+        (`precision: exact`).
+      parameters:
+        - { name: meter, in: query, required: true, schema: { type: string } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: granularity, in: query, schema: { type: string, enum: [hour, day], default: hour } }
+        - { name: customer, in: query, description: Customer external id, schema: { type: string } }
+        - { name: exact, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  precision: { type: string, enum: [estimated, exact] }
+                  quantity_scale: { type: integer }
+                  points:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        start: { type: string, format: date-time }
+                        quantity: { type: string, examples: ["1.500"] }
+                        event_count: { type: string, description: int64 as a string }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /v1/analytics/top-customers:
+    get:
+      operationId: getTopCustomers
+      summary: Customers ranked by usage of a meter in a billing period (deduplicated)
+      parameters:
+        - { name: meter, in: query, required: true, schema: { type: string } }
+        - { name: period, in: query, required: true, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  precision: { type: string }
+                  quantity_scale: { type: integer }
+                  customers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        customer_id: { type: string }
+                        customer_external_id: { type: string }
+                        quantity: { type: string }
+                        event_count: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   /v1/sandbox/close-period:
     post:
       operationId: sandboxClosePeriod
@@ -434,6 +718,17 @@ paths:
                   api_key: { $ref: "#/components/schemas/ApiKey" }
                   plaintext: { type: string }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/analytics/ingest-stats:
+    get:
+      operationId: adminIngestStats
+      summary: Events per second, late % and duplicate % per tenant over a window
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string, format: uuid } }
+        - { name: window_seconds, in: query, schema: { type: integer, minimum: 1, maximum: 86400, default: 300 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /admin/v1/billing/close-period:
     post:
       operationId: adminClosePeriod
@@ -509,6 +804,51 @@ components:
       description: Error envelope
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    Asset:
+      type: object
+      properties:
+        id: { type: string }
+        session_id: { type: string }
+        purpose: { type: string, enum: [PURPOSE_INVOICE_LOGO, PURPOSE_INVOICE_ATTACHMENT, PURPOSE_GENERAL] }
+        filename: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: string, description: int64 as a string }
+        sha256: { type: string }
+        status: { type: string, enum: [ASSET_STATUS_PENDING, ASSET_STATUS_UPLOADING, ASSET_STATUS_SCANNING, ASSET_STATUS_READY, ASSET_STATUS_REJECTED, ASSET_STATUS_ABORTED, ASSET_STATUS_CORRUPT, ASSET_STATUS_DELETED] }
+        reject_reason: { type: string, examples: ["PART_MISMATCH"] }
+        create_time: { type: string, format: date-time }
+        complete_time: { type: string, format: date-time }
+    PresignedPart:
+      type: object
+      properties:
+        part_number: { type: integer }
+        url: { type: string, format: uri }
+    UploadFile:
+      type: object
+      properties:
+        asset_id: { type: string }
+        filename: { type: string }
+        status: { type: string }
+        reject_reason: { type: string }
+        size: { type: string }
+        part_size: { type: string }
+        part_count: { type: integer }
+        presigned_parts: { type: array, items: { $ref: "#/components/schemas/PresignedPart" } }
+        uploaded_parts:
+          type: array
+          items:
+            type: object
+            properties:
+              part_number: { type: integer }
+              size: { type: string }
+              etag: { type: string }
+    UploadSession:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [OPEN, COMPLETED, EXPIRED, ABORTED] }
+        expire_time: { type: string, format: date-time }
+        files: { type: array, items: { $ref: "#/components/schemas/UploadFile" } }
     BillingRun:
       type: object
       properties:

@@ -17,7 +17,8 @@ SELECT * FROM tenants WHERE account_id = $1 ORDER BY environment DESC;
 -- name: UpdateTenantSettings :one
 UPDATE tenants
 SET grace_period = COALESCE(sqlc.narg(grace_period)::interval, grace_period),
-    tier         = COALESCE(sqlc.narg(tier)::text, tier)
+    tier         = COALESCE(sqlc.narg(tier)::text, tier),
+    invoice_logo_asset_id = CASE WHEN @clear_logo::bool THEN NULL ELSE COALESCE(sqlc.narg(invoice_logo_asset_id)::uuid, invoice_logo_asset_id) END
 WHERE id = @id
 RETURNING *;
 

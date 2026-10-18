@@ -76,6 +76,9 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		body.Error.Message = "internal error" // never leak upstream internals
 	}
 	for _, d := range st.Details() {
+		if ei, ok := d.(*errdetails.ErrorInfo); ok && ei.GetReason() != "" {
+			body.Error.Code = ei.GetReason() // an application error code such as STORAGE_QUOTA_EXCEEDED
+		}
 		if br, ok := d.(*errdetails.BadRequest); ok {
 			for _, fv := range br.GetFieldViolations() {
 				body.Error.Details = append(body.Error.Details, FieldDetail{Field: fv.GetField(), Description: fv.GetDescription()})

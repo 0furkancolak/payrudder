@@ -6,6 +6,7 @@ require (
 	github.com/0furkancolak/quotify/gen/go v0.0.0
 	github.com/aws/aws-sdk-go-v2 v1.47.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.23.14
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.3
 	github.com/aws/smithy-go v1.28.5
 	github.com/caarlos0/env/v11 v11.4.1

@@ -32,12 +32,18 @@ scrape_configs:
       - targets: ["billing-svc:9105"]
         labels:
           service: billing-svc
-      - targets: ["payments-worker:9106"]
+      - targets: ["payments-worker:9108"]
         labels:
           service: payments-worker
       - targets: ["invoice-worker:9107"]
         labels:
           service: invoice-worker
-      - targets: ["notifier:9108"]
+      - targets: ["notifier:9109"]
         labels:
           service: notifier
+      - targets: ["analytics-svc:9106"]
+        labels:
+          service: analytics-svc
+      - targets: ["assets-svc:9111"]
+        labels:
+          service: assets-svc

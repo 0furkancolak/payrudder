@@ -21,6 +21,8 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
+	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
+	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
@@ -124,6 +126,8 @@ func newFullTestServer(t *testing.T) (*httptest.Server, *fakePlans, *fakeIngest,
 	aggregatorv1.RegisterUsageQueryServiceServer(gs, fakeUsage{})
 	limitsv1.RegisterLimitsServiceServer(gs, fakeLimits{})
 	billingv1.RegisterBillingServiceServer(gs, fakeBilling{})
+	analyticsv1.RegisterAnalyticsServiceServer(gs, fakeAnalytics{})
+	assetsv1.RegisterAssetsServiceServer(gs, fakeAssets{})
 	billingv1.RegisterSandboxServiceServer(gs, fakeBilling{})
 	billingv1.RegisterBillingAdminServiceServer(gs, fakeBilling{})
 	lis := bufconn.Listen(1 << 20)
@@ -137,7 +141,7 @@ func newFullTestServer(t *testing.T) (*httptest.Server, *fakePlans, *fakeIngest,
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	api := New(Deps{Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc),
-		Ingest: ingestv1.NewIngestServiceClient(cc), Usage: aggregatorv1.NewUsageQueryServiceClient(cc), Limits: limitsv1.NewLimitsServiceClient(cc), Billing: billingv1.NewBillingServiceClient(cc),
+		Ingest: ingestv1.NewIngestServiceClient(cc), Usage: aggregatorv1.NewUsageQueryServiceClient(cc), Limits: limitsv1.NewLimitsServiceClient(cc), Billing: billingv1.NewBillingServiceClient(cc), Analytics: analyticsv1.NewAnalyticsServiceClient(cc), Assets: assetsv1.NewAssetsServiceClient(cc),
 		Sandbox: billingv1.NewSandboxServiceClient(cc), BillingAdmin: billingv1.NewBillingAdminServiceClient(cc), Auth: fakeAuth{},
 		Limiter: lim, OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	ts := httptest.NewServer(api)

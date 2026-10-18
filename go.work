@@ -4,6 +4,8 @@ use (
 	./gen/go
 	./pkg
 	./services/aggregator
+	./services/analytics-svc
+	./services/assets-svc
 	./services/billing-svc
 	./services/gateway
 	./services/ingest-svc

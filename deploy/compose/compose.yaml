@@ -378,7 +378,7 @@ services:
       QUOTIFY_ENV: local
       QUOTIFY_SERVICE_NAME: mockpsp
       MOCKPSP_HTTP_ADDR: ":8090"
-      QUOTIFY_METRICS_ADDR: ":9109"
+      QUOTIFY_METRICS_ADDR: ":9110"
       QUOTIFY_PG_APP_DSN: postgres://mockpsp_app:mockpsp_app_local@postgres:5432/mockpsp_db
       QUOTIFY_PG_MIGRATOR_DSN: postgres://mockpsp_migrator:mockpsp_migrator_local@postgres:5432/mockpsp_db
       QUOTIFY_MIGRATE_ON_START: "true"
@@ -401,7 +401,7 @@ services:
     environment:
       QUOTIFY_ENV: local
       QUOTIFY_SERVICE_NAME: payments-worker
-      QUOTIFY_METRICS_ADDR: ":9106"
+      QUOTIFY_METRICS_ADDR: ":9108"
       QUOTIFY_PG_SYSTEM_DSN: postgres://payments_system:payments_system_local@postgres:5432/payments_db
       QUOTIFY_PG_MIGRATOR_DSN: postgres://payments_migrator:payments_migrator_local@postgres:5432/payments_db
       QUOTIFY_MIGRATE_ON_START: "true"
@@ -431,6 +431,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_REGION: us-east-1
       S3_BUCKET: invoices
+      S3_ASSETS_BUCKET: assets
       S3_ACCESS_KEY: quotify
       S3_SECRET_KEY: quotify_local
       S3_FORCE_PATH_STYLE: "true"
@@ -450,7 +451,7 @@ services:
     environment:
       QUOTIFY_ENV: local
       QUOTIFY_SERVICE_NAME: notifier
-      QUOTIFY_METRICS_ADDR: ":9108"
+      QUOTIFY_METRICS_ADDR: ":9109"
       QUOTIFY_PG_SYSTEM_DSN: postgres://notifier_system:notifier_system_local@postgres:5432/notifier_db
       QUOTIFY_PG_MIGRATOR_DSN: postgres://notifier_migrator:notifier_migrator_local@postgres:5432/notifier_db
       QUOTIFY_MIGRATE_ON_START: "true"
@@ -512,6 +513,62 @@ services:
       minio: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 192m } } }
 
+  analytics-svc:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: services/analytics-svc/Dockerfile
+    image: quotify/analytics-svc:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: analytics-svc
+      QUOTIFY_GRPC_ADDR: ":7006"
+      QUOTIFY_METRICS_ADDR: ":9106"
+      CLICKHOUSE_ADDR: clickhouse:9000
+      CLICKHOUSE_DB: quotify
+      CLICKHOUSE_USER: quotify
+      CLICKHOUSE_PASSWORD: quotify_local
+      QUOTIFY_KAFKA_BROKERS: redpanda:9092
+      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    ports: ["7006:7006", "9106:9106"]
+    depends_on:
+      clickhouse: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 128m } } }
+
+  assets-svc:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: services/assets-svc/Dockerfile
+    image: quotify/assets-svc:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: assets-svc
+      QUOTIFY_GRPC_ADDR: ":7007"
+      QUOTIFY_METRICS_ADDR: ":9111"
+      QUOTIFY_PG_APP_DSN: postgres://assets_app:assets_app_local@postgres:5432/assets_db
+      QUOTIFY_PG_SYSTEM_DSN: postgres://assets_system:assets_system_local@postgres:5432/assets_db
+      QUOTIFY_PG_MIGRATOR_DSN: postgres://assets_migrator:assets_migrator_local@postgres:5432/assets_db
+      QUOTIFY_MIGRATE_ON_START: "true"
+      S3_ENDPOINT: http://minio:9000
+      # Presigned part and download URLs are opened by clients on the host, where MinIO's S3 API is published on 9001.
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9001}
+      S3_BUCKET: assets
+      S3_ACCESS_KEY: quotify
+      S3_SECRET_KEY: quotify_local
+      S3_FORCE_PATH_STYLE: "true"
+      ASSETS_VERIFY_INTERVAL: ${ASSETS_VERIFY_INTERVAL:-30s}
+      ASSETS_SWEEP_INTERVAL: ${ASSETS_SWEEP_INTERVAL:-1m}
+      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    ports: ["7007:7007", "9111:9111"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 96m } } }
+
   gateway:
     <<: *defaults
     profiles: [app]
@@ -529,6 +586,8 @@ services:
       QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003
       QUOTIFY_LIMITS_ADDR: dns:///limits-svc:7004
       QUOTIFY_BILLING_ADDR: dns:///billing-svc:7005
+      QUOTIFY_ANALYTICS_ADDR: dns:///analytics-svc:7006
+      QUOTIFY_ASSETS_ADDR: dns:///assets-svc:7007
       QUOTIFY_REDIS_URL: redis://redis:6379/0
       QUOTIFY_OPERATOR_TOKEN: ${QUOTIFY_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
       QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
@@ -540,6 +599,8 @@ services:
       aggregator: { condition: service_started }
       limits-svc: { condition: service_started }
       billing-svc: { condition: service_started }
+      analytics-svc: { condition: service_started }
+      assets-svc: { condition: service_started }
       redis: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 128m } } }
 

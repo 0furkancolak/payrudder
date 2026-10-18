@@ -199,12 +199,12 @@ func TestSandboxPaymentScenarios(t *testing.T) {
 		succeeded int
 		total     int
 	}{
-		"cus_success": {"paid", 1, 1},
+		"cus_success":  {"paid", 1, 1},
 		"cus_declined": {"uncollectible", 0, 4}, // the charge and three dunning retries, all declined
-		"cus_nsf": {"paid", 1, 2},               // declined once, the dunning retry succeeds
-		"cus_errors": {"paid", 1, 1},            // two 5xx answers are retried by the worker under the same key
-		"cus_tcommit": {"paid", 1, 1},           // PAYMENT_UNKNOWN → status query finds the committed charge
-		"cus_tnot": {"paid", 1, 1},              // PAYMENT_UNKNOWN → not found → re-charge under the same key
+		"cus_nsf":      {"paid", 1, 2},          // declined once, the dunning retry succeeds
+		"cus_errors":   {"paid", 1, 1},          // two 5xx answers are retried by the worker under the same key
+		"cus_tcommit":  {"paid", 1, 1},          // PAYMENT_UNKNOWN → status query finds the committed charge
+		"cus_tnot":     {"paid", 1, 1},          // PAYMENT_UNKNOWN → not found → re-charge under the same key
 	}
 	for name, w := range want {
 		inv := invs[name]
