@@ -117,6 +117,7 @@ type saga struct {
 	PeriodID, Currency, InvoiceStatus   string
 	InvoiceVersion                      int
 	TotalMinor                          int64
+	FinalizedAt                         time.Time
 	Snap                                Snapshot
 }
 
@@ -126,11 +127,11 @@ func (e *Engine) load(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UUID
 	var number *string
 	err := tx.QueryRow(ctx, `
 		SELECT s.tenant_id, s.id, s.invoice_id, i.customer_id, s.state, s.version, s.attempt, s.step_attempt, s.dunning_attempt,
-		       i.number, i.period_id, i.currency, i.status, i.version, i.total_minor, i.snapshot
+		       i.number, i.period_id, i.currency, i.status, i.version, i.total_minor, COALESCE(i.finalized_at, i.created_at), i.snapshot
 		FROM invoice_sagas s JOIN invoices i ON i.tenant_id = s.tenant_id AND i.id = s.invoice_id
 		WHERE s.tenant_id = $1 AND s.id = $2
 		FOR UPDATE OF s`, tenantID, sagaID).Scan(&s.TenantID, &s.ID, &s.InvoiceID, &s.CustomerID, &s.State, &s.Version, &s.Attempt,
-		&s.StepAttempt, &s.DunningAttempt, &number, &s.PeriodID, &s.Currency, &s.InvoiceStatus, &s.InvoiceVersion, &s.TotalMinor, &raw)
+		&s.StepAttempt, &s.DunningAttempt, &number, &s.PeriodID, &s.Currency, &s.InvoiceStatus, &s.InvoiceVersion, &s.TotalMinor, &s.FinalizedAt, &raw)
 	if err != nil {
 		return nil, err
 	}

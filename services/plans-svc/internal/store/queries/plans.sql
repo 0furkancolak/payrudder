@@ -12,6 +12,9 @@ RETURNING *;
 -- name: GetCustomerByExternalID :one
 SELECT * FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1;
 
+-- name: GetCustomerByID :one
+SELECT * FROM customers WHERE tenant_id = app_tenant_id() AND id = $1;
+
 -- name: ListCustomers :many
 SELECT * FROM customers
 WHERE tenant_id = app_tenant_id() AND external_id > @after::text

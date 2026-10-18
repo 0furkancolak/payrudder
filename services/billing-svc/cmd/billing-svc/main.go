@@ -21,6 +21,7 @@ import (
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/blob"
 	"github.com/0furkancolak/quotify/pkg/config"
 	"github.com/0furkancolak/quotify/pkg/grpcx"
 	"github.com/0furkancolak/quotify/pkg/health"
@@ -56,14 +57,28 @@ type Config struct {
 	SweepInterval     time.Duration `env:"QUOTIFY_SWEEP_INTERVAL" envDefault:"30s"`
 	StepTimeout       time.Duration `env:"QUOTIFY_STEP_TIMEOUT" envDefault:"2m"`
 	WatermarkDelay    time.Duration `env:"QUOTIFY_WATERMARK_DELAY" envDefault:"30s"`
-	RelayWorkers      int           `env:"QUOTIFY_RELAY_WORKERS" envDefault:"1"`
-	RelayBatchSize    int           `env:"QUOTIFY_RELAY_BATCH_SIZE" envDefault:"200"`
+	// Dunning delays before payment retry 1..3 (ADR 0011: sandbox tenants run on minutes instead of days).
+	DunningLive    []time.Duration `env:"QUOTIFY_DUNNING_LIVE" envSeparator:"," envDefault:"24h,72h,168h"`
+	DunningSandbox []time.Duration `env:"QUOTIFY_DUNNING_SANDBOX" envSeparator:"," envDefault:"1m,3m,7m"`
+	RelayWorkers   int             `env:"QUOTIFY_RELAY_WORKERS" envDefault:"1"`
+	RelayBatchSize int             `env:"QUOTIFY_RELAY_BATCH_SIZE" envDefault:"200"`
+	// Object storage, for presigned invoice PDF links (optional: without S3_ACCESS_KEY the PDF RPC is unimplemented).
+	S3Endpoint       string `env:"S3_ENDPOINT"`
+	S3PublicEndpoint string `env:"S3_PUBLIC_ENDPOINT"`
+	S3Region         string `env:"S3_REGION" envDefault:"us-east-1"`
+	S3Bucket         string `env:"S3_BUCKET" envDefault:"invoices"`
+	S3AccessKey      string `env:"S3_ACCESS_KEY"`
+	S3SecretKey      string `env:"S3_SECRET_KEY"`
+	S3ForcePath      bool   `env:"S3_FORCE_PATH_STYLE" envDefault:"false"`
 }
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	if c.MigrateOnStart && c.PGMigratorDSN == "" {
 		errs = append(errs, errors.New("QUOTIFY_PG_MIGRATOR_DSN is required with QUOTIFY_MIGRATE_ON_START"))
+	}
+	if len(c.DunningLive) != saga.MaxDunning || len(c.DunningSandbox) != saga.MaxDunning {
+		errs = append(errs, fmt.Errorf("QUOTIFY_DUNNING_LIVE and QUOTIFY_DUNNING_SANDBOX need exactly %d delays", saga.MaxDunning))
 	}
 	if c.SchedulerInterval < time.Second || c.SweepInterval < time.Second {
 		errs = append(errs, errors.New("QUOTIFY_SCHEDULER_INTERVAL and QUOTIFY_SWEEP_INTERVAL must be ≥ 1s"))
@@ -148,7 +163,7 @@ func run() error {
 	pub := rabbitx.NewPublisher(cfg.RabbitMQURL)
 	defer pub.Close()
 
-	eng, err := saga.NewEngine(saga.Config{StepTimeout: cfg.StepTimeout, Log: log})
+	eng, err := saga.NewEngine(saga.Config{StepTimeout: cfg.StepTimeout, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log})
 	if err != nil {
 		return err
 	}
@@ -196,6 +211,14 @@ func run() error {
 		},
 	})
 	svc := api.New(appPool, systemPool, mgr, eng)
+	if cfg.S3AccessKey != "" {
+		store, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, PublicEndpoint: cfg.S3PublicEndpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
+			AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
+		if err != nil {
+			return err
+		}
+		svc.WithPDFs(store)
+	}
 	billingv1.RegisterBillingServiceServer(srv, svc)
 	billingv1.RegisterSandboxServiceServer(srv, svc)
 	billingv1.RegisterBillingAdminServiceServer(srv, svc)

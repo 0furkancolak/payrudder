@@ -46,7 +46,9 @@ message CreateCustomerResponse {
 }
 
 message GetCustomerRequest {
+  // Either external_id, or the internal id (internal callers that only hold the id, e.g. notifier).
   string external_id = 1;
+  string id = 2;
 }
 
 message GetCustomerResponse {

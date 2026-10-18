@@ -39,6 +39,16 @@ func (s *Server) getInvoice(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp.GetInvoice(), err)
 }
 
+// getInvoicePDF is GET /v1/invoices/{id}/pdf: a presigned download link, valid for 5 minutes.
+func (s *Server) getInvoicePDF(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Billing.GetInvoicePdfUrl(r.Context(), &billingv1.GetInvoicePdfUrlRequest{InvoiceId: r.PathValue("id")})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSONValue(w, http.StatusOK, map[string]any{"url": resp.GetUrl(), "expires_at": resp.GetExpireTime().AsTime().UTC().Format("2006-01-02T15:04:05Z07:00")})
+}
+
 // sandboxClosePeriod is POST /v1/sandbox/close-period: close the current (or the given) period now and run the real
 // billing flow, so a sandbox account sees invoices within a minute instead of at month end.
 func (s *Server) sandboxClosePeriod(w http.ResponseWriter, r *http.Request) {

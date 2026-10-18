@@ -135,6 +135,25 @@ func (q *Queries) GetCustomerByExternalID(ctx context.Context, externalID string
 	return i, err
 }
 
+const getCustomerByID = `-- name: GetCustomerByID :one
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at FROM customers WHERE tenant_id = app_tenant_id() AND id = $1
+`
+
+func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, error) {
+	row := q.db.QueryRow(ctx, getCustomerByID, id)
+	var i Customer
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.ExternalID,
+		&i.Name,
+		&i.Email,
+		&i.PaymentMethod,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getPlanByCode = `-- name: GetPlanByCode :one
 SELECT p.id, p.code, p.name, p.created_at,
        COALESCE((SELECT max(v.version) FROM plan_versions v WHERE v.tenant_id = p.tenant_id AND v.plan_id = p.id), 0)::int AS latest_version

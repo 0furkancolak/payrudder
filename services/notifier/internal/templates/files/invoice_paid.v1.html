@@ -1,0 +1,8 @@
+<!doctype html>
+<html><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — this is not a real invoice.</strong></p>{{end}}
+<h2>Thanks, {{index .D "customer_name"}}</h2>
+<p>We received your payment of <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> for invoice
+<strong>{{index .D "invoice_number"}}</strong> (period {{index .D "period"}}).</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

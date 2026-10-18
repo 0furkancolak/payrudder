@@ -18,6 +18,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/rabbitmq"
 	"github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/modules/redpanda"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 // Images used by the helpers. Keep in sync with deploy/compose/compose.yaml.
@@ -127,4 +128,86 @@ func StartRedis(t testing.TB) string {
 		t.Fatalf("testkit: redis url: %v", err)
 	}
 	return url
+}
+
+// MinioImage is the S3-compatible server of Compose, pinned by digest (docs/adr/0013-s3-compatible-object-storage.md).
+const MinioImage = "cgr.dev/chainguard/minio@sha256:c93745c56fccdaf0e5dcb88999a96a65a136428beb045ef5d546255a80d747a7"
+
+// Minio is a running S3-compatible server.
+type Minio struct {
+	// Endpoint is the S3 API URL (http://host:port).
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+}
+
+// StartMinio starts a MinIO server and returns its S3 endpoint and credentials.
+func StartMinio(t testing.TB) Minio {
+	t.Helper()
+	ctx := startCtx(t)
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        MinioImage,
+			Cmd:          []string{"server", "/data", "--address", ":9000"},
+			ExposedPorts: []string{"9000/tcp"},
+			Env:          map[string]string{"MINIO_ROOT_USER": "testkey", "MINIO_ROOT_PASSWORD": "testsecret-testsecret"},
+			WaitingFor:   wait.ForHTTP("/minio/health/live").WithPort("9000/tcp").WithStartupTimeout(startTimeout),
+		},
+		Started: true,
+	})
+	testcontainers.CleanupContainer(t, c)
+	if err != nil {
+		t.Fatalf("testkit: start minio: %v", err)
+	}
+	host, err := c.Host(ctx)
+	if err != nil {
+		t.Fatalf("testkit: minio host: %v", err)
+	}
+	port, err := c.MappedPort(ctx, "9000/tcp")
+	if err != nil {
+		t.Fatalf("testkit: minio port: %v", err)
+	}
+	return Minio{Endpoint: "http://" + host + ":" + port.Port(), AccessKey: "testkey", SecretKey: "testsecret-testsecret"}
+}
+
+// MailpitImage matches deploy/compose/compose.yaml.
+const MailpitImage = "axllent/mailpit:v1.31.6"
+
+// Mailpit is a running Mailpit (SMTP sink with an HTTP API).
+type Mailpit struct {
+	// SMTPAddr is host:port of the SMTP listener.
+	SMTPAddr string
+	// APIURL is the base URL of the HTTP API (http://host:port).
+	APIURL string
+}
+
+// StartMailpit starts Mailpit.
+func StartMailpit(t testing.TB) Mailpit {
+	t.Helper()
+	ctx := startCtx(t)
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        MailpitImage,
+			ExposedPorts: []string{"1025/tcp", "8025/tcp"},
+			WaitingFor:   wait.ForHTTP("/readyz").WithPort("8025/tcp").WithStartupTimeout(startTimeout),
+		},
+		Started: true,
+	})
+	testcontainers.CleanupContainer(t, c)
+	if err != nil {
+		t.Fatalf("testkit: start mailpit: %v", err)
+	}
+	host, err := c.Host(ctx)
+	if err != nil {
+		t.Fatalf("testkit: mailpit host: %v", err)
+	}
+	smtp, err := c.MappedPort(ctx, "1025/tcp")
+	if err != nil {
+		t.Fatalf("testkit: mailpit smtp port: %v", err)
+	}
+	api, err := c.MappedPort(ctx, "8025/tcp")
+	if err != nil {
+		t.Fatalf("testkit: mailpit api port: %v", err)
+	}
+	return Mailpit{SMTPAddr: host + ":" + smtp.Port(), APIURL: "http://" + host + ":" + api.Port()}
 }

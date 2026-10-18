@@ -135,8 +135,10 @@ func (x *CreateCustomerResponse) GetCustomer() *Customer {
 }
 
 type GetCustomerRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ExternalId    string                 `protobuf:"bytes,1,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Either external_id, or the internal id (internal callers that only hold the id, e.g. notifier).
+	ExternalId    string `protobuf:"bytes,1,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	Id            string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -174,6 +176,13 @@ func (*GetCustomerRequest) Descriptor() ([]byte, []int) {
 func (x *GetCustomerRequest) GetExternalId() string {
 	if x != nil {
 		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *GetCustomerRequest) GetId() string {
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
@@ -1520,10 +1529,11 @@ const file_quotify_plans_v1_plans_proto_rawDesc = "" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12%\n" +
 	"\x0epayment_method\x18\x04 \x01(\tR\rpaymentMethod\"P\n" +
 	"\x16CreateCustomerResponse\x126\n" +
-	"\bcustomer\x18\x01 \x01(\v2\x1a.quotify.plans.v1.CustomerR\bcustomer\"5\n" +
+	"\bcustomer\x18\x01 \x01(\v2\x1a.quotify.plans.v1.CustomerR\bcustomer\"E\n" +
 	"\x12GetCustomerRequest\x12\x1f\n" +
 	"\vexternal_id\x18\x01 \x01(\tR\n" +
-	"externalId\"M\n" +
+	"externalId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"M\n" +
 	"\x13GetCustomerResponse\x126\n" +
 	"\bcustomer\x18\x01 \x01(\v2\x1a.quotify.plans.v1.CustomerR\bcustomer\"9\n" +
 	"\x16ResolveCustomerRequest\x12\x1f\n" +
