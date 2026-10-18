@@ -99,7 +99,7 @@ PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live
 | `make seed` | Create a demo account (currency/time zone/grace passed explicitly: `CURRENCY=TRY TZ=Europe/Istanbul GRACE=24h`), sandbox + live keys, meters (one fractional), plan, 10 customers covering every `pm_sandbox_*` scenario |
 | `make demo` | Seed → send events → sandbox `ClosePeriodNow` → every payment scenario plays out → open Mailpit/Grafana links |
 | `make e2e` | Run `tests/e2e` against the compose stack |
-| `make chaos N=100000` | Run the correctness suite with N events |
+| `make chaos N=100000` | Run the correctness suite with N events: builds ingest-svc and aggregator with the `chaos` tag, arms the fault hooks, drives the public API and asserts exact totals (`tests/chaos`) |
 | `make load SCENARIO=ingest_steady` | Run a k6 scenario |
 | `make kind-up` / `make helm-install` | Phase 10. `HELM_VALUES=values-kind.yaml` (default) or `values-sandbox.yaml` |
 | `make demo-k8s` | `make demo` against the kind cluster (port-forwarded gateway) |

@@ -66,3 +66,50 @@ func TestBoundsRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestCutoffAndClassify(t *testing.T) {
+	ist := mustLoc(t, "Europe/Istanbul")
+	grace := 24 * time.Hour
+	cutoff, err := Cutoff("2026-11", ist, grace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// November in Istanbul ends at 2026-11-30T21:00Z; one day of grace.
+	if want := time.Date(2026, 12, 1, 21, 0, 0, 0, time.UTC); !cutoff.Equal(want) {
+		t.Fatalf("cutoff = %s, want %s", cutoff, want)
+	}
+	for _, c := range []struct {
+		at   time.Time
+		want Class
+	}{
+		{cutoff.Add(-time.Millisecond), OnTime},
+		{cutoff, Late},
+		{cutoff.Add(time.Millisecond), Late},
+		{cutoff.Add(-time.Hour * 24 * 40), OnTime},
+	} {
+		if got := Classify(c.at, cutoff); got != c.want {
+			t.Errorf("Classify(%s) = %s, want %s", c.at, got, c.want)
+		}
+	}
+
+	// Year boundary, zero grace, a zone ahead of UTC and one behind.
+	for _, tz := range []string{"Pacific/Kiritimati", "America/New_York"} {
+		loc := mustLoc(t, tz)
+		cut, err := Cutoff("2026-12", loc, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := PeriodOf(cut.Add(-time.Nanosecond), loc); got != "2026-12" {
+			t.Errorf("%s: just before cutoff is %s", tz, got)
+		}
+		if got := PeriodOf(cut, loc); got != "2027-01" {
+			t.Errorf("%s: at cutoff is %s", tz, got)
+		}
+		if Classify(cut.Add(-time.Millisecond), cut) != OnTime || Classify(cut, cut) != Late {
+			t.Errorf("%s: classification around the year-end cutoff is wrong", tz)
+		}
+	}
+	if _, err := Cutoff("nope", ist, 0); err == nil {
+		t.Fatal("malformed period accepted")
+	}
+}

@@ -40,6 +40,25 @@ Why both the dedup table and offsets: [07-correctness.md §2](../07-correctness.
 RLS: the consumer runs as role `aggregator_system` (BYPASSRLS) because one batch spans tenants.
 Read APIs run as `aggregator_app` with `SET LOCAL app.tenant_id`.
 
+### As built (Phase 03)
+
+- `pkg/kafkax.Consumer` loads the offsets in `AdjustFetchOffsetsFn` (on every assignment) from `consumer_offsets`, applies the partitions of a poll
+  concurrently and holds rebalances off while a batch is in flight (`BlockRebalanceOnPoll`). A failed batch rewinds the partition to its
+  database offset and pauses it for a second, which is also what a restart does. Kafka commits are advisory marks.
+- Before the transaction, outside it: records are decoded (undecodable or invalid ones are poison), meters are resolved (a meter plans-svc
+  doesn't know is retried at 100 ms / 500 ms / 2 s before the record goes to the DLQ; a plans-svc outage pauses the partition instead),
+  poison records are sent to the DLQ (`x-dlq-*` and `x-original-*` headers), `period_settings` snapshots and inbox partitions are ensured.
+  Deterministic decode and validation failures skip the in-process retries.
+- The transaction reads `period_settings` and the tenant's generation rows `FOR SHARE`, inserts the inbox rows (one per event and target
+  generation, `ON CONFLICT DO NOTHING RETURNING`), classifies and pre-sums only the returned events, upserts SUM/COUNT and MAX rows in two
+  statements with keys in a fixed order, and advances the offset with the fencing `WHERE`. A no-op offset write means a zombie and is counted
+  (`aggregator_fenced_batches`).
+- A meter's `filter` is applied at aggregation: a non-matching event is marked processed and ignored (`aggregator_filtered_events`).
+  The quantity is the event's validated `quantity_units` (1 for COUNT); the meter's `value_property` isn't used.
+- A frozen period turns every later arrival into late usage; one that would have been on time counts in
+  `aggregator_frozen_period_violations` and logs an error (the suite asserts it stays 0).
+- Fault hook: `AGG_CRASH_AFTER_COMMIT` (chaos build tag) exits the process after the commit. In-process tests set `Handler.AfterCommit`.
+
 ## On-time vs late classification
 
 ```
@@ -80,8 +99,8 @@ package quotify.aggregator.v1;
 service UsageQueryService {
   rpc GetCustomerUsage(GetCustomerUsageRequest) returns (GetCustomerUsageResponse);   // customer, period → per-meter qty
   rpc GetUsageBatch(GetUsageBatchRequest) returns (GetUsageBatchResponse);            // limits reconciliation, ≤ 1000 keys
-  rpc StreamPeriodUsage(StreamPeriodUsageRequest) returns (stream UsageAggregate);    // billing: all customers of tenant+period
-  rpc StreamLateUsage(StreamLateUsageRequest) returns (stream LateUsage);             // billing: late usage billed in period
+  rpc StreamPeriodUsage(StreamPeriodUsageRequest) returns (stream StreamPeriodUsageResponse);    // billing: all customers of tenant+period
+  rpc StreamLateUsage(StreamLateUsageRequest) returns (stream StreamLateUsageResponse);             // billing: late usage billed in period
   rpc GetIngestWatermark(GetIngestWatermarkRequest) returns (GetIngestWatermarkResponse);
   rpc FreezePeriod(FreezePeriodRequest) returns (FreezePeriodResponse);              // billing, after rating; idempotent
   rpc ClosePeriodEarly(ClosePeriodEarlyRequest) returns (ClosePeriodEarlyResponse);  // billing, sandbox tenants only

@@ -1,0 +1,17 @@
+# Overlay for the correctness suite (make chaos): builds ingest-svc and aggregator with the `chaos` build tag so that the
+# fault hooks exist, and arms them. Never used for release images.
+services:
+  ingest-svc:
+    build:
+      args: { GO_TAGS: chaos }
+    image: quotify/ingest-svc:chaos
+    environment:
+      RELAY_CRASH_AFTER_PRODUCE: "${RELAY_CRASH_AFTER_PRODUCE:-0.1}"
+  aggregator:
+    build:
+      args: { GO_TAGS: chaos }
+    image: quotify/aggregator:chaos
+    environment:
+      AGG_CRASH_AFTER_COMMIT: "${AGG_CRASH_AFTER_COMMIT:-0.1}"
+      # A killed member holds its partitions until the session expires; keep that short so a crash loop still progresses.
+      QUOTIFY_CONSUMER_SESSION_TIMEOUT: "6s"

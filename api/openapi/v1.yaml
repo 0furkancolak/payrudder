@@ -129,6 +129,38 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Meter" } } } }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/customers/{external_id}/usage:
+    get:
+      operationId: getCustomerUsage
+      summary: On-time usage of a customer in a period, per meter
+      description: |
+        Quantities are exact decimals with the meter's scale. Usage that arrived after the period's cutoff is not
+        included here: it is billed on a later invoice as late usage. `period` defaults to the current period in the
+        tenant's time zone.
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { name: period, in: query, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$", examples: ["2026-11"] } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_external_id: { type: string }
+                  period_id: { type: string }
+                  usage:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        meter_code: { type: string }
+                        quantity: { type: string, examples: ["1500.250"] }
+                        event_count: { type: integer, format: int64 }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   /v1/plans:
     post:
       operationId: createPlan

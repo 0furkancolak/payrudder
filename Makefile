@@ -4,7 +4,7 @@ SHELL := bash
 
 # Go modules in the workspace (go.work). tools/ is deliberately outside the workspace: its large dependency
 # graph (golangci-lint, buf, sqlc) must not influence the versions selected for services.
-MODULES := pkg gen/go services/plans-svc services/ingest-svc services/gateway tests tools/quotifyctl
+MODULES := pkg gen/go services/plans-svc services/ingest-svc services/aggregator services/gateway tests tools/quotifyctl
 BIN     := $(CURDIR)/bin
 COMPOSE := docker compose -f deploy/compose/compose.yaml $(if $(wildcard .env),--env-file .env)
 export GOPRIVATE := github.com/0furkancolak/*
@@ -49,6 +49,14 @@ e2e: ## End-to-end tests against the running compose stack (make up first)
 	cd tests && go test -count=1 -tags e2e ./e2e/...
 
 OPERATOR_TOKEN ?= local-operator-token-change-me-0123456789
+CHAOS_COMPOSE := docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml $(if $(wildcard .env),--env-file .env)
+N ?= 100000
+.PHONY: chaos
+chaos: ## Correctness suite: make chaos N=100000 (ingest-svc and aggregator are built with the chaos tag and armed)
+	$(MAKE) up-infra
+	$(CHAOS_COMPOSE) --profile app up -d --build --wait
+	cd tests && QUOTIFY_CHAOS_EVENTS=$(N) go test -count=1 -tags chaos -timeout 40m -v ./chaos/
+
 .PHONY: seed
 seed: ## Seed a demo account: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h
 	@test -n "$(CURRENCY)" -a -n "$(TIMEZONE)" -a -n "$(GRACE)" || { echo "usage: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h"; exit 2; }

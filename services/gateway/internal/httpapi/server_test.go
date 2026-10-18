@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
+	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/grpcx"
@@ -118,6 +119,7 @@ func newFullTestServer(t *testing.T) (*httptest.Server, *fakePlans, *fakeIngest,
 	plansv1.RegisterPlansServiceServer(gs, f)
 	plansv1.RegisterAdminServiceServer(gs, f)
 	ingestv1.RegisterIngestServiceServer(gs, ing)
+	aggregatorv1.RegisterUsageQueryServiceServer(gs, fakeUsage{})
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = gs.Serve(lis) }()
 	t.Cleanup(gs.Stop)
@@ -129,7 +131,7 @@ func newFullTestServer(t *testing.T) (*httptest.Server, *fakePlans, *fakeIngest,
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	api := New(Deps{Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc),
-		Ingest: ingestv1.NewIngestServiceClient(cc), Auth: fakeAuth{},
+		Ingest: ingestv1.NewIngestServiceClient(cc), Usage: aggregatorv1.NewUsageQueryServiceClient(cc), Auth: fakeAuth{},
 		Limiter: lim, OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	ts := httptest.NewServer(api)
 	t.Cleanup(ts.Close)

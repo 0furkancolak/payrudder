@@ -1,0 +1,15 @@
+{
+  "Events": 100000,
+  "Unique": 99894,
+  "Duplicates": 5030,
+  "Invalid": 106,
+  "Accepted": 99894,
+  "DuplicateResponses": 5028,
+  "Rejected": 108,
+  "Retries": 0,
+  "LedgerRowsOnTime": 300,
+  "LedgerRowsLate": 300,
+  "Mismatches": null,
+  "DLQRecords": 0,
+  "Seconds": 48.253770959
+}

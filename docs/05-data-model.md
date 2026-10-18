@@ -223,6 +223,7 @@ CREATE TABLE usage_aggregates (
   period_id    text NOT NULL,
   generation   int  NOT NULL,
   quantity     numeric(38,0) NOT NULL,               -- scaled units
+  quantity_scale smallint NOT NULL,                  -- the meter's scale (immutable), to render the decimal
   event_count  bigint NOT NULL,
   updated_at   timestamptz NOT NULL,
   PRIMARY KEY (tenant_id, period_id, customer_id, meter_code, generation)
@@ -236,7 +237,9 @@ CREATE TABLE late_usage (
   billed_period_id  text NOT NULL,                     -- period by ingested_at (tenant time zone)
   generation        int  NOT NULL,
   quantity          numeric(38,0) NOT NULL,
+  quantity_scale    smallint NOT NULL,
   event_count       bigint NOT NULL,
+  updated_at        timestamptz NOT NULL,
   PRIMARY KEY (tenant_id, billed_period_id, customer_id, meter_code, origin_period_id, generation)
 );
 
@@ -289,7 +292,11 @@ CREATE TABLE replay_jobs (
 `period_id` is the leading PK column of `processed_events` because of `LIST` partitioning. Lookups always know the period
 (it's derived from `event_time`), so the index is still selective.
 
-RLS: `usage_aggregates`, `late_usage` RLS'd for `aggregator_app` (read APIs). Consumers use `aggregator_system`.
+RLS: `usage_aggregates`, `late_usage`, `period_settings` and `aggregate_generations` are RLS'd for `aggregator_app` (read APIs, `FreezePeriod`,
+`ClosePeriodEarly`; its only UPDATE is on `period_settings(cutoff_at, early_closed_at, frozen_at)`). `processed_events` and `replay_jobs` carry
+`tenant_id` but are consumer-only and not RLS'd (allowlisted in the CI check). Consumers use `aggregator_system`; `FOR SHARE` needs an UPDATE
+privilege, hence its UPDATE grant on `period_settings` and `aggregate_generations`. Inbox partitions are named `processed_events_YYYY_MM`, created
+on demand by `ensure_processed_partition(period)` and dropped by `drop_old_processed_partitions(now)` (period end + 1 day of slack + 45 days).
 Reads always filter `generation = active_generation(tenant_id)` (the tenant's `active` row, else 1), or the
 generation pinned by a billing run. The live consumer caches each tenant's active and catching-up generation and refreshes it
 inside the batch transaction (`FOR SHARE` on the tenant's generation rows), so a promotion can't race a batch.

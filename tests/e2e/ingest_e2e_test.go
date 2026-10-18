@@ -125,6 +125,54 @@ func TestEventsFlow(t *testing.T) {
 	}
 }
 
+// TestUsageEndToEnd follows events through ingest, Kafka and the aggregator to the usage endpoint.
+func TestUsageEndToEnd(t *testing.T) {
+	a := newAccount(t, "TENANT_TIER_STANDARD")
+	k := a.liveKey
+	for _, step := range []struct {
+		path string
+		body map[string]any
+	}{
+		{"/v1/meters", map[string]any{"code": "gb_hours", "aggregation": "AGGREGATION_SUM", "value_property": "gb_h", "quantity_scale": 3, "unit_label": "GB-h"}},
+		{"/v1/customers", map[string]any{"external_id": "cus_e2e", "name": "E2E", "email": "e2e@example.com"}},
+	} {
+		if r := call(t, "POST", step.path, k, step.body); r.status != 201 {
+			t.Fatalf("POST %s: %d %v", step.path, r.status, r.body)
+		}
+	}
+	at := time.Now().Add(-time.Minute)
+	batch := map[string]any{"events": []any{
+		event("use-1", "gb_hours", "0.001", at), event("use-2", "gb_hours", 1.5, at), event("use-3", "gb_hours", "2", at),
+		event("use-1", "gb_hours", "0.001", at), // a retry: counted once
+	}}
+	if res := results(t, call(t, "POST", "/v1/events", k, batch)); res[3]["status"] != "duplicate" {
+		t.Fatalf("retry = %v", res[3])
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	var last result
+	for time.Now().Before(deadline) {
+		last = call(t, "GET", "/v1/customers/cus_e2e/usage", k, nil)
+		if rows, _ := last.body["usage"].([]any); last.status == 200 && len(rows) == 1 && rows[0].(map[string]any)["event_count"] == float64(3) {
+			break
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	rows, _ := last.body["usage"].([]any)
+	if last.status != 200 || len(rows) != 1 {
+		t.Fatalf("usage after 30 s: %d %v", last.status, last.body)
+	}
+	row := rows[0].(map[string]any)
+	if row["meter_code"] != "gb_hours" || row["quantity"] != "3.501" || row["event_count"] != float64(3) {
+		t.Fatalf("usage row = %v, want 3.501 over 3 events", row)
+	}
+	if r := call(t, "GET", "/v1/customers/nobody/usage", k, nil); r.status != 404 {
+		t.Fatalf("unknown customer: %d", r.status)
+	}
+	if r := call(t, "GET", "/v1/customers/cus_e2e/usage?period=nope", k, nil); r.status != 400 {
+		t.Fatalf("bad period: %d", r.status)
+	}
+}
+
 func TestSandboxEventsNeedNoKey(t *testing.T) {
 	a := newAccount(t, "TENANT_TIER_STANDARD")
 	k := a.sandboxKey

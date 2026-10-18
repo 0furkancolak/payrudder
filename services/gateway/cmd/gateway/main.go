@@ -16,6 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
+	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/config"
@@ -31,13 +32,14 @@ import (
 
 type Config struct {
 	config.Base
-	HTTPAddr      string   `env:"QUOTIFY_HTTP_ADDR" envDefault:":8000"`
-	PlansAddr     string   `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
-	IngestAddr    string   `env:"QUOTIFY_INGEST_ADDR" envDefault:"dns:///localhost:7002"`
-	RedisURL      string   `env:"QUOTIFY_REDIS_URL" envDefault:"redis://localhost:6379/0"`
-	OperatorToken string   `env:"QUOTIFY_OPERATOR_TOKEN,required"`
-	Replicas      int      `env:"QUOTIFY_GATEWAY_REPLICAS" envDefault:"1"`
-	AllowedEnvs   []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:"," envDefault:"sandbox,live"`
+	HTTPAddr       string   `env:"QUOTIFY_HTTP_ADDR" envDefault:":8000"`
+	PlansAddr      string   `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
+	IngestAddr     string   `env:"QUOTIFY_INGEST_ADDR" envDefault:"dns:///localhost:7002"`
+	AggregatorAddr string   `env:"QUOTIFY_AGGREGATOR_ADDR" envDefault:"dns:///localhost:7003"`
+	RedisURL       string   `env:"QUOTIFY_REDIS_URL" envDefault:"redis://localhost:6379/0"`
+	OperatorToken  string   `env:"QUOTIFY_OPERATOR_TOKEN,required"`
+	Replicas       int      `env:"QUOTIFY_GATEWAY_REPLICAS" envDefault:"1"`
+	AllowedEnvs    []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:"," envDefault:"sandbox,live"`
 }
 
 func (c *Config) Validate() error {
@@ -108,6 +110,13 @@ func run() error {
 	}
 	defer func() { _ = ingestConn.Close() }()
 
+	aggConn, err := grpcx.NewClient(cfg.AggregatorAddr,
+		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	if err != nil {
+		return fmt.Errorf("aggregator client: %w", err)
+	}
+	defer func() { _ = aggConn.Close() }()
+
 	authn, err := auth.New(auth.NewRedisCache(rdb), auth.AdminResolver{Client: adminClient}, cfg.AllowedEnvs, log)
 	if err != nil {
 		return err
@@ -118,7 +127,8 @@ func run() error {
 	}
 	api := httpapi.New(httpapi.Deps{
 		Plans: plansv1.NewPlansServiceClient(plansConn), Admin: adminClient, Ingest: ingestv1.NewIngestServiceClient(ingestConn),
-		Auth: authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
+		Usage: aggregatorv1.NewUsageQueryServiceClient(aggConn),
+		Auth:  authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
 	})
 
 	hh := health.New(reg, 2*time.Second)
