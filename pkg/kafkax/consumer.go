@@ -40,6 +40,9 @@ type ConsumerConfig struct {
 	Log            *slog.Logger
 	// Extra client options (tests, TLS).
 	Extra []kgo.Opt
+	// RecordTime tells, for a record, the tenant it belongs to and the instant it entered the pipeline (ingested_at), so
+	// the consumer can report consumer_lag_seconds per tenant. Optional.
+	RecordTime func(rec *kgo.Record) (tenant string, at time.Time, ok bool)
 }
 
 // Consumer reads one topic with DB-stored offsets.
@@ -49,6 +52,7 @@ type ConsumerConfig struct {
 // batch is in flight (BlockRebalanceOnPoll). A handler error rewinds the partition to its database offset and pauses it
 // for Backoff, so the batch is read again; that's also what a crashed process does on restart.
 type Consumer struct {
+	lag *lagState
 	cfg ConsumerConfig
 	cl  *kgo.Client
 	log *slog.Logger
@@ -72,6 +76,9 @@ func NewConsumer(cfg ConsumerConfig) (*Consumer, error) {
 		cfg.SessionTimeout = 10 * time.Second
 	}
 	c := &Consumer{cfg: cfg, log: cfg.Log}
+	if err := c.initMetrics(); err != nil {
+		return nil, err
+	}
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(cfg.Brokers...),
 		kgo.ConsumerGroup(cfg.GroupID),
@@ -153,7 +160,13 @@ func (c *Consumer) Run(ctx context.Context) error {
 }
 
 func (c *Consumer) apply(ctx context.Context, p kgo.FetchTopicPartition) {
-	if err := c.cfg.Handler.Apply(ctx, p.Partition, p.Records); err != nil {
+	bctx, end := StartBatch(ctx, p.Topic, c.cfg.GroupID, p.Partition, p.Records)
+	err := c.cfg.Handler.Apply(bctx, p.Partition, p.Records)
+	end(err)
+	if err == nil {
+		c.observeLag(p)
+	}
+	if err != nil {
 		if ctx.Err() != nil {
 			return
 		}

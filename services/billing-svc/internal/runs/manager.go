@@ -19,6 +19,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
@@ -93,11 +94,12 @@ type Manager struct {
 	cfg Config
 	log *slog.Logger
 
-	runsDone     metric.Int64Counter
-	waiting      metric.Int64Counter
-	invoices     metric.Int64Counter
-	noSub        metric.Int64Counter
-	runStageSecs metric.Float64Histogram
+	runsDone      metric.Int64Counter
+	watermarkSecs metric.Float64Histogram
+	waiting       metric.Int64Counter
+	invoices      metric.Int64Counter
+	noSub         metric.Int64Counter
+	runStageSecs  metric.Float64Histogram
 }
 
 // NewManager applies defaults and registers metrics.
@@ -121,6 +123,13 @@ func NewManager(cfg Config) (*Manager, error) {
 	mg := &Manager{cfg: cfg, log: cfg.Log}
 	var err error
 	if mg.runsDone, err = m.Int64Counter("billing_runs_completed", metric.WithDescription("Billing runs that reached COMPLETED")); err != nil {
+		return nil, err
+	}
+	if mg.watermarkSecs, err = m.Float64Histogram("billing_run_wait_watermark_seconds", metric.WithUnit("s"),
+		metric.WithDescription("Time from a run's cutoff until its ingest watermark was proven (close latency)")); err != nil {
+		return nil, err
+	}
+	if err := mg.registerGauges(m); err != nil {
 		return nil, err
 	}
 	if mg.waiting, err = m.Int64Counter("billing_watermark_waits", metric.WithDescription("Watermark checks that had to wait, by reason")); err != nil {
@@ -248,6 +257,9 @@ func (m *Manager) withLock(ctx context.Context, tenantID uuid.UUID, periodID str
 
 // Drive moves one run as far as it can go now. Waiting is not an error: the scheduler calls Drive again.
 func (m *Manager) Drive(ctx context.Context, tenantID uuid.UUID, periodID string) (*Run, error) {
+	ctx, span := otel.Tracer("github.com/0furkancolak/quotify/services/billing-svc/runs").Start(ctx, "billing.run",
+		trace.WithAttributes(attribute.String("quotify.tenant_id", tenantID.String()), attribute.String("billing.period", periodID)))
+	defer span.End()
 	var out *Run
 	_, err := m.withLock(ctx, tenantID, periodID, func(ctx context.Context) error {
 		for {
@@ -291,6 +303,7 @@ func (m *Manager) step(ctx context.Context, run *Run) (bool, error) {
 		if err != nil || !ok {
 			return false, err
 		}
+		m.watermarkSecs.Record(ctx, max(0, now.Sub(run.CutoffAt).Seconds()))
 		return true, m.setStatus(ctx, m.cfg.Pool, run.TenantID, run.PeriodID, Rating, "")
 	case Rating:
 		start := time.Now()

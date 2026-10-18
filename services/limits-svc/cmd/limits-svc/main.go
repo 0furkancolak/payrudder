@@ -150,7 +150,7 @@ func run() error {
 	usage, err := kafkax.NewConsumer(kafkax.ConsumerConfig{
 		Brokers: cfg.KafkaBrokers, GroupID: cfg.GroupID, Topic: usageTopic, LoadOffsets: applier.LoadOffsets,
 		Handler: applier, MaxPollRecords: cfg.PollRecords, Backoff: cfg.Backoff, SessionTimeout: cfg.SessionTimeout, Log: log,
-		Extra: owned.Opts(usageTopic),
+		Extra: owned.Opts(usageTopic), RecordTime: kafkax.UsageRecordTime,
 	})
 	if err != nil {
 		return err

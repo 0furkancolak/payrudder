@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -75,6 +77,8 @@ type Service struct {
 	o     Options
 	log   *slog.Logger
 	depth atomic.Int64
+	// oldestMillis is the age of the oldest unpublished outbox row, refreshed with depth.
+	oldestMillis atomic.Int64
 
 	locMu sync.Mutex
 	locs  map[string]*time.Location
@@ -107,7 +111,25 @@ func New(o Options) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Service{o: o, log: o.Log, locs: map[string]*time.Location{}, events: ctr}, nil
+	s := &Service{o: o, log: o.Log, locs: map[string]*time.Location{}, events: ctr}
+	m := otel.Meter("github.com/0furkancolak/quotify/services/ingest-svc")
+	depthG, err := m.Int64ObservableGauge("ingest_outbox_depth", metric.WithDescription("Estimated rows waiting in the outbox"))
+	if err != nil {
+		return nil, err
+	}
+	ageG, err := m.Float64ObservableGauge("ingest_outbox_oldest_age_seconds", metric.WithUnit("s"),
+		metric.WithDescription("Age of the oldest unpublished outbox row (0 when empty): relay lag and the watermark blocker"))
+	if err != nil {
+		return nil, err
+	}
+	if _, err := m.RegisterCallback(func(_ context.Context, ob metric.Observer) error {
+		ob.ObserveInt64(depthG, s.depth.Load())
+		ob.ObserveFloat64(ageG, float64(s.oldestMillis.Load())/1000)
+		return nil
+	}, depthG, ageG); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // Run refreshes the outbox depth estimate until ctx is done.
@@ -123,6 +145,13 @@ func (s *Service) Run(ctx context.Context) error {
 			s.log.WarnContext(ctx, "ingest: outbox depth unavailable", "error", err)
 		} else {
 			s.depth.Store(d)
+		}
+		if oldest, ok, err := outbox.Watermark(ctx, s.o.System, "outbox"); err == nil {
+			if ok {
+				s.oldestMillis.Store(time.Since(oldest).Milliseconds())
+			} else {
+				s.oldestMillis.Store(0)
+			}
 		}
 		select {
 		case <-ctx.Done():
@@ -211,7 +240,7 @@ func (s *Service) IngestEvents(ctx context.Context, req *ingestv1.IngestEventsRe
 			return nil, err
 		}
 	}
-	s.count(ctx, results)
+	s.count(ctx, ti.ID, results)
 	return &ingestv1.IngestEventsResponse{Results: results}, nil
 }
 
@@ -296,6 +325,10 @@ func (s *Service) prepare(ctx context.Context, ti tenant.Info, loc *time.Locatio
 func (s *Service) write(ctx context.Context, ti tenant.Info, todo []*pending, results []*ingestv1.EventResult) error {
 	traceHeaders := map[string]string{}
 	kafkax.InjectTrace(ctx, traceHeaders, s.o.Propagator)
+	// A debug-marked request (sandbox tenants and operators may ask for it) gets a span in every consumer.
+	if v := metadata.ValueFromIncomingContext(ctx, kafkax.DebugHeader); len(v) > 0 && v[0] == "1" {
+		traceHeaders[kafkax.DebugHeader] = "1"
+	}
 
 	err := pgxx.InTenantTx(ctx, s.o.App, ti.ID, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT set_config('transaction_timeout', '5s', true)`); err != nil {
@@ -467,10 +500,17 @@ func mapDBError(err error) error {
 	return status.Error(codes.Unavailable, "database unavailable; nothing was accepted, retry is safe")
 }
 
-func (s *Service) count(ctx context.Context, results []*ingestv1.EventResult) {
+// count records one ingest_events increment per event, aggregated per (result, error_code) so a 500-event request is
+// at most a handful of Add calls.
+func (s *Service) count(ctx context.Context, tenantID uuid.UUID, results []*ingestv1.EventResult) {
+	type key struct{ result, code string }
+	n := map[key]int64{}
 	for _, r := range results {
-		s.events.Add(ctx, 1, metric.WithAttributes(
-			attribute.String("status", r.GetStatus().String()), attribute.String("error_code", r.GetErrorCode())))
+		n[key{strings.ToLower(strings.TrimPrefix(r.GetStatus().String(), "STATUS_")), r.GetErrorCode()}]++
+	}
+	for k, c := range n {
+		s.events.Add(ctx, c, metric.WithAttributes(attribute.String("tenant", tenantID.String()),
+			attribute.String("result", k.result), attribute.String("error_code", k.code)))
 	}
 }
 

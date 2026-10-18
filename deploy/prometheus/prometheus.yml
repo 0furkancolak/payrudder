@@ -47,3 +47,28 @@ scrape_configs:
       - targets: ["assets-svc:9111"]
         labels:
           service: assets-svc
+
+  # Infrastructure (obs profile). Redpanda and RabbitMQ expose Prometheus natively; the rest through exporters.
+  - job_name: redpanda
+    metrics_path: /public_metrics
+    static_configs:
+      - targets: ["redpanda:9644"]
+  - job_name: rabbitmq
+    static_configs:
+      - targets: ["rabbitmq:15692"]
+  # Per-queue depths (the dlq_messages rule): the aggregated /metrics endpoint has no queue label.
+  - job_name: rabbitmq-queues
+    metrics_path: /metrics/detailed
+    params:
+      family: [queue_coarse_metrics]
+    static_configs:
+      - targets: ["rabbitmq:15692"]
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+  - job_name: clickhouse
+    static_configs:
+      - targets: ["clickhouse:9363"]

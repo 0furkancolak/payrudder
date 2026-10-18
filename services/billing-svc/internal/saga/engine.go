@@ -14,12 +14,14 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
 	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/kafkax"
 	"github.com/0furkancolak/quotify/pkg/outbox"
 	"github.com/0furkancolak/quotify/pkg/quantity"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
@@ -96,7 +98,7 @@ func NewEngine(cfg Config) (*Engine, error) {
 	m := otel.Meter("github.com/0furkancolak/quotify/services/billing-svc/saga")
 	e := &Engine{cfg: cfg}
 	var err error
-	if e.transitions, err = m.Int64Counter("billing_saga_transitions", metric.WithDescription("Saga transitions applied, by from, to and cause")); err != nil {
+	if e.transitions, err = m.Int64Counter("saga_transitions", metric.WithDescription("Saga transitions applied, by from, to and cause")); err != nil {
 		return nil, err
 	}
 	if e.ignored, err = m.Int64Counter("billing_saga_events_ignored", metric.WithDescription("Replies and triggers that were invalid or stale for the saga's state")); err != nil {
@@ -200,6 +202,11 @@ func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, r
 	now := e.cfg.Now()
 	from := s.State
 	next := res.To
+	ctx, span := otel.Tracer("github.com/0furkancolak/quotify/services/billing-svc/saga").Start(ctx, "saga.transition",
+		trace.WithAttributes(attribute.String("saga.id", s.ID.String()), attribute.String("saga.from", string(from)),
+			attribute.String("saga.to", string(next)), attribute.String("saga.cause", strings.SplitN(cause, ":", 2)[0]),
+			attribute.String("quotify.tenant_id", s.TenantID.String())))
+	defer span.End()
 
 	attempt := s.Attempt
 	var stepAttempt int
@@ -358,7 +365,10 @@ func (e *Engine) publishCommand(ctx context.Context, tx pgx.Tx, s *saga, env *co
 
 // EnqueueOutbox inserts one outbox row (a no-op when the message id exists) and signals the relay.
 func EnqueueOutbox(ctx context.Context, tx pgx.Tx, tenantID, messageID uuid.UUID, topic, key, dest string, payload []byte) error {
-	hdr, _ := json.Marshal(map[string]string{outbox.DestinationHeader: dest, outbox.MessageIDHeader: messageID.String()})
+	h := map[string]string{outbox.DestinationHeader: dest, outbox.MessageIDHeader: messageID.String()}
+	// The relay and every consumer continue the trace of the transition that produced the message.
+	kafkax.InjectTrace(ctx, h, otel.GetTextMapPropagator())
+	hdr, _ := json.Marshal(h)
 	if _, err := tx.Exec(ctx, `INSERT INTO outbox (tenant_id, topic, partition_key, payload, headers, message_id)
 		VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (message_id) DO NOTHING`, tenantID, topic, key, payload, hdr, messageID); err != nil {
 		return err
