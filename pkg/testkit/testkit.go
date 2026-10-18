@@ -64,8 +64,22 @@ func StartPostgres(t testing.TB) Postgres {
 	return Postgres{DSN: dsn}
 }
 
+// Redpanda is a running Redpanda container.
+type Redpanda struct {
+	// Brokers is the Kafka seed address (host:port).
+	Brokers string
+	// ContainerID lets chaos tests pause and unpause the broker with `docker pause`.
+	ContainerID string
+}
+
 // StartRedpanda starts a single Redpanda broker and returns its Kafka seed address (host:port).
 func StartRedpanda(t testing.TB) string {
+	t.Helper()
+	return StartRedpandaContainer(t).Brokers
+}
+
+// StartRedpandaContainer is StartRedpanda plus the container id.
+func StartRedpandaContainer(t testing.TB) Redpanda {
 	t.Helper()
 	ctx := startCtx(t)
 	c, err := redpanda.Run(ctx, RedpandaImage, redpanda.WithAutoCreateTopics())
@@ -77,7 +91,7 @@ func StartRedpanda(t testing.TB) string {
 	if err != nil {
 		t.Fatalf("testkit: redpanda seed broker: %v", err)
 	}
-	return seed
+	return Redpanda{Brokers: seed, ContainerID: c.GetContainerID()}
 }
 
 // StartRabbitMQ starts RabbitMQ and returns its AMQP URL.

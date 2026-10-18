@@ -14,6 +14,8 @@ import (
 
 func (s *Server) routes() []Route {
 	return []Route{
+		// Usage events
+		{"POST", "/v1/events", AccessTenant, ratelimit.ClassIngest, s.ingestEvents},
 		// Customers
 		{"POST", "/v1/customers", AccessTenant, ratelimit.ClassWrite, s.createCustomer},
 		{"GET", "/v1/customers", AccessTenant, ratelimit.ClassRead, s.listCustomers},

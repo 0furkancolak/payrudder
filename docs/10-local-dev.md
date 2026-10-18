@@ -95,7 +95,7 @@ PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live
 | `make up` / `make down` | Compose `infra` + `obs` + `app` profiles up/down |
 | `make up-infra` | Only infrastructure (run services from your IDE) |
 | `make migrate` | Run goose migrations for every service DB |
-| `make topics` | Create Kafka topics with the configs from [04-messaging.md](04-messaging.md) (`rpk topic create …`) |
+| `make topics` | Create Kafka topics with the configs from [04-messaging.md](04-messaging.md) (`rpk topic create …`, idempotent). `make up-infra` and `make up` run it. Compose Redpanda has topic auto-creation off, so a missing topic fails loudly |
 | `make seed` | Create a demo account (currency/time zone/grace passed explicitly: `CURRENCY=TRY TZ=Europe/Istanbul GRACE=24h`), sandbox + live keys, meters (one fractional), plan, 10 customers covering every `pm_sandbox_*` scenario |
 | `make demo` | Seed → send events → sandbox `ClosePeriodNow` → every payment scenario plays out → open Mailpit/Grafana links |
 | `make e2e` | Run `tests/e2e` against the compose stack |

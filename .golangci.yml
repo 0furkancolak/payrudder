@@ -33,7 +33,10 @@ linters:
       forbid:
         - pattern: ^fmt\.Print(f|ln)?$
           msg: use slog (pkg/logx)
-        # Phase 05: ban float32/float64 in money, quantity and rating packages (ADR 0010).
+        # ADR 0010: no floating point in quantity, money and event-validation code. The exclusion below limits
+        # this pattern to those packages; Phase 05 adds the rating packages.
+        - pattern: ^float(32|64)$
+          msg: no floating point in money and quantity code (ADR 0010)
     revive:
       rules:
         - name: exported
@@ -50,6 +53,9 @@ linters:
     rules:
       - path: _test\.go
         linters: [gosec, errcheck, bodyclose]
+      - linters: [forbidigo]
+        text: "no floating point"
+        path-except: (^|/)(pkg/(quantity|money)|services/ingest-svc/internal/domain)/
       # Methods implementing generated gRPC interfaces must keep protoc's names (ResolveApiKey, CreateApiKey).
       - linters: [revive]
         text: "var-naming: method \\w*Api\\w* should be"

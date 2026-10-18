@@ -24,6 +24,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/tenant"
@@ -31,7 +32,7 @@ import (
 	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
 )
 
-// MaxBodyBytes is the default request body limit (POST /v1/events will get its own in Phase 02).
+// MaxBodyBytes is the request body limit of every route, POST /v1/events included (1 MiB, ≤ 500 events).
 const MaxBodyBytes = 1 << 20
 
 // Authenticator verifies API keys.
@@ -48,6 +49,7 @@ type Limiter interface {
 type Deps struct {
 	Plans         plansv1.PlansServiceClient
 	Admin         plansv1.AdminServiceClient
+	Ingest        ingestv1.IngestServiceClient
 	Auth          Authenticator
 	Limiter       Limiter
 	OperatorToken string
@@ -124,12 +126,11 @@ func (s *Server) wrap(rt Route) http.Handler {
 				writeError(w, r, status.Error(codes.PermissionDenied, "sandbox endpoints require a qk_test_ key"))
 				return
 			}
-			d, err := s.d.Limiter.Allow(ctx, p.Tenant.ID.String(), p.Tier, rt.Class, 1)
-			if err == nil && !d.Allowed {
-				w.Header().Set("Retry-After", ratelimit.RetryAfterSeconds(d.RetryAfter))
-				writeError(w, r, status.Error(codes.ResourceExhausted, "rate limit exceeded for "+string(rt.Class)))
+			// The ingest class is charged per event, which only the handler knows after reading the body.
+			if rt.Class != ratelimit.ClassIngest && !s.charge(w, r, p, rt.Class, 1) {
 				return
 			}
+			ctx = context.WithValue(ctx, principalKey{}, p)
 			ctx = tenant.NewContext(ctx, p.Tenant)
 			span.SetAttributes(attribute.String("quotify.tenant_id", p.Tenant.ID.String()),
 				attribute.String("quotify.environment", p.Tenant.Environment))
@@ -137,6 +138,24 @@ func (s *Server) wrap(rt Route) http.Handler {
 		ctx = metadata.AppendToOutgoingContext(ctx, "x-request-id", requestID(r.Context()))
 		rt.Handle(w, r.WithContext(ctx))
 	})
+}
+
+type principalKey struct{}
+
+// charge takes cost units from the tenant's limit for class and answers 429 itself when there are none left.
+func (s *Server) charge(w http.ResponseWriter, r *http.Request, p auth.Principal, class ratelimit.Class, cost int) bool {
+	d, err := s.d.Limiter.Allow(r.Context(), p.Tenant.ID.String(), p.Tier, class, cost)
+	if err == nil && !d.Allowed {
+		w.Header().Set("Retry-After", ratelimit.RetryAfterSeconds(d.RetryAfter))
+		writeError(w, r, status.Error(codes.ResourceExhausted, "rate limit exceeded for "+string(class)))
+		return false
+	}
+	return true
+}
+
+func principalFrom(ctx context.Context) auth.Principal {
+	p, _ := ctx.Value(principalKey{}).(auth.Principal)
+	return p
 }
 
 func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {

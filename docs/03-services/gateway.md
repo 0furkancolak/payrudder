@@ -58,7 +58,7 @@ gRPC → HTTP: `INVALID_ARGUMENT` 400, `UNAUTHENTICATED` 401, `PERMISSION_DENIED
 }
 ```
 
-`quantity` may be a JSON string or number. Either way it's decoded with `json.Decoder.UseNumber` and parsed as an exact decimal
+`quantity` may be a JSON string or number. Either way its text is kept as written (the field is a `json.RawMessage`, so a number never becomes a `float64`) and ingest-svc parses it as an exact decimal
 (`"1.25"` for a meter with scale ≥ 2). The response is always `202` for a structurally valid batch, with a per-event result
 (`accepted` | `duplicate` | `rejected` + `error_code`). Whole-batch errors: `400` (malformed),
 `401`, `413` (> 500 events or > 1 MiB; `POST /v1/assets` has its own limits, see [assets-svc.md](assets-svc.md#b-proxied-multipartform-data)), `429` (with `Retry-After`), `503`.
@@ -120,7 +120,7 @@ None.
 | Failure | Behaviour |
 |---|---|
 | plans-svc down | Cached keys keep working for ≤ 60 s. New or expired keys get `503` |
-| ingest-svc down / slow | gRPC deadline 2 s → `503` + `Retry-After: 1`. Idempotency keys make client retries safe |
+| ingest-svc down / slow | gRPC deadline 5 s (the default client timeout) → `503` + `Retry-After: 1`. Idempotency keys make client retries safe |
 | Redis down | API-key cache misses go to plans-svc. Rate limiting falls back to a local bucket |
 | Client sends same batch twice | Each event reports `duplicate` the second time. No double count |
 

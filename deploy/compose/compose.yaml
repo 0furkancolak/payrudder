@@ -47,6 +47,10 @@ services:
       - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
       - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
       - --schema-registry-addr=0.0.0.0:18081
+      # Topics come from `make topics` (partitions and retention per docs/04-messaging.md). Without this a typo or a
+      # missed `make topics` would silently auto-create a 1-partition topic with default retention.
+      - --set
+      - redpanda.auto_create_topics_enabled=false
       - --rpc-addr=redpanda:33145
       - --advertise-rpc-addr=redpanda:33145
     ports: ["19092:19092", "18081:18081", "9644:9644"]
@@ -62,8 +66,10 @@ services:
     <<: *defaults
     image: redpandadata/console:v3.12.0
     environment:
-      KAFKA_BROKERS: redpanda:9092
-      SCHEMAREGISTRY_ENABLED: "false"
+      CONFIG_FILEPATH: /etc/console/config.yaml
+    volumes:
+      - ./console/config.yaml:/etc/console/config.yaml:ro
+      - ../../proto:/etc/console/proto:ro
     ports: ["${QUOTIFY_CONSOLE_HOST_PORT:-8080}:8080"]
     depends_on:
       redpanda: { condition: service_healthy }
@@ -281,6 +287,32 @@ services:
       redis: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 128m } } }
 
+  ingest-svc:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../..
+      dockerfile: services/ingest-svc/Dockerfile
+    image: quotify/ingest-svc:dev
+    environment:
+      QUOTIFY_ENV: local
+      QUOTIFY_SERVICE_NAME: ingest-svc
+      QUOTIFY_GRPC_ADDR: ":7002"
+      QUOTIFY_METRICS_ADDR: ":9102"
+      QUOTIFY_PG_APP_DSN: postgres://ingest_app:ingest_app_local@postgres:5432/ingest_db
+      QUOTIFY_PG_SYSTEM_DSN: postgres://ingest_system:ingest_system_local@postgres:5432/ingest_db
+      QUOTIFY_PG_MIGRATOR_DSN: postgres://ingest_migrator:ingest_migrator_local@postgres:5432/ingest_db
+      QUOTIFY_MIGRATE_ON_START: "true"
+      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
+      QUOTIFY_KAFKA_BROKERS: redpanda:9092
+      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    ports: ["7002:7002", "9102:9102"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      plans-svc: { condition: service_started }
+    deploy: { resources: { limits: { memory: 128m } } }
+
   gateway:
     <<: *defaults
     profiles: [app]
@@ -294,6 +326,7 @@ services:
       QUOTIFY_HTTP_ADDR: ":8000"
       QUOTIFY_METRICS_ADDR: ":9100"
       QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
+      QUOTIFY_INGEST_ADDR: dns:///ingest-svc:7002
       QUOTIFY_REDIS_URL: redis://redis:6379/0
       QUOTIFY_OPERATOR_TOKEN: ${QUOTIFY_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
       QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
@@ -301,6 +334,7 @@ services:
     ports: ["8000:8000", "9100:9100"]
     depends_on:
       plans-svc: { condition: service_started }
+      ingest-svc: { condition: service_started }
       redis: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 128m } } }
 

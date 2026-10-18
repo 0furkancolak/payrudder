@@ -4,6 +4,7 @@ use (
 	./gen/go
 	./pkg
 	./services/gateway
+	./services/ingest-svc
 	./services/plans-svc
 	./tests
 	./tools/quotifyctl

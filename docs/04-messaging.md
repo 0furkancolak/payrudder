@@ -58,7 +58,8 @@ message UsageEvent {
   int64 quantity_units = 11;                   // quantity × 10^quantity_scale (ADR 0010)
   uint32 quantity_scale = 12;                  // 0..6, copied from the meter
   string period_id = 13;                       // 'YYYY-MM' in the tenant's time zone, stamped at ingest
-  // reserved for future: 14..19
+  int32 meter_version = 14;                    // meter version the event was validated against
+  // reserved for future: 15..19
 }
 
 message LimitExceeded {
