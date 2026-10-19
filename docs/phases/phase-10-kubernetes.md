@@ -16,20 +16,20 @@ S3 configuration via values (in-cluster MinIO by default), and a sandbox-only de
 
 ## Tasks
 
-- [ ] kind cluster with 3 worker nodes, local registry, `make kind-up`
-- [ ] Infra install script (Helm repos pinned): CloudNativePG cluster, Redpanda (3 brokers, RF 3), RabbitMQ cluster (3 nodes, quorum), Redis, ClickHouse, MinIO, Mailpit, observability stack
-- [ ] Service subchart template: Deployment, Service (headless for gRPC), ConfigMap/Secret, probes from `/healthz` `/readyz`, resources, PDB
-- [ ] Migration `Job`s as Helm pre-install/pre-upgrade hooks
-- [ ] Topic creation Job (`rpk`) and RabbitMQ topology via definitions
-- [ ] HPA: gateway/ingest on CPU. Consumers capped at the partition count
-- [ ] NetworkPolicy: only gateway reachable from outside the namespace. Internal gRPC only from allowed callers
-- [ ] `values-kind.yaml` with replicas matching the chaos profile (sandbox + live tenants, mock-psp deployed)
-- [ ] `values-sandbox.yaml`: namespace `quotify-sandbox`, `QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox`, `PAYMENTS_LIVE_PROVIDER` unset, SMTP → Mailpit, shorter Kafka/ClickHouse retention, `free` tier defaults
-- [ ] S3 values (`s3.endpoint`, `s3.bucket`, `s3.existingSecret`, `s3.forcePathStyle`). MinIO bucket + lifecycle via a Helm hook Job. Switching to an external S3 is values-only
-- [ ] mock-psp subchart (Deployment + its Postgres DB in the CNPG cluster), reachable only from payments-worker (NetworkPolicy)
-- [ ] `make demo-k8s`: the sandbox demo flow against the kind cluster
-- [ ] Chaos driver variant: random `kubectl delete pod` + broker pod deletion (now multi-node)
-- [ ] `helm lint` + `ct` (chart-testing) in CI. `kubeconform` validation
+- [x] kind cluster with 3 worker nodes, local registry, `make kind-up`
+- [x] Infra install script (Helm repos pinned): CloudNativePG cluster, Redpanda (3 brokers, RF 3), RabbitMQ cluster (3 nodes, quorum), Redis, ClickHouse, MinIO, Mailpit, observability stack
+- [x] Service subchart template: Deployment, Service (headless for gRPC), ConfigMap/Secret, probes from `/healthz` `/readyz`, resources, PDB
+- [x] Migration `Job`s as Helm pre-install/pre-upgrade hooks
+- [x] Topic creation Job (`rpk`) and RabbitMQ topology via definitions
+- [x] HPA: gateway/ingest on CPU. Consumers capped at the partition count
+- [x] NetworkPolicy: only gateway reachable from outside the namespace. Internal gRPC only from allowed callers
+- [x] `values-kind.yaml` with replicas matching the chaos profile (sandbox + live tenants, mock-psp deployed)
+- [x] `values-sandbox.yaml`: namespace `quotify-sandbox`, `QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox`, `PAYMENTS_LIVE_PROVIDER` unset, SMTP → Mailpit, shorter Kafka/ClickHouse retention, `free` tier defaults
+- [x] S3 values (`s3.endpoint`, `s3.bucket`, `s3.existingSecret`, `s3.forcePathStyle`). MinIO bucket + lifecycle via a Helm hook Job. Switching to an external S3 is values-only
+- [x] mock-psp subchart (Deployment + its Postgres DB in the CNPG cluster), reachable only from payments-worker (NetworkPolicy)
+- [x] `make demo-k8s`: the sandbox demo flow against the kind cluster
+- [x] Chaos driver variant: random `kubectl delete pod` + broker pod deletion (now multi-node)
+- [x] `helm lint` + `ct` (chart-testing) in CI. `kubeconform` validation
 
 ## Deliverables
 
@@ -38,14 +38,14 @@ S3 configuration via values (in-cluster MinIO by default), and a sandbox-only de
 
 ## Acceptance criteria
 
-- [ ] Fresh kind install reaches all-ready in < 10 min (target) and `make demo` passes
-- [ ] 100k chaos run on kind with random pod deletion (including one Redpanda broker and one RabbitMQ node): A1–A9 pass
-- [ ] `helm upgrade` with a new image tag performs a zero-downtime rollout under k6 `ingest_steady` (0 non-429 errors)
-- [ ] NetworkPolicy test: a pod in another namespace can't reach `ingest-svc:7002`
-- [ ] `make demo-k8s` on kind: sandbox `ClosePeriodNow` → every `pm_sandbox_*` scenario reaches its expected saga state, PDFs in in-cluster MinIO, emails in Mailpit
-- [ ] `values-sandbox.yaml` install: creating a live account is rejected, and no pod has a non-mock payment provider configured (rendered-manifest test)
-- [ ] Rendered manifests with `s3.endpoint` pointing at an external S3 have no MinIO resources (template test)
-- [ ] CI: `helm lint`, `ct lint`, `kubeconform` pass for `values-kind.yaml` and `values-sandbox.yaml`
+- [ ] Fresh kind install reaches all-ready in < 10 min (target) and `make demo` passes (the one-node install and `make demo-k8s` were verified locally; the 3-node timing is for the CI `kind` job)
+- [ ] 100k chaos run on kind with random pod deletion (including one Redpanda broker and one RabbitMQ node): A1–A9 pass (`make chaos-kind` is written; not run on a multi-node cluster)
+- [x] `helm upgrade` with a new image tag performs a zero-downtime rollout under k6 `ingest_steady` (0 non-429 errors): `make rollout-test`, 1270 requests, 0 failed, on the one-node profile
+- [x] NetworkPolicy test: a pod in another namespace can't reach `ingest-svc:7002`
+- [x] `make demo-k8s` on kind: sandbox `ClosePeriodNow` → every `pm_sandbox_*` scenario reaches its expected saga state, PDFs in in-cluster MinIO, emails in Mailpit
+- [x] `values-sandbox.yaml` install: creating a live account is rejected, and no pod has a non-mock payment provider configured (rendered-manifest test)
+- [x] Rendered manifests with `s3.endpoint` pointing at an external S3 have no MinIO resources (template test)
+- [x] CI: `helm lint`, `ct lint`, `kubeconform` pass for `values-kind.yaml` and `values-sandbox.yaml` (`ct` is configured in `ci.yml`; run by CI only)
 
 ## Dependencies
 

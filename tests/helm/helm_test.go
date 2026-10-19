@@ -3,6 +3,7 @@
 package helm
 
 import (
+	"errors"
 	"bytes"
 	"fmt"
 	"io"
@@ -58,7 +59,7 @@ func render(t *testing.T, chart string, args ...string) []obj {
 	dec := yaml.NewDecoder(&out)
 	for {
 		var m map[string]any // decoding into obj would make every nested map an obj too
-		if err := dec.Decode(&m); err == io.EOF {
+		if err := dec.Decode(&m); errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
 			t.Fatalf("parse rendered YAML: %v", err)
