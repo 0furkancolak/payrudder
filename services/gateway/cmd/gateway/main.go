@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,18 +37,21 @@ import (
 
 type Config struct {
 	config.Base
-	HTTPAddr       string   `env:"QUOTIFY_HTTP_ADDR" envDefault:":8000"`
-	PlansAddr      string   `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
-	IngestAddr     string   `env:"QUOTIFY_INGEST_ADDR" envDefault:"dns:///localhost:7002"`
-	AggregatorAddr string   `env:"QUOTIFY_AGGREGATOR_ADDR" envDefault:"dns:///localhost:7003"`
-	LimitsAddr     string   `env:"QUOTIFY_LIMITS_ADDR" envDefault:"dns:///localhost:7004"`
-	BillingAddr    string   `env:"QUOTIFY_BILLING_ADDR" envDefault:"dns:///localhost:7005"`
-	AnalyticsAddr  string   `env:"QUOTIFY_ANALYTICS_ADDR" envDefault:"dns:///localhost:7006"`
-	AssetsAddr     string   `env:"QUOTIFY_ASSETS_ADDR" envDefault:"dns:///localhost:7007"`
-	RedisURL       string   `env:"QUOTIFY_REDIS_URL" envDefault:"redis://localhost:6379/0"`
-	OperatorToken  string   `env:"QUOTIFY_OPERATOR_TOKEN,required"`
-	Replicas       int      `env:"QUOTIFY_GATEWAY_REPLICAS" envDefault:"1"`
-	AllowedEnvs    []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:"," envDefault:"sandbox,live"`
+	HTTPAddr       string `env:"QUOTIFY_HTTP_ADDR" envDefault:":8000"`
+	PlansAddr      string `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
+	IngestAddr     string `env:"QUOTIFY_INGEST_ADDR" envDefault:"dns:///localhost:7002"`
+	AggregatorAddr string `env:"QUOTIFY_AGGREGATOR_ADDR" envDefault:"dns:///localhost:7003"`
+	LimitsAddr     string `env:"QUOTIFY_LIMITS_ADDR" envDefault:"dns:///localhost:7004"`
+	BillingAddr    string `env:"QUOTIFY_BILLING_ADDR" envDefault:"dns:///localhost:7005"`
+	AnalyticsAddr  string `env:"QUOTIFY_ANALYTICS_ADDR" envDefault:"dns:///localhost:7006"`
+	AssetsAddr     string `env:"QUOTIFY_ASSETS_ADDR" envDefault:"dns:///localhost:7007"`
+	RedisURL       string `env:"QUOTIFY_REDIS_URL" envDefault:"redis://localhost:6379/0"`
+	OperatorToken  string `env:"QUOTIFY_OPERATOR_TOKEN,required"`
+	// PaymentsURL is payments-worker's HTTP address; empty disables provider webhooks and provider accounts.
+	PaymentsURL   string   `env:"QUOTIFY_PAYMENTS_URL"`
+	PaymentsToken string   `env:"QUOTIFY_PAYMENTS_INTERNAL_TOKEN"`
+	Replicas      int      `env:"QUOTIFY_GATEWAY_REPLICAS" envDefault:"1"`
+	AllowedEnvs   []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:"," envDefault:"sandbox,live"`
 }
 
 func (c *Config) Validate() error {
@@ -162,6 +166,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	var paymentsURL *url.URL
+	if cfg.PaymentsURL != "" {
+		if paymentsURL, err = url.Parse(cfg.PaymentsURL); err != nil {
+			return fmt.Errorf("QUOTIFY_PAYMENTS_URL: %w", err)
+		}
+	}
 	api := httpapi.New(httpapi.Deps{
 		Plans: plansv1.NewPlansServiceClient(plansConn), Admin: adminClient, Ingest: ingestv1.NewIngestServiceClient(ingestConn),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(aggConn), Replay: aggregatorv1.NewReplayServiceClient(aggConn), Limits: limitsv1.NewLimitsServiceClient(limitsConn),
@@ -169,6 +179,7 @@ func run() error {
 		BillingAdmin: billingv1.NewBillingAdminServiceClient(billingConn), Analytics: analyticsv1.NewAnalyticsServiceClient(analyticsConn),
 		Assets: assetsv1.NewAssetsServiceClient(assetsConn),
 		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
+		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken,
 	})
 
 	hh := health.New(reg, 2*time.Second)

@@ -839,6 +839,109 @@ paths:
                   saga: { $ref: "#/components/schemas/InvoiceSaga" }
                   events: { type: array, items: { $ref: "#/components/schemas/SagaEvent" } }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/provider-accounts:
+    get:
+      operationId: listProviderAccounts
+      summary: A tenant's payment provider accounts (credentials are never returned)
+      parameters: [{ name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        provider: { type: string }
+                        environment: { type: string, enum: [sandbox, live] }
+                        is_default: { type: boolean }
+                        updated_at: { type: string, format: date-time }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/provider-accounts/{provider}:
+    put:
+      operationId: putProviderAccount
+      summary: Store or replace a tenant's account at a payment provider (sealed at rest, validated by building the adapter)
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, examples: [iyzico] } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+        - { name: default, in: query, description: Make it the account live charges go to, schema: { type: boolean } }
+      requestBody:
+        required: true
+        description: The provider's settings (for iyzico api_key, secret_key, base_url and the buyer defaults)
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { description: Stored }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteProviderAccount
+      summary: Remove a tenant's account at a payment provider
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      responses:
+        "204": { description: Removed }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/ledger:
+    get:
+      operationId: listPaymentLedger
+      summary: The tenant's most recent payment ledger rows (charges, refunds) across providers, newest first
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 1000, default: 100 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        invoice_id: { type: string, format: uuid }
+                        provider: { type: string }
+                        environment: { type: string }
+                        kind: { type: string, enum: [charge, refund, dispute, payout] }
+                        status: { type: string, enum: [succeeded, declined, failed, pending] }
+                        amount_minor: { type: integer }
+                        currency: { type: string }
+                        provider_ref: { type: string }
+                        source: { type: string, enum: [command, webhook, reconciliation] }
+                        detail: { type: string }
+                        occurred_at: { type: string, format: date-time }
+        "503": { $ref: "#/components/responses/Error" }
+  /webhooks/{provider}:
+    post:
+      operationId: providerWebhook
+      summary: A payment provider's notification. Public; the body is never believed, the provider is asked to confirm it
+      security: []
+      parameters: [{ name: provider, in: path, required: true, schema: { type: string, examples: [iyzico] } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { description: Understood (processed, duplicate or ignored) }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /admin/v1/dead-letters:
     get:
       operationId: adminListDeadLetters
