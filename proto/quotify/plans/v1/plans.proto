@@ -37,6 +37,13 @@ service PlansService {
   rpc SetRoutingRules(SetRoutingRulesRequest) returns (SetRoutingRulesResponse);
   // PreviewRouting says where a customer in a country paying in a currency would go, without creating anything.
   rpc PreviewRouting(PreviewRoutingRequest) returns (PreviewRoutingResponse);
+  // StartProviderMigration moves a subscription to another payment provider without charging the customer twice. The old subscription ends
+  // only when the new one takes over (CompleteProviderMigration), or at the cutover time given.
+  rpc StartProviderMigration(StartProviderMigrationRequest) returns (StartProviderMigrationResponse);
+  // CompleteProviderMigration is the target provider's confirmation that the customer subscribed there: the cutover happens now.
+  rpc CompleteProviderMigration(CompleteProviderMigrationRequest) returns (CompleteProviderMigrationResponse);
+  rpc AbortProviderMigration(AbortProviderMigrationRequest) returns (AbortProviderMigrationResponse);
+  rpc GetProviderMigration(GetProviderMigrationRequest) returns (GetProviderMigrationResponse);
   // SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
   // Internal: called by payments-worker, not exposed by the gateway.
   rpc SyncProviderSubscription(SyncProviderSubscriptionRequest) returns (SyncProviderSubscriptionResponse);
@@ -320,4 +327,70 @@ message PreviewRoutingResponse {
   string owner = 3;
   // Whether the chosen provider can charge in the currency (always true when no provider is chosen).
   bool can_charge = 4;
+}
+
+// ProviderMigration is a subscription on its way from one payment provider to another.
+message ProviderMigration {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    // Waiting for the target provider: the old subscription is untouched.
+    STATE_STARTED = 1;
+    // The new subscription has taken over from cutover_time.
+    STATE_COMPLETED = 2;
+    // Given up before the cutover: the old subscription is as it was.
+    STATE_ABORTED = 3;
+  }
+  string id = 1;
+  string subscription_id = 2;
+  string new_subscription_id = 3;
+  string from_provider = 4;
+  string to_provider = 5;
+  State state = 6;
+  google.protobuf.Timestamp cutover_time = 7;
+  google.protobuf.Timestamp create_time = 8;
+}
+
+message StartProviderMigrationRequest {
+  string subscription_id = 1;
+  string to_provider = 2;
+  // When the new subscription takes over, for a target Quotify runs itself. Unset = now. Required when the old subscription is run by a provider,
+  // since its paid period must not be cut short (the end of that period).
+  google.protobuf.Timestamp cutover_time = 3;
+}
+
+message StartProviderMigrationResponse {
+  ProviderMigration migration = 1;
+}
+
+message CompleteProviderMigrationRequest {
+  string migration_id = 1;
+  // The target provider's id of the new subscription.
+  string provider_ref = 2;
+  // Unset = now.
+  google.protobuf.Timestamp cutover_time = 3;
+}
+
+message CompleteProviderMigrationResponse {
+  ProviderMigration migration = 1;
+  // The subscription that took over.
+  Subscription subscription = 2;
+  // What the old subscription was at its provider, so the caller can release it there: empty when Quotify ran it.
+  string source_provider = 3;
+  string source_provider_ref = 4;
+}
+
+message AbortProviderMigrationRequest {
+  string migration_id = 1;
+}
+
+message AbortProviderMigrationResponse {
+  ProviderMigration migration = 1;
+}
+
+message GetProviderMigrationRequest {
+  string migration_id = 1;
+}
+
+message GetProviderMigrationResponse {
+  ProviderMigration migration = 1;
 }

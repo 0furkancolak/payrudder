@@ -299,6 +299,139 @@ func testSubscriptionLifecycle(t *testing.T) {
 		}
 	})
 
+	t.Run("a subscription moves between providers without two of them being live at once", func(t *testing.T) {
+		mkUSD := func(id string) {
+			if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: id, Name: id, Email: id + "@example.com", Country: "US", BillingCurrency: "USD"}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		get := func(id string) *plansv1.Subscription {
+			t.Helper()
+			r, err := e.plans.GetSubscription(ctx, &plansv1.GetSubscriptionRequest{SubscriptionId: id})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return r.GetSubscription()
+		}
+
+		// iyzico (run by Quotify) to Paddle (run by Paddle): the customer has to subscribe at Paddle first.
+		mkUSD("cus_mig1")
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig1", PlanCode: "basic", Provider: "iyzico",
+			StartTime: timestamppb.New(time.Now().Add(-2 * time.Hour))})
+		if err != nil {
+			t.Fatal(err)
+		}
+		old := r.GetSubscription()
+		st, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: old.GetId(), ToProvider: "paddle"})
+		if err != nil || st.GetMigration().GetState() != plansv1.ProviderMigration_STATE_STARTED || st.GetMigration().GetFromProvider() != "iyzico" {
+			t.Fatalf("start = %v, %v", st, err)
+		}
+		mig := st.GetMigration().GetId()
+		if got := get(old.GetId()); got.GetEndTime() != nil || got.GetProvider() != "iyzico" {
+			t.Fatalf("the old subscription changed before the customer subscribed at Paddle: %v", got)
+		}
+		if _, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: old.GetId(), ToProvider: "paddle"}); code(t, err) != codes.AlreadyExists {
+			t.Fatalf("a second migration while one is under way: %v", err)
+		}
+		cut := time.Now().Add(-time.Minute).Truncate(time.Microsecond)
+		done, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: mig, ProviderRef: "sub_NEW", CutoverTime: timestamppb.New(cut)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		nw := done.GetSubscription()
+		if done.GetMigration().GetState() != plansv1.ProviderMigration_STATE_COMPLETED || nw.GetProvider() != "paddle" || nw.GetOwner() != "provider" || nw.GetProviderRef() != "sub_NEW" ||
+			nw.GetChangedFromId() != old.GetId() || !nw.GetStartTime().AsTime().Equal(cut) || nw.GetEndTime() != nil || nw.GetPlanVersionId() != old.GetPlanVersionId() {
+			t.Fatalf("new subscription = %v", nw)
+		}
+		if done.GetSourceProvider() != "iyzico" || done.GetSourceProviderRef() != "" {
+			t.Errorf("source = %q %q; Quotify ran the old one, so there is nothing to release at iyzico", done.GetSourceProvider(), done.GetSourceProviderRef())
+		}
+		if got := get(old.GetId()); got.GetEndTime() == nil || !got.GetEndTime().AsTime().Equal(cut) || got.GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_CANCELLED {
+			t.Fatalf("old subscription = %v; it ends exactly when the new one starts", got)
+		}
+		// Paddle delivers its notifications more than once.
+		again, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: mig, ProviderRef: "sub_NEW"})
+		if err != nil || again.GetSubscription().GetId() != nw.GetId() {
+			t.Fatalf("complete again = %v, %v; it must return the same subscription", again, err)
+		}
+		if _, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: mig, ProviderRef: "sub_OTHER"}); code(t, err) != codes.FailedPrecondition {
+			t.Fatalf("complete with another provider id: %v", err)
+		}
+		if _, err := e.plans.AbortProviderMigration(ctx, &plansv1.AbortProviderMigrationRequest{MigrationId: mig}); code(t, err) != codes.FailedPrecondition {
+			t.Fatalf("abort after the cutover: %v", err)
+		}
+
+		// Giving up before the cutover leaves everything as it was.
+		mkUSD("cus_mig2")
+		r2, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig2", PlanCode: "basic", Provider: "iyzico"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		st2, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: r2.GetSubscription().GetId(), ToProvider: "paddle"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ab, err := e.plans.AbortProviderMigration(ctx, &plansv1.AbortProviderMigrationRequest{MigrationId: st2.GetMigration().GetId()})
+		if err != nil || ab.GetMigration().GetState() != plansv1.ProviderMigration_STATE_ABORTED {
+			t.Fatalf("abort = %v, %v", ab, err)
+		}
+		if got := get(r2.GetSubscription().GetId()); got.GetEndTime() != nil || got.GetProvider() != "iyzico" {
+			t.Fatalf("an aborted migration changed the subscription: %v", got)
+		}
+		if _, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: st2.GetMigration().GetId(), ProviderRef: "sub_X"}); code(t, err) != codes.FailedPrecondition {
+			t.Fatalf("complete after abort: %v", err)
+		}
+		if _, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: r2.GetSubscription().GetId(), ToProvider: "paddle"}); err != nil {
+			t.Fatalf("a new migration after an abort: %v", err)
+		}
+
+		// Paddle (run by Paddle) to iyzico (run by Quotify): at the end of the period Paddle has been paid for.
+		paid := get(nw.GetId())
+		if _, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: paid.GetId(), ToProvider: "iyzico"}); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("no cutover time for a provider-run subscription: %v", err)
+		}
+		periodEnd := time.Now().Add(10 * 24 * time.Hour).Truncate(time.Microsecond)
+		back, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: paid.GetId(), ToProvider: "iyzico", CutoverTime: timestamppb.New(periodEnd)})
+		if err != nil || back.GetMigration().GetState() != plansv1.ProviderMigration_STATE_COMPLETED || back.GetMigration().GetNewSubscriptionId() == "" {
+			t.Fatalf("back = %v, %v", back, err)
+		}
+		next := get(back.GetMigration().GetNewSubscriptionId())
+		if next.GetProvider() != "iyzico" || next.GetOwner() != "quotify" || next.GetProviderRef() != "" || !next.GetStartTime().AsTime().Equal(periodEnd) || next.GetChangedFromId() != paid.GetId() {
+			t.Fatalf("subscription at iyzico = %v", next)
+		}
+		if got := get(paid.GetId()); got.GetEndTime() == nil || !got.GetEndTime().AsTime().Equal(periodEnd) {
+			t.Fatalf("the Paddle subscription ends where Quotify's starts: %v", got)
+		}
+		// The provider may still announce the cancellation it was asked for; it changes nothing now.
+		if _, err := e.plans.SyncProviderSubscription(ctx, &plansv1.SyncProviderSubscriptionRequest{SubscriptionId: paid.GetId(), Provider: "paddle", ProviderRef: "sub_NEW",
+			Owner: "provider", ProviderStatus: "canceled", OccurredAt: timestamppb.New(time.Now().Add(time.Hour))}); err != nil {
+			t.Fatalf("late cancellation notice: %v", err)
+		}
+		if got := get(paid.GetId()); !got.GetEndTime().AsTime().Equal(periodEnd) {
+			t.Errorf("the late notice moved the end: %v", got.GetEndTime())
+		}
+
+		// Refusals.
+		mkUSD("cus_mig3")
+		r3, _ := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig3", PlanCode: "basic", Provider: "iyzico"})
+		for name, req := range map[string]*plansv1.StartProviderMigrationRequest{
+			"same provider":    {SubscriptionId: r3.GetSubscription().GetId(), ToProvider: "iyzico"},
+			"unknown provider": {SubscriptionId: r3.GetSubscription().GetId(), ToProvider: "stripe"},
+			"not a uuid":       {SubscriptionId: "x", ToProvider: "paddle"},
+		} {
+			if _, err := e.plans.StartProviderMigration(ctx, req); code(t, err) != codes.InvalidArgument {
+				t.Errorf("%s: %v", name, err)
+			}
+		}
+		if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_mig4", Name: "m4", Email: "m4@example.com", Country: "TR", BillingCurrency: "TRY"}); err != nil {
+			t.Fatal(err)
+		}
+		r4, _ := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig4", PlanCode: "basic", Provider: "iyzico"})
+		if _, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: r4.GetSubscription().GetId(), ToProvider: "paddle"}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("paddle cannot charge a lira subscription: %v", err)
+		}
+	})
+
 	t.Run("yearly subscriptions are refused for now", func(t *testing.T) {
 		mkCustomer("cus_year")
 		_, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_year", PlanCode: "basic",

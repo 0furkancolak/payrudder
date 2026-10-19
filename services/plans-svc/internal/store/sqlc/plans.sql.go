@@ -131,6 +131,42 @@ func (q *Queries) EndSubscription(ctx context.Context, arg EndSubscriptionParams
 	return result.RowsAffected(), nil
 }
 
+const finishProviderMigration = `-- name: FinishProviderMigration :one
+UPDATE provider_migrations SET state = $1, new_subscription_id = $2, cutover_at = $3, updated_at = now()
+WHERE tenant_id = app_tenant_id() AND id = $4
+RETURNING tenant_id, id, subscription_id, new_subscription_id, from_provider, to_provider, state, cutover_at, created_at, updated_at
+`
+
+type FinishProviderMigrationParams struct {
+	State             string
+	NewSubscriptionID *uuid.UUID
+	CutoverAt         *time.Time
+	ID                uuid.UUID
+}
+
+func (q *Queries) FinishProviderMigration(ctx context.Context, arg FinishProviderMigrationParams) (ProviderMigration, error) {
+	row := q.db.QueryRow(ctx, finishProviderMigration,
+		arg.State,
+		arg.NewSubscriptionID,
+		arg.CutoverAt,
+		arg.ID,
+	)
+	var i ProviderMigration
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.SubscriptionID,
+		&i.NewSubscriptionID,
+		&i.FromProvider,
+		&i.ToProvider,
+		&i.State,
+		&i.CutoverAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getCustomerByExternalID = `-- name: GetCustomerByExternalID :one
 SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
 `
@@ -262,6 +298,50 @@ func (q *Queries) GetPlanVersionByID(ctx context.Context, id uuid.UUID) (GetPlan
 		&i.BaseFeeMinor,
 		&i.PublishedAt,
 		&i.PlanCode,
+	)
+	return i, err
+}
+
+const getProviderMigration = `-- name: GetProviderMigration :one
+SELECT tenant_id, id, subscription_id, new_subscription_id, from_provider, to_provider, state, cutover_at, created_at, updated_at FROM provider_migrations WHERE tenant_id = app_tenant_id() AND id = $1
+`
+
+func (q *Queries) GetProviderMigration(ctx context.Context, id uuid.UUID) (ProviderMigration, error) {
+	row := q.db.QueryRow(ctx, getProviderMigration, id)
+	var i ProviderMigration
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.SubscriptionID,
+		&i.NewSubscriptionID,
+		&i.FromProvider,
+		&i.ToProvider,
+		&i.State,
+		&i.CutoverAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getProviderMigrationForUpdate = `-- name: GetProviderMigrationForUpdate :one
+SELECT tenant_id, id, subscription_id, new_subscription_id, from_provider, to_provider, state, cutover_at, created_at, updated_at FROM provider_migrations WHERE tenant_id = app_tenant_id() AND id = $1 FOR UPDATE
+`
+
+func (q *Queries) GetProviderMigrationForUpdate(ctx context.Context, id uuid.UUID) (ProviderMigration, error) {
+	row := q.db.QueryRow(ctx, getProviderMigrationForUpdate, id)
+	var i ProviderMigration
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.SubscriptionID,
+		&i.NewSubscriptionID,
+		&i.FromProvider,
+		&i.ToProvider,
+		&i.State,
+		&i.CutoverAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -579,6 +659,46 @@ func (q *Queries) InsertPlanVersionFee(ctx context.Context, arg InsertPlanVersio
 	return err
 }
 
+const insertProviderMigration = `-- name: InsertProviderMigration :one
+INSERT INTO provider_migrations (tenant_id, id, subscription_id, from_provider, to_provider, state, cutover_at)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6)
+RETURNING tenant_id, id, subscription_id, new_subscription_id, from_provider, to_provider, state, cutover_at, created_at, updated_at
+`
+
+type InsertProviderMigrationParams struct {
+	ID             uuid.UUID
+	SubscriptionID uuid.UUID
+	FromProvider   string
+	ToProvider     string
+	State          string
+	CutoverAt      *time.Time
+}
+
+func (q *Queries) InsertProviderMigration(ctx context.Context, arg InsertProviderMigrationParams) (ProviderMigration, error) {
+	row := q.db.QueryRow(ctx, insertProviderMigration,
+		arg.ID,
+		arg.SubscriptionID,
+		arg.FromProvider,
+		arg.ToProvider,
+		arg.State,
+		arg.CutoverAt,
+	)
+	var i ProviderMigration
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.SubscriptionID,
+		&i.NewSubscriptionID,
+		&i.FromProvider,
+		&i.ToProvider,
+		&i.State,
+		&i.CutoverAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertRoutingRule = `-- name: InsertRoutingRule :exec
 INSERT INTO routing_rules (tenant_id, position, country, currency, provider) VALUES (app_tenant_id(), $1, $2, $3, $4)
 `
@@ -601,9 +721,9 @@ func (q *Queries) InsertRoutingRule(ctx context.Context, arg InsertRoutingRulePa
 }
 
 const insertSubscription = `-- name: InsertSubscription :one
-INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider)
+INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider, provider_ref, owner)
 VALUES (app_tenant_id(), $1, $2, $3, tstzrange($4::timestamptz, NULL, '[)'),
-        $5, $6, $7, $8, $9::timestamptz, $10, $11)
+        $5, $6, $7, $8, $9::timestamptz, $10, $11, $12, $13)
 RETURNING id, customer_id, plan_version_id,
           lower(active)::timestamptz AS start_time,
           upper_inf(active)::bool AS open_ended,
@@ -623,6 +743,8 @@ type InsertSubscriptionParams struct {
 	BillingAnchor time.Time
 	ChangedFromID *uuid.UUID
 	Provider      *string
+	ProviderRef   *string
+	Owner         string
 }
 
 type InsertSubscriptionRow struct {
@@ -659,6 +781,8 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 		arg.BillingAnchor,
 		arg.ChangedFromID,
 		arg.Provider,
+		arg.ProviderRef,
+		arg.Owner,
 	)
 	var i InsertSubscriptionRow
 	err := row.Scan(

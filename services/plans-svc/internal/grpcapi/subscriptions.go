@@ -232,7 +232,7 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 		r, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 			ID: idgen.NewUUIDv7(), CustomerID: c.ID, PlanVersionID: pv.ID, StartTime: start,
 			State: string(state), Interval: string(interval), Currency: currency, TrialEndsAt: trialEnds,
-			BillingAnchor: monthStart(start, loc), Provider: provider,
+			BillingAnchor: monthStart(start, loc), Provider: provider, Owner: "quotify",
 		})
 		if err != nil {
 			return err
@@ -573,7 +573,7 @@ func (s *Server) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest)
 		nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 			ID: idgen.NewUUIDv7(), CustomerID: row.CustomerID, PlanVersionID: newPV.ID, StartTime: at,
 			State: string(eff), Interval: row.Interval, Currency: row.Currency, TrialEndsAt: row.TrialEndsAt,
-			BillingAnchor: anchor, ChangedFromID: &id, Provider: row.Provider,
+			BillingAnchor: anchor, ChangedFromID: &id, Provider: row.Provider, Owner: "quotify",
 		})
 		if err != nil {
 			return err

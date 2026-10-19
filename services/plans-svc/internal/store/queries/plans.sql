@@ -94,9 +94,9 @@ SELECT meter_code, limit_units, alert_thresholds_pct FROM plan_entitlements
 WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY meter_code;
 
 -- name: InsertSubscription :one
-INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider)
+INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider, provider_ref, owner)
 VALUES (app_tenant_id(), @id, @customer_id, @plan_version_id, tstzrange(@start_time::timestamptz, NULL, '[)'),
-        @state, @interval, @currency, @trial_ends_at, @billing_anchor::timestamptz, @changed_from_id, @provider)
+        @state, @interval, @currency, @trial_ends_at, @billing_anchor::timestamptz, @changed_from_id, @provider, @provider_ref, @owner)
 RETURNING id, customer_id, plan_version_id,
           lower(active)::timestamptz AS start_time,
           upper_inf(active)::bool AS open_ended,
@@ -185,3 +185,19 @@ DELETE FROM routing_rules WHERE tenant_id = app_tenant_id();
 
 -- name: InsertRoutingRule :exec
 INSERT INTO routing_rules (tenant_id, position, country, currency, provider) VALUES (app_tenant_id(), $1, $2, $3, $4);
+
+-- name: InsertProviderMigration :one
+INSERT INTO provider_migrations (tenant_id, id, subscription_id, from_provider, to_provider, state, cutover_at)
+VALUES (app_tenant_id(), @id, @subscription_id, @from_provider, @to_provider, @state, @cutover_at)
+RETURNING *;
+
+-- name: GetProviderMigration :one
+SELECT * FROM provider_migrations WHERE tenant_id = app_tenant_id() AND id = $1;
+
+-- name: GetProviderMigrationForUpdate :one
+SELECT * FROM provider_migrations WHERE tenant_id = app_tenant_id() AND id = $1 FOR UPDATE;
+
+-- name: FinishProviderMigration :one
+UPDATE provider_migrations SET state = @state, new_subscription_id = @new_subscription_id, cutover_at = @cutover_at, updated_at = now()
+WHERE tenant_id = app_tenant_id() AND id = @id
+RETURNING *;
