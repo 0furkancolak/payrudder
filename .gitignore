@@ -29,3 +29,6 @@ go.work.sum.local
 # Local data volumes
 /.data/
 /tmp/
+tests/load/results/*
+!tests/load/results/.gitkeep
+tests/chaos/chaos-report.json

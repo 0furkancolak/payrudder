@@ -4,8 +4,8 @@ groups:
   - name: quotify-recording
     rules:
       # dlq_messages{broker,queue_or_topic}: messages waiting in a dead-letter queue or topic.
-      # Kafka has no "ready" count: max_offset is how many records were ever dead-lettered into the topic (DLQ topics are
-      # never compacted), so a drained Kafka DLQ keeps alerting until its topic is recreated or retention trims it.
+      # Kafka has no "ready" count: pending = records ever dead-lettered (max_offset) minus what `quotifyctl dlq redrive
+      # --broker kafka` has moved on (the quotifyctl-redrive group's committed offset).
       - record: dlq_messages
         expr: |
           sum by (broker, queue_or_topic) (
@@ -14,7 +14,9 @@ groups:
           or
           sum by (broker, queue_or_topic) (
             label_replace(label_replace(
-              redpanda_kafka_max_offset{redpanda_topic=~".*[.]dlq[.].*"},
+              sum by (redpanda_topic) (redpanda_kafka_max_offset{redpanda_topic=~".*[.]dlq[.].*"})
+              - (sum by (redpanda_topic) (redpanda_kafka_consumer_group_committed_offset{redpanda_group="quotifyctl-redrive", redpanda_topic=~".*[.]dlq[.].*"})
+                 or sum by (redpanda_topic) (redpanda_kafka_max_offset{redpanda_topic=~".*[.]dlq[.].*"}) * 0),
               "queue_or_topic", "$1", "redpanda_topic", "(.*)"), "broker", "kafka", "redpanda_topic", ".*"))
 
   - name: quotify-alerts

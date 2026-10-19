@@ -191,7 +191,7 @@ Resolution: `created_at` isn't `now()` but the **start of the dedup window bucke
 A key is then unique within its month's partition, and the insert path checks the previous month's partition too
 (`ON CONFLICT` covers the current month, plus an explicit `SELECT` against the previous one). The dedup window is therefore
 "≥ 1 month, < 2 months", which comfortably covers the 35-day max lateness. Covered by a unit + integration test.
-(Alternative: unpartitioned table plus a batched `DELETE` job. Simpler, but `DELETE` bloat at volume. Decided: partitions. The Phase 02 benchmark of both is recorded as an ADR addendum.)
+(Alternative: unpartitioned table plus a batched `DELETE` job. Simpler, but `DELETE` bloat at volume. Decided: partitions. The benchmark of both is recorded in [ADR 0014](adr/0014-idempotency-key-retention.md): dropping a month took 24 ms against 8.4 s of batched deletes plus a vacuum.)
 
 RLS: `idempotency_keys` RLS'd for `ingest_app` (SELECT, INSERT only). `outbox` accessed only by `ingest_system` (relay: SELECT, DELETE and
 `UPDATE (id)`, which `FOR UPDATE SKIP LOCKED` needs), with insert for `ingest_app` only through the `SECURITY DEFINER` function

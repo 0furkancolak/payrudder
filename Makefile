@@ -57,10 +57,25 @@ OPERATOR_TOKEN ?= local-operator-token-change-me-0123456789
 CHAOS_COMPOSE := docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml $(if $(wildcard .env),--env-file .env)
 N ?= 100000
 .PHONY: chaos
-chaos: ## Correctness suite: make chaos N=100000 (ingest-svc and aggregator are built with the chaos tag and armed)
+chaos: ## Correctness suite with chaos monkey: make chaos N=100000 (2 replicas behind Toxiproxy, chaos-tag fault hooks armed)
 	$(MAKE) up-infra
-	$(CHAOS_COMPOSE) --profile app up -d --build --wait
-	cd tests && QUOTIFY_CHAOS_EVENTS=$(N) go test -count=1 -tags chaos -timeout 40m -v ./chaos/
+	$(CHAOS_COMPOSE) --profile app --profile chaos up -d --build --wait
+	cd tests && QUOTIFY_CHAOS_EVENTS=$(N) QUOTIFY_CHAOS_MONKEY=1 go test -count=1 -tags chaos -timeout 90m -v ./chaos/
+
+# k6 runs on the compose network and writes its metrics to Prometheus (Grafana dashboard "Quotify / k6").
+K6_IMAGE := grafana/k6:2.3.0
+S ?= ingest_steady
+.PHONY: load
+load: ## k6 scenario against the running stack: make load S=ingest_steady (also: ingest_spike noisy_neighbor entitlement_reads month_close); K6_ENV="-e DURATION=2m -e EVENTS_PER_SEC=500"
+	@mkdir -p tests/load/results
+	docker run --rm --network quotify_default -v "$(CURDIR)/tests/load:/load" -e GATEWAY_URL=http://gateway:8000 \
+		-e QUOTIFY_OPERATOR_TOKEN=$(OPERATOR_TOKEN) -e K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write \
+		-e K6_PROMETHEUS_RW_TREND_STATS="p(95),p(99),avg,max" $(K6_ENV) $(K6_IMAGE) run -o experimental-prometheus-rw \
+		--tag testid=$(S) --summary-export=/load/results/$(S).json /load/$(S).js
+
+.PHONY: bench-idempotency
+bench-idempotency: ## Partitioned vs unpartitioned idempotency table (needs the compose Postgres: make up-infra)
+	cd tests && go test -count=1 -tags bench -run TestIdempotencyRetention -v -timeout 40m ./bench/
 
 .PHONY: seed
 seed: ## Seed a demo account: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h

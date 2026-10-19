@@ -120,8 +120,8 @@ jobs:
         with:
           go-version-file: go.work
           cache-dependency-path: "**/go.sum"
-      - name: make chaos N=100000
-        run: timeout 1800 make chaos N=100000
+      - name: make chaos N=100000 (chaos monkey on; the PR variant)
+        run: timeout 2400 make chaos N=100000
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -129,6 +129,6 @@ jobs:
           path: tests/chaos-report.json
           if-no-files-found: ignore
       - if: failure()
-        run: docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app ps -a && docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app logs --tail 80 ingest-svc aggregator
+        run: docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app --profile chaos ps -a && docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app --profile chaos logs --tail 80 ingest-svc aggregator limits-svc
       - if: always()
         run: make down

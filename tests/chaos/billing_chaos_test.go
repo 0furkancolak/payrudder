@@ -1,0 +1,137 @@
+//go:build chaos
+
+package chaos
+
+import (
+	"fmt"
+	"net/url"
+	"os/exec"
+	"strings"
+	"testing"
+	"time"
+)
+
+var mockPSPURL = envOr("MOCKPSP_URL", "http://localhost:8090")
+
+// TestMonthCloseSurvivesBrokerRestart is the "RabbitMQ restart during the month close" scenario
+// (docs/09-testing-strategy.md#additional-chaos-scenarios): a sandbox period is closed for many customers, RabbitMQ is
+// restarted while their invoice sagas are mid-flight, and every saga must still reach COMPLETED with exactly the
+// invoice total, one successful charge each (A5, A6) and nothing in a dead-letter queue.
+func TestMonthCloseSurvivesBrokerRestart(t *testing.T) {
+	const customers = 60
+	a := api{t}
+	var acct struct {
+		Tenants []struct {
+			ID          string `json:"id"`
+			Environment string `json:"environment"`
+		} `json:"tenants"`
+	}
+	a.must("POST", "/admin/v1/accounts", operatorToken, map[string]any{
+		"name": "chaos-billing-" + fmt.Sprint(time.Now().UnixNano()), "currency": "TRY", "timezone": "Europe/Istanbul",
+		"grace_period": "0s", "tier": "TENANT_TIER_ENTERPRISE"}, &acct, 201)
+	var sandbox string
+	for _, tn := range acct.Tenants {
+		if tn.Environment == "ENVIRONMENT_SANDBOX" {
+			sandbox = tn.ID
+		}
+	}
+	var key struct {
+		Plaintext string `json:"plaintext"`
+	}
+	a.must("POST", "/admin/v1/tenants/"+sandbox+"/api-keys", operatorToken, nil, &key, 201)
+	k := key.Plaintext
+
+	a.must("POST", "/v1/meters", k, map[string]any{"code": "seats", "aggregation": "AGGREGATION_SUM", "value_property": "n", "quantity_scale": 0, "unit_label": "seats"}, nil, 201)
+	a.must("POST", "/v1/plans", k, map[string]any{"code": "team", "name": "Team"}, nil, 201)
+	a.must("POST", "/v1/plans/team/versions", k, map[string]any{"base_fee_minor": 1000,
+		"prices": []any{map[string]any{"meter_code": "seats", "per_unit": map[string]any{"unit_price": "1"}}}}, nil, 201)
+	wantTotal := map[string]int64{}
+	var events []any
+	for i := 0; i < customers; i++ {
+		ext := fmt.Sprintf("cus_%d", i)
+		a.must("POST", "/v1/customers", k, map[string]any{"external_id": ext, "name": ext, "email": ext + "@example.com", "payment_method": "pm_sandbox_success"}, nil, 201)
+		a.must("POST", "/v1/subscriptions", k, map[string]any{"customer_external_id": ext, "plan_code": "team"}, nil, 201)
+		units := int64(1 + i%7)
+		wantTotal[ext] = 1000 + units // base fee + 1 minor unit per seat
+		events = append(events, map[string]any{"customer_external_id": ext, "meter_code": "seats", "quantity": fmt.Sprint(units),
+			"event_time": time.Now().Add(-time.Minute).UTC().Format(time.RFC3339Nano), "idempotency_key": "bill-" + ext})
+	}
+	a.must("POST", "/v1/events", k, map[string]any{"events": events}, nil, 202)
+	a.must("POST", "/v1/sandbox/close-period", k, nil, nil, 202)
+
+	// Restart RabbitMQ as soon as the first invoice exists, i.e. while the sagas are in flight.
+	restarted := false
+	deadline := time.Now().Add(10 * time.Minute)
+	type invoice struct {
+		ID, Customer, Status, SagaState, Total string
+	}
+	var invs map[string]invoice
+	for time.Now().Before(deadline) {
+		var list struct {
+			Invoices []struct {
+				ID        string `json:"id"`
+				Customer  string `json:"customer_external_id"`
+				Status    string `json:"status"`
+				SagaState string `json:"saga_state"`
+				Total     string `json:"total_minor"`
+			} `json:"invoices"`
+		}
+		a.call("GET", "/v1/invoices?page_size=100", k, nil, &list)
+		invs = map[string]invoice{}
+		done := 0
+		for _, i := range list.Invoices {
+			invs[i.Customer] = invoice{i.ID, i.Customer, i.Status, i.SagaState, i.Total}
+			if i.SagaState == "COMPLETED" {
+				done++
+			}
+		}
+		if !restarted && len(invs) > 0 && done < customers {
+			restarted = true
+			if out, err := exec.Command("docker", "restart", "-t", "1", "quotify-rabbitmq-1").CombinedOutput(); err != nil {
+				t.Fatalf("restart rabbitmq: %v: %s", err, out)
+			}
+		}
+		if len(invs) == customers && done == customers {
+			break
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	if !restarted {
+		t.Fatal("the invoices completed before RabbitMQ could be restarted: the scenario did not run")
+	}
+	var bad []string
+	for i := 0; i < customers; i++ {
+		ext := fmt.Sprintf("cus_%d", i)
+		inv, ok := invs[ext]
+		switch {
+		case !ok:
+			bad = append(bad, ext+": no invoice")
+			continue
+		case inv.SagaState != "COMPLETED" || inv.Status != "paid":
+			bad = append(bad, fmt.Sprintf("%s: saga %s, invoice %s", ext, inv.SagaState, inv.Status))
+		case inv.Total != fmt.Sprint(wantTotal[ext]):
+			bad = append(bad, fmt.Sprintf("A5 %s: total %s, want %d", ext, inv.Total, wantTotal[ext]))
+		}
+		var ch struct {
+			Charges []struct {
+				Status string `json:"status"`
+			} `json:"charges"`
+		}
+		if resp, err := httpc.Get(mockPSPURL + "/v1/charges?invoice_id=" + url.QueryEscape(inv.ID)); err == nil {
+			_ = jsonDecode(resp.Body, &ch)
+			_ = resp.Body.Close()
+		}
+		ok2 := 0
+		for _, c := range ch.Charges {
+			if c.Status == "succeeded" {
+				ok2++
+			}
+		}
+		if ok2 != 1 {
+			bad = append(bad, fmt.Sprintf("A6 %s: %d successful charges, want exactly 1", ext, ok2))
+		}
+	}
+	if len(bad) > 0 {
+		t.Fatalf("%d problems after the RabbitMQ restart:\n%s", len(bad), strings.Join(bad, "\n"))
+	}
+}

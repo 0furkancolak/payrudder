@@ -64,8 +64,8 @@ Phases 00–07 (all instrumented components exist).
   `ingest_outbox_depth`, `ingest_outbox_oldest_age_seconds`.
 - **`dlq_messages{broker,queue_or_topic}`** is a Prometheus recording rule over RabbitMQ's per-queue metrics
   (`rabbitmq_detailed_queue_messages_ready` for `*.dlq`, from the `/metrics/detailed` scrape job) and Redpanda's `max_offset` for `*.dlq.*` topics (records ever dead-lettered: Redpanda exposes no start offset), not
-  application code: the brokers already know their depth. A Kafka DLQ therefore keeps alerting until `quotifyctl` redrives and
-  the topic is recreated (redrive lands in Phase 09).
+  application code: the brokers already know their depth. The Kafka count is `max_offset` minus the `quotifyctl-redrive` group's committed
+  offset, so redriving with `quotifyctl dlq redrive --broker kafka` (Phase 09) clears the alert.
 - **Alerts** live in `deploy/prometheus/rules/quotify.yaml` and are tested with `make test-rules` (`promtool`, in CI) with a firing and a
   quiet case each. `ServiceDown` was added to the list. `BillingRunStuck` fires on the `billing_runs{status="WAITING_WATERMARK"}`
   gauge staying above zero for an hour.

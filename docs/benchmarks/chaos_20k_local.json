@@ -1,0 +1,88 @@
+{
+  "Events": 20000,
+  "Unique": 19976,
+  "Duplicates": 1012,
+  "Invalid": 24,
+  "Tenants": 10,
+  "Customers": 200,
+  "Meters": 5,
+  "Accepted": 19976,
+  "DuplicateResponses": 1012,
+  "Rejected": 24,
+  "Retries": 63,
+  "LedgerRowsOnTime": 1000,
+  "LedgerRowsLate": 347,
+  "Chaos": {
+    "kills": 10,
+    "kills_by_target": {
+      "aggregator": 3,
+      "billing-svc": 3,
+      "ingest-svc": 1,
+      "limits-svc": 3
+    },
+    "network_faults": 2,
+    "network_faults_by_kind": {
+      "kafka/latency": 1,
+      "redis/reset": 1
+    },
+    "broker_stops": 1,
+    "redis_restarts": 1,
+    "errors": [
+      "Post \"http://localhost:8474/proxies/kafka/toxics\": EOF"
+    ]
+  },
+  "Assertions": [
+    {
+      "id": "A1",
+      "name": "usage_aggregates == ledger (on-time)",
+      "status": "pass"
+    },
+    {
+      "id": "A2",
+      "name": "late_usage == ledger (late)",
+      "status": "pass"
+    },
+    {
+      "id": "A3",
+      "name": "accepted events == aggregated events",
+      "status": "pass"
+    },
+    {
+      "id": "A4",
+      "name": "limits counters == aggregator (on-time)",
+      "status": "pass"
+    },
+    {
+      "id": "A5",
+      "name": "invoice lines == aggregates",
+      "status": "skipped",
+      "detail": "covered by TestMonthCloseSurvivesBrokerRestart"
+    },
+    {
+      "id": "A6",
+      "name": "at most one successful charge per invoice attempt",
+      "status": "skipped",
+      "detail": "covered by TestMonthCloseSurvivesBrokerRestart"
+    },
+    {
+      "id": "A7",
+      "name": "aggregator_frozen_period_violations_total == 0",
+      "status": "skipped",
+      "detail": "QUOTIFY_PROMETHEUS_URL not set"
+    },
+    {
+      "id": "A8",
+      "name": "ClickHouse usage_events FINAL == accepted events",
+      "status": "pass"
+    },
+    {
+      "id": "A9",
+      "name": "dead-letter topics empty",
+      "status": "pass"
+    }
+  ],
+  "Mismatches": null,
+  "DLQRecords": 0,
+  "Seconds": 263.344472375,
+  "DrainSeconds": 10.418804583
+}

@@ -1,0 +1,425 @@
+{
+    "metrics": {
+        "iterations": {
+            "count": 9001,
+            "rate": 49.93778941158188
+        },
+        "vus": {
+            "min": 0,
+            "max": 2,
+            "value": 0
+        },
+        "data_received": {
+            "count": 57609471,
+            "rate": 319618.8902244899
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 9231,
+            "thresholds": {
+                "rate==0": false
+            },
+            "value": 0
+        },
+        "http_req_waiting": {
+            "p(95)": 9.287694499999997,
+            "p(99)": 30.130651199999978,
+            "max": 469.526391,
+            "avg": 6.308010497454235,
+            "min": 1.321974,
+            "med": 4.443511,
+            "p(90)": 7.229918
+        },
+        "http_req_receiving": {
+            "p(90)": 0.110044,
+            "p(95)": 0.22012749999999998,
+            "p(99)": 0.5606523,
+            "max": 10.221801,
+            "avg": 0.07021277770555748,
+            "min": 0.00275,
+            "med": 0.038959
+        },
+        "http_req_duration": {
+            "max": 469.717478,
+            "avg": 6.487525394106813,
+            "min": 1.348349,
+            "med": 4.609513,
+            "p(90)": 7.439086,
+            "p(95)": 9.525027499999998,
+            "p(99)": 30.325611799999997
+        },
+        "data_sent": {
+            "rate": 741320.24228476,
+            "count": 133618720
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0,
+            "max": 0
+        },
+        "vus_max": {
+            "value": 100,
+            "min": 100,
+            "max": 100
+        },
+        "http_req_duration{name:POST /v1/events}": {
+            "med": 4.627429,
+            "p(90)": 7.504712,
+            "p(95)": 9.540945,
+            "p(99)": 32.153126,
+            "max": 469.717478,
+            "avg": 6.574228537718028,
+            "min": 2.891992,
+            "thresholds": {
+                "p(99)<50": false
+            }
+        },
+        "http_req_connecting": {
+            "p(95)": 0,
+            "p(99)": 0.06147949999999995,
+            "max": 1.331057,
+            "avg": 0.0018290073664825048,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 6.487525394106813,
+            "min": 1.348349,
+            "med": 4.609513,
+            "p(90)": 7.439086,
+            "p(95)": 9.525027499999998,
+            "p(99)": 30.325611799999997,
+            "max": 469.717478
+        },
+        "checks": {
+            "passes": 9001,
+            "fails": 0,
+            "value": 1
+        },
+        "iteration_duration": {
+            "max": 470.234781,
+            "avg": 7.073892348850145,
+            "min": 3.256746,
+            "med": 5.102727,
+            "p(90)": 8.180012,
+            "p(95)": 10.174494,
+            "p(99)": 32.700715
+        },
+        "http_reqs": {
+            "count": 9231,
+            "rate": 51.21383558030357
+        },
+        "http_req_blocked": {
+            "med": 0.002958,
+            "p(90)": 0.004416,
+            "p(95)": 0.005292,
+            "p(99)": 0.0888133999999998,
+            "max": 1.891064,
+            "avg": 0.00565558162712585,
+            "min": 0.000333
+        },
+        "http_req_sending": {
+            "p(95)": 0.35544349999999997,
+            "p(99)": 0.7579301999999996,
+            "max": 3.834253,
+            "avg": 0.10930211894702627,
+            "min": 0.0015,
+            "med": 0.050542,
+            "p(90)": 0.225919
+        }
+    },
+    "setup_data": {
+        "tenants": [
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a15196-2138-75af-8ab3-db33493a2f70",
+                "key": "qk_live_XUEqmlMm_3IcfmqMiItdKjPlTRTCZLa6UjgK2qHXRzSI9lZfl3xY",
+                "name": "k6-steady-mveiwvfy-0"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a15196-2161-7180-872d-650d6b1523a8",
+                "key": "qk_live_ewmD62G1_ByDFgurkNfcHwTe0ZNnf1QfnCBK2BmjeqsIwXp6SU74",
+                "name": "k6-steady-mveiwvfy-1"
+            },
+            {
+                "key": "qk_live_hlRmxkbH_w1d1FfdgufUa4F7ZNeIEGMvTlbl10zwpGD1ConDuavl",
+                "name": "k6-steady-mveiwvfy-2",
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a15196-2174-7204-9309-e56243370933"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a15196-2186-794d-b189-ff133b17e6c2",
+                "key": "qk_live_zSWelggI_RfnOpO5QEmlTZIkeZtxlKWO9YhdoAglrRdXiQnJpCPZ",
+                "name": "k6-steady-mveiwvfy-3"
+            },
+            {
+                "key": "qk_live_AA4ivhmw_b6LpG0SE4OHlOXa8Wop7DwYVaEry0Ev139J1s36WVQV",
+                "name": "k6-steady-mveiwvfy-4",
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a15196-21a0-7718-8a10-77dcb3301431"
+            },
+            {
+                "name": "k6-steady-mveiwvfy-5",
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a15196-21b6-7db3-a4d5-4d55e45b5fe4",
+                "key": "qk_live_KkKuaaEh_lX8lO7kkEVncYIcCX1v1Kr5Zp89F02h9SURKCVFIA1K"
+            },
+            {
+                "id": "01a15196-21c5-7182-9ff3-494fc2699f3b",
+                "key": "qk_live_cse4YYSE_Fk64wz1B0sJZPzxLZSVdQTddqJQGfRrjEDfh1xcWwdm",
+                "name": "k6-steady-mveiwvfy-6",
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ]
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a15196-21db-708c-a9c2-4c02055badf8",
+                "key": "qk_live_xLBQ6EDo_gYbWtlYyoVy5US7EyVsylfhvBOBiQRtPnpPf97aTUBg",
+                "name": "k6-steady-mveiwvfy-7"
+            },
+            {
+                "key": "qk_live_5KiZvl5N_pI8Qn82UEp0QugvsGiNziZSrCfOvuAYKdkmelRM2aDT",
+                "name": "k6-steady-mveiwvfy-8",
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a15196-21ef-75e8-a28f-cde0aedd007b"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a15196-2200-7251-9dc8-00e69746a6dd",
+                "key": "qk_live_5fs85toA_At9hdKm6xchrZ88RxLKtKYFW5lReZ0pZFrAIVgn2vgy",
+                "name": "k6-steady-mveiwvfy-9"
+            }
+        ]
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "ingest answered 202": {
+                    "path": "::ingest answered 202",
+                    "id": "916e686b69dd58457848d43e84bf4e6e",
+                    "passes": 9001,
+                    "fails": 0,
+                    "name": "ingest answered 202"
+                }
+            }
+    }
+}

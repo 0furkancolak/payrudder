@@ -19,13 +19,17 @@ import (
 //	quotifyctl dlq show --queue payment.charge [--limit 5]
 //	quotifyctl dlq redrive --queue payment.charge [--limit 100]
 //	quotifyctl dlq purge --queue payment.charge --yes
+//
+// With --broker kafka the same ls|show|redrive work on the Kafka dead-letter topics (dlq_kafka.go).
 func dlq(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("usage: quotifyctl dlq ls|show|redrive|purge --broker rabbitmq [flags]")
 	}
 	sub, rest := args[0], args[1:]
 	fs := flag.NewFlagSet("dlq "+sub, flag.ContinueOnError)
-	broker := fs.String("broker", "rabbitmq", "rabbitmq (Kafka dead letters are inspected with Redpanda Console)")
+	broker := fs.String("broker", "rabbitmq", "rabbitmq or kafka")
+	topic := fs.String("topic", "", "Kafka dead-letter topic, e.g. usage.events.dlq.v1 (--broker kafka)")
+	kafkaBrokers := fs.String("kafka-brokers", envOr("QUOTIFY_KAFKA_BROKERS", "localhost:19092"), "Kafka bootstrap servers (--broker kafka)")
 	url := fs.String("url", envOr("QUOTIFY_RABBITMQ_URL", "amqp://quotify:quotify_local@localhost:5672/"), "AMQP URL")
 	queue := fs.String("queue", "", "command queue, e.g. payment.charge, or billing-svc.replies")
 	limit := fs.Int("limit", 10, "max messages")
@@ -33,8 +37,12 @@ func dlq(args []string) error {
 	if err := fs.Parse(rest); err != nil {
 		return err
 	}
-	if *broker != "rabbitmq" {
-		return fmt.Errorf("--broker %s is not supported: only rabbitmq", *broker)
+	switch *broker {
+	case "kafka":
+		return dlqKafka(sub, strings.Split(*kafkaBrokers, ","), *topic, *limit, *yes)
+	case "rabbitmq":
+	default:
+		return fmt.Errorf("--broker %s is not supported: rabbitmq or kafka", *broker)
 	}
 	conn, err := amqp.Dial(*url)
 	if err != nil {

@@ -1,26 +1,76 @@
-# Overlay for the correctness suite (make chaos): builds ingest-svc and aggregator with the `chaos` build tag so that the
-# fault hooks exist, and arms them. Never used for release images.
+# Overlay for the correctness suite (make chaos): builds the services under test with the `chaos` build tag so that the
+# fault hooks exist and arms them, runs two replicas of each, and routes their Postgres, Kafka and Redis traffic through
+# Toxiproxy so the suite can inject latency and resets. Never used for release images.
+#   Kafka: Redpanda gets a third listener, `proxied`, advertised as toxiproxy:19093, so clients that bootstrap through the
+#   proxy keep talking through it after the metadata response.
+x-via-toxiproxy: &via-toxiproxy
+  depends_on:
+    toxiproxy: { condition: service_healthy }
+
 services:
+  toxiproxy:
+    command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
+    volumes: [./chaos/toxiproxy.json:/config/toxiproxy.json:ro]
+
+  redpanda:
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092,proxied://0.0.0.0:9093
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092,proxied://toxiproxy:19093
+      - --schema-registry-addr=0.0.0.0:18081
+      - --set
+      - redpanda.auto_create_topics_enabled=false
+      - --rpc-addr=redpanda:33145
+      - --advertise-rpc-addr=redpanda:33145
+
   ingest-svc:
+    <<: *via-toxiproxy
     build:
       args: { GO_TAGS: chaos }
     image: quotify/ingest-svc:chaos
+    ports: !reset []
+    deploy: { replicas: 2, resources: { limits: { memory: 128m } } }
     environment:
       RELAY_CRASH_AFTER_PRODUCE: "${RELAY_CRASH_AFTER_PRODUCE:-0.1}"
+      QUOTIFY_PG_APP_DSN: postgres://ingest_app:ingest_app_local@toxiproxy:15432/ingest_db
+      QUOTIFY_PG_SYSTEM_DSN: postgres://ingest_system:ingest_system_local@toxiproxy:15432/ingest_db
+      QUOTIFY_KAFKA_BROKERS: toxiproxy:19093
   aggregator:
+    <<: *via-toxiproxy
     build:
       args: { GO_TAGS: chaos }
     image: quotify/aggregator:chaos
+    ports: !reset []
+    deploy: { replicas: 2, resources: { limits: { memory: 192m } } }
     environment:
       AGG_CRASH_AFTER_COMMIT: "${AGG_CRASH_AFTER_COMMIT:-0.1}"
       # A killed member holds its partitions until the session expires; keep that short so a crash loop still progresses.
       QUOTIFY_CONSUMER_SESSION_TIMEOUT: "6s"
+      QUOTIFY_PG_APP_DSN: postgres://aggregator_app:aggregator_app_local@toxiproxy:15432/aggregator_db
+      QUOTIFY_PG_SYSTEM_DSN: postgres://aggregator_system:aggregator_system_local@toxiproxy:15432/aggregator_db
+      QUOTIFY_KAFKA_BROKERS: toxiproxy:19093
   limits-svc:
+    <<: *via-toxiproxy
     build:
       args: { GO_TAGS: chaos }
     image: quotify/limits-svc:chaos
+    ports: !reset []
+    deploy: { replicas: 2, resources: { limits: { memory: 128m } } }
     environment:
       LIMITS_CRASH_AFTER_LUA: "${LIMITS_CRASH_AFTER_LUA:-0}"
+      QUOTIFY_REDIS_URL: redis://toxiproxy:16379/0
+      QUOTIFY_KAFKA_BROKERS: toxiproxy:19093
+      QUOTIFY_RECONCILE_INTERVAL: "${QUOTIFY_RECONCILE_INTERVAL:-1m}"
+  # A little provider latency so a month close takes long enough for the suite to restart RabbitMQ in the middle of it.
+  mockpsp:
+    environment:
+      MOCKPSP_LATENCY_MS: "${MOCKPSP_LATENCY_MS:-300}"
   billing-svc:
     build:
       args: { GO_TAGS: chaos }

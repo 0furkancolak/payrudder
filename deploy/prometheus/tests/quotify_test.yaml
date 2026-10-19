@@ -94,6 +94,12 @@ tests:
         values: '3+0x40'
       - series: 'redpanda_kafka_max_offset{redpanda_topic="usage.events.dlq.v1"}'
         values: '10+0x40'
+      - series: 'redpanda_kafka_consumer_group_committed_offset{redpanda_group="quotifyctl-redrive", redpanda_topic="usage.events.dlq.v1", redpanda_partition="0"}'
+        values: '4+0x40'
+      - series: 'redpanda_kafka_max_offset{redpanda_topic="billing.invoices.dlq.v1"}'
+        values: '5+0x40'
+      - series: 'redpanda_kafka_consumer_group_committed_offset{redpanda_group="quotifyctl-redrive", redpanda_topic="billing.invoices.dlq.v1", redpanda_partition="0"}'
+        values: '5+0x40'
     alert_rule_test:
       - eval_time: 10m
         alertname: DLQNotEmpty
@@ -103,7 +109,7 @@ tests:
               summary: "rabbitmq payment.charge.dlq holds 3 dead-lettered messages"
           - exp_labels: { severity: page, broker: kafka, queue_or_topic: usage.events.dlq.v1 }
             exp_annotations:
-              summary: "kafka usage.events.dlq.v1 holds 10 dead-lettered messages"
+              summary: "kafka usage.events.dlq.v1 holds 6 dead-lettered messages"
 
   - interval: 15s
     name: DLQNotEmpty stays quiet with empty queues
