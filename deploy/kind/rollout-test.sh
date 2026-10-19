@@ -18,8 +18,11 @@ mkdir -p "$root/tests/load/results"
 chmod a+rwx "$root/tests/load/results"   # k6 runs as an unprivileged user inside the container
 docker rm -f quotify-rollout-k6 >/dev/null 2>&1 || true
 rm -f "$root/tests/load/results/rollout.json"
-docker run -d --name quotify-rollout-k6 --add-host host.docker.internal:host-gateway -v "$root/tests/load:/load" \
-  -e GATEWAY_URL=http://host.docker.internal:8000 -e QUOTIFY_OPERATOR_TOKEN="${OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}" \
+# kind publishes the gateway on 127.0.0.1 only: on Linux the container shares the host network, on Docker Desktop it uses the host alias.
+if [ "$(uname -s)" = Linux ]; then net=(--network host); gw=http://127.0.0.1:8000
+else net=(--add-host host.docker.internal:host-gateway); gw=http://host.docker.internal:8000; fi
+docker run -d --name quotify-rollout-k6 "${net[@]}" -v "$root/tests/load:/load" \
+  -e GATEWAY_URL="$gw" -e QUOTIFY_OPERATOR_TOKEN="${OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}" \
   -e DURATION="${duration}s" -e EVENTS_PER_SEC=500 -e TENANTS=3 \
   grafana/k6:2.3.0 run --summary-export=/load/results/rollout.json /load/ingest_steady.js >/dev/null
 
