@@ -1,8 +1,10 @@
 package payments
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"sort"
 	"sync"
@@ -25,6 +27,9 @@ type Capabilities struct {
 	HostedCheckout bool
 	// Refunds: the provider has a refund API.
 	Refunds bool
+	// IdempotentCharges: the provider returns the first result for a repeated idempotency key instead of charging again. When
+	// false, a charge command that is redelivered after the provider may have been called is answered by asking Status first.
+	IdempotentCharges bool
 	// Currencies the provider can charge in. Empty means any.
 	Currencies []string
 }
@@ -58,13 +63,14 @@ type Provider interface {
 
 // Capabilities implements Provider: mock-psp is a plain charge-and-refund provider, so Quotify drives everything.
 func (m *MockPSP) Capabilities() Capabilities {
-	return Capabilities{Name: m.Name(), Refunds: true}
+	return Capabilities{Name: m.Name(), Refunds: true, IdempotentCharges: true}
 }
 
 // Registry maps provider names to constructors, so a worker can build the adapter a tenant's account asks for.
 type Registry struct {
 	mu        sync.RWMutex
 	factories map[string]Factory
+	parsers   map[string]ParseNotification
 }
 
 // Factory builds a provider from a tenant's stored account settings (credentials and options as a JSON object).
@@ -108,3 +114,46 @@ func (r *Registry) Names() []string {
 
 // ErrUnknownProvider: no provider is registered under that name.
 var ErrUnknownProvider = errors.New("payments: unknown provider")
+
+// NotificationRef is what Quotify can read from a provider's webhook without credentials: which notification it is and which of
+// our charges it is about (the idempotency key we sent as the provider's reference).
+type NotificationRef struct {
+	EventID        string
+	IdempotencyKey string
+}
+
+// Notification is what the provider says about a charge once Quotify has asked the provider to confirm the webhook.
+type Notification struct {
+	Ref         NotificationRef
+	State       State // StateSucceeded or StateDeclined
+	ProviderRef string
+	DeclineCode string
+}
+
+// ParseNotification reads a webhook body. It must not trust the body: it only names the notification and the charge.
+type ParseNotification func(body []byte, header http.Header) (NotificationRef, error)
+
+// Notifier is a provider that confirms a webhook notification by asking the provider what it is about, so a forged or replayed
+// body cannot change anything.
+type Notifier interface {
+	Provider
+	ConfirmNotification(ctx context.Context, body []byte, header http.Header) (Notification, error)
+}
+
+// RegisterParser registers the webhook parser of a provider.
+func (r *Registry) RegisterParser(name string, p ParseNotification) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.parsers == nil {
+		r.parsers = map[string]ParseNotification{}
+	}
+	r.parsers[name] = p
+}
+
+// Parser returns the webhook parser of a provider.
+func (r *Registry) Parser(name string) (ParseNotification, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	p, ok := r.parsers[name]
+	return p, ok
+}

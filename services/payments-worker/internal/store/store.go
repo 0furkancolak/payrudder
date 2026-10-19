@@ -45,15 +45,16 @@ func (a Attempts) Store(ctx context.Context, commandID uuid.UUID, reply *command
 	return err
 }
 
-// Start records that the provider is about to be called (a crash after this and before Store leaves a STARTED row; the
-// redelivered command calls the provider again with the same idempotency key, which is safe).
-func (a Attempts) Start(ctx context.Context, commandID, tenantID, invoiceID uuid.UUID, kind, environment, provider, idempotencyKey string, request any) error {
+// Start records that the provider is about to be called (a crash after this and before Store leaves a STARTED row). It
+// reports whether the row was already there: the command is a redelivery and the provider may have been called. With a
+// provider whose charges are idempotent that does not matter; with one whose are not, the caller asks the provider first.
+func (a Attempts) Start(ctx context.Context, commandID, tenantID, invoiceID uuid.UUID, kind, environment, provider, idempotencyKey string, request any) (bool, error) {
 	b, err := json.Marshal(request)
 	if err != nil {
-		return err
+		return false, err
 	}
-	_, err = a.DB.Exec(ctx, `INSERT INTO payment_attempts (command_id, tenant_id, invoice_id, kind, environment, provider, idempotency_key, request, status)
+	tag, err := a.DB.Exec(ctx, `INSERT INTO payment_attempts (command_id, tenant_id, invoice_id, kind, environment, provider, idempotency_key, request, status)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'STARTED') ON CONFLICT (command_id) DO NOTHING`,
 		commandID, tenantID, invoiceID, kind, environment, provider, idempotencyKey, b)
-	return err
+	return err == nil && tag.RowsAffected() == 0, err
 }

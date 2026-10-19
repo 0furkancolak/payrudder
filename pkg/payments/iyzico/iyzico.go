@@ -369,3 +369,36 @@ func (c *Client) Confirm(ctx context.Context, e WebhookEvent) (payments.StatusRe
 	}
 	return st, nil
 }
+
+// ParseNotification reads an iyzico webhook for payments.Registry.RegisterParser. iyzico's paymentConversationId is the idempotency
+// key Charge sent as its conversationId.
+func ParseNotification(body []byte, _ http.Header) (payments.NotificationRef, error) {
+	e, err := ParseWebhook(body)
+	if err != nil {
+		return payments.NotificationRef{}, err
+	}
+	if e.ConversationID == "" {
+		return payments.NotificationRef{}, errors.New("iyzico: webhook without paymentConversationId")
+	}
+	return payments.NotificationRef{EventID: e.Reference, IdempotencyKey: e.ConversationID}, nil
+}
+
+// ConfirmNotification implements payments.Notifier: the notification is confirmed by retrieving the payment (Confirm).
+func (c *Client) ConfirmNotification(ctx context.Context, body []byte, _ http.Header) (payments.Notification, error) {
+	e, err := ParseWebhook(body)
+	if err != nil {
+		return payments.Notification{}, err
+	}
+	st, err := c.Confirm(ctx, e)
+	if err != nil {
+		return payments.Notification{}, err
+	}
+	return payments.Notification{Ref: payments.NotificationRef{EventID: e.Reference, IdempotencyKey: e.ConversationID}, State: st.State,
+		ProviderRef: st.ChargeID, DeclineCode: st.DeclineCode}, nil
+}
+
+// Register adds iyzico to a registry, with its webhook parser.
+func Register(r *payments.Registry) {
+	r.Register(Name, Factory)
+	r.RegisterParser(Name, ParseNotification)
+}

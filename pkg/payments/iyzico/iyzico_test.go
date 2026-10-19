@@ -140,7 +140,9 @@ func TestChargeFailures(t *testing.T) {
 	})
 	t.Run("a configured system error code is retried", func(t *testing.T) {
 		f, c := newFake(t, func(s *Settings) { s.SystemErrorCodes = []string{"5"} })
-		f.reply = func(string, map[string]any) (int, string) { return 200, `{"status":"failure","errorCode":"5","errorMessage":"system error"}` }
+		f.reply = func(string, map[string]any) (int, string) {
+			return 200, `{"status":"failure","errorCode":"5","errorMessage":"system error"}`
+		}
 		_, err := c.Charge(context.Background(), req)
 		var tr *payments.TransientError
 		if !errors.As(err, &tr) {
@@ -215,7 +217,9 @@ func TestStatus(t *testing.T) {
 	})
 	t.Run("an unknown failure is an error, never not-found", func(t *testing.T) {
 		f, c := newFake(t, nil)
-		f.reply = func(string, map[string]any) (int, string) { return 200, `{"status":"failure","errorCode":"12345","errorMessage":"whatever"}` }
+		f.reply = func(string, map[string]any) (int, string) {
+			return 200, `{"status":"failure","errorCode":"12345","errorMessage":"whatever"}`
+		}
 		got, err := c.Status(context.Background(), "k")
 		if err == nil || got.State == payments.StateNotFound {
 			t.Fatalf("got %+v, %v; a lookup that failed for an unknown reason must not allow a second charge", got, err)
@@ -231,7 +235,9 @@ func TestStatus(t *testing.T) {
 	})
 	t.Run("a payment that is not final is an error", func(t *testing.T) {
 		f, c := newFake(t, nil)
-		f.reply = func(string, map[string]any) (int, string) { return 200, `{"status":"success","paymentId":"1","paymentStatus":"INIT_THREEDS"}` }
+		f.reply = func(string, map[string]any) (int, string) {
+			return 200, `{"status":"success","paymentId":"1","paymentStatus":"INIT_THREEDS"}`
+		}
 		if _, err := c.Status(context.Background(), "k"); err == nil {
 			t.Fatal("want an error")
 		}
@@ -252,7 +258,9 @@ func TestWebhookParseAndConfirm(t *testing.T) {
 
 	f, c := newFake(t, nil)
 	// A forged notification claims success; iyzico says the payment failed. Quotify believes iyzico.
-	f.reply = func(string, map[string]any) (int, string) { return 200, `{"status":"success","paymentId":"23456","paymentStatus":"FAILURE"}` }
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"success","paymentId":"23456","paymentStatus":"FAILURE"}`
+	}
 	got, err := c.Confirm(context.Background(), e)
 	if err != nil || got.State != payments.StateDeclined {
 		t.Fatalf("Confirm = %+v, %v; the retrieved state must win over the notified one", got, err)
@@ -278,4 +286,29 @@ func TestFactoryAndCapabilities(t *testing.T) {
 		t.Error("garbage settings must fail")
 	}
 	var _ payments.Provider = p
+}
+
+func TestNotifier(t *testing.T) {
+	r := payments.NewRegistry()
+	Register(r)
+	parse, ok := r.Parser(Name)
+	if !ok {
+		t.Fatal("no parser registered")
+	}
+	ref, err := parse([]byte(`{"iyziEventType":"API_AUTH","iyziReferenceCode":"ref-1","paymentId":7,"paymentConversationId":"key-1","status":"SUCCESS"}`), nil)
+	if err != nil || ref.EventID != "ref-1" || ref.IdempotencyKey != "key-1" {
+		t.Fatalf("ref = %+v, %v", ref, err)
+	}
+	if _, err := parse([]byte(`{"iyziReferenceCode":"ref-1","paymentId":7}`), nil); err == nil {
+		t.Error("a notification that names no charge must be refused")
+	}
+	f, c := newFake(t, nil)
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS"}`
+	}
+	var n payments.Notifier = c
+	got, err := n.ConfirmNotification(context.Background(), []byte(`{"iyziReferenceCode":"ref-1","paymentId":7,"paymentConversationId":"key-1","status":"FAILURE"}`), nil)
+	if err != nil || got.State != payments.StateSucceeded || got.ProviderRef != "7" || got.Ref.IdempotencyKey != "key-1" {
+		t.Fatalf("ConfirmNotification = %+v, %v; the provider's answer, not the body's status, decides", got, err)
+	}
 }
