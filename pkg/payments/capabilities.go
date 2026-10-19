@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sort"
 	"sync"
+	"time"
 )
 
 // ErrUnsupported is returned when a provider is asked for something outside its Capabilities.
@@ -122,12 +123,71 @@ type NotificationRef struct {
 	IdempotencyKey string
 }
 
-// Notification is what the provider says about a charge once Quotify has asked the provider to confirm the webhook.
+// NotificationKind is what a notification is about.
+type NotificationKind string
+
+const (
+	// KindCharge is the zero value: a notification that does not say otherwise is about a charge (what iyzico sends).
+	KindCharge       NotificationKind = ""
+	KindRefund       NotificationKind = "refund"
+	KindSubscription NotificationKind = "subscription"
+	// KindIgnored is an event Quotify has no use for (a transaction that was merely created, for example).
+	KindIgnored NotificationKind = "ignored"
+)
+
+// Notification is what a confirmed provider notification says.
 type Notification struct {
-	Ref         NotificationRef
-	State       State // StateSucceeded or StateDeclined
+	Ref  NotificationRef
+	Kind NotificationKind
+	// State is the final outcome of a charge or refund: StateSucceeded or StateDeclined (a refund that did not happen).
+	State       State
 	ProviderRef string
 	DeclineCode string
+	// AmountMinor and Currency are what the provider says moved, when it says. Zero and empty otherwise.
+	AmountMinor int64
+	Currency    string
+	// Subscription is set for KindSubscription.
+	Subscription *SubscriptionEvent
+}
+
+// SubscriptionEvent is a provider-side change to a subscription the provider runs.
+type SubscriptionEvent struct {
+	ProviderRef string
+	// Status is the provider's own word: active, trialing, past_due, paused, canceled.
+	Status string
+	// QuotifySubscriptionID is the subscription this one was created for (carried in the provider's custom data), if it says.
+	QuotifySubscriptionID string
+	NextBilledAt          *time.Time
+}
+
+// PendingError is returned by a charge the provider accepted but has not settled: the outcome arrives as a notification. It is not a failure,
+// and it must not be retried; Quotify asks Status (which finds the notification's outcome in the ledger).
+type PendingError struct{ Ref string }
+
+func (e *PendingError) Error() string {
+	return "payment accepted by the provider; the outcome arrives by notification (" + e.Ref + ")"
+}
+
+// CheckoutRequest asks a provider that hosts the checkout for a page where the customer pays and, for a provider that runs
+// subscriptions, subscribes.
+type CheckoutRequest struct {
+	// PriceRef is the provider's id of what is sold (a catalogue price).
+	PriceRef string
+	Quantity int
+	// QuotifySubscriptionID ties the provider's subscription to ours; the provider hands it back in its notifications.
+	QuotifySubscriptionID string
+}
+
+// Checkout is a hosted page.
+type Checkout struct {
+	URL string
+	Ref string
+}
+
+// CheckoutProvider is a provider with a hosted checkout (Capabilities.HostedCheckout).
+type CheckoutProvider interface {
+	Provider
+	CreateCheckout(ctx context.Context, r CheckoutRequest) (Checkout, error)
 }
 
 // ParseNotification reads a webhook body. It must not trust the body: it only names the notification and the charge.
