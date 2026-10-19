@@ -297,7 +297,16 @@
       "move": "Verschieben",
       "moveHint": "Das alte Abonnement endet erst, wenn das neue übernimmt; der Kunde wird nie von beiden abgerechnet.",
       "checkoutReady": "Der Kunde schließt hier ab; die Verschiebung endet, wenn der Anbieter bestätigt:",
-      "moved": "Verschoben: Das neue Abonnement übernimmt, wo das alte endet."
+      "moved": "Verschoben: Das neue Abonnement übernimmt, wo das alte endet.",
+      "usage": "Nutzung in dieser Periode",
+      "meter": "Zähler",
+      "used": "Verbraucht",
+      "limit": "Limit",
+      "unlimited": "unbegrenzt",
+      "allowed": "Status",
+      "withinLimit": "im Limit",
+      "overLimit": "über dem Limit",
+      "noLimits": "Dieses Paket setzt keine Nutzungslimits."
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",

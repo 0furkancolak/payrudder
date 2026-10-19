@@ -297,7 +297,16 @@
       "move": "Move",
       "moveHint": "The old subscription ends only when the new one takes over, so the customer is never billed by both.",
       "checkoutReady": "The customer subscribes here; the move completes when the provider confirms:",
-      "moved": "Moved: the new subscription takes over where the old one ends."
+      "moved": "Moved: the new subscription takes over where the old one ends.",
+      "usage": "Usage this period",
+      "meter": "Meter",
+      "used": "Used",
+      "limit": "Limit",
+      "unlimited": "unlimited",
+      "allowed": "Status",
+      "withinLimit": "within the limit",
+      "overLimit": "over the limit",
+      "noLimits": "This package sets no usage limits."
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",

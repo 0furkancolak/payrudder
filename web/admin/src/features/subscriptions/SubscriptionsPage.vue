@@ -14,7 +14,7 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { useSubscriptionActions, useSubscriptions } from "./api";
+import { useEntitlements, useSubscriptionActions, useSubscriptions } from "./api";
 
 const { t, te, locale } = useI18n();
 const params = useParams({ strict: false });
@@ -45,6 +45,10 @@ function create() {
 }
 
 const selectedId = ref("");
+const usageCustomer = computed(() => (subs.data.value?.subscriptions ?? []).find((s) => s.id === selectedId.value)?.customer_external_id ?? "");
+const entitlements = useEntitlements(tenantId, usageCustomer);
+/** How much of the limit is used, for the bar: a display value only, the exact decimals are what is written. */
+const percent = (used?: string, limit?: string | null) => (limit && Number(limit) > 0 ? Math.min(100, Math.round((Number(used ?? 0) / Number(limit)) * 100)) : 0);
 const selected = computed<Subscription | undefined>(() => (subs.data.value?.subscriptions ?? []).find((s) => s.id === selectedId.value));
 const state = (s: Subscription) => enumWord(s.state, "SUBSCRIPTION_STATE_");
 const providerRuns = computed(() => selected.value?.owner === "provider");
@@ -169,6 +173,35 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
         {{ t("billing.subscriptions.move") }}
       </Button>
       <p class="text-muted-foreground text-xs sm:col-span-3">{{ t("billing.subscriptions.moveHint") }}</p>
+    </div>
+    <div role="region" :aria-label="t('billing.subscriptions.usage')" class="grid gap-2">
+      <h3 class="text-base font-semibold">{{ t("billing.subscriptions.usage") }}</h3>
+      <p v-if="entitlements.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(entitlements.error.value).message }}</p>
+      <Table v-if="(entitlements.data.value?.items ?? []).length > 0">
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead>{{ t("billing.subscriptions.meter") }}</TableHead>
+            <TableHead class="text-end">{{ t("billing.subscriptions.used") }}</TableHead>
+            <TableHead class="text-end">{{ t("billing.subscriptions.limit") }}</TableHead>
+            <TableHead class="w-40" />
+            <TableHead>{{ t("billing.subscriptions.allowed") }}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="e in entitlements.data.value?.items ?? []" :key="e.meter_code">
+            <TableCell class="mono">{{ e.meter_code }}</TableCell>
+            <TableCell class="text-end tabular-nums">{{ e.used }}</TableCell>
+            <TableCell class="text-end tabular-nums">{{ e.unlimited ? t("billing.subscriptions.unlimited") : e.limit }}</TableCell>
+            <TableCell>
+              <div v-if="!e.unlimited" class="bg-secondary h-2 overflow-hidden rounded-full" role="progressbar" :aria-valuenow="percent(e.used, e.limit)" aria-valuemin="0" aria-valuemax="100">
+                <div class="h-full rounded-full" :class="e.allowed ? 'bg-primary' : 'bg-destructive'" :style="{ width: `${percent(e.used, e.limit)}%` }" />
+              </div>
+            </TableCell>
+            <TableCell><Badge :variant="e.allowed ? 'success' : 'destructive'">{{ e.allowed ? t("billing.subscriptions.withinLimit") : t("billing.subscriptions.overLimit") }}</Badge></TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <p v-else-if="!entitlements.isPending.value && !entitlements.error.value" class="text-muted-foreground text-sm">{{ t("billing.subscriptions.noLimits") }}</p>
     </div>
     <p v-if="migration?.checkout_url" class="bg-success/10 text-success rounded-2xl px-4 py-3 text-sm" role="status">
       {{ t("billing.subscriptions.checkoutReady") }}

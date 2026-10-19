@@ -297,7 +297,16 @@
       "move": "Déplacer",
       "moveHint": "L'ancien abonnement ne se termine que lorsque le nouveau prend le relais : le client n'est jamais facturé par les deux.",
       "checkoutReady": "Le client s'abonne ici ; le déplacement se termine à la confirmation du prestataire :",
-      "moved": "Déplacé : le nouvel abonnement prend le relais là où l'ancien se termine."
+      "moved": "Déplacé : le nouvel abonnement prend le relais là où l'ancien se termine.",
+      "usage": "Utilisation de la période",
+      "meter": "Compteur",
+      "used": "Utilisé",
+      "limit": "Limite",
+      "unlimited": "illimité",
+      "allowed": "Statut",
+      "withinLimit": "dans la limite",
+      "overLimit": "limite dépassée",
+      "noLimits": "Ce forfait ne fixe aucune limite d'utilisation."
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",

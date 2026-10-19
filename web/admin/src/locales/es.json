@@ -297,7 +297,16 @@
       "move": "Mover",
       "moveHint": "La suscripción anterior termina solo cuando la nueva toma el relevo, así el cliente nunca recibe dos cobros.",
       "checkoutReady": "El cliente se suscribe aquí; el cambio termina cuando el proveedor lo confirma:",
-      "moved": "Movida: la nueva suscripción continúa donde termina la anterior."
+      "moved": "Movida: la nueva suscripción continúa donde termina la anterior.",
+      "usage": "Uso de este periodo",
+      "meter": "Medidor",
+      "used": "Usado",
+      "limit": "Límite",
+      "unlimited": "ilimitado",
+      "allowed": "Estado",
+      "withinLimit": "dentro del límite",
+      "overLimit": "por encima del límite",
+      "noLimits": "Este paquete no fija límites de uso."
     },
     "payments": {
       "reconcile": "Conciliar con el libro",

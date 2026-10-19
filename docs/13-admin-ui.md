@@ -11,7 +11,7 @@ offers the two actions an operator needs most, redriving dead letters and readin
 | Tenant | A header and seven tabs. **Overview**: its invoices (kind, period, total, status, saga state) and a lookup for replay and re-rating jobs by id. The other tabs are the billing pages below. |
 | Customers | List and create (customer id, name, e-mail, country, billing currency). |
 | Packages | Packages with their latest version's fixed fee and fees in other currencies; publish a version (amounts typed in major units, sent as minor units; a package that exists gets a new version). |
-| Subscriptions | List, create (customer, package, currency, trial days, provider or "by the routing rules"), and a panel to pause, resume, cancel at the period end, end now, change package and **move to another payment provider**. A subscription a provider runs is only moved. |
+| Subscriptions | List, create (customer, package, currency, trial days, provider or "by the routing rules"), and a panel to pause, resume, cancel at the period end, end now, change package and **move to another payment provider** (a subscription a provider runs is only moved), with the customer's **usage against the package's limits** this period. |
 | Payments | The payment ledger across providers, and a **reconciliation** of a period's paid invoices against it. |
 | Providers | The tenant's provider accounts (credentials are sealed and never shown again), the **routing rules** with a preview, and the subscriptions the providers run. |
 | Reports | Revenue by period, provider and country; subscriptions and monthly recurring revenue; unpaid invoices. A row per currency, never one total. |

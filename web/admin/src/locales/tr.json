@@ -297,7 +297,16 @@
       "move": "Taşı",
       "moveHint": "Eski abonelik yalnızca yenisi devraldığında biter; müşteri hiçbir zaman ikisi tarafından birden faturalanmaz.",
       "checkoutReady": "Müşteri burada abone olur; taşıma, sağlayıcı onayladığında tamamlanır:",
-      "moved": "Taşındı: yeni abonelik eskisinin bittiği yerden devralır."
+      "moved": "Taşındı: yeni abonelik eskisinin bittiği yerden devralır.",
+      "usage": "Bu dönemin kullanımı",
+      "meter": "Sayaç",
+      "used": "Kullanılan",
+      "limit": "Sınır",
+      "unlimited": "sınırsız",
+      "allowed": "Durum",
+      "withinLimit": "sınır içinde",
+      "overLimit": "sınırı aştı",
+      "noLimits": "Bu paket kullanım sınırı koymuyor."
     },
     "payments": {
       "reconcile": "Defterle mutabakat",

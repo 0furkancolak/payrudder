@@ -161,6 +161,33 @@ test.describe("subscriptions", () => {
       return undefined;
     });
 
+  test("a subscription's panel shows the customer's usage against the package's limits", async ({ page }) => {
+    const gw = common(new MockGateway(), [sub("s1")]).on((c) =>
+      c.path === "/v1/customers/cus_1/entitlements"
+        ? {
+            body: {
+              items: [
+                { customer_external_id: "cus_1", meter_code: "api_calls", used: "750.000", limit: "1000.000", unlimited: false, allowed: true },
+                { customer_external_id: "cus_1", meter_code: "gb_hours", used: "12.500", limit: "10.000", unlimited: false, allowed: false },
+                { customer_external_id: "cus_1", meter_code: "seats", used: "3", unlimited: true, allowed: true },
+              ],
+            },
+          }
+        : undefined,
+    );
+    await gw.install(page);
+    await openTenantPage(page, "/subscriptions");
+    await page.getByRole("button", { name: "Manage" }).click();
+    const usage = page.getByRole("region", { name: "Usage this period" });
+    const calls = usage.getByRole("row", { name: /api_calls/ });
+    await expect(calls).toContainText("750.000");
+    await expect(calls).toContainText("1000.000");
+    await expect(calls.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "75");
+    await expect(usage.getByRole("row", { name: /gb_hours/ })).toContainText("over the limit");
+    await expect(usage.getByRole("row", { name: /seats/ })).toContainText("unlimited");
+    expect(gw.called("GET", "/v1/customers/cus_1/entitlements")[0]?.headers["x-quotify-tenant"]).toBe(TENANT);
+  });
+
   test("a subscription is created for a customer and a package, with an optional trial and provider", async ({ page }) => {
     const gw = common(new MockGateway(), []).on((c) => (c.method === "POST" && c.path === "/v1/subscriptions" ? { status: 201, body: sub("s9") } : undefined));
     await gw.install(page);

@@ -51,3 +51,12 @@ export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, envir
     }),
   };
 }
+
+/** A customer's usage against the limits of its package, this period: the numbers the product shows next to a subscription. */
+export function useEntitlements(tenantId: MaybeRefOrGetter<string>, customer: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => ["tenants", toValue(tenantId), "entitlements", toValue(customer)] as const),
+    enabled: computed(() => toValue(customer) !== ""),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/entitlements", { params: { path: { external_id: toValue(customer) } } })),
+  });
+}
