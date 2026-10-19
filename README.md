@@ -149,7 +149,7 @@ customers x 5 meters, exact totals under chaos (container kills, resets, a broke
 ## The operator console
 
 `web/admin` (Next.js, TypeScript, an API client typed from the OpenAPI file) at <http://localhost:3001> shows tenants, invoices with the **saga timeline** of each one,
-and the RabbitMQ dead-letter queues with a redrive action. It talks to the gateway only. A Playwright smoke test drives it against the real stack in CI.
+a **playground** that walks through the whole sandbox flow in the browser (account, usage, period close, paid or declined invoice), and the RabbitMQ dead-letter queues with a redrive action. It talks to the gateway only. A Playwright smoke test drives it against the real stack in CI.
 
 ![The saga timeline of a paid invoice](docs/img/admin-invoice-saga.png)
 
