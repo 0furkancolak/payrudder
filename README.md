@@ -146,10 +146,18 @@ with a 2.9 GiB Docker VM running everything: 5,000 events/s sustained at p99 32 
 customers x 5 meters, exact totals under chaos (container kills, resets, a broker stop, a wiped Redis), and, stated plainly, two targets missed on that machine
 (latency at a 20,000 events/s spike; entitlement reads p99 at 2,000/s). The 1M-event nightly is wired in CI and has not run yet.
 
+## Subscriptions, providers and reports
+
+On top of metering, Quotify runs the billing around it ([docs/14-billing-platform.md](docs/14-billing-platform.md)): **subscriptions** with trials, pause, plan changes and a fixed fee in each currency; **iyzico** (which Quotify
+schedules and retries for) and **Paddle** (the merchant of record, which runs renewals and retries itself) behind one provider contract that declares what each does; **routing rules** that choose the provider of a new
+subscription from the customer's country and the subscription's currency; **moving a subscription between providers** without two of them being live at once; a **payment ledger** with a reconciliation against the invoices; and
+**reports** (revenue, monthly recurring revenue, unpaid invoices) by provider, country and currency. Neither provider's sandbox has been run: the adapters are written from their documentation and tested against fixtures,
+and the points that only a sandbox can settle are marked in the code and the phase files.
+
 ## The operator console
 
 `web/admin` (Vue 3, TanStack Router and Query, six languages, an API client typed from the OpenAPI file) at <http://localhost:3001> shows tenants, invoices with the **saga timeline** of each one,
-a **playground** that walks through the whole sandbox flow in the browser (account, usage, period close, paid or declined invoice), and the RabbitMQ dead-letter queues with a redrive action. It talks to the gateway only. A Playwright smoke test drives it against the real stack in CI.
+a **playground** that walks through the whole sandbox flow in the browser (account, usage, period close, paid or declined invoice), the RabbitMQ dead-letter queues with a redrive action, and per tenant the billing pages: customers, packages, subscriptions (with usage against limits and moves between providers), payments and reconciliation, provider accounts and routing, and the reports. It talks to the gateway only. A Playwright smoke test drives it against the real stack in CI, and the billing pages are tested against a mocked gateway.
 
 ![The saga timeline of a paid invoice](docs/img/admin-invoice-saga.png)
 
@@ -181,8 +189,8 @@ a **playground** that walks through the whole sandbox flow in the browser (accou
 
 ## Status
 
-Phases 00 to 12 are implemented ([roadmap](docs/phases/ROADMAP.md)): foundation, plans and gateway, ingest, aggregator, limits, billing
-saga, workers, analytics and assets, observability, correctness and load, Kubernetes, replay and re-rating. and the operator console. What is *not* done is listed where it is relevant: the benchmark report names its misses, the Kubernetes doc its
+Phases 00 to 18 are implemented ([roadmap](docs/phases/ROADMAP.md)): foundation, plans and gateway, ingest, aggregator, limits, billing
+saga, workers, analytics and assets, observability, correctness and load, Kubernetes, replay and re-rating, the operator console, and the billing platform (subscriptions, iyzico, Paddle, routing, migration, reports, console). What is *not* done is listed where it is relevant: the benchmark report names its misses, the Kubernetes doc its
 gaps, and the phase files their open boxes.
 
 ## Start here
