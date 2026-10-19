@@ -432,6 +432,145 @@ func testSubscriptionLifecycle(t *testing.T) {
 		}
 	})
 
+	t.Run("the subscription report counts a month's recurring revenue by provider, country and currency", func(t *testing.T) {
+		d := func(y int, m time.Month, day int) *timestamppb.Timestamp {
+			return timestamppb.New(time.Date(y, m, day, 12, 0, 0, 0, time.UTC))
+		}
+		mkc := func(id, country, currency string) {
+			if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: id, Name: id, Email: id + "@example.com", Country: country, BillingCurrency: currency}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		sub := func(customer, plan, provider string, start *timestamppb.Timestamp, trialDays int32) *plansv1.Subscription {
+			t.Helper()
+			r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: customer, PlanCode: plan, Provider: provider, StartTime: start, TrialDays: trialDays})
+			if err != nil {
+				t.Fatalf("%s: %v", customer, err)
+			}
+			return r.GetSubscription()
+		}
+		mkc("rep_a", "TR", "TRY")
+		mkc("rep_b", "TR", "TRY")
+		mkc("rep_c", "DE", "USD")
+		mkc("rep_d", "US", "USD")
+		mkc("rep_e", "TR", "TRY")
+		sub("rep_a", "basic", "iyzico", d(2026, 7, 10), 0)
+		sub("rep_b", "pro", "iyzico", d(2026, 8, 5), 0)
+		c := sub("rep_c", "basic", "paddle", d(2026, 6, 1), 0)
+		sub("rep_d", "pro", "paddle", d(2026, 8, 1), 60)
+		eSub := sub("rep_e", "basic", "iyzico", d(2026, 7, 1), 0)
+		// A plan change in August is not new revenue and not churn.
+		if _, err := e.plans.ChangePlan(ctx, &plansv1.ChangePlanRequest{SubscriptionId: eSub.GetId(), PlanCode: "pro", ChangeTime: d(2026, 8, 15)}); err != nil {
+			t.Fatal(err)
+		}
+		// A cancellation in August with nothing after it is churn.
+		if _, err := e.plans.CancelSubscription(ctx, &plansv1.CancelSubscriptionRequest{SubscriptionId: c.GetId(), EndTime: d(2026, 8, 20)}); err != nil {
+			t.Fatal(err)
+		}
+
+		rows := func(month string, group ...string) map[string]*plansv1.SubscriptionReportRow {
+			t.Helper()
+			r, err := e.plans.GetSubscriptionReport(ctx, &plansv1.GetSubscriptionReportRequest{Month: month, GroupBy: group})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if month != "" && r.GetMonth() != month {
+				t.Fatalf("month = %q", r.GetMonth())
+			}
+			out := map[string]*plansv1.SubscriptionReportRow{}
+			for _, row := range r.GetRows() {
+				out[row.GetProvider()+"|"+row.GetCountry()+"|"+row.GetCurrency()] = row
+			}
+			return out
+		}
+		by := rows("2026-08", "provider", "country")
+		// The lira side: a (3000) + b (9000) + e after its change (9000); b is new, e's change is not.
+		if r := by["iyzico|TR|TRY"]; r == nil || r.GetActive() != 3 || r.GetMrrMinor() != 21000 || r.GetNewSubscriptions() != 1 || r.GetNewMrrMinor() != 9000 || r.GetChurned() != 0 {
+			t.Errorf("iyzico/TR/TRY = %v", r)
+		}
+		// Germany: c left on 20 August, in dollars (basic costs 100 there).
+		if r := by["paddle|DE|USD"]; r == nil || r.GetActive() != 0 || r.GetChurned() != 1 || r.GetChurnedMrrMinor() != 100 || r.GetMrrMinor() != 0 {
+			t.Errorf("paddle/DE/USD = %v", r)
+		}
+		// d is on a 60 day trial: counted, but it pays nothing yet.
+		if r := by["paddle|US|USD"]; r == nil || r.GetTrialing() != 1 || r.GetActive() != 0 || r.GetMrrMinor() != 0 || r.GetNewSubscriptions() != 1 || r.GetNewMrrMinor() != 0 {
+			t.Errorf("paddle/US/USD = %v", r)
+		}
+		// Without a split there is a row per currency, never one total.
+		all := rows("2026-08")
+		if len(all) != 2 || all["||TRY"] == nil || all["||USD"] == nil || all["||TRY"].GetMrrMinor() != 21000 || all["||USD"].GetTrialing() != 1 || all["||USD"].GetChurned() != 1 {
+			t.Errorf("by currency = %v", all)
+		}
+		// July: e was on basic, a started on the 10th.
+		jul := rows("2026-07")
+		if r := jul["||TRY"]; r == nil || r.GetActive() != 2 || r.GetMrrMinor() != 6000 || r.GetNewSubscriptions() != 2 {
+			t.Errorf("july TRY = %v", r)
+		}
+		if r := jul["||USD"]; r == nil || r.GetActive() != 1 || r.GetMrrMinor() != 100 {
+			t.Errorf("july USD = %v", r)
+		}
+		if _, err := e.plans.GetSubscriptionReport(ctx, &plansv1.GetSubscriptionReportRequest{Month: "2026-8"}); code(t, err) != codes.InvalidArgument {
+			t.Errorf("bad month: %v", err)
+		}
+		if _, err := e.plans.GetSubscriptionReport(ctx, &plansv1.GetSubscriptionReportRequest{GroupBy: []string{"customer"}}); code(t, err) != codes.InvalidArgument {
+			t.Errorf("bad split: %v", err)
+		}
+		if _, err := e.plans.GetSubscriptionReport(ctx, &plansv1.GetSubscriptionReportRequest{}); err != nil {
+			t.Errorf("the current month: %v", err)
+		}
+	})
+
+	t.Run("subscriptions are listed newest first, in pages, for all customers or one", func(t *testing.T) {
+		var all []*plansv1.Subscription
+		token := ""
+		pages := 0
+		for {
+			r, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{PageSize: 3, PageToken: token})
+			if err != nil {
+				t.Fatal(err)
+			}
+			all = append(all, r.GetSubscriptions()...)
+			pages++
+			if token = r.GetNextPageToken(); token == "" {
+				break
+			}
+			if pages > 100 {
+				t.Fatal("paging does not end")
+			}
+		}
+		if len(all) < 10 || pages < 2 {
+			t.Fatalf("%d subscriptions in %d pages; the tenant has many by now", len(all), pages)
+		}
+		seen := map[string]bool{}
+		for i, s := range all {
+			if seen[s.GetId()] {
+				t.Fatalf("subscription %s listed twice", s.GetId())
+			}
+			seen[s.GetId()] = true
+			if i > 0 && all[i-1].GetId() < s.GetId() {
+				t.Fatalf("not newest first at %d", i)
+			}
+		}
+		one, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{CustomerExternalId: "cus_paddle"})
+		if err != nil || len(one.GetSubscriptions()) == 0 {
+			t.Fatalf("one customer = %v, %v", one, err)
+		}
+		for _, s := range one.GetSubscriptions() {
+			if s.GetCustomerExternalId() != "cus_paddle" {
+				t.Errorf("listed %s for cus_paddle", s.GetCustomerExternalId())
+			}
+		}
+		if _, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{CustomerExternalId: "nobody"}); code(t, err) != codes.NotFound {
+			t.Errorf("unknown customer: %v", err)
+		}
+		if _, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{PageSize: 500}); code(t, err) != codes.InvalidArgument {
+			t.Errorf("page size 500: %v", err)
+		}
+		if _, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{PageToken: "x"}); code(t, err) != codes.InvalidArgument {
+			t.Errorf("bad token: %v", err)
+		}
+	})
+
 	t.Run("yearly subscriptions are refused for now", func(t *testing.T) {
 		mkCustomer("cus_year")
 		_, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_year", PlanCode: "basic",

@@ -35,6 +35,7 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/plans/{code}/versions/{version}", AccessTenant, ratelimit.ClassRead, s.getPlanVersion},
 		// Subscriptions
 		{"POST", "/v1/subscriptions", AccessTenant, ratelimit.ClassWrite, s.createSubscription},
+		{"GET", "/v1/subscriptions", AccessTenant, ratelimit.ClassRead, s.listSubscriptions},
 		{"GET", "/v1/subscriptions/{id}", AccessTenant, ratelimit.ClassRead, s.getSubscription},
 		{"DELETE", "/v1/subscriptions/{id}", AccessTenant, ratelimit.ClassWrite, s.cancelSubscription},
 		{"POST", "/v1/subscriptions/{id}/pause", AccessTenant, ratelimit.ClassWrite, s.pauseSubscription},
@@ -42,6 +43,10 @@ func (s *Server) routes() []Route {
 		{"POST", "/v1/subscriptions/{id}/cancel-at-period-end", AccessTenant, ratelimit.ClassWrite, s.scheduleCancellation},
 		{"DELETE", "/v1/subscriptions/{id}/cancel-at-period-end", AccessTenant, ratelimit.ClassWrite, s.withdrawCancellation},
 		{"POST", "/v1/subscriptions/{id}/change-plan", AccessTenant, ratelimit.ClassWrite, s.changePlan},
+		// Reports
+		{"GET", "/v1/reports/revenue", AccessTenant, ratelimit.ClassRead, s.revenueReport},
+		{"GET", "/v1/reports/dunning", AccessTenant, ratelimit.ClassRead, s.dunningReport},
+		{"GET", "/v1/reports/subscriptions", AccessTenant, ratelimit.ClassRead, s.subscriptionReport},
 		// Payment provider routing
 		{"GET", "/v1/routing-rules", AccessTenant, ratelimit.ClassRead, s.getRoutingRules},
 		{"PUT", "/v1/routing-rules", AccessTenant, ratelimit.ClassWrite, s.setRoutingRules},
@@ -81,6 +86,7 @@ func (s *Server) routes() []Route {
 		{"PUT", "/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}", AccessOperator, "", s.providerAccount},
 		{"DELETE", "/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}", AccessOperator, "", s.providerAccount},
 		{"GET", "/admin/v1/tenants/{tenant_id}/ledger", AccessOperator, "", s.paymentLedger},
+		{"GET", "/admin/v1/tenants/{tenant_id}/reconciliation", AccessOperator, "", s.paymentReconciliation},
 		{"POST", "/webhooks/{provider}", AccessPublic, "", s.providerWebhook},
 		{"POST", "/webhooks/{provider}/{tenant_id}/{environment}", AccessPublic, "", s.tenantWebhook},
 		{"GET", "/admin/v1/tenants/{tenant_id}/provider-subscriptions", AccessOperator, "", s.providerSubscriptions},
@@ -230,6 +236,22 @@ func (s *Server) createSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := s.d.Plans.CreateSubscription(r.Context(), req)
 	respond(w, r, http.StatusCreated, resp.GetSubscription(), err)
+}
+
+// listSubscriptions is GET /v1/subscriptions?customer=&page_size=&page_token=, newest first. customer is the external id.
+func (s *Server) listSubscriptions(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := &plansv1.ListSubscriptionsRequest{CustomerExternalId: q.Get("customer"), PageToken: q.Get("page_token")}
+	if v := q.Get("page_size"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			writeError(w, r, invalid("page_size", "must be an integer"))
+			return
+		}
+		req.PageSize = int32(n)
+	}
+	resp, err := s.d.Plans.ListSubscriptions(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
 }
 
 func (s *Server) getSubscription(w http.ResponseWriter, r *http.Request) {

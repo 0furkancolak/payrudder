@@ -243,13 +243,15 @@ type lateKey struct{ Customer, Meter, Origin string }
 
 // draftInvoice is an invoice about to be inserted.
 type draftInvoice struct {
-	Currency    string
-	CustomerID  uuid.UUID
-	PlanVersion string
-	Lines       []rating.Line
-	LineScales  []int
-	Total       int64
-	Snapshot    saga.Snapshot
+	// Provider and Country are what reports split by: the subscription's payment provider and the customer's country.
+	Provider, Country string
+	Currency          string
+	CustomerID        uuid.UUID
+	PlanVersion       string
+	Lines             []rating.Line
+	LineScales        []int
+	Total             int64
+	Snapshot          saga.Snapshot
 }
 
 // rate gathers the period's usage, late usage and subscriptions and creates a draft invoice per customer. It is
@@ -472,7 +474,7 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 			}
 		}
 		drafts = append(drafts, draftInvoice{
-			Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pvID, Lines: lines, LineScales: scales, Total: total,
+			Provider: provider, Country: cu.GetCustomer().GetCountry(), Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pvID, Lines: lines, LineScales: scales, Total: total,
 			Snapshot: saga.Snapshot{
 				CustomerExternalID: snapExternal, CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
 				PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: env, CurrencyExponent: invCur.Exponent,
@@ -668,9 +670,13 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, drafts []draftInvo
 				subtotal += l.AmountMinor
 			}
 			var got uuid.UUID
-			err := tx.QueryRow(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot)
-				VALUES ($1,$2,$3,$4,'REGULAR',$5,$6,$7,$8,'draft',$9) ON CONFLICT DO NOTHING RETURNING id`,
-				run.TenantID, id, d.CustomerID, run.PeriodID, d.PlanVersion, d.Currency, subtotal, d.Total, snap).Scan(&got)
+			var country any
+			if d.Country != "" {
+				country = d.Country
+			}
+			err := tx.QueryRow(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, country)
+				VALUES ($1,$2,$3,$4,'REGULAR',$5,$6,$7,$8,'draft',$9,$10,$11) ON CONFLICT DO NOTHING RETURNING id`,
+				run.TenantID, id, d.CustomerID, run.PeriodID, d.PlanVersion, d.Currency, subtotal, d.Total, snap, d.Provider, country).Scan(&got)
 			if errors.Is(err, pgx.ErrNoRows) {
 				continue // this customer already has its invoice for the period
 			}

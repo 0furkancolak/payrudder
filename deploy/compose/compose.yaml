@@ -434,6 +434,7 @@ services:
       QUOTIFY_SECRETS_KEY: ${QUOTIFY_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
       PAYMENTS_HTTP_ADDR: ":8095"
       QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
+      QUOTIFY_BILLING_ADDR: dns:///billing-svc:7005
       PAYMENTS_INTERNAL_TOKEN: ${QUOTIFY_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
     depends_on:
@@ -441,6 +442,7 @@ services:
       rabbitmq: { condition: service_healthy }
       mockpsp: { condition: service_started }
       plans-svc: { condition: service_started }
+      billing-svc: { condition: service_started }
     deploy: { resources: { limits: { memory: 96m } } }
 
   invoice-worker:

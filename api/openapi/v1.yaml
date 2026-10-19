@@ -256,6 +256,24 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
 
   /v1/subscriptions:
+    get:
+      operationId: listSubscriptions
+      summary: Subscriptions, newest first
+      parameters:
+        - { name: customer, in: query, description: Customer external id, schema: { type: string } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriptions: { type: array, items: { $ref: "#/components/schemas/Subscription" } }
+                  next_page_token: { type: string }
+        "404": { $ref: "#/components/responses/Error" }
     post:
       operationId: createSubscription
       summary: Subscribe a customer to a plan version (at most one overlapping subscription per customer)
@@ -363,6 +381,114 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
 
+  /v1/reports/revenue:
+    get:
+      operationId: getRevenueReport
+      summary: Invoices summed by period, payment provider, customer country and currency (currencies are never added together)
+      parameters:
+        - { name: from, in: query, description: First period, YYYY-MM, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: to, in: query, description: Last period, YYYY-MM, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: group_by, in: query, description: "Comma-separated: period, provider, country (default period). Currency is always split", schema: { type: string, examples: ["period,provider"] } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        period: { type: string }
+                        provider: { type: string }
+                        country: { type: string }
+                        currency: { type: string }
+                        invoices: { type: string }
+                        billed_minor: { type: string, description: Finalized invoices that are not void }
+                        collected_minor: { type: string, description: Paid }
+                        refunded_minor: { type: string, description: Invoices that were refunded }
+                        outstanding_minor: { type: string, description: Open }
+                        uncollectible_minor: { type: string }
+                        void_minor: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/reports/dunning:
+    get:
+      operationId: getDunningReport
+      summary: Invoices whose payment has not gone through (declined and retrying, outcome unknown, given up)
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        invoice_id: { type: string, format: uuid }
+                        number: { type: string }
+                        customer_external_id: { type: string }
+                        period: { type: string }
+                        provider: { type: string }
+                        currency: { type: string }
+                        total_minor: { type: string }
+                        state: { type: string, enum: [PAYMENT_DECLINED, PAYMENT_UNKNOWN, UNCOLLECTIBLE] }
+                        dunning_attempt: { type: integer }
+                        next_attempt_time: { type: string, format: date-time }
+                        last_error: { type: string }
+                  summary:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        state: { type: string }
+                        provider: { type: string }
+                        currency: { type: string }
+                        invoices: { type: string }
+                        total_minor: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/reports/subscriptions:
+    get:
+      operationId: getSubscriptionReport
+      summary: Subscriptions and monthly recurring revenue at the end of a month, with the new and the churned, by provider, country and currency
+      parameters:
+        - { name: month, in: query, description: YYYY-MM in the tenant's time zone; default the current month, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: group_by, in: query, description: "Comma-separated: provider, country. Currency is always split", schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  month: { type: string }
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        provider: { type: string }
+                        country: { type: string }
+                        currency: { type: string }
+                        active: { type: string }
+                        trialing: { type: string }
+                        paused: { type: string }
+                        past_due: { type: string }
+                        mrr_minor: { type: string, description: Fixed fees per month of active and past due subscriptions }
+                        new_subscriptions: { type: string }
+                        new_mrr_minor: { type: string }
+                        churned: { type: string, description: Ended with no successor; a plan change or provider migration is not churn }
+                        churned_mrr_minor: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
   /v1/routing-rules:
     get:
       operationId: getRoutingRules
@@ -1117,6 +1243,45 @@ paths:
         "200": { description: Aborted }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/reconciliation:
+    get:
+      operationId: reconcilePayments
+      summary: Compare the invoices billing calls paid in a period with the successful charges in the payment ledger
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: period, in: query, required: true, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period: { type: string }
+                  paid_invoices: { type: integer }
+                  successful_charges: { type: integer }
+                  discrepancy_counts:
+                    type: object
+                    additionalProperties: { type: integer }
+                    description: By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes
+                  discrepancies:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: { type: string }
+                        invoice_id: { type: string }
+                        number: { type: string }
+                        provider: { type: string }
+                        provider_ref: { type: string }
+                        currency: { type: string }
+                        billed_minor: { type: integer }
+                        ledger_minor: { type: integer }
+                        detail: { type: string }
+                  truncated: { type: boolean }
+        "400": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
   /admin/v1/dead-letters:
     get:

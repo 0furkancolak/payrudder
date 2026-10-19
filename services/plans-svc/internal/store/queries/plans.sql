@@ -201,3 +201,15 @@ SELECT * FROM provider_migrations WHERE tenant_id = app_tenant_id() AND id = $1 
 UPDATE provider_migrations SET state = @state, new_subscription_id = @new_subscription_id, cutover_at = @cutover_at, updated_at = now()
 WHERE tenant_id = app_tenant_id() AND id = @id
 RETURNING *;
+
+-- name: ListSubscriptionsPage :many
+-- Newest first (ids are time-ordered); after is the last id of the previous page, or the maximum uuid for the first.
+SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_version_id,
+       lower(s.active)::timestamptz AS start_time,
+       upper_inf(s.active)::bool AS open_ended,
+       COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
+FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+WHERE s.tenant_id = app_tenant_id() AND s.id < @before::uuid AND (@customer_id::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR s.customer_id = @customer_id::uuid)
+ORDER BY s.id DESC
+LIMIT @page_size;

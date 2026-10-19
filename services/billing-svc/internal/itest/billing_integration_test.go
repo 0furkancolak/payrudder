@@ -58,6 +58,7 @@ func TestBilling(t *testing.T) {
 		{"SubscriptionInAnotherCurrencyIsInvoicedInIt", testSubscriptionInAnotherCurrencyIsInvoicedInIt},
 		{"SubscriptionWithoutAFeeInItsCurrencyFailsPermanently", testSubscriptionWithoutAFeeInItsCurrencyFailsPermanently},
 		{"ProviderOwnedSubscriptionBillsOnlyUsageThroughItsProvider", testProviderOwnedSubscriptionBillsOnlyUsageThroughItsProvider},
+		{"ReportsSumInvoicesByPeriodProviderCountryAndCurrency", testReports},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

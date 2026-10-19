@@ -43,6 +43,8 @@ type Server struct {
 	Log           *slog.Logger
 	// Token guards /admin. Empty disables the admin endpoints entirely.
 	Token string
+	// Billing, when set, lets the reconciliation read the tenant's invoices.
+	Billing BillingAPI
 	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status, and runs
 	// provider migrations.
 	Plans PlansAPI
@@ -80,6 +82,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /webhooks/{provider}/{tenant}/{environment}", s.tenantNotification)
 	mux.HandleFunc("GET /admin/tenants/{tenant}/provider-subscriptions", s.admin(s.listSubscriptions))
 	mux.HandleFunc("POST /admin/tenants/{tenant}/checkouts", s.admin(s.checkout))
+	mux.HandleFunc("GET /admin/tenants/{tenant}/reconciliation", s.admin(s.reconcile))
 	mux.HandleFunc("POST /admin/tenants/{tenant}/migrations", s.admin(s.migrate))
 	mux.HandleFunc("POST /admin/tenants/{tenant}/migrations/{migration}/abort", s.admin(s.abortMigration))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/provider-accounts", s.admin(s.listAccounts))

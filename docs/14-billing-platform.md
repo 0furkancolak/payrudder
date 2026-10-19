@@ -1,6 +1,6 @@
 # Billing platform: subscriptions, payment providers, routing, reporting
 
-Status: phases 13 to 16 are built (see the notes below). Phases 17 and 18 are design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
+Status: phases 13 to 17 are built (see the notes below). Phase 18 (the console) is design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
 
 ## Why
 
@@ -120,6 +120,11 @@ one-time charge that settles asynchronously. Dunning of that usage charge stays 
 Details in [phase 16](phases/phase-16-routing-migration.md). Routing rules live in plans-svc and are checked against the provider catalogue; a subscription's provider is fixed at creation. A migration is
 `started` while the customer subscribes at a provider that runs subscriptions, and the old subscription is untouched until the provider confirms; from a provider-run subscription to Quotify's the old provider is told to
 stop first and the cutover is the end of the period it was paid for. The design's step list (freeze renewal, create at B, cancel at A after B's first charge) is realised as that confirmation-then-cutover rule.
+
+## As built: phase 17
+
+Details in [phase 17](phases/phase-17-reports.md). The reports are queries over the services' own data (invoices, subscriptions, the payment ledger), not a ClickHouse read model as designed: revenue and dunning in billing-svc, subscriptions and MRR in plans-svc, and a reconciliation of invoices against the
+ledger in payments-worker. A currency is never added to another.
 
 ## Currency
 

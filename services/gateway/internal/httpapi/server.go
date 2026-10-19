@@ -16,6 +16,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -187,10 +188,18 @@ func principalFrom(ctx context.Context) auth.Principal {
 	return p
 }
 
+// ActAsHeader names the tenant an operator acts as on the tenant API.
+const ActAsHeader = "X-Quotify-Tenant"
+
 func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !ok || token == "" {
 		return auth.Principal{}, status.Error(codes.Unauthenticated, "missing Authorization: Bearer <api key>")
+	}
+	// The operator token, with a tenant named, is that tenant for the call: the console shows a tenant's customers, plans and reports through
+	// the same API the tenant uses. Without the header the operator token is no tenant key and is refused here, as before.
+	if id := r.Header.Get(ActAsHeader); id != "" && s.operatorOK(r) {
+		return s.actAs(r.Context(), id)
 	}
 	p, err := s.d.Auth.Authenticate(r.Context(), token)
 	switch {
@@ -200,6 +209,34 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 		return p, status.Error(codes.Unauthenticated, "invalid api key")
 	}
 	return p, nil
+}
+
+// actAs resolves the tenant an operator acts as.
+func (s *Server) actAs(ctx context.Context, id string) (auth.Principal, error) {
+	tid, err := uuid.Parse(id)
+	if err != nil {
+		return auth.Principal{}, status.Error(codes.InvalidArgument, ActAsHeader+" must be a tenant id")
+	}
+	resp, err := s.d.Admin.GetTenant(tenant.WithOperator(ctx), &plansv1.GetTenantRequest{TenantId: tid.String()})
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return auth.Principal{}, status.Error(codes.NotFound, "no such tenant")
+		}
+		return auth.Principal{}, status.Error(codes.Unavailable, "tenant lookup unavailable")
+	}
+	t := resp.GetTenant()
+	env := tenant.EnvLive
+	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
+		env = tenant.EnvSandbox
+	}
+	tier := "free"
+	switch t.GetTier() {
+	case plansv1.TenantTier_TENANT_TIER_STANDARD:
+		tier = "standard"
+	case plansv1.TenantTier_TENANT_TIER_ENTERPRISE:
+		tier = "enterprise"
+	}
+	return auth.Principal{Tenant: tenant.Info{ID: tid, Environment: env, Timezone: t.GetTimezone()}, Tier: tier}, nil
 }
 
 func (s *Server) operatorOK(r *http.Request) bool {

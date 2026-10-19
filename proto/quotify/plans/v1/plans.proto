@@ -31,6 +31,8 @@ service PlansService {
   rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
   rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
   rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
+  // ListSubscriptions pages through subscriptions, newest first, of one customer or all.
+  rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsResponse);
   // GetRoutingRules returns the ordered rules that choose a customer's payment provider from country and currency.
   rpc GetRoutingRules(GetRoutingRulesRequest) returns (GetRoutingRulesResponse);
   // SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
@@ -44,6 +46,9 @@ service PlansService {
   rpc CompleteProviderMigration(CompleteProviderMigrationRequest) returns (CompleteProviderMigrationResponse);
   rpc AbortProviderMigration(AbortProviderMigrationRequest) returns (AbortProviderMigrationResponse);
   rpc GetProviderMigration(GetProviderMigrationRequest) returns (GetProviderMigrationResponse);
+  // GetSubscriptionReport counts the tenant's subscriptions and their monthly recurring revenue at the end of a month, with the new and the churned of that month,
+  // by payment provider, customer country and currency. Currencies are never added together.
+  rpc GetSubscriptionReport(GetSubscriptionReportRequest) returns (GetSubscriptionReportResponse);
   // SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
   // Internal: called by payments-worker, not exposed by the gateway.
   rpc SyncProviderSubscription(SyncProviderSubscriptionRequest) returns (SyncProviderSubscriptionResponse);
@@ -393,4 +398,49 @@ message GetProviderMigrationRequest {
 
 message GetProviderMigrationResponse {
   ProviderMigration migration = 1;
+}
+
+message GetSubscriptionReportRequest {
+  // YYYY-MM in the tenant's time zone. Empty = the current month.
+  string month = 1;
+  // Which of provider and country to split by; currency is always a split.
+  repeated string group_by = 2;
+}
+
+message SubscriptionReportRow {
+  // Empty when the report is not split by it ("none" provider is the tenant's default account).
+  string provider = 1;
+  string country = 2;
+  string currency = 3;
+  // At the last instant of the month, by what the subscription was then.
+  int64 active = 4;
+  int64 trialing = 5;
+  int64 paused = 6;
+  int64 past_due = 7;
+  // Fixed fees per month of the active and past due subscriptions, in minor units of the currency. Usage is not recurring and is not in it.
+  int64 mrr_minor = 8;
+  // Subscriptions that started in the month (a plan change or a provider migration is not new) and their fixed fee.
+  int64 new_subscriptions = 9;
+  int64 new_mrr_minor = 10;
+  // Subscriptions that ended in the month with no successor (a plan change or a provider migration is not churn) and the fixed fee they paid.
+  int64 churned = 11;
+  int64 churned_mrr_minor = 12;
+}
+
+message GetSubscriptionReportResponse {
+  string month = 1;
+  repeated SubscriptionReportRow rows = 2;
+}
+
+message ListSubscriptionsRequest {
+  // Optional: only this customer's.
+  string customer_external_id = 1;
+  // 1..200, default 50.
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListSubscriptionsResponse {
+  repeated Subscription subscriptions = 1;
+  string next_page_token = 2;
 }
