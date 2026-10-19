@@ -315,6 +315,8 @@ const (
 	BillingAdminService_GetBillingRun_FullMethodName    = "/quotify.billing.v1.BillingAdminService/GetBillingRun"
 	BillingAdminService_RetryInvoiceSaga_FullMethodName = "/quotify.billing.v1.BillingAdminService/RetryInvoiceSaga"
 	BillingAdminService_VoidInvoice_FullMethodName      = "/quotify.billing.v1.BillingAdminService/VoidInvoice"
+	BillingAdminService_StartRerating_FullMethodName    = "/quotify.billing.v1.BillingAdminService/StartRerating"
+	BillingAdminService_GetReratingJob_FullMethodName   = "/quotify.billing.v1.BillingAdminService/GetReratingJob"
 )
 
 // BillingAdminServiceClient is the client API for BillingAdminService service.
@@ -330,6 +332,11 @@ type BillingAdminServiceClient interface {
 	RetryInvoiceSaga(ctx context.Context, in *RetryInvoiceSagaRequest, opts ...grpc.CallOption) (*RetryInvoiceSagaResponse, error)
 	// VoidInvoice voids an invoice, refunding it first if it was paid.
 	VoidInvoice(ctx context.Context, in *VoidInvoiceRequest, opts ...grpc.CallOption) (*VoidInvoiceResponse, error)
+	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
+	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
+	// Idempotent per (tenant, period, plan version).
+	StartRerating(ctx context.Context, in *StartReratingRequest, opts ...grpc.CallOption) (*StartReratingResponse, error)
+	GetReratingJob(ctx context.Context, in *GetReratingJobRequest, opts ...grpc.CallOption) (*GetReratingJobResponse, error)
 }
 
 type billingAdminServiceClient struct {
@@ -380,6 +387,26 @@ func (c *billingAdminServiceClient) VoidInvoice(ctx context.Context, in *VoidInv
 	return out, nil
 }
 
+func (c *billingAdminServiceClient) StartRerating(ctx context.Context, in *StartReratingRequest, opts ...grpc.CallOption) (*StartReratingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartReratingResponse)
+	err := c.cc.Invoke(ctx, BillingAdminService_StartRerating_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingAdminServiceClient) GetReratingJob(ctx context.Context, in *GetReratingJobRequest, opts ...grpc.CallOption) (*GetReratingJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetReratingJobResponse)
+	err := c.cc.Invoke(ctx, BillingAdminService_GetReratingJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BillingAdminServiceServer is the server API for BillingAdminService service.
 // All implementations must embed UnimplementedBillingAdminServiceServer
 // for forward compatibility.
@@ -393,6 +420,11 @@ type BillingAdminServiceServer interface {
 	RetryInvoiceSaga(context.Context, *RetryInvoiceSagaRequest) (*RetryInvoiceSagaResponse, error)
 	// VoidInvoice voids an invoice, refunding it first if it was paid.
 	VoidInvoice(context.Context, *VoidInvoiceRequest) (*VoidInvoiceResponse, error)
+	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
+	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
+	// Idempotent per (tenant, period, plan version).
+	StartRerating(context.Context, *StartReratingRequest) (*StartReratingResponse, error)
+	GetReratingJob(context.Context, *GetReratingJobRequest) (*GetReratingJobResponse, error)
 	mustEmbedUnimplementedBillingAdminServiceServer()
 }
 
@@ -414,6 +446,12 @@ func (UnimplementedBillingAdminServiceServer) RetryInvoiceSaga(context.Context, 
 }
 func (UnimplementedBillingAdminServiceServer) VoidInvoice(context.Context, *VoidInvoiceRequest) (*VoidInvoiceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method VoidInvoice not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) StartRerating(context.Context, *StartReratingRequest) (*StartReratingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartRerating not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) GetReratingJob(context.Context, *GetReratingJobRequest) (*GetReratingJobResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetReratingJob not implemented")
 }
 func (UnimplementedBillingAdminServiceServer) mustEmbedUnimplementedBillingAdminServiceServer() {}
 func (UnimplementedBillingAdminServiceServer) testEmbeddedByValue()                             {}
@@ -508,6 +546,42 @@ func _BillingAdminService_VoidInvoice_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingAdminService_StartRerating_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartReratingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).StartRerating(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_StartRerating_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).StartRerating(ctx, req.(*StartReratingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingAdminService_GetReratingJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetReratingJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).GetReratingJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_GetReratingJob_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).GetReratingJob(ctx, req.(*GetReratingJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BillingAdminService_ServiceDesc is the grpc.ServiceDesc for BillingAdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -530,6 +604,14 @@ var BillingAdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VoidInvoice",
 			Handler:    _BillingAdminService_VoidInvoice_Handler,
+		},
+		{
+			MethodName: "StartRerating",
+			Handler:    _BillingAdminService_StartRerating_Handler,
+		},
+		{
+			MethodName: "GetReratingJob",
+			Handler:    _BillingAdminService_GetReratingJob_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

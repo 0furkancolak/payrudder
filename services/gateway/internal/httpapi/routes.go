@@ -69,6 +69,8 @@ func (s *Server) routes() []Route {
 		{"GET", "/admin/v1/analytics/ingest-stats", AccessOperator, "", s.adminIngestStats},
 		{"POST", "/admin/v1/billing/close-period", AccessOperator, "", s.adminClosePeriod},
 		{"GET", "/admin/v1/tenants/{tenant_id}/billing-runs/{period}", AccessOperator, "", s.adminGetBillingRun},
+		{"POST", "/admin/v1/tenants/{tenant_id}/billing-runs/{period}/rerating", AccessOperator, "", s.adminStartRerating},
+		{"GET", "/admin/v1/tenants/{tenant_id}/rerating-jobs/{job_id}", AccessOperator, "", s.adminGetRerating},
 		{"POST", "/admin/v1/invoices/{id}/retry", AccessOperator, "", s.adminRetryInvoice},
 		{"POST", "/admin/v1/invoices/{id}/void", AccessOperator, "", s.adminVoidInvoice},
 	}

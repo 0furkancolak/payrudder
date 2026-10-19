@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
 	_ "time/tzdata" // tenant time zones must load in distroless images
 
@@ -416,4 +417,79 @@ func (s *Server) VoidInvoice(ctx context.Context, req *billingv1.VoidInvoiceRequ
 		return nil, err
 	}
 	return &billingv1.VoidInvoiceResponse{Saga: out}, nil
+}
+
+func reratingProto(j *runs.ReratingJob) *billingv1.ReratingJob {
+	st := billingv1.ReratingStatus_RERATING_STATUS_UNSPECIFIED
+	switch j.Status {
+	case runs.ReratingRunning:
+		st = billingv1.ReratingStatus_RERATING_STATUS_RUNNING
+	case runs.ReratingCompleted:
+		st = billingv1.ReratingStatus_RERATING_STATUS_COMPLETED
+	case runs.ReratingFailed:
+		st = billingv1.ReratingStatus_RERATING_STATUS_FAILED
+	}
+	out := &billingv1.ReratingJob{
+		Id: j.ID.String(), TenantId: j.TenantID.String(), PeriodId: j.PeriodID, PlanVersionId: j.PlanVersionID.String(), Generation: j.Generation,
+		Status: st, CustomersRated: int32(j.CustomersRated), Corrections: int32(j.Corrections), Credits: int32(j.Credits), //nolint:gosec // counts of one tenant's customers
+		CorrectionTotalMinor: j.CorrectionMinor, CreditTotalMinor: j.CreditMinor, LastError: j.LastError, CreateTime: timestamppb.New(j.CreatedAt),
+	}
+	if j.CompletedAt != nil {
+		out.CompleteTime = timestamppb.New(*j.CompletedAt)
+	}
+	return out
+}
+
+// StartRerating implements billingv1.BillingAdminServiceServer.
+func (s *Server) StartRerating(ctx context.Context, req *billingv1.StartReratingRequest) (*billingv1.StartReratingResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	tid, err := parseUUID("tenant_id", req.GetTenantId())
+	if err != nil {
+		return nil, err
+	}
+	pv, err := parseUUID("plan_version_id", req.GetPlanVersionId())
+	if err != nil {
+		return nil, err
+	}
+	job, created, err := s.runs.StartRerating(ctx, tid, req.GetPeriodId(), pv)
+	switch {
+	case errors.Is(err, runs.ErrNoRun):
+		return nil, status.Error(codes.NotFound, "no billing run for that period")
+	case errors.Is(err, runs.ErrRunNotCompleted):
+		return nil, status.Error(codes.FailedPrecondition, "the billing run of that period is not COMPLETED")
+	case errors.Is(err, runs.ErrUnknownPlanVer):
+		return nil, status.Error(codes.InvalidArgument, "plan_version_id: no such plan version")
+	case err != nil && job != nil:
+		// The job exists and will be finished by the scheduler; say so instead of failing the request.
+		return &billingv1.StartReratingResponse{Job: reratingProto(job), Created: created}, nil
+	case err != nil:
+		slog.ErrorContext(ctx, "start rerating", "error", err)
+		return nil, status.Error(codes.Unavailable, "re-rating could not start; retry")
+	}
+	return &billingv1.StartReratingResponse{Job: reratingProto(job), Created: created}, nil
+}
+
+// GetReratingJob implements billingv1.BillingAdminServiceServer.
+func (s *Server) GetReratingJob(ctx context.Context, req *billingv1.GetReratingJobRequest) (*billingv1.GetReratingJobResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	tid, err := parseUUID("tenant_id", req.GetTenantId())
+	if err != nil {
+		return nil, err
+	}
+	id, err := parseUUID("job_id", req.GetJobId())
+	if err != nil {
+		return nil, err
+	}
+	job, err := s.runs.GetReratingJob(ctx, tid, id)
+	if errors.Is(err, runs.ErrReratingNotFound) {
+		return nil, status.Error(codes.NotFound, "no such re-rating job")
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	return &billingv1.GetReratingJobResponse{Job: reratingProto(job)}, nil
 }

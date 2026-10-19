@@ -105,3 +105,25 @@ func (s *Server) adminVoidInvoice(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.BillingAdmin.VoidInvoice(r.Context(), req)
 	respond(w, r, http.StatusOK, resp.GetSaga(), err)
 }
+
+// adminStartRerating is POST /admin/v1/tenants/{tenant_id}/billing-runs/{period}/rerating. 201 when the job was created, 200
+// when the same (tenant, period, plan version) had one already.
+func (s *Server) adminStartRerating(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.StartReratingRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.TenantId, req.PeriodId = r.PathValue("tenant_id"), r.PathValue("period")
+	resp, err := s.d.BillingAdmin.StartRerating(r.Context(), req)
+	code := http.StatusCreated
+	if err == nil && !resp.GetCreated() {
+		code = http.StatusOK
+	}
+	respond(w, r, code, resp.GetJob(), err)
+}
+
+func (s *Server) adminGetRerating(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.BillingAdmin.GetReratingJob(r.Context(), &billingv1.GetReratingJobRequest{TenantId: r.PathValue("tenant_id"), JobId: r.PathValue("job_id")})
+	respond(w, r, http.StatusOK, resp.GetJob(), err)
+}

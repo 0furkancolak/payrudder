@@ -22,6 +22,9 @@ func (m *Manager) Tick(ctx context.Context) error {
 	if err := m.discover(ctx); err != nil {
 		m.log.WarnContext(ctx, "scheduler: discovery failed", "error", err)
 	}
+	if err := m.ResumeRerating(ctx); err != nil {
+		m.log.WarnContext(ctx, "scheduler: re-rating resume failed", "error", err)
+	}
 	rows, err := m.cfg.Pool.Query(ctx, `SELECT tenant_id, period_id FROM billing_runs WHERE status NOT IN ('COMPLETED','FAILED')
 		AND cutoff_at + make_interval(secs => $1) <= $2 ORDER BY cutoff_at`, m.cfg.WatermarkDelay.Seconds(), m.cfg.Now())
 	if err != nil {
