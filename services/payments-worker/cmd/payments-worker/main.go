@@ -15,6 +15,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
+	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/config"
 	"github.com/0furkancolak/quotify/pkg/grpcx"
@@ -54,6 +55,8 @@ type Config struct {
 	HTTPAddr string `env:"PAYMENTS_HTTP_ADDR" envDefault:":8095"`
 	// PlansAddr is plans-svc, which is told about subscriptions a provider runs. Empty skips that.
 	PlansAddr string `env:"QUOTIFY_PLANS_ADDR"`
+	// BillingAddr is billing-svc, whose invoices the reconciliation compares with the ledger. Empty disables the reconciliation.
+	BillingAddr string `env:"QUOTIFY_BILLING_ADDR"`
 	// InternalToken is the shared secret the gateway sends on /admin calls. Empty disables them.
 	InternalToken string `env:"PAYMENTS_INTERNAL_TOKEN"`
 }
@@ -148,7 +151,16 @@ func run() error {
 			defer func() { _ = plansConn.Close() }()
 			plansSync = webhook.PlansClient{Client: plansv1.NewPlansServiceClient(plansConn)}
 		}
-		httpHandler = (&webhook.Server{Plans: plansSync, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
+		var billing webhook.BillingAPI
+		if cfg.BillingAddr != "" {
+			billingConn, err := grpcx.NewClient(cfg.BillingAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+			if err != nil {
+				return fmt.Errorf("billing-svc client: %w", err)
+			}
+			defer func() { _ = billingConn.Close() }()
+			billing = webhook.BillingClient{Client: billingv1.NewBillingServiceClient(billingConn)}
+		}
+		httpHandler = (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
 			Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Log: log, Token: cfg.InternalToken}).Handler()
 	}
 	w := &workerx.Worker{

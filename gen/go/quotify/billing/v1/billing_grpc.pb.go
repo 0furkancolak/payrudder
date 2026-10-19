@@ -22,6 +22,8 @@ const (
 	BillingService_GetInvoice_FullMethodName       = "/quotify.billing.v1.BillingService/GetInvoice"
 	BillingService_ListInvoices_FullMethodName     = "/quotify.billing.v1.BillingService/ListInvoices"
 	BillingService_GetInvoicePdfUrl_FullMethodName = "/quotify.billing.v1.BillingService/GetInvoicePdfUrl"
+	BillingService_GetRevenueReport_FullMethodName = "/quotify.billing.v1.BillingService/GetRevenueReport"
+	BillingService_GetDunningReport_FullMethodName = "/quotify.billing.v1.BillingService/GetDunningReport"
 )
 
 // BillingServiceClient is the client API for BillingService service.
@@ -34,6 +36,10 @@ type BillingServiceClient interface {
 	ListInvoices(ctx context.Context, in *ListInvoicesRequest, opts ...grpc.CallOption) (*ListInvoicesResponse, error)
 	// GetInvoicePdfUrl returns a presigned link to the invoice PDF (valid for 5 minutes).
 	GetInvoicePdfUrl(ctx context.Context, in *GetInvoicePdfUrlRequest, opts ...grpc.CallOption) (*GetInvoicePdfUrlResponse, error)
+	// GetRevenueReport sums the tenant's invoices by period, payment provider, customer country and currency. Currencies are never added together.
+	GetRevenueReport(ctx context.Context, in *GetRevenueReportRequest, opts ...grpc.CallOption) (*GetRevenueReportResponse, error)
+	// GetDunningReport lists the invoices whose payment has not gone through: declined, unknown or given up.
+	GetDunningReport(ctx context.Context, in *GetDunningReportRequest, opts ...grpc.CallOption) (*GetDunningReportResponse, error)
 }
 
 type billingServiceClient struct {
@@ -74,6 +80,26 @@ func (c *billingServiceClient) GetInvoicePdfUrl(ctx context.Context, in *GetInvo
 	return out, nil
 }
 
+func (c *billingServiceClient) GetRevenueReport(ctx context.Context, in *GetRevenueReportRequest, opts ...grpc.CallOption) (*GetRevenueReportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRevenueReportResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetRevenueReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) GetDunningReport(ctx context.Context, in *GetDunningReportRequest, opts ...grpc.CallOption) (*GetDunningReportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDunningReportResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetDunningReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BillingServiceServer is the server API for BillingService service.
 // All implementations must embed UnimplementedBillingServiceServer
 // for forward compatibility.
@@ -84,6 +110,10 @@ type BillingServiceServer interface {
 	ListInvoices(context.Context, *ListInvoicesRequest) (*ListInvoicesResponse, error)
 	// GetInvoicePdfUrl returns a presigned link to the invoice PDF (valid for 5 minutes).
 	GetInvoicePdfUrl(context.Context, *GetInvoicePdfUrlRequest) (*GetInvoicePdfUrlResponse, error)
+	// GetRevenueReport sums the tenant's invoices by period, payment provider, customer country and currency. Currencies are never added together.
+	GetRevenueReport(context.Context, *GetRevenueReportRequest) (*GetRevenueReportResponse, error)
+	// GetDunningReport lists the invoices whose payment has not gone through: declined, unknown or given up.
+	GetDunningReport(context.Context, *GetDunningReportRequest) (*GetDunningReportResponse, error)
 	mustEmbedUnimplementedBillingServiceServer()
 }
 
@@ -102,6 +132,12 @@ func (UnimplementedBillingServiceServer) ListInvoices(context.Context, *ListInvo
 }
 func (UnimplementedBillingServiceServer) GetInvoicePdfUrl(context.Context, *GetInvoicePdfUrlRequest) (*GetInvoicePdfUrlResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetInvoicePdfUrl not implemented")
+}
+func (UnimplementedBillingServiceServer) GetRevenueReport(context.Context, *GetRevenueReportRequest) (*GetRevenueReportResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRevenueReport not implemented")
+}
+func (UnimplementedBillingServiceServer) GetDunningReport(context.Context, *GetDunningReportRequest) (*GetDunningReportResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDunningReport not implemented")
 }
 func (UnimplementedBillingServiceServer) mustEmbedUnimplementedBillingServiceServer() {}
 func (UnimplementedBillingServiceServer) testEmbeddedByValue()                        {}
@@ -178,6 +214,42 @@ func _BillingService_GetInvoicePdfUrl_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_GetRevenueReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRevenueReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetRevenueReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetRevenueReport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetRevenueReport(ctx, req.(*GetRevenueReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_GetDunningReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDunningReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetDunningReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetDunningReport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetDunningReport(ctx, req.(*GetDunningReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BillingService_ServiceDesc is the grpc.ServiceDesc for BillingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -196,6 +268,14 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetInvoicePdfUrl",
 			Handler:    _BillingService_GetInvoicePdfUrl_Handler,
+		},
+		{
+			MethodName: "GetRevenueReport",
+			Handler:    _BillingService_GetRevenueReport_Handler,
+		},
+		{
+			MethodName: "GetDunningReport",
+			Handler:    _BillingService_GetDunningReport_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

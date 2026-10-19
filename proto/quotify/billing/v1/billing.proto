@@ -10,6 +10,10 @@ service BillingService {
   rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
   // GetInvoicePdfUrl returns a presigned link to the invoice PDF (valid for 5 minutes).
   rpc GetInvoicePdfUrl(GetInvoicePdfUrlRequest) returns (GetInvoicePdfUrlResponse);
+  // GetRevenueReport sums the tenant's invoices by period, payment provider, customer country and currency. Currencies are never added together.
+  rpc GetRevenueReport(GetRevenueReportRequest) returns (GetRevenueReportResponse);
+  // GetDunningReport lists the invoices whose payment has not gone through: declined, unknown or given up.
+  rpc GetDunningReport(GetDunningReportRequest) returns (GetDunningReportResponse);
 }
 
 // SandboxService is for sandbox tenants only (FAILED_PRECONDITION otherwise).
@@ -287,4 +291,70 @@ message RedriveDeadLettersRequest {
 
 message RedriveDeadLettersResponse {
   int32 redriven = 1;
+}
+
+message GetRevenueReportRequest {
+  // YYYY-MM, inclusive. Empty from = the earliest period, empty to = the latest.
+  string from_period = 1;
+  string to_period = 2;
+  // Which of period, provider and country to split by; currency is always a split. Empty = period and currency.
+  repeated string group_by = 3;
+}
+
+message RevenueRow {
+  // Empty when the report is not split by it.
+  string period = 1;
+  string provider = 2;
+  string country = 3;
+  string currency = 4;
+  int64 invoices = 5;
+  // Finalized invoices that are not void: open + paid + uncollectible.
+  int64 billed_minor = 6;
+  // Paid invoices.
+  int64 collected_minor = 7;
+  // Invoices that were refunded (a voided paid invoice), whatever their final status.
+  int64 refunded_minor = 8;
+  // Open invoices: finalized, not paid, not given up.
+  int64 outstanding_minor = 9;
+  int64 uncollectible_minor = 10;
+  int64 void_minor = 11;
+}
+
+message GetRevenueReportResponse {
+  repeated RevenueRow rows = 1;
+}
+
+message GetDunningReportRequest {
+  // At most this many invoices, oldest first. Default 100, at most 500.
+  int32 limit = 1;
+}
+
+message DunningInvoice {
+  string invoice_id = 1;
+  string number = 2;
+  string customer_external_id = 3;
+  string period = 4;
+  string provider = 5;
+  string currency = 6;
+  int64 total_minor = 7;
+  // The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), UNCOLLECTIBLE (given up).
+  string state = 8;
+  // Retries done so far (0 = only the first charge).
+  int32 dunning_attempt = 9;
+  google.protobuf.Timestamp next_attempt_time = 10;
+  string last_error = 11;
+}
+
+message DunningSummary {
+  string state = 1;
+  string provider = 2;
+  string currency = 3;
+  int64 invoices = 4;
+  int64 total_minor = 5;
+}
+
+message GetDunningReportResponse {
+  repeated DunningInvoice invoices = 1;
+  // Counts and sums of every unpaid invoice (not limited), by state, provider and currency.
+  repeated DunningSummary summary = 2;
 }

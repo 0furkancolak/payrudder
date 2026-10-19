@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
@@ -126,4 +127,41 @@ func (s *Server) adminStartRerating(w http.ResponseWriter, r *http.Request) {
 func (s *Server) adminGetRerating(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.BillingAdmin.GetReratingJob(r.Context(), &billingv1.GetReratingJobRequest{TenantId: r.PathValue("tenant_id"), JobId: r.PathValue("job_id")})
 	respond(w, r, http.StatusOK, resp.GetJob(), err)
+}
+
+// revenueReport is GET /v1/reports/revenue?from=&to=&group_by=provider,country: invoices summed by period, payment provider, country and currency.
+func (s *Server) revenueReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := &billingv1.GetRevenueReportRequest{FromPeriod: q.Get("from"), ToPeriod: q.Get("to")}
+	if g := q.Get("group_by"); g != "" {
+		req.GroupBy = strings.Split(g, ",")
+	}
+	resp, err := s.d.Billing.GetRevenueReport(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// dunningReport is GET /v1/reports/dunning?limit=: invoices whose payment has not gone through.
+func (s *Server) dunningReport(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.GetDunningReportRequest{}
+	if v := r.URL.Query().Get("limit"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			writeError(w, r, invalid("limit", "must be an integer"))
+			return
+		}
+		req.Limit = int32(n)
+	}
+	resp, err := s.d.Billing.GetDunningReport(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// subscriptionReport is GET /v1/reports/subscriptions?month=&group_by=provider,country: subscriptions and monthly recurring revenue.
+func (s *Server) subscriptionReport(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := &plansv1.GetSubscriptionReportRequest{Month: q.Get("month")}
+	if g := q.Get("group_by"); g != "" {
+		req.GroupBy = strings.Split(g, ",")
+	}
+	resp, err := s.d.Plans.GetSubscriptionReport(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
 }

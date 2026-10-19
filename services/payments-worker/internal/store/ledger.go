@@ -122,3 +122,49 @@ func (l Ledger) ChargeFact(ctx context.Context, key string) (Fact, bool, error) 
 	}
 	return f, true, nil
 }
+
+// Charge is a successful charge in the ledger.
+type Charge struct {
+	InvoiceID, Provider, ProviderRef, Currency string
+	AmountMinor                                int64
+}
+
+// SuccessfulCharges returns the tenant's successful charges that belong to an invoice.
+func (l Ledger) SuccessfulCharges(ctx context.Context, tenant uuid.UUID) ([]Charge, error) {
+	rows, err := l.DB.Query(ctx, `SELECT DISTINCT ON (invoice_id, provider, COALESCE(provider_ref, '')) invoice_id::text, provider, COALESCE(provider_ref, ''), currency, amount_minor
+		FROM payment_ledger WHERE tenant_id = $1 AND kind = 'charge' AND status = 'succeeded' AND invoice_id IS NOT NULL
+		ORDER BY invoice_id, provider, COALESCE(provider_ref, ''), id`, tenant)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Charge
+	for rows.Next() {
+		var c Charge
+		if err := rows.Scan(&c.InvoiceID, &c.Provider, &c.ProviderRef, &c.Currency, &c.AmountMinor); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// ConflictingCharges returns the charges that have both a success and a failure recorded under one provider reference.
+func (l Ledger) ConflictingCharges(ctx context.Context, tenant uuid.UUID) ([]Charge, error) {
+	rows, err := l.DB.Query(ctx, `SELECT COALESCE(max(invoice_id::text), ''), provider, provider_ref
+		FROM payment_ledger WHERE tenant_id = $1 AND kind = 'charge' AND provider_ref IS NOT NULL AND status IN ('succeeded', 'declined')
+		GROUP BY provider, provider_ref HAVING count(DISTINCT status) > 1 ORDER BY provider, provider_ref`, tenant)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Charge
+	for rows.Next() {
+		var c Charge
+		if err := rows.Scan(&c.InvoiceID, &c.Provider, &c.ProviderRef); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}

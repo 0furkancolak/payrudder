@@ -336,6 +336,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reports/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Invoices summed by period, payment provider, customer country and currency (currencies are never added together) */
+        get: operations["getRevenueReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/dunning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Invoices whose payment has not gone through (declined and retrying, outcome unknown, given up) */
+        get: operations["getDunningReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Subscriptions and monthly recurring revenue at the end of a month, with the new and the churned, by provider, country and currency */
+        get: operations["getSubscriptionReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/routing-rules": {
         parameters: {
             query?: never;
@@ -929,6 +980,23 @@ export interface paths {
         put?: never;
         /** Give up a migration that has not completed; the subscription stays as it was */
         post: operations["abortProviderMigration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compare the invoices billing calls paid in a period with the successful charges in the payment ledger */
+        get: operations["reconcilePayments"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2309,6 +2377,143 @@ export interface operations {
             409: components["responses"]["Error"];
         };
     };
+    getRevenueReport: {
+        parameters: {
+            query?: {
+                /** @description First period */
+                from?: string;
+                /** @description Last period */
+                to?: string;
+                /** @description Comma-separated: period, provider, country (default period). Currency is always split */
+                group_by?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rows?: {
+                            period?: string;
+                            provider?: string;
+                            country?: string;
+                            currency?: string;
+                            invoices?: string;
+                            /** @description Finalized invoices that are not void */
+                            billed_minor?: string;
+                            /** @description Paid */
+                            collected_minor?: string;
+                            /** @description Invoices that were refunded */
+                            refunded_minor?: string;
+                            /** @description Open */
+                            outstanding_minor?: string;
+                            uncollectible_minor?: string;
+                            void_minor?: string;
+                        }[];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getDunningReport: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        invoices?: {
+                            /** Format: uuid */
+                            invoice_id?: string;
+                            number?: string;
+                            customer_external_id?: string;
+                            period?: string;
+                            provider?: string;
+                            currency?: string;
+                            total_minor?: string;
+                            /** @enum {string} */
+                            state?: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "UNCOLLECTIBLE";
+                            dunning_attempt?: number;
+                            /** Format: date-time */
+                            next_attempt_time?: string;
+                            last_error?: string;
+                        }[];
+                        summary?: {
+                            state?: string;
+                            provider?: string;
+                            currency?: string;
+                            invoices?: string;
+                            total_minor?: string;
+                        }[];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getSubscriptionReport: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM in the tenant's time zone; default the current month */
+                month?: string;
+                /** @description Comma-separated: provider, country. Currency is always split */
+                group_by?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        month?: string;
+                        rows?: {
+                            provider?: string;
+                            country?: string;
+                            currency?: string;
+                            active?: string;
+                            trialing?: string;
+                            paused?: string;
+                            past_due?: string;
+                            /** @description Fixed fees per month of active and past due subscriptions */
+                            mrr_minor?: string;
+                            new_subscriptions?: string;
+                            new_mrr_minor?: string;
+                            /** @description Ended with no successor; a plan change or provider migration is not churn */
+                            churned?: string;
+                            churned_mrr_minor?: string;
+                        }[];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
     getRoutingRules: {
         parameters: {
             query?: never;
@@ -3516,6 +3721,52 @@ export interface operations {
             };
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    reconcilePayments: {
+        parameters: {
+            query: {
+                period: string;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        period?: string;
+                        paid_invoices?: number;
+                        successful_charges?: number;
+                        /** @description By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes */
+                        discrepancy_counts?: {
+                            [key: string]: number;
+                        };
+                        discrepancies?: {
+                            kind?: string;
+                            invoice_id?: string;
+                            number?: string;
+                            provider?: string;
+                            provider_ref?: string;
+                            currency?: string;
+                            billed_minor?: number;
+                            ledger_minor?: number;
+                            detail?: string;
+                        }[];
+                        truncated?: boolean;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
     };
