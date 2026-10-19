@@ -194,4 +194,4 @@ gaps, and the phase files their open boxes.
 
 ## License
 
-TODO: add the Apache-2.0 `LICENSE` file when the repository goes public (decided, not yet added while the repo is private).
+Apache License 2.0, see [LICENSE](LICENSE).
