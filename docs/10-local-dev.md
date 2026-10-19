@@ -97,10 +97,12 @@ PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live
 | `make migrate` | Run goose migrations for every service DB |
 | `make topics` | Create Kafka topics with the configs from [04-messaging.md](04-messaging.md) (`rpk topic create …`, idempotent). `make up-infra` and `make up` run it. Compose Redpanda has topic auto-creation off, so a missing topic fails loudly |
 | `make seed` | Create a demo account (currency/time zone/grace passed explicitly: `CURRENCY=TRY TZ=Europe/Istanbul GRACE=24h`), sandbox + live keys, meters (one fractional), plan, 10 customers covering every `pm_sandbox_*` scenario |
-| `make demo` | Seed → send events → sandbox `ClosePeriodNow` → every payment scenario plays out → open Mailpit/Grafana links |
+| `make demo` | Seed → send events → sandbox `ClosePeriodNow` → every payment scenario plays out → change the price → re-rate → CORRECTION invoices and receipts → links to Mailpit, Grafana, MinIO (`quotifyctl demo`; sandbox dunning on seconds; about 2.5 minutes) |
 | `make e2e` | Run `tests/e2e` against the compose stack |
-| `make chaos N=100000` | Run the correctness suite with N events: builds ingest-svc and aggregator with the `chaos` tag, arms the fault hooks, drives the public API and asserts exact totals (`tests/chaos`) |
-| `make load SCENARIO=ingest_steady` | Run a k6 scenario |
+| `make chaos N=100000` | Run the correctness suite with N events: two replicas of ingest-svc, aggregator and limits-svc behind Toxiproxy, built with the `chaos` tag and armed, a chaos monkey that kills replicas, resets connections, stops Redpanda and wipes Redis, and assertions A1-A9 with a JSON report (`tests/chaos`, [09-testing-strategy.md](09-testing-strategy.md)) |
+| `make bench-idempotency` | The partitioned-vs-DELETE measurement behind [ADR 0014](adr/0014-idempotency-key-retention.md) |
+| `quotifyctl replay\|rerate\|dlq` | Operator CLI: rebuild a tenant into a new generation and promote it; price a closed period again; inspect and redrive dead letters (RabbitMQ and Kafka) |
+| `make load S=ingest_steady` | Run a k6 scenario against the stack (`ingest_steady`, `ingest_spike`, `noisy_neighbor`, `entitlement_reads`, `month_close`); `K6_ENV="-e DURATION=2m -e EVENTS_PER_SEC=500"` overrides its parameters. Results stream to Prometheus (Grafana dashboard "Quotify / k6") and a JSON summary lands in `tests/load/results/` |
 | `make kind-up` / `make kind-images` / `make helm-install` | A kind cluster, the service images loaded into it, and the two Helm releases ([12-kubernetes.md](12-kubernetes.md)). `KIND_PROFILE=kind-min KIND_CONFIG=deploy/kind/cluster-min.yaml` for a small Docker VM; `HELM_ARGS="-f deploy/helm/quotify/values-sandbox.yaml"` for the sandbox-only profile |
 | `make e2e-kind` / `make netpol-test` | The e2e suite and the NetworkPolicy check against the kind cluster |
 | `make helm-lint` | `helm lint` + `kubeconform` for every values file of both charts |

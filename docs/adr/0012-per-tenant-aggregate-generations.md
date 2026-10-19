@@ -29,6 +29,13 @@ pauses live consumption for everyone.
 | Global generation + copy untouched tenants | Copy volume scales with total data, and it's easy to get the copy/catch-up boundary wrong |
 | Pause-and-catch-up promotion (per tenant) | Simpler, but pausing a partition stalls every tenant on it. Dual-write keeps the pause at zero |
 
+## Addendum (Phase 11, as built)
+
+The flip into dual write waits for the tenant's in-flight live batches by taking the **active** generation row `FOR UPDATE`; every live batch holds it
+`FOR SHARE`. A batch that blocked on that lock does not see the `catching_up` row the flip created (READ COMMITTED does not add rows to a locking
+statement's result), so the live path locks with one statement and reads the generations with a second, fresh one. Found by the replay integration test; the
+details are in [07-correctness.md](../07-correctness.md#8-replay--re-rating).
+
 ## Consequences
 
 - The live consumer needs a per-tenant generation cache plus a dual-write path. It's more code in the hottest loop, so it gets a
