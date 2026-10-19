@@ -125,7 +125,7 @@ jobs:
         run: cd tests && go test -count=1 ./helm/
       - uses: helm/chart-testing-action@v2.7.0
       - name: ct lint
-        run: ct lint --chart-dirs deploy/helm --charts deploy/helm/quotify,deploy/helm/quotify-infra --validate-maintainers=false --check-version-increment=false
+        run: ct lint --config deploy/helm/ct.yaml
 
   kind:
     name: kubernetes (kind, 3 workers, e2e + NetworkPolicy)
@@ -137,6 +137,11 @@ jobs:
         with:
           go-version-file: go.work
           cache-dependency-path: "**/go.sum"
+      - name: Free disk space (four kind nodes each hold the infrastructure images)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          docker image prune -af >/dev/null
+          df -h / | tail -1
       - run: make kind-up
       - run: make kind-images
       - run: make helm-install
