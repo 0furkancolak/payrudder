@@ -1,0 +1,10 @@
+partitioned                    fill: 3000000 rows in 14.696s = 204142 rows/s, 514 MB on disk
+partitioned                    steady insert: 198150 rows/s, batch p50 7.214ms p99 47.738ms
+partitioned                    retire oldest month: 24ms in 1 statement(s); inserts meanwhile 149275 rows/s, batch p50 7.031ms p99 144.976ms; 0 dead tuples, 1219 MB on disk (before VACUUM)
+partitioned                    VACUUM: 652ms, 1219 MB on disk afterwards
+unpartitioned+batched DELETE   fill: 3000000 rows in 25.833s = 116128 rows/s, 543 MB on disk
+unpartitioned+batched DELETE   steady insert: 112850 rows/s, batch p50 7.326ms p99 156.225ms
+unpartitioned+batched DELETE   retire oldest month: 8.376s in 101 statement(s); inserts meanwhile 77600 rows/s, batch p50 7.796ms p99 389.24ms; 1000000 dead tuples, 1031 MB on disk (before VACUUM)
+unpartitioned+batched DELETE   VACUUM: 5.021s, 1031 MB on disk afterwards
+--- PASS: TestIdempotencyRetention (108.30s)
+PASS

@@ -1,0 +1,6 @@
+# go test -tags bench -run 'TestFormUploadGatewayMemory|TestDirectUploadMemory|TestUsageSeriesLatency' ./bench/   (tests/bench, local compose stack)
+gateway RSS before: 16.5 MiB; peak over 15 sequential 20x1MiB requests: 26.6 MiB (growth 10.0); peak over 4x8 concurrent: 23.3 MiB (growth 6.7); assets-svc peaks 37.9 / 47.8 MiB
+1 GiB in 128 parts of 8 MiB, 8 in parallel, 1.373s (746 MiB/s); assets-svc memory before 15.9 MiB, peak 12.4 MiB; gateway peak 18.9 MiB
+inserted 3000000 events in 4.473s; usage_hourly rows for the tenant: 1549492
+30-day series, granularity=hour: 720 points, 200 calls: p50 16.542ms p95 21.984ms p99 26.492ms
+30-day series, granularity=day: 31 points, 200 calls: p50 16.202ms p95 26.641ms p99 35.013ms

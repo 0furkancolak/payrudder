@@ -1,0 +1,416 @@
+{
+    "root_group": {
+        "groups": {},
+        "checks": {},
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "metrics": {
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0,
+            "max": 0
+        },
+        "vus": {
+            "value": 0,
+            "min": 0,
+            "max": 0
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(99)": 23.024460319999996,
+            "max": 47.72915,
+            "avg": 9.876149713227523,
+            "min": 1.3241,
+            "med": 8.80798,
+            "p(90)": 16.15794,
+            "p(95)": 18.1675608
+        },
+        "neighbour_under_noise_ms": {
+            "p(95)": 18.171664149999998,
+            "p(99)": 23.295805689999998,
+            "max": 47.72915,
+            "avg": 10.216038336419759,
+            "min": 3.181579,
+            "med": 9.160613,
+            "p(90)": 16.2712353
+        },
+        "http_req_waiting": {
+            "min": 0,
+            "med": 5.565842,
+            "p(90)": 14.030715,
+            "p(95)": 16.1347626,
+            "p(99)": 20.859530279999998,
+            "max": 46.964932,
+            "avg": 6.373177217430404
+        },
+        "noisy_tenant_429": {
+            "rate": 5.9573660744380765,
+            "count": 1616,
+            "thresholds": {
+                "count>0": false
+            }
+        },
+        "http_req_receiving": {
+            "p(99)": 0.8707197499999991,
+            "max": 4.679602,
+            "avg": 0.10919596945193147,
+            "min": 0.002542,
+            "med": 0.0602715,
+            "p(90)": 0.20777730000000003,
+            "p(95)": 0.3148224499999997
+        },
+        "data_sent": {
+            "count": 62758220,
+            "rate": 231357.4818812631
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0.3135814099999999,
+            "max": 1.852482,
+            "avg": 0.008525641958670262,
+            "min": 0
+        },
+        "iteration_duration": {
+            "max": 49.708298,
+            "avg": 7.916583219333483,
+            "min": 0.631174,
+            "med": 6.689622,
+            "p(90)": 16.807741,
+            "p(95)": 19.1124655,
+            "p(99)": 23.936124199999995
+        },
+        "http_req_failed": {
+            "passes": 1617,
+            "fails": 2835,
+            "value": 0.3632075471698113
+        },
+        "neighbour_baseline_ms": {
+            "avg": 10.53562871728395,
+            "min": 3.750339,
+            "med": 9.931231499999999,
+            "p(90)": 16.3067724,
+            "p(95)": 18.048356,
+            "p(99)": 22.65553382,
+            "max": 38.17949
+        },
+        "noisy_tenant_202": {
+            "count": 185,
+            "rate": 0.6820004478781214
+        },
+        "http_req_duration": {
+            "p(90)": 14.6179123,
+            "p(95)": 16.810447399999994,
+            "p(99)": 21.93360803999999,
+            "max": 47.72915,
+            "avg": 6.707862795597481,
+            "min": 0.201044,
+            "med": 5.783533
+        },
+        "http_req_blocked": {
+            "avg": 0.020770810197663827,
+            "min": 0.000292,
+            "med": 0.005125,
+            "p(90)": 0.0176259,
+            "p(95)": 0.022912349999999984,
+            "p(99)": 0.46814908,
+            "max": 2.213693
+        },
+        "vus_max": {
+            "value": 120,
+            "min": 120,
+            "max": 120
+        },
+        "iterations": {
+            "count": 4231,
+            "rate": 15.597534567418009
+        },
+        "http_req_sending": {
+            "avg": 0.2254896087151844,
+            "min": 0.001083,
+            "med": 0.138251,
+            "p(90)": 0.5629073000000001,
+            "p(95)": 0.6952045,
+            "p(99)": 1.2851083499999998,
+            "max": 8.23639
+        },
+        "data_received": {
+            "count": 17289582,
+            "rate": 63737.85225743517
+        },
+        "http_reqs": {
+            "count": 4452,
+            "rate": 16.412248615964305
+        }
+    },
+    "setup_data": {
+        "a": {
+            "customers": [
+                "cus_0",
+                "cus_1",
+                "cus_2",
+                "cus_3",
+                "cus_4",
+                "cus_5",
+                "cus_6",
+                "cus_7",
+                "cus_8",
+                "cus_9"
+            ],
+            "id": "01a1519e-65c6-70ad-b224-1d945b5bd804",
+            "key": "qk_live_9rGgVL5b_jI56k0zRMoKJYQx8lBMwcf1TDVJPZw8t7KPd5eFOaqE",
+            "name": "k6-noisy-a-mvej8hj3"
+        },
+        "neighbours": [
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a1519e-69d5-75b4-96cb-52e1c964d7f0",
+                "key": "qk_live_kzGBgyfA_nH0b50zTydPFZtrkL09k2PAAXjHpmufNHhAbYFBxdg1",
+                "name": "k6-noisy-n0-mvej8hj3"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a1519e-69fa-76da-abeb-46977a0f72e0",
+                "key": "qk_live_JCijcVMj_LoEDRrtwb4Q6LKr8N9A6mfziLgmAtVAgX273bR77nuw",
+                "name": "k6-noisy-n1-mvej8hj3"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a1519e-6a14-746b-a087-089928ef9642",
+                "key": "qk_live_zcmXUT5d_SLjuZUOZSYzqozMZRyQz3bdv8lOrEAcXo3hE59ZKmMT",
+                "name": "k6-noisy-n2-mvej8hj3"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a1519e-6a2b-7615-b53d-f5ed07d11a1e",
+                "key": "qk_live_L06RwlpS_N8Wq0b6lJizQWsb2zI9sOgvZoF8fM1WgaFoh6Ti3EVG",
+                "name": "k6-noisy-n3-mvej8hj3"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a1519e-6a41-7b79-81a7-a8dfd1f3707f",
+                "key": "qk_live_GMl5nGjG_V0pNFgaS2xV0EmG4tK04NxLAthCPEcSShhRyXAzsJv0",
+                "name": "k6-noisy-n4-mvej8hj3"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a1519e-6a53-7ae0-9175-eb42c36e3916",
+                "key": "qk_live_njnNiNB5_9VIiAhKkPudKYLt2pzWUJXTyx9TqEif0pQwV7RSqqaO",
+                "name": "k6-noisy-n5-mvej8hj3"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a1519e-6a63-7477-a7bc-6c0b794c5a58",
+                "key": "qk_live_VQGJrB3p_TJxiMRpMqxzOYSD6FPlrBKDrnpNt861cndVpVcfT3LD",
+                "name": "k6-noisy-n6-mvej8hj3"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a1519e-6a75-7209-9b05-9b243a7eebb9",
+                "key": "qk_live_9ULyLjWN_PgHwuFWzctd86V1GQOklj6CAJPGIeiprKr3jW6ldJ5w",
+                "name": "k6-noisy-n7-mvej8hj3"
+            },
+            {
+                "customers": [
+                    "cus_0",
+                    "cus_1",
+                    "cus_2",
+                    "cus_3",
+                    "cus_4",
+                    "cus_5",
+                    "cus_6",
+                    "cus_7",
+                    "cus_8",
+                    "cus_9",
+                    "cus_10",
+                    "cus_11",
+                    "cus_12",
+                    "cus_13",
+                    "cus_14",
+                    "cus_15",
+                    "cus_16",
+                    "cus_17",
+                    "cus_18",
+                    "cus_19"
+                ],
+                "id": "01a1519e-6a83-77fa-90d2-eaa887558862",
+                "key": "qk_live_4mGBHm7q_FjrKo3cUP6aOKLjxtwPLKWUeTq2uiTzVw0v0QyeSzRO",
+                "name": "k6-noisy-n8-mvej8hj3"
+            }
+        ]
+    }
+}
