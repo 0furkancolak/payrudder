@@ -38,7 +38,7 @@ function create() {
 
   <div class="grid gap-4 lg:grid-cols-2">
     <Card>
-      <h2 class="flex items-center gap-3 text-lg font-semibold"><span class="bg-lime text-lime-foreground grid size-8 place-items-center rounded-full text-sm">1</span>{{ t("playground.account.title") }}</h2>
+      <h2 class="text-base font-semibold">{{ t("playground.account.title") }}</h2>
       <form v-if="play.tenantId.value === null" class="grid gap-3 sm:grid-cols-2" role="form" :aria-label="t('playground.account.formLabel')" @submit.prevent="create">
         <Input v-model="name" :aria-label="t('playground.account.name')" :placeholder="t('playground.account.name')" required />
         <NativeSelect v-model="currency" :aria-label="t('playground.account.currency')" required>
@@ -60,7 +60,7 @@ function create() {
     </Card>
 
     <Card>
-      <h2 class="flex items-center gap-3 text-lg font-semibold"><span class="bg-lime text-lime-foreground grid size-8 place-items-center rounded-full text-sm">2</span>{{ t("playground.setup.title") }}</h2>
+      <h2 class="text-base font-semibold">{{ t("playground.setup.title") }}</h2>
       <div class="flex flex-wrap items-center gap-3">
         <Button type="button" :disabled="play.busy.value || play.key.value === null || play.ready.value" @click="play.setUp.mutate()">
           {{ t("playground.setup.button") }}
@@ -80,7 +80,7 @@ function create() {
     </Card>
 
     <Card>
-      <h2 class="flex items-center gap-3 text-lg font-semibold"><span class="bg-lime text-lime-foreground grid size-8 place-items-center rounded-full text-sm">3</span>{{ t("playground.usage.title") }}</h2>
+      <h2 class="text-base font-semibold">{{ t("playground.usage.title") }}</h2>
       <div class="flex flex-wrap items-center gap-3">
         <Input v-model="quantity" type="number" min="1" class="w-32" :aria-label="t('playground.usage.calls')" />
         <Button type="button" :disabled="play.busy.value || !play.ready.value || play.closed.value" @click="play.sendUsage.mutate(Number(quantity))">
@@ -91,7 +91,7 @@ function create() {
     </Card>
 
     <Card>
-      <h2 class="flex items-center gap-3 text-lg font-semibold"><span class="bg-lime text-lime-foreground grid size-8 place-items-center rounded-full text-sm">4</span>{{ t("playground.close.title") }}</h2>
+      <h2 class="text-base font-semibold">{{ t("playground.close.title") }}</h2>
       <div class="flex flex-wrap items-center gap-3">
         <Button type="button" :disabled="play.busy.value || !play.ready.value || play.sent.value === 0 || play.closed.value" @click="play.closePeriod.mutate()">
           {{ t("playground.close.button") }}
@@ -124,7 +124,7 @@ function create() {
   <Card v-if="play.log.value.length > 0" class="mt-4">
     <h2 class="text-lg font-semibold">{{ t("playground.log.title") }}</h2>
     <ul class="text-muted-foreground space-y-1 text-sm">
-      <li v-for="(line, i) in play.log.value" :key="i" class="flex gap-2"><span class="bg-lime mt-2 size-1.5 shrink-0 rounded-full" />{{ t(line.key, line.params ?? {}) }}</li>
+      <li v-for="(line, i) in play.log.value" :key="i" class="flex gap-2"><span class="bg-muted-foreground/50 mt-2 size-1.5 shrink-0 rounded-full" />{{ t(line.key, line.params ?? {}) }}</li>
     </ul>
   </Card>
 </template>

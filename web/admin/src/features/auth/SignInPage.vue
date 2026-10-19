@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useMutation } from "@tanstack/vue-query";
 import { useNavigate } from "@tanstack/vue-router";
-import { KeyRound } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { toApiError } from "@/shared/api/client";
@@ -23,9 +22,8 @@ const error = computed(() => (login.error.value ? `${toApiError(login.error.valu
 </script>
 
 <template>
-  <div class="mx-auto mt-16 max-w-md">
-    <Card class="gap-5 p-8">
-      <span class="bg-lime text-lime-foreground grid size-12 place-items-center rounded-full"><KeyRound class="size-5" /></span>
+  <div class="mx-auto mt-12 max-w-sm">
+    <Card class="gap-5 p-6">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">{{ t("signIn.title") }}</h1>
         <p class="text-muted-foreground mt-1 text-sm">{{ t("signIn.intro") }}</p>

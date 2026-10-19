@@ -34,11 +34,11 @@ const tenants = useTenants();
           <TableCell>
             <Link to="/tenants/$id" :params="{ id: tenant.id ?? '' }" class="font-medium hover:underline">{{ tenant.name }}</Link>
           </TableCell>
-          <TableCell><Badge variant="lime">{{ label(t, te, "environment", enumWord(tenant.environment, "ENVIRONMENT_")) }}</Badge></TableCell>
+          <TableCell><Badge variant="secondary">{{ label(t, te, "environment", enumWord(tenant.environment, "ENVIRONMENT_")) }}</Badge></TableCell>
           <TableCell>{{ label(t, te, "tier", enumWord(tenant.tier, "TENANT_TIER_")) }}</TableCell>
           <TableCell>{{ tenant.currency }}</TableCell>
           <TableCell>{{ tenant.timezone }}</TableCell>
-          <TableCell class="mono text-muted-foreground text-xs">{{ tenant.id }}</TableCell>
+          <TableCell class="mono text-muted-foreground max-w-40 truncate text-xs" :title="tenant.id">{{ tenant.id }}</TableCell>
         </TableRow>
       </TableBody>
     </Table>

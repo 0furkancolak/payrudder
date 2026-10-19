@@ -44,7 +44,7 @@ const inv = computed(() => invoice.data.value);
         <Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ inv.saga_state }}</Badge>
       </div>
     </Card>
-    <Card class="bg-lime text-lime-foreground gap-1 text-sm">
+    <Card class="gap-1 text-sm">
       <span class="font-medium">{{ label(t, te, "invoiceKind", inv.kind) }}</span>
       <span>{{ inv.period_id }}</span>
       <span>{{ inv.customer_external_id }}</span>

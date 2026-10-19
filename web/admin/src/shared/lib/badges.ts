@@ -10,7 +10,7 @@ export function sagaVariant(state: string | undefined): Variant {
 
 export function statusVariant(status: string | undefined): Variant {
   if (status === "paid") return "success";
-  if (status === "open") return "lime";
+  if (status === "open") return "secondary";
   if (status === "void" || status === "uncollectible") return "destructive";
   return "secondary";
 }

@@ -13,7 +13,7 @@ function change(event: Event) {
 </script>
 
 <template>
-  <label class="relative inline-flex items-center">
+  <label class="relative flex items-center">
     <Globe class="text-muted-foreground pointer-events-none absolute start-3 z-10 size-4" />
     <NativeSelect class="ps-9" :aria-label="t('app.language')" :model-value="locale" @change="change">
       <option v-for="code in locales" :key="code" :value="code">{{ messages[code as Locale].meta.name }}</option>

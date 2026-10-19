@@ -21,7 +21,7 @@ const tenant = useTenant(id);
   <PageHeader :title="tenant.data.value?.name ?? t('tenant.fallbackTitle')" />
   <p v-if="tenant.error.value" class="text-destructive mb-3" role="alert">{{ toApiError(tenant.error.value).message }}</p>
   <div v-if="tenant.data.value" class="text-muted-foreground -mt-3 mb-6 flex flex-wrap items-center gap-2 px-1 text-sm">
-    <Badge variant="lime">{{ label(t, te, "environment", enumWord(tenant.data.value.environment, "ENVIRONMENT_")) }}</Badge>
+    <Badge variant="secondary">{{ label(t, te, "environment", enumWord(tenant.data.value.environment, "ENVIRONMENT_")) }}</Badge>
     <span>{{ tenant.data.value.currency }} · {{ tenant.data.value.timezone }} · {{ t("tenant.grace", { value: tenant.data.value.grace_period ?? t("common.unknown") }) }}</span>
     <span class="mono text-xs">{{ tenant.data.value.id }}</span>
   </div>

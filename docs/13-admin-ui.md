@@ -68,6 +68,8 @@ cd web/admin && npx shadcn-vue@latest add popover   # drops the component into s
 Check what the CLI changed afterwards: it adds dependencies with `^` ranges (pin them) and may guess the `cn` import wrongly (it must be `@/shared/lib/utils`).
 The console is one light theme (soft grey canvas, white cards, dark green actions, lime highlights); there is no dark mode. Every page is built from the kit.
 
+`make dev` starts the services in Docker (without the console image) and runs the Vite dev server on port 3001 with hot reload; `make logs` (or `make logs S=gateway`) follows the service logs.
+
 In development the operator token and the playground account form come pre-filled: the Vite dev server does it by default, the compose stack through
 `PREFILL_OPERATOR_TOKEN` (served as `/env.js`). Leave that variable empty anywhere that is not a throwaway local stack.
 
