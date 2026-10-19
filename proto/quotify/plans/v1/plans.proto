@@ -31,6 +31,8 @@ service PlansService {
   rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
   rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
   rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
+  // ListSubscriptions pages through subscriptions, newest first, of one customer or all.
+  rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsResponse);
   // GetRoutingRules returns the ordered rules that choose a customer's payment provider from country and currency.
   rpc GetRoutingRules(GetRoutingRulesRequest) returns (GetRoutingRulesResponse);
   // SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
@@ -428,4 +430,17 @@ message SubscriptionReportRow {
 message GetSubscriptionReportResponse {
   string month = 1;
   repeated SubscriptionReportRow rows = 2;
+}
+
+message ListSubscriptionsRequest {
+  // Optional: only this customer's.
+  string customer_external_id = 1;
+  // 1..200, default 50.
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListSubscriptionsResponse {
+  repeated Subscription subscriptions = 1;
+  string next_page_token = 2;
 }

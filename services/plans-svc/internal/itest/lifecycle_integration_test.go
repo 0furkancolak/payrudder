@@ -520,6 +520,57 @@ func testSubscriptionLifecycle(t *testing.T) {
 		}
 	})
 
+	t.Run("subscriptions are listed newest first, in pages, for all customers or one", func(t *testing.T) {
+		var all []*plansv1.Subscription
+		token := ""
+		pages := 0
+		for {
+			r, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{PageSize: 3, PageToken: token})
+			if err != nil {
+				t.Fatal(err)
+			}
+			all = append(all, r.GetSubscriptions()...)
+			pages++
+			if token = r.GetNextPageToken(); token == "" {
+				break
+			}
+			if pages > 100 {
+				t.Fatal("paging does not end")
+			}
+		}
+		if len(all) < 10 || pages < 2 {
+			t.Fatalf("%d subscriptions in %d pages; the tenant has many by now", len(all), pages)
+		}
+		seen := map[string]bool{}
+		for i, s := range all {
+			if seen[s.GetId()] {
+				t.Fatalf("subscription %s listed twice", s.GetId())
+			}
+			seen[s.GetId()] = true
+			if i > 0 && all[i-1].GetId() < s.GetId() {
+				t.Fatalf("not newest first at %d", i)
+			}
+		}
+		one, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{CustomerExternalId: "cus_paddle"})
+		if err != nil || len(one.GetSubscriptions()) == 0 {
+			t.Fatalf("one customer = %v, %v", one, err)
+		}
+		for _, s := range one.GetSubscriptions() {
+			if s.GetCustomerExternalId() != "cus_paddle" {
+				t.Errorf("listed %s for cus_paddle", s.GetCustomerExternalId())
+			}
+		}
+		if _, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{CustomerExternalId: "nobody"}); code(t, err) != codes.NotFound {
+			t.Errorf("unknown customer: %v", err)
+		}
+		if _, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{PageSize: 500}); code(t, err) != codes.InvalidArgument {
+			t.Errorf("page size 500: %v", err)
+		}
+		if _, err := e.plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{PageToken: "x"}); code(t, err) != codes.InvalidArgument {
+			t.Errorf("bad token: %v", err)
+		}
+	})
+
 	t.Run("yearly subscriptions are refused for now", func(t *testing.T) {
 		mkCustomer("cus_year")
 		_, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_year", PlanCode: "basic",

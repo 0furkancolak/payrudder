@@ -680,3 +680,51 @@ func (s *Server) SyncProviderSubscription(ctx context.Context, req *plansv1.Sync
 }
 
 func ptr[T any](v T) *T { return &v }
+
+func (s *Server) ListSubscriptions(ctx context.Context, req *plansv1.ListSubscriptionsRequest) (*plansv1.ListSubscriptionsResponse, error) {
+	size := req.GetPageSize()
+	switch {
+	case size == 0:
+		size = 50
+	case size < 0 || size > 200:
+		return nil, domain.Invalid("page_size", "1..200")
+	}
+	before := uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")
+	if tok := req.GetPageToken(); tok != "" {
+		id, err := uuid.Parse(tok)
+		if err != nil {
+			return nil, domain.Invalid("page_token", "not a token this API gave")
+		}
+		before = id
+	}
+	resp := &plansv1.ListSubscriptionsResponse{}
+	err := s.tx(ctx, func(q *sqlc.Queries) error {
+		customer := uuid.Nil
+		if ext := req.GetCustomerExternalId(); ext != "" {
+			c, err := q.GetCustomerByExternalID(ctx, ext)
+			if err != nil {
+				return convert.Err(err, "customer")
+			}
+			customer = c.ID
+		}
+		rows, err := q.ListSubscriptionsPage(ctx, sqlc.ListSubscriptionsPageParams{Before: before, CustomerID: customer, PageSize: size + 1})
+		if err != nil {
+			return err
+		}
+		more := len(rows) > int(size)
+		if more {
+			rows = rows[:size]
+		}
+		for _, r := range rows {
+			resp.Subscriptions = append(resp.Subscriptions, subscriptionMessage(sqlc.GetSubscriptionRow(r), s.now()))
+		}
+		if more {
+			resp.NextPageToken = rows[len(rows)-1].ID.String()
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, convert.Err(err, "subscription")
+	}
+	return resp, nil
+}

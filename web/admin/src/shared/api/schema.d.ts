@@ -239,7 +239,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Subscriptions, newest first */
+        get: operations["listSubscriptions"];
         put?: never;
         /** Subscribe a customer to a plan version (at most one overlapping subscription per customer) */
         post: operations["createSubscription"];
@@ -2143,6 +2144,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanVersion"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listSubscriptions: {
+        parameters: {
+            query?: {
+                /** @description Customer external id */
+                customer?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        subscriptions?: components["schemas"]["Subscription"][];
+                        next_page_token?: string;
+                    };
                 };
             };
             404: components["responses"]["Error"];

@@ -35,6 +35,7 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/plans/{code}/versions/{version}", AccessTenant, ratelimit.ClassRead, s.getPlanVersion},
 		// Subscriptions
 		{"POST", "/v1/subscriptions", AccessTenant, ratelimit.ClassWrite, s.createSubscription},
+		{"GET", "/v1/subscriptions", AccessTenant, ratelimit.ClassRead, s.listSubscriptions},
 		{"GET", "/v1/subscriptions/{id}", AccessTenant, ratelimit.ClassRead, s.getSubscription},
 		{"DELETE", "/v1/subscriptions/{id}", AccessTenant, ratelimit.ClassWrite, s.cancelSubscription},
 		{"POST", "/v1/subscriptions/{id}/pause", AccessTenant, ratelimit.ClassWrite, s.pauseSubscription},
@@ -235,6 +236,22 @@ func (s *Server) createSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := s.d.Plans.CreateSubscription(r.Context(), req)
 	respond(w, r, http.StatusCreated, resp.GetSubscription(), err)
+}
+
+// listSubscriptions is GET /v1/subscriptions?customer=&page_size=&page_token=, newest first. customer is the external id.
+func (s *Server) listSubscriptions(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := &plansv1.ListSubscriptionsRequest{CustomerExternalId: q.Get("customer"), PageToken: q.Get("page_token")}
+	if v := q.Get("page_size"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			writeError(w, r, invalid("page_size", "must be an integer"))
+			return
+		}
+		req.PageSize = int32(n)
+	}
+	resp, err := s.d.Plans.ListSubscriptions(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
 }
 
 func (s *Server) getSubscription(w http.ResponseWriter, r *http.Request) {

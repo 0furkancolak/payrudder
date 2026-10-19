@@ -1214,6 +1214,87 @@ func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubs
 	return items, nil
 }
 
+const listSubscriptionsPage = `-- name: ListSubscriptionsPage :many
+SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_version_id,
+       lower(s.active)::timestamptz AS start_time,
+       upper_inf(s.active)::bool AS open_ended,
+       COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
+FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+WHERE s.tenant_id = app_tenant_id() AND s.id < $1::uuid AND ($2::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR s.customer_id = $2::uuid)
+ORDER BY s.id DESC
+LIMIT $3
+`
+
+type ListSubscriptionsPageParams struct {
+	Before     uuid.UUID
+	CustomerID uuid.UUID
+	PageSize   int32
+}
+
+type ListSubscriptionsPageRow struct {
+	ID                 uuid.UUID
+	CustomerID         uuid.UUID
+	CustomerExternalID string
+	PlanVersionID      uuid.UUID
+	StartTime          time.Time
+	OpenEnded          bool
+	EndTime            time.Time
+	CreatedAt          time.Time
+	State              string
+	Interval           string
+	Currency           string
+	TrialEndsAt        *time.Time
+	CancelAtPeriodEnd  bool
+	PausedAt           *time.Time
+	BillingAnchor      time.Time
+	ChangedFromID      *uuid.UUID
+	Provider           *string
+	ProviderRef        *string
+	Owner              string
+}
+
+// Newest first (ids are time-ordered); after is the last id of the previous page, or the maximum uuid for the first.
+func (q *Queries) ListSubscriptionsPage(ctx context.Context, arg ListSubscriptionsPageParams) ([]ListSubscriptionsPageRow, error) {
+	rows, err := q.db.Query(ctx, listSubscriptionsPage, arg.Before, arg.CustomerID, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSubscriptionsPageRow{}
+	for rows.Next() {
+		var i ListSubscriptionsPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CustomerID,
+			&i.CustomerExternalID,
+			&i.PlanVersionID,
+			&i.StartTime,
+			&i.OpenEnded,
+			&i.EndTime,
+			&i.CreatedAt,
+			&i.State,
+			&i.Interval,
+			&i.Currency,
+			&i.TrialEndsAt,
+			&i.CancelAtPeriodEnd,
+			&i.PausedAt,
+			&i.BillingAnchor,
+			&i.ChangedFromID,
+			&i.Provider,
+			&i.ProviderRef,
+			&i.Owner,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const notifyOutbox = `-- name: NotifyOutbox :exec
 SELECT pg_notify('outbox_new', '')
 `

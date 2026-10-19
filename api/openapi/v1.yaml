@@ -256,6 +256,24 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
 
   /v1/subscriptions:
+    get:
+      operationId: listSubscriptions
+      summary: Subscriptions, newest first
+      parameters:
+        - { name: customer, in: query, description: Customer external id, schema: { type: string } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriptions: { type: array, items: { $ref: "#/components/schemas/Subscription" } }
+                  next_page_token: { type: string }
+        "404": { $ref: "#/components/responses/Error" }
     post:
       operationId: createSubscription
       summary: Subscribe a customer to a plan version (at most one overlapping subscription per customer)

@@ -34,6 +34,7 @@ const (
 	PlansService_CreateSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CreateSubscription"
 	PlansService_CancelSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CancelSubscription"
 	PlansService_GetSubscription_FullMethodName            = "/quotify.plans.v1.PlansService/GetSubscription"
+	PlansService_ListSubscriptions_FullMethodName          = "/quotify.plans.v1.PlansService/ListSubscriptions"
 	PlansService_GetRoutingRules_FullMethodName            = "/quotify.plans.v1.PlansService/GetRoutingRules"
 	PlansService_SetRoutingRules_FullMethodName            = "/quotify.plans.v1.PlansService/SetRoutingRules"
 	PlansService_PreviewRouting_FullMethodName             = "/quotify.plans.v1.PlansService/PreviewRouting"
@@ -77,6 +78,8 @@ type PlansServiceClient interface {
 	CreateSubscription(ctx context.Context, in *CreateSubscriptionRequest, opts ...grpc.CallOption) (*CreateSubscriptionResponse, error)
 	CancelSubscription(ctx context.Context, in *CancelSubscriptionRequest, opts ...grpc.CallOption) (*CancelSubscriptionResponse, error)
 	GetSubscription(ctx context.Context, in *GetSubscriptionRequest, opts ...grpc.CallOption) (*GetSubscriptionResponse, error)
+	// ListSubscriptions pages through subscriptions, newest first, of one customer or all.
+	ListSubscriptions(ctx context.Context, in *ListSubscriptionsRequest, opts ...grpc.CallOption) (*ListSubscriptionsResponse, error)
 	// GetRoutingRules returns the ordered rules that choose a customer's payment provider from country and currency.
 	GetRoutingRules(ctx context.Context, in *GetRoutingRulesRequest, opts ...grpc.CallOption) (*GetRoutingRulesResponse, error)
 	// SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
@@ -266,6 +269,16 @@ func (c *plansServiceClient) GetSubscription(ctx context.Context, in *GetSubscri
 	return out, nil
 }
 
+func (c *plansServiceClient) ListSubscriptions(ctx context.Context, in *ListSubscriptionsRequest, opts ...grpc.CallOption) (*ListSubscriptionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSubscriptionsResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListSubscriptions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) GetRoutingRules(ctx context.Context, in *GetRoutingRulesRequest, opts ...grpc.CallOption) (*GetRoutingRulesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetRoutingRulesResponse)
@@ -442,6 +455,8 @@ type PlansServiceServer interface {
 	CreateSubscription(context.Context, *CreateSubscriptionRequest) (*CreateSubscriptionResponse, error)
 	CancelSubscription(context.Context, *CancelSubscriptionRequest) (*CancelSubscriptionResponse, error)
 	GetSubscription(context.Context, *GetSubscriptionRequest) (*GetSubscriptionResponse, error)
+	// ListSubscriptions pages through subscriptions, newest first, of one customer or all.
+	ListSubscriptions(context.Context, *ListSubscriptionsRequest) (*ListSubscriptionsResponse, error)
 	// GetRoutingRules returns the ordered rules that choose a customer's payment provider from country and currency.
 	GetRoutingRules(context.Context, *GetRoutingRulesRequest) (*GetRoutingRulesResponse, error)
 	// SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
@@ -525,6 +540,9 @@ func (UnimplementedPlansServiceServer) CancelSubscription(context.Context, *Canc
 }
 func (UnimplementedPlansServiceServer) GetSubscription(context.Context, *GetSubscriptionRequest) (*GetSubscriptionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSubscription not implemented")
+}
+func (UnimplementedPlansServiceServer) ListSubscriptions(context.Context, *ListSubscriptionsRequest) (*ListSubscriptionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSubscriptions not implemented")
 }
 func (UnimplementedPlansServiceServer) GetRoutingRules(context.Context, *GetRoutingRulesRequest) (*GetRoutingRulesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRoutingRules not implemented")
@@ -859,6 +877,24 @@ func _PlansService_GetSubscription_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_ListSubscriptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSubscriptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListSubscriptions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListSubscriptions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListSubscriptions(ctx, req.(*ListSubscriptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_GetRoutingRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRoutingRulesRequest)
 	if err := dec(in); err != nil {
@@ -1170,6 +1206,10 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSubscription",
 			Handler:    _PlansService_GetSubscription_Handler,
+		},
+		{
+			MethodName: "ListSubscriptions",
+			Handler:    _PlansService_ListSubscriptions_Handler,
 		},
 		{
 			MethodName: "GetRoutingRules",

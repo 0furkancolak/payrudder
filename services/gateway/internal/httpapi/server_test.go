@@ -103,6 +103,15 @@ func (f *fakePlans) SetPaymentMethod(ctx context.Context, req *plansv1.SetPaymen
 	return &plansv1.SetPaymentMethodResponse{Customer: &plansv1.Customer{ExternalId: req.GetExternalId(), PaymentMethod: req.GetPaymentMethod()}}, nil
 }
 
+func (f *fakePlans) GetTenant(ctx context.Context, req *plansv1.GetTenantRequest) (*plansv1.GetTenantResponse, error) {
+	f.lastOperator = tenant.IsOperator(ctx)
+	if req.GetTenantId() == "00000000-0000-4000-8000-000000000000" {
+		return nil, status.Error(codes.NotFound, "no such tenant")
+	}
+	return &plansv1.GetTenantResponse{Tenant: &plansv1.Tenant{Id: req.GetTenantId(), Environment: plansv1.Environment_ENVIRONMENT_LIVE,
+		Tier: plansv1.TenantTier_TENANT_TIER_STANDARD, Timezone: "Europe/Istanbul"}}, nil
+}
+
 func (f *fakePlans) CreateAccount(ctx context.Context, req *plansv1.CreateAccountRequest) (*plansv1.CreateAccountResponse, error) {
 	f.lastOperator = tenant.IsOperator(ctx)
 	return &plansv1.CreateAccountResponse{Account: &plansv1.Account{Id: "a1", Name: req.GetName()}}, nil
@@ -243,5 +252,45 @@ func TestOperatorRoutes(t *testing.T) {
 	resp, m := do(t, ts, "POST", "/admin/v1/accounts", operatorToken, `{"name":"Acme"}`)
 	if resp.StatusCode != 201 || m["name"] != "Acme" || !f.lastOperator {
 		t.Fatalf("operator create: %d %v operator=%v", resp.StatusCode, m, f.lastOperator)
+	}
+}
+
+func TestOperatorActsAsATenant(t *testing.T) {
+	ts, f := newTestServer(t)
+	call := func(token, actAs string) int {
+		t.Helper()
+		req, _ := http.NewRequest("POST", ts.URL+"/v1/customers", strings.NewReader(`{"external_id":"cus_1","name":"Ada","email":"a@x.io"}`))
+		req.Header.Set("Authorization", "Bearer "+token)
+		if actAs != "" {
+			req.Header.Set("X-Quotify-Tenant", actAs)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+	if code := call(operatorToken, liveTenant.String()); code != 201 {
+		t.Fatalf("operator acting as a tenant: %d", code)
+	}
+	if f.lastTenant.ID != liveTenant || f.lastTenant.Environment != "live" || f.lastTenant.Timezone != "Europe/Istanbul" {
+		t.Errorf("plans-svc saw tenant %+v; the call is that tenant's", f.lastTenant)
+	}
+	if code := call(operatorToken, ""); code != 401 {
+		t.Errorf("the operator token alone is no tenant key: %d", code)
+	}
+	if code := call(operatorToken, "not-a-uuid"); code != 400 {
+		t.Errorf("bad tenant id: %d", code)
+	}
+	if code := call(operatorToken, "00000000-0000-4000-8000-000000000000"); code != 404 {
+		t.Errorf("unknown tenant: %d", code)
+	}
+	// A tenant's own key cannot name another tenant: the header is ignored without the operator token.
+	if code := call("live-key", sandboxTenant.String()); code != 201 || f.lastTenant.ID != liveTenant {
+		t.Errorf("a key naming another tenant: %d, plans-svc saw %v", code, f.lastTenant.ID)
+	}
+	if code := call("wrong-token", liveTenant.String()); code != 401 {
+		t.Errorf("an unknown token naming a tenant: %d", code)
 	}
 }
