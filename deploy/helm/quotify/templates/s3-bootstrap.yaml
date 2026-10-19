@@ -1,0 +1,54 @@
+{{- if .Values.s3.bootstrap.enabled }}
+{{- /* Creates the buckets and the sandbox expiry rule on the S3 endpoint. Switching to an external S3 is s3.endpoint plus
+s3.bootstrap.enabled=false (or an admin key here, if the bucket should still be created by the release). */}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-s3-bootstrap
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+stringData:
+  accessKey: {{ .Values.s3.accessKey | quote }}
+  secretKey: {{ .Values.s3.secretKey | quote }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-s3-bootstrap
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 30
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: {{ .Values.s3.bootstrap.image }}
+          env:
+            - { name: MC_CONFIG_DIR, value: /tmp/mc }
+            - { name: S3_ENDPOINT, value: {{ .Values.s3.endpoint | quote }} }
+            - name: S3_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Release.Name }}-s3-bootstrap, key: accessKey } }
+            - name: S3_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Release.Name }}-s3-bootstrap, key: secretKey } }
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              mc alias set target "$S3_ENDPOINT" "$S3_ACCESS_KEY" "$S3_SECRET_KEY"
+              for b in {{ .Values.s3.invoicesBucket }} {{ .Values.s3.assetsBucket }}; do
+                mc mb --ignore-existing "target/$b"
+                rules=$(mc ilm rule ls --json "target/$b" 2>/dev/null || true)
+                if [[ $rules != *environment* ]]; then
+                  mc ilm rule add --expire-days 30 --tags 'environment=sandbox' "target/$b"
+                fi
+              done
+              echo buckets ready
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+{{- end }}

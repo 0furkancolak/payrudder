@@ -28,6 +28,9 @@ type Base struct {
 	LogLevel     string      `env:"QUOTIFY_LOG_LEVEL" envDefault:"info"`
 	MetricsAddr  string      `env:"QUOTIFY_METRICS_ADDR" envDefault:":9100"`
 	OTLPEndpoint string      `env:"QUOTIFY_OTLP_ENDPOINT"` // empty disables trace export
+	// MigrateOnly makes a service that migrates on start (QUOTIFY_MIGRATE_ON_START) exit once the migrations are applied.
+	// Kubernetes runs it as a pre-install/pre-upgrade Job with the service's own image.
+	MigrateOnly bool `env:"QUOTIFY_MIGRATE_ONLY" envDefault:"false"`
 }
 
 // Validate checks the shared settings.

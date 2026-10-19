@@ -89,6 +89,10 @@ func run() error {
 			return err
 		}
 	}
+	if cfg.MigrateOnly {
+		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		return nil
+	}
 	pool, err := pgxx.NewPool(ctx, cfg.PGSystemDSN)
 	if err != nil {
 		return err

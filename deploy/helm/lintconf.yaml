@@ -1,0 +1,20 @@
+# yamllint rules for the values files. The flow-style maps ({ cpu: 25m, memory: 24Mi }) keep the values readable, and comments
+# are prose, so neither braces spacing, line length nor comment style is policed; real mistakes (duplicate keys, bad
+# indentation, trailing spaces) still are.
+rules:
+  braces: disable
+  brackets: disable
+  colons: { max-spaces-before: 0, max-spaces-after: -1 }
+  commas: disable
+  comments: disable
+  comments-indentation: disable
+  document-start: disable
+  empty-lines: { max: 2, max-start: 0, max-end: 1 }
+  hyphens: { max-spaces-after: 1 }
+  indentation: { spaces: consistent, indent-sequences: whatever, check-multi-line-strings: false }
+  key-duplicates: enable
+  line-length: disable
+  new-line-at-end-of-file: enable
+  new-lines: { type: unix }
+  trailing-spaces: enable
+  truthy: disable

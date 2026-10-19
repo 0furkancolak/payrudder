@@ -1,0 +1,6 @@
+apiVersion: v2
+name: quotify-infra
+description: Infrastructure for Quotify on Kubernetes - Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO and Mailpit - as plain StatefulSets. Install it before the quotify chart; each component can be switched off and replaced by a managed service (the quotify chart only needs addresses).
+type: application
+version: 0.1.0
+appVersion: "dev"

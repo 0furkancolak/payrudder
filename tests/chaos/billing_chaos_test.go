@@ -5,7 +5,6 @@ package chaos
 import (
 	"fmt"
 	"net/url"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -87,8 +86,8 @@ func TestMonthCloseSurvivesBrokerRestart(t *testing.T) {
 		}
 		if !restarted && len(invs) > 0 && done < customers {
 			restarted = true
-			if out, err := exec.Command("docker", "restart", "-t", "1", "quotify-rabbitmq-1").CombinedOutput(); err != nil {
-				t.Fatalf("restart rabbitmq: %v: %s", err, out)
+			if err := newPlatform().restartAll("rabbitmq"); err != nil {
+				t.Fatalf("restart rabbitmq: %v", err)
 			}
 		}
 		if len(invs) == customers && done == customers {

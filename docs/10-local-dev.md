@@ -101,8 +101,9 @@ PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live
 | `make e2e` | Run `tests/e2e` against the compose stack |
 | `make chaos N=100000` | Run the correctness suite with N events: builds ingest-svc and aggregator with the `chaos` tag, arms the fault hooks, drives the public API and asserts exact totals (`tests/chaos`) |
 | `make load SCENARIO=ingest_steady` | Run a k6 scenario |
-| `make kind-up` / `make helm-install` | Phase 10. `HELM_VALUES=values-kind.yaml` (default) or `values-sandbox.yaml` |
-| `make demo-k8s` | `make demo` against the kind cluster (port-forwarded gateway) |
+| `make kind-up` / `make kind-images` / `make helm-install` | A kind cluster, the service images loaded into it, and the two Helm releases ([12-kubernetes.md](12-kubernetes.md)). `KIND_PROFILE=kind-min KIND_CONFIG=deploy/kind/cluster-min.yaml` for a small Docker VM; `HELM_ARGS="-f deploy/helm/quotify/values-sandbox.yaml"` for the sandbox-only profile |
+| `make e2e-kind` / `make netpol-test` | The e2e suite and the NetworkPolicy check against the kind cluster |
+| `make helm-lint` | `helm lint` + `kubeconform` for every values file of both charts |
 | `make clean` | Remove volumes in `.data/` |
 
 ## Typical loop

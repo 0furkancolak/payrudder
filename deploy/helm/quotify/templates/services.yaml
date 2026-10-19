@@ -1,0 +1,142 @@
+{{- range $name, $svc := .Values.services }}
+{{- if include "quotify.enabled" $svc }}
+{{- $replicas := int (default $.Values.defaults.replicas $svc.replicas) }}
+{{- $resources := default $.Values.defaults.resources $svc.resources }}
+{{- $ctx := dict "root" $ "name" $name "svc" $svc }}
+{{- $secretEnv := include "quotify.secretEnv" (dict "root" $ "svc" $svc "migrate" false) | fromJson }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "quotify.labels" $ctx | nindent 4 }}
+spec:
+  {{- if not (and $svc.hpa $svc.hpa.enabled) }}
+  replicas: {{ $replicas }}
+  {{- end }}
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels:
+      {{- include "quotify.selector" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "quotify.labels" $ctx | nindent 8 }}
+      annotations:
+        {{- /* A changed secret or setting rolls the pods. */}}
+        quotify.io/config-checksum: {{ printf "%s%s" (toJson $svc.env) (toJson $secretEnv) | sha256sum | trunc 16 | quote }}
+    spec:
+      terminationGracePeriodSeconds: {{ add $.Values.global.drainSeconds 30 }}
+      securityContext: { runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532, seccompProfile: { type: RuntimeDefault } }
+      {{- if and $.Values.global.topologySpread (gt $replicas 1) }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "quotify.selector" $ctx | nindent 14 }}
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: {{ include "quotify.image" (dict "root" $ "name" $name "svc" $svc) }}
+          imagePullPolicy: {{ $.Values.global.imagePullPolicy }}
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          env:
+            {{- include "quotify.baseEnv" $ctx | nindent 12 }}
+            {{- include "quotify.usesEnv" $ctx | nindent 12 }}
+            {{- include "quotify.staticEnv" $ctx | nindent 12 }}
+            - { name: QUOTIFY_MIGRATE_ON_START, value: "false" }
+          {{- if $secretEnv }}
+          envFrom:
+            - secretRef: { name: {{ $.Release.Name }}-{{ $name }}-env }
+          {{- end }}
+          lifecycle:
+            # Keep serving until the pod's removal has reached the clients: CoreDNS caches the headless Service's answer for 30 s, and
+            # gRPC clients resolve through it. Terminating earlier would leave them dialing a dead address (see docs/12-kubernetes.md).
+            preStop: { sleep: { seconds: {{ $.Values.global.drainSeconds }} } }
+          ports:
+            {{- if $svc.port }}
+            - { name: {{ eq $svc.kind "grpc" | ternary "grpc" "http" }}, containerPort: {{ $svc.port }} }
+            {{- end }}
+            - { name: metrics, containerPort: {{ $svc.metricsPort }} }
+          livenessProbe:
+            httpGet: { path: /healthz, port: {{ default "metrics" $svc.probePort }} }
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: {{ default "/readyz" $svc.readyPath }}, port: {{ default "metrics" $svc.probePort }} }
+            periodSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet: { path: /healthz, port: {{ default "metrics" $svc.probePort }} }
+            periodSeconds: 2
+            failureThreshold: 60
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          resources:
+            {{- toYaml $resources | nindent 12 }}
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 256Mi } }
+{{- if $svc.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "quotify.labels" $ctx | nindent 4 }}
+spec:
+  {{- if eq $svc.kind "grpc" }}
+  {{- /* Headless: the DNS name resolves to every pod and the gRPC client balances round-robin over them. */}}
+  clusterIP: None
+  {{- else if $svc.nodePort }}
+  type: NodePort
+  {{- end }}
+  selector:
+    {{- include "quotify.selector" $ctx | nindent 4 }}
+  ports:
+    - name: {{ eq $svc.kind "grpc" | ternary "grpc" "http" }}
+      port: {{ $svc.port }}
+      targetPort: {{ eq $svc.kind "grpc" | ternary "grpc" "http" }}
+      {{- if and $svc.nodePort (ne $svc.kind "grpc") }}
+      nodePort: {{ $svc.nodePort }}
+      {{- end }}
+    - { name: metrics, port: {{ $svc.metricsPort }}, targetPort: metrics }
+{{- end }}
+{{- if gt $replicas 1 }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "quotify.labels" $ctx | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "quotify.selector" $ctx | nindent 6 }}
+{{- end }}
+{{- if and $svc.hpa $svc.hpa.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "quotify.labels" $ctx | nindent 4 }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ $name }} }
+  minReplicas: {{ $replicas }}
+  maxReplicas: {{ $svc.hpa.max }}
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: {{ $svc.hpa.cpu }} } }
+{{- end }}
+{{- end }}
+{{- end }}

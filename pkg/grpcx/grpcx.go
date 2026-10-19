@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/resolver/dns"
 	"google.golang.org/grpc/status"
 )
 
@@ -75,6 +76,12 @@ func streamRecovery(log *slog.Logger) grpc.StreamServerInterceptor {
 		}()
 		return handler(srv, ss)
 	}
+}
+
+func init() {
+	// grpc-go's DNS resolver re-resolves at most every 30 s after a connection fails. Behind a headless Kubernetes Service that
+	// leaves a client talking to pods a rollout has replaced for half a minute; two seconds bounds it by the DNS cache instead.
+	dns.SetMinResolutionInterval(2 * time.Second)
 }
 
 // NewClient creates a client connection with tracing, round-robin balancing and DefaultClientTimeout.

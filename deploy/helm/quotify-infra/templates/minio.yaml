@@ -1,0 +1,88 @@
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "minio") | nindent 4 }}
+stringData:
+  MINIO_ROOT_USER: {{ .Values.minio.accessKey | quote }}
+  MINIO_ROOT_PASSWORD: {{ .Values.minio.secretKey | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "minio") | nindent 4 }}
+spec:
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "minio") | nindent 4 }}
+  ports:
+    - { name: s3, port: 9000, targetPort: s3 }
+    - { name: console, port: 9001, targetPort: console }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "minio") | nindent 4 }}
+spec:
+  serviceName: minio
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "infra.selector" (dict "root" $ "name" "minio") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infra.labels" (dict "root" $ "name" "minio") | nindent 8 }}
+    spec:
+      containers:
+        - name: minio
+          image: {{ .Values.minio.image }}
+          args: ["server", "/data", "--address", ":9000", "--console-address", ":9001"]
+          envFrom:
+            - secretRef: { name: minio }
+          env:
+            # MinIO's equivalent of an AbortIncompleteMultipartUpload lifecycle rule (assets-svc backstop).
+            - { name: MINIO_API_STALE_UPLOADS_EXPIRY, value: 48h }
+            - { name: MINIO_API_STALE_UPLOADS_CLEANUP_INTERVAL, value: 6h }
+          ports:
+            - { name: s3, containerPort: 9000 }
+            - { name: console, containerPort: 9001 }
+          readinessProbe:
+            httpGet: { path: /minio/health/ready, port: s3 }
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            httpGet: { path: /minio/health/live, port: s3 }
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            - { name: data, mountPath: /data }
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- include "infra.storageClass" $ | nindent 8 }}
+        resources: { requests: { storage: {{ .Values.minio.storage }} } }
+{{- if .Values.minio.external.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-external
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "minio") | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "minio") | nindent 4 }}
+  ports:
+    - { name: s3, port: 9000, targetPort: s3, nodePort: {{ .Values.minio.external.nodePort }} }
+{{- end }}
+{{- end }}

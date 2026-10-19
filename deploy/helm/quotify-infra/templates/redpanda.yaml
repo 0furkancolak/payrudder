@@ -1,0 +1,114 @@
+{{- if .Values.redpanda.enabled }}
+{{- $r := .Values.redpanda }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: redpanda
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "redpanda") | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "redpanda") | nindent 4 }}
+  ports:
+    - { name: kafka, port: 9092 }
+    - { name: rpc, port: 33145 }
+    - { name: admin, port: 9644 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redpanda
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "redpanda") | nindent 4 }}
+spec:
+  serviceName: redpanda
+  replicas: {{ $r.replicas }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "infra.selector" (dict "root" $ "name" "redpanda") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infra.labels" (dict "root" $ "name" "redpanda") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 60
+      {{- if gt (int $r.replicas) 1 }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "infra.selector" (dict "root" $ "name" "redpanda") | nindent 14 }}
+      {{- end }}
+      containers:
+        - name: redpanda
+          image: {{ $r.image }}
+          env:
+            - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
+            - { name: NAMESPACE, valueFrom: { fieldRef: { fieldPath: metadata.namespace } } }
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              ID=${POD_NAME##*-}
+              FQDN=$POD_NAME.redpanda.$NAMESPACE.svc.cluster.local
+              args=(--mode=dev-container --smp=1 --memory={{ $r.memory }} --reserve-memory=0M --overprovisioned
+                --node-id=$ID --rpc-addr=0.0.0.0:33145 --advertise-rpc-addr=$FQDN:33145
+                --set redpanda.auto_create_topics_enabled=false
+                --set redpanda.default_topic_replications={{ $r.replicationFactor }})
+              {{- if $r.external.enabled }}
+              args+=(--kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:9093
+                --advertise-kafka-addr=internal://$FQDN:9092,external://localhost:$(({{ $r.external.basePort }} + ID)))
+              {{- else }}
+              args+=(--kafka-addr=internal://0.0.0.0:9092 --advertise-kafka-addr=internal://$FQDN:9092)
+              {{- end }}
+              if [ "$ID" != 0 ]; then
+                args+=(--seeds=redpanda-0.redpanda.$NAMESPACE.svc.cluster.local:33145)
+              fi
+              exec rpk redpanda start "${args[@]}"
+          ports:
+            - { name: kafka, containerPort: 9092 }
+            - { name: external, containerPort: 9093 }
+            - { name: rpc, containerPort: 33145 }
+            - { name: admin, containerPort: 9644 }
+          readinessProbe:
+            exec: { command: ["/bin/bash", "-c", "rpk cluster health | grep -E 'Healthy:.+true'"] }
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /v1/status/ready, port: admin }
+            periodSeconds: 10
+            failureThreshold: 12
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/redpanda/data }
+          resources:
+            {{- toYaml $r.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- include "infra.storageClass" $ | nindent 8 }}
+        resources: { requests: { storage: {{ $r.storage }} } }
+{{- if $r.external.enabled }}
+{{- range $i := until (int $r.replicas) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redpanda-external-{{ $i }}
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "redpanda") | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "redpanda") | nindent 4 }}
+    statefulset.kubernetes.io/pod-name: redpanda-{{ $i }}
+  ports:
+    - { name: external, port: 9093, targetPort: external, nodePort: {{ add $r.external.basePort $i }} }
+{{- end }}
+{{- end }}
+{{- end }}

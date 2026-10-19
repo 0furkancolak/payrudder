@@ -1,0 +1,44 @@
+{{- if and .Values.redpanda.enabled .Values.topics.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redpanda-topics
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+data:
+  topics.sh: |
+    {{- .Files.Get "files/topics.sh" | nindent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-topics
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 30
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: rpk
+          image: {{ .Values.redpanda.image }}
+          env:
+            - { name: RF, value: {{ .Values.redpanda.replicationFactor | quote }} }
+            - { name: RPK_BROKERS, value: "redpanda:9092" }
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              until rpk cluster info >/dev/null 2>&1; do echo waiting for the brokers; sleep 3; done
+              sh /scripts/topics.sh
+          volumeMounts:
+            - { name: scripts, mountPath: /scripts }
+      volumes:
+        - name: scripts
+          configMap: { name: redpanda-topics }
+{{- end }}

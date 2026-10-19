@@ -18,6 +18,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [09-testing-strategy.md](09-testing-strategy.md) | Unit → chaos; the 1M-event correctness test |
 | [10-local-dev.md](10-local-dev.md) | Docker Compose stack, ports, make targets |
 | [11-repo-layout.md](11-repo-layout.md) | Planned monorepo structure |
+| [12-kubernetes.md](12-kubernetes.md) | Running Quotify on kind with Helm: charts, profiles, hooks, network policies, what is not covered |
 
 ## Service specifications
 

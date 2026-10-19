@@ -1,0 +1,91 @@
+# Single-replica defaults (a laptop). values-ha.yaml raises Redpanda and RabbitMQ to three nodes.
+
+storageClass: ""            # empty: the cluster default
+
+postgres:
+  enabled: true
+  image: postgres:17.11-alpine
+  storage: 2Gi
+  adminPassword: postgres_local
+  external:
+    enabled: false           # NodePort 31432, for the chaos suite and psql from the host (kind maps it to 15432)
+    nodePort: 31432
+  # Role passwords: "<role>_local" unless listed here (mirror them in the quotify chart's postgres.passwords).
+  passwords: {}
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+
+redpanda:
+  enabled: true
+  image: redpandadata/redpanda:v26.2.5
+  replicas: 1
+  replicationFactor: 1       # topics are created with this RF (use 3 with three brokers)
+  storage: 2Gi
+  memory: 512M               # --memory per broker
+  external:                  # NodePorts 31092.. advertised as localhost:<port> (kind maps them to the host)
+    enabled: false
+    basePort: 31092
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 768Mi }
+
+rabbitmq:
+  enabled: true
+  image: rabbitmq:4.2.9-management-alpine
+  replicas: 1
+  storage: 1Gi
+  user: quotify
+  password: quotify_local
+  erlangCookie: quotify-local-cookie-change-me
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { memory: 512Mi }
+
+redis:
+  enabled: true
+  image: redis:7.4.11-alpine
+  storage: 256Mi
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+clickhouse:
+  enabled: true
+  image: clickhouse/clickhouse-server:25.8.33.6-alpine
+  storage: 2Gi
+  database: quotify
+  user: quotify
+  password: quotify_local
+  external:
+    enabled: false           # NodePort 31123 (HTTP), for the A8 check of the chaos suite (kind maps it to 8123)
+    nodePort: 31123
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+minio:
+  enabled: true              # false: use an external S3 and set s3.endpoint in the quotify chart
+  image: cgr.dev/chainguard/minio@sha256:c93745c56fccdaf0e5dcb88999a96a65a136428beb045ef5d546255a80d747a7
+  storage: 5Gi
+  accessKey: quotify
+  secretKey: quotify_local
+  external:
+    enabled: false           # NodePort 31900 (S3 API), advertised to clients as the public endpoint
+    nodePort: 31900
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 384Mi }
+
+mailpit:
+  enabled: true
+  image: axllent/mailpit:v1.31.6
+  external:
+    enabled: false           # NodePort 31025 (web/API)
+    nodePort: 31025
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 96Mi }
+
+topics:
+  enabled: true              # post-install Job (rpk): the topics of docs/04-messaging.md

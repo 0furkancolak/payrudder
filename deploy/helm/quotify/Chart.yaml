@@ -1,0 +1,6 @@
+apiVersion: v2
+name: quotify
+description: Quotify services (gateway, plans, ingest, aggregator, limits, billing, analytics, assets, workers, mock-psp). Infrastructure lives in the quotify-infra chart, so the pre-install migration Jobs find their databases.
+type: application
+version: 0.1.0
+appVersion: "dev"
