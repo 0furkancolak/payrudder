@@ -68,10 +68,12 @@ quotify/
 │   ├── grafana/{dashboards,provisioning}/
 │   ├── prometheus/{prometheus.yml,rules/}
 │   ├── otel/collector.yaml
-│   ├── kind/cluster.yaml
-│   └── helm/quotify/               # umbrella chart, one subchart per service (incl. mock-psp)
-│       ├── values-kind.yaml        # sandbox + live tenants, in-cluster MinIO
-│       └── values-sandbox.yaml     # sandbox-only deployment (namespace quotify-sandbox)
+│   ├── kind/{cluster,cluster-min}.yaml, netpol-test.sh
+│   └── helm/
+│       ├── quotify/                # the services: one template loops over values `services` (incl. mock-psp)
+│       │   ├── values-kind.yaml, values-kind-min.yaml
+│       │   └── values-sandbox.yaml # sandbox-only deployment
+│       └── quotify-infra/          # Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO, Mailpit (replaceable by managed services)
 ├── .github/workflows/              # ci.yml, e2e.yml, nightly.yml, release.yml
 └── docs/
 ```

@@ -97,6 +97,10 @@ func run() error {
 			return merr
 		}
 	}
+	if cfg.MigrateOnly {
+		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		return nil
+	}
 	producer, err := kafkax.NewProducer(cfg.KafkaBrokers)
 	if err != nil {
 		return err

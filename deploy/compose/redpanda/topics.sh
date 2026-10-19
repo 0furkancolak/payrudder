@@ -1,5 +1,5 @@
 #!/bin/sh
-# Creates the Kafka topics of docs/04-messaging.md#kafka-topics with local retention (RF 1). Idempotent.
+# Creates the Kafka topics of docs/04-messaging.md#kafka-topics with local retention (RF 1, or $RF). Idempotent.
 # Runs inside the redpanda container:  docker compose exec -T redpanda sh -s < deploy/compose/redpanda/topics.sh
 set -eu
 
@@ -13,7 +13,7 @@ create() {
   else
     set -- -c cleanup.policy=delete -c "retention.ms=$((policy * DAY))"
   fi
-  out=$(rpk topic create "$name" -p "$partitions" -r 1 "$@" 2>&1) || true
+  out=$(rpk topic create "$name" -p "$partitions" -r "${RF:-1}" "$@" 2>&1) || true
   case "$out" in
     *TOPIC_ALREADY_EXISTS*) echo "exists   $name" ;;
     *OK*) echo "created  $name" ;;

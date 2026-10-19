@@ -1,0 +1,57 @@
+{{- if .Values.mailpit.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "mailpit") | nindent 4 }}
+spec:
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "mailpit") | nindent 4 }}
+  ports:
+    - { name: smtp, port: 1025, targetPort: smtp }
+    - { name: http, port: 8025, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "mailpit") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "infra.selector" (dict "root" $ "name" "mailpit") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infra.labels" (dict "root" $ "name" "mailpit") | nindent 8 }}
+    spec:
+      containers:
+        - name: mailpit
+          image: {{ .Values.mailpit.image }}
+          ports:
+            - { name: smtp, containerPort: 1025 }
+            - { name: http, containerPort: 8025 }
+          readinessProbe:
+            exec: { command: ["/mailpit", "readyz"] }
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.mailpit.resources | nindent 12 }}
+{{- if .Values.mailpit.external.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit-external
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "mailpit") | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "mailpit") | nindent 4 }}
+  ports:
+    - { name: http, port: 8025, targetPort: http, nodePort: {{ .Values.mailpit.external.nodePort }} }
+{{- end }}
+{{- end }}

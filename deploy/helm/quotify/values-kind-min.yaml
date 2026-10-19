@@ -1,0 +1,11 @@
+# One replica of everything (a 2-3 GiB Docker VM): enough to check that the chart installs and the e2e tests pass.
+global:
+  environment: kind
+  topologySpread: false
+defaults:
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 160Mi }
+services:
+  mockpsp:
+    nodePort: 30090

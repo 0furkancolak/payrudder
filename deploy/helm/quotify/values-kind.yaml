@@ -1,0 +1,23 @@
+# kind with three workers (deploy/kind/cluster.yaml): two replicas of the services that carry load, HPAs on the gateway and
+# ingest-svc, a NodePort for the gateway and mock-psp so that the host reaches them on 8000 and 8090.
+global:
+  environment: kind
+defaults:
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { memory: 192Mi }
+services:
+  gateway:
+    replicas: 2
+    hpa: { enabled: true, max: 4, cpu: 70 }
+  ingest-svc:
+    replicas: 2
+    hpa: { enabled: true, max: 4, cpu: 70 }
+  aggregator:
+    replicas: 2
+  limits-svc:
+    replicas: 2
+  plans-svc:
+    replicas: 2
+  mockpsp:
+    nodePort: 30090

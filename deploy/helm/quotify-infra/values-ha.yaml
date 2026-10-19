@@ -1,0 +1,6 @@
+# Three-node Redpanda and RabbitMQ (CI and bigger machines).
+redpanda:
+  replicas: 3
+  replicationFactor: 3
+rabbitmq:
+  replicas: 3

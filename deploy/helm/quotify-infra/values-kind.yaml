@@ -1,0 +1,7 @@
+# kind: Redpanda, MinIO and Mailpit are reachable from the host through the NodePorts mapped in deploy/kind/cluster*.yaml.
+redpanda:
+  external: { enabled: true, basePort: 31092 }
+minio:
+  external: { enabled: true, nodePort: 31900 }
+mailpit:
+  external: { enabled: true, nodePort: 31025 }

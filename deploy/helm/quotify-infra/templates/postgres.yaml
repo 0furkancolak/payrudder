@@ -1,0 +1,105 @@
+{{- if .Values.postgres.enabled }}
+{{- $roles := list "plans" "ingest" "aggregator" "billing" "payments" "notifier" "assets" "mockpsp" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "postgres") | nindent 4 }}
+stringData:
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: {{ .Values.postgres.adminPassword | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "postgres") | nindent 4 }}
+data:
+  # One database per service and three roles each (docs/06-multi-tenancy.md): migrator owns the schema, app is subject to
+  # RLS, system has BYPASSRLS.
+  01-databases.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {{- range $svc := $roles }}
+    {{- $mig := include "infra.pw" (dict "root" $ "role" (printf "%s_migrator" $svc)) }}
+    {{- $app := include "infra.pw" (dict "root" $ "role" (printf "%s_app" $svc)) }}
+    {{- $sys := include "infra.pw" (dict "root" $ "role" (printf "%s_system" $svc)) }}
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<-'SQL'
+    	CREATE ROLE {{ $svc }}_migrator LOGIN PASSWORD '{{ $mig }}';
+    	CREATE ROLE {{ $svc }}_app      LOGIN PASSWORD '{{ $app }}';
+    	CREATE ROLE {{ $svc }}_system   LOGIN PASSWORD '{{ $sys }}' BYPASSRLS;
+    	CREATE DATABASE {{ $svc }}_db OWNER {{ $svc }}_migrator;
+    	REVOKE ALL ON DATABASE {{ $svc }}_db FROM PUBLIC;
+    	GRANT CONNECT ON DATABASE {{ $svc }}_db TO {{ $svc }}_migrator, {{ $svc }}_app, {{ $svc }}_system;
+    SQL
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname {{ $svc }}_db <<-'SQL'
+    	REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+    	ALTER SCHEMA public OWNER TO {{ $svc }}_migrator;
+    	GRANT USAGE ON SCHEMA public TO {{ $svc }}_app, {{ $svc }}_system;
+    SQL
+    {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "postgres") | nindent 4 }}
+spec:
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "postgres") | nindent 4 }}
+  ports:
+    - { name: postgres, port: 5432, targetPort: postgres }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "postgres") | nindent 4 }}
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "infra.selector" (dict "root" $ "name" "postgres") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infra.labels" (dict "root" $ "name" "postgres") | nindent 8 }}
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image }}
+          args: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=200", "-c", "wal_level=logical"]
+          envFrom:
+            - secretRef: { name: postgres }
+          env:
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports:
+            - { name: postgres, containerPort: 5432 }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "postgres", "-d", "assets_db"] }
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            exec: { command: ["pg_isready", "-U", "postgres"] }
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: initdb, mountPath: /docker-entrypoint-initdb.d }
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+      volumes:
+        - name: initdb
+          configMap: { name: postgres-initdb, defaultMode: 0555 }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- include "infra.storageClass" $ | nindent 8 }}
+        resources: { requests: { storage: {{ .Values.postgres.storage }} } }
+{{- end }}

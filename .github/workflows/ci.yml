@@ -111,6 +111,44 @@ jobs:
       - if: always()
         run: make down
 
+  helm:
+    name: helm charts (lint, kubeconform, render tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - run: make helm-lint
+      - name: Render tests (sandbox has no live provider, external S3 has no MinIO, NetworkPolicies, migration hooks)
+        run: cd tests && go test -count=1 ./helm/
+      - uses: helm/chart-testing-action@v2.7.0
+      - name: ct lint
+        run: ct lint --chart-dirs deploy/helm --charts deploy/helm/quotify,deploy/helm/quotify-infra --validate-maintainers=false --check-version-increment=false
+
+  kind:
+    name: kubernetes (kind, 3 workers, e2e + NetworkPolicy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - run: make kind-up
+      - run: make kind-images
+      - run: make helm-install
+      - run: kubectl --context kind-quotify -n quotify get pods -o wide
+      - run: make netpol-test
+      - run: make e2e-kind
+      - if: failure()
+        run: |
+          kubectl --context kind-quotify -n quotify get pods -o wide || true
+          kubectl --context kind-quotify -n quotify get events --sort-by=.lastTimestamp | tail -60 || true
+          for p in $(kubectl --context kind-quotify -n quotify get pods -o name); do echo "=== $p"; kubectl --context kind-quotify -n quotify logs $p --tail=40 --all-containers || true; done
+
   chaos:
     name: correctness (100k events)
     runs-on: ubuntu-latest

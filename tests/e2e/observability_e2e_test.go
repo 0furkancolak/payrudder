@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +20,14 @@ var (
 	tempoURL      = envOr("QUOTIFY_TEMPO_URL", "http://localhost:3200")
 	prometheusURL = envOr("QUOTIFY_PROMETHEUS_URL", "http://localhost:9090")
 )
+
+// skipWithoutObservability skips a test on a stack that has no Tempo and Prometheus (the kind install has none yet).
+func skipWithoutObservability(t *testing.T) {
+	t.Helper()
+	if os.Getenv("QUOTIFY_SKIP_OBSERVABILITY") == "1" {
+		t.Skip("QUOTIFY_SKIP_OBSERVABILITY=1: no Tempo and Prometheus on this stack")
+	}
+}
 
 func getBytes(u string) (int, []byte) {
 	resp, err := httpc.Get(u)
@@ -89,6 +98,7 @@ func waitTrace(t *testing.T, traceID string, within time.Duration, ok func(servi
 // expects that one trace id to show up in the gateway, ingest-svc (request, relay), aggregator, limits-svc and
 // analytics-svc: HTTP → gRPC → Postgres outbox → Kafka → every consumer.
 func TestTraceFollowsAnEventThroughThePipeline(t *testing.T) {
+	skipWithoutObservability(t)
 	a := newAccount(t, "TENANT_TIER_STANDARD")
 	k := a.sandboxKey
 	for _, step := range []struct {
@@ -141,6 +151,7 @@ func TestTraceFollowsAnEventThroughThePipeline(t *testing.T) {
 // TestSagaTraceAndMetrics runs a sandbox invoice and checks that one trace shows the saga hop by hop (render, charge, the
 // replies), then that Prometheus has the metric names docs/08-observability.md promises and no forbidden labels.
 func TestSagaTraceAndMetrics(t *testing.T) {
+	skipWithoutObservability(t)
 	a := newAccount(t, "TENANT_TIER_STANDARD")
 	k := a.sandboxKey
 	setupSandbox(t, a, map[string]string{"cus_e2e": "pm_sandbox_success"})

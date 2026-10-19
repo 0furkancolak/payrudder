@@ -1,0 +1,84 @@
+{{- if .Values.clickhouse.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: clickhouse
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "clickhouse") | nindent 4 }}
+stringData:
+  CLICKHOUSE_DB: {{ .Values.clickhouse.database | quote }}
+  CLICKHOUSE_USER: {{ .Values.clickhouse.user | quote }}
+  CLICKHOUSE_PASSWORD: {{ .Values.clickhouse.password | quote }}
+  CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-config
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "clickhouse") | nindent 4 }}
+data:
+  low-memory.xml: |
+    {{- .Files.Get "files/low-memory.xml" | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "clickhouse") | nindent 4 }}
+spec:
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "clickhouse") | nindent 4 }}
+  ports:
+    - { name: native, port: 9000, targetPort: native }
+    - { name: http, port: 8123, targetPort: http }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: clickhouse
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "clickhouse") | nindent 4 }}
+spec:
+  serviceName: clickhouse
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "infra.selector" (dict "root" $ "name" "clickhouse") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infra.labels" (dict "root" $ "name" "clickhouse") | nindent 8 }}
+    spec:
+      containers:
+        - name: clickhouse
+          image: {{ .Values.clickhouse.image }}
+          envFrom:
+            - secretRef: { name: clickhouse }
+          ports:
+            - { name: native, containerPort: 9000 }
+            - { name: http, containerPort: 8123 }
+          readinessProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/clickhouse }
+            - { name: config, mountPath: /etc/clickhouse-server/config.d/low-memory.xml, subPath: low-memory.xml }
+          resources:
+            {{- toYaml .Values.clickhouse.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap: { name: clickhouse-config }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- include "infra.storageClass" $ | nindent 8 }}
+        resources: { requests: { storage: {{ .Values.clickhouse.storage }} } }
+{{- end }}
