@@ -285,7 +285,6 @@ func TestFactoryAndCapabilities(t *testing.T) {
 	if _, err := Factory([]byte(`{`)); err == nil {
 		t.Error("garbage settings must fail")
 	}
-	var _ payments.Provider = p
 }
 
 func TestNotifier(t *testing.T) {
