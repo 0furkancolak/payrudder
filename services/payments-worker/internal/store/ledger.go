@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -89,4 +91,34 @@ func (l Ledger) Outcomes(ctx context.Context, provider, kind, ref string) (int, 
 	var n int
 	err := l.DB.QueryRow(ctx, `SELECT count(DISTINCT status) FROM payment_ledger WHERE provider = $1 AND kind = $2 AND provider_ref = $3`, provider, kind, ref).Scan(&n)
 	return n, err
+}
+
+// Fact is a final outcome the ledger holds for a charge.
+type Fact struct {
+	Status      string // succeeded or declined
+	ProviderRef string
+	Detail      string
+}
+
+// ChargeFact returns the final outcome recorded for the charge made under an idempotency key, if any. A success wins over a decline when
+// both are recorded (a notification that later overruled the first).
+func (l Ledger) ChargeFact(ctx context.Context, key string) (Fact, bool, error) {
+	var f Fact
+	var ref, detail *string
+	err := l.DB.QueryRow(ctx, `SELECT status, provider_ref, detail FROM payment_ledger
+		WHERE kind = 'charge' AND idempotency_key = $1 AND status IN ('succeeded','declined')
+		ORDER BY (status = 'succeeded') DESC, id DESC LIMIT 1`, key).Scan(&f.Status, &ref, &detail)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Fact{}, false, nil
+		}
+		return Fact{}, false, err
+	}
+	if ref != nil {
+		f.ProviderRef = *ref
+	}
+	if detail != nil {
+		f.Detail = *detail
+	}
+	return f, true, nil
 }

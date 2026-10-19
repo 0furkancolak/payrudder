@@ -60,3 +60,21 @@ func (s *Server) paymentLedger(w http.ResponseWriter, r *http.Request) {
 		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/ledger"
 	})(w, r)
 }
+
+func (s *Server) tenantWebhook(w http.ResponseWriter, r *http.Request) {
+	s.paymentsProxy(func(r *http.Request) string {
+		return "/webhooks/" + url.PathEscape(r.PathValue("provider")) + "/" + url.PathEscape(r.PathValue("tenant_id")) + "/" + url.PathEscape(r.PathValue("environment"))
+	})(w, r)
+}
+
+func (s *Server) providerSubscriptions(w http.ResponseWriter, r *http.Request) {
+	s.paymentsProxy(func(r *http.Request) string {
+		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/provider-subscriptions"
+	})(w, r)
+}
+
+func (s *Server) providerCheckout(w http.ResponseWriter, r *http.Request) {
+	s.paymentsProxy(func(r *http.Request) string {
+		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/checkouts"
+	})(w, r)
+}

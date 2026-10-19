@@ -47,10 +47,12 @@ type Snapshot struct {
 	CustomerName       string `json:"customer_name"`
 	CustomerEmail      string `json:"customer_email"`
 	PaymentMethod      string `json:"payment_method"`
-	TenantName         string `json:"tenant_name"`
-	Environment        string `json:"environment"` // "sandbox" | "live"
-	CurrencyExponent   int    `json:"currency_exponent"`
-	LogoObjectKey      string `json:"logo_object_key,omitempty"`
+	// Provider names the payment provider of the customer's subscription; empty is the tenant's default.
+	Provider         string `json:"provider,omitempty"`
+	TenantName       string `json:"tenant_name"`
+	Environment      string `json:"environment"` // "sandbox" | "live"
+	CurrencyExponent int    `json:"currency_exponent"`
+	LogoObjectKey    string `json:"logo_object_key,omitempty"`
 }
 
 // Config tunes an Engine.
@@ -316,7 +318,7 @@ func (e *Engine) issue(ctx context.Context, tx pgx.Tx, s *saga, eff Effect) erro
 	case EffCharge, EffChargeDunning:
 		step, route = "charge", rabbitx.QueuePaymentCharge
 		env.Command = &commandsv1.CommandEnvelope_ChargePayment{ChargePayment: &commandsv1.ChargePayment{
-			InvoiceId: s.InvoiceID.String(), AmountMinor: s.TotalMinor, Currency: s.Currency, PaymentMethod: s.Snap.PaymentMethod,
+			InvoiceId: s.InvoiceID.String(), AmountMinor: s.TotalMinor, Currency: s.Currency, PaymentMethod: s.Snap.PaymentMethod, Provider: s.Snap.Provider,
 			DunningAttempt: int32(s.DunningAttempt), IdempotencyKey: ChargeKey(s.InvoiceID, s.DunningAttempt), //nolint:gosec // 0..3
 		}}
 	case EffQueryStatus:

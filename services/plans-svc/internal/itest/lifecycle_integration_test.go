@@ -144,6 +144,70 @@ func testSubscriptionLifecycle(t *testing.T) {
 		}
 	})
 
+	t.Run("a subscription a provider runs is linked, followed and not changed locally", func(t *testing.T) {
+		mkCustomer("cus_paddle")
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle", PlanCode: "basic", Provider: "paddle"})
+		if err != nil || r.GetSubscription().GetProvider() != "paddle" || r.GetSubscription().GetOwner() != "quotify" || r.GetSubscription().GetProviderRef() != "" {
+			t.Fatalf("created = %v, %v; it names its provider but is not linked or provider-owned yet", r, err)
+		}
+		id := r.GetSubscription().GetId()
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle", PlanCode: "basic", Provider: "Not A Name"}); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("bad provider name: %v", err)
+		}
+		t0 := time.Now().Add(-time.Hour)
+		link := func(ref, owner, status string, at time.Time) (*plansv1.SyncProviderSubscriptionResponse, error) {
+			return e.plans.SyncProviderSubscription(ctx, &plansv1.SyncProviderSubscriptionRequest{SubscriptionId: id, Provider: "paddle", ProviderRef: ref,
+				Owner: owner, ProviderStatus: status, OccurredAt: timestamppb.New(at)})
+		}
+		got, err := link("sub_01", "provider", "active", t0)
+		sub := got.GetSubscription()
+		if err != nil || sub.GetOwner() != "provider" || sub.GetProviderRef() != "sub_01" || sub.GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_ACTIVE {
+			t.Fatalf("link = %v, %v", got, err)
+		}
+		if g, err := link("sub_01", "provider", "past_due", t0.Add(time.Minute)); err != nil || g.GetSubscription().GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAST_DUE {
+			t.Fatalf("past due = %v, %v", g, err)
+		}
+		// An older event arriving late changes nothing.
+		if g, err := link("sub_01", "provider", "active", t0.Add(30*time.Second)); err != nil || g.GetSubscription().GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAST_DUE {
+			t.Fatalf("stale event = %v, %v", g, err)
+		}
+		if _, err := link("sub_other", "provider", "active", t0.Add(time.Hour)); code(t, err) != codes.FailedPrecondition {
+			t.Fatalf("relinking to another provider subscription: %v", err)
+		}
+		if _, err := link("sub_01", "provider", "bogus", t0.Add(time.Hour)); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("bad status: %v", err)
+		}
+		// Nothing changes it locally.
+		if _, err := e.plans.PauseSubscription(ctx, &plansv1.PauseSubscriptionRequest{SubscriptionId: id}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("pause: %v", err)
+		}
+		if _, err := e.plans.CancelSubscription(ctx, &plansv1.CancelSubscriptionRequest{SubscriptionId: id}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("cancel: %v", err)
+		}
+		if _, err := e.plans.ChangePlan(ctx, &plansv1.ChangePlanRequest{SubscriptionId: id, PlanCode: "pro"}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("change plan: %v", err)
+		}
+		if _, err := e.plans.ScheduleCancellation(ctx, &plansv1.ScheduleCancellationRequest{SubscriptionId: id, Cancel: true}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("schedule cancellation: %v", err)
+		}
+		// The provider cancels: the subscription ends.
+		if g, err := link("sub_01", "provider", "canceled", t0.Add(2*time.Hour)); err != nil ||
+			g.GetSubscription().GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_CANCELLED || g.GetSubscription().GetEndTime() == nil {
+			t.Fatalf("canceled = %v, %v", g, err)
+		}
+		// Another subscription cannot take the same provider id.
+		mkCustomer("cus_paddle2")
+		r2, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle2", PlanCode: "basic", Provider: "paddle"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = e.plans.SyncProviderSubscription(ctx, &plansv1.SyncProviderSubscriptionRequest{SubscriptionId: r2.GetSubscription().GetId(), Provider: "paddle",
+			ProviderRef: "sub_01", Owner: "provider", ProviderStatus: "active"})
+		if err == nil {
+			t.Fatal("two subscriptions linked to the same provider subscription")
+		}
+	})
+
 	t.Run("yearly subscriptions are refused for now", func(t *testing.T) {
 		mkCustomer("cus_year")
 		_, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_year", PlanCode: "basic",

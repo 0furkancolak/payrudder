@@ -274,6 +274,7 @@ paths:
                 trial_days: { type: integer, minimum: 0, maximum: 365 }
                 interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
                 currency: { type: string, description: Default is the customer's billing currency, then the tenant's }
+                provider: { type: string, description: The payment provider that sells it (for example paddle); default is the tenant's default account }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -942,6 +943,86 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /webhooks/{provider}/{tenant_id}/{environment}:
+    post:
+      operationId: tenantProviderWebhook
+      summary: A payment provider's notification for one tenant's account (Paddle sends one per account). Public; verified with the account's webhook secret
+      security: []
+      parameters:
+        - { name: provider, in: path, required: true, schema: { type: string, examples: [paddle] } }
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: environment, in: path, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { description: Understood (processed, duplicate or ignored) }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/provider-subscriptions:
+    get:
+      operationId: listProviderSubscriptions
+      summary: Subscriptions a payment provider runs for the tenant, as its notifications report them
+      parameters: [{ name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriptions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        provider: { type: string }
+                        environment: { type: string }
+                        provider_ref: { type: string }
+                        quotify_subscription_id: { type: string, format: uuid }
+                        status: { type: string }
+                        next_billed_at: { type: string, format: date-time }
+                        updated_at: { type: string, format: date-time }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/checkouts:
+    post:
+      operationId: createProviderCheckout
+      summary: A hosted checkout page where a customer subscribes at a provider that hosts one (Paddle)
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, price_ref]
+              properties:
+                provider: { type: string, examples: [paddle] }
+                price_ref: { type: string, description: The provider's id of what is sold, examples: [pri_01] }
+                quantity: { type: integer, minimum: 1 }
+                quotify_subscription_id: { type: string, format: uuid, description: Ties the provider's subscription to ours }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+                  ref: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /admin/v1/dead-letters:
     get:
       operationId: adminListDeadLetters
@@ -1529,6 +1610,9 @@ components:
         trial_end_time: { type: [string, "null"], format: date-time }
         cancel_at_period_end: { type: boolean }
         pause_time: { type: [string, "null"], format: date-time }
+        provider: { type: string }
+        provider_ref: { type: string, description: The provider's id of the subscription, once it is linked }
+        owner: { type: string, enum: [quotify, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
     Tenant:
       type: object
       properties:

@@ -764,8 +764,10 @@ type ChargePayment struct {
 	DunningAttempt int32 `protobuf:"varint,5,opt,name=dunning_attempt,json=dunningAttempt,proto3" json:"dunning_attempt,omitempty"`
 	// invoice_id:charge:dunning_attempt. Stable across retries of the same charge, so the PSP never charges twice.
 	IdempotencyKey string `protobuf:"bytes,6,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The payment provider of the customer's subscription. Empty means the tenant's default provider account.
+	Provider      string `protobuf:"bytes,7,opt,name=provider,proto3" json:"provider,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChargePayment) Reset() {
@@ -836,6 +838,13 @@ func (x *ChargePayment) GetDunningAttempt() int32 {
 func (x *ChargePayment) GetIdempotencyKey() string {
 	if x != nil {
 		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *ChargePayment) GetProvider() string {
+	if x != nil {
+		return x.Provider
 	}
 	return ""
 }
@@ -1495,7 +1504,7 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"totalMinor\x12&\n" +
 	"\x0flogo_object_key\x18\x0e \x01(\tR\rlogoObjectKey\"R\n" +
 	"\x10RenderInvoicePdf\x12>\n" +
-	"\ainvoice\x18\x01 \x01(\v2$.quotify.commands.v1.InvoiceSnapshotR\ainvoice\"\xe6\x01\n" +
+	"\ainvoice\x18\x01 \x01(\v2$.quotify.commands.v1.InvoiceSnapshotR\ainvoice\"\x82\x02\n" +
 	"\rChargePayment\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12!\n" +
@@ -1503,7 +1512,8 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"\bcurrency\x18\x03 \x01(\tR\bcurrency\x12%\n" +
 	"\x0epayment_method\x18\x04 \x01(\tR\rpaymentMethod\x12'\n" +
 	"\x0fdunning_attempt\x18\x05 \x01(\x05R\x0edunningAttempt\x12'\n" +
-	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\"\xba\x01\n" +
+	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\x12\x1a\n" +
+	"\bprovider\x18\a \x01(\tR\bprovider\"\xba\x01\n" +
 	"\rRefundPayment\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12!\n" +

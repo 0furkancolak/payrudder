@@ -13,16 +13,21 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 
+	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/config"
+	"github.com/0furkancolak/quotify/pkg/grpcx"
 	"github.com/0furkancolak/quotify/pkg/health"
 	"github.com/0furkancolak/quotify/pkg/logx"
 	"github.com/0furkancolak/quotify/pkg/otelx"
 	"github.com/0furkancolak/quotify/pkg/payments"
 	"github.com/0furkancolak/quotify/pkg/payments/iyzico"
+	"github.com/0furkancolak/quotify/pkg/payments/paddle"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
 	"github.com/0furkancolak/quotify/pkg/secretbox"
+	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/pkg/workerx"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
@@ -47,6 +52,8 @@ type Config struct {
 	SecretsKey string `env:"QUOTIFY_SECRETS_KEY"`
 	// HTTPAddr serves provider webhooks and the operator endpoints for provider accounts and the ledger; the gateway forwards to it.
 	HTTPAddr string `env:"PAYMENTS_HTTP_ADDR" envDefault:":8095"`
+	// PlansAddr is plans-svc, which is told about subscriptions a provider runs. Empty skips that.
+	PlansAddr string `env:"QUOTIFY_PLANS_ADDR"`
 	// InternalToken is the shared secret the gateway sends on /admin calls. Empty disables them.
 	InternalToken string `env:"PAYMENTS_INTERNAL_TOKEN"`
 }
@@ -122,6 +129,7 @@ func run() error {
 	}
 	registry := payments.NewRegistry()
 	iyzico.Register(registry)
+	paddle.Register(registry)
 	var httpHandler http.Handler
 	if cfg.SecretsKey != "" {
 		key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
@@ -131,8 +139,17 @@ func run() error {
 		}
 		accounts := store.Accounts{DB: pool, Box: box}
 		h.Resolver = &handler.Resolver{Registry: registry, Accounts: accounts}
-		httpHandler = (&webhook.Server{Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
-			Attempts: h.Attempts, Ledger: h.Ledger, Log: log, Token: cfg.InternalToken}).Handler()
+		var plansSync webhook.PlansSync
+		if cfg.PlansAddr != "" {
+			plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+			if err != nil {
+				return fmt.Errorf("plans-svc client: %w", err)
+			}
+			defer func() { _ = plansConn.Close() }()
+			plansSync = webhook.PlansClient{Client: plansv1.NewPlansServiceClient(plansConn)}
+		}
+		httpHandler = (&webhook.Server{Plans: plansSync, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
+			Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Log: log, Token: cfg.InternalToken}).Handler()
 	}
 	w := &workerx.Worker{
 		URL: cfg.RabbitMQURL, Prefetch: cfg.Prefetch, Handler: h, Inbox: h.Attempts, Log: log,

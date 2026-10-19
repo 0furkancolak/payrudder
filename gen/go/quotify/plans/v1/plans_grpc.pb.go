@@ -34,6 +34,7 @@ const (
 	PlansService_CreateSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CreateSubscription"
 	PlansService_CancelSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CancelSubscription"
 	PlansService_GetSubscription_FullMethodName            = "/quotify.plans.v1.PlansService/GetSubscription"
+	PlansService_SyncProviderSubscription_FullMethodName   = "/quotify.plans.v1.PlansService/SyncProviderSubscription"
 	PlansService_PauseSubscription_FullMethodName          = "/quotify.plans.v1.PlansService/PauseSubscription"
 	PlansService_ResumeSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/ResumeSubscription"
 	PlansService_ScheduleCancellation_FullMethodName       = "/quotify.plans.v1.PlansService/ScheduleCancellation"
@@ -68,6 +69,9 @@ type PlansServiceClient interface {
 	CreateSubscription(ctx context.Context, in *CreateSubscriptionRequest, opts ...grpc.CallOption) (*CreateSubscriptionResponse, error)
 	CancelSubscription(ctx context.Context, in *CancelSubscriptionRequest, opts ...grpc.CallOption) (*CancelSubscriptionResponse, error)
 	GetSubscription(ctx context.Context, in *GetSubscriptionRequest, opts ...grpc.CallOption) (*GetSubscriptionResponse, error)
+	// SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
+	// Internal: called by payments-worker, not exposed by the gateway.
+	SyncProviderSubscription(ctx context.Context, in *SyncProviderSubscriptionRequest, opts ...grpc.CallOption) (*SyncProviderSubscriptionResponse, error)
 	// PauseSubscription stops the fixed fee from the call until ResumeSubscription. Usage is still metered and billed.
 	PauseSubscription(ctx context.Context, in *PauseSubscriptionRequest, opts ...grpc.CallOption) (*PauseSubscriptionResponse, error)
 	ResumeSubscription(ctx context.Context, in *ResumeSubscriptionRequest, opts ...grpc.CallOption) (*ResumeSubscriptionResponse, error)
@@ -238,6 +242,16 @@ func (c *plansServiceClient) GetSubscription(ctx context.Context, in *GetSubscri
 	return out, nil
 }
 
+func (c *plansServiceClient) SyncProviderSubscription(ctx context.Context, in *SyncProviderSubscriptionRequest, opts ...grpc.CallOption) (*SyncProviderSubscriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SyncProviderSubscriptionResponse)
+	err := c.cc.Invoke(ctx, PlansService_SyncProviderSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) PauseSubscription(ctx context.Context, in *PauseSubscriptionRequest, opts ...grpc.CallOption) (*PauseSubscriptionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PauseSubscriptionResponse)
@@ -324,6 +338,9 @@ type PlansServiceServer interface {
 	CreateSubscription(context.Context, *CreateSubscriptionRequest) (*CreateSubscriptionResponse, error)
 	CancelSubscription(context.Context, *CancelSubscriptionRequest) (*CancelSubscriptionResponse, error)
 	GetSubscription(context.Context, *GetSubscriptionRequest) (*GetSubscriptionResponse, error)
+	// SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
+	// Internal: called by payments-worker, not exposed by the gateway.
+	SyncProviderSubscription(context.Context, *SyncProviderSubscriptionRequest) (*SyncProviderSubscriptionResponse, error)
 	// PauseSubscription stops the fixed fee from the call until ResumeSubscription. Usage is still metered and billed.
 	PauseSubscription(context.Context, *PauseSubscriptionRequest) (*PauseSubscriptionResponse, error)
 	ResumeSubscription(context.Context, *ResumeSubscriptionRequest) (*ResumeSubscriptionResponse, error)
@@ -388,6 +405,9 @@ func (UnimplementedPlansServiceServer) CancelSubscription(context.Context, *Canc
 }
 func (UnimplementedPlansServiceServer) GetSubscription(context.Context, *GetSubscriptionRequest) (*GetSubscriptionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSubscription not implemented")
+}
+func (UnimplementedPlansServiceServer) SyncProviderSubscription(context.Context, *SyncProviderSubscriptionRequest) (*SyncProviderSubscriptionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SyncProviderSubscription not implemented")
 }
 func (UnimplementedPlansServiceServer) PauseSubscription(context.Context, *PauseSubscriptionRequest) (*PauseSubscriptionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PauseSubscription not implemented")
@@ -695,6 +715,24 @@ func _PlansService_GetSubscription_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_SyncProviderSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncProviderSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).SyncProviderSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_SyncProviderSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).SyncProviderSubscription(ctx, req.(*SyncProviderSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_PauseSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PauseSubscriptionRequest)
 	if err := dec(in); err != nil {
@@ -844,6 +882,10 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSubscription",
 			Handler:    _PlansService_GetSubscription_Handler,
+		},
+		{
+			MethodName: "SyncProviderSubscription",
+			Handler:    _PlansService_SyncProviderSubscription_Handler,
 		},
 		{
 			MethodName: "PauseSubscription",
