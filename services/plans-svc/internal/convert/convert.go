@@ -15,6 +15,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
+	"github.com/0furkancolak/quotify/pkg/subscription"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
 )
@@ -114,6 +115,7 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 	return &plansv1.Customer{
 		Id: c.ID.String(), ExternalId: c.ExternalID, Name: c.Name, Email: c.Email,
 		PaymentMethod: str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
+		Country: str(c.Country), BillingCurrency: str(c.BillingCurrency),
 	}
 }
 
@@ -141,13 +143,56 @@ type SubscriptionFields struct {
 	CustomerExternalID            string
 	Start, End, Created           time.Time
 	OpenEnded                     bool
+	State, Interval, Currency     string
+	TrialEnds, PausedAt           *time.Time
+	CancelAtPeriodEnd             bool
+	ChangedFromID                 string
+	// Now decides the effective state: a trial that is over reads as active, an ended subscription as cancelled.
+	Now time.Time
+}
+
+// SubscriptionState returns the state a subscription is in at now. Trials and scheduled ends run out by themselves, so
+// the stored state is only brought up to date when something else happens to the subscription.
+func SubscriptionState(stored string, trialEnds *time.Time, openEnded bool, end, now time.Time) subscription.State {
+	st := subscription.State(stored)
+	if !openEnded && !end.After(now) {
+		return subscription.Cancelled
+	}
+	if st == subscription.Trialing && trialEnds != nil && !now.Before(*trialEnds) {
+		return subscription.Active
+	}
+	return st
+}
+
+var stateToProto = map[subscription.State]plansv1.SubscriptionState{
+	subscription.Trialing:  plansv1.SubscriptionState_SUBSCRIPTION_STATE_TRIALING,
+	subscription.Active:    plansv1.SubscriptionState_SUBSCRIPTION_STATE_ACTIVE,
+	subscription.PastDue:   plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAST_DUE,
+	subscription.Paused:    plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAUSED,
+	subscription.Cancelled: plansv1.SubscriptionState_SUBSCRIPTION_STATE_CANCELLED,
 }
 
 // Subscription maps subscription fields.
 func Subscription(s SubscriptionFields) *plansv1.Subscription {
+	now := s.Now
+	if now.IsZero() {
+		now = time.Now()
+	}
 	out := &plansv1.Subscription{
 		Id: s.ID, CustomerId: s.CustomerID, CustomerExternalId: s.CustomerExternalID, PlanVersionId: s.PlanVersionID,
-		StartTime: ts(s.Start), CreateTime: ts(s.Created),
+		StartTime: ts(s.Start), CreateTime: ts(s.Created), Currency: s.Currency, CancelAtPeriodEnd: s.CancelAtPeriodEnd, ChangedFromId: s.ChangedFromID,
+		State: stateToProto[SubscriptionState(s.State, s.TrialEnds, s.OpenEnded, s.End, now)],
+	}
+	if s.Interval == string(subscription.Yearly) {
+		out.Interval = plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR
+	} else {
+		out.Interval = plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
+	}
+	if s.TrialEnds != nil {
+		out.TrialEndTime = ts(*s.TrialEnds)
+	}
+	if s.PausedAt != nil {
+		out.PauseTime = ts(*s.PausedAt)
 	}
 	if !s.OpenEnded {
 		out.EndTime = ts(s.End)

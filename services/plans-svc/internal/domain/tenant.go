@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"net/mail"
+	"regexp"
 	"strings"
 	"time"
 
@@ -196,5 +197,15 @@ func ValidateCustomer(environment string, req *plansv1.CreateCustomerRequest) er
 	if err := ValidatePaymentMethod(environment, req.GetPaymentMethod()); err != nil {
 		v.Add("payment_method", err.Error())
 	}
+	if c := req.GetCountry(); c != "" && !countryRe.MatchString(c) {
+		v.Add("country", "must be an ISO 3166-1 alpha-2 code in capitals, e.g. TR")
+	}
+	if c := req.GetBillingCurrency(); c != "" {
+		if _, ok := money.LookupCurrency(c); !ok {
+			v.Add("billing_currency", "unsupported currency; supported: "+strings.Join(money.SupportedCurrencies(), ", "))
+		}
+	}
 	return v.Err()
 }
+
+var countryRe = regexp.MustCompile(`^[A-Z]{2}$`)

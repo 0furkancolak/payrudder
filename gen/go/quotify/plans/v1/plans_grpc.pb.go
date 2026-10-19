@@ -33,6 +33,11 @@ const (
 	PlansService_GetPlanVersion_FullMethodName             = "/quotify.plans.v1.PlansService/GetPlanVersion"
 	PlansService_CreateSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CreateSubscription"
 	PlansService_CancelSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CancelSubscription"
+	PlansService_GetSubscription_FullMethodName            = "/quotify.plans.v1.PlansService/GetSubscription"
+	PlansService_PauseSubscription_FullMethodName          = "/quotify.plans.v1.PlansService/PauseSubscription"
+	PlansService_ResumeSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/ResumeSubscription"
+	PlansService_ScheduleCancellation_FullMethodName       = "/quotify.plans.v1.PlansService/ScheduleCancellation"
+	PlansService_ChangePlan_FullMethodName                 = "/quotify.plans.v1.PlansService/ChangePlan"
 	PlansService_ListSubscriptionsForPeriod_FullMethodName = "/quotify.plans.v1.PlansService/ListSubscriptionsForPeriod"
 )
 
@@ -62,6 +67,15 @@ type PlansServiceClient interface {
 	GetPlanVersion(ctx context.Context, in *GetPlanVersionRequest, opts ...grpc.CallOption) (*GetPlanVersionResponse, error)
 	CreateSubscription(ctx context.Context, in *CreateSubscriptionRequest, opts ...grpc.CallOption) (*CreateSubscriptionResponse, error)
 	CancelSubscription(ctx context.Context, in *CancelSubscriptionRequest, opts ...grpc.CallOption) (*CancelSubscriptionResponse, error)
+	GetSubscription(ctx context.Context, in *GetSubscriptionRequest, opts ...grpc.CallOption) (*GetSubscriptionResponse, error)
+	// PauseSubscription stops the fixed fee from the call until ResumeSubscription. Usage is still metered and billed.
+	PauseSubscription(ctx context.Context, in *PauseSubscriptionRequest, opts ...grpc.CallOption) (*PauseSubscriptionResponse, error)
+	ResumeSubscription(ctx context.Context, in *ResumeSubscriptionRequest, opts ...grpc.CallOption) (*ResumeSubscriptionResponse, error)
+	// ScheduleCancellation ends the subscription at the end of its current billing period.
+	ScheduleCancellation(ctx context.Context, in *ScheduleCancellationRequest, opts ...grpc.CallOption) (*ScheduleCancellationResponse, error)
+	// ChangePlan ends the subscription and starts a new one on another plan version. The fixed fee of the month is split
+	// between the two plans in proportion to the time on each.
+	ChangePlan(ctx context.Context, in *ChangePlanRequest, opts ...grpc.CallOption) (*ChangePlanResponse, error)
 	// ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
 	ListSubscriptionsForPeriod(ctx context.Context, in *ListSubscriptionsForPeriodRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListSubscriptionsForPeriodResponse], error)
 }
@@ -214,6 +228,56 @@ func (c *plansServiceClient) CancelSubscription(ctx context.Context, in *CancelS
 	return out, nil
 }
 
+func (c *plansServiceClient) GetSubscription(ctx context.Context, in *GetSubscriptionRequest, opts ...grpc.CallOption) (*GetSubscriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSubscriptionResponse)
+	err := c.cc.Invoke(ctx, PlansService_GetSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) PauseSubscription(ctx context.Context, in *PauseSubscriptionRequest, opts ...grpc.CallOption) (*PauseSubscriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PauseSubscriptionResponse)
+	err := c.cc.Invoke(ctx, PlansService_PauseSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ResumeSubscription(ctx context.Context, in *ResumeSubscriptionRequest, opts ...grpc.CallOption) (*ResumeSubscriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResumeSubscriptionResponse)
+	err := c.cc.Invoke(ctx, PlansService_ResumeSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ScheduleCancellation(ctx context.Context, in *ScheduleCancellationRequest, opts ...grpc.CallOption) (*ScheduleCancellationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ScheduleCancellationResponse)
+	err := c.cc.Invoke(ctx, PlansService_ScheduleCancellation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ChangePlan(ctx context.Context, in *ChangePlanRequest, opts ...grpc.CallOption) (*ChangePlanResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangePlanResponse)
+	err := c.cc.Invoke(ctx, PlansService_ChangePlan_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) ListSubscriptionsForPeriod(ctx context.Context, in *ListSubscriptionsForPeriodRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListSubscriptionsForPeriodResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &PlansService_ServiceDesc.Streams[0], PlansService_ListSubscriptionsForPeriod_FullMethodName, cOpts...)
@@ -259,6 +323,15 @@ type PlansServiceServer interface {
 	GetPlanVersion(context.Context, *GetPlanVersionRequest) (*GetPlanVersionResponse, error)
 	CreateSubscription(context.Context, *CreateSubscriptionRequest) (*CreateSubscriptionResponse, error)
 	CancelSubscription(context.Context, *CancelSubscriptionRequest) (*CancelSubscriptionResponse, error)
+	GetSubscription(context.Context, *GetSubscriptionRequest) (*GetSubscriptionResponse, error)
+	// PauseSubscription stops the fixed fee from the call until ResumeSubscription. Usage is still metered and billed.
+	PauseSubscription(context.Context, *PauseSubscriptionRequest) (*PauseSubscriptionResponse, error)
+	ResumeSubscription(context.Context, *ResumeSubscriptionRequest) (*ResumeSubscriptionResponse, error)
+	// ScheduleCancellation ends the subscription at the end of its current billing period.
+	ScheduleCancellation(context.Context, *ScheduleCancellationRequest) (*ScheduleCancellationResponse, error)
+	// ChangePlan ends the subscription and starts a new one on another plan version. The fixed fee of the month is split
+	// between the two plans in proportion to the time on each.
+	ChangePlan(context.Context, *ChangePlanRequest) (*ChangePlanResponse, error)
 	// ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
 	ListSubscriptionsForPeriod(*ListSubscriptionsForPeriodRequest, grpc.ServerStreamingServer[ListSubscriptionsForPeriodResponse]) error
 	mustEmbedUnimplementedPlansServiceServer()
@@ -312,6 +385,21 @@ func (UnimplementedPlansServiceServer) CreateSubscription(context.Context, *Crea
 }
 func (UnimplementedPlansServiceServer) CancelSubscription(context.Context, *CancelSubscriptionRequest) (*CancelSubscriptionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelSubscription not implemented")
+}
+func (UnimplementedPlansServiceServer) GetSubscription(context.Context, *GetSubscriptionRequest) (*GetSubscriptionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSubscription not implemented")
+}
+func (UnimplementedPlansServiceServer) PauseSubscription(context.Context, *PauseSubscriptionRequest) (*PauseSubscriptionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PauseSubscription not implemented")
+}
+func (UnimplementedPlansServiceServer) ResumeSubscription(context.Context, *ResumeSubscriptionRequest) (*ResumeSubscriptionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResumeSubscription not implemented")
+}
+func (UnimplementedPlansServiceServer) ScheduleCancellation(context.Context, *ScheduleCancellationRequest) (*ScheduleCancellationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ScheduleCancellation not implemented")
+}
+func (UnimplementedPlansServiceServer) ChangePlan(context.Context, *ChangePlanRequest) (*ChangePlanResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangePlan not implemented")
 }
 func (UnimplementedPlansServiceServer) ListSubscriptionsForPeriod(*ListSubscriptionsForPeriodRequest, grpc.ServerStreamingServer[ListSubscriptionsForPeriodResponse]) error {
 	return status.Error(codes.Unimplemented, "method ListSubscriptionsForPeriod not implemented")
@@ -589,6 +677,96 @@ func _PlansService_CancelSubscription_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_GetSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).GetSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_GetSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).GetSubscription(ctx, req.(*GetSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_PauseSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PauseSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).PauseSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_PauseSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).PauseSubscription(ctx, req.(*PauseSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ResumeSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResumeSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ResumeSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ResumeSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ResumeSubscription(ctx, req.(*ResumeSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ScheduleCancellation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ScheduleCancellationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ScheduleCancellation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ScheduleCancellation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ScheduleCancellation(ctx, req.(*ScheduleCancellationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ChangePlan_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangePlanRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ChangePlan(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ChangePlan_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ChangePlan(ctx, req.(*ChangePlanRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_ListSubscriptionsForPeriod_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ListSubscriptionsForPeriodRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -662,6 +840,26 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelSubscription",
 			Handler:    _PlansService_CancelSubscription_Handler,
+		},
+		{
+			MethodName: "GetSubscription",
+			Handler:    _PlansService_GetSubscription_Handler,
+		},
+		{
+			MethodName: "PauseSubscription",
+			Handler:    _PlansService_PauseSubscription_Handler,
+		},
+		{
+			MethodName: "ResumeSubscription",
+			Handler:    _PlansService_ResumeSubscription_Handler,
+		},
+		{
+			MethodName: "ScheduleCancellation",
+			Handler:    _PlansService_ScheduleCancellation_Handler,
+		},
+		{
+			MethodName: "ChangePlan",
+			Handler:    _PlansService_ChangePlan_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

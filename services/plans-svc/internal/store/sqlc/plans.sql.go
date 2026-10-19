@@ -36,17 +36,19 @@ func (q *Queries) CountMeterCodes(ctx context.Context) (int64, error) {
 }
 
 const createCustomer = `-- name: CreateCustomer :one
-INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5)
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at
+INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7)
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency
 `
 
 type CreateCustomerParams struct {
-	ID            uuid.UUID
-	ExternalID    string
-	Name          string
-	Email         string
-	PaymentMethod *string
+	ID              uuid.UUID
+	ExternalID      string
+	Name            string
+	Email           string
+	PaymentMethod   *string
+	Country         *string
+	BillingCurrency *string
 }
 
 func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error) {
@@ -56,6 +58,8 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 		arg.Name,
 		arg.Email,
 		arg.PaymentMethod,
+		arg.Country,
+		arg.BillingCurrency,
 	)
 	var i Customer
 	err := row.Scan(
@@ -66,6 +70,8 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 		&i.Email,
 		&i.PaymentMethod,
 		&i.CreatedAt,
+		&i.Country,
+		&i.BillingCurrency,
 	)
 	return i, err
 }
@@ -117,7 +123,7 @@ func (q *Queries) EndSubscription(ctx context.Context, arg EndSubscriptionParams
 }
 
 const getCustomerByExternalID = `-- name: GetCustomerByExternalID :one
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
 `
 
 func (q *Queries) GetCustomerByExternalID(ctx context.Context, externalID string) (Customer, error) {
@@ -131,12 +137,14 @@ func (q *Queries) GetCustomerByExternalID(ctx context.Context, externalID string
 		&i.Email,
 		&i.PaymentMethod,
 		&i.CreatedAt,
+		&i.Country,
+		&i.BillingCurrency,
 	)
 	return i, err
 }
 
 const getCustomerByID = `-- name: GetCustomerByID :one
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at FROM customers WHERE tenant_id = app_tenant_id() AND id = $1
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency FROM customers WHERE tenant_id = app_tenant_id() AND id = $1
 `
 
 func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, error) {
@@ -150,6 +158,8 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, 
 		&i.Email,
 		&i.PaymentMethod,
 		&i.CreatedAt,
+		&i.Country,
+		&i.BillingCurrency,
 	)
 	return i, err
 }
@@ -252,7 +262,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id() AND s.id = $1
 `
@@ -266,6 +276,14 @@ type GetSubscriptionRow struct {
 	OpenEnded          bool
 	EndTime            time.Time
 	CreatedAt          time.Time
+	State              string
+	Interval           string
+	Currency           string
+	TrialEndsAt        *time.Time
+	CancelAtPeriodEnd  bool
+	PausedAt           *time.Time
+	BillingAnchor      time.Time
+	ChangedFromID      *uuid.UUID
 }
 
 func (q *Queries) GetSubscription(ctx context.Context, id uuid.UUID) (GetSubscriptionRow, error) {
@@ -280,6 +298,68 @@ func (q *Queries) GetSubscription(ctx context.Context, id uuid.UUID) (GetSubscri
 		&i.OpenEnded,
 		&i.EndTime,
 		&i.CreatedAt,
+		&i.State,
+		&i.Interval,
+		&i.Currency,
+		&i.TrialEndsAt,
+		&i.CancelAtPeriodEnd,
+		&i.PausedAt,
+		&i.BillingAnchor,
+		&i.ChangedFromID,
+	)
+	return i, err
+}
+
+const getSubscriptionForUpdate = `-- name: GetSubscriptionForUpdate :one
+SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_version_id,
+       lower(s.active)::timestamptz AS start_time,
+       upper_inf(s.active)::bool AS open_ended,
+       COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
+FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+WHERE s.tenant_id = app_tenant_id() AND s.id = $1
+FOR UPDATE OF s
+`
+
+type GetSubscriptionForUpdateRow struct {
+	ID                 uuid.UUID
+	CustomerID         uuid.UUID
+	CustomerExternalID string
+	PlanVersionID      uuid.UUID
+	StartTime          time.Time
+	OpenEnded          bool
+	EndTime            time.Time
+	CreatedAt          time.Time
+	State              string
+	Interval           string
+	Currency           string
+	TrialEndsAt        *time.Time
+	CancelAtPeriodEnd  bool
+	PausedAt           *time.Time
+	BillingAnchor      time.Time
+	ChangedFromID      *uuid.UUID
+}
+
+func (q *Queries) GetSubscriptionForUpdate(ctx context.Context, id uuid.UUID) (GetSubscriptionForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getSubscriptionForUpdate, id)
+	var i GetSubscriptionForUpdateRow
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.CustomerExternalID,
+		&i.PlanVersionID,
+		&i.StartTime,
+		&i.OpenEnded,
+		&i.EndTime,
+		&i.CreatedAt,
+		&i.State,
+		&i.Interval,
+		&i.Currency,
+		&i.TrialEndsAt,
+		&i.CancelAtPeriodEnd,
+		&i.PausedAt,
+		&i.BillingAnchor,
+		&i.ChangedFromID,
 	)
 	return i, err
 }
@@ -365,6 +445,30 @@ func (q *Queries) InsertPlan(ctx context.Context, arg InsertPlanParams) (Plan, e
 	return i, err
 }
 
+const insertPlanCurrencyPrice = `-- name: InsertPlanCurrencyPrice :exec
+INSERT INTO plan_currency_prices (tenant_id, plan_version_id, currency, meter_code, model, config)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5)
+`
+
+type InsertPlanCurrencyPriceParams struct {
+	PlanVersionID uuid.UUID
+	Currency      string
+	MeterCode     string
+	Model         string
+	Config        json.RawMessage
+}
+
+func (q *Queries) InsertPlanCurrencyPrice(ctx context.Context, arg InsertPlanCurrencyPriceParams) error {
+	_, err := q.db.Exec(ctx, insertPlanCurrencyPrice,
+		arg.PlanVersionID,
+		arg.Currency,
+		arg.MeterCode,
+		arg.Model,
+		arg.Config,
+	)
+	return err
+}
+
 const insertPlanEntitlement = `-- name: InsertPlanEntitlement :exec
 INSERT INTO plan_entitlements (tenant_id, plan_version_id, meter_code, limit_units, alert_thresholds_pct)
 VALUES (app_tenant_id(), $1, $2, $3, $4)
@@ -438,14 +542,31 @@ func (q *Queries) InsertPlanVersion(ctx context.Context, arg InsertPlanVersionPa
 	return i, err
 }
 
+const insertPlanVersionFee = `-- name: InsertPlanVersionFee :exec
+INSERT INTO plan_version_fees (tenant_id, plan_version_id, currency, base_fee_minor)
+VALUES (app_tenant_id(), $1, $2, $3)
+`
+
+type InsertPlanVersionFeeParams struct {
+	PlanVersionID uuid.UUID
+	Currency      string
+	BaseFeeMinor  int64
+}
+
+func (q *Queries) InsertPlanVersionFee(ctx context.Context, arg InsertPlanVersionFeeParams) error {
+	_, err := q.db.Exec(ctx, insertPlanVersionFee, arg.PlanVersionID, arg.Currency, arg.BaseFeeMinor)
+	return err
+}
+
 const insertSubscription = `-- name: InsertSubscription :one
-INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active)
-VALUES (app_tenant_id(), $1, $2, $3, tstzrange($4::timestamptz, NULL, '[)'))
+INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id)
+VALUES (app_tenant_id(), $1, $2, $3, tstzrange($4::timestamptz, NULL, '[)'),
+        $5, $6, $7, $8, $9::timestamptz, $10)
 RETURNING id, customer_id, plan_version_id,
           lower(active)::timestamptz AS start_time,
           upper_inf(active)::bool AS open_ended,
           COALESCE(upper(active), lower(active))::timestamptz AS end_time,
-          created_at
+          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id
 `
 
 type InsertSubscriptionParams struct {
@@ -453,16 +574,30 @@ type InsertSubscriptionParams struct {
 	CustomerID    uuid.UUID
 	PlanVersionID uuid.UUID
 	StartTime     time.Time
+	State         string
+	Interval      string
+	Currency      string
+	TrialEndsAt   *time.Time
+	BillingAnchor time.Time
+	ChangedFromID *uuid.UUID
 }
 
 type InsertSubscriptionRow struct {
-	ID            uuid.UUID
-	CustomerID    uuid.UUID
-	PlanVersionID uuid.UUID
-	StartTime     time.Time
-	OpenEnded     bool
-	EndTime       time.Time
-	CreatedAt     time.Time
+	ID                uuid.UUID
+	CustomerID        uuid.UUID
+	PlanVersionID     uuid.UUID
+	StartTime         time.Time
+	OpenEnded         bool
+	EndTime           time.Time
+	CreatedAt         time.Time
+	State             string
+	Interval          string
+	Currency          string
+	TrialEndsAt       *time.Time
+	CancelAtPeriodEnd bool
+	PausedAt          *time.Time
+	BillingAnchor     time.Time
+	ChangedFromID     *uuid.UUID
 }
 
 func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) (InsertSubscriptionRow, error) {
@@ -471,6 +606,12 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 		arg.CustomerID,
 		arg.PlanVersionID,
 		arg.StartTime,
+		arg.State,
+		arg.Interval,
+		arg.Currency,
+		arg.TrialEndsAt,
+		arg.BillingAnchor,
+		arg.ChangedFromID,
 	)
 	var i InsertSubscriptionRow
 	err := row.Scan(
@@ -481,6 +622,14 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 		&i.OpenEnded,
 		&i.EndTime,
 		&i.CreatedAt,
+		&i.State,
+		&i.Interval,
+		&i.Currency,
+		&i.TrialEndsAt,
+		&i.CancelAtPeriodEnd,
+		&i.PausedAt,
+		&i.BillingAnchor,
+		&i.ChangedFromID,
 	)
 	return i, err
 }
@@ -507,7 +656,7 @@ func (q *Queries) LatestMeter(ctx context.Context, code string) (Meter, error) {
 }
 
 const listCustomers = `-- name: ListCustomers :many
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at FROM customers
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency FROM customers
 WHERE tenant_id = app_tenant_id() AND external_id > $1::text
 ORDER BY external_id
 LIMIT $2
@@ -535,6 +684,8 @@ func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([
 			&i.Email,
 			&i.PaymentMethod,
 			&i.CreatedAt,
+			&i.Country,
+			&i.BillingCurrency,
 		); err != nil {
 			return nil, err
 		}
@@ -569,6 +720,43 @@ func (q *Queries) ListLatestMeters(ctx context.Context) ([]Meter, error) {
 			&i.QuantityScale,
 			&i.UnitLabel,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlanCurrencyPrices = `-- name: ListPlanCurrencyPrices :many
+SELECT currency, meter_code, model, config FROM plan_currency_prices
+WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY currency, meter_code
+`
+
+type ListPlanCurrencyPricesRow struct {
+	Currency  string
+	MeterCode string
+	Model     string
+	Config    json.RawMessage
+}
+
+func (q *Queries) ListPlanCurrencyPrices(ctx context.Context, planVersionID uuid.UUID) ([]ListPlanCurrencyPricesRow, error) {
+	rows, err := q.db.Query(ctx, listPlanCurrencyPrices, planVersionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlanCurrencyPricesRow{}
+	for rows.Next() {
+		var i ListPlanCurrencyPricesRow
+		if err := rows.Scan(
+			&i.Currency,
+			&i.MeterCode,
+			&i.Model,
+			&i.Config,
 		); err != nil {
 			return nil, err
 		}
@@ -642,6 +830,36 @@ func (q *Queries) ListPlanPrices(ctx context.Context, planVersionID uuid.UUID) (
 	return items, nil
 }
 
+const listPlanVersionFees = `-- name: ListPlanVersionFees :many
+SELECT currency, base_fee_minor FROM plan_version_fees
+WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY currency
+`
+
+type ListPlanVersionFeesRow struct {
+	Currency     string
+	BaseFeeMinor int64
+}
+
+func (q *Queries) ListPlanVersionFees(ctx context.Context, planVersionID uuid.UUID) ([]ListPlanVersionFeesRow, error) {
+	rows, err := q.db.Query(ctx, listPlanVersionFees, planVersionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlanVersionFeesRow{}
+	for rows.Next() {
+		var i ListPlanVersionFeesRow
+		if err := rows.Scan(&i.Currency, &i.BaseFeeMinor); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlans = `-- name: ListPlans :many
 SELECT p.id, p.code, p.name, p.created_at,
        COALESCE((SELECT max(v.version) FROM plan_versions v WHERE v.tenant_id = p.tenant_id AND v.plan_id = p.id), 0)::int AS latest_version
@@ -687,7 +905,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id()
   AND s.active && tstzrange($1::timestamptz, $2::timestamptz, '[)')
@@ -711,6 +929,14 @@ type ListSubscriptionsOverlappingRow struct {
 	OpenEnded          bool
 	EndTime            time.Time
 	CreatedAt          time.Time
+	State              string
+	Interval           string
+	Currency           string
+	TrialEndsAt        *time.Time
+	CancelAtPeriodEnd  bool
+	PausedAt           *time.Time
+	BillingAnchor      time.Time
+	ChangedFromID      *uuid.UUID
 }
 
 func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubscriptionsOverlappingParams) ([]ListSubscriptionsOverlappingRow, error) {
@@ -731,6 +957,14 @@ func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubs
 			&i.OpenEnded,
 			&i.EndTime,
 			&i.CreatedAt,
+			&i.State,
+			&i.Interval,
+			&i.Currency,
+			&i.TrialEndsAt,
+			&i.CancelAtPeriodEnd,
+			&i.PausedAt,
+			&i.BillingAnchor,
+			&i.ChangedFromID,
 		); err != nil {
 			return nil, err
 		}
@@ -751,10 +985,29 @@ func (q *Queries) NotifyOutbox(ctx context.Context) error {
 	return err
 }
 
+const reopenSubscription = `-- name: ReopenSubscription :execrows
+UPDATE subscriptions SET active = tstzrange(lower(active), NULL, '[)')
+WHERE tenant_id = app_tenant_id() AND id = $1 AND NOT upper_inf(active) AND upper(active) > $2::timestamptz
+`
+
+type ReopenSubscriptionParams struct {
+	ID  uuid.UUID
+	Now time.Time
+}
+
+// Withdraws a scheduled end: the range becomes open-ended again.
+func (q *Queries) ReopenSubscription(ctx context.Context, arg ReopenSubscriptionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, reopenSubscription, arg.ID, arg.Now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setPaymentMethod = `-- name: SetPaymentMethod :one
 UPDATE customers SET payment_method = $2
 WHERE tenant_id = app_tenant_id() AND external_id = $1
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency
 `
 
 type SetPaymentMethodParams struct {
@@ -773,6 +1026,33 @@ func (q *Queries) SetPaymentMethod(ctx context.Context, arg SetPaymentMethodPara
 		&i.Email,
 		&i.PaymentMethod,
 		&i.CreatedAt,
+		&i.Country,
+		&i.BillingCurrency,
 	)
 	return i, err
+}
+
+const setSubscriptionState = `-- name: SetSubscriptionState :execrows
+UPDATE subscriptions SET state = $1, paused_at = $2, cancel_at_period_end = $3
+WHERE tenant_id = app_tenant_id() AND id = $4
+`
+
+type SetSubscriptionStateParams struct {
+	State             string
+	PausedAt          *time.Time
+	CancelAtPeriodEnd bool
+	ID                uuid.UUID
+}
+
+func (q *Queries) SetSubscriptionState(ctx context.Context, arg SetSubscriptionStateParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setSubscriptionState,
+		arg.State,
+		arg.PausedAt,
+		arg.CancelAtPeriodEnd,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

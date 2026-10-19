@@ -30,6 +30,15 @@ service PlansService {
 
   rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
   rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
+  rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
+  // PauseSubscription stops the fixed fee from the call until ResumeSubscription. Usage is still metered and billed.
+  rpc PauseSubscription(PauseSubscriptionRequest) returns (PauseSubscriptionResponse);
+  rpc ResumeSubscription(ResumeSubscriptionRequest) returns (ResumeSubscriptionResponse);
+  // ScheduleCancellation ends the subscription at the end of its current billing period.
+  rpc ScheduleCancellation(ScheduleCancellationRequest) returns (ScheduleCancellationResponse);
+  // ChangePlan ends the subscription and starts a new one on another plan version. The fixed fee of the month is split
+  // between the two plans in proportion to the time on each.
+  rpc ChangePlan(ChangePlanRequest) returns (ChangePlanResponse);
   // ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
   rpc ListSubscriptionsForPeriod(ListSubscriptionsForPeriodRequest) returns (stream ListSubscriptionsForPeriodResponse);
 }
@@ -39,6 +48,8 @@ message CreateCustomerRequest {
   string name = 2;
   string email = 3;
   string payment_method = 4;
+  string country = 5;
+  string billing_currency = 6;
 }
 
 message CreateCustomerResponse {
@@ -131,6 +142,11 @@ message PublishPlanVersionRequest {
   int64 base_fee_minor = 2;
   repeated Price prices = 3;
   repeated Entitlement entitlements = 4;
+  // Fixed fees in other currencies (each different from the tenant's, no duplicates).
+  repeated CurrencyFee fees = 5;
+  // Usage prices in those currencies. A currency with prices must have a fee above, and prices must cover exactly the
+  // meters in `prices`.
+  repeated CurrencyPrices currency_prices = 6;
 }
 
 message PublishPlanVersionResponse {
@@ -155,6 +171,12 @@ message CreateSubscriptionRequest {
   int32 plan_version = 3;
   // Unset = now.
   google.protobuf.Timestamp start_time = 4;
+  // 0..365. Unset or 0 = no trial.
+  int32 trial_days = 5;
+  // Unspecified = month.
+  SubscriptionInterval interval = 6;
+  // Unset = the customer's billing currency, else the tenant's. The plan version must have a fee in it.
+  string currency = 7;
 }
 
 message CreateSubscriptionResponse {
@@ -178,4 +200,56 @@ message ListSubscriptionsForPeriodRequest {
 
 message ListSubscriptionsForPeriodResponse {
   Subscription subscription = 1;
+}
+
+message GetSubscriptionRequest {
+  string subscription_id = 1;
+}
+
+message GetSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message PauseSubscriptionRequest {
+  string subscription_id = 1;
+}
+
+message PauseSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message ResumeSubscriptionRequest {
+  string subscription_id = 1;
+}
+
+message ResumeSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message ScheduleCancellationRequest {
+  string subscription_id = 1;
+  // false withdraws a scheduled cancellation.
+  bool cancel = 2;
+}
+
+message ScheduleCancellationResponse {
+  Subscription subscription = 1;
+}
+
+message ChangePlanRequest {
+  string subscription_id = 1;
+  string plan_code = 2;
+  // 0 = latest published version.
+  int32 plan_version = 3;
+  // Unset = now.
+  google.protobuf.Timestamp change_time = 4;
+}
+
+message ChangePlanResponse {
+  // The new subscription. The old one ends at change_time.
+  Subscription subscription = 1;
+  // What the fixed fee of the current billing month will be split into on its invoice, in the subscription's currency:
+  // the old plan's share up to change_time and the new plan's share from it. Informational; billing recomputes them.
+  int64 old_plan_fee_minor = 2;
+  int64 new_plan_fee_minor = 3;
 }
