@@ -112,6 +112,27 @@ type PlanVersionFee struct {
 	BaseFeeMinor  int64
 }
 
+type ProviderMigration struct {
+	TenantID          uuid.UUID
+	ID                uuid.UUID
+	SubscriptionID    uuid.UUID
+	NewSubscriptionID *uuid.UUID
+	FromProvider      string
+	ToProvider        string
+	State             string
+	CutoverAt         *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type RoutingRule struct {
+	TenantID uuid.UUID
+	Position int32
+	Country  *string
+	Currency *string
+	Provider string
+}
+
 type Subscription struct {
 	TenantID          uuid.UUID
 	ID                uuid.UUID

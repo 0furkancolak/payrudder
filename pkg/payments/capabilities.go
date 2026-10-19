@@ -163,7 +163,9 @@ type SubscriptionEvent struct {
 	Status string
 	// QuotifySubscriptionID is the subscription this one was created for (carried in the provider's custom data), if it says.
 	QuotifySubscriptionID string
-	NextBilledAt          *time.Time
+	// QuotifyMigrationID is the provider migration this subscription completes, if it says.
+	QuotifyMigrationID string
+	NextBilledAt       *time.Time
 }
 
 // PendingError is returned by a charge the provider accepted but has not settled: the outcome arrives as a notification. It is not a failure,
@@ -182,6 +184,8 @@ type CheckoutRequest struct {
 	Quantity int
 	// QuotifySubscriptionID ties the provider's subscription to ours; the provider hands it back in its notifications.
 	QuotifySubscriptionID string
+	// QuotifyMigrationID ties the checkout to a provider migration that completes when the customer has subscribed.
+	QuotifyMigrationID string
 }
 
 // Checkout is a hosted page.
@@ -222,4 +226,11 @@ func (r *Registry) Parser(name string) (ParseNotification, bool) {
 	defer r.mu.RUnlock()
 	p, ok := r.parsers[name]
 	return p, ok
+}
+
+// SubscriptionManager is a provider that lets Quotify end a subscription the provider runs.
+type SubscriptionManager interface {
+	Provider
+	// CancelSubscription cancels the provider's subscription ref: at the end of the period already paid for, or immediately.
+	CancelSubscription(ctx context.Context, ref string, atPeriodEnd bool) error
 }

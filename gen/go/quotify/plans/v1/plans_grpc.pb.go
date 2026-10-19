@@ -34,6 +34,13 @@ const (
 	PlansService_CreateSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CreateSubscription"
 	PlansService_CancelSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CancelSubscription"
 	PlansService_GetSubscription_FullMethodName            = "/quotify.plans.v1.PlansService/GetSubscription"
+	PlansService_GetRoutingRules_FullMethodName            = "/quotify.plans.v1.PlansService/GetRoutingRules"
+	PlansService_SetRoutingRules_FullMethodName            = "/quotify.plans.v1.PlansService/SetRoutingRules"
+	PlansService_PreviewRouting_FullMethodName             = "/quotify.plans.v1.PlansService/PreviewRouting"
+	PlansService_StartProviderMigration_FullMethodName     = "/quotify.plans.v1.PlansService/StartProviderMigration"
+	PlansService_CompleteProviderMigration_FullMethodName  = "/quotify.plans.v1.PlansService/CompleteProviderMigration"
+	PlansService_AbortProviderMigration_FullMethodName     = "/quotify.plans.v1.PlansService/AbortProviderMigration"
+	PlansService_GetProviderMigration_FullMethodName       = "/quotify.plans.v1.PlansService/GetProviderMigration"
 	PlansService_SyncProviderSubscription_FullMethodName   = "/quotify.plans.v1.PlansService/SyncProviderSubscription"
 	PlansService_PauseSubscription_FullMethodName          = "/quotify.plans.v1.PlansService/PauseSubscription"
 	PlansService_ResumeSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/ResumeSubscription"
@@ -69,6 +76,19 @@ type PlansServiceClient interface {
 	CreateSubscription(ctx context.Context, in *CreateSubscriptionRequest, opts ...grpc.CallOption) (*CreateSubscriptionResponse, error)
 	CancelSubscription(ctx context.Context, in *CancelSubscriptionRequest, opts ...grpc.CallOption) (*CancelSubscriptionResponse, error)
 	GetSubscription(ctx context.Context, in *GetSubscriptionRequest, opts ...grpc.CallOption) (*GetSubscriptionResponse, error)
+	// GetRoutingRules returns the ordered rules that choose a customer's payment provider from country and currency.
+	GetRoutingRules(ctx context.Context, in *GetRoutingRulesRequest, opts ...grpc.CallOption) (*GetRoutingRulesResponse, error)
+	// SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
+	SetRoutingRules(ctx context.Context, in *SetRoutingRulesRequest, opts ...grpc.CallOption) (*SetRoutingRulesResponse, error)
+	// PreviewRouting says where a customer in a country paying in a currency would go, without creating anything.
+	PreviewRouting(ctx context.Context, in *PreviewRoutingRequest, opts ...grpc.CallOption) (*PreviewRoutingResponse, error)
+	// StartProviderMigration moves a subscription to another payment provider without charging the customer twice. The old subscription ends
+	// only when the new one takes over (CompleteProviderMigration), or at the cutover time given.
+	StartProviderMigration(ctx context.Context, in *StartProviderMigrationRequest, opts ...grpc.CallOption) (*StartProviderMigrationResponse, error)
+	// CompleteProviderMigration is the target provider's confirmation that the customer subscribed there: the cutover happens now.
+	CompleteProviderMigration(ctx context.Context, in *CompleteProviderMigrationRequest, opts ...grpc.CallOption) (*CompleteProviderMigrationResponse, error)
+	AbortProviderMigration(ctx context.Context, in *AbortProviderMigrationRequest, opts ...grpc.CallOption) (*AbortProviderMigrationResponse, error)
+	GetProviderMigration(ctx context.Context, in *GetProviderMigrationRequest, opts ...grpc.CallOption) (*GetProviderMigrationResponse, error)
 	// SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
 	// Internal: called by payments-worker, not exposed by the gateway.
 	SyncProviderSubscription(ctx context.Context, in *SyncProviderSubscriptionRequest, opts ...grpc.CallOption) (*SyncProviderSubscriptionResponse, error)
@@ -242,6 +262,76 @@ func (c *plansServiceClient) GetSubscription(ctx context.Context, in *GetSubscri
 	return out, nil
 }
 
+func (c *plansServiceClient) GetRoutingRules(ctx context.Context, in *GetRoutingRulesRequest, opts ...grpc.CallOption) (*GetRoutingRulesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRoutingRulesResponse)
+	err := c.cc.Invoke(ctx, PlansService_GetRoutingRules_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) SetRoutingRules(ctx context.Context, in *SetRoutingRulesRequest, opts ...grpc.CallOption) (*SetRoutingRulesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetRoutingRulesResponse)
+	err := c.cc.Invoke(ctx, PlansService_SetRoutingRules_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) PreviewRouting(ctx context.Context, in *PreviewRoutingRequest, opts ...grpc.CallOption) (*PreviewRoutingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PreviewRoutingResponse)
+	err := c.cc.Invoke(ctx, PlansService_PreviewRouting_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) StartProviderMigration(ctx context.Context, in *StartProviderMigrationRequest, opts ...grpc.CallOption) (*StartProviderMigrationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartProviderMigrationResponse)
+	err := c.cc.Invoke(ctx, PlansService_StartProviderMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) CompleteProviderMigration(ctx context.Context, in *CompleteProviderMigrationRequest, opts ...grpc.CallOption) (*CompleteProviderMigrationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CompleteProviderMigrationResponse)
+	err := c.cc.Invoke(ctx, PlansService_CompleteProviderMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) AbortProviderMigration(ctx context.Context, in *AbortProviderMigrationRequest, opts ...grpc.CallOption) (*AbortProviderMigrationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AbortProviderMigrationResponse)
+	err := c.cc.Invoke(ctx, PlansService_AbortProviderMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) GetProviderMigration(ctx context.Context, in *GetProviderMigrationRequest, opts ...grpc.CallOption) (*GetProviderMigrationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetProviderMigrationResponse)
+	err := c.cc.Invoke(ctx, PlansService_GetProviderMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) SyncProviderSubscription(ctx context.Context, in *SyncProviderSubscriptionRequest, opts ...grpc.CallOption) (*SyncProviderSubscriptionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SyncProviderSubscriptionResponse)
@@ -338,6 +428,19 @@ type PlansServiceServer interface {
 	CreateSubscription(context.Context, *CreateSubscriptionRequest) (*CreateSubscriptionResponse, error)
 	CancelSubscription(context.Context, *CancelSubscriptionRequest) (*CancelSubscriptionResponse, error)
 	GetSubscription(context.Context, *GetSubscriptionRequest) (*GetSubscriptionResponse, error)
+	// GetRoutingRules returns the ordered rules that choose a customer's payment provider from country and currency.
+	GetRoutingRules(context.Context, *GetRoutingRulesRequest) (*GetRoutingRulesResponse, error)
+	// SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
+	SetRoutingRules(context.Context, *SetRoutingRulesRequest) (*SetRoutingRulesResponse, error)
+	// PreviewRouting says where a customer in a country paying in a currency would go, without creating anything.
+	PreviewRouting(context.Context, *PreviewRoutingRequest) (*PreviewRoutingResponse, error)
+	// StartProviderMigration moves a subscription to another payment provider without charging the customer twice. The old subscription ends
+	// only when the new one takes over (CompleteProviderMigration), or at the cutover time given.
+	StartProviderMigration(context.Context, *StartProviderMigrationRequest) (*StartProviderMigrationResponse, error)
+	// CompleteProviderMigration is the target provider's confirmation that the customer subscribed there: the cutover happens now.
+	CompleteProviderMigration(context.Context, *CompleteProviderMigrationRequest) (*CompleteProviderMigrationResponse, error)
+	AbortProviderMigration(context.Context, *AbortProviderMigrationRequest) (*AbortProviderMigrationResponse, error)
+	GetProviderMigration(context.Context, *GetProviderMigrationRequest) (*GetProviderMigrationResponse, error)
 	// SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
 	// Internal: called by payments-worker, not exposed by the gateway.
 	SyncProviderSubscription(context.Context, *SyncProviderSubscriptionRequest) (*SyncProviderSubscriptionResponse, error)
@@ -405,6 +508,27 @@ func (UnimplementedPlansServiceServer) CancelSubscription(context.Context, *Canc
 }
 func (UnimplementedPlansServiceServer) GetSubscription(context.Context, *GetSubscriptionRequest) (*GetSubscriptionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSubscription not implemented")
+}
+func (UnimplementedPlansServiceServer) GetRoutingRules(context.Context, *GetRoutingRulesRequest) (*GetRoutingRulesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRoutingRules not implemented")
+}
+func (UnimplementedPlansServiceServer) SetRoutingRules(context.Context, *SetRoutingRulesRequest) (*SetRoutingRulesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetRoutingRules not implemented")
+}
+func (UnimplementedPlansServiceServer) PreviewRouting(context.Context, *PreviewRoutingRequest) (*PreviewRoutingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PreviewRouting not implemented")
+}
+func (UnimplementedPlansServiceServer) StartProviderMigration(context.Context, *StartProviderMigrationRequest) (*StartProviderMigrationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartProviderMigration not implemented")
+}
+func (UnimplementedPlansServiceServer) CompleteProviderMigration(context.Context, *CompleteProviderMigrationRequest) (*CompleteProviderMigrationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CompleteProviderMigration not implemented")
+}
+func (UnimplementedPlansServiceServer) AbortProviderMigration(context.Context, *AbortProviderMigrationRequest) (*AbortProviderMigrationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AbortProviderMigration not implemented")
+}
+func (UnimplementedPlansServiceServer) GetProviderMigration(context.Context, *GetProviderMigrationRequest) (*GetProviderMigrationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetProviderMigration not implemented")
 }
 func (UnimplementedPlansServiceServer) SyncProviderSubscription(context.Context, *SyncProviderSubscriptionRequest) (*SyncProviderSubscriptionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SyncProviderSubscription not implemented")
@@ -715,6 +839,132 @@ func _PlansService_GetSubscription_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_GetRoutingRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRoutingRulesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).GetRoutingRules(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_GetRoutingRules_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).GetRoutingRules(ctx, req.(*GetRoutingRulesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_SetRoutingRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetRoutingRulesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).SetRoutingRules(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_SetRoutingRules_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).SetRoutingRules(ctx, req.(*SetRoutingRulesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_PreviewRouting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PreviewRoutingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).PreviewRouting(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_PreviewRouting_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).PreviewRouting(ctx, req.(*PreviewRoutingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_StartProviderMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartProviderMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).StartProviderMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_StartProviderMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).StartProviderMigration(ctx, req.(*StartProviderMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_CompleteProviderMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteProviderMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).CompleteProviderMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_CompleteProviderMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).CompleteProviderMigration(ctx, req.(*CompleteProviderMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_AbortProviderMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AbortProviderMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).AbortProviderMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_AbortProviderMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).AbortProviderMigration(ctx, req.(*AbortProviderMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_GetProviderMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetProviderMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).GetProviderMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_GetProviderMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).GetProviderMigration(ctx, req.(*GetProviderMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_SyncProviderSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SyncProviderSubscriptionRequest)
 	if err := dec(in); err != nil {
@@ -882,6 +1132,34 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSubscription",
 			Handler:    _PlansService_GetSubscription_Handler,
+		},
+		{
+			MethodName: "GetRoutingRules",
+			Handler:    _PlansService_GetRoutingRules_Handler,
+		},
+		{
+			MethodName: "SetRoutingRules",
+			Handler:    _PlansService_SetRoutingRules_Handler,
+		},
+		{
+			MethodName: "PreviewRouting",
+			Handler:    _PlansService_PreviewRouting_Handler,
+		},
+		{
+			MethodName: "StartProviderMigration",
+			Handler:    _PlansService_StartProviderMigration_Handler,
+		},
+		{
+			MethodName: "CompleteProviderMigration",
+			Handler:    _PlansService_CompleteProviderMigration_Handler,
+		},
+		{
+			MethodName: "AbortProviderMigration",
+			Handler:    _PlansService_AbortProviderMigration_Handler,
+		},
+		{
+			MethodName: "GetProviderMigration",
+			Handler:    _PlansService_GetProviderMigration_Handler,
 		},
 		{
 			MethodName: "SyncProviderSubscription",

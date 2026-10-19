@@ -10,6 +10,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -20,6 +21,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
@@ -40,13 +43,18 @@ type Server struct {
 	Log           *slog.Logger
 	// Token guards /admin. Empty disables the admin endpoints entirely.
 	Token string
-	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status.
-	Plans PlansSync
+	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status, and runs
+	// provider migrations.
+	Plans PlansAPI
 }
 
-// PlansSync tells plans-svc what a provider says about a subscription it runs.
-type PlansSync interface {
+// PlansAPI is what payments-worker asks of plans-svc, as the tenant.
+type PlansAPI interface {
 	SyncProviderSubscription(ctx context.Context, tenant uuid.UUID, req *plansv1.SyncProviderSubscriptionRequest) error
+	GetSubscription(ctx context.Context, tenant uuid.UUID, id string) (*plansv1.Subscription, error)
+	StartProviderMigration(ctx context.Context, tenant uuid.UUID, req *plansv1.StartProviderMigrationRequest) (*plansv1.ProviderMigration, error)
+	CompleteProviderMigration(ctx context.Context, tenant uuid.UUID, req *plansv1.CompleteProviderMigrationRequest) (*plansv1.CompleteProviderMigrationResponse, error)
+	AbortProviderMigration(ctx context.Context, tenant uuid.UUID, id string) error
 }
 
 const maxBody = 64 << 10
@@ -72,6 +80,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /webhooks/{provider}/{tenant}/{environment}", s.tenantNotification)
 	mux.HandleFunc("GET /admin/tenants/{tenant}/provider-subscriptions", s.admin(s.listSubscriptions))
 	mux.HandleFunc("POST /admin/tenants/{tenant}/checkouts", s.admin(s.checkout))
+	mux.HandleFunc("POST /admin/tenants/{tenant}/migrations", s.admin(s.migrate))
+	mux.HandleFunc("POST /admin/tenants/{tenant}/migrations/{migration}/abort", s.admin(s.abortMigration))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/provider-accounts", s.admin(s.listAccounts))
 	mux.HandleFunc("PUT /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.putAccount))
 	mux.HandleFunc("DELETE /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.deleteAccount))
@@ -284,19 +294,65 @@ func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provi
 	if occurred.IsZero() {
 		occurred = time.Now()
 	}
+	prov, err := s.Resolver.Named(ctx, tenant, provider, env)
+	if err != nil {
+		return err
+	}
+	owner := string(prov.Capabilities().Owner())
+
+	// A subscription that completes a provider migration: the cutover happens now, in plans-svc, and the old one is released.
+	if mig := ev.QuotifyMigrationID; mig != "" && s.Plans != nil {
+		done, err := s.Plans.CompleteProviderMigration(ctx, tenant, &plansv1.CompleteProviderMigrationRequest{
+			MigrationId: mig, ProviderRef: ev.ProviderRef, CutoverTime: timestamppb.New(occurred)})
+		if err != nil {
+			return err
+		}
+		if id, err := uuid.Parse(done.GetSubscription().GetId()); err == nil {
+			q = &id
+		}
+		if err := s.Subscriptions.Upsert(ctx, tenant, provider, env, ev.ProviderRef, q, ev.Status, ev.NextBilledAt, occurred); err != nil {
+			return err
+		}
+		return s.releaseSource(ctx, tenant, env, done)
+	}
+
 	if err := s.Subscriptions.Upsert(ctx, tenant, provider, env, ev.ProviderRef, q, ev.Status, ev.NextBilledAt, occurred); err != nil {
 		return err
 	}
-	if q == nil || s.Plans == nil {
-		return nil // a subscription we did not start (or no plans-svc to tell): kept for the operator, nothing to link
+	if s.Plans == nil {
+		return nil
 	}
-	owner := payments.OwnerQuotify
-	if prov, err := s.Resolver.Named(ctx, tenant, provider, env); err == nil {
-		owner = prov.Capabilities().Owner()
+	if q == nil {
+		// Later events of a subscription we already know carry no id of ours; the row remembers it.
+		known, found, err := s.Subscriptions.QuotifyID(ctx, tenant, provider, env, ev.ProviderRef)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return nil // a subscription we did not start: kept for the operator, nothing to link
+		}
+		q = &known
 	}
 	return s.Plans.SyncProviderSubscription(ctx, tenant, &plansv1.SyncProviderSubscriptionRequest{
-		SubscriptionId: q.String(), Provider: provider, ProviderRef: ev.ProviderRef, Owner: string(owner), ProviderStatus: ev.Status, OccurredAt: timestamppb.New(occurred),
+		SubscriptionId: q.String(), Provider: provider, ProviderRef: ev.ProviderRef, Owner: owner, ProviderStatus: ev.Status, OccurredAt: timestamppb.New(occurred),
 	})
+}
+
+// releaseSource stops the old provider from billing a subscription that has moved: a subscription the old provider ran is cancelled there.
+func (s *Server) releaseSource(ctx context.Context, tenant uuid.UUID, env string, done *plansv1.CompleteProviderMigrationResponse) error {
+	if done.GetSourceProviderRef() == "" {
+		return nil // Quotify ran the old subscription: it ended with the cutover
+	}
+	prov, err := s.Resolver.Named(ctx, tenant, done.GetSourceProvider(), env)
+	if err != nil {
+		return err
+	}
+	m, ok := prov.(payments.SubscriptionManager)
+	if !ok {
+		return fmt.Errorf("%s cannot cancel a subscription: release %s there by hand", done.GetSourceProvider(), done.GetSourceProviderRef())
+	}
+	// Immediately: the customer now pays the new provider, and one more renewal here would be a second bill.
+	return m.CancelSubscription(ctx, done.GetSourceProviderRef(), false)
 }
 
 func (s *Server) tenant(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
@@ -466,4 +522,135 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"url": co.URL, "ref": co.Ref})
+}
+
+// migrate moves a subscription to another payment provider (docs/14-billing-platform.md#provider-migration).
+//
+// To a provider that runs subscriptions itself (Paddle) the customer has to subscribe there first: a migration is started and a checkout returned. The
+// old subscription is untouched until the provider confirms, so a customer who never completes the checkout costs nothing.
+// To a provider Quotify runs (iyzico) the new subscription takes over at once, or, from a provider-run subscription, at the end of the period that provider
+// was paid for. The old provider is told to stop renewing first: a failure after that leaves a subscription that ends without a successor (an operator
+// retries), never two that both bill.
+func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
+	t, ok := s.tenant(w, r)
+	if !ok {
+		return
+	}
+	env, ok := environment(w, r)
+	if !ok {
+		return
+	}
+	if s.Plans == nil {
+		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
+		return
+	}
+	var in struct {
+		SubscriptionID string `json:"subscription_id"`
+		ToProvider     string `json:"to_provider"`
+		PriceRef       string `json:"price_ref"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&in); err != nil || in.SubscriptionID == "" || in.ToProvider == "" {
+		fail(w, http.StatusBadRequest, "subscription_id and to_provider are required")
+		return
+	}
+	ctx := r.Context()
+	sub, err := s.Plans.GetSubscription(ctx, t, in.SubscriptionID)
+	if err != nil {
+		planFail(w, err)
+		return
+	}
+	target, err := s.Resolver.Named(ctx, t, in.ToProvider, env)
+	if err != nil {
+		fail(w, http.StatusNotFound, "no account at "+in.ToProvider+" for this tenant")
+		return
+	}
+	if target.Capabilities().Owner() == payments.OwnerProvider {
+		cp, ok := target.(payments.CheckoutProvider)
+		if !ok || in.PriceRef == "" {
+			fail(w, http.StatusBadRequest, in.ToProvider+" runs subscriptions itself: price_ref (its catalogue price) is required")
+			return
+		}
+		mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider})
+		if err != nil {
+			planFail(w, err)
+			return
+		}
+		co, err := cp.CreateCheckout(ctx, payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: 1, QuotifyMigrationID: mig.GetId()})
+		if err != nil {
+			// No checkout, no migration: leave the subscription as it was.
+			if aerr := s.Plans.AbortProviderMigration(ctx, t, mig.GetId()); aerr != nil {
+				s.Log.ErrorContext(ctx, "could not abort a migration after a failed checkout", "migration", mig.GetId(), "err", aerr)
+			}
+			fail(w, http.StatusBadGateway, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "started", "checkout_url": co.URL})
+		return
+	}
+
+	// The target is run by Quotify. From a provider-run subscription, wait for the end of the period that provider was paid for.
+	var cutover *timestamppb.Timestamp
+	if sub.GetOwner() == "provider" {
+		next, found, err := s.Subscriptions.NextBilledAt(ctx, t, sub.GetProvider(), env, sub.GetProviderRef())
+		if err != nil {
+			fail(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if !found {
+			fail(w, http.StatusConflict, "the end of the paid period at "+sub.GetProvider()+" is not known yet (no notification has told us)")
+			return
+		}
+		cutover = timestamppb.New(next)
+		old, err := s.Resolver.Named(ctx, t, sub.GetProvider(), env)
+		if err != nil {
+			fail(w, http.StatusNotFound, "no account at "+sub.GetProvider()+" for this tenant")
+			return
+		}
+		m, ok := old.(payments.SubscriptionManager)
+		if !ok {
+			fail(w, http.StatusConflict, sub.GetProvider()+" cannot cancel a subscription through Quotify")
+			return
+		}
+		if err := m.CancelSubscription(ctx, sub.GetProviderRef(), true); err != nil {
+			fail(w, http.StatusBadGateway, err.Error())
+			return
+		}
+	}
+	mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider, CutoverTime: cutover})
+	if err != nil {
+		planFail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "completed", "new_subscription": mig.GetNewSubscriptionId(),
+		"cutover": mig.GetCutoverTime().AsTime()})
+}
+
+func (s *Server) abortMigration(w http.ResponseWriter, r *http.Request) {
+	t, ok := s.tenant(w, r)
+	if !ok {
+		return
+	}
+	if s.Plans == nil {
+		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
+		return
+	}
+	if err := s.Plans.AbortProviderMigration(r.Context(), t, r.PathValue("migration")); err != nil {
+		planFail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"state": "aborted"})
+}
+
+// planFail relays a plans-svc refusal: its status code becomes the HTTP one.
+func planFail(w http.ResponseWriter, err error) {
+	switch status.Code(err) {
+	case codes.NotFound:
+		fail(w, http.StatusNotFound, status.Convert(err).Message())
+	case codes.InvalidArgument:
+		fail(w, http.StatusBadRequest, status.Convert(err).Message())
+	case codes.FailedPrecondition, codes.AlreadyExists, codes.Aborted:
+		fail(w, http.StatusConflict, status.Convert(err).Message())
+	default:
+		fail(w, http.StatusBadGateway, "plans-svc: "+status.Convert(err).Message())
+	}
 }

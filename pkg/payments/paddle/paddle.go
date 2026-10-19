@@ -108,7 +108,10 @@ func (c *Client) Name() string { return Name }
 
 // Capabilities implements payments.Provider: Paddle runs renewals and retries, calculates tax and hosts the checkout.
 // Charges are not idempotent by key. Paddle bills in more currencies than Quotify lists; the intersection is declared.
-func (c *Client) Capabilities() payments.Capabilities {
+func (c *Client) Capabilities() payments.Capabilities { return Caps() }
+
+// Caps are Paddle's capabilities, which do not depend on an account.
+func Caps() payments.Capabilities {
 	return payments.Capabilities{Name: Name, OwnsRenewal: true, OwnsDunning: true, CalculatesTax: true, HostedCheckout: true, Refunds: true,
 		Currencies: []string{"USD", "EUR", "GBP", "CHF", "JPY"}}
 }
@@ -261,8 +264,15 @@ func (c *Client) CreateCheckout(ctx context.Context, r payments.CheckoutRequest)
 		"items":           []map[string]any{{"price_id": r.PriceRef, "quantity": q}},
 		"collection_mode": "automatic",
 	}
+	custom := map[string]string{}
 	if r.QuotifySubscriptionID != "" {
-		req["custom_data"] = map[string]string{"quotify_subscription_id": r.QuotifySubscriptionID}
+		custom["quotify_subscription_id"] = r.QuotifySubscriptionID
+	}
+	if r.QuotifyMigrationID != "" {
+		custom["quotify_migration_id"] = r.QuotifyMigrationID
+	}
+	if len(custom) > 0 {
+		req["custom_data"] = custom
 	}
 	var out struct {
 		Data struct {
@@ -279,6 +289,18 @@ func (c *Client) CreateCheckout(ctx context.Context, r payments.CheckoutRequest)
 		return payments.Checkout{}, errors.New("paddle: the transaction has no checkout url (is a default payment link set in Paddle?)")
 	}
 	return payments.Checkout{URL: out.Data.Checkout.URL, Ref: out.Data.ID}, nil
+}
+
+// CancelSubscription cancels a Paddle subscription (sub_...): at the end of the billing period the customer has paid for, or immediately.
+func (c *Client) CancelSubscription(ctx context.Context, ref string, atPeriodEnd bool) error {
+	if !strings.HasPrefix(ref, "sub_") {
+		return errors.New(`paddle: a subscription id ("sub_...") is needed`)
+	}
+	when := "immediately"
+	if atPeriodEnd {
+		when = "next_billing_period"
+	}
+	return c.do(ctx, http.MethodPost, "/subscriptions/"+url.PathEscape(ref)+"/cancel", map[string]string{"effective_from": when}, nil)
 }
 
 // SignatureHeader builds a Paddle-Signature header value for body at time ts (what Paddle does when it sends). Used to test and to simulate.
@@ -444,7 +466,8 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		if err := json.Unmarshal(e.Data, &s); err != nil {
 			return n, fmt.Errorf("paddle: subscription: %w", err)
 		}
-		ev := &payments.SubscriptionEvent{ProviderRef: s.ID, Status: s.Status, QuotifySubscriptionID: s.CustomData.str("quotify_subscription_id")}
+		ev := &payments.SubscriptionEvent{ProviderRef: s.ID, Status: s.Status, QuotifySubscriptionID: s.CustomData.str("quotify_subscription_id"),
+			QuotifyMigrationID: s.CustomData.str("quotify_migration_id")}
 		if s.NextBilledAt != nil {
 			if t, err := time.Parse(time.RFC3339, *s.NextBilledAt); err == nil {
 				ev.NextBilledAt = &t

@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -56,4 +58,32 @@ func (s Subscriptions) List(ctx context.Context, tenant uuid.UUID) ([]ProviderSu
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// QuotifyID returns our subscription id remembered for a provider subscription.
+func (s Subscriptions) QuotifyID(ctx context.Context, tenant uuid.UUID, provider, env, ref string) (uuid.UUID, bool, error) {
+	var id *uuid.UUID
+	err := s.DB.QueryRow(ctx, `SELECT quotify_subscription_id FROM provider_subscriptions WHERE tenant_id = $1 AND provider = $2 AND environment = $3 AND provider_ref = $4`,
+		tenant, provider, env, ref).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && id == nil) {
+		return uuid.Nil, false, nil
+	}
+	if err != nil {
+		return uuid.Nil, false, err
+	}
+	return *id, true, nil
+}
+
+// NextBilledAt returns when the provider will next bill a subscription: the end of the period it has been paid for.
+func (s Subscriptions) NextBilledAt(ctx context.Context, tenant uuid.UUID, provider, env, ref string) (time.Time, bool, error) {
+	var t *time.Time
+	err := s.DB.QueryRow(ctx, `SELECT next_billed_at FROM provider_subscriptions WHERE tenant_id = $1 AND provider = $2 AND environment = $3 AND provider_ref = $4`,
+		tenant, provider, env, ref).Scan(&t)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && t == nil) {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return *t, true, nil
 }

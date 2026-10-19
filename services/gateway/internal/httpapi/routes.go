@@ -42,6 +42,10 @@ func (s *Server) routes() []Route {
 		{"POST", "/v1/subscriptions/{id}/cancel-at-period-end", AccessTenant, ratelimit.ClassWrite, s.scheduleCancellation},
 		{"DELETE", "/v1/subscriptions/{id}/cancel-at-period-end", AccessTenant, ratelimit.ClassWrite, s.withdrawCancellation},
 		{"POST", "/v1/subscriptions/{id}/change-plan", AccessTenant, ratelimit.ClassWrite, s.changePlan},
+		// Payment provider routing
+		{"GET", "/v1/routing-rules", AccessTenant, ratelimit.ClassRead, s.getRoutingRules},
+		{"PUT", "/v1/routing-rules", AccessTenant, ratelimit.ClassWrite, s.setRoutingRules},
+		{"POST", "/v1/routing-rules/preview", AccessTenant, ratelimit.ClassRead, s.previewRouting},
 		// Assets: direct multipart sessions, a streamed form upload, and the files themselves
 		{"POST", "/v1/assets/uploads", AccessTenant, ratelimit.ClassWrite, s.createUploadSession},
 		{"POST", "/v1/assets/uploads/{session}/files/{asset}/parts", AccessTenant, ratelimit.ClassWrite, s.presignParts},
@@ -81,6 +85,8 @@ func (s *Server) routes() []Route {
 		{"POST", "/webhooks/{provider}/{tenant_id}/{environment}", AccessPublic, "", s.tenantWebhook},
 		{"GET", "/admin/v1/tenants/{tenant_id}/provider-subscriptions", AccessOperator, "", s.providerSubscriptions},
 		{"POST", "/admin/v1/tenants/{tenant_id}/checkouts", AccessOperator, "", s.providerCheckout},
+		{"POST", "/admin/v1/tenants/{tenant_id}/provider-migrations", AccessOperator, "", s.providerMigrate},
+		{"POST", "/admin/v1/tenants/{tenant_id}/provider-migrations/{migration_id}/abort", AccessOperator, "", s.providerMigrationAbort},
 		{"GET", "/admin/v1/dead-letters", AccessOperator, "", s.adminListDeadLetters},
 		{"POST", "/admin/v1/dead-letters/redrive", AccessOperator, "", s.adminRedriveDeadLetters},
 		{"GET", "/admin/v1/tenants/{id}", AccessOperator, "", s.getTenant},
@@ -310,4 +316,29 @@ func (s *Server) createAPIKey(w http.ResponseWriter, r *http.Request) {
 func (s *Server) revokeAPIKey(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Admin.RevokeApiKey(r.Context(), &plansv1.RevokeApiKeyRequest{ApiKeyId: r.PathValue("id")})
 	respond(w, r, http.StatusOK, resp.GetApiKey(), err)
+}
+
+func (s *Server) getRoutingRules(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.GetRoutingRules(r.Context(), &plansv1.GetRoutingRulesRequest{})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) setRoutingRules(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.SetRoutingRulesRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Plans.SetRoutingRules(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) previewRouting(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.PreviewRoutingRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Plans.PreviewRouting(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
 }

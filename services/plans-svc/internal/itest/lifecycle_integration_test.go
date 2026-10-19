@@ -24,7 +24,8 @@ func testSubscriptionLifecycle(t *testing.T) {
 		if _, err := e.plans.CreatePlan(ctx, &plansv1.CreatePlanRequest{Code: c.code, Name: c.code}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: c.code, BaseFeeMinor: c.fee}); err != nil {
+		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: c.code, BaseFeeMinor: c.fee,
+			Fees: []*plansv1.CurrencyFee{{Currency: "USD", BaseFeeMinor: c.fee / 30}}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -145,7 +146,11 @@ func testSubscriptionLifecycle(t *testing.T) {
 	})
 
 	t.Run("a subscription a provider runs is linked, followed and not changed locally", func(t *testing.T) {
-		mkCustomer("cus_paddle")
+		for _, id := range []string{"cus_paddle", "cus_paddle2"} {
+			if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: id, Name: id, Email: id + "@example.com", Country: "DE", BillingCurrency: "USD"}); err != nil {
+				t.Fatal(err)
+			}
+		}
 		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle", PlanCode: "basic", Provider: "paddle"})
 		if err != nil || r.GetSubscription().GetProvider() != "paddle" || r.GetSubscription().GetOwner() != "quotify" || r.GetSubscription().GetProviderRef() != "" {
 			t.Fatalf("created = %v, %v; it names its provider but is not linked or provider-owned yet", r, err)
@@ -196,7 +201,6 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatalf("canceled = %v, %v", g, err)
 		}
 		// Another subscription cannot take the same provider id.
-		mkCustomer("cus_paddle2")
 		r2, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle2", PlanCode: "basic", Provider: "paddle"})
 		if err != nil {
 			t.Fatal(err)
@@ -205,6 +209,226 @@ func testSubscriptionLifecycle(t *testing.T) {
 			ProviderRef: "sub_01", Owner: "provider", ProviderStatus: "active"})
 		if err == nil {
 			t.Fatal("two subscriptions linked to the same provider subscription")
+		}
+	})
+
+	t.Run("routing rules choose the provider from country and currency", func(t *testing.T) {
+		rules := []*plansv1.RoutingRule{
+			{Country: "TR", Currency: "TRY", Provider: "iyzico"},
+			{Currency: "USD", Provider: "paddle"},
+		}
+		if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Currency: "TRY", Provider: "paddle"}}}); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("paddle cannot charge TRY: %v", err)
+		}
+		if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Provider: "stripe"}}}); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("unknown provider: %v", err)
+		}
+		got, err := e.plans.GetRoutingRules(ctx, &plansv1.GetRoutingRulesRequest{})
+		if err != nil || len(got.GetRules()) != 0 {
+			t.Fatalf("a refused list changed nothing: %v, %v", got, err)
+		}
+		set, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: rules})
+		if err != nil || len(set.GetRules()) != 2 {
+			t.Fatalf("set = %v, %v", set, err)
+		}
+		if got, _ = e.plans.GetRoutingRules(ctx, &plansv1.GetRoutingRulesRequest{}); len(got.GetRules()) != 2 || got.GetRules()[0].GetProvider() != "iyzico" || got.GetRules()[1].GetCountry() != "" {
+			t.Fatalf("get = %v", got)
+		}
+		for _, c := range []struct {
+			country, currency, provider, owner string
+			index                              int32
+			can                                bool
+		}{
+			{"TR", "TRY", "iyzico", "quotify", 0, true},
+			{"DE", "USD", "paddle", "provider", 1, true},
+			{"TR", "EUR", "", "", -1, true},
+		} {
+			p, err := e.plans.PreviewRouting(ctx, &plansv1.PreviewRoutingRequest{Country: c.country, Currency: c.currency})
+			if err != nil || p.GetProvider() != c.provider || p.GetOwner() != c.owner || p.GetRuleIndex() != c.index || p.GetCanCharge() != c.can {
+				t.Errorf("preview %s/%s = %v, %v", c.country, c.currency, p, err)
+			}
+		}
+
+		// A new subscription follows the rules; an explicit provider overrides them; the customer's currency decides which rule applies.
+		mk := func(id, country, currency string) {
+			if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: id, Name: id, Email: id + "@example.com", Country: country, BillingCurrency: currency}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		mk("cus_tr", "TR", "TRY")
+		mk("cus_us", "US", "USD")
+		mk("cus_eur", "FR", "")
+		sub := func(customer, provider string) *plansv1.Subscription {
+			t.Helper()
+			r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: customer, PlanCode: "basic", Provider: provider})
+			if err != nil {
+				t.Fatalf("%s: %v", customer, err)
+			}
+			return r.GetSubscription()
+		}
+		trSub := sub("cus_tr", "")
+		if trSub.GetProvider() != "iyzico" {
+			t.Errorf("Turkish customer in lira went to %q", trSub.GetProvider())
+		}
+		if s := sub("cus_us", ""); s.GetProvider() != "paddle" {
+			t.Errorf("customer in dollars went to %q", s.GetProvider())
+		}
+		if s := sub("cus_eur", ""); s.GetProvider() != "" {
+			t.Errorf("a customer no rule matches went to %q; it uses the default account", s.GetProvider())
+		}
+		// Editing the rules does not move existing subscriptions.
+		if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{}); err != nil {
+			t.Fatal(err)
+		}
+		after, _ := e.plans.GetSubscription(ctx, &plansv1.GetSubscriptionRequest{SubscriptionId: trSub.GetId()})
+		if after.GetSubscription().GetProvider() != "iyzico" {
+			t.Errorf("an existing subscription moved when the rules changed: %v", after)
+		}
+		// An explicit provider overrides the rules (there are none now).
+		mk("cus_explicit", "TR", "TRY")
+		if s := sub("cus_explicit", "iyzico"); s.GetProvider() != "iyzico" {
+			t.Errorf("explicit provider = %q", s.GetProvider())
+		}
+		// A provider that cannot charge the subscription's currency is refused at creation.
+		mk("cus_tr2", "TR", "TRY")
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_tr2", PlanCode: "basic", Provider: "paddle"}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("paddle for a lira subscription: %v", err)
+		}
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_tr2", PlanCode: "basic", Provider: "stripe"}); code(t, err) != codes.InvalidArgument {
+			t.Errorf("unknown provider: %v", err)
+		}
+	})
+
+	t.Run("a subscription moves between providers without two of them being live at once", func(t *testing.T) {
+		mkUSD := func(id string) {
+			if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: id, Name: id, Email: id + "@example.com", Country: "US", BillingCurrency: "USD"}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		get := func(id string) *plansv1.Subscription {
+			t.Helper()
+			r, err := e.plans.GetSubscription(ctx, &plansv1.GetSubscriptionRequest{SubscriptionId: id})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return r.GetSubscription()
+		}
+
+		// iyzico (run by Quotify) to Paddle (run by Paddle): the customer has to subscribe at Paddle first.
+		mkUSD("cus_mig1")
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig1", PlanCode: "basic", Provider: "iyzico",
+			StartTime: timestamppb.New(time.Now().Add(-2 * time.Hour))})
+		if err != nil {
+			t.Fatal(err)
+		}
+		old := r.GetSubscription()
+		st, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: old.GetId(), ToProvider: "paddle"})
+		if err != nil || st.GetMigration().GetState() != plansv1.ProviderMigration_STATE_STARTED || st.GetMigration().GetFromProvider() != "iyzico" {
+			t.Fatalf("start = %v, %v", st, err)
+		}
+		mig := st.GetMigration().GetId()
+		if got := get(old.GetId()); got.GetEndTime() != nil || got.GetProvider() != "iyzico" {
+			t.Fatalf("the old subscription changed before the customer subscribed at Paddle: %v", got)
+		}
+		if _, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: old.GetId(), ToProvider: "paddle"}); code(t, err) != codes.AlreadyExists {
+			t.Fatalf("a second migration while one is under way: %v", err)
+		}
+		cut := time.Now().Add(-time.Minute).Truncate(time.Microsecond)
+		done, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: mig, ProviderRef: "sub_NEW", CutoverTime: timestamppb.New(cut)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		nw := done.GetSubscription()
+		if done.GetMigration().GetState() != plansv1.ProviderMigration_STATE_COMPLETED || nw.GetProvider() != "paddle" || nw.GetOwner() != "provider" || nw.GetProviderRef() != "sub_NEW" ||
+			nw.GetChangedFromId() != old.GetId() || !nw.GetStartTime().AsTime().Equal(cut) || nw.GetEndTime() != nil || nw.GetPlanVersionId() != old.GetPlanVersionId() {
+			t.Fatalf("new subscription = %v", nw)
+		}
+		if done.GetSourceProvider() != "iyzico" || done.GetSourceProviderRef() != "" {
+			t.Errorf("source = %q %q; Quotify ran the old one, so there is nothing to release at iyzico", done.GetSourceProvider(), done.GetSourceProviderRef())
+		}
+		if got := get(old.GetId()); got.GetEndTime() == nil || !got.GetEndTime().AsTime().Equal(cut) || got.GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_CANCELLED {
+			t.Fatalf("old subscription = %v; it ends exactly when the new one starts", got)
+		}
+		// Paddle delivers its notifications more than once.
+		again, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: mig, ProviderRef: "sub_NEW"})
+		if err != nil || again.GetSubscription().GetId() != nw.GetId() {
+			t.Fatalf("complete again = %v, %v; it must return the same subscription", again, err)
+		}
+		if _, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: mig, ProviderRef: "sub_OTHER"}); code(t, err) != codes.FailedPrecondition {
+			t.Fatalf("complete with another provider id: %v", err)
+		}
+		if _, err := e.plans.AbortProviderMigration(ctx, &plansv1.AbortProviderMigrationRequest{MigrationId: mig}); code(t, err) != codes.FailedPrecondition {
+			t.Fatalf("abort after the cutover: %v", err)
+		}
+
+		// Giving up before the cutover leaves everything as it was.
+		mkUSD("cus_mig2")
+		r2, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig2", PlanCode: "basic", Provider: "iyzico"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		st2, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: r2.GetSubscription().GetId(), ToProvider: "paddle"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ab, err := e.plans.AbortProviderMigration(ctx, &plansv1.AbortProviderMigrationRequest{MigrationId: st2.GetMigration().GetId()})
+		if err != nil || ab.GetMigration().GetState() != plansv1.ProviderMigration_STATE_ABORTED {
+			t.Fatalf("abort = %v, %v", ab, err)
+		}
+		if got := get(r2.GetSubscription().GetId()); got.GetEndTime() != nil || got.GetProvider() != "iyzico" {
+			t.Fatalf("an aborted migration changed the subscription: %v", got)
+		}
+		if _, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: st2.GetMigration().GetId(), ProviderRef: "sub_X"}); code(t, err) != codes.FailedPrecondition {
+			t.Fatalf("complete after abort: %v", err)
+		}
+		if _, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: r2.GetSubscription().GetId(), ToProvider: "paddle"}); err != nil {
+			t.Fatalf("a new migration after an abort: %v", err)
+		}
+
+		// Paddle (run by Paddle) to iyzico (run by Quotify): at the end of the period Paddle has been paid for.
+		paid := get(nw.GetId())
+		if _, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: paid.GetId(), ToProvider: "iyzico"}); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("no cutover time for a provider-run subscription: %v", err)
+		}
+		periodEnd := time.Now().Add(10 * 24 * time.Hour).Truncate(time.Microsecond)
+		back, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: paid.GetId(), ToProvider: "iyzico", CutoverTime: timestamppb.New(periodEnd)})
+		if err != nil || back.GetMigration().GetState() != plansv1.ProviderMigration_STATE_COMPLETED || back.GetMigration().GetNewSubscriptionId() == "" {
+			t.Fatalf("back = %v, %v", back, err)
+		}
+		next := get(back.GetMigration().GetNewSubscriptionId())
+		if next.GetProvider() != "iyzico" || next.GetOwner() != "quotify" || next.GetProviderRef() != "" || !next.GetStartTime().AsTime().Equal(periodEnd) || next.GetChangedFromId() != paid.GetId() {
+			t.Fatalf("subscription at iyzico = %v", next)
+		}
+		if got := get(paid.GetId()); got.GetEndTime() == nil || !got.GetEndTime().AsTime().Equal(periodEnd) {
+			t.Fatalf("the Paddle subscription ends where Quotify's starts: %v", got)
+		}
+		// The provider may still announce the cancellation it was asked for; it changes nothing now.
+		if _, err := e.plans.SyncProviderSubscription(ctx, &plansv1.SyncProviderSubscriptionRequest{SubscriptionId: paid.GetId(), Provider: "paddle", ProviderRef: "sub_NEW",
+			Owner: "provider", ProviderStatus: "canceled", OccurredAt: timestamppb.New(time.Now().Add(time.Hour))}); err != nil {
+			t.Fatalf("late cancellation notice: %v", err)
+		}
+		if got := get(paid.GetId()); !got.GetEndTime().AsTime().Equal(periodEnd) {
+			t.Errorf("the late notice moved the end: %v", got.GetEndTime())
+		}
+
+		// Refusals.
+		mkUSD("cus_mig3")
+		r3, _ := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig3", PlanCode: "basic", Provider: "iyzico"})
+		for name, req := range map[string]*plansv1.StartProviderMigrationRequest{
+			"same provider":    {SubscriptionId: r3.GetSubscription().GetId(), ToProvider: "iyzico"},
+			"unknown provider": {SubscriptionId: r3.GetSubscription().GetId(), ToProvider: "stripe"},
+			"not a uuid":       {SubscriptionId: "x", ToProvider: "paddle"},
+		} {
+			if _, err := e.plans.StartProviderMigration(ctx, req); code(t, err) != codes.InvalidArgument {
+				t.Errorf("%s: %v", name, err)
+			}
+		}
+		if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_mig4", Name: "m4", Email: "m4@example.com", Country: "TR", BillingCurrency: "TRY"}); err != nil {
+			t.Fatal(err)
+		}
+		r4, _ := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig4", PlanCode: "basic", Provider: "iyzico"})
+		if _, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: r4.GetSubscription().GetId(), ToProvider: "paddle"}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("paddle cannot charge a lira subscription: %v", err)
 		}
 	})
 

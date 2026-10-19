@@ -1,6 +1,6 @@
 # Billing platform: subscriptions, payment providers, routing, reporting
 
-Status: phases 13, 14 and 15 are built (see the notes below). Phases 16–18 are design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
+Status: phases 13 to 16 are built (see the notes below). Phases 17 and 18 are design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
 
 ## Why
 
@@ -114,6 +114,12 @@ not yet stored on it, since only Quotify-owned providers exist until Paddle (pha
 Details in [phase 15](phases/phase-15-paddle.md). Paddle is the first provider that owns renewal and dunning: a subscription gets `provider`, `provider_ref` and `owner`
 (plans-svc), Paddle's signed notifications link and follow it, its fixed fee stays off Quotify's invoice, and the usage total is charged on the customer's Paddle subscription as a
 one-time charge that settles asynchronously. Dunning of that usage charge stays Quotify's saga; renewals are Paddle's.
+
+## As built: phase 16
+
+Details in [phase 16](phases/phase-16-routing-migration.md). Routing rules live in plans-svc and are checked against the provider catalogue; a subscription's provider is fixed at creation. A migration is
+`started` while the customer subscribes at a provider that runs subscriptions, and the old subscription is untouched until the provider confirms; from a provider-run subscription to Quotify's the old provider is told to
+stop first and the cutover is the end of the period it was paid for. The design's step list (freeze renewal, create at B, cancel at A after B's first charge) is realised as that confirmation-then-cutover rule.
 
 ## Currency
 

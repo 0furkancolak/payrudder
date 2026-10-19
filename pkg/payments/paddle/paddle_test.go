@@ -265,6 +265,41 @@ func TestNotifications(t *testing.T) {
 	})
 }
 
+func TestCancelSubscriptionAndMigrationData(t *testing.T) {
+	f, c := newFake(t, nil)
+	f.reply = func() (int, string) { return 200, `{"data":{}}` }
+	if err := c.CancelSubscription(context.Background(), "sub_01", true); err != nil {
+		t.Fatal(err)
+	}
+	if f.method != "POST" || f.path != "/subscriptions/sub_01/cancel" || f.body["effective_from"] != "next_billing_period" {
+		t.Errorf("cancel at period end: %s %s %v", f.method, f.path, f.body)
+	}
+	if err := c.CancelSubscription(context.Background(), "sub_01", false); err != nil || f.body["effective_from"] != "immediately" {
+		t.Errorf("cancel now: %v %v", err, f.body)
+	}
+	if err := c.CancelSubscription(context.Background(), "txn_1", true); err == nil {
+		t.Error("something that is not a subscription id must be refused")
+	}
+	f.reply = func() (int, string) { return 404, `{"error":{"code":"not_found","detail":"no such subscription"}}` }
+	var e *Error
+	if err := c.CancelSubscription(context.Background(), "sub_99", true); !errors.As(err, &e) || e.Status != 404 {
+		t.Errorf("a refusal is an *Error: %v", err)
+	}
+	var _ payments.SubscriptionManager = c
+
+	f.reply = func() (int, string) { return 201, `{"data":{"id":"txn_m","checkout":{"url":"https://pay.example/m"}}}` }
+	if _, err := c.CreateCheckout(context.Background(), payments.CheckoutRequest{PriceRef: "pri_01", QuotifyMigrationID: "mig-1"}); err != nil {
+		t.Fatal(err)
+	}
+	if f.body["custom_data"].(map[string]any)["quotify_migration_id"] != "mig-1" {
+		t.Errorf("checkout custom data = %v", f.body["custom_data"])
+	}
+	n := confirm(t, c, `{"event_id":"evt_m","event_type":"subscription.created","data":{"id":"sub_new","status":"active","custom_data":{"quotify_migration_id":"mig-1"}}}`)
+	if n.Subscription == nil || n.Subscription.QuotifyMigrationID != "mig-1" {
+		t.Errorf("notification = %+v", n)
+	}
+}
+
 func TestParseNotificationAndRegistration(t *testing.T) {
 	ref, err := ParseNotification([]byte(`{"event_id":"evt_1","event_type":"x","data":{}}`), nil)
 	if err != nil || ref.EventID != "evt_1" || ref.IdempotencyKey != "" {

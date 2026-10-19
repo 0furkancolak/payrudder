@@ -69,7 +69,16 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 			{MeterCode: "gb_hours", Model: &plansv1.Price_PerUnit{PerUnit: &plansv1.PerUnitPrice{UnitPrice: "0.4"}}}}}},
 		Prices:       []*plansv1.Price{{MeterCode: "gb_hours", Model: &plansv1.Price_PerUnit{PerUnit: &plansv1.PerUnitPrice{UnitPrice: "12.5"}}}},
 		Entitlements: []*plansv1.Entitlement{{MeterCode: "gb_hours", Limit: "100.5"}}}))
+	must(e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Country: "TR", Currency: "TRY", Provider: "iyzico"}}}))
 	must(e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_" + suffix, PlanCode: "pro"}))
+	// provider_migrations is written by StartProviderMigration, which would move the fixture's subscription; an aborted row stands in.
+	if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
+		_, err := tx.Exec(context.Background(), `INSERT INTO provider_migrations (tenant_id, id, subscription_id, to_provider, state)
+			SELECT app_tenant_id(), gen_random_uuid(), id, 'iyzico', 'aborted' FROM subscriptions LIMIT 1`)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func testRLSIsolationEveryTable(t *testing.T) {
