@@ -146,6 +146,13 @@ with a 2.9 GiB Docker VM running everything: 5,000 events/s sustained at p99 32 
 customers x 5 meters, exact totals under chaos (container kills, resets, a broker stop, a wiped Redis), and, stated plainly, two targets missed on that machine
 (latency at a 20,000 events/s spike; entitlement reads p99 at 2,000/s). The 1M-event nightly is wired in CI and has not run yet.
 
+## The operator console
+
+`web/admin` (Next.js, TypeScript, an API client typed from the OpenAPI file) at <http://localhost:3001> shows tenants, invoices with the **saga timeline** of each one,
+and the RabbitMQ dead-letter queues with a redrive action. It talks to the gateway only. A Playwright smoke test drives it against the real stack in CI.
+
+![The saga timeline of a paid invoice](docs/img/admin-invoice-saga.png)
+
 ## What is in the repository
 
 | Path | |
@@ -154,6 +161,7 @@ customers x 5 meters, exact totals under chaos (container kills, resets, a broke
 | `tools/` | `quotifyctl` (seed, demo, replay, rerate, DLQ redrive), `mockpsp` |
 | `pkg/` | the shared kit: Kafka and RabbitMQ toolkits, outbox, tenancy, Postgres helpers, OpenTelemetry setup, test containers |
 | `proto/`, `gen/go/` | Protobuf contracts (`buf breaking` in CI); generated code is committed |
+| `web/admin/` | the operator console (Next.js, TypeScript, Playwright) |
 | `deploy/` | Compose, Helm charts (`quotify`, `quotify-infra`), kind, Prometheus rules, Grafana dashboards, OpenTelemetry collector |
 | `tests/` | e2e, the chaos and correctness suite, k6 scenarios, benchmarks, Helm render tests |
 | `docs/` | design, 14 ADRs, the phase plan, [benchmarks](docs/benchmarks.md) |
@@ -173,9 +181,8 @@ customers x 5 meters, exact totals under chaos (container kills, resets, a broke
 
 ## Status
 
-Phases 00 to 11 are implemented ([roadmap](docs/phases/ROADMAP.md)): foundation, plans and gateway, ingest, aggregator, limits, billing
-saga, workers, analytics and assets, observability, correctness and load, Kubernetes, replay and re-rating. Phase 12 (an operator
-UI) is optional. What is *not* done is listed where it is relevant: the benchmark report names its misses, the Kubernetes doc its
+Phases 00 to 12 are implemented ([roadmap](docs/phases/ROADMAP.md)): foundation, plans and gateway, ingest, aggregator, limits, billing
+saga, workers, analytics and assets, observability, correctness and load, Kubernetes, replay and re-rating. and the operator console. What is *not* done is listed where it is relevant: the benchmark report names its misses, the Kubernetes doc its
 gaps, and the phase files their open boxes.
 
 ## Start here
@@ -187,4 +194,4 @@ gaps, and the phase files their open boxes.
 
 ## License
 
-TODO: add the Apache-2.0 `LICENSE` file when the repository goes public (decided, not yet added while the repo is private).
+Apache License 2.0, see [LICENSE](LICENSE).

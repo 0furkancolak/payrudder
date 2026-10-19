@@ -177,7 +177,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  items: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
+                  items: { type: array, items: { $ref: "#/components/schemas/EntitlementStatus" } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
@@ -195,7 +195,7 @@ paths:
         - { name: meter, in: path, required: true, schema: { type: string } }
         - { name: period, in: query, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$", examples: ["2026-11"] } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Entitlement" } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EntitlementStatus" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
@@ -235,7 +235,7 @@ paths:
               properties:
                 base_fee_minor: { type: string, description: int64 minor units }
                 prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
-                entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
+                entitlements: { type: array, items: { $ref: "#/components/schemas/EntitlementStatus" } }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/PlanVersion" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -675,6 +675,131 @@ paths:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Account" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants:
+    get:
+      operationId: adminListTenants
+      summary: Every tenant, ordered by id (the operator console's first view)
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 1000, default: 500 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
+                  next_page_token: { type: string }
+  /admin/v1/tenants/{tenant_id}/invoices:
+    get:
+      operationId: adminListInvoices
+      summary: A tenant's invoices (operator view of GET /v1/invoices)
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: period, in: query, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: status, in: query, schema: { type: string, enum: [draft, open, paid, uncollectible, void] } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
+                  next_page_token: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/invoices/{invoice_id}:
+    get:
+      operationId: adminGetInvoice
+      summary: One invoice of a tenant, with its lines
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: invoice_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Invoice" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/pdf:
+    get:
+      operationId: adminGetInvoicePdf
+      summary: A presigned link to the invoice PDF (5 minutes)
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: invoice_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, properties: { url: { type: string }, expires_at: { type: string, format: date-time } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/saga:
+    get:
+      operationId: adminGetInvoiceSaga
+      summary: The saga of an invoice with its transition log
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: invoice_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  saga: { $ref: "#/components/schemas/InvoiceSaga" }
+                  events: { type: array, items: { $ref: "#/components/schemas/SagaEvent" } }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/dead-letters:
+    get:
+      operationId: adminListDeadLetters
+      summary: RabbitMQ dead-letter queues, and a peek at one queue's messages
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: queue, in: query, description: "A command or reply queue name, e.g. payment.charge. Omit for the depths only", schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queues: { type: array, items: { type: object, properties: { queue: { type: string }, messages: { type: string, description: int64 as a string } } } }
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        message_id: { type: string }
+                        delivery_count: { type: string }
+                        reason: { type: string }
+                        body_bytes: { type: integer }
+        "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/dead-letters/redrive:
+    post:
+      operationId: adminRedriveDeadLetters
+      summary: Move dead letters of one queue back to where they came from (retry counter reset)
+      security: [{ operatorToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [queue], properties: { queue: { type: string }, limit: { type: integer, minimum: 1, maximum: 1000, default: 100 } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { redriven: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{id}:
     get:
       operationId: getTenant
@@ -953,6 +1078,15 @@ components:
         cutoff_time: { type: string, format: date-time }
         invoice_count: { type: integer }
         last_error: { type: string }
+    SagaEvent:
+      type: object
+      properties:
+        seq: { type: integer }
+        from_state: { type: string }
+        to_state: { type: string }
+        cause: { type: string }
+        command_id: { type: string }
+        at: { type: string, format: date-time }
     ReplayJob:
       type: object
       properties:
@@ -1044,7 +1178,7 @@ components:
         create_time: { type: string, format: date-time }
         finalize_time: { type: string, format: date-time }
         lines: { type: array, items: { $ref: "#/components/schemas/InvoiceLine" } }
-    Entitlement:
+    EntitlementStatus:
       type: object
       properties:
         customer_external_id: { type: string }

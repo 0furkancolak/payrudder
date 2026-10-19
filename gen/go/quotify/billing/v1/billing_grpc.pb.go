@@ -311,12 +311,15 @@ var SandboxService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	BillingAdminService_ClosePeriod_FullMethodName      = "/quotify.billing.v1.BillingAdminService/ClosePeriod"
-	BillingAdminService_GetBillingRun_FullMethodName    = "/quotify.billing.v1.BillingAdminService/GetBillingRun"
-	BillingAdminService_RetryInvoiceSaga_FullMethodName = "/quotify.billing.v1.BillingAdminService/RetryInvoiceSaga"
-	BillingAdminService_VoidInvoice_FullMethodName      = "/quotify.billing.v1.BillingAdminService/VoidInvoice"
-	BillingAdminService_StartRerating_FullMethodName    = "/quotify.billing.v1.BillingAdminService/StartRerating"
-	BillingAdminService_GetReratingJob_FullMethodName   = "/quotify.billing.v1.BillingAdminService/GetReratingJob"
+	BillingAdminService_ClosePeriod_FullMethodName        = "/quotify.billing.v1.BillingAdminService/ClosePeriod"
+	BillingAdminService_GetBillingRun_FullMethodName      = "/quotify.billing.v1.BillingAdminService/GetBillingRun"
+	BillingAdminService_RetryInvoiceSaga_FullMethodName   = "/quotify.billing.v1.BillingAdminService/RetryInvoiceSaga"
+	BillingAdminService_VoidInvoice_FullMethodName        = "/quotify.billing.v1.BillingAdminService/VoidInvoice"
+	BillingAdminService_StartRerating_FullMethodName      = "/quotify.billing.v1.BillingAdminService/StartRerating"
+	BillingAdminService_GetReratingJob_FullMethodName     = "/quotify.billing.v1.BillingAdminService/GetReratingJob"
+	BillingAdminService_GetInvoiceSaga_FullMethodName     = "/quotify.billing.v1.BillingAdminService/GetInvoiceSaga"
+	BillingAdminService_ListDeadLetters_FullMethodName    = "/quotify.billing.v1.BillingAdminService/ListDeadLetters"
+	BillingAdminService_RedriveDeadLetters_FullMethodName = "/quotify.billing.v1.BillingAdminService/RedriveDeadLetters"
 )
 
 // BillingAdminServiceClient is the client API for BillingAdminService service.
@@ -337,6 +340,12 @@ type BillingAdminServiceClient interface {
 	// Idempotent per (tenant, period, plan version).
 	StartRerating(ctx context.Context, in *StartReratingRequest, opts ...grpc.CallOption) (*StartReratingResponse, error)
 	GetReratingJob(ctx context.Context, in *GetReratingJobRequest, opts ...grpc.CallOption) (*GetReratingJobResponse, error)
+	// GetInvoiceSaga returns the saga of an invoice with its append-only transition log (saga_events).
+	GetInvoiceSaga(ctx context.Context, in *GetInvoiceSagaRequest, opts ...grpc.CallOption) (*GetInvoiceSagaResponse, error)
+	// ListDeadLetters shows the depth of every RabbitMQ dead-letter queue and, for one queue, a peek at its messages.
+	ListDeadLetters(ctx context.Context, in *ListDeadLettersRequest, opts ...grpc.CallOption) (*ListDeadLettersResponse, error)
+	// RedriveDeadLetters moves dead letters of one queue back to where they came from, with the retry counter reset.
+	RedriveDeadLetters(ctx context.Context, in *RedriveDeadLettersRequest, opts ...grpc.CallOption) (*RedriveDeadLettersResponse, error)
 }
 
 type billingAdminServiceClient struct {
@@ -407,6 +416,36 @@ func (c *billingAdminServiceClient) GetReratingJob(ctx context.Context, in *GetR
 	return out, nil
 }
 
+func (c *billingAdminServiceClient) GetInvoiceSaga(ctx context.Context, in *GetInvoiceSagaRequest, opts ...grpc.CallOption) (*GetInvoiceSagaResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetInvoiceSagaResponse)
+	err := c.cc.Invoke(ctx, BillingAdminService_GetInvoiceSaga_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingAdminServiceClient) ListDeadLetters(ctx context.Context, in *ListDeadLettersRequest, opts ...grpc.CallOption) (*ListDeadLettersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListDeadLettersResponse)
+	err := c.cc.Invoke(ctx, BillingAdminService_ListDeadLetters_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingAdminServiceClient) RedriveDeadLetters(ctx context.Context, in *RedriveDeadLettersRequest, opts ...grpc.CallOption) (*RedriveDeadLettersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RedriveDeadLettersResponse)
+	err := c.cc.Invoke(ctx, BillingAdminService_RedriveDeadLetters_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BillingAdminServiceServer is the server API for BillingAdminService service.
 // All implementations must embed UnimplementedBillingAdminServiceServer
 // for forward compatibility.
@@ -425,6 +464,12 @@ type BillingAdminServiceServer interface {
 	// Idempotent per (tenant, period, plan version).
 	StartRerating(context.Context, *StartReratingRequest) (*StartReratingResponse, error)
 	GetReratingJob(context.Context, *GetReratingJobRequest) (*GetReratingJobResponse, error)
+	// GetInvoiceSaga returns the saga of an invoice with its append-only transition log (saga_events).
+	GetInvoiceSaga(context.Context, *GetInvoiceSagaRequest) (*GetInvoiceSagaResponse, error)
+	// ListDeadLetters shows the depth of every RabbitMQ dead-letter queue and, for one queue, a peek at its messages.
+	ListDeadLetters(context.Context, *ListDeadLettersRequest) (*ListDeadLettersResponse, error)
+	// RedriveDeadLetters moves dead letters of one queue back to where they came from, with the retry counter reset.
+	RedriveDeadLetters(context.Context, *RedriveDeadLettersRequest) (*RedriveDeadLettersResponse, error)
 	mustEmbedUnimplementedBillingAdminServiceServer()
 }
 
@@ -452,6 +497,15 @@ func (UnimplementedBillingAdminServiceServer) StartRerating(context.Context, *St
 }
 func (UnimplementedBillingAdminServiceServer) GetReratingJob(context.Context, *GetReratingJobRequest) (*GetReratingJobResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetReratingJob not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) GetInvoiceSaga(context.Context, *GetInvoiceSagaRequest) (*GetInvoiceSagaResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetInvoiceSaga not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) ListDeadLetters(context.Context, *ListDeadLettersRequest) (*ListDeadLettersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListDeadLetters not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) RedriveDeadLetters(context.Context, *RedriveDeadLettersRequest) (*RedriveDeadLettersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RedriveDeadLetters not implemented")
 }
 func (UnimplementedBillingAdminServiceServer) mustEmbedUnimplementedBillingAdminServiceServer() {}
 func (UnimplementedBillingAdminServiceServer) testEmbeddedByValue()                             {}
@@ -582,6 +636,60 @@ func _BillingAdminService_GetReratingJob_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingAdminService_GetInvoiceSaga_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInvoiceSagaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).GetInvoiceSaga(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_GetInvoiceSaga_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).GetInvoiceSaga(ctx, req.(*GetInvoiceSagaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingAdminService_ListDeadLetters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDeadLettersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).ListDeadLetters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_ListDeadLetters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).ListDeadLetters(ctx, req.(*ListDeadLettersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingAdminService_RedriveDeadLetters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RedriveDeadLettersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).RedriveDeadLetters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_RedriveDeadLetters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).RedriveDeadLetters(ctx, req.(*RedriveDeadLettersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BillingAdminService_ServiceDesc is the grpc.ServiceDesc for BillingAdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -612,6 +720,18 @@ var BillingAdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetReratingJob",
 			Handler:    _BillingAdminService_GetReratingJob_Handler,
+		},
+		{
+			MethodName: "GetInvoiceSaga",
+			Handler:    _BillingAdminService_GetInvoiceSaga_Handler,
+		},
+		{
+			MethodName: "ListDeadLetters",
+			Handler:    _BillingAdminService_ListDeadLetters_Handler,
+		},
+		{
+			MethodName: "RedriveDeadLetters",
+			Handler:    _BillingAdminService_RedriveDeadLetters_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

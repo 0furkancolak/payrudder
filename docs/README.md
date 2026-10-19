@@ -1,6 +1,6 @@
 # Quotify documentation
 
-Status: **implemented through Phase 11** (see the [roadmap](phases/ROADMAP.md)). These documents are the source of truth for the design. Code that disagrees
+Status: **implemented through Phase 12** (see the [roadmap](phases/ROADMAP.md)). These documents are the source of truth for the design. Code that disagrees
 with them is a bug in the code or in the docs. Fix one of them in the same PR.
 
 ## Core
@@ -19,6 +19,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [10-local-dev.md](10-local-dev.md) | Docker Compose stack, ports, make targets |
 | [11-repo-layout.md](11-repo-layout.md) | Planned monorepo structure |
 | [12-kubernetes.md](12-kubernetes.md) | Running Quotify on kind with Helm: charts, profiles, hooks, network policies, what is not covered |
+| [13-admin-ui.md](13-admin-ui.md) | The operator console: views, the typed API client, tests |
 
 ## Service specifications
 

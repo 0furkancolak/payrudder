@@ -590,6 +590,25 @@ services:
       minio: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 96m } } }
 
+  # The operator console (web/admin): reads and acts through the gateway only, with the operator token typed into the browser.
+  admin-ui:
+    <<: *defaults
+    profiles: [app]
+    build:
+      context: ../../web/admin
+    image: quotify/admin-ui:dev
+    environment:
+      GATEWAY_URL: http://gateway:8000
+    ports: ["3001:3001"]
+    depends_on:
+      gateway: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3001/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    deploy: { resources: { limits: { memory: 192m } } }
+
   gateway:
     <<: *defaults
     profiles: [app]

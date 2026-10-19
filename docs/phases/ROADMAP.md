@@ -17,7 +17,7 @@ updated `docs/` (design changes discovered while building are written back into 
 | 09 | [Correctness & load](phase-09-correctness-load.md) | 1M-event chaos suite, k6 scenarios, published benchmarks | 00–08 | All A1–A9 assertions pass nightly | done, nightly not yet run |
 | 10 | [Kubernetes](phase-10-kubernetes.md) | kind cluster + Helm charts, chaos via pod deletion | 09 | Chaos suite passes on kind | done, `kind` CI job not yet green |
 | 11 | [Replay, re-rating & polish](phase-11-replay-polish.md) | Generations, replay jobs, re-rating, demo, README | 03, 05, 09 | Re-rating idempotent. Replay promotes a corrected generation | done |
-| 12 | [Admin UI (optional)](phase-12-admin-ui.md) | Minimal Next.js/TypeScript operator UI | 11 | Read-only views + DLQ redrive | not started (optional) |
+| 12 | [Admin UI (optional)](phase-12-admin-ui.md) | Minimal Next.js/TypeScript operator UI | 11 | Read-only views + DLQ redrive | done |
 
 ```mermaid
 flowchart LR
@@ -60,7 +60,7 @@ flowchart LR
 | 8 | Idempotency table | Monthly partitions (benchmark vs. `DELETE` job recorded in Phase 02) | [05-data-model.md](../05-data-model.md#ingest_db) |
 | 9 | Gateway HTTP layer | Hand-written `net/http` + hand-maintained OpenAPI with a contract test | [gateway](../03-services/gateway.md#why-a-hand-written-http-layer-not-grpc-gateway) |
 | 10 | Schema registry | None in v1. `buf breaking` + golden fixtures in CI | [ADR 0007](../adr/0007-protobuf-event-schemas.md) |
-| 11 | License | Apache-2.0, added when the repo goes public | [README](../../README.md) |
+| 11 | License | Apache-2.0, added at v0.1.0 (public release) | [README](../../README.md) |
 | 12 | Asset uploads | Multipart and multi-file: presigned S3 multipart sessions (≤ 50 files, parallel, resumable) plus streamed `multipart/form-data` (≤ 20 small files) | [assets-svc](../03-services/assets-svc.md), [ADR 0013](../adr/0013-s3-compatible-object-storage.md) |
 
 ## Buffer and scope control

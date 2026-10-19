@@ -108,12 +108,45 @@ jobs:
           QUOTIFY_DUNNING_SANDBOX: 5s,5s,5s
           QUOTIFY_SWEEP_INTERVAL: 2s
       - run: make e2e
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/admin/package-lock.json
+      - name: Operator console smoke test (Playwright)
+        working-directory: web/admin
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          npm run e2e
       - name: seed demo account
         run: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h > /dev/null
       - if: failure()
         run: docker compose -f deploy/compose/compose.yaml --profile obs --profile app ps -a && docker compose -f deploy/compose/compose.yaml --profile obs --profile app logs --tail 80
       - if: always()
         run: make down
+
+  web:
+    name: operator console (lint, types, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/admin
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/admin/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: The generated API types match api/openapi/v1.yaml
+        run: |
+          npm run gen
+          git diff --exit-code src/lib/schema.d.ts
+      - run: npm run build
 
   helm:
     name: helm charts (lint, kubeconform, render tests)

@@ -52,6 +52,7 @@ func TestBilling(t *testing.T) {
 		{"CreditLargerThanTheInvoiceIsAppliedInParts", testCreditLargerThanTheInvoiceIsAppliedInParts},
 		{"RerateHigherMakesCorrectionInvoicesAndRepeatsAreNoOps", testRerateHigherMakesCorrectionInvoices},
 		{"RerateRunTwiceIsIdempotent", testRerateRunTwiceIsIdempotent},
+		{"OperatorSeesTheSagaTimeline", testInvoiceSagaTimeline},
 	} {
 		t.Run(tc.name, tc.fn)
 	}
