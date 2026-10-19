@@ -30,6 +30,7 @@ import (
 	"github.com/0furkancolak/quotify/services/aggregator/internal/maintenance"
 	"github.com/0furkancolak/quotify/services/aggregator/internal/meters"
 	"github.com/0furkancolak/quotify/services/aggregator/internal/query"
+	"github.com/0furkancolak/quotify/services/aggregator/internal/replay"
 	"github.com/0furkancolak/quotify/services/aggregator/internal/settings"
 	"github.com/0furkancolak/quotify/services/aggregator/migrations"
 )
@@ -155,6 +156,11 @@ func run() error {
 		},
 	})
 	aggregatorv1.RegisterUsageQueryServiceServer(srv, query.New(appPool, src, cfg.GroupID, apply.Topic))
+	replays := replay.New(replay.Config{
+		Pool: systemPool, Brokers: cfg.KafkaBrokers, Topic: apply.Topic, LiveGroup: cfg.GroupID,
+		Meters: handler.Meters, Settings: src, Log: log,
+	})
+	aggregatorv1.RegisterReplayServiceServer(srv, replay.NewService(replays))
 
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
@@ -164,6 +170,7 @@ func run() error {
 	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
 	g.Go(func() error { return consumer.Run(gctx) })
 	g.Go(func() error { maintenance.Run(gctx, systemPool, time.Hour, log); return nil })
+	g.Go(func() error { return replays.Run(gctx) })
 	g.Go(func() error {
 		log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr, "kafka", cfg.KafkaBrokers)
 		return srv.Serve(lis)

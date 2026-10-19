@@ -39,6 +39,8 @@ func TestAggregator(t *testing.T) {
 	t.Run("MeterFilterIgnoresNonMatchingEvents", testFilter)
 	t.Run("ClosePeriodEarly", testClosePeriodEarly)
 	t.Run("FreezePeriodRoutesLateArrivals", testFreeze)
+	t.Run("ReplayFixesAFilterAndPromotesUnderLoad", testReplayFixesAFilterAndPromotesUnderLoad)
+	t.Run("ReplayCanBeDiscardedAndRestarted", testReplayDiscard)
 	t.Run("ReadAPIs", testReadAPIs)
 	t.Run("RLSAndPartitions", testRLSAndPartitions) // last: drops old partitions
 }

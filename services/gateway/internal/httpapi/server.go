@@ -56,6 +56,7 @@ type Deps struct {
 	Admin         plansv1.AdminServiceClient
 	Ingest        ingestv1.IngestServiceClient
 	Usage         aggregatorv1.UsageQueryServiceClient
+	Replay        aggregatorv1.ReplayServiceClient
 	Limits        limitsv1.LimitsServiceClient
 	Analytics     analyticsv1.AnalyticsServiceClient
 	Assets        assetsv1.AssetsServiceClient

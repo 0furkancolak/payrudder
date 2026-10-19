@@ -28,6 +28,12 @@ func main() {
 		err = seed(os.Args[2:])
 	case "dlq":
 		err = dlq(os.Args[2:])
+	case "demo":
+		err = demo(os.Args[2:])
+	case "replay":
+		err = replay(os.Args[2:])
+	case "rerate":
+		err = rerate(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -45,6 +51,9 @@ func usage() {
 
 commands:
   seed    create a demo account (sandbox + live), API keys, meters, a plan and customers
+  demo    the whole story against a running stack: usage, a period close, a price change, a correction invoice
+  replay  start | status | promote | discard: rebuild a tenant's aggregates from the event log into a new generation
+  rerate  price a closed period again under another plan version and bill the difference
   dlq     ls | show | redrive | purge the dead-letter queues (--broker rabbitmq, default) or ls | show | redrive the DLQ topics (--broker kafka)`)
 }
 
@@ -134,34 +143,43 @@ func seed(args []string) error {
 	}
 
 	c := &client{base: strings.TrimRight(*gateway, "/"), token: *token, http: &http.Client{Timeout: 15 * time.Second}}
+	res, err := seedAccount(c, *name, *currency, *timezone, *grace, *tier, *customers)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(res)
+}
+
+// seedAccount creates an account (sandbox and live tenants), an API key for each, and the demo catalog.
+func seedAccount(c *client, name, currency, timezone string, grace time.Duration, tier string, customers int) (*seedResult, error) {
 	var acct struct {
 		ID      string       `json:"id"`
 		Tenants []tenantJSON `json:"tenants"`
 	}
 	err := c.call("POST", "/admin/v1/accounts", c.token, map[string]any{
-		"name": *name, "currency": *currency, "timezone": *timezone,
-		"grace_period": fmt.Sprintf("%ds", int64(grace.Seconds())), "tier": "TENANT_TIER_" + strings.ToUpper(*tier),
+		"name": name, "currency": currency, "timezone": timezone,
+		"grace_period": fmt.Sprintf("%ds", int64(grace.Seconds())), "tier": "TENANT_TIER_" + strings.ToUpper(tier),
 	}, &acct)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	res := seedResult{AccountID: acct.ID, Tenants: map[string]string{}, APIKeys: map[string]string{}}
+	res := &seedResult{AccountID: acct.ID, Tenants: map[string]string{}, APIKeys: map[string]string{}}
 	for _, t := range acct.Tenants {
 		env := strings.ToLower(strings.TrimPrefix(t.Environment, "ENVIRONMENT_"))
 		var key struct {
 			Plaintext string `json:"plaintext"`
 		}
 		if err := c.call("POST", "/admin/v1/tenants/"+t.ID+"/api-keys", c.token, nil, &key); err != nil {
-			return err
+			return nil, err
 		}
 		res.Tenants[env], res.APIKeys[env] = t.ID, key.Plaintext
-		if err := seedCatalog(c, key.Plaintext, env, *customers); err != nil {
-			return fmt.Errorf("seed %s: %w", env, err)
+		if err := seedCatalog(c, key.Plaintext, env, customers); err != nil {
+			return nil, fmt.Errorf("seed %s: %w", env, err)
 		}
 	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	return enc.Encode(res)
+	return res, nil
 }
 
 func seedCatalog(c *client, key, env string, customers int) error {

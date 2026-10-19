@@ -48,6 +48,18 @@ type DeadLetter interface {
 	Send(ctx context.Context, orig *kgo.Record, reason string, err error) error
 }
 
+// Replay says what a replaying handler rebuilds.
+type Replay struct {
+	Tenant     uuid.UUID
+	Generation int32
+	// FromPeriod and ToPeriod bound the periods rebuilt (inclusive, "2026-10" style); events of other periods are skipped.
+	FromPeriod, ToPeriod string
+}
+
+func (r *Replay) wants(ev domain.Event) bool {
+	return ev.TenantID == r.Tenant && ev.Period >= r.FromPeriod && ev.Period <= r.ToPeriod
+}
+
 // Handler applies batches. It implements kafkax.PartitionHandler.
 type Handler struct {
 	Pool     *pgxpool.Pool // aggregator_system
@@ -62,6 +74,10 @@ type Handler struct {
 	// MeterRetryDelays are the waits between lookups of a meter plans-svc reports as unknown, before the record goes
 	// to the DLQ (default 100 ms, 500 ms, 2 s).
 	MeterRetryDelays []time.Duration
+	// Replay, when set, turns the handler into a replay of one tenant's events into one aggregate generation: the same
+	// dedup, classification and upserts, with its own offsets (ConsumerGroup), and without DLQ, generation locking or the
+	// frozen-period rule (docs/07-correctness.md#8-replay--re-rating).
+	Replay *Replay
 	// AfterCommit runs after the batch transaction committed and before Kafka is told. A non-nil error simulates a
 	// crash at that point (fault hook AGG_CRASH_AFTER_COMMIT).
 	AfterCommit func() error
@@ -98,15 +114,19 @@ func (h *Handler) init() {
 			}
 			return c
 		}
-		h.m.applied = ctr("aggregator_events_applied", "Events applied to an aggregate")
-		h.m.duplicates = ctr("aggregator_duplicates_skipped", "Events skipped because the inbox already had them")
-		h.m.late = ctr("aggregator_late_events", "Events routed to late usage")
-		h.m.filtered = ctr("aggregator_filtered_events", "Events ignored by the meter filter")
-		h.m.frozen = ctr("aggregator_frozen_period_violations", "On-time events that arrived for a frozen period")
-		h.m.dlq = ctr("aggregator_dlq_records", "Records sent to the dead-letter topic")
-		h.m.fenced = ctr("aggregator_fenced_batches", "Batches whose offset write was fenced (a zombie behind the leader)")
+		prefix := "aggregator_"
+		if h.Replay != nil {
+			prefix = "aggregator_replay_" // a replay is not live traffic: its counters must not move the live ones
+		}
+		h.m.applied = ctr(prefix+"events_applied", "Events applied to an aggregate")
+		h.m.duplicates = ctr(prefix+"duplicates_skipped", "Events skipped because the inbox already had them")
+		h.m.late = ctr(prefix+"late_events", "Events routed to late usage")
+		h.m.filtered = ctr(prefix+"filtered_events", "Events ignored by the meter filter")
+		h.m.frozen = ctr(prefix+"frozen_period_violations", "On-time events that arrived for a frozen period")
+		h.m.dlq = ctr(prefix+"dlq_records", "Records sent to the dead-letter topic")
+		h.m.fenced = ctr(prefix+"fenced_batches", "Batches whose offset write was fenced (a zombie behind the leader)")
 		var err error
-		if h.m.batchSecs, err = mt.Float64Histogram("aggregator_batch_seconds", metric.WithUnit("s")); err != nil {
+		if h.m.batchSecs, err = mt.Float64Histogram(prefix+"batch_seconds", metric.WithUnit("s")); err != nil {
 			panic(err)
 		}
 	})
@@ -152,17 +172,24 @@ func (h *Handler) Apply(ctx context.Context, partition int32, recs []*kgo.Record
 		if err != nil {
 			var de *domain.DecodeError
 			if errors.As(err, &de) {
-				bad = append(bad, poison{rec, de.Reason, de.Err})
+				if h.Replay == nil { // the live consumer already dead-lettered it
+					bad = append(bad, poison{rec, de.Reason, de.Err})
+				}
 				continue
 			}
 			return err
+		}
+		if h.Replay != nil && !h.Replay.wants(ev) {
+			continue
 		}
 		mr, err := h.meter(ctx, meterCache, ev)
 		if err != nil {
 			return err // infrastructure: pause and retry, never DLQ
 		}
 		if mr.missing {
-			bad = append(bad, poison{rec, "UNKNOWN_METER", fmt.Errorf("meter %q of tenant %s does not exist", ev.Meter, ev.TenantID)})
+			if h.Replay == nil {
+				bad = append(bad, poison{rec, "UNKNOWN_METER", fmt.Errorf("meter %q of tenant %s does not exist", ev.Meter, ev.TenantID)})
+			}
 			continue
 		}
 		items = append(items, item{ev: ev, meter: mr.meter})
@@ -286,8 +313,10 @@ func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items
 		for _, r := range cfgRows {
 			cfg[settings.Key{Tenant: r.TenantID, Period: r.PeriodID}] = r
 		}
-		gens, err := h.generations(ctx, q, tenants)
-		if err != nil {
+		var gens generationSet
+		if h.Replay != nil {
+			gens = generationSet{h.Replay.Tenant: {h.Replay.Generation}}
+		} else if gens, err = h.generations(ctx, q, tenants); err != nil {
 			return false, err
 		}
 
@@ -371,7 +400,7 @@ func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items
 				return false, fmt.Errorf("no period settings for %s %s", it.ev.TenantID, it.ev.Period)
 			}
 			class := period.Classify(it.ev.IngestedAt, c.CutoffAt)
-			if c.FrozenAt != nil {
+			if c.FrozenAt != nil && h.Replay == nil { // a replay classifies by ingested_at alone, as the live path did at the time
 				if class == period.OnTime {
 					h.m.frozen.Add(ctx, 1, tenantAttr(it.ev.TenantID))
 					h.Log.ErrorContext(ctx, "event for a frozen period arrived on time; routing it to late usage",
@@ -446,6 +475,14 @@ func (g generationSet) targets(t uuid.UUID) []int32 {
 // generations reads each tenant's active and catching-up generation FOR SHARE, so a promotion can't race the batch.
 // During a replay's catch-up a tenant's events go to both (dual write); the replay itself arrives in Phase 11.
 func (h *Handler) generations(ctx context.Context, q *sqlc.Queries, tenants []uuid.UUID) (generationSet, error) {
+	// Twice, on purpose. The first statement takes the locks: it waits for a promotion or a replay's flip that holds the tenant's
+	// active row FOR UPDATE. But a row that became 'catching_up' while it waited is not in that statement's result (READ
+	// COMMITTED rechecks the rows it had selected, it does not find new ones), so the batch would write only the old generation
+	// and the replay would miss it. With the locks held nothing can flip any more, so a second statement, with a fresh
+	// snapshot, reads the settled state.
+	if _, err := q.LockGenerations(ctx, tenants); err != nil {
+		return nil, fmt.Errorf("lock generations: %w", err)
+	}
 	rows, err := q.LockGenerations(ctx, tenants)
 	if err != nil {
 		return nil, fmt.Errorf("lock generations: %w", err)
