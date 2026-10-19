@@ -1,8 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -18,113 +16,51 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-lime: var(--lime);
+  --color-lime-foreground: var(--lime-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
+/* One light theme: soft grey canvas, white cards, dark green for actions, lime for highlights. */
 :root {
-  --radius: 0.5rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  color-scheme: light;
+  --radius: 1.25rem;
+  --background: oklch(0.965 0.002 120);
+  --foreground: oklch(0.2 0.02 145);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2 0.02 145);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.488 0.2 262);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.707 0.15 262);
-    --primary-foreground: oklch(0.145 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-  }
+  --popover-foreground: oklch(0.2 0.02 145);
+  --primary: oklch(0.3 0.07 145);
+  --primary-foreground: oklch(0.97 0.02 130);
+  --secondary: oklch(0.95 0.004 120);
+  --secondary-foreground: oklch(0.25 0.04 145);
+  --muted: oklch(0.955 0.004 120);
+  --muted-foreground: oklch(0.52 0.015 145);
+  --accent: oklch(0.94 0.07 130);
+  --accent-foreground: oklch(0.3 0.07 145);
+  --lime: oklch(0.88 0.19 128);
+  --lime-foreground: oklch(0.28 0.07 145);
+  --destructive: oklch(0.58 0.22 27);
+  --success: oklch(0.55 0.15 150);
+  --border: oklch(0.92 0.004 120);
+  --input: oklch(0.9 0.006 120);
+  --ring: oklch(0.7 0.14 135);
 }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-}
-
-/* Pages written before the UI kit still use plain element and helper-class styles.
-   They live in the components layer so any Tailwind utility on a kit component wins. */
-@layer components {
-  :root {
-    --bg: #fafafa;
-    --fg: #1a1a1a;
-    --muted: #666;
-    --line: #ddd;
-    --accent: #2b5fd9;
-    --bad: #b3261e;
-    --good: #1b7f3b;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #15171a;
-      --fg: #e8e8e8;
-      --muted: #9a9a9a;
-      --line: #2d3136;
-      --accent: #7aa2ff;
-      --bad: #ff8a80;
-      --good: #6fd68b;
-    }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
-  nav { display: flex; gap: 20px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); }
-  nav .spacer { margin-inline-start: auto; display: flex; gap: 16px; align-items: center; }
-  a { color: var(--accent); text-decoration: none; }
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 80px; }
-  h1 { font-size: 22px; margin: 0 0 16px; }
-  h2 { font-size: 17px; margin: 28px 0 8px; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: start; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 500; font-size: 13px; }
-  td.num, th.num { text-align: end; font-variant-numeric: tabular-nums; }
-  code, .mono { font-family: ui-monospace, monospace; font-size: 13px; unicode-bidi: plaintext; direction: ltr; }
-  input, select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; min-width: 220px; }
-  input[type="password"], input.wide { min-width: 360px; }
-  select option { color: #1a1a1a; }
-  button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; }
-  button.link { background: none; border: none; color: var(--accent); padding: 0; }
-  button.danger { background: var(--bad); }
-  button:disabled { opacity: 0.5; cursor: default; }
-  .muted { color: var(--muted); }
-  .error { color: var(--bad); }
-  .ok { color: var(--good); }
-  .badge { display: inline-block; padding: 1px 8px; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; }
-  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
-  pre { overflow-x: auto; direction: ltr; text-align: left; }
-
+  html { background: oklch(0.915 0.003 120); }
+  body { @apply bg-transparent text-foreground font-sans antialiased; margin: 0; }
+  :dir(rtl) .rtl-flip { transform: scaleX(-1); }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; unicode-bidi: plaintext; direction: ltr; }
 }

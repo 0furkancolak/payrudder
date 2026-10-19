@@ -41,7 +41,7 @@ test.describe("languages", () => {
     await page.getByRole("link", { name: "Bac à sable" }).click();
     await expect(page.getByRole("heading", { name: "Bac à sable" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Créer le compte" })).toBeVisible();
-    // The currency field has no default in any language.
-    await expect(page.getByLabel("Devise")).toHaveValue("");
+    // A development stack pre-fills the account form; the field is labelled in French.
+    await expect(page.getByLabel("Devise")).toHaveValue("TRY");
   });
 });

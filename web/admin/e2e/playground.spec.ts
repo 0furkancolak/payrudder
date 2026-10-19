@@ -5,16 +5,17 @@ const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-toke
 test("the playground takes a visitor from an empty account to a paid invoice", async ({ page }) => {
   test.setTimeout(300_000);
   await page.goto("/");
-  await page.getByLabel("Operator token").fill(operatorToken);
+  // A development stack pre-fills the operator token, so signing in needs no typing.
+  await expect(page.getByLabel("Operator token")).toHaveValue(operatorToken);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.getByRole("link", { name: "Playground" }).click();
+  await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
+  await page.getByRole("link", { name: "Playground", exact: true }).click();
 
-  // Nothing is preselected: the account form refuses to submit until currency, time zone and grace are chosen.
+  // The account form comes pre-filled too; overwrite it to prove each field still takes input.
   const form = page.getByRole("form", { name: "new account" });
   await form.getByLabel("Account name").fill(`playground-${Date.now()}`);
   await form.getByLabel("Time zone").fill("Europe/Istanbul");
   await form.getByLabel("Grace period (hours)").fill("24");
-  await expect(form.getByLabel("Currency")).toHaveValue("");
   await form.getByLabel("Currency").selectOption("TRY");
   await form.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("Sandbox API key issued")).toBeVisible();
@@ -40,7 +41,8 @@ test("a declined payment outcome leaves the invoice open with the payment declin
   await page.goto("/");
   await page.getByLabel("Operator token").fill(operatorToken);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.getByRole("link", { name: "Playground" }).click();
+  await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
+  await page.getByRole("link", { name: "Playground", exact: true }).click();
   const form = page.getByRole("form", { name: "new account" });
   await form.getByLabel("Account name").fill(`playground-declined-${Date.now()}`);
   await form.getByLabel("Time zone").fill("Europe/Istanbul");

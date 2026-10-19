@@ -3,15 +3,27 @@ import { Link } from "@tanstack/vue-router";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { toApiError } from "@/shared/api/client";
+import { sagaVariant, statusVariant } from "@/shared/lib/badges";
+import { playgroundDefaults } from "@/shared/lib/prefill";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Card } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
+import { NativeSelect } from "@/shared/ui/native-select";
+import { PageHeader } from "@/shared/ui/page-header";
+import { Table, TableBody, TableCell, TableRow } from "@/shared/ui/table";
+import { prefilledOperatorToken } from "@/shared/lib/prefill";
 import { CURRENCIES, SCENARIOS, usePlayground, type Currency, type Scenario } from "./usePlayground";
 
 const { t, locale } = useI18n();
 const play = usePlayground();
 
-const name = ref("");
-const currency = ref<Currency | "">("");
-const timezone = ref("");
-const graceHours = ref("");
+// In a development stack the account form comes pre-filled (see shared/lib/prefill.ts).
+const prefill = prefilledOperatorToken() !== "";
+const name = ref(prefill ? playgroundDefaults.name : "");
+const currency = ref<Currency | "">(prefill ? playgroundDefaults.currency : "");
+const timezone = ref(prefill ? playgroundDefaults.timezone : "");
+const graceHours = ref(prefill ? playgroundDefaults.graceHours : "");
 const quantity = ref("42");
 
 function create() {
@@ -21,97 +33,98 @@ function create() {
 </script>
 
 <template>
-  <h1>{{ t("playground.title") }}</h1>
-  <p class="muted">{{ t("playground.intro") }}</p>
-  <p v-if="play.error.value" class="error" role="alert">{{ toApiError(play.error.value).message }}</p>
+  <PageHeader :title="t('playground.title')" :description="t('playground.intro')" />
+  <p v-if="play.error.value" class="text-destructive bg-destructive/10 mb-4 rounded-2xl px-4 py-3 text-sm" role="alert">{{ toApiError(play.error.value).message }}</p>
 
-  <h2>{{ t("playground.account.title") }}</h2>
-  <form v-if="play.tenantId.value === null" class="row" role="form" :aria-label="t('playground.account.formLabel')" @submit.prevent="create">
-    <input v-model="name" :aria-label="t('playground.account.name')" :placeholder="t('playground.account.name')" required />
-    <select v-model="currency" :aria-label="t('playground.account.currency')" required>
-      <option value="" disabled>{{ t("playground.account.currencyPlaceholder") }}</option>
-      <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-    </select>
-    <input v-model="timezone" class="wide" :aria-label="t('playground.account.timezone')" :placeholder="t('playground.account.timezonePlaceholder')" required />
-    <input
-      v-model="graceHours"
-      type="number"
-      min="0"
-      max="168"
-      :aria-label="t('playground.account.grace')"
-      :placeholder="t('playground.account.gracePlaceholder')"
-      required
-    />
-    <button type="submit" :disabled="play.busy.value">{{ t("playground.account.create") }}</button>
-  </form>
-  <i18n-t v-else keypath="playground.account.ready" tag="p" class="ok" scope="global">
-    <template #tenant>
-      <Link to="/tenants/$id" :params="{ id: play.tenantId.value }" class="mono">{{ play.tenantId.value }}</Link>
-    </template>
-    <template #key>
-      <code>{{ play.key.value?.slice(0, 16) }}…</code>
-    </template>
-  </i18n-t>
+  <div class="grid gap-4 lg:grid-cols-2">
+    <Card>
+      <h2 class="flex items-center gap-3 text-lg font-semibold"><span class="bg-lime text-lime-foreground grid size-8 place-items-center rounded-full text-sm">1</span>{{ t("playground.account.title") }}</h2>
+      <form v-if="play.tenantId.value === null" class="grid gap-3 sm:grid-cols-2" role="form" :aria-label="t('playground.account.formLabel')" @submit.prevent="create">
+        <Input v-model="name" :aria-label="t('playground.account.name')" :placeholder="t('playground.account.name')" required />
+        <NativeSelect v-model="currency" :aria-label="t('playground.account.currency')" required>
+          <option value="" disabled>{{ t("playground.account.currencyPlaceholder") }}</option>
+          <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
+        </NativeSelect>
+        <Input v-model="timezone" :aria-label="t('playground.account.timezone')" :placeholder="t('playground.account.timezonePlaceholder')" required />
+        <Input v-model="graceHours" type="number" min="0" max="168" :aria-label="t('playground.account.grace')" :placeholder="t('playground.account.gracePlaceholder')" required />
+        <Button type="submit" class="sm:col-span-2" :disabled="play.busy.value">{{ t("playground.account.create") }}</Button>
+      </form>
+      <i18n-t v-else keypath="playground.account.ready" tag="p" class="text-success bg-success/10 rounded-2xl px-4 py-3 text-sm" scope="global">
+        <template #tenant>
+          <Link to="/tenants/$id" :params="{ id: play.tenantId.value }" class="mono underline">{{ play.tenantId.value }}</Link>
+        </template>
+        <template #key>
+          <code>{{ play.key.value?.slice(0, 16) }}…</code>
+        </template>
+      </i18n-t>
+    </Card>
 
-  <h2>{{ t("playground.setup.title") }}</h2>
-  <div class="row">
-    <button type="button" :disabled="play.busy.value || play.key.value === null || play.ready.value" @click="play.setUp.mutate()">
-      {{ t("playground.setup.button") }}
-    </button>
-    <label>
-      {{ t("playground.setup.outcome") }}
-      <select
-        :aria-label="t('playground.setup.outcome')"
-        :disabled="!play.ready.value || play.busy.value"
-        :value="play.scenario.value"
-        @change="play.chooseScenario.mutate(($event.target as HTMLSelectElement).value as Scenario)"
-      >
-        <option v-for="s in SCENARIOS" :key="s" :value="s">{{ t(`playground.scenarios.${s}`) }}</option>
-      </select>
-    </label>
+    <Card>
+      <h2 class="flex items-center gap-3 text-lg font-semibold"><span class="bg-lime text-lime-foreground grid size-8 place-items-center rounded-full text-sm">2</span>{{ t("playground.setup.title") }}</h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button type="button" :disabled="play.busy.value || play.key.value === null || play.ready.value" @click="play.setUp.mutate()">
+          {{ t("playground.setup.button") }}
+        </Button>
+        <label class="text-muted-foreground flex items-center gap-2 text-sm">
+          {{ t("playground.setup.outcome") }}
+          <NativeSelect
+            :aria-label="t('playground.setup.outcome')"
+            :disabled="!play.ready.value || play.busy.value"
+            :model-value="play.scenario.value"
+            @change="play.chooseScenario.mutate(($event.target as HTMLSelectElement).value as Scenario)"
+          >
+            <option v-for="s in SCENARIOS" :key="s" :value="s">{{ t(`playground.scenarios.${s}`) }}</option>
+          </NativeSelect>
+        </label>
+      </div>
+    </Card>
+
+    <Card>
+      <h2 class="flex items-center gap-3 text-lg font-semibold"><span class="bg-lime text-lime-foreground grid size-8 place-items-center rounded-full text-sm">3</span>{{ t("playground.usage.title") }}</h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <Input v-model="quantity" type="number" min="1" class="w-32" :aria-label="t('playground.usage.calls')" />
+        <Button type="button" :disabled="play.busy.value || !play.ready.value || play.closed.value" @click="play.sendUsage.mutate(Number(quantity))">
+          {{ t("playground.usage.send") }}
+        </Button>
+        <span class="text-muted-foreground text-sm" data-testid="sent">{{ t("playground.usage.sent", { n: new Intl.NumberFormat(locale).format(play.sent.value) }) }}</span>
+      </div>
+    </Card>
+
+    <Card>
+      <h2 class="flex items-center gap-3 text-lg font-semibold"><span class="bg-lime text-lime-foreground grid size-8 place-items-center rounded-full text-sm">4</span>{{ t("playground.close.title") }}</h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button type="button" :disabled="play.busy.value || !play.ready.value || play.sent.value === 0 || play.closed.value" @click="play.closePeriod.mutate()">
+          {{ t("playground.close.button") }}
+        </Button>
+        <span class="text-muted-foreground text-sm">{{ t("playground.close.hint") }}</span>
+      </div>
+    </Card>
   </div>
 
-  <h2>{{ t("playground.usage.title") }}</h2>
-  <div class="row">
-    <input v-model="quantity" type="number" min="1" :aria-label="t('playground.usage.calls')" style="min-width: 120px" />
-    <button type="button" :disabled="play.busy.value || !play.ready.value || play.closed.value" @click="play.sendUsage.mutate(Number(quantity))">
-      {{ t("playground.usage.send") }}
-    </button>
-    <span class="muted" data-testid="sent">{{ t("playground.usage.sent", { n: new Intl.NumberFormat(locale).format(play.sent.value) }) }}</span>
-  </div>
-
-  <h2>{{ t("playground.close.title") }}</h2>
-  <div class="row">
-    <button type="button" :disabled="play.busy.value || !play.ready.value || play.sent.value === 0 || play.closed.value" @click="play.closePeriod.mutate()">
-      {{ t("playground.close.button") }}
-    </button>
-    <span class="muted">{{ t("playground.close.hint") }}</span>
-  </div>
-
-  <template v-if="play.closed.value">
-    <h2>{{ t("playground.invoice.title") }}</h2>
-    <p v-if="(play.invoices.data.value ?? []).length === 0" class="muted">{{ t("playground.invoice.waiting") }}</p>
-    <table>
-      <tbody>
-        <tr v-for="inv in play.invoices.data.value ?? []" :key="inv.id" data-testid="playground-invoice">
-          <td>{{ inv.number }}</td>
-          <td><span class="badge">{{ inv.saga_state }}</span></td>
-          <td><span class="badge">{{ inv.status }}</span></td>
-          <td class="num">{{ inv.total_minor }}</td>
-          <td>
-            <Link v-if="play.tenantId.value && inv.id" to="/tenants/$id/invoices/$invoiceId" :params="{ id: play.tenantId.value, invoiceId: inv.id }">
+  <Card v-if="play.closed.value" class="mt-4 p-3">
+    <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("playground.invoice.title") }}</h2>
+    <p v-if="(play.invoices.data.value ?? []).length === 0" class="text-muted-foreground px-3 pb-3 text-sm">{{ t("playground.invoice.waiting") }}</p>
+    <Table>
+      <TableBody>
+        <TableRow v-for="inv in play.invoices.data.value ?? []" :key="inv.id" data-testid="playground-invoice">
+          <TableCell class="font-medium">{{ inv.number }}</TableCell>
+          <TableCell><Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ inv.saga_state }}</Badge></TableCell>
+          <TableCell><Badge :variant="statusVariant(inv.status)">{{ inv.status }}</Badge></TableCell>
+          <TableCell class="text-end tabular-nums">{{ inv.total_minor }}</TableCell>
+          <TableCell class="text-end">
+            <Link v-if="play.tenantId.value && inv.id" to="/tenants/$id/invoices/$invoiceId" :params="{ id: play.tenantId.value, invoiceId: inv.id }" class="font-medium underline">
               {{ t("playground.invoice.open") }}
             </Link>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </template>
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  </Card>
 
-  <template v-if="play.log.value.length > 0">
-    <h2>{{ t("playground.log.title") }}</h2>
-    <ul>
-      <li v-for="(line, i) in play.log.value" :key="i">{{ t(line.key, line.params ?? {}) }}</li>
+  <Card v-if="play.log.value.length > 0" class="mt-4">
+    <h2 class="text-lg font-semibold">{{ t("playground.log.title") }}</h2>
+    <ul class="text-muted-foreground space-y-1 text-sm">
+      <li v-for="(line, i) in play.log.value" :key="i" class="flex gap-2"><span class="bg-lime mt-2 size-1.5 shrink-0 rounded-full" />{{ t(line.key, line.params ?? {}) }}</li>
     </ul>
-  </template>
+  </Card>
 </template>

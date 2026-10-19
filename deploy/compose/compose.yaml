@@ -599,6 +599,8 @@ services:
     image: quotify/admin-ui:dev
     environment:
       GATEWAY_URL: http://gateway:8000
+      # Local stack only: the sign-in form and the playground come pre-filled. Never set this outside a development stack.
+      PREFILL_OPERATOR_TOKEN: ${QUOTIFY_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
     ports: ["3001:3001"]
     depends_on:
       gateway: { condition: service_started }

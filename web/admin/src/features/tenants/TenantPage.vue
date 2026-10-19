@@ -5,6 +5,9 @@ import { useI18n } from "vue-i18n";
 import { toApiError } from "@/shared/api/client";
 import { InvoiceTable } from "@/features/invoices";
 import { enumWord, label } from "@/shared/lib/labels";
+import { Badge } from "@/shared/ui/badge";
+import { Card } from "@/shared/ui/card";
+import { PageHeader } from "@/shared/ui/page-header";
 import { useTenant } from "./api";
 import JobLookup from "./JobLookup.vue";
 
@@ -15,18 +18,24 @@ const tenant = useTenant(id);
 </script>
 
 <template>
-  <h1>{{ tenant.data.value?.name ?? t("tenant.fallbackTitle") }}</h1>
-  <p v-if="tenant.error.value" class="error">{{ toApiError(tenant.error.value).message }}</p>
-  <p v-if="tenant.data.value" class="muted">
-    <span class="badge">{{ label(t, te, "environment", enumWord(tenant.data.value.environment, "ENVIRONMENT_")) }}</span>
-    {{ tenant.data.value.currency }} · {{ tenant.data.value.timezone }} · {{ t("tenant.grace", { value: tenant.data.value.grace_period ?? t("common.unknown") }) }} ·
-    <span class="mono">{{ tenant.data.value.id }}</span>
-  </p>
+  <PageHeader :title="tenant.data.value?.name ?? t('tenant.fallbackTitle')" />
+  <p v-if="tenant.error.value" class="text-destructive mb-3" role="alert">{{ toApiError(tenant.error.value).message }}</p>
+  <div v-if="tenant.data.value" class="text-muted-foreground -mt-3 mb-6 flex flex-wrap items-center gap-2 px-1 text-sm">
+    <Badge variant="lime">{{ label(t, te, "environment", enumWord(tenant.data.value.environment, "ENVIRONMENT_")) }}</Badge>
+    <span>{{ tenant.data.value.currency }} · {{ tenant.data.value.timezone }} · {{ t("tenant.grace", { value: tenant.data.value.grace_period ?? t("common.unknown") }) }}</span>
+    <span class="mono text-xs">{{ tenant.data.value.id }}</span>
+  </div>
 
-  <h2>{{ t("tenant.invoices") }}</h2>
-  <InvoiceTable :tenant-id="id" />
+  <Card class="mb-6 p-3">
+    <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("tenant.invoices") }}</h2>
+    <InvoiceTable :tenant-id="id" />
+  </Card>
 
-  <h2>{{ t("tenant.jobs.title") }}</h2>
-  <p class="muted">{{ t("tenant.jobs.hint") }}</p>
-  <JobLookup :tenant-id="id" />
+  <Card>
+    <div>
+      <h2 class="text-lg font-semibold">{{ t("tenant.jobs.title") }}</h2>
+      <p class="text-muted-foreground text-sm">{{ t("tenant.jobs.hint") }}</p>
+    </div>
+    <JobLookup :tenant-id="id" />
+  </Card>
 </template>

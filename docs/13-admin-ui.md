@@ -66,7 +66,10 @@ cd web/admin && npx shadcn-vue@latest add popover   # drops the component into s
 ```
 
 Check what the CLI changed afterwards: it adds dependencies with `^` ranges (pin them) and may guess the `cn` import wrongly (it must be `@/shared/lib/utils`).
-The kit is collected for later use; the existing pages still use the plain element styles from `styles.css`, which sit in the `components` layer so a kit component's utilities always win.
+The console is one light theme (soft grey canvas, white cards, dark green actions, lime highlights); there is no dark mode. Every page is built from the kit.
+
+In development the operator token and the playground account form come pre-filled: the Vite dev server does it by default, the compose stack through
+`PREFILL_OPERATOR_TOKEN` (served as `/env.js`). Leave that variable empty anywhere that is not a throwaway local stack.
 
 ## Tests
 

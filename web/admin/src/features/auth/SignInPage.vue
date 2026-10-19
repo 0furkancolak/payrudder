@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { useMutation } from "@tanstack/vue-query";
 import { useNavigate } from "@tanstack/vue-router";
+import { KeyRound } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { toApiError } from "@/shared/api/client";
+import { prefilledOperatorToken } from "@/shared/lib/prefill";
+import { Button } from "@/shared/ui/button";
+import { Card } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
 import { signIn } from "./api";
 
 const { t } = useI18n();
 const navigate = useNavigate();
-const token = ref("");
+const token = ref(prefilledOperatorToken());
 
 const login = useMutation({
   mutationFn: () => signIn(token.value.trim()),
@@ -18,11 +23,18 @@ const error = computed(() => (login.error.value ? `${toApiError(login.error.valu
 </script>
 
 <template>
-  <h1>{{ t("signIn.title") }}</h1>
-  <p class="muted">{{ t("signIn.intro") }}</p>
-  <form class="row" @submit.prevent="login.mutate()">
-    <input v-model="token" :aria-label="t('signIn.tokenLabel')" type="password" autocomplete="off" :placeholder="t('signIn.tokenLabel')" />
-    <button type="submit" :disabled="login.isPending.value || token.trim() === ''">{{ t("signIn.submit") }}</button>
-  </form>
-  <p v-if="error" class="error">{{ error }}</p>
+  <div class="mx-auto mt-16 max-w-md">
+    <Card class="gap-5 p-8">
+      <span class="bg-lime text-lime-foreground grid size-12 place-items-center rounded-full"><KeyRound class="size-5" /></span>
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">{{ t("signIn.title") }}</h1>
+        <p class="text-muted-foreground mt-1 text-sm">{{ t("signIn.intro") }}</p>
+      </div>
+      <form class="flex flex-col gap-3" @submit.prevent="login.mutate()">
+        <Input v-model="token" :aria-label="t('signIn.tokenLabel')" type="password" autocomplete="off" :placeholder="t('signIn.tokenLabel')" />
+        <Button type="submit" size="lg" :disabled="login.isPending.value || token.trim() === ''">{{ t("signIn.submit") }}</Button>
+      </form>
+      <p v-if="error" class="text-destructive text-sm" role="alert">{{ error }}</p>
+    </Card>
+  </div>
 </template>
