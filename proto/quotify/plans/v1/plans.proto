@@ -31,6 +31,12 @@ service PlansService {
   rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
   rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
   rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
+  // GetRoutingRules returns the ordered rules that choose a customer's payment provider from country and currency.
+  rpc GetRoutingRules(GetRoutingRulesRequest) returns (GetRoutingRulesResponse);
+  // SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
+  rpc SetRoutingRules(SetRoutingRulesRequest) returns (SetRoutingRulesResponse);
+  // PreviewRouting says where a customer in a country paying in a currency would go, without creating anything.
+  rpc PreviewRouting(PreviewRoutingRequest) returns (PreviewRoutingResponse);
   // SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
   // Internal: called by payments-worker, not exposed by the gateway.
   rpc SyncProviderSubscription(SyncProviderSubscriptionRequest) returns (SyncProviderSubscriptionResponse);
@@ -273,4 +279,45 @@ message SyncProviderSubscriptionRequest {
 
 message SyncProviderSubscriptionResponse {
   Subscription subscription = 1;
+}
+
+// RoutingRule sends customers who match to a provider. An empty country or currency matches any. The first matching rule wins; a rule with
+// neither is the catch-all and must be last. No match means the tenant's default provider account.
+message RoutingRule {
+  // ISO 3166-1 alpha-2, e.g. "TR". Empty = any country.
+  string country = 1;
+  // ISO 4217, e.g. "TRY". Empty = any currency.
+  string currency = 2;
+  // A provider name from the catalogue: iyzico or paddle.
+  string provider = 3;
+}
+
+message GetRoutingRulesRequest {}
+
+message GetRoutingRulesResponse {
+  repeated RoutingRule rules = 1;
+}
+
+message SetRoutingRulesRequest {
+  repeated RoutingRule rules = 1;
+}
+
+message SetRoutingRulesResponse {
+  repeated RoutingRule rules = 1;
+}
+
+message PreviewRoutingRequest {
+  string country = 1;
+  string currency = 2;
+}
+
+message PreviewRoutingResponse {
+  // Empty when no rule matches: the tenant's default provider account.
+  string provider = 1;
+  // Position of the matching rule, -1 when none matched.
+  int32 rule_index = 2;
+  // "quotify" or "provider": who renews and retries a subscription sold through it; empty when no provider is chosen.
+  string owner = 3;
+  // Whether the chosen provider can charge in the currency (always true when no provider is chosen).
+  bool can_charge = 4;
 }

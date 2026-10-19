@@ -176,3 +176,12 @@ VALUES (app_tenant_id(), @topic, @partition_key, @payload);
 
 -- name: NotifyOutbox :exec
 SELECT pg_notify('outbox_new', '');
+
+-- name: ListRoutingRules :many
+SELECT country, currency, provider FROM routing_rules WHERE tenant_id = app_tenant_id() ORDER BY position;
+
+-- name: DeleteRoutingRules :exec
+DELETE FROM routing_rules WHERE tenant_id = app_tenant_id();
+
+-- name: InsertRoutingRule :exec
+INSERT INTO routing_rules (tenant_id, position, country, currency, provider) VALUES (app_tenant_id(), $1, $2, $3, $4);

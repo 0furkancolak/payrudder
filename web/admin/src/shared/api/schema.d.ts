@@ -336,6 +336,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/routing-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The ordered rules that choose a new subscription's payment provider from the customer's country and the subscription's currency */
+        get: operations["getRoutingRules"];
+        /** Replace the rules (first match wins; a rule with neither country nor currency is the catch-all and must be last). Existing subscriptions keep their provider */
+        put: operations["setRoutingRules"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/routing-rules/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Where a customer in a country paying in a currency would go, without creating anything */
+        post: operations["previewRouting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoices": {
         parameters: {
             query?: never;
@@ -1524,6 +1559,16 @@ export interface components {
              */
             owner?: "quotify" | "provider";
         };
+        RoutingRules: {
+            rules?: {
+                /** @description ISO 3166-1 alpha-2; empty matches any country */
+                country?: string;
+                /** @description ISO 4217; empty matches any currency */
+                currency?: string;
+                /** @enum {string} */
+                provider?: "iyzico" | "paddle";
+            }[];
+        };
         Tenant: {
             /** Format: uuid */
             id?: string;
@@ -2225,6 +2270,88 @@ export interface operations {
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    getRoutingRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutingRules"];
+                };
+            };
+        };
+    };
+    setRoutingRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoutingRules"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutingRules"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    previewRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example TR */
+                    country?: string;
+                    /** @example TRY */
+                    currency?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Empty when no rule matches (the tenant's default account) */
+                        provider?: string;
+                        /** @description -1 when no rule matches */
+                        rule_index?: number;
+                        /** @enum {string} */
+                        owner?: "quotify" | "provider";
+                        can_charge?: boolean;
+                    };
+                };
+            };
         };
     };
     listInvoices: {

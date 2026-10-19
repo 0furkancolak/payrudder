@@ -104,6 +104,15 @@ func (q *Queries) CurrentTenant(ctx context.Context) (CurrentTenantRow, error) {
 	return i, err
 }
 
+const deleteRoutingRules = `-- name: DeleteRoutingRules :exec
+DELETE FROM routing_rules WHERE tenant_id = app_tenant_id()
+`
+
+func (q *Queries) DeleteRoutingRules(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteRoutingRules)
+	return err
+}
+
 const endSubscription = `-- name: EndSubscription :execrows
 UPDATE subscriptions SET active = tstzrange(lower(active), $1::timestamptz, '[)')
 WHERE tenant_id = app_tenant_id() AND id = $2 AND upper_inf(active) AND $1::timestamptz > lower(active)
@@ -570,6 +579,27 @@ func (q *Queries) InsertPlanVersionFee(ctx context.Context, arg InsertPlanVersio
 	return err
 }
 
+const insertRoutingRule = `-- name: InsertRoutingRule :exec
+INSERT INTO routing_rules (tenant_id, position, country, currency, provider) VALUES (app_tenant_id(), $1, $2, $3, $4)
+`
+
+type InsertRoutingRuleParams struct {
+	Position int32
+	Country  *string
+	Currency *string
+	Provider string
+}
+
+func (q *Queries) InsertRoutingRule(ctx context.Context, arg InsertRoutingRuleParams) error {
+	_, err := q.db.Exec(ctx, insertRoutingRule,
+		arg.Position,
+		arg.Country,
+		arg.Currency,
+		arg.Provider,
+	)
+	return err
+}
+
 const insertSubscription = `-- name: InsertSubscription :one
 INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider)
 VALUES (app_tenant_id(), $1, $2, $3, tstzrange($4::timestamptz, NULL, '[)'),
@@ -938,6 +968,36 @@ func (q *Queries) ListPlans(ctx context.Context) ([]ListPlansRow, error) {
 			&i.CreatedAt,
 			&i.LatestVersion,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoutingRules = `-- name: ListRoutingRules :many
+SELECT country, currency, provider FROM routing_rules WHERE tenant_id = app_tenant_id() ORDER BY position
+`
+
+type ListRoutingRulesRow struct {
+	Country  *string
+	Currency *string
+	Provider string
+}
+
+func (q *Queries) ListRoutingRules(ctx context.Context) ([]ListRoutingRulesRow, error) {
+	rows, err := q.db.Query(ctx, listRoutingRules)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRoutingRulesRow{}
+	for rows.Next() {
+		var i ListRoutingRulesRow
+		if err := rows.Scan(&i.Country, &i.Currency, &i.Provider); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

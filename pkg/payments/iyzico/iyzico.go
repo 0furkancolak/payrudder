@@ -111,7 +111,10 @@ func (c *Client) Name() string { return Name }
 
 // Capabilities implements payments.Provider. iyzico charges and refunds; Quotify schedules renewals, retries failed payments and
 // issues the invoice. The currency list is the intersection of iyzico's and Quotify's.
-func (c *Client) Capabilities() payments.Capabilities {
+func (c *Client) Capabilities() payments.Capabilities { return Caps() }
+
+// Caps are iyzico's capabilities, which do not depend on an account: routing rules are checked against them before any account exists.
+func Caps() payments.Capabilities {
 	return payments.Capabilities{Name: Name, Refunds: true, Currencies: []string{"TRY", "USD", "EUR", "GBP", "CHF"}}
 }
 

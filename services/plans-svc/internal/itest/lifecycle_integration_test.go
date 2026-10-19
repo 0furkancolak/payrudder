@@ -24,7 +24,8 @@ func testSubscriptionLifecycle(t *testing.T) {
 		if _, err := e.plans.CreatePlan(ctx, &plansv1.CreatePlanRequest{Code: c.code, Name: c.code}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: c.code, BaseFeeMinor: c.fee}); err != nil {
+		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: c.code, BaseFeeMinor: c.fee,
+			Fees: []*plansv1.CurrencyFee{{Currency: "USD", BaseFeeMinor: c.fee / 30}}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -145,7 +146,11 @@ func testSubscriptionLifecycle(t *testing.T) {
 	})
 
 	t.Run("a subscription a provider runs is linked, followed and not changed locally", func(t *testing.T) {
-		mkCustomer("cus_paddle")
+		for _, id := range []string{"cus_paddle", "cus_paddle2"} {
+			if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: id, Name: id, Email: id + "@example.com", Country: "DE", BillingCurrency: "USD"}); err != nil {
+				t.Fatal(err)
+			}
+		}
 		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle", PlanCode: "basic", Provider: "paddle"})
 		if err != nil || r.GetSubscription().GetProvider() != "paddle" || r.GetSubscription().GetOwner() != "quotify" || r.GetSubscription().GetProviderRef() != "" {
 			t.Fatalf("created = %v, %v; it names its provider but is not linked or provider-owned yet", r, err)
@@ -196,7 +201,6 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatalf("canceled = %v, %v", g, err)
 		}
 		// Another subscription cannot take the same provider id.
-		mkCustomer("cus_paddle2")
 		r2, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle2", PlanCode: "basic", Provider: "paddle"})
 		if err != nil {
 			t.Fatal(err)
@@ -205,6 +209,93 @@ func testSubscriptionLifecycle(t *testing.T) {
 			ProviderRef: "sub_01", Owner: "provider", ProviderStatus: "active"})
 		if err == nil {
 			t.Fatal("two subscriptions linked to the same provider subscription")
+		}
+	})
+
+	t.Run("routing rules choose the provider from country and currency", func(t *testing.T) {
+		rules := []*plansv1.RoutingRule{
+			{Country: "TR", Currency: "TRY", Provider: "iyzico"},
+			{Currency: "USD", Provider: "paddle"},
+		}
+		if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Currency: "TRY", Provider: "paddle"}}}); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("paddle cannot charge TRY: %v", err)
+		}
+		if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Provider: "stripe"}}}); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("unknown provider: %v", err)
+		}
+		got, err := e.plans.GetRoutingRules(ctx, &plansv1.GetRoutingRulesRequest{})
+		if err != nil || len(got.GetRules()) != 0 {
+			t.Fatalf("a refused list changed nothing: %v, %v", got, err)
+		}
+		set, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: rules})
+		if err != nil || len(set.GetRules()) != 2 {
+			t.Fatalf("set = %v, %v", set, err)
+		}
+		if got, _ = e.plans.GetRoutingRules(ctx, &plansv1.GetRoutingRulesRequest{}); len(got.GetRules()) != 2 || got.GetRules()[0].GetProvider() != "iyzico" || got.GetRules()[1].GetCountry() != "" {
+			t.Fatalf("get = %v", got)
+		}
+		for _, c := range []struct {
+			country, currency, provider, owner string
+			index                              int32
+			can                                bool
+		}{
+			{"TR", "TRY", "iyzico", "quotify", 0, true},
+			{"DE", "USD", "paddle", "provider", 1, true},
+			{"TR", "EUR", "", "", -1, true},
+		} {
+			p, err := e.plans.PreviewRouting(ctx, &plansv1.PreviewRoutingRequest{Country: c.country, Currency: c.currency})
+			if err != nil || p.GetProvider() != c.provider || p.GetOwner() != c.owner || p.GetRuleIndex() != c.index || p.GetCanCharge() != c.can {
+				t.Errorf("preview %s/%s = %v, %v", c.country, c.currency, p, err)
+			}
+		}
+
+		// A new subscription follows the rules; an explicit provider overrides them; the customer's currency decides which rule applies.
+		mk := func(id, country, currency string) {
+			if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: id, Name: id, Email: id + "@example.com", Country: country, BillingCurrency: currency}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		mk("cus_tr", "TR", "TRY")
+		mk("cus_us", "US", "USD")
+		mk("cus_eur", "FR", "")
+		sub := func(customer, provider string) *plansv1.Subscription {
+			t.Helper()
+			r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: customer, PlanCode: "basic", Provider: provider})
+			if err != nil {
+				t.Fatalf("%s: %v", customer, err)
+			}
+			return r.GetSubscription()
+		}
+		trSub := sub("cus_tr", "")
+		if trSub.GetProvider() != "iyzico" {
+			t.Errorf("Turkish customer in lira went to %q", trSub.GetProvider())
+		}
+		if s := sub("cus_us", ""); s.GetProvider() != "paddle" {
+			t.Errorf("customer in dollars went to %q", s.GetProvider())
+		}
+		if s := sub("cus_eur", ""); s.GetProvider() != "" {
+			t.Errorf("a customer no rule matches went to %q; it uses the default account", s.GetProvider())
+		}
+		// Editing the rules does not move existing subscriptions.
+		if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{}); err != nil {
+			t.Fatal(err)
+		}
+		after, _ := e.plans.GetSubscription(ctx, &plansv1.GetSubscriptionRequest{SubscriptionId: trSub.GetId()})
+		if after.GetSubscription().GetProvider() != "iyzico" {
+			t.Errorf("an existing subscription moved when the rules changed: %v", after)
+		}
+		// An explicit provider overrides the rules (there are none now).
+		mk("cus_explicit", "TR", "TRY")
+		if s := sub("cus_explicit", "iyzico"); s.GetProvider() != "iyzico" {
+			t.Errorf("explicit provider = %q", s.GetProvider())
+		}
+		// A provider that cannot charge the subscription's currency is refused at creation.
+		mk("cus_tr2", "TR", "TRY")
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_tr2", PlanCode: "basic", Provider: "paddle"}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("paddle for a lira subscription: %v", err)
+		}
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_tr2", PlanCode: "basic", Provider: "stripe"}); code(t, err) != codes.InvalidArgument {
+			t.Errorf("unknown provider: %v", err)
 		}
 	})
 

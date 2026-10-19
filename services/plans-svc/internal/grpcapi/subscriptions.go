@@ -3,6 +3,7 @@ package grpcapi
 import (
 	"context"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/money"
+	"github.com/0furkancolak/quotify/pkg/payments/providers"
 	"github.com/0furkancolak/quotify/pkg/subscription"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
@@ -200,6 +202,25 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 		}
 		if err := requireUsagePrices(ctx, q, pv.ID, t.Currency, currency); err != nil {
 			return err
+		}
+		if provider == nil {
+			// Not named: the routing rules choose from the customer's country and the subscription's currency.
+			rules, err := loadRules(ctx, q)
+			if err != nil {
+				return err
+			}
+			if routed, _, ok := domain.Route(rules, strString(c.Country), currency); ok {
+				provider = &routed
+			}
+		}
+		if provider != nil {
+			caps, known := providers.Lookup(*provider)
+			switch {
+			case !known:
+				return domain.Invalid("provider", "unknown provider "+*provider+"; known: "+strings.Join(providers.Names(), ", "))
+			case !caps.CanCharge(currency):
+				return status.Errorf(codes.FailedPrecondition, "%s cannot charge in %s", *provider, currency)
+			}
 		}
 		state := subscription.Active
 		var trialEnds *time.Time

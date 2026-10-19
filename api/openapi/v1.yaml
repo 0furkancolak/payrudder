@@ -363,6 +363,49 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
 
+  /v1/routing-rules:
+    get:
+      operationId: getRoutingRules
+      summary: The ordered rules that choose a new subscription's payment provider from the customer's country and the subscription's currency
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RoutingRules" } } } }
+    put:
+      operationId: setRoutingRules
+      summary: Replace the rules (first match wins; a rule with neither country nor currency is the catch-all and must be last). Existing subscriptions keep their provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoutingRules" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RoutingRules" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/routing-rules/preview:
+    post:
+      operationId: previewRouting
+      summary: Where a customer in a country paying in a currency would go, without creating anything
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                country: { type: string, examples: [TR] }
+                currency: { type: string, examples: [TRY] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider: { type: string, description: Empty when no rule matches (the tenant's default account) }
+                  rule_index: { type: integer, description: "-1 when no rule matches" }
+                  owner: { type: string, enum: [quotify, provider] }
+                  can_charge: { type: boolean }
+
   /v1/invoices:
     get:
       operationId: listInvoices
@@ -1613,6 +1656,17 @@ components:
         provider: { type: string }
         provider_ref: { type: string, description: The provider's id of the subscription, once it is linked }
         owner: { type: string, enum: [quotify, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
+    RoutingRules:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            type: object
+            properties:
+              country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2; empty matches any country }
+              currency: { type: string, description: ISO 4217; empty matches any currency }
+              provider: { type: string, enum: [iyzico, paddle] }
     Tenant:
       type: object
       properties:

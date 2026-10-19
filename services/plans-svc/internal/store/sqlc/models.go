@@ -112,6 +112,14 @@ type PlanVersionFee struct {
 	BaseFeeMinor  int64
 }
 
+type RoutingRule struct {
+	TenantID uuid.UUID
+	Position int32
+	Country  *string
+	Currency *string
+	Provider string
+}
+
 type Subscription struct {
 	TenantID          uuid.UUID
 	ID                uuid.UUID

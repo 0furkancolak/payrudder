@@ -69,6 +69,7 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 			{MeterCode: "gb_hours", Model: &plansv1.Price_PerUnit{PerUnit: &plansv1.PerUnitPrice{UnitPrice: "0.4"}}}}}},
 		Prices:       []*plansv1.Price{{MeterCode: "gb_hours", Model: &plansv1.Price_PerUnit{PerUnit: &plansv1.PerUnitPrice{UnitPrice: "12.5"}}}},
 		Entitlements: []*plansv1.Entitlement{{MeterCode: "gb_hours", Limit: "100.5"}}}))
+	must(e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Country: "TR", Currency: "TRY", Provider: "iyzico"}}}))
 	must(e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_" + suffix, PlanCode: "pro"}))
 }
 
