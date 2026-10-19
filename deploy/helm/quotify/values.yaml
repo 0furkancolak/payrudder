@@ -11,6 +11,7 @@ global:
   redisURL: redis://redis:6379/0
   otlpEndpoint: ""         # empty disables trace export
   topologySpread: true     # spread replicas of a service over nodes
+  drainSeconds: 35         # a terminating pod keeps serving this long (CoreDNS caches a headless Service for 30 s)
 
 postgres:
   host: postgres

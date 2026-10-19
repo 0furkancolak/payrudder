@@ -143,6 +143,8 @@ jobs:
       - run: kubectl --context kind-quotify -n quotify get pods -o wide
       - run: make netpol-test
       - run: make e2e-kind
+      - name: Zero-downtime rollout under k6 load
+        run: make rollout-test
       - if: failure()
         run: |
           kubectl --context kind-quotify -n quotify get pods -o wide || true

@@ -55,6 +55,11 @@ The kind node maps the host ports 8000 (gateway), 8090 (mock-psp), 8025 (Mailpit
 - **HPA and PDB**: the gateway and ingest-svc scale on CPU (`values-kind.yaml`); every service with more than one replica gets a PodDisruptionBudget
   (`maxUnavailable: 1`). The consumers are capped by their partition counts and are not autoscaled.
 - **Rolling updates** use `maxUnavailable: 0, maxSurge: 1`; a changed Secret or setting rolls the pods through a checksum annotation.
+  A rollout must not lose requests, and gRPC behind a headless Service makes that harder than it looks: the clients hold the pod addresses they
+  resolved, CoreDNS caches the answer for 30 s, and grpc-go re-resolves only after a connection fails. So a terminating pod keeps serving for
+  `global.drainSeconds` (35 s, a `preStop` sleep; `terminationGracePeriodSeconds` is that plus 30), `pkg/grpcx` lowers grpc-go's minimum
+  re-resolution interval from 30 s to 2 s, and the services on the synchronous path of `POST /v1/events` (gateway, ingest-svc, plans-svc) run two
+  replicas. `make rollout-test` upgrades to a new image tag under k6 load and fails on a single failed request.
 
 ## Tests
 

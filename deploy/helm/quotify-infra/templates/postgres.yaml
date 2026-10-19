@@ -102,4 +102,19 @@ spec:
         accessModes: [ReadWriteOnce]
         {{- include "infra.storageClass" $ | nindent 8 }}
         resources: { requests: { storage: {{ .Values.postgres.storage }} } }
+{{- if .Values.postgres.external.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-external
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "postgres") | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "postgres") | nindent 4 }}
+  ports:
+    - { name: postgres, port: 5432, targetPort: postgres, nodePort: {{ .Values.postgres.external.nodePort }} }
+{{- end }}
 {{- end }}

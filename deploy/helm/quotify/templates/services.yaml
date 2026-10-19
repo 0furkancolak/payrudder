@@ -30,7 +30,7 @@ spec:
         {{- /* A changed secret or setting rolls the pods. */}}
         quotify.io/config-checksum: {{ printf "%s%s" (toJson $svc.env) (toJson $secretEnv) | sha256sum | trunc 16 | quote }}
     spec:
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: {{ add $.Values.global.drainSeconds 30 }}
       securityContext: { runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532, seccompProfile: { type: RuntimeDefault } }
       {{- if and $.Values.global.topologySpread (gt $replicas 1) }}
       topologySpreadConstraints:
@@ -55,6 +55,10 @@ spec:
           envFrom:
             - secretRef: { name: {{ $.Release.Name }}-{{ $name }}-env }
           {{- end }}
+          lifecycle:
+            # Keep serving until the pod's removal has reached the clients: CoreDNS caches the headless Service's answer for 30 s, and
+            # gRPC clients resolve through it. Terminating earlier would leave them dialing a dead address (see docs/12-kubernetes.md).
+            preStop: { sleep: { seconds: {{ $.Values.global.drainSeconds }} } }
           ports:
             {{- if $svc.port }}
             - { name: {{ eq $svc.kind "grpc" | ternary "grpc" "http" }}, containerPort: {{ $svc.port }} }

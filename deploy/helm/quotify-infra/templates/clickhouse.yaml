@@ -81,4 +81,19 @@ spec:
         accessModes: [ReadWriteOnce]
         {{- include "infra.storageClass" $ | nindent 8 }}
         resources: { requests: { storage: {{ .Values.clickhouse.storage }} } }
+{{- if .Values.clickhouse.external.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse-external
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "clickhouse") | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    {{- include "infra.selector" (dict "root" $ "name" "clickhouse") | nindent 4 }}
+  ports:
+    - { name: http, port: 8123, targetPort: http, nodePort: {{ .Values.clickhouse.external.nodePort }} }
+{{- end }}
 {{- end }}

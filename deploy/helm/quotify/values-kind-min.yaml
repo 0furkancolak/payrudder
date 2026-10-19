@@ -7,5 +7,19 @@ defaults:
     requests: { cpu: 10m, memory: 16Mi }
     limits: { memory: 160Mi }
 services:
+  # The synchronous path of POST /v1/events (gateway -> ingest-svc -> plans-svc) keeps two replicas, so a rollout loses nothing.
+  gateway:
+    replicas: 2
+  ingest-svc:
+    replicas: 2
+  plans-svc:
+    replicas: 2
+  # The e2e suite inspects mock-psp from the host, so on kind its NetworkPolicy lets everyone in (the default install allows only
+  # payments-worker), and the sandbox dunning schedule and the saga sweeper run on seconds so that the payment scenarios finish.
   mockpsp:
     nodePort: 30090
+    allowFrom: []
+  billing-svc:
+    env:
+      QUOTIFY_DUNNING_SANDBOX: 5s,5s,5s
+      QUOTIFY_SWEEP_INTERVAL: 2s

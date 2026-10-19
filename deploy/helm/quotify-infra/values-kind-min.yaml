@@ -6,6 +6,7 @@ redpanda:
     requests: { cpu: 50m, memory: 384Mi }
     limits: { memory: 640Mi }
 postgres:
+  external: { enabled: true, nodePort: 31432 }
   resources:
     requests: { cpu: 25m, memory: 96Mi }
     limits: { memory: 384Mi }
@@ -14,6 +15,7 @@ rabbitmq:
     requests: { cpu: 25m, memory: 128Mi }
     limits: { memory: 384Mi }
 clickhouse:
+  external: { enabled: true, nodePort: 31123 }
   resources:
     requests: { cpu: 25m, memory: 192Mi }
     limits: { memory: 768Mi }

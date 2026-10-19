@@ -1,7 +1,12 @@
-# kind: Redpanda, MinIO and Mailpit are reachable from the host through the NodePorts mapped in deploy/kind/cluster*.yaml.
+# kind: Redpanda, MinIO, Mailpit, Postgres and ClickHouse are reachable from the host through the NodePorts mapped in
+# deploy/kind/cluster*.yaml (the e2e tests and the chaos suite need them).
 redpanda:
   external: { enabled: true, basePort: 31092 }
 minio:
   external: { enabled: true, nodePort: 31900 }
 mailpit:
   external: { enabled: true, nodePort: 31025 }
+postgres:
+  external: { enabled: true, nodePort: 31432 }
+clickhouse:
+  external: { enabled: true, nodePort: 31123 }

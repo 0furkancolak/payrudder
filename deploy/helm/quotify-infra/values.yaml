@@ -7,6 +7,9 @@ postgres:
   image: postgres:17.11-alpine
   storage: 2Gi
   adminPassword: postgres_local
+  external:
+    enabled: false           # NodePort 31432, for the chaos suite and psql from the host (kind maps it to 15432)
+    nodePort: 31432
   # Role passwords: "<role>_local" unless listed here (mirror them in the quotify chart's postgres.passwords).
   passwords: {}
   resources:
@@ -54,6 +57,9 @@ clickhouse:
   database: quotify
   user: quotify
   password: quotify_local
+  external:
+    enabled: false           # NodePort 31123 (HTTP), for the A8 check of the chaos suite (kind maps it to 8123)
+    nodePort: 31123
   resources:
     requests: { cpu: 100m, memory: 256Mi }
     limits: { memory: 1Gi }

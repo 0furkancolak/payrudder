@@ -1,5 +1,6 @@
 # Three worker nodes, so that pod anti-affinity, PDBs and node-level chaos mean something. Host ports are mapped through the
 # control-plane node (a NodePort answers on every node): 8000 gateway, 8090 mock-psp, 8025 Mailpit, 9001 MinIO S3,
+# 15432 Postgres and 8123 ClickHouse (for the chaos suite),
 # 31092-31094 the three Redpanda brokers (advertised to clients outside the cluster as localhost:3109x).
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -11,6 +12,8 @@ nodes:
       - { containerPort: 30090, hostPort: 8090, listenAddress: "127.0.0.1" }
       - { containerPort: 31025, hostPort: 8025, listenAddress: "127.0.0.1" }
       - { containerPort: 31900, hostPort: 9001, listenAddress: "127.0.0.1" }
+      - { containerPort: 31432, hostPort: 15432, listenAddress: "127.0.0.1" }
+      - { containerPort: 31123, hostPort: 8123, listenAddress: "127.0.0.1" }
       - { containerPort: 31092, hostPort: 31092, listenAddress: "127.0.0.1" }
       - { containerPort: 31093, hostPort: 31093, listenAddress: "127.0.0.1" }
       - { containerPort: 31094, hostPort: 31094, listenAddress: "127.0.0.1" }

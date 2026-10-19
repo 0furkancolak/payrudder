@@ -88,6 +88,20 @@ SERVICE_IMAGES := plans-svc ingest-svc aggregator limits-svc billing-svc analyti
 $(BIN)/helm $(BIN)/kubeconform $(BIN)/kind: tools/go.mod tools/go.sum
 	cd tools && GOWORK=off go build -o $(BIN)/ helm.sh/helm/v3/cmd/helm github.com/yannh/kubeconform/cmd/kubeconform sigs.k8s.io/kind
 
+.PHONY: rollout-test
+rollout-test: ## helm upgrade to a new image tag under k6 load: no failed request (needs kind-images and helm-install first)
+	KIND_PROFILE=$(KIND_PROFILE) HELM_NS=$(HELM_NS) deploy/kind/rollout-test.sh
+
+.PHONY: demo-k8s
+demo-k8s: ## The sandbox flow on kind: close a period, every pm_sandbox_* payment scenario plays out, PDFs in MinIO, receipts in Mailpit
+	cd tests && QUOTIFY_KAFKA_BROKERS=localhost:31092 QUOTIFY_SKIP_OBSERVABILITY=1 go test -count=1 -tags e2e -timeout 30m -v -run 'TestSandboxBillingEndToEnd|TestSandboxPaymentScenarios|TestInvoiceLogoOnThePDF' ./e2e/
+
+.PHONY: chaos-kind
+chaos-kind: ## Correctness suite on kind with random pod deletion: make chaos-kind N=100000 (needs the 3-worker cluster and helm-install)
+	cd tests && QUOTIFY_CHAOS_EVENTS=$(N) QUOTIFY_CHAOS_MONKEY=1 QUOTIFY_CHAOS_PLATFORM=kubernetes QUOTIFY_PG_HOST_PORT=15432 \
+		QUOTIFY_KAFKA_BROKERS=localhost:31092$(comma)localhost:31093$(comma)localhost:31094 QUOTIFY_CLICKHOUSE_URL=http://localhost:8123 \
+		go test -count=1 -tags chaos -timeout 120m -v ./chaos/
+
 .PHONY: netpol-test
 netpol-test: ## NetworkPolicy check on the running cluster (a pod in another namespace cannot reach ingest-svc:7002)
 	deploy/kind/netpol-test.sh

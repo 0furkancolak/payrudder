@@ -55,3 +55,19 @@ Phase 09 (chaos suite, stable services).
 
 - Laptop resources for 3-node Redpanda + 3-node RabbitMQ + CNPG + ClickHouse. Fallback: single-node infra values with a separate "HA" values file run in CI only.
 - Operators vs. plain charts for infra: planned operators for Postgres/RabbitMQ (realistic), plain charts for the rest.
+
+## Notes (as built)
+
+- **Two charts, not an umbrella with a subchart per service.** `quotify-infra` (plain StatefulSets: Postgres, Redpanda, RabbitMQ with k8s
+  peer discovery, Redis, ClickHouse, MinIO, Mailpit, the topics Job) and `quotify` (one template looping over `values.yaml: services`). Two
+  releases because the pre-install migration Jobs need their databases to exist. Postgres is one StatefulSet, not CloudNativePG: the
+  operator is the production path and replaces the `postgres` component; it was not installed here. Details: [12-kubernetes.md](../12-kubernetes.md).
+- **No local registry**: `make kind-images` builds the images one at a time and `kind load`s them. Twelve parallel Go builds exhaust a 3 GiB Docker VM.
+- **`QUOTIFY_MIGRATE_ONLY`** (in `config.Base`, honoured by every service that migrates) makes the service's own image the migration Job.
+- **Verified on this laptop** with the one-node profile (`cluster-min.yaml`, `values-kind-min.yaml`, 3 GiB): the install, `make netpol-test` (a pod with the
+  gateway's labels reaches `ingest-svc:7002`; an unlabelled pod and a pod in another namespace do not) and `make demo-k8s` (the sandbox billing and payment
+  scenarios, PDFs, receipts). The three-worker, three-broker cluster, `e2e-kind`, `rollout-test` and `chaos-kind` are wired into CI and the Makefile but were
+  not run on this machine (the Docker VM cannot hold them); the `kind` job in `ci.yml` runs the first three.
+- Chaos on Kubernetes: `QUOTIFY_CHAOS_PLATFORM=kubernetes` makes the monkey delete pods (including a Redpanda broker and Redis), and partition services with
+  a temporary deny-all NetworkPolicy in place of Toxiproxy (`make chaos-kind`).
+- Not done: an observability stack on kind; a `values-sandbox.yaml` namespace install is rendered and tested, not run.

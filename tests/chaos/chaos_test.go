@@ -451,7 +451,7 @@ func TestCorrectness(t *testing.T) {
 	var monkey *Monkey
 	if envOr("QUOTIFY_CHAOS_MONKEY", "0") == "1" {
 		expected := time.Duration(max(2*time.Minute, time.Duration(n/400)*time.Second))
-		monkey = StartMonkey(context.Background(), seed, toxiproxyURL, expected)
+		monkey = StartMonkey(context.Background(), seed, expected)
 	}
 	var wg sync.WaitGroup
 	wg.Add(2)

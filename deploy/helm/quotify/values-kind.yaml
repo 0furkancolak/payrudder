@@ -17,7 +17,16 @@ services:
     replicas: 2
   limits-svc:
     replicas: 2
+    env:
+      QUOTIFY_RECONCILE_INTERVAL: 1m
   plans-svc:
     replicas: 2
+  # The e2e suite inspects mock-psp from the host, so on kind its NetworkPolicy lets everyone in (the default install allows only
+  # payments-worker), and the sandbox dunning schedule and the saga sweeper run on seconds so that the payment scenarios finish.
   mockpsp:
     nodePort: 30090
+    allowFrom: []
+  billing-svc:
+    env:
+      QUOTIFY_DUNNING_SANDBOX: 5s,5s,5s
+      QUOTIFY_SWEEP_INTERVAL: 2s
