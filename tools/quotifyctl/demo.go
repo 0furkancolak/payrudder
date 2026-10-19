@@ -94,6 +94,17 @@ func demo(args []string) error {
 	}); err != nil {
 		return err
 	}
+	// The run completes on the scheduler's next look at it; re-rating needs it COMPLETED.
+	if err := waitFor(2*time.Minute, "the billing run to complete", func() (bool, string) {
+		var br map[string]any
+		if err := c.call("GET", "/admin/v1/tenants/"+tenant+"/billing-runs/"+period, c.token, nil, &br); err != nil {
+			return false, err.Error()
+		}
+		st, _ := br["status"].(string)
+		return strings.HasSuffix(st, "COMPLETED"), "billing run " + st
+	}); err != nil {
+		return err
+	}
 	printInvoices(c, key, period)
 
 	step("4/7 A price change: a new version of the plan, 20 %% dearer base fee and GB-hours")

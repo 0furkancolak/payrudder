@@ -157,7 +157,7 @@ comma := ,
 
 .PHONY: demo
 demo: ## The README story on a running stack: usage, a period close, a price change, re-rating (sandbox dunning on seconds)
-	QUOTIFY_DUNNING_SANDBOX=15s,15s,15s QUOTIFY_SWEEP_INTERVAL=2s $(COMPOSE) --profile obs --profile app up -d --wait billing-svc
+	QUOTIFY_DUNNING_SANDBOX=15s,15s,15s QUOTIFY_SWEEP_INTERVAL=2s QUOTIFY_SCHEDULER_INTERVAL=5s $(COMPOSE) --profile obs --profile app up -d --wait billing-svc
 	cd tools/quotifyctl && go run . demo --operator-token "$(OPERATOR_TOKEN)"
 
 .PHONY: seed
