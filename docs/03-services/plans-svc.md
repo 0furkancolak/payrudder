@@ -110,3 +110,15 @@ Two replicas for availability.
 `CreateSubscription` and `CancelSubscription` insert the `plans.entitlements.v1` rows in their own transaction
 (`outbox.ingested_at` replaced `created_at`, migration 00002) and `NOTIFY outbox_new`. The relay (`pkg/outbox`, run with the
 system pool) starts when `QUOTIFY_KAFKA_BROKERS` is set.
+
+## As built: subscription lifecycle (Phase 13)
+
+`CreateSubscription` takes `trial_days` (0..365) and `currency` (default: the customer's billing currency, then the tenant's). The
+currency must have a fixed fee on the plan version, and a plan version with metered prices needs a usage price set in it. New RPCs:
+`GetSubscription`, `PauseSubscription`, `ResumeSubscription`, `ScheduleCancellation` (`cancel=false` withdraws it) and `ChangePlan`. State
+moves through `pkg/subscription` (`Next`). `ChangePlan` ends the subscription at the change instant and starts a new one on the other
+plan version with `changed_from_id` set and the same billing anchor; it returns the old and new plan's share of the month's fixed fee.
+
+A subscription is invoiced on the calendar months of the tenant: `billing_anchor` is the first instant of the month it started in.
+Yearly intervals are refused. `PublishPlanVersion` accepts `fees` (other currencies' fixed fee) and `currency_prices` (usage prices in the
+same currencies, covering exactly the meters of the base prices).

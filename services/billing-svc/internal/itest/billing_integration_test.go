@@ -53,6 +53,10 @@ func TestBilling(t *testing.T) {
 		{"RerateHigherMakesCorrectionInvoicesAndRepeatsAreNoOps", testRerateHigherMakesCorrectionInvoices},
 		{"RerateRunTwiceIsIdempotent", testRerateRunTwiceIsIdempotent},
 		{"OperatorSeesTheSagaTimeline", testInvoiceSagaTimeline},
+		{"PlanChangeSplitsTheFixedFeeBetweenThePlans", testPlanChangeSplitsTheFixedFee},
+		{"TrialAndPauseWaiveTheFixedFee", testTrialAndPauseWaiveTheFixedFee},
+		{"SubscriptionInAnotherCurrencyIsInvoicedInIt", testSubscriptionInAnotherCurrencyIsInvoicedInIt},
+		{"SubscriptionWithoutAFeeInItsCurrencyFailsPermanently", testSubscriptionWithoutAFeeInItsCurrencyFailsPermanently},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

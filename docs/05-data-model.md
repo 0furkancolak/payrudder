@@ -147,6 +147,21 @@ CREATE TABLE subscriptions (
   created_at       timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, id),
   EXCLUDE USING gist (tenant_id WITH =, customer_id WITH =, active WITH &&)  -- one active sub per customer
+  -- Phase 13 (migration 00004):
+  -- state text ('trialing','active','past_due','paused','cancelled'), interval text ('month'; 'year' is refused for now),
+  -- currency char(3) NOT NULL (fixed for the subscription), trial_ends_at, cancel_at_period_end, paused_at,
+  -- billing_anchor timestamptz NOT NULL (start of the calendar month it began in), changed_from_id (the subscription a plan change replaced)
+);
+
+-- Phase 13: customers gain country char(2) and billing_currency char(3), both optional.
+CREATE TABLE plan_version_fees (            -- fixed fee in a currency other than the tenant's
+  tenant_id uuid NOT NULL, plan_version_id uuid NOT NULL, currency char(3) NOT NULL, base_fee_minor bigint NOT NULL,
+  PRIMARY KEY (tenant_id, plan_version_id, currency)
+);
+CREATE TABLE plan_currency_prices (         -- usage prices in such a currency, same shape as plan_prices
+  tenant_id uuid NOT NULL, plan_version_id uuid NOT NULL, currency char(3) NOT NULL, meter_code text NOT NULL,
+  model text NOT NULL, config jsonb NOT NULL,
+  PRIMARY KEY (tenant_id, plan_version_id, currency, meter_code)
 );
 
 CREATE TABLE outbox (                                  -- shared outbox shape, see ingest_db

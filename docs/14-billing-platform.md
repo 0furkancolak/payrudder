@@ -1,6 +1,6 @@
 # Billing platform: subscriptions, payment providers, routing, reporting
 
-Status: design, not built. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
+Status: phase 13 is built (see the notes below). Phases 14–18 are design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
 
 ## Why
 
@@ -89,6 +89,17 @@ Moving a subscription from provider A to B is a saga, like the billing saga, wit
 (the customer completes B's hosted form, since cards do not move between providers by us), create the subscription at B aligned to the current period end, then cancel at A
 after B's first successful charge. A failure before B charges leaves A unchanged. The step that cancels A runs only after B's charge is confirmed, so the worst case is an
 overlap that the saga detects and refunds, never silent double billing. Every step writes ledger and audit rows.
+
+## As built: phase 13
+
+Differences from the design above, decided while building (details in [phase 13](phases/phase-13-subscriptions.md)):
+
+- The design's `package` is the existing `plan` and `plan_version`; they gained a fixed fee and usage prices per currency.
+- The `customer`, `subscription` tables exist already in `plans_db` and were extended instead of new ones being added.
+- Billing periods are the tenant's calendar months, not anniversaries. A plan change splits the month's fixed fee by time on each plan;
+  there is no stored proration amount.
+- Yearly subscriptions are refused until the fixed fee can be invoiced once a year.
+- Subscriptions in a currency other than the tenant's are not re-rated.
 
 ## Currency
 

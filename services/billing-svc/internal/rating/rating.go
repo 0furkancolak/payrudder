@@ -46,6 +46,7 @@ type Price struct {
 // PlanVersion is the part of a plan version rating needs.
 type PlanVersion struct {
 	ID           string
+	PlanCode     string
 	BaseFeeMinor int64
 	Prices       map[string]Price
 }
@@ -200,6 +201,16 @@ func Rate(pv PlanVersion, usage []Usage) ([]Line, error) {
 	if pv.BaseFeeMinor != 0 {
 		lines = append(lines, Line{Kind: KindBaseFee, AmountMinor: pv.BaseFeeMinor, Description: "Base fee"})
 	}
+	used, err := RateUsage(pv, usage)
+	if err != nil {
+		return nil, err
+	}
+	return append(lines, used...), nil
+}
+
+// RateUsage prices only the metered part of Rate: one line per used meter that the plan prices, ordered by meter code.
+func RateUsage(pv PlanVersion, usage []Usage) ([]Line, error) {
+	var lines []Line
 	byMeter := make([]Usage, len(usage))
 	copy(byMeter, usage)
 	sortUsage(byMeter)

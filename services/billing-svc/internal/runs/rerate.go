@@ -236,7 +236,7 @@ func (m *Manager) rerateOnce(ctx context.Context, job *ReratingJob) error {
 	if err != nil {
 		return fmt.Errorf("get plan version: %w", err)
 	}
-	target, err := convertPlanVersion(tgtResp.GetPlanVersion())
+	target, err := convertPlanVersion(tgtResp.GetPlanVersion(), "", "")
 	if err != nil {
 		return permanent{err}
 	}
@@ -302,6 +302,12 @@ func (m *Manager) rerateOnce(ctx context.Context, job *ReratingJob) error {
 		snap, invoiced := snaps[cid]
 		if !invoiced || sub.PlanVersionID == job.PlanVersionID.String() {
 			continue // never billed for the period, or already on the target version
+		}
+		if (sub.Currency != "" && sub.Currency != tn.GetTenant().GetCurrency()) || len(sub.Chain) > 1 {
+			// Re-rating prices in the tenant currency and compares whole-period fees; a subscription sold in another
+			// currency or changed inside the period would be compared against the wrong amounts.
+			m.log.WarnContext(ctx, "re-rating skips a subscription in another currency or changed inside the period", "tenant", tid, "customer", cid, "period", job.PeriodID)
+			continue
 		}
 		code, err := planOf(sub.PlanVersionID)
 		if err != nil {

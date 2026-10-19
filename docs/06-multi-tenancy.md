@@ -82,7 +82,8 @@ Fairness beyond rate limits (partition hot-spotting, lag isolation) is in [07-co
 
 1. Operator (or the admin UI onboarding form): `POST /admin/v1/accounts` with **explicitly chosen** `currency`, `timezone`,
    `grace_period` and `tier`. No defaults. Creates the account plus its sandbox and live tenants with the same settings.
-   Currency and time zone are immutable afterwards, and grace can change for future periods.
+   Currency and time zone are immutable afterwards, and grace can change for future periods. The tenant currency is the default: since phase 13 a
+   subscription may be sold in another currency, fixed for its life ([ADR 0016](adr/0016-provider-capabilities-and-routing.md)).
 2. Operator: `POST /admin/v1/tenants/{id}/api-keys` → plaintext key returned once (`qk_test_` for the sandbox, `qk_live_` for live).
 3. Tenant integrates in the sandbox: meters, plans, customers with `pm_sandbox_*` scenarios, events, `POST /v1/sandbox/periods/{p}/close`.
    Then it repeats the setup in live. Copying config from sandbox to live is a documented extension, not in v1.

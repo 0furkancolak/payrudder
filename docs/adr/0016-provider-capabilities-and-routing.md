@@ -1,6 +1,6 @@
 # ADR 0016: Payment providers declare capabilities; routing is a stored rule set
 
-Status: proposed.
+Status: accepted for point 4 (built in phase 13); the rest is proposed.
 
 ## Context
 
