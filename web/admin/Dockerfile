@@ -11,7 +11,7 @@ COPY . .
 RUN npm run build
 
 FROM nginx:1.29-alpine
-ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 GATEWAY_URL=http://gateway:8000
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 GATEWAY_URL=http://gateway:8000 PREFILL_OPERATOR_TOKEN=
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 3001

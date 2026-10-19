@@ -10,6 +10,8 @@ export default tseslint.config(
     files: ["**/*.vue"],
     languageOptions: { parserOptions: { parser: tseslint.parser } },
   },
+  // Vendored shadcn-vue components keep the upstream prop style.
+  { files: ["src/shared/ui/**/*.vue"], rules: { "vue/require-default-prop": "off" } },
   {
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     rules: {

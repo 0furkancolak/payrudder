@@ -2,6 +2,11 @@
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { toApiError } from "@/shared/api/client";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Card } from "@/shared/ui/card";
+import { PageHeader } from "@/shared/ui/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDeadLetters, useRedrive } from "./api";
 
 const { t } = useI18n();
@@ -19,53 +24,57 @@ async function run(name: string, count: number) {
 </script>
 
 <template>
-  <h1>{{ t("deadLetters.title") }}</h1>
-  <p class="muted">{{ t("deadLetters.intro", { pattern: "{queue}.dlq" }) }}</p>
-  <p v-if="list.error.value" class="error">{{ toApiError(list.error.value).message }}</p>
-  <p v-if="redrive.error.value" class="error">{{ toApiError(redrive.error.value).message }}</p>
-  <p v-if="note" class="ok">{{ t("deadLetters.redriven", note) }}</p>
-  <table>
-    <thead>
-      <tr>
-        <th>{{ t("deadLetters.columns.queue") }}</th>
-        <th class="num">{{ t("deadLetters.columns.messages") }}</th>
-        <th />
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="q in list.data.value?.queues ?? []" :key="q.queue" :data-testid="`dlq-${q.queue}`">
-        <td>
-          <button class="link" type="button" @click="queue = queue === q.queue ? '' : (q.queue ?? '')">{{ q.queue }}.dlq</button>
-        </td>
-        <td class="num" data-testid="dlq-count">{{ Number(q.messages ?? 0) }}</td>
-        <td>
-          <button class="danger" type="button" :disabled="Number(q.messages ?? 0) === 0" @click="run(q.queue ?? '', Number(q.messages ?? 0))">
-            {{ t("deadLetters.redrive") }}
-          </button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <PageHeader :title="t('deadLetters.title')" :description="t('deadLetters.intro', { pattern: '{queue}.dlq' })" />
+  <p v-if="list.error.value" class="text-destructive mb-3" role="alert">{{ toApiError(list.error.value).message }}</p>
+  <p v-if="redrive.error.value" class="text-destructive mb-3" role="alert">{{ toApiError(redrive.error.value).message }}</p>
+  <p v-if="note" class="text-success bg-success/10 mb-3 rounded-2xl px-4 py-3 text-sm">{{ t("deadLetters.redriven", note) }}</p>
 
-  <template v-if="queue">
-    <h2>{{ t("deadLetters.messagesOf", { queue }) }}</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>{{ t("deadLetters.messageColumns.id") }}</th>
-          <th class="num">{{ t("deadLetters.messageColumns.deliveries") }}</th>
-          <th>{{ t("deadLetters.messageColumns.reason") }}</th>
-          <th class="num">{{ t("deadLetters.messageColumns.bytes") }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(m, i) in list.data.value?.messages ?? []" :key="`${m.message_id}-${i}`">
-          <td class="mono">{{ m.message_id }}</td>
-          <td class="num">{{ m.delivery_count }}</td>
-          <td>{{ m.reason }}</td>
-          <td class="num">{{ m.body_bytes }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </template>
+  <Card class="mb-6 p-3">
+    <Table>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead>{{ t("deadLetters.columns.queue") }}</TableHead>
+          <TableHead class="text-end">{{ t("deadLetters.columns.messages") }}</TableHead>
+          <TableHead />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="q in list.data.value?.queues ?? []" :key="q.queue" :data-testid="`dlq-${q.queue}`">
+          <TableCell>
+            <button type="button" class="font-medium hover:underline" @click="queue = queue === q.queue ? '' : (q.queue ?? '')">{{ q.queue }}.dlq</button>
+          </TableCell>
+          <TableCell class="text-end" data-testid="dlq-count">
+            <Badge :variant="Number(q.messages ?? 0) > 0 ? 'destructive' : 'secondary'">{{ Number(q.messages ?? 0) }}</Badge>
+          </TableCell>
+          <TableCell class="text-end">
+            <Button type="button" size="sm" variant="outline" :disabled="Number(q.messages ?? 0) === 0" @click="run(q.queue ?? '', Number(q.messages ?? 0))">
+              {{ t("deadLetters.redrive") }}
+            </Button>
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  </Card>
+
+  <Card v-if="queue" class="p-3">
+    <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("deadLetters.messagesOf", { queue }) }}</h2>
+    <Table>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead>{{ t("deadLetters.messageColumns.id") }}</TableHead>
+          <TableHead class="text-end">{{ t("deadLetters.messageColumns.deliveries") }}</TableHead>
+          <TableHead>{{ t("deadLetters.messageColumns.reason") }}</TableHead>
+          <TableHead class="text-end">{{ t("deadLetters.messageColumns.bytes") }}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="(m, i) in list.data.value?.messages ?? []" :key="`${m.message_id}-${i}`">
+          <TableCell class="mono text-xs">{{ m.message_id }}</TableCell>
+          <TableCell class="text-end tabular-nums">{{ m.delivery_count }}</TableCell>
+          <TableCell>{{ m.reason }}</TableCell>
+          <TableCell class="text-end tabular-nums">{{ m.body_bytes }}</TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  </Card>
 </template>

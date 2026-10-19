@@ -188,6 +188,18 @@ up: ## Start infrastructure + observability + Quotify services
 	$(MAKE) up-infra
 	$(COMPOSE) --profile obs --profile app up -d --build --wait
 
+.PHONY: dev
+dev: ## Development stack: services in Docker, the console on http://localhost:3001 with hot reload (make logs in a second terminal)
+	$(MAKE) up-infra
+	COMPOSE_PARALLEL_LIMIT=1 $(COMPOSE) --profile obs --profile app up -d --build --wait --scale admin-ui=0
+	@echo "Stack is up. Logs: make logs  (one service: make logs S=gateway). Stop: make down."
+	@echo "Console: http://localhost:3001, operator token and playground form are pre-filled."
+	cd web/admin && ([ -d node_modules ] || npm ci --no-audit --no-fund) && exec npm run dev
+
+.PHONY: logs
+logs: ## Follow service logs: make logs, or make logs S=gateway
+	$(COMPOSE) --profile obs --profile app logs -f --tail=100 $(S)
+
 .PHONY: down
 down: ## Stop every profile (keeps volumes)
 	$(COMPOSE) --profile obs --profile app --profile chaos --profile init down
