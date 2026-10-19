@@ -35,7 +35,13 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/plans/{code}/versions/{version}", AccessTenant, ratelimit.ClassRead, s.getPlanVersion},
 		// Subscriptions
 		{"POST", "/v1/subscriptions", AccessTenant, ratelimit.ClassWrite, s.createSubscription},
+		{"GET", "/v1/subscriptions/{id}", AccessTenant, ratelimit.ClassRead, s.getSubscription},
 		{"DELETE", "/v1/subscriptions/{id}", AccessTenant, ratelimit.ClassWrite, s.cancelSubscription},
+		{"POST", "/v1/subscriptions/{id}/pause", AccessTenant, ratelimit.ClassWrite, s.pauseSubscription},
+		{"POST", "/v1/subscriptions/{id}/resume", AccessTenant, ratelimit.ClassWrite, s.resumeSubscription},
+		{"POST", "/v1/subscriptions/{id}/cancel-at-period-end", AccessTenant, ratelimit.ClassWrite, s.scheduleCancellation},
+		{"DELETE", "/v1/subscriptions/{id}/cancel-at-period-end", AccessTenant, ratelimit.ClassWrite, s.withdrawCancellation},
+		{"POST", "/v1/subscriptions/{id}/change-plan", AccessTenant, ratelimit.ClassWrite, s.changePlan},
 		// Assets: direct multipart sessions, a streamed form upload, and the files themselves
 		{"POST", "/v1/assets/uploads", AccessTenant, ratelimit.ClassWrite, s.createUploadSession},
 		{"POST", "/v1/assets/uploads/{session}/files/{asset}/parts", AccessTenant, ratelimit.ClassWrite, s.presignParts},
@@ -210,6 +216,42 @@ func (s *Server) createSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := s.d.Plans.CreateSubscription(r.Context(), req)
 	respond(w, r, http.StatusCreated, resp.GetSubscription(), err)
+}
+
+func (s *Server) getSubscription(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.GetSubscription(r.Context(), &plansv1.GetSubscriptionRequest{SubscriptionId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
+}
+
+func (s *Server) pauseSubscription(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.PauseSubscription(r.Context(), &plansv1.PauseSubscriptionRequest{SubscriptionId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
+}
+
+func (s *Server) resumeSubscription(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.ResumeSubscription(r.Context(), &plansv1.ResumeSubscriptionRequest{SubscriptionId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
+}
+
+func (s *Server) scheduleCancellation(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.ScheduleCancellation(r.Context(), &plansv1.ScheduleCancellationRequest{SubscriptionId: r.PathValue("id"), Cancel: true})
+	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
+}
+
+func (s *Server) withdrawCancellation(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.ScheduleCancellation(r.Context(), &plansv1.ScheduleCancellationRequest{SubscriptionId: r.PathValue("id"), Cancel: false})
+	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
+}
+
+func (s *Server) changePlan(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.ChangePlanRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.SubscriptionId = r.PathValue("id")
+	resp, err := s.d.Plans.ChangePlan(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
 }
 
 func (s *Server) cancelSubscription(w http.ResponseWriter, r *http.Request) {

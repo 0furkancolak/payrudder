@@ -30,13 +30,15 @@ type ApiKey struct {
 }
 
 type Customer struct {
-	TenantID      uuid.UUID
-	ID            uuid.UUID
-	ExternalID    string
-	Name          string
-	Email         string
-	PaymentMethod *string
-	CreatedAt     time.Time
+	TenantID        uuid.UUID
+	ID              uuid.UUID
+	ExternalID      string
+	Name            string
+	Email           string
+	PaymentMethod   *string
+	CreatedAt       time.Time
+	Country         *string
+	BillingCurrency *string
 }
 
 type Meter struct {
@@ -69,6 +71,15 @@ type Plan struct {
 	CreatedAt time.Time
 }
 
+type PlanCurrencyPrice struct {
+	TenantID      uuid.UUID
+	PlanVersionID uuid.UUID
+	Currency      string
+	MeterCode     string
+	Model         string
+	Config        json.RawMessage
+}
+
 type PlanEntitlement struct {
 	TenantID           uuid.UUID
 	PlanVersionID      uuid.UUID
@@ -94,13 +105,28 @@ type PlanVersion struct {
 	PublishedAt  time.Time
 }
 
-type Subscription struct {
+type PlanVersionFee struct {
 	TenantID      uuid.UUID
-	ID            uuid.UUID
-	CustomerID    uuid.UUID
 	PlanVersionID uuid.UUID
-	Active        pgtype.Range[pgtype.Timestamptz]
-	CreatedAt     time.Time
+	Currency      string
+	BaseFeeMinor  int64
+}
+
+type Subscription struct {
+	TenantID          uuid.UUID
+	ID                uuid.UUID
+	CustomerID        uuid.UUID
+	PlanVersionID     uuid.UUID
+	Active            pgtype.Range[pgtype.Timestamptz]
+	CreatedAt         time.Time
+	State             string
+	Interval          string
+	Currency          string
+	TrialEndsAt       *time.Time
+	CancelAtPeriodEnd bool
+	PausedAt          *time.Time
+	BillingAnchor     time.Time
+	ChangedFromID     *uuid.UUID
 }
 
 type Tenant struct {

@@ -31,51 +31,104 @@ type meterInfo struct {
 }
 
 type subscription struct {
-	CustomerID, External string
-	PlanVersionID        string
-	Start                time.Time
+	ID, CustomerID, External string
+	PlanVersionID            string
+	Start                    time.Time
+	Currency                 string
+	ChangedFromID            string
+	TrialEnd, PausedAt       *time.Time
+	Paused                   bool
+	// Chain is this subscription and the ones it replaced by plan changes inside the same period, oldest first. A
+	// subscription that was not changed has a chain of one.
+	Chain []subscription
 }
 
-// subscriptions returns, per customer, the subscription that was active last in the period (a plan change inside a
-// period is billed at the later plan; there is no proration in v1).
+// subscriptions returns, per customer, the subscription that was active last in the period, with the plan changes
+// that led to it inside the period as its Chain. Usage is priced at the last plan; the fixed fee is split between the
+// plans of the chain (rating.FixedFeeLines).
 func (m *Manager) subscriptions(ctx context.Context, tenantID uuid.UUID, start, end time.Time) (map[string]subscription, error) {
 	stream, err := m.cfg.Plans.ListSubscriptionsForPeriod(tenantCtx(ctx, tenantID), &plansv1.ListSubscriptionsForPeriodRequest{
 		PeriodStart: timestampOf(start), PeriodEnd: timestampOf(end)})
 	if err != nil {
 		return nil, fmt.Errorf("list subscriptions: %w", err)
 	}
-	out := map[string]subscription{}
+	all := map[string][]subscription{}
 	for {
 		r, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
-			return out, nil
+			break
 		}
 		if err != nil {
 			return nil, fmt.Errorf("list subscriptions: %w", err)
 		}
 		s := r.GetSubscription()
-		cur, ok := out[s.GetCustomerId()]
-		if !ok || s.GetStartTime().AsTime().After(cur.Start) {
-			out[s.GetCustomerId()] = subscription{CustomerID: s.GetCustomerId(), External: s.GetCustomerExternalId(),
-				PlanVersionID: s.GetPlanVersionId(), Start: s.GetStartTime().AsTime()}
+		sub := subscription{ID: s.GetId(), CustomerID: s.GetCustomerId(), External: s.GetCustomerExternalId(),
+			PlanVersionID: s.GetPlanVersionId(), Start: s.GetStartTime().AsTime(), Currency: s.GetCurrency(),
+			ChangedFromID: s.GetChangedFromId(), Paused: s.GetState() == plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAUSED}
+		if s.GetTrialEndTime() != nil {
+			t := s.GetTrialEndTime().AsTime()
+			sub.TrialEnd = &t
 		}
+		if s.GetPauseTime() != nil {
+			t := s.GetPauseTime().AsTime()
+			sub.PausedAt = &t
+		}
+		all[sub.CustomerID] = append(all[sub.CustomerID], sub)
 	}
+	out := map[string]subscription{}
+	for cid, subs := range all {
+		out[cid] = lastWithChain(subs)
+	}
+	return out, nil
 }
 
-func (m *Manager) planVersion(ctx context.Context, cache map[string]rating.PlanVersion, tenantID uuid.UUID, id string) (rating.PlanVersion, error) {
-	if pv, ok := cache[id]; ok {
+// lastWithChain picks the latest-started subscription and walks back through ChangedFromID while the predecessor is in
+// the period too.
+func lastWithChain(subs []subscription) subscription {
+	byID := make(map[string]subscription, len(subs))
+	last := subs[0]
+	for _, s := range subs {
+		byID[s.ID] = s
+		if s.Start.After(last.Start) {
+			last = s
+		}
+	}
+	chain := []subscription{last}
+	for cur := last; cur.ChangedFromID != ""; {
+		prev, ok := byID[cur.ChangedFromID]
+		if !ok {
+			break
+		}
+		chain = append([]subscription{prev}, chain...)
+		cur = prev
+	}
+	last.Chain = chain
+	return last
+}
+
+func (m *Manager) planVersion(ctx context.Context, cache map[string]rating.PlanVersion, tenantID uuid.UUID, id, currency, tenantCurrency string) (rating.PlanVersion, error) {
+	key := id + "|" + currency
+	if pv, ok := cache[key]; ok {
 		return pv, nil
 	}
 	resp, err := m.cfg.Plans.GetPlanVersion(tenantCtx(ctx, tenantID), &plansv1.GetPlanVersionRequest{PlanVersionId: id})
 	if err != nil {
 		return rating.PlanVersion{}, fmt.Errorf("get plan version %s: %w", id, err)
 	}
-	pv, err := convertPlanVersion(resp.GetPlanVersion())
+	pv, err := convertPlanVersion(resp.GetPlanVersion(), currency, tenantCurrency)
 	if err != nil {
-		return rating.PlanVersion{}, permanent{fmt.Errorf("plan version %s: %w", id, err)}
+		return rating.PlanVersion{}, permanent{fmt.Errorf("plan version %s in %s: %w", id, currency, err)}
 	}
-	cache[id] = pv
+	cache[key] = pv
 	return pv, nil
+}
+
+// orDefault returns v, or def when v is empty: a subscription without a currency is in the tenant's.
+func orDefault(v, def string) string {
+	if v == "" {
+		return def
+	}
+	return v
 }
 
 func decimal(s string) (*apd.Decimal, error) {
@@ -86,9 +139,32 @@ func decimal(s string) (*apd.Decimal, error) {
 	return d, nil
 }
 
-func convertPlanVersion(p *plansv1.PlanVersion) (rating.PlanVersion, error) {
-	pv := rating.PlanVersion{ID: p.GetId(), BaseFeeMinor: p.GetBaseFeeMinor(), Prices: map[string]rating.Price{}}
-	for _, pr := range p.GetPrices() {
+// convertPlanVersion prices a plan version in currency: the tenant currency uses the base fee and prices, any other the
+// per-currency fee and price set the plan version was published with.
+func convertPlanVersion(p *plansv1.PlanVersion, currency, tenantCurrency string) (rating.PlanVersion, error) {
+	pv := rating.PlanVersion{ID: p.GetId(), PlanCode: p.GetPlanCode(), BaseFeeMinor: p.GetBaseFeeMinor(), Prices: map[string]rating.Price{}}
+	prices := p.GetPrices()
+	if currency != "" && currency != tenantCurrency {
+		found := false
+		for _, f := range p.GetFees() {
+			if f.GetCurrency() == currency {
+				pv.BaseFeeMinor, found = f.GetBaseFeeMinor(), true
+			}
+		}
+		if !found {
+			return pv, fmt.Errorf("no fixed fee in %s", currency)
+		}
+		prices = nil
+		for _, cp := range p.GetCurrencyPrices() {
+			if cp.GetCurrency() == currency {
+				prices = cp.GetPrices()
+			}
+		}
+		if len(prices) == 0 && len(p.GetPrices()) > 0 {
+			return pv, fmt.Errorf("metered prices but none in %s", currency)
+		}
+	}
+	for _, pr := range prices {
 		out := rating.Price{MeterCode: pr.GetMeterCode()}
 		switch mod := pr.GetModel().(type) {
 		case *plansv1.Price_PerUnit:
@@ -128,10 +204,41 @@ func convertPlanVersion(p *plansv1.PlanVersion) (rating.PlanVersion, error) {
 	return pv, nil
 }
 
+// feeSegments splits the period between the plan versions of the subscription's chain. The first plan is in force from the
+// start of the period even if it began inside it (a subscription pays its whole first month), each later plan from the
+// instant it replaced the one before. A segment is waived while a trial runs past the period, or when the subscription was
+// paused before the period began.
+func (m *Manager) feeSegments(ctx context.Context, plans map[string]rating.PlanVersion, tenantID uuid.UUID, sub subscription,
+	start, end time.Time, tenantCurrency string) ([]rating.FeeSegment, error) {
+	var segs []rating.FeeSegment
+	for i, member := range sub.Chain {
+		pv, err := m.planVersion(ctx, plans, tenantID, member.PlanVersionID, member.Currency, tenantCurrency)
+		if err != nil {
+			return nil, err
+		}
+		from := start
+		if i > 0 && member.Start.After(start) {
+			from = member.Start
+		}
+		to := end
+		if i+1 < len(sub.Chain) && sub.Chain[i+1].Start.Before(end) {
+			to = sub.Chain[i+1].Start
+		}
+		if to.Before(from) {
+			to = from
+		}
+		trialRunsPast := member.TrialEnd != nil && member.TrialEnd.After(end)
+		pausedBefore := member.Paused && member.PausedAt != nil && !member.PausedAt.After(start)
+		segs = append(segs, rating.FeeSegment{PlanCode: pv.PlanCode, FeeMinor: pv.BaseFeeMinor, From: from, To: to, Waived: trialRunsPast || pausedBefore})
+	}
+	return segs, nil
+}
+
 type lateKey struct{ Customer, Meter, Origin string }
 
 // draftInvoice is an invoice about to be inserted.
 type draftInvoice struct {
+	Currency    string
 	CustomerID  uuid.UUID
 	PlanVersion string
 	Lines       []rating.Line
@@ -149,8 +256,7 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 		return fmt.Errorf("get tenant: %w", err)
 	}
 	t := tn.GetTenant()
-	cur, ok := money.LookupCurrency(t.GetCurrency())
-	if !ok {
+	if _, ok := money.LookupCurrency(t.GetCurrency()); !ok {
 		return permanent{fmt.Errorf("tenant currency %q is not supported", t.GetCurrency())}
 	}
 	loc, err := time.LoadLocation(t.GetTimezone())
@@ -258,7 +364,7 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 	}
 
 	plans := map[string]rating.PlanVersion{}
-	lateLines, err := m.lateLines(ctx, run, gen, late, subs, meters, plans, loc)
+	lateLines, err := m.lateLines(ctx, run, gen, late, subs, meters, plans, loc, t.GetCurrency())
 	if err != nil {
 		return err
 	}
@@ -274,7 +380,7 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 		if len(drafts) == 0 {
 			return nil
 		}
-		n, err := m.insertDrafts(ctx, run, t.GetCurrency(), drafts)
+		n, err := m.insertDrafts(ctx, run, drafts)
 		m.invoices.Add(ctx, int64(n), metric.WithAttributes(attribute.String("environment", env)))
 		drafts = drafts[:0]
 		return err
@@ -287,11 +393,11 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 		}
 		var lines []rating.Line
 		var scales []int
-		var snapExternal string
-		snapExternal = sub.External
+		snapExternal := sub.External
+		invoiceCurrency := orDefault(sub.Currency, t.GetCurrency())
 		ll := lateLines[cid]
 		if pvID == "" && len(ll) > 0 {
-			pvID, snapExternal = ll[0].planVersion, ll[0].external
+			pvID, snapExternal, invoiceCurrency = ll[0].planVersion, ll[0].external, orDefault(ll[0].currency, t.GetCurrency())
 		}
 		if pvID == "" {
 			m.noSub.Add(ctx, 1)
@@ -299,20 +405,34 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 			continue
 		}
 		if subscribed {
-			pv, err := m.planVersion(ctx, plans, run.TenantID, pvID)
+			pv, err := m.planVersion(ctx, plans, run.TenantID, pvID, invoiceCurrency, t.GetCurrency())
 			if err != nil {
 				return err
 			}
-			rated, err := rating.Rate(pv, usage[cid])
+			segs, err := m.feeSegments(ctx, plans, run.TenantID, sub, start, end, t.GetCurrency())
+			if err != nil {
+				return err
+			}
+			fixed, err := rating.FixedFeeLines(segs, start, end)
 			if err != nil {
 				return permanent{err}
 			}
-			for _, l := range rated {
+			used, err := rating.RateUsage(pv, usage[cid])
+			if err != nil {
+				return permanent{err}
+			}
+			for _, l := range append(fixed, used...) {
 				lines = append(lines, l)
 				scales = append(scales, meters[l.MeterCode].Scale)
 			}
 		}
 		for _, l := range ll {
+			if orDefault(l.currency, t.GetCurrency()) != invoiceCurrency {
+				// Money in two currencies cannot share an invoice; the late usage of an earlier subscription in another currency is not billed.
+				m.log.WarnContext(ctx, "late usage in another currency than the invoice, not invoiced", "tenant", run.TenantID, "customer", cid,
+					"origin", l.line.OriginPeriod, "late_currency", l.currency, "invoice_currency", invoiceCurrency)
+				continue
+			}
 			lines = append(lines, l.line)
 			scales = append(scales, meters[l.line.MeterCode].Scale)
 		}
@@ -326,6 +446,10 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 		if total < 0 {
 			total = 0 // a negative total (credit-like late adjustments) is clamped; credits are Phase 11
 		}
+		invCur, ok := money.LookupCurrency(invoiceCurrency)
+		if !ok {
+			return permanent{fmt.Errorf("subscription currency %q is not supported", invoiceCurrency)}
+		}
 		cu, err := m.cfg.Plans.GetCustomer(tctx, &plansv1.GetCustomerRequest{ExternalId: snapExternal})
 		if err != nil {
 			return fmt.Errorf("get customer %s: %w", snapExternal, err)
@@ -335,10 +459,10 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 			return permanent{err}
 		}
 		drafts = append(drafts, draftInvoice{
-			CustomerID: cuid, PlanVersion: pvID, Lines: lines, LineScales: scales, Total: total,
+			Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pvID, Lines: lines, LineScales: scales, Total: total,
 			Snapshot: saga.Snapshot{
 				CustomerExternalID: snapExternal, CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
-				PaymentMethod: cu.GetCustomer().GetPaymentMethod(), TenantName: t.GetName(), Environment: env, CurrencyExponent: cur.Exponent,
+				PaymentMethod: cu.GetCustomer().GetPaymentMethod(), TenantName: t.GetName(), Environment: env, CurrencyExponent: invCur.Exponent,
 				LogoObjectKey: logoKey,
 			},
 		})
@@ -367,12 +491,13 @@ type lateLine struct {
 	line        rating.Line
 	planVersion string
 	external    string
+	currency    string
 }
 
 // lateLines prices the late usage billed in this period, incrementally on top of what the origin period (and the late
 // batches already billed for it) cost, under the origin period's plan version.
 func (m *Manager) lateLines(ctx context.Context, run *Run, gen int32, late map[lateKey]*apd.Decimal, current map[string]subscription,
-	meters map[string]meterInfo, plans map[string]rating.PlanVersion, loc *time.Location) (map[string][]lateLine, error) {
+	meters map[string]meterInfo, plans map[string]rating.PlanVersion, loc *time.Location, tenantCurrency string) (map[string][]lateLine, error) {
 	out := map[string][]lateLine{}
 	if len(late) == 0 {
 		return out, nil
@@ -441,7 +566,7 @@ func (m *Manager) lateLines(ctx context.Context, run *Run, gen int32, late map[l
 			m.log.WarnContext(ctx, "late usage of a customer without a subscription, not invoiced", "customer", k.Customer, "meter", k.Meter, "origin", k.Origin)
 			continue
 		}
-		pv, err := m.planVersion(ctx, plans, run.TenantID, sub.PlanVersionID)
+		pv, err := m.planVersion(ctx, plans, run.TenantID, sub.PlanVersionID, sub.Currency, tenantCurrency)
 		if err != nil {
 			return nil, err
 		}
@@ -462,7 +587,7 @@ func (m *Manager) lateLines(ctx context.Context, run *Run, gen int32, late map[l
 			return nil, permanent{err}
 		}
 		if has {
-			out[k.Customer] = append(out[k.Customer], lateLine{line: line, planVersion: sub.PlanVersionID, external: sub.External})
+			out[k.Customer] = append(out[k.Customer], lateLine{line: line, planVersion: sub.PlanVersionID, external: sub.External, currency: sub.Currency})
 		}
 	}
 	return out, nil
@@ -518,7 +643,7 @@ func unitsOf(q *apd.Decimal, scale int) (string, error) {
 	return strings.Replace(s, ".", "", 1), nil
 }
 
-func (m *Manager) insertDrafts(ctx context.Context, run *Run, currency string, drafts []draftInvoice) (int, error) {
+func (m *Manager) insertDrafts(ctx context.Context, run *Run, drafts []draftInvoice) (int, error) {
 	created := 0
 	err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		created = 0
@@ -532,7 +657,7 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, currency string, d
 			var got uuid.UUID
 			err := tx.QueryRow(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot)
 				VALUES ($1,$2,$3,$4,'REGULAR',$5,$6,$7,$8,'draft',$9) ON CONFLICT DO NOTHING RETURNING id`,
-				run.TenantID, id, d.CustomerID, run.PeriodID, d.PlanVersion, currency, subtotal, d.Total, snap).Scan(&got)
+				run.TenantID, id, d.CustomerID, run.PeriodID, d.PlanVersion, d.Currency, subtotal, d.Total, snap).Scan(&got)
 			if errors.Is(err, pgx.ErrNoRows) {
 				continue // this customer already has its invoice for the period
 			}

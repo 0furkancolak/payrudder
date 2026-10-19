@@ -240,3 +240,14 @@ Additions to the diagram above: `REFUND_FAILED` (a refund step that timed out; `
 `PDF_RENDERED`, `PAID`, `UNCOLLECTIBLE`, `REFUNDED`, which continue automatically in the same transaction (each hop is a
 `saga_events` row). A reply from the original charge may still arrive while the status query is in flight, so
 `PAYMENT_UNKNOWN` also accepts `PaymentSucceeded` and `PaymentDeclined`.
+
+## As built: subscriptions in rating (Phase 13)
+
+- **Currency.** An invoice is in the subscription's currency (a subscription without one is in the tenant's). The plan version is read in that
+  currency: its per-currency fee and usage prices, or a permanent failure when it has none. Late usage in a different currency than the
+  invoice is not billed and is logged.
+- **Fixed fee.** `rating.FixedFeeLines` prices one `BASE_FEE` line per segment of the month. A subscription that was not changed has one segment
+  and the plain "Base fee" line. After a plan change the chain (`changed_from_id`, oldest first) gives one segment per plan, each the fee times its
+  share of the month. The first plan is in force from the start of the month, even if it began inside it.
+- **Waiver.** A segment is free when its trial ends after the period, or when the subscription was paused before the period began. Usage is always billed.
+- **Re-rating** skips subscriptions in another currency and those changed inside the period.

@@ -18,7 +18,7 @@ updated `docs/` (design changes discovered while building are written back into 
 | 10 | [Kubernetes](phase-10-kubernetes.md) | kind cluster + Helm charts, chaos via pod deletion | 09 | Chaos suite passes on kind | done, `kind` CI job not yet green |
 | 11 | [Replay, re-rating & polish](phase-11-replay-polish.md) | Generations, replay jobs, re-rating, demo, README | 03, 05, 09 | Re-rating idempotent. Replay promotes a corrected generation | done |
 | 12 | [Admin UI (optional)](phase-12-admin-ui.md) | Minimal Next.js/TypeScript operator UI | 11 | Read-only views + DLQ redrive | done |
-| 13 | Customers, packages, subscriptions | Domain model, subscription state machine, package prices per currency, proration, invoice links | 05 | A subscription renews, upgrades with proration and cancels, all on the mock PSP | planned |
+| 13 | [Customers, packages, subscriptions](phase-13-subscriptions.md) | Domain model, subscription state machine, package prices per currency, proration, invoice links | 05 | A trial, a pause and a mid-month plan change are invoiced correctly, in the subscription's currency | done |
 | 14 | Provider contract + iyzico | Capabilities, webhook inbox, ledger, iyzico adapter, Quotify-owned dunning | 13 | Replayed iyzico fixtures produce the right ledger. Sandbox test runs when credentials exist | planned |
 | 15 | Paddle | Paddle adapter, provider-owned renewal and dunning, usage reporting | 14 | Paddle webhooks reconcile subscription state. Quotify never retries a Paddle-owned payment | planned |
 | 16 | Routing and migration | Routing rules, preview, provider migration saga | 14, 15 | A migration never charges twice, including with a crash at each step | planned |

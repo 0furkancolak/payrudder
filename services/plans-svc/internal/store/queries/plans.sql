@@ -5,8 +5,8 @@
 SELECT id, environment, tier, currency, timezone FROM current_tenant();
 
 -- name: CreateCustomer :one
-INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5)
+INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetCustomerByExternalID :one
@@ -94,22 +94,37 @@ SELECT meter_code, limit_units, alert_thresholds_pct FROM plan_entitlements
 WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY meter_code;
 
 -- name: InsertSubscription :one
-INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active)
-VALUES (app_tenant_id(), @id, @customer_id, @plan_version_id, tstzrange(@start_time::timestamptz, NULL, '[)'))
+INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id)
+VALUES (app_tenant_id(), @id, @customer_id, @plan_version_id, tstzrange(@start_time::timestamptz, NULL, '[)'),
+        @state, @interval, @currency, @trial_ends_at, @billing_anchor::timestamptz, @changed_from_id)
 RETURNING id, customer_id, plan_version_id,
           lower(active)::timestamptz AS start_time,
           upper_inf(active)::bool AS open_ended,
           COALESCE(upper(active), lower(active))::timestamptz AS end_time,
-          created_at;
+          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id;
 
 -- name: GetSubscription :one
 SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_version_id,
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id() AND s.id = $1;
+
+-- name: GetSubscriptionForUpdate :one
+SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_version_id,
+       lower(s.active)::timestamptz AS start_time,
+       upper_inf(s.active)::bool AS open_ended,
+       COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
+FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+WHERE s.tenant_id = app_tenant_id() AND s.id = $1
+FOR UPDATE OF s;
+
+-- name: SetSubscriptionState :execrows
+UPDATE subscriptions SET state = @state, paused_at = @paused_at, cancel_at_period_end = @cancel_at_period_end
+WHERE tenant_id = app_tenant_id() AND id = @id;
 
 -- name: EndSubscription :execrows
 UPDATE subscriptions SET active = tstzrange(lower(active), @end_time::timestamptz, '[)')
@@ -120,13 +135,34 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id()
   AND s.active && tstzrange(@period_start::timestamptz, @period_end::timestamptz, '[)')
   AND s.id > @after::uuid
 ORDER BY s.id
 LIMIT 500;
+
+-- name: ReopenSubscription :execrows
+-- Withdraws a scheduled end: the range becomes open-ended again.
+UPDATE subscriptions SET active = tstzrange(lower(active), NULL, '[)')
+WHERE tenant_id = app_tenant_id() AND id = @id AND NOT upper_inf(active) AND upper(active) > @now::timestamptz;
+
+-- name: InsertPlanVersionFee :exec
+INSERT INTO plan_version_fees (tenant_id, plan_version_id, currency, base_fee_minor)
+VALUES (app_tenant_id(), $1, $2, $3);
+
+-- name: ListPlanVersionFees :many
+SELECT currency, base_fee_minor FROM plan_version_fees
+WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY currency;
+
+-- name: InsertPlanCurrencyPrice :exec
+INSERT INTO plan_currency_prices (tenant_id, plan_version_id, currency, meter_code, model, config)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5);
+
+-- name: ListPlanCurrencyPrices :many
+SELECT currency, meter_code, model, config FROM plan_currency_prices
+WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY currency, meter_code;
 
 -- name: InsertOutbox :exec
 -- A NULL payload is a Kafka tombstone.

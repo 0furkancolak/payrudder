@@ -371,3 +371,90 @@ func strictlyAscending(xs []int32) bool {
 	}
 	return true
 }
+
+// Fee is a fixed fee in one currency.
+type Fee struct {
+	Currency     string
+	BaseFeeMinor int64
+}
+
+// ValidateFees checks the extra-currency fees of PublishPlanVersion: supported currencies, none equal to the tenant's
+// (its fee is base_fee_minor), no duplicates, non-negative.
+func ValidateFees(tenantCurrency string, fees []*plansv1.CurrencyFee) ([]Fee, error) {
+	var v Violations
+	var out []Fee
+	seen := map[string]bool{}
+	for i, f := range fees {
+		field := fmt.Sprintf("fees[%d]", i)
+		if _, ok := money.LookupCurrency(f.GetCurrency()); !ok {
+			v.Add(field+".currency", "unsupported currency")
+			continue
+		}
+		switch {
+		case f.GetCurrency() == tenantCurrency:
+			v.Add(field+".currency", "the tenant currency's fee is base_fee_minor")
+		case seen[f.GetCurrency()]:
+			v.Add(field+".currency", "duplicate currency")
+		case f.GetBaseFeeMinor() < 0:
+			v.Add(field+".base_fee_minor", "must be ≥ 0")
+		default:
+			seen[f.GetCurrency()] = true
+			out = append(out, Fee{Currency: f.GetCurrency(), BaseFeeMinor: f.GetBaseFeeMinor()})
+		}
+	}
+	return out, v.Err()
+}
+
+// ValidateCurrencyPrices checks the per-currency usage prices of PublishPlanVersion. Every currency must have a fixed fee
+// in fees (the plan is sold in it), and its prices must cover exactly the meters of the base prices. It returns the stored
+// form per currency.
+func ValidateCurrencyPrices(req *plansv1.PublishPlanVersionRequest, scales map[string]int, fees []Fee) (map[string][]StoredPrice, error) {
+	var v Violations
+	hasFee := map[string]bool{}
+	for _, f := range fees {
+		hasFee[f.Currency] = true
+	}
+	base := map[string]bool{}
+	for _, p := range req.GetPrices() {
+		base[p.GetMeterCode()] = true
+	}
+	out := map[string][]StoredPrice{}
+	for i, cp := range req.GetCurrencyPrices() {
+		field := fmt.Sprintf("currency_prices[%d]", i)
+		cur := cp.GetCurrency()
+		if !hasFee[cur] {
+			v.Add(field+".currency", "must be a currency listed in fees")
+			continue
+		}
+		if _, dup := out[cur]; dup {
+			v.Add(field+".currency", "duplicate currency")
+			continue
+		}
+		seen := map[string]bool{}
+		var stored []StoredPrice
+		for j, p := range cp.GetPrices() {
+			pf := fmt.Sprintf("%s.prices[%d]", field, j)
+			scale, ok := scales[p.GetMeterCode()]
+			switch {
+			case !ok:
+				v.Add(pf+".meter_code", "unknown meter")
+			case !base[p.GetMeterCode()]:
+				v.Add(pf+".meter_code", "not priced in the plan version's base prices")
+			case seen[p.GetMeterCode()]:
+				v.Add(pf+".meter_code", "duplicate meter")
+			default:
+				seen[p.GetMeterCode()] = true
+				if sp, err := priceToStored(p, scale, pf, &v); err == nil {
+					stored = append(stored, sp)
+				}
+			}
+		}
+		for m := range base {
+			if !seen[m] {
+				v.Add(field+".prices", "missing a price for meter "+m)
+			}
+		}
+		out[cur] = stored
+	}
+	return out, v.Err()
+}

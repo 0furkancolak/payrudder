@@ -256,11 +256,81 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** One subscription with its state */
+        get: operations["getSubscription"];
         put?: never;
         post?: never;
         /** End a subscription (now, or at end_time) */
         delete: operations["cancelSubscription"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/{id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop the fixed fee until the subscription is resumed (usage is still billed) */
+        post: operations["pauseSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/{id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume a paused subscription */
+        post: operations["resumeSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/{id}/cancel-at-period-end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End the subscription at the end of its current billing period */
+        post: operations["scheduleCancellation"];
+        /** Withdraw a scheduled cancellation */
+        delete: operations["withdrawCancellation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/{id}/change-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move the subscription to another plan version now, prorating the fixed fee */
+        post: operations["changePlan"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1210,6 +1280,10 @@ export interface components {
             /** Format: email */
             email: string;
             payment_method?: string;
+            /** @description ISO 3166-1 alpha-2 */
+            country?: string;
+            /** @description ISO 4217; default is the tenant's currency */
+            billing_currency?: string;
         };
         Customer: {
             /** Format: uuid */
@@ -1220,6 +1294,10 @@ export interface components {
             payment_method?: string;
             /** Format: date-time */
             create_time?: string;
+            /** @description ISO 3166-1 alpha-2 */
+            country?: string;
+            /** @description ISO 4217 */
+            billing_currency?: string;
         };
         CreateMeterRequest: {
             code: string;
@@ -1287,6 +1365,11 @@ export interface components {
             entitlements?: components["schemas"]["Entitlement"][];
             /** Format: date-time */
             publish_time?: string;
+            /** @description Fixed fee in currencies other than the tenant's */
+            fees?: {
+                currency?: string;
+                base_fee_minor?: string;
+            }[];
         };
         Subscription: {
             /** Format: uuid */
@@ -1302,6 +1385,16 @@ export interface components {
             end_time?: string | null;
             /** Format: date-time */
             create_time?: string;
+            /** @enum {string} */
+            state?: "SUBSCRIPTION_STATE_TRIALING" | "SUBSCRIPTION_STATE_ACTIVE" | "SUBSCRIPTION_STATE_PAST_DUE" | "SUBSCRIPTION_STATE_PAUSED" | "SUBSCRIPTION_STATE_CANCELLED";
+            /** @enum {string} */
+            interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            currency?: string;
+            /** Format: date-time */
+            trial_end_time?: string | null;
+            cancel_at_period_end?: boolean;
+            /** Format: date-time */
+            pause_time?: string | null;
         };
         Tenant: {
             /** Format: uuid */
@@ -1729,6 +1822,11 @@ export interface operations {
                 "application/json": {
                     /** @description int64 minor units */
                     base_fee_minor?: string;
+                    /** @description Fixed fee in currencies other than the tenant's (no duplicates) */
+                    fees?: {
+                        currency?: string;
+                        base_fee_minor?: string;
+                    }[];
                     prices?: components["schemas"]["Price"][];
                     entitlements?: components["schemas"]["EntitlementStatus"][];
                 };
@@ -1788,6 +1886,11 @@ export interface operations {
                     plan_version?: number;
                     /** Format: date-time */
                     start_time?: string;
+                    trial_days?: number;
+                    /** @enum {string} */
+                    interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+                    /** @description Default is the customer's billing currency */
+                    currency?: string;
                 };
             };
         };
@@ -1803,6 +1906,29 @@ export interface operations {
             };
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    getSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["Error"];
         };
     };
     cancelSubscription: {
@@ -1827,6 +1953,146 @@ export interface operations {
                     "application/json": components["schemas"]["Subscription"];
                 };
             };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    pauseSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    resumeSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    scheduleCancellation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    withdrawCancellation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    changePlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    plan_code: string;
+                    /** @description 0 = latest */
+                    plan_version?: number;
+                    /**
+                     * Format: date-time
+                     * @description Default now
+                     */
+                    change_time?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        subscription?: components["schemas"]["Subscription"];
+                        /** @description Unused part of the old fixed fee */
+                        credit_minor?: string;
+                        /** @description Remaining part of the new fixed fee */
+                        charge_minor?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
         };

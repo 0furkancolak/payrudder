@@ -38,6 +38,8 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("APIKeysFollowEnvironmentAndRevocationEvicts", testAPIKeysFollowEnvironmentAndRevocationEvicts)
 	t.Run("SandboxPaymentMethods", testSandboxPaymentMethods)
 	t.Run("Subscriptions", testSubscriptions)
+	t.Run("SubscriptionLifecycle", testSubscriptionLifecycle)
+	t.Run("CurrencyFeesAndCustomerBilling", testCurrencyFeesAndCustomerBilling)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
 }
@@ -62,6 +64,9 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 		ValueProperty: "gb_h", QuantityScale: 3, UnitLabel: "GB-h"}))
 	must(e.plans.CreatePlan(ctx, &plansv1.CreatePlanRequest{Code: "pro", Name: "Pro"}))
 	must(e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "pro", BaseFeeMinor: 9900,
+		Fees: []*plansv1.CurrencyFee{{Currency: "USD", BaseFeeMinor: 300}},
+		CurrencyPrices: []*plansv1.CurrencyPrices{{Currency: "USD", Prices: []*plansv1.Price{
+			{MeterCode: "gb_hours", Model: &plansv1.Price_PerUnit{PerUnit: &plansv1.PerUnitPrice{UnitPrice: "0.4"}}}}}},
 		Prices:       []*plansv1.Price{{MeterCode: "gb_hours", Model: &plansv1.Price_PerUnit{PerUnit: &plansv1.PerUnitPrice{UnitPrice: "12.5"}}}},
 		Entitlements: []*plansv1.Entitlement{{MeterCode: "gb_hours", Limit: "100.5"}}}))
 	must(e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_" + suffix, PlanCode: "pro"}))

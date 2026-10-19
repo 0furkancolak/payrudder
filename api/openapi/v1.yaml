@@ -234,6 +234,10 @@ paths:
               type: object
               properties:
                 base_fee_minor: { type: string, description: int64 minor units }
+                fees:
+                  type: array
+                  description: Fixed fee in currencies other than the tenant's (no duplicates)
+                  items: { type: object, properties: { currency: { type: string }, base_fee_minor: { type: string } } }
                 prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
                 entitlements: { type: array, items: { $ref: "#/components/schemas/EntitlementStatus" } }
       responses:
@@ -267,11 +271,21 @@ paths:
                 plan_code: { type: string }
                 plan_version: { type: integer, description: 0 = latest }
                 start_time: { type: string, format: date-time }
+                trial_days: { type: integer, minimum: 0, maximum: 365 }
+                interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
+                currency: { type: string, description: Default is the customer's billing currency, then the tenant's }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /v1/subscriptions/{id}:
+    get:
+      operationId: getSubscription
+      summary: One subscription with its state
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
     delete:
       operationId: cancelSubscription
       summary: End a subscription (now, or at end_time)
@@ -280,6 +294,71 @@ paths:
         - { name: end_time, in: query, schema: { type: string, format: date-time } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/subscriptions/{id}/pause:
+    post:
+      operationId: pauseSubscription
+      summary: Stop the fixed fee until the subscription is resumed (usage is still billed)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/subscriptions/{id}/resume:
+    post:
+      operationId: resumeSubscription
+      summary: Resume a paused subscription
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/subscriptions/{id}/cancel-at-period-end:
+    post:
+      operationId: scheduleCancellation
+      summary: End the subscription at the end of its current billing period
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: withdrawCancellation
+      summary: Withdraw a scheduled cancellation
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/subscriptions/{id}/change-plan:
+    post:
+      operationId: changePlan
+      summary: Move the subscription to another plan version now, prorating the fixed fee
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan_code]
+              properties:
+                plan_code: { type: string }
+                plan_version: { type: integer, description: 0 = latest }
+                change_time: { type: string, format: date-time, description: Default now }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscription: { $ref: "#/components/schemas/Subscription" }
+                  credit_minor: { type: string, description: Unused part of the old fixed fee }
+                  charge_minor: { type: string, description: Remaining part of the new fixed fee }
+        "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
 
@@ -1249,6 +1328,8 @@ components:
         name: { type: string }
         email: { type: string, format: email }
         payment_method: { type: string }
+        country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2 }
+        billing_currency: { type: string, description: ISO 4217; default is the tenant's currency }
     Customer:
       type: object
       properties:
@@ -1258,6 +1339,8 @@ components:
         email: { type: string }
         payment_method: { type: string }
         create_time: { type: string, format: date-time }
+        country: { type: string, description: ISO 3166-1 alpha-2 }
+        billing_currency: { type: string, description: ISO 4217 }
     CreateMeterRequest:
       type: object
       required: [code, aggregation, unit_label]
@@ -1323,6 +1406,10 @@ components:
         prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
         entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
         publish_time: { type: string, format: date-time }
+        fees:
+          type: array
+          description: Fixed fee in currencies other than the tenant's
+          items: { type: object, properties: { currency: { type: string }, base_fee_minor: { type: string } } }
     Subscription:
       type: object
       properties:
@@ -1333,6 +1420,12 @@ components:
         start_time: { type: string, format: date-time }
         end_time: { type: [string, "null"], format: date-time }
         create_time: { type: string, format: date-time }
+        state: { type: string, enum: [SUBSCRIPTION_STATE_TRIALING, SUBSCRIPTION_STATE_ACTIVE, SUBSCRIPTION_STATE_PAST_DUE, SUBSCRIPTION_STATE_PAUSED, SUBSCRIPTION_STATE_CANCELLED] }
+        interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
+        currency: { type: string }
+        trial_end_time: { type: [string, "null"], format: date-time }
+        cancel_at_period_end: { type: boolean }
+        pause_time: { type: [string, "null"], format: date-time }
     Tenant:
       type: object
       properties:

@@ -79,8 +79,16 @@ func (s *Server) CreateCustomer(ctx context.Context, req *plansv1.CreateCustomer
 		if req.GetPaymentMethod() != "" {
 			pm = &req.PaymentMethod
 		}
+		var country, billing *string
+		if req.GetCountry() != "" {
+			country = &req.Country
+		}
+		if req.GetBillingCurrency() != "" {
+			billing = &req.BillingCurrency
+		}
 		out, err = q.CreateCustomer(ctx, sqlc.CreateCustomerParams{
 			ID: idgen.NewUUIDv7(), ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), PaymentMethod: pm,
+			Country: country, BillingCurrency: billing,
 		})
 		return err
 	})
@@ -339,9 +347,33 @@ func (s *Server) PublishPlanVersion(ctx context.Context, req *plansv1.PublishPla
 		if err != nil {
 			return err
 		}
+		t, err := current(ctx, q)
+		if err != nil {
+			return err
+		}
+		fees, err := domain.ValidateFees(t.Currency, req.GetFees())
+		if err != nil {
+			return err
+		}
+		currencyPrices, err := domain.ValidateCurrencyPrices(req, scales, fees)
+		if err != nil {
+			return err
+		}
 		pv, err := q.InsertPlanVersion(ctx, sqlc.InsertPlanVersionParams{ID: idgen.NewUUIDv7(), PlanID: plan.ID, BaseFeeMinor: in.BaseFeeMinor})
 		if err != nil {
 			return err
+		}
+		for _, f := range fees {
+			if err := q.InsertPlanVersionFee(ctx, sqlc.InsertPlanVersionFeeParams{PlanVersionID: pv.ID, Currency: f.Currency, BaseFeeMinor: f.BaseFeeMinor}); err != nil {
+				return err
+			}
+		}
+		for cur, prices := range currencyPrices {
+			for _, p := range prices {
+				if err := q.InsertPlanCurrencyPrice(ctx, sqlc.InsertPlanCurrencyPriceParams{PlanVersionID: pv.ID, Currency: cur, MeterCode: p.MeterCode, Model: p.Model, Config: p.Config}); err != nil {
+					return err
+				}
+			}
 		}
 		for _, p := range in.Prices {
 			if err := q.InsertPlanPrice(ctx, sqlc.InsertPlanPriceParams{PlanVersionID: pv.ID, MeterCode: p.MeterCode, Model: p.Model, Config: p.Config}); err != nil {
@@ -374,6 +406,31 @@ func assemble(ctx context.Context, q *sqlc.Queries, id, planID uuid.UUID, planCo
 	pv := &plansv1.PlanVersion{
 		Id: id.String(), PlanId: planID.String(), PlanCode: planCode, Version: version, BaseFeeMinor: baseFee,
 		PublishTime: convertTS(published),
+	}
+	fees, err := q.ListPlanVersionFees(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range fees {
+		pv.Fees = append(pv.Fees, &plansv1.CurrencyFee{Currency: f.Currency, BaseFeeMinor: f.BaseFeeMinor})
+	}
+	cps, err := q.ListPlanCurrencyPrices(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	byCurrency := map[string]*plansv1.CurrencyPrices{}
+	for _, p := range cps {
+		price, err := domain.PriceFromStored(p.MeterCode, p.Model, p.Config, scales[p.MeterCode])
+		if err != nil {
+			return nil, err
+		}
+		cp, ok := byCurrency[p.Currency]
+		if !ok {
+			cp = &plansv1.CurrencyPrices{Currency: p.Currency}
+			byCurrency[p.Currency] = cp
+			pv.CurrencyPrices = append(pv.CurrencyPrices, cp)
+		}
+		cp.Prices = append(cp.Prices, price)
 	}
 	prices, err := q.ListPlanPrices(ctx, id)
 	if err != nil {
@@ -433,94 +490,6 @@ func (s *Server) GetPlanVersion(ctx context.Context, req *plansv1.GetPlanVersion
 	return &plansv1.GetPlanVersionResponse{PlanVersion: out}, nil
 }
 
-func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubscriptionRequest) (*plansv1.CreateSubscriptionResponse, error) {
-	start := s.now()
-	if req.GetStartTime() != nil {
-		if err := req.GetStartTime().CheckValid(); err != nil {
-			return nil, domain.Invalid("start_time", "invalid timestamp")
-		}
-		start = req.GetStartTime().AsTime()
-	}
-	ti, err := tenant.Require(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var out *plansv1.Subscription
-	err = s.tx(ctx, func(q *sqlc.Queries) error {
-		c, err := q.GetCustomerByExternalID(ctx, req.GetCustomerExternalId())
-		if err != nil {
-			return convert.Err(err, "customer")
-		}
-		pv, err := q.GetPlanVersionByCode(ctx, sqlc.GetPlanVersionByCodeParams{PlanCode: req.GetPlanCode(), Version: req.GetPlanVersion()})
-		if err != nil {
-			return convert.Err(err, "plan version")
-		}
-		r, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
-			ID: idgen.NewUUIDv7(), CustomerID: c.ID, PlanVersionID: pv.ID, StartTime: start,
-		})
-		if err != nil {
-			return err
-		}
-		out = convert.Subscription(convert.SubscriptionFields{
-			ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: c.ExternalID, PlanVersionID: r.PlanVersionID.String(),
-			Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
-		})
-		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, nil, s.now())
-	})
-	if err != nil {
-		return nil, convert.Err(err, "subscription")
-	}
-	return &plansv1.CreateSubscriptionResponse{Subscription: out}, nil
-}
-
-func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubscriptionRequest) (*plansv1.CancelSubscriptionResponse, error) {
-	id, err := uuid.Parse(req.GetSubscriptionId())
-	if err != nil {
-		return nil, domain.Invalid("subscription_id", "must be a UUID")
-	}
-	end := s.now()
-	if req.GetEndTime() != nil {
-		end = req.GetEndTime().AsTime()
-	}
-	ti, err := tenant.Require(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var out *plansv1.Subscription
-	err = s.tx(ctx, func(q *sqlc.Queries) error {
-		cur, err := q.GetSubscription(ctx, id)
-		if err != nil {
-			return err
-		}
-		if !cur.OpenEnded {
-			return status.Error(codes.FailedPrecondition, "subscription already ended")
-		}
-		if !end.After(cur.StartTime) {
-			return domain.Invalid("end_time", "must be after the subscription start")
-		}
-		n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: id, EndTime: end})
-		if err != nil {
-			return err
-		}
-		if n != 1 {
-			return status.Error(codes.Aborted, "subscription changed concurrently; retry")
-		}
-		r, err := q.GetSubscription(ctx, id)
-		if err != nil {
-			return err
-		}
-		out = convert.Subscription(convert.SubscriptionFields{
-			ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: r.CustomerExternalID,
-			PlanVersionID: r.PlanVersionID.String(), Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
-		})
-		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, &end, s.now())
-	})
-	if err != nil {
-		return nil, convert.Err(err, "subscription")
-	}
-	return &plansv1.CancelSubscriptionResponse{Subscription: out}, nil
-}
-
 func (s *Server) ListSubscriptionsForPeriod(req *plansv1.ListSubscriptionsForPeriodRequest, stream grpc.ServerStreamingServer[plansv1.ListSubscriptionsForPeriodResponse]) error {
 	ctx := stream.Context()
 	if req.GetPeriodStart() == nil || req.GetPeriodEnd() == nil || !req.GetPeriodEnd().AsTime().After(req.GetPeriodStart().AsTime()) {
@@ -539,10 +508,7 @@ func (s *Server) ListSubscriptionsForPeriod(req *plansv1.ListSubscriptionsForPer
 			return convert.Err(err, "subscription")
 		}
 		for _, r := range page {
-			if err := stream.Send(&plansv1.ListSubscriptionsForPeriodResponse{Subscription: convert.Subscription(convert.SubscriptionFields{
-				ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: r.CustomerExternalID,
-				PlanVersionID: r.PlanVersionID.String(), Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
-			})}); err != nil {
+			if err := stream.Send(&plansv1.ListSubscriptionsForPeriodResponse{Subscription: subscriptionMessage(sqlc.GetSubscriptionRow(r), s.now())}); err != nil {
 				return err
 			}
 		}

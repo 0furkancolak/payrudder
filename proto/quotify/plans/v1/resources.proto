@@ -72,6 +72,10 @@ message Customer {
   // Opaque PSP token. In sandbox, one of the pm_sandbox_* scenario tokens.
   string payment_method = 5;
   google.protobuf.Timestamp create_time = 6;
+  // ISO 3166-1 alpha-2, e.g. "TR". Empty = unknown. Provider routing (Phase 16) reads it.
+  string country = 7;
+  // ISO 4217 code the customer is billed in. Empty = the tenant's currency.
+  string billing_currency = 8;
 }
 
 enum Aggregation {
@@ -160,6 +164,22 @@ message PlanVersion {
   repeated Price prices = 6;
   repeated Entitlement entitlements = 7;
   google.protobuf.Timestamp publish_time = 8;
+  // Fixed fee in other currencies than the tenant's. The tenant currency's fee is base_fee_minor.
+  repeated CurrencyFee fees = 9;
+  // Usage prices in the currencies of fees, when the plan version has metered prices.
+  repeated CurrencyPrices currency_prices = 10;
+}
+
+// CurrencyPrices prices every metered component of a plan version in one currency (minor units of that currency).
+message CurrencyPrices {
+  string currency = 1;
+  repeated Price prices = 2;
+}
+
+// CurrencyFee is the fixed fee of a plan version in one currency, in minor units.
+message CurrencyFee {
+  string currency = 1;
+  int64 base_fee_minor = 2;
 }
 
 // Subscription links a customer to a plan version over [start_time, end_time).
@@ -172,4 +192,31 @@ message Subscription {
   // Unset means open-ended.
   google.protobuf.Timestamp end_time = 6;
   google.protobuf.Timestamp create_time = 7;
+  SubscriptionState state = 8;
+  SubscriptionInterval interval = 9;
+  // ISO 4217 code, fixed for the life of the subscription.
+  string currency = 10;
+  // Unset = no trial. While now < trial_end_time the subscription is TRIALING and its fixed fee is not charged.
+  google.protobuf.Timestamp trial_end_time = 11;
+  // The subscription ends at the end of its current billing period instead of continuing.
+  bool cancel_at_period_end = 12;
+  google.protobuf.Timestamp pause_time = 13;
+  // The subscription this one replaced in a plan change; billing splits the fixed fee of the month between them.
+  string changed_from_id = 14;
 }
+
+enum SubscriptionState {
+  SUBSCRIPTION_STATE_UNSPECIFIED = 0;
+  SUBSCRIPTION_STATE_TRIALING = 1;
+  SUBSCRIPTION_STATE_ACTIVE = 2;
+  SUBSCRIPTION_STATE_PAST_DUE = 3;
+  SUBSCRIPTION_STATE_PAUSED = 4;
+  SUBSCRIPTION_STATE_CANCELLED = 5;
+}
+
+enum SubscriptionInterval {
+  SUBSCRIPTION_INTERVAL_UNSPECIFIED = 0;
+  SUBSCRIPTION_INTERVAL_MONTH = 1;
+  SUBSCRIPTION_INTERVAL_YEAR = 2;
+}
+
