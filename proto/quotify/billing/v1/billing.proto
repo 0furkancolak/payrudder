@@ -32,6 +32,12 @@ service BillingAdminService {
   // Idempotent per (tenant, period, plan version).
   rpc StartRerating(StartReratingRequest) returns (StartReratingResponse);
   rpc GetReratingJob(GetReratingJobRequest) returns (GetReratingJobResponse);
+  // GetInvoiceSaga returns the saga of an invoice with its append-only transition log (saga_events).
+  rpc GetInvoiceSaga(GetInvoiceSagaRequest) returns (GetInvoiceSagaResponse);
+  // ListDeadLetters shows the depth of every RabbitMQ dead-letter queue and, for one queue, a peek at its messages.
+  rpc ListDeadLetters(ListDeadLettersRequest) returns (ListDeadLettersResponse);
+  // RedriveDeadLetters moves dead letters of one queue back to where they came from, with the retry counter reset.
+  rpc RedriveDeadLetters(RedriveDeadLettersRequest) returns (RedriveDeadLettersResponse);
 }
 
 enum RunStatus {
@@ -226,4 +232,59 @@ message GetReratingJobRequest {
 
 message GetReratingJobResponse {
   ReratingJob job = 1;
+}
+
+message SagaEvent {
+  int32 seq = 1;
+  string from_state = 2;
+  string to_state = 3;
+  // For example "reply:PaymentDeclined" or "sweep:step timed out".
+  string cause = 4;
+  string command_id = 5;
+  google.protobuf.Timestamp at = 6;
+}
+
+message GetInvoiceSagaRequest {
+  string tenant_id = 1;
+  string invoice_id = 2;
+}
+
+message GetInvoiceSagaResponse {
+  InvoiceSaga saga = 1;
+  repeated SagaEvent events = 2;
+}
+
+message DeadLetterQueue {
+  // The command or reply queue the messages came from, for example payment.charge.
+  string queue = 1;
+  int64 messages = 2;
+}
+
+message DeadLetter {
+  string message_id = 1;
+  // How many times it was delivered before it died.
+  int64 delivery_count = 2;
+  string reason = 3;
+  int32 body_bytes = 4;
+}
+
+message ListDeadLettersRequest {
+  // Empty: only the depths. Set: also peek at up to limit messages of that queue.
+  string queue = 1;
+  int32 limit = 2;
+}
+
+message ListDeadLettersResponse {
+  repeated DeadLetterQueue queues = 1;
+  repeated DeadLetter messages = 2;
+}
+
+message RedriveDeadLettersRequest {
+  string queue = 1;
+  // 1..1000, default 100.
+  int32 limit = 2;
+}
+
+message RedriveDeadLettersResponse {
+  int32 redriven = 1;
 }

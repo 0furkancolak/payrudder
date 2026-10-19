@@ -99,6 +99,7 @@ PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live
 | `make seed` | Create a demo account (currency/time zone/grace passed explicitly: `CURRENCY=TRY TZ=Europe/Istanbul GRACE=24h`), sandbox + live keys, meters (one fractional), plan, 10 customers covering every `pm_sandbox_*` scenario |
 | `make demo` | Seed → send events → sandbox `ClosePeriodNow` → every payment scenario plays out → change the price → re-rate → CORRECTION invoices and receipts → links to Mailpit, Grafana, MinIO (`quotifyctl demo`; sandbox dunning on seconds; about 2.5 minutes) |
 | `make e2e` | Run `tests/e2e` against the compose stack |
+| `make web-check` / `make web-e2e` | The operator console ([13-admin-ui.md](13-admin-ui.md)): lint, types, build; Playwright smoke test against the running stack |
 | `make chaos N=100000` | Run the correctness suite with N events: two replicas of ingest-svc, aggregator and limits-svc behind Toxiproxy, built with the `chaos` tag and armed, a chaos monkey that kills replicas, resets connections, stops Redpanda and wipes Redis, and assertions A1-A9 with a JSON report (`tests/chaos`, [09-testing-strategy.md](09-testing-strategy.md)) |
 | `make bench-idempotency` | The partitioned-vs-DELETE measurement behind [ADR 0014](adr/0014-idempotency-key-retention.md) |
 | `quotifyctl replay\|rerate\|dlq` | Operator CLI: rebuild a tenant into a new generation and promote it; price a closed period again; inspect and redrive dead letters (RabbitMQ and Kafka) |

@@ -62,6 +62,13 @@ func (s *Server) routes() []Route {
 		{"POST", "/v1/sandbox/customers/{external_id}/payment-scenario", AccessSandbox, ratelimit.ClassWrite, s.setPaymentScenario},
 		// Operator
 		{"POST", "/admin/v1/accounts", AccessOperator, "", s.createAccount},
+		{"GET", "/admin/v1/tenants", AccessOperator, "", s.adminListTenants},
+		{"GET", "/admin/v1/tenants/{tenant_id}/invoices", AccessOperator, "", s.adminListInvoices},
+		{"GET", "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}", AccessOperator, "", s.adminGetInvoice},
+		{"GET", "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/pdf", AccessOperator, "", s.adminInvoicePDF},
+		{"GET", "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/saga", AccessOperator, "", s.adminInvoiceSaga},
+		{"GET", "/admin/v1/dead-letters", AccessOperator, "", s.adminListDeadLetters},
+		{"POST", "/admin/v1/dead-letters/redrive", AccessOperator, "", s.adminRedriveDeadLetters},
 		{"GET", "/admin/v1/tenants/{id}", AccessOperator, "", s.getTenant},
 		{"PATCH", "/admin/v1/tenants/{id}", AccessOperator, "", s.updateTenant},
 		{"POST", "/admin/v1/tenants/{id}/api-keys", AccessOperator, "", s.createAPIKey},

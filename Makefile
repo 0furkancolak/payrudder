@@ -112,6 +112,14 @@ helm-sync: ## Refresh the copies of shared files inside the infra chart (helm ca
 	cp deploy/rabbitmq/definitions.json deploy/helm/quotify-infra/files/definitions.json
 	cp deploy/clickhouse/low-memory.xml deploy/helm/quotify-infra/files/low-memory.xml
 
+.PHONY: web-check
+web-check: ## The operator console: install, lint, type check, build, and the OpenAPI types are up to date
+	cd web/admin && npm ci --no-audit --no-fund && npm run lint && npm run typecheck && npm run gen && git diff --exit-code src/lib/schema.d.ts && npm run build
+
+.PHONY: web-e2e
+web-e2e: ## Playwright smoke test of the console against the running stack (make up first)
+	cd web/admin && npx playwright install chromium && npm run e2e
+
 .PHONY: kind-up
 kind-up: $(BIN)/kind ## Create the kind cluster: make kind-up [KIND_CONFIG=deploy/kind/cluster-min.yaml]
 	$(BIN)/kind get clusters 2>/dev/null | grep -qx quotify || $(BIN)/kind create cluster --config $(KIND_CONFIG) --wait 120s

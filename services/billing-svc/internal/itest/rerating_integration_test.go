@@ -9,7 +9,9 @@ import (
 
 	"github.com/google/uuid"
 
+	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 )
 
@@ -256,5 +258,35 @@ func testRerateRunTwiceIsIdempotent(t *testing.T) {
 	}
 	if k := e.invoiceKinds("2026-10"); k["CORRECTION"] != 2 {
 		t.Fatalf("%d corrections after the resume, want 2", k["CORRECTION"])
+	}
+}
+
+// The operator's view of an invoice saga: every transition of a paid invoice, in order, ending in COMPLETED.
+func testInvoiceSagaTimeline(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	e.startWorkers(nil)
+	completeOctober(e)
+	var invoiceID uuid.UUID
+	if err := shared.system.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&invoiceID); err != nil {
+		t.Fatal(err)
+	}
+	srv := api.New(shared.app, shared.system, e.mgr, e.eng)
+	resp, err := srv.GetInvoiceSaga(opCtx(), &billingv1.GetInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: invoiceID.String()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.GetSaga().GetState() != "COMPLETED" || len(resp.GetEvents()) < 5 {
+		t.Fatalf("saga = %v with %d events, want COMPLETED with at least 5", resp.GetSaga().GetState(), len(resp.GetEvents()))
+	}
+	for i, ev := range resp.GetEvents() {
+		if int(ev.GetSeq()) != i+1 || ev.GetAt() == nil || ev.GetToState() == "" {
+			t.Fatalf("event %d = %v, want consecutive seq with a time and a state", i, ev)
+		}
+		if i > 0 && ev.GetFromState() != resp.GetEvents()[i-1].GetToState() {
+			t.Fatalf("event %d starts in %s but the previous ended in %s", i, ev.GetFromState(), resp.GetEvents()[i-1].GetToState())
+		}
+	}
+	if _, err := srv.GetInvoiceSaga(context.Background(), &billingv1.GetInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: invoiceID.String()}); err == nil {
+		t.Fatal("the saga log was readable without the operator flag")
 	}
 }

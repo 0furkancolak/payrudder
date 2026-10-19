@@ -22,6 +22,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/quantity"
 	"github.com/0furkancolak/quotify/pkg/tenant"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
 )
@@ -45,6 +46,13 @@ type Server struct {
 	runs   *runs.Manager
 	eng    *saga.Engine
 	pdfs   PDFSigner
+	dlq    *dlq.Admin
+}
+
+// WithDeadLetters enables the dead-letter operations of BillingAdminService.
+func (s *Server) WithDeadLetters(a *dlq.Admin) *Server {
+	s.dlq = a
+	return s
 }
 
 // New returns the API. app is the billing_app pool, system the billing_system pool.
@@ -492,4 +500,98 @@ func (s *Server) GetReratingJob(ctx context.Context, req *billingv1.GetReratingJ
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	return &billingv1.GetReratingJobResponse{Job: reratingProto(job)}, nil
+}
+
+// GetInvoiceSaga implements billingv1.BillingAdminServiceServer.
+func (s *Server) GetInvoiceSaga(ctx context.Context, req *billingv1.GetInvoiceSagaRequest) (*billingv1.GetInvoiceSagaResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	tid, err := parseUUID("tenant_id", req.GetTenantId())
+	if err != nil {
+		return nil, err
+	}
+	inv, err := parseUUID("invoice_id", req.GetInvoiceId())
+	if err != nil {
+		return nil, err
+	}
+	var sagaID uuid.UUID
+	err = s.system.QueryRow(ctx, `SELECT id FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, tid, inv).Scan(&sagaID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, status.Error(codes.NotFound, "invoice has no saga (it is not finalized)")
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	saga, err := s.sagaProto(ctx, tid, sagaID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	rows, err := s.system.Query(ctx, `SELECT seq, from_state, to_state, cause, command_id, at FROM saga_events WHERE tenant_id = $1 AND saga_id = $2 ORDER BY seq`, tid, sagaID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	defer rows.Close()
+	resp := &billingv1.GetInvoiceSagaResponse{Saga: saga}
+	for rows.Next() {
+		var e billingv1.SagaEvent
+		var cmd *uuid.UUID
+		var at time.Time
+		if err := rows.Scan(&e.Seq, &e.FromState, &e.ToState, &e.Cause, &cmd, &at); err != nil {
+			return nil, status.Error(codes.Internal, "internal error")
+		}
+		if cmd != nil {
+			e.CommandId = cmd.String()
+		}
+		e.At = timestamppb.New(at)
+		resp.Events = append(resp.Events, &e)
+	}
+	return resp, rows.Err()
+}
+
+func dlqErr(err error) error {
+	switch {
+	case errors.Is(err, dlq.ErrUnknownQueue):
+		return status.Error(codes.InvalidArgument, err.Error())
+	default:
+		slog.Error("dead letters", "error", err)
+		return status.Error(codes.Unavailable, "the broker could not be reached; retry")
+	}
+}
+
+// ListDeadLetters implements billingv1.BillingAdminServiceServer.
+func (s *Server) ListDeadLetters(ctx context.Context, req *billingv1.ListDeadLettersRequest) (*billingv1.ListDeadLettersResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	if s.dlq == nil {
+		return nil, status.Error(codes.Unimplemented, "dead-letter operations are not configured")
+	}
+	depths, msgs, err := s.dlq.List(ctx, req.GetQueue(), int(req.GetLimit()))
+	if err != nil {
+		return nil, dlqErr(err)
+	}
+	resp := &billingv1.ListDeadLettersResponse{}
+	for _, d := range depths {
+		resp.Queues = append(resp.Queues, &billingv1.DeadLetterQueue{Queue: d.Queue, Messages: d.Messages})
+	}
+	for _, m := range msgs {
+		resp.Messages = append(resp.Messages, &billingv1.DeadLetter{MessageId: m.ID, DeliveryCount: m.Deliveries, Reason: m.Reason, BodyBytes: int32(m.BodyBytes)}) //nolint:gosec // message sizes are far below 2 GiB
+	}
+	return resp, nil
+}
+
+// RedriveDeadLetters implements billingv1.BillingAdminServiceServer.
+func (s *Server) RedriveDeadLetters(ctx context.Context, req *billingv1.RedriveDeadLettersRequest) (*billingv1.RedriveDeadLettersResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	if s.dlq == nil {
+		return nil, status.Error(codes.Unimplemented, "dead-letter operations are not configured")
+	}
+	n, err := s.dlq.Redrive(ctx, req.GetQueue(), int(req.GetLimit()))
+	if err != nil {
+		return nil, dlqErr(err)
+	}
+	return &billingv1.RedriveDeadLettersResponse{Redriven: int32(n)}, nil //nolint:gosec // at most 1000
 }
