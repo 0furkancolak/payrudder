@@ -17,6 +17,8 @@ offers the two actions an operator needs most, redriving dead letters and readin
 
 ![The dead-letter queues](img/admin-dead-letters.png)
 
+The local operator token is `local-operator-token-change-me-0123456789` (set by `QUOTIFY_OPERATOR_TOKEN`, which the Compose file defaults to that value). It is a development default: change it anywhere that is not your laptop.
+
 ## Playground
 
 `/playground` is a guided walk through the product for someone who has only the operator token: create a sandbox account (currency, time zone and grace period are required, nothing is
