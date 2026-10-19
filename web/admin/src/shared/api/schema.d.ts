@@ -898,6 +898,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/tenants/{tenant_id}/provider-migrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move a subscription to another payment provider without charging the customer twice
+         * @description To a provider that runs subscriptions itself (Paddle) a checkout is returned and the old subscription is untouched until the customer has subscribed there. To a provider Quotify runs (iyzico) the new subscription takes over at once, or from a provider-run subscription at the end of the period the old provider was paid for; the old provider is told to stop renewing first.
+         */
+        post: operations["startProviderMigration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/provider-migrations/{migration_id}/abort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give up a migration that has not completed; the subscription stays as it was */
+        post: operations["abortProviderMigration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/dead-letters": {
         parameters: {
             query?: never;
@@ -3405,6 +3442,80 @@ export interface operations {
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
             502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    startProviderMigration: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    subscription_id: string;
+                    /** @enum {string} */
+                    to_provider: "iyzico" | "paddle";
+                    /** @description The target provider's catalogue price */
+                    price_ref?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Started (checkout_url, state started) or done (new_subscription, cutover, state completed) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        migration?: string;
+                        /** @enum {string} */
+                        state?: "started" | "completed";
+                        checkout_url?: string;
+                        /** Format: uuid */
+                        new_subscription?: string;
+                        /** Format: date-time */
+                        cutover?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    abortProviderMigration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                migration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Aborted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
     };

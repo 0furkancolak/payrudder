@@ -78,3 +78,15 @@ func (s *Server) providerCheckout(w http.ResponseWriter, r *http.Request) {
 		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/checkouts"
 	})(w, r)
 }
+
+func (s *Server) providerMigrate(w http.ResponseWriter, r *http.Request) {
+	s.paymentsProxy(func(r *http.Request) string {
+		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/migrations"
+	})(w, r)
+}
+
+func (s *Server) providerMigrationAbort(w http.ResponseWriter, r *http.Request) {
+	s.paymentsProxy(func(r *http.Request) string {
+		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/migrations/" + url.PathEscape(r.PathValue("migration_id")) + "/abort"
+	})(w, r)
+}

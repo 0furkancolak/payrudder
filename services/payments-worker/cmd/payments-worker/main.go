@@ -139,7 +139,7 @@ func run() error {
 		}
 		accounts := store.Accounts{DB: pool, Box: box}
 		h.Resolver = &handler.Resolver{Registry: registry, Accounts: accounts}
-		var plansSync webhook.PlansSync
+		var plansSync webhook.PlansAPI
 		if cfg.PlansAddr != "" {
 			plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
 			if err != nil {

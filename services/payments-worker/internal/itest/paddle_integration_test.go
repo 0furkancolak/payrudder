@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
@@ -37,6 +39,9 @@ type fakePaddle struct {
 	srv   *httptest.Server
 	calls map[string]int
 	last  map[string]any
+	// failCancel makes cancelling a subscription fail.
+	failCancel bool
+	cancelBody map[string]any
 }
 
 func newFakePaddle(t *testing.T) *fakePaddle {
@@ -53,6 +58,13 @@ func newFakePaddle(t *testing.T) *fakePaddle {
 			return
 		}
 		switch {
+		case strings.HasSuffix(r.URL.Path, "/cancel"):
+			if f.failCancel {
+				w.WriteHeader(500)
+				return
+			}
+			f.cancelBody = f.last
+			_, _ = io.WriteString(w, `{"data":{}}`)
 		case strings.HasSuffix(r.URL.Path, "/charge"):
 			_, _ = io.WriteString(w, `{"data":{"id":"sub_01"}}`)
 		case r.URL.Path == "/adjustments":
@@ -80,6 +92,13 @@ type recPlans struct {
 	mu   sync.Mutex
 	reqs []*plansv1.SyncProviderSubscriptionRequest
 	fail bool
+
+	sub        *plansv1.Subscription                       // what GetSubscription answers
+	started    []*plansv1.StartProviderMigrationRequest    // what StartProviderMigration saw
+	completed  []*plansv1.CompleteProviderMigrationRequest // what CompleteProviderMigration saw
+	aborted    []string                                    // migrations aborted
+	completion *plansv1.CompleteProviderMigrationResponse  // what CompleteProviderMigration answers
+	startErr   error
 }
 
 func (r *recPlans) SyncProviderSubscription(_ context.Context, _ uuid.UUID, req *plansv1.SyncProviderSubscriptionRequest) error {
@@ -89,6 +108,47 @@ func (r *recPlans) SyncProviderSubscription(_ context.Context, _ uuid.UUID, req 
 		return errors.New("plans-svc is down")
 	}
 	r.reqs = append(r.reqs, req)
+	return nil
+}
+
+func (r *recPlans) GetSubscription(context.Context, uuid.UUID, string) (*plansv1.Subscription, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.sub, nil
+}
+
+func (r *recPlans) StartProviderMigration(_ context.Context, _ uuid.UUID, req *plansv1.StartProviderMigrationRequest) (*plansv1.ProviderMigration, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.startErr != nil {
+		return nil, r.startErr
+	}
+	r.started = append(r.started, req)
+	m := &plansv1.ProviderMigration{Id: "11111111-1111-1111-1111-111111111111", SubscriptionId: req.GetSubscriptionId(), ToProvider: req.GetToProvider(),
+		State: plansv1.ProviderMigration_STATE_STARTED}
+	if cut := req.GetCutoverTime(); cut != nil {
+		m.State, m.CutoverTime, m.NewSubscriptionId = plansv1.ProviderMigration_STATE_COMPLETED, cut, "22222222-2222-2222-2222-222222222222"
+	}
+	return m, nil
+}
+
+func (r *recPlans) CompleteProviderMigration(_ context.Context, _ uuid.UUID, req *plansv1.CompleteProviderMigrationRequest) (*plansv1.CompleteProviderMigrationResponse, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.fail {
+		return nil, errors.New("plans-svc is down")
+	}
+	r.completed = append(r.completed, req)
+	if r.completion != nil {
+		return r.completion, nil
+	}
+	return &plansv1.CompleteProviderMigrationResponse{Subscription: &plansv1.Subscription{Id: "22222222-2222-2222-2222-222222222222"}}, nil
+}
+
+func (r *recPlans) AbortProviderMigration(_ context.Context, _ uuid.UUID, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.aborted = append(r.aborted, id)
 	return nil
 }
 
@@ -388,4 +448,235 @@ func TestChargeNamesItsProvider(t *testing.T) {
 	if r, err := h.Handle(ctx, charge("nope", "x")); err != nil || r.GetPaymentErrored().GetCode() != handler.CodeNotConfigured {
 		t.Fatalf("a provider with no account: %v, %v", r, err)
 	}
+}
+
+func TestProviderMigrationThroughTheWorker(t *testing.T) {
+	pg := testkit.StartPostgres(t)
+	db := testkit.CreateServiceDB(t, pg, "payments")
+	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := pgxx.NewPool(context.Background(), db.System)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	ctx := context.Background()
+	fakeP, fakeI := newFakePaddle(t), newFakeIyzico(t)
+	box, _ := secretbox.New(bytes.Repeat([]byte{5}, 32))
+	registry := payments.NewRegistry()
+	iyzico.Register(registry)
+	paddle.Register(registry)
+	accounts := store.Accounts{DB: pool, Box: box}
+	resolver := &handler.Resolver{Registry: registry, Accounts: accounts}
+	plans := &recPlans{}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	subs := store.Subscriptions{DB: pool}
+	api := httptest.NewServer((&webhook.Server{Registry: registry, Resolver: resolver, Accounts: accounts, Events: store.Events{DB: pool}, Attempts: store.Attempts{DB: pool},
+		Ledger: store.Ledger{DB: pool}, Subscriptions: subs, Log: log, Token: "internal", Plans: plans}).Handler())
+	defer api.Close()
+
+	tenant := uuid.New()
+	const secret = "whsec_m"
+	if err := accounts.Put(ctx, tenant, "paddle", "live", []byte(`{"api_key":"pdl_secret","base_url":"`+fakeP.srv.URL+`","webhook_secret":"`+secret+`","usage_product_id":"pro_u"}`), false); err != nil {
+		t.Fatal(err)
+	}
+	if err := accounts.Put(ctx, tenant, "iyzico", "live", []byte(`{"api_key":"a","secret_key":"s","base_url":"`+fakeI.srv.URL+`","buyer":{"name":"A","surname":"B","identity_number":"1","address":"x","city":"c","country":"t","zip_code":"1","ip":"1.1.1.1","email":"b@example.com"}}`), true); err != nil {
+		t.Fatal(err)
+	}
+	call := func(method, path, body string, hdr http.Header) (int, string) {
+		t.Helper()
+		req, _ := http.NewRequest(method, api.URL+path, strings.NewReader(body))
+		req.Header.Set("X-Internal-Token", "internal")
+		for k, v := range hdr {
+			req.Header[k] = v
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(b)
+	}
+	migrate := func(body string) (int, string) {
+		return call("POST", "/admin/tenants/"+tenant.String()+"/migrations?environment=live", body, nil)
+	}
+	hook := "/webhooks/paddle/" + tenant.String() + "/live"
+	webhookCall := func(event string) (int, string) {
+		h := http.Header{}
+		h.Set("Paddle-Signature", paddle.SignatureHeader(secret, time.Now(), []byte(event)))
+		req, _ := http.NewRequest("POST", api.URL+hook, strings.NewReader(event))
+		req.Header = h
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(b)
+	}
+	subID := uuid.NewString()
+	const migID = "11111111-1111-1111-1111-111111111111"
+
+	t.Run("to a provider that runs subscriptions: a checkout first, the old subscription untouched", func(t *testing.T) {
+		plans.sub = &plansv1.Subscription{Id: subID, Provider: "iyzico", Owner: "quotify"}
+		code, body := migrate(`{"subscription_id":"` + subID + `","to_provider":"paddle"}`)
+		if code != 400 {
+			t.Fatalf("without a price: %d %s", code, body)
+		}
+		code, body = migrate(`{"subscription_id":"` + subID + `","to_provider":"paddle","price_ref":"pri_01"}`)
+		if code != 201 || !strings.Contains(body, "https://pay.example/co") || !strings.Contains(body, migID) || !strings.Contains(body, `"state":"started"`) {
+			t.Fatalf("migrate: %d %s", code, body)
+		}
+		if len(plans.started) != 1 || plans.started[0].GetCutoverTime() != nil {
+			t.Fatalf("started = %v; no cutover yet", plans.started)
+		}
+		cd, _ := fakeP.last["custom_data"].(map[string]any)
+		if cd["quotify_migration_id"] != migID {
+			t.Errorf("the checkout does not carry the migration id: %v", fakeP.last)
+		}
+	})
+
+	t.Run("a checkout that cannot be made gives the migration up", func(t *testing.T) {
+		plans.aborted = nil
+		fakeP.mu.Lock()
+		before := len(plans.started)
+		fakeP.mu.Unlock()
+		code, _ := migrate(`{"subscription_id":"` + subID + `","to_provider":"paddle","price_ref":"not-a-price"}`)
+		if code != 502 {
+			t.Fatalf("status %d", code)
+		}
+		if len(plans.aborted) != 1 || len(plans.started) != before+1 {
+			t.Fatalf("aborted %v, started %d; a migration that cannot get a checkout must not stay open", plans.aborted, len(plans.started))
+		}
+	})
+
+	t.Run("Paddle's confirmation completes it", func(t *testing.T) {
+		plans.completed = nil
+		event := `{"event_id":"evt_m1","event_type":"subscription.created","occurred_at":"2027-01-05T12:00:00Z","data":{"id":"sub_NEW","status":"active",
+			"custom_data":{"quotify_migration_id":"` + migID + `"},"next_billed_at":"2027-02-05T12:00:00Z"}}`
+		if code, body := webhookCall(event); code != 200 {
+			t.Fatalf("webhook: %d %s", code, body)
+		}
+		if len(plans.completed) != 1 || plans.completed[0].GetMigrationId() != migID || plans.completed[0].GetProviderRef() != "sub_NEW" ||
+			plans.completed[0].GetCutoverTime().AsTime().Year() != 2027 {
+			t.Fatalf("completed = %v", plans.completed)
+		}
+		q, found, err := subs.QuotifyID(ctx, tenant, "paddle", "live", "sub_NEW")
+		if err != nil || !found || q.String() != "22222222-2222-2222-2222-222222222222" {
+			t.Fatalf("remembered subscription = %v, %v, %v", q, found, err)
+		}
+		// Later events of that subscription carry no id of ours; the remembered one is used.
+		plans.reqs = nil
+		later := `{"event_id":"evt_m2","event_type":"subscription.updated","occurred_at":"2027-01-06T12:00:00Z","data":{"id":"sub_NEW","status":"past_due","custom_data":null}}`
+		if code, body := webhookCall(later); code != 200 {
+			t.Fatalf("webhook: %d %s", code, body)
+		}
+		if len(plans.reqs) != 1 || plans.reqs[0].GetSubscriptionId() != "22222222-2222-2222-2222-222222222222" || plans.reqs[0].GetProviderStatus() != "past_due" {
+			t.Fatalf("sync = %v", plans.reqs)
+		}
+	})
+
+	t.Run("the old provider's subscription is cancelled once the new one has taken over", func(t *testing.T) {
+		plans.completion = &plansv1.CompleteProviderMigrationResponse{Subscription: &plansv1.Subscription{Id: "33333333-3333-3333-3333-333333333333"},
+			SourceProvider: "paddle", SourceProviderRef: "sub_OLD"}
+		fakeP.mu.Lock()
+		fakeP.cancelBody = nil
+		fakeP.mu.Unlock()
+		event := `{"event_id":"evt_m3","event_type":"subscription.created","occurred_at":"2027-03-05T12:00:00Z","data":{"id":"sub_N2","status":"active","custom_data":{"quotify_migration_id":"` + migID + `"}}}`
+		if code, body := webhookCall(event); code != 200 {
+			t.Fatalf("webhook: %d %s", code, body)
+		}
+		fakeP.mu.Lock()
+		defer fakeP.mu.Unlock()
+		if fakeP.cancelBody["effective_from"] != "immediately" || fakeP.calls["POST /subscriptions/sub_OLD/cancel"] != 1 {
+			t.Fatalf("cancel body %v calls %v; one more renewal at the old provider would be a second bill", fakeP.cancelBody, fakeP.calls)
+		}
+		plans.completion = nil
+	})
+
+	t.Run("if the old provider cannot be told, Paddle's webhook is retried", func(t *testing.T) {
+		plans.completion = &plansv1.CompleteProviderMigrationResponse{Subscription: &plansv1.Subscription{Id: "44444444-4444-4444-4444-444444444444"},
+			SourceProvider: "paddle", SourceProviderRef: "sub_OLD2"}
+		fakeP.mu.Lock()
+		fakeP.failCancel = true
+		fakeP.mu.Unlock()
+		event := `{"event_id":"evt_m4","event_type":"subscription.created","occurred_at":"2027-04-05T12:00:00Z","data":{"id":"sub_N3","status":"active","custom_data":{"quotify_migration_id":"` + migID + `"}}}`
+		if code, _ := webhookCall(event); code != 503 {
+			t.Fatalf("status %d, want 503 so Paddle retries and the release is attempted again", code)
+		}
+		fakeP.mu.Lock()
+		fakeP.failCancel = false
+		fakeP.mu.Unlock()
+		if code, body := webhookCall(event); code != 200 {
+			t.Fatalf("the retry: %d %s", code, body)
+		}
+		plans.completion = nil
+	})
+
+	t.Run("to a provider Quotify runs: from a provider-run subscription at the end of the paid period, old provider told first", func(t *testing.T) {
+		plans.sub = &plansv1.Subscription{Id: subID, Provider: "paddle", ProviderRef: "sub_PAID", Owner: "provider"}
+		// Nothing is known of the paid period yet: nothing is cancelled and nothing is started.
+		startedBefore := len(plans.started)
+		if code, body := migrate(`{"subscription_id":"` + subID + `","to_provider":"iyzico"}`); code != 409 {
+			t.Fatalf("unknown paid period: %d %s", code, body)
+		}
+		if len(plans.started) != startedBefore {
+			t.Fatal("a migration was started without knowing the end of the paid period")
+		}
+		fakeP.mu.Lock()
+		cancelled := fakeP.calls["POST /subscriptions/sub_PAID/cancel"]
+		fakeP.mu.Unlock()
+		if cancelled != 0 {
+			t.Fatal("the old subscription was cancelled although the migration could not be planned")
+		}
+		next := time.Date(2027, 5, 1, 0, 0, 0, 0, time.UTC)
+		if err := subs.Upsert(ctx, tenant, "paddle", "live", "sub_PAID", nil, "active", &next, time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		// Paddle refuses to cancel: nothing is started either, the customer keeps paying one provider.
+		fakeP.mu.Lock()
+		fakeP.failCancel = true
+		fakeP.mu.Unlock()
+		if code, _ := migrate(`{"subscription_id":"` + subID + `","to_provider":"iyzico"}`); code != 502 {
+			t.Fatalf("cancel failure: %d", code)
+		}
+		if len(plans.started) != startedBefore {
+			t.Fatal("a migration was started although the old subscription could not be cancelled")
+		}
+		fakeP.mu.Lock()
+		fakeP.failCancel = false
+		fakeP.mu.Unlock()
+		code, body := migrate(`{"subscription_id":"` + subID + `","to_provider":"iyzico"}`)
+		if code != 201 || !strings.Contains(body, `"state":"completed"`) {
+			t.Fatalf("migrate: %d %s", code, body)
+		}
+		fakeP.mu.Lock()
+		defer fakeP.mu.Unlock()
+		if fakeP.cancelBody["effective_from"] != "next_billing_period" {
+			t.Errorf("cancel = %v; the paid period must run out", fakeP.cancelBody)
+		}
+		last := plans.started[len(plans.started)-1]
+		if last.GetToProvider() != "iyzico" || !last.GetCutoverTime().AsTime().Equal(next) {
+			t.Errorf("started = %v; the cutover is the end of the paid period", last)
+		}
+	})
+
+	t.Run("refusals", func(t *testing.T) {
+		if code, _ := call("POST", "/admin/tenants/"+tenant.String()+"/migrations?environment=live", `{}`, nil); code != 400 {
+			t.Errorf("empty body: %d", code)
+		}
+		if code, _ := migrate(`{"subscription_id":"` + subID + `","to_provider":"stripe"}`); code != 404 {
+			t.Errorf("a provider with no account: %d", code)
+		}
+		plans.startErr = status.Error(codes.FailedPrecondition, "cannot be moved")
+		if code, _ := migrate(`{"subscription_id":"` + subID + `","to_provider":"paddle","price_ref":"pri_01"}`); code != 409 {
+			t.Errorf("plans-svc refuses: %d", code)
+		}
+		plans.startErr = nil
+		if code, _ := call("POST", "/admin/tenants/"+tenant.String()+"/migrations/"+migID+"/abort", ``, nil); code != 200 {
+			t.Errorf("abort: %d", code)
+		}
+	})
 }

@@ -1066,6 +1066,58 @@ paths:
         "409": { $ref: "#/components/responses/Error" }
         "502": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/provider-migrations:
+    post:
+      operationId: startProviderMigration
+      summary: Move a subscription to another payment provider without charging the customer twice
+      description: >
+        To a provider that runs subscriptions itself (Paddle) a checkout is returned and the old subscription is untouched until the customer has subscribed
+        there. To a provider Quotify runs (iyzico) the new subscription takes over at once, or from a provider-run subscription at the end of the period
+        the old provider was paid for; the old provider is told to stop renewing first.
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subscription_id, to_provider]
+              properties:
+                subscription_id: { type: string, format: uuid }
+                to_provider: { type: string, enum: [iyzico, paddle] }
+                price_ref: { type: string, description: The target provider's catalogue price, for a provider that runs subscriptions itself }
+      responses:
+        "201":
+          description: Started (checkout_url, state started) or done (new_subscription, cutover, state completed)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  migration: { type: string, format: uuid }
+                  state: { type: string, enum: [started, completed] }
+                  checkout_url: { type: string }
+                  new_subscription: { type: string, format: uuid }
+                  cutover: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/provider-migrations/{migration_id}/abort:
+    post:
+      operationId: abortProviderMigration
+      summary: Give up a migration that has not completed; the subscription stays as it was
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: migration_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Aborted }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /admin/v1/dead-letters:
     get:
       operationId: adminListDeadLetters

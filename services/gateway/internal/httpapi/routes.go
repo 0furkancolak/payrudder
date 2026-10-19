@@ -85,6 +85,8 @@ func (s *Server) routes() []Route {
 		{"POST", "/webhooks/{provider}/{tenant_id}/{environment}", AccessPublic, "", s.tenantWebhook},
 		{"GET", "/admin/v1/tenants/{tenant_id}/provider-subscriptions", AccessOperator, "", s.providerSubscriptions},
 		{"POST", "/admin/v1/tenants/{tenant_id}/checkouts", AccessOperator, "", s.providerCheckout},
+		{"POST", "/admin/v1/tenants/{tenant_id}/provider-migrations", AccessOperator, "", s.providerMigrate},
+		{"POST", "/admin/v1/tenants/{tenant_id}/provider-migrations/{migration_id}/abort", AccessOperator, "", s.providerMigrationAbort},
 		{"GET", "/admin/v1/dead-letters", AccessOperator, "", s.adminListDeadLetters},
 		{"POST", "/admin/v1/dead-letters/redrive", AccessOperator, "", s.adminRedriveDeadLetters},
 		{"GET", "/admin/v1/tenants/{id}", AccessOperator, "", s.getTenant},
