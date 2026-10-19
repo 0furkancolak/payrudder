@@ -1,0 +1,88 @@
+name: nightly
+
+# The full correctness run (docs/09-testing-strategy.md): 1M events, 50 tenants, replicas killed at random, Toxiproxy faults,
+# a Redpanda stop and a Redis wipe. Fails on any single mismatch, and on a run that did not inject real chaos.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      events:
+        description: Number of unique events
+        default: "1000000"
+
+permissions:
+  contents: read
+
+env:
+  GOPRIVATE: github.com/0furkancolak/*
+
+jobs:
+  chaos-1m:
+    name: correctness (1M events, chaos monkey)
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - name: make chaos
+        env:
+          QUOTIFY_CHAOS_TENANTS: "50"
+          QUOTIFY_CHAOS_MIN_KILLS: "30"
+          QUOTIFY_CHAOS_MIN_FAULTS: "10"
+          QUOTIFY_CHAOS_REPORT: ${{ github.workspace }}/chaos-report.json
+        run: make chaos N=${{ github.event.inputs.events || '1000000' }}
+      - name: Summary
+        if: always()
+        run: |
+          test -f chaos-report.json && python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          r = json.load(open("chaos-report.json"))
+          c = r["Chaos"]
+          print("| | |\n|---|---|")
+          print(f"| events (unique accepted) | {r['Unique']} |")
+          print(f"| container kills | {c['kills']} |")
+          print(f"| network faults | {c['network_faults']} |")
+          print(f"| broker stops / redis restarts | {c['broker_stops']} / {c['redis_restarts']} |")
+          print(f"| duration (s) | {r['Seconds']:.0f} |")
+          for a in r["Assertions"]:
+              print(f"| {a['id']} {a['name']} | {a['status']} {a.get('detail','')} |")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chaos-report-${{ github.run_id }}
+          path: chaos-report.json
+          if-no-files-found: ignore
+      - if: failure()
+        run: docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app --profile chaos ps -a && docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app --profile chaos logs --tail 120 ingest-svc aggregator limits-svc billing-svc
+      - if: always()
+        run: make down
+
+  k6:
+    name: load scenarios (k6, short)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - run: timeout 1500 make up
+      - name: Scenarios at CI-runner scale
+        run: |
+          make load S=ingest_steady K6_ENV="-e DURATION=3m -e EVENTS_PER_SEC=2000"
+          make load S=entitlement_reads K6_ENV="-e DURATION=2m -e RATE=1000"
+          make load S=noisy_neighbor
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-summaries-${{ github.run_id }}
+          path: tests/load/results/*.json
+          if-no-files-found: ignore
+      - if: always()
+        run: make down

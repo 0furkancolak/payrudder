@@ -49,3 +49,21 @@ Phases 00–08.
 
 - CI runner resources may be too small for 1M with the full stack. Fallback: self-hosted runner or a documented local run with uploaded artifacts.
 - Flaky chaos tests are worse than none. Any flake is a bug until proven to be a test bug.
+
+## Notes (as built)
+
+- **Chaos stack.** `deploy/compose/compose.chaos.yaml` runs 2x ingest-svc, aggregator and limits-svc behind Toxiproxy
+  (`deploy/compose/chaos/toxiproxy.json`); fault hooks as before. `tests/chaos/monkey.go` is the chaos monkey. `docker kill`
+  leaves a container down (the restart policy does not apply to a container killed through the API), so the monkey plays
+  the orchestrator and starts it again after 2-5 s.
+- **Suite.** `tests/chaos/chaos_test.go`: tenants x 20 customers x 5 meters (SUM/COUNT/MAX at scales 0, 2 and 3), 5 %
+  duplicates, unbounded retries, 2 % late, 0.1 % invalid. Assertions A1-A4, A8, A9 in the main test (A4 also proves a wiped
+  Redis rebuilds), A5/A6 in `billing_chaos_test.go`, A7 when Prometheus is configured. Each assertion has a status in the
+  JSON report; mismatches are listed per key.
+- **Not decided by this repo's CI.** "Three consecutive green nightlies" and the 1M run need the nightly workflow to run on
+  a runner; `.github/workflows/nightly.yml` is in place, but no nightly has run yet. `docs/benchmarks.md` carries only
+  what was measured, on the laptop described there.
+- **k6.** `tests/load/*.js`, `make load S=<scenario>`; results stream to Prometheus (remote write) and the "Quotify / k6"
+  dashboard; `--summary-export` JSON lands in `tests/load/results/`.
+- **Kafka DLQ redrive** (open since Phase 02): `quotifyctl dlq ls|show|redrive --broker kafka`, tracked by the
+  `quotifyctl-redrive` consumer group; Kafka has no delete, so `purge` is refused.

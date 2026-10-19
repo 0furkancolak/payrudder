@@ -69,6 +69,6 @@ Phase 01 (tenants, meters, customers, gateway auth).
 
 ## Risks / open questions
 
-- **Decided:** partitioned idempotency table (default). Still benchmark vs. an unpartitioned table with batched `DELETE` and record the numbers in an ADR addendum.
+- **Decided:** partitioned idempotency table (default). Benchmarked against an unpartitioned table with batched `DELETE` in Phase 09: see [ADR 0014](../adr/0014-idempotency-key-retention.md).
 - Relay ordering across concurrent relays is "mostly ordered". Confirm no consumer relies on strict order (by design none should).
 - **Decided:** `idempotency_key` is mandatory for live keys, optional in sandbox.

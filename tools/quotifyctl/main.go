@@ -45,7 +45,7 @@ func usage() {
 
 commands:
   seed    create a demo account (sandbox + live), API keys, meters, a plan and customers
-  dlq     ls | show | redrive | purge the RabbitMQ dead-letter queues (talks to the broker directly)`)
+  dlq     ls | show | redrive | purge the dead-letter queues (--broker rabbitmq, default) or ls | show | redrive the DLQ topics (--broker kafka)`)
 }
 
 type client struct {

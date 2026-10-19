@@ -119,6 +119,20 @@ via test-only tenant settings. A "month" is simulated by setting the period boun
 
 **Runtime target:** < 30 min on a CI runner with 4 vCPU / 16 GB (nightly workflow). A 100k-event variant runs on every PR to `main`.
 
+### How it runs (as built)
+
+`make chaos N=100000` starts the compose stack with `compose.chaos.yaml`: two replicas each of ingest-svc, aggregator and limits-svc,
+all built with the `chaos` tag, with their Postgres, Redis and Kafka connections routed through Toxiproxy (Redpanda has a
+third, `proxied` listener advertised as `toxiproxy:19093`). `QUOTIFY_CHAOS_MONKEY=1` enables `tests/chaos/monkey.go`, which
+kills random replicas, injects Toxiproxy faults, stops Redpanda for 30 s and wipes and restarts Redis, and counts everything
+it did; the report (`chaos-report.json`) lists the counts next to A1-A9. Knobs: `QUOTIFY_CHAOS_TENANTS` (default 10, the
+nightly uses 50), `QUOTIFY_CHAOS_RATE` (events/s cap, to make a small run last long enough for faults),
+`QUOTIFY_CHAOS_MIN_KILLS` / `QUOTIFY_CHAOS_MIN_FAULTS` (fail a run that injected less chaos than required).
+
+A5/A6 are asserted by `TestMonthCloseSurvivesBrokerRestart`, which closes a sandbox period for 60 customers, restarts RabbitMQ
+while their sagas are in flight, and then checks every invoice total, `COMPLETED` saga and exactly one successful charge.
+A7 needs Prometheus (`QUOTIFY_PROMETHEUS_URL`) and is reported as skipped without it; the report never hides a skip.
+
 ### Additional chaos scenarios
 
 - Network partition between aggregator and Postgres mid-transaction → no partial batches.
