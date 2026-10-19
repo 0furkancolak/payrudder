@@ -142,10 +142,11 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm test
       - name: The generated API types match api/openapi/v1.yaml
         run: |
           npm run gen
-          git diff --exit-code src/lib/schema.d.ts
+          git diff --exit-code src/shared/api/schema.d.ts
       - run: npm run build
 
   helm:

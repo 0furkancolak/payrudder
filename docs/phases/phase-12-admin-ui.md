@@ -2,19 +2,19 @@
 
 ## Goal
 
-A small Next.js/TypeScript operator console that makes the system's state visible during a demo: tenants, usage,
+A small Vue/TypeScript operator console that makes the system's state visible during a demo: tenants, usage,
 invoices with saga history, DLQs and replay jobs.
 
 ## Scope
 
-**In:** Next.js (App Router) + TypeScript in `web/admin`, calling the gateway's admin and tenant APIs (operator token),
+**In:** Vue 3 + TypeScript (rewritten from the first Next.js version in v0.2.0) in `web/admin`, calling the gateway's admin and tenant APIs (operator token),
 read-only views, plus two actions: DLQ redrive and saga retry.
 
 **Out of scope:** tenant self-service portal, authentication beyond an operator token in local env, design system work.
 
 ## Tasks
 
-- [x] `web/admin` scaffold (Next.js, TypeScript strict, ESLint), typed API client generated from `api/openapi/v1.yaml` (checked in; the gateway does not serve it)
+- [x] `web/admin` scaffold (Vue 3, TypeScript strict, ESLint, feature-based), typed API client generated from `api/openapi/v1.yaml` (checked in; the gateway does not serve it)
 - [ ] (not done, the checked-in YAML is the source) Gateway: `GET /admin/v1/openapi.json` (hand-maintained or generated from route table)
 - [ ] (not done) Onboarding form: create an account with **required** currency (supported list), time zone (IANA picker) and grace. No preselected values
 - [ ] (not done) Sandbox/live toggle per account. Sandbox actions: set payment scenario per customer, "close period now"

@@ -1,32 +1,40 @@
 {
   "name": "quotify-admin",
   "private": true,
-  "version": "0.1.0",
-  "description": "Operator console for Quotify (docs/phases/phase-12-admin-ui.md)",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Operator console for Quotify: Vue 3, TanStack Router and Query, feature-based (docs/13-admin-ui.md)",
   "scripts": {
-    "gen": "openapi-typescript ../../api/openapi/v1.yaml -o src/lib/schema.d.ts",
-    "dev": "next dev -p 3001",
-    "build": "next build",
-    "start": "next start -p 3001",
+    "gen": "openapi-typescript ../../api/openapi/v1.yaml -o src/shared/api/schema.d.ts",
+    "dev": "vite --port 3001",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --port 3001",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
     "e2e": "playwright test"
   },
   "dependencies": {
-    "next": "16.4.2",
+    "@tanstack/vue-query": "5.104.4",
+    "@tanstack/vue-router": "1.170.41",
     "openapi-fetch": "0.17.0",
-    "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "vue": "3.5.44",
+    "vue-i18n": "11.4.16"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
     "@types/node": "24.10.1",
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-vue": "6.0.10",
+    "@vue/tsconfig": "0.9.1",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.4.2",
+    "eslint-plugin-vue": "10.11.1",
+    "globals": "17.13.0",
     "openapi-typescript": "7.13.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5",
+    "vue-tsc": "3.3.13"
   },
   "engines": { "node": ">=22" }
 }

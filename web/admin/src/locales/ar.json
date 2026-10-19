@@ -1,0 +1,109 @@
+{
+  "meta": { "name": "العربية", "dir": "rtl" },
+  "app": { "title": "وحدة تحكم مشغّل Quotify", "language": "اللغة" },
+  "nav": { "tenants": "المستأجرون", "playground": "ساحة التجربة", "deadLetters": "الرسائل الميتة", "signOut": "تسجيل الخروج" },
+  "common": { "loading": "جارٍ التحميل…", "unknown": "؟" },
+  "signIn": {
+    "title": "وحدة تحكم المشغّل",
+    "intro": "تقرأ وتعمل عبر البوابة فقط. يبقى الرمز في علامة تبويب المتصفح هذه (تخزين الجلسة).",
+    "tokenLabel": "رمز المشغّل",
+    "submit": "تسجيل الدخول"
+  },
+  "enums": {
+    "environment": { "sandbox": "بيئة تجريبية", "live": "إنتاج" },
+    "tier": { "free": "مجاني", "standard": "قياسي", "enterprise": "مؤسسي" },
+    "invoiceStatus": { "draft": "مسودة", "open": "مفتوحة", "paid": "مدفوعة", "uncollectible": "غير قابلة للتحصيل", "void": "ملغاة" },
+    "invoiceKind": { "REGULAR": "عادية", "CORRECTION": "تصحيح", "CREDIT_NOTE": "إشعار دائن" }
+  },
+  "tenants": {
+    "title": "المستأجرون",
+    "empty": "لا يوجد مستأجرون بعد.",
+    "columns": { "name": "الاسم", "environment": "البيئة", "tier": "المستوى", "currency": "العملة", "timezone": "المنطقة الزمنية", "id": "المعرّف" }
+  },
+  "tenant": {
+    "fallbackTitle": "المستأجر",
+    "grace": "مهلة {value}",
+    "invoices": "الفواتير",
+    "noInvoices": "لا توجد فواتير.",
+    "draft": "(مسودة)",
+    "columns": { "number": "الرقم", "kind": "النوع", "period": "الفترة", "customer": "العميل", "total": "الإجمالي", "status": "الحالة", "saga": "السرد" },
+    "jobs": {
+      "title": "مهام إعادة التشغيل وإعادة التسعير",
+      "hint": "ابحث عن مهمة بمعرّفها (تبدأ المهام بأداة quotifyctl أو واجهة الإدارة).",
+      "idLabel": "معرّف المهمة",
+      "replay": "مهمة إعادة التشغيل",
+      "rerating": "مهمة إعادة التسعير"
+    }
+  },
+  "invoice": {
+    "back": "← المستأجر",
+    "fallbackTitle": "فاتورة",
+    "summary": "{kind} · الفترة {period} · {customer} · {total} · {status} · السرد {saga}",
+    "openPdf": "فتح ملف PDF",
+    "noPdfLink": "لا يوجد رابط",
+    "lines": "البنود",
+    "lineColumns": { "no": "#", "kind": "النوع", "description": "الوصف", "meter": "العدّاد", "quantity": "الكمية", "amount": "المبلغ" },
+    "saga": "الخط الزمني للسرد",
+    "sagaColumns": { "seq": "التسلسل", "from": "من", "to": "إلى", "cause": "السبب", "at": "الوقت" }
+  },
+  "deadLetters": {
+    "title": "الرسائل الميتة",
+    "intro": "طوابير الرسائل الميتة في RabbitMQ ({pattern}). تصل الرسالة إلى هنا بعد بلوغ حد التسليم؛ وإعادة الإرسال تعيدها مع تصفير عدّاد المحاولات.",
+    "columns": { "queue": "الطابور", "messages": "الرسائل" },
+    "redrive": "إعادة الإرسال",
+    "confirm": "نقل {count} من الرسائل الميتة من {queue} إلى {queue}؟ ستُصفَّر عدّادات المحاولات.",
+    "redriven": "أُعيد إرسال {count} من الرسائل من {queue}.dlq.",
+    "messagesOf": "رسائل {queue}.dlq",
+    "messageColumns": { "id": "معرّف الرسالة", "deliveries": "مرات التسليم", "reason": "السبب", "bytes": "البايتات" }
+  },
+  "playground": {
+    "title": "ساحة التجربة",
+    "intro": "جرّب المنتج كاملاً في بيئة تجريبية: أنشئ حساباً، وحدّد ما يُقاس ويُسعَّر، وأرسل الاستهلاك، وأغلق الفترة، وتابع الفاتورة وهي تمرّ بسرد الدفع مع مزوّد دفع وهمي. لا شيء هنا يمسّ مستأجراً حقيقياً.",
+    "account": {
+      "title": "١. الحساب",
+      "formLabel": "حساب جديد",
+      "name": "اسم الحساب",
+      "currency": "العملة",
+      "currencyPlaceholder": "العملة (لا يمكن تغييرها لاحقاً)",
+      "timezone": "المنطقة الزمنية",
+      "timezonePlaceholder": "منطقة IANA الزمنية، مثل Europe/Istanbul",
+      "grace": "مهلة السماح (ساعات)",
+      "gracePlaceholder": "مهلة السماح بالساعات (من 0 إلى 168)",
+      "create": "إنشاء الحساب",
+      "ready": "مستأجر البيئة التجريبية {tenant} · المفتاح {key}"
+    },
+    "setup": {
+      "title": "٢. ما يُقاس ويُسعَّر",
+      "button": "إنشاء العدّاد والخطة والعميل والاشتراك",
+      "outcome": "نتيجة الدفع"
+    },
+    "scenarios": {
+      "success": "نجاح",
+      "declined": "مرفوض",
+      "insufficient_funds_once": "رصيد غير كافٍ مرة واحدة",
+      "error_then_success": "خطأ ثم نجاح",
+      "timeout_committed": "انتهت المهلة، تمّ الخصم",
+      "timeout_not_committed": "انتهت المهلة، لم يتمّ الخصم"
+    },
+    "usage": { "title": "٣. الاستهلاك", "calls": "الاستدعاءات", "send": "إرسال الاستهلاك", "sent": "أُرسل {n} استدعاء" },
+    "close": {
+      "title": "٤. إغلاق الفترة",
+      "button": "أغلق الفترة الآن",
+      "hint": "تعمل الفوترة كما في نهاية الشهر؛ والبيئة التجريبية تنقل موعد الإغلاق إلى الآن فقط."
+    },
+    "invoice": { "title": "٥. الفاتورة", "waiting": "في انتظار دورة الفوترة (نحو 40 ثانية)…", "open": "فتح" },
+    "log": {
+      "title": "ما تمّ حتى الآن",
+      "account": "أُنشئ الحساب",
+      "key": "صدر مفتاح API للبيئة التجريبية",
+      "meter": "العدّاد api_calls (مجموع n)",
+      "plan": "الخطة starter",
+      "version": "إصدار الخطة: رسم أساسي 10.00 + 0.01 لكل استدعاء",
+      "customer": "العميل {id}",
+      "subscription": "الاشتراك في starter",
+      "outcome": "نتيجة الدفع: {scenario}",
+      "usage": "أُرسل الاستهلاك: {n} استدعاء",
+      "closed": "أُغلقت الفترة (بيئة تجريبية): تعمل الفوترة الآن"
+    }
+  }
+}

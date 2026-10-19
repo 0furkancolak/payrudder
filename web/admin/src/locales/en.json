@@ -1,0 +1,109 @@
+{
+  "meta": { "name": "English", "dir": "ltr" },
+  "app": { "title": "Quotify operator console", "language": "Language" },
+  "nav": { "tenants": "Tenants", "playground": "Playground", "deadLetters": "Dead letters", "signOut": "Sign out" },
+  "common": { "loading": "Loading…", "unknown": "?" },
+  "signIn": {
+    "title": "Operator console",
+    "intro": "Reads and acts through the gateway only. The token stays in this browser tab (session storage).",
+    "tokenLabel": "Operator token",
+    "submit": "Sign in"
+  },
+  "enums": {
+    "environment": { "sandbox": "sandbox", "live": "live" },
+    "tier": { "free": "free", "standard": "standard", "enterprise": "enterprise" },
+    "invoiceStatus": { "draft": "draft", "open": "open", "paid": "paid", "uncollectible": "uncollectible", "void": "void" },
+    "invoiceKind": { "REGULAR": "Regular", "CORRECTION": "Correction", "CREDIT_NOTE": "Credit note" }
+  },
+  "tenants": {
+    "title": "Tenants",
+    "empty": "No tenants yet.",
+    "columns": { "name": "Name", "environment": "Environment", "tier": "Tier", "currency": "Currency", "timezone": "Time zone", "id": "Id" }
+  },
+  "tenant": {
+    "fallbackTitle": "Tenant",
+    "grace": "grace {value}",
+    "invoices": "Invoices",
+    "noInvoices": "No invoices.",
+    "draft": "(draft)",
+    "columns": { "number": "Number", "kind": "Kind", "period": "Period", "customer": "Customer", "total": "Total", "status": "Status", "saga": "Saga" },
+    "jobs": {
+      "title": "Replay and re-rating jobs",
+      "hint": "Look a job up by id (start them with quotifyctl or the admin API).",
+      "idLabel": "Job id",
+      "replay": "Replay job",
+      "rerating": "Re-rating job"
+    }
+  },
+  "invoice": {
+    "back": "← Tenant",
+    "fallbackTitle": "Invoice",
+    "summary": "{kind} · period {period} · {customer} · {total} · {status} · saga {saga}",
+    "openPdf": "Open PDF",
+    "noPdfLink": "no link",
+    "lines": "Lines",
+    "lineColumns": { "no": "#", "kind": "Kind", "description": "Description", "meter": "Meter", "quantity": "Quantity", "amount": "Amount" },
+    "saga": "Saga timeline",
+    "sagaColumns": { "seq": "Seq", "from": "From", "to": "To", "cause": "Cause", "at": "At" }
+  },
+  "deadLetters": {
+    "title": "Dead letters",
+    "intro": "RabbitMQ dead-letter queues ({pattern}). A message lands here after its delivery limit; redrive sends it back with the retry counter reset.",
+    "columns": { "queue": "Queue", "messages": "Messages" },
+    "redrive": "Redrive",
+    "confirm": "Move {count} dead letter(s) of {queue} back to {queue}? Their retry counters are reset.",
+    "redriven": "Redriven {count} message(s) from {queue}.dlq.",
+    "messagesOf": "Messages of {queue}.dlq",
+    "messageColumns": { "id": "Message id", "deliveries": "Deliveries", "reason": "Reason", "bytes": "Bytes" }
+  },
+  "playground": {
+    "title": "Playground",
+    "intro": "Walk through the whole product in a sandbox: create an account, define what is metered and priced, send usage, close the period and watch the invoice go through its payment saga with a mock payment provider. Nothing here touches a live tenant.",
+    "account": {
+      "title": "1. Account",
+      "formLabel": "new account",
+      "name": "Account name",
+      "currency": "Currency",
+      "currencyPlaceholder": "Currency (cannot change later)",
+      "timezone": "Time zone",
+      "timezonePlaceholder": "IANA time zone, e.g. Europe/Istanbul",
+      "grace": "Grace period (hours)",
+      "gracePlaceholder": "Grace period, hours (0 to 168)",
+      "create": "Create account",
+      "ready": "Sandbox tenant {tenant} · key {key}"
+    },
+    "setup": {
+      "title": "2. What is metered and priced",
+      "button": "Create meter, plan, customer and subscription",
+      "outcome": "Payment outcome"
+    },
+    "scenarios": {
+      "success": "success",
+      "declined": "declined",
+      "insufficient_funds_once": "insufficient funds once",
+      "error_then_success": "error, then success",
+      "timeout_committed": "timeout, charge committed",
+      "timeout_not_committed": "timeout, charge not committed"
+    },
+    "usage": { "title": "3. Usage", "calls": "Calls", "send": "Send usage", "sent": "{n} calls sent" },
+    "close": {
+      "title": "4. Close the period",
+      "button": "Close period now",
+      "hint": "Billing runs as at month end; the sandbox just moves the cutoff to now."
+    },
+    "invoice": { "title": "5. Invoice", "waiting": "Waiting for the billing run (about 40 seconds)…", "open": "Open" },
+    "log": {
+      "title": "Done so far",
+      "account": "Account created",
+      "key": "Sandbox API key issued",
+      "meter": "Meter api_calls (sum of n)",
+      "plan": "Plan starter",
+      "version": "Plan version: 10.00 base fee + 0.01 per call",
+      "customer": "Customer {id}",
+      "subscription": "Subscription to starter",
+      "outcome": "Payment outcome: {scenario}",
+      "usage": "Sent usage: {n} calls",
+      "closed": "Period closed (sandbox): billing runs now"
+    }
+  }
+}

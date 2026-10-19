@@ -10,11 +10,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-FROM node:24-alpine
-WORKDIR /app
-ENV NODE_ENV=production PORT=3001 HOSTNAME=0.0.0.0
-COPY --from=build /app/.next/standalone ./
-COPY --from=build /app/.next/static ./.next/static
-USER node
+FROM nginx:1.29-alpine
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 GATEWAY_URL=http://gateway:8000
+COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 3001
-CMD ["node", "server.js"]

@@ -1,0 +1,29 @@
+# Serves the built console and forwards /gw/* to the gateway (GATEWAY_URL), so the browser talks to one origin and the gateway
+# needs no CORS. The gateway is resolved per request (variable + resolver) because its address changes when it is recreated.
+server {
+  listen 3001;
+  server_name _;
+  root /usr/share/nginx/html;
+  client_max_body_size 2m;
+  resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
+
+  location /gw/ {
+    set $gateway "${GATEWAY_URL}";
+    rewrite ^/gw/(.*)$ /$1 break;
+    proxy_pass $gateway;
+    proxy_set_header Host $host;
+    proxy_pass_request_headers on;
+    proxy_http_version 1.1;
+    proxy_read_timeout 30s;
+  }
+
+  location /assets/ {
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    try_files $uri =404;
+  }
+
+  location / {
+    add_header Cache-Control "no-cache";
+    try_files $uri /index.html;
+  }
+}
