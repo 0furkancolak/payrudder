@@ -325,3 +325,82 @@ func TestRolePasswordsAreOverridable(t *testing.T) {
 	}
 	t.Fatal("no plans-svc secret")
 }
+
+// Provider webhooks and the operator endpoints for provider accounts reach payments-worker through the gateway only, and the two share a secret.
+func TestPaymentProvidersAreWiredThroughTheGateway(t *testing.T) {
+	docs := render(t, "quotify")
+	svc := find(docs, "Service", "payments-worker")
+	if svc == nil {
+		t.Fatal("payments-worker has no Service: the gateway cannot forward provider webhooks to it")
+	}
+	if ports, _ := svc.get("spec", "ports").([]any); len(ports) == 0 {
+		t.Fatal("payments-worker's Service has no port")
+	}
+	np := find(docs, "NetworkPolicy", "allow-payments-worker")
+	if np == nil {
+		t.Fatal("no policy allow-payments-worker")
+	}
+	rules, _ := np.get("spec", "ingress").([]any)
+	var from []string
+	for _, f := range rules[0].(map[string]any)["from"].([]any) {
+		from = append(from, obj(f.(map[string]any)).str("podSelector", "matchLabels", "app.kubernetes.io/name"))
+	}
+	if strings.Join(from, ",") != "gateway" {
+		t.Errorf("payments-worker accepts calls from %v, want only the gateway", from)
+	}
+	for _, callee := range []string{"allow-plans-svc", "allow-billing-svc"} {
+		p := find(docs, "NetworkPolicy", callee)
+		if p == nil {
+			t.Fatalf("no policy %s", callee)
+		}
+		var names []string
+		r, _ := p.get("spec", "ingress").([]any)
+		for _, f := range r[0].(map[string]any)["from"].([]any) {
+			names = append(names, obj(f.(map[string]any)).str("podSelector", "matchLabels", "app.kubernetes.io/name"))
+		}
+		if !strings.Contains(strings.Join(names, ","), "payments-worker") {
+			t.Errorf("%s does not accept payments-worker (%v): it reads subscriptions and invoices from them", callee, names)
+		}
+	}
+	secret := func(name string) map[string]any {
+		s := find(docs, "Secret", "x-"+name+"-env")
+		if s == nil {
+			t.Fatalf("no secret for %s", name)
+		}
+		m, _ := s.get("stringData").(map[string]any)
+		return m
+	}
+	worker, gateway := secret("payments-worker"), secret("gateway")
+	for _, k := range []string{"QUOTIFY_SECRETS_KEY", "PAYMENTS_INTERNAL_TOKEN"} {
+		if worker[k] == nil || worker[k] == "" {
+			t.Errorf("payments-worker's secret has no %s", k)
+		}
+	}
+	if gateway["QUOTIFY_PAYMENTS_INTERNAL_TOKEN"] == nil || gateway["QUOTIFY_PAYMENTS_INTERNAL_TOKEN"] != worker["PAYMENTS_INTERNAL_TOKEN"] {
+		t.Errorf("the gateway's token %v differs from payments-worker's %v", gateway["QUOTIFY_PAYMENTS_INTERNAL_TOKEN"], worker["PAYMENTS_INTERNAL_TOKEN"])
+	}
+	// The sealing key and the internal token are never plain environment of a container.
+	for _, c := range containers(docs) {
+		for k := range envOf(c) {
+			if k == "QUOTIFY_SECRETS_KEY" || k == "PAYMENTS_INTERNAL_TOKEN" || k == "QUOTIFY_PAYMENTS_INTERNAL_TOKEN" {
+				t.Errorf("%s is a plain environment variable of a container; it belongs in the Secret", k)
+			}
+		}
+	}
+	if got := envOf(findContainer(t, docs, "gateway"))["QUOTIFY_PAYMENTS_URL"]; got != "http://payments-worker:8095" {
+		t.Errorf("gateway forwards to %q", got)
+	}
+}
+
+func findContainer(t *testing.T, docs []obj, deployment string) obj {
+	t.Helper()
+	d := find(docs, "Deployment", deployment)
+	if d == nil {
+		t.Fatalf("no deployment %s", deployment)
+	}
+	cs, _ := d.get("spec", "template", "spec", "containers").([]any)
+	if len(cs) == 0 {
+		t.Fatalf("%s has no containers", deployment)
+	}
+	return obj(cs[0].(map[string]any))
+}

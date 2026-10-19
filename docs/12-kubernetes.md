@@ -49,7 +49,7 @@ The kind node maps the host ports 8000 (gateway), 8090 (mock-psp), 8025 (Mailpit
 - **Probes** are `/healthz` and `/readyz` on each service's metrics port (mock-psp serves `/healthz` on its API port). Pods run as the distroless
   `nonroot` user (65532), read-only root filesystem, no capabilities, with a `/tmp` emptyDir.
 - **NetworkPolicy**: a default-deny for ingress to Quotify's pods, then one policy per service naming its only callers (for example `ingest-svc:7002`
-  accepts the gateway and billing-svc; mock-psp accepts payments-worker). The gateway is the only service open to everyone, and the only NodePort besides mock-psp
+  accepts the gateway and billing-svc; mock-psp accepts payments-worker; payments-worker accepts only the gateway, which forwards provider webhooks and the operator endpoints for provider accounts to it). The gateway is the only service open to everyone, and the only NodePort besides mock-psp
   on kind. `make netpol-test` proves it on a running cluster: a pod with the gateway's labels connects, an unlabelled pod and a pod in another
   namespace do not. kindnet enforces policies; infrastructure pods are not restricted.
 - **HPA and PDB**: the gateway and ingest-svc scale on CPU (`values-kind.yaml`); every service with more than one replica gets a PodDisruptionBudget
@@ -74,3 +74,9 @@ The kind node maps the host ports 8000 (gateway), 8090 (mock-psp), 8025 (Mailpit
 - Highly available Postgres: one StatefulSet. CloudNativePG is the production path and is a replacement for the `postgres` component, not a change to the services.
 - The observability stack (collector, Tempo, Prometheus, Grafana) on kind. The services emit OTLP when `global.otlpEndpoint` is set; the compose `obs` profile is the supported setup.
 - Ingress and TLS, a service mesh, GitOps: next steps, deliberately out of scope.
+
+## Payment providers
+
+payments-worker is an `http` service in the chart (port 8095, only the gateway may call it) besides consuming RabbitMQ. It needs `payments.secretsKey` (32 bytes, base64, which seals tenants' provider credentials) and
+`payments.internalToken` (shared with the gateway): both are secret-backed settings, rendered into the services' Secrets like the other secrets and replaceable with `secrets.existingSecrets`. The chart's values are local
+defaults: generate your own (`openssl rand -base64 32`). It reaches plans-svc and billing-svc, whose policies accept it. Without a secrets key the worker starts with provider accounts and webhooks off.
