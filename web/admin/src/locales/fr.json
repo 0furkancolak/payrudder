@@ -1,8 +1,22 @@
 {
-  "meta": { "name": "Français", "dir": "ltr" },
-  "app": { "title": "Console opérateur Quotify", "language": "Langue" },
-  "nav": { "tenants": "Locataires", "playground": "Bac à sable", "deadLetters": "Lettres mortes", "signOut": "Se déconnecter" },
-  "common": { "loading": "Chargement…", "unknown": "?" },
+  "meta": {
+    "name": "Français",
+    "dir": "ltr"
+  },
+  "app": {
+    "title": "Console opérateur Quotify",
+    "language": "Langue"
+  },
+  "nav": {
+    "tenants": "Locataires",
+    "playground": "Bac à sable",
+    "deadLetters": "Lettres mortes",
+    "signOut": "Se déconnecter"
+  },
+  "common": {
+    "loading": "Chargement…",
+    "unknown": "?"
+  },
   "signIn": {
     "title": "Console opérateur",
     "intro": "Lit et agit uniquement via la passerelle. Le jeton reste dans cet onglet du navigateur (stockage de session).",
@@ -10,15 +24,75 @@
     "submit": "Se connecter"
   },
   "enums": {
-    "environment": { "sandbox": "sandbox", "live": "production" },
-    "tier": { "free": "gratuit", "standard": "standard", "enterprise": "entreprise" },
-    "invoiceStatus": { "draft": "brouillon", "open": "ouverte", "paid": "payée", "uncollectible": "irrécouvrable", "void": "annulée" },
-    "invoiceKind": { "REGULAR": "Normale", "CORRECTION": "Correction", "CREDIT_NOTE": "Avoir" }
+    "environment": {
+      "sandbox": "sandbox",
+      "live": "production"
+    },
+    "tier": {
+      "free": "gratuit",
+      "standard": "standard",
+      "enterprise": "entreprise"
+    },
+    "invoiceStatus": {
+      "draft": "brouillon",
+      "open": "ouverte",
+      "paid": "payée",
+      "uncollectible": "irrécouvrable",
+      "void": "annulée"
+    },
+    "invoiceKind": {
+      "REGULAR": "Normale",
+      "CORRECTION": "Correction",
+      "CREDIT_NOTE": "Avoir"
+    },
+    "subscriptionState": {
+      "trialing": "en essai",
+      "active": "actif",
+      "past_due": "en retard",
+      "paused": "suspendu",
+      "cancelled": "annulé"
+    },
+    "discrepancy": {
+      "paid_without_charge": "Payée, aucun débit au grand livre",
+      "amount_mismatch": "Montant différent",
+      "duplicate_charge": "Débitée plusieurs fois",
+      "charge_without_paid": "Débitée, facture non payée",
+      "conflicting_outcomes": "Succès et échec enregistrés"
+    },
+    "ledgerKind": {
+      "charge": "débit",
+      "refund": "remboursement",
+      "dispute": "litige",
+      "payout": "versement"
+    },
+    "ledgerStatus": {
+      "succeeded": "réussi",
+      "declined": "refusé",
+      "failed": "échoué",
+      "pending": "en attente"
+    },
+    "ledgerSource": {
+      "command": "Quotify",
+      "webhook": "notification du prestataire",
+      "reconciliation": "rapprochement"
+    },
+    "dunningState": {
+      "PAYMENT_DECLINED": "refusé, nouvelle tentative",
+      "PAYMENT_UNKNOWN": "issue inconnue",
+      "UNCOLLECTIBLE": "abandonné"
+    }
   },
   "tenants": {
     "title": "Locataires",
     "empty": "Aucun locataire pour l'instant.",
-    "columns": { "name": "Nom", "environment": "Environnement", "tier": "Niveau", "currency": "Devise", "timezone": "Fuseau horaire", "id": "Id" }
+    "columns": {
+      "name": "Nom",
+      "environment": "Environnement",
+      "tier": "Niveau",
+      "currency": "Devise",
+      "timezone": "Fuseau horaire",
+      "id": "Id"
+    }
   },
   "tenant": {
     "fallbackTitle": "Locataire",
@@ -26,7 +100,15 @@
     "invoices": "Factures",
     "noInvoices": "Aucune facture.",
     "draft": "(brouillon)",
-    "columns": { "number": "Numéro", "kind": "Type", "period": "Période", "customer": "Client", "total": "Total", "status": "Statut", "saga": "Saga" },
+    "columns": {
+      "number": "Numéro",
+      "kind": "Type",
+      "period": "Période",
+      "customer": "Client",
+      "total": "Total",
+      "status": "Statut",
+      "saga": "Saga"
+    },
     "jobs": {
       "title": "Tâches de rejeu et de retarification",
       "hint": "Retrouvez une tâche par son id (on les lance avec quotifyctl ou l'API d'administration).",
@@ -42,19 +124,40 @@
     "openPdf": "Ouvrir le PDF",
     "noPdfLink": "aucun lien",
     "lines": "Lignes",
-    "lineColumns": { "no": "N°", "kind": "Type", "description": "Description", "meter": "Compteur", "quantity": "Quantité", "amount": "Montant" },
+    "lineColumns": {
+      "no": "N°",
+      "kind": "Type",
+      "description": "Description",
+      "meter": "Compteur",
+      "quantity": "Quantité",
+      "amount": "Montant"
+    },
     "saga": "Chronologie de la saga",
-    "sagaColumns": { "seq": "Séq.", "from": "De", "to": "Vers", "cause": "Cause", "at": "Date" }
+    "sagaColumns": {
+      "seq": "Séq.",
+      "from": "De",
+      "to": "Vers",
+      "cause": "Cause",
+      "at": "Date"
+    }
   },
   "deadLetters": {
     "title": "Lettres mortes",
     "intro": "Files de lettres mortes RabbitMQ ({pattern}). Un message arrive ici après sa limite de livraisons ; le rejeu le renvoie avec le compteur de tentatives remis à zéro.",
-    "columns": { "queue": "File", "messages": "Messages" },
+    "columns": {
+      "queue": "File",
+      "messages": "Messages"
+    },
     "redrive": "Rejouer",
     "confirm": "Renvoyer {count} lettre(s) morte(s) de {queue} vers {queue} ? Leurs compteurs de tentatives sont remis à zéro.",
     "redriven": "{count} message(s) rejoué(s) depuis {queue}.dlq.",
     "messagesOf": "Messages de {queue}.dlq",
-    "messageColumns": { "id": "Id du message", "deliveries": "Livraisons", "reason": "Motif", "bytes": "Octets" }
+    "messageColumns": {
+      "id": "Id du message",
+      "deliveries": "Livraisons",
+      "reason": "Motif",
+      "bytes": "Octets"
+    }
   },
   "playground": {
     "title": "Bac à sable",
@@ -85,13 +188,22 @@
       "timeout_committed": "délai dépassé, débit effectué",
       "timeout_not_committed": "délai dépassé, débit non effectué"
     },
-    "usage": { "title": "3. Consommation", "calls": "Appels", "send": "Envoyer la consommation", "sent": "{n} appels envoyés" },
+    "usage": {
+      "title": "3. Consommation",
+      "calls": "Appels",
+      "send": "Envoyer la consommation",
+      "sent": "{n} appels envoyés"
+    },
     "close": {
       "title": "4. Clôturer la période",
       "button": "Clôturer la période maintenant",
       "hint": "La facturation s'exécute comme en fin de mois ; le sandbox ramène simplement l'échéance à maintenant."
     },
-    "invoice": { "title": "5. Facture", "waiting": "En attente du cycle de facturation (environ 40 secondes)…", "open": "Ouvrir" },
+    "invoice": {
+      "title": "5. Facture",
+      "waiting": "En attente du cycle de facturation (environ 40 secondes)…",
+      "open": "Ouvrir"
+    },
     "log": {
       "title": "Déjà fait",
       "account": "Compte créé",
@@ -104,6 +216,192 @@
       "outcome": "Résultat du paiement : {scenario}",
       "usage": "Consommation envoyée : {n} appels",
       "closed": "Période clôturée (sandbox) : la facturation s'exécute maintenant"
+    }
+  },
+  "billing": {
+    "tabs": {
+      "label": "Sections du locataire",
+      "overview": "Aperçu",
+      "customers": "Clients",
+      "packages": "Forfaits",
+      "subscriptions": "Abonnements",
+      "payments": "Paiements",
+      "providers": "Prestataires",
+      "reports": "Rapports"
+    },
+    "common": {
+      "remove": "Retirer"
+    },
+    "customers": {
+      "new": "Nouveau client",
+      "formLabel": "nouveau client",
+      "externalId": "Identifiant client",
+      "name": "Nom",
+      "email": "E-mail",
+      "country": "Pays",
+      "countryPlaceholder": "Pays (TR, DE…)",
+      "currency": "Devise de facturation",
+      "tenantCurrency": "Devise du locataire",
+      "create": "Créer le client",
+      "empty": "Aucun client pour l'instant."
+    },
+    "packages": {
+      "new": "Nouveau forfait",
+      "intro": "Publier un forfait existant ajoute une nouvelle version. Une version publiée ne change plus ; les abonnements gardent la version de leur début.",
+      "formLabel": "nouveau forfait",
+      "code": "Code",
+      "name": "Nom",
+      "fee": "Frais fixes par mois ({currency})",
+      "extraCurrency": "Devise des frais supplémentaires",
+      "extraFee": "Frais fixes {n}",
+      "addFee": "Ajouter des frais dans une autre devise",
+      "publish": "Publier la version",
+      "badAmount": "Ce n'est pas un montant en {currency} : des chiffres seulement, avec au plus les décimales de la devise.",
+      "version": "Version",
+      "fixedFee": "Frais fixes",
+      "otherFees": "Autres devises",
+      "meters": "Prix à l'usage",
+      "empty": "Aucun forfait pour l'instant."
+    },
+    "subscriptions": {
+      "new": "Nouvel abonnement",
+      "formLabel": "nouvel abonnement",
+      "customer": "Client",
+      "package": "Forfait",
+      "currency": "Devise",
+      "defaultCurrency": "Devise du client",
+      "trialDays": "Jours d'essai",
+      "provider": "Prestataire",
+      "byRules": "Selon les règles de routage",
+      "create": "Créer l'abonnement",
+      "state": "État",
+      "since": "Depuis",
+      "until": "Jusqu'au",
+      "endsWithPeriod": "se termine avec la période",
+      "runByProvider": "gérée par le prestataire",
+      "manage": "Gérer",
+      "empty": "Aucun abonnement pour l'instant.",
+      "managing": "Gérer {customer}",
+      "providerRuns": "{provider} gère cet abonnement : renouvellements et nouvelles tentatives lui reviennent. Modifiez-le chez lui ; vous pouvez le déplacer vers un autre prestataire ci-dessous.",
+      "pause": "Suspendre",
+      "resume": "Reprendre",
+      "cancelAtPeriodEnd": "Annuler à la fin de la période",
+      "withdrawCancel": "Conserver l'abonnement",
+      "endNow": "Terminer maintenant",
+      "confirmEnd": "Terminer cet abonnement maintenant ?",
+      "newPackage": "Passer au forfait",
+      "changePlan": "Changer de forfait",
+      "changePlanHint": "Le changement est immédiat. Les frais fixes du mois sont répartis entre les deux forfaits selon la durée de chacun.",
+      "moveTo": "Déplacer vers le prestataire",
+      "priceRef": "Prix chez le prestataire (pri_…)",
+      "move": "Déplacer",
+      "moveHint": "L'ancien abonnement ne se termine que lorsque le nouveau prend le relais : le client n'est jamais facturé par les deux.",
+      "checkoutReady": "Le client s'abonne ici ; le déplacement se termine à la confirmation du prestataire :",
+      "moved": "Déplacé : le nouvel abonnement prend le relais là où l'ancien se termine."
+    },
+    "payments": {
+      "reconcile": "Rapprocher avec le grand livre",
+      "reconcileHint": "Compare les factures que la facturation considère payées sur une période aux débits réussis signalés par les prestataires.",
+      "period": "Période (AAAA-MM)",
+      "run": "Rapprocher",
+      "reconcileResult": "résultat du rapprochement",
+      "summary": "{paid} facture(s) payée(s) et {charges} débit(s) réussi(s) dans le grand livre.",
+      "agree": "Les factures et le grand livre concordent.",
+      "kind": "Type",
+      "invoice": "Facture",
+      "provider": "Prestataire",
+      "billed": "Facturé",
+      "ledgerAmount": "Grand livre",
+      "detail": "Détail",
+      "truncated": "Seules les premières divergences sont listées ; les totaux ci-dessus sont complets.",
+      "ledger": "Grand livre des paiements",
+      "when": "Quand",
+      "status": "Statut",
+      "amount": "Montant",
+      "reference": "Référence",
+      "source": "Source",
+      "empty": "Rien dans le grand livre pour l'instant."
+    },
+    "providers": {
+      "accounts": "Comptes prestataires",
+      "accountsHint": "Les comptes du locataire chez les prestataires de paiement. Les identifiants sont scellés à l'enregistrement et ne sont plus affichés.",
+      "provider": "Prestataire",
+      "environment": "Environnement",
+      "default": "Par défaut",
+      "updated": "Mis à jour",
+      "noAccounts": "Aucun compte prestataire pour l'instant.",
+      "addAccount": "Ajouter ou remplacer un compte",
+      "makeDefault": "Les débits en production vont ici par défaut",
+      "settings": "Paramètres (JSON)",
+      "webhookHint": "Le prestataire envoie ses notifications à {path} sur l'adresse publique de la passerelle.",
+      "saveAccount": "Enregistrer le compte",
+      "badJson": "Les paramètres ne sont pas un JSON valide.",
+      "saved": "Enregistré.",
+      "confirmRemove": "Retirer le compte {provider} ({environment}) ?",
+      "routing": "Règles de routage",
+      "routingHint": "La première règle qui correspond au pays du client et à la devise de l'abonnement choisit le prestataire d'un nouvel abonnement. Aucune correspondance : le compte par défaut. Les abonnements existants restent où ils sont.",
+      "rule": "Règle {n}",
+      "country": "Pays de la règle {n}",
+      "anyCountry": "Tout pays",
+      "currency": "Devise de la règle {n}",
+      "anyCurrency": "Toute devise",
+      "ruleProvider": "Prestataire de la règle {n}",
+      "noRules": "Aucune règle : tout nouvel abonnement va au compte par défaut.",
+      "addRule": "Ajouter une règle",
+      "saveRules": "Enregistrer les règles",
+      "rulesSaved": "Règles enregistrées.",
+      "preview": "Où irait un client ?",
+      "previewCountry": "Pays",
+      "previewCurrency": "Devise",
+      "previewRun": "Aperçu",
+      "goesTo": "Va chez {provider} (règle {n}).",
+      "cannotCharge": "Ce prestataire ne peut pas débiter dans cette devise.",
+      "goesToDefault": "Aucune règle ne correspond : le compte par défaut.",
+      "runByProviders": "Abonnements gérés par les prestataires",
+      "reference": "Référence",
+      "nextBilled": "Prochaine facturation",
+      "noProviderSubscriptions": "Aucun abonnement n'est encore géré par un prestataire."
+    },
+    "reports": {
+      "kinds": "Rapports",
+      "revenue": "Chiffre d'affaires",
+      "subscriptions": "Abonnements",
+      "dunning": "Factures impayées",
+      "from": "De (AAAA-MM)",
+      "to": "À (AAAA-MM)",
+      "by": {
+        "period": "Période",
+        "provider": "Prestataire",
+        "country": "Pays"
+      },
+      "revenueHint": "Chaque devise a ses lignes : les montants en devises différentes ne sont jamais additionnés.",
+      "subscriptionsHint": "Compté au dernier instant du mois. Le revenu récurrent mensuel est la somme des frais fixes des abonnements actifs et en retard. Un changement de forfait ou de prestataire n'est ni une nouveauté ni une perte.",
+      "dunningHint": "Factures dont le paiement a été refusé et est retenté, dont l'issue est inconnue ou qui ont été abandonnées.",
+      "currency": "Devise",
+      "invoices": "Factures",
+      "billed": "Facturé",
+      "collected": "Encaissé",
+      "refunded": "Remboursé",
+      "outstanding": "En attente",
+      "uncollectible": "Irrécouvrable",
+      "month": "Mois (AAAA-MM)",
+      "active": "Actifs",
+      "trialing": "En essai",
+      "paused": "Suspendus",
+      "pastDue": "En retard",
+      "mrr": "Revenu récurrent mensuel",
+      "new": "Nouveaux",
+      "churned": "Perdus",
+      "invoice": "Facture",
+      "customer": "Client",
+      "period": "Période",
+      "provider": "Prestataire",
+      "total": "Total",
+      "state": "État",
+      "attempt": "Nouvelles tentatives",
+      "nextAttempt": "Prochaine tentative",
+      "empty": "Rien à signaler pour l'instant.",
+      "noDunning": "Aucune facture impayée."
     }
   }
 }

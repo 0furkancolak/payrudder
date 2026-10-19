@@ -148,6 +148,10 @@ jobs:
           npm run gen
           git diff --exit-code src/shared/api/schema.d.ts
       - run: npm run build
+      - name: Billing pages against a mocked gateway (Playwright)
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e:mock
 
   helm:
     name: helm charts (lint, kubeconform, render tests)

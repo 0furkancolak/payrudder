@@ -1,8 +1,22 @@
 {
-  "meta": { "name": "English", "dir": "ltr" },
-  "app": { "title": "Quotify operator console", "language": "Language" },
-  "nav": { "tenants": "Tenants", "playground": "Playground", "deadLetters": "Dead letters", "signOut": "Sign out" },
-  "common": { "loading": "Loading…", "unknown": "?" },
+  "meta": {
+    "name": "English",
+    "dir": "ltr"
+  },
+  "app": {
+    "title": "Quotify operator console",
+    "language": "Language"
+  },
+  "nav": {
+    "tenants": "Tenants",
+    "playground": "Playground",
+    "deadLetters": "Dead letters",
+    "signOut": "Sign out"
+  },
+  "common": {
+    "loading": "Loading…",
+    "unknown": "?"
+  },
   "signIn": {
     "title": "Operator console",
     "intro": "Reads and acts through the gateway only. The token stays in this browser tab (session storage).",
@@ -10,15 +24,75 @@
     "submit": "Sign in"
   },
   "enums": {
-    "environment": { "sandbox": "sandbox", "live": "live" },
-    "tier": { "free": "free", "standard": "standard", "enterprise": "enterprise" },
-    "invoiceStatus": { "draft": "draft", "open": "open", "paid": "paid", "uncollectible": "uncollectible", "void": "void" },
-    "invoiceKind": { "REGULAR": "Regular", "CORRECTION": "Correction", "CREDIT_NOTE": "Credit note" }
+    "environment": {
+      "sandbox": "sandbox",
+      "live": "live"
+    },
+    "tier": {
+      "free": "free",
+      "standard": "standard",
+      "enterprise": "enterprise"
+    },
+    "invoiceStatus": {
+      "draft": "draft",
+      "open": "open",
+      "paid": "paid",
+      "uncollectible": "uncollectible",
+      "void": "void"
+    },
+    "invoiceKind": {
+      "REGULAR": "Regular",
+      "CORRECTION": "Correction",
+      "CREDIT_NOTE": "Credit note"
+    },
+    "subscriptionState": {
+      "trialing": "trialing",
+      "active": "active",
+      "past_due": "past due",
+      "paused": "paused",
+      "cancelled": "cancelled"
+    },
+    "discrepancy": {
+      "paid_without_charge": "Paid, no charge in the ledger",
+      "amount_mismatch": "Amount differs",
+      "duplicate_charge": "Charged more than once",
+      "charge_without_paid": "Charged, invoice not paid",
+      "conflicting_outcomes": "Success and failure both recorded"
+    },
+    "ledgerKind": {
+      "charge": "charge",
+      "refund": "refund",
+      "dispute": "dispute",
+      "payout": "payout"
+    },
+    "ledgerStatus": {
+      "succeeded": "succeeded",
+      "declined": "declined",
+      "failed": "failed",
+      "pending": "pending"
+    },
+    "ledgerSource": {
+      "command": "Quotify",
+      "webhook": "provider notification",
+      "reconciliation": "reconciliation"
+    },
+    "dunningState": {
+      "PAYMENT_DECLINED": "declined, retrying",
+      "PAYMENT_UNKNOWN": "outcome unknown",
+      "UNCOLLECTIBLE": "given up"
+    }
   },
   "tenants": {
     "title": "Tenants",
     "empty": "No tenants yet.",
-    "columns": { "name": "Name", "environment": "Environment", "tier": "Tier", "currency": "Currency", "timezone": "Time zone", "id": "Id" }
+    "columns": {
+      "name": "Name",
+      "environment": "Environment",
+      "tier": "Tier",
+      "currency": "Currency",
+      "timezone": "Time zone",
+      "id": "Id"
+    }
   },
   "tenant": {
     "fallbackTitle": "Tenant",
@@ -26,7 +100,15 @@
     "invoices": "Invoices",
     "noInvoices": "No invoices.",
     "draft": "(draft)",
-    "columns": { "number": "Number", "kind": "Kind", "period": "Period", "customer": "Customer", "total": "Total", "status": "Status", "saga": "Saga" },
+    "columns": {
+      "number": "Number",
+      "kind": "Kind",
+      "period": "Period",
+      "customer": "Customer",
+      "total": "Total",
+      "status": "Status",
+      "saga": "Saga"
+    },
     "jobs": {
       "title": "Replay and re-rating jobs",
       "hint": "Look a job up by id (start them with quotifyctl or the admin API).",
@@ -42,19 +124,40 @@
     "openPdf": "Open PDF",
     "noPdfLink": "no link",
     "lines": "Lines",
-    "lineColumns": { "no": "#", "kind": "Kind", "description": "Description", "meter": "Meter", "quantity": "Quantity", "amount": "Amount" },
+    "lineColumns": {
+      "no": "#",
+      "kind": "Kind",
+      "description": "Description",
+      "meter": "Meter",
+      "quantity": "Quantity",
+      "amount": "Amount"
+    },
     "saga": "Saga timeline",
-    "sagaColumns": { "seq": "Seq", "from": "From", "to": "To", "cause": "Cause", "at": "At" }
+    "sagaColumns": {
+      "seq": "Seq",
+      "from": "From",
+      "to": "To",
+      "cause": "Cause",
+      "at": "At"
+    }
   },
   "deadLetters": {
     "title": "Dead letters",
     "intro": "RabbitMQ dead-letter queues ({pattern}). A message lands here after its delivery limit; redrive sends it back with the retry counter reset.",
-    "columns": { "queue": "Queue", "messages": "Messages" },
+    "columns": {
+      "queue": "Queue",
+      "messages": "Messages"
+    },
     "redrive": "Redrive",
     "confirm": "Move {count} dead letter(s) of {queue} back to {queue}? Their retry counters are reset.",
     "redriven": "Redriven {count} message(s) from {queue}.dlq.",
     "messagesOf": "Messages of {queue}.dlq",
-    "messageColumns": { "id": "Message id", "deliveries": "Deliveries", "reason": "Reason", "bytes": "Bytes" }
+    "messageColumns": {
+      "id": "Message id",
+      "deliveries": "Deliveries",
+      "reason": "Reason",
+      "bytes": "Bytes"
+    }
   },
   "playground": {
     "title": "Playground",
@@ -85,13 +188,22 @@
       "timeout_committed": "timeout, charge committed",
       "timeout_not_committed": "timeout, charge not committed"
     },
-    "usage": { "title": "3. Usage", "calls": "Calls", "send": "Send usage", "sent": "{n} calls sent" },
+    "usage": {
+      "title": "3. Usage",
+      "calls": "Calls",
+      "send": "Send usage",
+      "sent": "{n} calls sent"
+    },
     "close": {
       "title": "4. Close the period",
       "button": "Close period now",
       "hint": "Billing runs as at month end; the sandbox just moves the cutoff to now."
     },
-    "invoice": { "title": "5. Invoice", "waiting": "Waiting for the billing run (about 40 seconds)…", "open": "Open" },
+    "invoice": {
+      "title": "5. Invoice",
+      "waiting": "Waiting for the billing run (about 40 seconds)…",
+      "open": "Open"
+    },
     "log": {
       "title": "Done so far",
       "account": "Account created",
@@ -104,6 +216,192 @@
       "outcome": "Payment outcome: {scenario}",
       "usage": "Sent usage: {n} calls",
       "closed": "Period closed (sandbox): billing runs now"
+    }
+  },
+  "billing": {
+    "tabs": {
+      "label": "Tenant sections",
+      "overview": "Overview",
+      "customers": "Customers",
+      "packages": "Packages",
+      "subscriptions": "Subscriptions",
+      "payments": "Payments",
+      "providers": "Providers",
+      "reports": "Reports"
+    },
+    "common": {
+      "remove": "Remove"
+    },
+    "customers": {
+      "new": "New customer",
+      "formLabel": "new customer",
+      "externalId": "Customer id",
+      "name": "Name",
+      "email": "E-mail",
+      "country": "Country",
+      "countryPlaceholder": "Country (TR, DE…)",
+      "currency": "Billing currency",
+      "tenantCurrency": "Tenant's currency",
+      "create": "Create customer",
+      "empty": "No customers yet."
+    },
+    "packages": {
+      "new": "New package",
+      "intro": "Publishing a package that exists adds a new version. A version is fixed once published; subscriptions keep the version they started on.",
+      "formLabel": "new package",
+      "code": "Code",
+      "name": "Name",
+      "fee": "Fixed fee per month ({currency})",
+      "extraCurrency": "Currency of the extra fee",
+      "extraFee": "Fixed fee {n}",
+      "addFee": "Add a fee in another currency",
+      "publish": "Publish version",
+      "badAmount": "Not an amount in {currency}: digits only, with at most as many decimals as the currency has.",
+      "version": "Version",
+      "fixedFee": "Fixed fee",
+      "otherFees": "Other currencies",
+      "meters": "Usage prices",
+      "empty": "No packages yet."
+    },
+    "subscriptions": {
+      "new": "New subscription",
+      "formLabel": "new subscription",
+      "customer": "Customer",
+      "package": "Package",
+      "currency": "Currency",
+      "defaultCurrency": "Customer's currency",
+      "trialDays": "Trial days",
+      "provider": "Provider",
+      "byRules": "By the routing rules",
+      "create": "Create subscription",
+      "state": "State",
+      "since": "Since",
+      "until": "Until",
+      "endsWithPeriod": "ends with the period",
+      "runByProvider": "run by provider",
+      "manage": "Manage",
+      "empty": "No subscriptions yet.",
+      "managing": "Manage {customer}",
+      "providerRuns": "{provider} runs this subscription: renewals and retries are its. Change it there; it can be moved to another provider below.",
+      "pause": "Pause",
+      "resume": "Resume",
+      "cancelAtPeriodEnd": "Cancel at period end",
+      "withdrawCancel": "Keep the subscription",
+      "endNow": "End now",
+      "confirmEnd": "End this subscription now?",
+      "newPackage": "Change to package",
+      "changePlan": "Change package",
+      "changePlanHint": "The change takes effect now. This month's fixed fee is split between the two packages by the time on each.",
+      "moveTo": "Move to provider",
+      "priceRef": "Price at the provider (pri_…)",
+      "move": "Move",
+      "moveHint": "The old subscription ends only when the new one takes over, so the customer is never billed by both.",
+      "checkoutReady": "The customer subscribes here; the move completes when the provider confirms:",
+      "moved": "Moved: the new subscription takes over where the old one ends."
+    },
+    "payments": {
+      "reconcile": "Reconcile with the ledger",
+      "reconcileHint": "Compares the invoices billing calls paid in a period with the successful charges the providers reported.",
+      "period": "Period (YYYY-MM)",
+      "run": "Reconcile",
+      "reconcileResult": "reconciliation result",
+      "summary": "{paid} paid invoice(s) and {charges} successful charge(s) in the ledger.",
+      "agree": "The invoices and the ledger agree.",
+      "kind": "Kind",
+      "invoice": "Invoice",
+      "provider": "Provider",
+      "billed": "Billed",
+      "ledgerAmount": "Ledger",
+      "detail": "Detail",
+      "truncated": "Only the first discrepancies are listed; the counts above are complete.",
+      "ledger": "Payment ledger",
+      "when": "When",
+      "status": "Status",
+      "amount": "Amount",
+      "reference": "Reference",
+      "source": "Source",
+      "empty": "Nothing in the ledger yet."
+    },
+    "providers": {
+      "accounts": "Provider accounts",
+      "accountsHint": "The tenant's own accounts at payment providers. Credentials are sealed when saved and never shown again.",
+      "provider": "Provider",
+      "environment": "Environment",
+      "default": "Default",
+      "updated": "Updated",
+      "noAccounts": "No provider accounts yet.",
+      "addAccount": "Add or replace an account",
+      "makeDefault": "Live charges go here by default",
+      "settings": "Settings (JSON)",
+      "webhookHint": "The provider sends its notifications to {path} on the gateway's public address.",
+      "saveAccount": "Save account",
+      "badJson": "The settings are not valid JSON.",
+      "saved": "Saved.",
+      "confirmRemove": "Remove the {provider} account ({environment})?",
+      "routing": "Routing rules",
+      "routingHint": "The first rule that matches a customer's country and the subscription's currency chooses the provider of a new subscription. No match: the default account. Existing subscriptions stay where they are.",
+      "rule": "Rule {n}",
+      "country": "Country of rule {n}",
+      "anyCountry": "Any country",
+      "currency": "Currency of rule {n}",
+      "anyCurrency": "Any currency",
+      "ruleProvider": "Provider of rule {n}",
+      "noRules": "No rules: every new subscription goes to the default account.",
+      "addRule": "Add a rule",
+      "saveRules": "Save rules",
+      "rulesSaved": "Rules saved.",
+      "preview": "Where would a customer go?",
+      "previewCountry": "Country",
+      "previewCurrency": "Currency",
+      "previewRun": "Preview",
+      "goesTo": "Goes to {provider} (rule {n}).",
+      "cannotCharge": "That provider cannot charge in this currency.",
+      "goesToDefault": "No rule matches: the default account.",
+      "runByProviders": "Subscriptions the providers run",
+      "reference": "Reference",
+      "nextBilled": "Next billed",
+      "noProviderSubscriptions": "No subscription is run by a provider yet."
+    },
+    "reports": {
+      "kinds": "Reports",
+      "revenue": "Revenue",
+      "subscriptions": "Subscriptions",
+      "dunning": "Unpaid invoices",
+      "from": "From (YYYY-MM)",
+      "to": "To (YYYY-MM)",
+      "by": {
+        "period": "Period",
+        "provider": "Provider",
+        "country": "Country"
+      },
+      "revenueHint": "Each currency has its own rows: amounts in different currencies are never added together.",
+      "subscriptionsHint": "Counted at the last instant of the month. Monthly recurring revenue is the fixed fees of active and past due subscriptions. A plan change or a provider move is neither new nor churn.",
+      "dunningHint": "Invoices whose payment was declined and is being retried, whose outcome is unknown, or that were given up.",
+      "currency": "Currency",
+      "invoices": "Invoices",
+      "billed": "Billed",
+      "collected": "Collected",
+      "refunded": "Refunded",
+      "outstanding": "Outstanding",
+      "uncollectible": "Uncollectible",
+      "month": "Month (YYYY-MM)",
+      "active": "Active",
+      "trialing": "Trialing",
+      "paused": "Paused",
+      "pastDue": "Past due",
+      "mrr": "Monthly recurring revenue",
+      "new": "New",
+      "churned": "Churned",
+      "invoice": "Invoice",
+      "customer": "Customer",
+      "period": "Period",
+      "provider": "Provider",
+      "total": "Total",
+      "state": "State",
+      "attempt": "Retries",
+      "nextAttempt": "Next attempt",
+      "empty": "Nothing to report yet.",
+      "noDunning": "No unpaid invoices."
     }
   }
 }

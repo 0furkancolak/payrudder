@@ -1,12 +1,26 @@
 import { createRoute, type AnyRoute } from "@tanstack/vue-router";
+import { customerRoutes } from "@/features/customers/routes";
 import InvoicePage from "@/features/invoices/InvoicePage.vue";
-import TenantPage from "./TenantPage.vue";
+import { packageRoutes } from "@/features/packages/routes";
+import { paymentRoutes } from "@/features/payments/routes";
+import { providerRoutes } from "@/features/providers/routes";
+import { reportRoutes } from "@/features/reports/routes";
+import { subscriptionRoutes } from "@/features/subscriptions/routes";
+import TenantLayout from "./TenantLayout.vue";
+import TenantOverview from "./TenantOverview.vue";
 import TenantsPage from "./TenantsPage.vue";
 
-/** The tenant routes, mounted under the signed-in layout. The invoice page lives under its tenant, so its route is declared here too. */
+/**
+ * The tenant routes, mounted under the signed-in layout. A tenant is a layout (its header and tabs) with a page per tab; the invoice page lives
+ * under it too, so its route is declared here. The billing tabs are features of their own and contribute their routes.
+ */
 export function tenantRoutes(parent: AnyRoute) {
   const list = createRoute({ getParentRoute: () => parent, path: "/tenants", component: TenantsPage });
-  const detail = createRoute({ getParentRoute: () => parent, path: "/tenants/$id", component: TenantPage });
-  const invoice = createRoute({ getParentRoute: () => parent, path: "/tenants/$id/invoices/$invoiceId", component: InvoicePage });
-  return [list, detail, invoice];
+  const tenant = createRoute({ getParentRoute: () => parent, path: "/tenants/$id", component: TenantLayout });
+  const overview = createRoute({ getParentRoute: () => tenant, path: "/", component: TenantOverview });
+  const invoice = createRoute({ getParentRoute: () => tenant, path: "invoices/$invoiceId", component: InvoicePage });
+  return [
+    list,
+    tenant.addChildren([overview, invoice, ...customerRoutes(tenant), ...packageRoutes(tenant), ...subscriptionRoutes(tenant), ...paymentRoutes(tenant), ...providerRoutes(tenant), ...reportRoutes(tenant)]),
+  ];
 }

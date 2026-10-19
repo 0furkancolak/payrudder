@@ -1,8 +1,22 @@
 {
-  "meta": { "name": "العربية", "dir": "rtl" },
-  "app": { "title": "وحدة تحكم مشغّل Quotify", "language": "اللغة" },
-  "nav": { "tenants": "المستأجرون", "playground": "ساحة التجربة", "deadLetters": "الرسائل الميتة", "signOut": "تسجيل الخروج" },
-  "common": { "loading": "جارٍ التحميل…", "unknown": "؟" },
+  "meta": {
+    "name": "العربية",
+    "dir": "rtl"
+  },
+  "app": {
+    "title": "وحدة تحكم مشغّل Quotify",
+    "language": "اللغة"
+  },
+  "nav": {
+    "tenants": "المستأجرون",
+    "playground": "ساحة التجربة",
+    "deadLetters": "الرسائل الميتة",
+    "signOut": "تسجيل الخروج"
+  },
+  "common": {
+    "loading": "جارٍ التحميل…",
+    "unknown": "؟"
+  },
   "signIn": {
     "title": "وحدة تحكم المشغّل",
     "intro": "تقرأ وتعمل عبر البوابة فقط. يبقى الرمز في علامة تبويب المتصفح هذه (تخزين الجلسة).",
@@ -10,15 +24,75 @@
     "submit": "تسجيل الدخول"
   },
   "enums": {
-    "environment": { "sandbox": "بيئة تجريبية", "live": "إنتاج" },
-    "tier": { "free": "مجاني", "standard": "قياسي", "enterprise": "مؤسسي" },
-    "invoiceStatus": { "draft": "مسودة", "open": "مفتوحة", "paid": "مدفوعة", "uncollectible": "غير قابلة للتحصيل", "void": "ملغاة" },
-    "invoiceKind": { "REGULAR": "عادية", "CORRECTION": "تصحيح", "CREDIT_NOTE": "إشعار دائن" }
+    "environment": {
+      "sandbox": "بيئة تجريبية",
+      "live": "إنتاج"
+    },
+    "tier": {
+      "free": "مجاني",
+      "standard": "قياسي",
+      "enterprise": "مؤسسي"
+    },
+    "invoiceStatus": {
+      "draft": "مسودة",
+      "open": "مفتوحة",
+      "paid": "مدفوعة",
+      "uncollectible": "غير قابلة للتحصيل",
+      "void": "ملغاة"
+    },
+    "invoiceKind": {
+      "REGULAR": "عادية",
+      "CORRECTION": "تصحيح",
+      "CREDIT_NOTE": "إشعار دائن"
+    },
+    "subscriptionState": {
+      "trialing": "تجريبي",
+      "active": "نشط",
+      "past_due": "متأخر",
+      "paused": "موقوف مؤقتًا",
+      "cancelled": "ملغى"
+    },
+    "discrepancy": {
+      "paid_without_charge": "مدفوعة بلا تحصيل في الدفتر",
+      "amount_mismatch": "المبلغ مختلف",
+      "duplicate_charge": "حُصّلت أكثر من مرة",
+      "charge_without_paid": "حُصّلت والفاتورة غير مدفوعة",
+      "conflicting_outcomes": "نجاح وفشل مسجّلان معًا"
+    },
+    "ledgerKind": {
+      "charge": "تحصيل",
+      "refund": "استرداد",
+      "dispute": "نزاع",
+      "payout": "تحويل"
+    },
+    "ledgerStatus": {
+      "succeeded": "نجح",
+      "declined": "رُفض",
+      "failed": "فشل",
+      "pending": "قيد الانتظار"
+    },
+    "ledgerSource": {
+      "command": "Quotify",
+      "webhook": "إشعار المزوّد",
+      "reconciliation": "مطابقة"
+    },
+    "dunningState": {
+      "PAYMENT_DECLINED": "مرفوض، تُعاد المحاولة",
+      "PAYMENT_UNKNOWN": "النتيجة مجهولة",
+      "UNCOLLECTIBLE": "تم التخلي"
+    }
   },
   "tenants": {
     "title": "المستأجرون",
     "empty": "لا يوجد مستأجرون بعد.",
-    "columns": { "name": "الاسم", "environment": "البيئة", "tier": "المستوى", "currency": "العملة", "timezone": "المنطقة الزمنية", "id": "المعرّف" }
+    "columns": {
+      "name": "الاسم",
+      "environment": "البيئة",
+      "tier": "المستوى",
+      "currency": "العملة",
+      "timezone": "المنطقة الزمنية",
+      "id": "المعرّف"
+    }
   },
   "tenant": {
     "fallbackTitle": "المستأجر",
@@ -26,7 +100,15 @@
     "invoices": "الفواتير",
     "noInvoices": "لا توجد فواتير.",
     "draft": "(مسودة)",
-    "columns": { "number": "الرقم", "kind": "النوع", "period": "الفترة", "customer": "العميل", "total": "الإجمالي", "status": "الحالة", "saga": "السرد" },
+    "columns": {
+      "number": "الرقم",
+      "kind": "النوع",
+      "period": "الفترة",
+      "customer": "العميل",
+      "total": "الإجمالي",
+      "status": "الحالة",
+      "saga": "السرد"
+    },
     "jobs": {
       "title": "مهام إعادة التشغيل وإعادة التسعير",
       "hint": "ابحث عن مهمة بمعرّفها (تبدأ المهام بأداة quotifyctl أو واجهة الإدارة).",
@@ -42,19 +124,40 @@
     "openPdf": "فتح ملف PDF",
     "noPdfLink": "لا يوجد رابط",
     "lines": "البنود",
-    "lineColumns": { "no": "#", "kind": "النوع", "description": "الوصف", "meter": "العدّاد", "quantity": "الكمية", "amount": "المبلغ" },
+    "lineColumns": {
+      "no": "#",
+      "kind": "النوع",
+      "description": "الوصف",
+      "meter": "العدّاد",
+      "quantity": "الكمية",
+      "amount": "المبلغ"
+    },
     "saga": "الخط الزمني للسرد",
-    "sagaColumns": { "seq": "التسلسل", "from": "من", "to": "إلى", "cause": "السبب", "at": "الوقت" }
+    "sagaColumns": {
+      "seq": "التسلسل",
+      "from": "من",
+      "to": "إلى",
+      "cause": "السبب",
+      "at": "الوقت"
+    }
   },
   "deadLetters": {
     "title": "الرسائل الميتة",
     "intro": "طوابير الرسائل الميتة في RabbitMQ ({pattern}). تصل الرسالة إلى هنا بعد بلوغ حد التسليم؛ وإعادة الإرسال تعيدها مع تصفير عدّاد المحاولات.",
-    "columns": { "queue": "الطابور", "messages": "الرسائل" },
+    "columns": {
+      "queue": "الطابور",
+      "messages": "الرسائل"
+    },
     "redrive": "إعادة الإرسال",
     "confirm": "نقل {count} من الرسائل الميتة من {queue} إلى {queue}؟ ستُصفَّر عدّادات المحاولات.",
     "redriven": "أُعيد إرسال {count} من الرسائل من {queue}.dlq.",
     "messagesOf": "رسائل {queue}.dlq",
-    "messageColumns": { "id": "معرّف الرسالة", "deliveries": "مرات التسليم", "reason": "السبب", "bytes": "البايتات" }
+    "messageColumns": {
+      "id": "معرّف الرسالة",
+      "deliveries": "مرات التسليم",
+      "reason": "السبب",
+      "bytes": "البايتات"
+    }
   },
   "playground": {
     "title": "ساحة التجربة",
@@ -85,13 +188,22 @@
       "timeout_committed": "انتهت المهلة، تمّ الخصم",
       "timeout_not_committed": "انتهت المهلة، لم يتمّ الخصم"
     },
-    "usage": { "title": "٣. الاستهلاك", "calls": "الاستدعاءات", "send": "إرسال الاستهلاك", "sent": "أُرسل {n} استدعاء" },
+    "usage": {
+      "title": "٣. الاستهلاك",
+      "calls": "الاستدعاءات",
+      "send": "إرسال الاستهلاك",
+      "sent": "أُرسل {n} استدعاء"
+    },
     "close": {
       "title": "٤. إغلاق الفترة",
       "button": "أغلق الفترة الآن",
       "hint": "تعمل الفوترة كما في نهاية الشهر؛ والبيئة التجريبية تنقل موعد الإغلاق إلى الآن فقط."
     },
-    "invoice": { "title": "٥. الفاتورة", "waiting": "في انتظار دورة الفوترة (نحو 40 ثانية)…", "open": "فتح" },
+    "invoice": {
+      "title": "٥. الفاتورة",
+      "waiting": "في انتظار دورة الفوترة (نحو 40 ثانية)…",
+      "open": "فتح"
+    },
     "log": {
       "title": "ما تمّ حتى الآن",
       "account": "أُنشئ الحساب",
@@ -104,6 +216,192 @@
       "outcome": "نتيجة الدفع: {scenario}",
       "usage": "أُرسل الاستهلاك: {n} استدعاء",
       "closed": "أُغلقت الفترة (بيئة تجريبية): تعمل الفوترة الآن"
+    }
+  },
+  "billing": {
+    "tabs": {
+      "label": "أقسام المستأجر",
+      "overview": "نظرة عامة",
+      "customers": "العملاء",
+      "packages": "الباقات",
+      "subscriptions": "الاشتراكات",
+      "payments": "المدفوعات",
+      "providers": "مزوّدو الدفع",
+      "reports": "التقارير"
+    },
+    "common": {
+      "remove": "إزالة"
+    },
+    "customers": {
+      "new": "عميل جديد",
+      "formLabel": "عميل جديد",
+      "externalId": "معرّف العميل",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "country": "الدولة",
+      "countryPlaceholder": "الدولة (TR، DE…)",
+      "currency": "عملة الفوترة",
+      "tenantCurrency": "عملة المستأجر",
+      "create": "إنشاء العميل",
+      "empty": "لا يوجد عملاء بعد."
+    },
+    "packages": {
+      "new": "باقة جديدة",
+      "intro": "نشر باقة موجودة يضيف إصدارًا جديدًا. الإصدار المنشور لا يتغيّر، وتبقى الاشتراكات على الإصدار الذي بدأت به.",
+      "formLabel": "باقة جديدة",
+      "code": "الرمز",
+      "name": "الاسم",
+      "fee": "الرسم الثابت شهريًا ({currency})",
+      "extraCurrency": "عملة الرسم الإضافي",
+      "extraFee": "الرسم الثابت {n}",
+      "addFee": "إضافة رسم بعملة أخرى",
+      "publish": "نشر الإصدار",
+      "badAmount": "ليس مبلغًا بعملة {currency}: أرقام فقط وبعدد منازل عشرية لا يتجاوز ما تسمح به العملة.",
+      "version": "الإصدار",
+      "fixedFee": "الرسم الثابت",
+      "otherFees": "عملات أخرى",
+      "meters": "أسعار الاستخدام",
+      "empty": "لا توجد باقات بعد."
+    },
+    "subscriptions": {
+      "new": "اشتراك جديد",
+      "formLabel": "اشتراك جديد",
+      "customer": "العميل",
+      "package": "الباقة",
+      "currency": "العملة",
+      "defaultCurrency": "عملة العميل",
+      "trialDays": "أيام التجربة",
+      "provider": "المزوّد",
+      "byRules": "حسب قواعد التوجيه",
+      "create": "إنشاء الاشتراك",
+      "state": "الحالة",
+      "since": "منذ",
+      "until": "حتى",
+      "endsWithPeriod": "ينتهي مع الفترة",
+      "runByProvider": "يديره المزوّد",
+      "manage": "إدارة",
+      "empty": "لا توجد اشتراكات بعد.",
+      "managing": "إدارة {customer}",
+      "providerRuns": "يدير {provider} هذا الاشتراك: التجديدات وإعادة المحاولات من شأنه. عدّله هناك؛ ويمكن نقله إلى مزوّد آخر أدناه.",
+      "pause": "إيقاف مؤقت",
+      "resume": "استئناف",
+      "cancelAtPeriodEnd": "إلغاء في نهاية الفترة",
+      "withdrawCancel": "الإبقاء على الاشتراك",
+      "endNow": "إنهاء الآن",
+      "confirmEnd": "هل تريد إنهاء هذا الاشتراك الآن؟",
+      "newPackage": "التغيير إلى الباقة",
+      "changePlan": "تغيير الباقة",
+      "changePlanHint": "يسري التغيير فورًا. يُقسَّم الرسم الثابت لهذا الشهر بين الباقتين بحسب المدة في كلٍّ منهما.",
+      "moveTo": "النقل إلى مزوّد",
+      "priceRef": "السعر لدى المزوّد (pri_…)",
+      "move": "نقل",
+      "moveHint": "ينتهي الاشتراك القديم فقط عندما يتسلّم الجديد، فلا يُفوتَر العميل من الاثنين معًا.",
+      "checkoutReady": "يشترك العميل هنا، وتكتمل عملية النقل عندما يؤكد المزوّد:",
+      "moved": "تم النقل: يتسلّم الاشتراك الجديد من حيث ينتهي القديم."
+    },
+    "payments": {
+      "reconcile": "المطابقة مع دفتر الأستاذ",
+      "reconcileHint": "تقارن الفواتير التي تعدّها الفوترة مدفوعة في فترة ما بالمبالغ المحصّلة بنجاح التي أبلغ عنها المزوّدون.",
+      "period": "الفترة (YYYY-MM)",
+      "run": "مطابقة",
+      "reconcileResult": "نتيجة المطابقة",
+      "summary": "{paid} فاتورة مدفوعة و{charges} عملية تحصيل ناجحة في الدفتر.",
+      "agree": "الفواتير والدفتر متطابقان.",
+      "kind": "النوع",
+      "invoice": "الفاتورة",
+      "provider": "المزوّد",
+      "billed": "المفوتر",
+      "ledgerAmount": "الدفتر",
+      "detail": "التفاصيل",
+      "truncated": "تُعرض أول الفروقات فقط؛ والأعداد أعلاه كاملة.",
+      "ledger": "دفتر المدفوعات",
+      "when": "الوقت",
+      "status": "الحالة",
+      "amount": "المبلغ",
+      "reference": "المرجع",
+      "source": "المصدر",
+      "empty": "لا شيء في الدفتر بعد."
+    },
+    "providers": {
+      "accounts": "حسابات المزوّدين",
+      "accountsHint": "حسابات المستأجر الخاصة لدى مزوّدي الدفع. تُختم بيانات الاعتماد عند الحفظ ولا تُعرض مجددًا.",
+      "provider": "المزوّد",
+      "environment": "البيئة",
+      "default": "الافتراضي",
+      "updated": "آخر تحديث",
+      "noAccounts": "لا توجد حسابات مزوّدين بعد.",
+      "addAccount": "إضافة حساب أو استبداله",
+      "makeDefault": "تذهب عمليات التحصيل الحيّة إلى هنا افتراضيًا",
+      "settings": "الإعدادات (JSON)",
+      "webhookHint": "يرسل المزوّد إشعاراته إلى {path} على العنوان العام للبوابة.",
+      "saveAccount": "حفظ الحساب",
+      "badJson": "الإعدادات ليست JSON صالحًا.",
+      "saved": "تم الحفظ.",
+      "confirmRemove": "هل تريد إزالة حساب {provider} ({environment})؟",
+      "routing": "قواعد التوجيه",
+      "routingHint": "أول قاعدة تطابق دولة العميل وعملة الاشتراك تختار مزوّد الاشتراك الجديد. وإن لم توجد مطابقة فالحساب الافتراضي. تبقى الاشتراكات الحالية حيث هي.",
+      "rule": "القاعدة {n}",
+      "country": "دولة القاعدة {n}",
+      "anyCountry": "أي دولة",
+      "currency": "عملة القاعدة {n}",
+      "anyCurrency": "أي عملة",
+      "ruleProvider": "مزوّد القاعدة {n}",
+      "noRules": "لا قواعد: كل اشتراك جديد يذهب إلى الحساب الافتراضي.",
+      "addRule": "إضافة قاعدة",
+      "saveRules": "حفظ القواعد",
+      "rulesSaved": "تم حفظ القواعد.",
+      "preview": "إلى أين سيذهب العميل؟",
+      "previewCountry": "الدولة",
+      "previewCurrency": "العملة",
+      "previewRun": "معاينة",
+      "goesTo": "يذهب إلى {provider} (القاعدة {n}).",
+      "cannotCharge": "لا يستطيع هذا المزوّد التحصيل بهذه العملة.",
+      "goesToDefault": "لا قاعدة تطابق: الحساب الافتراضي.",
+      "runByProviders": "اشتراكات يديرها المزوّدون",
+      "reference": "المرجع",
+      "nextBilled": "الفوترة التالية",
+      "noProviderSubscriptions": "لا يوجد اشتراك يديره مزوّد بعد."
+    },
+    "reports": {
+      "kinds": "التقارير",
+      "revenue": "الإيرادات",
+      "subscriptions": "الاشتراكات",
+      "dunning": "الفواتير غير المسددة",
+      "from": "من (YYYY-MM)",
+      "to": "إلى (YYYY-MM)",
+      "by": {
+        "period": "الفترة",
+        "provider": "المزوّد",
+        "country": "الدولة"
+      },
+      "revenueHint": "لكل عملة صفوفها: لا تُجمع المبالغ بعملات مختلفة أبدًا.",
+      "subscriptionsHint": "يُحتسب عند آخر لحظة من الشهر. الإيراد الشهري المتكرر هو الرسوم الثابتة للاشتراكات النشطة والمتأخرة. تغيير الباقة أو المزوّد ليس اشتراكًا جديدًا ولا فقدانًا.",
+      "dunningHint": "فواتير رُفض دفعها وتُعاد محاولته، أو نتيجتها مجهولة، أو جرى التخلي عنها.",
+      "currency": "العملة",
+      "invoices": "الفواتير",
+      "billed": "المفوتر",
+      "collected": "المحصّل",
+      "refunded": "المسترد",
+      "outstanding": "المستحق",
+      "uncollectible": "غير قابل للتحصيل",
+      "month": "الشهر (YYYY-MM)",
+      "active": "نشط",
+      "trialing": "تجريبي",
+      "paused": "موقوف مؤقتًا",
+      "pastDue": "متأخر",
+      "mrr": "الإيراد الشهري المتكرر",
+      "new": "جديد",
+      "churned": "مفقود",
+      "invoice": "الفاتورة",
+      "customer": "العميل",
+      "period": "الفترة",
+      "provider": "المزوّد",
+      "total": "الإجمالي",
+      "state": "الحالة",
+      "attempt": "المحاولات",
+      "nextAttempt": "المحاولة التالية",
+      "empty": "لا شيء للإبلاغ عنه بعد.",
+      "noDunning": "لا توجد فواتير غير مسددة."
     }
   }
 }

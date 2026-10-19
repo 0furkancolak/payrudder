@@ -8,7 +8,13 @@ offers the two actions an operator needs most, redriving dead letters and readin
 |---|---|
 | Sign-in | The operator token (`QUOTIFY_OPERATOR_TOKEN`), kept in the tab's session storage. It is checked by asking the gateway for the tenant list. |
 | Tenants | Every tenant: environment, tier, currency, time zone. |
-| Tenant | Its invoices (kind, period, total, status, saga state), and a lookup for replay and re-rating jobs by id. |
+| Tenant | A header and seven tabs. **Overview**: its invoices (kind, period, total, status, saga state) and a lookup for replay and re-rating jobs by id. The other tabs are the billing pages below. |
+| Customers | List and create (customer id, name, e-mail, country, billing currency). |
+| Packages | Packages with their latest version's fixed fee and fees in other currencies; publish a version (amounts typed in major units, sent as minor units; a package that exists gets a new version). |
+| Subscriptions | List, create (customer, package, currency, trial days, provider or "by the routing rules"), and a panel to pause, resume, cancel at the period end, end now, change package and **move to another payment provider**. A subscription a provider runs is only moved. |
+| Payments | The payment ledger across providers, and a **reconciliation** of a period's paid invoices against it. |
+| Providers | The tenant's provider accounts (credentials are sealed and never shown again), the **routing rules** with a preview, and the subscriptions the providers run. |
+| Reports | Revenue by period, provider and country; subscriptions and monthly recurring revenue; unpaid invoices. A row per currency, never one total. |
 | Invoice | Lines, a link to the PDF (presigned for five minutes) and the **saga timeline**: every transition with its cause and time, from `saga_events`. |
 | Playground | The guided sandbox walk-through described below. |
 | Dead letters | The depth of every RabbitMQ `*.dlq`, a peek at one queue's messages, and **Redrive** (with a confirmation) which moves them back with the retry counter reset. |
@@ -26,10 +32,18 @@ preselected), create a meter, a plan with a base fee and a per-call price, a cus
 invoice go through its saga (with a link to the full timeline). It calls the same public API a customer would, with the sandbox tenant's own `qk_test_` key, so it exercises the real system end
 to end; it never touches a live tenant. A declined payment leaves the invoice open in `PAYMENT_DECLINED` while dunning retries it. Playwright runs both the paid and the declined path.
 
+## The billing tabs
+
+They show a tenant's data through the tenant API the tenant itself uses, with the operator's token plus `X-Quotify-Tenant: <tenant id>` ("act as", gateway `authenticate`): the
+same endpoints, rate limits and validation, no operator-only copy. Provider accounts, the ledger, the reconciliation and provider moves are operator routes and go as the operator.
+The pages are the features `customers`, `packages`, `subscriptions`, `payments`, `providers` and `reports`; the tenant layout (`features/tenants`) hosts them as child routes.
+Their tests (`e2e-mock/`, `npm run e2e:mock`) run the built console against a **mocked gateway** (every `/gw` request is answered by the test), so they need no stack and run in the console's CI
+job; `e2e/` still drives the real stack.
+
 ## How it is built
 
 - **Feature-based layout.** `src/features/<feature>` owns everything about one part of the product: its pages (`*.vue`), its TanStack Query hooks (`api.ts`), its route
-  declarations (`routes.ts`) and a small public `index.ts`. The features are `auth`, `tenants`, `invoices`, `dead-letters` and `playground`; `src/app` only composes them (router, query client,
+  declarations (`routes.ts`) and a small public `index.ts`. The features are `auth`, `tenants`, `invoices`, `dead-letters`, `playground`, `customers`, `packages`, `subscriptions`, `payments`, `providers` and `reports`; `src/app` only composes them (router, query client,
   i18n, layout) and `src/shared` holds what several features need (the API client, the session token, money and label helpers). A feature imports another only through its `index.ts`
   (the tenant page shows `invoices`' table).
 - **TanStack Router** (`@tanstack/vue-router`, code-based routes). Every feature exports a function that creates its routes under a parent; the app mounts all but the sign-in page under one

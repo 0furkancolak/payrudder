@@ -14,10 +14,37 @@ api.use({
   },
 });
 
+const asTenantClients = new Map<string, ReturnType<typeof createClient<paths>>>();
+
+/**
+ * A client that speaks the tenant API for one tenant while signed in as the operator: the operator token plus the tenant to act as. The console shows a
+ * tenant's customers, packages and reports through the same endpoints the tenant itself uses.
+ */
+export function tenantApi(tenantId: string) {
+  let client = asTenantClients.get(tenantId);
+  if (!client) {
+    client = createClient<paths>({ baseUrl: "/gw" });
+    client.use({
+      onRequest({ request }) {
+        const token = currentToken();
+        if (token) request.headers.set("Authorization", `Bearer ${token}`);
+        request.headers.set("X-Quotify-Tenant", tenantId);
+        return request;
+      },
+    });
+    asTenantClients.set(tenantId, client);
+  }
+  return client;
+}
+
 /** A client that speaks as one tenant (its API key) instead of as the operator. */
 export const asTenant = (key: string) => createClient<paths>({ baseUrl: "/gw", headers: { Authorization: `Bearer ${key}` } });
 
 export type Tenant = components["schemas"]["Tenant"];
+export type Customer = components["schemas"]["Customer"];
+export type Plan = components["schemas"]["Plan"];
+export type PlanVersion = components["schemas"]["PlanVersion"];
+export type Subscription = components["schemas"]["Subscription"];
 export type Invoice = components["schemas"]["Invoice"];
 export type InvoiceLine = components["schemas"]["InvoiceLine"];
 export type InvoiceSaga = components["schemas"]["InvoiceSaga"];

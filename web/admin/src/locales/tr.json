@@ -1,8 +1,22 @@
 {
-  "meta": { "name": "Türkçe", "dir": "ltr" },
-  "app": { "title": "Quotify operatör konsolu", "language": "Dil" },
-  "nav": { "tenants": "Kiracılar", "playground": "Oyun alanı", "deadLetters": "Ölü mektuplar", "signOut": "Çıkış yap" },
-  "common": { "loading": "Yükleniyor…", "unknown": "?" },
+  "meta": {
+    "name": "Türkçe",
+    "dir": "ltr"
+  },
+  "app": {
+    "title": "Quotify operatör konsolu",
+    "language": "Dil"
+  },
+  "nav": {
+    "tenants": "Kiracılar",
+    "playground": "Oyun alanı",
+    "deadLetters": "Ölü mektuplar",
+    "signOut": "Çıkış yap"
+  },
+  "common": {
+    "loading": "Yükleniyor…",
+    "unknown": "?"
+  },
   "signIn": {
     "title": "Operatör konsolu",
     "intro": "Yalnızca ağ geçidi üzerinden okur ve işlem yapar. Jeton bu tarayıcı sekmesinde kalır (oturum depolaması).",
@@ -10,15 +24,75 @@
     "submit": "Giriş yap"
   },
   "enums": {
-    "environment": { "sandbox": "sandbox", "live": "canlı" },
-    "tier": { "free": "ücretsiz", "standard": "standart", "enterprise": "kurumsal" },
-    "invoiceStatus": { "draft": "taslak", "open": "açık", "paid": "ödendi", "uncollectible": "tahsil edilemez", "void": "iptal" },
-    "invoiceKind": { "REGULAR": "Normal", "CORRECTION": "Düzeltme", "CREDIT_NOTE": "Alacak dekontu" }
+    "environment": {
+      "sandbox": "sandbox",
+      "live": "canlı"
+    },
+    "tier": {
+      "free": "ücretsiz",
+      "standard": "standart",
+      "enterprise": "kurumsal"
+    },
+    "invoiceStatus": {
+      "draft": "taslak",
+      "open": "açık",
+      "paid": "ödendi",
+      "uncollectible": "tahsil edilemez",
+      "void": "iptal"
+    },
+    "invoiceKind": {
+      "REGULAR": "Normal",
+      "CORRECTION": "Düzeltme",
+      "CREDIT_NOTE": "Alacak dekontu"
+    },
+    "subscriptionState": {
+      "trialing": "denemede",
+      "active": "etkin",
+      "past_due": "vadesi geçmiş",
+      "paused": "duraklatılmış",
+      "cancelled": "iptal edilmiş"
+    },
+    "discrepancy": {
+      "paid_without_charge": "Ödenmiş, defterde tahsilat yok",
+      "amount_mismatch": "Tutar farklı",
+      "duplicate_charge": "Birden fazla tahsil edildi",
+      "charge_without_paid": "Tahsil edildi, fatura ödenmemiş",
+      "conflicting_outcomes": "Hem başarı hem başarısızlık kayıtlı"
+    },
+    "ledgerKind": {
+      "charge": "tahsilat",
+      "refund": "iade",
+      "dispute": "itiraz",
+      "payout": "ödeme aktarımı"
+    },
+    "ledgerStatus": {
+      "succeeded": "başarılı",
+      "declined": "reddedildi",
+      "failed": "başarısız",
+      "pending": "beklemede"
+    },
+    "ledgerSource": {
+      "command": "Quotify",
+      "webhook": "sağlayıcı bildirimi",
+      "reconciliation": "mutabakat"
+    },
+    "dunningState": {
+      "PAYMENT_DECLINED": "reddedildi, yeniden deneniyor",
+      "PAYMENT_UNKNOWN": "sonuç bilinmiyor",
+      "UNCOLLECTIBLE": "vazgeçildi"
+    }
   },
   "tenants": {
     "title": "Kiracılar",
     "empty": "Henüz kiracı yok.",
-    "columns": { "name": "Ad", "environment": "Ortam", "tier": "Seviye", "currency": "Para birimi", "timezone": "Saat dilimi", "id": "Kimlik" }
+    "columns": {
+      "name": "Ad",
+      "environment": "Ortam",
+      "tier": "Seviye",
+      "currency": "Para birimi",
+      "timezone": "Saat dilimi",
+      "id": "Kimlik"
+    }
   },
   "tenant": {
     "fallbackTitle": "Kiracı",
@@ -26,7 +100,15 @@
     "invoices": "Faturalar",
     "noInvoices": "Fatura yok.",
     "draft": "(taslak)",
-    "columns": { "number": "Numara", "kind": "Tür", "period": "Dönem", "customer": "Müşteri", "total": "Toplam", "status": "Durum", "saga": "Saga" },
+    "columns": {
+      "number": "Numara",
+      "kind": "Tür",
+      "period": "Dönem",
+      "customer": "Müşteri",
+      "total": "Toplam",
+      "status": "Durum",
+      "saga": "Saga"
+    },
     "jobs": {
       "title": "Yeniden oynatma ve yeniden fiyatlama işleri",
       "hint": "Bir işi kimliğiyle sorgulayın (işleri quotifyctl veya yönetici API'si ile başlatın).",
@@ -42,19 +124,40 @@
     "openPdf": "PDF'yi aç",
     "noPdfLink": "bağlantı yok",
     "lines": "Kalemler",
-    "lineColumns": { "no": "#", "kind": "Tür", "description": "Açıklama", "meter": "Sayaç", "quantity": "Miktar", "amount": "Tutar" },
+    "lineColumns": {
+      "no": "#",
+      "kind": "Tür",
+      "description": "Açıklama",
+      "meter": "Sayaç",
+      "quantity": "Miktar",
+      "amount": "Tutar"
+    },
     "saga": "Saga zaman çizelgesi",
-    "sagaColumns": { "seq": "Sıra", "from": "Önceki", "to": "Sonraki", "cause": "Neden", "at": "Zaman" }
+    "sagaColumns": {
+      "seq": "Sıra",
+      "from": "Önceki",
+      "to": "Sonraki",
+      "cause": "Neden",
+      "at": "Zaman"
+    }
   },
   "deadLetters": {
     "title": "Ölü mektuplar",
     "intro": "RabbitMQ ölü mektup kuyrukları ({pattern}). Bir ileti teslim sınırını aşınca buraya düşer; yeniden gönderme onu deneme sayacı sıfırlanmış olarak geri yollar.",
-    "columns": { "queue": "Kuyruk", "messages": "İleti" },
+    "columns": {
+      "queue": "Kuyruk",
+      "messages": "İleti"
+    },
     "redrive": "Yeniden gönder",
     "confirm": "{queue} kuyruğunun {count} ölü mektubu tekrar {queue} kuyruğuna taşınsın mı? Deneme sayaçları sıfırlanır.",
     "redriven": "{queue}.dlq kuyruğundan {count} ileti yeniden gönderildi.",
     "messagesOf": "{queue}.dlq iletileri",
-    "messageColumns": { "id": "İleti kimliği", "deliveries": "Teslim sayısı", "reason": "Neden", "bytes": "Bayt" }
+    "messageColumns": {
+      "id": "İleti kimliği",
+      "deliveries": "Teslim sayısı",
+      "reason": "Neden",
+      "bytes": "Bayt"
+    }
   },
   "playground": {
     "title": "Oyun alanı",
@@ -85,13 +188,22 @@
       "timeout_committed": "zaman aşımı, tahsilat işlendi",
       "timeout_not_committed": "zaman aşımı, tahsilat işlenmedi"
     },
-    "usage": { "title": "3. Kullanım", "calls": "Çağrı", "send": "Kullanım gönder", "sent": "{n} çağrı gönderildi" },
+    "usage": {
+      "title": "3. Kullanım",
+      "calls": "Çağrı",
+      "send": "Kullanım gönder",
+      "sent": "{n} çağrı gönderildi"
+    },
     "close": {
       "title": "4. Dönemi kapat",
       "button": "Dönemi şimdi kapat",
       "hint": "Faturalama ay sonundaki gibi çalışır; sandbox yalnızca kesim anını şimdiye çeker."
     },
-    "invoice": { "title": "5. Fatura", "waiting": "Faturalama çalışması bekleniyor (yaklaşık 40 saniye)…", "open": "Aç" },
+    "invoice": {
+      "title": "5. Fatura",
+      "waiting": "Faturalama çalışması bekleniyor (yaklaşık 40 saniye)…",
+      "open": "Aç"
+    },
     "log": {
       "title": "Şimdiye kadar yapılanlar",
       "account": "Hesap oluşturuldu",
@@ -104,6 +216,192 @@
       "outcome": "Ödeme sonucu: {scenario}",
       "usage": "Kullanım gönderildi: {n} çağrı",
       "closed": "Dönem kapatıldı (sandbox): faturalama şimdi çalışıyor"
+    }
+  },
+  "billing": {
+    "tabs": {
+      "label": "Kiracı bölümleri",
+      "overview": "Genel bakış",
+      "customers": "Müşteriler",
+      "packages": "Paketler",
+      "subscriptions": "Abonelikler",
+      "payments": "Ödemeler",
+      "providers": "Sağlayıcılar",
+      "reports": "Raporlar"
+    },
+    "common": {
+      "remove": "Kaldır"
+    },
+    "customers": {
+      "new": "Yeni müşteri",
+      "formLabel": "yeni müşteri",
+      "externalId": "Müşteri kimliği",
+      "name": "Ad",
+      "email": "E-posta",
+      "country": "Ülke",
+      "countryPlaceholder": "Ülke (TR, DE…)",
+      "currency": "Faturalama para birimi",
+      "tenantCurrency": "Kiracının para birimi",
+      "create": "Müşteri oluştur",
+      "empty": "Henüz müşteri yok."
+    },
+    "packages": {
+      "new": "Yeni paket",
+      "intro": "Var olan bir paketi yayımlamak yeni bir sürüm ekler. Yayımlanan sürüm değişmez; abonelikler başladıkları sürümde kalır.",
+      "formLabel": "yeni paket",
+      "code": "Kod",
+      "name": "Ad",
+      "fee": "Aylık sabit ücret ({currency})",
+      "extraCurrency": "Ek ücretin para birimi",
+      "extraFee": "Sabit ücret {n}",
+      "addFee": "Başka para biriminde ücret ekle",
+      "publish": "Sürümü yayımla",
+      "badAmount": "{currency} cinsinden geçerli bir tutar değil: yalnızca rakamlar, para biriminin izin verdiği kadar ondalıkla.",
+      "version": "Sürüm",
+      "fixedFee": "Sabit ücret",
+      "otherFees": "Diğer para birimleri",
+      "meters": "Kullanım fiyatları",
+      "empty": "Henüz paket yok."
+    },
+    "subscriptions": {
+      "new": "Yeni abonelik",
+      "formLabel": "yeni abonelik",
+      "customer": "Müşteri",
+      "package": "Paket",
+      "currency": "Para birimi",
+      "defaultCurrency": "Müşterinin para birimi",
+      "trialDays": "Deneme günü",
+      "provider": "Sağlayıcı",
+      "byRules": "Yönlendirme kurallarına göre",
+      "create": "Abonelik oluştur",
+      "state": "Durum",
+      "since": "Başlangıç",
+      "until": "Bitiş",
+      "endsWithPeriod": "dönem sonunda biter",
+      "runByProvider": "sağlayıcı yönetiyor",
+      "manage": "Yönet",
+      "empty": "Henüz abonelik yok.",
+      "managing": "{customer} için yönet",
+      "providerRuns": "Bu aboneliği {provider} yönetiyor: yenilemeler ve yeniden denemeler onundur. Değişiklikleri orada yapın; aşağıdan başka bir sağlayıcıya taşınabilir.",
+      "pause": "Duraklat",
+      "resume": "Sürdür",
+      "cancelAtPeriodEnd": "Dönem sonunda iptal et",
+      "withdrawCancel": "Aboneliği sürdür",
+      "endNow": "Şimdi bitir",
+      "confirmEnd": "Bu abonelik şimdi bitirilsin mi?",
+      "newPackage": "Paketi değiştir",
+      "changePlan": "Paketi değiştir",
+      "changePlanHint": "Değişiklik hemen geçerli olur. Bu ayın sabit ücreti iki paket arasında, her birinde geçen süreye göre bölünür.",
+      "moveTo": "Sağlayıcıya taşı",
+      "priceRef": "Sağlayıcıdaki fiyat (pri_…)",
+      "move": "Taşı",
+      "moveHint": "Eski abonelik yalnızca yenisi devraldığında biter; müşteri hiçbir zaman ikisi tarafından birden faturalanmaz.",
+      "checkoutReady": "Müşteri burada abone olur; taşıma, sağlayıcı onayladığında tamamlanır:",
+      "moved": "Taşındı: yeni abonelik eskisinin bittiği yerden devralır."
+    },
+    "payments": {
+      "reconcile": "Defterle mutabakat",
+      "reconcileHint": "Faturalamanın bir dönemde ödenmiş saydığı faturaları, sağlayıcıların bildirdiği başarılı tahsilatlarla karşılaştırır.",
+      "period": "Dönem (YYYY-AA)",
+      "run": "Mutabık ol",
+      "reconcileResult": "mutabakat sonucu",
+      "summary": "{paid} ödenmiş fatura ve defterde {charges} başarılı tahsilat.",
+      "agree": "Faturalar ve defter uyuşuyor.",
+      "kind": "Tür",
+      "invoice": "Fatura",
+      "provider": "Sağlayıcı",
+      "billed": "Faturalanan",
+      "ledgerAmount": "Defter",
+      "detail": "Ayrıntı",
+      "truncated": "Yalnızca ilk uyuşmazlıklar listelendi; yukarıdaki sayılar eksiksizdir.",
+      "ledger": "Ödeme defteri",
+      "when": "Zaman",
+      "status": "Durum",
+      "amount": "Tutar",
+      "reference": "Referans",
+      "source": "Kaynak",
+      "empty": "Defterde henüz kayıt yok."
+    },
+    "providers": {
+      "accounts": "Sağlayıcı hesapları",
+      "accountsHint": "Kiracının ödeme sağlayıcılarındaki kendi hesapları. Kimlik bilgileri kaydedilirken mühürlenir ve bir daha gösterilmez.",
+      "provider": "Sağlayıcı",
+      "environment": "Ortam",
+      "default": "Varsayılan",
+      "updated": "Güncellendi",
+      "noAccounts": "Henüz sağlayıcı hesabı yok.",
+      "addAccount": "Hesap ekle veya değiştir",
+      "makeDefault": "Canlı tahsilatlar varsayılan olarak buraya gider",
+      "settings": "Ayarlar (JSON)",
+      "webhookHint": "Sağlayıcı bildirimlerini ağ geçidinin genel adresinde {path} yoluna gönderir.",
+      "saveAccount": "Hesabı kaydet",
+      "badJson": "Ayarlar geçerli bir JSON değil.",
+      "saved": "Kaydedildi.",
+      "confirmRemove": "{provider} hesabı ({environment}) kaldırılsın mı?",
+      "routing": "Yönlendirme kuralları",
+      "routingHint": "Müşterinin ülkesi ve aboneliğin para birimiyle eşleşen ilk kural, yeni aboneliğin sağlayıcısını seçer. Eşleşme yoksa varsayılan hesap kullanılır. Mevcut abonelikler olduğu yerde kalır.",
+      "rule": "Kural {n}",
+      "country": "{n}. kuralın ülkesi",
+      "anyCountry": "Herhangi bir ülke",
+      "currency": "{n}. kuralın para birimi",
+      "anyCurrency": "Herhangi bir para birimi",
+      "ruleProvider": "{n}. kuralın sağlayıcısı",
+      "noRules": "Kural yok: her yeni abonelik varsayılan hesaba gider.",
+      "addRule": "Kural ekle",
+      "saveRules": "Kuralları kaydet",
+      "rulesSaved": "Kurallar kaydedildi.",
+      "preview": "Müşteri nereye gider?",
+      "previewCountry": "Ülke",
+      "previewCurrency": "Para birimi",
+      "previewRun": "Önizle",
+      "goesTo": "{provider} sağlayıcısına gider ({n}. kural).",
+      "cannotCharge": "Bu sağlayıcı bu para biriminde tahsilat yapamaz.",
+      "goesToDefault": "Hiçbir kural eşleşmiyor: varsayılan hesap.",
+      "runByProviders": "Sağlayıcıların yönettiği abonelikler",
+      "reference": "Referans",
+      "nextBilled": "Sonraki faturalama",
+      "noProviderSubscriptions": "Henüz bir sağlayıcının yönettiği abonelik yok."
+    },
+    "reports": {
+      "kinds": "Raporlar",
+      "revenue": "Gelir",
+      "subscriptions": "Abonelikler",
+      "dunning": "Ödenmemiş faturalar",
+      "from": "Başlangıç (YYYY-AA)",
+      "to": "Bitiş (YYYY-AA)",
+      "by": {
+        "period": "Dönem",
+        "provider": "Sağlayıcı",
+        "country": "Ülke"
+      },
+      "revenueHint": "Her para biriminin kendi satırları vardır: farklı para birimlerindeki tutarlar asla toplanmaz.",
+      "subscriptionsHint": "Ayın son anında sayılır. Aylık yinelenen gelir, etkin ve vadesi geçmiş aboneliklerin sabit ücretleridir. Paket değişikliği veya sağlayıcı taşıma ne yeni abonelik ne de kayıptır.",
+      "dunningHint": "Ödemesi reddedilip yeniden denenen, sonucu bilinmeyen veya vazgeçilen faturalar.",
+      "currency": "Para birimi",
+      "invoices": "Faturalar",
+      "billed": "Faturalanan",
+      "collected": "Tahsil edilen",
+      "refunded": "İade edilen",
+      "outstanding": "Açık",
+      "uncollectible": "Tahsil edilemeyen",
+      "month": "Ay (YYYY-AA)",
+      "active": "Etkin",
+      "trialing": "Denemede",
+      "paused": "Duraklatılmış",
+      "pastDue": "Vadesi geçmiş",
+      "mrr": "Aylık yinelenen gelir",
+      "new": "Yeni",
+      "churned": "Kaybedilen",
+      "invoice": "Fatura",
+      "customer": "Müşteri",
+      "period": "Dönem",
+      "provider": "Sağlayıcı",
+      "total": "Toplam",
+      "state": "Durum",
+      "attempt": "Yeniden deneme",
+      "nextAttempt": "Sonraki deneme",
+      "empty": "Henüz raporlanacak bir şey yok.",
+      "noDunning": "Ödenmemiş fatura yok."
     }
   }
 }

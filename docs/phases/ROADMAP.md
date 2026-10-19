@@ -23,7 +23,7 @@ updated `docs/` (design changes discovered while building are written back into 
 | 15 | [Paddle](phase-15-paddle.md) | Paddle adapter, provider-owned renewal and dunning, usage reporting | 14 | Signed Paddle webhooks link and follow a subscription. A charge Paddle accepted settles from its notification and is never charged twice | done, Paddle sandbox not run |
 | 16 | [Routing and migration](phase-16-routing-migration.md) | Routing rules, preview, provider migration saga | 14, 15 | A migration never has two providers live at once: the old subscription is untouched until the new one is confirmed, and a failed step leaves one of them | done, not run against the sandboxes |
 | 17 | [Reports](phase-17-reports.md) | Ledger events to ClickHouse, revenue/MRR/churn/dunning/reconciliation by provider, country, currency | 14 | Revenue, MRR and dunning figures by provider, country and currency; the reconciliation names every disagreement between the ledger and the invoices | done, read from the services' databases, not ClickHouse |
-| 18 | Billing console | Customers, packages, subscriptions, payments, providers, reports pages on the shadcn-vue kit, six languages | 13–17 | Playwright: create package, subscribe, route, migrate, read report | planned |
+| 18 | [Billing console](phase-18-billing-console.md) | Customers, packages, subscriptions, payments, providers, reports pages on the shadcn-vue kit, six languages | 13–17 | Playwright against a mocked gateway: create package, subscribe, route, move, reconcile, read the reports | done |
 
 ```mermaid
 flowchart LR

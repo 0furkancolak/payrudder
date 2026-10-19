@@ -1,6 +1,6 @@
 # Billing platform: subscriptions, payment providers, routing, reporting
 
-Status: phases 13 to 17 are built (see the notes below). Phase 18 (the console) is design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
+Status: phases 13 to 18 are built (see the notes below). Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
 
 ## Why
 
@@ -125,6 +125,11 @@ stop first and the cutover is the end of the period it was paid for. The design'
 
 Details in [phase 17](phases/phase-17-reports.md). The reports are queries over the services' own data (invoices, subscriptions, the payment ledger), not a ClickHouse read model as designed: revenue and dunning in billing-svc, subscriptions and MRR in plans-svc, and a reconciliation of invoices against the
 ledger in payments-worker. A currency is never added to another.
+
+## As built: phase 18
+
+Details in [phase 18](phases/phase-18-billing-console.md). The console's tenant page is a layout with seven tabs; the billing pages call the tenant API as the tenant (operator token plus `X-Quotify-Tenant`) and the operator routes
+as the operator, are in six languages, and are tested against a mocked gateway.
 
 ## Currency
 

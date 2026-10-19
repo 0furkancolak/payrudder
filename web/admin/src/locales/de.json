@@ -1,8 +1,22 @@
 {
-  "meta": { "name": "Deutsch", "dir": "ltr" },
-  "app": { "title": "Quotify-Operator-Konsole", "language": "Sprache" },
-  "nav": { "tenants": "Mandanten", "playground": "Spielwiese", "deadLetters": "Dead Letters", "signOut": "Abmelden" },
-  "common": { "loading": "Wird geladen…", "unknown": "?" },
+  "meta": {
+    "name": "Deutsch",
+    "dir": "ltr"
+  },
+  "app": {
+    "title": "Quotify-Operator-Konsole",
+    "language": "Sprache"
+  },
+  "nav": {
+    "tenants": "Mandanten",
+    "playground": "Spielwiese",
+    "deadLetters": "Dead Letters",
+    "signOut": "Abmelden"
+  },
+  "common": {
+    "loading": "Wird geladen…",
+    "unknown": "?"
+  },
   "signIn": {
     "title": "Operator-Konsole",
     "intro": "Liest und handelt ausschließlich über das Gateway. Das Token bleibt in diesem Browser-Tab (Session Storage).",
@@ -10,15 +24,75 @@
     "submit": "Anmelden"
   },
   "enums": {
-    "environment": { "sandbox": "Sandbox", "live": "Live" },
-    "tier": { "free": "Free", "standard": "Standard", "enterprise": "Enterprise" },
-    "invoiceStatus": { "draft": "Entwurf", "open": "offen", "paid": "bezahlt", "uncollectible": "uneinbringlich", "void": "storniert" },
-    "invoiceKind": { "REGULAR": "Regulär", "CORRECTION": "Korrektur", "CREDIT_NOTE": "Gutschrift" }
+    "environment": {
+      "sandbox": "Sandbox",
+      "live": "Live"
+    },
+    "tier": {
+      "free": "Free",
+      "standard": "Standard",
+      "enterprise": "Enterprise"
+    },
+    "invoiceStatus": {
+      "draft": "Entwurf",
+      "open": "offen",
+      "paid": "bezahlt",
+      "uncollectible": "uneinbringlich",
+      "void": "storniert"
+    },
+    "invoiceKind": {
+      "REGULAR": "Regulär",
+      "CORRECTION": "Korrektur",
+      "CREDIT_NOTE": "Gutschrift"
+    },
+    "subscriptionState": {
+      "trialing": "im Test",
+      "active": "aktiv",
+      "past_due": "überfällig",
+      "paused": "pausiert",
+      "cancelled": "gekündigt"
+    },
+    "discrepancy": {
+      "paid_without_charge": "Bezahlt, keine Abbuchung im Hauptbuch",
+      "amount_mismatch": "Betrag weicht ab",
+      "duplicate_charge": "Mehrfach abgebucht",
+      "charge_without_paid": "Abgebucht, Rechnung nicht bezahlt",
+      "conflicting_outcomes": "Erfolg und Misserfolg beide erfasst"
+    },
+    "ledgerKind": {
+      "charge": "Abbuchung",
+      "refund": "Erstattung",
+      "dispute": "Streitfall",
+      "payout": "Auszahlung"
+    },
+    "ledgerStatus": {
+      "succeeded": "erfolgreich",
+      "declined": "abgelehnt",
+      "failed": "fehlgeschlagen",
+      "pending": "ausstehend"
+    },
+    "ledgerSource": {
+      "command": "Quotify",
+      "webhook": "Anbieter-Benachrichtigung",
+      "reconciliation": "Abgleich"
+    },
+    "dunningState": {
+      "PAYMENT_DECLINED": "abgelehnt, Wiederholung läuft",
+      "PAYMENT_UNKNOWN": "Ergebnis unbekannt",
+      "UNCOLLECTIBLE": "aufgegeben"
+    }
   },
   "tenants": {
     "title": "Mandanten",
     "empty": "Noch keine Mandanten.",
-    "columns": { "name": "Name", "environment": "Umgebung", "tier": "Stufe", "currency": "Währung", "timezone": "Zeitzone", "id": "ID" }
+    "columns": {
+      "name": "Name",
+      "environment": "Umgebung",
+      "tier": "Stufe",
+      "currency": "Währung",
+      "timezone": "Zeitzone",
+      "id": "ID"
+    }
   },
   "tenant": {
     "fallbackTitle": "Mandant",
@@ -26,7 +100,15 @@
     "invoices": "Rechnungen",
     "noInvoices": "Keine Rechnungen.",
     "draft": "(Entwurf)",
-    "columns": { "number": "Nummer", "kind": "Art", "period": "Zeitraum", "customer": "Kunde", "total": "Summe", "status": "Status", "saga": "Saga" },
+    "columns": {
+      "number": "Nummer",
+      "kind": "Art",
+      "period": "Zeitraum",
+      "customer": "Kunde",
+      "total": "Summe",
+      "status": "Status",
+      "saga": "Saga"
+    },
     "jobs": {
       "title": "Replay- und Neubewertungsjobs",
       "hint": "Einen Job über seine ID nachschlagen (gestartet werden sie mit quotifyctl oder der Admin-API).",
@@ -42,19 +124,40 @@
     "openPdf": "PDF öffnen",
     "noPdfLink": "kein Link",
     "lines": "Positionen",
-    "lineColumns": { "no": "Nr.", "kind": "Art", "description": "Beschreibung", "meter": "Zähler", "quantity": "Menge", "amount": "Betrag" },
+    "lineColumns": {
+      "no": "Nr.",
+      "kind": "Art",
+      "description": "Beschreibung",
+      "meter": "Zähler",
+      "quantity": "Menge",
+      "amount": "Betrag"
+    },
     "saga": "Saga-Verlauf",
-    "sagaColumns": { "seq": "Nr.", "from": "Von", "to": "Nach", "cause": "Ursache", "at": "Zeitpunkt" }
+    "sagaColumns": {
+      "seq": "Nr.",
+      "from": "Von",
+      "to": "Nach",
+      "cause": "Ursache",
+      "at": "Zeitpunkt"
+    }
   },
   "deadLetters": {
     "title": "Dead Letters",
     "intro": "RabbitMQ-Dead-Letter-Queues ({pattern}). Eine Nachricht landet hier, wenn ihr Zustelllimit erreicht ist; Redrive schickt sie mit zurückgesetztem Wiederholungszähler zurück.",
-    "columns": { "queue": "Queue", "messages": "Nachrichten" },
+    "columns": {
+      "queue": "Queue",
+      "messages": "Nachrichten"
+    },
     "redrive": "Redrive",
     "confirm": "{count} Dead Letter(s) von {queue} zurück nach {queue} verschieben? Ihre Wiederholungszähler werden zurückgesetzt.",
     "redriven": "{count} Nachricht(en) aus {queue}.dlq erneut zugestellt.",
     "messagesOf": "Nachrichten von {queue}.dlq",
-    "messageColumns": { "id": "Nachrichten-ID", "deliveries": "Zustellungen", "reason": "Grund", "bytes": "Bytes" }
+    "messageColumns": {
+      "id": "Nachrichten-ID",
+      "deliveries": "Zustellungen",
+      "reason": "Grund",
+      "bytes": "Bytes"
+    }
   },
   "playground": {
     "title": "Spielwiese",
@@ -85,13 +188,22 @@
       "timeout_committed": "Timeout, Abbuchung erfolgt",
       "timeout_not_committed": "Timeout, Abbuchung nicht erfolgt"
     },
-    "usage": { "title": "3. Nutzung", "calls": "Aufrufe", "send": "Nutzung senden", "sent": "{n} Aufrufe gesendet" },
+    "usage": {
+      "title": "3. Nutzung",
+      "calls": "Aufrufe",
+      "send": "Nutzung senden",
+      "sent": "{n} Aufrufe gesendet"
+    },
     "close": {
       "title": "4. Zeitraum abschließen",
       "button": "Zeitraum jetzt abschließen",
       "hint": "Die Abrechnung läuft wie zum Monatsende; die Sandbox verschiebt nur den Stichtag auf jetzt."
     },
-    "invoice": { "title": "5. Rechnung", "waiting": "Warte auf den Abrechnungslauf (etwa 40 Sekunden)…", "open": "Öffnen" },
+    "invoice": {
+      "title": "5. Rechnung",
+      "waiting": "Warte auf den Abrechnungslauf (etwa 40 Sekunden)…",
+      "open": "Öffnen"
+    },
     "log": {
       "title": "Bisher erledigt",
       "account": "Konto angelegt",
@@ -104,6 +216,192 @@
       "outcome": "Zahlungsergebnis: {scenario}",
       "usage": "Nutzung gesendet: {n} Aufrufe",
       "closed": "Zeitraum abgeschlossen (Sandbox): Abrechnung läuft jetzt"
+    }
+  },
+  "billing": {
+    "tabs": {
+      "label": "Mandanten-Bereiche",
+      "overview": "Übersicht",
+      "customers": "Kunden",
+      "packages": "Pakete",
+      "subscriptions": "Abonnements",
+      "payments": "Zahlungen",
+      "providers": "Anbieter",
+      "reports": "Berichte"
+    },
+    "common": {
+      "remove": "Entfernen"
+    },
+    "customers": {
+      "new": "Neuer Kunde",
+      "formLabel": "neuer Kunde",
+      "externalId": "Kunden-ID",
+      "name": "Name",
+      "email": "E-Mail",
+      "country": "Land",
+      "countryPlaceholder": "Land (TR, DE…)",
+      "currency": "Rechnungswährung",
+      "tenantCurrency": "Währung des Mandanten",
+      "create": "Kunden anlegen",
+      "empty": "Noch keine Kunden."
+    },
+    "packages": {
+      "new": "Neues Paket",
+      "intro": "Wer ein vorhandenes Paket veröffentlicht, fügt eine neue Version hinzu. Eine veröffentlichte Version ändert sich nicht; Abonnements bleiben bei ihrer Version.",
+      "formLabel": "neues Paket",
+      "code": "Code",
+      "name": "Name",
+      "fee": "Fixe Gebühr pro Monat ({currency})",
+      "extraCurrency": "Währung der zusätzlichen Gebühr",
+      "extraFee": "Fixe Gebühr {n}",
+      "addFee": "Gebühr in anderer Währung hinzufügen",
+      "publish": "Version veröffentlichen",
+      "badAmount": "Kein Betrag in {currency}: nur Ziffern, höchstens so viele Nachkommastellen wie die Währung hat.",
+      "version": "Version",
+      "fixedFee": "Fixe Gebühr",
+      "otherFees": "Andere Währungen",
+      "meters": "Nutzungspreise",
+      "empty": "Noch keine Pakete."
+    },
+    "subscriptions": {
+      "new": "Neues Abonnement",
+      "formLabel": "neues Abonnement",
+      "customer": "Kunde",
+      "package": "Paket",
+      "currency": "Währung",
+      "defaultCurrency": "Währung des Kunden",
+      "trialDays": "Testtage",
+      "provider": "Anbieter",
+      "byRules": "Nach den Routing-Regeln",
+      "create": "Abonnement anlegen",
+      "state": "Status",
+      "since": "Seit",
+      "until": "Bis",
+      "endsWithPeriod": "endet mit der Periode",
+      "runByProvider": "vom Anbieter geführt",
+      "manage": "Verwalten",
+      "empty": "Noch keine Abonnements.",
+      "managing": "{customer} verwalten",
+      "providerRuns": "{provider} führt dieses Abonnement: Verlängerungen und Wiederholungen gehören ihm. Änderungen dort vornehmen; unten lässt es sich zu einem anderen Anbieter verschieben.",
+      "pause": "Pausieren",
+      "resume": "Fortsetzen",
+      "cancelAtPeriodEnd": "Zum Periodenende kündigen",
+      "withdrawCancel": "Abonnement behalten",
+      "endNow": "Jetzt beenden",
+      "confirmEnd": "Dieses Abonnement jetzt beenden?",
+      "newPackage": "Zu Paket wechseln",
+      "changePlan": "Paket wechseln",
+      "changePlanHint": "Der Wechsel gilt sofort. Die fixe Gebühr dieses Monats wird nach der Zeit auf jedem Paket aufgeteilt.",
+      "moveTo": "Zu Anbieter verschieben",
+      "priceRef": "Preis beim Anbieter (pri_…)",
+      "move": "Verschieben",
+      "moveHint": "Das alte Abonnement endet erst, wenn das neue übernimmt; der Kunde wird nie von beiden abgerechnet.",
+      "checkoutReady": "Der Kunde schließt hier ab; die Verschiebung endet, wenn der Anbieter bestätigt:",
+      "moved": "Verschoben: Das neue Abonnement übernimmt, wo das alte endet."
+    },
+    "payments": {
+      "reconcile": "Mit dem Hauptbuch abgleichen",
+      "reconcileHint": "Vergleicht die Rechnungen, die die Abrechnung in einer Periode als bezahlt führt, mit den erfolgreichen Abbuchungen der Anbieter.",
+      "period": "Periode (JJJJ-MM)",
+      "run": "Abgleichen",
+      "reconcileResult": "Abgleichsergebnis",
+      "summary": "{paid} bezahlte Rechnung(en) und {charges} erfolgreiche Abbuchung(en) im Hauptbuch.",
+      "agree": "Rechnungen und Hauptbuch stimmen überein.",
+      "kind": "Art",
+      "invoice": "Rechnung",
+      "provider": "Anbieter",
+      "billed": "Berechnet",
+      "ledgerAmount": "Hauptbuch",
+      "detail": "Detail",
+      "truncated": "Es sind nur die ersten Abweichungen aufgeführt; die Zahlen oben sind vollständig.",
+      "ledger": "Zahlungs-Hauptbuch",
+      "when": "Wann",
+      "status": "Status",
+      "amount": "Betrag",
+      "reference": "Referenz",
+      "source": "Quelle",
+      "empty": "Noch nichts im Hauptbuch."
+    },
+    "providers": {
+      "accounts": "Anbieter-Konten",
+      "accountsHint": "Die eigenen Konten des Mandanten bei Zahlungsanbietern. Zugangsdaten werden beim Speichern versiegelt und nie wieder angezeigt.",
+      "provider": "Anbieter",
+      "environment": "Umgebung",
+      "default": "Standard",
+      "updated": "Aktualisiert",
+      "noAccounts": "Noch keine Anbieter-Konten.",
+      "addAccount": "Konto hinzufügen oder ersetzen",
+      "makeDefault": "Live-Abbuchungen gehen standardmäßig hierhin",
+      "settings": "Einstellungen (JSON)",
+      "webhookHint": "Der Anbieter sendet seine Benachrichtigungen an {path} auf der öffentlichen Adresse des Gateways.",
+      "saveAccount": "Konto speichern",
+      "badJson": "Die Einstellungen sind kein gültiges JSON.",
+      "saved": "Gespeichert.",
+      "confirmRemove": "Das {provider}-Konto ({environment}) entfernen?",
+      "routing": "Routing-Regeln",
+      "routingHint": "Die erste Regel, die zu Land des Kunden und Währung des Abonnements passt, wählt den Anbieter eines neuen Abonnements. Keine Übereinstimmung: das Standardkonto. Bestehende Abonnements bleiben, wo sie sind.",
+      "rule": "Regel {n}",
+      "country": "Land von Regel {n}",
+      "anyCountry": "Jedes Land",
+      "currency": "Währung von Regel {n}",
+      "anyCurrency": "Jede Währung",
+      "ruleProvider": "Anbieter von Regel {n}",
+      "noRules": "Keine Regeln: Jedes neue Abonnement geht an das Standardkonto.",
+      "addRule": "Regel hinzufügen",
+      "saveRules": "Regeln speichern",
+      "rulesSaved": "Regeln gespeichert.",
+      "preview": "Wohin käme ein Kunde?",
+      "previewCountry": "Land",
+      "previewCurrency": "Währung",
+      "previewRun": "Vorschau",
+      "goesTo": "Geht zu {provider} (Regel {n}).",
+      "cannotCharge": "Dieser Anbieter kann in dieser Währung nicht abbuchen.",
+      "goesToDefault": "Keine Regel passt: das Standardkonto.",
+      "runByProviders": "Von Anbietern geführte Abonnements",
+      "reference": "Referenz",
+      "nextBilled": "Nächste Abrechnung",
+      "noProviderSubscriptions": "Noch kein Abonnement wird von einem Anbieter geführt."
+    },
+    "reports": {
+      "kinds": "Berichte",
+      "revenue": "Umsatz",
+      "subscriptions": "Abonnements",
+      "dunning": "Unbezahlte Rechnungen",
+      "from": "Von (JJJJ-MM)",
+      "to": "Bis (JJJJ-MM)",
+      "by": {
+        "period": "Periode",
+        "provider": "Anbieter",
+        "country": "Land"
+      },
+      "revenueHint": "Jede Währung hat eigene Zeilen: Beträge in verschiedenen Währungen werden nie addiert.",
+      "subscriptionsHint": "Zählung zum letzten Augenblick des Monats. Der monatlich wiederkehrende Umsatz sind die fixen Gebühren aktiver und überfälliger Abonnements. Ein Paketwechsel oder Anbieterwechsel ist weder neu noch Abwanderung.",
+      "dunningHint": "Rechnungen, deren Zahlung abgelehnt wurde und wiederholt wird, deren Ergebnis unbekannt ist oder die aufgegeben wurden.",
+      "currency": "Währung",
+      "invoices": "Rechnungen",
+      "billed": "Berechnet",
+      "collected": "Eingezogen",
+      "refunded": "Erstattet",
+      "outstanding": "Offen",
+      "uncollectible": "Uneinbringlich",
+      "month": "Monat (JJJJ-MM)",
+      "active": "Aktiv",
+      "trialing": "Im Test",
+      "paused": "Pausiert",
+      "pastDue": "Überfällig",
+      "mrr": "Monatlich wiederkehrender Umsatz",
+      "new": "Neu",
+      "churned": "Abgewandert",
+      "invoice": "Rechnung",
+      "customer": "Kunde",
+      "period": "Periode",
+      "provider": "Anbieter",
+      "total": "Summe",
+      "state": "Status",
+      "attempt": "Wiederholungen",
+      "nextAttempt": "Nächster Versuch",
+      "empty": "Noch nichts zu berichten.",
+      "noDunning": "Keine unbezahlten Rechnungen."
     }
   }
 }
