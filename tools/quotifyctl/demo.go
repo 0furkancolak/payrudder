@@ -35,10 +35,10 @@ func demo(args []string) error {
 		return err
 	}
 	tenant, key := res.Tenants["sandbox"], res.APIKeys["sandbox"]
-	fmt.Printf("sandbox tenant %s\n", tenant)
+	fmt.Fprintf(os.Stdout, "sandbox tenant %s\n", tenant)
 
 	step("2/7 Usage: %d events (AI tokens and GB-hours) through POST /v1/events, 5 %% of them sent twice", *events)
-	rng := rand.New(rand.NewPCG(1, 2))
+	rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // demo data, not security
 	at := time.Now().Add(-time.Minute).UTC().Format(time.RFC3339Nano)
 	var batch []map[string]any
 	flush := func() error {
@@ -76,7 +76,7 @@ func demo(args []string) error {
 		return err
 	}
 	period, _ := run["period_id"].(string)
-	fmt.Printf("closing %s\n", period)
+	fmt.Fprintf(os.Stdout, "closing %s\n", period)
 	if err := waitFor(5*time.Minute, "every invoice saga to reach a final state", func() (bool, string) {
 		var list struct {
 			Invoices []map[string]any `json:"invoices"`
@@ -120,18 +120,18 @@ func demo(args []string) error {
 		return err
 	}
 	pvID, _ := pv["id"].(string)
-	fmt.Printf("plan version %v (id %s)\n", pv["version"], pvID)
+	fmt.Fprintf(os.Stdout, "plan version %v (id %s)\n", pv["version"], pvID)
 
 	step("5/7 Re-rating %s under the new version: the difference becomes one CORRECTION invoice per customer", period)
 	var job map[string]any
 	if err := c.call("POST", "/admin/v1/tenants/"+tenant+"/billing-runs/"+period+"/rerating", c.token, map[string]any{"plan_version_id": pvID}, &job); err != nil {
 		return err
 	}
-	fmt.Printf("job %v: %v customers rated, %v corrections totalling %v minor units\n", job["id"], job["customers_rated"], job["corrections"], job["correction_total_minor"])
+	fmt.Fprintf(os.Stdout, "job %v: %v customers rated, %v corrections totalling %v minor units\n", job["id"], job["customers_rated"], job["corrections"], job["correction_total_minor"])
 	if err := c.call("POST", "/admin/v1/tenants/"+tenant+"/billing-runs/"+period+"/rerating", c.token, map[string]any{"plan_version_id": pvID}, &job); err != nil {
 		return err
 	}
-	fmt.Printf("asking again returns the same job (%v) and changes nothing\n", job["id"])
+	fmt.Fprintf(os.Stdout, "asking again returns the same job (%v) and changes nothing\n", job["id"])
 
 	step("6/7 The correction invoices go through the same saga: PDF, charge, receipt")
 	if err := waitFor(3*time.Minute, "the correction sagas", func() (bool, string) {
@@ -158,15 +158,15 @@ func demo(args []string) error {
 
 	step("7/7 Where to look")
 	if mails, err := mailSubjects(*mailpit); err == nil {
-		fmt.Printf("Mailpit has %d messages, for example:\n", len(mails))
+		fmt.Fprintf(os.Stdout, "Mailpit has %d messages, for example:\n", len(mails))
 		for i, s := range mails {
 			if i >= 6 {
 				break
 			}
-			fmt.Printf("  - %s\n", s)
+			fmt.Fprintf(os.Stdout, "  - %s\n", s)
 		}
 	}
-	fmt.Printf(`
+	fmt.Fprintf(os.Stdout, `
   Mailpit (receipts)   %s
   Grafana (dashboards) http://localhost:3000   Quotify / Billing, Pipeline lag, Correctness
   Traces (Tempo)       http://localhost:3000/explore   (data source Tempo)
@@ -181,12 +181,12 @@ func printInvoices(c *client, key, period string) {
 		Invoices []map[string]any `json:"invoices"`
 	}
 	if err := c.call("GET", "/v1/invoices?period="+url.QueryEscape(period)+"&page_size=100", key, nil, &list); err != nil {
-		fmt.Println("(could not list invoices:", err, ")")
+		fmt.Fprintln(os.Stdout, "(could not list invoices:", err, ")")
 		return
 	}
-	fmt.Printf("%-18s %-11s %-9s %-14s %s\n", "NUMBER", "KIND", "TOTAL", "STATUS", "SAGA")
+	fmt.Fprintf(os.Stdout, "%-18s %-11s %-9s %-14s %s\n", "NUMBER", "KIND", "TOTAL", "STATUS", "SAGA")
 	for _, inv := range list.Invoices {
-		fmt.Printf("%-18v %-11v %-9v %-14v %v\n", inv["number"], inv["kind"], inv["total_minor"], inv["status"], inv["saga_state"])
+		fmt.Fprintf(os.Stdout, "%-18v %-11v %-9v %-14v %v\n", inv["number"], inv["kind"], inv["total_minor"], inv["status"], inv["saga_state"])
 	}
 }
 
@@ -211,11 +211,11 @@ func waitFor(within time.Duration, what string, ok func() (bool, string)) error 
 	for time.Now().Before(deadline) {
 		done, msg := ok()
 		if done {
-			fmt.Println("done:", msg)
+			fmt.Fprintln(os.Stdout, "done:", msg)
 			return nil
 		}
 		if msg != last {
-			fmt.Println("  ...", msg)
+			fmt.Fprintln(os.Stdout, "  ...", msg)
 			last = msg
 		}
 		time.Sleep(2 * time.Second)

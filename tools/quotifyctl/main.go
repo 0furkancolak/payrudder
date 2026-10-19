@@ -73,13 +73,13 @@ func (c *client) call(method, path, token string, in, out any) error {
 		}
 		body = bytes.NewReader(b)
 	}
-	req, err := http.NewRequest(method, c.base+path, body)
+	req, err := http.NewRequest(method, c.base+path, body) //nolint:gosec // an operator tool: the URL is the operator's own --gateway flag
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.http.Do(req) //nolint:gosec // see above
 	if err != nil {
 		return err
 	}

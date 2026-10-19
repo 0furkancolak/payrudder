@@ -214,7 +214,7 @@ func (m *Manager) Start(ctx context.Context, tenantID uuid.UUID, from, to, reaso
 	}
 	start, err := periodStart(from)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	cl, err := kgo.NewClient(kgo.SeedBrokers(m.cfg.Brokers...))
 	if err != nil {

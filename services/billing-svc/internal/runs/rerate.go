@@ -88,8 +88,12 @@ func (m *Manager) StartRerating(ctx context.Context, tenantID uuid.UUID, periodI
 	if run.Status != Completed {
 		return nil, false, ErrRunNotCompleted
 	}
-	if resp, err := m.cfg.Plans.GetPlanVersion(tenantCtx(ctx, tenantID), &plansv1.GetPlanVersionRequest{PlanVersionId: planVersionID.String()}); err != nil || resp.GetPlanVersion() == nil {
-		return nil, false, fmt.Errorf("%w: %v", ErrUnknownPlanVer, err)
+	resp, err := m.cfg.Plans.GetPlanVersion(tenantCtx(ctx, tenantID), &plansv1.GetPlanVersionRequest{PlanVersionId: planVersionID.String()})
+	if err == nil && resp.GetPlanVersion() == nil {
+		err = errors.New("not found")
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("%w: %w", ErrUnknownPlanVer, err)
 	}
 	gen := int32(1)
 	if run.Generation != nil {
