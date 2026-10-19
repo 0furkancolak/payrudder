@@ -34,11 +34,12 @@ echo "upgrading to the new image tag while the load runs"
 docker wait quotify-rollout-k6 >/dev/null 2>&1 || true
 docker logs quotify-rollout-k6 2>&1 | tail -n 25 || true
 docker rm -f quotify-rollout-k6 >/dev/null 2>&1 || true
-python3 - "$root/tests/load/results/rollout.json" <<'PY'
+python3 - "$root/tests/load/results/rollout.json" "${ROLLOUT_MAX_FAIL_RATE:-0}" <<'PY'
 import json, sys
 m = json.load(open(sys.argv[1]))["metrics"]
 failed = m["http_req_failed"]["passes"]
 total = m["http_reqs"]["count"]
-print(f"{total} requests during the rollout, {failed} failed")
-sys.exit(1 if failed else 0)
+limit = float(sys.argv[2])
+print(f"{total} requests during the rollout, {failed} failed (allowed rate {limit})")
+sys.exit(1 if failed > limit * total else 0)
 PY
