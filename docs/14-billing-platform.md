@@ -1,6 +1,6 @@
 # Billing platform: subscriptions, payment providers, routing, reporting
 
-Status: phase 13 is built (see the notes below). Phases 14–18 are design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
+Status: phases 13 and 14 are built (see the notes below). Phases 15–18 are design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
 
 ## Why
 
@@ -100,6 +100,14 @@ Differences from the design above, decided while building (details in [phase 13]
   there is no stored proration amount.
 - Yearly subscriptions are refused until the fixed fee can be invoiced once a year.
 - Subscriptions in a currency other than the tenant's are not re-rated.
+
+## As built: phase 14
+
+Details in [phase 14](phases/phase-14-provider-contract-iyzico.md). In short: providers declare `Capabilities` and are built from a tenant's sealed
+account settings; iyzico is the first adapter (stored-card charges, refunds, status, confirmation of webhooks) and Quotify keeps ownership of
+renewal and dunning for it. Every charge and refund lands in an append-only ledger in `payments_db`; notifications arrive on the gateway's public
+`/webhooks/{provider}`, are never believed, and are confirmed with the provider. The `Owner` of a subscription is derived from the capabilities but
+not yet stored on it, since only Quotify-owned providers exist until Paddle (phase 15).
 
 ## Currency
 

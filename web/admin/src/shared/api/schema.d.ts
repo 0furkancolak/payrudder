@@ -743,6 +743,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/tenants/{tenant_id}/provider-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A tenant's payment provider accounts (credentials are never returned) */
+        get: operations["listProviderAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Store or replace a tenant's account at a payment provider (sealed at rest, validated by building the adapter) */
+        put: operations["putProviderAccount"];
+        post?: never;
+        /** Remove a tenant's account at a payment provider */
+        delete: operations["deleteProviderAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The tenant's most recent payment ledger rows (charges, refunds) across providers, newest first */
+        get: operations["listPaymentLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A payment provider's notification. Public; the body is never believed, the provider is asked to confirm it */
+        post: operations["providerWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/dead-letters": {
         parameters: {
             query?: never;
@@ -2871,6 +2940,168 @@ export interface operations {
                 };
             };
             404: components["responses"]["Error"];
+        };
+    };
+    listProviderAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accounts?: {
+                            provider?: string;
+                            /** @enum {string} */
+                            environment?: "sandbox" | "live";
+                            is_default?: boolean;
+                            /** Format: date-time */
+                            updated_at?: string;
+                        }[];
+                    };
+                };
+            };
+            503: components["responses"]["Error"];
+        };
+    };
+    putProviderAccount: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+                /** @description Make it the account live charges go to */
+                default?: boolean;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: string;
+            };
+            cookie?: never;
+        };
+        /** @description The provider's settings (for iyzico api_key, secret_key, base_url and the buyer defaults) */
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Stored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    deleteProviderAccount: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listPaymentLedger: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entries?: {
+                            id?: number;
+                            /** Format: uuid */
+                            invoice_id?: string;
+                            provider?: string;
+                            environment?: string;
+                            /** @enum {string} */
+                            kind?: "charge" | "refund" | "dispute" | "payout";
+                            /** @enum {string} */
+                            status?: "succeeded" | "declined" | "failed" | "pending";
+                            amount_minor?: number;
+                            currency?: string;
+                            provider_ref?: string;
+                            /** @enum {string} */
+                            source?: "command" | "webhook" | "reconciliation";
+                            detail?: string;
+                            /** Format: date-time */
+                            occurred_at?: string;
+                        }[];
+                    };
+                };
+            };
+            503: components["responses"]["Error"];
+        };
+    };
+    providerWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Understood (processed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     adminListDeadLetters: {

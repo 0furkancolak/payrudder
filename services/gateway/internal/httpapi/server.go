@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"regexp"
 	"runtime/debug"
 	"strings"
@@ -67,6 +68,9 @@ type Deps struct {
 	Limiter       Limiter
 	OperatorToken string
 	Log           *slog.Logger
+	// PaymentsURL is payments-worker's HTTP address (provider webhooks, provider accounts, the ledger); nil answers 503 on those routes.
+	PaymentsURL   *url.URL
+	PaymentsToken string
 }
 
 // Server is the HTTP handler.
@@ -102,6 +106,9 @@ const (
 	AccessTenant Access = iota
 	AccessSandbox
 	AccessOperator
+	// AccessPublic is for callers that hold no key: a payment provider's webhook. Such a route authenticates nothing and
+	// believes nothing in the request (the handler confirms with the provider).
+	AccessPublic
 )
 
 // Route is one entry of the route table (also checked against api/openapi/v1.yaml by a contract test).
@@ -123,6 +130,8 @@ func (s *Server) wrap(rt Route) http.Handler {
 		r.Body = http.MaxBytesReader(w, r.Body, bodyLimit(rt.Method, rt.Path))
 		ctx := r.Context()
 		switch rt.Access {
+		case AccessPublic:
+			// No principal, no tenant, no rate-limit class: the worker rate-limits by never acting on unconfirmed bodies.
 		case AccessOperator:
 			if !s.operatorOK(r) {
 				writeError(w, r, status.Error(codes.Unauthenticated, "operator token required"))
@@ -152,7 +161,7 @@ func (s *Server) wrap(rt Route) http.Handler {
 		}
 		ctx = metadata.AppendToOutgoingContext(ctx, "x-request-id", requestID(r.Context()))
 		// Only sandbox tenants and operators may force a trace through every consumer (see docs/08-observability.md).
-		if r.Header.Get("X-Quotify-Debug") == "1" && (rt.Access == AccessOperator || principalFrom(ctx).Tenant.Environment == tenant.EnvSandbox) {
+		if r.Header.Get("X-Quotify-Debug") == "1" && (rt.Access == AccessOperator || (rt.Access != AccessPublic && principalFrom(ctx).Tenant.Environment == tenant.EnvSandbox)) {
 			ctx = metadata.AppendToOutgoingContext(ctx, "x-quotify-debug", "1")
 			span.SetAttributes(attribute.Bool("quotify.debug", true))
 		}

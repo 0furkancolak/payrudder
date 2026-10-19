@@ -148,3 +148,10 @@ Packages: `pkg/workerx` (skeleton), `pkg/payments` (provider interface + mock-ps
 `services/{invoice-worker,payments-worker,notifier}` and `tools/mockpsp`. Metrics: `worker_commands_handled{queue,result}`,
 `worker_commands_replayed`. See the notes in [phase 06](../phases/phase-06-workers.md#notes-as-built) for the decisions that
 differ from the sketches above.
+
+## As built: payments-worker and providers (Phase 14)
+
+payments-worker also serves HTTP on `PAYMENTS_HTTP_ADDR` (default `:8095`), only when `QUOTIFY_SECRETS_KEY` is set: `POST /webhooks/{provider}` (provider notifications, confirmed
+with the provider before anything is recorded), and, behind `X-Internal-Token`, tenants' provider accounts and the payment ledger. The gateway forwards to it
+(`QUOTIFY_PAYMENTS_URL`, `QUOTIFY_PAYMENTS_INTERNAL_TOKEN`). A live tenant's commands go to its default provider account, else to `PAYMENTS_LIVE_PROVIDER`;
+sandbox commands always go to mock-psp. See [phase 14](../phases/phase-14-provider-contract-iyzico.md).
