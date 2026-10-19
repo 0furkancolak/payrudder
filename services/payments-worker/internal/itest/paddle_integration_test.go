@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -74,6 +75,23 @@ func (f *fakePaddle) count(k string) int {
 	return f.calls[k]
 }
 
+// recPlans stands in for plans-svc.
+type recPlans struct {
+	mu   sync.Mutex
+	reqs []*plansv1.SyncProviderSubscriptionRequest
+	fail bool
+}
+
+func (r *recPlans) SyncProviderSubscription(_ context.Context, _ uuid.UUID, req *plansv1.SyncProviderSubscriptionRequest) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.fail {
+		return errors.New("plans-svc is down")
+	}
+	r.reqs = append(r.reqs, req)
+	return nil
+}
+
 func TestPaddleThroughTheWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
 	db := testkit.CreateServiceDB(t, pg, "payments")
@@ -97,8 +115,9 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 	attempts, ledger := store.Attempts{DB: pool}, store.Ledger{DB: pool}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	h := &handler.Handler{Sandbox: payments.NewMockPSP("http://unused", 0), Attempts: attempts, Ledger: ledger, Resolver: resolver, Log: log}
+	plans := &recPlans{}
 	api := httptest.NewServer((&webhook.Server{Registry: registry, Resolver: resolver, Accounts: accounts, Events: store.Events{DB: pool}, Attempts: attempts,
-		Ledger: ledger, Subscriptions: store.Subscriptions{DB: pool}, Log: log, Token: "internal"}).Handler())
+		Ledger: ledger, Subscriptions: store.Subscriptions{DB: pool}, Log: log, Token: "internal", Plans: plans}).Handler())
 	defer api.Close()
 
 	tenant := uuid.New()
@@ -247,10 +266,27 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 		created := event("evt_4", "subscription.created", "2027-01-05T12:00:00Z", `{"id":"sub_01","status":"active","custom_data":{"quotify_subscription_id":"`+qsub.String()+`"},"next_billed_at":"2027-02-01T00:00:00Z"}`)
 		pastDue := event("evt_5", "subscription.past_due", "2027-02-02T12:00:00Z", `{"id":"sub_01","status":"past_due","custom_data":null}`)
 		stale := event("evt_6", "subscription.updated", "2027-01-20T12:00:00Z", `{"id":"sub_01","status":"active","custom_data":null}`)
+		// plans-svc is down for the first delivery: the provider is told to retry, and the retry goes through.
+		plans.mu.Lock()
+		plans.fail = true
+		plans.mu.Unlock()
+		if code, _ := post(hook, created, signed(created, time.Now())); code != 503 {
+			t.Fatalf("with plans-svc down: %d, want 503", code)
+		}
+		plans.mu.Lock()
+		plans.fail = false
+		plans.mu.Unlock()
 		for _, b := range []string{created, pastDue, stale} {
 			if code, resp := post(hook, b, signed(b, time.Now())); code != 200 {
 				t.Fatalf("webhook: %d %s", code, resp)
 			}
+		}
+		plans.mu.Lock()
+		reqs := append([]*plansv1.SyncProviderSubscriptionRequest(nil), plans.reqs...)
+		plans.mu.Unlock()
+		if len(reqs) == 0 || reqs[0].GetSubscriptionId() != qsub.String() || reqs[0].GetProvider() != "paddle" || reqs[0].GetProviderRef() != "sub_01" ||
+			reqs[0].GetOwner() != "provider" || reqs[0].GetProviderStatus() != "active" || reqs[0].GetOccurredAt() == nil {
+			t.Fatalf("plans-svc was told %v; Paddle runs renewals and retries, so the owner is the provider", reqs)
 		}
 		code, list := admin("GET", "/admin/tenants/"+tenant.String()+"/provider-subscriptions", "")
 		if code != 200 || !strings.Contains(list, `"status":"past_due"`) || !strings.Contains(list, qsub.String()) || strings.Contains(list, `"status":"active"`) {
@@ -304,4 +340,52 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 			t.Errorf("tenant without an account: %d", code)
 		}
 	})
+}
+
+// A charge that names its provider goes to that account even when another is the tenant's default.
+func TestChargeNamesItsProvider(t *testing.T) {
+	pg := testkit.StartPostgres(t)
+	db := testkit.CreateServiceDB(t, pg, "payments")
+	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := pgxx.NewPool(context.Background(), db.System)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	ctx := context.Background()
+	paddleAPI, iyzicoAPI := newFakePaddle(t), newFakeIyzico(t)
+	box, _ := secretbox.New(bytes.Repeat([]byte{3}, 32))
+	registry := payments.NewRegistry()
+	iyzico.Register(registry)
+	paddle.Register(registry)
+	accounts := store.Accounts{DB: pool, Box: box}
+	tenant := uuid.New()
+	if err := accounts.Put(ctx, tenant, "paddle", "live", []byte(`{"api_key":"pdl_secret","base_url":"`+paddleAPI.srv.URL+`","webhook_secret":"s","usage_product_id":"pro_u"}`), false); err != nil {
+		t.Fatal(err)
+	}
+	if err := accounts.Put(ctx, tenant, "iyzico", "live", []byte(`{"api_key":"a","secret_key":"s","base_url":"`+iyzicoAPI.srv.URL+`","buyer":{"name":"A","surname":"B","identity_number":"1","address":"x","city":"c","country":"t","zip_code":"1","ip":"1.1.1.1","email":"b@example.com"}}`), true); err != nil {
+		t.Fatal(err)
+	}
+	h := &handler.Handler{Sandbox: payments.NewMockPSP("http://unused", 0), Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool},
+		Resolver: &handler.Resolver{Registry: registry, Accounts: accounts}, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	charge := func(provider, method string) *commandsv1.CommandEnvelope {
+		inv := uuid.New()
+		return &commandsv1.CommandEnvelope{CommandId: uuid.NewString(), TenantId: tenant.String(), Environment: plansv1.Environment_ENVIRONMENT_LIVE,
+			Command: &commandsv1.CommandEnvelope_ChargePayment{ChargePayment: &commandsv1.ChargePayment{InvoiceId: inv.String(), AmountMinor: 100, Currency: "USD",
+				PaymentMethod: method, Provider: provider, IdempotencyKey: inv.String() + ":charge:0"}}}
+	}
+	if r, err := h.Handle(ctx, charge("paddle", "sub_01")); err != nil || r.GetPaymentErrored().GetCode() != handler.CodePending {
+		t.Fatalf("named paddle: %v, %v", r, err)
+	}
+	if paddleAPI.count("POST /subscriptions/sub_01/charge") != 1 || iyzicoAPI.count("/payment/auth") != 0 {
+		t.Fatalf("paddle calls %d, iyzico calls %d", paddleAPI.count("POST /subscriptions/sub_01/charge"), iyzicoAPI.count("/payment/auth"))
+	}
+	if r, err := h.Handle(ctx, charge("", "ck:ct")); err != nil || r.GetPaymentSucceeded() == nil {
+		t.Fatalf("unnamed goes to the default (iyzico): %v, %v", r, err)
+	}
+	if r, err := h.Handle(ctx, charge("nope", "x")); err != nil || r.GetPaymentErrored().GetCode() != handler.CodeNotConfigured {
+		t.Fatalf("a provider with no account: %v, %v", r, err)
+	}
 }

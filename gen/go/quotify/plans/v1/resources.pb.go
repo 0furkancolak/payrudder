@@ -1567,6 +1567,13 @@ type Subscription struct {
 	PauseTime         *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=pause_time,json=pauseTime,proto3" json:"pause_time,omitempty"`
 	// The subscription this one replaced in a plan change; billing splits the fixed fee of the month between them.
 	ChangedFromId string `protobuf:"bytes,14,opt,name=changed_from_id,json=changedFromId,proto3" json:"changed_from_id,omitempty"`
+	// The payment provider that sells this subscription (empty: the tenant's default). Chosen when the subscription is created.
+	Provider string `protobuf:"bytes,15,opt,name=provider,proto3" json:"provider,omitempty"`
+	// The provider's id of the subscription, when the provider runs it (for Paddle, "sub_...").
+	ProviderRef string `protobuf:"bytes,16,opt,name=provider_ref,json=providerRef,proto3" json:"provider_ref,omitempty"`
+	// Who renews the subscription and retries its failed renewals: "quotify" (the default) or "provider". A provider-owned subscription is
+	// changed at the provider; its fixed fee is billed by the provider, not on Quotify's invoice.
+	Owner         string `protobuf:"bytes,17,opt,name=owner,proto3" json:"owner,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1699,6 +1706,27 @@ func (x *Subscription) GetChangedFromId() string {
 	return ""
 }
 
+func (x *Subscription) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *Subscription) GetProviderRef() string {
+	if x != nil {
+		return x.ProviderRef
+	}
+	return ""
+}
+
+func (x *Subscription) GetOwner() string {
+	if x != nil {
+		return x.Owner
+	}
+	return ""
+}
+
 var File_quotify_plans_v1_resources_proto protoreflect.FileDescriptor
 
 const file_quotify_plans_v1_resources_proto_rawDesc = "" +
@@ -1814,7 +1842,7 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x06prices\x18\x02 \x03(\v2\x17.quotify.plans.v1.PriceR\x06prices\"O\n" +
 	"\vCurrencyFee\x12\x1a\n" +
 	"\bcurrency\x18\x01 \x01(\tR\bcurrency\x12$\n" +
-	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\"\xb9\x05\n" +
+	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\"\x8e\x06\n" +
 	"\fSubscription\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -1834,7 +1862,10 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x14cancel_at_period_end\x18\f \x01(\bR\x11cancelAtPeriodEnd\x129\n" +
 	"\n" +
 	"pause_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tpauseTime\x12&\n" +
-	"\x0fchanged_from_id\x18\x0e \x01(\tR\rchangedFromId*Y\n" +
+	"\x0fchanged_from_id\x18\x0e \x01(\tR\rchangedFromId\x12\x1a\n" +
+	"\bprovider\x18\x0f \x01(\tR\bprovider\x12!\n" +
+	"\fprovider_ref\x18\x10 \x01(\tR\vproviderRef\x12\x14\n" +
+	"\x05owner\x18\x11 \x01(\tR\x05owner*Y\n" +
 	"\vEnvironment\x12\x1b\n" +
 	"\x17ENVIRONMENT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ENVIRONMENT_SANDBOX\x10\x01\x12\x14\n" +

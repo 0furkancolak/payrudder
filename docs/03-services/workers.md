@@ -155,3 +155,6 @@ payments-worker also serves HTTP on `PAYMENTS_HTTP_ADDR` (default `:8095`), only
 with the provider before anything is recorded), and, behind `X-Internal-Token`, tenants' provider accounts and the payment ledger. The gateway forwards to it
 (`QUOTIFY_PAYMENTS_URL`, `QUOTIFY_PAYMENTS_INTERNAL_TOKEN`). A live tenant's commands go to its default provider account, else to `PAYMENTS_LIVE_PROVIDER`;
 sandbox commands always go to mock-psp. See [phase 14](../phases/phase-14-provider-contract-iyzico.md).
+
+Phase 15 adds Paddle: `POST /webhooks/{provider}/{tenant}/{environment}` (a notification destination per account, verified by signature), the tenant's provider subscriptions
+and hosted checkouts under `/admin/tenants/{tenant}/`, and `QUOTIFY_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See [phase 15](../phases/phase-15-paddle.md).

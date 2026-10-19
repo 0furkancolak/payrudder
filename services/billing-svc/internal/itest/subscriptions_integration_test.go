@@ -180,3 +180,34 @@ func testSubscriptionWithoutAFeeInItsCurrencyFailsPermanently(t *testing.T) {
 		t.Error("an invoice was created in a currency the plan cannot be sold in")
 	}
 }
+
+func testProviderOwnedSubscriptionBillsOnlyUsageThroughItsProvider(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	stub := e.startWorkers(nil)
+	pv := e.pv() // base fee 1000
+	owned := e.sub("cus_a", pv, func(s *plansv1.Subscription) { s.Provider, s.ProviderRef, s.Owner = "paddle", "sub_01", "provider" })
+	e.setSubs(owned, e.sub("cus_b", pv, nil))
+	e.addUsage("2026-10", "cus_a", "calls", "150", 0) // (150-100) × 2 = 100
+
+	e.driveRun("2026-10")
+
+	// Paddle bills the fixed fee on its own renewal; the Quotify invoice carries the usage only.
+	got := e.lines("2026-10", "cus_a")
+	if len(got) != 1 || got[0].Kind != "USAGE" || got[0].Amount != 100 {
+		t.Fatalf("provider-owned lines = %+v; want the usage only", got)
+	}
+	if l := e.lines("2026-10", "cus_b"); len(l) != 1 || l[0].Kind != "BASE_FEE" || l[0].Amount != 1000 {
+		t.Errorf("a Quotify-owned customer still pays its fixed fee: %+v", l)
+	}
+	eventually(t, 30*time.Second, "the charge command for the provider-owned invoice", func() bool {
+		for _, c := range stub.Commands() {
+			if ch := c.GetChargePayment(); ch != nil && c.GetTenantId() == e.tid.String() && ch.GetAmountMinor() == 100 {
+				if ch.GetProvider() != "paddle" || ch.GetPaymentMethod() != "sub_01" {
+					t.Fatalf("charge = provider %q payment method %q; want paddle and the provider subscription", ch.GetProvider(), ch.GetPaymentMethod())
+				}
+				return true
+			}
+		}
+		return false
+	})
+}

@@ -94,21 +94,21 @@ SELECT meter_code, limit_units, alert_thresholds_pct FROM plan_entitlements
 WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY meter_code;
 
 -- name: InsertSubscription :one
-INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id)
+INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider)
 VALUES (app_tenant_id(), @id, @customer_id, @plan_version_id, tstzrange(@start_time::timestamptz, NULL, '[)'),
-        @state, @interval, @currency, @trial_ends_at, @billing_anchor::timestamptz, @changed_from_id)
+        @state, @interval, @currency, @trial_ends_at, @billing_anchor::timestamptz, @changed_from_id, @provider)
 RETURNING id, customer_id, plan_version_id,
           lower(active)::timestamptz AS start_time,
           upper_inf(active)::bool AS open_ended,
           COALESCE(upper(active), lower(active))::timestamptz AS end_time,
-          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id;
+          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id, provider, provider_ref, owner;
 
 -- name: GetSubscription :one
 SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_version_id,
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id() AND s.id = $1;
 
@@ -117,10 +117,15 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id() AND s.id = $1
 FOR UPDATE OF s;
+
+-- name: LinkProviderSubscription :execrows
+-- Records the provider's id of a subscription and who owns it. An event older than the last one applied changes nothing.
+UPDATE subscriptions SET provider = @provider, provider_ref = @provider_ref, owner = @owner, provider_synced_at = @occurred_at::timestamptz
+WHERE tenant_id = app_tenant_id() AND id = @id AND (provider_synced_at IS NULL OR provider_synced_at <= @occurred_at::timestamptz);
 
 -- name: SetSubscriptionState :execrows
 UPDATE subscriptions SET state = @state, paused_at = @paused_at, cancel_at_period_end = @cancel_at_period_end
@@ -135,7 +140,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id()
   AND s.active && tstzrange(@period_start::timestamptz, @period_end::timestamptz, '[)')

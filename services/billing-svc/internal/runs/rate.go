@@ -38,6 +38,9 @@ type subscription struct {
 	ChangedFromID            string
 	TrialEnd, PausedAt       *time.Time
 	Paused                   bool
+	// Provider, ProviderRef and Owner: the payment provider that sells the subscription and, when it runs it, its id there. A provider-owned
+	// subscription's fixed fee is billed by the provider, so it is not on Quotify's invoice.
+	Provider, ProviderRef, Owner string
 	// Chain is this subscription and the ones it replaced by plan changes inside the same period, oldest first. A
 	// subscription that was not changed has a chain of one.
 	Chain []subscription
@@ -64,7 +67,8 @@ func (m *Manager) subscriptions(ctx context.Context, tenantID uuid.UUID, start, 
 		s := r.GetSubscription()
 		sub := subscription{ID: s.GetId(), CustomerID: s.GetCustomerId(), External: s.GetCustomerExternalId(),
 			PlanVersionID: s.GetPlanVersionId(), Start: s.GetStartTime().AsTime(), Currency: s.GetCurrency(),
-			ChangedFromID: s.GetChangedFromId(), Paused: s.GetState() == plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAUSED}
+			ChangedFromID: s.GetChangedFromId(), Paused: s.GetState() == plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAUSED,
+			Provider: s.GetProvider(), ProviderRef: s.GetProviderRef(), Owner: s.GetOwner()}
 		if s.GetTrialEndTime() != nil {
 			t := s.GetTrialEndTime().AsTime()
 			sub.TrialEnd = &t
@@ -229,7 +233,8 @@ func (m *Manager) feeSegments(ctx context.Context, plans map[string]rating.PlanV
 		}
 		trialRunsPast := member.TrialEnd != nil && member.TrialEnd.After(end)
 		pausedBefore := member.Paused && member.PausedAt != nil && !member.PausedAt.After(start)
-		segs = append(segs, rating.FeeSegment{PlanCode: pv.PlanCode, FeeMinor: pv.BaseFeeMinor, From: from, To: to, Waived: trialRunsPast || pausedBefore})
+		providerBills := member.Owner == "provider"
+		segs = append(segs, rating.FeeSegment{PlanCode: pv.PlanCode, FeeMinor: pv.BaseFeeMinor, From: from, To: to, Waived: trialRunsPast || pausedBefore || providerBills})
 	}
 	return segs, nil
 }
@@ -458,11 +463,19 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 		if err != nil {
 			return permanent{err}
 		}
+		paymentMethod, provider := cu.GetCustomer().GetPaymentMethod(), ""
+		if subscribed {
+			provider = sub.Provider
+			if sub.Owner == "provider" && sub.ProviderRef != "" {
+				// The provider holds the payment method of a subscription it runs; the charge goes to that subscription.
+				paymentMethod = sub.ProviderRef
+			}
+		}
 		drafts = append(drafts, draftInvoice{
 			Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pvID, Lines: lines, LineScales: scales, Total: total,
 			Snapshot: saga.Snapshot{
 				CustomerExternalID: snapExternal, CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
-				PaymentMethod: cu.GetCustomer().GetPaymentMethod(), TenantName: t.GetName(), Environment: env, CurrencyExponent: invCur.Exponent,
+				PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: env, CurrencyExponent: invCur.Exponent,
 				LogoObjectKey: logoKey,
 			},
 		})

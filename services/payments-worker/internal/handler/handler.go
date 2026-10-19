@@ -48,11 +48,18 @@ const (
 
 // providerFor picks the provider of a command. A live tenant with its own provider account is served by it; the others by the
 // configured live provider. Refunds and status queries follow the provider the invoice was charged through.
-func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, env plansv1.Environment, invoice uuid.UUID, charge bool) (payments.PaymentProvider, error) {
+func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, env plansv1.Environment, invoice uuid.UUID, charge bool, named string) (payments.PaymentProvider, error) {
 	if env == plansv1.Environment_ENVIRONMENT_SANDBOX {
 		return h.Sandbox, nil
 	}
 	if h.Resolver != nil {
+		if charge && named != "" {
+			// The subscription names its provider (it was routed there): that account, not the tenant's default.
+			if h.Live != nil && h.Live.Name() == named {
+				return h.Live, nil
+			}
+			return h.Resolver.Named(ctx, tenant, named, "live")
+		}
 		if charge {
 			p, ok, err := h.Resolver.Default(ctx, tenant, "live")
 			if err != nil {
@@ -170,7 +177,7 @@ func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 		if err != nil || ch.GetIdempotencyKey() == "" {
 			return nil, fmt.Errorf("%w: charge needs invoice_id and idempotency_key", workerx.ErrPoison)
 		}
-		prov, err := h.providerFor(ctx, tenantID, cmd.GetEnvironment(), invoiceID, true)
+		prov, err := h.providerFor(ctx, tenantID, cmd.GetEnvironment(), invoiceID, true, ch.GetProvider())
 		if err != nil {
 			return unavailable(err), nil
 		}
@@ -236,7 +243,7 @@ func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 		if err != nil || rf.GetIdempotencyKey() == "" {
 			return nil, fmt.Errorf("%w: refund needs invoice_id and idempotency_key", workerx.ErrPoison)
 		}
-		prov, err := h.providerFor(ctx, tenantID, cmd.GetEnvironment(), invoiceID, false)
+		prov, err := h.providerFor(ctx, tenantID, cmd.GetEnvironment(), invoiceID, false, "")
 		if err != nil {
 			return unavailable(err), nil
 		}
@@ -271,7 +278,7 @@ func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 		if err != nil || q.GetIdempotencyKey() == "" {
 			return nil, fmt.Errorf("%w: status needs invoice_id and idempotency_key", workerx.ErrPoison)
 		}
-		prov, err := h.providerFor(ctx, tenantID, cmd.GetEnvironment(), invoiceID, false)
+		prov, err := h.providerFor(ctx, tenantID, cmd.GetEnvironment(), invoiceID, false, "")
 		if err != nil {
 			return unavailable(err), nil
 		}

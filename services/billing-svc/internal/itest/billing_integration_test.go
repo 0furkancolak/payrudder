@@ -57,6 +57,7 @@ func TestBilling(t *testing.T) {
 		{"TrialAndPauseWaiveTheFixedFee", testTrialAndPauseWaiveTheFixedFee},
 		{"SubscriptionInAnotherCurrencyIsInvoicedInIt", testSubscriptionInAnotherCurrencyIsInvoicedInIt},
 		{"SubscriptionWithoutAFeeInItsCurrencyFailsPermanently", testSubscriptionWithoutAFeeInItsCurrencyFailsPermanently},
+		{"ProviderOwnedSubscriptionBillsOnlyUsageThroughItsProvider", testProviderOwnedSubscriptionBillsOnlyUsageThroughItsProvider},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

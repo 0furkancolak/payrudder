@@ -127,6 +127,10 @@ type Subscription struct {
 	PausedAt          *time.Time
 	BillingAnchor     time.Time
 	ChangedFromID     *uuid.UUID
+	Provider          *string
+	ProviderRef       *string
+	Owner             string
+	ProviderSyncedAt  *time.Time
 }
 
 type Tenant struct {

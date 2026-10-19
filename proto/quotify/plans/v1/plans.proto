@@ -31,6 +31,9 @@ service PlansService {
   rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse);
   rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
   rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse);
+  // SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
+  // Internal: called by payments-worker, not exposed by the gateway.
+  rpc SyncProviderSubscription(SyncProviderSubscriptionRequest) returns (SyncProviderSubscriptionResponse);
   // PauseSubscription stops the fixed fee from the call until ResumeSubscription. Usage is still metered and billed.
   rpc PauseSubscription(PauseSubscriptionRequest) returns (PauseSubscriptionResponse);
   rpc ResumeSubscription(ResumeSubscriptionRequest) returns (ResumeSubscriptionResponse);
@@ -177,6 +180,8 @@ message CreateSubscriptionRequest {
   SubscriptionInterval interval = 6;
   // Unset = the customer's billing currency, else the tenant's. The plan version must have a fee in it.
   string currency = 7;
+  // The payment provider that sells it (a name such as "paddle"); empty is the tenant's default.
+  string provider = 8;
 }
 
 message CreateSubscriptionResponse {
@@ -252,4 +257,20 @@ message ChangePlanResponse {
   // the old plan's share up to change_time and the new plan's share from it. Informational; billing recomputes them.
   int64 old_plan_fee_minor = 2;
   int64 new_plan_fee_minor = 3;
+}
+
+message SyncProviderSubscriptionRequest {
+  string subscription_id = 1;
+  string provider = 2;
+  string provider_ref = 3;
+  // "quotify" or "provider", from the provider's capabilities.
+  string owner = 4;
+  // The provider's status word: active, trialing, past_due, paused or canceled. Empty links without changing the state.
+  string provider_status = 5;
+  // When the provider says it happened; an event older than the last one applied is ignored.
+  google.protobuf.Timestamp occurred_at = 6;
+}
+
+message SyncProviderSubscriptionResponse {
+  Subscription subscription = 1;
 }

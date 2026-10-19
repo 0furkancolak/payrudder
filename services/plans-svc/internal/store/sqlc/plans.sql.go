@@ -262,7 +262,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id() AND s.id = $1
 `
@@ -284,6 +284,9 @@ type GetSubscriptionRow struct {
 	PausedAt           *time.Time
 	BillingAnchor      time.Time
 	ChangedFromID      *uuid.UUID
+	Provider           *string
+	ProviderRef        *string
+	Owner              string
 }
 
 func (q *Queries) GetSubscription(ctx context.Context, id uuid.UUID) (GetSubscriptionRow, error) {
@@ -306,6 +309,9 @@ func (q *Queries) GetSubscription(ctx context.Context, id uuid.UUID) (GetSubscri
 		&i.PausedAt,
 		&i.BillingAnchor,
 		&i.ChangedFromID,
+		&i.Provider,
+		&i.ProviderRef,
+		&i.Owner,
 	)
 	return i, err
 }
@@ -315,7 +321,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id() AND s.id = $1
 FOR UPDATE OF s
@@ -338,6 +344,9 @@ type GetSubscriptionForUpdateRow struct {
 	PausedAt           *time.Time
 	BillingAnchor      time.Time
 	ChangedFromID      *uuid.UUID
+	Provider           *string
+	ProviderRef        *string
+	Owner              string
 }
 
 func (q *Queries) GetSubscriptionForUpdate(ctx context.Context, id uuid.UUID) (GetSubscriptionForUpdateRow, error) {
@@ -360,6 +369,9 @@ func (q *Queries) GetSubscriptionForUpdate(ctx context.Context, id uuid.UUID) (G
 		&i.PausedAt,
 		&i.BillingAnchor,
 		&i.ChangedFromID,
+		&i.Provider,
+		&i.ProviderRef,
+		&i.Owner,
 	)
 	return i, err
 }
@@ -559,14 +571,14 @@ func (q *Queries) InsertPlanVersionFee(ctx context.Context, arg InsertPlanVersio
 }
 
 const insertSubscription = `-- name: InsertSubscription :one
-INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id)
+INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider)
 VALUES (app_tenant_id(), $1, $2, $3, tstzrange($4::timestamptz, NULL, '[)'),
-        $5, $6, $7, $8, $9::timestamptz, $10)
+        $5, $6, $7, $8, $9::timestamptz, $10, $11)
 RETURNING id, customer_id, plan_version_id,
           lower(active)::timestamptz AS start_time,
           upper_inf(active)::bool AS open_ended,
           COALESCE(upper(active), lower(active))::timestamptz AS end_time,
-          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id
+          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id, provider, provider_ref, owner
 `
 
 type InsertSubscriptionParams struct {
@@ -580,6 +592,7 @@ type InsertSubscriptionParams struct {
 	TrialEndsAt   *time.Time
 	BillingAnchor time.Time
 	ChangedFromID *uuid.UUID
+	Provider      *string
 }
 
 type InsertSubscriptionRow struct {
@@ -598,6 +611,9 @@ type InsertSubscriptionRow struct {
 	PausedAt          *time.Time
 	BillingAnchor     time.Time
 	ChangedFromID     *uuid.UUID
+	Provider          *string
+	ProviderRef       *string
+	Owner             string
 }
 
 func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) (InsertSubscriptionRow, error) {
@@ -612,6 +628,7 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 		arg.TrialEndsAt,
 		arg.BillingAnchor,
 		arg.ChangedFromID,
+		arg.Provider,
 	)
 	var i InsertSubscriptionRow
 	err := row.Scan(
@@ -630,6 +647,9 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 		&i.PausedAt,
 		&i.BillingAnchor,
 		&i.ChangedFromID,
+		&i.Provider,
+		&i.ProviderRef,
+		&i.Owner,
 	)
 	return i, err
 }
@@ -653,6 +673,34 @@ func (q *Queries) LatestMeter(ctx context.Context, code string) (Meter, error) {
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const linkProviderSubscription = `-- name: LinkProviderSubscription :execrows
+UPDATE subscriptions SET provider = $1, provider_ref = $2, owner = $3, provider_synced_at = $4::timestamptz
+WHERE tenant_id = app_tenant_id() AND id = $5 AND (provider_synced_at IS NULL OR provider_synced_at <= $4::timestamptz)
+`
+
+type LinkProviderSubscriptionParams struct {
+	Provider    *string
+	ProviderRef *string
+	Owner       string
+	OccurredAt  time.Time
+	ID          uuid.UUID
+}
+
+// Records the provider's id of a subscription and who owns it. An event older than the last one applied changes nothing.
+func (q *Queries) LinkProviderSubscription(ctx context.Context, arg LinkProviderSubscriptionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, linkProviderSubscription,
+		arg.Provider,
+		arg.ProviderRef,
+		arg.Owner,
+		arg.OccurredAt,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const listCustomers = `-- name: ListCustomers :many
@@ -905,7 +953,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
 WHERE s.tenant_id = app_tenant_id()
   AND s.active && tstzrange($1::timestamptz, $2::timestamptz, '[)')
@@ -937,6 +985,9 @@ type ListSubscriptionsOverlappingRow struct {
 	PausedAt           *time.Time
 	BillingAnchor      time.Time
 	ChangedFromID      *uuid.UUID
+	Provider           *string
+	ProviderRef        *string
+	Owner              string
 }
 
 func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubscriptionsOverlappingParams) ([]ListSubscriptionsOverlappingRow, error) {
@@ -965,6 +1016,9 @@ func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubs
 			&i.PausedAt,
 			&i.BillingAnchor,
 			&i.ChangedFromID,
+			&i.Provider,
+			&i.ProviderRef,
+			&i.Owner,
 		); err != nil {
 			return nil, err
 		}

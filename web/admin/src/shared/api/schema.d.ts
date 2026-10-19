@@ -1515,6 +1515,14 @@ export interface components {
             cancel_at_period_end?: boolean;
             /** Format: date-time */
             pause_time?: string | null;
+            provider?: string;
+            /** @description The provider's id of the subscription */
+            provider_ref?: string;
+            /**
+             * @description Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider
+             * @enum {string}
+             */
+            owner?: "quotify" | "provider";
         };
         Tenant: {
             /** Format: uuid */
@@ -2011,6 +2019,8 @@ export interface operations {
                     interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
                     /** @description Default is the customer's billing currency */
                     currency?: string;
+                    /** @description The payment provider that sells it (for example paddle); default is the tenant's default account */
+                    provider?: string;
                 };
             };
         };

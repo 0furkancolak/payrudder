@@ -20,7 +20,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
+	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/payments"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
@@ -38,6 +40,13 @@ type Server struct {
 	Log           *slog.Logger
 	// Token guards /admin. Empty disables the admin endpoints entirely.
 	Token string
+	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status.
+	Plans PlansSync
+}
+
+// PlansSync tells plans-svc what a provider says about a subscription it runs.
+type PlansSync interface {
+	SyncProviderSubscription(ctx context.Context, tenant uuid.UUID, req *plansv1.SyncProviderSubscriptionRequest) error
 }
 
 const maxBody = 64 << 10
@@ -275,7 +284,19 @@ func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provi
 	if occurred.IsZero() {
 		occurred = time.Now()
 	}
-	return s.Subscriptions.Upsert(ctx, tenant, provider, env, ev.ProviderRef, q, ev.Status, ev.NextBilledAt, occurred)
+	if err := s.Subscriptions.Upsert(ctx, tenant, provider, env, ev.ProviderRef, q, ev.Status, ev.NextBilledAt, occurred); err != nil {
+		return err
+	}
+	if q == nil || s.Plans == nil {
+		return nil // a subscription we did not start (or no plans-svc to tell): kept for the operator, nothing to link
+	}
+	owner := payments.OwnerQuotify
+	if prov, err := s.Resolver.Named(ctx, tenant, provider, env); err == nil {
+		owner = prov.Capabilities().Owner()
+	}
+	return s.Plans.SyncProviderSubscription(ctx, tenant, &plansv1.SyncProviderSubscriptionRequest{
+		SubscriptionId: q.String(), Provider: provider, ProviderRef: ev.ProviderRef, Owner: string(owner), ProviderStatus: ev.Status, OccurredAt: timestamppb.New(occurred),
+	})
 }
 
 func (s *Server) tenant(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {

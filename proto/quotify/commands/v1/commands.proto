@@ -91,6 +91,8 @@ message ChargePayment {
   int32 dunning_attempt = 5;
   // invoice_id:charge:dunning_attempt. Stable across retries of the same charge, so the PSP never charges twice.
   string idempotency_key = 6;
+  // The payment provider of the customer's subscription. Empty means the tenant's default provider account.
+  string provider = 7;
 }
 
 message RefundPayment {

@@ -1,6 +1,6 @@
 # Billing platform: subscriptions, payment providers, routing, reporting
 
-Status: phases 13 and 14 are built (see the notes below). Phases 15–18 are design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
+Status: phases 13, 14 and 15 are built (see the notes below). Phases 16–18 are design only. Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
 
 ## Why
 
@@ -108,6 +108,12 @@ account settings; iyzico is the first adapter (stored-card charges, refunds, sta
 renewal and dunning for it. Every charge and refund lands in an append-only ledger in `payments_db`; notifications arrive on the gateway's public
 `/webhooks/{provider}`, are never believed, and are confirmed with the provider. The `Owner` of a subscription is derived from the capabilities but
 not yet stored on it, since only Quotify-owned providers exist until Paddle (phase 15).
+
+## As built: phase 15
+
+Details in [phase 15](phases/phase-15-paddle.md). Paddle is the first provider that owns renewal and dunning: a subscription gets `provider`, `provider_ref` and `owner`
+(plans-svc), Paddle's signed notifications link and follow it, its fixed fee stays off Quotify's invoice, and the usage total is charged on the customer's Paddle subscription as a
+one-time charge that settles asynchronously. Dunning of that usage charge stays Quotify's saga; renewals are Paddle's.
 
 ## Currency
 
