@@ -26,7 +26,7 @@ func subscriptionMessage(r sqlc.GetSubscriptionRow, now time.Time) *plansv1.Subs
 		ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: r.CustomerExternalID,
 		PlanVersionID: r.PlanVersionID.String(), Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
 		State: r.State, Interval: r.Interval, Currency: r.Currency, TrialEnds: r.TrialEndsAt, PausedAt: r.PausedAt,
-		CancelAtPeriodEnd: r.CancelAtPeriodEnd, ChangedFromID: uuidString(r.ChangedFromID), Provider: strString(r.Provider), ProviderRef: strString(r.ProviderRef), Owner: r.Owner, Now: now,
+		CancelAtPeriodEnd: r.CancelAtPeriodEnd, ChangedFromID: uuidString(r.ChangedFromID), Provider: strString(r.Provider), ProviderRef: strString(r.ProviderRef), Owner: r.Owner, PlanCode: r.PlanCode, PlanVersion: r.PlanVersion, Now: now,
 	})
 }
 
@@ -237,12 +237,11 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 		if err != nil {
 			return err
 		}
-		out = convert.Subscription(convert.SubscriptionFields{
-			ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: c.ExternalID, PlanVersionID: r.PlanVersionID.String(),
-			Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt, State: r.State, Interval: r.Interval,
-			Currency: r.Currency, TrialEnds: r.TrialEndsAt, PausedAt: r.PausedAt, CancelAtPeriodEnd: r.CancelAtPeriodEnd, ChangedFromID: uuidString(r.ChangedFromID),
-			Provider: strString(r.Provider), ProviderRef: strString(r.ProviderRef), Owner: r.Owner, Now: s.now(),
-		})
+		full, err := q.GetSubscription(ctx, r.ID)
+		if err != nil {
+			return err
+		}
+		out = subscriptionMessage(full, s.now())
 		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, nil, s.now())
 	})
 	if err != nil {
@@ -578,12 +577,11 @@ func (s *Server) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest)
 		if err != nil {
 			return err
 		}
-		out = convert.Subscription(convert.SubscriptionFields{
-			ID: nr.ID.String(), CustomerID: nr.CustomerID.String(), CustomerExternalID: row.CustomerExternalID, PlanVersionID: nr.PlanVersionID.String(),
-			Start: nr.StartTime, End: nr.EndTime, OpenEnded: nr.OpenEnded, Created: nr.CreatedAt, State: nr.State, Interval: nr.Interval,
-			Currency: nr.Currency, TrialEnds: nr.TrialEndsAt, PausedAt: nr.PausedAt, CancelAtPeriodEnd: nr.CancelAtPeriodEnd, ChangedFromID: uuidString(nr.ChangedFromID),
-			Provider: strString(nr.Provider), ProviderRef: strString(nr.ProviderRef), Owner: nr.Owner, Now: s.now(),
-		})
+		full, err := q.GetSubscription(ctx, nr.ID)
+		if err != nil {
+			return err
+		}
+		out = subscriptionMessage(full, s.now())
 		// Old entitlements first, new ones last: the topic is compacted per customer and meter, so the last write wins.
 		if err := publishEntitlements(ctx, q, ti.ID, row.CustomerID, row.PlanVersionID, row.StartTime, &at, s.now()); err != nil {
 			return err

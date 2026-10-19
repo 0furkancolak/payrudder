@@ -210,6 +210,9 @@ message Subscription {
   // Who renews the subscription and retries its failed renewals: "quotify" (the default) or "provider". A provider-owned subscription is
   // changed at the provider; its fixed fee is billed by the provider, not on Quotify's invoice.
   string owner = 17;
+  // The package (plan) and its version this subscription is on.
+  string plan_code = 18;
+  int32 plan_version = 19;
 }
 
 enum SubscriptionState {

@@ -13,7 +13,7 @@ provider accounts, ledger), the gateway routes for them, compose wiring.
 
 **Out of scope:** Paddle (phase 15), choosing the provider per customer by country and currency (phase 16), reports on the ledger (phase 17),
 hosted checkout and card registration at iyzico (the customer's payment method token is entered as `cardUserKey:cardToken`), the Helm chart
-(payments-worker has no Service there yet), per-customer buyer details (iyzico requires them; the account carries defaults).
+(wired in phase 18), per-customer buyer details (iyzico requires them; the account carries defaults).
 
 ## Decisions made while building
 

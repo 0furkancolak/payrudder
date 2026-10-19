@@ -1873,6 +1873,8 @@ components:
         provider: { type: string }
         provider_ref: { type: string, description: The provider's id of the subscription, once it is linked }
         owner: { type: string, enum: [quotify, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
+        plan_code: { type: string }
+        plan_version: { type: integer }
     RoutingRules:
       type: object
       properties:

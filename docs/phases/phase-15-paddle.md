@@ -12,7 +12,7 @@ subscriptions, hosted checkout, pending charges and ledger-first status, subscri
 billing and in the charge command, gateway routes, compose.
 
 **Out of scope:** choosing the provider by country and currency (phase 16: `CreateSubscription` takes the provider by name for now), moving a customer between providers
-(phase 16), partial refunds, Paddle's `transaction.paid` and other events not listed below, the Helm chart.
+(phase 16), partial refunds, Paddle's `transaction.paid` and other events not listed below. (The Helm chart was wired in phase 18.)
 
 ## Decisions made while building
 

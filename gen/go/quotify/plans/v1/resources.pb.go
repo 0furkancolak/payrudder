@@ -1573,7 +1573,10 @@ type Subscription struct {
 	ProviderRef string `protobuf:"bytes,16,opt,name=provider_ref,json=providerRef,proto3" json:"provider_ref,omitempty"`
 	// Who renews the subscription and retries its failed renewals: "quotify" (the default) or "provider". A provider-owned subscription is
 	// changed at the provider; its fixed fee is billed by the provider, not on Quotify's invoice.
-	Owner         string `protobuf:"bytes,17,opt,name=owner,proto3" json:"owner,omitempty"`
+	Owner string `protobuf:"bytes,17,opt,name=owner,proto3" json:"owner,omitempty"`
+	// The package (plan) and its version this subscription is on.
+	PlanCode      string `protobuf:"bytes,18,opt,name=plan_code,json=planCode,proto3" json:"plan_code,omitempty"`
+	PlanVersion   int32  `protobuf:"varint,19,opt,name=plan_version,json=planVersion,proto3" json:"plan_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1727,6 +1730,20 @@ func (x *Subscription) GetOwner() string {
 	return ""
 }
 
+func (x *Subscription) GetPlanCode() string {
+	if x != nil {
+		return x.PlanCode
+	}
+	return ""
+}
+
+func (x *Subscription) GetPlanVersion() int32 {
+	if x != nil {
+		return x.PlanVersion
+	}
+	return 0
+}
+
 var File_quotify_plans_v1_resources_proto protoreflect.FileDescriptor
 
 const file_quotify_plans_v1_resources_proto_rawDesc = "" +
@@ -1842,7 +1859,7 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x06prices\x18\x02 \x03(\v2\x17.quotify.plans.v1.PriceR\x06prices\"O\n" +
 	"\vCurrencyFee\x12\x1a\n" +
 	"\bcurrency\x18\x01 \x01(\tR\bcurrency\x12$\n" +
-	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\"\x8e\x06\n" +
+	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\"\xce\x06\n" +
 	"\fSubscription\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -1865,7 +1882,9 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x0fchanged_from_id\x18\x0e \x01(\tR\rchangedFromId\x12\x1a\n" +
 	"\bprovider\x18\x0f \x01(\tR\bprovider\x12!\n" +
 	"\fprovider_ref\x18\x10 \x01(\tR\vproviderRef\x12\x14\n" +
-	"\x05owner\x18\x11 \x01(\tR\x05owner*Y\n" +
+	"\x05owner\x18\x11 \x01(\tR\x05owner\x12\x1b\n" +
+	"\tplan_code\x18\x12 \x01(\tR\bplanCode\x12!\n" +
+	"\fplan_version\x18\x13 \x01(\x05R\vplanVersion*Y\n" +
 	"\vEnvironment\x12\x1b\n" +
 	"\x17ENVIRONMENT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ENVIRONMENT_SANDBOX\x10\x01\x12\x14\n" +

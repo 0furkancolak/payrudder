@@ -1,8 +1,22 @@
 {
-  "meta": { "name": "Español", "dir": "ltr" },
-  "app": { "title": "Consola de operador de Quotify", "language": "Idioma" },
-  "nav": { "tenants": "Inquilinos", "playground": "Área de pruebas", "deadLetters": "Cartas muertas", "signOut": "Cerrar sesión" },
-  "common": { "loading": "Cargando…", "unknown": "?" },
+  "meta": {
+    "name": "Español",
+    "dir": "ltr"
+  },
+  "app": {
+    "title": "Consola de operador de Quotify",
+    "language": "Idioma"
+  },
+  "nav": {
+    "tenants": "Inquilinos",
+    "playground": "Área de pruebas",
+    "deadLetters": "Cartas muertas",
+    "signOut": "Cerrar sesión"
+  },
+  "common": {
+    "loading": "Cargando…",
+    "unknown": "?"
+  },
   "signIn": {
     "title": "Consola de operador",
     "intro": "Lee y actúa solo a través de la pasarela. El token se queda en esta pestaña del navegador (almacenamiento de sesión).",
@@ -10,15 +24,75 @@
     "submit": "Iniciar sesión"
   },
   "enums": {
-    "environment": { "sandbox": "sandbox", "live": "producción" },
-    "tier": { "free": "gratuito", "standard": "estándar", "enterprise": "empresarial" },
-    "invoiceStatus": { "draft": "borrador", "open": "abierta", "paid": "pagada", "uncollectible": "incobrable", "void": "anulada" },
-    "invoiceKind": { "REGULAR": "Regular", "CORRECTION": "Corrección", "CREDIT_NOTE": "Nota de crédito" }
+    "environment": {
+      "sandbox": "sandbox",
+      "live": "producción"
+    },
+    "tier": {
+      "free": "gratuito",
+      "standard": "estándar",
+      "enterprise": "empresarial"
+    },
+    "invoiceStatus": {
+      "draft": "borrador",
+      "open": "abierta",
+      "paid": "pagada",
+      "uncollectible": "incobrable",
+      "void": "anulada"
+    },
+    "invoiceKind": {
+      "REGULAR": "Regular",
+      "CORRECTION": "Corrección",
+      "CREDIT_NOTE": "Nota de crédito"
+    },
+    "subscriptionState": {
+      "trialing": "en prueba",
+      "active": "activa",
+      "past_due": "vencida",
+      "paused": "pausada",
+      "cancelled": "cancelada"
+    },
+    "discrepancy": {
+      "paid_without_charge": "Pagada, sin cobro en el libro",
+      "amount_mismatch": "El importe difiere",
+      "duplicate_charge": "Cobrada más de una vez",
+      "charge_without_paid": "Cobrada, factura sin pagar",
+      "conflicting_outcomes": "Éxito y fallo registrados a la vez"
+    },
+    "ledgerKind": {
+      "charge": "cobro",
+      "refund": "reembolso",
+      "dispute": "disputa",
+      "payout": "pago al comercio"
+    },
+    "ledgerStatus": {
+      "succeeded": "correcto",
+      "declined": "rechazado",
+      "failed": "fallido",
+      "pending": "pendiente"
+    },
+    "ledgerSource": {
+      "command": "Quotify",
+      "webhook": "notificación del proveedor",
+      "reconciliation": "conciliación"
+    },
+    "dunningState": {
+      "PAYMENT_DECLINED": "rechazado, reintentando",
+      "PAYMENT_UNKNOWN": "resultado desconocido",
+      "UNCOLLECTIBLE": "abandonado"
+    }
   },
   "tenants": {
     "title": "Inquilinos",
     "empty": "Aún no hay inquilinos.",
-    "columns": { "name": "Nombre", "environment": "Entorno", "tier": "Nivel", "currency": "Moneda", "timezone": "Zona horaria", "id": "Id" }
+    "columns": {
+      "name": "Nombre",
+      "environment": "Entorno",
+      "tier": "Nivel",
+      "currency": "Moneda",
+      "timezone": "Zona horaria",
+      "id": "Id"
+    }
   },
   "tenant": {
     "fallbackTitle": "Inquilino",
@@ -26,7 +100,15 @@
     "invoices": "Facturas",
     "noInvoices": "Sin facturas.",
     "draft": "(borrador)",
-    "columns": { "number": "Número", "kind": "Tipo", "period": "Periodo", "customer": "Cliente", "total": "Total", "status": "Estado", "saga": "Saga" },
+    "columns": {
+      "number": "Número",
+      "kind": "Tipo",
+      "period": "Periodo",
+      "customer": "Cliente",
+      "total": "Total",
+      "status": "Estado",
+      "saga": "Saga"
+    },
     "jobs": {
       "title": "Trabajos de repetición y retarificación",
       "hint": "Busque un trabajo por su id (se inician con quotifyctl o la API de administración).",
@@ -42,19 +124,40 @@
     "openPdf": "Abrir PDF",
     "noPdfLink": "sin enlace",
     "lines": "Líneas",
-    "lineColumns": { "no": "N.º", "kind": "Tipo", "description": "Descripción", "meter": "Medidor", "quantity": "Cantidad", "amount": "Importe" },
+    "lineColumns": {
+      "no": "N.º",
+      "kind": "Tipo",
+      "description": "Descripción",
+      "meter": "Medidor",
+      "quantity": "Cantidad",
+      "amount": "Importe"
+    },
     "saga": "Cronología de la saga",
-    "sagaColumns": { "seq": "Sec.", "from": "De", "to": "A", "cause": "Causa", "at": "Momento" }
+    "sagaColumns": {
+      "seq": "Sec.",
+      "from": "De",
+      "to": "A",
+      "cause": "Causa",
+      "at": "Momento"
+    }
   },
   "deadLetters": {
     "title": "Cartas muertas",
     "intro": "Colas de cartas muertas de RabbitMQ ({pattern}). Un mensaje llega aquí al superar su límite de entregas; reenviar lo devuelve con el contador de reintentos a cero.",
-    "columns": { "queue": "Cola", "messages": "Mensajes" },
+    "columns": {
+      "queue": "Cola",
+      "messages": "Mensajes"
+    },
     "redrive": "Reenviar",
     "confirm": "¿Mover {count} carta(s) muerta(s) de {queue} de vuelta a {queue}? Sus contadores de reintentos se reinician.",
     "redriven": "Se reenviaron {count} mensaje(s) desde {queue}.dlq.",
     "messagesOf": "Mensajes de {queue}.dlq",
-    "messageColumns": { "id": "Id del mensaje", "deliveries": "Entregas", "reason": "Motivo", "bytes": "Bytes" }
+    "messageColumns": {
+      "id": "Id del mensaje",
+      "deliveries": "Entregas",
+      "reason": "Motivo",
+      "bytes": "Bytes"
+    }
   },
   "playground": {
     "title": "Área de pruebas",
@@ -85,13 +188,22 @@
       "timeout_committed": "tiempo agotado, cargo realizado",
       "timeout_not_committed": "tiempo agotado, cargo no realizado"
     },
-    "usage": { "title": "3. Consumo", "calls": "Llamadas", "send": "Enviar consumo", "sent": "{n} llamadas enviadas" },
+    "usage": {
+      "title": "3. Consumo",
+      "calls": "Llamadas",
+      "send": "Enviar consumo",
+      "sent": "{n} llamadas enviadas"
+    },
     "close": {
       "title": "4. Cerrar el periodo",
       "button": "Cerrar el periodo ahora",
       "hint": "La facturación se ejecuta como a fin de mes; el sandbox solo adelanta el corte a ahora."
     },
-    "invoice": { "title": "5. Factura", "waiting": "Esperando la ejecución de facturación (unos 40 segundos)…", "open": "Abrir" },
+    "invoice": {
+      "title": "5. Factura",
+      "waiting": "Esperando la ejecución de facturación (unos 40 segundos)…",
+      "open": "Abrir"
+    },
     "log": {
       "title": "Hecho hasta ahora",
       "account": "Cuenta creada",
@@ -104,6 +216,201 @@
       "outcome": "Resultado del pago: {scenario}",
       "usage": "Consumo enviado: {n} llamadas",
       "closed": "Periodo cerrado (sandbox): la facturación se ejecuta ahora"
+    }
+  },
+  "billing": {
+    "tabs": {
+      "label": "Secciones del cliente",
+      "overview": "Resumen",
+      "customers": "Clientes",
+      "packages": "Paquetes",
+      "subscriptions": "Suscripciones",
+      "payments": "Pagos",
+      "providers": "Proveedores",
+      "reports": "Informes"
+    },
+    "common": {
+      "remove": "Quitar"
+    },
+    "customers": {
+      "new": "Nuevo cliente",
+      "formLabel": "nuevo cliente",
+      "externalId": "ID del cliente",
+      "name": "Nombre",
+      "email": "Correo electrónico",
+      "country": "País",
+      "countryPlaceholder": "País (TR, DE…)",
+      "currency": "Moneda de facturación",
+      "tenantCurrency": "Moneda del cliente",
+      "create": "Crear cliente",
+      "empty": "Aún no hay clientes."
+    },
+    "packages": {
+      "new": "Nuevo paquete",
+      "intro": "Publicar un paquete existente añade una versión nueva. Una versión publicada no cambia; las suscripciones conservan la versión con la que empezaron.",
+      "formLabel": "nuevo paquete",
+      "code": "Código",
+      "name": "Nombre",
+      "fee": "Cuota fija mensual ({currency})",
+      "extraCurrency": "Moneda de la cuota adicional",
+      "extraFee": "Cuota fija {n}",
+      "addFee": "Añadir una cuota en otra moneda",
+      "publish": "Publicar versión",
+      "badAmount": "No es un importe en {currency}: solo dígitos y, como máximo, los decimales de la moneda.",
+      "version": "Versión",
+      "fixedFee": "Cuota fija",
+      "otherFees": "Otras monedas",
+      "meters": "Precios por uso",
+      "empty": "Aún no hay paquetes."
+    },
+    "subscriptions": {
+      "new": "Nueva suscripción",
+      "formLabel": "nueva suscripción",
+      "customer": "Cliente",
+      "package": "Paquete",
+      "currency": "Moneda",
+      "defaultCurrency": "Moneda del cliente",
+      "trialDays": "Días de prueba",
+      "provider": "Proveedor",
+      "byRules": "Según las reglas de enrutamiento",
+      "create": "Crear suscripción",
+      "state": "Estado",
+      "since": "Desde",
+      "until": "Hasta",
+      "endsWithPeriod": "termina con el periodo",
+      "runByProvider": "gestionada por el proveedor",
+      "manage": "Gestionar",
+      "empty": "Aún no hay suscripciones.",
+      "managing": "Gestionar {customer}",
+      "providerRuns": "{provider} gestiona esta suscripción: las renovaciones y los reintentos son suyos. Cámbiela allí; abajo puede moverse a otro proveedor.",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "cancelAtPeriodEnd": "Cancelar al final del periodo",
+      "withdrawCancel": "Mantener la suscripción",
+      "endNow": "Terminar ahora",
+      "confirmEnd": "¿Terminar esta suscripción ahora?",
+      "newPackage": "Cambiar al paquete",
+      "changePlan": "Cambiar paquete",
+      "changePlanHint": "El cambio es inmediato. La cuota fija de este mes se reparte entre los dos paquetes según el tiempo en cada uno.",
+      "moveTo": "Mover al proveedor",
+      "priceRef": "Precio en el proveedor (pri_…)",
+      "move": "Mover",
+      "moveHint": "La suscripción anterior termina solo cuando la nueva toma el relevo, así el cliente nunca recibe dos cobros.",
+      "checkoutReady": "El cliente se suscribe aquí; el cambio termina cuando el proveedor lo confirma:",
+      "moved": "Movida: la nueva suscripción continúa donde termina la anterior.",
+      "usage": "Uso de este periodo",
+      "meter": "Medidor",
+      "used": "Usado",
+      "limit": "Límite",
+      "unlimited": "ilimitado",
+      "allowed": "Estado",
+      "withinLimit": "dentro del límite",
+      "overLimit": "por encima del límite",
+      "noLimits": "Este paquete no fija límites de uso."
+    },
+    "payments": {
+      "reconcile": "Conciliar con el libro",
+      "reconcileHint": "Compara las facturas que facturación da por pagadas en un periodo con los cobros correctos que informaron los proveedores.",
+      "period": "Periodo (AAAA-MM)",
+      "run": "Conciliar",
+      "reconcileResult": "resultado de la conciliación",
+      "summary": "{paid} factura(s) pagada(s) y {charges} cobro(s) correcto(s) en el libro.",
+      "agree": "Las facturas y el libro coinciden.",
+      "kind": "Tipo",
+      "invoice": "Factura",
+      "provider": "Proveedor",
+      "billed": "Facturado",
+      "ledgerAmount": "Libro",
+      "detail": "Detalle",
+      "truncated": "Solo se listan las primeras discrepancias; los recuentos de arriba están completos.",
+      "ledger": "Libro de pagos",
+      "when": "Cuándo",
+      "status": "Estado",
+      "amount": "Importe",
+      "reference": "Referencia",
+      "source": "Origen",
+      "empty": "Aún no hay nada en el libro."
+    },
+    "providers": {
+      "accounts": "Cuentas de proveedores",
+      "accountsHint": "Las cuentas propias del cliente en proveedores de pago. Las credenciales se sellan al guardar y no se vuelven a mostrar.",
+      "provider": "Proveedor",
+      "environment": "Entorno",
+      "default": "Predeterminado",
+      "updated": "Actualizado",
+      "noAccounts": "Aún no hay cuentas de proveedores.",
+      "addAccount": "Añadir o reemplazar una cuenta",
+      "makeDefault": "Los cobros en vivo van aquí por defecto",
+      "settings": "Ajustes (JSON)",
+      "webhookHint": "El proveedor envía sus notificaciones a {path} en la dirección pública de la pasarela.",
+      "saveAccount": "Guardar cuenta",
+      "badJson": "Los ajustes no son un JSON válido.",
+      "saved": "Guardado.",
+      "confirmRemove": "¿Quitar la cuenta de {provider} ({environment})?",
+      "routing": "Reglas de enrutamiento",
+      "routingHint": "La primera regla que coincide con el país del cliente y la moneda de la suscripción elige el proveedor de una suscripción nueva. Sin coincidencia: la cuenta predeterminada. Las suscripciones existentes no se mueven.",
+      "rule": "Regla {n}",
+      "country": "País de la regla {n}",
+      "anyCountry": "Cualquier país",
+      "currency": "Moneda de la regla {n}",
+      "anyCurrency": "Cualquier moneda",
+      "ruleProvider": "Proveedor de la regla {n}",
+      "noRules": "Sin reglas: toda suscripción nueva va a la cuenta predeterminada.",
+      "addRule": "Añadir una regla",
+      "saveRules": "Guardar reglas",
+      "rulesSaved": "Reglas guardadas.",
+      "preview": "¿Adónde iría un cliente?",
+      "previewCountry": "País",
+      "previewCurrency": "Moneda",
+      "previewRun": "Vista previa",
+      "goesTo": "Va a {provider} (regla {n}).",
+      "cannotCharge": "Ese proveedor no puede cobrar en esta moneda.",
+      "goesToDefault": "Ninguna regla coincide: la cuenta predeterminada.",
+      "runByProviders": "Suscripciones que gestionan los proveedores",
+      "reference": "Referencia",
+      "nextBilled": "Próximo cobro",
+      "noProviderSubscriptions": "Aún ninguna suscripción la gestiona un proveedor."
+    },
+    "reports": {
+      "kinds": "Informes",
+      "revenue": "Ingresos",
+      "subscriptions": "Suscripciones",
+      "dunning": "Facturas impagadas",
+      "from": "Desde (AAAA-MM)",
+      "to": "Hasta (AAAA-MM)",
+      "by": {
+        "period": "Periodo",
+        "provider": "Proveedor",
+        "country": "País"
+      },
+      "revenueHint": "Cada moneda tiene sus filas: los importes en monedas distintas nunca se suman.",
+      "subscriptionsHint": "Se cuenta en el último instante del mes. Los ingresos recurrentes mensuales son las cuotas fijas de las suscripciones activas y vencidas. Un cambio de paquete o de proveedor no es alta ni baja.",
+      "dunningHint": "Facturas cuyo pago fue rechazado y se reintenta, cuyo resultado se desconoce o que se abandonaron.",
+      "currency": "Moneda",
+      "invoices": "Facturas",
+      "billed": "Facturado",
+      "collected": "Cobrado",
+      "refunded": "Reembolsado",
+      "outstanding": "Pendiente",
+      "uncollectible": "Incobrable",
+      "month": "Mes (AAAA-MM)",
+      "active": "Activas",
+      "trialing": "En prueba",
+      "paused": "Pausadas",
+      "pastDue": "Vencidas",
+      "mrr": "Ingresos recurrentes mensuales",
+      "new": "Nuevas",
+      "churned": "Bajas",
+      "invoice": "Factura",
+      "customer": "Cliente",
+      "period": "Periodo",
+      "provider": "Proveedor",
+      "total": "Total",
+      "state": "Estado",
+      "attempt": "Reintentos",
+      "nextAttempt": "Próximo intento",
+      "empty": "Aún no hay nada que informar.",
+      "noDunning": "No hay facturas impagadas."
     }
   }
 }

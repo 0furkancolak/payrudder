@@ -21,3 +21,28 @@ export function formatMinor(minor: string | number | undefined, currency: string
   const decimal = `${negative ? "-" : ""}${whole}${frac ? "." + frac : ""}`;
   return formatter.format(decimal as unknown as number);
 }
+
+/** How many digits an amount in a currency has after the point (2 for dollars, 0 for yen, 3 for dinar). */
+export function minorDigits(currency: string, locale = "en"): number {
+  try {
+    return new Intl.NumberFormat(locale, { style: "currency", currency }).resolvedOptions().maximumFractionDigits ?? 2;
+  } catch {
+    return 2;
+  }
+}
+
+/**
+ * Reads an amount a person typed ("12.5", "12,50", "1 250.00") in a currency into minor units as a decimal string, or null when it is not a non-negative
+ * amount with no more digits after the point than the currency has. Done on the text: no float.
+ */
+export function parseMajor(input: string, currency: string): string | null {
+  const digits = minorDigits(currency);
+  const text = input.trim().replace(/[\s\u00a0']/g, "");
+  const m = /^(\d+)(?:[.,](\d+))?$/.exec(text);
+  if (!m) return null;
+  const whole = m[1] ?? "";
+  const frac = m[2] ?? "";
+  if (frac.length > digits) return null;
+  const minor = (whole + frac.padEnd(digits, "0")).replace(/^0+(?=\d)/, "");
+  return minor === "" ? "0" : minor;
+}

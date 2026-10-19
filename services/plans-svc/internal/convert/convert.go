@@ -148,6 +148,8 @@ type SubscriptionFields struct {
 	CancelAtPeriodEnd             bool
 	ChangedFromID                 string
 	Provider, ProviderRef, Owner  string
+	PlanCode                      string
+	PlanVersion                   int32
 	// Now decides the effective state: a trial that is over reads as active, an ended subscription as cancelled.
 	Now time.Time
 }
@@ -181,7 +183,7 @@ func Subscription(s SubscriptionFields) *plansv1.Subscription {
 	}
 	out := &plansv1.Subscription{
 		Id: s.ID, CustomerId: s.CustomerID, CustomerExternalId: s.CustomerExternalID, PlanVersionId: s.PlanVersionID,
-		StartTime: ts(s.Start), CreateTime: ts(s.Created), Currency: s.Currency, CancelAtPeriodEnd: s.CancelAtPeriodEnd, ChangedFromId: s.ChangedFromID, Provider: s.Provider, ProviderRef: s.ProviderRef, Owner: ownerOrDefault(s.Owner),
+		StartTime: ts(s.Start), CreateTime: ts(s.Created), Currency: s.Currency, CancelAtPeriodEnd: s.CancelAtPeriodEnd, ChangedFromId: s.ChangedFromID, Provider: s.Provider, ProviderRef: s.ProviderRef, Owner: ownerOrDefault(s.Owner), PlanCode: s.PlanCode, PlanVersion: s.PlanVersion,
 		State: stateToProto[SubscriptionState(s.State, s.TrialEnds, s.OpenEnded, s.End, now)],
 	}
 	if s.Interval == string(subscription.Yearly) {
