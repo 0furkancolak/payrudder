@@ -43,6 +43,9 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatal(err)
 		}
 		sub := r.GetSubscription()
+		if sub.GetPlanCode() != "basic" || sub.GetPlanVersion() != 1 {
+			t.Fatalf("plan = %q v%d; a subscription names its package", sub.GetPlanCode(), sub.GetPlanVersion())
+		}
 		if sub.GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_TRIALING || sub.GetTrialEndTime() == nil || sub.GetCurrency() != "TRY" {
 			t.Fatalf("new trial = %v", sub)
 		}
@@ -133,6 +136,9 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatalf("old subscription = %v, %v", oldNow, err)
 		}
 		nw := cp.GetSubscription()
+		if nw.GetPlanCode() != "pro" {
+			t.Fatalf("the new subscription is on %q", nw.GetPlanCode())
+		}
 		if !nw.GetStartTime().AsTime().Equal(at) || nw.GetEndTime() != nil || nw.GetPlanVersionId() == old.GetPlanVersionId() ||
 			nw.GetChangedFromId() != old.GetId() {
 			t.Fatalf("new subscription = %v", nw)

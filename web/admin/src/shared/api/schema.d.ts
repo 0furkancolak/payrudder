@@ -1664,6 +1664,8 @@ export interface components {
              * @enum {string}
              */
             owner?: "quotify" | "provider";
+            plan_code?: string;
+            plan_version?: number;
         };
         RoutingRules: {
             rules?: {

@@ -351,8 +351,10 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+     JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
+     JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
 WHERE s.tenant_id = app_tenant_id() AND s.id = $1
 `
 
@@ -376,6 +378,8 @@ type GetSubscriptionRow struct {
 	Provider           *string
 	ProviderRef        *string
 	Owner              string
+	PlanCode           string
+	PlanVersion        int32
 }
 
 func (q *Queries) GetSubscription(ctx context.Context, id uuid.UUID) (GetSubscriptionRow, error) {
@@ -401,6 +405,8 @@ func (q *Queries) GetSubscription(ctx context.Context, id uuid.UUID) (GetSubscri
 		&i.Provider,
 		&i.ProviderRef,
 		&i.Owner,
+		&i.PlanCode,
+		&i.PlanVersion,
 	)
 	return i, err
 }
@@ -410,8 +416,10 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+     JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
+     JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
 WHERE s.tenant_id = app_tenant_id() AND s.id = $1
 FOR UPDATE OF s
 `
@@ -436,6 +444,8 @@ type GetSubscriptionForUpdateRow struct {
 	Provider           *string
 	ProviderRef        *string
 	Owner              string
+	PlanCode           string
+	PlanVersion        int32
 }
 
 func (q *Queries) GetSubscriptionForUpdate(ctx context.Context, id uuid.UUID) (GetSubscriptionForUpdateRow, error) {
@@ -461,6 +471,8 @@ func (q *Queries) GetSubscriptionForUpdate(ctx context.Context, id uuid.UUID) (G
 		&i.Provider,
 		&i.ProviderRef,
 		&i.Owner,
+		&i.PlanCode,
+		&i.PlanVersion,
 	)
 	return i, err
 }
@@ -1137,8 +1149,10 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+     JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
+     JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
 WHERE s.tenant_id = app_tenant_id()
   AND s.active && tstzrange($1::timestamptz, $2::timestamptz, '[)')
   AND s.id > $3::uuid
@@ -1172,6 +1186,8 @@ type ListSubscriptionsOverlappingRow struct {
 	Provider           *string
 	ProviderRef        *string
 	Owner              string
+	PlanCode           string
+	PlanVersion        int32
 }
 
 func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubscriptionsOverlappingParams) ([]ListSubscriptionsOverlappingRow, error) {
@@ -1203,6 +1219,8 @@ func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubs
 			&i.Provider,
 			&i.ProviderRef,
 			&i.Owner,
+			&i.PlanCode,
+			&i.PlanVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -1219,8 +1237,10 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+     JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
+     JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
 WHERE s.tenant_id = app_tenant_id() AND s.id < $1::uuid AND ($2::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR s.customer_id = $2::uuid)
 ORDER BY s.id DESC
 LIMIT $3
@@ -1252,6 +1272,8 @@ type ListSubscriptionsPageRow struct {
 	Provider           *string
 	ProviderRef        *string
 	Owner              string
+	PlanCode           string
+	PlanVersion        int32
 }
 
 // Newest first (ids are time-ordered); after is the last id of the previous page, or the maximum uuid for the first.
@@ -1284,6 +1306,8 @@ func (q *Queries) ListSubscriptionsPage(ctx context.Context, arg ListSubscriptio
 			&i.Provider,
 			&i.ProviderRef,
 			&i.Owner,
+			&i.PlanCode,
+			&i.PlanVersion,
 		); err != nil {
 			return nil, err
 		}
