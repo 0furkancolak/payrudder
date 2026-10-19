@@ -10,11 +10,19 @@ offers the two actions an operator needs most, redriving dead letters and readin
 | Tenants | Every tenant: environment, tier, currency, time zone. |
 | Tenant | Its invoices (kind, period, total, status, saga state), and a lookup for replay and re-rating jobs by id. |
 | Invoice | Lines, a link to the PDF (presigned for five minutes) and the **saga timeline**: every transition with its cause and time, from `saga_events`. |
+| Playground | The guided sandbox walk-through described below. |
 | Dead letters | The depth of every RabbitMQ `*.dlq`, a peek at one queue's messages, and **Redrive** (with a confirmation) which moves them back with the retry counter reset. |
 
 ![The saga timeline of a paid invoice](img/admin-invoice-saga.png)
 
 ![The dead-letter queues](img/admin-dead-letters.png)
+
+## Playground
+
+`/playground` is a guided walk through the product for someone who has only the operator token: create a sandbox account (currency, time zone and grace period are required, nothing is
+preselected), create a meter, a plan with a base fee and a per-call price, a customer and a subscription, choose the mock payment outcome, send usage, close the period, and watch the
+invoice go through its saga (with a link to the full timeline). It calls the same public API a customer would, with the sandbox tenant's own `qk_test_` key, so it exercises the real system end
+to end; it never touches a live tenant. A declined payment leaves the invoice open in `PAYMENT_DECLINED` while dunning retries it. Playwright runs both the paid and the declined path.
 
 ## How it is built
 

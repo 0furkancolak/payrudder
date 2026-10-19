@@ -14,6 +14,7 @@ export function Nav() {
       {signedIn && (
         <>
           <Link href="/tenants">Tenants</Link>
+          <Link href="/playground">Playground</Link>
           <Link href="/dead-letters">Dead letters</Link>
           <button
             className="link"
