@@ -8,7 +8,6 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"log/slog"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
