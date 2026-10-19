@@ -32,7 +32,16 @@ produce span and the consumer span join the request trace even though they run s
 ### Sampling
 
 Parent-based. Root sampling: 100% locally, 10% in kind, **always** for errors and for requests with header
-`x-quotify-debug: 1` (operator only). Tail sampling in the collector keeps traces with errors or duration > 1 s.
+`x-quotify-debug: 1` (sandbox tenants and operators only; the gateway ignores it otherwise). Tail sampling in the
+collector (`deploy/otel/collector.yaml`) keeps traces with errors, duration > 1 s or a debug mark, plus
+`QUOTIFY_TRACE_SAMPLE_PERCENT` (default 100) of the rest.
+
+Batch consumers (aggregator, limits, analytics) process many producers' records in one span, so the batch span
+(`<topic> process`) carries **links** to up to 128 producer contexts. Records that are debug-marked, and 1 % of the
+others, also get a span of their own whose parent is the producer's span, which is what keeps one trace id across
+services (`pkg/kafkax/trace.go`). Billing stores `traceparent` in the outbox row it writes in the transition's
+transaction, so the relay, the worker and the reply all continue the saga's trace; each transition is a
+`saga.transition` span (`saga.id`, `saga.from`, `saga.to`, `saga.cause`).
 
 ## Metrics
 

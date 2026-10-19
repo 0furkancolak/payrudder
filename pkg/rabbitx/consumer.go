@@ -7,6 +7,11 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/0furkancolak/quotify/pkg/otelx"
 )
 
 // Outcome tells the consumer what to do with a delivery once the handler returns.
@@ -107,7 +112,23 @@ func consumeOnce(ctx context.Context, url, queue string, prefetch int, h Handler
 	}
 }
 
+// consumerSpan starts the "<queue> process" span of a delivery as a child of the context the publisher stored in the
+// message headers, so a command's processing and its reply continue the trace that issued the command.
+func consumerSpan(ctx context.Context, d amqp.Delivery, queue string) (context.Context, trace.Span) {
+	parent := otel.GetTextMapPropagator().Extract(ctx, otelx.AMQPTableCarrier(d.Headers))
+	return otel.Tracer("github.com/0furkancolak/quotify/pkg/rabbitx").Start(parent, queue+" process",
+		trace.WithSpanKind(trace.SpanKindConsumer), trace.WithAttributes(
+			attribute.String("messaging.system", "rabbitmq"),
+			attribute.String("messaging.destination.name", queue),
+			attribute.String("messaging.operation.type", "process"),
+			attribute.String("messaging.message.id", d.MessageId),
+			attribute.Int("quotify.attempt", Attempt(d)),
+		))
+}
+
 func settle(ctx context.Context, d amqp.Delivery, queue string, h Handler, retryPub *Publisher, log *slog.Logger) {
+	ctx, span := consumerSpan(ctx, d, queue)
+	defer span.End()
 	defer func() {
 		if r := recover(); r != nil {
 			// Requeue rather than dead-letter: the quorum queue's delivery limit (5) dead-letters a command that keeps
@@ -116,7 +137,9 @@ func settle(ctx context.Context, d amqp.Delivery, queue string, h Handler, retry
 			_ = d.Nack(false, true)
 		}
 	}()
-	switch h(ctx, d) {
+	outcome := h(ctx, d)
+	span.SetAttributes(attribute.Int("quotify.outcome", int(outcome)))
+	switch outcome {
 	case Ack:
 		_ = d.Ack(false)
 	case Requeue:

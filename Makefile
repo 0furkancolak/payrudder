@@ -40,6 +40,11 @@ fmt: tools ## Format Go code
 test: ## Unit tests (race detector)
 	@for m in $(MODULES); do (cd $$m && go test -race -count=1 ./...); done
 
+.PHONY: test-rules
+test-rules: ## Prometheus alert rules: promtool check + unit tests (Docker)
+	docker run --rm -v "$(CURDIR)/deploy/prometheus:/p:ro" --entrypoint promtool prom/prometheus:v3.15.0 check rules /p/rules/quotify.yaml
+	docker run --rm -v "$(CURDIR)/deploy/prometheus:/p:ro" --entrypoint promtool prom/prometheus:v3.15.0 test rules /p/tests/quotify_test.yaml
+
 .PHONY: test-integration
 test-integration: ## Integration tests (build tag integration; needs Docker)
 	@for m in $(MODULES); do (cd $$m && go test -race -count=1 -tags integration ./...); done

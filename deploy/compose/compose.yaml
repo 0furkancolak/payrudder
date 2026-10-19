@@ -1,6 +1,6 @@
 # Quotify local stack. Ports and profiles: docs/10-local-dev.md
 #   default (no profile): infrastructure       make up-infra
-#   obs:   otel-collector, prometheus, tempo, grafana
+#   obs:   otel-collector, prometheus, tempo, grafana, postgres-exporter, redis-exporter
 #   app:   Quotify services                    make up
 #   chaos: toxiproxy                           Phase 09
 #   init:  minio-init (one-shot, run by make)
@@ -119,6 +119,7 @@ services:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports: ["8123:8123", "9000:9000"]
     volumes:
+      - ../clickhouse/prometheus.xml:/etc/clickhouse-server/config.d/prometheus.xml:ro
       - ../clickhouse/low-memory.xml:/etc/clickhouse-server/config.d/low-memory.xml:ro
       - clickhouse-data:/var/lib/clickhouse
     ulimits:
@@ -194,6 +195,8 @@ services:
     image: otel/opentelemetry-collector-contrib:0.163.1
     command: ["--config=/etc/otelcol/collector.yaml"]
     volumes: [../otel/collector.yaml:/etc/otelcol/collector.yaml:ro]
+    environment:
+      QUOTIFY_TRACE_SAMPLE_PERCENT: "${QUOTIFY_TRACE_SAMPLE_PERCENT:-100}"
     ports: ["4317:4317", "4318:4318", "13133:13133"]
     depends_on: [tempo]
     # Distroless image: no shell for an exec healthcheck. `--wait` treats it as ready once running; :13133 serves health.
@@ -247,6 +250,24 @@ services:
       timeout: 3s
       retries: 20
     deploy: { resources: { limits: { memory: 256m } } }
+
+  postgres-exporter:
+    <<: *defaults
+    profiles: [obs]
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    environment:
+      DATA_SOURCE_NAME: postgresql://postgres:postgres_local@postgres:5432/postgres?sslmode=disable
+    depends_on: { postgres: { condition: service_healthy } }
+    deploy: { resources: { limits: { memory: 64m } } }
+
+  redis-exporter:
+    <<: *defaults
+    profiles: [obs]
+    image: oliver006/redis_exporter:v1.67.0-alpine
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on: { redis: { condition: service_healthy } }
+    deploy: { resources: { limits: { memory: 48m } } }
 
   # --- chaos profile -----------------------------------------------------------------------------
   toxiproxy:

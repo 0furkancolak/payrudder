@@ -8,6 +8,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
@@ -52,6 +55,47 @@ func errored(retryable bool, code, msg string) *commandsv1.ReplyEnvelope {
 
 // Handle implements workerx.Handler.
 func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (*commandsv1.ReplyEnvelope, error) {
+	reply, err := h.handle(ctx, cmd)
+	h.count(ctx, reply, err)
+	return reply, err
+}
+
+// count records the outcome of a command: succeeded, declined, errored, status/refunded replies, or retry.
+func (h *Handler) count(ctx context.Context, reply *commandsv1.ReplyEnvelope, err error) {
+	result := "retry"
+	switch {
+	case err != nil && errors.Is(err, workerx.ErrPoison):
+		result = "poison"
+	case err != nil:
+	default:
+		switch reply.GetReply().(type) {
+		case *commandsv1.ReplyEnvelope_PaymentSucceeded:
+			result = "succeeded"
+		case *commandsv1.ReplyEnvelope_PaymentDeclined:
+			result = "declined"
+		case *commandsv1.ReplyEnvelope_PaymentErrored:
+			result = "errored"
+		case *commandsv1.ReplyEnvelope_PaymentRefunded:
+			result = "refunded"
+		case *commandsv1.ReplyEnvelope_PaymentStatus:
+			result = "status"
+		default:
+			result = "other"
+		}
+	}
+	paymentsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("result", result)))
+}
+
+var paymentsTotal = func() metric.Int64Counter {
+	c, err := otel.Meter("github.com/0furkancolak/quotify/services/payments-worker").Int64Counter("payments",
+		metric.WithDescription("Payment commands handled, by result"))
+	if err != nil {
+		panic(err)
+	}
+	return c
+}()
+
+func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (*commandsv1.ReplyEnvelope, error) {
 	commandID, err := uuid.Parse(cmd.GetCommandId())
 	if err != nil {
 		return nil, fmt.Errorf("%w: command_id", workerx.ErrPoison)

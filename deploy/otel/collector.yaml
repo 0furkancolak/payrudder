@@ -1,4 +1,5 @@
-# OpenTelemetry Collector (local). Tail sampling (errors, > 1 s) is added in Phase 08.
+# OpenTelemetry Collector (local). Tail sampling keeps every trace with an error or a span slower than 1 s, and a
+# fraction of the rest (QUOTIFY_TRACE_SAMPLE_PERCENT, default 100 locally; docs/08-observability.md#sampling).
 receivers:
   otlp:
     protocols:
@@ -11,6 +12,24 @@ processors:
   memory_limiter:
     check_interval: 1s
     limit_mib: 200
+  # decision_wait must exceed the longest trace we want whole: a saga trace spans several async hops.
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 50000
+    policies:
+      - name: errors
+        type: status_code
+        status_code: { status_codes: [ERROR] }
+      - name: slow
+        type: latency
+        latency: { threshold_ms: 1000 }
+      - name: debug-marked
+        type: boolean_attribute
+        boolean_attribute: { key: quotify.debug, value: true }
+      - name: baseline
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: ${env:QUOTIFY_TRACE_SAMPLE_PERCENT:-100}
   batch: {}
 
 exporters:
@@ -28,7 +47,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, tail_sampling, batch]
       exporters: [otlp/tempo]
   telemetry:
     metrics:

@@ -150,6 +150,11 @@ func (s *Server) wrap(rt Route) http.Handler {
 				attribute.String("quotify.environment", p.Tenant.Environment))
 		}
 		ctx = metadata.AppendToOutgoingContext(ctx, "x-request-id", requestID(r.Context()))
+		// Only sandbox tenants and operators may force a trace through every consumer (see docs/08-observability.md).
+		if r.Header.Get("X-Quotify-Debug") == "1" && (rt.Access == AccessOperator || principalFrom(ctx).Tenant.Environment == tenant.EnvSandbox) {
+			ctx = metadata.AppendToOutgoingContext(ctx, "x-quotify-debug", "1")
+			span.SetAttributes(attribute.Bool("quotify.debug", true))
+		}
 		rt.Handle(w, r.WithContext(ctx))
 	})
 }

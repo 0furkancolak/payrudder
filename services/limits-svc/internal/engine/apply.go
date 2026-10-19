@@ -415,7 +415,7 @@ func (a *Applier) fire(ctx context.Context, ent entitlements.State, ref Ref, pct
 		a.log.WarnContext(ctx, "LimitExceeded not produced, the next reconciliation retries", "event_id", pb.GetEventId(), "error", err)
 		return
 	}
-	a.fired.Add(ctx, 1, metric.WithAttributes(attribute.Int("threshold_pct", int(pct))))
+	a.fired.Add(ctx, 1, metric.WithAttributes(attribute.Int("pct", int(pct))))
 }
 
 // Sweep fires every threshold the given counters have reached and not yet fired. It repairs a crash between the

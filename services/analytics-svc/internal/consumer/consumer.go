@@ -369,7 +369,30 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func (r *Runner) flush(ctx context.Context, cl *kgo.Client, b *batch) error {
-	if err := r.insert(ctx, b); err != nil {
+	// One consumer span per topic-partition in the batch, linked to the producers of its records.
+	type tp struct {
+		topic string
+		part  int32
+	}
+	var order []tp
+	groups := map[tp][]*kgo.Record{}
+	for _, rec := range b.records {
+		k := tp{rec.Topic, rec.Partition}
+		if _, ok := groups[k]; !ok {
+			order = append(order, k)
+		}
+		groups[k] = append(groups[k], rec)
+	}
+	var ends []func(error)
+	for _, k := range order {
+		_, end := kafkax.StartBatch(ctx, k.topic, r.cfg.Group, k.part, groups[k])
+		ends = append(ends, end)
+	}
+	err := r.insert(ctx, b)
+	for _, end := range ends {
+		end(err)
+	}
+	if err != nil {
 		return err
 	}
 	if err := cl.CommitRecords(ctx, b.records...); err != nil {

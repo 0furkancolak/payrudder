@@ -8,6 +8,9 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel"
+
+	"github.com/0furkancolak/quotify/pkg/otelx"
 )
 
 // Message is one publication.
@@ -85,6 +88,15 @@ func (p *Publisher) Publish(ctx context.Context, msgs ...Message) error {
 	for i, m := range msgs {
 		pub := m.Publishing
 		pub.DeliveryMode = amqp.Persistent
+		// Carry the trace on: unless the message already has a context (the relay stores the originating one), use ctx's.
+		if _, has := pub.Headers["traceparent"]; !has {
+			hdr := amqp.Table{}
+			for k, v := range pub.Headers {
+				hdr[k] = v
+			}
+			otel.GetTextMapPropagator().Inject(ctx, otelx.AMQPTableCarrier(hdr))
+			pub.Headers = hdr
+		}
 		dc, err := p.ch.PublishWithDeferredConfirmWithContext(ctx, m.Exchange, m.RoutingKey, true, false, pub)
 		if err != nil {
 			p.reset()

@@ -62,6 +62,8 @@ jobs:
           go-version-file: go.work
           cache-dependency-path: "**/go.sum"
       - run: make test
+      - name: Alert rules
+        run: make test-rules
 
   integration:
     name: integration tests

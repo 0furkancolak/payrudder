@@ -78,7 +78,7 @@ func NewLimiter(rdb redis.Scripter, replicas int, log *slog.Logger) (*Limiter, e
 	if err != nil {
 		return nil, err
 	}
-	rj, err := m.Int64Counter("gateway_ratelimit_rejected", metric.WithDescription("Requests rejected with 429"))
+	rj, err := m.Int64Counter("gateway_ratelimited", metric.WithDescription("Requests rejected with 429"))
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (l *Limiter) Allow(ctx context.Context, tenantID, tier string, class Class,
 		d = l.localAllow(key, Limit{PerSecond: lim.PerSecond / float64(l.replicas), Burst: max(1, lim.Burst/l.replicas)}, cost)
 	}
 	if !d.Allowed {
-		l.rejected.Add(ctx, 1, metric.WithAttributes(attribute.String("class", string(class))))
+		l.rejected.Add(ctx, 1, metric.WithAttributes(attribute.String("class", string(class)), attribute.String("tenant", tenantID)))
 	}
 	return d, nil
 }

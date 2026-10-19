@@ -8,6 +8,9 @@ package tenant
 import (
 	"context"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -107,6 +110,7 @@ func fromIncoming(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return ctx, status.Errorf(codes.InvalidArgument, "malformed %s", MDTenantID)
 	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String("quotify.tenant_id", id.String()))
 	return NewContext(ctx, Info{
 		ID:          id,
 		Environment: first(md, MDEnvironment),

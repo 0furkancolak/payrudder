@@ -82,6 +82,7 @@ type Relay struct {
 	published metric.Int64Counter
 	failures  metric.Int64Counter
 	batchSecs metric.Float64Histogram
+	pubSecs   metric.Float64Histogram
 	lag       metric.Float64Histogram
 }
 
@@ -104,6 +105,9 @@ func NewRelay(pool *pgxpool.Pool, sink Sink, cfg Config, log *slog.Logger) (*Rel
 		return nil, err
 	}
 	if r.batchSecs, err = m.Float64Histogram("outbox_batch_seconds", metric.WithUnit("s"), metric.WithDescription("Claim, publish and delete time of one batch")); err != nil {
+		return nil, err
+	}
+	if r.pubSecs, err = m.Float64Histogram("relay_publish_duration", metric.WithUnit("s"), metric.WithDescription("Time the sink took to publish a batch, by topic")); err != nil {
 		return nil, err
 	}
 	if r.lag, err = m.Float64Histogram("outbox_publish_lag_seconds", metric.WithUnit("s"), metric.WithDescription("Time from ingested_at to publish")); err != nil {
@@ -204,8 +208,16 @@ func (r *Relay) RelayOnce(ctx context.Context) (int, error) {
 	if err != nil || len(rows) == 0 {
 		return 0, err
 	}
+	pubStart := time.Now()
 	if err := r.sink.Publish(ctx, rows); err != nil {
 		return 0, fmt.Errorf("outbox: publish %d rows: %w", len(rows), err)
+	}
+	topics := map[string]bool{}
+	for _, row := range rows {
+		topics[row.Topic] = true
+	}
+	for t := range topics {
+		r.pubSecs.Record(ctx, time.Since(pubStart).Seconds(), metric.WithAttributes(attribute.String("topic", t)))
 	}
 	if r.cfg.AfterPublish != nil {
 		if err := r.cfg.AfterPublish(); err != nil {

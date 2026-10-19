@@ -308,7 +308,7 @@ func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items
 			for _, g := range gens.targets(it.ev.TenantID) {
 				k := dkey{it.ev.TenantID, it.ev.EventID, g}
 				if _, dup := first[k]; dup {
-					h.m.duplicates.Add(ctx, 1)
+					h.m.duplicates.Add(ctx, 1, tenantAttr(it.ev.TenantID))
 					continue
 				}
 				first[k] = i
@@ -337,7 +337,21 @@ func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items
 		if err := rows.Err(); err != nil {
 			return false, err
 		}
-		h.m.duplicates.Add(ctx, int64(len(dT)-len(fresh)))
+		if len(dT) > len(fresh) {
+			seen := make(map[dkey]struct{}, len(fresh))
+			for _, f := range fresh {
+				seen[dkey{items[f.idx].ev.TenantID, items[f.idx].ev.EventID, f.gen}] = struct{}{}
+			}
+			perTenant := map[uuid.UUID]int64{}
+			for i := range dT {
+				if _, ok := seen[dkey{dT[i], dE[i], dG[i]}]; !ok {
+					perTenant[dT[i]]++
+				}
+			}
+			for t, n := range perTenant {
+				h.m.duplicates.Add(ctx, n, tenantAttr(t))
+			}
+		}
 		sort.Slice(fresh, func(i, j int) bool {
 			if fresh[i].idx != fresh[j].idx {
 				return fresh[i].idx < fresh[j].idx
@@ -349,7 +363,7 @@ func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items
 		for _, f := range fresh {
 			it := items[f.idx]
 			if !it.meter.Matches(it.ev.Props) {
-				h.m.filtered.Add(ctx, 1)
+				h.m.filtered.Add(ctx, 1, tenantAttr(it.ev.TenantID))
 				continue
 			}
 			c, ok := cfg[settings.Key{Tenant: it.ev.TenantID, Period: it.ev.Period}]
@@ -359,7 +373,7 @@ func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items
 			class := period.Classify(it.ev.IngestedAt, c.CutoffAt)
 			if c.FrozenAt != nil {
 				if class == period.OnTime {
-					h.m.frozen.Add(ctx, 1)
+					h.m.frozen.Add(ctx, 1, tenantAttr(it.ev.TenantID))
 					h.Log.ErrorContext(ctx, "event for a frozen period arrived on time; routing it to late usage",
 						"tenant", it.ev.TenantID, "period", it.ev.Period, "event_id", it.ev.EventID)
 				}
@@ -368,7 +382,7 @@ func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items
 			if class == period.OnTime {
 				delta.AddOnTime(domain.OnTimeKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
 					Period: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
-				h.m.applied.Add(ctx, 1)
+				h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("on_time"))
 				continue
 			}
 			loc, err := time.LoadLocation(c.Timezone)
@@ -377,8 +391,8 @@ func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items
 			}
 			delta.AddLate(domain.LateKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
 				Billed: period.PeriodOf(it.ev.IngestedAt, loc), Origin: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
-			h.m.late.Add(ctx, 1)
-			h.m.applied.Add(ctx, 1)
+			h.m.late.Add(ctx, 1, tenantAttr(it.ev.TenantID))
+			h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("late"))
 		}
 
 		// 3. upserts.
@@ -525,3 +539,11 @@ func upsertLate(ctx context.Context, tx pgx.Tx, d *domain.Delta) error {
 }
 
 var _ kafkax.PartitionHandler = (*Handler)(nil)
+
+func tenantAttr(id uuid.UUID) metric.AddOption {
+	return metric.WithAttributes(attribute.String("tenant", id.String()))
+}
+
+func classAttr(c string) metric.AddOption {
+	return metric.WithAttributes(attribute.String("classification", c))
+}
