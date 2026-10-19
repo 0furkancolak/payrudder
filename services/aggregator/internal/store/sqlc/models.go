@@ -71,6 +71,11 @@ type ReplayJob struct {
 	DualWriteFrom    []byte
 	Reason           string
 	CreatedAt        time.Time
+	SourceGeneration *int32
+	Verification     []byte
+	LastError        *string
+	UpdatedAt        time.Time
+	CompletedAt      *time.Time
 }
 
 type UsageAggregate struct {

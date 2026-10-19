@@ -306,6 +306,27 @@ Usage is never re-counted.
 **Tests.** Seed period with known totals, then introduce a "bug" (meter filter) → replay → promoted generation equals the corrected expectation.
 Re-rating twice → one correction invoice.
 
+**As built** (`services/aggregator/internal/replay`, tested in `internal/itest/replay_integration_test.go`).
+
+- The replay handler *is* the live handler (`apply.Handler` with a `Replay` setting): the same dedup, classification, pre-summing and upserts,
+  pointed at generation N+1, with its own offsets (`aggregator-replay-{job}` in `consumer_offsets`). It skips other tenants and periods, does not dead-letter
+  (the live consumer already did), and classifies by `ingested_at` alone: the frozen-period rule exists to keep a *closed* generation closed, not to
+  change what a rebuild means. Its counters carry the `aggregator_replay_` prefix, so they never move the live ones.
+- **The flip into dual write is the delicate step.** The replay transaction locks the tenant's *active* generation row `FOR UPDATE`, which waits for every in-flight
+  live batch of the tenant (they hold it `FOR SHARE`), reads the live consumer's offsets as `dual_write_from`, and sets N+1 to `catching_up`.
+  A live batch that was waiting on the lock must then see the new row, and the first implementation did not: under READ COMMITTED a `SELECT ... FOR SHARE`
+  that blocked rechecks the rows it had already selected, it does not discover a row that *became* eligible while it waited, so that batch wrote only
+  generation N and the replay, which stops at `dual_write_from`, never saw those events (20 events in the first test run, exactly the first batch after the
+  flip). The live path now takes the locks with one statement and reads the generations with a second one; with the locks held no flip can commit in between.
+  The integration test that produces live traffic through the flip and the promotion, and compares generation N+1 with a ledger of every event, is what found it.
+- A job is run by whichever aggregator replica takes a session advisory lock on it; a replica that dies mid-job releases the lock and another continues from the offsets
+  in the database. After ten consecutive interruptions the job is marked `failed` and its generation discarded.
+- Verification is a full outer join of N and N+1 over the job's periods for on-time aggregates and late usage: counts of rows compared, changed, only in the old and
+  only in the new generation, and the first 100 differences, stored in the job.
+- `PromoteGeneration` retires N and activates N+1 in one transaction (after locking the tenant's generation rows, so it waits for live batches and they wait for it);
+  `DiscardGeneration` deletes the rows of an abandoned generation. Billing runs pin the generation they used, so a promotion does not move a run that already read N.
+- Operator API: `POST /admin/v1/tenants/{tenant_id}/replays`, `GET .../replays/{job_id}`, `POST .../promote`, `POST .../discard`; `quotifyctl replay`.
+
 ---
 
 ## 9. Schema evolution of events

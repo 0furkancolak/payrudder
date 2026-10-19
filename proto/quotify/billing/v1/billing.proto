@@ -27,6 +27,11 @@ service BillingAdminService {
   rpc RetryInvoiceSaga(RetryInvoiceSagaRequest) returns (RetryInvoiceSagaResponse);
   // VoidInvoice voids an invoice, refunding it first if it was paid.
   rpc VoidInvoice(VoidInvoiceRequest) returns (VoidInvoiceResponse);
+  // StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
+  // a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
+  // Idempotent per (tenant, period, plan version).
+  rpc StartRerating(StartReratingRequest) returns (StartReratingResponse);
+  rpc GetReratingJob(GetReratingJobRequest) returns (GetReratingJobResponse);
 }
 
 enum RunStatus {
@@ -172,4 +177,53 @@ message VoidInvoiceRequest {
 
 message VoidInvoiceResponse {
   InvoiceSaga saga = 1;
+}
+
+enum ReratingStatus {
+  RERATING_STATUS_UNSPECIFIED = 0;
+  RERATING_STATUS_RUNNING = 1;
+  RERATING_STATUS_COMPLETED = 2;
+  RERATING_STATUS_FAILED = 3;
+}
+
+message ReratingJob {
+  string id = 1;
+  string tenant_id = 2;
+  string period_id = 3;
+  // The plan version customers of the same plan are priced under.
+  string plan_version_id = 4;
+  // The aggregate generation whose usage was priced (the tenant's active one when the job started).
+  int32 generation = 5;
+  ReratingStatus status = 6;
+  // Customers whose plan is the target's plan and who had an invoice for the period.
+  int32 customers_rated = 7;
+  int32 corrections = 8;
+  int32 credits = 9;
+  // Sum of the CORRECTION invoices, and of the credit balances created, in minor units.
+  int64 correction_total_minor = 10;
+  int64 credit_total_minor = 11;
+  string last_error = 12;
+  google.protobuf.Timestamp create_time = 13;
+  google.protobuf.Timestamp complete_time = 14;
+}
+
+message StartReratingRequest {
+  string tenant_id = 1;
+  string period_id = 2;
+  string plan_version_id = 3;
+}
+
+message StartReratingResponse {
+  ReratingJob job = 1;
+  // False when the job already existed (the request was a repeat).
+  bool created = 2;
+}
+
+message GetReratingJobRequest {
+  string tenant_id = 1;
+  string job_id = 2;
+}
+
+message GetReratingJobResponse {
+  ReratingJob job = 1;
 }

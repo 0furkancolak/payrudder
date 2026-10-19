@@ -540,14 +540,29 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, currency string, d
 				return err
 			}
 			created++
-			for i, l := range d.Lines {
+			lines, scales := d.Lines, d.LineScales
+			// Credits from re-rating are applied to the first regular invoice that can use them.
+			credit, err := applyCredits(ctx, tx, run.TenantID, d.CustomerID, id, d.Total)
+			if err != nil {
+				return err
+			}
+			if credit > 0 {
+				lines = append(append([]rating.Line(nil), lines...), rating.Line{Kind: rating.KindCredit, AmountMinor: -credit,
+					Description: "Credit from a price correction of an earlier period"})
+				scales = append(append([]int(nil), scales...), 0)
+				if _, err := tx.Exec(ctx, `UPDATE invoices SET subtotal_minor = $3, total_minor = $4 WHERE tenant_id = $1 AND id = $2`,
+					run.TenantID, id, subtotal-credit, d.Total-credit); err != nil {
+					return err
+				}
+			}
+			for i, l := range lines {
 				var qty, scale, label, price any
 				if l.Quantity != nil {
-					units, err := unitsOf(l.Quantity, d.LineScales[i])
+					units, err := unitsOf(l.Quantity, scales[i])
 					if err != nil {
 						return err
 					}
-					qty, scale, label = units, int16(d.LineScales[i]), l.UnitLabel //nolint:gosec // 0..6
+					qty, scale, label = units, int16(scales[i]), l.UnitLabel //nolint:gosec // 0..6
 				}
 				if l.UnitPrice != "" {
 					price = l.UnitPrice
@@ -569,4 +584,57 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, currency string, d
 		return nil
 	})
 	return created, err
+}
+
+// applyCredits consumes the customer's unapplied credit balances, oldest first, up to max minor units, records the
+// applications against the invoice and returns the amount applied. A credit larger than what is left to pay stays
+// partly unapplied for the next invoice.
+func applyCredits(ctx context.Context, tx pgx.Tx, tenantID, customerID, invoiceID uuid.UUID, max int64) (int64, error) {
+	if max <= 0 {
+		return 0, nil
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT c.id, c.amount_minor - COALESCE((SELECT sum(a.amount_minor) FROM credit_applications a WHERE a.tenant_id = c.tenant_id AND a.credit_id = c.id), 0)
+		FROM credit_balances c WHERE c.tenant_id = $1 AND c.customer_id = $2 AND c.applied_invoice_id IS NULL
+		ORDER BY c.created_at, c.id FOR UPDATE OF c`, tenantID, customerID)
+	if err != nil {
+		return 0, err
+	}
+	type entry struct {
+		id        uuid.UUID
+		remaining int64
+	}
+	var entries []entry
+	for rows.Next() {
+		var e entry
+		if err := rows.Scan(&e.id, &e.remaining); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		entries = append(entries, e)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	var applied int64
+	for _, e := range entries {
+		if applied >= max {
+			break
+		}
+		use := min(e.remaining, max-applied)
+		if use <= 0 {
+			continue
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO credit_applications (tenant_id, credit_id, invoice_id, amount_minor) VALUES ($1,$2,$3,$4)`, tenantID, e.id, invoiceID, use); err != nil {
+			return 0, err
+		}
+		if use == e.remaining {
+			if _, err := tx.Exec(ctx, `UPDATE credit_balances SET applied_invoice_id = $3 WHERE tenant_id = $1 AND id = $2`, tenantID, e.id, invoiceID); err != nil {
+				return 0, err
+			}
+		}
+		applied += use
+	}
+	return applied, nil
 }

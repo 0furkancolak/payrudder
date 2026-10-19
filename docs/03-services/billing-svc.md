@@ -181,6 +181,24 @@ Sandbox tenants run the **same** close, rating and saga code. Two things differ:
 
 Usage is never re-counted. Only prices change. Full rationale: [07-correctness.md §8](../07-correctness.md#8-replay--re-rating).
 
+**As built.**
+
+- `plan_version_id` is the version to price *under*; the customers re-priced are those invoiced for the period whose subscription is on another
+  version of the **same plan**. The job reads the tenant's *active* aggregate generation (so re-rating after a promoted replay prices the corrected usage)
+  and records the generation it used.
+- What a customer was billed for the period's own usage is the sum of its `BASE_FEE`, `USAGE` and earlier `CORRECTION` lines per component (the base
+  fee, or a meter); late-usage and credit lines are other things. The delta is computed per component, and a `CORRECTION` invoice has one line for
+  each component that changed (positive total). A customer whose total went down gets a `credit_balances` row for the difference instead.
+- A correction invoice goes through `Finalize` (a number from the same gap-free sequence, a saga) exactly like a regular one. It repeats the
+  snapshot of the regular invoice, so it is addressed and paid the same way.
+- **Credits** are applied when the next regular invoice is drafted: oldest first, up to what the invoice costs, as a negative `CREDIT` line. A credit larger than
+  the invoice is applied in parts over several invoices (`credit_applications` records each part; `credit_balances.applied_invoice_id` is set when the last of
+  it is consumed). Invoice totals never go below zero.
+- Idempotency is layered: the job is unique per `(tenant, period, plan version)`; a correction is unique per `(tenant, customer, job)` and a credit per
+  `(tenant, customer, job)`, so a job interrupted by a crash is finished by the scheduler (`ResumeRerating`) without duplicating anything.
+- Operator API: `POST /admin/v1/tenants/{tenant_id}/billing-runs/{period}/rerating` (201 on creation, 200 on a repeat), `GET .../rerating-jobs/{job_id}`;
+  `quotifyctl rerate`.
+
 ## Owned data (`billing_db`)
 
 `billing_runs`, `invoices`, `invoice_lines`, `invoice_number_seq`, `invoice_sagas`, `saga_events`,

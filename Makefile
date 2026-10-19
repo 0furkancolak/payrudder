@@ -155,6 +155,11 @@ e2e-kind: ## End-to-end tests against the kind cluster (make kind-up kind-images
 
 comma := ,
 
+.PHONY: demo
+demo: ## The README story on a running stack: usage, a period close, a price change, re-rating (sandbox dunning on seconds)
+	QUOTIFY_DUNNING_SANDBOX=15s,15s,15s QUOTIFY_SWEEP_INTERVAL=2s QUOTIFY_SCHEDULER_INTERVAL=5s $(COMPOSE) --profile obs --profile app up -d --wait billing-svc
+	cd tools/quotifyctl && go run . demo --operator-token "$(OPERATOR_TOKEN)"
+
 .PHONY: seed
 seed: ## Seed a demo account: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h
 	@test -n "$(CURRENCY)" -a -n "$(TIMEZONE)" -a -n "$(GRACE)" || { echo "usage: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h"; exit 2; }

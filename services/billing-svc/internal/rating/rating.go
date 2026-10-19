@@ -64,6 +64,10 @@ const (
 	KindBaseFee   Kind = "BASE_FEE"
 	KindUsage     Kind = "USAGE"
 	KindLateUsage Kind = "LATE_USAGE"
+	// KindCorrection is a line of a CORRECTION invoice: the difference one component of a closed period would have cost.
+	KindCorrection Kind = "CORRECTION"
+	// KindCredit is a negative line that applies a credit balance to a regular invoice.
+	KindCredit Kind = "CREDIT"
 )
 
 // Line is one invoice line.

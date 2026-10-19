@@ -1,6 +1,6 @@
 # Quotify documentation
 
-Status: **planning**. These documents are the source of truth for the design. Code that disagrees
+Status: **implemented through Phase 11** (see the [roadmap](phases/ROADMAP.md)). These documents are the source of truth for the design. Code that disagrees
 with them is a bug in the code or in the docs. Fix one of them in the same PR.
 
 ## Core

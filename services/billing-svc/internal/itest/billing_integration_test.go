@@ -47,6 +47,11 @@ func TestBilling(t *testing.T) {
 		{"SandboxClosePeriodNowAndLiveIsRefused", testSandbox},
 		{"VoidingAPaidInvoiceRefundsIt", testVoidRefund},
 		{"RandomRepliesNeverChargeTwicePerAttempt", testRandomRepliesNeverDoubleCharge},
+		{"RerateNeedsACompletedRunAndAKnownVersion", testRerateRequiresACompletedRun},
+		{"RerateCheaperMakesCreditsAppliedToTheNextInvoice", testRerateCheaperMakesCreditsAppliedToTheNextInvoice},
+		{"CreditLargerThanTheInvoiceIsAppliedInParts", testCreditLargerThanTheInvoiceIsAppliedInParts},
+		{"RerateHigherMakesCorrectionInvoicesAndRepeatsAreNoOps", testRerateHigherMakesCorrectionInvoices},
+		{"RerateRunTwiceIsIdempotent", testRerateRunTwiceIsIdempotent},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

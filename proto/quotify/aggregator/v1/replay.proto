@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package quotify.aggregator.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// ReplayService rebuilds one tenant's aggregates from the Kafka log into a new generation next to the live one, verifies the
+// difference, and promotes the new generation without pausing live traffic (ADR 0012). Operators only.
+service ReplayService {
+  // StartReplay creates generation N+1 for the tenant and starts rebuilding it. One open replay per tenant.
+  rpc StartReplay(StartReplayRequest) returns (StartReplayResponse);
+  rpc GetReplayJob(GetReplayJobRequest) returns (GetReplayJobResponse);
+  // PromoteGeneration makes a verified generation the tenant's active one, in one transaction.
+  rpc PromoteGeneration(PromoteGenerationRequest) returns (PromoteGenerationResponse);
+  // DiscardGeneration abandons a generation that was not promoted and deletes its rows.
+  rpc DiscardGeneration(DiscardGenerationRequest) returns (DiscardGenerationResponse);
+}
+
+enum ReplayStatus {
+  REPLAY_STATUS_UNSPECIFIED = 0;
+  // Reading the log up to the end offsets taken at the start.
+  REPLAY_STATUS_RUNNING = 1;
+  // The live consumer dual-writes the tenant into both generations; the replay reads up to where that began.
+  REPLAY_STATUS_CATCHING_UP = 2;
+  // Caught up and verified: the difference to the live generation is in the job. Ready to promote.
+  REPLAY_STATUS_READY = 3;
+  REPLAY_STATUS_PROMOTED = 4;
+  REPLAY_STATUS_DISCARDED = 5;
+  REPLAY_STATUS_FAILED = 6;
+}
+
+// ReplayDiff is one aggregate that differs between the live generation and the rebuilt one.
+message ReplayDiff {
+  // "usage" for an on-time aggregate, "late" for late usage.
+  string kind = 1;
+  string customer_id = 2;
+  string meter_code = 3;
+  // Period of an on-time aggregate; the billed period of late usage (origin in origin_period_id).
+  string period_id = 4;
+  string origin_period_id = 5;
+  // Scaled units as decimal strings; empty = the row does not exist in that generation.
+  string old_quantity = 6;
+  string new_quantity = 7;
+  int64 old_event_count = 8;
+  int64 new_event_count = 9;
+}
+
+message ReplayVerification {
+  int64 rows_compared = 1;
+  int64 rows_changed = 2;
+  int64 rows_only_in_old = 3;
+  int64 rows_only_in_new = 4;
+  // The first 100 differences.
+  repeated ReplayDiff diffs = 5;
+}
+
+message ReplayJob {
+  string id = 1;
+  string tenant_id = 2;
+  string from_period_id = 3;
+  string to_period_id = 4;
+  int32 source_generation = 5;
+  int32 target_generation = 6;
+  ReplayStatus status = 7;
+  string reason = 8;
+  // partition -> offset.
+  map<int32, int64> start_offsets = 9;
+  map<int32, int64> end_offsets = 10;
+  map<int32, int64> dual_write_from = 11;
+  ReplayVerification verification = 12;
+  string last_error = 13;
+  google.protobuf.Timestamp create_time = 14;
+  google.protobuf.Timestamp complete_time = 15;
+}
+
+message StartReplayRequest {
+  string tenant_id = 1;
+  // Inclusive periods, "2026-10". to_period_id defaults to from_period_id.
+  string from_period_id = 2;
+  string to_period_id = 3;
+  string reason = 4;
+}
+
+message StartReplayResponse {
+  ReplayJob job = 1;
+}
+
+message GetReplayJobRequest {
+  string tenant_id = 1;
+  string job_id = 2;
+}
+
+message GetReplayJobResponse {
+  ReplayJob job = 1;
+}
+
+message PromoteGenerationRequest {
+  string tenant_id = 1;
+  string job_id = 2;
+}
+
+message PromoteGenerationResponse {
+  ReplayJob job = 1;
+}
+
+message DiscardGenerationRequest {
+  string tenant_id = 1;
+  string job_id = 2;
+}
+
+message DiscardGenerationResponse {
+  ReplayJob job = 1;
+}

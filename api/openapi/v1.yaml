@@ -753,6 +753,101 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BillingRun" } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/replays:
+    post:
+      operationId: adminStartReplay
+      summary: Rebuild a tenant's aggregates from the event log into a new generation
+      description: |
+        Creates generation N+1 next to the tenant's live one and rebuilds it from Kafka for the given periods, with the same code
+        path as live aggregation. When it has caught up the live consumer writes the tenant into both generations; the job then
+        verifies the difference and waits to be promoted. One open replay per tenant (409 otherwise). Live traffic is never paused.
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from_period_id, reason]
+              properties:
+                from_period_id: { type: string, examples: ["2026-10"] }
+                to_period_id: { type: string, description: Defaults to from_period_id }
+                reason: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ReplayJob" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/replays/{job_id}:
+    get:
+      operationId: adminGetReplay
+      summary: A replay job (status, offsets, and once ready the difference to the live generation)
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ReplayJob" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/replays/{job_id}/promote:
+    post:
+      operationId: adminPromoteReplay
+      summary: Make the rebuilt generation the tenant's active one (one transaction, no pause). Idempotent
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ReplayJob" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/replays/{job_id}/discard:
+    post:
+      operationId: adminDiscardReplay
+      summary: Abandon a generation that was not promoted and delete its rows. Idempotent
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ReplayJob" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/billing-runs/{period}/rerating:
+    post:
+      operationId: adminStartRerating
+      summary: Price a closed period again under another plan version and bill the difference
+      description: |
+        Requires the period's billing run to be COMPLETED. Customers of the plan the version belongs to who were invoiced for the
+        period are priced again on the same usage: a higher price becomes one CORRECTION invoice per customer (through the
+        normal invoice saga), a lower one a credit balance applied as a CREDIT line to the customer's next regular invoice.
+        Idempotent per tenant, period and plan version: a repeat returns the existing job (200).
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: period, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [plan_version_id], properties: { plan_version_id: { type: string, format: uuid } } }
+      responses:
+        "200": { description: The job already existed, content: { application/json: { schema: { $ref: "#/components/schemas/ReratingJob" } } } }
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ReratingJob" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/rerating-jobs/{job_id}:
+    get:
+      operationId: adminGetRerating
+      summary: A re-rating job
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ReratingJob" } } } }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/invoices/{id}/retry:
     post:
       operationId: adminRetryInvoice
@@ -858,6 +953,61 @@ components:
         cutoff_time: { type: string, format: date-time }
         invoice_count: { type: integer }
         last_error: { type: string }
+    ReplayJob:
+      type: object
+      properties:
+        id: { type: string }
+        tenant_id: { type: string }
+        from_period_id: { type: string }
+        to_period_id: { type: string }
+        source_generation: { type: integer }
+        target_generation: { type: integer }
+        status: { type: string, enum: [REPLAY_STATUS_RUNNING, REPLAY_STATUS_CATCHING_UP, REPLAY_STATUS_READY, REPLAY_STATUS_PROMOTED, REPLAY_STATUS_DISCARDED, REPLAY_STATUS_FAILED] }
+        reason: { type: string }
+        start_offsets: { type: object, additionalProperties: { type: string } }
+        end_offsets: { type: object, additionalProperties: { type: string } }
+        dual_write_from: { type: object, additionalProperties: { type: string } }
+        verification:
+          type: object
+          properties:
+            rows_compared: { type: string }
+            rows_changed: { type: string }
+            rows_only_in_old: { type: string }
+            rows_only_in_new: { type: string }
+            diffs:
+              type: array
+              items:
+                type: object
+                properties:
+                  kind: { type: string, enum: [usage, late] }
+                  customer_id: { type: string }
+                  meter_code: { type: string }
+                  period_id: { type: string }
+                  origin_period_id: { type: string }
+                  old_quantity: { type: string }
+                  new_quantity: { type: string }
+                  old_event_count: { type: string }
+                  new_event_count: { type: string }
+        last_error: { type: string }
+        create_time: { type: string, format: date-time }
+        complete_time: { type: string, format: date-time }
+    ReratingJob:
+      type: object
+      properties:
+        id: { type: string }
+        tenant_id: { type: string }
+        period_id: { type: string }
+        plan_version_id: { type: string }
+        generation: { type: integer, description: The aggregate generation whose usage was priced }
+        status: { type: string, enum: [RERATING_STATUS_RUNNING, RERATING_STATUS_COMPLETED, RERATING_STATUS_FAILED] }
+        customers_rated: { type: integer }
+        corrections: { type: integer }
+        credits: { type: integer }
+        correction_total_minor: { type: string, description: int64 as a string }
+        credit_total_minor: { type: string, description: int64 as a string }
+        last_error: { type: string }
+        create_time: { type: string, format: date-time }
+        complete_time: { type: string, format: date-time }
     InvoiceSaga:
       type: object
       properties:

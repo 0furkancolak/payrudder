@@ -137,7 +137,7 @@ type run struct {
 }
 
 type runOpts struct {
-	meters      fakeMeters
+	meters      apply.MeterSource             // default defaultMeters
 	tenants     map[uuid.UUID]settings.Tenant // default: Europe/Istanbul, 1 h grace
 	afterCommit func() error
 	partitions  int32
