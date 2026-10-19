@@ -3,8 +3,8 @@
 package helm
 
 import (
-	"errors"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
