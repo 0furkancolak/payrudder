@@ -42,6 +42,8 @@ const (
 	CodeTimeout       = "TIMEOUT"
 	CodeRejected      = "REJECTED"
 	CodeCurrency      = "CURRENCY_NOT_SUPPORTED"
+	// CodePending: the provider accepted the charge and settles it later; billing asks for the status.
+	CodePending = "PENDING"
 )
 
 // providerFor picks the provider of a command. A live tenant with its own provider account is served by it; the others by the
@@ -63,6 +65,15 @@ func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, env plansv1
 			return nil, err
 		} else if ok && (h.Live == nil || h.Live.Name() != name) {
 			return h.Resolver.Named(ctx, tenant, name, "live")
+		} else if !ok {
+			// Never charged through us (an invoice settled elsewhere): the tenant's default account is the best guess.
+			p, found, err := h.Resolver.Default(ctx, tenant, "live")
+			if err != nil {
+				return nil, err
+			}
+			if found {
+				return p, nil
+			}
 		}
 	}
 	return h.Live, nil
@@ -197,7 +208,11 @@ func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 			AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), PaymentMethod: ch.GetPaymentMethod()})
 		var declined *payments.DeclinedError
 		var transient *payments.TransientError
+		var pending *payments.PendingError
 		switch {
+		case errors.As(err, &pending):
+			// Accepted, not settled: the provider's notification decides. Billing queries the status, which reads the ledger.
+			return errored(false, CodePending, pending.Error()), nil
 		case err == nil:
 			entry.Status, entry.ProviderRef = "succeeded", res.ChargeID
 			h.record(ctx, entry)
@@ -266,9 +281,23 @@ func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 		if _, err := h.Attempts.Start(ctx, commandID, tenantID, invoiceID, "status", env, prov.Name(), q.GetIdempotencyKey(), q); err != nil {
 			return nil, err
 		}
+		if !capabilities(prov).IdempotentCharges && h.Ledger.DB != nil {
+			// A provider that settles by notification: the ledger holds the outcome once its notification has been confirmed.
+			if f, ok, err := h.Ledger.ChargeFact(ctx, q.GetIdempotencyKey()); err != nil {
+				return nil, err
+			} else if ok {
+				reply := &commandsv1.PaymentStatus{PspChargeId: f.ProviderRef}
+				if f.Status == "succeeded" {
+					reply.State = commandsv1.PaymentStatus_STATE_SUCCEEDED
+				} else {
+					reply.State, reply.DeclineCode = commandsv1.PaymentStatus_STATE_DECLINED, f.Detail
+				}
+				return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: reply}}, nil
+			}
+		}
 		st, err := prov.Status(ctx, q.GetIdempotencyKey())
 		if err != nil {
-			return nil, err // a failed query is retried; billing keeps the saga in PAYMENT_UNKNOWN meanwhile
+			return nil, err // a failed query (or "still pending") is retried; billing keeps the saga in PAYMENT_UNKNOWN meanwhile
 		}
 		reply := &commandsv1.PaymentStatus{PspChargeId: st.ChargeID, DeclineCode: st.DeclineCode}
 		switch st.State {

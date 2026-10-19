@@ -20,6 +20,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/otelx"
 	"github.com/0furkancolak/quotify/pkg/payments"
 	"github.com/0furkancolak/quotify/pkg/payments/iyzico"
+	"github.com/0furkancolak/quotify/pkg/payments/paddle"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
 	"github.com/0furkancolak/quotify/pkg/secretbox"
@@ -122,6 +123,7 @@ func run() error {
 	}
 	registry := payments.NewRegistry()
 	iyzico.Register(registry)
+	paddle.Register(registry)
 	var httpHandler http.Handler
 	if cfg.SecretsKey != "" {
 		key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
@@ -132,7 +134,7 @@ func run() error {
 		accounts := store.Accounts{DB: pool, Box: box}
 		h.Resolver = &handler.Resolver{Registry: registry, Accounts: accounts}
 		httpHandler = (&webhook.Server{Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
-			Attempts: h.Attempts, Ledger: h.Ledger, Log: log, Token: cfg.InternalToken}).Handler()
+			Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Log: log, Token: cfg.InternalToken}).Handler()
 	}
 	w := &workerx.Worker{
 		URL: cfg.RabbitMQURL, Prefetch: cfg.Prefetch, Handler: h, Inbox: h.Attempts, Log: log,

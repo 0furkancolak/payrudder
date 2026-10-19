@@ -812,6 +812,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/webhooks/{provider}/{tenant_id}/{environment}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A payment provider's notification for one tenant's account (Paddle sends one per account). Public; verified with the account's webhook secret */
+        post: operations["tenantProviderWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/provider-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Subscriptions a payment provider runs for the tenant, as its notifications report them */
+        get: operations["listProviderSubscriptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/checkouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A hosted checkout page where a customer subscribes at a provider that hosts one (Paddle) */
+        post: operations["createProviderCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/dead-letters": {
         parameters: {
             query?: never;
@@ -3101,6 +3152,122 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    tenantProviderWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+                tenant_id: string;
+                environment: "sandbox" | "live";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Understood (processed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listProviderSubscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        subscriptions?: {
+                            provider?: string;
+                            environment?: string;
+                            provider_ref?: string;
+                            /** Format: uuid */
+                            quotify_subscription_id?: string;
+                            status?: string;
+                            /** Format: date-time */
+                            next_billed_at?: string;
+                            /** Format: date-time */
+                            updated_at?: string;
+                        }[];
+                    };
+                };
+            };
+            503: components["responses"]["Error"];
+        };
+    };
+    createProviderCheckout: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example paddle */
+                    provider: string;
+                    /**
+                     * @description The provider's id of what is sold
+                     * @example pri_01
+                     */
+                    price_ref: string;
+                    quantity?: number;
+                    /**
+                     * Format: uuid
+                     * @description Ties the provider's subscription to ours
+                     */
+                    quotify_subscription_id?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url?: string;
+                        ref?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
     };

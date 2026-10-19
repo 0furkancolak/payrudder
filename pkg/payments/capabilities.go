@@ -148,7 +148,13 @@ type Notification struct {
 	Currency    string
 	// Subscription is set for KindSubscription.
 	Subscription *SubscriptionEvent
+	// OccurredAt is when the provider says the event happened; zero when it does not say.
+	OccurredAt time.Time
 }
+
+// ErrUnverified is returned by ConfirmNotification for a notification that does not come from the provider (a bad signature). It is
+// permanent: retrying the same body changes nothing.
+var ErrUnverified = errors.New("payments: notification could not be verified")
 
 // SubscriptionEvent is a provider-side change to a subscription the provider runs.
 type SubscriptionEvent struct {

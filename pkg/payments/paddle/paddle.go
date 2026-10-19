@@ -295,7 +295,7 @@ func sign(secret, ts string, body []byte) string {
 }
 
 // ErrBadSignature: the Paddle-Signature header is missing, malformed, stale or does not match.
-var ErrBadSignature = errors.New("paddle: bad webhook signature")
+var ErrBadSignature = fmt.Errorf("paddle: bad webhook signature: %w", payments.ErrUnverified)
 
 func (c *Client) verify(body []byte, header http.Header) error {
 	ts, sigs := "", []string(nil)
@@ -327,9 +327,10 @@ func (c *Client) verify(body []byte, header http.Header) error {
 }
 
 type envelope struct {
-	EventID   string          `json:"event_id"`
-	EventType string          `json:"event_type"`
-	Data      json.RawMessage `json:"data"`
+	EventID    string          `json:"event_id"`
+	EventType  string          `json:"event_type"`
+	OccurredAt string          `json:"occurred_at"`
+	Data       json.RawMessage `json:"data"`
 }
 
 // ParseNotification reads which event a webhook is, without trusting it. Paddle's event id is its identity; the charge a transaction
@@ -408,6 +409,9 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		return payments.Notification{}, fmt.Errorf("paddle: webhook body: %w", err)
 	}
 	n := payments.Notification{Ref: payments.NotificationRef{EventID: e.EventID}, Kind: payments.KindIgnored}
+	if t, err := time.Parse(time.RFC3339, e.OccurredAt); err == nil {
+		n.OccurredAt = t
+	}
 	switch {
 	case e.EventType == "transaction.completed" || e.EventType == "transaction.payment_failed":
 		var t transactionData
