@@ -15,8 +15,10 @@ for i in "${images[@]}"; do
 done
 
 mkdir -p "$root/tests/load/results"
+chmod a+rwx "$root/tests/load/results"   # k6 runs as an unprivileged user inside the container
+docker rm -f quotify-rollout-k6 >/dev/null 2>&1 || true
 rm -f "$root/tests/load/results/rollout.json"
-docker run --rm -d --name quotify-rollout-k6 --add-host host.docker.internal:host-gateway -v "$root/tests/load:/load" \
+docker run -d --name quotify-rollout-k6 --add-host host.docker.internal:host-gateway -v "$root/tests/load:/load" \
   -e GATEWAY_URL=http://host.docker.internal:8000 -e QUOTIFY_OPERATOR_TOKEN="${OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}" \
   -e DURATION="${duration}s" -e EVENTS_PER_SEC=500 -e TENANTS=3 \
   grafana/k6:2.3.0 run --summary-export=/load/results/rollout.json /load/ingest_steady.js >/dev/null
@@ -27,6 +29,8 @@ echo "upgrading to the new image tag while the load runs"
   -f "$root/deploy/helm/quotify/values-$profile.yaml" --set global.imageTag=rollout
 
 docker wait quotify-rollout-k6 >/dev/null 2>&1 || true
+docker logs quotify-rollout-k6 2>&1 | tail -n 25 || true
+docker rm -f quotify-rollout-k6 >/dev/null 2>&1 || true
 python3 - "$root/tests/load/results/rollout.json" <<'PY'
 import json, sys
 m = json.load(open(sys.argv[1]))["metrics"]
