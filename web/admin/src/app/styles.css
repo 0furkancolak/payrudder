@@ -1,0 +1,46 @@
+:root {
+  --bg: #fafafa;
+  --fg: #1a1a1a;
+  --muted: #666;
+  --line: #ddd;
+  --accent: #2b5fd9;
+  --bad: #b3261e;
+  --good: #1b7f3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171a;
+    --fg: #e8e8e8;
+    --muted: #9a9a9a;
+    --line: #2d3136;
+    --accent: #7aa2ff;
+    --bad: #ff8a80;
+    --good: #6fd68b;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+nav { display: flex; gap: 20px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+nav .spacer { margin-inline-start: auto; display: flex; gap: 16px; align-items: center; }
+a { color: var(--accent); text-decoration: none; }
+main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 80px; }
+h1 { font-size: 22px; margin: 0 0 16px; }
+h2 { font-size: 17px; margin: 28px 0 8px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: start; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
+td.num, th.num { text-align: end; font-variant-numeric: tabular-nums; }
+code, .mono { font-family: ui-monospace, monospace; font-size: 13px; unicode-bidi: plaintext; direction: ltr; }
+input, select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; min-width: 220px; }
+input[type="password"], input.wide { min-width: 360px; }
+select option { color: #1a1a1a; }
+button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; }
+button.link { background: none; border: none; color: var(--accent); padding: 0; }
+button.danger { background: var(--bad); }
+button:disabled { opacity: 0.5; cursor: default; }
+.muted { color: var(--muted); }
+.error { color: var(--bad); }
+.ok { color: var(--good); }
+.badge { display: inline-block; padding: 1px 8px; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+pre { overflow-x: auto; direction: ltr; text-align: left; }

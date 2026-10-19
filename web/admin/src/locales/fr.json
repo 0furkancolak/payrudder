@@ -1,0 +1,109 @@
+{
+  "meta": { "name": "Français", "dir": "ltr" },
+  "app": { "title": "Console opérateur Quotify", "language": "Langue" },
+  "nav": { "tenants": "Locataires", "playground": "Bac à sable", "deadLetters": "Lettres mortes", "signOut": "Se déconnecter" },
+  "common": { "loading": "Chargement…", "unknown": "?" },
+  "signIn": {
+    "title": "Console opérateur",
+    "intro": "Lit et agit uniquement via la passerelle. Le jeton reste dans cet onglet du navigateur (stockage de session).",
+    "tokenLabel": "Jeton opérateur",
+    "submit": "Se connecter"
+  },
+  "enums": {
+    "environment": { "sandbox": "sandbox", "live": "production" },
+    "tier": { "free": "gratuit", "standard": "standard", "enterprise": "entreprise" },
+    "invoiceStatus": { "draft": "brouillon", "open": "ouverte", "paid": "payée", "uncollectible": "irrécouvrable", "void": "annulée" },
+    "invoiceKind": { "REGULAR": "Normale", "CORRECTION": "Correction", "CREDIT_NOTE": "Avoir" }
+  },
+  "tenants": {
+    "title": "Locataires",
+    "empty": "Aucun locataire pour l'instant.",
+    "columns": { "name": "Nom", "environment": "Environnement", "tier": "Niveau", "currency": "Devise", "timezone": "Fuseau horaire", "id": "Id" }
+  },
+  "tenant": {
+    "fallbackTitle": "Locataire",
+    "grace": "grâce {value}",
+    "invoices": "Factures",
+    "noInvoices": "Aucune facture.",
+    "draft": "(brouillon)",
+    "columns": { "number": "Numéro", "kind": "Type", "period": "Période", "customer": "Client", "total": "Total", "status": "Statut", "saga": "Saga" },
+    "jobs": {
+      "title": "Tâches de rejeu et de retarification",
+      "hint": "Retrouvez une tâche par son id (on les lance avec quotifyctl ou l'API d'administration).",
+      "idLabel": "Id de la tâche",
+      "replay": "Tâche de rejeu",
+      "rerating": "Tâche de retarification"
+    }
+  },
+  "invoice": {
+    "back": "← Locataire",
+    "fallbackTitle": "Facture",
+    "summary": "{kind} · période {period} · {customer} · {total} · {status} · saga {saga}",
+    "openPdf": "Ouvrir le PDF",
+    "noPdfLink": "aucun lien",
+    "lines": "Lignes",
+    "lineColumns": { "no": "N°", "kind": "Type", "description": "Description", "meter": "Compteur", "quantity": "Quantité", "amount": "Montant" },
+    "saga": "Chronologie de la saga",
+    "sagaColumns": { "seq": "Séq.", "from": "De", "to": "Vers", "cause": "Cause", "at": "Date" }
+  },
+  "deadLetters": {
+    "title": "Lettres mortes",
+    "intro": "Files de lettres mortes RabbitMQ ({pattern}). Un message arrive ici après sa limite de livraisons ; le rejeu le renvoie avec le compteur de tentatives remis à zéro.",
+    "columns": { "queue": "File", "messages": "Messages" },
+    "redrive": "Rejouer",
+    "confirm": "Renvoyer {count} lettre(s) morte(s) de {queue} vers {queue} ? Leurs compteurs de tentatives sont remis à zéro.",
+    "redriven": "{count} message(s) rejoué(s) depuis {queue}.dlq.",
+    "messagesOf": "Messages de {queue}.dlq",
+    "messageColumns": { "id": "Id du message", "deliveries": "Livraisons", "reason": "Motif", "bytes": "Octets" }
+  },
+  "playground": {
+    "title": "Bac à sable",
+    "intro": "Parcourez tout le produit dans un sandbox : créez un compte, définissez ce qui est mesuré et facturé, envoyez de la consommation, clôturez la période et regardez la facture traverser sa saga de paiement avec un prestataire de paiement factice. Rien ici ne touche un locataire de production.",
+    "account": {
+      "title": "1. Compte",
+      "formLabel": "nouveau compte",
+      "name": "Nom du compte",
+      "currency": "Devise",
+      "currencyPlaceholder": "Devise (non modifiable ensuite)",
+      "timezone": "Fuseau horaire",
+      "timezonePlaceholder": "Fuseau IANA, p. ex. Europe/Paris",
+      "grace": "Délai de grâce (heures)",
+      "gracePlaceholder": "Délai de grâce, heures (0 à 168)",
+      "create": "Créer le compte",
+      "ready": "Locataire sandbox {tenant} · clé {key}"
+    },
+    "setup": {
+      "title": "2. Ce qui est mesuré et facturé",
+      "button": "Créer compteur, offre, client et abonnement",
+      "outcome": "Résultat du paiement"
+    },
+    "scenarios": {
+      "success": "succès",
+      "declined": "refusé",
+      "insufficient_funds_once": "provision insuffisante une fois",
+      "error_then_success": "erreur puis succès",
+      "timeout_committed": "délai dépassé, débit effectué",
+      "timeout_not_committed": "délai dépassé, débit non effectué"
+    },
+    "usage": { "title": "3. Consommation", "calls": "Appels", "send": "Envoyer la consommation", "sent": "{n} appels envoyés" },
+    "close": {
+      "title": "4. Clôturer la période",
+      "button": "Clôturer la période maintenant",
+      "hint": "La facturation s'exécute comme en fin de mois ; le sandbox ramène simplement l'échéance à maintenant."
+    },
+    "invoice": { "title": "5. Facture", "waiting": "En attente du cycle de facturation (environ 40 secondes)…", "open": "Ouvrir" },
+    "log": {
+      "title": "Déjà fait",
+      "account": "Compte créé",
+      "key": "Clé d'API sandbox émise",
+      "meter": "Compteur api_calls (somme de n)",
+      "plan": "Offre starter",
+      "version": "Version de l'offre : 10,00 d'abonnement + 0,01 par appel",
+      "customer": "Client {id}",
+      "subscription": "Abonnement à starter",
+      "outcome": "Résultat du paiement : {scenario}",
+      "usage": "Consommation envoyée : {n} appels",
+      "closed": "Période clôturée (sandbox) : la facturation s'exécute maintenant"
+    }
+  }
+}

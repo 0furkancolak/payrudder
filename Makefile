@@ -114,7 +114,7 @@ helm-sync: ## Refresh the copies of shared files inside the infra chart (helm ca
 
 .PHONY: web-check
 web-check: ## The operator console: install, lint, type check, build, and the OpenAPI types are up to date
-	cd web/admin && npm ci --no-audit --no-fund && npm run lint && npm run typecheck && npm run gen && git diff --exit-code src/lib/schema.d.ts && npm run build
+	cd web/admin && npm ci --no-audit --no-fund && npm run lint && npm run typecheck && npm test && npm run gen && git diff --exit-code src/shared/api/schema.d.ts && npm run build
 
 .PHONY: web-e2e
 web-e2e: ## Playwright smoke test of the console against the running stack (make up first)

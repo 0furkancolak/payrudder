@@ -148,7 +148,7 @@ customers x 5 meters, exact totals under chaos (container kills, resets, a broke
 
 ## The operator console
 
-`web/admin` (Next.js, TypeScript, an API client typed from the OpenAPI file) at <http://localhost:3001> shows tenants, invoices with the **saga timeline** of each one,
+`web/admin` (Vue 3, TanStack Router and Query, six languages, an API client typed from the OpenAPI file) at <http://localhost:3001> shows tenants, invoices with the **saga timeline** of each one,
 a **playground** that walks through the whole sandbox flow in the browser (account, usage, period close, paid or declined invoice), and the RabbitMQ dead-letter queues with a redrive action. It talks to the gateway only. A Playwright smoke test drives it against the real stack in CI.
 
 ![The saga timeline of a paid invoice](docs/img/admin-invoice-saga.png)
@@ -161,7 +161,7 @@ a **playground** that walks through the whole sandbox flow in the browser (accou
 | `tools/` | `quotifyctl` (seed, demo, replay, rerate, DLQ redrive), `mockpsp` |
 | `pkg/` | the shared kit: Kafka and RabbitMQ toolkits, outbox, tenancy, Postgres helpers, OpenTelemetry setup, test containers |
 | `proto/`, `gen/go/` | Protobuf contracts (`buf breaking` in CI); generated code is committed |
-| `web/admin/` | the operator console (Next.js, TypeScript, Playwright) |
+| `web/admin/` | the operator console (Vue 3, TypeScript, feature-based; Playwright) |
 | `deploy/` | Compose, Helm charts (`quotify`, `quotify-infra`), kind, Prometheus rules, Grafana dashboards, OpenTelemetry collector |
 | `tests/` | e2e, the chaos and correctness suite, k6 scenarios, benchmarks, Helm render tests |
 | `docs/` | design, 14 ADRs, the phase plan, [benchmarks](docs/benchmarks.md) |

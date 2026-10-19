@@ -1,0 +1,109 @@
+{
+  "meta": { "name": "Español", "dir": "ltr" },
+  "app": { "title": "Consola de operador de Quotify", "language": "Idioma" },
+  "nav": { "tenants": "Inquilinos", "playground": "Área de pruebas", "deadLetters": "Cartas muertas", "signOut": "Cerrar sesión" },
+  "common": { "loading": "Cargando…", "unknown": "?" },
+  "signIn": {
+    "title": "Consola de operador",
+    "intro": "Lee y actúa solo a través de la pasarela. El token se queda en esta pestaña del navegador (almacenamiento de sesión).",
+    "tokenLabel": "Token de operador",
+    "submit": "Iniciar sesión"
+  },
+  "enums": {
+    "environment": { "sandbox": "sandbox", "live": "producción" },
+    "tier": { "free": "gratuito", "standard": "estándar", "enterprise": "empresarial" },
+    "invoiceStatus": { "draft": "borrador", "open": "abierta", "paid": "pagada", "uncollectible": "incobrable", "void": "anulada" },
+    "invoiceKind": { "REGULAR": "Regular", "CORRECTION": "Corrección", "CREDIT_NOTE": "Nota de crédito" }
+  },
+  "tenants": {
+    "title": "Inquilinos",
+    "empty": "Aún no hay inquilinos.",
+    "columns": { "name": "Nombre", "environment": "Entorno", "tier": "Nivel", "currency": "Moneda", "timezone": "Zona horaria", "id": "Id" }
+  },
+  "tenant": {
+    "fallbackTitle": "Inquilino",
+    "grace": "gracia {value}",
+    "invoices": "Facturas",
+    "noInvoices": "Sin facturas.",
+    "draft": "(borrador)",
+    "columns": { "number": "Número", "kind": "Tipo", "period": "Periodo", "customer": "Cliente", "total": "Total", "status": "Estado", "saga": "Saga" },
+    "jobs": {
+      "title": "Trabajos de repetición y retarificación",
+      "hint": "Busque un trabajo por su id (se inician con quotifyctl o la API de administración).",
+      "idLabel": "Id del trabajo",
+      "replay": "Trabajo de repetición",
+      "rerating": "Trabajo de retarificación"
+    }
+  },
+  "invoice": {
+    "back": "← Inquilino",
+    "fallbackTitle": "Factura",
+    "summary": "{kind} · periodo {period} · {customer} · {total} · {status} · saga {saga}",
+    "openPdf": "Abrir PDF",
+    "noPdfLink": "sin enlace",
+    "lines": "Líneas",
+    "lineColumns": { "no": "N.º", "kind": "Tipo", "description": "Descripción", "meter": "Medidor", "quantity": "Cantidad", "amount": "Importe" },
+    "saga": "Cronología de la saga",
+    "sagaColumns": { "seq": "Sec.", "from": "De", "to": "A", "cause": "Causa", "at": "Momento" }
+  },
+  "deadLetters": {
+    "title": "Cartas muertas",
+    "intro": "Colas de cartas muertas de RabbitMQ ({pattern}). Un mensaje llega aquí al superar su límite de entregas; reenviar lo devuelve con el contador de reintentos a cero.",
+    "columns": { "queue": "Cola", "messages": "Mensajes" },
+    "redrive": "Reenviar",
+    "confirm": "¿Mover {count} carta(s) muerta(s) de {queue} de vuelta a {queue}? Sus contadores de reintentos se reinician.",
+    "redriven": "Se reenviaron {count} mensaje(s) desde {queue}.dlq.",
+    "messagesOf": "Mensajes de {queue}.dlq",
+    "messageColumns": { "id": "Id del mensaje", "deliveries": "Entregas", "reason": "Motivo", "bytes": "Bytes" }
+  },
+  "playground": {
+    "title": "Área de pruebas",
+    "intro": "Recorra todo el producto en un sandbox: cree una cuenta, defina qué se mide y se cobra, envíe consumo, cierre el periodo y vea cómo la factura recorre su saga de pago con un proveedor de pagos simulado. Nada de esto toca un inquilino de producción.",
+    "account": {
+      "title": "1. Cuenta",
+      "formLabel": "cuenta nueva",
+      "name": "Nombre de la cuenta",
+      "currency": "Moneda",
+      "currencyPlaceholder": "Moneda (no se puede cambiar después)",
+      "timezone": "Zona horaria",
+      "timezonePlaceholder": "Zona horaria IANA, p. ej. Europe/Madrid",
+      "grace": "Periodo de gracia (horas)",
+      "gracePlaceholder": "Periodo de gracia, horas (0 a 168)",
+      "create": "Crear cuenta",
+      "ready": "Inquilino sandbox {tenant} · clave {key}"
+    },
+    "setup": {
+      "title": "2. Qué se mide y se cobra",
+      "button": "Crear medidor, plan, cliente y suscripción",
+      "outcome": "Resultado del pago"
+    },
+    "scenarios": {
+      "success": "éxito",
+      "declined": "rechazado",
+      "insufficient_funds_once": "fondos insuficientes una vez",
+      "error_then_success": "error y luego éxito",
+      "timeout_committed": "tiempo agotado, cargo realizado",
+      "timeout_not_committed": "tiempo agotado, cargo no realizado"
+    },
+    "usage": { "title": "3. Consumo", "calls": "Llamadas", "send": "Enviar consumo", "sent": "{n} llamadas enviadas" },
+    "close": {
+      "title": "4. Cerrar el periodo",
+      "button": "Cerrar el periodo ahora",
+      "hint": "La facturación se ejecuta como a fin de mes; el sandbox solo adelanta el corte a ahora."
+    },
+    "invoice": { "title": "5. Factura", "waiting": "Esperando la ejecución de facturación (unos 40 segundos)…", "open": "Abrir" },
+    "log": {
+      "title": "Hecho hasta ahora",
+      "account": "Cuenta creada",
+      "key": "Clave de API sandbox emitida",
+      "meter": "Medidor api_calls (suma de n)",
+      "plan": "Plan starter",
+      "version": "Versión del plan: cuota base de 10,00 + 0,01 por llamada",
+      "customer": "Cliente {id}",
+      "subscription": "Suscripción a starter",
+      "outcome": "Resultado del pago: {scenario}",
+      "usage": "Consumo enviado: {n} llamadas",
+      "closed": "Periodo cerrado (sandbox): la facturación se ejecuta ahora"
+    }
+  }
+}
