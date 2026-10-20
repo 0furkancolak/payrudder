@@ -584,6 +584,8 @@ func (s *Server) creditUnusedFee(ctx context.Context, q *sqlc.Queries, row sqlc.
 	}
 	return credit, q.InsertSubscriptionAdjustment(ctx, sqlc.InsertSubscriptionAdjustmentParams{
 		ID: idgen.NewUUIDv7(), SubscriptionID: row.ID, OldPlanCode: row.PlanCode, FromAt: at, ToAt: pe, CreditMinor: credit, ChargeMinor: 0})
+}
+
 // quoteJSON is a change quote the way the API returns it, for the event that announces the change.
 func quoteJSON(q *plansv1.ChangeQuote) []byte {
 	b, err := eventJSON.Marshal(q)

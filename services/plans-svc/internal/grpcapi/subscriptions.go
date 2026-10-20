@@ -3,6 +3,7 @@ package grpcapi
 import (
 	"context"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -372,7 +373,11 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 		if end.After(s.now()) {
 			typ = webhooks.SubscriptionCancelScheduled
 		}
-		if err := s.emit(ctx, q, typ, out, nil); err != nil {
+		extra := map[string]any(nil)
+		if credited > 0 {
+			extra = map[string]any{"credited_minor": strconv.FormatInt(credited, 10)}
+		}
+		if err := s.emit(ctx, q, typ, out, extra); err != nil {
 			return err
 		}
 		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, &end, s.now())

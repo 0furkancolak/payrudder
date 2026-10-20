@@ -14,6 +14,8 @@ import (
 var tenantEventNS = uuid.MustParse("3b9d6e12-7a40-5c85-91f3-e0b2a8d45c17")
 
 // Event types billing-svc announces to the tenant's webhook endpoints (plans-svc has the full list).
+//
+//nolint:gosec // event type names (credit_note.*), not credentials
 const (
 	EventInvoiceFinalized       = "invoice.finalized"
 	EventInvoicePaid            = "invoice.paid"

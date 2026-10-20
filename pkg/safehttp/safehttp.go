@@ -86,7 +86,7 @@ func ValidateURL(raw string, allowPrivate bool) error {
 	}
 	u := req.URL
 	switch {
-	case u.Scheme != "https" && !(allowPrivate && u.Scheme == "http"):
+	case u.Scheme != "https" && (!allowPrivate || u.Scheme != "http"):
 		return errors.New("must be an https:// URL")
 	case u.Hostname() == "":
 		return errors.New("has no host")

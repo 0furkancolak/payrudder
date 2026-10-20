@@ -12,6 +12,8 @@ import (
 )
 
 // Event types a tenant can subscribe an endpoint to. An endpoint with no types gets all of them.
+//
+//nolint:gosec // event type names (credit_note.*), not credentials
 const (
 	Ping                        = "ping"
 	InvoiceFinalized            = "invoice.finalized"
