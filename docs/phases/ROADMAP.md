@@ -1,6 +1,6 @@
 # Roadmap
 
-12 core phases of ~1 week each for one developer, one optional phase, and phases 13–22 for the [billing platform](../14-billing-platform.md). Each phase ends with green CI and an
+12 core phases of ~1 week each for one developer, one optional phase, and phases 13–23 for the [billing platform](../14-billing-platform.md). Each phase ends with green CI and an
 updated `docs/` (design changes discovered while building are written back into the docs in the same PR).
 
 | # | Phase | Goal (short) | Depends on | Key proof | Status |
@@ -27,7 +27,8 @@ updated `docs/` (design changes discovered while building are written back into 
 | 19 | [Yearly and advance fees](phase-19-yearly-advance.md) | Yearly interval, anniversary anchor, fixed fee in advance, per-interval fees, period-start run | 13 | A yearly and a monthly subscription are invoiced once per period in advance, usage in arrears, with trial, pause and cancel | done |
 | 20 | [Plan changes](phase-20-plan-changes.md) | Upgrade, downgrade, monthly↔yearly, quantity, timing and proration modes, preview, scheduled changes, credit balance | 19 | The preview equals the billed amount for every mode; a scheduled downgrade applies once at period end | done |
 | 21 | [Paddle catalogue and subscription API](phase-21-paddle-api.md) | Products/prices/customers/discounts sync, every subscription operation, portal, extended webhooks | 15, 19, 20 | Publishing a plan creates Paddle products and prices; each operation has a fixture test; sandbox test skipped without credentials | done, Paddle sandbox not run |
-| 22 | [Billing documents](phase-22-billing-documents.md) | Numbered invoices with typed lines, credit notes, coupons, PDF, outbound events, dunning settings, console | 19, 20 | A proration, a coupon and a credit note appear as lines on numbered invoices that the reconciliation accepts | done, without outbound events, hosted page, dunning settings and card refunds of credit notes |
+| 22 | [Billing documents](phase-22-billing-documents.md) | Numbered invoices with typed lines, credit notes, coupons, PDF, outbound events, dunning settings, console | 19, 20 | A proration, a coupon and a credit note appear as lines on numbered invoices that the reconciliation accepts | done; outbound events, hosted page, dunning settings and card refunds came in phase 23 |
+| 23 | [What 19–22 left out](phase-23-remaining-gaps.md) | Per-tenant dunning, credit for the unused prepaid fee, credit notes refunded to the card, signed outbound webhooks, hosted invoice page | 19–22 | Integration tests per part; a delivery is signed, retried on a backoff and redeliverable; a hosted link shows the invoice and nothing else | done, without quantity changes and tax calculation |
 
 ```mermaid
 flowchart LR

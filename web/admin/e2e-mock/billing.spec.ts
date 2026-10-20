@@ -605,6 +605,29 @@ test.describe("credit notes", () => {
     await expect(row).toContainText("Refund requested");
   });
 
+  test("a link to the invoice is made for the customer and can be revoked", async ({ page }) => {
+    const gw = common("paid", []).on((c) => {
+      if (c.method === "POST" && c.path === "/v1/invoices/inv1/links") return { status: 201, body: { token: "tok", url: "https://api.example.com/i/tok", expires_at: "2027-01-20T00:00:00Z" } };
+      if (c.method === "DELETE" && c.path === "/v1/invoices/inv1/links") return { body: { revoked: 1 } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/invoices/inv1");
+    const card = page.getByRole("region", { name: "Share with the customer" });
+    await card.getByLabel("Valid for (days)").fill("30");
+    await card.getByRole("button", { name: "Make a link" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/invoices/inv1/links").length).toBe(1);
+    expect(gw.called("POST", "/v1/invoices/inv1/links")[0]?.body).toEqual({ expires_in_days: 30 });
+    await expect(card.getByLabel("Invoice link")).toHaveValue("https://api.example.com/i/tok");
+    await card.getByLabel("Valid for (days)").fill("400");
+    await card.getByRole("button", { name: "Make a link" }).click();
+    await expect(card.getByRole("alert")).toContainText("1 to 365");
+    expect(gw.called("POST", "/v1/invoices/inv1/links")).toHaveLength(1);
+    await card.getByRole("button", { name: "Revoke all links" }).click();
+    await expect.poll(() => gw.called("DELETE", "/v1/invoices/inv1/links").length).toBe(1);
+    await expect(card.getByRole("status")).toContainText("revoked");
+  });
+
   test("an invoice that is not paid cannot be credited here, and an empty amount credits what is left", async ({ page }) => {
     const gw = common("open", []);
     await gw.install(page);

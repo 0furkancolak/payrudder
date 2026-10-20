@@ -26,6 +26,8 @@ const (
 	BillingService_GetDunningReport_FullMethodName   = "/quotify.billing.v1.BillingService/GetDunningReport"
 	BillingService_GetCreditNote_FullMethodName      = "/quotify.billing.v1.BillingService/GetCreditNote"
 	BillingService_ListCreditNotes_FullMethodName    = "/quotify.billing.v1.BillingService/ListCreditNotes"
+	BillingService_CreateInvoiceLink_FullMethodName  = "/quotify.billing.v1.BillingService/CreateInvoiceLink"
+	BillingService_RevokeInvoiceLinks_FullMethodName = "/quotify.billing.v1.BillingService/RevokeInvoiceLinks"
 	BillingService_GetDunningSettings_FullMethodName = "/quotify.billing.v1.BillingService/GetDunningSettings"
 	BillingService_SetDunningSettings_FullMethodName = "/quotify.billing.v1.BillingService/SetDunningSettings"
 )
@@ -46,6 +48,10 @@ type BillingServiceClient interface {
 	GetDunningReport(ctx context.Context, in *GetDunningReportRequest, opts ...grpc.CallOption) (*GetDunningReportResponse, error)
 	GetCreditNote(ctx context.Context, in *GetCreditNoteRequest, opts ...grpc.CallOption) (*GetCreditNoteResponse, error)
 	ListCreditNotes(ctx context.Context, in *ListCreditNotesRequest, opts ...grpc.CallOption) (*ListCreditNotesResponse, error)
+	// CreateInvoiceLink makes an unguessable link to a finalized invoice, for the tenant to send to its customer. The token is returned once.
+	CreateInvoiceLink(ctx context.Context, in *CreateInvoiceLinkRequest, opts ...grpc.CallOption) (*CreateInvoiceLinkResponse, error)
+	// RevokeInvoiceLinks makes every link to an invoice stop working.
+	RevokeInvoiceLinks(ctx context.Context, in *RevokeInvoiceLinksRequest, opts ...grpc.CallOption) (*RevokeInvoiceLinksResponse, error)
 	// GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
 	GetDunningSettings(ctx context.Context, in *GetDunningSettingsRequest, opts ...grpc.CallOption) (*GetDunningSettingsResponse, error)
 	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
@@ -130,6 +136,26 @@ func (c *billingServiceClient) ListCreditNotes(ctx context.Context, in *ListCred
 	return out, nil
 }
 
+func (c *billingServiceClient) CreateInvoiceLink(ctx context.Context, in *CreateInvoiceLinkRequest, opts ...grpc.CallOption) (*CreateInvoiceLinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateInvoiceLinkResponse)
+	err := c.cc.Invoke(ctx, BillingService_CreateInvoiceLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) RevokeInvoiceLinks(ctx context.Context, in *RevokeInvoiceLinksRequest, opts ...grpc.CallOption) (*RevokeInvoiceLinksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeInvoiceLinksResponse)
+	err := c.cc.Invoke(ctx, BillingService_RevokeInvoiceLinks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *billingServiceClient) GetDunningSettings(ctx context.Context, in *GetDunningSettingsRequest, opts ...grpc.CallOption) (*GetDunningSettingsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetDunningSettingsResponse)
@@ -166,6 +192,10 @@ type BillingServiceServer interface {
 	GetDunningReport(context.Context, *GetDunningReportRequest) (*GetDunningReportResponse, error)
 	GetCreditNote(context.Context, *GetCreditNoteRequest) (*GetCreditNoteResponse, error)
 	ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error)
+	// CreateInvoiceLink makes an unguessable link to a finalized invoice, for the tenant to send to its customer. The token is returned once.
+	CreateInvoiceLink(context.Context, *CreateInvoiceLinkRequest) (*CreateInvoiceLinkResponse, error)
+	// RevokeInvoiceLinks makes every link to an invoice stop working.
+	RevokeInvoiceLinks(context.Context, *RevokeInvoiceLinksRequest) (*RevokeInvoiceLinksResponse, error)
 	// GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
 	GetDunningSettings(context.Context, *GetDunningSettingsRequest) (*GetDunningSettingsResponse, error)
 	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
@@ -200,6 +230,12 @@ func (UnimplementedBillingServiceServer) GetCreditNote(context.Context, *GetCred
 }
 func (UnimplementedBillingServiceServer) ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCreditNotes not implemented")
+}
+func (UnimplementedBillingServiceServer) CreateInvoiceLink(context.Context, *CreateInvoiceLinkRequest) (*CreateInvoiceLinkResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateInvoiceLink not implemented")
+}
+func (UnimplementedBillingServiceServer) RevokeInvoiceLinks(context.Context, *RevokeInvoiceLinksRequest) (*RevokeInvoiceLinksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeInvoiceLinks not implemented")
 }
 func (UnimplementedBillingServiceServer) GetDunningSettings(context.Context, *GetDunningSettingsRequest) (*GetDunningSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDunningSettings not implemented")
@@ -354,6 +390,42 @@ func _BillingService_ListCreditNotes_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_CreateInvoiceLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateInvoiceLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).CreateInvoiceLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_CreateInvoiceLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).CreateInvoiceLink(ctx, req.(*CreateInvoiceLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_RevokeInvoiceLinks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeInvoiceLinksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).RevokeInvoiceLinks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_RevokeInvoiceLinks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).RevokeInvoiceLinks(ctx, req.(*RevokeInvoiceLinksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BillingService_GetDunningSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetDunningSettingsRequest)
 	if err := dec(in); err != nil {
@@ -426,12 +498,164 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _BillingService_ListCreditNotes_Handler,
 		},
 		{
+			MethodName: "CreateInvoiceLink",
+			Handler:    _BillingService_CreateInvoiceLink_Handler,
+		},
+		{
+			MethodName: "RevokeInvoiceLinks",
+			Handler:    _BillingService_RevokeInvoiceLinks_Handler,
+		},
+		{
 			MethodName: "GetDunningSettings",
 			Handler:    _BillingService_GetDunningSettings_Handler,
 		},
 		{
 			MethodName: "SetDunningSettings",
 			Handler:    _BillingService_SetDunningSettings_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "quotify/billing/v1/billing.proto",
+}
+
+const (
+	HostedInvoiceService_GetHostedInvoice_FullMethodName       = "/quotify.billing.v1.HostedInvoiceService/GetHostedInvoice"
+	HostedInvoiceService_GetHostedInvoicePdfUrl_FullMethodName = "/quotify.billing.v1.HostedInvoiceService/GetHostedInvoicePdfUrl"
+)
+
+// HostedInvoiceServiceClient is the client API for HostedInvoiceService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// HostedInvoiceService is called by the gateway on behalf of a visitor who holds an invoice link. It has no tenant: the token is the credential.
+type HostedInvoiceServiceClient interface {
+	GetHostedInvoice(ctx context.Context, in *GetHostedInvoiceRequest, opts ...grpc.CallOption) (*GetHostedInvoiceResponse, error)
+	GetHostedInvoicePdfUrl(ctx context.Context, in *GetHostedInvoicePdfUrlRequest, opts ...grpc.CallOption) (*GetHostedInvoicePdfUrlResponse, error)
+}
+
+type hostedInvoiceServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewHostedInvoiceServiceClient(cc grpc.ClientConnInterface) HostedInvoiceServiceClient {
+	return &hostedInvoiceServiceClient{cc}
+}
+
+func (c *hostedInvoiceServiceClient) GetHostedInvoice(ctx context.Context, in *GetHostedInvoiceRequest, opts ...grpc.CallOption) (*GetHostedInvoiceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHostedInvoiceResponse)
+	err := c.cc.Invoke(ctx, HostedInvoiceService_GetHostedInvoice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostedInvoiceServiceClient) GetHostedInvoicePdfUrl(ctx context.Context, in *GetHostedInvoicePdfUrlRequest, opts ...grpc.CallOption) (*GetHostedInvoicePdfUrlResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHostedInvoicePdfUrlResponse)
+	err := c.cc.Invoke(ctx, HostedInvoiceService_GetHostedInvoicePdfUrl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// HostedInvoiceServiceServer is the server API for HostedInvoiceService service.
+// All implementations must embed UnimplementedHostedInvoiceServiceServer
+// for forward compatibility.
+//
+// HostedInvoiceService is called by the gateway on behalf of a visitor who holds an invoice link. It has no tenant: the token is the credential.
+type HostedInvoiceServiceServer interface {
+	GetHostedInvoice(context.Context, *GetHostedInvoiceRequest) (*GetHostedInvoiceResponse, error)
+	GetHostedInvoicePdfUrl(context.Context, *GetHostedInvoicePdfUrlRequest) (*GetHostedInvoicePdfUrlResponse, error)
+	mustEmbedUnimplementedHostedInvoiceServiceServer()
+}
+
+// UnimplementedHostedInvoiceServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedHostedInvoiceServiceServer struct{}
+
+func (UnimplementedHostedInvoiceServiceServer) GetHostedInvoice(context.Context, *GetHostedInvoiceRequest) (*GetHostedInvoiceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetHostedInvoice not implemented")
+}
+func (UnimplementedHostedInvoiceServiceServer) GetHostedInvoicePdfUrl(context.Context, *GetHostedInvoicePdfUrlRequest) (*GetHostedInvoicePdfUrlResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetHostedInvoicePdfUrl not implemented")
+}
+func (UnimplementedHostedInvoiceServiceServer) mustEmbedUnimplementedHostedInvoiceServiceServer() {}
+func (UnimplementedHostedInvoiceServiceServer) testEmbeddedByValue()                              {}
+
+// UnsafeHostedInvoiceServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to HostedInvoiceServiceServer will
+// result in compilation errors.
+type UnsafeHostedInvoiceServiceServer interface {
+	mustEmbedUnimplementedHostedInvoiceServiceServer()
+}
+
+func RegisterHostedInvoiceServiceServer(s grpc.ServiceRegistrar, srv HostedInvoiceServiceServer) {
+	// If the following call panics, it indicates UnimplementedHostedInvoiceServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&HostedInvoiceService_ServiceDesc, srv)
+}
+
+func _HostedInvoiceService_GetHostedInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHostedInvoiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostedInvoiceServiceServer).GetHostedInvoice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostedInvoiceService_GetHostedInvoice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostedInvoiceServiceServer).GetHostedInvoice(ctx, req.(*GetHostedInvoiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HostedInvoiceService_GetHostedInvoicePdfUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHostedInvoicePdfUrlRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostedInvoiceServiceServer).GetHostedInvoicePdfUrl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostedInvoiceService_GetHostedInvoicePdfUrl_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostedInvoiceServiceServer).GetHostedInvoicePdfUrl(ctx, req.(*GetHostedInvoicePdfUrlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// HostedInvoiceService_ServiceDesc is the grpc.ServiceDesc for HostedInvoiceService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var HostedInvoiceService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "quotify.billing.v1.HostedInvoiceService",
+	HandlerType: (*HostedInvoiceServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetHostedInvoice",
+			Handler:    _HostedInvoiceService_GetHostedInvoice_Handler,
+		},
+		{
+			MethodName: "GetHostedInvoicePdfUrl",
+			Handler:    _HostedInvoiceService_GetHostedInvoicePdfUrl_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

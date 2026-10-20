@@ -17,6 +17,7 @@ type fakeBilling struct {
 	billingv1.UnimplementedBillingServiceServer
 	billingv1.UnimplementedSandboxServiceServer
 	billingv1.UnimplementedBillingAdminServiceServer
+	billingv1.UnimplementedHostedInvoiceServiceServer
 }
 
 func (fakeBilling) ListInvoices(_ context.Context, req *billingv1.ListInvoicesRequest) (*billingv1.ListInvoicesResponse, error) {

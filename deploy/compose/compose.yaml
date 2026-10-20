@@ -635,6 +635,8 @@ services:
       QUOTIFY_SERVICE_NAME: gateway
       QUOTIFY_HTTP_ADDR: ":8000"
       QUOTIFY_METRICS_ADDR: ":9100"
+      # Where customers reach the gateway: the hosted invoice links it hands out start with this.
+      QUOTIFY_PUBLIC_URL: ${QUOTIFY_PUBLIC_URL:-http://localhost:8000}
       QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
       QUOTIFY_INGEST_ADDR: dns:///ingest-svc:7002
       QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003

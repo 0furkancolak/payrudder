@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Link, useParams } from "@tanstack/vue-router";
 import { ArrowLeft, FileText } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { toApiError } from "@/shared/api/client";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
@@ -13,7 +13,8 @@ import { Card } from "@/shared/ui/card";
 import { PageHeader } from "@/shared/ui/page-header";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
-import { useInvoice, useInvoiceSaga, useOpenPdf } from "./api";
+import { Input } from "@/shared/ui/input";
+import { useInvoice, useInvoiceLinks, useInvoiceSaga, useOpenPdf } from "./api";
 
 const { t, te, locale } = useI18n();
 const params = useParams({ strict: false });
@@ -23,6 +24,29 @@ const invoiceId = computed(() => String(params.value.invoiceId ?? ""));
 const invoice = useInvoice(tenantId, invoiceId);
 const saga = useInvoiceSaga(tenantId, invoiceId);
 const pdf = useOpenPdf(tenantId, invoiceId);
+const links = useInvoiceLinks(tenantId, invoiceId);
+const linkDays = ref("90");
+const linkError = ref("");
+function makeLink() {
+  linkError.value = "";
+  const days = Number(linkDays.value);
+  if (!Number.isInteger(days) || days < 1 || days > 365) {
+    linkError.value = t("invoice.share.badDays");
+    return;
+  }
+  links.create.mutate(days);
+}
+const shareUrl = computed(() => {
+  const u = (links.create.data.value as { url?: string } | undefined)?.url ?? "";
+  return u.startsWith("/") ? window.location.origin + u : u;
+});
+async function copy() {
+  try {
+    await navigator.clipboard.writeText(shareUrl.value);
+  } catch {
+    /* the field is selectable; copying by hand works */
+  }
+}
 const inv = computed(() => invoice.data.value);
 const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "");
 </script>
@@ -79,6 +103,23 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
         </TableRow>
       </TableBody>
     </Table>
+  </Card>
+
+  <Card v-if="inv && inv.number" class="mb-6" role="region" :aria-label="t('invoice.share.title')">
+    <h2 class="text-lg font-semibold">{{ t("invoice.share.title") }}</h2>
+    <p class="text-muted-foreground text-sm">{{ t("invoice.share.hint") }}</p>
+    <form class="flex flex-wrap items-center gap-3" @submit.prevent="makeLink">
+      <Input v-model="linkDays" inputmode="numeric" class="w-28" :aria-label="t('invoice.share.days')" />
+      <Button type="submit" :disabled="links.create.isPending.value">{{ t("invoice.share.create") }}</Button>
+      <Button type="button" variant="outline" :disabled="links.revoke.isPending.value" @click="links.revoke.mutate()">{{ t("invoice.share.revoke") }}</Button>
+    </form>
+    <div v-if="shareUrl" class="flex flex-wrap items-center gap-2">
+      <Input :model-value="shareUrl" readonly class="mono max-w-xl" :aria-label="t('invoice.share.link')" @focus="($event.target as HTMLInputElement).select()" />
+      <Button type="button" variant="outline" @click="copy">{{ t("invoice.share.copy") }}</Button>
+    </div>
+    <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
+    <p v-if="linkError" class="text-destructive text-sm" role="alert">{{ linkError }}</p>
+    <p v-if="links.create.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(links.create.error.value).message }}</p>
   </Card>
 
   <CreditNotesCard v-if="inv && inv.status === 'paid'" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" issuable />

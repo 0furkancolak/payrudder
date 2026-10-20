@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import { api, ApiError, unwrap } from "@/shared/api/client";
+import { api, ApiError, tenantApi, unwrap } from "@/shared/api/client";
 
 export const invoiceKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "invoices"] as const,
@@ -45,4 +45,15 @@ export function useOpenPdf(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeR
       window.open(url, "_blank", "noopener");
     },
   });
+}
+
+/** Makes (or revokes) the links with which the invoice's customer can open it without signing in. */
+export function useInvoiceLinks(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeRefOrGetter<string>) {
+  const path = () => ({ params: { path: { id: toValue(invoiceId) } } });
+  return {
+    create: useMutation({
+      mutationFn: (days: number) => unwrap(tenantApi(toValue(tenantId)).POST("/v1/invoices/{id}/links", { ...path(), body: { expires_in_days: days } })),
+    }),
+    revoke: useMutation({ mutationFn: () => unwrap(tenantApi(toValue(tenantId)).DELETE("/v1/invoices/{id}/links", path())) }),
+  };
 }

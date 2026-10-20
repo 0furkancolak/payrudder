@@ -148,7 +148,11 @@ Nothing has run against Paddle's sandbox; the points the reference does not sett
 
 ## As built: phase 22
 
-Details in [phase 22](phases/phase-22-billing-documents.md). Credit notes (paid invoices only, into the credit balance), coupons on advance fees, tax rates by customer country, `DISCOUNT` and `TAX` invoice lines, and service periods on lines, with console pages for them. Outbound events, a hosted invoice page, per-tenant dunning settings and card refunds of credit notes are not built.
+Details in [phase 22](phases/phase-22-billing-documents.md). Credit notes (paid invoices only, into the credit balance), coupons on advance fees, tax rates by customer country, `DISCOUNT` and `TAX` invoice lines, and service periods on lines, with console pages for them. Outbound events, a hosted invoice page, per-tenant dunning settings and card refunds of credit notes came in phase 23.
+
+## As built: phase 23
+
+Details in [phase 23](phases/phase-23-remaining-gaps.md) and [16-webhooks.md](16-webhooks.md). Tenants set their own dunning delays; ending a subscription early (or moving it to another provider) can credit the unused prepaid fee; a credit note can refund the card instead of the credit balance; tenants receive signed, retried webhook events for subscriptions, invoices and credit notes; and an invoice can be shared with its customer as a hosted page. Quantity changes and tax calculation are still not built.
 
 ## Currency
 

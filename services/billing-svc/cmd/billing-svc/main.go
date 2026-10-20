@@ -226,6 +226,7 @@ func run() error {
 	}
 	billingv1.RegisterBillingServiceServer(srv, svc)
 	billingv1.RegisterSandboxServiceServer(srv, svc)
+	billingv1.RegisterHostedInvoiceServiceServer(srv, svc)
 	billingv1.RegisterBillingAdminServiceServer(srv, svc)
 
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)

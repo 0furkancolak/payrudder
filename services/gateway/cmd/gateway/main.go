@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -52,6 +53,8 @@ type Config struct {
 	PaymentsToken string   `env:"QUOTIFY_PAYMENTS_INTERNAL_TOKEN"`
 	Replicas      int      `env:"QUOTIFY_GATEWAY_REPLICAS" envDefault:"1"`
 	AllowedEnvs   []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:"," envDefault:"sandbox,live"`
+	// PublicURL is the address customers reach the gateway at, for the invoice links it hands out (https://api.example.com). Empty: relative links.
+	PublicURL string `env:"QUOTIFY_PUBLIC_URL"`
 }
 
 func (c *Config) Validate() error {
@@ -176,7 +179,7 @@ func run() error {
 		Plans: plansv1.NewPlansServiceClient(plansConn), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(plansConn), Ingest: ingestv1.NewIngestServiceClient(ingestConn),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(aggConn), Replay: aggregatorv1.NewReplayServiceClient(aggConn), Limits: limitsv1.NewLimitsServiceClient(limitsConn),
 		Billing: billingv1.NewBillingServiceClient(billingConn), Sandbox: billingv1.NewSandboxServiceClient(billingConn),
-		BillingAdmin: billingv1.NewBillingAdminServiceClient(billingConn), Analytics: analyticsv1.NewAnalyticsServiceClient(analyticsConn),
+		BillingAdmin: billingv1.NewBillingAdminServiceClient(billingConn), Hosted: billingv1.NewHostedInvoiceServiceClient(billingConn), PublicURL: strings.TrimRight(cfg.PublicURL, "/"), Analytics: analyticsv1.NewAnalyticsServiceClient(analyticsConn),
 		Assets: assetsv1.NewAssetsServiceClient(assetsConn),
 		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
 		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken,

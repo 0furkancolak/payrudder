@@ -62,6 +62,11 @@ func (s *Server) routes() []Route {
 		{"POST", "/v1/webhook-endpoints/{id}/test", AccessTenant, ratelimit.ClassWrite, s.sendTestWebhook},
 		{"GET", "/v1/webhook-deliveries", AccessTenant, ratelimit.ClassRead, s.listWebhookDeliveries},
 		{"POST", "/v1/webhook-deliveries/{id}/redeliver", AccessTenant, ratelimit.ClassWrite, s.redeliverWebhook},
+		// Hosted invoice page: links the tenant makes, and the public pages they open
+		{"POST", "/v1/invoices/{id}/links", AccessTenant, ratelimit.ClassWrite, s.createInvoiceLink},
+		{"DELETE", "/v1/invoices/{id}/links", AccessTenant, ratelimit.ClassWrite, s.revokeInvoiceLinks},
+		{"GET", "/i/{token}", AccessPublic, "", s.hostedInvoicePage},
+		{"GET", "/i/{token}/pdf", AccessPublic, "", s.hostedInvoicePDF},
 		// Reports
 		{"GET", "/v1/reports/revenue", AccessTenant, ratelimit.ClassRead, s.revenueReport},
 		{"GET", "/v1/dunning-settings", AccessTenant, ratelimit.ClassRead, s.getDunningSettings},

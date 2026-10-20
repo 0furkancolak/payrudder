@@ -140,6 +140,17 @@
       "to": "Sonraki",
       "cause": "Neden",
       "at": "Zaman"
+    },
+    "share": {
+      "title": "Müşteriyle paylaş",
+      "hint": "Bu faturayı ve PDF'ini giriş yapmadan gösteren bir bağlantı. Bağlantıya sahip olan herkes faturayı açabilir; süresi dolunca ya da iptal edilince çalışmaz.",
+      "days": "Geçerlilik (gün)",
+      "create": "Bağlantı oluştur",
+      "revoke": "Tüm bağlantıları iptal et",
+      "link": "Fatura bağlantısı",
+      "copy": "Kopyala",
+      "revoked": "Bu faturanın tüm bağlantıları iptal edildi.",
+      "badDays": "Gün: 1 ile 365 arasında bir tam sayı."
     }
   },
   "deadLetters": {

@@ -140,6 +140,17 @@
       "to": "To",
       "cause": "Cause",
       "at": "At"
+    },
+    "share": {
+      "title": "Share with the customer",
+      "hint": "A link that shows this invoice and its PDF without signing in. Anyone who has it can open the invoice; it stops working when it expires or is revoked.",
+      "days": "Valid for (days)",
+      "create": "Make a link",
+      "revoke": "Revoke all links",
+      "link": "Invoice link",
+      "copy": "Copy",
+      "revoked": "Every link to this invoice has been revoked.",
+      "badDays": "Days: a whole number from 1 to 365."
     }
   },
   "deadLetters": {

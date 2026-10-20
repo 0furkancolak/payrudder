@@ -140,6 +140,17 @@
       "to": "Vers",
       "cause": "Cause",
       "at": "Date"
+    },
+    "share": {
+      "title": "Partager avec le client",
+      "hint": "Un lien qui affiche cette facture et son PDF sans connexion. Quiconque l'a peut ouvrir la facture ; il cesse de fonctionner à son expiration ou une fois révoqué.",
+      "days": "Valable (jours)",
+      "create": "Créer un lien",
+      "revoke": "Révoquer tous les liens",
+      "link": "Lien de la facture",
+      "copy": "Copier",
+      "revoked": "Tous les liens de cette facture ont été révoqués.",
+      "badDays": "Jours : un entier de 1 à 365."
     }
   },
   "deadLetters": {
