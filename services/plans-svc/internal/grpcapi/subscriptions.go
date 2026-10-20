@@ -285,7 +285,7 @@ func (s *Server) GetSubscription(ctx context.Context, req *plansv1.GetSubscripti
 			return err
 		}
 		out = subscriptionMessage(r, s.now())
-		return nil
+		return attachScheduled(ctx, q, out)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
@@ -543,7 +543,7 @@ func (s *Server) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest)
 			return status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot change plan")
 		}
 		if row.FeeTiming == "advance" {
-			return status.Error(codes.FailedPrecondition, "a subscription whose fee is invoiced in advance cannot change plan yet (phase 20); create it with fee_timing ARREARS to change plans by splitting the month")
+			return status.Error(codes.FailedPrecondition, "a subscription whose fee is invoiced in advance is changed with ChangeSubscription (POST /v1/subscriptions/{id}/change), which prices the change and credits the unused time")
 		}
 		eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, s.now())
 		if eff != subscription.Active && eff != subscription.Trialing {
@@ -745,7 +745,7 @@ func (s *Server) ListSubscriptions(ctx context.Context, req *plansv1.ListSubscri
 		if more {
 			resp.NextPageToken = rows[len(rows)-1].ID.String()
 		}
-		return nil
+		return attachScheduled(ctx, q, resp.Subscriptions...)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")

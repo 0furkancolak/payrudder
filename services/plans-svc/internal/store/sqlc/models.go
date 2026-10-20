@@ -157,6 +157,32 @@ type Subscription struct {
 	FeeDueAt          *time.Time
 }
 
+type SubscriptionAdjustment struct {
+	TenantID       uuid.UUID
+	ID             uuid.UUID
+	SubscriptionID uuid.UUID
+	OldPlanCode    string
+	FromAt         time.Time
+	ToAt           time.Time
+	CreditMinor    int64
+	ChargeMinor    int64
+	CreatedAt      time.Time
+	BilledAt       *time.Time
+}
+
+type SubscriptionChange struct {
+	TenantID          uuid.UUID
+	ID                uuid.UUID
+	SubscriptionID    uuid.UUID
+	PlanVersionID     uuid.UUID
+	Interval          string
+	EffectiveAt       time.Time
+	State             string
+	CreatedAt         time.Time
+	AppliedAt         *time.Time
+	NewSubscriptionID *uuid.UUID
+}
+
 type Tenant struct {
 	ID                 uuid.UUID
 	AccountID          uuid.UUID

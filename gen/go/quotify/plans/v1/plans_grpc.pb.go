@@ -19,38 +19,44 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PlansService_CreateCustomer_FullMethodName             = "/quotify.plans.v1.PlansService/CreateCustomer"
-	PlansService_GetCustomer_FullMethodName                = "/quotify.plans.v1.PlansService/GetCustomer"
-	PlansService_ResolveCustomer_FullMethodName            = "/quotify.plans.v1.PlansService/ResolveCustomer"
-	PlansService_ListCustomers_FullMethodName              = "/quotify.plans.v1.PlansService/ListCustomers"
-	PlansService_SetPaymentMethod_FullMethodName           = "/quotify.plans.v1.PlansService/SetPaymentMethod"
-	PlansService_CreateMeter_FullMethodName                = "/quotify.plans.v1.PlansService/CreateMeter"
-	PlansService_GetMeter_FullMethodName                   = "/quotify.plans.v1.PlansService/GetMeter"
-	PlansService_ListMeters_FullMethodName                 = "/quotify.plans.v1.PlansService/ListMeters"
-	PlansService_CreatePlan_FullMethodName                 = "/quotify.plans.v1.PlansService/CreatePlan"
-	PlansService_ListPlans_FullMethodName                  = "/quotify.plans.v1.PlansService/ListPlans"
-	PlansService_PublishPlanVersion_FullMethodName         = "/quotify.plans.v1.PlansService/PublishPlanVersion"
-	PlansService_GetPlanVersion_FullMethodName             = "/quotify.plans.v1.PlansService/GetPlanVersion"
-	PlansService_CreateSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CreateSubscription"
-	PlansService_CancelSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/CancelSubscription"
-	PlansService_GetSubscription_FullMethodName            = "/quotify.plans.v1.PlansService/GetSubscription"
-	PlansService_ListSubscriptions_FullMethodName          = "/quotify.plans.v1.PlansService/ListSubscriptions"
-	PlansService_GetRoutingRules_FullMethodName            = "/quotify.plans.v1.PlansService/GetRoutingRules"
-	PlansService_SetRoutingRules_FullMethodName            = "/quotify.plans.v1.PlansService/SetRoutingRules"
-	PlansService_PreviewRouting_FullMethodName             = "/quotify.plans.v1.PlansService/PreviewRouting"
-	PlansService_StartProviderMigration_FullMethodName     = "/quotify.plans.v1.PlansService/StartProviderMigration"
-	PlansService_CompleteProviderMigration_FullMethodName  = "/quotify.plans.v1.PlansService/CompleteProviderMigration"
-	PlansService_AbortProviderMigration_FullMethodName     = "/quotify.plans.v1.PlansService/AbortProviderMigration"
-	PlansService_GetProviderMigration_FullMethodName       = "/quotify.plans.v1.PlansService/GetProviderMigration"
-	PlansService_GetSubscriptionReport_FullMethodName      = "/quotify.plans.v1.PlansService/GetSubscriptionReport"
-	PlansService_SyncProviderSubscription_FullMethodName   = "/quotify.plans.v1.PlansService/SyncProviderSubscription"
-	PlansService_PauseSubscription_FullMethodName          = "/quotify.plans.v1.PlansService/PauseSubscription"
-	PlansService_ResumeSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/ResumeSubscription"
-	PlansService_ScheduleCancellation_FullMethodName       = "/quotify.plans.v1.PlansService/ScheduleCancellation"
-	PlansService_ChangePlan_FullMethodName                 = "/quotify.plans.v1.PlansService/ChangePlan"
-	PlansService_ListSubscriptionsFeeDue_FullMethodName    = "/quotify.plans.v1.PlansService/ListSubscriptionsFeeDue"
-	PlansService_AdvanceSubscriptionFee_FullMethodName     = "/quotify.plans.v1.PlansService/AdvanceSubscriptionFee"
-	PlansService_ListSubscriptionsForPeriod_FullMethodName = "/quotify.plans.v1.PlansService/ListSubscriptionsForPeriod"
+	PlansService_CreateCustomer_FullMethodName                   = "/quotify.plans.v1.PlansService/CreateCustomer"
+	PlansService_GetCustomer_FullMethodName                      = "/quotify.plans.v1.PlansService/GetCustomer"
+	PlansService_ResolveCustomer_FullMethodName                  = "/quotify.plans.v1.PlansService/ResolveCustomer"
+	PlansService_ListCustomers_FullMethodName                    = "/quotify.plans.v1.PlansService/ListCustomers"
+	PlansService_SetPaymentMethod_FullMethodName                 = "/quotify.plans.v1.PlansService/SetPaymentMethod"
+	PlansService_CreateMeter_FullMethodName                      = "/quotify.plans.v1.PlansService/CreateMeter"
+	PlansService_GetMeter_FullMethodName                         = "/quotify.plans.v1.PlansService/GetMeter"
+	PlansService_ListMeters_FullMethodName                       = "/quotify.plans.v1.PlansService/ListMeters"
+	PlansService_CreatePlan_FullMethodName                       = "/quotify.plans.v1.PlansService/CreatePlan"
+	PlansService_ListPlans_FullMethodName                        = "/quotify.plans.v1.PlansService/ListPlans"
+	PlansService_PublishPlanVersion_FullMethodName               = "/quotify.plans.v1.PlansService/PublishPlanVersion"
+	PlansService_GetPlanVersion_FullMethodName                   = "/quotify.plans.v1.PlansService/GetPlanVersion"
+	PlansService_CreateSubscription_FullMethodName               = "/quotify.plans.v1.PlansService/CreateSubscription"
+	PlansService_CancelSubscription_FullMethodName               = "/quotify.plans.v1.PlansService/CancelSubscription"
+	PlansService_GetSubscription_FullMethodName                  = "/quotify.plans.v1.PlansService/GetSubscription"
+	PlansService_ListSubscriptions_FullMethodName                = "/quotify.plans.v1.PlansService/ListSubscriptions"
+	PlansService_GetRoutingRules_FullMethodName                  = "/quotify.plans.v1.PlansService/GetRoutingRules"
+	PlansService_SetRoutingRules_FullMethodName                  = "/quotify.plans.v1.PlansService/SetRoutingRules"
+	PlansService_PreviewRouting_FullMethodName                   = "/quotify.plans.v1.PlansService/PreviewRouting"
+	PlansService_StartProviderMigration_FullMethodName           = "/quotify.plans.v1.PlansService/StartProviderMigration"
+	PlansService_CompleteProviderMigration_FullMethodName        = "/quotify.plans.v1.PlansService/CompleteProviderMigration"
+	PlansService_AbortProviderMigration_FullMethodName           = "/quotify.plans.v1.PlansService/AbortProviderMigration"
+	PlansService_GetProviderMigration_FullMethodName             = "/quotify.plans.v1.PlansService/GetProviderMigration"
+	PlansService_GetSubscriptionReport_FullMethodName            = "/quotify.plans.v1.PlansService/GetSubscriptionReport"
+	PlansService_SyncProviderSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/SyncProviderSubscription"
+	PlansService_PauseSubscription_FullMethodName                = "/quotify.plans.v1.PlansService/PauseSubscription"
+	PlansService_ResumeSubscription_FullMethodName               = "/quotify.plans.v1.PlansService/ResumeSubscription"
+	PlansService_ScheduleCancellation_FullMethodName             = "/quotify.plans.v1.PlansService/ScheduleCancellation"
+	PlansService_ChangePlan_FullMethodName                       = "/quotify.plans.v1.PlansService/ChangePlan"
+	PlansService_PreviewSubscriptionChange_FullMethodName        = "/quotify.plans.v1.PlansService/PreviewSubscriptionChange"
+	PlansService_ChangeSubscription_FullMethodName               = "/quotify.plans.v1.PlansService/ChangeSubscription"
+	PlansService_CancelScheduledChange_FullMethodName            = "/quotify.plans.v1.PlansService/CancelScheduledChange"
+	PlansService_ApplyScheduledChanges_FullMethodName            = "/quotify.plans.v1.PlansService/ApplyScheduledChanges"
+	PlansService_ListSubscriptionAdjustments_FullMethodName      = "/quotify.plans.v1.PlansService/ListSubscriptionAdjustments"
+	PlansService_MarkSubscriptionAdjustmentBilled_FullMethodName = "/quotify.plans.v1.PlansService/MarkSubscriptionAdjustmentBilled"
+	PlansService_ListSubscriptionsFeeDue_FullMethodName          = "/quotify.plans.v1.PlansService/ListSubscriptionsFeeDue"
+	PlansService_AdvanceSubscriptionFee_FullMethodName           = "/quotify.plans.v1.PlansService/AdvanceSubscriptionFee"
+	PlansService_ListSubscriptionsForPeriod_FullMethodName       = "/quotify.plans.v1.PlansService/ListSubscriptionsForPeriod"
 )
 
 // PlansServiceClient is the client API for PlansService service.
@@ -111,6 +117,15 @@ type PlansServiceClient interface {
 	ChangePlan(ctx context.Context, in *ChangePlanRequest, opts ...grpc.CallOption) (*ChangePlanResponse, error)
 	// ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
 	// ListSubscriptionsFeeDue lists advance-billed subscriptions whose next fee period has started, with the period and the fee. Used by billing-svc.
+	// PreviewSubscriptionChange prices a change of plan or interval without making it. ChangeSubscription makes it with the same calculation.
+	PreviewSubscriptionChange(ctx context.Context, in *PreviewSubscriptionChangeRequest, opts ...grpc.CallOption) (*PreviewSubscriptionChangeResponse, error)
+	ChangeSubscription(ctx context.Context, in *ChangeSubscriptionRequest, opts ...grpc.CallOption) (*ChangeSubscriptionResponse, error)
+	CancelScheduledChange(ctx context.Context, in *CancelScheduledChangeRequest, opts ...grpc.CallOption) (*CancelScheduledChangeResponse, error)
+	// ApplyScheduledChanges applies the changes whose effective time has come. Used by billing-svc's tick.
+	ApplyScheduledChanges(ctx context.Context, in *ApplyScheduledChangesRequest, opts ...grpc.CallOption) (*ApplyScheduledChangesResponse, error)
+	// ListSubscriptionAdjustments lists the money changes moved that billing-svc has not yet invoiced or credited.
+	ListSubscriptionAdjustments(ctx context.Context, in *ListSubscriptionAdjustmentsRequest, opts ...grpc.CallOption) (*ListSubscriptionAdjustmentsResponse, error)
+	MarkSubscriptionAdjustmentBilled(ctx context.Context, in *MarkSubscriptionAdjustmentBilledRequest, opts ...grpc.CallOption) (*MarkSubscriptionAdjustmentBilledResponse, error)
 	ListSubscriptionsFeeDue(ctx context.Context, in *ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*ListSubscriptionsFeeDueResponse, error)
 	// AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
 	AdvanceSubscriptionFee(ctx context.Context, in *AdvanceSubscriptionFeeRequest, opts ...grpc.CallOption) (*AdvanceSubscriptionFeeResponse, error)
@@ -415,6 +430,66 @@ func (c *plansServiceClient) ChangePlan(ctx context.Context, in *ChangePlanReque
 	return out, nil
 }
 
+func (c *plansServiceClient) PreviewSubscriptionChange(ctx context.Context, in *PreviewSubscriptionChangeRequest, opts ...grpc.CallOption) (*PreviewSubscriptionChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PreviewSubscriptionChangeResponse)
+	err := c.cc.Invoke(ctx, PlansService_PreviewSubscriptionChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ChangeSubscription(ctx context.Context, in *ChangeSubscriptionRequest, opts ...grpc.CallOption) (*ChangeSubscriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangeSubscriptionResponse)
+	err := c.cc.Invoke(ctx, PlansService_ChangeSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) CancelScheduledChange(ctx context.Context, in *CancelScheduledChangeRequest, opts ...grpc.CallOption) (*CancelScheduledChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelScheduledChangeResponse)
+	err := c.cc.Invoke(ctx, PlansService_CancelScheduledChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ApplyScheduledChanges(ctx context.Context, in *ApplyScheduledChangesRequest, opts ...grpc.CallOption) (*ApplyScheduledChangesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApplyScheduledChangesResponse)
+	err := c.cc.Invoke(ctx, PlansService_ApplyScheduledChanges_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ListSubscriptionAdjustments(ctx context.Context, in *ListSubscriptionAdjustmentsRequest, opts ...grpc.CallOption) (*ListSubscriptionAdjustmentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSubscriptionAdjustmentsResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListSubscriptionAdjustments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) MarkSubscriptionAdjustmentBilled(ctx context.Context, in *MarkSubscriptionAdjustmentBilledRequest, opts ...grpc.CallOption) (*MarkSubscriptionAdjustmentBilledResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MarkSubscriptionAdjustmentBilledResponse)
+	err := c.cc.Invoke(ctx, PlansService_MarkSubscriptionAdjustmentBilled_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) ListSubscriptionsFeeDue(ctx context.Context, in *ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*ListSubscriptionsFeeDueResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListSubscriptionsFeeDueResponse)
@@ -512,6 +587,15 @@ type PlansServiceServer interface {
 	ChangePlan(context.Context, *ChangePlanRequest) (*ChangePlanResponse, error)
 	// ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
 	// ListSubscriptionsFeeDue lists advance-billed subscriptions whose next fee period has started, with the period and the fee. Used by billing-svc.
+	// PreviewSubscriptionChange prices a change of plan or interval without making it. ChangeSubscription makes it with the same calculation.
+	PreviewSubscriptionChange(context.Context, *PreviewSubscriptionChangeRequest) (*PreviewSubscriptionChangeResponse, error)
+	ChangeSubscription(context.Context, *ChangeSubscriptionRequest) (*ChangeSubscriptionResponse, error)
+	CancelScheduledChange(context.Context, *CancelScheduledChangeRequest) (*CancelScheduledChangeResponse, error)
+	// ApplyScheduledChanges applies the changes whose effective time has come. Used by billing-svc's tick.
+	ApplyScheduledChanges(context.Context, *ApplyScheduledChangesRequest) (*ApplyScheduledChangesResponse, error)
+	// ListSubscriptionAdjustments lists the money changes moved that billing-svc has not yet invoiced or credited.
+	ListSubscriptionAdjustments(context.Context, *ListSubscriptionAdjustmentsRequest) (*ListSubscriptionAdjustmentsResponse, error)
+	MarkSubscriptionAdjustmentBilled(context.Context, *MarkSubscriptionAdjustmentBilledRequest) (*MarkSubscriptionAdjustmentBilledResponse, error)
 	ListSubscriptionsFeeDue(context.Context, *ListSubscriptionsFeeDueRequest) (*ListSubscriptionsFeeDueResponse, error)
 	// AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
 	AdvanceSubscriptionFee(context.Context, *AdvanceSubscriptionFeeRequest) (*AdvanceSubscriptionFeeResponse, error)
@@ -612,6 +696,24 @@ func (UnimplementedPlansServiceServer) ScheduleCancellation(context.Context, *Sc
 }
 func (UnimplementedPlansServiceServer) ChangePlan(context.Context, *ChangePlanRequest) (*ChangePlanResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ChangePlan not implemented")
+}
+func (UnimplementedPlansServiceServer) PreviewSubscriptionChange(context.Context, *PreviewSubscriptionChangeRequest) (*PreviewSubscriptionChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PreviewSubscriptionChange not implemented")
+}
+func (UnimplementedPlansServiceServer) ChangeSubscription(context.Context, *ChangeSubscriptionRequest) (*ChangeSubscriptionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangeSubscription not implemented")
+}
+func (UnimplementedPlansServiceServer) CancelScheduledChange(context.Context, *CancelScheduledChangeRequest) (*CancelScheduledChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelScheduledChange not implemented")
+}
+func (UnimplementedPlansServiceServer) ApplyScheduledChanges(context.Context, *ApplyScheduledChangesRequest) (*ApplyScheduledChangesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApplyScheduledChanges not implemented")
+}
+func (UnimplementedPlansServiceServer) ListSubscriptionAdjustments(context.Context, *ListSubscriptionAdjustmentsRequest) (*ListSubscriptionAdjustmentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSubscriptionAdjustments not implemented")
+}
+func (UnimplementedPlansServiceServer) MarkSubscriptionAdjustmentBilled(context.Context, *MarkSubscriptionAdjustmentBilledRequest) (*MarkSubscriptionAdjustmentBilledResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MarkSubscriptionAdjustmentBilled not implemented")
 }
 func (UnimplementedPlansServiceServer) ListSubscriptionsFeeDue(context.Context, *ListSubscriptionsFeeDueRequest) (*ListSubscriptionsFeeDueResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSubscriptionsFeeDue not implemented")
@@ -1165,6 +1267,114 @@ func _PlansService_ChangePlan_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_PreviewSubscriptionChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PreviewSubscriptionChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).PreviewSubscriptionChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_PreviewSubscriptionChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).PreviewSubscriptionChange(ctx, req.(*PreviewSubscriptionChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ChangeSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ChangeSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ChangeSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ChangeSubscription(ctx, req.(*ChangeSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_CancelScheduledChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelScheduledChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).CancelScheduledChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_CancelScheduledChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).CancelScheduledChange(ctx, req.(*CancelScheduledChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ApplyScheduledChanges_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApplyScheduledChangesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ApplyScheduledChanges(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ApplyScheduledChanges_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ApplyScheduledChanges(ctx, req.(*ApplyScheduledChangesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ListSubscriptionAdjustments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSubscriptionAdjustmentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListSubscriptionAdjustments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListSubscriptionAdjustments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListSubscriptionAdjustments(ctx, req.(*ListSubscriptionAdjustmentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_MarkSubscriptionAdjustmentBilled_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkSubscriptionAdjustmentBilledRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).MarkSubscriptionAdjustmentBilled(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_MarkSubscriptionAdjustmentBilled_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).MarkSubscriptionAdjustmentBilled(ctx, req.(*MarkSubscriptionAdjustmentBilledRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_ListSubscriptionsFeeDue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSubscriptionsFeeDueRequest)
 	if err := dec(in); err != nil {
@@ -1334,6 +1544,30 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ChangePlan",
 			Handler:    _PlansService_ChangePlan_Handler,
+		},
+		{
+			MethodName: "PreviewSubscriptionChange",
+			Handler:    _PlansService_PreviewSubscriptionChange_Handler,
+		},
+		{
+			MethodName: "ChangeSubscription",
+			Handler:    _PlansService_ChangeSubscription_Handler,
+		},
+		{
+			MethodName: "CancelScheduledChange",
+			Handler:    _PlansService_CancelScheduledChange_Handler,
+		},
+		{
+			MethodName: "ApplyScheduledChanges",
+			Handler:    _PlansService_ApplyScheduledChanges_Handler,
+		},
+		{
+			MethodName: "ListSubscriptionAdjustments",
+			Handler:    _PlansService_ListSubscriptionAdjustments_Handler,
+		},
+		{
+			MethodName: "MarkSubscriptionAdjustmentBilled",
+			Handler:    _PlansService_MarkSubscriptionAdjustmentBilled_Handler,
 		},
 		{
 			MethodName: "ListSubscriptionsFeeDue",

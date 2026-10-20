@@ -62,6 +62,9 @@ type Plans interface {
 	ListSubscriptionsForPeriod(ctx context.Context, in *plansv1.ListSubscriptionsForPeriodRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[plansv1.ListSubscriptionsForPeriodResponse], error)
 	ListSubscriptionsFeeDue(ctx context.Context, in *plansv1.ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*plansv1.ListSubscriptionsFeeDueResponse, error)
 	AdvanceSubscriptionFee(ctx context.Context, in *plansv1.AdvanceSubscriptionFeeRequest, opts ...grpc.CallOption) (*plansv1.AdvanceSubscriptionFeeResponse, error)
+	ApplyScheduledChanges(ctx context.Context, in *plansv1.ApplyScheduledChangesRequest, opts ...grpc.CallOption) (*plansv1.ApplyScheduledChangesResponse, error)
+	ListSubscriptionAdjustments(ctx context.Context, in *plansv1.ListSubscriptionAdjustmentsRequest, opts ...grpc.CallOption) (*plansv1.ListSubscriptionAdjustmentsResponse, error)
+	MarkSubscriptionAdjustmentBilled(ctx context.Context, in *plansv1.MarkSubscriptionAdjustmentBilledRequest, opts ...grpc.CallOption) (*plansv1.MarkSubscriptionAdjustmentBilledResponse, error)
 }
 
 // Admin is the part of plans-svc's AdminService billing uses.

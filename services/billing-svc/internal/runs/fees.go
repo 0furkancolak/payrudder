@@ -61,6 +61,13 @@ func (m *Manager) billTenantFees(ctx context.Context, tenantID uuid.UUID) error 
 		return err
 	}
 	tctx := tenantCtx(ctx, tenantID)
+	// Changes that were waiting for the end of a period come first: the new plan's first fee is due in the same pass.
+	if _, err := m.cfg.Plans.ApplyScheduledChanges(tctx, &plansv1.ApplyScheduledChangesRequest{Now: timestamppb.New(m.cfg.Now())}); err != nil {
+		return fmt.Errorf("apply scheduled changes: %w", err)
+	}
+	if err := m.billAdjustments(ctx, tenantID, t, loc); err != nil {
+		return err
+	}
 	after := ""
 	for {
 		page, err := m.cfg.Plans.ListSubscriptionsFeeDue(tctx, &plansv1.ListSubscriptionsFeeDueRequest{Now: timestamppb.New(m.cfg.Now()), After: after, PageSize: int32(m.cfg.PageSize)}) //nolint:gosec // small
@@ -87,7 +94,11 @@ func (m *Manager) billFee(ctx context.Context, tenantID uuid.UUID, t *plansv1.Te
 	sub := d.GetSubscription()
 	start := d.GetPeriodStart().AsTime()
 	if sub.GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAUSED && d.GetFeeMinor() > 0 {
-		id, err := m.draftFeeInvoice(ctx, tenantID, t, loc, d)
+		end := d.GetPeriodEnd().AsTime()
+		line := rating.Line{Kind: rating.KindBaseFee, AmountMinor: d.GetFeeMinor(),
+			Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", feeWord(sub), sub.GetPlanCode(), day(start, loc), day(end, loc))}
+		id, err := m.draftFeeInvoice(ctx, tenantID, t, loc, feeInvoiceSpec{
+			Key: sub.GetId() + "|" + start.UTC().Format(time.RFC3339), Sub: sub, PeriodStart: start, Lines: []rating.Line{line}})
 		if err != nil {
 			return err
 		}
@@ -100,18 +111,32 @@ func (m *Manager) billFee(ctx context.Context, tenantID uuid.UUID, t *plansv1.Te
 	return err
 }
 
-// draftFeeInvoice creates the draft FEE invoice of a fee period, or returns the one a previous pass created.
-func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *plansv1.Tenant, loc *time.Location, d *plansv1.FeeDue) (uuid.UUID, error) {
-	sub := d.GetSubscription()
-	start, end := d.GetPeriodStart().AsTime(), d.GetPeriodEnd().AsTime()
-	key := sub.GetId() + "|" + start.UTC().Format(time.RFC3339)
+// feeInvoiceSpec describes an invoice that is not part of a billing run: one fee period, or what a plan change moved.
+type feeInvoiceSpec struct {
+	// Key makes the invoice findable again: a second pass for the same fee period or adjustment gets the invoice the first one made.
+	Key         string
+	Sub         *plansv1.Subscription
+	PeriodStart time.Time
+	Lines       []rating.Line
+}
+
+// draftFeeInvoice creates the draft FEE invoice for spec, or returns the one a previous pass created. The lines must add up to more than zero.
+func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *plansv1.Tenant, loc *time.Location, spec feeInvoiceSpec) (uuid.UUID, error) {
+	sub := spec.Sub
 	var existing uuid.UUID
-	err := m.cfg.Pool.QueryRow(ctx, `SELECT id FROM invoices WHERE tenant_id = $1 AND fee_key = $2`, tenantID, key).Scan(&existing)
+	err := m.cfg.Pool.QueryRow(ctx, `SELECT id FROM invoices WHERE tenant_id = $1 AND fee_key = $2`, tenantID, spec.Key).Scan(&existing)
 	if err == nil {
 		return existing, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, err
+	}
+	total, err := rating.Total(spec.Lines)
+	if err != nil {
+		return uuid.Nil, permanent{fmt.Errorf("invoice %s: %w", spec.Key, err)}
+	}
+	if total <= 0 {
+		return uuid.Nil, permanent{fmt.Errorf("invoice %s adds up to %d", spec.Key, total)}
 	}
 	currency := orDefault(sub.GetCurrency(), t.GetCurrency())
 	cur, ok := money.LookupCurrency(currency)
@@ -134,16 +159,9 @@ func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *pl
 	if id := t.GetInvoiceLogoAssetId(); id != "" {
 		logoKey = tenantID.String() + "/assets/" + id
 	}
-	paymentMethod := cu.GetCustomer().GetPaymentMethod()
-	word := "monthly"
-	if sub.GetInterval() == plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR {
-		word = "yearly"
-	}
-	line := rating.Line{Kind: rating.KindBaseFee, AmountMinor: d.GetFeeMinor(),
-		Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", word, sub.GetPlanCode(), start.In(loc).Format("2006-01-02"), end.In(loc).Format("2006-01-02"))}
 	snap, err := json.Marshal(saga.Snapshot{
 		CustomerExternalID: sub.GetCustomerExternalId(), CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
-		PaymentMethod: paymentMethod, Provider: sub.GetProvider(), TenantName: t.GetName(), Environment: env, CurrencyExponent: cur.Exponent, LogoObjectKey: logoKey,
+		PaymentMethod: cu.GetCustomer().GetPaymentMethod(), Provider: sub.GetProvider(), TenantName: t.GetName(), Environment: env, CurrencyExponent: cur.Exponent, LogoObjectKey: logoKey,
 	})
 	if err != nil {
 		return uuid.Nil, err
@@ -157,21 +175,21 @@ func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *pl
 		var got uuid.UUID
 		err := tx.QueryRow(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, country, fee_key)
 			VALUES ($1,$2,$3,$4,'FEE',$5,$6,$7,$7,'draft',$8,$9,$10,$11) ON CONFLICT DO NOTHING RETURNING id`,
-			tenantID, id, cuid, period.PeriodOf(start, loc), sub.GetPlanVersionId(), currency, d.GetFeeMinor(), snap, sub.GetProvider(), country, key).Scan(&got)
+			tenantID, id, cuid, period.PeriodOf(spec.PeriodStart, loc), sub.GetPlanVersionId(), currency, total, snap, sub.GetProvider(), country, spec.Key).Scan(&got)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil // another pass won the race; the lookup below finds its invoice
 		}
 		if err != nil {
 			return err
 		}
-		credit, err := applyCredits(ctx, tx, tenantID, cuid, id, d.GetFeeMinor())
+		credit, err := applyCredits(ctx, tx, tenantID, cuid, id, currency, total)
 		if err != nil {
 			return err
 		}
-		lines := []rating.Line{line}
+		lines := spec.Lines
 		if credit > 0 {
-			lines = append(lines, rating.Line{Kind: rating.KindCredit, AmountMinor: -credit, Description: "Credit from a price correction of an earlier period"})
-			if _, err := tx.Exec(ctx, `UPDATE invoices SET subtotal_minor = $3, total_minor = $3 WHERE tenant_id = $1 AND id = $2`, tenantID, id, d.GetFeeMinor()-credit); err != nil {
+			lines = append(append([]rating.Line(nil), lines...), rating.Line{Kind: rating.KindCredit, AmountMinor: -credit, Description: "Credit balance"})
+			if _, err := tx.Exec(ctx, `UPDATE invoices SET subtotal_minor = $3, total_minor = $3 WHERE tenant_id = $1 AND id = $2`, tenantID, id, total-credit); err != nil {
 				return err
 			}
 		}
@@ -186,9 +204,68 @@ func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *pl
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if err := m.cfg.Pool.QueryRow(ctx, `SELECT id FROM invoices WHERE tenant_id = $1 AND fee_key = $2`, tenantID, key).Scan(&existing); err != nil {
+	if err := m.cfg.Pool.QueryRow(ctx, `SELECT id FROM invoices WHERE tenant_id = $1 AND fee_key = $2`, tenantID, spec.Key).Scan(&existing); err != nil {
 		return uuid.Nil, err
 	}
 	m.invoices.Add(ctx, 1)
 	return existing, nil
+}
+
+func feeWord(sub *plansv1.Subscription) string {
+	if sub.GetInterval() == plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR {
+		return "yearly"
+	}
+	return "monthly"
+}
+
+func day(t time.Time, loc *time.Location) string { return t.In(loc).Format("2006-01-02") }
+
+// billAdjustments turns what plan changes moved into money: an invoice when the new plan costs more than the unused old time was worth,
+// a credit balance when it costs less. Each adjustment is handled once (its invoice or credit is found again by key) and then marked.
+func (m *Manager) billAdjustments(ctx context.Context, tenantID uuid.UUID, t *plansv1.Tenant, loc *time.Location) error {
+	tctx := tenantCtx(ctx, tenantID)
+	resp, err := m.cfg.Plans.ListSubscriptionAdjustments(tctx, &plansv1.ListSubscriptionAdjustmentsRequest{PageSize: int32(m.cfg.PageSize)}) //nolint:gosec // small
+	if err != nil {
+		return fmt.Errorf("list adjustments: %w", err)
+	}
+	for _, a := range resp.GetAdjustments() {
+		if err := m.billAdjustment(ctx, tenantID, t, loc, a); err != nil {
+			m.log.WarnContext(ctx, "adjustment not billed", "tenant", tenantID, "adjustment", a.GetId(), "error", err)
+		}
+	}
+	return nil
+}
+
+func (m *Manager) billAdjustment(ctx context.Context, tenantID uuid.UUID, t *plansv1.Tenant, loc *time.Location, a *plansv1.Adjustment) error {
+	sub := a.GetSubscription()
+	net := a.GetChargeMinor() - a.GetCreditMinor()
+	switch {
+	case net > 0:
+		from, to := a.GetFromTime().AsTime(), a.GetToTime().AsTime()
+		lines := []rating.Line{{Kind: rating.KindBaseFee, AmountMinor: a.GetChargeMinor(),
+			Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", feeWord(sub), sub.GetPlanCode(), day(from, loc), day(to, loc))}}
+		if a.GetCreditMinor() > 0 {
+			lines = append(lines, rating.Line{Kind: rating.KindCredit, AmountMinor: -a.GetCreditMinor(),
+				Description: fmt.Sprintf("Unused time on %s — %s to %s", a.GetOldPlanCode(), day(from, loc), day(to, loc))})
+		}
+		id, err := m.draftFeeInvoice(ctx, tenantID, t, loc, feeInvoiceSpec{Key: "adj|" + a.GetId(), Sub: sub, PeriodStart: from, Lines: lines})
+		if err != nil {
+			return err
+		}
+		if err := m.Finalize(ctx, tenantID, id); err != nil {
+			return err
+		}
+	case net < 0:
+		cuid, err := uuid.Parse(sub.GetCustomerId())
+		if err != nil {
+			return err
+		}
+		if _, err := m.cfg.Pool.Exec(ctx, `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_adjustment_id, currency)
+			VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (tenant_id, source_adjustment_id) WHERE source_adjustment_id IS NOT NULL DO NOTHING`,
+			tenantID, cuid, uuid.New(), -net, a.GetId(), orDefault(sub.GetCurrency(), t.GetCurrency())); err != nil {
+			return err
+		}
+	}
+	_, err := m.cfg.Plans.MarkSubscriptionAdjustmentBilled(tenantCtx(ctx, tenantID), &plansv1.MarkSubscriptionAdjustmentBilledRequest{AdjustmentId: a.GetId()})
+	return err
 }

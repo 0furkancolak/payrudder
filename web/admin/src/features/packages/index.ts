@@ -1,1 +1,1 @@
-export { usePackages } from "./api";
+export { usePackages, type Package } from "./api";

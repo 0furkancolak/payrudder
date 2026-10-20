@@ -186,3 +186,116 @@ func TestYearlyPeriodsFollowTheAnniversary(t *testing.T) {
 		}
 	}
 }
+
+func TestQuoteChange(t *testing.T) {
+	loc := time.UTC
+	anchor := time.Date(2026, 10, 1, 0, 0, 0, 0, loc) // October has 31 days
+	mid := time.Date(2026, 10, 16, 0, 0, 0, 0, loc)   // 15 of 31 days used
+	month := func(fee int64) subscription.Plan {
+		return subscription.Plan{FeeMinor: fee, Interval: subscription.Monthly}
+	}
+	year := func(fee int64) subscription.Plan {
+		return subscription.Plan{FeeMinor: fee, Interval: subscription.Yearly}
+	}
+	nov1 := time.Date(2026, 11, 1, 0, 0, 0, 0, loc)
+
+	t.Run("an upgrade is immediate and credits the unused old time against the rest of the new plan", func(t *testing.T) {
+		q, err := subscription.QuoteChange(subscription.ChangeRequest{Old: month(3100), New: month(9300), Anchor: anchor, At: mid, Loc: loc})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// 16 of 31 days are left: 3100 × 16/31 = 1600 credit, 9300 × 16/31 = 4800 charge.
+		if q.Timing != subscription.Immediately || q.Proration != subscription.Prorate || q.CreditMinor != 1600 || q.ChargeMinor != 4800 || q.NetMinor != 3200 {
+			t.Fatalf("quote = %+v", q)
+		}
+		if !q.NewAnchor.Equal(anchor) || !q.NewFeeDue.Equal(nov1) || q.NextRenewalMinor != 9300 {
+			t.Errorf("the cycle must be kept: %+v", q)
+		}
+	})
+	t.Run("a downgrade waits for the end of the period and moves no money", func(t *testing.T) {
+		q, err := subscription.QuoteChange(subscription.ChangeRequest{Old: month(9300), New: month(3100), Anchor: anchor, At: mid, Loc: loc})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q.Timing != subscription.AtPeriodEnd || q.NetMinor != 0 || !q.Effective.Equal(nov1) || !q.NewAnchor.Equal(nov1) || !q.NewFeeDue.Equal(nov1) || q.NextRenewalMinor != 3100 {
+			t.Fatalf("quote = %+v", q)
+		}
+	})
+	t.Run("a downgrade can be made immediate: the difference becomes credit", func(t *testing.T) {
+		q, err := subscription.QuoteChange(subscription.ChangeRequest{Old: month(9300), New: month(3100), Anchor: anchor, At: mid, Loc: loc, Timing: subscription.Immediately})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q.NetMinor != 1600-4800 || q.CreditMinor != 4800 || q.ChargeMinor != 1600 {
+			t.Fatalf("quote = %+v", q)
+		}
+	})
+	t.Run("monthly to yearly starts the year now and credits the unused month", func(t *testing.T) {
+		q, err := subscription.QuoteChange(subscription.ChangeRequest{Old: month(3100), New: year(31000), Anchor: anchor, At: mid, Loc: loc})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q.Timing != subscription.Immediately || q.CreditMinor != 1600 || q.ChargeMinor != 31000 || q.NetMinor != 29400 ||
+			!q.NewAnchor.Equal(mid) || !q.NewFeeDue.Equal(time.Date(2027, 10, 16, 0, 0, 0, 0, loc)) {
+			t.Fatalf("quote = %+v", q)
+		}
+	})
+	t.Run("yearly to monthly waits for the end of the paid year", func(t *testing.T) {
+		q, err := subscription.QuoteChange(subscription.ChangeRequest{Old: year(31000), New: month(3100), Anchor: anchor, At: mid, Loc: loc})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q.Timing != subscription.AtPeriodEnd || !q.Effective.Equal(time.Date(2027, 10, 1, 0, 0, 0, 0, loc)) || q.NetMinor != 0 {
+			t.Fatalf("quote = %+v", q)
+		}
+	})
+	t.Run("yearly to monthly now credits the unused year, which exceeds the first month", func(t *testing.T) {
+		q, err := subscription.QuoteChange(subscription.ChangeRequest{Old: year(36500), New: month(3100), Anchor: anchor, At: time.Date(2027, 4, 2, 0, 0, 0, 0, loc), Loc: loc, Timing: subscription.Immediately})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// 2027-04-02 to 2027-10-01 is 182 of 365 days.
+		if q.CreditMinor != 18200 || q.ChargeMinor != 3100 || q.NetMinor != 3100-18200 || !q.NewAnchor.Equal(time.Date(2027, 4, 2, 0, 0, 0, 0, loc)) {
+			t.Fatalf("quote = %+v", q)
+		}
+	})
+	t.Run("full starts a new cycle in the same interval", func(t *testing.T) {
+		q, err := subscription.QuoteChange(subscription.ChangeRequest{Old: month(3100), New: month(9300), Anchor: anchor, At: mid, Loc: loc, Proration: subscription.Full})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q.CreditMinor != 1600 || q.ChargeMinor != 9300 || !q.NewAnchor.Equal(mid) || !q.NewFeeDue.Equal(time.Date(2026, 11, 16, 0, 0, 0, 0, loc)) {
+			t.Fatalf("quote = %+v", q)
+		}
+	})
+	t.Run("no proration changes the plan with no money and bills the new fee from the next period", func(t *testing.T) {
+		q, err := subscription.QuoteChange(subscription.ChangeRequest{Old: month(3100), New: month(9300), Anchor: anchor, At: mid, Loc: loc, Proration: subscription.NoProration})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q.Timing != subscription.Immediately || q.NetMinor != 0 || q.CreditMinor != 0 || q.ChargeMinor != 0 || !q.NewFeeDue.Equal(nov1) || q.NextRenewalMinor != 9300 {
+			t.Fatalf("quote = %+v", q)
+		}
+	})
+	t.Run("refusals", func(t *testing.T) {
+		for name, r := range map[string]subscription.ChangeRequest{
+			"before the anchor":                     {Old: month(1), New: month(2), Anchor: anchor, At: anchor.Add(-time.Hour)},
+			"no proration across intervals":         {Old: month(1), New: year(2), Anchor: anchor, At: mid, Proration: subscription.NoProration},
+			"proration with a change at period end": {Old: month(1), New: month(2), Anchor: anchor, At: mid, Timing: subscription.AtPeriodEnd, Proration: subscription.Prorate},
+			"unknown timing":                        {Old: month(1), New: month(2), Anchor: anchor, At: mid, Timing: "later"},
+			"unknown proration":                     {Old: month(1), New: month(2), Anchor: anchor, At: mid, Proration: "half"},
+			"negative fee":                          {Old: month(-1), New: month(2), Anchor: anchor, At: mid},
+		} {
+			r.Loc = loc
+			if _, err := subscription.QuoteChange(r); !errors.Is(err, subscription.ErrBadChange) {
+				t.Errorf("%s: err = %v", name, err)
+			}
+		}
+	})
+	t.Run("a change at the very start of the period credits the whole old fee", func(t *testing.T) {
+		q, err := subscription.QuoteChange(subscription.ChangeRequest{Old: month(3100), New: month(9300), Anchor: anchor, At: anchor, Loc: loc})
+		if err != nil || q.CreditMinor != 3100 || q.ChargeMinor != 9300 || q.NetMinor != 6200 {
+			t.Fatalf("quote = %+v, %v", q, err)
+		}
+	})
+}

@@ -337,6 +337,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subscriptions/{id}/change-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What a change of plan or interval would cost, without making it
+         * @description The same calculation as the change itself, so the preview is what is then billed. For subscriptions whose fee is invoiced in advance.
+         */
+        post: operations["previewSubscriptionChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/{id}/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move a subscription to another plan version and/or interval, now or at the end of the paid period
+         * @description An upgrade or monthly-to-yearly change is immediate and prorated; a downgrade or yearly-to-monthly change waits for the end of the period the customer has paid for
+         *     (a scheduled change, shown on the subscription). Whatever moves money is invoiced, or becomes a credit balance when the new plan costs less than the unused old time was worth.
+         *     Answers 409 `ABORTED` if the fee of the current period has not been invoiced yet; try again in a moment.
+         */
+        post: operations["changeSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/{id}/scheduled-change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Withdraw the change waiting for the end of the period */
+        delete: operations["cancelScheduledChange"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/reports/revenue": {
         parameters: {
             query?: never;
@@ -1448,8 +1507,11 @@ export interface components {
             customer_id?: string;
             customer_external_id?: string;
             period_id?: string;
-            /** @enum {string} */
-            kind?: "REGULAR" | "CORRECTION";
+            /**
+             * @description FEE: a fixed fee invoiced in advance for one period, or what a plan change moved
+             * @enum {string}
+             */
+            kind?: "REGULAR" | "CORRECTION" | "FEE";
             /** @example INV-2026-000123 */
             number?: string;
             currency?: string;
@@ -1665,6 +1727,67 @@ export interface components {
             plan_version?: number;
             /** @enum {string} */
             fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
+            scheduled_change?: components["schemas"]["ScheduledChange"];
+        };
+        ChangeRequest: {
+            /** @description Empty keeps the plan (to change the interval only) */
+            plan_code?: string;
+            /** @description 0 = latest */
+            plan_version?: number;
+            /**
+             * @description Default keeps the interval
+             * @enum {string}
+             */
+            interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            /**
+             * @description Default depends on the direction of the change
+             * @enum {string}
+             */
+            timing?: "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
+            /**
+             * @description Default prorate. Prorate keeps the cycle within an interval; full starts a new cycle now; none moves no money now
+             * @enum {string}
+             */
+            proration?: "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
+            /**
+             * Format: date-time
+             * @description Default now; not in the future
+             */
+            change_time?: string;
+        };
+        ChangeQuote: {
+            /** @enum {string} */
+            timing?: "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
+            /** @enum {string} */
+            proration?: "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
+            /** Format: date-time */
+            effective_time?: string;
+            /** Format: date-time */
+            period_start?: string;
+            /** Format: date-time */
+            period_end?: string;
+            /** @description The unused */
+            credit_minor?: string;
+            /** @description What the new plan costs from the change */
+            charge_minor?: string;
+            /** @description charge - credit: positive is invoiced, negative becomes a credit balance */
+            net_minor?: string;
+            currency?: string;
+            /** Format: date-time */
+            next_renewal_time?: string;
+            next_renewal_minor?: string;
+            plan_code?: string;
+            plan_version?: number;
+            /** @enum {string} */
+            interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+        };
+        ScheduledChange: {
+            plan_code?: string;
+            plan_version?: number;
+            /** @enum {string} */
+            interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            /** Format: date-time */
+            effective_time?: string;
         };
         CurrencyFee: {
             currency?: string;
@@ -2415,6 +2538,93 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    previewSubscriptionChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeQuote"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    changeSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        subscription?: components["schemas"]["Subscription"];
+                        quote?: components["schemas"]["ChangeQuote"];
+                        /** @description True when the change waits for the end of the period */
+                        scheduled?: boolean;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    cancelScheduledChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
         };

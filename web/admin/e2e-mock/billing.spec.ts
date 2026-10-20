@@ -233,6 +233,54 @@ test.describe("subscriptions", () => {
     expect(gw.called("POST", "/v1/subscriptions/s1/change-plan")[0]?.body).toEqual({ plan_code: "pro" });
   });
 
+  test("a subscription billed in advance is changed with a preview first; a scheduled change can be withdrawn", async ({ page }) => {
+    const quote = {
+      timing: "CHANGE_TIMING_IMMEDIATELY",
+      proration: "CHANGE_PRORATION_PRORATE",
+      effective_time: "2026-10-16T00:00:00Z",
+      credit_minor: "1600",
+      charge_minor: "4800",
+      net_minor: "3200",
+      currency: "TRY",
+      next_renewal_time: "2026-11-01T00:00:00Z",
+      next_renewal_minor: "9300",
+    };
+    let scheduled: Record<string, unknown> | undefined = { plan_code: "basic", plan_version: 1, interval: "SUBSCRIPTION_INTERVAL_MONTH", effective_time: "2026-11-01T00:00:00Z" };
+    const gw = common(new MockGateway(), []).on((c) => {
+      if (c.method === "GET" && c.path === "/v1/subscriptions") {
+        return { body: { subscriptions: [sub("s1", { fee_timing: "FEE_TIMING_ADVANCE", interval: "SUBSCRIPTION_INTERVAL_MONTH", scheduled_change: scheduled })] } };
+      }
+      if (c.method === "POST" && c.path === "/v1/subscriptions/s1/change-preview") return { body: quote };
+      if (c.method === "POST" && c.path === "/v1/subscriptions/s1/change") return { body: { subscription: sub("s2"), quote } };
+      if (c.method === "DELETE" && c.path === "/v1/subscriptions/s1/scheduled-change") {
+        scheduled = undefined;
+        return { body: sub("s1", { fee_timing: "FEE_TIMING_ADVANCE" }) };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/subscriptions");
+    await page.getByRole("button", { name: "Manage" }).click();
+    const panel = page.getByRole("region", { name: "Change plan or interval" });
+    await expect(panel).toContainText("Scheduled: basic (Monthly) from");
+    await expect(panel.getByRole("button", { name: "Apply change" })).toBeDisabled();
+    await panel.getByLabel("New package").selectOption("pro");
+    await panel.getByRole("button", { name: "Preview" }).click();
+    const result = panel.getByLabel("What this change costs");
+    await expect(result).toContainText("16.00");
+    await expect(result).toContainText("48.00");
+    await expect(result).toContainText("32.00 is invoiced now");
+    await expect(result).toContainText("93.00");
+    // Only what was chosen is sent; the rest is the server's default for the direction of the change.
+    expect(gw.called("POST", "/v1/subscriptions/s1/change-preview")[0]?.body).toEqual({ plan_code: "pro" });
+    await panel.getByRole("button", { name: "Apply change" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/subscriptions/s1/change").length).toBe(1);
+    expect(gw.called("POST", "/v1/subscriptions/s1/change")[0]?.body).toEqual({ plan_code: "pro" });
+    await panel.getByRole("button", { name: "Withdraw" }).click();
+    await expect.poll(() => gw.called("DELETE", "/v1/subscriptions/s1/scheduled-change").length).toBe(1);
+    await expect(panel).not.toContainText("Scheduled:");
+  });
+
   test("a subscription a provider runs cannot be changed here, only moved", async ({ page }) => {
     const gw = common(new MockGateway(), [sub("s2", { provider: "paddle", provider_ref: "sub_01", owner: "provider", currency: "USD" })]);
     await gw.install(page);

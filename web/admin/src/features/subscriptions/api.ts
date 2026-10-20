@@ -22,6 +22,27 @@ export interface NewSubscription {
   interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
 }
 
+export interface ChangeInput {
+  id: string;
+  /** Empty keeps the package. */
+  plan_code: string;
+  /** Empty keeps the interval. */
+  interval: "" | "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+  /** Empty lets Quotify decide by the direction of the change. */
+  timing: "" | "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
+  proration: "" | "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
+}
+
+/** Only what was chosen is sent: the rest is the server's default for the direction of the change. */
+function changeBody(v: ChangeInput) {
+  return {
+    ...(v.plan_code ? { plan_code: v.plan_code } : {}),
+    ...(v.interval ? { interval: v.interval } : {}),
+    ...(v.timing ? { timing: v.timing } : {}),
+    ...(v.proration ? { proration: v.proration } : {}),
+  };
+}
+
 /** Every action on a subscription: each refreshes the list. */
 export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
@@ -35,6 +56,10 @@ export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, envir
     scheduleCancel: useMutation({ mutationFn: (id: string) => unwrap(t().POST("/v1/subscriptions/{id}/cancel-at-period-end", path(id))), onSuccess: refresh }),
     withdrawCancel: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}/cancel-at-period-end", path(id))), onSuccess: refresh }),
     endNow: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}", path(id))), onSuccess: refresh }),
+    /** Prices a change of plan or interval without making it. */
+    previewChange: useMutation({ mutationFn: (v: ChangeInput) => unwrap(t().POST("/v1/subscriptions/{id}/change-preview", { ...path(v.id), body: changeBody(v) })) }),
+    change: useMutation({ mutationFn: (v: ChangeInput) => unwrap(t().POST("/v1/subscriptions/{id}/change", { ...path(v.id), body: changeBody(v) })), onSuccess: refresh }),
+    cancelScheduledChange: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}/scheduled-change", path(id))), onSuccess: refresh }),
     changePlan: useMutation({
       mutationFn: (v: { id: string; plan_code: string }) => unwrap(t().POST("/v1/subscriptions/{id}/change-plan", { ...path(v.id), body: { plan_code: v.plan_code } })),
       onSuccess: refresh,

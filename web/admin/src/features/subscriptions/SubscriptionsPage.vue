@@ -15,6 +15,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useEntitlements, useSubscriptionActions, useSubscriptions } from "./api";
+import ChangePanel from "./ChangePanel.vue";
 
 const { t, te, locale } = useI18n();
 const params = useParams({ strict: false });
@@ -155,7 +156,14 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
       <Button v-if="!selected.end_time" variant="destructive" @click="end(selected.id)">{{ t("billing.subscriptions.endNow") }}</Button>
     </div>
 
-    <div v-if="!providerRuns && !selected.end_time" class="grid gap-3 sm:grid-cols-[1fr_auto]">
+    <ChangePanel
+      v-if="!providerRuns && !selected.end_time && selected.fee_timing === 'FEE_TIMING_ADVANCE'"
+      :subscription="selected"
+      :packages="packages.data.value ?? []"
+      :tenant-id="tenantId"
+      :environment="environment"
+    />
+    <div v-else-if="!providerRuns && !selected.end_time" class="grid gap-3 sm:grid-cols-[1fr_auto]">
       <NativeSelect v-model="newPlan" :aria-label="t('billing.subscriptions.newPackage')">
         <option value="" disabled>{{ t("billing.subscriptions.newPackage") }}</option>
         <option v-for="p in packages.data.value ?? []" :key="p.plan.id" :value="p.plan.code" :disabled="p.plan.code === selected.plan_code">{{ p.plan.code }}</option>
