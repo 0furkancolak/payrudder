@@ -15,6 +15,8 @@ service PlansService {
   rpc ListCustomers(ListCustomersRequest) returns (ListCustomersResponse);
   // SetPaymentMethod sets the PSP token. Sandbox tenants accept only pm_sandbox_* tokens.
   rpc SetPaymentMethod(SetPaymentMethodRequest) returns (SetPaymentMethodResponse);
+  // SetCustomerAddress replaces the customer's billing address. An empty address clears it (the country is kept unless the address names one).
+  rpc SetCustomerAddress(SetCustomerAddressRequest) returns (SetCustomerAddressResponse);
 
   // CreateMeter creates version 1 of a code, or the next version of an existing code.
   rpc CreateMeter(CreateMeterRequest) returns (CreateMeterResponse);
@@ -94,6 +96,8 @@ message CreateCustomerRequest {
   string payment_method = 4;
   string country = 5;
   string billing_currency = 6;
+  // The billing address. If it has a country, that is the customer's country (country above must be empty or equal).
+  Address address = 7;
 }
 
 message CreateCustomerResponse {
@@ -135,6 +139,15 @@ message SetPaymentMethodRequest {
 }
 
 message SetPaymentMethodResponse {
+  Customer customer = 1;
+}
+
+message SetCustomerAddressRequest {
+  string external_id = 1;
+  Address address = 2;
+}
+
+message SetCustomerAddressResponse {
   Customer customer = 1;
 }
 

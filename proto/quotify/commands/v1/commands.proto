@@ -75,6 +75,9 @@ message InvoiceSnapshot {
   int64 total_minor = 13;
   // Object key of the tenant's READY invoice_logo asset, if any.
   string logo_object_key = 14;
+  // The seller's and the customer's postal address as printed lines (empty when none was entered).
+  repeated string seller_address_lines = 15;
+  repeated string customer_address_lines = 16;
 }
 
 message RenderInvoicePdf {

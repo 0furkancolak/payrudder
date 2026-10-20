@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 )
@@ -41,7 +42,7 @@ func (s *Server) CreateInvoiceLink(ctx context.Context, req *billingv1.CreateInv
 	case days == 0:
 		days = defaultLinkDays
 	case days < 0 || days > 365:
-		return nil, invalid("expires_in_days must be 1..365")
+		return nil, errkey.New(codes.InvalidArgument, "billing.invoice_link.bad_expiry", "expires_in_days must be 1..365")
 	}
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
@@ -55,7 +56,7 @@ func (s *Server) CreateInvoiceLink(ctx context.Context, req *billingv1.CreateInv
 			return err
 		}
 		if invStatus == "draft" {
-			return status.Error(codes.FailedPrecondition, "a draft invoice has no number yet and cannot be shared")
+			return errkey.New(codes.FailedPrecondition, "billing.invoice_link.draft_invoice", "a draft invoice has no number yet and cannot be shared")
 		}
 		_, err := tx.Exec(ctx, `INSERT INTO invoice_links (tenant_id, id, invoice_id, token_hash, expires_at) VALUES ($1,$2,$3,$4,$5)`,
 			ti.ID, uuid.New(), id, tokenHash(token), expires)
@@ -105,7 +106,7 @@ func (s *Server) RevokeInvoiceLinks(ctx context.Context, req *billingv1.RevokeIn
 }
 
 // errNoLink is what a visitor gets for a token that is unknown, expired or revoked: the three look the same.
-var errNoLink = status.Error(codes.NotFound, "this link does not exist or has expired")
+var errNoLink = errkey.New(codes.NotFound, "billing.invoice_link.not_found", "this link does not exist or has expired")
 
 // linkedInvoice resolves a token to its tenant and invoice, or errNoLink.
 func (s *Server) linkedInvoice(ctx context.Context, token string) (tenantID, invoiceID uuid.UUID, expires time.Time, err error) {
@@ -144,6 +145,15 @@ func (s *Server) GetHostedInvoice(ctx context.Context, req *billingv1.GetHostedI
 	if resp.Invoice.Status == "draft" {
 		return nil, errNoLink
 	}
+	var snap struct {
+		Seller   []string `json:"seller_address"`
+		Customer []string `json:"customer_address"`
+	}
+	if err := s.system.QueryRow(ctx, `SELECT COALESCE(snapshot->'seller_address', '[]'), COALESCE(snapshot->'customer_address', '[]') FROM invoices WHERE id = $1`, invoiceID).
+		Scan(&snap.Seller, &snap.Customer); err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	resp.SellerAddressLines, resp.CustomerAddressLines = snap.Seller, snap.Customer
 	resp.PdfAvailable = resp.Invoice.PdfObjectKey != "" && s.pdfs != nil
 	resp.Invoice.PdfObjectKey = "" // the visitor gets a link, not a storage key
 	return resp, nil
@@ -163,7 +173,7 @@ func (s *Server) GetHostedInvoicePdfUrl(ctx context.Context, req *billingv1.GetH
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	if key == nil || *key == "" {
-		return nil, status.Error(codes.FailedPrecondition, "the invoice PDF is not rendered yet")
+		return nil, errkey.New(codes.FailedPrecondition, "billing.invoice.pdf_not_ready", "the invoice PDF is not rendered yet")
 	}
 	url, err := s.pdfs.PresignGet(ctx, *key, PDFLinkTTL)
 	if err != nil {

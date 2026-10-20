@@ -10,6 +10,9 @@ import "quotify/plans/v1/resources.proto";
 service AdminService {
   // CreateAccount creates the account and its sandbox + live tenants with the chosen settings.
   rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+  // CreateApp adds an application to an account: a sandbox and a live tenant with the chosen settings.
+  rpc CreateApp(CreateAppRequest) returns (CreateAppResponse);
+  rpc ListApps(ListAppsRequest) returns (ListAppsResponse);
   rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
   // ListTenants pages through every tenant ordered by id; billing-svc's scheduler walks it.
   rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
@@ -36,6 +39,30 @@ message CreateAccountRequest {
 
 message CreateAccountResponse {
   Account account = 1;
+}
+
+message CreateAppRequest {
+  string account_id = 1;
+  string name = 2;
+  // Empty: the name in lower case with dashes.
+  string slug = 3;
+  // As in CreateAccountRequest: no defaults.
+  string currency = 4;
+  string timezone = 5;
+  google.protobuf.Duration grace_period = 6;
+  TenantTier tier = 7;
+}
+
+message CreateAppResponse {
+  App app = 1;
+}
+
+message ListAppsRequest {
+  string account_id = 1;
+}
+
+message ListAppsResponse {
+  repeated App apps = 1;
 }
 
 message GetTenantRequest {
@@ -65,6 +92,8 @@ message UpdateTenantSettingsRequest {
   // Sets the invoice logo (an invoice_logo asset of assets-svc); empty leaves it unchanged. clear_invoice_logo removes it.
   string invoice_logo_asset_id = 4;
   bool clear_invoice_logo = 5;
+  // Replaces the seller address printed on the tenant's invoices; unset leaves it unchanged.
+  Address address = 6;
 }
 
 message UpdateTenantSettingsResponse {

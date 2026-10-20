@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -78,8 +80,17 @@ func Tenant(t sqlc.Tenant) *plansv1.Tenant {
 		Id: t.ID.String(), AccountId: t.AccountID.String(), Environment: domain.EnvironmentFromDB(t.Environment),
 		Name: t.Name, Tier: domain.TierFromDB(t.Tier), Currency: t.Currency, Timezone: t.Timezone,
 		GracePeriod: durationpb.New(Duration(t.GracePeriod)), CreateTime: ts(t.CreatedAt),
-		InvoiceLogoAssetId: logoID(t.InvoiceLogoAssetID),
+		InvoiceLogoAssetId: logoID(t.InvoiceLogoAssetID), AppId: t.AppID.String(), Address: AddressFromJSON(t.Address),
 	}
+}
+
+// App with its tenants (sandbox first).
+func App(a sqlc.App, tenants []sqlc.Tenant) *plansv1.App {
+	out := &plansv1.App{Id: a.ID.String(), AccountId: a.AccountID.String(), Name: a.Name, Slug: a.Slug, CreateTime: ts(a.CreatedAt)}
+	for _, t := range tenants {
+		out.Tenants = append(out.Tenants, Tenant(t))
+	}
+	return out
 }
 
 // APIKeyEnvironment maps the key env ("test"/"live") to the tenant environment.
@@ -115,8 +126,31 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 	return &plansv1.Customer{
 		Id: c.ID.String(), ExternalId: c.ExternalID, Name: c.Name, Email: c.Email,
 		PaymentMethod: str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
-		Country: str(c.Country), BillingCurrency: str(c.BillingCurrency),
+		Country: str(c.Country), BillingCurrency: str(c.BillingCurrency), Address: AddressFromJSON(c.Address),
 	}
+}
+
+var addressJSON = protojson.MarshalOptions{UseProtoNames: true}
+
+// AddressJSON is the stored form of an address: a JSON object without the empty parts.
+func AddressJSON(a *plansv1.Address) []byte {
+	if a == nil {
+		return []byte("{}")
+	}
+	b, err := addressJSON.Marshal(a)
+	if err != nil {
+		return []byte("{}")
+	}
+	return b
+}
+
+// AddressFromJSON reads a stored address; nil when there is none.
+func AddressFromJSON(raw []byte) *plansv1.Address {
+	var a plansv1.Address
+	if len(raw) == 0 || protojson.Unmarshal(raw, &a) != nil || proto.Equal(&a, &plansv1.Address{}) {
+		return nil
+	}
+	return &a
 }
 
 // Meter maps a meter row.

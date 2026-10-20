@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -36,23 +37,26 @@ import (
 	"github.com/0furkancolak/quotify/services/payments-worker/migrations"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
 	PGSystemDSN    string        `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
 	PGMigratorDSN  string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
+	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
 	RabbitMQURL    string        `env:"QUOTIFY_RABBITMQ_URL,required"`
-	MockPSPURL     string        `env:"MOCKPSP_URL" envDefault:"http://localhost:8090"`
-	PSPTimeout     time.Duration `env:"PAYMENTS_PSP_TIMEOUT" envDefault:"5s"`
+	MockPSPURL     string        `env:"MOCKPSP_URL"`
+	PSPTimeout     time.Duration `env:"PAYMENTS_PSP_TIMEOUT"`
 	// LiveProvider selects the provider for live tenants: "mockpsp" (the local demo) or empty (not configured: live
 	// charges reply PROVIDER_NOT_CONFIGURED). Sandbox tenants always use mock-psp.
 	LiveProvider string `env:"PAYMENTS_LIVE_PROVIDER"`
-	Prefetch     int    `env:"QUOTIFY_PREFETCH" envDefault:"16"`
+	Prefetch     int    `env:"QUOTIFY_PREFETCH"`
 	// SecretsKey (base64, 32 bytes) seals the credentials of tenants' provider accounts. Without it provider accounts, and with them
 	// provider webhooks, are disabled.
 	SecretsKey string `env:"QUOTIFY_SECRETS_KEY"`
 	// HTTPAddr serves provider webhooks and the operator endpoints for provider accounts and the ledger; the gateway forwards to it.
-	HTTPAddr string `env:"PAYMENTS_HTTP_ADDR" envDefault:":8095"`
+	HTTPAddr string `env:"PAYMENTS_HTTP_ADDR"`
 	// PlansAddr is plans-svc, which is told about subscriptions a provider runs. Empty skips that.
 	PlansAddr string `env:"QUOTIFY_PLANS_ADDR"`
 	// BillingAddr is billing-svc, whose invoices the reconciliation compares with the ledger. Empty disables the reconciliation.
@@ -85,7 +89,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}
@@ -126,7 +130,7 @@ func run() error {
 	defer pool.Close()
 
 	mock := payments.NewMockPSP(cfg.MockPSPURL, cfg.PSPTimeout)
-	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log}
+	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log, Demo: cfg.Demo}
 	if cfg.LiveProvider == "mockpsp" {
 		h.Live = mock
 	}

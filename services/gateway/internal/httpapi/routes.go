@@ -24,6 +24,7 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/customers/{external_id}/entitlements", AccessTenant, ratelimit.ClassRead, s.listEntitlements},
 		{"GET", "/v1/customers/{external_id}/entitlements/{meter}", AccessTenant, ratelimit.ClassRead, s.getEntitlement},
 		{"PUT", "/v1/customers/{external_id}/payment-method", AccessTenant, ratelimit.ClassWrite, s.setPaymentMethod},
+		{"PUT", "/v1/customers/{external_id}/address", AccessTenant, ratelimit.ClassWrite, s.setCustomerAddress},
 		// Meters
 		{"POST", "/v1/meters", AccessTenant, ratelimit.ClassWrite, s.createMeter},
 		{"GET", "/v1/meters", AccessTenant, ratelimit.ClassRead, s.listMeters},
@@ -105,6 +106,8 @@ func (s *Server) routes() []Route {
 		{"POST", "/v1/sandbox/customers/{external_id}/payment-scenario", AccessSandbox, ratelimit.ClassWrite, s.setPaymentScenario},
 		// Operator
 		{"POST", "/admin/v1/accounts", AccessOperator, "", s.createAccount},
+		{"POST", "/admin/v1/accounts/{id}/apps", AccessOperator, "", s.createApp},
+		{"GET", "/admin/v1/accounts/{id}/apps", AccessOperator, "", s.listApps},
 		{"GET", "/admin/v1/tenants", AccessOperator, "", s.adminListTenants},
 		{"GET", "/admin/v1/tenants/{tenant_id}/invoices", AccessOperator, "", s.adminListInvoices},
 		{"GET", "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}", AccessOperator, "", s.adminGetInvoice},
@@ -194,6 +197,17 @@ func (s *Server) setPaymentMethod(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
 }
 
+// setCustomerAddress is PUT /v1/customers/{external_id}/address: the body is the address.
+func (s *Server) setCustomerAddress(w http.ResponseWriter, r *http.Request) {
+	addr := &plansv1.Address{}
+	if err := decode(r, addr); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Plans.SetCustomerAddress(r.Context(), &plansv1.SetCustomerAddressRequest{ExternalId: r.PathValue("external_id"), Address: addr})
+	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
+}
+
 // setPaymentScenario is the sandbox spelling of SetPaymentMethod: {"scenario": "declined"} → pm_sandbox_declined.
 func (s *Server) setPaymentScenario(w http.ResponseWriter, r *http.Request) {
 	var body struct {
@@ -264,6 +278,8 @@ func (s *Server) getPlanVersion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		req.Version = int32(n)
+		// A published version never changes: the caller (or an edge in front) may keep it for a while without asking.
+		w.Header().Set("Cache-Control", "private, max-age=300")
 	}
 	resp, err := s.d.Plans.GetPlanVersion(r.Context(), req)
 	respond(w, r, http.StatusOK, resp.GetPlanVersion(), err)
@@ -444,6 +460,22 @@ func (s *Server) createAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := s.d.Admin.CreateAccount(r.Context(), req)
 	respond(w, r, http.StatusCreated, resp.GetAccount(), err)
+}
+
+func (s *Server) createApp(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.CreateAppRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.AccountId = r.PathValue("id")
+	resp, err := s.d.Admin.CreateApp(r.Context(), req)
+	respond(w, r, http.StatusCreated, resp.GetApp(), err)
+}
+
+func (s *Server) listApps(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Admin.ListApps(r.Context(), &plansv1.ListAppsRequest{AccountId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp, err)
 }
 
 func (s *Server) getTenant(w http.ResponseWriter, r *http.Request) {

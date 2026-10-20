@@ -1,0 +1,13 @@
+# Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
+QUOTIFY_GRPC_ADDR: ":7007"
+QUOTIFY_MIGRATE_ON_START: "false"
+S3_REGION: "us-east-1"
+S3_BUCKET: "assets"
+S3_FORCE_PATH_STYLE: "false"
+ASSETS_QUOTA_FREE_MIB: "100"
+ASSETS_QUOTA_STANDARD_MIB: "10240"
+ASSETS_QUOTA_ENTERPRISE_MIB: "1048576"
+ASSETS_SWEEP_INTERVAL: "1m"
+ASSETS_VERIFY_INTERVAL: "30s"
+ASSETS_ORPHANS_INTERVAL: "24h"
+ASSETS_GENERAL_TYPES: "application/pdf,image/png,image/jpeg,text/csv,application/json,application/zip"

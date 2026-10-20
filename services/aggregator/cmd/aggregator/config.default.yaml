@@ -1,0 +1,9 @@
+# Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
+QUOTIFY_GRPC_ADDR: ":7003"
+QUOTIFY_MIGRATE_ON_START: "false"
+QUOTIFY_PLANS_ADDR: "dns:///localhost:7001"
+QUOTIFY_DLQ_TOPIC: "usage.events.dlq.v1"
+QUOTIFY_POLL_RECORDS: "1000"
+QUOTIFY_CONSUMER_BACKOFF: "1s"
+QUOTIFY_CONSUMER_SESSION_TIMEOUT: "10s"
+QUOTIFY_CONSUMER_GROUP: "aggregator"

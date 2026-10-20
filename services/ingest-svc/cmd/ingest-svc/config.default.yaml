@@ -1,0 +1,8 @@
+# Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
+QUOTIFY_GRPC_ADDR: ":7002"
+QUOTIFY_MIGRATE_ON_START: "false"
+QUOTIFY_PLANS_ADDR: "dns:///localhost:7001"
+QUOTIFY_RELAY_WORKERS: "2"
+QUOTIFY_RELAY_BATCH_SIZE: "1000"
+QUOTIFY_MAX_OUTBOX_DEPTH: "5000000"
+QUOTIFY_PARTITION_MAINTENANCE_INTERVAL: "1h"

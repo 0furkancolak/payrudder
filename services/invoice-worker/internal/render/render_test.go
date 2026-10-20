@@ -81,3 +81,17 @@ func TestNonLatinTextDoesNotFail(t *testing.T) {
 		t.Fatalf("non-latin names must not fail the invoice: %v", err)
 	}
 }
+
+func TestAddressesArePrinted(t *testing.T) {
+	s := snapshot()
+	s.SellerAddressLines = []string{"1 Market St", "London", "GB"}
+	s.CustomerAddressLines = []string{"Hauptstr. 5", "10115 Berlin", "DE"}
+	withAddr, err := PDF(s, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	without, _ := PDF(snapshot(), Options{})
+	if bytes.Equal(withAddr, without) || len(withAddr) <= len(without) {
+		t.Fatal("the addresses changed nothing in the PDF")
+	}
+}

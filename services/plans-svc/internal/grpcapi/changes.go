@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/subscription"
 	"github.com/0furkancolak/quotify/pkg/tenant"
@@ -574,7 +575,7 @@ func (s *Server) unusedFee(ctx context.Context, q *sqlc.Queries, row sqlc.GetSub
 }
 
 // errCouponOnCredit: the unused part of a discounted fee is not worked out automatically.
-var errCouponOnCredit = status.Error(codes.FailedPrecondition, "this subscription has a coupon; credit the unused part with a credit note on its fee invoice instead")
+var errCouponOnCredit = errkey.New(codes.FailedPrecondition, "plans.subscription.coupon_blocks_credit", "this subscription has a coupon; credit the unused part with a credit note on its fee invoice instead")
 
 // creditUnusedFee records the unused prepaid fee as an adjustment on the subscription, which billing turns into credit balance.
 func (s *Server) creditUnusedFee(ctx context.Context, q *sqlc.Queries, row sqlc.GetSubscriptionRow, at time.Time) (int64, error) {

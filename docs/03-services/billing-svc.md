@@ -117,6 +117,7 @@ stateDiagram-v2
     PAYMENT_UNKNOWN --> PAYMENT_REQUESTED: StatusNotFound
     PAYMENT_UNKNOWN --> PAYMENT_UNKNOWN: Retry / StepExhausted
     PAYMENT_DECLINED --> PAYMENT_REQUESTED: DunningDue
+    PAID --> COMPLETED: Continue [the provider mails the receipt]
     PAID --> NOTIFY_REQUESTED: Continue
     UNCOLLECTIBLE --> NOTIFY_REQUESTED: Continue
     NOTIFY_REQUESTED --> COMPLETED: NotificationSent

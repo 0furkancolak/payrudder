@@ -34,6 +34,10 @@ func main() {
 		err = replay(os.Args[2:])
 	case "rerate":
 		err = rerate(os.Args[2:])
+	case "rename":
+		err = rename(os.Args[2:])
+	case "dev":
+		err = dev(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -54,6 +58,8 @@ commands:
   demo    the whole story against a running stack: usage, a period close, a price change, a correction invoice
   replay  start | status | promote | discard: rebuild a tenant's aggregates from the event log into a new generation
   rerate  price a closed period again under another plan version and bill the difference
+  dev     run the services on the host against the infrastructure containers, restarting on change (--only, --skip, --list)
+  rename  --name "Acme Billing" [--apply]: list (or make) the changes that rename the product through the whole repository
   dlq     ls | show | redrive | purge the dead-letter queues (--broker rabbitmq, default) or ls | show | redrive the DLQ topics (--broker kafka)`)
 }
 

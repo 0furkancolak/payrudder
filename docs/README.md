@@ -20,6 +20,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [11-repo-layout.md](11-repo-layout.md) | Planned monorepo structure |
 | [12-kubernetes.md](12-kubernetes.md) | Running Quotify on kind with Helm: charts, profiles, hooks, network policies, what is not covered |
 | [13-admin-ui.md](13-admin-ui.md) | The operator console: views, the typed API client, tests |
+| [17-platform-direction.md](17-platform-direction.md) | Rename-able product, apps and addresses, isolation modes, licence, demo, dev and edge: the requirements and the phases that build them |
 | [16-webhooks.md](16-webhooks.md) | Signed outbound events, endpoint management, delivery and retries, the hosted invoice page |
 | [15-billing-lifecycle.md](15-billing-lifecycle.md) | Yearly plans, fees in advance, upgrades and downgrades, the Paddle catalogue and API, credit notes, coupons and tax |
 | [14-billing-platform.md](14-billing-platform.md) | Subscriptions, iyzico and Paddle, routing by country and currency, provider migration, reports: the design and what was built |

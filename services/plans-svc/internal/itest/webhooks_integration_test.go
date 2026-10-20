@@ -161,7 +161,7 @@ func testWebhooks(t *testing.T) {
 			t.Fatalf("receiver got %d calls", len(got))
 		}
 		c := got[0]
-		if err := webhooksig.Verify(c.header.Get(webhooksig.Header), c.body, secret, *clock, 0); err != nil {
+		if err := webhooksig.Verify(c.header.Get(webhooksig.Header()), c.body, secret, *clock, 0); err != nil {
 			t.Fatalf("signature: %v", err)
 		}
 		if c.header.Get("Quotify-Event-Type") != webhooks.SubscriptionCreated || c.header.Get("Content-Type") != "application/json" {
@@ -280,7 +280,7 @@ func testWebhooks(t *testing.T) {
 			t.Errorf("event type = %s", c.header.Get("Quotify-Event-Type"))
 		}
 		for _, s := range []string{secret, rot.GetEndpoint().GetSecret()} {
-			if err := webhooksig.Verify(c.header.Get(webhooksig.Header), c.body, s, *clock, 0); err != nil {
+			if err := webhooksig.Verify(c.header.Get(webhooksig.Header()), c.body, s, *clock, 0); err != nil {
 				t.Errorf("secret %.10s…: %v", s, err)
 			}
 		}
@@ -291,10 +291,10 @@ func testWebhooks(t *testing.T) {
 		}
 		pump()
 		c = rcv.calls()[len(rcv.calls())-1]
-		if err := webhooksig.Verify(c.header.Get(webhooksig.Header), c.body, secret, *clock, 0); err == nil {
+		if err := webhooksig.Verify(c.header.Get(webhooksig.Header()), c.body, secret, *clock, 0); err == nil {
 			t.Error("the old secret still signs after the overlap")
 		}
-		if err := webhooksig.Verify(c.header.Get(webhooksig.Header), c.body, rot.GetEndpoint().GetSecret(), *clock, 0); err != nil {
+		if err := webhooksig.Verify(c.header.Get(webhooksig.Header()), c.body, rot.GetEndpoint().GetSecret(), *clock, 0); err != nil {
 			t.Errorf("the new secret: %v", err)
 		}
 	})

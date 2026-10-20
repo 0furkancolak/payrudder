@@ -5,7 +5,8 @@
   },
   "app": {
     "title": "Console opérateur Quotify",
-    "language": "Langue"
+    "language": "Langue",
+    "demo": "Mode démo : données d'exemple, un faux prestataire de paiement, les mails vont au récepteur local. Rien ici n'est réel."
   },
   "nav": {
     "tenants": "Locataires",
@@ -257,7 +258,19 @@
       "currency": "Devise de facturation",
       "tenantCurrency": "Devise du locataire",
       "create": "Créer le client",
-      "empty": "Aucun client pour l'instant."
+      "empty": "Aucun client pour l'instant.",
+      "address": {
+        "title": "Adresse de facturation",
+        "line1": "Adresse ligne 1",
+        "line2": "Adresse ligne 2",
+        "city": "Ville",
+        "region": "État / région",
+        "postalCode": "Code postal",
+        "edit": "Modifier l'adresse",
+        "save": "Enregistrer l'adresse",
+        "cancel": "Annuler",
+        "editing": "Adresse de {id}"
+      }
     },
     "packages": {
       "new": "Nouveau forfait",

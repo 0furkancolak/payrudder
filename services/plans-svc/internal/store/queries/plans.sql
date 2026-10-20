@@ -5,8 +5,8 @@
 SELECT id, environment, tier, currency, timezone FROM current_tenant();
 
 -- name: CreateCustomer :one
-INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7)
+INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: GetCustomerByExternalID :one
@@ -27,6 +27,11 @@ SELECT count(*) FROM customers WHERE tenant_id = app_tenant_id();
 -- name: SetPaymentMethod :one
 UPDATE customers SET payment_method = $2
 WHERE tenant_id = app_tenant_id() AND external_id = $1
+RETURNING *;
+
+-- name: SetCustomerAddress :one
+UPDATE customers SET address = @address::jsonb, country = COALESCE(sqlc.narg(country)::text, country)
+WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
 -- name: LatestMeter :one

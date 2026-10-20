@@ -24,3 +24,11 @@ func TestCatalogue(t *testing.T) {
 		t.Error("an unknown provider is not in the catalogue")
 	}
 }
+
+func TestWhoMailsReceipts(t *testing.T) {
+	iy, _ := providers.Lookup("iyzico")
+	pd, _ := providers.Lookup("paddle")
+	if iy.SendsOwnReceipts || !pd.SendsOwnReceipts {
+		t.Fatalf("iyzico %v, paddle %v: Paddle is the merchant of record and mails its own receipts, iyzico does not", iy.SendsOwnReceipts, pd.SendsOwnReceipts)
+	}
+}

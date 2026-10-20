@@ -26,6 +26,9 @@ type Capabilities struct {
 	CalculatesTax bool
 	// HostedCheckout: the customer enters the payment method on a page the provider hosts.
 	HostedCheckout bool
+	// SendsOwnReceipts: the provider mails the customer a receipt or invoice for what it charges (a merchant of record does). Quotify then does not send
+	// its own paid-invoice mail for a payment that provider took, so the customer is not mailed twice.
+	SendsOwnReceipts bool
 	// Refunds: the provider has a refund API.
 	Refunds bool
 	// IdempotentCharges: the provider returns the first result for a repeated idempotency key instead of charging again. When

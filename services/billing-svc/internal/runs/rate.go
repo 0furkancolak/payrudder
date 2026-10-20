@@ -496,7 +496,7 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 			Provider: provider, Country: cu.GetCustomer().GetCountry(), Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pvID, Lines: lines, LineScales: scales, Total: total,
 			Snapshot: saga.Snapshot{
 				CustomerExternalID: snapExternal, CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
-				PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: env, CurrencyExponent: invCur.Exponent,
+				PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: env, CurrencyExponent: invCur.Exponent, ProviderMails: providerMails(provider), SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetCustomer().GetAddress()),
 				LogoObjectKey: logoKey,
 			},
 		})

@@ -367,7 +367,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 			{UpTo: "100", UnitPrice: "0"}, {UnitPrice: "2"}}}}},
 	}}
 	w := &world{
-		tenant: &plansv1.Tenant{Id: tid.String(), Environment: envName, Name: "Acme", Currency: "USD", Timezone: "UTC",
+		tenant: &plansv1.Tenant{Id: tid.String(), Environment: envName, Name: "Acme", Currency: "USD", Timezone: "UTC", Address: &plansv1.Address{Line1: "1 Market St", City: "London", Country: "GB"},
 			GracePeriod: durationpb.New(0), CreateTime: timestamppb.New(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))},
 		customers: map[string]*plansv1.Customer{},
 		meters: []*plansv1.Meter{
@@ -378,7 +378,8 @@ func newEnv(t *testing.T, o envOpts) *env {
 	}
 	e := &env{t: t, clk: clk, w: w, tid: tid, kafka: &kafkaSink{}}
 	for _, name := range []string{"cus_a", "cus_b"} {
-		c := &plansv1.Customer{Id: uuid.NewString(), ExternalId: name, Name: "Customer " + name, Email: name + "@example.com", PaymentMethod: "pm_sandbox_success"}
+		c := &plansv1.Customer{Id: uuid.NewString(), ExternalId: name, Name: "Customer " + name, Email: name + "@example.com", PaymentMethod: "pm_sandbox_success",
+			Address: &plansv1.Address{Line1: name + " street 1", City: "Berlin", PostalCode: "10115", Country: "DE"}}
 		w.customers[name] = c
 		w.subs = append(w.subs, &plansv1.Subscription{Id: uuid.NewString(), CustomerId: c.Id, CustomerExternalId: name, PlanVersionId: pv.Id,
 			StartTime: timestamppb.New(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))})

@@ -98,6 +98,20 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/customers/{external_id}/address:
+    put:
+      operationId: setCustomerAddress
+      summary: Replace the customer's billing address
+      description: The address is printed on the customer's invoices (PDF and hosted page). Its country becomes the customer's country, which provider routing and tax read. An empty object clears the address and keeps the country.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/Address" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
   /v1/meters:
     post:
       operationId: createMeter
@@ -1241,6 +1255,42 @@ paths:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Account" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+  /admin/v1/accounts/{id}/apps:
+    post:
+      operationId: createApp
+      summary: Add an application to an account, with its own sandbox and live tenants
+      description: >
+        An account is a company; an app is one of its applications. Each app has a sandbox and a live environment (tenants), and its API keys, customers, plans, subscriptions and invoices are its own, isolated
+        from the account's other apps. Currency, time zone and grace period are chosen per app and are immutable, as for an account.
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, currency, timezone, grace_period]
+              properties:
+                name: { type: string }
+                slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
+                currency: { type: string, enum: [CHF, EUR, GBP, JPY, KWD, TRY, USD] }
+                timezone: { type: string, examples: [Europe/Istanbul] }
+                grace_period: { type: string, examples: ["86400s"] }
+                tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listApps
+      summary: The apps of an account with their tenants
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { apps: { type: array, items: { $ref: "#/components/schemas/App" } } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants:
     get:
       operationId: adminListTenants
@@ -1917,7 +1967,7 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
     patch:
       operationId: updateTenant
-      summary: Change grace period or tier (currency and time zone are immutable)
+      summary: Change grace period, tier or the seller address printed on invoices (currency and time zone are immutable)
       security: [{ operatorToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
@@ -1929,6 +1979,7 @@ paths:
               properties:
                 grace_period: { type: string, examples: ["172800s"] }
                 tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+                address: { $ref: "#/components/schemas/Address" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2387,9 +2438,10 @@ components:
       properties:
         error:
           type: object
-          required: [code, message]
+          required: [code, key, message]
           properties:
             code: { type: string, examples: [INVALID_ARGUMENT, UNAUTHENTICATED, RESOURCE_EXHAUSTED] }
+            key: { type: string, description: "Stable and dotted, service first (billing.credit_note.not_paid). Translate the key, not the message. The list is docs/error-keys.md; an error without its own key gets common.<reason>", examples: [billing.credit_note.not_paid, common.not_found] }
             message: { type: string }
             details:
               type: array
@@ -2405,6 +2457,17 @@ components:
         payment_method: { type: string }
         country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2 }
         billing_currency: { type: string, description: ISO 4217; default is the tenant's currency }
+        address: { $ref: "#/components/schemas/Address" }
+    Address:
+      type: object
+      description: A postal address as printed on an invoice. Every part is optional.
+      properties:
+        line1: { type: string, maxLength: 120 }
+        line2: { type: string, maxLength: 120 }
+        city: { type: string, maxLength: 120 }
+        region: { type: string, maxLength: 120, description: "State, province or county" }
+        postal_code: { type: string, maxLength: 20 }
+        country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2 }
     Customer:
       type: object
       properties:
@@ -2416,6 +2479,7 @@ components:
         create_time: { type: string, format: date-time }
         country: { type: string, description: ISO 3166-1 alpha-2 }
         billing_currency: { type: string, description: ISO 4217 }
+        address: { $ref: "#/components/schemas/Address" }
     CreateMeterRequest:
       type: object
       required: [code, aggregation, unit_label]
@@ -2678,6 +2742,8 @@ components:
       properties:
         id: { type: string, format: uuid }
         account_id: { type: string, format: uuid }
+        app_id: { type: string, format: uuid }
+        address: { $ref: "#/components/schemas/Address" }
         environment: { type: string, enum: [ENVIRONMENT_SANDBOX, ENVIRONMENT_LIVE] }
         name: { type: string }
         tier: { type: string }
@@ -2690,6 +2756,16 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
+        tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
+        apps: { type: array, items: { $ref: "#/components/schemas/App" } }
+        create_time: { type: string, format: date-time }
+    App:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        account_id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
         tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
         create_time: { type: string, format: date-time }
     ApiKey:

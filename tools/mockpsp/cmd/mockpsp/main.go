@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -19,17 +20,20 @@ import (
 	"github.com/0furkancolak/quotify/tools/mockpsp/migrations"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
-	HTTPAddr       string        `env:"MOCKPSP_HTTP_ADDR" envDefault:":8090"`
+	HTTPAddr       string        `env:"MOCKPSP_HTTP_ADDR"`
 	PGAppDSN       string        `env:"QUOTIFY_PG_APP_DSN,required"`
 	PGMigratorDSN  string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
-	DeclineRate    float64       `env:"MOCKPSP_DECLINE_RATE" envDefault:"0"`
-	ErrorRate      float64       `env:"MOCKPSP_ERROR_RATE" envDefault:"0"`
-	TimeoutRate    float64       `env:"MOCKPSP_TIMEOUT_RATE" envDefault:"0"`
-	LatencyMS      int           `env:"MOCKPSP_LATENCY_MS" envDefault:"0"`
-	HangFor        time.Duration `env:"MOCKPSP_HANG_FOR" envDefault:"30s"`
+	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
+	DeclineRate    float64       `env:"MOCKPSP_DECLINE_RATE"`
+	ErrorRate      float64       `env:"MOCKPSP_ERROR_RATE"`
+	TimeoutRate    float64       `env:"MOCKPSP_TIMEOUT_RATE"`
+	LatencyMS      int           `env:"MOCKPSP_LATENCY_MS"`
+	HangFor        time.Duration `env:"MOCKPSP_HANG_FOR"`
 }
 
 func (c *Config) Validate() error {
@@ -53,7 +57,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

@@ -80,6 +80,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/address": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace the customer's billing address
+         * @description The address is printed on the customer's invoices (PDF and hosted page). Its country becomes the customer's country, which provider routing and tax read. An empty object clears the address and keeps the country.
+         */
+        put: operations["setCustomerAddress"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/meters": {
         parameters: {
             query?: never;
@@ -1104,6 +1124,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/accounts/{id}/apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The apps of an account with their tenants */
+        get: operations["listApps"];
+        put?: never;
+        /**
+         * Add an application to an account, with its own sandbox and live tenants
+         * @description An account is a company; an app is one of its applications. Each app has a sandbox and a live environment (tenants), and its API keys, customers, plans, subscriptions and invoices are its own, isolated from the account's other apps. Currency, time zone and grace period are chosen per app and are immutable, as for an account.
+         */
+        post: operations["createApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants": {
         parameters: {
             query?: never;
@@ -1607,7 +1648,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change grace period or tier (currency and time zone are immutable) */
+        /** Change grace period, tier or the seller address printed on invoices (currency and time zone are immutable) */
         patch: operations["updateTenant"];
         trace?: never;
     };
@@ -2129,6 +2170,12 @@ export interface components {
                  * @example RESOURCE_EXHAUSTED
                  */
                 code: string;
+                /**
+                 * @description Stable and dotted, service first (billing.credit_note.not_paid). Translate the key, not the message. The list is docs/error-keys.md; an error without its own key gets common.<reason>
+                 * @example billing.credit_note.not_paid
+                 * @example common.not_found
+                 */
+                key: string;
                 message: string;
                 details?: {
                     field?: string;
@@ -2147,6 +2194,18 @@ export interface components {
             country?: string;
             /** @description ISO 4217; default is the tenant's currency */
             billing_currency?: string;
+            address?: components["schemas"]["Address"];
+        };
+        /** @description A postal address as printed on an invoice. Every part is optional. */
+        Address: {
+            line1?: string;
+            line2?: string;
+            city?: string;
+            /** @description State, province or county */
+            region?: string;
+            postal_code?: string;
+            /** @description ISO 3166-1 alpha-2 */
+            country?: string;
         };
         Customer: {
             /** Format: uuid */
@@ -2161,6 +2220,7 @@ export interface components {
             country?: string;
             /** @description ISO 4217 */
             billing_currency?: string;
+            address?: components["schemas"]["Address"];
         };
         CreateMeterRequest: {
             code: string;
@@ -2485,6 +2545,9 @@ export interface components {
             id?: string;
             /** Format: uuid */
             account_id?: string;
+            /** Format: uuid */
+            app_id?: string;
+            address?: components["schemas"]["Address"];
             /** @enum {string} */
             environment?: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
             name?: string;
@@ -2499,6 +2562,18 @@ export interface components {
             /** Format: uuid */
             id?: string;
             name?: string;
+            tenants?: components["schemas"]["Tenant"][];
+            apps?: components["schemas"]["App"][];
+            /** Format: date-time */
+            create_time?: string;
+        };
+        App: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            account_id?: string;
+            name?: string;
+            slug?: string;
             tenants?: components["schemas"]["Tenant"][];
             /** Format: date-time */
             create_time?: string;
@@ -2660,6 +2735,34 @@ export interface operations {
                 "application/json": {
                     payment_method: string;
                 };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    setCustomerAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Address"];
             };
         };
         responses: {
@@ -4769,6 +4872,72 @@ export interface operations {
             401: components["responses"]["Error"];
         };
     };
+    listApps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        apps?: components["schemas"]["App"][];
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    createApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @description Lower case with dashes, unique within the account; default: the name */
+                    slug?: string;
+                    /** @enum {string} */
+                    currency: "CHF" | "EUR" | "GBP" | "JPY" | "KWD" | "TRY" | "USD";
+                    /** @example Europe/Istanbul */
+                    timezone: string;
+                    /** @example 86400s */
+                    grace_period: string;
+                    /** @enum {string} */
+                    tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["App"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
     adminListTenants: {
         parameters: {
             query?: {
@@ -5837,6 +6006,7 @@ export interface operations {
                     grace_period?: string;
                     /** @enum {string} */
                     tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
+                    address?: components["schemas"]["Address"];
                 };
             };
         };

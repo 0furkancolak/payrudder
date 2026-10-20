@@ -1,6 +1,6 @@
 # Roadmap
 
-12 core phases of ~1 week each for one developer, one optional phase, and phases 13–23 for the [billing platform](../14-billing-platform.md). Each phase ends with green CI and an
+12 core phases of ~1 week each for one developer, one optional phase, and phases 13–28 for the [billing platform](../14-billing-platform.md). Each phase ends with green CI and an
 updated `docs/` (design changes discovered while building are written back into the docs in the same PR).
 
 | # | Phase | Goal (short) | Depends on | Key proof | Status |
@@ -29,6 +29,11 @@ updated `docs/` (design changes discovered while building are written back into 
 | 21 | [Paddle catalogue and subscription API](phase-21-paddle-api.md) | Products/prices/customers/discounts sync, every subscription operation, portal, extended webhooks | 15, 19, 20 | Publishing a plan creates Paddle products and prices; each operation has a fixture test; sandbox test skipped without credentials | done, Paddle sandbox not run |
 | 22 | [Billing documents](phase-22-billing-documents.md) | Numbered invoices with typed lines, credit notes, coupons, PDF, outbound events, dunning settings, console | 19, 20 | A proration, a coupon and a credit note appear as lines on numbered invoices that the reconciliation accepts | done; outbound events, hosted page, dunning settings and card refunds came in phase 23 |
 | 23 | [What 19–22 left out](phase-23-remaining-gaps.md) | Per-tenant dunning, credit for the unused prepaid fee, credit notes refunded to the card, signed outbound webhooks, hosted invoice page | 19–22 | Integration tests per part; a delivery is signed, retried on a backoff and redeliverable; a hosted link shows the invoice and nothing else | done, without quantity changes and tax calculation |
+| 24 | [Foundations](phase-24-foundations.md) | Rename-able brand, YAML config defaults, error keys, Elastic License 2.0 | — | The brand changes without code; services start from YAML defaults; every error has a key | planned |
+| 25 | [Addresses and apps](phase-25-accounts-apps.md) | Customer and seller addresses; apps under an account with their own keys and data | 24 | Two apps of one account are isolated; invoices show both addresses | done, without console pages for apps and the seller address |
+| 26 | [Demo mode and mail by provider](phase-26-demo-and-mail.md) | One-command demo, mail only for payments Quotify ran | 24 | Demo populated in one command; iyzico payments mail, Paddle's do not | done, without a per-tenant mail switch |
+| 27 | [Development, Kubernetes, memory, edge](phase-27-dev-and-operations.md) | `make setup`/`make dev`, one-command k8s install, memory budgets, cacheable reads | 24 | Two commands to a dev stack; chart installs on kind; budgets enforced | done, memory budgets are limits, not enforced measurements |
+| 28 | [Cells](phase-28-cells.md) | Tenant directory, schema-per-tenant mode, converted jobs, fenced moves | 24, 25 | Suites pass in both modes; cross-tenant read test; no row lost in a move | planned, staged |
 
 ```mermaid
 flowchart LR

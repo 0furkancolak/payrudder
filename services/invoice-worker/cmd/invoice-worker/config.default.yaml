@@ -1,0 +1,7 @@
+# Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
+S3_REGION: "us-east-1"
+S3_BUCKET: "invoices"
+S3_ASSETS_BUCKET: "assets"
+S3_FORCE_PATH_STYLE: "false"
+QUOTIFY_PREFETCH: "8"
+S3_ENSURE_BUCKET: "false"

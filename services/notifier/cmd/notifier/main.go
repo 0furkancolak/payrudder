@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -32,21 +33,24 @@ import (
 	"github.com/0furkancolak/quotify/services/notifier/migrations"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
 	PGSystemDSN    string        `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
 	PGMigratorDSN  string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
+	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
 	RabbitMQURL    string        `env:"QUOTIFY_RABBITMQ_URL,required"`
 	KafkaBrokers   []string      `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	PlansAddr      string        `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
-	SMTPAddr       string        `env:"SMTP_ADDR" envDefault:"localhost:1025"`
+	PlansAddr      string        `env:"QUOTIFY_PLANS_ADDR"`
+	SMTPAddr       string        `env:"SMTP_ADDR"`
 	SandboxSMTP    string        `env:"SANDBOX_SMTP_ADDR"`
-	MailFrom       string        `env:"MAIL_FROM" envDefault:"Quotify <billing@quotify.local>"`
-	SendingStale   time.Duration `env:"NOTIFIER_SENDING_STALE" envDefault:"5m"`
-	Group          string        `env:"QUOTIFY_CONSUMER_GROUP" envDefault:"notifier"`
-	DLQTopic       string        `env:"QUOTIFY_DLQ_TOPIC" envDefault:"usage.limit-exceeded.dlq.v1"`
-	SessionTimeout time.Duration `env:"QUOTIFY_CONSUMER_SESSION_TIMEOUT" envDefault:"10s"`
+	MailFrom       string        `env:"MAIL_FROM"`
+	SendingStale   time.Duration `env:"NOTIFIER_SENDING_STALE"`
+	Group          string        `env:"QUOTIFY_CONSUMER_GROUP"`
+	DLQTopic       string        `env:"QUOTIFY_DLQ_TOPIC"`
+	SessionTimeout time.Duration `env:"QUOTIFY_CONSUMER_SESSION_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
@@ -65,7 +69,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

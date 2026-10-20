@@ -112,7 +112,7 @@ func (c *Client) Capabilities() payments.Capabilities { return Caps() }
 
 // Caps are Paddle's capabilities, which do not depend on an account.
 func Caps() payments.Capabilities {
-	return payments.Capabilities{Name: Name, OwnsRenewal: true, OwnsDunning: true, CalculatesTax: true, HostedCheckout: true, Refunds: true,
+	return payments.Capabilities{Name: Name, OwnsRenewal: true, OwnsDunning: true, CalculatesTax: true, HostedCheckout: true, SendsOwnReceipts: true, Refunds: true,
 		Currencies: []string{"USD", "EUR", "GBP", "CHF", "JPY"}}
 }
 

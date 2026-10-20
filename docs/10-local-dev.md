@@ -1,4 +1,18 @@
-# 10 — Local development (planned)
+# 10 — Local development
+
+## Two commands
+
+| Command | When | What it does |
+|---|---|---|
+| `make setup` | once per machine (and after `make clean`) | builds the pinned tools, starts the **infrastructure containers only** (Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO, Mailpit), creates the topics and buckets, installs the console's packages |
+| `make dev` | every day | runs the Go services **on your machine** (`quotifyctl dev`) and the console (Vite, port 3001), all with reload; Ctrl-C stops everything. `make dev ONLY=gateway,plans-svc` or `SKIP=analytics-svc` runs some |
+
+The services' settings are the compose file's, read as `docker compose config`, with each container address turned into the host port the container publishes (`postgres:5432` becomes `localhost:5432`, `dns:///plans-svc:7001` becomes `localhost:7001`, Redpanda's `9092` becomes its external `19092`): one list of settings, not one for Docker and one for the host.
+A service is rebuilt and restarted when a `.go`, `.sql` or `.yaml` file of its module or of `pkg/` changes; its log lines carry its name in colour. Tracing is off unless the observability profile is up. If another project holds port 5432, start with `QUOTIFY_PG_HOST_PORT=5440 make setup dev`.
+Application images exist for CI and releases; `make dev-docker` builds and runs them when you want to check an image. `make mem-report` shows what every running container holds.
+
+The sections below describe the compose stack in full.
+
 
 Prerequisites: Docker (≥ 8 GB RAM for the full stack), Go 1.27+, `make`, `buf`, `sqlc`, `golangci-lint`, `k6` (optional),
 `kind` + `helm` (Phase 10). `make tools` builds the Go-based tools pinned in `tools/go.mod` into `./bin`

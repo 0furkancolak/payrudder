@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -31,18 +32,21 @@ import (
 	"github.com/0furkancolak/quotify/services/analytics-svc/migrations"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
-	GRPCAddr       string        `env:"QUOTIFY_GRPC_ADDR" envDefault:":7006"`
-	ClickHouseAddr string        `env:"CLICKHOUSE_ADDR" envDefault:"localhost:9000"`
-	ClickHouseDB   string        `env:"CLICKHOUSE_DB" envDefault:"quotify"`
-	ClickHouseUser string        `env:"CLICKHOUSE_USER" envDefault:"quotify"`
+	GRPCAddr       string        `env:"QUOTIFY_GRPC_ADDR"`
+	ClickHouseAddr string        `env:"CLICKHOUSE_ADDR"`
+	ClickHouseDB   string        `env:"CLICKHOUSE_DB"`
+	ClickHouseUser string        `env:"CLICKHOUSE_USER"`
 	ClickHousePass string        `env:"CLICKHOUSE_PASSWORD,required"`
 	KafkaBrokers   []string      `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	Group          string        `env:"QUOTIFY_CONSUMER_GROUP" envDefault:"analytics"`
-	BatchRows      int           `env:"ANALYTICS_BATCH_ROWS" envDefault:"10000"`
-	BatchWait      time.Duration `env:"ANALYTICS_BATCH_WAIT" envDefault:"1s"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"true"`
+	Group          string        `env:"QUOTIFY_CONSUMER_GROUP"`
+	BatchRows      int           `env:"ANALYTICS_BATCH_ROWS"`
+	BatchWait      time.Duration `env:"ANALYTICS_BATCH_WAIT"`
+	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
 }
 
 func main() {
@@ -53,7 +57,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

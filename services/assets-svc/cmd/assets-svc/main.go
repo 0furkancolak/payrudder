@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -32,27 +33,30 @@ import (
 	"github.com/0furkancolak/quotify/services/assets-svc/migrations"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
-	GRPCAddr       string        `env:"QUOTIFY_GRPC_ADDR" envDefault:":7007"`
+	GRPCAddr       string        `env:"QUOTIFY_GRPC_ADDR"`
 	PGAppDSN       string        `env:"QUOTIFY_PG_APP_DSN,required"`
 	PGSystemDSN    string        `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
 	PGMigratorDSN  string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
+	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
 	S3Endpoint     string        `env:"S3_ENDPOINT"`
 	S3Public       string        `env:"S3_PUBLIC_ENDPOINT"`
-	S3Region       string        `env:"S3_REGION" envDefault:"us-east-1"`
-	S3Bucket       string        `env:"S3_BUCKET" envDefault:"assets"`
+	S3Region       string        `env:"S3_REGION"`
+	S3Bucket       string        `env:"S3_BUCKET"`
 	S3AccessKey    string        `env:"S3_ACCESS_KEY,required"`
 	S3SecretKey    string        `env:"S3_SECRET_KEY,required"`
-	S3ForcePath    bool          `env:"S3_FORCE_PATH_STYLE" envDefault:"false"`
-	GeneralTypes   []string      `env:"ASSETS_GENERAL_TYPES" envSeparator:"," envDefault:"application/pdf,image/png,image/jpeg,text/csv,application/json,application/zip"`
-	QuotaFreeMiB   int64         `env:"ASSETS_QUOTA_FREE_MIB" envDefault:"100"`
-	QuotaStdMiB    int64         `env:"ASSETS_QUOTA_STANDARD_MIB" envDefault:"10240"`
-	QuotaEntMiB    int64         `env:"ASSETS_QUOTA_ENTERPRISE_MIB" envDefault:"1048576"`
-	SweepEvery     time.Duration `env:"ASSETS_SWEEP_INTERVAL" envDefault:"1m"`
-	VerifyEvery    time.Duration `env:"ASSETS_VERIFY_INTERVAL" envDefault:"30s"`
-	OrphansEvery   time.Duration `env:"ASSETS_ORPHANS_INTERVAL" envDefault:"24h"`
+	S3ForcePath    bool          `env:"S3_FORCE_PATH_STYLE"`
+	GeneralTypes   []string      `env:"ASSETS_GENERAL_TYPES" envSeparator:","`
+	QuotaFreeMiB   int64         `env:"ASSETS_QUOTA_FREE_MIB"`
+	QuotaStdMiB    int64         `env:"ASSETS_QUOTA_STANDARD_MIB"`
+	QuotaEntMiB    int64         `env:"ASSETS_QUOTA_ENTERPRISE_MIB"`
+	SweepEvery     time.Duration `env:"ASSETS_SWEEP_INTERVAL"`
+	VerifyEvery    time.Duration `env:"ASSETS_VERIFY_INTERVAL"`
+	OrphansEvery   time.Duration `env:"ASSETS_ORPHANS_INTERVAL"`
 }
 
 func main() {
@@ -63,7 +67,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

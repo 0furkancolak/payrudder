@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -37,23 +38,26 @@ import (
 	"github.com/0furkancolak/quotify/services/plans-svc/migrations"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
-	GRPCAddr       string `env:"QUOTIFY_GRPC_ADDR" envDefault:":7001"`
+	GRPCAddr       string `env:"QUOTIFY_GRPC_ADDR"`
 	PGAppDSN       string `env:"QUOTIFY_PG_APP_DSN,required"`
 	PGSystemDSN    string `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
 	PGMigratorDSN  string `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool   `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
+	MigrateOnStart bool   `env:"QUOTIFY_MIGRATE_ON_START"`
 	RedisURL       string `env:"QUOTIFY_REDIS_URL"`
 	// KafkaBrokers enables the outbox relay to plans.entitlements.v1. Without it, rows wait in the outbox.
 	KafkaBrokers   []string `env:"QUOTIFY_KAFKA_BROKERS" envSeparator:","`
-	RelayWorkers   int      `env:"QUOTIFY_RELAY_WORKERS" envDefault:"1"`
-	RelayBatchSize int      `env:"QUOTIFY_RELAY_BATCH_SIZE" envDefault:"200"`
-	AllowedEnvs    []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:"," envDefault:"sandbox,live"`
+	RelayWorkers   int      `env:"QUOTIFY_RELAY_WORKERS"`
+	RelayBatchSize int      `env:"QUOTIFY_RELAY_BATCH_SIZE"`
+	AllowedEnvs    []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// SecretsKey (32 bytes, base64) seals the webhook signing secrets. Without it tenants cannot register webhook endpoints.
 	SecretsKey string `env:"QUOTIFY_SECRETS_KEY"`
 	// WebhookAllowPrivate lets webhook endpoints be http:// and on private addresses. For development and tests; never in production.
-	WebhookAllowPrivate bool `env:"QUOTIFY_WEBHOOK_ALLOW_PRIVATE" envDefault:"false"`
+	WebhookAllowPrivate bool `env:"QUOTIFY_WEBHOOK_ALLOW_PRIVATE"`
 }
 
 func (c *Config) Validate() error {
@@ -92,7 +96,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

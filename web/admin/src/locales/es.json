@@ -5,7 +5,8 @@
   },
   "app": {
     "title": "Consola de operador de Quotify",
-    "language": "Idioma"
+    "language": "Idioma",
+    "demo": "Modo demo: datos de ejemplo, un proveedor de pago simulado y el correo va al receptor local. Nada de esto es real."
   },
   "nav": {
     "tenants": "Inquilinos",
@@ -257,7 +258,19 @@
       "currency": "Moneda de facturación",
       "tenantCurrency": "Moneda del cliente",
       "create": "Crear cliente",
-      "empty": "Aún no hay clientes."
+      "empty": "Aún no hay clientes.",
+      "address": {
+        "title": "Dirección de facturación",
+        "line1": "Dirección línea 1",
+        "line2": "Dirección línea 2",
+        "city": "Ciudad",
+        "region": "Provincia / región",
+        "postalCode": "Código postal",
+        "edit": "Editar dirección",
+        "save": "Guardar dirección",
+        "cancel": "Cancelar",
+        "editing": "Dirección de {id}"
+      }
     },
     "packages": {
       "new": "Nuevo paquete",

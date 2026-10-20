@@ -59,6 +59,46 @@ test.describe("customers", () => {
   });
 });
 
+test.describe("customer addresses", () => {
+  test("an address is entered with a customer and edited later", async ({ page }) => {
+    const customers: Record<string, unknown>[] = [customer("cus_1", { country: "TR", address: { line1: "Atatürk Cd. 1", city: "İstanbul", postal_code: "34000", country: "TR" } })];
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.method === "PUT" && c.path === "/v1/customers/cus_1/address") {
+        customers[0] = { ...customers[0], address: c.body, country: (c.body as { country?: string }).country ?? customers[0]?.country };
+        return { body: customers[0] };
+      }
+      if (c.method === "POST" && c.path === "/v1/customers") {
+        customers.push(customer(String(c.body?.external_id), { address: c.body?.address }));
+        return { status: 201, body: customers.at(-1) };
+      }
+      if (c.path === "/v1/customers") return { body: { customers } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/customers");
+    await expect(page.getByRole("row", { name: /cus_1/ })).toContainText("Atatürk Cd. 1, 34000 İstanbul, TR");
+
+    const form = page.getByRole("form", { name: "new customer" });
+    await form.getByLabel("Customer id").fill("cus_2");
+    await form.getByLabel("Name").fill("Bob");
+    await form.getByLabel("E-mail").fill("bob@example.com");
+    await form.getByLabel("Country").fill("de");
+    await form.getByLabel("Address line 1").fill(" Hauptstr. 5 ");
+    await form.getByLabel("City").fill("Berlin");
+    await form.getByRole("button", { name: "Create customer" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/customers").length).toBe(1);
+    expect(gw.called("POST", "/v1/customers")[0]?.body).toMatchObject({ external_id: "cus_2", country: "DE", address: { line1: "Hauptstr. 5", city: "Berlin", country: "DE" } });
+
+    await page.getByRole("row", { name: /cus_1/ }).getByRole("button", { name: "Edit address" }).click();
+    const edit = page.getByRole("region", { name: "Address of cus_1" });
+    await edit.getByLabel("City").fill("Ankara");
+    await edit.getByRole("button", { name: "Save address" }).click();
+    await expect.poll(() => gw.called("PUT", "/v1/customers/cus_1/address").length).toBe(1);
+    expect(gw.called("PUT", "/v1/customers/cus_1/address")[0]?.body).toEqual({ line1: "Atatürk Cd. 1", city: "Ankara", postal_code: "34000", country: "TR" });
+    await expect(page.getByRole("row", { name: /cus_1/ })).toContainText("34000 Ankara");
+  });
+});
+
 test.describe("packages", () => {
   const plan = { id: "p1", code: "pro", name: "Pro", latest_version: 2 };
   const version = { id: "v2", plan_code: "pro", version: 2, base_fee_minor: "9900", fees: [{ currency: "USD", base_fee_minor: "300" }], prices: [{ meter_code: "calls" }] };

@@ -1,0 +1,12 @@
+# Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
+QUOTIFY_HTTP_ADDR: ":8000"
+QUOTIFY_PLANS_ADDR: "dns:///localhost:7001"
+QUOTIFY_INGEST_ADDR: "dns:///localhost:7002"
+QUOTIFY_AGGREGATOR_ADDR: "dns:///localhost:7003"
+QUOTIFY_LIMITS_ADDR: "dns:///localhost:7004"
+QUOTIFY_BILLING_ADDR: "dns:///localhost:7005"
+QUOTIFY_ANALYTICS_ADDR: "dns:///localhost:7006"
+QUOTIFY_ASSETS_ADDR: "dns:///localhost:7007"
+QUOTIFY_REDIS_URL: "redis://localhost:6379/0"
+QUOTIFY_GATEWAY_REPLICAS: "1"
+QUOTIFY_ALLOWED_ENVIRONMENTS: "sandbox,live"

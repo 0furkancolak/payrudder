@@ -501,6 +501,8 @@ message GetHostedInvoiceResponse {
   google.protobuf.Timestamp expire_time = 5;
   // Decimal places of the invoice currency, to print minor units.
   int32 currency_exponent = 6;
+  repeated string seller_address_lines = 7;
+  repeated string customer_address_lines = 8;
 }
 
 message GetHostedInvoicePdfUrlRequest { string token = 1; }

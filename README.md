@@ -202,4 +202,4 @@ gaps, and the phase files their open boxes.
 
 ## License
 
-Apache License 2.0, see [LICENSE](LICENSE).
+Source-available under the [Elastic License 2.0](LICENSE): use it for your own applications, modify it, redistribute it, but do not offer it to others as a hosted or managed service. Releases up to v0.4.0 were Apache-2.0 ([NOTICE](NOTICE), [ADR 0019](docs/adr/0019-license.md)).

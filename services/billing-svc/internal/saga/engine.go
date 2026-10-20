@@ -53,6 +53,11 @@ type Snapshot struct {
 	Environment      string `json:"environment"` // "sandbox" | "live"
 	CurrencyExponent int    `json:"currency_exponent"`
 	LogoObjectKey    string `json:"logo_object_key,omitempty"`
+	// ProviderMails: the provider takes the payment and mails the customer its own receipt (decided when the draft was made), so Quotify sends none.
+	ProviderMails bool `json:"provider_mails,omitempty"`
+	// The postal addresses as printed lines, frozen when the draft was made.
+	SellerAddress   []string `json:"seller_address,omitempty"`
+	CustomerAddress []string `json:"customer_address,omitempty"`
 }
 
 // Config tunes an Engine.
@@ -181,7 +186,7 @@ func (e *Engine) Handle(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UU
 }
 
 func (e *Engine) guardCtx(s *saga) Ctx {
-	return Ctx{TotalMinor: s.TotalMinor, Paid: s.InvoiceStatus == "paid", DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s))}
+	return Ctx{TotalMinor: s.TotalMinor, Paid: s.InvoiceStatus == "paid", DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)), ProviderMails: s.Snap.ProviderMails}
 }
 
 func (e *Engine) handleLoaded(ctx context.Context, tx pgx.Tx, s *saga, ev Event, cause string, commandID *uuid.UUID) (Outcome, error) {

@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -42,20 +43,23 @@ const (
 	entitlementsTopic = "plans.entitlements.v1"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
-	GRPCAddr          string        `env:"QUOTIFY_GRPC_ADDR" envDefault:":7004"`
-	RedisURL          string        `env:"QUOTIFY_REDIS_URL" envDefault:"redis://localhost:6379/0"`
-	PlansAddr         string        `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
-	AggregatorAddr    string        `env:"QUOTIFY_AGGREGATOR_ADDR" envDefault:"dns:///localhost:7003"`
+	GRPCAddr          string        `env:"QUOTIFY_GRPC_ADDR"`
+	RedisURL          string        `env:"QUOTIFY_REDIS_URL"`
+	PlansAddr         string        `env:"QUOTIFY_PLANS_ADDR"`
+	AggregatorAddr    string        `env:"QUOTIFY_AGGREGATOR_ADDR"`
 	KafkaBrokers      []string      `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	LimitTopic        string        `env:"QUOTIFY_LIMIT_TOPIC" envDefault:"usage.limit-exceeded.v1"`
-	GroupID           string        `env:"QUOTIFY_CONSUMER_GROUP" envDefault:"limits"`
+	LimitTopic        string        `env:"QUOTIFY_LIMIT_TOPIC"`
+	GroupID           string        `env:"QUOTIFY_CONSUMER_GROUP"`
 	PodName           string        `env:"QUOTIFY_POD_NAME"`
-	PollRecords       int           `env:"QUOTIFY_POLL_RECORDS" envDefault:"1000"`
-	Backoff           time.Duration `env:"QUOTIFY_CONSUMER_BACKOFF" envDefault:"1s"`
-	SessionTimeout    time.Duration `env:"QUOTIFY_CONSUMER_SESSION_TIMEOUT" envDefault:"10s"`
-	ReconcileInterval time.Duration `env:"QUOTIFY_RECONCILE_INTERVAL" envDefault:"5m"`
+	PollRecords       int           `env:"QUOTIFY_POLL_RECORDS"`
+	Backoff           time.Duration `env:"QUOTIFY_CONSUMER_BACKOFF"`
+	SessionTimeout    time.Duration `env:"QUOTIFY_CONSUMER_SESSION_TIMEOUT"`
+	ReconcileInterval time.Duration `env:"QUOTIFY_RECONCILE_INTERVAL"`
 }
 
 func (c *Config) Validate() error {
@@ -77,7 +81,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

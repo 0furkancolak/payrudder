@@ -12,6 +12,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getAccount = `-- name: GetAccount :one
+SELECT id, name, created_at FROM accounts WHERE id = $1
+`
+
+func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error) {
+	row := q.db.QueryRow(ctx, getAccount, id)
+	var i Account
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
 const getApiKey = `-- name: GetApiKey :one
 SELECT id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at FROM api_keys WHERE id = $1
 `
@@ -33,7 +44,7 @@ func (q *Queries) GetApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error) {
 }
 
 const getTenant = `-- name: GetTenant :one
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id FROM tenants WHERE id = $1
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address FROM tenants WHERE id = $1
 `
 
 func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
@@ -50,6 +61,8 @@ func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
 		&i.GracePeriod,
 		&i.CreatedAt,
 		&i.InvoiceLogoAssetID,
+		&i.AppID,
+		&i.Address,
 	)
 	return i, err
 }
@@ -108,15 +121,45 @@ func (q *Queries) InsertApiKey(ctx context.Context, arg InsertApiKeyParams) (Api
 	return i, err
 }
 
+const insertApp = `-- name: InsertApp :one
+INSERT INTO apps (id, account_id, name, slug) VALUES ($1, $2, $3, $4) RETURNING id, account_id, name, slug, created_at
+`
+
+type InsertAppParams struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+	Name      string
+	Slug      string
+}
+
+func (q *Queries) InsertApp(ctx context.Context, arg InsertAppParams) (App, error) {
+	row := q.db.QueryRow(ctx, insertApp,
+		arg.ID,
+		arg.AccountID,
+		arg.Name,
+		arg.Slug,
+	)
+	var i App
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertTenant = `-- name: InsertTenant :one
-INSERT INTO tenants (id, account_id, environment, name, tier, currency, timezone, grace_period)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id
+INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address
 `
 
 type InsertTenantParams struct {
 	ID          uuid.UUID
 	AccountID   uuid.UUID
+	AppID       uuid.UUID
 	Environment string
 	Name        string
 	Tier        string
@@ -129,6 +172,7 @@ func (q *Queries) InsertTenant(ctx context.Context, arg InsertTenantParams) (Ten
 	row := q.db.QueryRow(ctx, insertTenant,
 		arg.ID,
 		arg.AccountID,
+		arg.AppID,
 		arg.Environment,
 		arg.Name,
 		arg.Tier,
@@ -148,12 +192,44 @@ func (q *Queries) InsertTenant(ctx context.Context, arg InsertTenantParams) (Ten
 		&i.GracePeriod,
 		&i.CreatedAt,
 		&i.InvoiceLogoAssetID,
+		&i.AppID,
+		&i.Address,
 	)
 	return i, err
 }
 
+const listAccountApps = `-- name: ListAccountApps :many
+SELECT id, account_id, name, slug, created_at FROM apps WHERE account_id = $1 ORDER BY created_at, id
+`
+
+func (q *Queries) ListAccountApps(ctx context.Context, accountID uuid.UUID) ([]App, error) {
+	rows, err := q.db.Query(ctx, listAccountApps, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []App{}
+	for rows.Next() {
+		var i App
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.Name,
+			&i.Slug,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAccountTenants = `-- name: ListAccountTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id FROM tenants WHERE account_id = $1 ORDER BY environment DESC
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address FROM tenants WHERE account_id = $1 ORDER BY environment DESC
 `
 
 func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) ([]Tenant, error) {
@@ -176,6 +252,8 @@ func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) (
 			&i.GracePeriod,
 			&i.CreatedAt,
 			&i.InvoiceLogoAssetID,
+			&i.AppID,
+			&i.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -188,7 +266,7 @@ func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) (
 }
 
 const listTenants = `-- name: ListTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id FROM tenants WHERE id > $1::uuid ORDER BY id LIMIT $2::int
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address FROM tenants WHERE id > $1::uuid ORDER BY id LIMIT $2::int
 `
 
 type ListTenantsParams struct {
@@ -216,6 +294,8 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 			&i.GracePeriod,
 			&i.CreatedAt,
 			&i.InvoiceLogoAssetID,
+			&i.AppID,
+			&i.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -286,14 +366,16 @@ const updateTenantSettings = `-- name: UpdateTenantSettings :one
 UPDATE tenants
 SET grace_period = COALESCE($1::interval, grace_period),
     tier         = COALESCE($2::text, tier),
-    invoice_logo_asset_id = CASE WHEN $3::bool THEN NULL ELSE COALESCE($4::uuid, invoice_logo_asset_id) END
-WHERE id = $5
-RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id
+    address      = COALESCE($3::jsonb, address),
+    invoice_logo_asset_id = CASE WHEN $4::bool THEN NULL ELSE COALESCE($5::uuid, invoice_logo_asset_id) END
+WHERE id = $6
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address
 `
 
 type UpdateTenantSettingsParams struct {
 	GracePeriod        pgtype.Interval
 	Tier               *string
+	Address            []byte
 	ClearLogo          bool
 	InvoiceLogoAssetID *uuid.UUID
 	ID                 uuid.UUID
@@ -303,6 +385,7 @@ func (q *Queries) UpdateTenantSettings(ctx context.Context, arg UpdateTenantSett
 	row := q.db.QueryRow(ctx, updateTenantSettings,
 		arg.GracePeriod,
 		arg.Tier,
+		arg.Address,
 		arg.ClearLogo,
 		arg.InvoiceLogoAssetID,
 		arg.ID,
@@ -319,6 +402,8 @@ func (q *Queries) UpdateTenantSettings(ctx context.Context, arg UpdateTenantSett
 		&i.GracePeriod,
 		&i.CreatedAt,
 		&i.InvoiceLogoAssetID,
+		&i.AppID,
+		&i.Address,
 	)
 	return i, err
 }

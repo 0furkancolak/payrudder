@@ -5,7 +5,8 @@
   },
   "app": {
     "title": "Quotify operator console",
-    "language": "Language"
+    "language": "Language",
+    "demo": "Demo mode: sample data, a mock payment provider, mail goes to the local mail catcher. Nothing here is real."
   },
   "nav": {
     "tenants": "Tenants",
@@ -257,7 +258,19 @@
       "currency": "Billing currency",
       "tenantCurrency": "Tenant's currency",
       "create": "Create customer",
-      "empty": "No customers yet."
+      "empty": "No customers yet.",
+      "address": {
+        "title": "Billing address",
+        "line1": "Address line 1",
+        "line2": "Address line 2",
+        "city": "City",
+        "region": "State / region",
+        "postalCode": "Postal code",
+        "edit": "Edit address",
+        "save": "Save address",
+        "cancel": "Cancel",
+        "editing": "Address of {id}"
+      }
     },
     "packages": {
       "new": "New package",

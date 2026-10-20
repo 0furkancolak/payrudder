@@ -87,9 +87,12 @@ func (s *Server) CreateCustomer(ctx context.Context, req *plansv1.CreateCustomer
 		if req.GetBillingCurrency() != "" {
 			billing = &req.BillingCurrency
 		}
+		if c := req.GetAddress().GetCountry(); c != "" {
+			country = &c
+		}
 		out, err = q.CreateCustomer(ctx, sqlc.CreateCustomerParams{
 			ID: idgen.NewUUIDv7(), ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), PaymentMethod: pm,
-			Country: country, BillingCurrency: billing,
+			Country: country, BillingCurrency: billing, Address: convert.AddressJSON(req.GetAddress()),
 		})
 		return err
 	})
@@ -97,6 +100,30 @@ func (s *Server) CreateCustomer(ctx context.Context, req *plansv1.CreateCustomer
 		return nil, convert.Err(err, "customer")
 	}
 	return &plansv1.CreateCustomerResponse{Customer: convert.Customer(out)}, nil
+}
+
+// SetCustomerAddress implements plansv1.PlansServiceServer.
+func (s *Server) SetCustomerAddress(ctx context.Context, req *plansv1.SetCustomerAddressRequest) (*plansv1.SetCustomerAddressResponse, error) {
+	if req.GetExternalId() == "" {
+		return nil, domain.Invalid("external_id", "required")
+	}
+	if err := domain.ValidateAddress("address", req.GetAddress()); err != nil {
+		return nil, err
+	}
+	params := sqlc.SetCustomerAddressParams{ExternalID: req.GetExternalId(), Address: convert.AddressJSON(req.GetAddress())}
+	if c := req.GetAddress().GetCountry(); c != "" {
+		params.Country = &c
+	}
+	var out sqlc.Customer
+	err := s.tx(ctx, func(q *sqlc.Queries) error {
+		var err error
+		out, err = q.SetCustomerAddress(ctx, params)
+		return err
+	})
+	if err != nil {
+		return nil, convert.Err(err, "customer")
+	}
+	return &plansv1.SetCustomerAddressResponse{Customer: convert.Customer(out)}, nil
 }
 
 func (s *Server) getCustomer(ctx context.Context, externalID string) (*plansv1.Customer, error) {

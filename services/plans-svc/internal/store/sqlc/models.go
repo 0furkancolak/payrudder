@@ -29,6 +29,14 @@ type ApiKey struct {
 	RevokedAt *time.Time
 }
 
+type App struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+	Name      string
+	Slug      string
+	CreatedAt time.Time
+}
+
 type Coupon struct {
 	TenantID        uuid.UUID
 	Code            string
@@ -55,6 +63,7 @@ type Customer struct {
 	CreatedAt       time.Time
 	Country         *string
 	BillingCurrency *string
+	Address         json.RawMessage
 }
 
 type Meter struct {
@@ -225,6 +234,8 @@ type Tenant struct {
 	GracePeriod        pgtype.Interval
 	CreatedAt          time.Time
 	InvoiceLogoAssetID *uuid.UUID
+	AppID              uuid.UUID
+	Address            json.RawMessage
 }
 
 type WebhookDelivery struct {

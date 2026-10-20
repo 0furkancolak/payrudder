@@ -8,6 +8,8 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/0furkancolak/quotify/pkg/errkey"
 )
 
 // ErrorBody is the single error envelope of the public API:
@@ -19,7 +21,9 @@ type ErrorBody struct {
 
 // ErrorInfo is the content of ErrorBody.
 type ErrorInfo struct {
-	Code      string        `json:"code"`
+	Code string `json:"code"`
+	// Key is stable and dotted ("billing.credit_note.not_paid"): translate it, not the message.
+	Key       string        `json:"key"`
 	Message   string        `json:"message"`
 	Details   []FieldDetail `json:"details,omitempty"`
 	RequestID string        `json:"request_id,omitempty"`
@@ -70,12 +74,15 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	st := status.Convert(err)
-	body := ErrorBody{Error: ErrorInfo{Code: codeName(st.Code()), Message: st.Message(), RequestID: requestID(r.Context())}}
+	body := ErrorBody{Error: ErrorInfo{Code: codeName(st.Code()), Key: errkey.Default(st.Code()), Message: st.Message(), RequestID: requestID(r.Context())}}
 	switch st.Code() {
 	case codes.Internal, codes.Unknown, codes.DataLoss:
 		body.Error.Message = "internal error" // never leak upstream internals
 	}
 	for _, d := range st.Details() {
+		if ei, ok := d.(*errdetails.ErrorInfo); ok && ei.GetDomain() == errkey.Domain && ei.GetMetadata()[errkey.MetaKey] != "" {
+			body.Error.Key = ei.GetMetadata()[errkey.MetaKey]
+		}
 		if ei, ok := d.(*errdetails.ErrorInfo); ok && ei.GetReason() != "" {
 			body.Error.Code = ei.GetReason() // an application error code such as STORAGE_QUOTA_EXCEEDED
 		}

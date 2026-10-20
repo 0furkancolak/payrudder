@@ -577,8 +577,11 @@ type InvoiceSnapshot struct {
 	TotalMinor       int64                  `protobuf:"varint,13,opt,name=total_minor,json=totalMinor,proto3" json:"total_minor,omitempty"`
 	// Object key of the tenant's READY invoice_logo asset, if any.
 	LogoObjectKey string `protobuf:"bytes,14,opt,name=logo_object_key,json=logoObjectKey,proto3" json:"logo_object_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The seller's and the customer's postal address as printed lines (empty when none was entered).
+	SellerAddressLines   []string `protobuf:"bytes,15,rep,name=seller_address_lines,json=sellerAddressLines,proto3" json:"seller_address_lines,omitempty"`
+	CustomerAddressLines []string `protobuf:"bytes,16,rep,name=customer_address_lines,json=customerAddressLines,proto3" json:"customer_address_lines,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *InvoiceSnapshot) Reset() {
@@ -707,6 +710,20 @@ func (x *InvoiceSnapshot) GetLogoObjectKey() string {
 		return x.LogoObjectKey
 	}
 	return ""
+}
+
+func (x *InvoiceSnapshot) GetSellerAddressLines() []string {
+	if x != nil {
+		return x.SellerAddressLines
+	}
+	return nil
+}
+
+func (x *InvoiceSnapshot) GetCustomerAddressLines() []string {
+	if x != nil {
+		return x.CustomerAddressLines
+	}
+	return nil
 }
 
 type RenderInvoicePdf struct {
@@ -1483,7 +1500,7 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"\bquantity\x18\x04 \x01(\tR\bquantity\x12\x1d\n" +
 	"\n" +
 	"unit_label\x18\x05 \x01(\tR\tunitLabel\x12!\n" +
-	"\famount_minor\x18\x06 \x01(\x03R\vamountMinor\"\x9e\x04\n" +
+	"\famount_minor\x18\x06 \x01(\x03R\vamountMinor\"\x86\x05\n" +
 	"\x0fInvoiceSnapshot\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12\x18\n" +
@@ -1502,7 +1519,9 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"\x0esubtotal_minor\x18\f \x01(\x03R\rsubtotalMinor\x12\x1f\n" +
 	"\vtotal_minor\x18\r \x01(\x03R\n" +
 	"totalMinor\x12&\n" +
-	"\x0flogo_object_key\x18\x0e \x01(\tR\rlogoObjectKey\"R\n" +
+	"\x0flogo_object_key\x18\x0e \x01(\tR\rlogoObjectKey\x120\n" +
+	"\x14seller_address_lines\x18\x0f \x03(\tR\x12sellerAddressLines\x124\n" +
+	"\x16customer_address_lines\x18\x10 \x03(\tR\x14customerAddressLines\"R\n" +
 	"\x10RenderInvoicePdf\x12>\n" +
 	"\ainvoice\x18\x01 \x01(\v2$.quotify.commands.v1.InvoiceSnapshotR\ainvoice\"\x82\x02\n" +
 	"\rChargePayment\x12\x1d\n" +

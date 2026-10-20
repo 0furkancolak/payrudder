@@ -5,7 +5,8 @@
   },
   "app": {
     "title": "Quotify-Operator-Konsole",
-    "language": "Sprache"
+    "language": "Sprache",
+    "demo": "Demo-Modus: Beispieldaten, ein simulierter Zahlungsanbieter, Mails gehen an den lokalen Mail-Catcher. Nichts davon ist echt."
   },
   "nav": {
     "tenants": "Mandanten",
@@ -257,7 +258,19 @@
       "currency": "Rechnungswährung",
       "tenantCurrency": "Währung des Mandanten",
       "create": "Kunden anlegen",
-      "empty": "Noch keine Kunden."
+      "empty": "Noch keine Kunden.",
+      "address": {
+        "title": "Rechnungsadresse",
+        "line1": "Adresszeile 1",
+        "line2": "Adresszeile 2",
+        "city": "Stadt",
+        "region": "Bundesland / Region",
+        "postalCode": "Postleitzahl",
+        "edit": "Adresse bearbeiten",
+        "save": "Adresse speichern",
+        "cancel": "Abbrechen",
+        "editing": "Adresse von {id}"
+      }
     },
     "packages": {
       "new": "Neues Paket",

@@ -20,6 +20,8 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	AdminService_CreateAccount_FullMethodName        = "/quotify.plans.v1.AdminService/CreateAccount"
+	AdminService_CreateApp_FullMethodName            = "/quotify.plans.v1.AdminService/CreateApp"
+	AdminService_ListApps_FullMethodName             = "/quotify.plans.v1.AdminService/ListApps"
 	AdminService_GetTenant_FullMethodName            = "/quotify.plans.v1.AdminService/GetTenant"
 	AdminService_ListTenants_FullMethodName          = "/quotify.plans.v1.AdminService/ListTenants"
 	AdminService_UpdateTenantSettings_FullMethodName = "/quotify.plans.v1.AdminService/UpdateTenantSettings"
@@ -37,6 +39,9 @@ const (
 type AdminServiceClient interface {
 	// CreateAccount creates the account and its sandbox + live tenants with the chosen settings.
 	CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*CreateAccountResponse, error)
+	// CreateApp adds an application to an account: a sandbox and a live tenant with the chosen settings.
+	CreateApp(ctx context.Context, in *CreateAppRequest, opts ...grpc.CallOption) (*CreateAppResponse, error)
+	ListApps(ctx context.Context, in *ListAppsRequest, opts ...grpc.CallOption) (*ListAppsResponse, error)
 	GetTenant(ctx context.Context, in *GetTenantRequest, opts ...grpc.CallOption) (*GetTenantResponse, error)
 	// ListTenants pages through every tenant ordered by id; billing-svc's scheduler walks it.
 	ListTenants(ctx context.Context, in *ListTenantsRequest, opts ...grpc.CallOption) (*ListTenantsResponse, error)
@@ -62,6 +67,26 @@ func (c *adminServiceClient) CreateAccount(ctx context.Context, in *CreateAccoun
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateAccountResponse)
 	err := c.cc.Invoke(ctx, AdminService_CreateAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) CreateApp(ctx context.Context, in *CreateAppRequest, opts ...grpc.CallOption) (*CreateAppResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateAppResponse)
+	err := c.cc.Invoke(ctx, AdminService_CreateApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) ListApps(ctx context.Context, in *ListAppsRequest, opts ...grpc.CallOption) (*ListAppsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAppsResponse)
+	err := c.cc.Invoke(ctx, AdminService_ListApps_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +162,9 @@ func (c *adminServiceClient) ResolveApiKey(ctx context.Context, in *ResolveApiKe
 type AdminServiceServer interface {
 	// CreateAccount creates the account and its sandbox + live tenants with the chosen settings.
 	CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountResponse, error)
+	// CreateApp adds an application to an account: a sandbox and a live tenant with the chosen settings.
+	CreateApp(context.Context, *CreateAppRequest) (*CreateAppResponse, error)
+	ListApps(context.Context, *ListAppsRequest) (*ListAppsResponse, error)
 	GetTenant(context.Context, *GetTenantRequest) (*GetTenantResponse, error)
 	// ListTenants pages through every tenant ordered by id; billing-svc's scheduler walks it.
 	ListTenants(context.Context, *ListTenantsRequest) (*ListTenantsResponse, error)
@@ -160,6 +188,12 @@ type UnimplementedAdminServiceServer struct{}
 
 func (UnimplementedAdminServiceServer) CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateAccount not implemented")
+}
+func (UnimplementedAdminServiceServer) CreateApp(context.Context, *CreateAppRequest) (*CreateAppResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateApp not implemented")
+}
+func (UnimplementedAdminServiceServer) ListApps(context.Context, *ListAppsRequest) (*ListAppsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListApps not implemented")
 }
 func (UnimplementedAdminServiceServer) GetTenant(context.Context, *GetTenantRequest) (*GetTenantResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTenant not implemented")
@@ -214,6 +248,42 @@ func _AdminService_CreateAccount_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AdminServiceServer).CreateAccount(ctx, req.(*CreateAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_CreateApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).CreateApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_CreateApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).CreateApp(ctx, req.(*CreateAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_ListApps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAppsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ListApps(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_ListApps_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ListApps(ctx, req.(*ListAppsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -336,6 +406,14 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateAccount",
 			Handler:    _AdminService_CreateAccount_Handler,
+		},
+		{
+			MethodName: "CreateApp",
+			Handler:    _AdminService_CreateApp_Handler,
+		},
+		{
+			MethodName: "ListApps",
+			Handler:    _AdminService_ListApps_Handler,
 		},
 		{
 			MethodName: "GetTenant",

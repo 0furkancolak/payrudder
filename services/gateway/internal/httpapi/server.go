@@ -5,7 +5,9 @@ package httpapi
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -332,6 +334,33 @@ func respond(w http.ResponseWriter, r *http.Request, code int, msg proto.Message
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodGet && code == http.StatusOK {
+		// A read can be revalidated cheaply by whatever sits in front of the gateway (a CDN, an edge worker, the caller's HTTP cache): the tag is a hash of
+		// the body, "private, no-cache" lets it keep a copy but not use it unasked, and the answer depends on who asks.
+		sum := sha256.Sum256(b)
+		tag := `W/"` + hex.EncodeToString(sum[:8]) + `"`
+		h := w.Header()
+		h.Set("ETag", tag)
+		h.Set("Vary", "Authorization, X-Quotify-Tenant")
+		if h.Get("Cache-Control") == "" {
+			h.Set("Cache-Control", "private, no-cache")
+		}
+		if etagMatches(r.Header.Get("If-None-Match"), tag) {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+	}
 	w.WriteHeader(code)
 	_, _ = w.Write(b)
+}
+
+// etagMatches reports whether an If-None-Match header names tag (weak comparison, as the spec asks for GET).
+func etagMatches(header, tag string) bool {
+	for _, part := range strings.Split(header, ",") {
+		part = strings.TrimSpace(part)
+		if part == "*" || strings.TrimPrefix(part, "W/") == strings.TrimPrefix(tag, "W/") {
+			return true
+		}
+	}
+	return false
 }

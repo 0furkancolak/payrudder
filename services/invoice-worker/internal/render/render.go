@@ -108,11 +108,17 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 	pdf.CellFormat(0, 6, "From", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 11)
 	pdf.CellFormat(0, 6, t(inv.GetTenantName()), "", 1, "L", false, 0, "")
+	for _, l := range inv.GetSellerAddressLines() {
+		pdf.CellFormat(0, 5, t(l), "", 1, "L", false, 0, "")
+	}
 	pdf.Ln(2)
 	pdf.SetFont("Helvetica", "B", 11)
 	pdf.CellFormat(0, 6, "Bill to", "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 11)
 	pdf.CellFormat(0, 6, t(inv.GetCustomerName()), "", 1, "L", false, 0, "")
+	for _, l := range inv.GetCustomerAddressLines() {
+		pdf.CellFormat(0, 5, t(l), "", 1, "L", false, 0, "")
+	}
 	pdf.CellFormat(0, 6, t(inv.GetCustomerEmail()), "", 1, "L", false, 0, "")
 	pdf.Ln(8)
 
