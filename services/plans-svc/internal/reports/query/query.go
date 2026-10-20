@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
-	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -57,8 +55,7 @@ func monthBounds(month string, loc *time.Location, now time.Time) (label string,
 // only as good as what is stored: a trial that has since ended is known, a pause that has since been resumed is not, so for a past month the
 // paused and past due counts are those of the subscriptions still in that state.
 func (r *Queries) Subscriptions(ctx context.Context, req *plansv1.GetSubscriptionReportRequest) (*plansv1.GetSubscriptionReportResponse, error) {
-	ti, err := tenant.Require(ctx)
-	if err != nil {
+	if _, err := tenant.Require(ctx); err != nil {
 		return nil, err
 	}
 	var splits []string
@@ -69,19 +66,6 @@ func (r *Queries) Subscriptions(ctx context.Context, req *plansv1.GetSubscriptio
 		if !slices.Contains(splits, g) {
 			splits = append(splits, g)
 		}
-	}
-	selects, group := []string{}, []string{}
-	for _, name := range []string{"provider", "country"} {
-		if slices.Contains(splits, name) {
-			selects = append(selects, name)
-			group = append(group, name)
-		} else {
-			selects = append(selects, "''")
-		}
-	}
-	groupBy := ""
-	if len(group) > 0 {
-		groupBy = strings.Join(group, ", ") + ", "
 	}
 	var t sqlc.CurrentTenantRow
 	if err := r.db.Tx(ctx, func(q *sqlc.Queries) (err error) {
@@ -99,64 +83,22 @@ func (r *Queries) Subscriptions(ctx context.Context, req *plansv1.GetSubscriptio
 		return nil, err
 	}
 	resp := &plansv1.GetSubscriptionReportResponse{Month: label}
-	err = r.db.RawTx(ctx, ti.ID, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, fmt.Sprintf(subscriptionReportSQL, strings.Join(selects, ", "), groupBy, groupBy), start, end.Add(-time.Microsecond), end, t.Currency)
-		if err != nil {
-			return err
+	err = r.db.Tx(ctx, func(q *sqlc.Queries) error {
+		rows, err := q.SubscriptionReport(ctx, sqlc.SubscriptionReportParams{
+			MonthStart: start, MonthLast: end.Add(-time.Microsecond), MonthEnd: end, TenantCurrency: t.Currency,
+			ByProvider: slices.Contains(splits, "provider"), ByCountry: slices.Contains(splits, "country"),
+		})
+		for _, x := range rows {
+			resp.Rows = append(resp.Rows, &plansv1.SubscriptionReportRow{
+				Provider: x.Provider, Country: x.Country, Currency: x.Currency, Active: x.Active, Trialing: x.Trialing, Paused: x.Paused,
+				PastDue: x.PastDue, MrrMinor: x.MrrMinor, NewSubscriptions: x.NewSubscriptions, NewMrrMinor: x.NewMrrMinor,
+				Churned: x.Churned, ChurnedMrrMinor: x.ChurnedMrrMinor,
+			})
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var row plansv1.SubscriptionReportRow
-			if err := rows.Scan(&row.Provider, &row.Country, &row.Currency, &row.Active, &row.Trialing, &row.Paused, &row.PastDue, &row.MrrMinor,
-				&row.NewSubscriptions, &row.NewMrrMinor, &row.Churned, &row.ChurnedMrrMinor); err != nil {
-				return err
-			}
-			resp.Rows = append(resp.Rows, &row)
-		}
-		return rows.Err()
+		return err
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	return resp, nil
 }
-
-// subscriptionReportSQL: $1 month start, $2 the month's last instant, $3 month end, $4 the tenant currency. The first %s is the provider and
-// country columns (or ” for a dimension that is not split), the others the GROUP BY / ORDER BY prefix.
-const subscriptionReportSQL = `
-WITH subs AS (
-  SELECT s.id, s.currency, lower(s.active) AS starts, upper(s.active) AS ends, s.changed_from_id,
-         COALESCE(s.provider, '') AS provider, COALESCE(c.country, '') AS country,
-         CASE WHEN s.state = 'paused' THEN 'paused'
-              WHEN s.state = 'past_due' THEN 'past_due'
-              WHEN s.state = 'trialing' AND s.trial_ends_at > $2 THEN 'trialing'
-              ELSE 'active' END AS eff,
-         CASE WHEN s.interval = 'year' THEN ROUND(COALESCE(f.base_fee_minor, 0) / 12.0)::bigint
-              WHEN s.currency = $4 THEN pv.base_fee_minor ELSE COALESCE(f.base_fee_minor, 0) END AS fee,
-         EXISTS (SELECT 1 FROM subscriptions n WHERE n.tenant_id = s.tenant_id AND n.changed_from_id = s.id) AS has_successor
-  FROM subscriptions s
-  JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
-  JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
-  LEFT JOIN plan_version_fees f ON f.tenant_id = s.tenant_id AND f.plan_version_id = s.plan_version_id AND f.currency = s.currency AND f.interval = s.interval
-  WHERE s.tenant_id = app_tenant_id()
-), flagged AS (
-  SELECT *,
-         (starts <= $2 AND (ends IS NULL OR ends > $2)) AS alive,
-         (starts >= $1 AND starts < $3 AND changed_from_id IS NULL) AS is_new,
-         (ends IS NOT NULL AND ends >= $1 AND ends < $3 AND NOT has_successor) AS is_churned
-  FROM subs
-)
-SELECT %s, currency,
-  count(*) FILTER (WHERE alive AND eff = 'active'),
-  count(*) FILTER (WHERE alive AND eff = 'trialing'),
-  count(*) FILTER (WHERE alive AND eff = 'paused'),
-  count(*) FILTER (WHERE alive AND eff = 'past_due'),
-  COALESCE(sum(fee) FILTER (WHERE alive AND eff IN ('active', 'past_due')), 0),
-  count(*) FILTER (WHERE is_new),
-  COALESCE(sum(fee) FILTER (WHERE is_new AND eff IN ('active', 'past_due')), 0),
-  count(*) FILTER (WHERE is_churned),
-  COALESCE(sum(fee) FILTER (WHERE is_churned), 0)
-FROM flagged
-WHERE alive OR is_new OR is_churned
-GROUP BY %scurrency
-ORDER BY %scurrency`
