@@ -5,7 +5,8 @@
   },
   "app": {
     "title": "Consola de operador de Quotify",
-    "language": "Idioma"
+    "language": "Idioma",
+    "demo": "Modo demo: datos de ejemplo, un proveedor de pago simulado y el correo va al receptor local. Nada de esto es real."
   },
   "nav": {
     "tenants": "Inquilinos",

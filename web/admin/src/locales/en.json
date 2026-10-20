@@ -5,7 +5,8 @@
   },
   "app": {
     "title": "Quotify operator console",
-    "language": "Language"
+    "language": "Language",
+    "demo": "Demo mode: sample data, a mock payment provider, mail goes to the local mail catcher. Nothing here is real."
   },
   "nav": {
     "tenants": "Tenants",

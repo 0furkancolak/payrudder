@@ -5,7 +5,8 @@
   },
   "app": {
     "title": "Quotify operatör konsolu",
-    "language": "Dil"
+    "language": "Dil",
+    "demo": "Demo modu: örnek veriler, sahte bir ödeme sağlayıcısı, e-postalar yerel posta yakalayıcıya gider. Buradaki hiçbir şey gerçek değildir."
   },
   "nav": {
     "tenants": "Kiracılar",

@@ -46,6 +46,8 @@ type Base struct {
 	MigrateOnly bool `env:"QUOTIFY_MIGRATE_ONLY"`
 	// BrandName is the product name people see (hosted pages, webhook headers, the console). See pkg/brand.
 	BrandName string `env:"BRAND_NAME"`
+	// Demo turns on demo mode: only the mock provider is used, mail goes to the local catcher and the console says so. Never next to real provider accounts.
+	Demo bool `env:"QUOTIFY_DEMO"`
 }
 
 // Validate checks the shared settings.

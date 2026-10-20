@@ -130,7 +130,7 @@ func run() error {
 	defer pool.Close()
 
 	mock := payments.NewMockPSP(cfg.MockPSPURL, cfg.PSPTimeout)
-	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log}
+	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log, Demo: cfg.Demo}
 	if cfg.LiveProvider == "mockpsp" {
 		h.Live = mock
 	}

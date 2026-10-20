@@ -99,6 +99,7 @@ const (
 	DunningSpent    Guard = "dunning exhausted"
 	PaidWithMoney   Guard = "paid, total > 0"
 	NothingToRefund Guard = "nothing to refund"
+	ProviderMails   Guard = "the provider mails the receipt"
 )
 
 // Ctx is what guards look at.
@@ -107,6 +108,8 @@ type Ctx struct {
 	Paid           bool // the invoice was paid (status = paid)
 	DunningAttempt int
 	MaxDunning     int
+	// ProviderMails: the provider that took the payment sends the customer its own receipt, so Quotify sends none.
+	ProviderMails bool
 }
 
 func (g Guard) holds(c Ctx) bool {
@@ -123,6 +126,8 @@ func (g Guard) holds(c Ctx) bool {
 		return c.DunningAttempt >= c.MaxDunning
 	case PaidWithMoney:
 		return c.Paid && c.TotalMinor > 0
+	case ProviderMails:
+		return c.ProviderMails
 	case NothingToRefund:
 		return !c.Paid || c.TotalMinor <= 0
 	}
@@ -168,6 +173,7 @@ var Table = []Row{
 
 	{PaymentDeclined, EvDunningDue, Always, PaymentRequested, EffChargeDunning},
 
+	{Paid, EvContinue, ProviderMails, Completed, EffNone},
 	{Paid, EvContinue, Always, NotifyRequested, EffNotify},
 	{Uncollectible, EvContinue, Always, NotifyRequested, EffNotify},
 

@@ -5,7 +5,8 @@
   },
   "app": {
     "title": "Quotify-Operator-Konsole",
-    "language": "Sprache"
+    "language": "Sprache",
+    "demo": "Demo-Modus: Beispieldaten, ein simulierter Zahlungsanbieter, Mails gehen an den lokalen Mail-Catcher. Nichts davon ist echt."
   },
   "nav": {
     "tenants": "Mandanten",

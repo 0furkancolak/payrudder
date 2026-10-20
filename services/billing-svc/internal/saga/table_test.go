@@ -112,3 +112,19 @@ func TestDocsDiagramIsInSync(t *testing.T) {
 		t.Fatalf("the saga diagram in the docs is stale; run UPDATE_DOCS=1 go test ./internal/saga")
 	}
 }
+
+func TestProviderThatMailsItsOwnReceiptSkipsOurs(t *testing.T) {
+	got, ok := Next(Paid, EvContinue, Ctx{TotalMinor: 100, Paid: true, ProviderMails: true})
+	if !ok || got.To != Completed || got.Effect != EffNone {
+		t.Fatalf("provider mails: %+v %v", got, ok)
+	}
+	got, ok = Next(Paid, EvContinue, Ctx{TotalMinor: 100, Paid: true})
+	if !ok || got.To != NotifyRequested || got.Effect != EffNotify {
+		t.Fatalf("we mail: %+v %v", got, ok)
+	}
+	// A give-up notice is still ours: the provider's receipts are for payments.
+	got, _ = Next(Uncollectible, EvContinue, Ctx{ProviderMails: true})
+	if got.To != NotifyRequested {
+		t.Fatalf("uncollectible with a mailing provider: %+v", got)
+	}
+}

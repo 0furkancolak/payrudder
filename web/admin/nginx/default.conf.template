@@ -21,7 +21,7 @@ server {
   location = /env.js {
     default_type application/javascript;
     add_header Cache-Control "no-store";
-    return 200 'window.__QUOTIFY__={operatorToken:"${PREFILL_OPERATOR_TOKEN}",brand:"${BRAND_NAME}"};';
+    return 200 'window.__QUOTIFY__={operatorToken:"${PREFILL_OPERATOR_TOKEN}",brand:"${BRAND_NAME}",demo:${QUOTIFY_DEMO}};';
   }
 
   location /assets/ {

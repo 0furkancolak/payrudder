@@ -34,6 +34,8 @@ type Handler struct {
 	// Ledger, when its DB is set, records every charge and refund outcome.
 	Ledger store.Ledger
 	Log    *slog.Logger
+	// Demo makes every tenant, live ones too, use the sandbox provider: a demo stack can never reach a real provider.
+	Demo bool
 }
 
 // Err codes carried by PaymentErrored.
@@ -49,7 +51,7 @@ const (
 // providerFor picks the provider of a command. A live tenant with its own provider account is served by it; the others by the
 // configured live provider. Refunds and status queries follow the provider the invoice was charged through.
 func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, env plansv1.Environment, invoice uuid.UUID, charge bool, named string) (payments.PaymentProvider, error) {
-	if env == plansv1.Environment_ENVIRONMENT_SANDBOX {
+	if h.Demo || env == plansv1.Environment_ENVIRONMENT_SANDBOX {
 		return h.Sandbox, nil
 	}
 	if h.Resolver != nil {

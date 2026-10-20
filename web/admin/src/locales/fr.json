@@ -5,7 +5,8 @@
   },
   "app": {
     "title": "Console opérateur Quotify",
-    "language": "Langue"
+    "language": "Langue",
+    "demo": "Mode démo : données d'exemple, un faux prestataire de paiement, les mails vont au récepteur local. Rien ici n'est réel."
   },
   "nav": {
     "tenants": "Locataires",

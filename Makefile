@@ -168,6 +168,12 @@ demo: ## The README story on a running stack: usage, a period close, a price cha
 	QUOTIFY_DUNNING_SANDBOX=15s,15s,15s QUOTIFY_SWEEP_INTERVAL=2s QUOTIFY_SCHEDULER_INTERVAL=5s $(COMPOSE) --profile obs --profile app up -d --wait billing-svc
 	cd tools/quotifyctl && go run . demo --operator-token "$(OPERATOR_TOKEN)"
 
+.PHONY: demo-mode
+demo-mode: ## Demo mode: the whole stack with only the mock provider, a banner in the console, sample data and the README story
+	QUOTIFY_DEMO=true QUOTIFY_DUNNING_SANDBOX=15s,15s,15s QUOTIFY_SWEEP_INTERVAL=2s QUOTIFY_SCHEDULER_INTERVAL=5s $(COMPOSE) --profile obs --profile app up -d --wait
+	cd tools/quotifyctl && go run . demo --operator-token "$(OPERATOR_TOKEN)"
+	@echo "console: http://localhost:3001   mail: http://localhost:8025"
+
 .PHONY: seed
 seed: ## Seed a demo account: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h
 	@test -n "$(CURRENCY)" -a -n "$(TIMEZONE)" -a -n "$(GRACE)" || { echo "usage: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h"; exit 2; }
