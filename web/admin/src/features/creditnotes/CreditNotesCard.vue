@@ -7,6 +7,7 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
 import { useCreateCreditNote, useCreditNotes, useRetryCreditNoteRefund } from "./api";
 
 /** Credit notes of a tenant, or of one invoice; with `issuable` a paid invoice can be credited here. */
@@ -76,6 +77,7 @@ function issue() {
           <TableHead>{{ t("billing.creditNotes.customer") }}</TableHead>
           <TableHead>{{ t("billing.creditNotes.reason") }}</TableHead>
           <TableHead>{{ t("billing.creditNotes.where") }}</TableHead>
+          <TableHead>{{ t("einvoice.title") }}</TableHead>
           <TableHead>{{ t("billing.creditNotes.date") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.creditNotes.amount") }}</TableHead>
         </TableRow>
@@ -93,6 +95,7 @@ function issue() {
               <Button size="sm" variant="outline" :disabled="retry.isPending.value" @click="retry.mutate(n.id ?? '')">{{ t("billing.creditNotes.retryRefund") }}</Button>
             </template>
           </TableCell>
+          <TableCell><EInvoiceStatus :tenant-id="tenantId" :credit-note-id="n.id ?? ''" /></TableCell>
           <TableCell>{{ date(n.create_time) }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ formatMinor(n.total_minor, n.currency, locale) }}</TableCell>
         </TableRow>

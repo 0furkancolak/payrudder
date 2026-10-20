@@ -100,6 +100,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/tax": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace the customer's tax data used on e-invoices
+         * @description Tax id (VKN/TCKN in Turkey, VAT id in the EU), tax office (Turkey) and whether the customer is registered for e-fatura. Empty values clear them. Error key plans.customer.tax_invalid.
+         */
+        put: operations["setCustomerTax"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/e-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The legal e-documents (e-fatura, e-arşiv, Peppol) of invoices and credit notes, newest first */
+        get: operations["listEInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/e-invoices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One e-document */
+        get: operations["getEInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/e-invoices/{id}/files/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A presigned link to the UBL XML or the PDF of an issued e-document (5 minutes) */
+        get: operations["getEInvoiceFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/meters": {
         parameters: {
             query?: never;
@@ -1265,6 +1336,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/tenants/{tenant_id}/e-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A tenant's e-documents (operator view of GET /v1/e-invoices) */
+        get: operations["adminListEInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/e-invoices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One e-document */
+        get: operations["adminGetEInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/e-invoices/{id}/files/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A presigned link to the UBL XML or the PDF (5 minutes) */
+        get: operations["adminGetEInvoiceFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/e-invoices/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry a failed e-document; the parties (seller legal data, buyer tax data) are refreshed, lines and amounts stay frozen */
+        post: operations["adminRetryEInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/e-invoices/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel an issued e-document where the provider and the law allow it */
+        post: operations["adminCancelEInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/e-invoice-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A tenant's e-invoice integrator accounts (credentials are never returned) */
+        get: operations["listEInvoiceAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Store or replace the tenant's e-invoice account for an environment (sealed at rest; sandbox accepts the mock provider only) */
+        put: operations["putEInvoiceAccount"];
+        post?: never;
+        /** Remove the tenant's e-invoice account for an environment */
+        delete: operations["deleteEInvoiceAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{tenant_id}/ledger": {
         parameters: {
             query?: never;
@@ -2221,6 +2412,9 @@ export interface components {
             /** @description ISO 4217 */
             billing_currency?: string;
             address?: components["schemas"]["Address"];
+            tax_id?: string;
+            tax_office?: string;
+            e_invoice_registered?: boolean;
         };
         CreateMeterRequest: {
             code: string;
@@ -2357,6 +2551,92 @@ export interface components {
              */
             refund_state?: "REFUND_STATE_REQUESTED" | "REFUND_STATE_REFUNDED" | "REFUND_STATE_FAILED";
             refund_error?: string;
+        };
+        CustomerTax: {
+            /** @description VKN/TCKN (Turkey) or VAT id (EU) */
+            tax_id?: string;
+            /** @description Vergi dairesi (Turkey) */
+            tax_office?: string;
+            /** @description The customer is registered for e-fatura */
+            e_invoice_registered?: boolean;
+        };
+        /** @description The seller's company data printed on invoices and sent in e-documents. */
+        LegalInfo: {
+            legal_name?: string;
+            tax_id?: string;
+            tax_office?: string;
+            mersis_no?: string;
+            trade_registry_no?: string;
+        };
+        EInvoiceDocument: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            kind?: "invoice" | "credit_note";
+            /** Format: uuid */
+            invoice_id?: string;
+            /** Format: uuid */
+            credit_note_id?: string | null;
+            /** @description Quotify's invoice or credit note number */
+            number?: string;
+            /** @enum {string} */
+            status?: "pending" | "issued" | "failed" | "cancelled";
+            /**
+             * @description Empty until known
+             * @enum {string}
+             */
+            document_type?: "" | "e-fatura" | "e-arsiv" | "peppol";
+            provider?: string;
+            /** @enum {string} */
+            environment?: "sandbox" | "live";
+            legal_number?: string;
+            external_id?: string;
+            attempts?: number;
+            /** Format: date-time */
+            next_attempt_at?: string | null;
+            /** @example einvoice.provider.rejected */
+            last_error_key?: string;
+            /** @description English text */
+            last_error?: string;
+            has_xml?: boolean;
+            has_pdf?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            issued_at?: string | null;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        EInvoiceList: {
+            documents?: components["schemas"]["EInvoiceDocument"][];
+            next_page_token?: string;
+            total?: number;
+        };
+        EInvoiceFileLink: {
+            url?: string;
+            /** Format: date-time */
+            expires_at?: string;
+        };
+        EInvoiceAccount: {
+            /** @enum {string} */
+            environment?: "sandbox" | "live";
+            /** @enum {string} */
+            provider?: "mock" | "nilvera" | "webhook";
+            /** @enum {string} */
+            mode?: "test" | "production";
+            has_credentials?: boolean;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        PutEInvoiceAccount: {
+            /** @enum {string} */
+            provider: "mock" | "nilvera" | "webhook";
+            /** @enum {string} */
+            mode?: "test" | "production";
+            /** @description nilvera: api_key[, base_url]; webhook: url, secret. Never returned. */
+            credentials?: {
+                [key: string]: string;
+            };
         };
         TaxRates: {
             rates?: {
@@ -2548,6 +2828,12 @@ export interface components {
             /** Format: uuid */
             app_id?: string;
             address?: components["schemas"]["Address"];
+            legal?: components["schemas"]["LegalInfo"];
+            /**
+             * @description When an invoice becomes an e-document
+             * @enum {string}
+             */
+            e_invoice_on?: "off" | "finalized" | "paid";
             /** @enum {string} */
             environment?: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
             name?: string;
@@ -2777,6 +3063,109 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    setCustomerTax: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerTax"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listEInvoices: {
+        parameters: {
+            query?: {
+                invoice_id?: string;
+                credit_note_id?: string;
+                status?: "pending" | "issued" | "failed" | "cancelled";
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceList"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getEInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceDocument"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getEInvoiceFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                kind: "xml" | "pdf";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceFileLink"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     listMeters: {
@@ -5164,6 +5553,212 @@ export interface operations {
             503: components["responses"]["Error"];
         };
     };
+    adminListEInvoices: {
+        parameters: {
+            query?: {
+                invoice_id?: string;
+                credit_note_id?: string;
+                status?: "pending" | "issued" | "failed" | "cancelled";
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceList"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    adminGetEInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceDocument"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    adminGetEInvoiceFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                id: string;
+                kind: "xml" | "pdf";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceFileLink"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    adminRetryEInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceDocument"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    adminCancelEInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceDocument"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    listEInvoiceAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accounts?: components["schemas"]["EInvoiceAccount"][];
+                    };
+                };
+            };
+            503: components["responses"]["Error"];
+        };
+    };
+    putEInvoiceAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                environment: "sandbox" | "live";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutEInvoiceAccount"];
+            };
+        };
+        responses: {
+            /** @description Stored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceAccount"];
+                };
+            };
+            400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    deleteEInvoiceAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                environment: "sandbox" | "live";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
     listPaymentLedger: {
         parameters: {
             query?: {
@@ -6007,6 +6602,9 @@ export interface operations {
                     /** @enum {string} */
                     tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
                     address?: components["schemas"]["Address"];
+                    legal?: components["schemas"]["LegalInfo"];
+                    /** @enum {string} */
+                    e_invoice_on?: "off" | "finalized" | "paid";
                 };
             };
         };

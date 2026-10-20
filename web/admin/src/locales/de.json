@@ -242,7 +242,8 @@
       "providers": "Anbieter",
       "reports": "Berichte",
       "pricing": "Gutscheine & Steuer",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "einvoice": "E-Rechnung"
     },
     "common": {
       "remove": "Entfernen"
@@ -616,6 +617,118 @@
         "pending": "Ausstehend",
         "delivered": "Zugestellt",
         "failed": "Fehlgeschlagen"
+      }
+    }
+  },
+  "einvoice": {
+    "title": "E-Rechnung",
+    "confirmCancel": "Dieses rechtsgültige E-Dokument stornieren? Das lässt sich nicht rückgängig machen.",
+    "retry": "Erneut versuchen",
+    "cancel": "Dokument stornieren",
+    "downloadXml": "XML herunterladen",
+    "downloadPdf": "PDF herunterladen",
+    "attempts": "Versuch {count}",
+    "nextAttempt": "nächster Versuch {at}",
+    "issuedAt": "Ausgestellt {at}",
+    "status": {
+      "pending": "Ausstehend",
+      "issued": "Ausgestellt",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Storniert"
+    },
+    "type": {
+      "e-fatura": "e-Fatura",
+      "e-arsiv": "e-Arşiv",
+      "peppol": "Peppol"
+    },
+    "settings": {
+      "title": "E-Rechnung",
+      "hint": "Rechnungen und Gutschriften werden über Ihren Dienstleister zu rechtsgültigen E-Dokumenten (e-Fatura, e-Arşiv, Peppol). Die Firmendaten unten stehen auf jedem Dokument.",
+      "formLabel": "E-Rechnung-Einstellungen",
+      "on": "E-Dokumente ausstellen",
+      "onOff": "Aus",
+      "onFinalized": "Wenn eine Rechnung abgeschlossen wird",
+      "onPaid": "Wenn eine Rechnung bezahlt wird",
+      "legalName": "Firmenname",
+      "taxId": "Steuernummer (VKN oder USt-IdNr.)",
+      "taxOffice": "Finanzamt",
+      "mersis": "MERSIS-Nummer",
+      "tradeRegistry": "Handelsregisternummer",
+      "save": "Einstellungen speichern",
+      "saved": "Gespeichert.",
+      "confirmRemove": "Konto {provider} ({environment}) entfernen?"
+    },
+    "account": {
+      "title": "Dienstleister-Konto",
+      "hint": "Zugangsdaten werden verschlüsselt gespeichert und nie wieder angezeigt. Die Sandbox kann nur den Mock-Anbieter nutzen.",
+      "provider": "Anbieter",
+      "environment": "Umgebung",
+      "mode": "Modus",
+      "credentials": "Zugangsdaten",
+      "updated": "Aktualisiert",
+      "stored": "Gespeichert",
+      "none": "Keine",
+      "empty": "Noch kein E-Rechnung-Konto.",
+      "formLabel": "E-Rechnung-Konto",
+      "add": "Konto hinzufügen oder ersetzen",
+      "modes": {
+        "test": "Test",
+        "production": "Produktion"
+      },
+      "sandboxHint": "Die Sandbox nutzt immer den Mock-Anbieter: Dokumente werden mit einer erfundenen Rechtsnummer akzeptiert.",
+      "apiKey": "API-Schlüssel",
+      "baseUrl": "Basis-URL (optional)",
+      "webhookUrl": "Webhook-URL (https)",
+      "webhookSecret": "Signaturgeheimnis",
+      "neverShown": "Das Geheimnis wird einmal gesendet und kann nicht zurückgelesen werden.",
+      "save": "Konto speichern",
+      "saved": "Konto gespeichert."
+    },
+    "customer": {
+      "title": "Steuerdaten",
+      "edit": "Steuerdaten",
+      "editing": "Steuerdaten von {id}",
+      "taxId": "Steuernummer (VKN/TCKN oder USt-IdNr.)",
+      "taxOffice": "Finanzamt",
+      "registered": "Für e-Fatura registriert",
+      "save": "Steuerdaten speichern"
+    },
+    "errorKeys": {
+      "einvoice": {
+        "account": {
+          "missing": "Für diese Umgebung gibt es kein E-Rechnung-Konto.",
+          "invalid": "Die Kontoeinstellungen sind ungültig.",
+          "sandbox_mock_only": "Die Sandbox kann nur den Mock-Anbieter nutzen."
+        },
+        "seller": {
+          "incomplete": "Die Firmendaten (Name, Steuernummer) sind unvollständig."
+        },
+        "buyer": {
+          "incomplete": "Die Steuerdaten des Kunden sind unvollständig."
+        },
+        "document": {
+          "not_found": "Das E-Dokument existiert nicht.",
+          "not_failed": "Nur ein fehlgeschlagenes E-Dokument kann erneut versucht werden.",
+          "not_issued": "Nur ein ausgestelltes E-Dokument kann storniert werden."
+        },
+        "cancel": {
+          "unsupported": "Dieser Anbieter kann das Dokument nicht stornieren."
+        },
+        "file": {
+          "not_ready": "Die Datei ist noch nicht verfügbar."
+        },
+        "provider": {
+          "rejected": "Der Dienstleister hat das Dokument abgelehnt.",
+          "unavailable": "Der Dienstleister war nicht erreichbar; es wird erneut versucht."
+        },
+        "setting": {
+          "invalid": "Die E-Rechnung-Einstellung ist ungültig."
+        }
+      },
+      "plans": {
+        "customer": {
+          "tax_invalid": "Die Steuerdaten des Kunden sind ungültig."
+        }
       }
     }
   }

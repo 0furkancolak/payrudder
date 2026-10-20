@@ -242,7 +242,8 @@
       "providers": "Prestataires",
       "reports": "Rapports",
       "pricing": "Coupons et taxes",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "einvoice": "Facture électronique"
     },
     "common": {
       "remove": "Retirer"
@@ -616,6 +617,118 @@
         "pending": "En attente",
         "delivered": "Livré",
         "failed": "Échoué"
+      }
+    }
+  },
+  "einvoice": {
+    "title": "Facture électronique",
+    "confirmCancel": "Annuler ce document électronique légal ? C'est irréversible.",
+    "retry": "Réessayer",
+    "cancel": "Annuler le document",
+    "downloadXml": "Télécharger le XML",
+    "downloadPdf": "Télécharger le PDF",
+    "attempts": "Tentative {count}",
+    "nextAttempt": "prochain essai {at}",
+    "issuedAt": "Émise {at}",
+    "status": {
+      "pending": "En attente",
+      "issued": "Émise",
+      "failed": "Échec",
+      "cancelled": "Annulée"
+    },
+    "type": {
+      "e-fatura": "e-Fatura",
+      "e-arsiv": "e-Arşiv",
+      "peppol": "Peppol"
+    },
+    "settings": {
+      "title": "Facturation électronique",
+      "hint": "Transforme les factures et avoirs en documents électroniques légaux (e-fatura, e-arşiv, Peppol) envoyés via votre intégrateur. Les données d'entreprise ci-dessous figurent sur chaque document.",
+      "formLabel": "paramètres de facturation électronique",
+      "on": "Émettre des documents électroniques",
+      "onOff": "Désactivé",
+      "onFinalized": "À la finalisation d'une facture",
+      "onPaid": "Au paiement d'une facture",
+      "legalName": "Raison sociale",
+      "taxId": "Identifiant fiscal (VKN ou n° de TVA)",
+      "taxOffice": "Centre des impôts",
+      "mersis": "Numéro MERSIS",
+      "tradeRegistry": "Numéro du registre du commerce",
+      "save": "Enregistrer les paramètres",
+      "saved": "Enregistré.",
+      "confirmRemove": "Supprimer le compte {provider} ({environment}) ?"
+    },
+    "account": {
+      "title": "Compte de l'intégrateur",
+      "hint": "Les identifiants sont stockés chiffrés et ne sont plus jamais affichés. L'environnement sandbox ne peut utiliser que le fournisseur mock.",
+      "provider": "Fournisseur",
+      "environment": "Environnement",
+      "mode": "Mode",
+      "credentials": "Identifiants",
+      "updated": "Mis à jour",
+      "stored": "Enregistrés",
+      "none": "Aucun",
+      "empty": "Aucun compte de facturation électronique pour le moment.",
+      "formLabel": "compte de facturation électronique",
+      "add": "Ajouter ou remplacer un compte",
+      "modes": {
+        "test": "Test",
+        "production": "Production"
+      },
+      "sandboxHint": "Le sandbox utilise toujours le fournisseur mock : les documents sont acceptés avec un faux numéro légal.",
+      "apiKey": "Clé d'API",
+      "baseUrl": "URL de base (facultatif)",
+      "webhookUrl": "URL du webhook (https)",
+      "webhookSecret": "Secret de signature",
+      "neverShown": "Le secret est envoyé une seule fois et ne peut pas être relu.",
+      "save": "Enregistrer le compte",
+      "saved": "Compte enregistré."
+    },
+    "customer": {
+      "title": "Données fiscales",
+      "edit": "Données fiscales",
+      "editing": "Données fiscales de {id}",
+      "taxId": "Identifiant fiscal (VKN/TCKN ou n° de TVA)",
+      "taxOffice": "Centre des impôts",
+      "registered": "Inscrit à e-fatura",
+      "save": "Enregistrer les données fiscales"
+    },
+    "errorKeys": {
+      "einvoice": {
+        "account": {
+          "missing": "Le locataire n'a pas de compte de facturation électronique pour cet environnement.",
+          "invalid": "Les paramètres du compte ne sont pas valides.",
+          "sandbox_mock_only": "L'environnement sandbox ne peut utiliser que le fournisseur mock."
+        },
+        "seller": {
+          "incomplete": "Les données légales de l'entreprise (nom, identifiant fiscal) sont incomplètes."
+        },
+        "buyer": {
+          "incomplete": "Les données fiscales du client sont incomplètes."
+        },
+        "document": {
+          "not_found": "Le document électronique n'existe pas.",
+          "not_failed": "Seul un document en échec peut être réessayé.",
+          "not_issued": "Seul un document émis peut être annulé."
+        },
+        "cancel": {
+          "unsupported": "Ce fournisseur ne peut pas annuler le document."
+        },
+        "file": {
+          "not_ready": "Le fichier n'est pas encore disponible."
+        },
+        "provider": {
+          "rejected": "L'intégrateur a rejeté le document.",
+          "unavailable": "L'intégrateur est injoignable ; nouvel essai prévu."
+        },
+        "setting": {
+          "invalid": "Le paramètre de facturation électronique n'est pas valide."
+        }
+      },
+      "plans": {
+        "customer": {
+          "tax_invalid": "Les données fiscales du client ne sont pas valides."
+        }
       }
     }
   }

@@ -54,3 +54,19 @@ export function useSetCustomerAddress(tenantId: MaybeRefOrGetter<string>) {
     onSuccess: () => queries.invalidateQueries({ queryKey: customerKeys.list(toValue(tenantId)) }),
   });
 }
+
+export interface CustomerTax {
+  tax_id?: string;
+  tax_office?: string;
+  e_invoice_registered?: boolean;
+}
+
+/** Replaces a customer's tax data used on e-invoices; empty values clear them. */
+export function useSetCustomerTax(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { externalId: string; tax: CustomerTax }) =>
+      unwrap(tenantApi(toValue(tenantId)).PUT("/v1/customers/{external_id}/tax", { params: { path: { external_id: v.externalId } }, body: v.tax })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: customerKeys.list(toValue(tenantId)) }),
+  });
+}
