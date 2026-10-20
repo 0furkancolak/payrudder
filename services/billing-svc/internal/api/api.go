@@ -25,6 +25,8 @@ import (
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // PDFSigner presigns downloads of invoice PDFs (pkg/blob.Store).
@@ -82,8 +84,8 @@ func (s *Server) GetInvoicePdfUrl(ctx context.Context, req *billingv1.GetInvoice
 	}
 	var key string
 	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
-		var k *string
-		if err := tx.QueryRow(ctx, `SELECT pdf_object_key FROM invoices WHERE id = $1`, id).Scan(&k); err != nil {
+		k, err := sqlc.New(tx).GetInvoicePDFKey(ctx, id)
+		if err != nil {
 			return err
 		}
 		if k != nil {
@@ -117,63 +119,51 @@ func parseUUID(field, v string) (uuid.UUID, error) {
 	return id, nil
 }
 
-const invoiceColumns = `i.id, i.customer_id, COALESCE(i.snapshot->>'customer_external_id', ''), i.period_id, i.kind, COALESCE(i.number, ''),
-	i.plan_version_id, i.currency, i.subtotal_minor, i.total_minor, i.status, COALESCE(s.state, ''), COALESCE(i.pdf_object_key, ''),
-	i.created_at, i.finalized_at`
+func invoiceProto(r sqlc.GetInvoiceRow) *billingv1.Invoice {
+	inv := &billingv1.Invoice{
+		Id: r.ID.String(), CustomerId: r.CustomerID.String(), CustomerExternalId: r.CustomerExternalID, PeriodId: r.PeriodID, Kind: r.Kind, Number: r.Number,
+		PlanVersionId: r.PlanVersionID.String(), Currency: r.Currency, SubtotalMinor: r.SubtotalMinor, TotalMinor: r.TotalMinor, Status: r.Status,
+		SagaState: r.SagaState, PdfObjectKey: r.PdfObjectKey, CreateTime: timestamppb.New(r.CreatedAt),
+	}
+	if r.FinalizedAt != nil {
+		inv.FinalizeTime = timestamppb.New(*r.FinalizedAt)
+	}
+	return inv
+}
 
-func scanInvoice(row pgx.Row) (*billingv1.Invoice, error) {
-	var inv billingv1.Invoice
-	var created time.Time
-	var finalized *time.Time
-	var id, customer, pv uuid.UUID
-	if err := row.Scan(&id, &customer, &inv.CustomerExternalId, &inv.PeriodId, &inv.Kind, &inv.Number, &pv, &inv.Currency,
-		&inv.SubtotalMinor, &inv.TotalMinor, &inv.Status, &inv.SagaState, &inv.PdfObjectKey, &created, &finalized); err != nil {
-		return nil, err
+func lineProto(r sqlc.ListInvoiceLinesRow) *billingv1.InvoiceLine {
+	l := &billingv1.InvoiceLine{LineNo: r.LineNo, Kind: r.Kind, MeterCode: r.MeterCode, OriginPeriodId: r.OriginPeriodID, AmountMinor: r.AmountMinor, Description: r.Description}
+	if r.ServiceFrom != nil {
+		l.ServiceFrom = timestamppb.New(*r.ServiceFrom)
 	}
-	inv.Id, inv.CustomerId, inv.PlanVersionId = id.String(), customer.String(), pv.String()
-	inv.CreateTime = timestamppb.New(created)
-	if finalized != nil {
-		inv.FinalizeTime = timestamppb.New(*finalized)
+	if r.ServiceTo != nil {
+		l.ServiceTo = timestamppb.New(*r.ServiceTo)
 	}
-	return &inv, nil
+	if r.Quantity != "" && r.QuantityScale != nil {
+		var units int64
+		if err := json.Unmarshal([]byte(r.Quantity), &units); err == nil {
+			l.Quantity = quantity.FormatUnits(units, int(*r.QuantityScale))
+		}
+	}
+	return l
 }
 
 // loadInvoice reads an invoice with its lines in tx (tenant-scoped, or the system's with the invoice id already known).
 func loadInvoice(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*billingv1.Invoice, error) {
-	inv, err := scanInvoice(tx.QueryRow(ctx, `SELECT `+invoiceColumns+` FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
-		WHERE i.id = $1`, id))
+	q := sqlc.New(tx)
+	row, err := q.GetInvoice(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(ctx, `SELECT line_no, kind, COALESCE(meter_code, ''), COALESCE(origin_period_id, ''), quantity::text, quantity_scale, amount_minor, description, service_from, service_to
-		FROM invoice_lines WHERE invoice_id = $1 ORDER BY line_no`, id)
+	inv := invoiceProto(row)
+	lines, err := q.ListInvoiceLines(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var l billingv1.InvoiceLine
-		var qty *string
-		var scale *int16
-		var from, to *time.Time
-		if err := rows.Scan(&l.LineNo, &l.Kind, &l.MeterCode, &l.OriginPeriodId, &qty, &scale, &l.AmountMinor, &l.Description, &from, &to); err != nil {
-			return nil, err
-		}
-		if from != nil {
-			l.ServiceFrom = timestamppb.New(*from)
-		}
-		if to != nil {
-			l.ServiceTo = timestamppb.New(*to)
-		}
-		if qty != nil && scale != nil {
-			var units int64
-			if err := json.Unmarshal([]byte(*qty), &units); err == nil {
-				l.Quantity = quantity.FormatUnits(units, int(*scale))
-			}
-		}
-		inv.Lines = append(inv.Lines, &l)
+	for _, l := range lines {
+		inv.Lines = append(inv.Lines, lineProto(l))
 	}
-	return inv, rows.Err()
+	return inv, nil
 }
 
 // GetInvoice implements billingv1.BillingServiceServer.
@@ -228,30 +218,25 @@ func (s *Server) ListInvoices(ctx context.Context, req *billingv1.ListInvoicesRe
 			return nil, invalid("page_token is invalid")
 		}
 	}
-	resp := &billingv1.ListInvoicesResponse{}
+	var rows []sqlc.ListInvoicesRow
 	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT `+invoiceColumns+` FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
-			WHERE ($1::uuid IS NULL OR i.customer_id = $1) AND ($2 = '' OR i.period_id = $2) AND ($3 = '' OR i.status = $3) AND i.id > $4
-			ORDER BY i.id LIMIT $5`, customer, req.GetPeriodId(), req.GetStatus(), after, size+1)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			inv, err := scanInvoice(rows)
-			if err != nil {
-				return err
-			}
-			if len(resp.Invoices) == size {
-				resp.NextPageToken = resp.Invoices[size-1].Id
-				break
-			}
-			resp.Invoices = append(resp.Invoices, inv)
-		}
-		return rows.Err()
+		var err error
+		rows, err = sqlc.New(tx).ListInvoices(ctx, sqlc.ListInvoicesParams{
+			CustomerID: customer, PeriodID: store.NilIfEmpty(req.GetPeriodId()), Status: store.NilIfEmpty(req.GetStatus()),
+			After: after, PageSize: int32(size + 1), //nolint:gosec // at most 501
+		})
+		return err
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
+	}
+	resp := &billingv1.ListInvoicesResponse{}
+	if len(rows) > size {
+		resp.NextPageToken = rows[size-1].ID.String()
+		rows = rows[:size]
+	}
+	for _, r := range rows {
+		resp.Invoices = append(resp.Invoices, invoiceProto(sqlc.GetInvoiceRow(r)))
 	}
 	return resp, nil
 }
@@ -360,8 +345,7 @@ func (s *Server) GetBillingRun(ctx context.Context, req *billingv1.GetBillingRun
 }
 
 func (s *Server) sagaOf(ctx context.Context, tx pgx.Tx, tid, invoiceID uuid.UUID) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT id FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, tid, invoiceID).Scan(&id)
+	id, err := sqlc.New(tx).GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tid, InvoiceID: invoiceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, status.Error(codes.NotFound, "invoice has no saga (it is not finalized)")
 	}
@@ -369,19 +353,15 @@ func (s *Server) sagaOf(ctx context.Context, tx pgx.Tx, tid, invoiceID uuid.UUID
 }
 
 func (s *Server) sagaProto(ctx context.Context, tid, sagaID uuid.UUID) (*billingv1.InvoiceSaga, error) {
-	var out billingv1.InvoiceSaga
-	var id, inv uuid.UUID
-	var lastErr *string
-	err := s.system.QueryRow(ctx, `SELECT id, invoice_id, state, version, attempt, dunning_attempt, last_error FROM invoice_sagas WHERE tenant_id = $1 AND id = $2`,
-		tid, sagaID).Scan(&id, &inv, &out.State, &out.Version, &out.Attempt, &out.DunningAttempt, &lastErr)
+	row, err := sqlc.New(s.system).GetSaga(ctx, sqlc.GetSagaParams{TenantID: tid, ID: sagaID})
 	if err != nil {
 		return nil, err
 	}
-	out.Id, out.InvoiceId = id.String(), inv.String()
-	if lastErr != nil {
-		out.LastError = *lastErr
+	out := &billingv1.InvoiceSaga{Id: row.ID.String(), InvoiceId: row.InvoiceID.String(), State: row.State, Version: row.Version, Attempt: row.Attempt, DunningAttempt: row.DunningAttempt}
+	if row.LastError != nil {
+		out.LastError = *row.LastError
 	}
-	return &out, nil
+	return out, nil
 }
 
 func (s *Server) drive(ctx context.Context, tidStr, invStr string, ev saga.Event, cause string) (*billingv1.InvoiceSaga, error) {
@@ -529,8 +509,8 @@ func (s *Server) GetInvoiceSaga(ctx context.Context, req *billingv1.GetInvoiceSa
 	if err != nil {
 		return nil, err
 	}
-	var sagaID uuid.UUID
-	err = s.system.QueryRow(ctx, `SELECT id FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, tid, inv).Scan(&sagaID)
+	q := sqlc.New(s.system)
+	sagaID, err := q.GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tid, InvoiceID: inv})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.NotFound, "invoice has no saga (it is not finalized)")
 	}
@@ -541,26 +521,19 @@ func (s *Server) GetInvoiceSaga(ctx context.Context, req *billingv1.GetInvoiceSa
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	rows, err := s.system.Query(ctx, `SELECT seq, from_state, to_state, cause, command_id, at FROM saga_events WHERE tenant_id = $1 AND saga_id = $2 ORDER BY seq`, tid, sagaID)
+	events, err := q.ListSagaEvents(ctx, sqlc.ListSagaEventsParams{TenantID: tid, SagaID: sagaID})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	defer rows.Close()
 	resp := &billingv1.GetInvoiceSagaResponse{Saga: saga}
-	for rows.Next() {
-		var e billingv1.SagaEvent
-		var cmd *uuid.UUID
-		var at time.Time
-		if err := rows.Scan(&e.Seq, &e.FromState, &e.ToState, &e.Cause, &cmd, &at); err != nil {
-			return nil, status.Error(codes.Internal, "internal error")
+	for _, e := range events {
+		ev := &billingv1.SagaEvent{Seq: e.Seq, FromState: e.FromState, ToState: e.ToState, Cause: e.Cause, At: timestamppb.New(e.At)}
+		if e.CommandID != nil {
+			ev.CommandId = e.CommandID.String()
 		}
-		if cmd != nil {
-			e.CommandId = cmd.String()
-		}
-		e.At = timestamppb.New(at)
-		resp.Events = append(resp.Events, &e)
+		resp.Events = append(resp.Events, ev)
 	}
-	return resp, rows.Err()
+	return resp, nil
 }
 
 func dlqErr(err error) error {

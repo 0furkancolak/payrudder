@@ -13,8 +13,6 @@ import (
 	_ "time/tzdata" // tenant time zones must load in distroless images
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -27,6 +25,7 @@ import (
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // Status of a billing run.
@@ -99,6 +98,7 @@ type Config struct {
 // Manager drives billing runs.
 type Manager struct {
 	cfg Config
+	q   *sqlc.Queries
 	log *slog.Logger
 
 	runsDone      metric.Int64Counter
@@ -127,7 +127,7 @@ func NewManager(cfg Config) (*Manager, error) {
 		cfg.Log = slog.Default()
 	}
 	m := otel.Meter("github.com/0furkancolak/quotify/services/billing-svc/runs")
-	mg := &Manager{cfg: cfg, log: cfg.Log}
+	mg := &Manager{cfg: cfg, q: sqlc.New(cfg.Pool), log: cfg.Log}
 	var err error
 	if mg.runsDone, err = m.Int64Counter("billing_runs_completed", metric.WithDescription("Billing runs that reached COMPLETED")); err != nil {
 		return nil, err
@@ -172,20 +172,15 @@ type Run struct {
 	Offsets      map[int32]int64
 }
 
-func scanRun(row pgx.Row) (*Run, error) {
-	var r Run
-	var raw []byte
-	var lastErr *string
-	if err := row.Scan(&r.TenantID, &r.PeriodID, &r.Status, &r.CutoffAt, &r.Generation, &raw, &r.InvoiceCount, &lastErr,
-		&r.CreatedAt, &r.StartedAt, &r.CompletedAt); err != nil {
-		return nil, err
+func runOf(row sqlc.BillingRun) (*Run, error) {
+	r := &Run{TenantID: row.TenantID, PeriodID: row.PeriodID, Status: row.Status, CutoffAt: row.CutoffAt, Generation: row.Generation, InvoiceCount: int(row.InvoiceCount),
+		CreatedAt: row.CreatedAt, StartedAt: row.StartedAt, CompletedAt: row.CompletedAt}
+	if row.LastError != nil {
+		r.LastError = *row.LastError
 	}
-	if lastErr != nil {
-		r.LastError = *lastErr
-	}
-	if len(raw) > 0 && string(raw) != "null" {
+	if len(row.RequiredOffsets) > 0 && string(row.RequiredOffsets) != "null" {
 		m := map[string]int64{}
-		if err := json.Unmarshal(raw, &m); err != nil {
+		if err := json.Unmarshal(row.RequiredOffsets, &m); err != nil {
 			return nil, err
 		}
 		r.Offsets = map[int32]int64{}
@@ -196,42 +191,34 @@ func scanRun(row pgx.Row) (*Run, error) {
 			}
 		}
 	}
-	return &r, nil
+	return r, nil
 }
-
-const runColumns = `tenant_id, period_id, status, cutoff_at, generation, required_offsets, invoice_count, last_error, created_at, started_at, completed_at`
 
 // GetRun returns the run or pgx.ErrNoRows.
 func (m *Manager) GetRun(ctx context.Context, tenantID uuid.UUID, periodID string) (*Run, error) {
-	return scanRun(m.cfg.Pool.QueryRow(ctx, `SELECT `+runColumns+` FROM billing_runs WHERE tenant_id = $1 AND period_id = $2`, tenantID, periodID))
+	row, err := m.q.GetBillingRun(ctx, sqlc.GetBillingRunParams{TenantID: tenantID, PeriodID: periodID})
+	if err != nil {
+		return nil, err
+	}
+	return runOf(row)
 }
 
 // EnsureRun creates the run if it is missing. With lowerCutoff an existing, unfinished run's cutoff is lowered to
 // cutoff (the sandbox early close). It is idempotent per (tenant, period): calling it twice yields one run.
 func (m *Manager) EnsureRun(ctx context.Context, tenantID uuid.UUID, periodID string, cutoff time.Time, lowerCutoff bool) (*Run, error) {
-	if _, err := m.cfg.Pool.Exec(ctx, `INSERT INTO billing_runs (tenant_id, period_id, status, cutoff_at) VALUES ($1,$2,'SCHEDULED',$3)
-		ON CONFLICT (tenant_id, period_id) DO NOTHING`, tenantID, periodID, cutoff); err != nil {
+	if err := m.q.InsertBillingRun(ctx, sqlc.InsertBillingRunParams{TenantID: tenantID, PeriodID: periodID, CutoffAt: cutoff}); err != nil {
 		return nil, err
 	}
 	if lowerCutoff {
-		if _, err := m.cfg.Pool.Exec(ctx, `UPDATE billing_runs SET cutoff_at = LEAST(cutoff_at, $3)
-			WHERE tenant_id = $1 AND period_id = $2 AND status IN ('SCHEDULED','WAITING_WATERMARK')`, tenantID, periodID, cutoff); err != nil {
+		if err := m.q.LowerRunCutoff(ctx, sqlc.LowerRunCutoffParams{CutoffAt: cutoff, TenantID: tenantID, PeriodID: periodID}); err != nil {
 			return nil, err
 		}
 	}
 	return m.GetRun(ctx, tenantID, periodID)
 }
 
-func (m *Manager) setStatus(ctx context.Context, tx pgxQuerier, tenantID uuid.UUID, periodID, status, lastErr string) error {
-	_, err := tx.Exec(ctx, `UPDATE billing_runs SET status = $3, last_error = NULLIF($4, ''),
-		started_at = COALESCE(started_at, CASE WHEN $3 <> 'SCHEDULED' THEN now() END),
-		completed_at = CASE WHEN $3 = 'COMPLETED' THEN now() ELSE completed_at END
-		WHERE tenant_id = $1 AND period_id = $2`, tenantID, periodID, status, lastErr)
-	return err
-}
-
-type pgxQuerier interface {
-	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+func (m *Manager) setStatus(ctx context.Context, run *Run, status, lastErr string) error {
+	return m.q.SetRunStatus(ctx, sqlc.SetRunStatusParams{Status: status, LastError: lastErr, TenantID: run.TenantID, PeriodID: run.PeriodID})
 }
 
 // permanent marks an error that retrying cannot fix: the run goes to FAILED for the operator.
@@ -247,9 +234,10 @@ func (m *Manager) withLock(ctx context.Context, tenantID uuid.UUID, periodID str
 		return false, err
 	}
 	defer conn.Release()
-	var got bool
+	q := sqlc.New(conn)
 	key := tenantID.String() + "|" + periodID
-	if err := conn.QueryRow(ctx, `SELECT pg_try_advisory_lock(hashtextextended($1, 0))`, key).Scan(&got); err != nil {
+	got, err := q.TryRunLock(ctx, key)
+	if err != nil {
 		return false, err
 	}
 	if !got {
@@ -257,7 +245,7 @@ func (m *Manager) withLock(ctx context.Context, tenantID uuid.UUID, periodID str
 	}
 	defer func() {
 		// A cancelled ctx must not leave the lock behind on a pooled connection.
-		_, _ = conn.Exec(context.WithoutCancel(ctx), `SELECT pg_advisory_unlock(hashtextextended($1, 0))`, key)
+		_ = q.ReleaseRunLock(context.WithoutCancel(ctx), key)
 	}()
 	return true, fn(ctx)
 }
@@ -304,14 +292,14 @@ func (m *Manager) step(ctx context.Context, run *Run) (bool, error) {
 		if now.Before(run.CutoffAt.Add(m.cfg.WatermarkDelay)) {
 			return false, nil
 		}
-		return true, m.setStatus(ctx, m.cfg.Pool, run.TenantID, run.PeriodID, WaitingWatermark, "")
+		return true, m.setStatus(ctx, run, WaitingWatermark, "")
 	case WaitingWatermark:
 		ok, err := m.watermark(ctx, run)
 		if err != nil || !ok {
 			return false, err
 		}
 		m.watermarkSecs.Record(ctx, max(0, now.Sub(run.CutoffAt).Seconds()))
-		return true, m.setStatus(ctx, m.cfg.Pool, run.TenantID, run.PeriodID, Rating, "")
+		return true, m.setStatus(ctx, run, Rating, "")
 	case Rating:
 		start := time.Now()
 		if err := m.rate(ctx, run); err != nil {
@@ -319,28 +307,28 @@ func (m *Manager) step(ctx context.Context, run *Run) (bool, error) {
 			if isTransient(err) {
 				return false, err
 			}
-			return false, m.setStatus(ctx, m.cfg.Pool, run.TenantID, run.PeriodID, Failed, err.Error())
+			return false, m.setStatus(ctx, run, Failed, err.Error())
 		}
 		m.runStageSecs.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attribute.String("stage", "rating")))
-		return true, m.setStatus(ctx, m.cfg.Pool, run.TenantID, run.PeriodID, Invoicing, "")
+		return true, m.setStatus(ctx, run, Invoicing, "")
 	case Invoicing:
 		done, err := m.invoice(ctx, run)
 		if err != nil || !done {
 			return false, err
 		}
 		m.runsDone.Add(ctx, 1)
-		return true, m.setStatus(ctx, m.cfg.Pool, run.TenantID, run.PeriodID, Completed, "")
+		return true, m.setStatus(ctx, run, Completed, "")
 	}
 	return false, fmt.Errorf("unknown run status %q", run.Status)
 }
 
 // RetryRun puts a FAILED run back to RATING (operator retry). Drafts already created are kept.
 func (m *Manager) RetryRun(ctx context.Context, tenantID uuid.UUID, periodID string) error {
-	tag, err := m.cfg.Pool.Exec(ctx, `UPDATE billing_runs SET status = 'RATING', last_error = NULL WHERE tenant_id = $1 AND period_id = $2 AND status = 'FAILED'`, tenantID, periodID)
+	n, err := m.q.RetryFailedRun(ctx, sqlc.RetryFailedRunParams{TenantID: tenantID, PeriodID: periodID})
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
+	if n == 0 {
 		return errors.New("run is not FAILED")
 	}
 	return nil

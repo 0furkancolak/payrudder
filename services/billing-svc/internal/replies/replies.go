@@ -20,6 +20,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // Consumer applies replies to sagas.
@@ -75,11 +76,12 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 	kind := string(ev)
 	var applied bool
 	err := pgxx.InTx(ctx, c.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx, `INSERT INTO inbox_replies (message_id) VALUES ($1) ON CONFLICT DO NOTHING`, replyID)
+		q := sqlc.New(tx)
+		fresh, err := q.InsertInboxReply(ctx, replyID)
 		if err != nil {
 			return err
 		}
-		if tag.RowsAffected() == 0 {
+		if fresh == 0 {
 			c.duplicates.Add(ctx, 1, metric.WithAttributes(attribute.String("kind", kind)))
 			return nil
 		}
@@ -93,8 +95,7 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 		}
 		applied = out.Applied
 		if out.Applied && ev == saga.EvPdfRendered {
-			_, err = tx.Exec(ctx, `UPDATE invoices SET pdf_object_key = $3 WHERE tenant_id = $1
-				AND id = (SELECT invoice_id FROM invoice_sagas WHERE tenant_id = $1 AND id = $2)`, tenantID, sagaID, reply.GetPdfRendered().GetObjectKey())
+			err = q.SetInvoicePDFKeyBySaga(ctx, sqlc.SetInvoicePDFKeyBySagaParams{PdfObjectKey: reply.GetPdfRendered().GetObjectKey(), TenantID: tenantID, SagaID: sagaID})
 		}
 		return err
 	})

@@ -9,28 +9,15 @@ import (
 
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // invoice finalizes every draft of the run (number, open, saga started) and reports whether the run is complete:
 // all its invoices' sagas reached COMPLETED or VOIDED.
 func (m *Manager) invoice(ctx context.Context, run *Run) (bool, error) {
 	for {
-		rows, err := m.cfg.Pool.Query(ctx, `SELECT id FROM invoices WHERE tenant_id = $1 AND period_id = $2 AND kind = 'REGULAR' AND status = 'draft'
-			ORDER BY id LIMIT $3`, run.TenantID, run.PeriodID, m.cfg.PageSize)
+		ids, err := m.q.ListDraftInvoiceIDsOfRun(ctx, sqlc.ListDraftInvoiceIDsOfRunParams{TenantID: run.TenantID, PeriodID: run.PeriodID, PageSize: int32(m.cfg.PageSize)}) //nolint:gosec // small
 		if err != nil {
-			return false, err
-		}
-		var ids []uuid.UUID
-		for rows.Next() {
-			var id uuid.UUID
-			if err := rows.Scan(&id); err != nil {
-				rows.Close()
-				return false, err
-			}
-			ids = append(ids, id)
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
 			return false, err
 		}
 		if len(ids) == 0 {
@@ -42,11 +29,8 @@ func (m *Manager) invoice(ctx context.Context, run *Run) (bool, error) {
 			}
 		}
 	}
-	var open int
-	if err := m.cfg.Pool.QueryRow(ctx, `
-		SELECT count(*) FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
-		WHERE i.tenant_id = $1 AND i.period_id = $2 AND i.kind = 'REGULAR' AND (s.state IS NULL OR s.state NOT IN ('COMPLETED','VOIDED'))`,
-		run.TenantID, run.PeriodID).Scan(&open); err != nil {
+	open, err := m.q.CountUnsettledInvoicesOfRun(ctx, sqlc.CountUnsettledInvoicesOfRunParams{TenantID: run.TenantID, PeriodID: run.PeriodID})
+	if err != nil {
 		return false, err
 	}
 	return open == 0, nil
@@ -56,39 +40,35 @@ func (m *Manager) invoice(ctx context.Context, run *Run) (bool, error) {
 // transaction: a rollback leaves neither a number consumed nor a saga behind. Finalizing a finalized invoice is a no-op.
 func (m *Manager) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) error {
 	return pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		var status, env, currency, period, external string
-		var total int64
-		var customer uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT status, snapshot->>'environment', currency, period_id, total_minor, customer_id, COALESCE(snapshot->>'customer_external_id', '') FROM invoices
-			WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, tenantID, invoiceID).Scan(&status, &env, &currency, &period, &total, &customer, &external)
+		q := m.q.WithTx(tx)
+		inv, err := q.LockInvoiceForFinalize(ctx, sqlc.LockInvoiceForFinalizeParams{TenantID: tenantID, ID: invoiceID})
 		if err != nil {
 			return err
 		}
-		if status != "draft" {
+		if inv.Status != "draft" {
 			return nil
 		}
 		now := m.cfg.Now()
-		year := now.UTC().Year()
-		if _, err := tx.Exec(ctx, `INSERT INTO invoice_number_seq (tenant_id, year, next_value) VALUES ($1,$2,1) ON CONFLICT DO NOTHING`, tenantID, year); err != nil {
+		year := int32(now.UTC().Year()) //nolint:gosec // a calendar year
+		if err := q.EnsureInvoiceNumberSeq(ctx, sqlc.EnsureInvoiceNumberSeqParams{TenantID: tenantID, Year: year}); err != nil {
 			return err
 		}
-		var seq int64
-		if err := tx.QueryRow(ctx, `SELECT next_value FROM invoice_number_seq WHERE tenant_id = $1 AND year = $2 FOR UPDATE`, tenantID, year).Scan(&seq); err != nil {
+		seq, err := q.LockInvoiceNumberSeq(ctx, sqlc.LockInvoiceNumberSeqParams{TenantID: tenantID, Year: year})
+		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE invoice_number_seq SET next_value = next_value + 1 WHERE tenant_id = $1 AND year = $2`, tenantID, year); err != nil {
+		if err := q.BumpInvoiceNumberSeq(ctx, sqlc.BumpInvoiceNumberSeqParams{TenantID: tenantID, Year: year}); err != nil {
 			return err
 		}
-		number := Number(env, year, seq)
-		if _, err := tx.Exec(ctx, `UPDATE invoices SET number = $3, status = 'open', finalized_at = $4 WHERE tenant_id = $1 AND id = $2`,
-			tenantID, invoiceID, number, now); err != nil {
+		number := Number(inv.Environment, int(year), seq)
+		if err := q.OpenInvoice(ctx, sqlc.OpenInvoiceParams{Number: number, FinalizedAt: now, TenantID: tenantID, ID: invoiceID}); err != nil {
 			return err
 		}
-		if err := saga.FinalizedFact(ctx, tx, now, tenantID, invoiceID, customer, period, number, currency, total); err != nil {
+		if err := saga.FinalizedFact(ctx, tx, now, tenantID, invoiceID, inv.CustomerID, inv.PeriodID, number, inv.Currency, inv.TotalMinor); err != nil {
 			return err
 		}
 		if err := saga.TenantEvent(ctx, tx, tenantID, saga.EventInvoiceFinalized, invoiceID.String(), now,
-			saga.InvoiceData(invoiceID, customer, external, number, period, currency, total, "open")); err != nil {
+			saga.InvoiceData(invoiceID, inv.CustomerID, inv.CustomerExternalID, number, inv.PeriodID, inv.Currency, inv.TotalMinor, "open")); err != nil {
 			return err
 		}
 		_, err = m.cfg.Engine.Start(ctx, tx, tenantID, invoiceID)

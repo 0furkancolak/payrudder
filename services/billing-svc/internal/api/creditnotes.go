@@ -17,6 +17,8 @@ import (
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 var refundStates = map[string]billingv1.RefundState{
@@ -68,9 +70,7 @@ func (s *Server) CreateCreditNote(ctx context.Context, req *billingv1.CreateCred
 	case err != nil:
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	var external string
-	_ = s.system.QueryRow(ctx, `SELECT COALESCE(snapshot->>'customer_external_id', '') FROM invoices WHERE tenant_id = $1 AND id = $2`, tid, iid).Scan(&external)
-	return &billingv1.CreateCreditNoteResponse{CreditNote: creditNoteProto(cn, external)}, nil
+	return &billingv1.CreateCreditNoteResponse{CreditNote: creditNoteProto(cn, s.customerExternalID(ctx, tid, iid))}, nil
 }
 
 // RetryCreditNoteRefund implements billingv1.BillingAdminServiceServer.
@@ -95,23 +95,20 @@ func (s *Server) RetryCreditNoteRefund(ctx context.Context, req *billingv1.Retry
 	case err != nil:
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	var external string
-	_ = s.system.QueryRow(ctx, `SELECT COALESCE(snapshot->>'customer_external_id', '') FROM invoices WHERE tenant_id = $1 AND id = $2`, tid, cn.InvoiceID).Scan(&external)
-	return &billingv1.RetryCreditNoteRefundResponse{CreditNote: creditNoteProto(cn, external)}, nil
+	return &billingv1.RetryCreditNoteRefundResponse{CreditNote: creditNoteProto(cn, s.customerExternalID(ctx, tid, cn.InvoiceID))}, nil
 }
 
-//nolint:gosec // a SQL select, not a credential
-const creditNoteSelect = `SELECT c.id, c.customer_id, c.invoice_id, c.number, COALESCE(i.number, ''), c.currency, c.total_minor, c.reason, c.created_at,
-	COALESCE(i.snapshot->>'customer_external_id', ''), c.disposition = 'refund', c.refund_state, COALESCE(c.refund_error, '')
-	FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id`
+// customerExternalID is best effort: a credit note that was just written is returned even if the lookup fails.
+func (s *Server) customerExternalID(ctx context.Context, tenantID, invoiceID uuid.UUID) string {
+	external, _ := sqlc.New(s.system).GetInvoiceCustomerExternalID(ctx, sqlc.GetInvoiceCustomerExternalIDParams{TenantID: tenantID, ID: invoiceID})
+	return external
+}
 
-func scanCreditNote(row pgx.Row) (*billingv1.CreditNote, error) {
-	var c runs.CreditNote
-	var external string
-	if err := row.Scan(&c.ID, &c.CustomerID, &c.InvoiceID, &c.Number, &c.InvoiceNumber, &c.Currency, &c.TotalMinor, &c.Reason, &c.CreatedAt, &external, &c.Refund, &c.RefundState, &c.RefundError); err != nil {
-		return nil, err
-	}
-	return creditNoteProto(&c, external), nil
+func creditNoteRowProto(r sqlc.GetCreditNoteRow) *billingv1.CreditNote {
+	return creditNoteProto(&runs.CreditNote{
+		ID: r.ID, CustomerID: r.CustomerID, InvoiceID: r.InvoiceID, Number: r.Number, InvoiceNumber: r.InvoiceNumber, Currency: r.Currency, TotalMinor: r.TotalMinor,
+		Reason: r.Reason, CreatedAt: r.CreatedAt, Refund: r.Refund, RefundState: r.RefundState, RefundError: r.RefundError,
+	}, r.CustomerExternalID)
 }
 
 // GetCreditNote implements billingv1.BillingServiceServer.
@@ -126,8 +123,12 @@ func (s *Server) GetCreditNote(ctx context.Context, req *billingv1.GetCreditNote
 	}
 	var out *billingv1.CreditNote
 	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
-		out, err = scanCreditNote(tx.QueryRow(ctx, creditNoteSelect+` WHERE c.id = $1`, id))
-		return err
+		row, err := sqlc.New(tx).GetCreditNote(ctx, id)
+		if err != nil {
+			return err
+		}
+		out = creditNoteRowProto(row)
+		return nil
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.NotFound, "credit note not found")
@@ -151,13 +152,13 @@ func (s *Server) ListCreditNotes(ctx context.Context, req *billingv1.ListCreditN
 	case size < 0 || size > 200:
 		return nil, invalid("page_size must be 1..200")
 	}
-	var invoice any
+	var invoice *uuid.UUID
 	if v := req.GetInvoiceId(); v != "" {
 		id, err := uuid.Parse(v)
 		if err != nil {
 			return nil, invalid("invoice_id must be a UUID")
 		}
-		invoice = id
+		invoice = &id
 	}
 	// The token is the created_at and id of the last note of the previous page.
 	after, afterID := time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC), uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")
@@ -171,26 +172,19 @@ func (s *Server) ListCreditNotes(ctx context.Context, req *billingv1.ListCreditN
 			return nil, invalid("page_token is not one this API gave")
 		}
 	}
-	resp := &billingv1.ListCreditNotesResponse{}
+	var rows []sqlc.ListCreditNotesRow
 	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, creditNoteSelect+` WHERE ($1::uuid IS NULL OR c.invoice_id = $1) AND ($2 = '' OR i.snapshot->>'customer_external_id' = $2)
-			AND (c.created_at, c.id) < ($3, $4) ORDER BY c.created_at DESC, c.id DESC LIMIT $5`,
-			invoice, req.GetCustomerExternalId(), after, afterID, size+1)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			c, err := scanCreditNote(rows)
-			if err != nil {
-				return err
-			}
-			resp.CreditNotes = append(resp.CreditNotes, c)
-		}
-		return rows.Err()
+		var err error
+		rows, err = sqlc.New(tx).ListCreditNotes(ctx, sqlc.ListCreditNotesParams{
+			InvoiceID: invoice, CustomerExternalID: store.NilIfEmpty(req.GetCustomerExternalId()), AfterAt: after, AfterID: afterID, PageSize: size + 1})
+		return err
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
+	}
+	resp := &billingv1.ListCreditNotesResponse{}
+	for _, r := range rows {
+		resp.CreditNotes = append(resp.CreditNotes, creditNoteRowProto(sqlc.GetCreditNoteRow(r)))
 	}
 	if len(resp.CreditNotes) > int(size) {
 		resp.CreditNotes = resp.CreditNotes[:size]

@@ -3,15 +3,14 @@ package runs
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // Events is the part of plans-svc's WebhookService billing uses: plans-svc owns the tenant's endpoints and delivers the events.
@@ -25,40 +24,21 @@ func (m *Manager) FlushTenantEvents(ctx context.Context) error {
 	if m.cfg.Events == nil {
 		return nil
 	}
-	type pending struct {
-		tenant, id uuid.UUID
-		typ        string
-		data       []byte
-		at         time.Time
-	}
-	rows, err := m.cfg.Pool.Query(ctx, `SELECT tenant_id, event_id, type, data, occurred_at FROM tenant_event_outbox ORDER BY created_at LIMIT 200`)
+	batch, err := m.q.ListTenantEvents(ctx)
 	if err != nil {
 		return err
 	}
-	var batch []pending
-	for rows.Next() {
-		var p pending
-		if err := rows.Scan(&p.tenant, &p.id, &p.typ, &p.data, &p.at); err != nil {
-			rows.Close()
-			return err
-		}
-		batch = append(batch, p)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return err
-	}
 	for _, p := range batch {
-		_, err := m.cfg.Events.RecordTenantEvent(tenantCtx(ctx, p.tenant), &plansv1.RecordTenantEventRequest{
-			EventId: p.id.String(), Type: p.typ, DataJson: string(p.data), OccurredTime: timestamppb.New(p.at)})
+		_, err := m.cfg.Events.RecordTenantEvent(tenantCtx(ctx, p.TenantID), &plansv1.RecordTenantEventRequest{
+			EventId: p.EventID.String(), Type: p.Type, DataJson: string(p.Data), OccurredTime: timestamppb.New(p.OccurredAt)})
 		switch status.Code(err) {
 		case codes.OK:
 		case codes.InvalidArgument:
-			m.log.WarnContext(ctx, "tenant event dropped: plans-svc refused it", "tenant", p.tenant, "event", p.id, "type", p.typ, "error", err)
+			m.log.WarnContext(ctx, "tenant event dropped: plans-svc refused it", "tenant", p.TenantID, "event", p.EventID, "type", p.Type, "error", err)
 		default:
-			return fmt.Errorf("record tenant event %s: %w", p.id, err)
+			return fmt.Errorf("record tenant event %s: %w", p.EventID, err)
 		}
-		if _, err := m.cfg.Pool.Exec(ctx, `DELETE FROM tenant_event_outbox WHERE tenant_id = $1 AND event_id = $2`, p.tenant, p.id); err != nil {
+		if err := m.q.DeleteTenantEvent(ctx, sqlc.DeleteTenantEventParams{TenantID: p.TenantID, EventID: p.EventID}); err != nil {
 			return err
 		}
 	}

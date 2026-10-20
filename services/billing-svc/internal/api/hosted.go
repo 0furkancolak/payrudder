@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 const defaultLinkDays = 90
@@ -51,16 +53,15 @@ func (s *Server) CreateInvoiceLink(ctx context.Context, req *billingv1.CreateInv
 	token := base64.RawURLEncoding.EncodeToString(raw)
 	expires := time.Now().Add(time.Duration(days) * 24 * time.Hour)
 	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
-		var invStatus string
-		if err := tx.QueryRow(ctx, `SELECT status FROM invoices WHERE id = $1`, id).Scan(&invStatus); err != nil {
+		q := sqlc.New(tx)
+		invStatus, err := q.GetInvoiceStatus(ctx, id)
+		if err != nil {
 			return err
 		}
 		if invStatus == "draft" {
 			return errkey.New(codes.FailedPrecondition, "billing.invoice_link.draft_invoice", "a draft invoice has no number yet and cannot be shared")
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO invoice_links (tenant_id, id, invoice_id, token_hash, expires_at) VALUES ($1,$2,$3,$4,$5)`,
-			ti.ID, uuid.New(), id, tokenHash(token), expires)
-		return err
+		return q.InsertInvoiceLink(ctx, sqlc.InsertInvoiceLinkParams{TenantID: ti.ID, ID: uuid.New(), InvoiceID: id, TokenHash: tokenHash(token), ExpiresAt: expires})
 	})
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -85,15 +86,15 @@ func (s *Server) RevokeInvoiceLinks(ctx context.Context, req *billingv1.RevokeIn
 	}
 	var n int64
 	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
-		var exists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM invoices WHERE id = $1)`, id).Scan(&exists); err != nil {
+		q := sqlc.New(tx)
+		exists, err := q.InvoiceExists(ctx, id)
+		if err != nil {
 			return err
 		}
 		if !exists {
 			return pgx.ErrNoRows
 		}
-		tag, err := tx.Exec(ctx, `UPDATE invoice_links SET revoked_at = now() WHERE invoice_id = $1 AND revoked_at IS NULL`, id)
-		n = tag.RowsAffected()
+		n, err = q.RevokeInvoiceLinks(ctx, id)
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -113,15 +114,14 @@ func (s *Server) linkedInvoice(ctx context.Context, token string) (tenantID, inv
 	if len(token) < 20 || len(token) > 100 {
 		return uuid.Nil, uuid.Nil, time.Time{}, errNoLink
 	}
-	err = s.system.QueryRow(ctx, `SELECT tenant_id, invoice_id, expires_at FROM invoice_links WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()`,
-		tokenHash(token)).Scan(&tenantID, &invoiceID, &expires)
+	link, err := sqlc.New(s.system).FindActiveInvoiceLink(ctx, tokenHash(token))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, uuid.Nil, time.Time{}, errNoLink
 	}
 	if err != nil {
 		return uuid.Nil, uuid.Nil, time.Time{}, status.Error(codes.Internal, "internal error")
 	}
-	return tenantID, invoiceID, expires, nil
+	return link.TenantID, link.InvoiceID, link.ExpiresAt, nil
 }
 
 // GetHostedInvoice implements billingv1.HostedInvoiceServiceServer.
@@ -136,8 +136,9 @@ func (s *Server) GetHostedInvoice(ctx context.Context, req *billingv1.GetHostedI
 		if resp.Invoice, err = loadInvoice(ctx, tx, invoiceID); err != nil {
 			return err
 		}
-		return tx.QueryRow(ctx, `SELECT COALESCE(snapshot->>'tenant_name', ''), COALESCE(snapshot->>'customer_name', ''), COALESCE((snapshot->>'currency_exponent')::int, 2)
-			FROM invoices WHERE id = $1`, invoiceID).Scan(&resp.SellerName, &resp.CustomerName, &resp.CurrencyExponent)
+		fields, err := sqlc.New(tx).GetInvoiceHostedFields(ctx, invoiceID)
+		resp.SellerName, resp.CustomerName, resp.CurrencyExponent = fields.SellerName, fields.CustomerName, fields.CurrencyExponent
+		return err
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
@@ -145,15 +146,13 @@ func (s *Server) GetHostedInvoice(ctx context.Context, req *billingv1.GetHostedI
 	if resp.Invoice.Status == "draft" {
 		return nil, errNoLink
 	}
-	var snap struct {
-		Seller   []string `json:"seller_address"`
-		Customer []string `json:"customer_address"`
-	}
-	if err := s.system.QueryRow(ctx, `SELECT COALESCE(snapshot->'seller_address', '[]'), COALESCE(snapshot->'customer_address', '[]') FROM invoices WHERE id = $1`, invoiceID).
-		Scan(&snap.Seller, &snap.Customer); err != nil {
+	addresses, err := sqlc.New(s.system).GetInvoiceAddresses(ctx, invoiceID)
+	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	resp.SellerAddressLines, resp.CustomerAddressLines = snap.Seller, snap.Customer
+	if err := errors.Join(json.Unmarshal(addresses.SellerAddress, &resp.SellerAddressLines), json.Unmarshal(addresses.CustomerAddress, &resp.CustomerAddressLines)); err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
 	resp.PdfAvailable = resp.Invoice.PdfObjectKey != "" && s.pdfs != nil
 	resp.Invoice.PdfObjectKey = "" // the visitor gets a link, not a storage key
 	return resp, nil
@@ -168,8 +167,8 @@ func (s *Server) GetHostedInvoicePdfUrl(ctx context.Context, req *billingv1.GetH
 	if s.pdfs == nil {
 		return nil, status.Error(codes.Unimplemented, "object storage is not configured")
 	}
-	var key *string
-	if err := s.system.QueryRow(ctx, `SELECT pdf_object_key FROM invoices WHERE id = $1`, invoiceID).Scan(&key); err != nil {
+	key, err := sqlc.New(s.system).GetInvoicePDFKey(ctx, invoiceID)
+	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	if key == nil || *key == "" {
