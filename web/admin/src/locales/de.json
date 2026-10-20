@@ -75,12 +75,28 @@
     "ledgerSource": {
       "command": "Quotify",
       "webhook": "Anbieter-Benachrichtigung",
-      "reconciliation": "Abgleich"
+      "reconciliation": "Abgleich",
+      "manual": "von Hand erfasst"
     },
     "dunningState": {
       "PAYMENT_DECLINED": "abgelehnt, Wiederholung läuft",
       "PAYMENT_UNKNOWN": "Ergebnis unbekannt",
       "UNCOLLECTIBLE": "aufgegeben"
+    },
+    "sagaState": {
+      "PAYMENT_PENDING": "wartet auf Überweisung"
+    },
+    "paymentMethod": {
+      "bank_transfer": "Banküberweisung",
+      "cash": "Bar",
+      "other": "Sonstiges"
+    },
+    "transferState": {
+      "none": "keine Überweisung",
+      "pending": "wartet auf das Geld",
+      "paid": "bezahlt",
+      "expired": "abgelaufen",
+      "rejected": "abgelehnt"
     }
   },
   "tenants": {
@@ -152,6 +168,75 @@
       "copy": "Kopieren",
       "revoked": "Alle Links zu dieser Rechnung wurden widerrufen.",
       "badDays": "Tage: eine ganze Zahl von 1 bis 365."
+    },
+    "payment": {
+      "record": "Zahlung erfassen",
+      "confirmTransfer": "Banküberweisung bestätigen",
+      "offlineHint": "Erfassen Sie Geld, das außerhalb von Quotify eingegangen ist (Überweisung, Bargeld, Sonstiges). Teilbeträge sind erlaubt: Die Rechnung ist bezahlt, sobald die Zahlungen die Summe erreichen.",
+      "transferHint": "Bestätigen Sie, was auf dem Kontoauszug eingegangen ist. Ein Teilbetrag wird erfasst; die Rechnung ist bezahlt, sobald die Überweisungen die Summe erreichen.",
+      "method": "Zahlungsart",
+      "amount": "Betrag ({currency})",
+      "amountHint": "Voreingestellt ist der offene Betrag ({outstanding}). Mehr wird abgelehnt.",
+      "receivedAt": "Eingegangen",
+      "reference": "Referenz",
+      "referenceHint": "Optional. Dieselbe Referenz noch einmal gilt als dieselbe Zahlung.",
+      "bankReference": "Bankreferenz",
+      "bankReferenceHint": "Die Transaktions- oder Auszugsreferenz der Bank. Pflicht: So ist eine Wiederholung harmlos.",
+      "note": "Notiz",
+      "cancel": "Abbrechen",
+      "submit": "Zahlung erfassen",
+      "confirmSubmit": "Überweisung bestätigen",
+      "badAmount": "Kein Betrag in {currency}: nur Ziffern, größer als null, mit höchstens so vielen Nachkommastellen wie die Währung.",
+      "badDate": "Das Eingangsdatum muss ein gültiges Datum mit Uhrzeit sein und darf nicht in der Zukunft liegen.",
+      "needReference": "Die Bankreferenz ist erforderlich.",
+      "listTitle": "Von Hand erfasste Zahlungen",
+      "columns": {
+        "method": "Zahlungsart",
+        "amount": "Betrag",
+        "receivedAt": "Eingegangen",
+        "reference": "Referenz",
+        "note": "Notiz",
+        "recordedBy": "Erfasst von"
+      },
+      "toast": {
+        "paid": "Rechnung bezahlt: {received} eingegangen.",
+        "partly": "Teilweise bezahlt: {received} eingegangen, {outstanding} noch offen.",
+        "duplicate": "Diese Zahlung war bereits erfasst."
+      }
+    },
+    "transfer": {
+      "title": "Banküberweisung",
+      "reference": "Verwendungszweck",
+      "bank": "Bank",
+      "holder": "Kontoinhaber",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "total": "Rechnungssumme",
+      "received": "Eingegangen",
+      "outstanding": "Offen",
+      "pendingSince": "Wartet seit",
+      "expiresAt": "Zahlungsfrist endet",
+      "receipts": "Eingegangene Überweisungen",
+      "receiptColumns": {
+        "receivedAt": "Eingegangen",
+        "amount": "Betrag",
+        "bankReference": "Bankreferenz",
+        "note": "Notiz",
+        "recordedBy": "Erfasst von"
+      },
+      "reject": "Ablehnen",
+      "expire": "Als abgelaufen markieren",
+      "rejectTitle": "Banküberweisung ablehnen",
+      "expireTitle": "Banküberweisung als abgelaufen markieren",
+      "rejectHint": "Verwenden Sie dies, wenn die Überweisung des Kunden zurückgewiesen wurde oder nicht mehr kommt. Die Rechnung gilt nicht als bezahlt, und der Mahnplan des Mandanten greift sofort: eine neue Zahlungsfrist oder uneinbringlich, wenn kein Versuch mehr übrig ist. Bereits erfasste Eingänge bleiben bestehen.",
+      "expireHint": "Verwenden Sie dies, wenn die Zahlungsfrist ohne das Geld abgelaufen ist. Die Rechnung gilt nicht als bezahlt, und der Mahnplan des Mandanten greift sofort: eine neue Zahlungsfrist oder uneinbringlich, wenn kein Versuch mehr übrig ist. Bereits erfasste Eingänge bleiben bestehen.",
+      "reason": "Grund (optional)",
+      "expiredNote": "Die Zahlungsfrist ist ohne den vollen Betrag abgelaufen. Der Mahnplan greift.",
+      "rejectedNote": "Die Überweisung wurde abgelehnt. Der Mahnplan greift.",
+      "toast": {
+        "rejected": "Überweisung abgelehnt. Der Mahnplan greift.",
+        "expired": "Überweisung als abgelaufen markiert. Der Mahnplan greift."
+      }
     }
   },
   "deadLetters": {
@@ -461,6 +546,31 @@
         "kind": "Art",
         "key": "Name in Quotify",
         "empty": "Bei diesem Anbieter wurde noch nichts angelegt."
+      },
+      "bank": {
+        "title": "Konto für Banküberweisungen",
+        "sandboxNote": "Sandbox-Zahlungen erreichen diesen Anbieter nie (der Mock-Zahlungsanbieter übernimmt sie). Speichern Sie das Konto in live, um es zu nutzen.",
+        "bankName": "Name der Bank",
+        "accountHolder": "Kontoinhaber",
+        "iban": "IBAN",
+        "ibanHint": "Leerzeichen und Bindestriche werden entfernt, Buchstaben groß geschrieben; die Prüfziffern werden geprüft.",
+        "bic": "BIC (optional)",
+        "referenceTemplate": "Verwendungszweck (optional)",
+        "referenceHint": "Was der Kunde auf die Überweisung schreibt. {number} und {id} stehen zur Verfügung; Standard ist die Rechnungsnummer.",
+        "currencies": "Währungen",
+        "currenciesHint": "Die Währungen, die dieses Konto empfängt. Keine gewählt: alle Währungen.",
+        "windowDays": "Zahlungsfrist (Tage)",
+        "windowHint": "Wie lange auf das Geld gewartet wird, 0 bis 90. 0 oder leer verwendet den Standard der Installation.",
+        "errors": {
+          "required": "Pflichtfeld.",
+          "empty": "Pflichtfeld.",
+          "length": "Eine IBAN hat 15 bis 34 Zeichen.",
+          "format": "Eine IBAN besteht aus zwei Buchstaben, zwei Ziffern, dann Buchstaben und Ziffern.",
+          "checksum": "Die Prüfziffern stimmen nicht: Suchen Sie einen Tippfehler.",
+          "badBic": "Eine BIC hat 8 oder 11 Buchstaben und Ziffern.",
+          "badTemplate": "In geschweiften Klammern dürfen nur {number} und {id} stehen.",
+          "badWindow": "Eine ganze Zahl von 0 bis 90 Tagen."
+        }
       }
     },
     "reports": {
@@ -616,6 +726,36 @@
         "pending": "Ausstehend",
         "delivered": "Zugestellt",
         "failed": "Fehlgeschlagen"
+      }
+    }
+  },
+  "errors": {
+    "payments": {
+      "transfer": {
+        "not_a_transfer": "Diese Rechnung wurde nicht per Banküberweisung belastet. Verwenden Sie stattdessen Zahlung erfassen.",
+        "invoice_closed": "Die Rechnung ist bereits bezahlt oder storniert.",
+        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
+        "bad_currency": "Die Währung weicht von der der Rechnung ab.",
+        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag und klären Sie den Rest außerhalb von Quotify.",
+        "reference_reused": "Diese Bankreferenz wurde bereits mit einem anderen Betrag erfasst.",
+        "bad_reference": "Die Bankreferenz fehlt oder ist ungültig.",
+        "bad_note": "Die Notiz ist zu lang (höchstens 500 Zeichen).",
+        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
+        "nothing_pending": "Es gibt keine ausstehende Überweisung, die abgelehnt werden könnte.",
+        "bad_outcome": "Das Ergebnis muss abgelehnt oder abgelaufen sein.",
+        "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal."
+      }
+    },
+    "billing": {
+      "payment": {
+        "bad_method": "Die Zahlungsart muss Banküberweisung, Bar oder Sonstiges sein.",
+        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
+        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
+        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag.",
+        "already_paid": "Die Rechnung ist bereits bezahlt.",
+        "invoice_not_payable": "Nur eine offene oder uneinbringliche Rechnung kann von Hand bezahlt werden.",
+        "not_payable": "Der Zahlungsstatus der Rechnung erlaubt gerade keine manuelle Zahlung.",
+        "reference_reused": "Diese Referenz wurde bereits mit einem anderen Betrag erfasst."
       }
     }
   }

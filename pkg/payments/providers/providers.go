@@ -6,13 +6,15 @@ import (
 	"sort"
 
 	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
 	"github.com/0furkancolak/quotify/pkg/payments/iyzico"
 	"github.com/0furkancolak/quotify/pkg/payments/paddle"
 )
 
 var catalogue = map[string]payments.Capabilities{
-	iyzico.Name: iyzico.Caps(),
-	paddle.Name: paddle.Caps(),
+	banktransfer.Name: banktransfer.Caps(),
+	iyzico.Name:       iyzico.Caps(),
+	paddle.Name:       paddle.Caps(),
 }
 
 // Lookup returns the capabilities of a provider by name.

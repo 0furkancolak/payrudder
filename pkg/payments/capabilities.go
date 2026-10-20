@@ -173,6 +173,15 @@ type SubscriptionEvent struct {
 	PriceRefs []string
 }
 
+// ManualCollector is a provider whose payments the merchant confirms by hand (a bank transfer): Charge only tells the customer how to pay and returns a
+// *PendingError, nothing is ever sent to the provider, and the outcome is whatever the operator records in the ledger. Quotify therefore waits for it for a
+// payment window and gives up (declines) when it passes. A charge of such a provider has no side effect, so a redelivered one needs no Status call first.
+type ManualCollector interface {
+	Provider
+	// PaymentWindow is how long a pending payment may wait for the money; zero means the deployment's default.
+	PaymentWindow() time.Duration
+}
+
 // PendingError is returned by a charge the provider accepted but has not settled: the outcome arrives as a notification. It is not a failure,
 // and it must not be retried; Quotify asks Status (which finds the notification's outcome in the ledger).
 type PendingError struct{ Ref string }

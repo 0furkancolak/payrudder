@@ -1,6 +1,6 @@
 # Roadmap
 
-12 core phases of ~1 week each for one developer, one optional phase, and phases 13–28 for the [billing platform](../14-billing-platform.md). Each phase ends with green CI and an
+12 core phases of ~1 week each for one developer, one optional phase, and phases 13–29 for the [billing platform](../14-billing-platform.md). Each phase ends with green CI and an
 updated `docs/` (design changes discovered while building are written back into the docs in the same PR).
 
 | # | Phase | Goal (short) | Depends on | Key proof | Status |
@@ -34,6 +34,7 @@ updated `docs/` (design changes discovered while building are written back into 
 | 26 | [Demo mode and mail by provider](phase-26-demo-and-mail.md) | One-command demo, mail only for payments Quotify ran | 24 | Demo populated in one command; iyzico payments mail, Paddle's do not | done, without a per-tenant mail switch |
 | 27 | [Development, Kubernetes, memory, edge](phase-27-dev-and-operations.md) | `make setup`/`make dev`, one-command k8s install, memory budgets, cacheable reads | 24 | Two commands to a dev stack; chart installs on kind; budgets enforced | done, memory budgets are limits, not enforced measurements |
 | 28 | [Cells](phase-28-cells.md) | Tenant directory, schema-per-tenant mode, converted jobs, fenced moves | 24, 25 | Suites pass in both modes; cross-tenant read test; no row lost in a move | planned, staged |
+| 29 | [Bank transfer](phase-29-bank-transfer.md) | `banktransfer` provider, manual receipts, offline payments, bank details on invoices | 14, 22, 23 | A transfer invoice goes pending → paid on a receipt; an unpaid one follows dunning | built; not run against a real bank |
 
 ```mermaid
 flowchart LR

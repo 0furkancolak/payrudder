@@ -99,6 +99,7 @@ type recPlans struct {
 	aborted    []string                                    // migrations aborted
 	completion *plansv1.CompleteProviderMigrationResponse  // what CompleteProviderMigration answers
 	startErr   error
+	bank       []*plansv1.BankTransferDetails // what SetBankTransfer saw, in order
 
 	versions  map[string]*plansv1.PlanVersion // by plan code (GetPlanVersion by code) or id
 	customers map[string]*plansv1.Customer    // by external id
@@ -147,6 +148,17 @@ func (r *recPlans) CompleteProviderMigration(_ context.Context, _ uuid.UUID, req
 		return r.completion, nil
 	}
 	return &plansv1.CompleteProviderMigrationResponse{Subscription: &plansv1.Subscription{Id: "22222222-2222-2222-2222-222222222222"}}, nil
+}
+
+// SetBankTransfer records the bank details handed to plans-svc; nil is a clear.
+func (r *recPlans) SetBankTransfer(_ context.Context, _ uuid.UUID, d *plansv1.BankTransferDetails) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.fail {
+		return errors.New("plans-svc is down")
+	}
+	r.bank = append(r.bank, d)
+	return nil
 }
 
 func (r *recPlans) AbortProviderMigration(_ context.Context, _ uuid.UUID, id string) error {

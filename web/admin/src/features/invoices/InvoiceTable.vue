@@ -38,7 +38,7 @@ const invoices = useTenantInvoices(() => props.tenantId);
         <TableCell>{{ inv.customer_external_id }}</TableCell>
         <TableCell class="text-end font-medium tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
         <TableCell><Badge :variant="statusVariant(inv.status)">{{ label(t, te, "invoiceStatus", inv.status) }}</Badge></TableCell>
-        <TableCell><Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ inv.saga_state }}</Badge></TableCell>
+        <TableCell><Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ label(t, te, "sagaState", inv.saga_state) }}</Badge></TableCell>
       </TableRow>
     </TableBody>
   </Table>

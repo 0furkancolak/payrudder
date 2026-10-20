@@ -2,7 +2,10 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,6 +63,52 @@ func (fakeBilling) RetryInvoiceSaga(_ context.Context, req *billingv1.RetryInvoi
 
 func (fakeBilling) VoidInvoice(_ context.Context, req *billingv1.VoidInvoiceRequest) (*billingv1.VoidInvoiceResponse, error) {
 	return &billingv1.VoidInvoiceResponse{Saga: &billingv1.InvoiceSaga{InvoiceId: req.GetInvoiceId(), State: "VOIDED"}}, nil
+}
+
+// RecordInvoicePayment answers what the gateway passed, so a test can see the actor and the ids it set.
+func (fakeBilling) RecordInvoicePayment(_ context.Context, req *billingv1.RecordInvoicePaymentRequest) (*billingv1.RecordInvoicePaymentResponse, error) {
+	if req.GetReference() == "again" {
+		return &billingv1.RecordInvoicePaymentResponse{Duplicate: true, Payment: &billingv1.InvoicePayment{Id: "p1"}}, nil
+	}
+	return &billingv1.RecordInvoicePaymentResponse{Payment: &billingv1.InvoicePayment{Id: "p1", InvoiceId: req.GetInvoiceId(), Method: req.GetMethod(), AmountMinor: req.GetAmountMinor(),
+		RecordedBy: req.GetActor()}, PaidMinor: req.GetAmountMinor()}, nil
+}
+
+func TestRecordInvoicePaymentTakesTheActorFromTheHeaderAndNeedsTheOperator(t *testing.T) {
+	ts, _ := newTestServer(t)
+	body := `{"tenant_id":"t1","method":"cash","amount_minor":"500","reference":"r1"}`
+	if resp, _ := do(t, ts, "POST", "/admin/v1/invoices/i1/payments", "live-key", body); resp.StatusCode != 401 {
+		t.Fatalf("a tenant key on an operator route: %d", resp.StatusCode)
+	}
+	resp, m := do(t, ts, "POST", "/admin/v1/invoices/i1/payments", operatorToken, body)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("record: %d %v", resp.StatusCode, m)
+	}
+	p, _ := m["payment"].(map[string]any)
+	if p["invoice_id"] != "i1" || p["method"] != "cash" || p["amount_minor"] != "500" || p["recorded_by"] != "operator" {
+		t.Fatalf("payment = %v; the path decides the invoice and a missing actor header is \"operator\"", p)
+	}
+	req, _ := http.NewRequest("POST", ts.URL+"/admin/v1/invoices/i1/payments", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+operatorToken)
+	req.Header.Set("X-Quotify-Actor", "  alice@example.com ")
+	r2, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = r2.Body.Close() }()
+	var m2 map[string]any
+	_ = json.NewDecoder(r2.Body).Decode(&m2)
+	if got := m2["payment"].(map[string]any)["recorded_by"]; got != "alice@example.com" {
+		t.Errorf("actor = %v, want the trimmed X-Quotify-Actor header", got)
+	}
+	if resp, m := do(t, ts, "POST", "/admin/v1/invoices/i1/payments", operatorToken, `{"tenant_id":"t1","method":"cash","amount_minor":"500","reference":"again"}`); resp.StatusCode != 200 || m["duplicate"] != true {
+		t.Errorf("a repeat: %d %v; want 200 with duplicate", resp.StatusCode, m)
+	}
+	long := httptest.NewRequest("POST", "/", nil)
+	long.Header.Set("X-Quotify-Actor", strings.Repeat("é", 200))
+	if got := []rune(actorOf(long)); len(got) != 120 {
+		t.Errorf("actor length = %d, want it cut to 120 characters", len(got))
+	}
 }
 
 func TestInvoices(t *testing.T) {

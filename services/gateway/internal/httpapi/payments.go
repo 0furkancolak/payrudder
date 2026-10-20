@@ -100,6 +100,14 @@ func (s *Server) providerAPI(w http.ResponseWriter, r *http.Request) {
 	})(w, r)
 }
 
+// invoiceTransfer forwards the bank transfer endpoints of an invoice (its state, a confirmed receipt, a rejection) to payments-worker. The caller's
+// X-Quotify-Actor header travels with it: it is who the receipt is recorded for.
+func (s *Server) invoiceTransfer(w http.ResponseWriter, r *http.Request) {
+	s.paymentsProxy(func(r *http.Request) string {
+		return "/admin" + strings.TrimPrefix(r.URL.Path, "/admin/v1")
+	})(w, r)
+}
+
 func (s *Server) paymentReconciliation(w http.ResponseWriter, r *http.Request) {
 	s.paymentsProxy(func(r *http.Request) string {
 		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/reconciliation"

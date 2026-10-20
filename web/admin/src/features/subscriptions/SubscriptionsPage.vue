@@ -3,7 +3,7 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { toApiError, type Subscription } from "@/shared/api/client";
-import { CURRENCIES, PROVIDERS } from "@/shared/lib/currencies";
+import { CURRENCIES, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { enumWord, label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { useCustomers } from "@/features/customers";
@@ -106,7 +106,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
       <Input v-model="trialDays" type="number" min="0" max="365" :aria-label="t('billing.subscriptions.trialDays')" :placeholder="t('billing.subscriptions.trialDays')" />
       <NativeSelect v-model="provider" :aria-label="t('billing.subscriptions.provider')">
         <option value="">{{ t("billing.subscriptions.byRules") }}</option>
-        <option v-for="p in PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
+        <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
       </NativeSelect>
       <Input v-model="coupon" :aria-label="t('billing.subscriptions.coupon.code')" :placeholder="t('billing.subscriptions.coupon.code')" />
       <Button type="submit" class="sm:col-span-2 lg:col-span-7" :disabled="act.create.isPending.value">{{ t("billing.subscriptions.create") }}</Button>
@@ -215,7 +215,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
     <div v-if="!selected.end_time" class="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
       <NativeSelect v-model="target" :aria-label="t('billing.subscriptions.moveTo')">
         <option value="" disabled>{{ t("billing.subscriptions.moveTo") }}</option>
-        <option v-for="p in PROVIDERS" :key="p.name" :value="p.name" :disabled="p.name === selected.provider">{{ p.name }}</option>
+        <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name" :disabled="p.name === selected.provider">{{ p.name }}</option>
       </NativeSelect>
       <Input v-if="targetRunsSubscriptions" v-model="priceRef" :aria-label="t('billing.subscriptions.priceRef')" :placeholder="t('billing.subscriptions.priceRef')" />
       <span v-else />

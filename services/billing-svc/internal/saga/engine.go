@@ -23,6 +23,7 @@ import (
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/kafkax"
 	"github.com/0furkancolak/quotify/pkg/outbox"
+	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
 	"github.com/0furkancolak/quotify/pkg/quantity"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
@@ -59,7 +60,32 @@ type Snapshot struct {
 	// The postal addresses as printed lines, frozen when the draft was made.
 	SellerAddress   []string `json:"seller_address,omitempty"`
 	CustomerAddress []string `json:"customer_address,omitempty"`
+	// BankTransfer are the tenant's bank details, for an invoice whose provider is a bank transfer; frozen when the draft was made. The payment reference
+	// is worked out from the template and the invoice number.
+	BankTransfer *BankTransfer `json:"bank_transfer,omitempty"`
 }
+
+// BankTransfer is where an invoice is paid by bank transfer.
+type BankTransfer struct {
+	BankName          string `json:"bank_name"`
+	AccountHolder     string `json:"account_holder"`
+	IBAN              string `json:"iban"`
+	BIC               string `json:"bic,omitempty"`
+	ReferenceTemplate string `json:"reference_template,omitempty"`
+}
+
+// Instructions are the bank details with the payment reference of an invoice, or nil when the invoice is not paid by bank transfer.
+func (s Snapshot) Instructions(number string, invoiceID uuid.UUID) *BankInstructions {
+	b := s.BankTransfer
+	if b == nil {
+		return nil
+	}
+	return &BankInstructions{BankName: b.BankName, AccountHolder: b.AccountHolder, IBAN: b.IBAN, BIC: b.BIC,
+		Reference: banktransfer.Reference(b.ReferenceTemplate, number, invoiceID.String())}
+}
+
+// BankInstructions are the bank details and the reference the customer writes on the transfer.
+type BankInstructions struct{ BankName, AccountHolder, IBAN, BIC, Reference string }
 
 // Config tunes an Engine.
 type Config struct {
@@ -69,8 +95,14 @@ type Config struct {
 	// Dunning are the delays before payment retry 1..3, per environment.
 	DunningLive    []time.Duration
 	DunningSandbox []time.Duration
-	Log            *slog.Logger
+	// TransferPoll is how often the status of a payment that settles later (a bank transfer) is asked for (default 6 hours). A receipt an operator confirms
+	// does not wait for it: payments-worker nudges the saga.
+	TransferPoll time.Duration
+	Log          *slog.Logger
 }
+
+// DefaultTransferPoll is how often a pending bank transfer is looked for in the ledger when nobody has nudged the saga.
+const DefaultTransferPoll = 6 * time.Hour
 
 // DefaultDunningLive is +1 d, +3 d, +7 d; DefaultDunningSandbox compresses them to minutes (ADR 0011).
 var (
@@ -96,6 +128,9 @@ func NewEngine(cfg Config) (*Engine, error) {
 	}
 	if len(cfg.DunningLive) == 0 {
 		cfg.DunningLive = DefaultDunningLive
+	}
+	if cfg.TransferPoll <= 0 {
+		cfg.TransferPoll = DefaultTransferPoll
 	}
 	if len(cfg.DunningSandbox) == 0 {
 		cfg.DunningSandbox = DefaultDunningSandbox
@@ -235,6 +270,14 @@ func (e *Engine) planStep(s *saga, ev Event, res Result, now time.Time) step {
 		delays := e.dunningDelays(s)
 		at := now.Add(delays[min(s.DunningAttempt, len(delays)-1)]) // the table only schedules while DunningLeft, so delays is not empty
 		st.nextAttemptAt = &at
+	case EffSchedulePoll, EffAwaitTransfer:
+		// Nothing is outstanding while a payment is awaited: no step deadline, only the time of the next poll. The instructions mail is a command of its own
+		// (a new attempt, so a new command id) whose reply nobody waits for.
+		if res.Effect == EffAwaitTransfer {
+			st.attempt++
+		}
+		at := now.Add(e.cfg.TransferPoll)
+		st.nextAttemptAt = &at
 	}
 	if ev == EvExhausted {
 		st.lastErr = "step timed out after " + fmt.Sprint(MaxStepAttempts) + " attempts"
@@ -266,7 +309,7 @@ func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, r
 	if err := e.mirrorInvoiceStatus(ctx, tx, s, from, next); err != nil {
 		return err
 	}
-	if res.Effect != EffNone && res.Effect != EffScheduleDunning {
+	if res.Effect != EffNone && res.Effect != EffScheduleDunning && res.Effect != EffSchedulePoll {
 		if err := e.issue(ctx, tx, s, res.Effect); err != nil {
 			return err
 		}
@@ -378,7 +421,7 @@ func (e *Engine) issue(ctx context.Context, tx pgx.Tx, s *saga, eff Effect) erro
 	case EffCharge, EffChargeDunning:
 		step, route = "charge", rabbitx.QueuePaymentCharge
 		env.Command = &commandsv1.CommandEnvelope_ChargePayment{ChargePayment: &commandsv1.ChargePayment{
-			InvoiceId: s.InvoiceID.String(), AmountMinor: s.TotalMinor, Currency: s.Currency, PaymentMethod: s.Snap.PaymentMethod, Provider: s.Snap.Provider,
+			InvoiceId: s.InvoiceID.String(), InvoiceNumber: s.Number, AmountMinor: s.TotalMinor, Currency: s.Currency, PaymentMethod: s.Snap.PaymentMethod, Provider: s.Snap.Provider,
 			DunningAttempt: int32(s.DunningAttempt), IdempotencyKey: ChargeKey(s.InvoiceID, s.DunningAttempt), //nolint:gosec // 0..3
 		}}
 	case EffQueryStatus:
@@ -393,6 +436,9 @@ func (e *Engine) issue(ctx context.Context, tx pgx.Tx, s *saga, eff Effect) erro
 	case EffNotify:
 		step, route = "notify", rabbitx.QueueNotificationSend
 		env.Command = &commandsv1.CommandEnvelope_SendNotification{SendNotification: e.notification(s)}
+	case EffAwaitTransfer:
+		step, route = "notify", rabbitx.QueueNotificationSend
+		env.Command = &commandsv1.CommandEnvelope_SendNotification{SendNotification: e.transferNotification(s)}
 	default:
 		return fmt.Errorf("saga: unknown effect %q", eff)
 	}
@@ -480,9 +526,13 @@ func (e *Engine) notification(s *saga) *commandsv1.SendNotification {
 		tmpl = "payment_failed.v1"
 	}
 	amount := quantity.FormatUnits(s.TotalMinor, s.Snap.CurrencyExponent)
-	return &commandsv1.SendNotification{Template: tmpl, To: s.Snap.CustomerEmail, Data: map[string]string{
+	data := map[string]string{
 		"invoice_number": s.Number, "invoice_id": s.InvoiceID.String(), "period": s.PeriodID, "amount": amount,
 		"currency": s.Currency, "customer_name": s.Snap.CustomerName, "tenant_name": s.Snap.TenantName,
 		"sandbox": fmt.Sprint(s.Snap.Environment == "sandbox"),
-	}}
+	}
+	if tmpl == "payment_failed.v1" {
+		instructionData(s, data) // a customer who did not pay by transfer is told once more where to
+	}
+	return &commandsv1.SendNotification{Template: tmpl, To: s.Snap.CustomerEmail, Data: data}
 }

@@ -1,6 +1,6 @@
 -- name: AppendLedger :execrows
-INSERT INTO payment_ledger (tenant_id, invoice_id, provider, environment, kind, status, amount_minor, currency, provider_ref, idempotency_key, source, detail)
-VALUES (@tenant_id, @invoice_id, @provider, @environment, @kind, @status, @amount_minor, @currency, @provider_ref, @idempotency_key, @source, @detail)
+INSERT INTO payment_ledger (tenant_id, invoice_id, provider, environment, kind, status, amount_minor, currency, provider_ref, idempotency_key, source, detail, occurred_at)
+VALUES (@tenant_id, @invoice_id, @provider, @environment, @kind, @status, @amount_minor, @currency, @provider_ref, @idempotency_key, @source, @detail, COALESCE(sqlc.narg('occurred_at')::timestamptz, now()))
 ON CONFLICT DO NOTHING;
 
 -- name: ListLedger :many

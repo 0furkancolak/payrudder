@@ -46,6 +46,24 @@ func TestPDFIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestBankDetailsAndReferenceArePrinted(t *testing.T) {
+	plain, _ := PDF(snapshot(), Options{})
+	if bytes.Contains(plain, []byte("bank transfer")) {
+		t.Fatal("an invoice that is not paid by transfer has no bank block")
+	}
+	s := snapshot()
+	s.PaymentInstructions = &commandsv1.PaymentInstructions{BankName: "Example Bank", AccountHolder: "Acme Ltd", Iban: "TR330006100519786457841326", Bic: "TCZBTR2A", Reference: "INV-2026-000001"}
+	pdf, err := PDF(s, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Pay by bank transfer", "Example Bank", "Acme Ltd", "TR33 0006 1005 1978 6457 8413 26", "TCZBTR2A", "Payment reference", "INV-2026-000001"} {
+		if !bytes.Contains(pdf, []byte(want)) {
+			t.Errorf("the PDF lacks %q", want)
+		}
+	}
+}
+
 func TestSandboxWatermark(t *testing.T) {
 	live, _ := PDF(snapshot(), Options{})
 	sb, err := PDF(snapshot(), Options{Sandbox: true})

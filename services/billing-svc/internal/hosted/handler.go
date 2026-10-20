@@ -88,6 +88,10 @@ func (h *Handler) GetHostedInvoice(ctx context.Context, req *billingv1.GetHosted
 		CurrencyExponent: inv.CurrencyExponent, SellerAddressLines: inv.SellerAddressLines, CustomerAddressLines: inv.CustomerAddressLines, PdfAvailable: inv.PDFAvailable,
 	}
 	resp.Invoice.PdfObjectKey = "" // the visitor gets a link, not a storage key
+	resp.Invoice.Payments = nil    // what an operator recorded is the tenant's business
+	if in := inv.PaymentInstructions; in != nil {
+		resp.PaymentInstructions = &billingv1.BankTransferInstructions{BankName: in.BankName, AccountHolder: in.AccountHolder, Iban: in.IBAN, Bic: in.BIC, Reference: in.Reference}
+	}
 	return resp, nil
 }
 

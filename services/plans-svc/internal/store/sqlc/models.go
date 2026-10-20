@@ -236,6 +236,7 @@ type Tenant struct {
 	InvoiceLogoAssetID *uuid.UUID
 	AppID              uuid.UUID
 	Address            json.RawMessage
+	BankTransfer       json.RawMessage
 }
 
 type WebhookDelivery struct {

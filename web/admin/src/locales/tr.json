@@ -75,12 +75,28 @@
     "ledgerSource": {
       "command": "Quotify",
       "webhook": "sağlayıcı bildirimi",
-      "reconciliation": "mutabakat"
+      "reconciliation": "mutabakat",
+      "manual": "elle kaydedildi"
     },
     "dunningState": {
       "PAYMENT_DECLINED": "reddedildi, yeniden deneniyor",
       "PAYMENT_UNKNOWN": "sonuç bilinmiyor",
       "UNCOLLECTIBLE": "vazgeçildi"
+    },
+    "sagaState": {
+      "PAYMENT_PENDING": "havale bekleniyor"
+    },
+    "paymentMethod": {
+      "bank_transfer": "Banka havalesi",
+      "cash": "Nakit",
+      "other": "Diğer"
+    },
+    "transferState": {
+      "none": "havale yok",
+      "pending": "para bekleniyor",
+      "paid": "ödendi",
+      "expired": "süresi doldu",
+      "rejected": "reddedildi"
     }
   },
   "tenants": {
@@ -152,6 +168,75 @@
       "copy": "Kopyala",
       "revoked": "Bu faturanın tüm bağlantıları iptal edildi.",
       "badDays": "Gün: 1 ile 365 arasında bir tam sayı."
+    },
+    "payment": {
+      "record": "Ödeme kaydet",
+      "confirmTransfer": "Banka havalesini onayla",
+      "offlineHint": "Quotify dışında alınan parayı kaydedin (havale, nakit, diğer). Kısmi tutar girilebilir: ödemeler toplamı fatura tutarına ulaşınca fatura ödenmiş olur.",
+      "transferHint": "Banka ekstresine geçeni onaylayın. Kısmi tutar kaydedilir; havaleler toplamı fatura tutarına ulaşınca fatura ödenmiş olur.",
+      "method": "Yöntem",
+      "amount": "Tutar ({currency})",
+      "amountHint": "Varsayılan, kalan tutardır ({outstanding}). Fazlası reddedilir.",
+      "receivedAt": "Alındığı zaman",
+      "reference": "Referans",
+      "referenceHint": "İsteğe bağlı. Aynı referans yeniden girilirse aynı ödeme sayılır.",
+      "bankReference": "Banka referansı",
+      "bankReferenceHint": "Bankanın işlem veya ekstre referansı. Zorunludur: tekrarı zararsız kılar.",
+      "note": "Not",
+      "cancel": "Vazgeç",
+      "submit": "Ödemeyi kaydet",
+      "confirmSubmit": "Havaleyi onayla",
+      "badAmount": "{currency} cinsinden geçerli bir tutar değil: yalnızca rakam, sıfırdan büyük ve para biriminin ondalık basamağından fazla olmamalı.",
+      "badDate": "Alındığı zaman geçerli bir tarih ve saat olmalı, gelecekte olamaz.",
+      "needReference": "Banka referansı zorunludur.",
+      "listTitle": "Elle kaydedilen ödemeler",
+      "columns": {
+        "method": "Yöntem",
+        "amount": "Tutar",
+        "receivedAt": "Alındı",
+        "reference": "Referans",
+        "note": "Not",
+        "recordedBy": "Kaydeden"
+      },
+      "toast": {
+        "paid": "Fatura ödendi: {received} alındı.",
+        "partly": "Kısmen ödendi: {received} alındı, {outstanding} hâlâ kalıyor.",
+        "duplicate": "Bu ödeme daha önce kaydedilmişti."
+      }
+    },
+    "transfer": {
+      "title": "Banka havalesi",
+      "reference": "Ödeme referansı",
+      "bank": "Banka",
+      "holder": "Hesap sahibi",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "total": "Fatura toplamı",
+      "received": "Alınan",
+      "outstanding": "Kalan",
+      "pendingSince": "Beklemeye başladı",
+      "expiresAt": "Ödeme süresi bitiyor",
+      "receipts": "Alınan havaleler",
+      "receiptColumns": {
+        "receivedAt": "Alındı",
+        "amount": "Tutar",
+        "bankReference": "Banka referansı",
+        "note": "Not",
+        "recordedBy": "Kaydeden"
+      },
+      "reject": "Reddet",
+      "expire": "Süresi doldu olarak işaretle",
+      "rejectTitle": "Banka havalesini reddet",
+      "expireTitle": "Banka havalesini süresi doldu olarak işaretle",
+      "rejectHint": "Müşterinin havalesi geri çevrildiyse veya gelmeyecekse kullanın. Fatura ödenmiş sayılmaz ve kiracının tahsilat takvimi hemen işler: yeni bir ödeme süresi ya da deneme kalmadıysa tahsil edilemez. Daha önce kaydedilen alındılar korunur.",
+      "expireHint": "Ödeme süresi para gelmeden bittiyse kullanın. Fatura ödenmiş sayılmaz ve kiracının tahsilat takvimi hemen işler: yeni bir ödeme süresi ya da deneme kalmadıysa tahsil edilemez. Daha önce kaydedilen alındılar korunur.",
+      "reason": "Neden (isteğe bağlı)",
+      "expiredNote": "Ödeme süresi tutarın tamamı gelmeden bitti. Tahsilat takvimi işler.",
+      "rejectedNote": "Havale reddedildi. Tahsilat takvimi işler.",
+      "toast": {
+        "rejected": "Havale reddedildi. Tahsilat takvimi işler.",
+        "expired": "Havale süresi doldu olarak işaretlendi. Tahsilat takvimi işler."
+      }
     }
   },
   "deadLetters": {
@@ -461,6 +546,31 @@
         "kind": "Tür",
         "key": "Quotify adı",
         "empty": "Bu sağlayıcıda henüz bir şey oluşturulmadı."
+      },
+      "bank": {
+        "title": "Banka havalesi hesabı",
+        "sandboxNote": "Sandbox ödemeleri bu sağlayıcıya hiç ulaşmaz (sahte ödeme sağlayıcısı karşılar). Kullanmak için hesabı live ortamına kaydedin.",
+        "bankName": "Banka adı",
+        "accountHolder": "Hesap sahibi",
+        "iban": "IBAN",
+        "ibanHint": "Boşluk ve tireler silinir, harfler büyütülür; kontrol basamakları doğrulanır.",
+        "bic": "BIC (isteğe bağlı)",
+        "referenceTemplate": "Ödeme referansı (isteğe bağlı)",
+        "referenceHint": "Müşterinin havaleye yazacağı metin. {number} ve {id} kullanılabilir; varsayılan fatura numarasıdır.",
+        "currencies": "Para birimleri",
+        "currenciesHint": "Bu hesabın tahsil ettiği para birimleri. Hiçbiri seçilmezse hepsi.",
+        "windowDays": "Ödeme süresi (gün)",
+        "windowHint": "Paranın ne kadar bekleneceği, 0 ile 90 arası. 0 veya boş, dağıtımın varsayılanını kullanır.",
+        "errors": {
+          "required": "Zorunlu.",
+          "empty": "Zorunlu.",
+          "length": "IBAN 15 ile 34 karakter arasındadır.",
+          "format": "IBAN iki harf, iki rakam ve ardından harf ve rakamlardan oluşur.",
+          "checksum": "Kontrol basamakları tutmuyor: yazım hatası olabilir.",
+          "badBic": "BIC 8 veya 11 harf ve rakamdan oluşur.",
+          "badTemplate": "Süslü parantez içinde yalnızca {number} ve {id} olabilir.",
+          "badWindow": "0 ile 90 arasında tam sayı gün."
+        }
       }
     },
     "reports": {
@@ -616,6 +726,36 @@
         "pending": "Bekliyor",
         "delivered": "Teslim edildi",
         "failed": "Başarısız"
+      }
+    }
+  },
+  "errors": {
+    "payments": {
+      "transfer": {
+        "not_a_transfer": "Bu fatura banka havalesiyle tahsil edilmedi. Bunun yerine Ödeme kaydet'i kullanın.",
+        "invoice_closed": "Fatura zaten ödenmiş veya iptal edilmiş.",
+        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
+        "bad_currency": "Para birimi faturanınkinden farklı.",
+        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin, fazlasını Quotify dışında halledin.",
+        "reference_reused": "Bu banka referansı farklı bir tutarla zaten kaydedilmiş.",
+        "bad_reference": "Banka referansı eksik veya geçersiz.",
+        "bad_note": "Not çok uzun (en fazla 500 karakter).",
+        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
+        "nothing_pending": "Reddedilecek bekleyen bir havale yok.",
+        "bad_outcome": "Sonuç reddedildi veya süresi doldu olmalı.",
+        "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin."
+      }
+    },
+    "billing": {
+      "payment": {
+        "bad_method": "Yöntem banka havalesi, nakit veya diğer olmalı.",
+        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
+        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
+        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin.",
+        "already_paid": "Fatura zaten ödenmiş.",
+        "invoice_not_payable": "Yalnızca açık veya tahsil edilemeyen bir fatura elle ödenebilir.",
+        "not_payable": "Faturanın ödeme durumu şu an elle ödemeye izin vermiyor.",
+        "reference_reused": "Bu referans farklı bir tutarla zaten kaydedilmiş."
       }
     }
   }

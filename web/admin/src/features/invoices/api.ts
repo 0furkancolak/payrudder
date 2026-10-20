@@ -6,6 +6,7 @@ export const invoiceKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "invoices"] as const,
   detail: (tenantId: string, invoiceId: string) => ["tenants", tenantId, "invoices", invoiceId] as const,
   saga: (tenantId: string, invoiceId: string) => ["tenants", tenantId, "invoices", invoiceId, "saga"] as const,
+  transfer: (tenantId: string, invoiceId: string) => ["tenants", tenantId, "invoices", invoiceId, "transfer"] as const,
 };
 
 export function useTenantInvoices(tenantId: MaybeRefOrGetter<string>) {
