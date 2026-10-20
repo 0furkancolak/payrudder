@@ -130,7 +130,8 @@
       "description": "Descripción",
       "meter": "Medidor",
       "quantity": "Cantidad",
-      "amount": "Importe"
+      "amount": "Importe",
+      "period": "Periodo de servicio"
     },
     "saga": "Cronología de la saga",
     "sagaColumns": {
@@ -227,7 +228,8 @@
       "subscriptions": "Suscripciones",
       "payments": "Pagos",
       "providers": "Proveedores",
-      "reports": "Informes"
+      "reports": "Informes",
+      "pricing": "Cupones e impuestos"
     },
     "common": {
       "remove": "Quitar"
@@ -351,6 +353,12 @@
         "atPeriodEnd": "Pausar al final del periodo pagado",
         "paymentLink": "Enlace del método de pago",
         "requested": "Solicitado. Esta página se actualiza cuando el proveedor lo confirma."
+      },
+      "coupon": {
+        "label": "Cupón",
+        "code": "Código de cupón",
+        "apply": "Aplicar cupón",
+        "remove": "Quitar cupón"
       }
     },
     "payments": {
@@ -466,7 +474,66 @@
       "attempt": "Reintentos",
       "nextAttempt": "Próximo intento",
       "empty": "Aún no hay nada que informar.",
-      "noDunning": "No hay facturas impagadas."
+      "noDunning": "No hay facturas impagadas.",
+      "credited": "Acreditado"
+    },
+    "pricing": {
+      "coupons": {
+        "title": "Cupones",
+        "hint": "Un cupón descuenta un porcentaje o un importe de la cuota fija que Quotify factura por adelantado: una vez, durante unos periodos o mientras dure la suscripción. Una suscripción gestionada por un proveedor usa en su lugar un descuento del proveedor.",
+        "formLabel": "nuevo cupón",
+        "code": "Código",
+        "name": "Nombre",
+        "kind": "Tipo",
+        "percent": "Porcentaje",
+        "amount": "Importe",
+        "value": "Valor (10 o 12,5 / 4,99)",
+        "currency": "Moneda",
+        "duration": "Duración",
+        "once": "Solo la primera cuota",
+        "repeating": "Un número de cuotas",
+        "forever": "Todas las cuotas",
+        "periods": "Cuotas",
+        "max": "Límite de canjes",
+        "create": "Crear cupón",
+        "deactivate": "Desactivar",
+        "active": "Activo",
+        "inactive": "Inactivo",
+        "redeemed": "Canjeado",
+        "empty": "Aún no hay cupones.",
+        "badPercent": "No es un porcentaje: de 0,01 a 100 con como mucho dos decimales.",
+        "badAmount": "No es un importe en {currency}: solo dígitos, con como mucho los decimales de la moneda.",
+        "repeatingFor": "Primeras {n} cuotas"
+      },
+      "tax": {
+        "title": "Impuestos",
+        "hint": "Quotify suma estas tasas al precio en las facturas que emite, según el país del cliente (la tasa sin país cubre los demás). Usted fija las tasas y responde de ellas; una factura emitida por un proveedor la grava el proveedor.",
+        "country": "País {n}",
+        "anyCountry": "Todos los demás países",
+        "name": "Nombre {n}",
+        "namePlaceholder": "IVA",
+        "percent": "Tasa {n} (%)",
+        "rate": "Tasa {n}",
+        "add": "Añadir tasa",
+        "save": "Guardar tasas",
+        "saved": "Tasas guardadas.",
+        "none": "No se añade ningún impuesto.",
+        "badRate": "No es un porcentaje: de 0 a 100 con como mucho dos decimales."
+      }
+    },
+    "creditNotes": {
+      "title": "Notas de crédito",
+      "formLabel": "nueva nota de crédito",
+      "amount": "Importe",
+      "amountPlaceholder": "Importe (vacío: todo lo que queda)",
+      "reason": "Motivo",
+      "create": "Emitir nota de crédito",
+      "number": "Número",
+      "invoice": "Factura",
+      "customer": "Cliente",
+      "date": "Fecha",
+      "empty": "No hay notas de crédito.",
+      "badAmount": "No es un importe en {currency}: solo dígitos, con como mucho los decimales de la moneda."
     }
   }
 }

@@ -12,6 +12,7 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { PageHeader } from "@/shared/ui/page-header";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
 import { useInvoice, useInvoiceSaga, useOpenPdf } from "./api";
 
 const { t, te, locale } = useI18n();
@@ -23,6 +24,7 @@ const invoice = useInvoice(tenantId, invoiceId);
 const saga = useInvoiceSaga(tenantId, invoiceId);
 const pdf = useOpenPdf(tenantId, invoiceId);
 const inv = computed(() => invoice.data.value);
+const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "");
 </script>
 
 <template>
@@ -59,6 +61,7 @@ const inv = computed(() => invoice.data.value);
           <TableHead>{{ t("invoice.lineColumns.no") }}</TableHead>
           <TableHead>{{ t("invoice.lineColumns.kind") }}</TableHead>
           <TableHead>{{ t("invoice.lineColumns.description") }}</TableHead>
+          <TableHead>{{ t("invoice.lineColumns.period") }}</TableHead>
           <TableHead>{{ t("invoice.lineColumns.meter") }}</TableHead>
           <TableHead class="text-end">{{ t("invoice.lineColumns.quantity") }}</TableHead>
           <TableHead class="text-end">{{ t("invoice.lineColumns.amount") }}</TableHead>
@@ -69,6 +72,7 @@ const inv = computed(() => invoice.data.value);
           <TableCell>{{ line.line_no }}</TableCell>
           <TableCell>{{ line.kind }}</TableCell>
           <TableCell>{{ line.description }}</TableCell>
+          <TableCell class="text-muted-foreground text-xs whitespace-nowrap">{{ day(line.service_from) }}<template v-if="line.service_from"> – {{ day(line.service_to) }}</template></TableCell>
           <TableCell>{{ line.meter_code }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ line.quantity }}</TableCell>
           <TableCell class="text-end font-medium tabular-nums">{{ formatMinor(line.amount_minor, inv?.currency, locale) }}</TableCell>
@@ -76,6 +80,9 @@ const inv = computed(() => invoice.data.value);
       </TableBody>
     </Table>
   </Card>
+
+  <CreditNotesCard v-if="inv && inv.status === 'paid'" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" issuable />
+  <CreditNotesCard v-else-if="inv" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" />
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.saga") }}</h2>

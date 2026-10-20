@@ -3,6 +3,7 @@ import { customerRoutes } from "@/features/customers/routes";
 import InvoicePage from "@/features/invoices/InvoicePage.vue";
 import { packageRoutes } from "@/features/packages/routes";
 import { paymentRoutes } from "@/features/payments/routes";
+import { pricingRoutes } from "@/features/pricing/routes";
 import { providerRoutes } from "@/features/providers/routes";
 import { reportRoutes } from "@/features/reports/routes";
 import { subscriptionRoutes } from "@/features/subscriptions/routes";
@@ -21,6 +22,6 @@ export function tenantRoutes(parent: AnyRoute) {
   const invoice = createRoute({ getParentRoute: () => tenant, path: "invoices/$invoiceId", component: InvoicePage });
   return [
     list,
-    tenant.addChildren([overview, invoice, ...customerRoutes(tenant), ...packageRoutes(tenant), ...subscriptionRoutes(tenant), ...paymentRoutes(tenant), ...providerRoutes(tenant), ...reportRoutes(tenant)]),
+    tenant.addChildren([overview, invoice, ...customerRoutes(tenant), ...packageRoutes(tenant), ...subscriptionRoutes(tenant), ...pricingRoutes(tenant), ...paymentRoutes(tenant), ...providerRoutes(tenant), ...reportRoutes(tenant)]),
   ];
 }

@@ -60,6 +60,7 @@ type Plans interface {
 	ListMeters(ctx context.Context, in *plansv1.ListMetersRequest, opts ...grpc.CallOption) (*plansv1.ListMetersResponse, error)
 	GetPlanVersion(ctx context.Context, in *plansv1.GetPlanVersionRequest, opts ...grpc.CallOption) (*plansv1.GetPlanVersionResponse, error)
 	ListSubscriptionsForPeriod(ctx context.Context, in *plansv1.ListSubscriptionsForPeriodRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[plansv1.ListSubscriptionsForPeriodResponse], error)
+	GetTaxRates(ctx context.Context, in *plansv1.GetTaxRatesRequest, opts ...grpc.CallOption) (*plansv1.GetTaxRatesResponse, error)
 	ListSubscriptionsFeeDue(ctx context.Context, in *plansv1.ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*plansv1.ListSubscriptionsFeeDueResponse, error)
 	AdvanceSubscriptionFee(ctx context.Context, in *plansv1.AdvanceSubscriptionFeeRequest, opts ...grpc.CallOption) (*plansv1.AdvanceSubscriptionFeeResponse, error)
 	ApplyScheduledChanges(ctx context.Context, in *plansv1.ApplyScheduledChangesRequest, opts ...grpc.CallOption) (*plansv1.ApplyScheduledChangesResponse, error)

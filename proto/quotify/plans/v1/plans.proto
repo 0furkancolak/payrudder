@@ -71,6 +71,16 @@ service PlansService {
   // ListSubscriptionAdjustments lists the money changes moved that billing-svc has not yet invoiced or credited.
   rpc ListSubscriptionAdjustments(ListSubscriptionAdjustmentsRequest) returns (ListSubscriptionAdjustmentsResponse);
   rpc MarkSubscriptionAdjustmentBilled(MarkSubscriptionAdjustmentBilledRequest) returns (MarkSubscriptionAdjustmentBilledResponse);
+  // GetTaxRates and SetTaxRates hold the tax Quotify adds to the invoices it raises, by customer country. The list is replaced as a whole.
+  rpc GetTaxRates(GetTaxRatesRequest) returns (GetTaxRatesResponse);
+  rpc SetTaxRates(SetTaxRatesRequest) returns (SetTaxRatesResponse);
+  rpc CreateCoupon(CreateCouponRequest) returns (CreateCouponResponse);
+  rpc ListCoupons(ListCouponsRequest) returns (ListCouponsResponse);
+  // DeactivateCoupon stops new redemptions; subscriptions that redeemed it keep it.
+  rpc DeactivateCoupon(DeactivateCouponRequest) returns (DeactivateCouponResponse);
+  // ApplyCoupon redeems a coupon on a subscription that has none; RemoveCoupon takes it off (the redemption count is not given back).
+  rpc ApplyCoupon(ApplyCouponRequest) returns (ApplyCouponResponse);
+  rpc RemoveCoupon(RemoveCouponRequest) returns (RemoveCouponResponse);
   rpc ListSubscriptionsFeeDue(ListSubscriptionsFeeDueRequest) returns (ListSubscriptionsFeeDueResponse);
   // AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
   rpc AdvanceSubscriptionFee(AdvanceSubscriptionFeeRequest) returns (AdvanceSubscriptionFeeResponse);
@@ -215,6 +225,8 @@ message CreateSubscriptionRequest {
   string provider = 8;
   // Unspecified = in advance (the fee is invoiced at the start of each period), except for a provider that runs renewals itself.
   FeeTiming fee_timing = 9;
+  // A coupon to redeem on the new subscription.
+  string coupon_code = 10;
 }
 
 message CreateSubscriptionResponse {
@@ -478,6 +490,9 @@ message FeeDue {
   google.protobuf.Timestamp period_end = 3;
   // The fee of the period in the subscription's currency and interval; 0 when the plan version has none.
   int64 fee_minor = 4;
+  // What the subscription's coupon takes off this period's fee (0 when none applies), and the coupon.
+  int64 discount_minor = 5;
+  string coupon_code = 6;
 }
 
 message ListSubscriptionsFeeDueResponse {
@@ -599,3 +614,66 @@ message MarkSubscriptionAdjustmentBilledRequest {
 }
 
 message MarkSubscriptionAdjustmentBilledResponse {}
+
+message CreateCouponRequest {
+  Coupon coupon = 1;
+}
+
+message CreateCouponResponse {
+  Coupon coupon = 1;
+}
+
+message ListCouponsRequest {}
+
+message ListCouponsResponse {
+  repeated Coupon coupons = 1;
+}
+
+message DeactivateCouponRequest {
+  string code = 1;
+}
+
+message DeactivateCouponResponse {
+  Coupon coupon = 1;
+}
+
+message ApplyCouponRequest {
+  string subscription_id = 1;
+  string code = 2;
+}
+
+message ApplyCouponResponse {
+  Subscription subscription = 1;
+}
+
+message RemoveCouponRequest {
+  string subscription_id = 1;
+}
+
+message RemoveCouponResponse {
+  Subscription subscription = 1;
+}
+
+// TaxRate is a tax added on top of the price for customers in a country.
+message TaxRate {
+  // ISO 3166-1 alpha-2, or empty for every country without a rate of its own.
+  string country = 1;
+  // Shown on the invoice, e.g. "VAT".
+  string name = 2;
+  // 2000 is 20 %. Zero is a rate that adds nothing (and says so on no invoice).
+  int32 rate_bps = 3;
+}
+
+message GetTaxRatesRequest {}
+
+message GetTaxRatesResponse {
+  repeated TaxRate rates = 1;
+}
+
+message SetTaxRatesRequest {
+  repeated TaxRate rates = 1;
+}
+
+message SetTaxRatesResponse {
+  repeated TaxRate rates = 1;
+}

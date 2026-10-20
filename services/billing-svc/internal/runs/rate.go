@@ -373,6 +373,10 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 		customers[k.Customer] = struct{}{}
 	}
 
+	taxes, err := m.taxRates(ctx, run.TenantID)
+	if err != nil {
+		return err
+	}
 	plans := map[string]rating.PlanVersion{}
 	lateLines, err := m.lateLines(ctx, run, gen, late, subs, meters, plans, loc, t.GetCurrency())
 	if err != nil {
@@ -432,6 +436,9 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 				return permanent{err}
 			}
 			for _, l := range append(fixed, used...) {
+				if l.ServiceFrom.IsZero() { // usage covers the whole period; a fixed fee line says its own segment
+					l.ServiceFrom, l.ServiceTo = start, end
+				}
 				lines = append(lines, l)
 				scales = append(scales, meters[l.MeterCode].Scale)
 			}
@@ -449,6 +456,19 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 		if len(lines) == 0 {
 			continue
 		}
+		cu, err := m.cfg.Plans.GetCustomer(tctx, &plansv1.GetCustomerRequest{ExternalId: snapExternal})
+		if err != nil {
+			return fmt.Errorf("get customer %s: %w", snapExternal, err)
+		}
+		// Tax at the tenant's rate for the customer's country, on an invoice Quotify raises. What a provider charges for is taxed by the provider.
+		if !subscribed || sub.Owner != "provider" {
+			if name, bps, ok := taxes.rateFor(cu.GetCustomer().GetCountry()); ok {
+				if tl, ok := rating.TaxLine(lines, name, bps); ok {
+					lines = append(lines, tl)
+					scales = append(scales, 0)
+				}
+			}
+		}
 		total, err := rating.Total(lines)
 		if err != nil {
 			return permanent{err}
@@ -459,10 +479,6 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 		invCur, ok := money.LookupCurrency(invoiceCurrency)
 		if !ok {
 			return permanent{fmt.Errorf("subscription currency %q is not supported", invoiceCurrency)}
-		}
-		cu, err := m.cfg.Plans.GetCustomer(tctx, &plansv1.GetCustomerRequest{ExternalId: snapExternal})
-		if err != nil {
-			return fmt.Errorf("get customer %s: %w", snapExternal, err)
 		}
 		cuid, err := uuid.Parse(cid)
 		if err != nil {
@@ -668,9 +684,11 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, drafts []draftInvo
 		for _, d := range drafts {
 			snap, _ := json.Marshal(d.Snapshot)
 			id := uuid.New()
-			var subtotal int64
+			var subtotal int64 // before tax
 			for _, l := range d.Lines {
-				subtotal += l.AmountMinor
+				if l.Kind != rating.KindTax {
+					subtotal += l.AmountMinor
+				}
 			}
 			var got uuid.UUID
 			var country any
@@ -721,9 +739,9 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, drafts []draftInvo
 				if l.OriginPeriod != "" {
 					origin = l.OriginPeriod
 				}
-				if _, err := tx.Exec(ctx, `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, meter_code, origin_period_id, quantity, quantity_scale, unit_label, unit_price, amount_minor, description)
-					VALUES ($1,$2,$3,$4,$5,$6,$7::numeric,$8,$9,$10::numeric,$11,$12)`,
-					run.TenantID, id, i+1, string(l.Kind), meter, origin, qty, scale, label, price, l.AmountMinor, l.Description); err != nil {
+				if _, err := tx.Exec(ctx, `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, meter_code, origin_period_id, quantity, quantity_scale, unit_label, unit_price, amount_minor, description, service_from, service_to)
+					VALUES ($1,$2,$3,$4,$5,$6,$7::numeric,$8,$9,$10::numeric,$11,$12,$13,$14)`,
+					run.TenantID, id, i+1, string(l.Kind), meter, origin, qty, scale, label, price, l.AmountMinor, l.Description, nullTime(l.ServiceFrom), nullTime(l.ServiceTo)); err != nil {
 					return err
 				}
 			}
@@ -784,4 +802,12 @@ func applyCredits(ctx context.Context, tx pgx.Tx, tenantID, customerID, invoiceI
 		applied += use
 	}
 	return applied, nil
+}
+
+// nullTime is t, or NULL for the zero time.
+func nullTime(t time.Time) any {
+	if t.IsZero() {
+		return nil
+	}
+	return t
 }

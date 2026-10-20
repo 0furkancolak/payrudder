@@ -29,6 +29,22 @@ type ApiKey struct {
 	RevokedAt *time.Time
 }
 
+type Coupon struct {
+	TenantID        uuid.UUID
+	Code            string
+	Name            string
+	PercentBps      *int32
+	AmountMinor     *int64
+	Currency        *string
+	Duration        string
+	DurationPeriods *int32
+	MaxRedemptions  *int32
+	Redeemed        int32
+	ExpiresAt       *time.Time
+	Active          bool
+	CreatedAt       time.Time
+}
+
 type Customer struct {
 	TenantID        uuid.UUID
 	ID              uuid.UUID
@@ -181,6 +197,21 @@ type SubscriptionChange struct {
 	CreatedAt         time.Time
 	AppliedAt         *time.Time
 	NewSubscriptionID *uuid.UUID
+}
+
+type SubscriptionCoupon struct {
+	TenantID       uuid.UUID
+	SubscriptionID uuid.UUID
+	CouponCode     string
+	RedeemedAt     time.Time
+	PeriodsApplied int32
+}
+
+type TaxRate struct {
+	TenantID uuid.UUID
+	Country  string
+	Name     string
+	RateBps  int32
 }
 
 type Tenant struct {

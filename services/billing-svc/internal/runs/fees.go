@@ -95,10 +95,13 @@ func (m *Manager) billFee(ctx context.Context, tenantID uuid.UUID, t *plansv1.Te
 	start := d.GetPeriodStart().AsTime()
 	if sub.GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAUSED && d.GetFeeMinor() > 0 {
 		end := d.GetPeriodEnd().AsTime()
-		line := rating.Line{Kind: rating.KindBaseFee, AmountMinor: d.GetFeeMinor(),
-			Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", feeWord(sub), sub.GetPlanCode(), day(start, loc), day(end, loc))}
+		lines := []rating.Line{{Kind: rating.KindBaseFee, AmountMinor: d.GetFeeMinor(), ServiceFrom: start, ServiceTo: end,
+			Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", feeWord(sub), sub.GetPlanCode(), day(start, loc), day(end, loc))}}
+		if d.GetDiscountMinor() > 0 {
+			lines = append(lines, rating.Line{Kind: rating.KindDiscount, AmountMinor: -d.GetDiscountMinor(), ServiceFrom: start, ServiceTo: end, Description: "Coupon " + d.GetCouponCode()})
+		}
 		id, err := m.draftFeeInvoice(ctx, tenantID, t, loc, feeInvoiceSpec{
-			Key: sub.GetId() + "|" + start.UTC().Format(time.RFC3339), Sub: sub, PeriodStart: start, Lines: []rating.Line{line}})
+			Key: sub.GetId() + "|" + start.UTC().Format(time.RFC3339), Sub: sub, PeriodStart: start, Lines: lines})
 		if err != nil {
 			return err
 		}
@@ -131,13 +134,6 @@ func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *pl
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, err
 	}
-	total, err := rating.Total(spec.Lines)
-	if err != nil {
-		return uuid.Nil, permanent{fmt.Errorf("invoice %s: %w", spec.Key, err)}
-	}
-	if total <= 0 {
-		return uuid.Nil, permanent{fmt.Errorf("invoice %s adds up to %d", spec.Key, total)}
-	}
 	currency := orDefault(sub.GetCurrency(), t.GetCurrency())
 	cur, ok := money.LookupCurrency(currency)
 	if !ok {
@@ -150,6 +146,31 @@ func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *pl
 	cuid, err := uuid.Parse(sub.GetCustomerId())
 	if err != nil {
 		return uuid.Nil, err
+	}
+	// Tax at the tenant's rate for the customer's country (not for what a provider charges for: the provider taxes that).
+	if sub.GetOwner() != "provider" {
+		taxes, err := m.taxRates(ctx, tenantID)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		if name, bps, ok := taxes.rateFor(cu.GetCustomer().GetCountry()); ok {
+			if tl, ok := rating.TaxLine(spec.Lines, name, bps); ok {
+				spec.Lines = append(append([]rating.Line(nil), spec.Lines...), tl)
+			}
+		}
+	}
+	total, err := rating.Total(spec.Lines)
+	if err != nil {
+		return uuid.Nil, permanent{fmt.Errorf("invoice %s: %w", spec.Key, err)}
+	}
+	if total <= 0 {
+		return uuid.Nil, permanent{fmt.Errorf("invoice %s adds up to %d", spec.Key, total)}
+	}
+	var tax int64
+	for _, l := range spec.Lines {
+		if l.Kind == rating.KindTax {
+			tax += l.AmountMinor
+		}
 	}
 	env := "live"
 	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
@@ -174,8 +195,8 @@ func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *pl
 	err = pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		var got uuid.UUID
 		err := tx.QueryRow(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, country, fee_key)
-			VALUES ($1,$2,$3,$4,'FEE',$5,$6,$7,$7,'draft',$8,$9,$10,$11) ON CONFLICT DO NOTHING RETURNING id`,
-			tenantID, id, cuid, period.PeriodOf(spec.PeriodStart, loc), sub.GetPlanVersionId(), currency, total, snap, sub.GetProvider(), country, spec.Key).Scan(&got)
+			VALUES ($1,$2,$3,$4,'FEE',$5,$6,$7,$12,'draft',$8,$9,$10,$11) ON CONFLICT DO NOTHING RETURNING id`,
+			tenantID, id, cuid, period.PeriodOf(spec.PeriodStart, loc), sub.GetPlanVersionId(), currency, total-tax, snap, sub.GetProvider(), country, spec.Key, total).Scan(&got)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil // another pass won the race; the lookup below finds its invoice
 		}
@@ -189,13 +210,13 @@ func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *pl
 		lines := spec.Lines
 		if credit > 0 {
 			lines = append(append([]rating.Line(nil), lines...), rating.Line{Kind: rating.KindCredit, AmountMinor: -credit, Description: "Credit balance"})
-			if _, err := tx.Exec(ctx, `UPDATE invoices SET subtotal_minor = $3, total_minor = $3 WHERE tenant_id = $1 AND id = $2`, tenantID, id, total-credit); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE invoices SET subtotal_minor = $3, total_minor = $4 WHERE tenant_id = $1 AND id = $2`, tenantID, id, total-tax-credit, total-credit); err != nil {
 				return err
 			}
 		}
 		for i, l := range lines {
-			if _, err := tx.Exec(ctx, `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,$3,$4,$5,$6)`,
-				tenantID, id, i+1, string(l.Kind), l.AmountMinor, l.Description); err != nil {
+			if _, err := tx.Exec(ctx, `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description, service_from, service_to) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+				tenantID, id, i+1, string(l.Kind), l.AmountMinor, l.Description, nullTime(l.ServiceFrom), nullTime(l.ServiceTo)); err != nil {
 				return err
 			}
 		}
@@ -242,10 +263,10 @@ func (m *Manager) billAdjustment(ctx context.Context, tenantID uuid.UUID, t *pla
 	switch {
 	case net > 0:
 		from, to := a.GetFromTime().AsTime(), a.GetToTime().AsTime()
-		lines := []rating.Line{{Kind: rating.KindBaseFee, AmountMinor: a.GetChargeMinor(),
+		lines := []rating.Line{{Kind: rating.KindBaseFee, AmountMinor: a.GetChargeMinor(), ServiceFrom: from, ServiceTo: to,
 			Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", feeWord(sub), sub.GetPlanCode(), day(from, loc), day(to, loc))}}
 		if a.GetCreditMinor() > 0 {
-			lines = append(lines, rating.Line{Kind: rating.KindCredit, AmountMinor: -a.GetCreditMinor(),
+			lines = append(lines, rating.Line{Kind: rating.KindCredit, AmountMinor: -a.GetCreditMinor(), ServiceFrom: from, ServiceTo: to,
 				Description: fmt.Sprintf("Unused time on %s — %s to %s", a.GetOldPlanCode(), day(from, loc), day(to, loc))})
 		}
 		id, err := m.draftFeeInvoice(ctx, tenantID, t, loc, feeInvoiceSpec{Key: "adj|" + a.GetId(), Sub: sub, PeriodStart: from, Lines: lines})
@@ -268,4 +289,30 @@ func (m *Manager) billAdjustment(ctx context.Context, tenantID uuid.UUID, t *pla
 	}
 	_, err := m.cfg.Plans.MarkSubscriptionAdjustmentBilled(tenantCtx(ctx, tenantID), &plansv1.MarkSubscriptionAdjustmentBilledRequest{AdjustmentId: a.GetId()})
 	return err
+}
+
+// taxTable is a tenant's tax rates by customer country.
+type taxTable map[string]*plansv1.TaxRate
+
+func (m *Manager) taxRates(ctx context.Context, tenantID uuid.UUID) (taxTable, error) {
+	resp, err := m.cfg.Plans.GetTaxRates(tenantCtx(ctx, tenantID), &plansv1.GetTaxRatesRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("get tax rates: %w", err)
+	}
+	t := taxTable{}
+	for _, r := range resp.GetRates() {
+		t[r.GetCountry()] = r
+	}
+	return t, nil
+}
+
+// rateFor is the rate for a customer's country: its own, else the tenant's rate for every other country, else none.
+func (t taxTable) rateFor(country string) (string, int32, bool) {
+	if r, ok := t[country]; ok && country != "" {
+		return r.GetName(), r.GetRateBps(), true
+	}
+	if r, ok := t[""]; ok {
+		return r.GetName(), r.GetRateBps(), true
+	}
+	return "", 0, false
 }

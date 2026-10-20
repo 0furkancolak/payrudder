@@ -45,6 +45,13 @@ func (s *Server) routes() []Route {
 		{"POST", "/v1/subscriptions/{id}/change-plan", AccessTenant, ratelimit.ClassWrite, s.changePlan},
 		{"POST", "/v1/subscriptions/{id}/change-preview", AccessTenant, ratelimit.ClassRead, s.previewSubscriptionChange},
 		{"POST", "/v1/subscriptions/{id}/change", AccessTenant, ratelimit.ClassWrite, s.changeSubscription},
+		{"POST", "/v1/subscriptions/{id}/coupon", AccessTenant, ratelimit.ClassWrite, s.applyCoupon},
+		{"DELETE", "/v1/subscriptions/{id}/coupon", AccessTenant, ratelimit.ClassWrite, s.removeCoupon},
+		{"GET", "/v1/tax-rates", AccessTenant, ratelimit.ClassRead, s.getTaxRates},
+		{"PUT", "/v1/tax-rates", AccessTenant, ratelimit.ClassWrite, s.setTaxRates},
+		{"POST", "/v1/coupons", AccessTenant, ratelimit.ClassWrite, s.createCoupon},
+		{"GET", "/v1/coupons", AccessTenant, ratelimit.ClassRead, s.listCoupons},
+		{"DELETE", "/v1/coupons/{code}", AccessTenant, ratelimit.ClassWrite, s.deactivateCoupon},
 		{"DELETE", "/v1/subscriptions/{id}/scheduled-change", AccessTenant, ratelimit.ClassWrite, s.cancelScheduledChange},
 		// Reports
 		{"GET", "/v1/reports/revenue", AccessTenant, ratelimit.ClassRead, s.revenueReport},
@@ -74,6 +81,8 @@ func (s *Server) routes() []Route {
 		// Invoices
 		{"GET", "/v1/invoices", AccessTenant, ratelimit.ClassRead, s.listInvoices},
 		{"GET", "/v1/invoices/{id}", AccessTenant, ratelimit.ClassRead, s.getInvoice},
+		{"GET", "/v1/credit-notes", AccessTenant, ratelimit.ClassRead, s.listCreditNotes},
+		{"GET", "/v1/credit-notes/{id}", AccessTenant, ratelimit.ClassRead, s.getCreditNote},
 		{"GET", "/v1/invoices/{id}/pdf", AccessTenant, ratelimit.ClassRead, s.getInvoicePDF},
 		// Sandbox
 		{"POST", "/v1/sandbox/close-period", AccessSandbox, ratelimit.ClassWrite, s.sandboxClosePeriod},
@@ -124,6 +133,7 @@ func (s *Server) routes() []Route {
 		{"GET", "/admin/v1/tenants/{tenant_id}/rerating-jobs/{job_id}", AccessOperator, "", s.adminGetRerating},
 		{"POST", "/admin/v1/invoices/{id}/retry", AccessOperator, "", s.adminRetryInvoice},
 		{"POST", "/admin/v1/invoices/{id}/void", AccessOperator, "", s.adminVoidInvoice},
+		{"POST", "/admin/v1/invoices/{id}/credit-notes", AccessOperator, "", s.adminCreateCreditNote},
 	}
 }
 
@@ -329,6 +339,57 @@ func (s *Server) changeSubscription(w http.ResponseWriter, r *http.Request) {
 func (s *Server) cancelScheduledChange(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Plans.CancelScheduledChange(r.Context(), &plansv1.CancelScheduledChangeRequest{SubscriptionId: r.PathValue("id")})
 	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
+}
+
+func (s *Server) applyCoupon(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.ApplyCouponRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.SubscriptionId = r.PathValue("id")
+	resp, err := s.d.Plans.ApplyCoupon(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
+}
+
+func (s *Server) removeCoupon(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.RemoveCoupon(r.Context(), &plansv1.RemoveCouponRequest{SubscriptionId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
+}
+
+func (s *Server) getTaxRates(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.GetTaxRates(r.Context(), &plansv1.GetTaxRatesRequest{})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) setTaxRates(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.SetTaxRatesRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Plans.SetTaxRates(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) createCoupon(w http.ResponseWriter, r *http.Request) {
+	c := &plansv1.Coupon{}
+	if err := decode(r, c); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Plans.CreateCoupon(r.Context(), &plansv1.CreateCouponRequest{Coupon: c})
+	respond(w, r, http.StatusCreated, resp.GetCoupon(), err)
+}
+
+func (s *Server) listCoupons(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.ListCoupons(r.Context(), &plansv1.ListCouponsRequest{})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) deactivateCoupon(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.DeactivateCoupon(r.Context(), &plansv1.DeactivateCouponRequest{Code: r.PathValue("code")})
+	respond(w, r, http.StatusOK, resp.GetCoupon(), err)
 }
 
 func (s *Server) cancelSubscription(w http.ResponseWriter, r *http.Request) {

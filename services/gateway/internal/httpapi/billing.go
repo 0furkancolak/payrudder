@@ -165,3 +165,35 @@ func (s *Server) subscriptionReport(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Plans.GetSubscriptionReport(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
+
+// adminCreateCreditNote is POST /admin/v1/invoices/{id}/credit-notes: a numbered correction of a paid invoice, added to the customer's credit balance.
+func (s *Server) adminCreateCreditNote(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.CreateCreditNoteRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.InvoiceId = r.PathValue("id")
+	resp, err := s.d.BillingAdmin.CreateCreditNote(r.Context(), req)
+	respond(w, r, http.StatusCreated, resp.GetCreditNote(), err)
+}
+
+func (s *Server) getCreditNote(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Billing.GetCreditNote(r.Context(), &billingv1.GetCreditNoteRequest{CreditNoteId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp.GetCreditNote(), err)
+}
+
+func (s *Server) listCreditNotes(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := &billingv1.ListCreditNotesRequest{InvoiceId: q.Get("invoice_id"), CustomerExternalId: q.Get("customer"), PageToken: q.Get("page_token")}
+	if v := q.Get("page_size"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			writeError(w, r, invalid("page_size", "must be an integer"))
+			return
+		}
+		req.PageSize = int32(n)
+	}
+	resp, err := s.d.Billing.ListCreditNotes(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}

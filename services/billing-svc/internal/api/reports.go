@@ -69,8 +69,10 @@ func (s *Server) GetRevenueReport(ctx context.Context, req *billingv1.GetRevenue
 		  COALESCE(sum(i.total_minor) FILTER (WHERE r.invoice_id IS NOT NULL), 0),
 		  COALESCE(sum(i.total_minor) FILTER (WHERE i.status = 'open'), 0),
 		  COALESCE(sum(i.total_minor) FILTER (WHERE i.status = 'uncollectible'), 0),
-		  COALESCE(sum(i.total_minor) FILTER (WHERE i.status = 'void'), 0)
+		  COALESCE(sum(i.total_minor) FILTER (WHERE i.status = 'void'), 0),
+		  COALESCE(sum(cn.credited), 0)
 		FROM invoices i
+		LEFT JOIN (SELECT invoice_id, sum(total_minor) AS credited FROM credit_notes GROUP BY invoice_id) cn ON cn.invoice_id = i.id
 		LEFT JOIN (SELECT DISTINCT s.invoice_id FROM invoice_sagas s JOIN saga_events e ON e.tenant_id = s.tenant_id AND e.saga_id = s.id AND e.to_state = 'REFUNDED') r
 		  ON r.invoice_id = i.id
 		WHERE i.status <> 'draft' AND ($1 = '' OR i.period_id >= $1) AND ($2 = '' OR i.period_id <= $2)
@@ -86,7 +88,7 @@ func (s *Server) GetRevenueReport(ctx context.Context, req *billingv1.GetRevenue
 		for rows.Next() {
 			var r billingv1.RevenueRow
 			if err := rows.Scan(&r.Period, &r.Provider, &r.Country, &r.Currency, &r.Invoices, &r.BilledMinor, &r.CollectedMinor, &r.RefundedMinor,
-				&r.OutstandingMinor, &r.UncollectibleMinor, &r.VoidMinor); err != nil {
+				&r.OutstandingMinor, &r.UncollectibleMinor, &r.VoidMinor, &r.CreditedMinor); err != nil {
 				return err
 			}
 			resp.Rows = append(resp.Rows, &r)

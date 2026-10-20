@@ -293,6 +293,7 @@ paths:
                 interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
                 currency: { type: string, description: Default is the customer's billing currency, then the tenant's }
                 provider: { type: string, description: The payment provider that sells it (for example paddle); default is the tenant's default account }
+                coupon_code: { type: string, description: A coupon to redeem on the new subscription }
                 fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS], description: "Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee." }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
@@ -421,6 +422,70 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /v1/subscriptions/{id}/coupon:
+    post:
+      operationId: applyCoupon
+      summary: Redeem a coupon on a subscription that has none
+      description: A coupon takes something off a fixed fee Quotify invoices in advance. A subscription a provider renews uses a discount at the provider instead.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: removeCoupon
+      summary: Take the coupon off a subscription (the redemption is not given back)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/tax-rates:
+    get:
+      operationId: getTaxRates
+      summary: The tax Quotify adds to the invoices it raises, by customer country
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TaxRates" } } } }
+    put:
+      operationId: setTaxRates
+      summary: Replace the tax rates
+      description: >
+        Quotify applies the rates as given, exclusive of the price, to the invoices it raises (monthly usage, fees in advance, plan changes) for customers whose country has a rate, or the
+        rate with an empty country. It does not work out what is due where; the rates and their correctness are the tenant's. Invoices of a subscription a provider runs are taxed by the provider.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/TaxRates" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TaxRates" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/coupons:
+    post:
+      operationId: createCoupon
+      summary: Make a coupon
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/Coupon" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Coupon" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listCoupons
+      summary: Coupons, newest first
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { coupons: { type: array, items: { $ref: "#/components/schemas/Coupon" } } } } } } }
+  /v1/coupons/{code}:
+    delete:
+      operationId: deactivateCoupon
+      summary: Stop new redemptions of a coupon (subscriptions that have it keep it)
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Coupon" } } } }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/subscriptions/{id}/scheduled-change:
     delete:
       operationId: cancelScheduledChange
@@ -463,6 +528,7 @@ paths:
                         outstanding_minor: { type: string, description: Open }
                         uncollectible_minor: { type: string }
                         void_minor: { type: string }
+                        credited_minor: { type: string, description: Credit notes issued against these invoices }
         "400": { $ref: "#/components/responses/Error" }
   /v1/reports/dunning:
     get:
@@ -605,6 +671,34 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /v1/credit-notes:
+    get:
+      operationId: listCreditNotes
+      summary: Credit notes, newest first
+      parameters:
+        - { name: invoice_id, in: query, schema: { type: string, format: uuid } }
+        - { name: customer, in: query, description: Customer external id, schema: { type: string } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  credit_notes: { type: array, items: { $ref: "#/components/schemas/CreditNote" } }
+                  next_page_token: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/credit-notes/{id}:
+    get:
+      operationId: getCreditNote
+      summary: A credit note
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditNote" } } } }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/invoices/{id}:
     get:
       operationId: getInvoice
@@ -1840,6 +1934,31 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceSaga" } } } }
         "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/invoices/{id}/credit-notes:
+    post:
+      operationId: adminCreateCreditNote
+      summary: Correct a paid invoice with a numbered credit note, added to the customer's credit balance
+      description: >
+        An issued invoice is never edited. The note's amount goes to the customer's credit balance in the invoice's currency and pays their next invoice. The notes of an invoice never add up
+        to more than the invoice. Only a paid invoice can be credited (an open one is voided).
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id]
+              properties:
+                tenant_id: { type: string, format: uuid }
+                amount_minor: { type: string, description: "int64 minor units; 0 or absent = what is left of the invoice" }
+                reason: { type: string, maxLength: 500 }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CreditNote" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /admin/v1/api-keys/{id}:
     delete:
       operationId: revokeApiKey
@@ -1994,12 +2113,14 @@ components:
       type: object
       properties:
         line_no: { type: integer }
-        kind: { type: string, enum: [BASE_FEE, USAGE, LATE_USAGE, CREDIT, CORRECTION] }
+        kind: { type: string, enum: [BASE_FEE, USAGE, LATE_USAGE, CREDIT, CORRECTION, DISCOUNT, TAX] }
         meter_code: { type: string }
         origin_period_id: { type: string }
         quantity: { type: string, examples: ["1.250"] }
         amount_minor: { type: string, description: int64 minor units as a string }
         description: { type: string }
+        service_from: { type: string, format: date-time, description: The service period the line covers }
+        service_to: { type: string, format: date-time }
     Invoice:
       type: object
       properties:
@@ -2193,6 +2314,46 @@ components:
         plan_version: { type: integer }
         fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS] }
         scheduled_change: { $ref: "#/components/schemas/ScheduledChange" }
+        coupon_code: { type: string }
+    CreditNote:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: string, description: CN-2026-000007 (live) or SBX-CN-2026-000007 (sandbox) }
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        currency: { type: string }
+        total_minor: { type: string }
+        reason: { type: string }
+        create_time: { type: string, format: date-time }
+    TaxRates:
+      type: object
+      properties:
+        rates:
+          type: array
+          items:
+            type: object
+            properties:
+              country: { type: string, description: "ISO 3166-1 alpha-2; empty for every country without a rate of its own" }
+              name: { type: string, description: "Shown on the invoice, e.g. VAT" }
+              rate_bps: { type: integer, minimum: 0, maximum: 10000, description: "2000 is 20 %" }
+    Coupon:
+      type: object
+      properties:
+        code: { type: string, description: "2–40 letters, digits, - or _" }
+        name: { type: string }
+        percent_bps: { type: integer, minimum: 1, maximum: 10000, description: "1000 is 10 %. Use this or amount_minor" }
+        amount_minor: { type: string, description: "Minor units of currency; applies only to subscriptions in that currency" }
+        currency: { type: string }
+        duration: { type: string, enum: [COUPON_DURATION_ONCE, COUPON_DURATION_REPEATING, COUPON_DURATION_FOREVER] }
+        duration_periods: { type: integer, description: "For a repeating coupon, how many fees" }
+        max_redemptions: { type: integer, description: "0 or absent = unlimited" }
+        redeemed: { type: integer, readOnly: true }
+        expire_time: { type: string, format: date-time }
+        active: { type: boolean, readOnly: true }
+        create_time: { type: string, format: date-time, readOnly: true }
     ChangeRequest:
       type: object
       properties:

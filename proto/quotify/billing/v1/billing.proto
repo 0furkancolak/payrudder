@@ -14,6 +14,8 @@ service BillingService {
   rpc GetRevenueReport(GetRevenueReportRequest) returns (GetRevenueReportResponse);
   // GetDunningReport lists the invoices whose payment has not gone through: declined, unknown or given up.
   rpc GetDunningReport(GetDunningReportRequest) returns (GetDunningReportResponse);
+  rpc GetCreditNote(GetCreditNoteRequest) returns (GetCreditNoteResponse);
+  rpc ListCreditNotes(ListCreditNotesRequest) returns (ListCreditNotesResponse);
 }
 
 // SandboxService is for sandbox tenants only (FAILED_PRECONDITION otherwise).
@@ -31,6 +33,9 @@ service BillingAdminService {
   rpc RetryInvoiceSaga(RetryInvoiceSagaRequest) returns (RetryInvoiceSagaResponse);
   // VoidInvoice voids an invoice, refunding it first if it was paid.
   rpc VoidInvoice(VoidInvoiceRequest) returns (VoidInvoiceResponse);
+  // CreateCreditNote corrects a paid invoice without editing it: a numbered credit note whose amount is added to the customer's credit balance, which pays their
+  // next invoice in that currency. The notes of an invoice never add up to more than the invoice.
+  rpc CreateCreditNote(CreateCreditNoteRequest) returns (CreateCreditNoteResponse);
   // StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
   // a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
   // Idempotent per (tenant, period, plan version).
@@ -68,7 +73,7 @@ message BillingRun {
 
 message InvoiceLine {
   int32 line_no = 1;
-  // BASE_FEE, USAGE, LATE_USAGE, CREDIT or CORRECTION.
+  // BASE_FEE, USAGE, LATE_USAGE, CREDIT, CORRECTION, DISCOUNT (a coupon, negative) or TAX.
   string kind = 2;
   string meter_code = 3;
   string origin_period_id = 4;
@@ -76,6 +81,9 @@ message InvoiceLine {
   string quantity = 5;
   int64 amount_minor = 6;
   string description = 7;
+  // The service period the line covers, when it says.
+  google.protobuf.Timestamp service_from = 8;
+  google.protobuf.Timestamp service_to = 9;
 }
 
 message Invoice {
@@ -83,7 +91,7 @@ message Invoice {
   string customer_id = 2;
   string customer_external_id = 3;
   string period_id = 4;
-  // REGULAR or CORRECTION.
+  // REGULAR (a month's usage), CORRECTION (a re-rating), or FEE (a fixed fee in advance, or what a plan change moved).
   string kind = 5;
   // Empty until finalized, e.g. INV-2026-000123 (live) or SBX-2026-000123 (sandbox).
   string number = 6;
@@ -318,6 +326,8 @@ message RevenueRow {
   int64 outstanding_minor = 9;
   int64 uncollectible_minor = 10;
   int64 void_minor = 11;
+  // Credit notes issued against these invoices (they stay in billed and collected: an invoice is not edited).
+  int64 credited_minor = 12;
 }
 
 message GetRevenueReportResponse {
@@ -357,4 +367,54 @@ message GetDunningReportResponse {
   repeated DunningInvoice invoices = 1;
   // Counts and sums of every unpaid invoice (not limited), by state, provider and currency.
   repeated DunningSummary summary = 2;
+}
+
+// CreditNote is a numbered correction of a paid invoice.
+message CreditNote {
+  string id = 1;
+  // CN-2026-000007 (live) or SBX-CN-2026-000007 (sandbox).
+  string number = 2;
+  string invoice_id = 3;
+  string invoice_number = 4;
+  string customer_id = 5;
+  string customer_external_id = 6;
+  string currency = 7;
+  int64 total_minor = 8;
+  string reason = 9;
+  google.protobuf.Timestamp create_time = 10;
+}
+
+message CreateCreditNoteRequest {
+  string tenant_id = 1;
+  string invoice_id = 2;
+  // 0 = whatever is left of the invoice after earlier credit notes.
+  int64 amount_minor = 3;
+  string reason = 4;
+}
+
+message CreateCreditNoteResponse {
+  CreditNote credit_note = 1;
+}
+
+message GetCreditNoteRequest {
+  string credit_note_id = 1;
+}
+
+message GetCreditNoteResponse {
+  CreditNote credit_note = 1;
+}
+
+message ListCreditNotesRequest {
+  // Only the notes of this invoice.
+  string invoice_id = 1;
+  // Only the notes of this customer.
+  string customer_external_id = 2;
+  // 1..200, default 50.
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListCreditNotesResponse {
+  repeated CreditNote credit_notes = 1;
+  string next_page_token = 2;
 }

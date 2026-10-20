@@ -10,6 +10,7 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
 import { useLedger, useReconcile } from "./api";
 
 const { t, te, locale } = useI18n();
@@ -100,4 +101,6 @@ const variant = (status?: string) => (status === "succeeded" ? "success" : statu
       {{ t("billing.payments.empty") }}
     </p>
   </Card>
+
+  <CreditNotesCard :tenant-id="tenantId" class="mt-6" />
 </template>

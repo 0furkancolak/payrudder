@@ -20,6 +20,7 @@ const tabs = [
   { to: "/tenants/$id/customers", key: "customers", exact: false },
   { to: "/tenants/$id/packages", key: "packages", exact: false },
   { to: "/tenants/$id/subscriptions", key: "subscriptions", exact: false },
+  { to: "/tenants/$id/pricing", key: "pricing", exact: false },
   { to: "/tenants/$id/payments", key: "payments", exact: false },
   { to: "/tenants/$id/providers", key: "providers", exact: false },
   { to: "/tenants/$id/reports", key: "reports", exact: false },

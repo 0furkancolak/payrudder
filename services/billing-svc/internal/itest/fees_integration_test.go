@@ -244,3 +244,27 @@ func testPlanChangesAreInvoicedOrCredited(t *testing.T) {
 		t.Errorf("fee after credit: %d invoice(s) totalling %d; want one of 1800", n, total)
 	}
 }
+
+func testFeeInvoiceCarriesTheCouponAndServicePeriod(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	e.startWorkers(nil)
+	pv := e.pv()
+	start, end := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC), time.Date(2026, 12, 3, 0, 0, 0, 0, time.UTC)
+	d := e.feeDue("cus_a", pv, plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH, start, end, 10000, nil)
+	d.DiscountMinor, d.CouponCode = 2500, "WELCOME"
+	if err := e.mgr.BillFees(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	l := e.feeInvoiceLines("cus_a")
+	if len(l) != 2 || l[0].Kind != "BASE_FEE" || l[0].Amount != 10000 || l[1].Kind != "DISCOUNT" || l[1].Amount != -2500 || l[1].Description != "Coupon WELCOME" {
+		t.Fatalf("lines = %+v", l)
+	}
+	if n, total, _ := e.feeInvoices("cus_a"); n != 1 || total != 7500 {
+		t.Errorf("%d invoice(s) totalling %d; want one of 7500", n, total)
+	}
+	var withPeriod int
+	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
+		WHERE i.tenant_id = $1 AND i.kind = 'FEE' AND l.service_from = $2 AND l.service_to = $3`, e.tid, start, end).Scan(&withPeriod); err != nil || withPeriod != 2 {
+		t.Errorf("%d line(s) carry the service period (err %v); want 2", withPeriod, err)
+	}
+}

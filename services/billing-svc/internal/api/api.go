@@ -155,7 +155,7 @@ func (s *Server) GetInvoice(ctx context.Context, req *billingv1.GetInvoiceReques
 		if err != nil {
 			return err
 		}
-		rows, err := tx.Query(ctx, `SELECT line_no, kind, COALESCE(meter_code, ''), COALESCE(origin_period_id, ''), quantity::text, quantity_scale, amount_minor, description
+		rows, err := tx.Query(ctx, `SELECT line_no, kind, COALESCE(meter_code, ''), COALESCE(origin_period_id, ''), quantity::text, quantity_scale, amount_minor, description, service_from, service_to
 			FROM invoice_lines WHERE invoice_id = $1 ORDER BY line_no`, id)
 		if err != nil {
 			return err
@@ -165,8 +165,15 @@ func (s *Server) GetInvoice(ctx context.Context, req *billingv1.GetInvoiceReques
 			var l billingv1.InvoiceLine
 			var qty *string
 			var scale *int16
-			if err := rows.Scan(&l.LineNo, &l.Kind, &l.MeterCode, &l.OriginPeriodId, &qty, &scale, &l.AmountMinor, &l.Description); err != nil {
+			var from, to *time.Time
+			if err := rows.Scan(&l.LineNo, &l.Kind, &l.MeterCode, &l.OriginPeriodId, &qty, &scale, &l.AmountMinor, &l.Description, &from, &to); err != nil {
 				return err
+			}
+			if from != nil {
+				l.ServiceFrom = timestamppb.New(*from)
+			}
+			if to != nil {
+				l.ServiceTo = timestamppb.New(*to)
 			}
 			if qty != nil && scale != nil {
 				var units int64

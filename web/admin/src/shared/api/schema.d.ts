@@ -379,6 +379,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subscriptions/{id}/coupon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem a coupon on a subscription that has none
+         * @description A coupon takes something off a fixed fee Quotify invoices in advance. A subscription a provider renews uses a discount at the provider instead.
+         */
+        post: operations["applyCoupon"];
+        /** Take the coupon off a subscription (the redemption is not given back) */
+        delete: operations["removeCoupon"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tax-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The tax Quotify adds to the invoices it raises, by customer country */
+        get: operations["getTaxRates"];
+        /**
+         * Replace the tax rates
+         * @description Quotify applies the rates as given, exclusive of the price, to the invoices it raises (monthly usage, fees in advance, plan changes) for customers whose country has a rate, or the rate with an empty country. It does not work out what is due where; the rates and their correctness are the tenant's. Invoices of a subscription a provider runs are taxed by the provider.
+         */
+        put: operations["setTaxRates"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Coupons, newest first */
+        get: operations["listCoupons"];
+        put?: never;
+        /** Make a coupon */
+        post: operations["createCoupon"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/coupons/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop new redemptions of a coupon (subscriptions that have it keep it) */
+        delete: operations["deactivateCoupon"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subscriptions/{id}/scheduled-change": {
         parameters: {
             query?: never;
@@ -491,6 +568,40 @@ export interface paths {
         };
         /** List invoices (ordered by id) */
         get: operations["listInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Credit notes, newest first */
+        get: operations["listCreditNotes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit-notes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A credit note */
+        get: operations["getCreditNote"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1526,6 +1637,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/invoices/{id}/credit-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct a paid invoice with a numbered credit note, added to the customer's credit balance
+         * @description An issued invoice is never edited. The note's amount goes to the customer's credit balance in the invoice's currency and pays their next invoice. The notes of an invoice never add up to more than the invoice. Only a paid invoice can be credited (an open one is voided).
+         */
+        post: operations["adminCreateCreditNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/api-keys/{id}": {
         parameters: {
             query?: never;
@@ -1689,7 +1820,7 @@ export interface components {
         InvoiceLine: {
             line_no?: number;
             /** @enum {string} */
-            kind?: "BASE_FEE" | "USAGE" | "LATE_USAGE" | "CREDIT" | "CORRECTION";
+            kind?: "BASE_FEE" | "USAGE" | "LATE_USAGE" | "CREDIT" | "CORRECTION" | "DISCOUNT" | "TAX";
             meter_code?: string;
             origin_period_id?: string;
             /** @example 1.250 */
@@ -1697,6 +1828,13 @@ export interface components {
             /** @description int64 minor units as a string */
             amount_minor?: string;
             description?: string;
+            /**
+             * Format: date-time
+             * @description The service period the line covers
+             */
+            service_from?: string;
+            /** Format: date-time */
+            service_to?: string;
         };
         Invoice: {
             id?: string;
@@ -1924,6 +2062,56 @@ export interface components {
             /** @enum {string} */
             fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
             scheduled_change?: components["schemas"]["ScheduledChange"];
+            coupon_code?: string;
+        };
+        CreditNote: {
+            /** Format: uuid */
+            id?: string;
+            /** @description CN-2026-000007 (live) or SBX-CN-2026-000007 (sandbox) */
+            number?: string;
+            /** Format: uuid */
+            invoice_id?: string;
+            invoice_number?: string;
+            /** Format: uuid */
+            customer_id?: string;
+            customer_external_id?: string;
+            currency?: string;
+            total_minor?: string;
+            reason?: string;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        TaxRates: {
+            rates?: {
+                /** @description ISO 3166-1 alpha-2; empty for every country without a rate of its own */
+                country?: string;
+                /** @description Shown on the invoice, e.g. VAT */
+                name?: string;
+                /** @description 2000 is 20 % */
+                rate_bps?: number;
+            }[];
+        };
+        Coupon: {
+            /** @description 2–40 letters, digits, - or _ */
+            code?: string;
+            name?: string;
+            /** @description 1000 is 10 %. Use this or amount_minor */
+            percent_bps?: number;
+            /** @description Minor units of currency; applies only to subscriptions in that currency */
+            amount_minor?: string;
+            currency?: string;
+            /** @enum {string} */
+            duration?: "COUPON_DURATION_ONCE" | "COUPON_DURATION_REPEATING" | "COUPON_DURATION_FOREVER";
+            /** @description For a repeating coupon, how many fees */
+            duration_periods?: number;
+            /** @description 0 or absent = unlimited */
+            max_redemptions?: number;
+            readonly redeemed?: number;
+            /** Format: date-time */
+            expire_time?: string;
+            readonly active?: boolean;
+            /** Format: date-time */
+            readonly create_time?: string;
         };
         ChangeRequest: {
             /** @description Empty keeps the plan (to change the interval only) */
@@ -2527,6 +2715,8 @@ export interface operations {
                     currency?: string;
                     /** @description The payment provider that sells it (for example paddle); default is the tenant's default account */
                     provider?: string;
+                    /** @description A coupon to redeem on the new subscription */
+                    coupon_code?: string;
                     /**
                      * @description Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee.
                      * @enum {string}
@@ -2801,6 +2991,177 @@ export interface operations {
             409: components["responses"]["Error"];
         };
     };
+    applyCoupon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    removeCoupon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getTaxRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxRates"];
+                };
+            };
+        };
+    };
+    setTaxRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxRates"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxRates"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    listCoupons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        coupons?: components["schemas"]["Coupon"][];
+                    };
+                };
+            };
+        };
+    };
+    createCoupon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Coupon"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Coupon"];
+                };
+            };
+            400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    deactivateCoupon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Coupon"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
     cancelScheduledChange: {
         parameters: {
             query?: never;
@@ -2864,6 +3225,8 @@ export interface operations {
                             outstanding_minor?: string;
                             uncollectible_minor?: string;
                             void_minor?: string;
+                            /** @description Credit notes issued against these invoices */
+                            credited_minor?: string;
                         }[];
                     };
                 };
@@ -3075,6 +3438,59 @@ export interface operations {
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
+        };
+    };
+    listCreditNotes: {
+        parameters: {
+            query?: {
+                invoice_id?: string;
+                /** @description Customer external id */
+                customer?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        credit_notes?: components["schemas"]["CreditNote"][];
+                        next_page_token?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getCreditNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+            404: components["responses"]["Error"];
         };
     };
     getInvoice: {
@@ -5102,6 +5518,41 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceSaga"];
                 };
             };
+            409: components["responses"]["Error"];
+        };
+    };
+    adminCreateCreditNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    tenant_id: string;
+                    /** @description int64 minor units; 0 or absent = what is left of the invoice */
+                    amount_minor?: string;
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
             409: components["responses"]["Error"];
         };
     };
