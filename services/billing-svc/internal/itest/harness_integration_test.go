@@ -331,6 +331,7 @@ type env struct {
 	w      *world
 	eng    *saga.Engine
 	mgr    *runs.Manager
+	events *fakeEvents
 	kafka  *kafkaSink
 	tid    uuid.UUID
 	stubs  []*stubworker.Worker
@@ -392,8 +393,9 @@ func newEnv(t *testing.T, o envOpts) *env {
 		o.watermarkGap = 30 * time.Second
 	}
 	f := fakeAll{w: w}
+	e.events = &fakeEvents{}
 	e.mgr, err = runs.NewManager(runs.Config{
-		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Ingest: f, Aggregator: f,
+		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Ingest: f, Aggregator: f, Events: e.events,
 		EndOffsets: func(context.Context) (map[int32]int64, error) { return map[int32]int64{0: 10, 1: 20}, nil },
 		Now:        clk.Now, WatermarkDelay: o.watermarkGap, PageSize: 2, Log: logger(),
 	})
@@ -556,3 +558,28 @@ func (e *env) startConsumersWith(ctx context.Context, pub *rabbitx.Publisher, af
 	}
 	go func() { _ = relay.Run(ctx) }()
 }
+
+// fakeEvents stands in for plans-svc's webhook service: it records what billing hands over, or fails when told to.
+type fakeEvents struct {
+	mu   sync.Mutex
+	got  []*plansv1.RecordTenantEventRequest
+	fail error
+}
+
+func (f *fakeEvents) RecordTenantEvent(_ context.Context, in *plansv1.RecordTenantEventRequest, _ ...grpc.CallOption) (*plansv1.RecordTenantEventResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.fail != nil {
+		return nil, f.fail
+	}
+	f.got = append(f.got, in)
+	return &plansv1.RecordTenantEventResponse{Queued: 1}, nil
+}
+
+func (f *fakeEvents) recorded() []*plansv1.RecordTenantEventRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]*plansv1.RecordTenantEventRequest(nil), f.got...)
+}
+
+func (f *fakeEvents) failWith(err error) { f.mu.Lock(); f.fail = err; f.mu.Unlock() }

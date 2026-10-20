@@ -22,6 +22,7 @@ import (
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/grpcx"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
+	"github.com/0furkancolak/quotify/pkg/secretbox"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/pkg/testkit"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
@@ -47,6 +48,8 @@ type env struct {
 	system  *pgxpool.Pool
 	plans   plansv1.PlansServiceClient
 	admin   plansv1.AdminServiceClient
+	hooks   plansv1.WebhookServiceClient
+	box     *secretbox.Box
 	evicted *recordingEvictor
 }
 
@@ -94,7 +97,13 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 		grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
 		grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
 	}})
-	plansv1.RegisterPlansServiceServer(srv, grpcapi.New(app, log))
+	plansSrv := grpcapi.New(app, log)
+	plansv1.RegisterPlansServiceServer(srv, plansSrv)
+	box, err := secretbox.New(make([]byte, 32)) // an all-zero key is fine for a test database
+	if err != nil {
+		t.Fatal(err)
+	}
+	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, true))
 	plansv1.RegisterAdminServiceServer(srv, admin.New(system, ev, allowedEnvs, log))
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
@@ -106,7 +115,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), evicted: ev}
+		admin: plansv1.NewAdminServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), box: box, evicted: ev}
 }
 
 func operator() context.Context {

@@ -173,7 +173,7 @@ func run() error {
 		}
 	}
 	api := httpapi.New(httpapi.Deps{
-		Plans: plansv1.NewPlansServiceClient(plansConn), Admin: adminClient, Ingest: ingestv1.NewIngestServiceClient(ingestConn),
+		Plans: plansv1.NewPlansServiceClient(plansConn), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(plansConn), Ingest: ingestv1.NewIngestServiceClient(ingestConn),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(aggConn), Replay: aggregatorv1.NewReplayServiceClient(aggConn), Limits: limitsv1.NewLimitsServiceClient(limitsConn),
 		Billing: billingv1.NewBillingServiceClient(billingConn), Sandbox: billingv1.NewSandboxServiceClient(billingConn),
 		BillingAdmin: billingv1.NewBillingAdminServiceClient(billingConn), Analytics: analyticsv1.NewAnalyticsServiceClient(analyticsConn),

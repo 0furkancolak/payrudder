@@ -140,14 +140,14 @@ func (m *Manager) CreateCreditNote(ctx context.Context, tenantID, invoiceID uuid
 				return err
 			}
 			out = cn
-			return nil
+			return creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteCreated, cn.ID.String(), now, cn)
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_credit_note_id, currency) VALUES ($1,$2,$3,$4,$5,$6)`,
 			tenantID, customer, uuid.New(), amount, id, currency); err != nil {
 			return err
 		}
 		out = cn
-		return nil
+		return creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteCreated, cn.ID.String(), now, cn)
 	})
 	return out, err
 }
@@ -192,8 +192,11 @@ func (m *Manager) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.UU
 // SettleRefund applies a worker's reply to the credit note whose refund command it answers. handled is false when no credit note sent that command.
 // A refund that was not accepted for a reason that will not change fails the note; one that may succeed later stays requested for the resend.
 func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID, reply *commandsv1.ReplyEnvelope) (handled bool, err error) {
-	var id uuid.UUID
-	err = tx.QueryRow(ctx, `SELECT id FROM credit_notes WHERE tenant_id = $1 AND refund_command_id = $2 AND refund_state = 'requested' FOR UPDATE`, tenantID, commandID).Scan(&id)
+	cn := &CreditNote{Refund: true}
+	err = tx.QueryRow(ctx, `SELECT id, customer_id, invoice_id, number, currency, total_minor, COALESCE(reason, ''), created_at FROM credit_notes
+		WHERE tenant_id = $1 AND refund_command_id = $2 AND refund_state = 'requested' FOR UPDATE`, tenantID, commandID).Scan(
+		&cn.ID, &cn.CustomerID, &cn.InvoiceID, &cn.Number, &cn.Currency, &cn.TotalMinor, &cn.Reason, &cn.CreatedAt)
+	id := cn.ID
 	if errors.Is(err, pgx.ErrNoRows) {
 		var any bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM credit_notes WHERE tenant_id = $1 AND refund_command_id = $2)`, tenantID, commandID).Scan(&any); err != nil {
@@ -206,15 +209,22 @@ func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID,
 	}
 	switch r := reply.GetReply().(type) {
 	case *commandsv1.ReplyEnvelope_PaymentRefunded:
-		_, err = tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'refunded', refund_ref = $3, refund_error = NULL WHERE tenant_id = $1 AND id = $2`, tenantID, id, r.PaymentRefunded.GetPspRefundId())
+		if _, err = tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'refunded', refund_ref = $3, refund_error = NULL WHERE tenant_id = $1 AND id = $2`, tenantID, id, r.PaymentRefunded.GetPspRefundId()); err != nil {
+			return true, err
+		}
+		cn.RefundState = RefundRefunded
+		return true, creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteRefunded, commandID.String(), time.Now(), cn)
 	case *commandsv1.ReplyEnvelope_PaymentErrored:
 		if r.PaymentErrored.GetRetryable() {
 			return true, nil
 		}
-		_, err = tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'failed', refund_error = $3 WHERE tenant_id = $1 AND id = $2`, tenantID, id,
-			r.PaymentErrored.GetCode()+": "+r.PaymentErrored.GetMessage())
+		cn.RefundState, cn.RefundError = RefundFailed, r.PaymentErrored.GetCode()+": "+r.PaymentErrored.GetMessage()
+		if _, err = tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'failed', refund_error = $3 WHERE tenant_id = $1 AND id = $2`, tenantID, id, cn.RefundError); err != nil {
+			return true, err
+		}
+		return true, creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteRefundFailed, commandID.String(), time.Now(), cn)
 	}
-	return true, err
+	return true, nil
 }
 
 // SweepRefunds resends the refunds nobody answered for a while, and fails a note whose refund went unanswered refundMaxAttempts times.
@@ -255,9 +265,16 @@ func (m *Manager) SweepRefunds(ctx context.Context) error {
 				return nil // answered or resent meanwhile
 			}
 			if attempt-p.runFrom >= refundMaxAttempts {
-				_, err := tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'failed', refund_error = $3 WHERE tenant_id = $1 AND id = $2`, p.tenant, p.cn.ID,
-					fmt.Sprintf("%s after %d attempts", noAnswer, attempt-p.runFrom))
-				return err
+				p.cn.RefundError = fmt.Sprintf("%s after %d attempts", noAnswer, attempt-p.runFrom)
+				if _, err := tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'failed', refund_error = $3 WHERE tenant_id = $1 AND id = $2`, p.tenant, p.cn.ID, p.cn.RefundError); err != nil {
+					return err
+				}
+				var number, reason string
+				if err := tx.QueryRow(ctx, `SELECT number, COALESCE(reason, ''), customer_id FROM credit_notes WHERE tenant_id = $1 AND id = $2`, p.tenant, p.cn.ID).Scan(&number, &reason, &p.cn.CustomerID); err != nil {
+					return err
+				}
+				p.cn.Number, p.cn.Reason, p.cn.Refund, p.cn.RefundState = number, reason, true, RefundFailed
+				return creditNoteEvent(ctx, tx, p.tenant, saga.EventCreditNoteRefundFailed, fmt.Sprintf("%s|gen%d|%d", p.cn.ID, p.generation, attempt), m.cfg.Now(), &p.cn)
 			}
 			return m.requestRefund(ctx, tx, p.tenant, &p.cn, p.env, attempt+1, p.runFrom, p.generation)
 		})
@@ -299,4 +316,27 @@ func (m *Manager) RetryRefund(ctx context.Context, tenantID, creditNoteID uuid.U
 		return nil
 	})
 	return out, err
+}
+
+// creditNoteEvent announces a credit note (or the outcome of its refund) to the tenant's endpoints.
+func creditNoteEvent(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, key string, at time.Time, cn *CreditNote) error {
+	var external string
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(snapshot->>'customer_external_id', '') FROM invoices WHERE tenant_id = $1 AND id = $2`, tenantID, cn.InvoiceID).Scan(&external); err != nil {
+		return err
+	}
+	disposition := "credit"
+	if cn.Refund {
+		disposition = "refund"
+	}
+	data := map[string]any{
+		"credit_note_id": cn.ID.String(), "number": cn.Number, "invoice_id": cn.InvoiceID.String(), "invoice_number": cn.InvoiceNumber, "customer_id": cn.CustomerID.String(),
+		"customer_external_id": external, "currency": cn.Currency, "total_minor": fmt.Sprint(cn.TotalMinor), "reason": cn.Reason, "disposition": disposition,
+	}
+	if cn.Refund {
+		data["refund_state"] = cn.RefundState
+		if cn.RefundError != "" {
+			data["refund_error"] = cn.RefundError
+		}
+	}
+	return saga.TenantEvent(ctx, tx, tenantID, typ, key, at, data)
 }

@@ -229,7 +229,8 @@
       "payments": "Paiements",
       "providers": "Prestataires",
       "reports": "Rapports",
-      "pricing": "Coupons et taxes"
+      "pricing": "Coupons et taxes",
+      "webhooks": "Webhooks"
     },
     "common": {
       "remove": "Retirer"
@@ -556,6 +557,42 @@
       "refundRequested": "Remboursement demandé",
       "refundFailed": "Remboursement échoué",
       "retryRefund": "Réessayer le remboursement"
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "hint": "Quotify envoie un POST JSON signé à ces points de terminaison HTTPS quand il se passe quelque chose dans le compte : une facture est payée, un avoir est émis, un abonnement change. Vérifiez l'en-tête Quotify-Signature avec le secret du point de terminaison ; les livraisons échouées sont retentées pendant environ un jour et demi.",
+      "formLabel": "nouveau point de terminaison webhook",
+      "url": "URL du point de terminaison",
+      "description": "Description",
+      "events": "Événements",
+      "eventsHint": "N'en cochez aucun pour tout recevoir.",
+      "add": "Ajouter un point de terminaison",
+      "secretOnce": "Copiez le secret de signature maintenant : il n'est affiché qu'une fois.",
+      "allEvents": "Tous les événements",
+      "active": "Actif",
+      "paused": "En pause",
+      "deliveries": "Livraisons",
+      "test": "Envoyer un test",
+      "pause": "Mettre en pause",
+      "resume": "Reprendre",
+      "rotate": "Renouveler le secret",
+      "delete": "Supprimer",
+      "confirmDelete": "Supprimer ce point de terminaison et son historique de livraisons ?",
+      "empty": "Aucun point de terminaison webhook.",
+      "status": "Statut",
+      "actions": "Actions",
+      "event": "Événement",
+      "attempts": "Tentatives",
+      "lastAnswer": "Dernière réponse",
+      "date": "Créé",
+      "redeliver": "Renvoyer",
+      "noDeliveries": "Aucune livraison pour l'instant.",
+      "nextTry": "Prochaine tentative {when}",
+      "state": {
+        "pending": "En attente",
+        "delivered": "Livré",
+        "failed": "Échoué"
+      }
     }
   }
 }

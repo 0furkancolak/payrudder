@@ -494,6 +494,91 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DunningSettings" } } } }
         "400": { $ref: "#/components/responses/Error" }
+  /v1/webhook-endpoints:
+    post:
+      operationId: createWebhookEndpoint
+      summary: Register an HTTPS endpoint that receives Quotify's events
+      description: >
+        Quotify sends a signed JSON POST to the endpoint for each event of the types it asks for (all types if none). The response carries the signing secret, once; it cannot be
+        read again, only rotated. Verify each delivery with the `Quotify-Signature` header: `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<raw body>" with the secret>` (two `v1` while a
+        rotated secret is still accepted); reject a timestamp more than five minutes from your clock. Answer 2xx within 10 seconds; anything else is retried after 1 minute, 5 minutes, 30 minutes,
+        2 hours, 6 hours and 24 hours, then given up (a delivery can be sent again by hand). Events are delivered at least once and not in order: use the event `id` to ignore repeats.
+        The URL must be https and public; at most 20 endpoints.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/WebhookEndpointInput" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/WebhookEndpoint" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listWebhookEndpoints
+      summary: The tenant's webhook endpoints
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { endpoints: { type: array, items: { $ref: "#/components/schemas/WebhookEndpoint" } } } } } } }
+  /v1/webhook-endpoints/{id}:
+    put:
+      operationId: updateWebhookEndpoint
+      summary: Replace an endpoint's url, description, event types and active flag
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/WebhookEndpointInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WebhookEndpoint" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteWebhookEndpoint
+      summary: Delete an endpoint and its delivery history
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/webhook-endpoints/{id}/rotate-secret:
+    post:
+      operationId: rotateWebhookSecret
+      summary: Make a new signing secret (returned once); the old one keeps signing for 24 hours
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WebhookEndpoint" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/webhook-endpoints/{id}/test:
+    post:
+      operationId: sendTestWebhook
+      summary: Send a ping event to one endpoint
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { $ref: "#/components/schemas/WebhookDelivery" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/webhook-deliveries:
+    get:
+      operationId: listWebhookDeliveries
+      summary: Deliveries, newest first, with how each attempt went
+      parameters:
+        - { name: endpoint_id, in: query, schema: { type: string, format: uuid } }
+        - { name: state, in: query, schema: { type: string, enum: [pending, delivered, failed] } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deliveries: { type: array, items: { $ref: "#/components/schemas/WebhookDelivery" } }
+                  next_page_token: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/webhook-deliveries/{id}/redeliver:
+    post:
+      operationId: redeliverWebhook
+      summary: Send a delivery again from the start, whatever became of it
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "202": { description: Queued, content: { application/json: { schema: { $ref: "#/components/schemas/WebhookDelivery" } } } }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/coupons:
     post:
       operationId: createCoupon
@@ -2404,6 +2489,69 @@ components:
           items: { type: integer, minimum: 1, maximum: 720 }
         defaults_in_use: { type: boolean, readOnly: true, description: "True when nothing was set and the service-wide delays apply" }
         update_time: { type: string, format: date-time, readOnly: true }
+    WebhookEndpointInput:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri, maxLength: 2000, description: "https only, a public address, no credentials" }
+        description: { type: string, maxLength: 200 }
+        event_types:
+          type: array
+          description: "Empty means every type"
+          items: { $ref: "#/components/schemas/WebhookEventType" }
+        active: { type: boolean, description: "Only on update; a new endpoint is active" }
+    WebhookEventType:
+      type: string
+      enum:
+        - invoice.finalized
+        - invoice.paid
+        - invoice.voided
+        - invoice.uncollectible
+        - credit_note.created
+        - credit_note.refunded
+        - credit_note.refund_failed
+        - subscription.created
+        - subscription.changed
+        - subscription.change_scheduled
+        - subscription.cancelled
+        - subscription.cancellation_scheduled
+        - subscription.cancellation_withdrawn
+        - subscription.paused
+        - subscription.resumed
+        - subscription.moved_to_provider
+    WebhookEndpoint:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        url: { type: string }
+        description: { type: string }
+        event_types: { type: array, items: { type: string } }
+        active: { type: boolean }
+        secret: { type: string, description: "whsec_…; only in the response of create and rotate-secret" }
+        create_time: { type: string, format: date-time }
+    WebhookDelivery:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid, description: "The id inside the delivered body and the Quotify-Event-Id header" }
+        event_type: { type: string }
+        endpoint_id: { type: string, format: uuid }
+        state: { type: string, enum: [WEBHOOK_DELIVERY_STATE_PENDING, WEBHOOK_DELIVERY_STATE_DELIVERED, WEBHOOK_DELIVERY_STATE_FAILED] }
+        attempts: { type: integer }
+        next_attempt_time: { type: string, format: date-time, description: "While pending" }
+        last_status: { type: integer, description: "HTTP status of the last attempt; absent if none got an answer" }
+        last_error: { type: string }
+        create_time: { type: string, format: date-time }
+        delivered_time: { type: string, format: date-time }
+    WebhookEvent:
+      type: object
+      description: "The body of a delivery. data depends on the type: invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change."
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/WebhookEventType" }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { type: object }
     Coupon:
       type: object
       properties:

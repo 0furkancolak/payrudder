@@ -2,6 +2,7 @@ package grpcapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
 )
 
 var (
@@ -299,7 +301,10 @@ func (s *Server) ChangeSubscription(ctx context.Context, req *plansv1.ChangeSubs
 			}
 			resp.Scheduled = true
 			resp.Subscription = subscriptionMessage(row, s.now())
-			return attachExtras(ctx, q, resp.Subscription)
+			if err := attachExtras(ctx, q, resp.Subscription); err != nil {
+				return err
+			}
+			return s.emit(ctx, q, webhooks.SubscriptionChangeScheduled, resp.Subscription, map[string]any{"quote": json.RawMessage(quoteJSON(resp.Quote))})
 		}
 		state := subscription.Active
 		if pc.trial {
@@ -322,7 +327,10 @@ func (s *Server) ChangeSubscription(ctx context.Context, req *plansv1.ChangeSubs
 			return err
 		}
 		resp.Subscription = subscriptionMessage(full, s.now())
-		return attachExtras(ctx, q, resp.Subscription)
+		if err := attachExtras(ctx, q, resp.Subscription); err != nil {
+			return err
+		}
+		return s.emit(ctx, q, webhooks.SubscriptionChanged, resp.Subscription, map[string]any{"previous_subscription_id": row.ID.String(), "quote": json.RawMessage(quoteJSON(resp.Quote))})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
@@ -405,6 +413,17 @@ func (s *Server) ApplyScheduledChanges(ctx context.Context, req *plansv1.ApplySc
 				return err
 			}
 			applied++
+			full, err := q.GetSubscription(ctx, nr.ID)
+			if err != nil {
+				return err
+			}
+			msg := subscriptionMessage(full, s.now())
+			if err := attachExtras(ctx, q, msg); err != nil {
+				return err
+			}
+			if err := s.emit(ctx, q, webhooks.SubscriptionChanged, msg, map[string]any{"previous_subscription_id": row.ID.String(), "scheduled": true}); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -565,4 +584,11 @@ func (s *Server) creditUnusedFee(ctx context.Context, q *sqlc.Queries, row sqlc.
 	}
 	return credit, q.InsertSubscriptionAdjustment(ctx, sqlc.InsertSubscriptionAdjustmentParams{
 		ID: idgen.NewUUIDv7(), SubscriptionID: row.ID, OldPlanCode: row.PlanCode, FromAt: at, ToAt: pe, CreditMinor: credit, ChargeMinor: 0})
+// quoteJSON is a change quote the way the API returns it, for the event that announces the change.
+func quoteJSON(q *plansv1.ChangeQuote) []byte {
+	b, err := eventJSON.Marshal(q)
+	if err != nil {
+		return []byte("null")
+	}
+	return b
 }

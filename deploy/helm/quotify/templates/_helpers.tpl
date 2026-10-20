@@ -59,6 +59,8 @@ see the schema owner's password while the Job still loads the service's complete
     {{- $_ := set $out "QUOTIFY_OPERATOR_TOKEN" $root.Values.operatorToken -}}
   {{- else if eq . "paymentsToken" -}}
     {{- $_ := set $out "QUOTIFY_PAYMENTS_INTERNAL_TOKEN" $root.Values.payments.internalToken -}}
+  {{- else if eq . "secretsKey" -}}
+    {{- $_ := set $out "QUOTIFY_SECRETS_KEY" $root.Values.payments.secretsKey -}}
   {{- else if eq . "paymentsSecrets" -}}
     {{- $_ := set $out "PAYMENTS_INTERNAL_TOKEN" $root.Values.payments.internalToken -}}
     {{- $_ := set $out "QUOTIFY_SECRETS_KEY" $root.Values.payments.secretsKey -}}

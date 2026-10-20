@@ -873,3 +873,47 @@ test("the billing pages are translated", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Abonelikler" })).toBeVisible();
   await expect(page.getByRole("form", { name: "yeni müşteri" })).toBeVisible();
 });
+
+test.describe("webhooks", () => {
+  const endpoint = { id: "ep1", url: "https://example.com/hook", description: "main", event_types: ["invoice.paid"], active: true, create_time: "2026-10-20T10:00:00Z" };
+
+  test("an endpoint is added with the events it wants, its secret is shown once, and deliveries can be sent again", async ({ page }) => {
+    const endpoints: Record<string, unknown>[] = [];
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === "/v1/webhook-endpoints" && c.method === "GET") return { body: { endpoints } };
+      if (c.path === "/v1/webhook-endpoints" && c.method === "POST") {
+        endpoints.push({ ...endpoint, url: (c.body as { url: string }).url, event_types: (c.body as { event_types: string[] }).event_types });
+        return { status: 201, body: { ...endpoints[0], secret: "whsec_ABC123" } };
+      }
+      if (c.path === "/v1/webhook-deliveries" && c.method === "GET") {
+        return {
+          body: {
+            deliveries: [
+              { id: "d1", event_id: "e1", event_type: "invoice.paid", endpoint_id: "ep1", state: "WEBHOOK_DELIVERY_STATE_FAILED", attempts: 7, last_status: 500, last_error: "HTTP 500: nope", create_time: "2026-10-20T10:00:00Z" },
+            ],
+          },
+        };
+      }
+      if (c.path === "/v1/webhook-deliveries/d1/redeliver" && c.method === "POST") return { status: 202, body: { id: "d1", state: "WEBHOOK_DELIVERY_STATE_PENDING" } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/webhooks");
+    await expect(page.getByText("No webhook endpoints.")).toBeVisible();
+    const form = page.getByRole("form", { name: "new webhook endpoint" });
+    await form.getByLabel("Endpoint URL").fill("https://example.com/hook");
+    await form.getByLabel("invoice.paid").check();
+    await form.getByRole("button", { name: "Add endpoint" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/webhook-endpoints").length).toBe(1);
+    expect(gw.called("POST", "/v1/webhook-endpoints")[0]?.body).toEqual({ url: "https://example.com/hook", description: "", event_types: ["invoice.paid"] });
+    await expect(page.getByTestId("webhook-secret")).toHaveText("whsec_ABC123");
+    const row = page.getByRole("row", { name: /example.com\/hook/ });
+    await expect(row).toContainText("invoice.paid");
+    await row.getByRole("button", { name: "Deliveries" }).click();
+    const log = page.getByRole("region", { name: "Deliveries" });
+    await expect(log).toContainText("Failed");
+    await expect(log).toContainText("HTTP 500: nope");
+    await log.getByRole("button", { name: "Send again" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/webhook-deliveries/d1/redeliver").length).toBe(1);
+  });
+});

@@ -229,7 +229,8 @@
       "payments": "Zahlungen",
       "providers": "Anbieter",
       "reports": "Berichte",
-      "pricing": "Gutscheine & Steuer"
+      "pricing": "Gutscheine & Steuer",
+      "webhooks": "Webhooks"
     },
     "common": {
       "remove": "Entfernen"
@@ -556,6 +557,42 @@
       "refundRequested": "Erstattung angefordert",
       "refundFailed": "Erstattung fehlgeschlagen",
       "retryRefund": "Erstattung wiederholen"
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "hint": "Quotify sendet an diese HTTPS-Endpunkte einen signierten JSON-POST, wenn im Konto etwas passiert: eine Rechnung wird bezahlt, eine Gutschrift ausgestellt, ein Abonnement ändert sich. Prüfen Sie den Header Quotify-Signature mit dem Secret des Endpunkts; fehlgeschlagene Zustellungen werden etwa eineinhalb Tage lang wiederholt.",
+      "formLabel": "neuer Webhook-Endpunkt",
+      "url": "Endpunkt-URL",
+      "description": "Beschreibung",
+      "events": "Ereignisse",
+      "eventsHint": "Ohne Auswahl kommen alle Ereignisse.",
+      "add": "Endpunkt hinzufügen",
+      "secretOnce": "Kopieren Sie das Signatur-Secret jetzt: Es wird nur einmal angezeigt.",
+      "allEvents": "Alle Ereignisse",
+      "active": "Aktiv",
+      "paused": "Pausiert",
+      "deliveries": "Zustellungen",
+      "test": "Test senden",
+      "pause": "Pausieren",
+      "resume": "Fortsetzen",
+      "rotate": "Secret erneuern",
+      "delete": "Löschen",
+      "confirmDelete": "Diesen Endpunkt samt Zustellverlauf löschen?",
+      "empty": "Keine Webhook-Endpunkte.",
+      "status": "Status",
+      "actions": "Aktionen",
+      "event": "Ereignis",
+      "attempts": "Versuche",
+      "lastAnswer": "Letzte Antwort",
+      "date": "Erstellt",
+      "redeliver": "Erneut senden",
+      "noDeliveries": "Noch keine Zustellungen.",
+      "nextTry": "Nächster Versuch {when}",
+      "state": {
+        "pending": "Ausstehend",
+        "delivered": "Zugestellt",
+        "failed": "Fehlgeschlagen"
+      }
     }
   }
 }

@@ -42,6 +42,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("SubscriptionChanges", testSubscriptionChanges)
 	t.Run("Coupons", testCoupons)
 	t.Run("CancelCredit", testCancelCredit)
+	t.Run("Webhooks", testWebhooks)
 	t.Run("TaxRates", testTaxRates)
 	t.Run("CurrencyFeesAndCustomerBilling", testCurrencyFeesAndCustomerBilling)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
@@ -76,6 +77,7 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 	must(e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Country: "TR", Currency: "TRY", Provider: "iyzico"}}}))
 	must(e.plans.SetTaxRates(ctx, &plansv1.SetTaxRatesRequest{Rates: []*plansv1.TaxRate{{Country: "TR", Name: "KDV", RateBps: 2000}}}))
 	must(e.plans.CreateCoupon(ctx, &plansv1.CreateCouponRequest{Coupon: &plansv1.Coupon{Code: "SEED", PercentBps: 100, Duration: plansv1.CouponDuration_COUPON_DURATION_ONCE}}))
+	must(e.hooks.CreateWebhookEndpoint(ctx, &plansv1.CreateWebhookEndpointRequest{Url: "https://example.com/hook"}))
 	must(e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_" + suffix, PlanCode: "pro", CouponCode: "SEED"}))
 	// provider_migrations is written by StartProviderMigration, which would move the fixture's subscription; an aborted row stands in.
 	if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(tenantID), func(tx pgx.Tx) error {

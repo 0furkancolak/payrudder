@@ -445,6 +445,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/webhook-endpoints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The tenant's webhook endpoints */
+        get: operations["listWebhookEndpoints"];
+        put?: never;
+        /**
+         * Register an HTTPS endpoint that receives Quotify's events
+         * @description Quotify sends a signed JSON POST to the endpoint for each event of the types it asks for (all types if none). The response carries the signing secret, once; it cannot be read again, only rotated. Verify each delivery with the `Quotify-Signature` header: `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<raw body>" with the secret>` (two `v1` while a rotated secret is still accepted); reject a timestamp more than five minutes from your clock. Answer 2xx within 10 seconds; anything else is retried after 1 minute, 5 minutes, 30 minutes, 2 hours, 6 hours and 24 hours, then given up (a delivery can be sent again by hand). Events are delivered at least once and not in order: use the event `id` to ignore repeats. The URL must be https and public; at most 20 endpoints.
+         */
+        post: operations["createWebhookEndpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook-endpoints/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace an endpoint's url, description, event types and active flag */
+        put: operations["updateWebhookEndpoint"];
+        post?: never;
+        /** Delete an endpoint and its delivery history */
+        delete: operations["deleteWebhookEndpoint"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook-endpoints/{id}/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make a new signing secret (returned once); the old one keeps signing for 24 hours */
+        post: operations["rotateWebhookSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook-endpoints/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a ping event to one endpoint */
+        post: operations["sendTestWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook-deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Deliveries, newest first, with how each attempt went */
+        get: operations["listWebhookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook-deliveries/{id}/redeliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a delivery again from the start, whatever became of it */
+        post: operations["redeliverWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/coupons": {
         parameters: {
             query?: never;
@@ -2150,6 +2257,70 @@ export interface components {
             /** Format: date-time */
             readonly update_time?: string;
         };
+        WebhookEndpointInput: {
+            /**
+             * Format: uri
+             * @description https only, a public address, no credentials
+             */
+            url: string;
+            description?: string;
+            /** @description Empty means every type */
+            event_types?: components["schemas"]["WebhookEventType"][];
+            /** @description Only on update; a new endpoint is active */
+            active?: boolean;
+        };
+        /** @enum {string} */
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider";
+        WebhookEndpoint: {
+            /** Format: uuid */
+            id?: string;
+            url?: string;
+            description?: string;
+            event_types?: string[];
+            active?: boolean;
+            /** @description whsec_…; only in the response of create and rotate-secret */
+            secret?: string;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        WebhookDelivery: {
+            /** Format: uuid */
+            id?: string;
+            /**
+             * Format: uuid
+             * @description The id inside the delivered body and the Quotify-Event-Id header
+             */
+            event_id?: string;
+            event_type?: string;
+            /** Format: uuid */
+            endpoint_id?: string;
+            /** @enum {string} */
+            state?: "WEBHOOK_DELIVERY_STATE_PENDING" | "WEBHOOK_DELIVERY_STATE_DELIVERED" | "WEBHOOK_DELIVERY_STATE_FAILED";
+            attempts?: number;
+            /**
+             * Format: date-time
+             * @description While pending
+             */
+            next_attempt_time?: string;
+            /** @description HTTP status of the last attempt; absent if none got an answer */
+            last_status?: number;
+            last_error?: string;
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            delivered_time?: string;
+        };
+        /** @description The body of a delivery. data depends on the type: invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change. */
+        WebhookEvent: {
+            /** Format: uuid */
+            id?: string;
+            type?: components["schemas"]["WebhookEventType"];
+            /** Format: date-time */
+            created?: string;
+            /** Format: uuid */
+            tenant_id?: string;
+            data?: Record<string, never>;
+        };
         Coupon: {
             /** @description 2–40 letters, digits, - or _ */
             code?: string;
@@ -3198,6 +3369,201 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+        };
+    };
+    listWebhookEndpoints: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        endpoints?: components["schemas"]["WebhookEndpoint"][];
+                    };
+                };
+            };
+        };
+    };
+    createWebhookEndpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookEndpointInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpoint"];
+                };
+            };
+            400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    updateWebhookEndpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookEndpointInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpoint"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    deleteWebhookEndpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    rotateWebhookSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpoint"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    sendTestWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listWebhookDeliveries: {
+        parameters: {
+            query?: {
+                endpoint_id?: string;
+                state?: "pending" | "delivered" | "failed";
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        deliveries?: components["schemas"]["WebhookDelivery"][];
+                        next_page_token?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    redeliverWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
+                };
+            };
+            404: components["responses"]["Error"];
         };
     };
     listCoupons: {

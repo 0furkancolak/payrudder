@@ -18,6 +18,7 @@ import (
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
 )
 
 var migrationStates = map[string]plansv1.ProviderMigration_State{
@@ -75,7 +76,14 @@ func (s *Server) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUI
 	if err := publishEntitlements(ctx, q, tenantID, old.CustomerID, old.PlanVersionID, old.StartTime, &when, now); err != nil {
 		return nr, err
 	}
-	return nr, publishEntitlements(ctx, q, tenantID, nr.CustomerID, nr.PlanVersionID, when, nil, now)
+	if err := publishEntitlements(ctx, q, tenantID, nr.CustomerID, nr.PlanVersionID, when, nil, now); err != nil {
+		return nr, err
+	}
+	moved, err := q.GetSubscription(ctx, nr.ID)
+	if err != nil {
+		return nr, err
+	}
+	return nr, s.emit(ctx, q, webhooks.SubscriptionMovedToProvider, subscriptionMessage(moved, now), map[string]any{"previous_subscription_id": old.ID.String(), "to_provider": toProvider})
 }
 
 func (s *Server) StartProviderMigration(ctx context.Context, req *plansv1.StartProviderMigrationRequest) (*plansv1.StartProviderMigrationResponse, error) {
