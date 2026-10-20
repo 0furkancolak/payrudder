@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -23,18 +24,21 @@ import (
 	"github.com/0furkancolak/quotify/services/invoice-worker/internal/handler"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
 	RabbitMQURL    string `env:"QUOTIFY_RABBITMQ_URL,required"`
 	S3Endpoint     string `env:"S3_ENDPOINT"`
-	S3Region       string `env:"S3_REGION" envDefault:"us-east-1"`
-	S3Bucket       string `env:"S3_BUCKET" envDefault:"invoices"`
-	S3AssetsBucket string `env:"S3_ASSETS_BUCKET" envDefault:"assets"`
+	S3Region       string `env:"S3_REGION"`
+	S3Bucket       string `env:"S3_BUCKET"`
+	S3AssetsBucket string `env:"S3_ASSETS_BUCKET"`
 	S3AccessKey    string `env:"S3_ACCESS_KEY,required"`
 	S3SecretKey    string `env:"S3_SECRET_KEY,required"`
-	S3ForcePath    bool   `env:"S3_FORCE_PATH_STYLE" envDefault:"false"`
-	Prefetch       int    `env:"QUOTIFY_PREFETCH" envDefault:"8"`
-	EnsureBucket   bool   `env:"S3_ENSURE_BUCKET" envDefault:"false"`
+	S3ForcePath    bool   `env:"S3_FORCE_PATH_STYLE"`
+	Prefetch       int    `env:"QUOTIFY_PREFETCH"`
+	EnsureBucket   bool   `env:"S3_ENSURE_BUCKET"`
 }
 
 func main() {
@@ -45,7 +49,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

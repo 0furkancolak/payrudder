@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
@@ -53,11 +54,11 @@ func (s *Server) SetDunningSettings(ctx context.Context, req *billingv1.SetDunni
 	}
 	hours := req.GetRetryHours()
 	if len(hours) > maxDunningRetries {
-		return nil, invalid("retry_hours has at most 6 entries")
+		return nil, errkey.New(codes.InvalidArgument, "billing.dunning.too_many_retries", "retry_hours has at most 6 entries")
 	}
 	for _, h := range hours {
 		if h < 1 || h > maxRetryHours {
-			return nil, invalid("each retry delay is 1..720")
+			return nil, errkey.New(codes.InvalidArgument, "billing.dunning.bad_delay", "each retry delay is 1..720")
 		}
 	}
 	if hours == nil {

@@ -55,6 +55,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly code: string,
+    /** The stable error key (billing.credit_note.not_paid): translate it, not the message. Empty when the server sent none. */
+    readonly key = "",
   ) {
     super(message);
   }
@@ -63,8 +65,8 @@ export class ApiError extends Error {
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   if (error && typeof error === "object" && "error" in error) {
-    const e = (error as { error?: { code?: string; message?: string } }).error;
-    if (e?.message) return new ApiError(e.message, e.code ?? "ERROR");
+    const e = (error as { error?: { code?: string; key?: string; message?: string } }).error;
+    if (e?.message) return new ApiError(e.message, e.code ?? "ERROR", e.key ?? "");
   }
   return new ApiError(error instanceof Error ? error.message : "request failed", "ERROR");
 }

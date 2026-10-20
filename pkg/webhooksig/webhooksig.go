@@ -14,10 +14,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/0furkancolak/quotify/pkg/brand"
 )
 
-// Header is the name of the signature header.
-const Header = "Quotify-Signature"
+// Header is the name of the signature header: "Quotify-Signature", or the renamed product's.
+func Header() string { return brand.Header("Signature") }
 
 // DefaultTolerance is how far a signed timestamp may be from the receiver's clock.
 const DefaultTolerance = 5 * time.Minute

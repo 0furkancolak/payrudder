@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
@@ -55,11 +56,15 @@ func (s *Server) CreateCreditNote(ctx context.Context, req *billingv1.CreateCred
 	cn, err := s.runs.CreateCreditNote(ctx, tid, iid, req.GetAmountMinor(), strings.TrimSpace(req.GetReason()), req.GetRefundToCard())
 	switch {
 	case errors.Is(err, runs.ErrInvoiceNotFound):
-		return nil, status.Error(codes.NotFound, "invoice not found")
-	case errors.Is(err, runs.ErrNotPaid), errors.Is(err, runs.ErrNothingLeft), errors.Is(err, runs.ErrNoRefund):
-		return nil, status.Error(codes.FailedPrecondition, err.Error())
+		return nil, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
+	case errors.Is(err, runs.ErrNotPaid):
+		return nil, errkey.New(codes.FailedPrecondition, "billing.credit_note.not_paid", err.Error())
+	case errors.Is(err, runs.ErrNothingLeft):
+		return nil, errkey.New(codes.FailedPrecondition, "billing.credit_note.fully_credited", err.Error())
+	case errors.Is(err, runs.ErrNoRefund):
+		return nil, errkey.New(codes.FailedPrecondition, "billing.credit_note.nothing_to_refund", err.Error())
 	case errors.Is(err, runs.ErrBadAmount):
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_amount", err.Error())
 	case err != nil:
 		return nil, status.Error(codes.Internal, "internal error")
 	}
@@ -86,7 +91,7 @@ func (s *Server) RetryCreditNoteRefund(ctx context.Context, req *billingv1.Retry
 	case errors.Is(err, runs.ErrInvoiceNotFound):
 		return nil, status.Error(codes.NotFound, "credit note not found")
 	case errors.Is(err, runs.ErrRefundNotFailed):
-		return nil, status.Error(codes.FailedPrecondition, err.Error())
+		return nil, errkey.New(codes.FailedPrecondition, "billing.credit_note.refund_not_failed", err.Error())
 	case err != nil:
 		return nil, status.Error(codes.Internal, "internal error")
 	}

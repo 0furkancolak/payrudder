@@ -1,4 +1,5 @@
 import { createI18n } from "vue-i18n";
+import { branded } from "@/shared/lib/brand";
 import ar from "@/locales/ar.json";
 import de from "@/locales/de.json";
 import en from "@/locales/en.json";
@@ -6,7 +7,7 @@ import es from "@/locales/es.json";
 import fr from "@/locales/fr.json";
 import tr from "@/locales/tr.json";
 
-export const messages = { en, tr, de, es, fr, ar } as const;
+export const messages = { en: branded(en), tr: branded(tr), de: branded(de), es: branded(es), fr: branded(fr), ar: branded(ar) } as const;
 export type Locale = keyof typeof messages;
 export const locales = Object.keys(messages) as Locale[];
 

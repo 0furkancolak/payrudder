@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/0furkancolak/quotify/pkg/brand"
 	"github.com/0furkancolak/quotify/pkg/secretbox"
 	"github.com/0furkancolak/quotify/pkg/webhooksig"
 )
@@ -212,11 +213,11 @@ func (d *Dispatcher) post(ctx context.Context, url string, c claimed, typ string
 	}
 	now := d.Now()
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Quotify-Webhooks/1")
-	req.Header.Set("Quotify-Event-Id", c.event.String())
-	req.Header.Set("Quotify-Event-Type", typ)
-	req.Header.Set("Quotify-Delivery-Attempt", fmt.Sprint(c.attempt))
-	req.Header.Set(webhooksig.Header, webhooksig.Sign(now, body, secrets...))
+	req.Header.Set("User-Agent", brand.UserAgent("Webhooks", 1))
+	req.Header.Set(brand.Header("Event-Id"), c.event.String())
+	req.Header.Set(brand.Header("Event-Type"), typ)
+	req.Header.Set(brand.Header("Delivery-Attempt"), fmt.Sprint(c.attempt))
+	req.Header.Set(webhooksig.Header(), webhooksig.Sign(now, body, secrets...))
 	resp, err := d.Client.Do(req)
 	if err != nil {
 		var ue *neturl.Error // its text repeats the URL, which the tenant knows

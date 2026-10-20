@@ -2387,9 +2387,10 @@ components:
       properties:
         error:
           type: object
-          required: [code, message]
+          required: [code, key, message]
           properties:
             code: { type: string, examples: [INVALID_ARGUMENT, UNAUTHENTICATED, RESOURCE_EXHAUSTED] }
+            key: { type: string, description: "Stable and dotted, service first (billing.credit_note.not_paid). Translate the key, not the message. The list is docs/error-keys.md; an error without its own key gets common.<reason>", examples: [billing.credit_note.not_paid, common.not_found] }
             message: { type: string }
             details:
               type: array

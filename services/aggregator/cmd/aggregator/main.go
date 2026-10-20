@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -35,20 +36,23 @@ import (
 	"github.com/0furkancolak/quotify/services/aggregator/migrations"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
-	GRPCAddr       string        `env:"QUOTIFY_GRPC_ADDR" envDefault:":7003"`
+	GRPCAddr       string        `env:"QUOTIFY_GRPC_ADDR"`
 	PGAppDSN       string        `env:"QUOTIFY_PG_APP_DSN,required"`
 	PGSystemDSN    string        `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
 	PGMigratorDSN  string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
-	PlansAddr      string        `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
+	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
+	PlansAddr      string        `env:"QUOTIFY_PLANS_ADDR"`
 	KafkaBrokers   []string      `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	DLQTopic       string        `env:"QUOTIFY_DLQ_TOPIC" envDefault:"usage.events.dlq.v1"`
-	PollRecords    int           `env:"QUOTIFY_POLL_RECORDS" envDefault:"1000"`
-	Backoff        time.Duration `env:"QUOTIFY_CONSUMER_BACKOFF" envDefault:"1s"`
-	SessionTimeout time.Duration `env:"QUOTIFY_CONSUMER_SESSION_TIMEOUT" envDefault:"10s"`
-	GroupID        string        `env:"QUOTIFY_CONSUMER_GROUP" envDefault:"aggregator"`
+	DLQTopic       string        `env:"QUOTIFY_DLQ_TOPIC"`
+	PollRecords    int           `env:"QUOTIFY_POLL_RECORDS"`
+	Backoff        time.Duration `env:"QUOTIFY_CONSUMER_BACKOFF"`
+	SessionTimeout time.Duration `env:"QUOTIFY_CONSUMER_SESSION_TIMEOUT"`
+	GroupID        string        `env:"QUOTIFY_CONSUMER_GROUP"`
 }
 
 func (c *Config) Validate() error {
@@ -70,7 +74,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

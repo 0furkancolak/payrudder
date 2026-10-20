@@ -1,0 +1,7 @@
+# Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
+QUOTIFY_GRPC_ADDR: ":7001"
+QUOTIFY_MIGRATE_ON_START: "false"
+QUOTIFY_RELAY_WORKERS: "1"
+QUOTIFY_RELAY_BATCH_SIZE: "200"
+QUOTIFY_WEBHOOK_ALLOW_PRIVATE: "false"
+QUOTIFY_ALLOWED_ENVIRONMENTS: "sandbox,live"

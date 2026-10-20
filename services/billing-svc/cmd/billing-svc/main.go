@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -42,35 +43,38 @@ import (
 
 const usageTopic = "usage.events.v1"
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
-	GRPCAddr          string        `env:"QUOTIFY_GRPC_ADDR" envDefault:":7005"`
+	GRPCAddr          string        `env:"QUOTIFY_GRPC_ADDR"`
 	PGAppDSN          string        `env:"QUOTIFY_PG_APP_DSN,required"`
 	PGSystemDSN       string        `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
 	PGMigratorDSN     string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart    bool          `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
-	PlansAddr         string        `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
-	IngestAddr        string        `env:"QUOTIFY_INGEST_ADDR" envDefault:"dns:///localhost:7002"`
-	AggregatorAddr    string        `env:"QUOTIFY_AGGREGATOR_ADDR" envDefault:"dns:///localhost:7003"`
+	MigrateOnStart    bool          `env:"QUOTIFY_MIGRATE_ON_START"`
+	PlansAddr         string        `env:"QUOTIFY_PLANS_ADDR"`
+	IngestAddr        string        `env:"QUOTIFY_INGEST_ADDR"`
+	AggregatorAddr    string        `env:"QUOTIFY_AGGREGATOR_ADDR"`
 	KafkaBrokers      []string      `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
 	RabbitMQURL       string        `env:"QUOTIFY_RABBITMQ_URL,required"`
-	SchedulerInterval time.Duration `env:"QUOTIFY_SCHEDULER_INTERVAL" envDefault:"1m"`
-	SweepInterval     time.Duration `env:"QUOTIFY_SWEEP_INTERVAL" envDefault:"30s"`
-	StepTimeout       time.Duration `env:"QUOTIFY_STEP_TIMEOUT" envDefault:"2m"`
-	WatermarkDelay    time.Duration `env:"QUOTIFY_WATERMARK_DELAY" envDefault:"30s"`
+	SchedulerInterval time.Duration `env:"QUOTIFY_SCHEDULER_INTERVAL"`
+	SweepInterval     time.Duration `env:"QUOTIFY_SWEEP_INTERVAL"`
+	StepTimeout       time.Duration `env:"QUOTIFY_STEP_TIMEOUT"`
+	WatermarkDelay    time.Duration `env:"QUOTIFY_WATERMARK_DELAY"`
 	// Dunning delays before payment retry 1..3 (ADR 0011: sandbox tenants run on minutes instead of days).
-	DunningLive    []time.Duration `env:"QUOTIFY_DUNNING_LIVE" envSeparator:"," envDefault:"24h,72h,168h"`
-	DunningSandbox []time.Duration `env:"QUOTIFY_DUNNING_SANDBOX" envSeparator:"," envDefault:"1m,3m,7m"`
-	RelayWorkers   int             `env:"QUOTIFY_RELAY_WORKERS" envDefault:"1"`
-	RelayBatchSize int             `env:"QUOTIFY_RELAY_BATCH_SIZE" envDefault:"200"`
+	DunningLive    []time.Duration `env:"QUOTIFY_DUNNING_LIVE" envSeparator:","`
+	DunningSandbox []time.Duration `env:"QUOTIFY_DUNNING_SANDBOX" envSeparator:","`
+	RelayWorkers   int             `env:"QUOTIFY_RELAY_WORKERS"`
+	RelayBatchSize int             `env:"QUOTIFY_RELAY_BATCH_SIZE"`
 	// Object storage, for presigned invoice PDF links (optional: without S3_ACCESS_KEY the PDF RPC is unimplemented).
 	S3Endpoint       string `env:"S3_ENDPOINT"`
 	S3PublicEndpoint string `env:"S3_PUBLIC_ENDPOINT"`
-	S3Region         string `env:"S3_REGION" envDefault:"us-east-1"`
-	S3Bucket         string `env:"S3_BUCKET" envDefault:"invoices"`
+	S3Region         string `env:"S3_REGION"`
+	S3Bucket         string `env:"S3_BUCKET"`
 	S3AccessKey      string `env:"S3_ACCESS_KEY"`
 	S3SecretKey      string `env:"S3_SECRET_KEY"`
-	S3ForcePath      bool   `env:"S3_FORCE_PATH_STYLE" envDefault:"false"`
+	S3ForcePath      bool   `env:"S3_FORCE_PATH_STYLE"`
 }
 
 func (c *Config) Validate() error {
@@ -95,7 +99,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

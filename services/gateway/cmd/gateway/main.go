@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -36,23 +37,26 @@ import (
 	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
-	HTTPAddr       string `env:"QUOTIFY_HTTP_ADDR" envDefault:":8000"`
-	PlansAddr      string `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
-	IngestAddr     string `env:"QUOTIFY_INGEST_ADDR" envDefault:"dns:///localhost:7002"`
-	AggregatorAddr string `env:"QUOTIFY_AGGREGATOR_ADDR" envDefault:"dns:///localhost:7003"`
-	LimitsAddr     string `env:"QUOTIFY_LIMITS_ADDR" envDefault:"dns:///localhost:7004"`
-	BillingAddr    string `env:"QUOTIFY_BILLING_ADDR" envDefault:"dns:///localhost:7005"`
-	AnalyticsAddr  string `env:"QUOTIFY_ANALYTICS_ADDR" envDefault:"dns:///localhost:7006"`
-	AssetsAddr     string `env:"QUOTIFY_ASSETS_ADDR" envDefault:"dns:///localhost:7007"`
-	RedisURL       string `env:"QUOTIFY_REDIS_URL" envDefault:"redis://localhost:6379/0"`
+	HTTPAddr       string `env:"QUOTIFY_HTTP_ADDR"`
+	PlansAddr      string `env:"QUOTIFY_PLANS_ADDR"`
+	IngestAddr     string `env:"QUOTIFY_INGEST_ADDR"`
+	AggregatorAddr string `env:"QUOTIFY_AGGREGATOR_ADDR"`
+	LimitsAddr     string `env:"QUOTIFY_LIMITS_ADDR"`
+	BillingAddr    string `env:"QUOTIFY_BILLING_ADDR"`
+	AnalyticsAddr  string `env:"QUOTIFY_ANALYTICS_ADDR"`
+	AssetsAddr     string `env:"QUOTIFY_ASSETS_ADDR"`
+	RedisURL       string `env:"QUOTIFY_REDIS_URL"`
 	OperatorToken  string `env:"QUOTIFY_OPERATOR_TOKEN,required"`
 	// PaymentsURL is payments-worker's HTTP address; empty disables provider webhooks and provider accounts.
 	PaymentsURL   string   `env:"QUOTIFY_PAYMENTS_URL"`
 	PaymentsToken string   `env:"QUOTIFY_PAYMENTS_INTERNAL_TOKEN"`
-	Replicas      int      `env:"QUOTIFY_GATEWAY_REPLICAS" envDefault:"1"`
-	AllowedEnvs   []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:"," envDefault:"sandbox,live"`
+	Replicas      int      `env:"QUOTIFY_GATEWAY_REPLICAS"`
+	AllowedEnvs   []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// PublicURL is the address customers reach the gateway at, for the invoice links it hands out (https://api.example.com). Empty: relative links.
 	PublicURL string `env:"QUOTIFY_PUBLIC_URL"`
 }
@@ -76,7 +80,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

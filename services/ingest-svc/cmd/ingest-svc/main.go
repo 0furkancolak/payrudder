@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
 	"log/slog"
@@ -35,19 +36,22 @@ import (
 	"github.com/0furkancolak/quotify/services/ingest-svc/migrations"
 )
 
+//go:embed config.default.yaml
+var defaults []byte
+
 type Config struct {
 	config.Base
-	GRPCAddr        string   `env:"QUOTIFY_GRPC_ADDR" envDefault:":7002"`
+	GRPCAddr        string   `env:"QUOTIFY_GRPC_ADDR"`
 	PGAppDSN        string   `env:"QUOTIFY_PG_APP_DSN,required"`
 	PGSystemDSN     string   `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
 	PGMigratorDSN   string   `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart  bool     `env:"QUOTIFY_MIGRATE_ON_START" envDefault:"false"`
-	PlansAddr       string   `env:"QUOTIFY_PLANS_ADDR" envDefault:"dns:///localhost:7001"`
+	MigrateOnStart  bool     `env:"QUOTIFY_MIGRATE_ON_START"`
+	PlansAddr       string   `env:"QUOTIFY_PLANS_ADDR"`
 	KafkaBrokers    []string `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	RelayWorkers    int      `env:"QUOTIFY_RELAY_WORKERS" envDefault:"2"`
-	RelayBatchSize  int      `env:"QUOTIFY_RELAY_BATCH_SIZE" envDefault:"1000"`
-	MaxOutboxDepth  int64    `env:"QUOTIFY_MAX_OUTBOX_DEPTH" envDefault:"5000000"`
-	PartitionPeriod string   `env:"QUOTIFY_PARTITION_MAINTENANCE_INTERVAL" envDefault:"1h"`
+	RelayWorkers    int      `env:"QUOTIFY_RELAY_WORKERS"`
+	RelayBatchSize  int      `env:"QUOTIFY_RELAY_BATCH_SIZE"`
+	MaxOutboxDepth  int64    `env:"QUOTIFY_MAX_OUTBOX_DEPTH"`
+	PartitionPeriod string   `env:"QUOTIFY_PARTITION_MAINTENANCE_INTERVAL"`
 }
 
 func (c *Config) Validate() error {
@@ -72,7 +76,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load[Config]()
+	cfg, err := config.Load[Config](defaults)
 	if err != nil {
 		return err
 	}

@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/safehttp"
 	"github.com/0furkancolak/quotify/pkg/secretbox"
@@ -83,7 +84,7 @@ func newSecret() (string, error) {
 
 func (w *Webhooks) requireBox() error {
 	if w.box == nil {
-		return status.Error(codes.FailedPrecondition, "webhooks are not configured on this deployment (QUOTIFY_SECRETS_KEY)")
+		return errkey.New(codes.FailedPrecondition, "plans.webhook.not_configured", "webhooks are not configured on this deployment (QUOTIFY_SECRETS_KEY)")
 	}
 	return nil
 }
@@ -113,7 +114,7 @@ func (w *Webhooks) CreateWebhookEndpoint(ctx context.Context, req *plansv1.Creat
 			return err
 		}
 		if n >= maxWebhookEndpoints {
-			return status.Errorf(codes.FailedPrecondition, "at most %d webhook endpoints; delete one first", maxWebhookEndpoints)
+			return errkey.Newf(codes.FailedPrecondition, "plans.webhook.too_many_endpoints", "at most %d webhook endpoints; delete one first", maxWebhookEndpoints)
 		}
 		r, err := q.InsertWebhookEndpoint(ctx, sqlc.InsertWebhookEndpointParams{ID: id, Url: req.GetUrl(), Description: req.GetDescription(), EventTypes: types, SecretEnc: sealed})
 		if err != nil {

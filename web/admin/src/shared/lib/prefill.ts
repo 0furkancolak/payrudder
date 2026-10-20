@@ -2,7 +2,7 @@
 // operator token and the playground form. A production build served without that variable prefills nothing.
 declare global {
   interface Window {
-    __QUOTIFY__?: { operatorToken?: string };
+    __QUOTIFY__?: { operatorToken?: string; brand?: string };
   }
 }
 

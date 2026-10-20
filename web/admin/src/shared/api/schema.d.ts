@@ -2129,6 +2129,12 @@ export interface components {
                  * @example RESOURCE_EXHAUSTED
                  */
                 code: string;
+                /**
+                 * @description Stable and dotted, service first (billing.credit_note.not_paid). Translate the key, not the message. The list is docs/error-keys.md; an error without its own key gets common.<reason>
+                 * @example billing.credit_note.not_paid
+                 * @example common.not_found
+                 */
+                key: string;
                 message: string;
                 details?: {
                     field?: string;

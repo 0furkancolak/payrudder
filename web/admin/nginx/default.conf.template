@@ -17,11 +17,11 @@ server {
     proxy_read_timeout 30s;
   }
 
-  # Local convenience: PREFILL_OPERATOR_TOKEN pre-fills the sign-in form and the playground. Empty (the default) turns it off.
+  # BRAND_NAME is the product name shown in place of the default (no quotes in it). Local convenience: PREFILL_OPERATOR_TOKEN pre-fills the sign-in form and the playground. Empty (the default) turns it off.
   location = /env.js {
     default_type application/javascript;
     add_header Cache-Control "no-store";
-    return 200 'window.__QUOTIFY__={operatorToken:"${PREFILL_OPERATOR_TOKEN}"};';
+    return 200 'window.__QUOTIFY__={operatorToken:"${PREFILL_OPERATOR_TOKEN}",brand:"${BRAND_NAME}"};';
   }
 
   location /assets/ {
