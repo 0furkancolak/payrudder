@@ -131,6 +131,11 @@ ledger in payments-worker. A currency is never added to another.
 Details in [phase 18](phases/phase-18-billing-console.md). The console's tenant page is a layout with seven tabs; the billing pages call the tenant API as the tenant (operator token plus `X-Quotify-Tenant`) and the operator routes
 as the operator, are in six languages, and are tested against a mocked gateway.
 
+## As built: phase 19
+
+Details in [phase 19](phases/phase-19-yearly-advance.md) and [15-billing-lifecycle.md](15-billing-lifecycle.md). Yearly subscriptions exist; a plan version has a fixed fee per interval and currency; new subscriptions are invoiced in advance (a `FEE` invoice per period)
+and keep usage in arrears on the monthly run. The "yearly subscriptions are refused" limit of phase 13 is gone.
+
 ## Currency
 
 The old rule "one currency per tenant, immutable" moves down a level. The tenant keeps a **default currency**. A subscription and its invoices have one currency, fixed for the

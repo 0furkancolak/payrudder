@@ -261,7 +261,12 @@
       "fixedFee": "Sabit ücret",
       "otherFees": "Diğer para birimleri",
       "meters": "Kullanım fiyatları",
-      "empty": "Henüz paket yok."
+      "empty": "Henüz paket yok.",
+      "interval": "Ek ücretin faturalama dönemi",
+      "monthly": "Aylık",
+      "yearly": "Yıllık",
+      "perYear": "/ yıl",
+      "tenantMonthly": "{currency} cinsinden aylık ücret yukarıdaki sabit ücrettir."
     },
     "subscriptions": {
       "new": "Yeni abonelik",
@@ -306,7 +311,10 @@
       "allowed": "Durum",
       "withinLimit": "sınır içinde",
       "overLimit": "sınırı aştı",
-      "noLimits": "Bu paket kullanım sınırı koymuyor."
+      "noLimits": "Bu paket kullanım sınırı koymuyor.",
+      "interval": "Faturalama dönemi",
+      "monthly": "Aylık",
+      "yearly": "Yıllık"
     },
     "payments": {
       "reconcile": "Defterle mutabakat",

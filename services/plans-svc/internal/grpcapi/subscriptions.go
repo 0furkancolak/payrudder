@@ -26,7 +26,7 @@ func subscriptionMessage(r sqlc.GetSubscriptionRow, now time.Time) *plansv1.Subs
 		ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: r.CustomerExternalID,
 		PlanVersionID: r.PlanVersionID.String(), Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
 		State: r.State, Interval: r.Interval, Currency: r.Currency, TrialEnds: r.TrialEndsAt, PausedAt: r.PausedAt,
-		CancelAtPeriodEnd: r.CancelAtPeriodEnd, ChangedFromID: uuidString(r.ChangedFromID), Provider: strString(r.Provider), ProviderRef: strString(r.ProviderRef), Owner: r.Owner, PlanCode: r.PlanCode, PlanVersion: r.PlanVersion, Now: now,
+		CancelAtPeriodEnd: r.CancelAtPeriodEnd, ChangedFromID: uuidString(r.ChangedFromID), Provider: strString(r.Provider), ProviderRef: strString(r.ProviderRef), Owner: r.Owner, PlanCode: r.PlanCode, PlanVersion: r.PlanVersion, FeeTiming: r.FeeTiming, Now: now,
 	})
 }
 
@@ -75,15 +75,15 @@ func intervalFromProto(i plansv1.SubscriptionInterval) (subscription.Interval, e
 	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED, plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
 		return subscription.Monthly, nil
 	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
-		return "", status.Error(codes.Unimplemented, "yearly subscriptions are not supported yet; billing runs on calendar months")
+		return subscription.Yearly, nil
 	}
 	return "", domain.Invalid("interval", "unknown interval")
 }
 
-// feeIn returns the fixed fee of a plan version in currency: base_fee_minor in the tenant's currency, else the
-// per-currency fee. A plan version without a fee in the currency cannot be sold in it.
-func feeIn(ctx context.Context, q *sqlc.Queries, planVersionID uuid.UUID, baseFee int64, tenantCurrency, currency string) (int64, error) {
-	if currency == tenantCurrency {
+// feeIn returns the fixed fee of a plan version for one billing interval and currency: base_fee_minor for a month in the tenant's
+// currency, else the plan version's fee row. A plan version without a fee for the interval and currency cannot be sold that way.
+func feeIn(ctx context.Context, q *sqlc.Queries, planVersionID uuid.UUID, baseFee int64, tenantCurrency, currency string, interval subscription.Interval) (int64, error) {
+	if currency == tenantCurrency && interval == subscription.Monthly {
 		return baseFee, nil
 	}
 	fees, err := q.ListPlanVersionFees(ctx, planVersionID)
@@ -91,11 +91,11 @@ func feeIn(ctx context.Context, q *sqlc.Queries, planVersionID uuid.UUID, baseFe
 		return 0, err
 	}
 	for _, f := range fees {
-		if f.Currency == currency {
+		if f.Currency == currency && f.Interval == string(interval) {
 			return f.BaseFeeMinor, nil
 		}
 	}
-	return 0, status.Errorf(codes.FailedPrecondition, "plan version has no fixed fee in %s", currency)
+	return 0, status.Errorf(codes.FailedPrecondition, "plan version has no %sly fixed fee in %s", interval, currency)
 }
 
 // monthStart is the first instant of the calendar month t falls in, in loc: the anchor of a subscription's billing periods,
@@ -197,7 +197,7 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 		if _, ok := money.LookupCurrency(currency); !ok {
 			return domain.Invalid("currency", "unsupported currency")
 		}
-		if _, err := feeIn(ctx, q, pv.ID, pv.BaseFeeMinor, t.Currency, currency); err != nil {
+		if _, err := feeIn(ctx, q, pv.ID, pv.BaseFeeMinor, t.Currency, currency, interval); err != nil {
 			return err
 		}
 		if err := requireUsagePrices(ctx, q, pv.ID, t.Currency, currency); err != nil {
@@ -213,8 +213,10 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 				provider = &routed
 			}
 		}
+		providerRenews := false
 		if provider != nil {
 			caps, known := providers.Lookup(*provider)
+			providerRenews = known && caps.OwnsRenewal
 			switch {
 			case !known:
 				return domain.Invalid("provider", "unknown provider "+*provider+"; known: "+strings.Join(providers.Names(), ", "))
@@ -229,10 +231,31 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 			e := start.In(loc).AddDate(0, 0, d)
 			trialEnds = &e
 		}
+		// A subscription a provider renews keeps the old arrears behaviour (the provider bills its fee). Otherwise the fee is invoiced in
+		// advance unless arrears is asked for; a yearly subscription cannot wait a year to be charged.
+		timing := "advance"
+		switch {
+		case providerRenews:
+			timing = "arrears"
+		case req.GetFeeTiming() == plansv1.FeeTiming_FEE_TIMING_ARREARS && interval == subscription.Yearly:
+			return domain.Invalid("fee_timing", "a yearly subscription is invoiced in advance")
+		case req.GetFeeTiming() == plansv1.FeeTiming_FEE_TIMING_ARREARS:
+			timing = "arrears"
+		}
+		// Billing periods of an advance subscription start where its fee does: on the day it starts, or when its trial ends. An arrears
+		// subscription is billed by calendar month.
+		anchor, feeDue := monthStart(start, loc), (*time.Time)(nil)
+		if timing == "advance" {
+			anchor = start
+			if trialEnds != nil {
+				anchor = *trialEnds
+			}
+			feeDue = &anchor
+		}
 		r, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 			ID: idgen.NewUUIDv7(), CustomerID: c.ID, PlanVersionID: pv.ID, StartTime: start,
 			State: string(state), Interval: string(interval), Currency: currency, TrialEndsAt: trialEnds,
-			BillingAnchor: monthStart(start, loc), Provider: provider, Owner: "quotify",
+			BillingAnchor: anchor, Provider: provider, Owner: "quotify", FeeTiming: timing, FeeDueAt: feeDue,
 		})
 		if err != nil {
 			return err
@@ -519,6 +542,9 @@ func (s *Server) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest)
 		if !row.OpenEnded || row.CancelAtPeriodEnd {
 			return status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot change plan")
 		}
+		if row.FeeTiming == "advance" {
+			return status.Error(codes.FailedPrecondition, "a subscription whose fee is invoiced in advance cannot change plan yet (phase 20); create it with fee_timing ARREARS to change plans by splitting the month")
+		}
 		eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, s.now())
 		if eff != subscription.Active && eff != subscription.Trialing {
 			return status.Errorf(codes.FailedPrecondition, "a %s subscription cannot change plan", eff)
@@ -537,7 +563,7 @@ func (s *Server) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest)
 		if err != nil {
 			return err
 		}
-		newFee, err := feeIn(ctx, q, newPV.ID, newPV.BaseFeeMinor, t.Currency, row.Currency)
+		newFee, err := feeIn(ctx, q, newPV.ID, newPV.BaseFeeMinor, t.Currency, row.Currency, subscription.Interval(row.Interval))
 		if err != nil {
 			return err
 		}
@@ -545,7 +571,7 @@ func (s *Server) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest)
 			return err
 		}
 		if eff == subscription.Active {
-			oldFee, err := feeIn(ctx, q, oldPV.ID, oldPV.BaseFeeMinor, t.Currency, row.Currency)
+			oldFee, err := feeIn(ctx, q, oldPV.ID, oldPV.BaseFeeMinor, t.Currency, row.Currency, subscription.Interval(row.Interval))
 			if err != nil {
 				return err
 			}
@@ -572,7 +598,7 @@ func (s *Server) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest)
 		nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 			ID: idgen.NewUUIDv7(), CustomerID: row.CustomerID, PlanVersionID: newPV.ID, StartTime: at,
 			State: string(eff), Interval: row.Interval, Currency: row.Currency, TrialEndsAt: row.TrialEndsAt,
-			BillingAnchor: anchor, ChangedFromID: &id, Provider: row.Provider, Owner: "quotify",
+			BillingAnchor: anchor, ChangedFromID: &id, Provider: row.Provider, Owner: "quotify", FeeTiming: row.FeeTiming,
 		})
 		if err != nil {
 			return err

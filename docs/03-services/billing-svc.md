@@ -251,3 +251,13 @@ Additions to the diagram above: `REFUND_FAILED` (a refund step that timed out; `
   share of the month. The first plan is in force from the start of the month, even if it began inside it.
 - **Waiver.** A segment is free when its trial ends after the period, or when the subscription was paused before the period began. Usage is always billed.
 - **Re-rating** skips subscriptions in another currency and those changed inside the period.
+
+## As built: fees in advance (Phase 19)
+
+Besides the monthly run, the scheduler calls `BillFees` on every tick. For each tenant it pages through plans-svc's `ListSubscriptionsFeeDue`; for each
+due fee period it creates one `FEE` invoice (`invoices.fee_key` = `{subscription id}|{period start}`, unique per tenant) with a single `BASE_FEE` line
+("Base fee (monthly|yearly) — plan — from to"), applies any credit balance, finalizes it (a gap-free number and the same payment saga as any invoice),
+and then calls `AdvanceSubscriptionFee`. Every step is idempotent: a crash leaves either a draft that the next pass finds by its `fee_key` and
+finalizes, or a finalized invoice whose period is advanced by the next pass. A paused subscription's period and a period whose fee is 0 are advanced
+without an invoice (a resumed subscription is not charged for the weeks it was paused). The monthly run leaves the fixed fee off the invoices of
+advance-billed subscriptions (`FeeSegment.Waived`), so usage alone is invoiced in arrears. `FEE` invoices are not part of any billing run.

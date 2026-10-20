@@ -375,11 +375,12 @@ func strictlyAscending(xs []int32) bool {
 // Fee is a fixed fee in one currency.
 type Fee struct {
 	Currency     string
+	Interval     string // "month" or "year"
 	BaseFeeMinor int64
 }
 
-// ValidateFees checks the extra-currency fees of PublishPlanVersion: supported currencies, none equal to the tenant's
-// (its fee is base_fee_minor), no duplicates, non-negative.
+// ValidateFees checks the extra fees of PublishPlanVersion: supported currencies, a known interval, non-negative amounts, no
+// duplicate (currency, interval). A monthly fee in the tenant's currency is base_fee_minor and cannot be listed; a yearly one can.
 func ValidateFees(tenantCurrency string, fees []*plansv1.CurrencyFee) ([]Fee, error) {
 	var v Violations
 	var out []Fee
@@ -390,16 +391,26 @@ func ValidateFees(tenantCurrency string, fees []*plansv1.CurrencyFee) ([]Fee, er
 			v.Add(field+".currency", "unsupported currency")
 			continue
 		}
+		interval := "month"
+		switch f.GetInterval() {
+		case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED, plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
+		case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
+			interval = "year"
+		default:
+			v.Add(field+".interval", "unknown interval")
+			continue
+		}
+		key := f.GetCurrency() + "|" + interval
 		switch {
-		case f.GetCurrency() == tenantCurrency:
-			v.Add(field+".currency", "the tenant currency's fee is base_fee_minor")
-		case seen[f.GetCurrency()]:
-			v.Add(field+".currency", "duplicate currency")
+		case f.GetCurrency() == tenantCurrency && interval == "month":
+			v.Add(field+".currency", "the tenant currency's monthly fee is base_fee_minor")
+		case seen[key]:
+			v.Add(field+".currency", "duplicate currency and interval")
 		case f.GetBaseFeeMinor() < 0:
 			v.Add(field+".base_fee_minor", "must be ≥ 0")
 		default:
-			seen[f.GetCurrency()] = true
-			out = append(out, Fee{Currency: f.GetCurrency(), BaseFeeMinor: f.GetBaseFeeMinor()})
+			seen[key] = true
+			out = append(out, Fee{Currency: f.GetCurrency(), Interval: interval, BaseFeeMinor: f.GetBaseFeeMinor()})
 		}
 	}
 	return out, v.Err()

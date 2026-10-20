@@ -25,7 +25,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatal(err)
 		}
 		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: c.code, BaseFeeMinor: c.fee,
-			Fees: []*plansv1.CurrencyFee{{Currency: "USD", BaseFeeMinor: c.fee / 30}}}); err != nil {
+			Fees: yearlyFees(c.code, c.fee)}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -113,7 +113,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 	t.Run("a plan change splits the month's fixed fee between the plans and chains the subscriptions", func(t *testing.T) {
 		mkCustomer("cus_change")
 		start := time.Now().Add(-24 * time.Hour).Truncate(time.Microsecond)
-		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_change", PlanCode: "basic", StartTime: timestamppb.New(start)})
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_change", PlanCode: "basic", StartTime: timestamppb.New(start), FeeTiming: plansv1.FeeTiming_FEE_TIMING_ARREARS})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -449,7 +449,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 		}
 		sub := func(customer, plan, provider string, start *timestamppb.Timestamp, trialDays int32) *plansv1.Subscription {
 			t.Helper()
-			r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: customer, PlanCode: plan, Provider: provider, StartTime: start, TrialDays: trialDays})
+			r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: customer, PlanCode: plan, Provider: provider, StartTime: start, TrialDays: trialDays, FeeTiming: plansv1.FeeTiming_FEE_TIMING_ARREARS})
 			if err != nil {
 				t.Fatalf("%s: %v", customer, err)
 			}
@@ -526,6 +526,30 @@ func testSubscriptionLifecycle(t *testing.T) {
 		}
 	})
 
+	t.Run("a yearly subscription counts a twelfth of its fee as monthly recurring revenue", func(t *testing.T) {
+		if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_mrr_year", Name: "y", Email: "y@example.com", Country: "SE", BillingCurrency: "TRY"}); err != nil {
+			t.Fatal(err)
+		}
+		start := timestamppb.New(time.Date(2029, 3, 10, 12, 0, 0, 0, time.UTC))
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mrr_year", PlanCode: "basic", StartTime: start,
+			Interval: plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR, Provider: "iyzico"}); err != nil {
+			t.Fatal(err)
+		}
+		r, err := e.plans.GetSubscriptionReport(ctx, &plansv1.GetSubscriptionReportRequest{Month: "2029-03", GroupBy: []string{"provider", "country"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, row := range r.GetRows() {
+			if row.GetProvider() == "iyzico" && row.GetCountry() == "SE" && row.GetCurrency() == "TRY" {
+				if row.GetMrrMinor() != 2500 {
+					t.Errorf("yearly fee 30000 should be 2500 a month, got %d", row.GetMrrMinor())
+				}
+				return
+			}
+		}
+		t.Errorf("no iyzico/SE/TRY row in %v", r.GetRows())
+	})
+
 	t.Run("subscriptions are listed newest first, in pages, for all customers or one", func(t *testing.T) {
 		var all []*plansv1.Subscription
 		token := ""
@@ -577,12 +601,131 @@ func testSubscriptionLifecycle(t *testing.T) {
 		}
 	})
 
-	t.Run("yearly subscriptions are refused for now", func(t *testing.T) {
+	t.Run("a yearly subscription is invoiced in advance, once a year", func(t *testing.T) {
 		mkCustomer("cus_year")
-		_, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_year", PlanCode: "basic",
+		loc, _ := time.LoadLocation("Europe/Istanbul")
+		start := time.Date(2028, 2, 29, 10, 0, 0, 0, loc) // a leap day: the next period starts on 28 February
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_year", PlanCode: "basic", StartTime: timestamppb.New(start),
 			Interval: plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR})
-		if code(t, err) != codes.Unimplemented {
-			t.Fatalf("yearly: %v", err)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sub := r.GetSubscription()
+		if sub.GetInterval() != plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR || sub.GetFeeTiming() != plansv1.FeeTiming_FEE_TIMING_ADVANCE {
+			t.Fatalf("yearly subscription = %v", sub)
+		}
+		due := func(now time.Time) []*plansv1.FeeDue {
+			t.Helper()
+			resp, err := e.plans.ListSubscriptionsFeeDue(ctx, &plansv1.ListSubscriptionsFeeDueRequest{Now: timestamppb.New(now)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var mine []*plansv1.FeeDue
+			for _, d := range resp.GetDue() {
+				if d.GetSubscription().GetId() == sub.GetId() {
+					mine = append(mine, d)
+				}
+			}
+			return mine
+		}
+		if got := due(start.Add(-time.Hour)); len(got) != 0 {
+			t.Fatalf("a fee is due before the subscription starts: %v", got)
+		}
+		got := due(start.Add(time.Minute))
+		if len(got) != 1 || got[0].GetFeeMinor() != 30000 || !got[0].GetPeriodStart().AsTime().Equal(start) ||
+			!got[0].GetPeriodEnd().AsTime().Equal(time.Date(2029, 2, 28, 10, 0, 0, 0, loc)) {
+			t.Fatalf("first year = %v; want 30000 for 2028-02-29 to 2029-02-28", got)
+		}
+		adv := &plansv1.AdvanceSubscriptionFeeRequest{SubscriptionId: sub.GetId(), PeriodStart: timestamppb.New(start)}
+		if _, err := e.plans.AdvanceSubscriptionFee(ctx, adv); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.plans.AdvanceSubscriptionFee(ctx, adv); err != nil {
+			t.Fatalf("advancing twice must be a no-op: %v", err)
+		}
+		if got := due(start.Add(24 * time.Hour)); len(got) != 0 {
+			t.Fatalf("the year is invoiced again: %v", got)
+		}
+		next := due(time.Date(2029, 3, 1, 0, 0, 0, 0, loc))
+		if len(next) != 1 || !next[0].GetPeriodStart().AsTime().Equal(time.Date(2029, 2, 28, 10, 0, 0, 0, loc)) {
+			t.Fatalf("second year = %v", next)
+		}
+		if _, err := e.plans.AdvanceSubscriptionFee(ctx, &plansv1.AdvanceSubscriptionFeeRequest{SubscriptionId: sub.GetId(), PeriodStart: timestamppb.New(start.Add(time.Hour))}); code(t, err) != codes.FailedPrecondition {
+			t.Fatalf("a time that is not a period start: %v", err)
+		}
+	})
+
+	t.Run("a monthly subscription's fee follows its start day; a trial postpones the first fee", func(t *testing.T) {
+		mkCustomer("cus_adv")
+		mkCustomer("cus_advtrial")
+		start := time.Now().Add(-10 * 24 * time.Hour).Truncate(time.Microsecond)
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_adv", PlanCode: "basic", StartTime: timestamppb.New(start)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		tr, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_advtrial", PlanCode: "basic", StartTime: timestamppb.New(start), TrialDays: 30})
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := e.plans.ListSubscriptionsFeeDue(ctx, &plansv1.ListSubscriptionsFeeDueRequest{Now: timestamppb.New(time.Now())})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var sawMonthly, sawTrial bool
+		for _, d := range resp.GetDue() {
+			switch d.GetSubscription().GetId() {
+			case r.GetSubscription().GetId():
+				sawMonthly = true
+				if d.GetFeeMinor() != 3000 || !d.GetPeriodStart().AsTime().Equal(start) {
+					t.Errorf("monthly due = %v", d)
+				}
+			case tr.GetSubscription().GetId():
+				sawTrial = true
+			}
+		}
+		if !sawMonthly || sawTrial {
+			t.Errorf("monthly due %v, trialing due %v; want true, false (the trial has 20 days left)", sawMonthly, sawTrial)
+		}
+		after, err := e.plans.ListSubscriptionsFeeDue(ctx, &plansv1.ListSubscriptionsFeeDueRequest{Now: timestamppb.New(time.Now().Add(25 * 24 * time.Hour))})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, d := range after.GetDue() {
+			if d.GetSubscription().GetId() == tr.GetSubscription().GetId() {
+				if want := tr.GetSubscription().GetTrialEndTime().AsTime(); !d.GetPeriodStart().AsTime().Equal(want) {
+					t.Errorf("first fee period starts %s; want the trial end %s", d.GetPeriodStart().AsTime(), want)
+				}
+				return
+			}
+		}
+		t.Error("the fee is not due after the trial ended")
+	})
+
+	t.Run("fees must exist for the interval; arrears is for monthly only; advance-billed plans cannot change yet", func(t *testing.T) {
+		mkCustomer("cus_nofee")
+		year := plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_nofee", PlanCode: "pro", Interval: year}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("pro has no yearly fee: %v", err)
+		}
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_nofee", PlanCode: "basic", Interval: year, FeeTiming: plansv1.FeeTiming_FEE_TIMING_ARREARS}); code(t, err) != codes.InvalidArgument {
+			t.Errorf("a yearly subscription in arrears: %v", err)
+		}
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_nofee", PlanCode: "basic"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.plans.ChangePlan(ctx, &plansv1.ChangePlanRequest{SubscriptionId: r.GetSubscription().GetId(), PlanCode: "pro"}); code(t, err) != codes.FailedPrecondition {
+			t.Errorf("changing an advance-billed subscription: %v", err)
+		}
+		if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_paddle_us", Name: "p", Email: "p@example.com", Country: "US", BillingCurrency: "USD"}); err != nil {
+			t.Fatal(err)
+		}
+		pr, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle_us", PlanCode: "basic", Provider: "paddle"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pr.GetSubscription().GetFeeTiming() != plansv1.FeeTiming_FEE_TIMING_ARREARS {
+			t.Errorf("a subscription Paddle renews is billed by Paddle, fee timing = %v", pr.GetSubscription().GetFeeTiming())
 		}
 	})
 
@@ -591,7 +734,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 		// 31 January 23:30 in Istanbul is still January there, though already February in UTC.
 		loc, _ := time.LoadLocation("Europe/Istanbul")
 		start := time.Date(2027, 1, 31, 23, 30, 0, 0, loc)
-		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_anchor", PlanCode: "basic", StartTime: timestamppb.New(start)})
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_anchor", PlanCode: "basic", StartTime: timestamppb.New(start), FeeTiming: plansv1.FeeTiming_FEE_TIMING_ARREARS})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -712,4 +855,15 @@ func testCurrencyFeesAndCustomerBilling(t *testing.T) {
 	if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "ch", PlanCode: "team", Currency: "QQQ"}); code(t, err) != codes.InvalidArgument {
 		t.Fatalf("unsupported currency: %v", err)
 	}
+}
+
+// yearlyFees are a plan's extra fees in the lifecycle tests: a USD monthly fee for every plan, and a yearly fee in the tenant currency
+// (TRY) and in USD for "basic" only, ten and ten-and-a-bit months of the monthly fee.
+func yearlyFees(code string, monthly int64) []*plansv1.CurrencyFee {
+	fees := []*plansv1.CurrencyFee{{Currency: "USD", BaseFeeMinor: monthly / 30}}
+	if code == "basic" {
+		year := plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR
+		fees = append(fees, &plansv1.CurrencyFee{Currency: "TRY", Interval: year, BaseFeeMinor: monthly * 10}, &plansv1.CurrencyFee{Currency: "USD", Interval: year, BaseFeeMinor: monthly / 3})
+	}
+	return fees
 }

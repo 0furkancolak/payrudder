@@ -1,6 +1,6 @@
 # Billing lifecycle: yearly plans, plan changes, Paddle catalogue, billing documents
 
-Status: proposed (phases 19–22). Builds on [14-billing-platform.md](14-billing-platform.md) and [ADR 0016](adr/0016-provider-capabilities-and-routing.md); decisions in [ADR 0017](adr/0017-advance-fixed-fees-and-change-modes.md).
+Status: approved; phase 19 is built, 20–22 are planned. Builds on [14-billing-platform.md](14-billing-platform.md) and [ADR 0016](adr/0016-provider-capabilities-and-routing.md); decisions in [ADR 0017](adr/0017-advance-fixed-fees-and-change-modes.md).
 
 ## Why
 

@@ -92,11 +92,21 @@ test.describe("packages", () => {
     await form.getByLabel("Fixed fee per month (TRY)").fill("12,50");
     await form.getByRole("button", { name: "Add a fee in another currency" }).click();
     await form.getByLabel("Currency of the extra fee").selectOption("USD");
+    await form.getByLabel("Billing interval of the extra fee").selectOption("month");
     await form.getByLabel("Fixed fee 1").fill("3");
+    await form.getByRole("button", { name: "Add a fee in another currency" }).click();
+    await form.getByLabel("Currency of the extra fee").nth(1).selectOption("TRY");
+    await form.getByLabel("Fixed fee 2").fill("120");
     await form.getByRole("button", { name: "Publish version" }).click();
     await expect.poll(() => gw.called("POST", "/v1/plans/team/versions").length).toBe(1);
     expect(gw.called("POST", "/v1/plans")[0]?.body).toEqual({ code: "team", name: "Team" });
-    expect(gw.called("POST", "/v1/plans/team/versions")[0]?.body).toEqual({ base_fee_minor: "1250", fees: [{ currency: "USD", base_fee_minor: "300" }] });
+    expect(gw.called("POST", "/v1/plans/team/versions")[0]?.body).toEqual({
+      base_fee_minor: "1250",
+      fees: [
+        { currency: "USD", base_fee_minor: "300", interval: "SUBSCRIPTION_INTERVAL_MONTH" },
+        { currency: "TRY", base_fee_minor: "12000", interval: "SUBSCRIPTION_INTERVAL_YEAR" },
+      ],
+    });
   });
 
   test("a version of a package that exists is published without creating it again", async ({ page }) => {
@@ -195,11 +205,12 @@ test.describe("subscriptions", () => {
     const form = page.getByRole("form", { name: "new subscription" });
     await form.getByLabel("Customer").selectOption("cus_2");
     await form.getByLabel("Package").selectOption("pro");
+    await form.getByLabel("Billing interval").selectOption("SUBSCRIPTION_INTERVAL_YEAR");
     await form.getByLabel("Trial days").fill("14");
     await form.getByLabel("Provider").selectOption("iyzico");
     await form.getByRole("button", { name: "Create subscription" }).click();
     await expect.poll(() => gw.called("POST", "/v1/subscriptions").length).toBe(1);
-    expect(gw.called("POST", "/v1/subscriptions")[0]?.body).toEqual({ customer_external_id: "cus_2", plan_code: "pro", trial_days: 14, provider: "iyzico" });
+    expect(gw.called("POST", "/v1/subscriptions")[0]?.body).toEqual({ customer_external_id: "cus_2", plan_code: "pro", trial_days: 14, provider: "iyzico", interval: "SUBSCRIPTION_INTERVAL_YEAR" });
   });
 
   test("a Quotify-run subscription can be paused, moved to another package and cancelled at the period end", async ({ page }) => {

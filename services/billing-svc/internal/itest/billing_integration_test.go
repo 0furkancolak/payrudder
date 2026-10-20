@@ -59,6 +59,8 @@ func TestBilling(t *testing.T) {
 		{"SubscriptionWithoutAFeeInItsCurrencyFailsPermanently", testSubscriptionWithoutAFeeInItsCurrencyFailsPermanently},
 		{"ProviderOwnedSubscriptionBillsOnlyUsageThroughItsProvider", testProviderOwnedSubscriptionBillsOnlyUsageThroughItsProvider},
 		{"ReportsSumInvoicesByPeriodProviderCountryAndCurrency", testReports},
+		{"AdvanceFeesAreInvoicedOncePerPeriod", testAdvanceFeesAreInvoicedOncePerPeriod},
+		{"AdvanceBilledSubscriptionPaysOnlyUsageAtMonthClose", testAdvanceBilledSubscriptionPaysOnlyUsageAtMonthClose},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

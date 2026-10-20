@@ -157,7 +157,7 @@ func TestCatalogFlow(t *testing.T) {
 				map[string]any{"up_to": "10.5", "unit_price": "0"}, map[string]any{"unit_price": "12.5"}}}}},
 			"entitlements": []any{map[string]any{"meter_code": "gb_hours", "limit": "100.25"}}}},
 		{"/v1/customers", map[string]any{"external_id": "cus_9", "name": "N", "email": "n@example.com"}},
-		{"/v1/subscriptions", map[string]any{"customer_external_id": "cus_9", "plan_code": "pro"}},
+		{"/v1/subscriptions", map[string]any{"customer_external_id": "cus_9", "plan_code": "pro", "fee_timing": "FEE_TIMING_ARREARS"}},
 	} {
 		if r := call(t, "POST", step.path, k, step.body); r.status != 201 {
 			t.Fatalf("POST %s: %d %v", step.path, r.status, r.body)
@@ -171,7 +171,7 @@ func TestCatalogFlow(t *testing.T) {
 	if ent["limit"] != "100.250" {
 		t.Fatalf("limit = %v", ent["limit"])
 	}
-	if r := call(t, "POST", "/v1/subscriptions", k, map[string]any{"customer_external_id": "cus_9", "plan_code": "pro"}); r.status != 409 {
+	if r := call(t, "POST", "/v1/subscriptions", k, map[string]any{"customer_external_id": "cus_9", "plan_code": "pro", "fee_timing": "FEE_TIMING_ARREARS"}); r.status != 409 {
 		t.Fatalf("overlapping subscription: %d %v", r.status, r.body)
 	}
 	bad := call(t, "POST", "/v1/plans/pro/versions", k, map[string]any{"prices": []any{map[string]any{"meter_code": "gb_hours",

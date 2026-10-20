@@ -25,13 +25,12 @@ const create = useCreatePackage(tenantId);
 const code = ref("");
 const name = ref("");
 const fee = ref("0");
-const extra = ref<{ currency: string; amount: string }[]>([]);
+const extra = ref<{ currency: string; interval: "month" | "year"; amount: string }[]>([]);
 const formError = ref("");
 const tenantCurrency = computed(() => tenant.data.value?.currency ?? "");
-const otherCurrencies = computed(() => CURRENCIES.filter((c) => c !== tenantCurrency.value));
 
 function addFee() {
-  extra.value.push({ currency: otherCurrencies.value[0] ?? "USD", amount: "0" });
+  extra.value.push({ currency: tenantCurrency.value || "USD", interval: "year", amount: "0" });
 }
 
 function submit() {
@@ -41,14 +40,18 @@ function submit() {
     formError.value = t("billing.packages.badAmount", { currency: tenantCurrency.value });
     return;
   }
-  const fees: { currency: string; baseFeeMinor: string }[] = [];
+  const fees: { currency: string; interval: "month" | "year"; baseFeeMinor: string }[] = [];
   for (const f of extra.value) {
+    if (f.interval === "month" && f.currency === tenantCurrency.value) {
+      formError.value = t("billing.packages.tenantMonthly", { currency: f.currency });
+      return;
+    }
     const minor = parseMajor(f.amount, f.currency);
     if (minor === null) {
       formError.value = t("billing.packages.badAmount", { currency: f.currency });
       return;
     }
-    fees.push({ currency: f.currency, baseFeeMinor: minor });
+    fees.push({ currency: f.currency, interval: f.interval, baseFeeMinor: minor });
   }
   create.mutate(
     { code: code.value.trim(), name: name.value.trim(), baseFeeMinor: base, fees },
@@ -73,9 +76,13 @@ function submit() {
         <Input v-model="name" :aria-label="t('billing.packages.name')" :placeholder="t('billing.packages.name')" required />
         <Input v-model="fee" inputmode="decimal" :aria-label="t('billing.packages.fee', { currency: tenantCurrency })" :placeholder="t('billing.packages.fee', { currency: tenantCurrency })" required />
       </div>
-      <div v-for="(f, i) in extra" :key="i" class="grid grid-cols-[8rem_1fr_auto] gap-3">
+      <div v-for="(f, i) in extra" :key="i" class="grid grid-cols-[8rem_9rem_1fr_auto] gap-3">
         <NativeSelect v-model="f.currency" :aria-label="t('billing.packages.extraCurrency')">
-          <option v-for="c in otherCurrencies" :key="c" :value="c">{{ c }}</option>
+          <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
+        </NativeSelect>
+        <NativeSelect v-model="f.interval" :aria-label="t('billing.packages.interval')">
+          <option value="month">{{ t("billing.packages.monthly") }}</option>
+          <option value="year">{{ t("billing.packages.yearly") }}</option>
         </NativeSelect>
         <Input v-model="f.amount" inputmode="decimal" :aria-label="t('billing.packages.extraFee', { n: i + 1 })" required />
         <Button type="button" variant="ghost" size="icon" :aria-label="t('billing.common.remove')" @click="extra.splice(i, 1)"><X class="size-4" /></Button>
@@ -111,7 +118,9 @@ function submit() {
           <TableCell class="text-end tabular-nums">{{ p.version ? formatMinor(p.version.base_fee_minor, tenantCurrency, locale) : "—" }}</TableCell>
           <TableCell>
             <div class="flex flex-wrap gap-1">
-              <Badge v-for="f in p.version?.fees ?? []" :key="f.currency" variant="secondary" class="tabular-nums">{{ formatMinor(f.base_fee_minor, f.currency, locale) }}</Badge>
+              <Badge v-for="f in p.version?.fees ?? []" :key="`${f.currency}-${f.interval}`" variant="secondary" class="tabular-nums">
+                {{ formatMinor(f.base_fee_minor, f.currency, locale) }}<template v-if="f.interval === 'SUBSCRIPTION_INTERVAL_YEAR'"> {{ t("billing.packages.perYear") }}</template>
+              </Badge>
               <span v-if="(p.version?.fees ?? []).length === 0" class="text-muted-foreground">—</span>
             </div>
           </TableCell>

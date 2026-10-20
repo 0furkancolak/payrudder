@@ -261,7 +261,12 @@
       "fixedFee": "Fixed fee",
       "otherFees": "Other currencies",
       "meters": "Usage prices",
-      "empty": "No packages yet."
+      "empty": "No packages yet.",
+      "interval": "Billing interval of the extra fee",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "perYear": "/ year",
+      "tenantMonthly": "The monthly fee in {currency} is the fixed fee above."
     },
     "subscriptions": {
       "new": "New subscription",
@@ -306,7 +311,10 @@
       "allowed": "Status",
       "withinLimit": "within the limit",
       "overLimit": "over the limit",
-      "noLimits": "This package sets no usage limits."
+      "noLimits": "This package sets no usage limits.",
+      "interval": "Billing interval",
+      "monthly": "Monthly",
+      "yearly": "Yearly"
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",

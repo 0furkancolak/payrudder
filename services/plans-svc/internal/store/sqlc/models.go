@@ -110,6 +110,7 @@ type PlanVersionFee struct {
 	PlanVersionID uuid.UUID
 	Currency      string
 	BaseFeeMinor  int64
+	Interval      string
 }
 
 type ProviderMigration struct {
@@ -152,6 +153,8 @@ type Subscription struct {
 	ProviderRef       *string
 	Owner             string
 	ProviderSyncedAt  *time.Time
+	FeeTiming         string
+	FeeDueAt          *time.Time
 }
 
 type Tenant struct {

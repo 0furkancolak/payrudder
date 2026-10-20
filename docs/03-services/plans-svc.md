@@ -28,6 +28,8 @@ service PlansService {
 
   rpc CreateSubscription(CreateSubscriptionRequest) returns (Subscription);
   rpc CancelSubscription(CancelSubscriptionRequest) returns (Subscription);
+  rpc ListSubscriptionsFeeDue(ListSubscriptionsFeeDueRequest)
+  rpc AdvanceSubscriptionFee(AdvanceSubscriptionFeeRequest)
   rpc ListSubscriptionsForPeriod(ListSubscriptionsForPeriodRequest)
       returns (stream Subscription);                                // used by billing-svc
 }
@@ -120,5 +122,23 @@ moves through `pkg/subscription` (`Next`). `ChangePlan` ends the subscription at
 plan version with `changed_from_id` set and the same billing anchor; it returns the old and new plan's share of the month's fixed fee.
 
 A subscription is invoiced on the calendar months of the tenant: `billing_anchor` is the first instant of the month it started in.
-Yearly intervals are refused. `PublishPlanVersion` accepts `fees` (other currencies' fixed fee) and `currency_prices` (usage prices in the
+`PublishPlanVersion` accepts `fees` (a fixed fee per currency **and interval**) and `currency_prices` (usage prices in the
 same currencies, covering exactly the meters of the base prices).
+
+## As built: yearly plans and fees in advance (Phase 19)
+
+A plan version's fixed fee is per interval and currency: the monthly fee in the tenant's currency is `base_fee_minor`, every other
+combination is a `plan_version_fees` row (`interval` is part of its key, so a yearly fee in the tenant's currency is listed in `fees`).
+A subscription is created `month` or `year`, needs a fee for that interval in its currency, and has a `fee_timing`:
+
+- `advance` (the default): the fixed fee is invoiced at the start of each billing period. The billing anchor is the subscription's start
+  (the trial end for a trial), so periods are anniversaries (`pkg/subscription.PeriodEnd` clamps a 29 February or a 31st). `fee_due_at` is
+  the start of the next period to invoice.
+- `arrears`: the behaviour of phases 13–18 (the fee rides on the calendar month's usage invoice, calendar-month anchor). Monthly only.
+- A subscription whose provider renews it itself (Paddle) is always `arrears` here and has no `fee_due_at`: the provider bills its fee.
+
+`ListSubscriptionsFeeDue(now, after, page_size)` is billing-svc's work list: advance, Quotify-renewed, not cancelled, `fee_due_at <= now`
+and still running at that period's start, each with the period `[start, end)` and the fee. `AdvanceSubscriptionFee(subscription_id,
+period_start)` moves `fee_due_at` to the period's end by compare-and-set, so calling it twice, or with a time that is not the next period,
+changes nothing (the latter is refused). `ChangePlan` of an advance-billed subscription is refused until phase 20. The subscription report
+counts a yearly fee as a twelfth in MRR.

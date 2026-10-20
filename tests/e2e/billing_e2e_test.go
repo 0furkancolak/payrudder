@@ -79,7 +79,7 @@ func setupSandbox(t *testing.T, a account, customers map[string]string) {
 		if r := call(t, "POST", "/v1/customers", k, map[string]any{"external_id": ext, "name": "Customer " + ext, "email": ext + "@example.com", "payment_method": token}); r.status != 201 {
 			t.Fatalf("customer %s: %d %v", ext, r.status, r.body)
 		}
-		if r := call(t, "POST", "/v1/subscriptions", k, map[string]any{"customer_external_id": ext, "plan_code": "team"}); r.status != 201 {
+		if r := call(t, "POST", "/v1/subscriptions", k, map[string]any{"customer_external_id": ext, "plan_code": "team", "fee_timing": "FEE_TIMING_ARREARS"}); r.status != 201 {
 			t.Fatalf("subscription %s: %d %v", ext, r.status, r.body)
 		}
 	}

@@ -31,6 +31,7 @@ const plan = ref("");
 const currency = ref("");
 const trialDays = ref("0");
 const provider = ref("");
+const interval = ref<"SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR">("SUBSCRIPTION_INTERVAL_MONTH");
 function create() {
   act.create.mutate(
     {
@@ -39,6 +40,7 @@ function create() {
       currency: currency.value || undefined,
       trial_days: Number(trialDays.value) || undefined,
       provider: provider.value || undefined,
+      interval: interval.value,
     },
     { onSuccess: () => (trialDays.value = "0") },
   );
@@ -71,7 +73,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
 <template>
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.subscriptions.new") }}</h2>
-    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_0.9fr_1.5fr]" role="form" :aria-label="t('billing.subscriptions.formLabel')" @submit.prevent="create">
+    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.5fr_0.9fr_1.5fr]" role="form" :aria-label="t('billing.subscriptions.formLabel')" @submit.prevent="create">
       <NativeSelect v-model="customer" :aria-label="t('billing.subscriptions.customer')" required>
         <option value="" disabled>{{ t("billing.subscriptions.customer") }}</option>
         <option v-for="c in customers.data.value?.customers ?? []" :key="c.id" :value="c.external_id">{{ c.external_id }}</option>
@@ -84,12 +86,16 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
         <option value="">{{ t("billing.subscriptions.defaultCurrency") }}</option>
         <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
       </NativeSelect>
+      <NativeSelect v-model="interval" :aria-label="t('billing.subscriptions.interval')">
+        <option value="SUBSCRIPTION_INTERVAL_MONTH">{{ t("billing.subscriptions.monthly") }}</option>
+        <option value="SUBSCRIPTION_INTERVAL_YEAR">{{ t("billing.subscriptions.yearly") }}</option>
+      </NativeSelect>
       <Input v-model="trialDays" type="number" min="0" max="365" :aria-label="t('billing.subscriptions.trialDays')" :placeholder="t('billing.subscriptions.trialDays')" />
       <NativeSelect v-model="provider" :aria-label="t('billing.subscriptions.provider')">
         <option value="">{{ t("billing.subscriptions.byRules") }}</option>
         <option v-for="p in PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
       </NativeSelect>
-      <Button type="submit" class="sm:col-span-2 lg:col-span-5" :disabled="act.create.isPending.value">{{ t("billing.subscriptions.create") }}</Button>
+      <Button type="submit" class="sm:col-span-2 lg:col-span-6" :disabled="act.create.isPending.value">{{ t("billing.subscriptions.create") }}</Button>
     </form>
   </Card>
   <p v-if="failure" class="text-destructive bg-destructive/10 mb-4 rounded-2xl px-4 py-3 text-sm" role="alert">{{ failure }}</p>
@@ -103,6 +109,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
           <TableHead>{{ t("billing.subscriptions.customer") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.package") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
+          <TableHead>{{ t("billing.subscriptions.interval") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.currency") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.provider") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.since") }}</TableHead>
@@ -120,6 +127,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
             </Badge>
             <span v-if="s.cancel_at_period_end" class="text-muted-foreground ms-2 text-xs">{{ t("billing.subscriptions.endsWithPeriod") }}</span>
           </TableCell>
+          <TableCell>{{ s.interval === "SUBSCRIPTION_INTERVAL_YEAR" ? t("billing.subscriptions.yearly") : t("billing.subscriptions.monthly") }}</TableCell>
           <TableCell>{{ s.currency }}</TableCell>
           <TableCell>
             {{ s.provider || "—" }}

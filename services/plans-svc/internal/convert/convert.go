@@ -150,6 +150,7 @@ type SubscriptionFields struct {
 	Provider, ProviderRef, Owner  string
 	PlanCode                      string
 	PlanVersion                   int32
+	FeeTiming                     string
 	// Now decides the effective state: a trial that is over reads as active, an ended subscription as cancelled.
 	Now time.Time
 }
@@ -175,6 +176,13 @@ var stateToProto = map[subscription.State]plansv1.SubscriptionState{
 	subscription.Cancelled: plansv1.SubscriptionState_SUBSCRIPTION_STATE_CANCELLED,
 }
 
+func feeTimingToProto(t string) plansv1.FeeTiming {
+	if t == "advance" {
+		return plansv1.FeeTiming_FEE_TIMING_ADVANCE
+	}
+	return plansv1.FeeTiming_FEE_TIMING_ARREARS
+}
+
 // Subscription maps subscription fields.
 func Subscription(s SubscriptionFields) *plansv1.Subscription {
 	now := s.Now
@@ -184,6 +192,7 @@ func Subscription(s SubscriptionFields) *plansv1.Subscription {
 	out := &plansv1.Subscription{
 		Id: s.ID, CustomerId: s.CustomerID, CustomerExternalId: s.CustomerExternalID, PlanVersionId: s.PlanVersionID,
 		StartTime: ts(s.Start), CreateTime: ts(s.Created), Currency: s.Currency, CancelAtPeriodEnd: s.CancelAtPeriodEnd, ChangedFromId: s.ChangedFromID, Provider: s.Provider, ProviderRef: s.ProviderRef, Owner: ownerOrDefault(s.Owner), PlanCode: s.PlanCode, PlanVersion: s.PlanVersion,
+		FeeTiming: feeTimingToProto(s.FeeTiming),
 		State: stateToProto[SubscriptionState(s.State, s.TrialEnds, s.OpenEnded, s.End, now)],
 	}
 	if s.Interval == string(subscription.Yearly) {

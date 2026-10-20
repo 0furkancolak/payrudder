@@ -180,6 +180,8 @@ message CurrencyPrices {
 message CurrencyFee {
   string currency = 1;
   int64 base_fee_minor = 2;
+  // The billing interval the fee is for. Unspecified = month. A fee in the tenant's currency is only listed here for the year: the monthly one is base_fee_minor.
+  SubscriptionInterval interval = 3;
 }
 
 // Subscription links a customer to a plan version over [start_time, end_time).
@@ -213,6 +215,14 @@ message Subscription {
   // The package (plan) and its version this subscription is on.
   string plan_code = 18;
   int32 plan_version = 19;
+  // When the fixed fee is invoiced: in advance at the start of each period, or in arrears with the month's usage.
+  FeeTiming fee_timing = 20;
+}
+
+enum FeeTiming {
+  FEE_TIMING_UNSPECIFIED = 0;
+  FEE_TIMING_ADVANCE = 1;
+  FEE_TIMING_ARREARS = 2;
 }
 
 enum SubscriptionState {

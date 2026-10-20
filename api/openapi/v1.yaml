@@ -236,8 +236,8 @@ paths:
                 base_fee_minor: { type: string, description: int64 minor units }
                 fees:
                   type: array
-                  description: Fixed fee in currencies other than the tenant's (no duplicates)
-                  items: { type: object, properties: { currency: { type: string }, base_fee_minor: { type: string } } }
+                  description: Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's
+                  items: { $ref: "#/components/schemas/CurrencyFee" }
                 prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
                 entitlements: { type: array, items: { $ref: "#/components/schemas/EntitlementStatus" } }
       responses:
@@ -293,6 +293,7 @@ paths:
                 interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
                 currency: { type: string, description: Default is the customer's billing currency, then the tenant's }
                 provider: { type: string, description: The payment provider that sells it (for example paddle); default is the tenant's default account }
+                fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS], description: "Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee." }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -1852,8 +1853,8 @@ components:
         publish_time: { type: string, format: date-time }
         fees:
           type: array
-          description: Fixed fee in currencies other than the tenant's
-          items: { type: object, properties: { currency: { type: string }, base_fee_minor: { type: string } } }
+          description: Fixed fees other than the tenant currency's monthly one, per currency and interval
+          items: { $ref: "#/components/schemas/CurrencyFee" }
     Subscription:
       type: object
       properties:
@@ -1875,6 +1876,13 @@ components:
         owner: { type: string, enum: [quotify, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
         plan_code: { type: string }
         plan_version: { type: integer }
+        fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS] }
+    CurrencyFee:
+      type: object
+      properties:
+        currency: { type: string }
+        base_fee_minor: { type: string }
+        interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR], description: Default month }
     RoutingRules:
       type: object
       properties:

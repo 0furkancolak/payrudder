@@ -119,6 +119,8 @@ type world struct {
 	meters    []*plansv1.Meter
 	versions  map[string]*plansv1.PlanVersion
 	subs      []*plansv1.Subscription // active over the test periods
+	feeDue    []*plansv1.FeeDue       // advance fee periods waiting to be invoiced
+	advanced  []string                // subscription id|period start (RFC 3339) of the fee periods advanced
 
 	usage     map[string][]*aggregatorv1.UsageAggregate // by period id
 	late      map[string][]*aggregatorv1.LateUsage      // by billed period id
@@ -162,6 +164,32 @@ func (f fakeAll) ListSubscriptionsForPeriod(context.Context, *plansv1.ListSubscr
 		st.items = append(st.items, &plansv1.ListSubscriptionsForPeriodResponse{Subscription: s})
 	}
 	return st, nil
+}
+
+// ListSubscriptionsFeeDue serves the periods not yet advanced.
+func (f fakeAll) ListSubscriptionsFeeDue(context.Context, *plansv1.ListSubscriptionsFeeDueRequest, ...grpc.CallOption) (*plansv1.ListSubscriptionsFeeDueResponse, error) {
+	f.w.mu.Lock()
+	defer f.w.mu.Unlock()
+	out := &plansv1.ListSubscriptionsFeeDueResponse{}
+	for _, d := range f.w.feeDue {
+		done := false
+		for _, a := range f.w.advanced {
+			if a == d.GetSubscription().GetId()+"|"+d.GetPeriodStart().AsTime().UTC().Format(time.RFC3339) {
+				done = true
+			}
+		}
+		if !done {
+			out.Due = append(out.Due, d)
+		}
+	}
+	return out, nil
+}
+
+func (f fakeAll) AdvanceSubscriptionFee(_ context.Context, in *plansv1.AdvanceSubscriptionFeeRequest, _ ...grpc.CallOption) (*plansv1.AdvanceSubscriptionFeeResponse, error) {
+	f.w.mu.Lock()
+	defer f.w.mu.Unlock()
+	f.w.advanced = append(f.w.advanced, in.GetSubscriptionId()+"|"+in.GetPeriodStart().AsTime().UTC().Format(time.RFC3339))
+	return &plansv1.AdvanceSubscriptionFeeResponse{}, nil
 }
 
 // Admin.

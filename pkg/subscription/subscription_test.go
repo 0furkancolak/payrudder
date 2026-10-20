@@ -159,3 +159,30 @@ func TestPortionRejectsBadInput(t *testing.T) {
 		}
 	}
 }
+
+func TestYearlyPeriodsFollowTheAnniversary(t *testing.T) {
+	loc := time.UTC
+	anchor := time.Date(2028, 2, 29, 10, 0, 0, 0, loc)
+	for _, tc := range []struct {
+		at        time.Time
+		wantIndex int
+		wantStart time.Time
+		wantEnd   time.Time
+	}{
+		{anchor, 0, anchor, time.Date(2029, 2, 28, 10, 0, 0, 0, loc)},
+		{time.Date(2029, 2, 27, 23, 0, 0, 0, loc), 0, anchor, time.Date(2029, 2, 28, 10, 0, 0, 0, loc)},
+		{time.Date(2029, 2, 28, 10, 0, 0, 0, loc), 1, time.Date(2029, 2, 28, 10, 0, 0, 0, loc), time.Date(2030, 2, 28, 10, 0, 0, 0, loc)},
+		// Four years on, the day of the month comes back: the periods are counted from the anchor, they do not drift.
+		{time.Date(2032, 2, 29, 10, 0, 0, 0, loc), 4, time.Date(2032, 2, 29, 10, 0, 0, 0, loc), time.Date(2033, 2, 28, 10, 0, 0, 0, loc)},
+	} {
+		n, err := subscription.PeriodIndex(anchor, subscription.Yearly, tc.at, loc)
+		if err != nil || n != tc.wantIndex {
+			t.Fatalf("PeriodIndex(%s) = %d, %v; want %d", tc.at, n, err, tc.wantIndex)
+		}
+		start, _ := subscription.PeriodStart(anchor, subscription.Yearly, n, loc)
+		end, _ := subscription.PeriodEnd(anchor, subscription.Yearly, n, loc)
+		if !start.Equal(tc.wantStart) || !end.Equal(tc.wantEnd) {
+			t.Errorf("period %d = %s – %s; want %s – %s", n, start, end, tc.wantStart, tc.wantEnd)
+		}
+	}
+}

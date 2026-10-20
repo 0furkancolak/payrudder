@@ -120,12 +120,13 @@ WITH subs AS (
               WHEN s.state = 'past_due' THEN 'past_due'
               WHEN s.state = 'trialing' AND s.trial_ends_at > $2 THEN 'trialing'
               ELSE 'active' END AS eff,
-         CASE WHEN s.currency = $4 THEN pv.base_fee_minor ELSE COALESCE(f.base_fee_minor, 0) END AS fee,
+         CASE WHEN s.interval = 'year' THEN ROUND(COALESCE(f.base_fee_minor, 0) / 12.0)::bigint
+              WHEN s.currency = $4 THEN pv.base_fee_minor ELSE COALESCE(f.base_fee_minor, 0) END AS fee,
          EXISTS (SELECT 1 FROM subscriptions n WHERE n.tenant_id = s.tenant_id AND n.changed_from_id = s.id) AS has_successor
   FROM subscriptions s
   JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
   JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
-  LEFT JOIN plan_version_fees f ON f.tenant_id = s.tenant_id AND f.plan_version_id = s.plan_version_id AND f.currency = s.currency
+  LEFT JOIN plan_version_fees f ON f.tenant_id = s.tenant_id AND f.plan_version_id = s.plan_version_id AND f.currency = s.currency AND f.interval = s.interval
   WHERE s.tenant_id = app_tenant_id()
 ), flagged AS (
   SELECT *,

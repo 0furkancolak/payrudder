@@ -19,6 +19,7 @@ export interface NewSubscription {
   currency?: string;
   trial_days?: number;
   provider?: string;
+  interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
 }
 
 /** Every action on a subscription: each refreshes the list. */

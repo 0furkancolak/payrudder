@@ -41,6 +41,8 @@ type subscription struct {
 	// Provider, ProviderRef and Owner: the payment provider that sells the subscription and, when it runs it, its id there. A provider-owned
 	// subscription's fixed fee is billed by the provider, so it is not on Quotify's invoice.
 	Provider, ProviderRef, Owner string
+	// AdvanceFee: the fixed fee is invoiced at the start of each billing period (kind FEE), not with the month's usage.
+	AdvanceFee bool
 	// Chain is this subscription and the ones it replaced by plan changes inside the same period, oldest first. A
 	// subscription that was not changed has a chain of one.
 	Chain []subscription
@@ -68,7 +70,8 @@ func (m *Manager) subscriptions(ctx context.Context, tenantID uuid.UUID, start, 
 		sub := subscription{ID: s.GetId(), CustomerID: s.GetCustomerId(), External: s.GetCustomerExternalId(),
 			PlanVersionID: s.GetPlanVersionId(), Start: s.GetStartTime().AsTime(), Currency: s.GetCurrency(),
 			ChangedFromID: s.GetChangedFromId(), Paused: s.GetState() == plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAUSED,
-			Provider: s.GetProvider(), ProviderRef: s.GetProviderRef(), Owner: s.GetOwner()}
+			Provider: s.GetProvider(), ProviderRef: s.GetProviderRef(), Owner: s.GetOwner(),
+			AdvanceFee: s.GetFeeTiming() == plansv1.FeeTiming_FEE_TIMING_ADVANCE}
 		if s.GetTrialEndTime() != nil {
 			t := s.GetTrialEndTime().AsTime()
 			sub.TrialEnd = &t
@@ -234,7 +237,7 @@ func (m *Manager) feeSegments(ctx context.Context, plans map[string]rating.PlanV
 		trialRunsPast := member.TrialEnd != nil && member.TrialEnd.After(end)
 		pausedBefore := member.Paused && member.PausedAt != nil && !member.PausedAt.After(start)
 		providerBills := member.Owner == "provider"
-		segs = append(segs, rating.FeeSegment{PlanCode: pv.PlanCode, FeeMinor: pv.BaseFeeMinor, From: from, To: to, Waived: trialRunsPast || pausedBefore || providerBills})
+		segs = append(segs, rating.FeeSegment{PlanCode: pv.PlanCode, FeeMinor: pv.BaseFeeMinor, From: from, To: to, Waived: trialRunsPast || pausedBefore || providerBills || member.AdvanceFee})
 	}
 	return segs, nil
 }
