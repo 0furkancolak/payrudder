@@ -56,6 +56,7 @@ type Limiter interface {
 type Deps struct {
 	Plans         plansv1.PlansServiceClient
 	Admin         plansv1.AdminServiceClient
+	Webhooks      plansv1.WebhookServiceClient
 	Ingest        ingestv1.IngestServiceClient
 	Usage         aggregatorv1.UsageQueryServiceClient
 	Replay        aggregatorv1.ReplayServiceClient

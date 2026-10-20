@@ -229,7 +229,8 @@
       "payments": "Payments",
       "providers": "Providers",
       "reports": "Reports",
-      "pricing": "Coupons & tax"
+      "pricing": "Coupons & tax",
+      "webhooks": "Webhooks"
     },
     "common": {
       "remove": "Remove"
@@ -556,6 +557,42 @@
       "refundRequested": "Refund requested",
       "refundFailed": "Refund failed",
       "retryRefund": "Retry refund"
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "hint": "Quotify sends a signed JSON POST to these HTTPS endpoints when something happens in the account: an invoice is paid, a credit note is issued, a subscription changes. Verify the Quotify-Signature header with the endpoint's secret; failed deliveries are retried for about a day and a half.",
+      "formLabel": "new webhook endpoint",
+      "url": "Endpoint URL",
+      "description": "Description",
+      "events": "Events",
+      "eventsHint": "Tick none to receive every event.",
+      "add": "Add endpoint",
+      "secretOnce": "Copy the signing secret now: it is shown only once.",
+      "allEvents": "All events",
+      "active": "Active",
+      "paused": "Paused",
+      "deliveries": "Deliveries",
+      "test": "Send test",
+      "pause": "Pause",
+      "resume": "Resume",
+      "rotate": "Rotate secret",
+      "delete": "Delete",
+      "confirmDelete": "Delete this endpoint and its delivery history?",
+      "empty": "No webhook endpoints.",
+      "status": "Status",
+      "actions": "Actions",
+      "event": "Event",
+      "attempts": "Attempts",
+      "lastAnswer": "Last answer",
+      "date": "Created",
+      "redeliver": "Send again",
+      "noDeliveries": "No deliveries yet.",
+      "nextTry": "Next try {when}",
+      "state": {
+        "pending": "Pending",
+        "delivered": "Delivered",
+        "failed": "Failed"
+      }
     }
   }
 }

@@ -3,6 +3,7 @@ package grpcapi
 import (
 	"context"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
 )
 
 func subscriptionMessage(r sqlc.GetSubscriptionRow, now time.Time) *plansv1.Subscription {
@@ -273,6 +275,9 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 		if err := attachExtras(ctx, q, out); err != nil {
 			return err
 		}
+		if err := s.emit(ctx, q, webhooks.SubscriptionCreated, out, nil); err != nil {
+			return err
+		}
 		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, nil, s.now())
 	})
 	if err != nil {
@@ -364,6 +369,17 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 			return err
 		}
 		out = subscriptionMessage(r, s.now())
+		typ := webhooks.SubscriptionCancelled
+		if end.After(s.now()) {
+			typ = webhooks.SubscriptionCancelScheduled
+		}
+		extra := map[string]any(nil)
+		if credited > 0 {
+			extra = map[string]any{"credited_minor": strconv.FormatInt(credited, 10)}
+		}
+		if err := s.emit(ctx, q, typ, out, extra); err != nil {
+			return err
+		}
 		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, &end, s.now())
 	})
 	if err != nil {
@@ -403,6 +419,12 @@ func (s *Server) moveSubscription(ctx context.Context, id uuid.UUID, ev subscrip
 			return err
 		}
 		out = subscriptionMessage(r, s.now())
+		switch ev {
+		case subscription.Pause:
+			return s.emit(ctx, q, webhooks.SubscriptionPaused, out, nil)
+		case subscription.Resume:
+			return s.emit(ctx, q, webhooks.SubscriptionResumed, out, nil)
+		}
 		return nil
 	})
 	if err != nil {
@@ -517,7 +539,10 @@ func (s *Server) ScheduleCancellation(ctx context.Context, req *plansv1.Schedule
 			return err
 		}
 		out = subscriptionMessage(r, now)
-		return nil
+		if req.GetCancel() {
+			return s.emit(ctx, q, webhooks.SubscriptionCancelScheduled, out, nil)
+		}
+		return s.emit(ctx, q, webhooks.SubscriptionCancelWithdrawn, out, nil)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")

@@ -104,6 +104,7 @@ services:
     metricsPort: 9101
     migrate: true
     db: { role: plans, name: plans_db, app: true, system: true }
+    uses: [secretsKey]   # seals the signing secrets of tenants' webhook endpoints
     allowFrom: [gateway, ingest-svc, aggregator, limits-svc, billing-svc, notifier, payments-worker]
     env:
       QUOTIFY_GRPC_ADDR: ":7001"

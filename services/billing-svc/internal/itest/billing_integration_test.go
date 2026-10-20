@@ -64,6 +64,7 @@ func TestBilling(t *testing.T) {
 		{"AdvanceBilledSubscriptionPaysOnlyUsageAtMonthClose", testAdvanceBilledSubscriptionPaysOnlyUsageAtMonthClose},
 		{"PlanChangesAreInvoicedOrCredited", testPlanChangesAreInvoicedOrCredited},
 		{"CreditNotesCorrectAPaidInvoiceWithoutEditingIt", testCreditNotes},
+		{"InvoiceAndCreditNoteEventsAreHandedToPlansOnce", testTenantEvents},
 		{"CreditNoteRefundsToTheCardAndIsRetriedUntilAnswered", testCreditNoteRefundToCard},
 		{"FeeInvoiceCarriesTheCouponAndServicePeriod", testFeeInvoiceCarriesTheCouponAndServicePeriod},
 		{"TaxIsAddedOnTopOfTheInvoicesQuotifyRaises", testTaxIsAddedOnTopOfTheInvoicesQuotifyRaises},

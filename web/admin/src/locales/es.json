@@ -229,7 +229,8 @@
       "payments": "Pagos",
       "providers": "Proveedores",
       "reports": "Informes",
-      "pricing": "Cupones e impuestos"
+      "pricing": "Cupones e impuestos",
+      "webhooks": "Webhooks"
     },
     "common": {
       "remove": "Quitar"
@@ -556,6 +557,42 @@
       "refundRequested": "Reembolso solicitado",
       "refundFailed": "Reembolso fallido",
       "retryRefund": "Reintentar el reembolso"
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "hint": "Quotify envía un POST JSON firmado a estos endpoints HTTPS cuando ocurre algo en la cuenta: se paga una factura, se emite una nota de crédito, cambia una suscripción. Verifica la cabecera Quotify-Signature con el secreto del endpoint; las entregas fallidas se reintentan durante día y medio aproximadamente.",
+      "formLabel": "nuevo endpoint de webhook",
+      "url": "URL del endpoint",
+      "description": "Descripción",
+      "events": "Eventos",
+      "eventsHint": "Si no marcas ninguno, recibes todos.",
+      "add": "Añadir endpoint",
+      "secretOnce": "Copia el secreto de firma ahora: solo se muestra una vez.",
+      "allEvents": "Todos los eventos",
+      "active": "Activo",
+      "paused": "En pausa",
+      "deliveries": "Entregas",
+      "test": "Enviar prueba",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "rotate": "Rotar secreto",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar este endpoint y su historial de entregas?",
+      "empty": "No hay endpoints de webhook.",
+      "status": "Estado",
+      "actions": "Acciones",
+      "event": "Evento",
+      "attempts": "Intentos",
+      "lastAnswer": "Última respuesta",
+      "date": "Creado",
+      "redeliver": "Enviar de nuevo",
+      "noDeliveries": "Aún no hay entregas.",
+      "nextTry": "Próximo intento {when}",
+      "state": {
+        "pending": "Pendiente",
+        "delivered": "Entregado",
+        "failed": "Fallido"
+      }
     }
   }
 }

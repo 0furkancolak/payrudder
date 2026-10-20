@@ -53,6 +53,15 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/coupons", AccessTenant, ratelimit.ClassRead, s.listCoupons},
 		{"DELETE", "/v1/coupons/{code}", AccessTenant, ratelimit.ClassWrite, s.deactivateCoupon},
 		{"DELETE", "/v1/subscriptions/{id}/scheduled-change", AccessTenant, ratelimit.ClassWrite, s.cancelScheduledChange},
+		// Webhooks: where Quotify sends what happens in the account
+		{"POST", "/v1/webhook-endpoints", AccessTenant, ratelimit.ClassWrite, s.createWebhookEndpoint},
+		{"GET", "/v1/webhook-endpoints", AccessTenant, ratelimit.ClassRead, s.listWebhookEndpoints},
+		{"PUT", "/v1/webhook-endpoints/{id}", AccessTenant, ratelimit.ClassWrite, s.updateWebhookEndpoint},
+		{"DELETE", "/v1/webhook-endpoints/{id}", AccessTenant, ratelimit.ClassWrite, s.deleteWebhookEndpoint},
+		{"POST", "/v1/webhook-endpoints/{id}/rotate-secret", AccessTenant, ratelimit.ClassWrite, s.rotateWebhookSecret},
+		{"POST", "/v1/webhook-endpoints/{id}/test", AccessTenant, ratelimit.ClassWrite, s.sendTestWebhook},
+		{"GET", "/v1/webhook-deliveries", AccessTenant, ratelimit.ClassRead, s.listWebhookDeliveries},
+		{"POST", "/v1/webhook-deliveries/{id}/redeliver", AccessTenant, ratelimit.ClassWrite, s.redeliverWebhook},
 		// Reports
 		{"GET", "/v1/reports/revenue", AccessTenant, ratelimit.ClassRead, s.revenueReport},
 		{"GET", "/v1/dunning-settings", AccessTenant, ratelimit.ClassRead, s.getDunningSettings},

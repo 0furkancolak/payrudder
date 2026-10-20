@@ -229,7 +229,8 @@
       "payments": "Ödemeler",
       "providers": "Sağlayıcılar",
       "reports": "Raporlar",
-      "pricing": "Kupon ve vergi"
+      "pricing": "Kupon ve vergi",
+      "webhooks": "Webhooklar"
     },
     "common": {
       "remove": "Kaldır"
@@ -556,6 +557,42 @@
       "refundRequested": "İade istendi",
       "refundFailed": "İade başarısız",
       "retryRefund": "İadeyi yeniden dene"
+    },
+    "webhooks": {
+      "title": "Webhooklar",
+      "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Quotify bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Quotify-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
+      "formLabel": "yeni webhook uç noktası",
+      "url": "Uç nokta URL'si",
+      "description": "Açıklama",
+      "events": "Olaylar",
+      "eventsHint": "Hiçbirini seçmezseniz tüm olaylar gelir.",
+      "add": "Uç nokta ekle",
+      "secretOnce": "İmza secret'ını şimdi kopyalayın: yalnızca bir kez gösterilir.",
+      "allEvents": "Tüm olaylar",
+      "active": "Etkin",
+      "paused": "Duraklatıldı",
+      "deliveries": "Teslimatlar",
+      "test": "Test gönder",
+      "pause": "Duraklat",
+      "resume": "Devam ettir",
+      "rotate": "Secret'ı yenile",
+      "delete": "Sil",
+      "confirmDelete": "Bu uç nokta ve teslimat geçmişi silinsin mi?",
+      "empty": "Webhook uç noktası yok.",
+      "status": "Durum",
+      "actions": "İşlemler",
+      "event": "Olay",
+      "attempts": "Deneme",
+      "lastAnswer": "Son yanıt",
+      "date": "Oluşturma",
+      "redeliver": "Yeniden gönder",
+      "noDeliveries": "Henüz teslimat yok.",
+      "nextTry": "Sonraki deneme {when}",
+      "state": {
+        "pending": "Bekliyor",
+        "delivered": "Teslim edildi",
+        "failed": "Başarısız"
+      }
     }
   }
 }

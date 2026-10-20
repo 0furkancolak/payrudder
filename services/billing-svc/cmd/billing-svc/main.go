@@ -174,7 +174,7 @@ func run() error {
 	}
 	mgr, err := runs.NewManager(runs.Config{
 		Pool: systemPool, Engine: eng,
-		Plans: plansv1.NewPlansServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn),
+		Plans: plansv1.NewPlansServiceClient(plansConn), Events: plansv1.NewWebhookServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn),
 		Ingest: ingestv1.NewIngestServiceClient(ingestConn), Aggregator: aggregatorv1.NewUsageQueryServiceClient(aggConn),
 		EndOffsets: func(ctx context.Context) (map[int32]int64, error) {
 			ends, err := kadm.NewClient(producer).ListEndOffsets(ctx, usageTopic)
@@ -237,6 +237,7 @@ func run() error {
 	g.Go(func() error { return relay.Run(gctx) })
 	g.Go(func() error { return rc.Run(gctx) })
 	g.Go(func() error { loop(gctx, cfg.SchedulerInterval, "scheduler", log, mgr.Tick); return nil })
+	g.Go(func() error { loop(gctx, 5*time.Second, "tenant-events", log, mgr.FlushTenantEvents); return nil })
 	g.Go(func() error {
 		loop(gctx, cfg.SweepInterval, "sweeper", log, func(ctx context.Context) error {
 			res, err := eng.Sweep(ctx, systemPool, 200)

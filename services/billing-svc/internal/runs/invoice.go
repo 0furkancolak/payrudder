@@ -56,11 +56,11 @@ func (m *Manager) invoice(ctx context.Context, run *Run) (bool, error) {
 // transaction: a rollback leaves neither a number consumed nor a saga behind. Finalizing a finalized invoice is a no-op.
 func (m *Manager) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) error {
 	return pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		var status, env, currency, period string
+		var status, env, currency, period, external string
 		var total int64
 		var customer uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT status, snapshot->>'environment', currency, period_id, total_minor, customer_id FROM invoices
-			WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, tenantID, invoiceID).Scan(&status, &env, &currency, &period, &total, &customer)
+		err := tx.QueryRow(ctx, `SELECT status, snapshot->>'environment', currency, period_id, total_minor, customer_id, COALESCE(snapshot->>'customer_external_id', '') FROM invoices
+			WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, tenantID, invoiceID).Scan(&status, &env, &currency, &period, &total, &customer, &external)
 		if err != nil {
 			return err
 		}
@@ -85,6 +85,10 @@ func (m *Manager) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) e
 			return err
 		}
 		if err := saga.FinalizedFact(ctx, tx, now, tenantID, invoiceID, customer, period, number, currency, total); err != nil {
+			return err
+		}
+		if err := saga.TenantEvent(ctx, tx, tenantID, saga.EventInvoiceFinalized, invoiceID.String(), now,
+			saga.InvoiceData(invoiceID, customer, external, number, period, currency, total, "open")); err != nil {
 			return err
 		}
 		_, err = m.cfg.Engine.Start(ctx, tx, tenantID, invoiceID)

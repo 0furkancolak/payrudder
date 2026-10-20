@@ -28,9 +28,12 @@ import (
 	"github.com/0furkancolak/quotify/pkg/otelx"
 	"github.com/0furkancolak/quotify/pkg/outbox"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
+	"github.com/0furkancolak/quotify/pkg/safehttp"
+	"github.com/0furkancolak/quotify/pkg/secretbox"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/grpcapi"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
 	"github.com/0furkancolak/quotify/services/plans-svc/migrations"
 )
 
@@ -47,6 +50,10 @@ type Config struct {
 	RelayWorkers   int      `env:"QUOTIFY_RELAY_WORKERS" envDefault:"1"`
 	RelayBatchSize int      `env:"QUOTIFY_RELAY_BATCH_SIZE" envDefault:"200"`
 	AllowedEnvs    []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:"," envDefault:"sandbox,live"`
+	// SecretsKey (32 bytes, base64) seals the webhook signing secrets. Without it tenants cannot register webhook endpoints.
+	SecretsKey string `env:"QUOTIFY_SECRETS_KEY"`
+	// WebhookAllowPrivate lets webhook endpoints be http:// and on private addresses. For development and tests; never in production.
+	WebhookAllowPrivate bool `env:"QUOTIFY_WEBHOOK_ALLOW_PRIVATE" envDefault:"false"`
 }
 
 func (c *Config) Validate() error {
@@ -57,6 +64,11 @@ func (c *Config) Validate() error {
 	for _, e := range c.AllowedEnvs {
 		if e != tenant.EnvSandbox && e != tenant.EnvLive {
 			errs = append(errs, fmt.Errorf("QUOTIFY_ALLOWED_ENVIRONMENTS: unknown environment %q", e))
+		}
+	}
+	if c.SecretsKey != "" {
+		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
+			errs = append(errs, fmt.Errorf("QUOTIFY_SECRETS_KEY: %w", err))
 		}
 	}
 	if !slices.Contains(c.AllowedEnvs, tenant.EnvSandbox) {
@@ -164,7 +176,18 @@ func run() error {
 			grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
 		},
 	})
-	plansv1.RegisterPlansServiceServer(srv, grpcapi.New(appPool, log))
+	plansSrv := grpcapi.New(appPool, log)
+	plansv1.RegisterPlansServiceServer(srv, plansSrv)
+	var box *secretbox.Box
+	if cfg.SecretsKey != "" {
+		key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
+		if box, err = secretbox.New(key); err != nil {
+			return err
+		}
+	} else {
+		log.Warn("QUOTIFY_SECRETS_KEY is not set: tenants cannot register webhook endpoints")
+	}
+	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, cfg.WebhookAllowPrivate))
 	plansv1.RegisterAdminServiceServer(srv, admin.New(systemPool, evictor, cfg.AllowedEnvs, log))
 
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
@@ -175,6 +198,10 @@ func run() error {
 	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
 	if relay != nil {
 		g.Go(func() error { return relay.Run(gctx) })
+	}
+	if box != nil {
+		disp := &webhooks.Dispatcher{Pool: systemPool, Box: box, Client: safehttp.NewClient(10*time.Second, cfg.WebhookAllowPrivate), Log: log}
+		g.Go(func() error { return disp.Run(gctx) })
 	}
 	g.Go(func() error {
 		log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr, "environments", cfg.AllowedEnvs)

@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -32,6 +33,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
 	"github.com/0furkancolak/quotify/pkg/stubworker"
+	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/pkg/testkit"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/replies"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
@@ -331,6 +333,7 @@ type env struct {
 	w      *world
 	eng    *saga.Engine
 	mgr    *runs.Manager
+	events *fakeEvents
 	kafka  *kafkaSink
 	tid    uuid.UUID
 	stubs  []*stubworker.Worker
@@ -392,8 +395,9 @@ func newEnv(t *testing.T, o envOpts) *env {
 		o.watermarkGap = 30 * time.Second
 	}
 	f := fakeAll{w: w}
+	e.events = &fakeEvents{}
 	e.mgr, err = runs.NewManager(runs.Config{
-		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Ingest: f, Aggregator: f,
+		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Ingest: f, Aggregator: f, Events: e.events,
 		EndOffsets: func(context.Context) (map[int32]int64, error) { return map[int32]int64{0: 10, 1: 20}, nil },
 		Now:        clk.Now, WatermarkDelay: o.watermarkGap, PageSize: 2, Log: logger(),
 	})
@@ -556,3 +560,42 @@ func (e *env) startConsumersWith(ctx context.Context, pub *rabbitx.Publisher, af
 	}
 	go func() { _ = relay.Run(ctx) }()
 }
+
+// fakeEvents stands in for plans-svc's webhook service: it records what billing hands over, or fails when told to.
+type fakeEvents struct {
+	mu      sync.Mutex
+	got     []*plansv1.RecordTenantEventRequest
+	tenants []string // the tenant each recorded event was handed over for
+	fail    error
+}
+
+func (f *fakeEvents) RecordTenantEvent(ctx context.Context, in *plansv1.RecordTenantEventRequest, _ ...grpc.CallOption) (*plansv1.RecordTenantEventResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.fail != nil {
+		return nil, f.fail
+	}
+	md, _ := metadata.FromOutgoingContext(ctx)
+	if t := md.Get(tenant.MDTenantID); len(t) > 0 {
+		f.tenants = append(f.tenants, t[0])
+	} else {
+		f.tenants = append(f.tenants, "")
+	}
+	f.got = append(f.got, in)
+	return &plansv1.RecordTenantEventResponse{Queued: 1}, nil
+}
+
+// recorded is what was handed over for one tenant: the hand-over works across tenants, and other tests' sagas may still be finishing.
+func (f *fakeEvents) recorded(tenantID uuid.UUID) []*plansv1.RecordTenantEventRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*plansv1.RecordTenantEventRequest
+	for i, r := range f.got {
+		if f.tenants[i] == tenantID.String() {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func (f *fakeEvents) failWith(err error) { f.mu.Lock(); f.fail = err; f.mu.Unlock() }

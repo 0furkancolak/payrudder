@@ -226,3 +226,40 @@ type Tenant struct {
 	CreatedAt          time.Time
 	InvoiceLogoAssetID *uuid.UUID
 }
+
+type WebhookDelivery struct {
+	TenantID      uuid.UUID
+	ID            uuid.UUID
+	EventID       uuid.UUID
+	EndpointID    uuid.UUID
+	State         string
+	Attempts      int32
+	NextAttemptAt time.Time
+	LastStatus    *int32
+	LastError     *string
+	LastAttemptAt *time.Time
+	DeliveredAt   *time.Time
+	CreatedAt     time.Time
+}
+
+type WebhookEndpoint struct {
+	TenantID        uuid.UUID
+	ID              uuid.UUID
+	Url             string
+	Description     string
+	EventTypes      []string
+	SecretEnc       []byte
+	PrevSecretEnc   []byte
+	PrevSecretUntil *time.Time
+	Active          bool
+	CreatedAt       time.Time
+}
+
+type WebhookEvent struct {
+	TenantID   uuid.UUID
+	ID         uuid.UUID
+	Type       string
+	Data       json.RawMessage
+	OccurredAt time.Time
+	CreatedAt  time.Time
+}

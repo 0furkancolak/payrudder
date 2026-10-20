@@ -303,6 +303,10 @@ services:
       QUOTIFY_KAFKA_BROKERS: redpanda:9092
       QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      # Seals the signing secrets of tenants' webhook endpoints (the same key as payments-worker's; local default only).
+      QUOTIFY_SECRETS_KEY: ${QUOTIFY_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
+      # The local stack may deliver webhooks to http:// and private addresses (host.docker.internal, other containers). Never set this in production.
+      QUOTIFY_WEBHOOK_ALLOW_PRIVATE: ${QUOTIFY_WEBHOOK_ALLOW_PRIVATE:-true}
     ports: ["7001:7001", "9101:9101"]
     depends_on:
       postgres: { condition: service_healthy }

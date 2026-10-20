@@ -290,6 +290,14 @@ func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, r
 			return err
 		}
 	}
+	if typ := map[State]string{Paid: EventInvoicePaid, Voided: EventInvoiceVoided, Uncollectible: EventInvoiceUncollectible}[next]; typ != "" {
+		// Reaching the state again after a retry is the same occurrence: the key is the invoice.
+		status := s.InvoiceStatus
+		if err := TenantEvent(ctx, tx, s.TenantID, typ, s.InvoiceID.String(), now,
+			InvoiceData(s.InvoiceID, s.CustomerID, s.Snap.CustomerExternalID, s.Number, s.PeriodID, s.Currency, s.TotalMinor, status)); err != nil {
+			return err
+		}
+	}
 	switch next {
 	case Paid:
 		return e.fact(ctx, tx, s, FactPaid, func(f *eventsv1.InvoiceFact) {

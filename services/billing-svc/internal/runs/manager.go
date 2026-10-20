@@ -79,6 +79,7 @@ type Config struct {
 	Pool       *pgxpool.Pool // billing_system
 	Engine     *saga.Engine
 	Plans      Plans
+	Events     Events // optional: without it tenant events stay in tenant_event_outbox
 	Admin      Admin
 	Ingest     Ingest
 	Aggregator Aggregator
