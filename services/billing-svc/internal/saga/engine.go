@@ -123,6 +123,8 @@ type saga struct {
 	TotalMinor                          int64
 	FinalizedAt                         time.Time
 	Snap                                Snapshot
+	// RetryHours are the tenant's own dunning delays; nil means the service-wide defaults.
+	RetryHours []int32
 }
 
 func (e *Engine) load(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UUID) (*saga, error) {
@@ -144,6 +146,12 @@ func (e *Engine) load(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UUID
 	}
 	if err := json.Unmarshal(raw, &s.Snap); err != nil {
 		return nil, fmt.Errorf("invoice %s snapshot: %w", s.InvoiceID, err)
+	}
+	switch err := tx.QueryRow(ctx, `SELECT retry_hours FROM dunning_settings WHERE tenant_id = $1`, tenantID).Scan(&s.RetryHours); {
+	case errors.Is(err, pgx.ErrNoRows):
+		s.RetryHours = nil
+	case err != nil:
+		return nil, fmt.Errorf("dunning settings: %w", err)
 	}
 	return &s, nil
 }
@@ -173,7 +181,7 @@ func (e *Engine) Handle(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UU
 }
 
 func (e *Engine) guardCtx(s *saga) Ctx {
-	return Ctx{TotalMinor: s.TotalMinor, Paid: s.InvoiceStatus == "paid", DunningAttempt: s.DunningAttempt, MaxDunning: MaxDunning}
+	return Ctx{TotalMinor: s.TotalMinor, Paid: s.InvoiceStatus == "paid", DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s))}
 }
 
 func (e *Engine) handleLoaded(ctx context.Context, tx pgx.Tx, s *saga, ev Event, cause string, commandID *uuid.UUID) (Outcome, error) {
@@ -225,7 +233,7 @@ func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, r
 		}
 	case EffScheduleDunning:
 		delays := e.dunningDelays(s)
-		at := now.Add(delays[min(s.DunningAttempt, len(delays)-1)])
+		at := now.Add(delays[min(s.DunningAttempt, len(delays)-1)]) // the table only schedules while DunningLeft, so delays is not empty
 		nextAttemptAt = &at
 	}
 	if ev == EvExhausted && next == PaymentUnknown && from == PaymentUnknown {
@@ -295,7 +303,20 @@ func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, r
 	return nil
 }
 
+// dunningDelays are the delays before retry 1..n: the tenant's own when set (hours, or minutes in a sandbox tenant), else the defaults.
+// A tenant that set none gives up on the first declined charge.
 func (e *Engine) dunningDelays(s *saga) []time.Duration {
+	if s.RetryHours != nil {
+		unit := time.Hour
+		if s.Snap.Environment == "sandbox" {
+			unit = time.Minute
+		}
+		out := make([]time.Duration, len(s.RetryHours))
+		for i, h := range s.RetryHours {
+			out[i] = time.Duration(h) * unit
+		}
+		return out
+	}
 	if s.Snap.Environment == "sandbox" {
 		return e.cfg.DunningSandbox
 	}

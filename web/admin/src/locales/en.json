@@ -519,6 +519,18 @@
         "saved": "Rates saved.",
         "none": "No tax is added.",
         "badRate": "Not a percentage: 0 to 100 with at most two decimals."
+      },
+      "dunning": {
+        "title": "Payment retries",
+        "hint": "When a charge is declined, Quotify tries again after each delay below, then gives the invoice up as uncollectible. Delays are in hours (minutes in a sandbox account).",
+        "defaults": "You have not set any: the standard delays are shown.",
+        "retry": "Retry {n}",
+        "delay": "Hours before retry {n}",
+        "add": "Add a retry",
+        "save": "Save retries",
+        "saved": "Retries saved.",
+        "none": "No retries: a declined charge is given up at once.",
+        "bad": "Each delay is a whole number from 1 to 720."
       }
     },
     "creditNotes": {

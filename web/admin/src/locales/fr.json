@@ -519,6 +519,18 @@
         "saved": "Taux enregistrés.",
         "none": "Aucune taxe n'est ajoutée.",
         "badRate": "Pas un pourcentage : de 0 à 100 avec au plus deux décimales."
+      },
+      "dunning": {
+        "title": "Nouvelles tentatives de paiement",
+        "hint": "Quand un prélèvement est refusé, Quotify réessaie après chaque délai ci-dessous, puis déclare la facture irrécouvrable. Les délais sont en heures (en minutes dans un compte sandbox).",
+        "defaults": "Rien n'est défini : les délais standard sont affichés.",
+        "retry": "Tentative {n}",
+        "delay": "Heures avant la tentative {n}",
+        "add": "Ajouter une tentative",
+        "save": "Enregistrer les tentatives",
+        "saved": "Tentatives enregistrées.",
+        "none": "Aucune nouvelle tentative : un prélèvement refusé est abandonné aussitôt.",
+        "bad": "Chaque délai est un entier de 1 à 720."
       }
     },
     "creditNotes": {

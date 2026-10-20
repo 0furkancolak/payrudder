@@ -42,6 +42,7 @@ func TestBilling(t *testing.T) {
 		{"PaymentErroredQueriesStatusWithoutASecondCharge", testPaymentUnknown},
 		{"StatusNotFoundRechargesWithTheSameIdempotencyKey", testStatusNotFound},
 		{"DunningEndsUncollectible", testDunning},
+		{"TenantDunningSettingsReplaceTheDefaults", testTenantDunningSettings},
 		{"ClosePeriodTwiceMakesOneRunAndOneInvoicePerCustomer", testClosePeriodTwice},
 		{"InvoiceNumbersAreGapFreeUnderConcurrency", testGapFree},
 		{"SandboxClosePeriodNowAndLiveIsRefused", testSandbox},

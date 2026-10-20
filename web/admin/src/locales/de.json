@@ -519,6 +519,18 @@
         "saved": "Sätze gespeichert.",
         "none": "Es wird keine Steuer addiert.",
         "badRate": "Kein Prozentsatz: 0 bis 100 mit höchstens zwei Dezimalstellen."
+      },
+      "dunning": {
+        "title": "Zahlungswiederholungen",
+        "hint": "Wird eine Abbuchung abgelehnt, versucht Quotify es nach jeder Wartezeit erneut und stuft die Rechnung danach als uneinbringlich ein. Die Zeiten sind in Stunden (in einem Sandbox-Konto in Minuten).",
+        "defaults": "Nichts eingestellt: Es werden die Standardzeiten angezeigt.",
+        "retry": "Versuch {n}",
+        "delay": "Stunden vor Versuch {n}",
+        "add": "Versuch hinzufügen",
+        "save": "Versuche speichern",
+        "saved": "Versuche gespeichert.",
+        "none": "Keine Wiederholungen: Eine abgelehnte Abbuchung wird sofort aufgegeben.",
+        "bad": "Jede Wartezeit ist eine ganze Zahl von 1 bis 720."
       }
     },
     "creditNotes": {

@@ -402,8 +402,27 @@ test.describe("pricing", () => {
   const quiet = (c: { path: string; method: string }) => {
     if (c.path === "/v1/coupons" && c.method === "GET") return { body: { coupons: [] } };
     if (c.path === "/v1/tax-rates" && c.method === "GET") return { body: { rates: [{ country: "DE", name: "VAT", rate_bps: 1900 }, { country: "", name: "Sales tax", rate_bps: 825 }] } };
+    if (c.path === "/v1/dunning-settings" && c.method === "GET") return { body: { retry_hours: [24, 72, 168], defaults_in_use: true } };
     return undefined;
   };
+
+  test("payment retries are listed in hours and saved as the whole list", async ({ page }) => {
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === "/v1/dunning-settings" && c.method === "PUT") return { body: { retry_hours: (c.body as { retry_hours: number[] }).retry_hours } };
+      return quiet(c);
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/pricing");
+    await expect(page.getByLabel("Hours before retry 2")).toHaveValue("72");
+    await page.getByLabel("Hours before retry 3").fill("0");
+    await page.getByRole("button", { name: "Save retries" }).click();
+    await expect(page.getByRole("alert")).toContainText("whole number from 1 to 720");
+    expect(gw.called("PUT", "/v1/dunning-settings")).toHaveLength(0);
+    await page.getByLabel("Hours before retry 3").fill("120");
+    await page.getByRole("button", { name: "Save retries" }).click();
+    await expect.poll(() => gw.called("PUT", "/v1/dunning-settings").length).toBe(1);
+    expect(gw.called("PUT", "/v1/dunning-settings")[0]?.body).toEqual({ retry_hours: [24, 72, 120] });
+  });
 
   test("a coupon is made as a percentage or an amount, and deactivated", async ({ page }) => {
     const coupons: Record<string, unknown>[] = [];

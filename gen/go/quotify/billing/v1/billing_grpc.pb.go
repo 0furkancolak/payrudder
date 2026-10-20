@@ -19,13 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	BillingService_GetInvoice_FullMethodName       = "/quotify.billing.v1.BillingService/GetInvoice"
-	BillingService_ListInvoices_FullMethodName     = "/quotify.billing.v1.BillingService/ListInvoices"
-	BillingService_GetInvoicePdfUrl_FullMethodName = "/quotify.billing.v1.BillingService/GetInvoicePdfUrl"
-	BillingService_GetRevenueReport_FullMethodName = "/quotify.billing.v1.BillingService/GetRevenueReport"
-	BillingService_GetDunningReport_FullMethodName = "/quotify.billing.v1.BillingService/GetDunningReport"
-	BillingService_GetCreditNote_FullMethodName    = "/quotify.billing.v1.BillingService/GetCreditNote"
-	BillingService_ListCreditNotes_FullMethodName  = "/quotify.billing.v1.BillingService/ListCreditNotes"
+	BillingService_GetInvoice_FullMethodName         = "/quotify.billing.v1.BillingService/GetInvoice"
+	BillingService_ListInvoices_FullMethodName       = "/quotify.billing.v1.BillingService/ListInvoices"
+	BillingService_GetInvoicePdfUrl_FullMethodName   = "/quotify.billing.v1.BillingService/GetInvoicePdfUrl"
+	BillingService_GetRevenueReport_FullMethodName   = "/quotify.billing.v1.BillingService/GetRevenueReport"
+	BillingService_GetDunningReport_FullMethodName   = "/quotify.billing.v1.BillingService/GetDunningReport"
+	BillingService_GetCreditNote_FullMethodName      = "/quotify.billing.v1.BillingService/GetCreditNote"
+	BillingService_ListCreditNotes_FullMethodName    = "/quotify.billing.v1.BillingService/ListCreditNotes"
+	BillingService_GetDunningSettings_FullMethodName = "/quotify.billing.v1.BillingService/GetDunningSettings"
+	BillingService_SetDunningSettings_FullMethodName = "/quotify.billing.v1.BillingService/SetDunningSettings"
 )
 
 // BillingServiceClient is the client API for BillingService service.
@@ -44,6 +46,10 @@ type BillingServiceClient interface {
 	GetDunningReport(ctx context.Context, in *GetDunningReportRequest, opts ...grpc.CallOption) (*GetDunningReportResponse, error)
 	GetCreditNote(ctx context.Context, in *GetCreditNoteRequest, opts ...grpc.CallOption) (*GetCreditNoteResponse, error)
 	ListCreditNotes(ctx context.Context, in *ListCreditNotesRequest, opts ...grpc.CallOption) (*ListCreditNotesResponse, error)
+	// GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
+	GetDunningSettings(ctx context.Context, in *GetDunningSettingsRequest, opts ...grpc.CallOption) (*GetDunningSettingsResponse, error)
+	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
+	SetDunningSettings(ctx context.Context, in *SetDunningSettingsRequest, opts ...grpc.CallOption) (*SetDunningSettingsResponse, error)
 }
 
 type billingServiceClient struct {
@@ -124,6 +130,26 @@ func (c *billingServiceClient) ListCreditNotes(ctx context.Context, in *ListCred
 	return out, nil
 }
 
+func (c *billingServiceClient) GetDunningSettings(ctx context.Context, in *GetDunningSettingsRequest, opts ...grpc.CallOption) (*GetDunningSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDunningSettingsResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetDunningSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) SetDunningSettings(ctx context.Context, in *SetDunningSettingsRequest, opts ...grpc.CallOption) (*SetDunningSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetDunningSettingsResponse)
+	err := c.cc.Invoke(ctx, BillingService_SetDunningSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BillingServiceServer is the server API for BillingService service.
 // All implementations must embed UnimplementedBillingServiceServer
 // for forward compatibility.
@@ -140,6 +166,10 @@ type BillingServiceServer interface {
 	GetDunningReport(context.Context, *GetDunningReportRequest) (*GetDunningReportResponse, error)
 	GetCreditNote(context.Context, *GetCreditNoteRequest) (*GetCreditNoteResponse, error)
 	ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error)
+	// GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
+	GetDunningSettings(context.Context, *GetDunningSettingsRequest) (*GetDunningSettingsResponse, error)
+	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
+	SetDunningSettings(context.Context, *SetDunningSettingsRequest) (*SetDunningSettingsResponse, error)
 	mustEmbedUnimplementedBillingServiceServer()
 }
 
@@ -170,6 +200,12 @@ func (UnimplementedBillingServiceServer) GetCreditNote(context.Context, *GetCred
 }
 func (UnimplementedBillingServiceServer) ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCreditNotes not implemented")
+}
+func (UnimplementedBillingServiceServer) GetDunningSettings(context.Context, *GetDunningSettingsRequest) (*GetDunningSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDunningSettings not implemented")
+}
+func (UnimplementedBillingServiceServer) SetDunningSettings(context.Context, *SetDunningSettingsRequest) (*SetDunningSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetDunningSettings not implemented")
 }
 func (UnimplementedBillingServiceServer) mustEmbedUnimplementedBillingServiceServer() {}
 func (UnimplementedBillingServiceServer) testEmbeddedByValue()                        {}
@@ -318,6 +354,42 @@ func _BillingService_ListCreditNotes_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_GetDunningSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDunningSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetDunningSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetDunningSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetDunningSettings(ctx, req.(*GetDunningSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_SetDunningSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetDunningSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).SetDunningSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_SetDunningSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).SetDunningSettings(ctx, req.(*SetDunningSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BillingService_ServiceDesc is the grpc.ServiceDesc for BillingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -352,6 +424,14 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListCreditNotes",
 			Handler:    _BillingService_ListCreditNotes_Handler,
+		},
+		{
+			MethodName: "GetDunningSettings",
+			Handler:    _BillingService_GetDunningSettings_Handler,
+		},
+		{
+			MethodName: "SetDunningSettings",
+			Handler:    _BillingService_SetDunningSettings_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
