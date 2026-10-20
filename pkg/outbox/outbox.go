@@ -23,6 +23,15 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+// The relay's statements. The table is fixed: every service names its outbox "outbox".
+const (
+	claimRows = `SELECT id, tenant_id::text, topic, partition_key, payload, headers, ingested_at
+		FROM outbox ORDER BY id LIMIT $1 FOR UPDATE SKIP LOCKED`
+	deleteRows = `DELETE FROM outbox WHERE id = ANY($1)`
+	oldestRow  = `SELECT min(ingested_at) FROM outbox`
+	queueDepth = `SELECT COALESCE((SELECT max(id) FROM outbox) - (SELECT min(id) FROM outbox) + 1, 0)`
+)
+
 // NotifyChannel is the LISTEN/NOTIFY channel writers signal after committing outbox rows.
 const NotifyChannel = "outbox_new"
 
@@ -44,7 +53,6 @@ type Sink interface {
 
 // Config tunes a Relay. Zero values take the defaults noted.
 type Config struct {
-	Table        string        // default "outbox"
 	Workers      int           // default 2
 	BatchSize    int           // default 1000
 	PollInterval time.Duration // default 50ms: fallback when no NOTIFY arrives
@@ -55,9 +63,6 @@ type Config struct {
 }
 
 func (c *Config) defaults() {
-	if c.Table == "" {
-		c.Table = "outbox"
-	}
 	if c.Workers <= 0 {
 		c.Workers = 2
 	}
@@ -86,12 +91,9 @@ type Relay struct {
 	lag       metric.Float64Histogram
 }
 
-// NewRelay validates the table name and registers metrics.
+// NewRelay registers metrics.
 func NewRelay(pool *pgxpool.Pool, sink Sink, cfg Config, log *slog.Logger) (*Relay, error) {
 	cfg.defaults()
-	if !validIdent(cfg.Table) {
-		return nil, fmt.Errorf("outbox: invalid table name %q", cfg.Table)
-	}
 	if log == nil {
 		log = slog.Default()
 	}
@@ -228,7 +230,7 @@ func (r *Relay) RelayOnce(ctx context.Context) (int, error) {
 	for i, row := range rows {
 		ids[i] = row.ID
 	}
-	if _, err := tx.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE id = ANY($1)`, r.cfg.Table), ids); err != nil {
+	if _, err := tx.Exec(ctx, deleteRows, ids); err != nil {
 		return 0, fmt.Errorf("outbox: delete: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -238,14 +240,12 @@ func (r *Relay) RelayOnce(ctx context.Context) (int, error) {
 	now := time.Now()
 	r.published.Add(ctx, int64(len(rows)))
 	r.batchSecs.Record(ctx, now.Sub(start).Seconds())
-	r.lag.Record(ctx, now.Sub(rows[0].IngestedAt).Seconds(), metric.WithAttributes(attribute.String("table", r.cfg.Table)))
+	r.lag.Record(ctx, now.Sub(rows[0].IngestedAt).Seconds(), metric.WithAttributes(attribute.String("table", "outbox")))
 	return len(rows), nil
 }
 
 func (r *Relay) claim(ctx context.Context, tx pgx.Tx) ([]Row, error) {
-	q := fmt.Sprintf(`SELECT id, tenant_id::text, topic, partition_key, payload, headers, ingested_at
-		FROM %s ORDER BY id LIMIT $1 FOR UPDATE SKIP LOCKED`, r.cfg.Table)
-	rs, err := tx.Query(ctx, q, r.cfg.BatchSize)
+	rs, err := tx.Query(ctx, claimRows, r.cfg.BatchSize)
 	if err != nil {
 		return nil, fmt.Errorf("outbox: claim: %w", err)
 	}
@@ -268,12 +268,9 @@ func (r *Relay) claim(ctx context.Context, tx pgx.Tx) ([]Row, error) {
 // Watermark returns the oldest unpublished ingested_at, or ok=false when the table is empty.
 func Watermark(ctx context.Context, db interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
-}, table string) (oldest time.Time, ok bool, err error) {
-	if !validIdent(table) {
-		return time.Time{}, false, fmt.Errorf("outbox: invalid table name %q", table)
-	}
+}) (oldest time.Time, ok bool, err error) {
 	var t *time.Time
-	if err := db.QueryRow(ctx, fmt.Sprintf(`SELECT min(ingested_at) FROM %s`, table)).Scan(&t); err != nil {
+	if err := db.QueryRow(ctx, oldestRow).Scan(&t); err != nil {
 		return time.Time{}, false, err
 	}
 	if t == nil {
@@ -286,28 +283,10 @@ func Watermark(ctx context.Context, db interface {
 // concurrent relays make it overestimate slightly, which only makes back-pressure kick in a little early.
 func Depth(ctx context.Context, db interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
-}, table string) (int64, error) {
-	if !validIdent(table) {
-		return 0, fmt.Errorf("outbox: invalid table name %q", table)
-	}
+}) (int64, error) {
 	var d int64
-	err := db.QueryRow(ctx, fmt.Sprintf(`SELECT COALESCE((SELECT max(id) FROM %[1]s) - (SELECT min(id) FROM %[1]s) + 1, 0)`, table)).Scan(&d)
+	err := db.QueryRow(ctx, queueDepth).Scan(&d)
 	return d, err
-}
-
-func validIdent(s string) bool {
-	if s == "" || len(s) > 63 {
-		return false
-	}
-	for i, c := range s {
-		switch {
-		case c == '_' || (c >= 'a' && c <= 'z'):
-		case c >= '0' && c <= '9' && i > 0:
-		default:
-			return false
-		}
-	}
-	return true
 }
 
 func sleep(ctx context.Context, d time.Duration) {
