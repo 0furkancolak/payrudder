@@ -54,6 +54,10 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [0011](adr/0011-sandbox-environment.md) | Sandbox environment with a mock payment flow |
 | [0012](adr/0012-per-tenant-aggregate-generations.md) | Per-tenant aggregate generations |
 | [0013](adr/0013-s3-compatible-object-storage.md) | S3-compatible object storage (PDFs, multipart multi-file asset uploads) |
+| [0014](adr/0014-idempotency-key-retention.md) | Idempotency key retention |
+| [0015](adr/0015-operator-console-stack.md) | Operator console stack |
+| [0016](adr/0016-provider-capabilities-and-routing.md) | Payment providers declare capabilities; routing is a stored rule set |
+| [0017](adr/0017-advance-fixed-fees-and-change-modes.md) | Fixed fees are billed in advance; plan changes are explicit, previewed and credited |
 
 ## Delivery plan
 

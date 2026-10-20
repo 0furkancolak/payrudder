@@ -1,6 +1,6 @@
 # ADR 0017: Fixed fees are billed in advance; plan changes are explicit, previewed and credited
 
-Status: proposed.
+Status: accepted (built in phases 19–22).
 
 ## Context
 
