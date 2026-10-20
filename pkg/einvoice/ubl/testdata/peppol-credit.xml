@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CreditNote xmlns="urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poid:3.0</cbc:CustomizationID>
+  <cbc:ProfileID>urn:fdc:peppol.eu:2017:poid:billing:01:1.0</cbc:ProfileID>
+  <cbc:ID>CN-2026-000007</cbc:ID>
+  <cbc:UUID>8a0e6b3d-1c2f-5d4e-9a7b-6c5d4e3f2a10</cbc:UUID>
+  <cbc:IssueDate>2026-04-09</cbc:IssueDate>
+  <cbc:CreditNoteTypeCode>381</cbc:CreditNoteTypeCode>
+  <cbc:Note>Service outage</cbc:Note>
+  <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+  <cbc:BuyerReference>CN-2026-000007</cbc:BuyerReference>
+  <cac:BillingReference>
+    <cac:InvoiceDocumentReference>
+      <cbc:ID>ABC2026000000042</cbc:ID>
+      <cbc:IssueDate>2026-04-01</cbc:IssueDate>
+    </cac:InvoiceDocumentReference>
+  </cac:BillingReference>
+  <cac:AccountingSupplierParty>
+    <cac:Party>
+      <cbc:EndpointID schemeID="EM">billing@acme.example</cbc:EndpointID>
+      <cac:PartyIdentification>
+        <cbc:ID>0123456789012345</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name>Acme Yazılım A.Ş.</cbc:Name>
+      </cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>Bağdat Cad. 1</cbc:StreetName>
+        <cbc:CityName>İstanbul</cbc:CityName>
+        <cbc:PostalZone>34700</cbc:PostalZone>
+        <cac:Country>
+          <cbc:IdentificationCode>TR</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>1234567890</cbc:CompanyID>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>Acme Yazılım A.Ş.</cbc:RegistrationName>
+        <cbc:CompanyID>0123456789012345</cbc:CompanyID>
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:ElectronicMail>billing@acme.example</cbc:ElectronicMail>
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      <cbc:EndpointID schemeID="EM">ap@beispiel.example</cbc:EndpointID>
+      <cac:PartyName>
+        <cbc:Name>Beispiel GmbH</cbc:Name>
+      </cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>Hauptstr. 1</cbc:StreetName>
+        <cbc:CityName>Berlin</cbc:CityName>
+        <cbc:PostalZone>10115</cbc:PostalZone>
+        <cac:Country>
+          <cbc:IdentificationCode>DE</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>DE123456789</cbc:CompanyID>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>Beispiel GmbH</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:ElectronicMail>ap@beispiel.example</cbc:ElectronicMail>
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode name="Mutually defined">ZZ</cbc:PaymentMeansCode>
+  </cac:PaymentMeans>
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="EUR">9.50</cbc:TaxAmount>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="EUR">50.00</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="EUR">9.50</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="EUR">50.00</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="EUR">50.00</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="EUR">59.50</cbc:TaxInclusiveAmount>
+    <cbc:PayableAmount currencyID="EUR">59.50</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+  <cac:CreditNoteLine>
+    <cbc:ID>1</cbc:ID>
+    <cbc:CreditedQuantity unitCode="C62">1</cbc:CreditedQuantity>
+    <cbc:LineExtensionAmount currencyID="EUR">50.00</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>Base fee (credited)</cbc:Name>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="EUR">50.00</cbc:PriceAmount>
+    </cac:Price>
+  </cac:CreditNoteLine>
+</CreditNote>

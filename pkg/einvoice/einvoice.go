@@ -226,12 +226,16 @@ type PermanentError struct {
 	Code, Message string
 }
 
-func (e *PermanentError) Error() string { return fmt.Sprintf("einvoice: refused (%s): %s", e.Code, e.Message) }
+func (e *PermanentError) Error() string {
+	return fmt.Sprintf("einvoice: refused (%s): %s", e.Code, e.Message)
+}
 
 // TransientError is a failure worth retrying: a timeout, a 5xx, a 429.
 type TransientError struct{ Err error }
 
-func (e *TransientError) Error() string { return "einvoice: transient provider error: " + e.Err.Error() }
+func (e *TransientError) Error() string {
+	return "einvoice: transient provider error: " + e.Err.Error()
+}
 
 // Unwrap returns the cause.
 func (e *TransientError) Unwrap() error { return e.Err }
