@@ -48,6 +48,8 @@ const (
 	PlansService_ResumeSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/ResumeSubscription"
 	PlansService_ScheduleCancellation_FullMethodName       = "/quotify.plans.v1.PlansService/ScheduleCancellation"
 	PlansService_ChangePlan_FullMethodName                 = "/quotify.plans.v1.PlansService/ChangePlan"
+	PlansService_ListSubscriptionsFeeDue_FullMethodName    = "/quotify.plans.v1.PlansService/ListSubscriptionsFeeDue"
+	PlansService_AdvanceSubscriptionFee_FullMethodName     = "/quotify.plans.v1.PlansService/AdvanceSubscriptionFee"
 	PlansService_ListSubscriptionsForPeriod_FullMethodName = "/quotify.plans.v1.PlansService/ListSubscriptionsForPeriod"
 )
 
@@ -108,6 +110,10 @@ type PlansServiceClient interface {
 	// between the two plans in proportion to the time on each.
 	ChangePlan(ctx context.Context, in *ChangePlanRequest, opts ...grpc.CallOption) (*ChangePlanResponse, error)
 	// ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
+	// ListSubscriptionsFeeDue lists advance-billed subscriptions whose next fee period has started, with the period and the fee. Used by billing-svc.
+	ListSubscriptionsFeeDue(ctx context.Context, in *ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*ListSubscriptionsFeeDueResponse, error)
+	// AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
+	AdvanceSubscriptionFee(ctx context.Context, in *AdvanceSubscriptionFeeRequest, opts ...grpc.CallOption) (*AdvanceSubscriptionFeeResponse, error)
 	ListSubscriptionsForPeriod(ctx context.Context, in *ListSubscriptionsForPeriodRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListSubscriptionsForPeriodResponse], error)
 }
 
@@ -409,6 +415,26 @@ func (c *plansServiceClient) ChangePlan(ctx context.Context, in *ChangePlanReque
 	return out, nil
 }
 
+func (c *plansServiceClient) ListSubscriptionsFeeDue(ctx context.Context, in *ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*ListSubscriptionsFeeDueResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSubscriptionsFeeDueResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListSubscriptionsFeeDue_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) AdvanceSubscriptionFee(ctx context.Context, in *AdvanceSubscriptionFeeRequest, opts ...grpc.CallOption) (*AdvanceSubscriptionFeeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AdvanceSubscriptionFeeResponse)
+	err := c.cc.Invoke(ctx, PlansService_AdvanceSubscriptionFee_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) ListSubscriptionsForPeriod(ctx context.Context, in *ListSubscriptionsForPeriodRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListSubscriptionsForPeriodResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &PlansService_ServiceDesc.Streams[0], PlansService_ListSubscriptionsForPeriod_FullMethodName, cOpts...)
@@ -485,6 +511,10 @@ type PlansServiceServer interface {
 	// between the two plans in proportion to the time on each.
 	ChangePlan(context.Context, *ChangePlanRequest) (*ChangePlanResponse, error)
 	// ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
+	// ListSubscriptionsFeeDue lists advance-billed subscriptions whose next fee period has started, with the period and the fee. Used by billing-svc.
+	ListSubscriptionsFeeDue(context.Context, *ListSubscriptionsFeeDueRequest) (*ListSubscriptionsFeeDueResponse, error)
+	// AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
+	AdvanceSubscriptionFee(context.Context, *AdvanceSubscriptionFeeRequest) (*AdvanceSubscriptionFeeResponse, error)
 	ListSubscriptionsForPeriod(*ListSubscriptionsForPeriodRequest, grpc.ServerStreamingServer[ListSubscriptionsForPeriodResponse]) error
 	mustEmbedUnimplementedPlansServiceServer()
 }
@@ -582,6 +612,12 @@ func (UnimplementedPlansServiceServer) ScheduleCancellation(context.Context, *Sc
 }
 func (UnimplementedPlansServiceServer) ChangePlan(context.Context, *ChangePlanRequest) (*ChangePlanResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ChangePlan not implemented")
+}
+func (UnimplementedPlansServiceServer) ListSubscriptionsFeeDue(context.Context, *ListSubscriptionsFeeDueRequest) (*ListSubscriptionsFeeDueResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSubscriptionsFeeDue not implemented")
+}
+func (UnimplementedPlansServiceServer) AdvanceSubscriptionFee(context.Context, *AdvanceSubscriptionFeeRequest) (*AdvanceSubscriptionFeeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AdvanceSubscriptionFee not implemented")
 }
 func (UnimplementedPlansServiceServer) ListSubscriptionsForPeriod(*ListSubscriptionsForPeriodRequest, grpc.ServerStreamingServer[ListSubscriptionsForPeriodResponse]) error {
 	return status.Error(codes.Unimplemented, "method ListSubscriptionsForPeriod not implemented")
@@ -1129,6 +1165,42 @@ func _PlansService_ChangePlan_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_ListSubscriptionsFeeDue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSubscriptionsFeeDueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListSubscriptionsFeeDue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListSubscriptionsFeeDue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListSubscriptionsFeeDue(ctx, req.(*ListSubscriptionsFeeDueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_AdvanceSubscriptionFee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdvanceSubscriptionFeeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).AdvanceSubscriptionFee(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_AdvanceSubscriptionFee_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).AdvanceSubscriptionFee(ctx, req.(*AdvanceSubscriptionFeeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_ListSubscriptionsForPeriod_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ListSubscriptionsForPeriodRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -1262,6 +1334,14 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ChangePlan",
 			Handler:    _PlansService_ChangePlan_Handler,
+		},
+		{
+			MethodName: "ListSubscriptionsFeeDue",
+			Handler:    _PlansService_ListSubscriptionsFeeDue_Handler,
+		},
+		{
+			MethodName: "AdvanceSubscriptionFee",
+			Handler:    _PlansService_AdvanceSubscriptionFee_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

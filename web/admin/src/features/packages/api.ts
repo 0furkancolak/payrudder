@@ -36,7 +36,7 @@ export interface NewPackage {
   /** Fixed fee per month in the tenant's currency, minor units. */
   baseFeeMinor: string;
   /** Fixed fees in other currencies, minor units. */
-  fees: { currency: string; baseFeeMinor: string }[];
+  fees: { currency: string; interval: "month" | "year"; baseFeeMinor: string }[];
 }
 
 /** Creates the package (unless it exists) and publishes a version with these fixed fees. */
@@ -54,7 +54,7 @@ export function useCreatePackage(tenantId: MaybeRefOrGetter<string>) {
       return unwrap(
         api.POST("/v1/plans/{code}/versions", {
           params: { path: { code: p.code } },
-          body: { base_fee_minor: p.baseFeeMinor, fees: p.fees.map((f) => ({ currency: f.currency, base_fee_minor: f.baseFeeMinor })) },
+          body: { base_fee_minor: p.baseFeeMinor, fees: p.fees.map((f) => ({ currency: f.currency, base_fee_minor: f.baseFeeMinor, interval: f.interval === "year" ? ("SUBSCRIPTION_INTERVAL_YEAR" as const) : ("SUBSCRIPTION_INTERVAL_MONTH" as const) })) },
         }),
       );
     },

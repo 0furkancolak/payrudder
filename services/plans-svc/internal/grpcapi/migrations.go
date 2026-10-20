@@ -59,7 +59,7 @@ func (s *Server) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUI
 	nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 		ID: idgen.NewUUIDv7(), CustomerID: old.CustomerID, PlanVersionID: old.PlanVersionID, StartTime: when,
 		State: string(eff), Interval: old.Interval, Currency: old.Currency, TrialEndsAt: old.TrialEndsAt,
-		BillingAnchor: old.BillingAnchor, ChangedFromID: &oldID, Provider: &toProvider, ProviderRef: providerRef, Owner: owner,
+		BillingAnchor: old.BillingAnchor, ChangedFromID: &oldID, Provider: &toProvider, ProviderRef: providerRef, Owner: owner, FeeTiming: "arrears",
 	})
 	if err != nil {
 		return nr, err

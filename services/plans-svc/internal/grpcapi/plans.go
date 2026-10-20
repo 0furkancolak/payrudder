@@ -19,6 +19,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/quantity"
+	"github.com/0furkancolak/quotify/pkg/subscription"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
@@ -364,7 +365,7 @@ func (s *Server) PublishPlanVersion(ctx context.Context, req *plansv1.PublishPla
 			return err
 		}
 		for _, f := range fees {
-			if err := q.InsertPlanVersionFee(ctx, sqlc.InsertPlanVersionFeeParams{PlanVersionID: pv.ID, Currency: f.Currency, BaseFeeMinor: f.BaseFeeMinor}); err != nil {
+			if err := q.InsertPlanVersionFee(ctx, sqlc.InsertPlanVersionFeeParams{PlanVersionID: pv.ID, Currency: f.Currency, Interval: f.Interval, BaseFeeMinor: f.BaseFeeMinor}); err != nil {
 				return err
 			}
 		}
@@ -412,7 +413,11 @@ func assemble(ctx context.Context, q *sqlc.Queries, id, planID uuid.UUID, planCo
 		return nil, err
 	}
 	for _, f := range fees {
-		pv.Fees = append(pv.Fees, &plansv1.CurrencyFee{Currency: f.Currency, BaseFeeMinor: f.BaseFeeMinor})
+		iv := plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
+		if f.Interval == string(subscription.Yearly) {
+			iv = plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR
+		}
+		pv.Fees = append(pv.Fees, &plansv1.CurrencyFee{Currency: f.Currency, BaseFeeMinor: f.BaseFeeMinor, Interval: iv})
 	}
 	cps, err := q.ListPlanCurrencyPrices(ctx, id)
 	if err != nil {

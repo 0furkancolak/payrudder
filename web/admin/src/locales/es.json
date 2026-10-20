@@ -261,7 +261,12 @@
       "fixedFee": "Cuota fija",
       "otherFees": "Otras monedas",
       "meters": "Precios por uso",
-      "empty": "Aún no hay paquetes."
+      "empty": "Aún no hay paquetes.",
+      "interval": "Periodo de facturación de la cuota adicional",
+      "monthly": "Mensual",
+      "yearly": "Anual",
+      "perYear": "/ año",
+      "tenantMonthly": "La cuota mensual en {currency} es la cuota fija de arriba."
     },
     "subscriptions": {
       "new": "Nueva suscripción",
@@ -306,7 +311,10 @@
       "allowed": "Estado",
       "withinLimit": "dentro del límite",
       "overLimit": "por encima del límite",
-      "noLimits": "Este paquete no fija límites de uso."
+      "noLimits": "Este paquete no fija límites de uso.",
+      "interval": "Periodo de facturación",
+      "monthly": "Mensual",
+      "yearly": "Anual"
     },
     "payments": {
       "reconcile": "Conciliar con el libro",

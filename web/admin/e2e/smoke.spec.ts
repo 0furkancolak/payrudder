@@ -83,7 +83,7 @@ test.describe.serial("operator console", () => {
     await must("POST", "/v1/plans", key, { code: "team", name: "Team" }, 201);
     await must("POST", "/v1/plans/team/versions", key, { base_fee_minor: 1000, prices: [{ meter_code: "seats", per_unit: { unit_price: "1" } }] }, 201);
     await must("POST", "/v1/customers", key, { external_id: "cus_pw", name: "Playwright", email: "pw@example.com", payment_method: "pm_sandbox_success" }, 201);
-    await must("POST", "/v1/subscriptions", key, { customer_external_id: "cus_pw", plan_code: "team" }, 201);
+    await must("POST", "/v1/subscriptions", key, { customer_external_id: "cus_pw", plan_code: "team", fee_timing: "FEE_TIMING_ARREARS" }, 201);
     await must("POST", "/v1/events", key, {
       events: [{ customer_external_id: "cus_pw", meter_code: "seats", quantity: 5, event_time: new Date(Date.now() - 60_000).toISOString() }],
     }, 202);

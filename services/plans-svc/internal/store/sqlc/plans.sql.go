@@ -13,6 +13,26 @@ import (
 	"github.com/google/uuid"
 )
 
+const advanceSubscriptionFee = `-- name: AdvanceSubscriptionFee :execrows
+UPDATE subscriptions SET fee_due_at = $1::timestamptz
+WHERE tenant_id = app_tenant_id() AND id = $2 AND fee_due_at = $3::timestamptz
+`
+
+type AdvanceSubscriptionFeeParams struct {
+	NextDue     time.Time
+	ID          uuid.UUID
+	PeriodStart time.Time
+}
+
+// Moves the next period to invoice forward. Compare-and-set on the period that was invoiced, so a repeated call changes nothing.
+func (q *Queries) AdvanceSubscriptionFee(ctx context.Context, arg AdvanceSubscriptionFeeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, advanceSubscriptionFee, arg.NextDue, arg.ID, arg.PeriodStart)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countCustomers = `-- name: CountCustomers :one
 SELECT count(*) FROM customers WHERE tenant_id = app_tenant_id()
 `
@@ -351,7 +371,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -378,6 +398,7 @@ type GetSubscriptionRow struct {
 	Provider           *string
 	ProviderRef        *string
 	Owner              string
+	FeeTiming          string
 	PlanCode           string
 	PlanVersion        int32
 }
@@ -405,6 +426,7 @@ func (q *Queries) GetSubscription(ctx context.Context, id uuid.UUID) (GetSubscri
 		&i.Provider,
 		&i.ProviderRef,
 		&i.Owner,
+		&i.FeeTiming,
 		&i.PlanCode,
 		&i.PlanVersion,
 	)
@@ -416,7 +438,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -444,6 +466,7 @@ type GetSubscriptionForUpdateRow struct {
 	Provider           *string
 	ProviderRef        *string
 	Owner              string
+	FeeTiming          string
 	PlanCode           string
 	PlanVersion        int32
 }
@@ -471,6 +494,7 @@ func (q *Queries) GetSubscriptionForUpdate(ctx context.Context, id uuid.UUID) (G
 		&i.Provider,
 		&i.ProviderRef,
 		&i.Owner,
+		&i.FeeTiming,
 		&i.PlanCode,
 		&i.PlanVersion,
 	)
@@ -656,18 +680,24 @@ func (q *Queries) InsertPlanVersion(ctx context.Context, arg InsertPlanVersionPa
 }
 
 const insertPlanVersionFee = `-- name: InsertPlanVersionFee :exec
-INSERT INTO plan_version_fees (tenant_id, plan_version_id, currency, base_fee_minor)
-VALUES (app_tenant_id(), $1, $2, $3)
+INSERT INTO plan_version_fees (tenant_id, plan_version_id, currency, interval, base_fee_minor)
+VALUES (app_tenant_id(), $1, $2, $3, $4)
 `
 
 type InsertPlanVersionFeeParams struct {
 	PlanVersionID uuid.UUID
 	Currency      string
+	Interval      string
 	BaseFeeMinor  int64
 }
 
 func (q *Queries) InsertPlanVersionFee(ctx context.Context, arg InsertPlanVersionFeeParams) error {
-	_, err := q.db.Exec(ctx, insertPlanVersionFee, arg.PlanVersionID, arg.Currency, arg.BaseFeeMinor)
+	_, err := q.db.Exec(ctx, insertPlanVersionFee,
+		arg.PlanVersionID,
+		arg.Currency,
+		arg.Interval,
+		arg.BaseFeeMinor,
+	)
 	return err
 }
 
@@ -733,14 +763,14 @@ func (q *Queries) InsertRoutingRule(ctx context.Context, arg InsertRoutingRulePa
 }
 
 const insertSubscription = `-- name: InsertSubscription :one
-INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider, provider_ref, owner)
+INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing, fee_due_at)
 VALUES (app_tenant_id(), $1, $2, $3, tstzrange($4::timestamptz, NULL, '[)'),
-        $5, $6, $7, $8, $9::timestamptz, $10, $11, $12, $13)
+        $5, $6, $7, $8, $9::timestamptz, $10, $11, $12, $13, $14, $15::timestamptz)
 RETURNING id, customer_id, plan_version_id,
           lower(active)::timestamptz AS start_time,
           upper_inf(active)::bool AS open_ended,
           COALESCE(upper(active), lower(active))::timestamptz AS end_time,
-          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id, provider, provider_ref, owner
+          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing
 `
 
 type InsertSubscriptionParams struct {
@@ -757,6 +787,8 @@ type InsertSubscriptionParams struct {
 	Provider      *string
 	ProviderRef   *string
 	Owner         string
+	FeeTiming     string
+	FeeDueAt      *time.Time
 }
 
 type InsertSubscriptionRow struct {
@@ -778,6 +810,7 @@ type InsertSubscriptionRow struct {
 	Provider          *string
 	ProviderRef       *string
 	Owner             string
+	FeeTiming         string
 }
 
 func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) (InsertSubscriptionRow, error) {
@@ -795,6 +828,8 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 		arg.Provider,
 		arg.ProviderRef,
 		arg.Owner,
+		arg.FeeTiming,
+		arg.FeeDueAt,
 	)
 	var i InsertSubscriptionRow
 	err := row.Scan(
@@ -816,6 +851,7 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 		&i.Provider,
 		&i.ProviderRef,
 		&i.Owner,
+		&i.FeeTiming,
 	)
 	return i, err
 }
@@ -1045,12 +1081,13 @@ func (q *Queries) ListPlanPrices(ctx context.Context, planVersionID uuid.UUID) (
 }
 
 const listPlanVersionFees = `-- name: ListPlanVersionFees :many
-SELECT currency, base_fee_minor FROM plan_version_fees
-WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY currency
+SELECT currency, interval, base_fee_minor FROM plan_version_fees
+WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY interval DESC, currency
 `
 
 type ListPlanVersionFeesRow struct {
 	Currency     string
+	Interval     string
 	BaseFeeMinor int64
 }
 
@@ -1063,7 +1100,7 @@ func (q *Queries) ListPlanVersionFees(ctx context.Context, planVersionID uuid.UU
 	items := []ListPlanVersionFeesRow{}
 	for rows.Next() {
 		var i ListPlanVersionFeesRow
-		if err := rows.Scan(&i.Currency, &i.BaseFeeMinor); err != nil {
+		if err := rows.Scan(&i.Currency, &i.Interval, &i.BaseFeeMinor); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1144,12 +1181,52 @@ func (q *Queries) ListRoutingRules(ctx context.Context) ([]ListRoutingRulesRow, 
 	return items, nil
 }
 
+const listSubscriptionFeesDue = `-- name: ListSubscriptionFeesDue :many
+SELECT id, fee_due_at::timestamptz AS fee_due_at FROM subscriptions
+WHERE tenant_id = app_tenant_id() AND fee_timing = 'advance' AND owner = 'quotify' AND fee_due_at IS NOT NULL AND fee_due_at <= $1::timestamptz
+  AND state <> 'cancelled' AND (upper_inf(active) OR upper(active) > fee_due_at) AND id > $2::uuid
+ORDER BY id
+LIMIT $3
+`
+
+type ListSubscriptionFeesDueParams struct {
+	Now      time.Time
+	After    uuid.UUID
+	PageSize int32
+}
+
+type ListSubscriptionFeesDueRow struct {
+	ID       uuid.UUID
+	FeeDueAt time.Time
+}
+
+// Advance-billed subscriptions whose next period has started and still has time left (an open-ended one, or one ending after that period began).
+func (q *Queries) ListSubscriptionFeesDue(ctx context.Context, arg ListSubscriptionFeesDueParams) ([]ListSubscriptionFeesDueRow, error) {
+	rows, err := q.db.Query(ctx, listSubscriptionFeesDue, arg.Now, arg.After, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSubscriptionFeesDueRow{}
+	for rows.Next() {
+		var i ListSubscriptionFeesDueRow
+		if err := rows.Scan(&i.ID, &i.FeeDueAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSubscriptionsOverlapping = `-- name: ListSubscriptionsOverlapping :many
 SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_version_id,
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -1186,6 +1263,7 @@ type ListSubscriptionsOverlappingRow struct {
 	Provider           *string
 	ProviderRef        *string
 	Owner              string
+	FeeTiming          string
 	PlanCode           string
 	PlanVersion        int32
 }
@@ -1219,6 +1297,7 @@ func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubs
 			&i.Provider,
 			&i.ProviderRef,
 			&i.Owner,
+			&i.FeeTiming,
 			&i.PlanCode,
 			&i.PlanVersion,
 		); err != nil {
@@ -1237,7 +1316,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -1272,6 +1351,7 @@ type ListSubscriptionsPageRow struct {
 	Provider           *string
 	ProviderRef        *string
 	Owner              string
+	FeeTiming          string
 	PlanCode           string
 	PlanVersion        int32
 }
@@ -1306,6 +1386,7 @@ func (q *Queries) ListSubscriptionsPage(ctx context.Context, arg ListSubscriptio
 			&i.Provider,
 			&i.ProviderRef,
 			&i.Owner,
+			&i.FeeTiming,
 			&i.PlanCode,
 			&i.PlanVersion,
 		); err != nil {

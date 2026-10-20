@@ -63,7 +63,7 @@ func TestEntitlementsEndToEnd(t *testing.T) {
 			"prices":       []any{map[string]any{"meter_code": "seats", "per_unit": map[string]any{"unit_price": "1"}}},
 			"entitlements": []any{map[string]any{"meter_code": "seats", "limit": "10", "alert_thresholds_pct": []int{80, 100}}}}},
 		{"/v1/customers", map[string]any{"external_id": "cus_e2e", "name": "E2E", "email": "e2e@example.com"}},
-		{"/v1/subscriptions", map[string]any{"customer_external_id": "cus_e2e", "plan_code": "team"}},
+		{"/v1/subscriptions", map[string]any{"customer_external_id": "cus_e2e", "plan_code": "team", "fee_timing": "FEE_TIMING_ARREARS"}},
 	} {
 		if r := call(t, "POST", step.path, k, step.body); r.status != 201 {
 			t.Fatalf("POST %s: %d %v", step.path, r.status, r.body)

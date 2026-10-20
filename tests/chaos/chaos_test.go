@@ -172,7 +172,7 @@ func setup(t *testing.T) ([]*tenantFx, map[string]string) {
 				ID string `json:"id"`
 			}
 			a.must("POST", "/v1/customers", f.key, map[string]any{"external_id": ext, "name": ext, "email": ext + "@example.com"}, &cust, 201)
-			a.must("POST", "/v1/subscriptions", f.key, map[string]any{"customer_external_id": ext, "plan_code": "chaos"}, nil, 201)
+			a.must("POST", "/v1/subscriptions", f.key, map[string]any{"customer_external_id": ext, "plan_code": "chaos", "fee_timing": "FEE_TIMING_ARREARS"}, nil, 201)
 			f.customers = append(f.customers, ext)
 			custID[cust.ID] = f.id + "/" + ext
 		}

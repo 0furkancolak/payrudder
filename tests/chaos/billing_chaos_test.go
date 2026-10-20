@@ -49,7 +49,7 @@ func TestMonthCloseSurvivesBrokerRestart(t *testing.T) {
 	for i := 0; i < customers; i++ {
 		ext := fmt.Sprintf("cus_%d", i)
 		a.must("POST", "/v1/customers", k, map[string]any{"external_id": ext, "name": ext, "email": ext + "@example.com", "payment_method": "pm_sandbox_success"}, nil, 201)
-		a.must("POST", "/v1/subscriptions", k, map[string]any{"customer_external_id": ext, "plan_code": "team"}, nil, 201)
+		a.must("POST", "/v1/subscriptions", k, map[string]any{"customer_external_id": ext, "plan_code": "team", "fee_timing": "FEE_TIMING_ARREARS"}, nil, 201)
 		units := int64(1 + i%7)
 		wantTotal[ext] = 1000 + units // base fee + 1 minor unit per seat
 		events = append(events, map[string]any{"customer_external_id": ext, "meter_code": "seats", "quantity": fmt.Sprint(units),

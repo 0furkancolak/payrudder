@@ -261,7 +261,12 @@
       "fixedFee": "Fixe Gebühr",
       "otherFees": "Andere Währungen",
       "meters": "Nutzungspreise",
-      "empty": "Noch keine Pakete."
+      "empty": "Noch keine Pakete.",
+      "interval": "Abrechnungszeitraum der Zusatzgebühr",
+      "monthly": "Monatlich",
+      "yearly": "Jährlich",
+      "perYear": "/ Jahr",
+      "tenantMonthly": "Die monatliche Gebühr in {currency} ist die feste Gebühr oben."
     },
     "subscriptions": {
       "new": "Neues Abonnement",
@@ -306,7 +311,10 @@
       "allowed": "Status",
       "withinLimit": "im Limit",
       "overLimit": "über dem Limit",
-      "noLimits": "Dieses Paket setzt keine Nutzungslimits."
+      "noLimits": "Dieses Paket setzt keine Nutzungslimits.",
+      "interval": "Abrechnungszeitraum",
+      "monthly": "Monatlich",
+      "yearly": "Jährlich"
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",

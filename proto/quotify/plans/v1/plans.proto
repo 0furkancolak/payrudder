@@ -61,6 +61,10 @@ service PlansService {
   // between the two plans in proportion to the time on each.
   rpc ChangePlan(ChangePlanRequest) returns (ChangePlanResponse);
   // ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
+  // ListSubscriptionsFeeDue lists advance-billed subscriptions whose next fee period has started, with the period and the fee. Used by billing-svc.
+  rpc ListSubscriptionsFeeDue(ListSubscriptionsFeeDueRequest) returns (ListSubscriptionsFeeDueResponse);
+  // AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
+  rpc AdvanceSubscriptionFee(AdvanceSubscriptionFeeRequest) returns (AdvanceSubscriptionFeeResponse);
   rpc ListSubscriptionsForPeriod(ListSubscriptionsForPeriodRequest) returns (stream ListSubscriptionsForPeriodResponse);
 }
 
@@ -200,6 +204,8 @@ message CreateSubscriptionRequest {
   string currency = 7;
   // The payment provider that sells it (a name such as "paddle"); empty is the tenant's default.
   string provider = 8;
+  // Unspecified = in advance (the fee is invoiced at the start of each period), except for a provider that runs renewals itself.
+  FeeTiming fee_timing = 9;
 }
 
 message CreateSubscriptionResponse {
@@ -444,3 +450,30 @@ message ListSubscriptionsResponse {
   repeated Subscription subscriptions = 1;
   string next_page_token = 2;
 }
+
+message ListSubscriptionsFeeDueRequest {
+  google.protobuf.Timestamp now = 1;
+  // Resume after this subscription id (the last of the previous page); empty for the first page.
+  string after = 2;
+  // 1..500, default 100.
+  int32 page_size = 3;
+}
+
+message FeeDue {
+  Subscription subscription = 1;
+  google.protobuf.Timestamp period_start = 2;
+  google.protobuf.Timestamp period_end = 3;
+  // The fee of the period in the subscription's currency and interval; 0 when the plan version has none.
+  int64 fee_minor = 4;
+}
+
+message ListSubscriptionsFeeDueResponse {
+  repeated FeeDue due = 1;
+}
+
+message AdvanceSubscriptionFeeRequest {
+  string subscription_id = 1;
+  google.protobuf.Timestamp period_start = 2;
+}
+
+message AdvanceSubscriptionFeeResponse {}

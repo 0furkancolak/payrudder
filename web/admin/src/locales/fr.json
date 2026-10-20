@@ -261,7 +261,12 @@
       "fixedFee": "Frais fixes",
       "otherFees": "Autres devises",
       "meters": "Prix à l'usage",
-      "empty": "Aucun forfait pour l'instant."
+      "empty": "Aucun forfait pour l'instant.",
+      "interval": "Période de facturation du tarif supplémentaire",
+      "monthly": "Mensuel",
+      "yearly": "Annuel",
+      "perYear": "/ an",
+      "tenantMonthly": "Le tarif mensuel en {currency} est le tarif fixe ci-dessus."
     },
     "subscriptions": {
       "new": "Nouvel abonnement",
@@ -306,7 +311,10 @@
       "allowed": "Statut",
       "withinLimit": "dans la limite",
       "overLimit": "limite dépassée",
-      "noLimits": "Ce forfait ne fixe aucune limite d'utilisation."
+      "noLimits": "Ce forfait ne fixe aucune limite d'utilisation.",
+      "interval": "Période de facturation",
+      "monthly": "Mensuel",
+      "yearly": "Annuel"
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",

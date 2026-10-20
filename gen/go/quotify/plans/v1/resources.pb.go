@@ -178,6 +178,55 @@ func (Aggregation) EnumDescriptor() ([]byte, []int) {
 	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{2}
 }
 
+type FeeTiming int32
+
+const (
+	FeeTiming_FEE_TIMING_UNSPECIFIED FeeTiming = 0
+	FeeTiming_FEE_TIMING_ADVANCE     FeeTiming = 1
+	FeeTiming_FEE_TIMING_ARREARS     FeeTiming = 2
+)
+
+// Enum value maps for FeeTiming.
+var (
+	FeeTiming_name = map[int32]string{
+		0: "FEE_TIMING_UNSPECIFIED",
+		1: "FEE_TIMING_ADVANCE",
+		2: "FEE_TIMING_ARREARS",
+	}
+	FeeTiming_value = map[string]int32{
+		"FEE_TIMING_UNSPECIFIED": 0,
+		"FEE_TIMING_ADVANCE":     1,
+		"FEE_TIMING_ARREARS":     2,
+	}
+)
+
+func (x FeeTiming) Enum() *FeeTiming {
+	p := new(FeeTiming)
+	*p = x
+	return p
+}
+
+func (x FeeTiming) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (FeeTiming) Descriptor() protoreflect.EnumDescriptor {
+	return file_quotify_plans_v1_resources_proto_enumTypes[3].Descriptor()
+}
+
+func (FeeTiming) Type() protoreflect.EnumType {
+	return &file_quotify_plans_v1_resources_proto_enumTypes[3]
+}
+
+func (x FeeTiming) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use FeeTiming.Descriptor instead.
+func (FeeTiming) EnumDescriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{3}
+}
+
 type SubscriptionState int32
 
 const (
@@ -220,11 +269,11 @@ func (x SubscriptionState) String() string {
 }
 
 func (SubscriptionState) Descriptor() protoreflect.EnumDescriptor {
-	return file_quotify_plans_v1_resources_proto_enumTypes[3].Descriptor()
+	return file_quotify_plans_v1_resources_proto_enumTypes[4].Descriptor()
 }
 
 func (SubscriptionState) Type() protoreflect.EnumType {
-	return &file_quotify_plans_v1_resources_proto_enumTypes[3]
+	return &file_quotify_plans_v1_resources_proto_enumTypes[4]
 }
 
 func (x SubscriptionState) Number() protoreflect.EnumNumber {
@@ -233,7 +282,7 @@ func (x SubscriptionState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SubscriptionState.Descriptor instead.
 func (SubscriptionState) EnumDescriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{3}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{4}
 }
 
 type SubscriptionInterval int32
@@ -269,11 +318,11 @@ func (x SubscriptionInterval) String() string {
 }
 
 func (SubscriptionInterval) Descriptor() protoreflect.EnumDescriptor {
-	return file_quotify_plans_v1_resources_proto_enumTypes[4].Descriptor()
+	return file_quotify_plans_v1_resources_proto_enumTypes[5].Descriptor()
 }
 
 func (SubscriptionInterval) Type() protoreflect.EnumType {
-	return &file_quotify_plans_v1_resources_proto_enumTypes[4]
+	return &file_quotify_plans_v1_resources_proto_enumTypes[5]
 }
 
 func (x SubscriptionInterval) Number() protoreflect.EnumNumber {
@@ -282,7 +331,7 @@ func (x SubscriptionInterval) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SubscriptionInterval.Descriptor instead.
 func (SubscriptionInterval) EnumDescriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{4}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{5}
 }
 
 type ApiKey_Status int32
@@ -318,11 +367,11 @@ func (x ApiKey_Status) String() string {
 }
 
 func (ApiKey_Status) Descriptor() protoreflect.EnumDescriptor {
-	return file_quotify_plans_v1_resources_proto_enumTypes[5].Descriptor()
+	return file_quotify_plans_v1_resources_proto_enumTypes[6].Descriptor()
 }
 
 func (ApiKey_Status) Type() protoreflect.EnumType {
-	return &file_quotify_plans_v1_resources_proto_enumTypes[5]
+	return &file_quotify_plans_v1_resources_proto_enumTypes[6]
 }
 
 func (x ApiKey_Status) Number() protoreflect.EnumNumber {
@@ -1494,9 +1543,11 @@ func (x *CurrencyPrices) GetPrices() []*Price {
 
 // CurrencyFee is the fixed fee of a plan version in one currency, in minor units.
 type CurrencyFee struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Currency      string                 `protobuf:"bytes,1,opt,name=currency,proto3" json:"currency,omitempty"`
-	BaseFeeMinor  int64                  `protobuf:"varint,2,opt,name=base_fee_minor,json=baseFeeMinor,proto3" json:"base_fee_minor,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Currency     string                 `protobuf:"bytes,1,opt,name=currency,proto3" json:"currency,omitempty"`
+	BaseFeeMinor int64                  `protobuf:"varint,2,opt,name=base_fee_minor,json=baseFeeMinor,proto3" json:"base_fee_minor,omitempty"`
+	// The billing interval the fee is for. Unspecified = month. A fee in the tenant's currency is only listed here for the year: the monthly one is base_fee_minor.
+	Interval      SubscriptionInterval `protobuf:"varint,3,opt,name=interval,proto3,enum=quotify.plans.v1.SubscriptionInterval" json:"interval,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1545,6 +1596,13 @@ func (x *CurrencyFee) GetBaseFeeMinor() int64 {
 	return 0
 }
 
+func (x *CurrencyFee) GetInterval() SubscriptionInterval {
+	if x != nil {
+		return x.Interval
+	}
+	return SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED
+}
+
 // Subscription links a customer to a plan version over [start_time, end_time).
 type Subscription struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
@@ -1575,8 +1633,10 @@ type Subscription struct {
 	// changed at the provider; its fixed fee is billed by the provider, not on Quotify's invoice.
 	Owner string `protobuf:"bytes,17,opt,name=owner,proto3" json:"owner,omitempty"`
 	// The package (plan) and its version this subscription is on.
-	PlanCode      string `protobuf:"bytes,18,opt,name=plan_code,json=planCode,proto3" json:"plan_code,omitempty"`
-	PlanVersion   int32  `protobuf:"varint,19,opt,name=plan_version,json=planVersion,proto3" json:"plan_version,omitempty"`
+	PlanCode    string `protobuf:"bytes,18,opt,name=plan_code,json=planCode,proto3" json:"plan_code,omitempty"`
+	PlanVersion int32  `protobuf:"varint,19,opt,name=plan_version,json=planVersion,proto3" json:"plan_version,omitempty"`
+	// When the fixed fee is invoiced: in advance at the start of each period, or in arrears with the month's usage.
+	FeeTiming     FeeTiming `protobuf:"varint,20,opt,name=fee_timing,json=feeTiming,proto3,enum=quotify.plans.v1.FeeTiming" json:"fee_timing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1744,6 +1804,13 @@ func (x *Subscription) GetPlanVersion() int32 {
 	return 0
 }
 
+func (x *Subscription) GetFeeTiming() FeeTiming {
+	if x != nil {
+		return x.FeeTiming
+	}
+	return FeeTiming_FEE_TIMING_UNSPECIFIED
+}
+
 var File_quotify_plans_v1_resources_proto protoreflect.FileDescriptor
 
 const file_quotify_plans_v1_resources_proto_rawDesc = "" +
@@ -1856,10 +1923,11 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	" \x03(\v2 .quotify.plans.v1.CurrencyPricesR\x0ecurrencyPrices\"]\n" +
 	"\x0eCurrencyPrices\x12\x1a\n" +
 	"\bcurrency\x18\x01 \x01(\tR\bcurrency\x12/\n" +
-	"\x06prices\x18\x02 \x03(\v2\x17.quotify.plans.v1.PriceR\x06prices\"O\n" +
+	"\x06prices\x18\x02 \x03(\v2\x17.quotify.plans.v1.PriceR\x06prices\"\x93\x01\n" +
 	"\vCurrencyFee\x12\x1a\n" +
 	"\bcurrency\x18\x01 \x01(\tR\bcurrency\x12$\n" +
-	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\"\xce\x06\n" +
+	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\x12B\n" +
+	"\binterval\x18\x03 \x01(\x0e2&.quotify.plans.v1.SubscriptionIntervalR\binterval\"\x8a\a\n" +
 	"\fSubscription\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -1884,7 +1952,9 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\fprovider_ref\x18\x10 \x01(\tR\vproviderRef\x12\x14\n" +
 	"\x05owner\x18\x11 \x01(\tR\x05owner\x12\x1b\n" +
 	"\tplan_code\x18\x12 \x01(\tR\bplanCode\x12!\n" +
-	"\fplan_version\x18\x13 \x01(\x05R\vplanVersion*Y\n" +
+	"\fplan_version\x18\x13 \x01(\x05R\vplanVersion\x12:\n" +
+	"\n" +
+	"fee_timing\x18\x14 \x01(\x0e2\x1b.quotify.plans.v1.FeeTimingR\tfeeTiming*Y\n" +
 	"\vEnvironment\x12\x1b\n" +
 	"\x17ENVIRONMENT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ENVIRONMENT_SANDBOX\x10\x01\x12\x14\n" +
@@ -1899,7 +1969,11 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x17AGGREGATION_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fAGGREGATION_SUM\x10\x01\x12\x15\n" +
 	"\x11AGGREGATION_COUNT\x10\x02\x12\x13\n" +
-	"\x0fAGGREGATION_MAX\x10\x03*\xd9\x01\n" +
+	"\x0fAGGREGATION_MAX\x10\x03*W\n" +
+	"\tFeeTiming\x12\x1a\n" +
+	"\x16FEE_TIMING_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12FEE_TIMING_ADVANCE\x10\x01\x12\x16\n" +
+	"\x12FEE_TIMING_ARREARS\x10\x02*\xd9\x01\n" +
 	"\x11SubscriptionState\x12\"\n" +
 	"\x1eSUBSCRIPTION_STATE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bSUBSCRIPTION_STATE_TRIALING\x10\x01\x12\x1d\n" +
@@ -1925,75 +1999,78 @@ func file_quotify_plans_v1_resources_proto_rawDescGZIP() []byte {
 	return file_quotify_plans_v1_resources_proto_rawDescData
 }
 
-var file_quotify_plans_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_quotify_plans_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
 var file_quotify_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_quotify_plans_v1_resources_proto_goTypes = []any{
 	(Environment)(0),              // 0: quotify.plans.v1.Environment
 	(TenantTier)(0),               // 1: quotify.plans.v1.TenantTier
 	(Aggregation)(0),              // 2: quotify.plans.v1.Aggregation
-	(SubscriptionState)(0),        // 3: quotify.plans.v1.SubscriptionState
-	(SubscriptionInterval)(0),     // 4: quotify.plans.v1.SubscriptionInterval
-	(ApiKey_Status)(0),            // 5: quotify.plans.v1.ApiKey.Status
-	(*Account)(nil),               // 6: quotify.plans.v1.Account
-	(*Tenant)(nil),                // 7: quotify.plans.v1.Tenant
-	(*ApiKey)(nil),                // 8: quotify.plans.v1.ApiKey
-	(*Customer)(nil),              // 9: quotify.plans.v1.Customer
-	(*FilterValues)(nil),          // 10: quotify.plans.v1.FilterValues
-	(*Meter)(nil),                 // 11: quotify.plans.v1.Meter
-	(*Plan)(nil),                  // 12: quotify.plans.v1.Plan
-	(*PriceTier)(nil),             // 13: quotify.plans.v1.PriceTier
-	(*PerUnitPrice)(nil),          // 14: quotify.plans.v1.PerUnitPrice
-	(*TieredGraduatedPrice)(nil),  // 15: quotify.plans.v1.TieredGraduatedPrice
-	(*PackagePrice)(nil),          // 16: quotify.plans.v1.PackagePrice
-	(*Price)(nil),                 // 17: quotify.plans.v1.Price
-	(*Entitlement)(nil),           // 18: quotify.plans.v1.Entitlement
-	(*PlanVersion)(nil),           // 19: quotify.plans.v1.PlanVersion
-	(*CurrencyPrices)(nil),        // 20: quotify.plans.v1.CurrencyPrices
-	(*CurrencyFee)(nil),           // 21: quotify.plans.v1.CurrencyFee
-	(*Subscription)(nil),          // 22: quotify.plans.v1.Subscription
-	nil,                           // 23: quotify.plans.v1.Meter.FilterEntry
-	(*timestamppb.Timestamp)(nil), // 24: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 25: google.protobuf.Duration
+	(FeeTiming)(0),                // 3: quotify.plans.v1.FeeTiming
+	(SubscriptionState)(0),        // 4: quotify.plans.v1.SubscriptionState
+	(SubscriptionInterval)(0),     // 5: quotify.plans.v1.SubscriptionInterval
+	(ApiKey_Status)(0),            // 6: quotify.plans.v1.ApiKey.Status
+	(*Account)(nil),               // 7: quotify.plans.v1.Account
+	(*Tenant)(nil),                // 8: quotify.plans.v1.Tenant
+	(*ApiKey)(nil),                // 9: quotify.plans.v1.ApiKey
+	(*Customer)(nil),              // 10: quotify.plans.v1.Customer
+	(*FilterValues)(nil),          // 11: quotify.plans.v1.FilterValues
+	(*Meter)(nil),                 // 12: quotify.plans.v1.Meter
+	(*Plan)(nil),                  // 13: quotify.plans.v1.Plan
+	(*PriceTier)(nil),             // 14: quotify.plans.v1.PriceTier
+	(*PerUnitPrice)(nil),          // 15: quotify.plans.v1.PerUnitPrice
+	(*TieredGraduatedPrice)(nil),  // 16: quotify.plans.v1.TieredGraduatedPrice
+	(*PackagePrice)(nil),          // 17: quotify.plans.v1.PackagePrice
+	(*Price)(nil),                 // 18: quotify.plans.v1.Price
+	(*Entitlement)(nil),           // 19: quotify.plans.v1.Entitlement
+	(*PlanVersion)(nil),           // 20: quotify.plans.v1.PlanVersion
+	(*CurrencyPrices)(nil),        // 21: quotify.plans.v1.CurrencyPrices
+	(*CurrencyFee)(nil),           // 22: quotify.plans.v1.CurrencyFee
+	(*Subscription)(nil),          // 23: quotify.plans.v1.Subscription
+	nil,                           // 24: quotify.plans.v1.Meter.FilterEntry
+	(*timestamppb.Timestamp)(nil), // 25: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 26: google.protobuf.Duration
 }
 var file_quotify_plans_v1_resources_proto_depIdxs = []int32{
-	7,  // 0: quotify.plans.v1.Account.tenants:type_name -> quotify.plans.v1.Tenant
-	24, // 1: quotify.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
+	8,  // 0: quotify.plans.v1.Account.tenants:type_name -> quotify.plans.v1.Tenant
+	25, // 1: quotify.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
 	0,  // 2: quotify.plans.v1.Tenant.environment:type_name -> quotify.plans.v1.Environment
 	1,  // 3: quotify.plans.v1.Tenant.tier:type_name -> quotify.plans.v1.TenantTier
-	25, // 4: quotify.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
-	24, // 5: quotify.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
+	26, // 4: quotify.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
+	25, // 5: quotify.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
 	0,  // 6: quotify.plans.v1.ApiKey.environment:type_name -> quotify.plans.v1.Environment
-	5,  // 7: quotify.plans.v1.ApiKey.status:type_name -> quotify.plans.v1.ApiKey.Status
-	24, // 8: quotify.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
-	24, // 9: quotify.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
-	24, // 10: quotify.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
+	6,  // 7: quotify.plans.v1.ApiKey.status:type_name -> quotify.plans.v1.ApiKey.Status
+	25, // 8: quotify.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
+	25, // 9: quotify.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
+	25, // 10: quotify.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
 	2,  // 11: quotify.plans.v1.Meter.aggregation:type_name -> quotify.plans.v1.Aggregation
-	23, // 12: quotify.plans.v1.Meter.filter:type_name -> quotify.plans.v1.Meter.FilterEntry
-	24, // 13: quotify.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
-	24, // 14: quotify.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
-	13, // 15: quotify.plans.v1.TieredGraduatedPrice.tiers:type_name -> quotify.plans.v1.PriceTier
-	14, // 16: quotify.plans.v1.Price.per_unit:type_name -> quotify.plans.v1.PerUnitPrice
-	15, // 17: quotify.plans.v1.Price.tiered:type_name -> quotify.plans.v1.TieredGraduatedPrice
-	16, // 18: quotify.plans.v1.Price.package:type_name -> quotify.plans.v1.PackagePrice
-	17, // 19: quotify.plans.v1.PlanVersion.prices:type_name -> quotify.plans.v1.Price
-	18, // 20: quotify.plans.v1.PlanVersion.entitlements:type_name -> quotify.plans.v1.Entitlement
-	24, // 21: quotify.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
-	21, // 22: quotify.plans.v1.PlanVersion.fees:type_name -> quotify.plans.v1.CurrencyFee
-	20, // 23: quotify.plans.v1.PlanVersion.currency_prices:type_name -> quotify.plans.v1.CurrencyPrices
-	17, // 24: quotify.plans.v1.CurrencyPrices.prices:type_name -> quotify.plans.v1.Price
-	24, // 25: quotify.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
-	24, // 26: quotify.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
-	24, // 27: quotify.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
-	3,  // 28: quotify.plans.v1.Subscription.state:type_name -> quotify.plans.v1.SubscriptionState
-	4,  // 29: quotify.plans.v1.Subscription.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	24, // 30: quotify.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
-	24, // 31: quotify.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
-	10, // 32: quotify.plans.v1.Meter.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
-	33, // [33:33] is the sub-list for method output_type
-	33, // [33:33] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	24, // 12: quotify.plans.v1.Meter.filter:type_name -> quotify.plans.v1.Meter.FilterEntry
+	25, // 13: quotify.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
+	25, // 14: quotify.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
+	14, // 15: quotify.plans.v1.TieredGraduatedPrice.tiers:type_name -> quotify.plans.v1.PriceTier
+	15, // 16: quotify.plans.v1.Price.per_unit:type_name -> quotify.plans.v1.PerUnitPrice
+	16, // 17: quotify.plans.v1.Price.tiered:type_name -> quotify.plans.v1.TieredGraduatedPrice
+	17, // 18: quotify.plans.v1.Price.package:type_name -> quotify.plans.v1.PackagePrice
+	18, // 19: quotify.plans.v1.PlanVersion.prices:type_name -> quotify.plans.v1.Price
+	19, // 20: quotify.plans.v1.PlanVersion.entitlements:type_name -> quotify.plans.v1.Entitlement
+	25, // 21: quotify.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
+	22, // 22: quotify.plans.v1.PlanVersion.fees:type_name -> quotify.plans.v1.CurrencyFee
+	21, // 23: quotify.plans.v1.PlanVersion.currency_prices:type_name -> quotify.plans.v1.CurrencyPrices
+	18, // 24: quotify.plans.v1.CurrencyPrices.prices:type_name -> quotify.plans.v1.Price
+	5,  // 25: quotify.plans.v1.CurrencyFee.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	25, // 26: quotify.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
+	25, // 27: quotify.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
+	25, // 28: quotify.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
+	4,  // 29: quotify.plans.v1.Subscription.state:type_name -> quotify.plans.v1.SubscriptionState
+	5,  // 30: quotify.plans.v1.Subscription.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	25, // 31: quotify.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
+	25, // 32: quotify.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
+	3,  // 33: quotify.plans.v1.Subscription.fee_timing:type_name -> quotify.plans.v1.FeeTiming
+	11, // 34: quotify.plans.v1.Meter.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
+	35, // [35:35] is the sub-list for method output_type
+	35, // [35:35] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_quotify_plans_v1_resources_proto_init() }
@@ -2011,7 +2088,7 @@ func file_quotify_plans_v1_resources_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_plans_v1_resources_proto_rawDesc), len(file_quotify_plans_v1_resources_proto_rawDesc)),
-			NumEnums:      6,
+			NumEnums:      7,
 			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,

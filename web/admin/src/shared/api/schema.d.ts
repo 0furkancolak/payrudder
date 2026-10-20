@@ -1626,11 +1626,8 @@ export interface components {
             entitlements?: components["schemas"]["Entitlement"][];
             /** Format: date-time */
             publish_time?: string;
-            /** @description Fixed fee in currencies other than the tenant's */
-            fees?: {
-                currency?: string;
-                base_fee_minor?: string;
-            }[];
+            /** @description Fixed fees other than the tenant currency's monthly one, per currency and interval */
+            fees?: components["schemas"]["CurrencyFee"][];
         };
         Subscription: {
             /** Format: uuid */
@@ -1666,6 +1663,17 @@ export interface components {
             owner?: "quotify" | "provider";
             plan_code?: string;
             plan_version?: number;
+            /** @enum {string} */
+            fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
+        };
+        CurrencyFee: {
+            currency?: string;
+            base_fee_minor?: string;
+            /**
+             * @description Default month
+             * @enum {string}
+             */
+            interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
         };
         RoutingRules: {
             rules?: {
@@ -2103,11 +2111,8 @@ export interface operations {
                 "application/json": {
                     /** @description int64 minor units */
                     base_fee_minor?: string;
-                    /** @description Fixed fee in currencies other than the tenant's (no duplicates) */
-                    fees?: {
-                        currency?: string;
-                        base_fee_minor?: string;
-                    }[];
+                    /** @description Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's */
+                    fees?: components["schemas"]["CurrencyFee"][];
                     prices?: components["schemas"]["Price"][];
                     entitlements?: components["schemas"]["EntitlementStatus"][];
                 };
@@ -2203,6 +2208,11 @@ export interface operations {
                     currency?: string;
                     /** @description The payment provider that sells it (for example paddle); default is the tenant's default account */
                     provider?: string;
+                    /**
+                     * @description Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee.
+                     * @enum {string}
+                     */
+                    fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
                 };
             };
         };

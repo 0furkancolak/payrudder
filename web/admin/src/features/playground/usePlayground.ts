@@ -65,7 +65,7 @@ export function usePlayground() {
         t.POST("/v1/customers", { body: { external_id: CUSTOMER, name: "Playground customer", email: "playground@example.com", payment_method: "pm_sandbox_success" } }),
       );
       note({ key: "playground.log.customer", params: { id: CUSTOMER } });
-      await unwrap(t.POST("/v1/subscriptions", { body: { customer_external_id: CUSTOMER, plan_code: "starter" } }));
+      await unwrap(t.POST("/v1/subscriptions", { body: { customer_external_id: CUSTOMER, plan_code: "starter", fee_timing: "FEE_TIMING_ARREARS" } }));
       note({ key: "playground.log.subscription" });
     },
     onSuccess: () => {
