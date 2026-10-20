@@ -130,7 +130,8 @@
       "description": "Description",
       "meter": "Meter",
       "quantity": "Quantity",
-      "amount": "Amount"
+      "amount": "Amount",
+      "period": "Service period"
     },
     "saga": "Saga timeline",
     "sagaColumns": {
@@ -227,7 +228,8 @@
       "subscriptions": "Subscriptions",
       "payments": "Payments",
       "providers": "Providers",
-      "reports": "Reports"
+      "reports": "Reports",
+      "pricing": "Coupons & tax"
     },
     "common": {
       "remove": "Remove"
@@ -351,6 +353,12 @@
         "atPeriodEnd": "Pause at the end of the paid period",
         "paymentLink": "Payment method link",
         "requested": "Requested. This page updates when the provider confirms."
+      },
+      "coupon": {
+        "label": "Coupon",
+        "code": "Coupon code",
+        "apply": "Apply coupon",
+        "remove": "Remove coupon"
       }
     },
     "payments": {
@@ -466,7 +474,66 @@
       "attempt": "Retries",
       "nextAttempt": "Next attempt",
       "empty": "Nothing to report yet.",
-      "noDunning": "No unpaid invoices."
+      "noDunning": "No unpaid invoices.",
+      "credited": "Credited"
+    },
+    "pricing": {
+      "coupons": {
+        "title": "Coupons",
+        "hint": "A coupon takes a percentage or an amount off the fixed fee Quotify invoices in advance: once, for a number of periods, or for as long as the subscription lasts. A subscription run by a provider uses a discount at the provider instead.",
+        "formLabel": "new coupon",
+        "code": "Code",
+        "name": "Name",
+        "kind": "Kind",
+        "percent": "Percentage",
+        "amount": "Amount",
+        "value": "Value (10 or 12.5 / 4.99)",
+        "currency": "Currency",
+        "duration": "Duration",
+        "once": "First fee only",
+        "repeating": "A number of fees",
+        "forever": "Every fee",
+        "periods": "Fees",
+        "max": "Redemptions limit",
+        "create": "Create coupon",
+        "deactivate": "Deactivate",
+        "active": "Active",
+        "inactive": "Inactive",
+        "redeemed": "Redeemed",
+        "empty": "No coupons yet.",
+        "badPercent": "Not a percentage: 0.01 to 100 with at most two decimals.",
+        "badAmount": "Not an amount in {currency}: digits only, with at most as many decimals as the currency has.",
+        "repeatingFor": "First {n} fees"
+      },
+      "tax": {
+        "title": "Tax",
+        "hint": "Quotify adds these rates on top of the price to the invoices it raises, by the customer's country (the rate without a country covers all others). You set the rates and are responsible for them; an invoice a provider issues is taxed by the provider.",
+        "country": "Country {n}",
+        "anyCountry": "Every other country",
+        "name": "Name {n}",
+        "namePlaceholder": "VAT",
+        "percent": "Rate {n} (%)",
+        "rate": "Rate {n}",
+        "add": "Add a rate",
+        "save": "Save rates",
+        "saved": "Rates saved.",
+        "none": "No tax is added.",
+        "badRate": "Not a percentage: 0 to 100 with at most two decimals."
+      }
+    },
+    "creditNotes": {
+      "title": "Credit notes",
+      "formLabel": "new credit note",
+      "amount": "Amount",
+      "amountPlaceholder": "Amount (empty: all that is left)",
+      "reason": "Reason",
+      "create": "Issue credit note",
+      "number": "Number",
+      "invoice": "Invoice",
+      "customer": "Customer",
+      "date": "Date",
+      "empty": "No credit notes.",
+      "badAmount": "Not an amount in {currency}: digits only, with at most as many decimals as the currency has."
     }
   }
 }

@@ -19,6 +19,7 @@ export interface NewSubscription {
   currency?: string;
   trial_days?: number;
   provider?: string;
+  coupon_code?: string;
   interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
 }
 
@@ -60,6 +61,11 @@ export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, envir
     previewChange: useMutation({ mutationFn: (v: ChangeInput) => unwrap(t().POST("/v1/subscriptions/{id}/change-preview", { ...path(v.id), body: changeBody(v) })) }),
     change: useMutation({ mutationFn: (v: ChangeInput) => unwrap(t().POST("/v1/subscriptions/{id}/change", { ...path(v.id), body: changeBody(v) })), onSuccess: refresh }),
     cancelScheduledChange: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}/scheduled-change", path(id))), onSuccess: refresh }),
+    applyCoupon: useMutation({
+      mutationFn: (v: { id: string; code: string }) => unwrap(t().POST("/v1/subscriptions/{id}/coupon", { ...path(v.id), body: { code: v.code } })),
+      onSuccess: refresh,
+    }),
+    removeCoupon: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}/coupon", path(id))), onSuccess: refresh }),
     changePlan: useMutation({
       mutationFn: (v: { id: string; plan_code: string }) => unwrap(t().POST("/v1/subscriptions/{id}/change-plan", { ...path(v.id), body: { plan_code: v.plan_code } })),
       onSuccess: refresh,

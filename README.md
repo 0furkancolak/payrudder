@@ -148,11 +148,11 @@ customers x 5 meters, exact totals under chaos (container kills, resets, a broke
 
 ## Subscriptions, providers and reports
 
-On top of metering, Quotify runs the billing around it ([docs/14-billing-platform.md](docs/14-billing-platform.md)): **subscriptions** with trials, pause, plan changes and a fixed fee in each currency; **iyzico** (which Quotify
+On top of metering, Quotify runs the billing around it ([docs/14-billing-platform.md](docs/14-billing-platform.md)): **subscriptions**, monthly or yearly, with trials, pause, a fixed fee **in advance** per interval and currency, **upgrades, downgrades and monthly↔yearly switches** with a preview, scheduled changes and a credit balance, **coupons**, **tax rates** and **credit notes**; **iyzico** (which Quotify
 schedules and retries for) and **Paddle** (the merchant of record, which runs renewals and retries itself) behind one provider contract that declares what each does; **routing rules** that choose the provider of a new
 subscription from the customer's country and the subscription's currency; **moving a subscription between providers** without two of them being live at once; a **payment ledger** with a reconciliation against the invoices; and
 **reports** (revenue, monthly recurring revenue, unpaid invoices) by provider, country and currency. Neither provider's sandbox has been run: the adapters are written from their documentation and tested against fixtures,
-and the points that only a sandbox can settle are marked in the code and the phase files.
+and the points that only a sandbox can settle are marked in the code and the phase files. Through Quotify an operator can also create a plan's **Paddle products and prices**, preview and apply plan changes, pause, resume and hand out payment-method links on Paddle subscriptions ([docs/15-billing-lifecycle.md](docs/15-billing-lifecycle.md)).
 
 ## The operator console
 

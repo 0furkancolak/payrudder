@@ -65,7 +65,9 @@ func (e *Engine) invoiceSnapshot(s *saga, lines []lineRow) *commandsv1.InvoiceSn
 		if l.UnitLabel != nil {
 			ls.UnitLabel = *l.UnitLabel
 		}
-		sub += l.Amount
+		if l.Kind != "TAX" {
+			sub += l.Amount // the subtotal is before tax
+		}
 		snap.Lines = append(snap.Lines, ls)
 	}
 	snap.SubtotalMinor = sub

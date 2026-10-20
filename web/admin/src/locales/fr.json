@@ -130,7 +130,8 @@
       "description": "Description",
       "meter": "Compteur",
       "quantity": "Quantité",
-      "amount": "Montant"
+      "amount": "Montant",
+      "period": "Période de service"
     },
     "saga": "Chronologie de la saga",
     "sagaColumns": {
@@ -227,7 +228,8 @@
       "subscriptions": "Abonnements",
       "payments": "Paiements",
       "providers": "Prestataires",
-      "reports": "Rapports"
+      "reports": "Rapports",
+      "pricing": "Coupons et taxes"
     },
     "common": {
       "remove": "Retirer"
@@ -351,6 +353,12 @@
         "atPeriodEnd": "Suspendre à la fin de la période payée",
         "paymentLink": "Lien du moyen de paiement",
         "requested": "Demandé. Cette page se met à jour quand le fournisseur confirme."
+      },
+      "coupon": {
+        "label": "Coupon",
+        "code": "Code du coupon",
+        "apply": "Appliquer le coupon",
+        "remove": "Retirer le coupon"
       }
     },
     "payments": {
@@ -466,7 +474,66 @@
       "attempt": "Nouvelles tentatives",
       "nextAttempt": "Prochaine tentative",
       "empty": "Rien à signaler pour l'instant.",
-      "noDunning": "Aucune facture impayée."
+      "noDunning": "Aucune facture impayée.",
+      "credited": "Crédité (avoirs)"
+    },
+    "pricing": {
+      "coupons": {
+        "title": "Coupons",
+        "hint": "Un coupon retire un pourcentage ou un montant du tarif fixe que Quotify facture à l'avance : une fois, pendant un nombre de périodes ou aussi longtemps que dure l'abonnement. Un abonnement géré par un fournisseur utilise à la place une remise chez le fournisseur.",
+        "formLabel": "nouveau coupon",
+        "code": "Code",
+        "name": "Nom",
+        "kind": "Type",
+        "percent": "Pourcentage",
+        "amount": "Montant",
+        "value": "Valeur (10 ou 12,5 / 4,99)",
+        "currency": "Devise",
+        "duration": "Durée",
+        "once": "Premier tarif seulement",
+        "repeating": "Un nombre de tarifs",
+        "forever": "Chaque tarif",
+        "periods": "Tarifs",
+        "max": "Limite d'utilisations",
+        "create": "Créer le coupon",
+        "deactivate": "Désactiver",
+        "active": "Actif",
+        "inactive": "Inactif",
+        "redeemed": "Utilisé",
+        "empty": "Aucun coupon pour l'instant.",
+        "badPercent": "Pas un pourcentage : de 0,01 à 100 avec au plus deux décimales.",
+        "badAmount": "Pas un montant en {currency} : des chiffres seulement, avec au plus les décimales de la devise.",
+        "repeatingFor": "{n} premiers tarifs"
+      },
+      "tax": {
+        "title": "Taxes",
+        "hint": "Quotify ajoute ces taux au prix sur les factures qu'il émet, selon le pays du client (le taux sans pays couvre tous les autres). Vous fixez les taux et en répondez ; une facture émise par un fournisseur est taxée par le fournisseur.",
+        "country": "Pays {n}",
+        "anyCountry": "Tous les autres pays",
+        "name": "Nom {n}",
+        "namePlaceholder": "TVA",
+        "percent": "Taux {n} (%)",
+        "rate": "Taux {n}",
+        "add": "Ajouter un taux",
+        "save": "Enregistrer les taux",
+        "saved": "Taux enregistrés.",
+        "none": "Aucune taxe n'est ajoutée.",
+        "badRate": "Pas un pourcentage : de 0 à 100 avec au plus deux décimales."
+      }
+    },
+    "creditNotes": {
+      "title": "Avoirs",
+      "formLabel": "nouvel avoir",
+      "amount": "Montant",
+      "amountPlaceholder": "Montant (vide : tout ce qui reste)",
+      "reason": "Motif",
+      "create": "Émettre un avoir",
+      "number": "Numéro",
+      "invoice": "Facture",
+      "customer": "Client",
+      "date": "Date",
+      "empty": "Aucun avoir.",
+      "badAmount": "Pas un montant en {currency} : des chiffres seulement, avec au plus les décimales de la devise."
     }
   }
 }

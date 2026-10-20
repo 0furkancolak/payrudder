@@ -84,8 +84,16 @@ func (s *Server) ListSubscriptionsFeeDue(ctx context.Context, req *plansv1.ListS
 				// A plan version always has the fee its subscription was created with; a gap here is data to look at, not a free period.
 				return err
 			}
+			var discount int64
+			var coupon string
+			if row.State != string(subscription.Paused) {
+				if discount, coupon, err = couponDiscount(ctx, q, row.ID, row.Currency, fee); err != nil {
+					return err
+				}
+			}
 			resp.Due = append(resp.Due, &plansv1.FeeDue{
 				Subscription: subscriptionMessage(row, s.now()), PeriodStart: timestamppb.New(d.FeeDueAt), PeriodEnd: timestamppb.New(end), FeeMinor: fee,
+				DiscountMinor: discount, CouponCode: coupon,
 			})
 		}
 		return nil
@@ -124,8 +132,28 @@ func (s *Server) AdvanceSubscriptionFee(ctx context.Context, req *plansv1.Advanc
 		if err != nil {
 			return err
 		}
-		_, err = q.AdvanceSubscriptionFee(ctx, sqlc.AdvanceSubscriptionFeeParams{ID: id, PeriodStart: start, NextDue: end})
-		return err
+		n, err := q.AdvanceSubscriptionFee(ctx, sqlc.AdvanceSubscriptionFeeParams{ID: id, PeriodStart: start, NextDue: end})
+		if err != nil || n == 0 {
+			return err
+		}
+		// The period was dealt with just now (not by an earlier call): if the coupon took something off its fee, that used one of the coupon's periods.
+		if row.State == string(subscription.Paused) {
+			return nil
+		}
+		pv, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
+		if err != nil {
+			return err
+		}
+		fee, err := feeIn(ctx, q, pv.ID, pv.BaseFeeMinor, t.Currency, row.Currency, subscription.Interval(row.Interval))
+		if err != nil {
+			return err
+		}
+		if discount, _, err := couponDiscount(ctx, q, id, row.Currency, fee); err != nil {
+			return err
+		} else if discount > 0 {
+			return q.CountCouponPeriod(ctx, id)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")

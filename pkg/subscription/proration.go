@@ -16,11 +16,11 @@ func Portion(fee int64, from, to, periodStart, periodEnd time.Time) (int64, erro
 	if fee < 0 || !periodStart.Before(periodEnd) || from.Before(periodStart) || to.After(periodEnd) || to.Before(from) {
 		return 0, ErrBadPortion
 	}
-	return scaleHalfEven(fee, int64(to.Sub(from)), int64(periodEnd.Sub(periodStart))), nil
+	return ScaleHalfEven(fee, int64(to.Sub(from)), int64(periodEnd.Sub(periodStart))), nil
 }
 
-// scaleHalfEven returns round_half_even(v * num / den) using exact integer arithmetic.
-func scaleHalfEven(v, num, den int64) int64 {
+// ScaleHalfEven returns round_half_even(v * num / den) using exact integer arithmetic.
+func ScaleHalfEven(v, num, den int64) int64 {
 	n := new(big.Int).Mul(big.NewInt(v), big.NewInt(num))
 	d := big.NewInt(den)
 	q, r := new(big.Int).QuoRem(n, d, new(big.Int))

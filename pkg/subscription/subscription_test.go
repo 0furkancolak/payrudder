@@ -299,3 +299,38 @@ func TestQuoteChange(t *testing.T) {
 		}
 	})
 }
+
+func TestCouponDiscount(t *testing.T) {
+	pct := func(bps int32, dur string, n int32) subscription.CouponTerms {
+		return subscription.CouponTerms{PercentBPS: bps, Duration: dur, DurationPeriods: n}
+	}
+	amt := func(a int64, cur, dur string, n int32) subscription.CouponTerms {
+		return subscription.CouponTerms{AmountMinor: a, Currency: cur, Duration: dur, DurationPeriods: n}
+	}
+	for _, tc := range []struct {
+		name    string
+		fee     int64
+		c       subscription.CouponTerms
+		cur     string
+		applied int32
+		want    int64
+	}{
+		{"10 percent of 1999 rounds half even", 1999, pct(1000, "forever", 0), "USD", 7, 200},
+		{"12.5 percent of 100", 100, pct(1250, "once", 0), "USD", 0, 12},
+		{"12.5 percent of 108 is 13.5, rounded to even 14", 108, pct(1250, "once", 0), "USD", 0, 14},
+		{"12.5 percent of 104 is 13, exactly", 104, pct(1250, "once", 0), "USD", 0, 13},
+		{"100 percent is the whole fee", 500, pct(10000, "forever", 0), "USD", 0, 500},
+		{"once applies to the first fee only", 1000, pct(5000, "once", 0), "USD", 1, 0},
+		{"repeating applies for its periods", 1000, pct(5000, "repeating", 3), "USD", 2, 500},
+		{"repeating is used up", 1000, pct(5000, "repeating", 3), "USD", 3, 0},
+		{"an amount is taken off", 1000, amt(300, "USD", "forever", 0), "USD", 9, 300},
+		{"an amount is never more than the fee", 200, amt(300, "USD", "forever", 0), "USD", 0, 200},
+		{"an amount in another currency does not apply", 1000, amt(300, "EUR", "forever", 0), "USD", 0, 0},
+		{"no fee, no discount", 0, pct(5000, "forever", 0), "USD", 0, 0},
+		{"unknown duration", 1000, pct(5000, "sometimes", 0), "USD", 0, 0},
+	} {
+		if got := subscription.CouponDiscount(tc.fee, tc.c, tc.cur, tc.applied); got != tc.want {
+			t.Errorf("%s: discount = %d; want %d", tc.name, got, tc.want)
+		}
+	}
+}

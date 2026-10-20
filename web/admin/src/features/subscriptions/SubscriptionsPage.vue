@@ -33,6 +33,8 @@ const plan = ref("");
 const currency = ref("");
 const trialDays = ref("0");
 const provider = ref("");
+const coupon = ref("");
+const couponToApply = ref("");
 const interval = ref<"SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR">("SUBSCRIPTION_INTERVAL_MONTH");
 function create() {
   act.create.mutate(
@@ -43,8 +45,9 @@ function create() {
       trial_days: Number(trialDays.value) || undefined,
       provider: provider.value || undefined,
       interval: interval.value,
+      coupon_code: coupon.value.trim() || undefined,
     },
-    { onSuccess: () => (trialDays.value = "0") },
+    { onSuccess: () => ((trialDays.value = "0"), (coupon.value = "")) },
   );
 }
 
@@ -75,7 +78,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
 <template>
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.subscriptions.new") }}</h2>
-    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.5fr_0.9fr_1.5fr]" role="form" :aria-label="t('billing.subscriptions.formLabel')" @submit.prevent="create">
+    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.5fr_0.9fr_1.5fr_1fr]" role="form" :aria-label="t('billing.subscriptions.formLabel')" @submit.prevent="create">
       <NativeSelect v-model="customer" :aria-label="t('billing.subscriptions.customer')" required>
         <option value="" disabled>{{ t("billing.subscriptions.customer") }}</option>
         <option v-for="c in customers.data.value?.customers ?? []" :key="c.id" :value="c.external_id">{{ c.external_id }}</option>
@@ -97,7 +100,8 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
         <option value="">{{ t("billing.subscriptions.byRules") }}</option>
         <option v-for="p in PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
       </NativeSelect>
-      <Button type="submit" class="sm:col-span-2 lg:col-span-6" :disabled="act.create.isPending.value">{{ t("billing.subscriptions.create") }}</Button>
+      <Input v-model="coupon" :aria-label="t('billing.subscriptions.coupon.code')" :placeholder="t('billing.subscriptions.coupon.code')" />
+      <Button type="submit" class="sm:col-span-2 lg:col-span-7" :disabled="act.create.isPending.value">{{ t("billing.subscriptions.create") }}</Button>
     </form>
   </Card>
   <p v-if="failure" class="text-destructive bg-destructive/10 mb-4 rounded-2xl px-4 py-3 text-sm" role="alert">{{ failure }}</p>
@@ -158,6 +162,18 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
       <Button v-if="!selected.end_time" variant="destructive" @click="end(selected.id)">{{ t("billing.subscriptions.endNow") }}</Button>
     </div>
 
+    <div v-if="!providerRuns && !selected.end_time && selected.fee_timing === 'FEE_TIMING_ADVANCE'" class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('billing.subscriptions.coupon.label')">
+      <template v-if="selected.coupon_code">
+        <Badge variant="secondary" class="mono">{{ selected.coupon_code }}</Badge>
+        <Button size="sm" variant="outline" :disabled="act.removeCoupon.isPending.value" @click="act.removeCoupon.mutate(selected.id ?? '')">{{ t("billing.subscriptions.coupon.remove") }}</Button>
+      </template>
+      <template v-else>
+        <Input v-model="couponToApply" class="w-48" :aria-label="t('billing.subscriptions.coupon.code')" :placeholder="t('billing.subscriptions.coupon.code')" />
+        <Button size="sm" variant="outline" :disabled="couponToApply.trim() === '' || act.applyCoupon.isPending.value" @click="act.applyCoupon.mutate({ id: selected.id ?? '', code: couponToApply.trim() }, { onSuccess: () => (couponToApply = '') })">
+          {{ t("billing.subscriptions.coupon.apply") }}
+        </Button>
+      </template>
+    </div>
     <ChangePanel
       v-if="!providerRuns && !selected.end_time && selected.fee_timing === 'FEE_TIMING_ADVANCE'"
       :subscription="selected"

@@ -24,6 +24,8 @@ const (
 	BillingService_GetInvoicePdfUrl_FullMethodName = "/quotify.billing.v1.BillingService/GetInvoicePdfUrl"
 	BillingService_GetRevenueReport_FullMethodName = "/quotify.billing.v1.BillingService/GetRevenueReport"
 	BillingService_GetDunningReport_FullMethodName = "/quotify.billing.v1.BillingService/GetDunningReport"
+	BillingService_GetCreditNote_FullMethodName    = "/quotify.billing.v1.BillingService/GetCreditNote"
+	BillingService_ListCreditNotes_FullMethodName  = "/quotify.billing.v1.BillingService/ListCreditNotes"
 )
 
 // BillingServiceClient is the client API for BillingService service.
@@ -40,6 +42,8 @@ type BillingServiceClient interface {
 	GetRevenueReport(ctx context.Context, in *GetRevenueReportRequest, opts ...grpc.CallOption) (*GetRevenueReportResponse, error)
 	// GetDunningReport lists the invoices whose payment has not gone through: declined, unknown or given up.
 	GetDunningReport(ctx context.Context, in *GetDunningReportRequest, opts ...grpc.CallOption) (*GetDunningReportResponse, error)
+	GetCreditNote(ctx context.Context, in *GetCreditNoteRequest, opts ...grpc.CallOption) (*GetCreditNoteResponse, error)
+	ListCreditNotes(ctx context.Context, in *ListCreditNotesRequest, opts ...grpc.CallOption) (*ListCreditNotesResponse, error)
 }
 
 type billingServiceClient struct {
@@ -100,6 +104,26 @@ func (c *billingServiceClient) GetDunningReport(ctx context.Context, in *GetDunn
 	return out, nil
 }
 
+func (c *billingServiceClient) GetCreditNote(ctx context.Context, in *GetCreditNoteRequest, opts ...grpc.CallOption) (*GetCreditNoteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCreditNoteResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetCreditNote_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ListCreditNotes(ctx context.Context, in *ListCreditNotesRequest, opts ...grpc.CallOption) (*ListCreditNotesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCreditNotesResponse)
+	err := c.cc.Invoke(ctx, BillingService_ListCreditNotes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BillingServiceServer is the server API for BillingService service.
 // All implementations must embed UnimplementedBillingServiceServer
 // for forward compatibility.
@@ -114,6 +138,8 @@ type BillingServiceServer interface {
 	GetRevenueReport(context.Context, *GetRevenueReportRequest) (*GetRevenueReportResponse, error)
 	// GetDunningReport lists the invoices whose payment has not gone through: declined, unknown or given up.
 	GetDunningReport(context.Context, *GetDunningReportRequest) (*GetDunningReportResponse, error)
+	GetCreditNote(context.Context, *GetCreditNoteRequest) (*GetCreditNoteResponse, error)
+	ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error)
 	mustEmbedUnimplementedBillingServiceServer()
 }
 
@@ -138,6 +164,12 @@ func (UnimplementedBillingServiceServer) GetRevenueReport(context.Context, *GetR
 }
 func (UnimplementedBillingServiceServer) GetDunningReport(context.Context, *GetDunningReportRequest) (*GetDunningReportResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDunningReport not implemented")
+}
+func (UnimplementedBillingServiceServer) GetCreditNote(context.Context, *GetCreditNoteRequest) (*GetCreditNoteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCreditNote not implemented")
+}
+func (UnimplementedBillingServiceServer) ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCreditNotes not implemented")
 }
 func (UnimplementedBillingServiceServer) mustEmbedUnimplementedBillingServiceServer() {}
 func (UnimplementedBillingServiceServer) testEmbeddedByValue()                        {}
@@ -250,6 +282,42 @@ func _BillingService_GetDunningReport_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_GetCreditNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCreditNoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetCreditNote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetCreditNote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetCreditNote(ctx, req.(*GetCreditNoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ListCreditNotes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCreditNotesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ListCreditNotes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ListCreditNotes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ListCreditNotes(ctx, req.(*ListCreditNotesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BillingService_ServiceDesc is the grpc.ServiceDesc for BillingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -276,6 +344,14 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetDunningReport",
 			Handler:    _BillingService_GetDunningReport_Handler,
+		},
+		{
+			MethodName: "GetCreditNote",
+			Handler:    _BillingService_GetCreditNote_Handler,
+		},
+		{
+			MethodName: "ListCreditNotes",
+			Handler:    _BillingService_ListCreditNotes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -395,6 +471,7 @@ const (
 	BillingAdminService_GetBillingRun_FullMethodName      = "/quotify.billing.v1.BillingAdminService/GetBillingRun"
 	BillingAdminService_RetryInvoiceSaga_FullMethodName   = "/quotify.billing.v1.BillingAdminService/RetryInvoiceSaga"
 	BillingAdminService_VoidInvoice_FullMethodName        = "/quotify.billing.v1.BillingAdminService/VoidInvoice"
+	BillingAdminService_CreateCreditNote_FullMethodName   = "/quotify.billing.v1.BillingAdminService/CreateCreditNote"
 	BillingAdminService_StartRerating_FullMethodName      = "/quotify.billing.v1.BillingAdminService/StartRerating"
 	BillingAdminService_GetReratingJob_FullMethodName     = "/quotify.billing.v1.BillingAdminService/GetReratingJob"
 	BillingAdminService_GetInvoiceSaga_FullMethodName     = "/quotify.billing.v1.BillingAdminService/GetInvoiceSaga"
@@ -415,6 +492,9 @@ type BillingAdminServiceClient interface {
 	RetryInvoiceSaga(ctx context.Context, in *RetryInvoiceSagaRequest, opts ...grpc.CallOption) (*RetryInvoiceSagaResponse, error)
 	// VoidInvoice voids an invoice, refunding it first if it was paid.
 	VoidInvoice(ctx context.Context, in *VoidInvoiceRequest, opts ...grpc.CallOption) (*VoidInvoiceResponse, error)
+	// CreateCreditNote corrects a paid invoice without editing it: a numbered credit note whose amount is added to the customer's credit balance, which pays their
+	// next invoice in that currency. The notes of an invoice never add up to more than the invoice.
+	CreateCreditNote(ctx context.Context, in *CreateCreditNoteRequest, opts ...grpc.CallOption) (*CreateCreditNoteResponse, error)
 	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
 	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
 	// Idempotent per (tenant, period, plan version).
@@ -470,6 +550,16 @@ func (c *billingAdminServiceClient) VoidInvoice(ctx context.Context, in *VoidInv
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(VoidInvoiceResponse)
 	err := c.cc.Invoke(ctx, BillingAdminService_VoidInvoice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingAdminServiceClient) CreateCreditNote(ctx context.Context, in *CreateCreditNoteRequest, opts ...grpc.CallOption) (*CreateCreditNoteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateCreditNoteResponse)
+	err := c.cc.Invoke(ctx, BillingAdminService_CreateCreditNote_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -539,6 +629,9 @@ type BillingAdminServiceServer interface {
 	RetryInvoiceSaga(context.Context, *RetryInvoiceSagaRequest) (*RetryInvoiceSagaResponse, error)
 	// VoidInvoice voids an invoice, refunding it first if it was paid.
 	VoidInvoice(context.Context, *VoidInvoiceRequest) (*VoidInvoiceResponse, error)
+	// CreateCreditNote corrects a paid invoice without editing it: a numbered credit note whose amount is added to the customer's credit balance, which pays their
+	// next invoice in that currency. The notes of an invoice never add up to more than the invoice.
+	CreateCreditNote(context.Context, *CreateCreditNoteRequest) (*CreateCreditNoteResponse, error)
 	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
 	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
 	// Idempotent per (tenant, period, plan version).
@@ -571,6 +664,9 @@ func (UnimplementedBillingAdminServiceServer) RetryInvoiceSaga(context.Context, 
 }
 func (UnimplementedBillingAdminServiceServer) VoidInvoice(context.Context, *VoidInvoiceRequest) (*VoidInvoiceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method VoidInvoice not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) CreateCreditNote(context.Context, *CreateCreditNoteRequest) (*CreateCreditNoteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateCreditNote not implemented")
 }
 func (UnimplementedBillingAdminServiceServer) StartRerating(context.Context, *StartReratingRequest) (*StartReratingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartRerating not implemented")
@@ -676,6 +772,24 @@ func _BillingAdminService_VoidInvoice_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BillingAdminServiceServer).VoidInvoice(ctx, req.(*VoidInvoiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingAdminService_CreateCreditNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCreditNoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).CreateCreditNote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_CreateCreditNote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).CreateCreditNote(ctx, req.(*CreateCreditNoteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -792,6 +906,10 @@ var BillingAdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VoidInvoice",
 			Handler:    _BillingAdminService_VoidInvoice_Handler,
+		},
+		{
+			MethodName: "CreateCreditNote",
+			Handler:    _BillingAdminService_CreateCreditNote_Handler,
 		},
 		{
 			MethodName: "StartRerating",

@@ -67,6 +67,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
           <TableHead class="text-end">{{ t("billing.reports.refunded") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.reports.outstanding") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.reports.uncollectible") }}</TableHead>
+          <TableHead class="text-end">{{ t("billing.reports.credited") }}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -81,6 +82,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
           <TableCell class="text-end tabular-nums">{{ money(r.refunded_minor, r.currency) }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ money(r.outstanding_minor, r.currency) }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ money(r.uncollectible_minor, r.currency) }}</TableCell>
+          <TableCell class="text-end tabular-nums">{{ money(r.credited_minor, r.currency) }}</TableCell>
         </TableRow>
       </TableBody>
     </Table>

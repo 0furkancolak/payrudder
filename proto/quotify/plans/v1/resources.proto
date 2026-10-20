@@ -219,6 +219,8 @@ message Subscription {
   FeeTiming fee_timing = 20;
   // A change of plan or interval that is waiting for the end of the period the customer has paid for.
   ScheduledChange scheduled_change = 21;
+  // The coupon taking something off the fixed fee, if any.
+  string coupon_code = 22;
 }
 
 message ScheduledChange {
@@ -249,3 +251,33 @@ enum SubscriptionInterval {
   SUBSCRIPTION_INTERVAL_YEAR = 2;
 }
 
+
+// Coupon takes a percentage or an amount off the fixed fee of a subscription Quotify renews.
+message Coupon {
+  string code = 1;
+  string name = 2;
+  // 1..10000 (1000 = 10 %); zero for an amount coupon.
+  int32 percent_bps = 3;
+  // Minor units of currency; zero for a percentage coupon. An amount coupon applies only to subscriptions in its currency.
+  int64 amount_minor = 4;
+  string currency = 5;
+  CouponDuration duration = 6;
+  // For REPEATING: how many periods.
+  int32 duration_periods = 7;
+  // 0 = unlimited.
+  int32 max_redemptions = 8;
+  int32 redeemed = 9;
+  google.protobuf.Timestamp expire_time = 10;
+  bool active = 11;
+  google.protobuf.Timestamp create_time = 12;
+}
+
+enum CouponDuration {
+  COUPON_DURATION_UNSPECIFIED = 0;
+  // The first fee only.
+  COUPON_DURATION_ONCE = 1;
+  // The first duration_periods fees.
+  COUPON_DURATION_REPEATING = 2;
+  // Every fee, for as long as the subscription lasts.
+  COUPON_DURATION_FOREVER = 3;
+}

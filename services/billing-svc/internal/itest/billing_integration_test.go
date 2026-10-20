@@ -62,6 +62,10 @@ func TestBilling(t *testing.T) {
 		{"AdvanceFeesAreInvoicedOncePerPeriod", testAdvanceFeesAreInvoicedOncePerPeriod},
 		{"AdvanceBilledSubscriptionPaysOnlyUsageAtMonthClose", testAdvanceBilledSubscriptionPaysOnlyUsageAtMonthClose},
 		{"PlanChangesAreInvoicedOrCredited", testPlanChangesAreInvoicedOrCredited},
+		{"CreditNotesCorrectAPaidInvoiceWithoutEditingIt", testCreditNotes},
+		{"FeeInvoiceCarriesTheCouponAndServicePeriod", testFeeInvoiceCarriesTheCouponAndServicePeriod},
+		{"TaxIsAddedOnTopOfTheInvoicesQuotifyRaises", testTaxIsAddedOnTopOfTheInvoicesQuotifyRaises},
+		{"FeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit", testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

@@ -54,6 +54,13 @@ const (
 	PlansService_ApplyScheduledChanges_FullMethodName            = "/quotify.plans.v1.PlansService/ApplyScheduledChanges"
 	PlansService_ListSubscriptionAdjustments_FullMethodName      = "/quotify.plans.v1.PlansService/ListSubscriptionAdjustments"
 	PlansService_MarkSubscriptionAdjustmentBilled_FullMethodName = "/quotify.plans.v1.PlansService/MarkSubscriptionAdjustmentBilled"
+	PlansService_GetTaxRates_FullMethodName                      = "/quotify.plans.v1.PlansService/GetTaxRates"
+	PlansService_SetTaxRates_FullMethodName                      = "/quotify.plans.v1.PlansService/SetTaxRates"
+	PlansService_CreateCoupon_FullMethodName                     = "/quotify.plans.v1.PlansService/CreateCoupon"
+	PlansService_ListCoupons_FullMethodName                      = "/quotify.plans.v1.PlansService/ListCoupons"
+	PlansService_DeactivateCoupon_FullMethodName                 = "/quotify.plans.v1.PlansService/DeactivateCoupon"
+	PlansService_ApplyCoupon_FullMethodName                      = "/quotify.plans.v1.PlansService/ApplyCoupon"
+	PlansService_RemoveCoupon_FullMethodName                     = "/quotify.plans.v1.PlansService/RemoveCoupon"
 	PlansService_ListSubscriptionsFeeDue_FullMethodName          = "/quotify.plans.v1.PlansService/ListSubscriptionsFeeDue"
 	PlansService_AdvanceSubscriptionFee_FullMethodName           = "/quotify.plans.v1.PlansService/AdvanceSubscriptionFee"
 	PlansService_ListSubscriptionsForPeriod_FullMethodName       = "/quotify.plans.v1.PlansService/ListSubscriptionsForPeriod"
@@ -126,6 +133,16 @@ type PlansServiceClient interface {
 	// ListSubscriptionAdjustments lists the money changes moved that billing-svc has not yet invoiced or credited.
 	ListSubscriptionAdjustments(ctx context.Context, in *ListSubscriptionAdjustmentsRequest, opts ...grpc.CallOption) (*ListSubscriptionAdjustmentsResponse, error)
 	MarkSubscriptionAdjustmentBilled(ctx context.Context, in *MarkSubscriptionAdjustmentBilledRequest, opts ...grpc.CallOption) (*MarkSubscriptionAdjustmentBilledResponse, error)
+	// GetTaxRates and SetTaxRates hold the tax Quotify adds to the invoices it raises, by customer country. The list is replaced as a whole.
+	GetTaxRates(ctx context.Context, in *GetTaxRatesRequest, opts ...grpc.CallOption) (*GetTaxRatesResponse, error)
+	SetTaxRates(ctx context.Context, in *SetTaxRatesRequest, opts ...grpc.CallOption) (*SetTaxRatesResponse, error)
+	CreateCoupon(ctx context.Context, in *CreateCouponRequest, opts ...grpc.CallOption) (*CreateCouponResponse, error)
+	ListCoupons(ctx context.Context, in *ListCouponsRequest, opts ...grpc.CallOption) (*ListCouponsResponse, error)
+	// DeactivateCoupon stops new redemptions; subscriptions that redeemed it keep it.
+	DeactivateCoupon(ctx context.Context, in *DeactivateCouponRequest, opts ...grpc.CallOption) (*DeactivateCouponResponse, error)
+	// ApplyCoupon redeems a coupon on a subscription that has none; RemoveCoupon takes it off (the redemption count is not given back).
+	ApplyCoupon(ctx context.Context, in *ApplyCouponRequest, opts ...grpc.CallOption) (*ApplyCouponResponse, error)
+	RemoveCoupon(ctx context.Context, in *RemoveCouponRequest, opts ...grpc.CallOption) (*RemoveCouponResponse, error)
 	ListSubscriptionsFeeDue(ctx context.Context, in *ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*ListSubscriptionsFeeDueResponse, error)
 	// AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
 	AdvanceSubscriptionFee(ctx context.Context, in *AdvanceSubscriptionFeeRequest, opts ...grpc.CallOption) (*AdvanceSubscriptionFeeResponse, error)
@@ -490,6 +507,76 @@ func (c *plansServiceClient) MarkSubscriptionAdjustmentBilled(ctx context.Contex
 	return out, nil
 }
 
+func (c *plansServiceClient) GetTaxRates(ctx context.Context, in *GetTaxRatesRequest, opts ...grpc.CallOption) (*GetTaxRatesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTaxRatesResponse)
+	err := c.cc.Invoke(ctx, PlansService_GetTaxRates_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) SetTaxRates(ctx context.Context, in *SetTaxRatesRequest, opts ...grpc.CallOption) (*SetTaxRatesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetTaxRatesResponse)
+	err := c.cc.Invoke(ctx, PlansService_SetTaxRates_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) CreateCoupon(ctx context.Context, in *CreateCouponRequest, opts ...grpc.CallOption) (*CreateCouponResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateCouponResponse)
+	err := c.cc.Invoke(ctx, PlansService_CreateCoupon_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ListCoupons(ctx context.Context, in *ListCouponsRequest, opts ...grpc.CallOption) (*ListCouponsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCouponsResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListCoupons_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) DeactivateCoupon(ctx context.Context, in *DeactivateCouponRequest, opts ...grpc.CallOption) (*DeactivateCouponResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeactivateCouponResponse)
+	err := c.cc.Invoke(ctx, PlansService_DeactivateCoupon_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ApplyCoupon(ctx context.Context, in *ApplyCouponRequest, opts ...grpc.CallOption) (*ApplyCouponResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApplyCouponResponse)
+	err := c.cc.Invoke(ctx, PlansService_ApplyCoupon_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) RemoveCoupon(ctx context.Context, in *RemoveCouponRequest, opts ...grpc.CallOption) (*RemoveCouponResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveCouponResponse)
+	err := c.cc.Invoke(ctx, PlansService_RemoveCoupon_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) ListSubscriptionsFeeDue(ctx context.Context, in *ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*ListSubscriptionsFeeDueResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListSubscriptionsFeeDueResponse)
@@ -596,6 +683,16 @@ type PlansServiceServer interface {
 	// ListSubscriptionAdjustments lists the money changes moved that billing-svc has not yet invoiced or credited.
 	ListSubscriptionAdjustments(context.Context, *ListSubscriptionAdjustmentsRequest) (*ListSubscriptionAdjustmentsResponse, error)
 	MarkSubscriptionAdjustmentBilled(context.Context, *MarkSubscriptionAdjustmentBilledRequest) (*MarkSubscriptionAdjustmentBilledResponse, error)
+	// GetTaxRates and SetTaxRates hold the tax Quotify adds to the invoices it raises, by customer country. The list is replaced as a whole.
+	GetTaxRates(context.Context, *GetTaxRatesRequest) (*GetTaxRatesResponse, error)
+	SetTaxRates(context.Context, *SetTaxRatesRequest) (*SetTaxRatesResponse, error)
+	CreateCoupon(context.Context, *CreateCouponRequest) (*CreateCouponResponse, error)
+	ListCoupons(context.Context, *ListCouponsRequest) (*ListCouponsResponse, error)
+	// DeactivateCoupon stops new redemptions; subscriptions that redeemed it keep it.
+	DeactivateCoupon(context.Context, *DeactivateCouponRequest) (*DeactivateCouponResponse, error)
+	// ApplyCoupon redeems a coupon on a subscription that has none; RemoveCoupon takes it off (the redemption count is not given back).
+	ApplyCoupon(context.Context, *ApplyCouponRequest) (*ApplyCouponResponse, error)
+	RemoveCoupon(context.Context, *RemoveCouponRequest) (*RemoveCouponResponse, error)
 	ListSubscriptionsFeeDue(context.Context, *ListSubscriptionsFeeDueRequest) (*ListSubscriptionsFeeDueResponse, error)
 	// AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
 	AdvanceSubscriptionFee(context.Context, *AdvanceSubscriptionFeeRequest) (*AdvanceSubscriptionFeeResponse, error)
@@ -714,6 +811,27 @@ func (UnimplementedPlansServiceServer) ListSubscriptionAdjustments(context.Conte
 }
 func (UnimplementedPlansServiceServer) MarkSubscriptionAdjustmentBilled(context.Context, *MarkSubscriptionAdjustmentBilledRequest) (*MarkSubscriptionAdjustmentBilledResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkSubscriptionAdjustmentBilled not implemented")
+}
+func (UnimplementedPlansServiceServer) GetTaxRates(context.Context, *GetTaxRatesRequest) (*GetTaxRatesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTaxRates not implemented")
+}
+func (UnimplementedPlansServiceServer) SetTaxRates(context.Context, *SetTaxRatesRequest) (*SetTaxRatesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetTaxRates not implemented")
+}
+func (UnimplementedPlansServiceServer) CreateCoupon(context.Context, *CreateCouponRequest) (*CreateCouponResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateCoupon not implemented")
+}
+func (UnimplementedPlansServiceServer) ListCoupons(context.Context, *ListCouponsRequest) (*ListCouponsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCoupons not implemented")
+}
+func (UnimplementedPlansServiceServer) DeactivateCoupon(context.Context, *DeactivateCouponRequest) (*DeactivateCouponResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeactivateCoupon not implemented")
+}
+func (UnimplementedPlansServiceServer) ApplyCoupon(context.Context, *ApplyCouponRequest) (*ApplyCouponResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApplyCoupon not implemented")
+}
+func (UnimplementedPlansServiceServer) RemoveCoupon(context.Context, *RemoveCouponRequest) (*RemoveCouponResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveCoupon not implemented")
 }
 func (UnimplementedPlansServiceServer) ListSubscriptionsFeeDue(context.Context, *ListSubscriptionsFeeDueRequest) (*ListSubscriptionsFeeDueResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSubscriptionsFeeDue not implemented")
@@ -1375,6 +1493,132 @@ func _PlansService_MarkSubscriptionAdjustmentBilled_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_GetTaxRates_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTaxRatesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).GetTaxRates(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_GetTaxRates_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).GetTaxRates(ctx, req.(*GetTaxRatesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_SetTaxRates_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetTaxRatesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).SetTaxRates(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_SetTaxRates_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).SetTaxRates(ctx, req.(*SetTaxRatesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_CreateCoupon_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCouponRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).CreateCoupon(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_CreateCoupon_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).CreateCoupon(ctx, req.(*CreateCouponRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ListCoupons_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCouponsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListCoupons(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListCoupons_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListCoupons(ctx, req.(*ListCouponsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_DeactivateCoupon_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeactivateCouponRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).DeactivateCoupon(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_DeactivateCoupon_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).DeactivateCoupon(ctx, req.(*DeactivateCouponRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ApplyCoupon_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApplyCouponRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ApplyCoupon(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ApplyCoupon_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ApplyCoupon(ctx, req.(*ApplyCouponRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_RemoveCoupon_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveCouponRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).RemoveCoupon(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_RemoveCoupon_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).RemoveCoupon(ctx, req.(*RemoveCouponRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_ListSubscriptionsFeeDue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSubscriptionsFeeDueRequest)
 	if err := dec(in); err != nil {
@@ -1568,6 +1812,34 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MarkSubscriptionAdjustmentBilled",
 			Handler:    _PlansService_MarkSubscriptionAdjustmentBilled_Handler,
+		},
+		{
+			MethodName: "GetTaxRates",
+			Handler:    _PlansService_GetTaxRates_Handler,
+		},
+		{
+			MethodName: "SetTaxRates",
+			Handler:    _PlansService_SetTaxRates_Handler,
+		},
+		{
+			MethodName: "CreateCoupon",
+			Handler:    _PlansService_CreateCoupon_Handler,
+		},
+		{
+			MethodName: "ListCoupons",
+			Handler:    _PlansService_ListCoupons_Handler,
+		},
+		{
+			MethodName: "DeactivateCoupon",
+			Handler:    _PlansService_DeactivateCoupon_Handler,
+		},
+		{
+			MethodName: "ApplyCoupon",
+			Handler:    _PlansService_ApplyCoupon_Handler,
+		},
+		{
+			MethodName: "RemoveCoupon",
+			Handler:    _PlansService_RemoveCoupon_Handler,
 		},
 		{
 			MethodName: "ListSubscriptionsFeeDue",

@@ -130,7 +130,8 @@
       "description": "Açıklama",
       "meter": "Sayaç",
       "quantity": "Miktar",
-      "amount": "Tutar"
+      "amount": "Tutar",
+      "period": "Hizmet dönemi"
     },
     "saga": "Saga zaman çizelgesi",
     "sagaColumns": {
@@ -227,7 +228,8 @@
       "subscriptions": "Abonelikler",
       "payments": "Ödemeler",
       "providers": "Sağlayıcılar",
-      "reports": "Raporlar"
+      "reports": "Raporlar",
+      "pricing": "Kupon ve vergi"
     },
     "common": {
       "remove": "Kaldır"
@@ -351,6 +353,12 @@
         "atPeriodEnd": "Ödenmiş dönemin sonunda duraklat",
         "paymentLink": "Ödeme yöntemi bağlantısı",
         "requested": "İstendi. Sağlayıcı onaylayınca bu sayfa güncellenir."
+      },
+      "coupon": {
+        "label": "Kupon",
+        "code": "Kupon kodu",
+        "apply": "Kuponu uygula",
+        "remove": "Kuponu kaldır"
       }
     },
     "payments": {
@@ -466,7 +474,66 @@
       "attempt": "Yeniden deneme",
       "nextAttempt": "Sonraki deneme",
       "empty": "Henüz raporlanacak bir şey yok.",
-      "noDunning": "Ödenmemiş fatura yok."
+      "noDunning": "Ödenmemiş fatura yok.",
+      "credited": "Alacak dekontu"
+    },
+    "pricing": {
+      "coupons": {
+        "title": "Kuponlar",
+        "hint": "Kupon, Quotify'ın peşin faturaladığı sabit ücretten bir yüzde ya da tutar düşer: bir kez, belirli sayıda dönem ya da abonelik sürdüğü sürece. Sağlayıcının yönettiği abonelik bunun yerine sağlayıcıdaki indirimi kullanır.",
+        "formLabel": "yeni kupon",
+        "code": "Kod",
+        "name": "Ad",
+        "kind": "Tür",
+        "percent": "Yüzde",
+        "amount": "Tutar",
+        "value": "Değer (10 ya da 12,5 / 4,99)",
+        "currency": "Para birimi",
+        "duration": "Süre",
+        "once": "Yalnızca ilk ücret",
+        "repeating": "Belirli sayıda ücret",
+        "forever": "Her ücret",
+        "periods": "Ücret sayısı",
+        "max": "Kullanım sınırı",
+        "create": "Kupon oluştur",
+        "deactivate": "Devre dışı bırak",
+        "active": "Etkin",
+        "inactive": "Devre dışı",
+        "redeemed": "Kullanıldı",
+        "empty": "Henüz kupon yok.",
+        "badPercent": "Yüzde değil: 0,01 ile 100 arası, en fazla iki ondalık.",
+        "badAmount": "{currency} cinsinden tutar değil: yalnızca rakamlar, para biriminin ondalığını aşmadan.",
+        "repeatingFor": "İlk {n} ücret"
+      },
+      "tax": {
+        "title": "Vergi",
+        "hint": "Quotify bu oranları, kestiği faturalara müşterinin ülkesine göre fiyatın üstüne ekler (ülkesiz oran diğer tüm ülkeleri kapsar). Oranları siz belirler ve onlardan siz sorumlusunuz; sağlayıcının kestiği faturayı sağlayıcı vergilendirir.",
+        "country": "Ülke {n}",
+        "anyCountry": "Diğer tüm ülkeler",
+        "name": "Ad {n}",
+        "namePlaceholder": "KDV",
+        "percent": "Oran {n} (%)",
+        "rate": "Oran {n}",
+        "add": "Oran ekle",
+        "save": "Oranları kaydet",
+        "saved": "Oranlar kaydedildi.",
+        "none": "Vergi eklenmiyor.",
+        "badRate": "Yüzde değil: 0 ile 100 arası, en fazla iki ondalık."
+      }
+    },
+    "creditNotes": {
+      "title": "Alacak dekontları",
+      "formLabel": "yeni alacak dekontu",
+      "amount": "Tutar",
+      "amountPlaceholder": "Tutar (boş: kalanın tamamı)",
+      "reason": "Neden",
+      "create": "Alacak dekontu düzenle",
+      "number": "Numara",
+      "invoice": "Fatura",
+      "customer": "Müşteri",
+      "date": "Tarih",
+      "empty": "Alacak dekontu yok.",
+      "badAmount": "{currency} cinsinden tutar değil: yalnızca rakamlar, para biriminin ondalığını aşmadan."
     }
   }
 }

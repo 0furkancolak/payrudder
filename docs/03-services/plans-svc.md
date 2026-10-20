@@ -163,3 +163,9 @@ instead of applied if the subscription ended, is paused, past due, or ending by 
 ## As built: following a provider's plan changes (Phase 21)
 
 `SyncProviderSubscription` also takes `plan_version_id` and `interval`. For a provider-owned subscription whose provider now bills another plan version or interval, the subscription switches to a successor (`changed_from_id`, same anchor, `fee_timing = arrears`, owner and provider id carried over; the ended one gives the id up, since it is unique) at the provider's event time, with no money and no adjustment: the provider billed the change. Events keep naming the subscription Quotify first linked, so the call resolves them along the chain to the one that holds the provider id; a subscription outside that chain that names a taken provider id is still refused.
+
+## As built: coupons and tax rates (Phase 22)
+
+`CreateCoupon`, `ListCoupons`, `DeactivateCoupon`; `ApplyCoupon`/`RemoveCoupon` (or `coupon_code` on `CreateSubscription`). A coupon is a percentage (`percent_bps`) or an amount in a currency, `once`, `repeating` (N fees) or `forever`, with an optional redemption limit and expiry; redeeming counts in one statement so two redemptions cannot take the last one. A subscription has at most one; it moves to the successor in a plan change. Only subscriptions Quotify invoices in advance take one. `ListSubscriptionsFeeDue` returns the discount of the due fee (`pkg/subscription.CouponDiscount`), and `AdvanceSubscriptionFee` counts the period when it advances it.
+`GetTaxRates`/`SetTaxRates` hold the tenant's rates by customer country (`tax_rates`; empty country = every other country), replaced as a whole. Billing reads them when it raises an invoice.
+

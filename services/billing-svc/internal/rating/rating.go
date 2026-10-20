@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 )
@@ -69,6 +70,10 @@ const (
 	KindCorrection Kind = "CORRECTION"
 	// KindCredit is a negative line that applies a credit balance to a regular invoice.
 	KindCredit Kind = "CREDIT"
+	// KindDiscount is a negative line: what a coupon takes off.
+	KindDiscount Kind = "DISCOUNT"
+	// KindTax is a line of tax at a configured rate.
+	KindTax Kind = "TAX"
 )
 
 // Line is one invoice line.
@@ -81,6 +86,8 @@ type Line struct {
 	UnitPrice    string // display, PER_UNIT only
 	AmountMinor  int64
 	Description  string
+	// ServiceFrom and ServiceTo are the service period the line covers; zero when it does not say.
+	ServiceFrom, ServiceTo time.Time
 }
 
 // ErrOverflow means an amount does not fit an int64 number of minor units.

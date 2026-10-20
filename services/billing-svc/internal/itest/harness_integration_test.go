@@ -124,6 +124,7 @@ type world struct {
 	adjusts   []*plansv1.Adjustment   // what plan changes moved, until marked billed
 	billedAdj []string
 	applyCall int
+	taxRates  []*plansv1.TaxRate
 
 	usage     map[string][]*aggregatorv1.UsageAggregate // by period id
 	late      map[string][]*aggregatorv1.LateUsage      // by billed period id
@@ -223,6 +224,12 @@ func (f fakeAll) MarkSubscriptionAdjustmentBilled(_ context.Context, in *plansv1
 	defer f.w.mu.Unlock()
 	f.w.billedAdj = append(f.w.billedAdj, in.GetAdjustmentId())
 	return &plansv1.MarkSubscriptionAdjustmentBilledResponse{}, nil
+}
+
+func (f fakeAll) GetTaxRates(context.Context, *plansv1.GetTaxRatesRequest, ...grpc.CallOption) (*plansv1.GetTaxRatesResponse, error) {
+	f.w.mu.Lock()
+	defer f.w.mu.Unlock()
+	return &plansv1.GetTaxRatesResponse{Rates: f.w.taxRates}, nil
 }
 
 // Admin.

@@ -252,6 +252,9 @@ func (s *Server) switchTo(ctx context.Context, q *sqlc.Queries, tenantID uuid.UU
 	if err != nil {
 		return nr, err
 	}
+	if _, err := q.MoveSubscriptionCoupon(ctx, sqlc.MoveSubscriptionCouponParams{OldID: old.ID, NewID: nr.ID}); err != nil {
+		return nr, err
+	}
 	// Old entitlements first, new ones last: the topic is compacted per customer and meter, so the last write wins.
 	if err := publishEntitlements(ctx, q, tenantID, old.CustomerID, old.PlanVersionID, old.StartTime, &at, s.now()); err != nil {
 		return nr, err
@@ -295,7 +298,7 @@ func (s *Server) ChangeSubscription(ctx context.Context, req *plansv1.ChangeSubs
 			}
 			resp.Scheduled = true
 			resp.Subscription = subscriptionMessage(row, s.now())
-			return attachScheduled(ctx, q, resp.Subscription)
+			return attachExtras(ctx, q, resp.Subscription)
 		}
 		state := subscription.Active
 		if pc.trial {
@@ -318,7 +321,7 @@ func (s *Server) ChangeSubscription(ctx context.Context, req *plansv1.ChangeSubs
 			return err
 		}
 		resp.Subscription = subscriptionMessage(full, s.now())
-		return nil
+		return attachExtras(ctx, q, resp.Subscription)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
@@ -457,8 +460,8 @@ func (s *Server) MarkSubscriptionAdjustmentBilled(ctx context.Context, req *plan
 	return &plansv1.MarkSubscriptionAdjustmentBilledResponse{}, nil
 }
 
-// attachScheduled sets scheduled_change on the subscriptions that have a change waiting.
-func attachScheduled(ctx context.Context, q *sqlc.Queries, subs ...*plansv1.Subscription) error {
+// attachExtras sets scheduled_change and coupon_code on the subscriptions that have a change waiting or a coupon on.
+func attachExtras(ctx context.Context, q *sqlc.Queries, subs ...*plansv1.Subscription) error {
 	var ids []uuid.UUID
 	byID := map[string]*plansv1.Subscription{}
 	for _, sb := range subs {
@@ -477,6 +480,15 @@ func attachScheduled(ctx context.Context, q *sqlc.Queries, subs ...*plansv1.Subs
 	for _, c := range rows {
 		if sb := byID[c.SubscriptionID.String()]; sb != nil {
 			sb.ScheduledChange = &plansv1.ScheduledChange{PlanCode: c.PlanCode, PlanVersion: c.PlanVersion, Interval: intervalToProto(subscription.Interval(c.Interval)), EffectiveTime: timestamppb.New(c.EffectiveAt)}
+		}
+	}
+	coupons, err := q.ListCouponCodesFor(ctx, ids)
+	if err != nil {
+		return err
+	}
+	for _, c := range coupons {
+		if sb := byID[c.SubscriptionID.String()]; sb != nil {
+			sb.CouponCode = c.CouponCode
 		}
 	}
 	return nil

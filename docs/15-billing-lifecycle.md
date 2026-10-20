@@ -1,6 +1,6 @@
 # Billing lifecycle: yearly plans, plan changes, Paddle catalogue, billing documents
 
-Status: approved; phases 19, 20 and 21 are built, 22 is planned. (Quantity changes, listed in section 2 below, were dropped from phase 20: the data model has no quantity.) Builds on [14-billing-platform.md](14-billing-platform.md) and [ADR 0016](adr/0016-provider-capabilities-and-routing.md); decisions in [ADR 0017](adr/0017-advance-fixed-fees-and-change-modes.md).
+Status: approved; phases 19–22 are built; section 4 lists what phase 22 left out. (Quantity changes, listed in section 2 below, were dropped from phase 20: the data model has no quantity.) Builds on [14-billing-platform.md](14-billing-platform.md) and [ADR 0016](adr/0016-provider-capabilities-and-routing.md); decisions in [ADR 0017](adr/0017-advance-fixed-fees-and-change-modes.md).
 
 ## Why
 

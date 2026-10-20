@@ -264,7 +264,15 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 		if err != nil {
 			return err
 		}
+		if code := req.GetCouponCode(); code != "" {
+			if err := s.redeemCoupon(ctx, q, full, code); err != nil {
+				return err
+			}
+		}
 		out = subscriptionMessage(full, s.now())
+		if err := attachExtras(ctx, q, out); err != nil {
+			return err
+		}
 		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, nil, s.now())
 	})
 	if err != nil {
@@ -285,7 +293,7 @@ func (s *Server) GetSubscription(ctx context.Context, req *plansv1.GetSubscripti
 			return err
 		}
 		out = subscriptionMessage(r, s.now())
-		return attachScheduled(ctx, q, out)
+		return attachExtras(ctx, q, out)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
@@ -805,7 +813,7 @@ func (s *Server) ListSubscriptions(ctx context.Context, req *plansv1.ListSubscri
 		if more {
 			resp.NextPageToken = rows[len(rows)-1].ID.String()
 		}
-		return attachScheduled(ctx, q, resp.Subscriptions...)
+		return attachExtras(ctx, q, resp.Subscriptions...)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")

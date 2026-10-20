@@ -269,3 +269,8 @@ invoices the fees due. An adjustment with `charge > credit` becomes a `FEE` invo
 `charge < credit` becomes a `credit_balances` row (`source_adjustment_id`, unique) in the subscription's currency; equal moves nothing. Then the adjustment is marked billed, so a crash in between
 repeats harmlessly. A credit balance is applied to the next invoice **in its currency** (`credit_balances.currency`, set for old rows from the customer's invoices) up to what the invoice costs, as re-rating credits already were.
 
+## As built: billing documents (Phase 22)
+
+`CreateCreditNote` (operator; `BillingAdminService`) issues a gap-free numbered credit note (`credit_note_seq`, `CN-` / `SBX-CN-`) against a **paid** invoice, in one transaction under the invoice's row lock: the notes of an invoice never exceed it, and the amount becomes a `credit_balances` row (`source_credit_note_id`) in the invoice's currency. `GetCreditNote`/`ListCreditNotes` (newest first, paged by `created_at|id`) are tenant reads. The revenue report gains `credited_minor`.
+Invoice lines can be `DISCOUNT` (a coupon, negative) or `TAX`, and carry `service_from`/`service_to`. Tax is added by `rating.TaxLine` for the customer's country from plans-svc's rates, to monthly invoices, advance fees and plan-change adjustments, but not to a subscription a provider runs; the invoice subtotal (and the PDF's) is before tax. A credit balance is applied only to invoices in its currency.
+

@@ -146,6 +146,10 @@ yearly-to-monthly at the end of the paid period, as a scheduled change the custo
 Details in [phase 21](phases/phase-21-paddle-api.md). Optional provider interfaces (catalogue, customers, subscriptions, discounts, documents) let Quotify create a plan's product and prices at Paddle, ensure customers, preview and apply plan or interval changes, pause, resume, hand out payment-method and portal links, create discounts and fetch invoice links, all through operator endpoints and the console. Quotify's copy of a Paddle-run subscription follows a plan change the provider billed, with no money moved on Quotify's side.
 Nothing has run against Paddle's sandbox; the points the reference does not settle are marked UNVERIFIED.
 
+## As built: phase 22
+
+Details in [phase 22](phases/phase-22-billing-documents.md). Credit notes (paid invoices only, into the credit balance), coupons on advance fees, tax rates by customer country, `DISCOUNT` and `TAX` invoice lines, and service periods on lines, with console pages for them. Outbound events, a hosted invoice page, per-tenant dunning settings and card refunds of credit notes are not built.
+
 ## Currency
 
 The old rule "one currency per tenant, immutable" moves down a level. The tenant keeps a **default currency**. A subscription and its invoices have one currency, fixed for the

@@ -213,6 +213,42 @@ test.describe("subscriptions", () => {
     expect(gw.called("POST", "/v1/subscriptions")[0]?.body).toEqual({ customer_external_id: "cus_2", plan_code: "pro", trial_days: 14, provider: "iyzico", interval: "SUBSCRIPTION_INTERVAL_YEAR" });
   });
 
+  test("a coupon is redeemed with a new subscription, and put on or taken off one that exists", async ({ page }) => {
+    let withCoupon = false;
+    const gw = common(new MockGateway(), []).on((c) => {
+      if (c.method === "GET" && c.path === "/v1/subscriptions") {
+        return { body: { subscriptions: [sub("s1", { fee_timing: "FEE_TIMING_ADVANCE", coupon_code: withCoupon ? "WELCOME" : undefined })] } };
+      }
+      if (c.method === "POST" && c.path === "/v1/subscriptions") return { status: 201, body: sub("s9") };
+      if (c.method === "POST" && c.path === "/v1/subscriptions/s1/coupon") {
+        withCoupon = true;
+        return { body: sub("s1") };
+      }
+      if (c.method === "DELETE" && c.path === "/v1/subscriptions/s1/coupon") {
+        withCoupon = false;
+        return { body: sub("s1") };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/subscriptions");
+    const form = page.getByRole("form", { name: "new subscription" });
+    await form.getByLabel("Customer").selectOption("cus_2");
+    await form.getByLabel("Package").selectOption("pro");
+    await form.getByLabel("Coupon code").fill("WELCOME");
+    await form.getByRole("button", { name: "Create subscription" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/subscriptions").length).toBe(1);
+    expect(gw.called("POST", "/v1/subscriptions")[0]?.body).toMatchObject({ customer_external_id: "cus_2", plan_code: "pro", coupon_code: "WELCOME" });
+    await page.getByRole("button", { name: "Manage" }).click();
+    const panel = page.getByRole("region", { name: "Manage cus_1" });
+    await panel.getByRole("group", { name: "Coupon" }).getByLabel("Coupon code").fill("WELCOME");
+    await panel.getByRole("button", { name: "Apply coupon" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/subscriptions/s1/coupon").length).toBe(1);
+    expect(gw.called("POST", "/v1/subscriptions/s1/coupon")[0]?.body).toEqual({ code: "WELCOME" });
+    await panel.getByRole("button", { name: "Remove coupon" }).click();
+    await expect.poll(() => gw.called("DELETE", "/v1/subscriptions/s1/coupon").length).toBe(1);
+  });
+
   test("a Quotify-run subscription can be paused, moved to another package and cancelled at the period end", async ({ page }) => {
     const gw = common(new MockGateway(), [sub("s1")]).on((c) => {
       if (c.method === "POST" && /^\/v1\/subscriptions\/s1\/(pause|cancel-at-period-end|change-plan)$/.test(c.path)) return { body: sub("s1") };
@@ -359,6 +395,162 @@ test.describe("subscriptions", () => {
     page.once("dialog", (d) => void d.accept());
     await panel.getByRole("button", { name: "End now" }).click();
     await expect.poll(() => gw.called("DELETE", "/v1/subscriptions/s1").length).toBe(1);
+  });
+});
+
+test.describe("pricing", () => {
+  const quiet = (c: { path: string; method: string }) => {
+    if (c.path === "/v1/coupons" && c.method === "GET") return { body: { coupons: [] } };
+    if (c.path === "/v1/tax-rates" && c.method === "GET") return { body: { rates: [{ country: "DE", name: "VAT", rate_bps: 1900 }, { country: "", name: "Sales tax", rate_bps: 825 }] } };
+    return undefined;
+  };
+
+  test("a coupon is made as a percentage or an amount, and deactivated", async ({ page }) => {
+    const coupons: Record<string, unknown>[] = [];
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === "/v1/coupons" && c.method === "POST") {
+        coupons.push({ ...c.body, redeemed: 0, active: true });
+        return { status: 201, body: coupons.at(-1) };
+      }
+      if (c.path === "/v1/coupons" && c.method === "GET") return { body: { coupons } };
+      if (c.method === "DELETE" && c.path === "/v1/coupons/WELCOME") {
+        coupons[0] = { ...coupons[0], active: false };
+        return { body: coupons[0] };
+      }
+      return quiet(c);
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/pricing");
+    const form = page.getByRole("form", { name: "new coupon" });
+    await form.getByLabel("Code").fill("WELCOME");
+    await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("12,5");
+    await form.getByLabel("Duration").selectOption("COUPON_DURATION_REPEATING");
+    await form.getByLabel("Fees", { exact: true }).fill("3");
+    await form.getByLabel("Redemptions limit").fill("100");
+    await form.getByRole("button", { name: "Create coupon" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/coupons").length).toBe(1);
+    expect(gw.called("POST", "/v1/coupons")[0]?.body).toEqual({
+      code: "WELCOME",
+      name: "",
+      duration: "COUPON_DURATION_REPEATING",
+      percent_bps: 1250,
+      duration_periods: 3,
+      max_redemptions: 100,
+    });
+    const row = page.getByRole("row", { name: /WELCOME/ });
+    await expect(row).toContainText("12.5 %");
+    await expect(row).toContainText("First 3 fees");
+    await expect(row).toContainText("0 / 100");
+    await form.getByLabel("Code").fill("MINUS5");
+    await form.getByLabel("Kind").selectOption("amount");
+    await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("4.99");
+    await form.getByLabel("Currency").selectOption("USD");
+    await form.getByLabel("Duration").selectOption("COUPON_DURATION_FOREVER");
+    await form.getByRole("button", { name: "Create coupon" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/coupons").length).toBe(2);
+    expect(gw.called("POST", "/v1/coupons")[1]?.body).toMatchObject({ code: "MINUS5", amount_minor: "499", currency: "USD", duration: "COUPON_DURATION_FOREVER" });
+    await row.getByRole("button", { name: "Deactivate" }).click();
+    await expect.poll(() => gw.called("DELETE", "/v1/coupons/WELCOME").length).toBe(1);
+  });
+
+  test("a percentage that is not one is refused before anything is sent", async ({ page }) => {
+    const gw = baseTenant(new MockGateway()).on(quiet);
+    await gw.install(page);
+    await openTenantPage(page, "/pricing");
+    const form = page.getByRole("form", { name: "new coupon" });
+    await form.getByLabel("Code").fill("BAD");
+    await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("101");
+    await form.getByRole("button", { name: "Create coupon" }).click();
+    await expect(page.getByRole("alert")).toContainText("Not a percentage");
+    expect(gw.called("POST", "/v1/coupons")).toHaveLength(0);
+  });
+
+  test("tax rates are shown as percentages and saved as basis points, replacing the list", async ({ page }) => {
+    const gw = baseTenant(new MockGateway())
+      .on(quiet)
+      .on((c) => (c.method === "PUT" && c.path === "/v1/tax-rates" ? { body: c.body } : undefined));
+    await gw.install(page);
+    await openTenantPage(page, "/pricing");
+    await expect(page.getByLabel("Rate 1 (%)")).toHaveValue("19");
+    await expect(page.getByLabel("Rate 2 (%)")).toHaveValue("8.25");
+    await page.getByRole("button", { name: "Add a rate" }).click();
+    await page.getByLabel("Country 3").fill("tr");
+    await page.getByLabel("Name 3").fill("KDV");
+    await page.getByLabel("Rate 3 (%)").fill("20");
+    await page.getByRole("button", { name: "Save rates" }).click();
+    await expect.poll(() => gw.called("PUT", "/v1/tax-rates").length).toBe(1);
+    expect(gw.called("PUT", "/v1/tax-rates")[0]?.body).toEqual({
+      rates: [
+        { country: "DE", name: "VAT", rate_bps: 1900 },
+        { country: "", name: "Sales tax", rate_bps: 825 },
+        { country: "TR", name: "KDV", rate_bps: 2000 },
+      ],
+    });
+    await page.getByLabel("Rate 1 (%)").fill("19.999");
+    await page.getByRole("button", { name: "Save rates" }).click();
+    await expect(page.getByRole("alert")).toContainText("Not a percentage");
+    expect(gw.called("PUT", "/v1/tax-rates")).toHaveLength(1);
+  });
+});
+
+test.describe("credit notes", () => {
+  const invoice = (status: string) => ({
+    id: "inv1",
+    number: "INV-2026-000001",
+    customer_external_id: "cus_1",
+    period_id: "2026-10",
+    kind: "REGULAR",
+    currency: "USD",
+    total_minor: "10000",
+    status,
+    saga_state: "COMPLETED",
+    lines: [
+      { line_no: 1, kind: "BASE_FEE", description: "Base fee", amount_minor: "10000", service_from: "2026-10-01T00:00:00Z", service_to: "2026-11-01T00:00:00Z" },
+    ],
+  });
+  const common = (status: string, notes: Record<string, unknown>[]) =>
+    baseTenant(new MockGateway()).on((c) => {
+      if (c.path === `/admin/v1/tenants/${TENANT}/invoices/inv1`) return { body: invoice(status) };
+      if (c.path === `/admin/v1/tenants/${TENANT}/invoices/inv1/saga`) return { body: { state: "COMPLETED", events: [] } };
+      if (c.method === "GET" && c.path === "/v1/credit-notes") return { body: { credit_notes: notes } };
+      return undefined;
+    });
+
+  test("a paid invoice is credited: an amount in major units, a reason, and the note is listed", async ({ page }) => {
+    const notes: Record<string, unknown>[] = [];
+    const gw = common("paid", notes).on((c) => {
+      if (c.method === "POST" && c.path === "/admin/v1/invoices/inv1/credit-notes") {
+        notes.push({ id: "cn1", number: "CN-2026-000001", invoice_number: "INV-2026-000001", customer_external_id: "cus_1", currency: "USD", total_minor: c.body?.amount_minor, reason: c.body?.reason, create_time: "2026-10-20T10:00:00Z" });
+        return { status: 201, body: notes[0] };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/invoices/inv1");
+    await expect(page.getByRole("row", { name: /Base fee/ })).toContainText("Oct 1, 2026");
+    const form = page.getByRole("form", { name: "new credit note" });
+    await form.getByLabel("Amount").fill("25.50");
+    await form.getByLabel("Reason").fill("goodwill");
+    await form.getByRole("button", { name: "Issue credit note" }).click();
+    await expect.poll(() => gw.called("POST", "/admin/v1/invoices/inv1/credit-notes").length).toBe(1);
+    expect(gw.called("POST", "/admin/v1/invoices/inv1/credit-notes")[0]?.body).toEqual({ tenant_id: TENANT, amount_minor: "2550", reason: "goodwill" });
+    await expect(page.getByRole("row", { name: /CN-2026-000001/ })).toContainText("$25.50");
+  });
+
+  test("an invoice that is not paid cannot be credited here, and an empty amount credits what is left", async ({ page }) => {
+    const gw = common("open", []);
+    await gw.install(page);
+    await openTenantPage(page, "/invoices/inv1");
+    await expect(page.getByRole("form", { name: "new credit note" })).toHaveCount(0);
+    await expect(page.getByText("No credit notes.")).toBeVisible();
+
+    const paid = common("paid", []).on((c) => (c.method === "POST" && c.path === "/admin/v1/invoices/inv1/credit-notes" ? { status: 201, body: { id: "cn" } } : undefined));
+    const page2 = await page.context().newPage();
+    await paid.install(page2);
+    await openTenantPage(page2, "/invoices/inv1");
+    await page2.getByRole("form", { name: "new credit note" }).getByRole("button", { name: "Issue credit note" }).click();
+    await expect.poll(() => paid.called("POST", "/admin/v1/invoices/inv1/credit-notes").length).toBe(1);
+    expect(paid.called("POST", "/admin/v1/invoices/inv1/credit-notes")[0]?.body).toEqual({ tenant_id: TENANT, amount_minor: "0", reason: "" });
   });
 });
 

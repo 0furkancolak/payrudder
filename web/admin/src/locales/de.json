@@ -130,7 +130,8 @@
       "description": "Beschreibung",
       "meter": "Zähler",
       "quantity": "Menge",
-      "amount": "Betrag"
+      "amount": "Betrag",
+      "period": "Leistungszeitraum"
     },
     "saga": "Saga-Verlauf",
     "sagaColumns": {
@@ -227,7 +228,8 @@
       "subscriptions": "Abonnements",
       "payments": "Zahlungen",
       "providers": "Anbieter",
-      "reports": "Berichte"
+      "reports": "Berichte",
+      "pricing": "Gutscheine & Steuer"
     },
     "common": {
       "remove": "Entfernen"
@@ -351,6 +353,12 @@
         "atPeriodEnd": "Zum Ende des bezahlten Zeitraums pausieren",
         "paymentLink": "Link zur Zahlungsmethode",
         "requested": "Angefordert. Diese Seite aktualisiert sich, sobald der Anbieter bestätigt."
+      },
+      "coupon": {
+        "label": "Gutschein",
+        "code": "Gutscheincode",
+        "apply": "Gutschein anwenden",
+        "remove": "Gutschein entfernen"
       }
     },
     "payments": {
@@ -466,7 +474,66 @@
       "attempt": "Wiederholungen",
       "nextAttempt": "Nächster Versuch",
       "empty": "Noch nichts zu berichten.",
-      "noDunning": "Keine unbezahlten Rechnungen."
+      "noDunning": "Keine unbezahlten Rechnungen.",
+      "credited": "Gutgeschrieben"
+    },
+    "pricing": {
+      "coupons": {
+        "title": "Gutscheine",
+        "hint": "Ein Gutschein nimmt einen Prozentsatz oder Betrag von der Festgebühr ab, die Quotify im Voraus berechnet: einmal, für eine Anzahl Zeiträume oder solange das Abonnement läuft. Ein vom Anbieter betriebenes Abonnement nutzt stattdessen einen Rabatt beim Anbieter.",
+        "formLabel": "neuer Gutschein",
+        "code": "Code",
+        "name": "Name",
+        "kind": "Art",
+        "percent": "Prozent",
+        "amount": "Betrag",
+        "value": "Wert (10 oder 12,5 / 4,99)",
+        "currency": "Währung",
+        "duration": "Dauer",
+        "once": "Nur die erste Gebühr",
+        "repeating": "Eine Anzahl Gebühren",
+        "forever": "Jede Gebühr",
+        "periods": "Gebühren",
+        "max": "Einlösegrenze",
+        "create": "Gutschein anlegen",
+        "deactivate": "Deaktivieren",
+        "active": "Aktiv",
+        "inactive": "Inaktiv",
+        "redeemed": "Eingelöst",
+        "empty": "Noch keine Gutscheine.",
+        "badPercent": "Kein Prozentsatz: 0,01 bis 100 mit höchstens zwei Dezimalstellen.",
+        "badAmount": "Kein Betrag in {currency}: nur Ziffern, höchstens so viele Dezimalstellen wie die Währung.",
+        "repeatingFor": "Erste {n} Gebühren"
+      },
+      "tax": {
+        "title": "Steuer",
+        "hint": "Quotify addiert diese Sätze zum Preis auf die Rechnungen, die es erstellt, nach dem Land des Kunden (der Satz ohne Land gilt für alle anderen). Sie legen die Sätze fest und verantworten sie; eine Rechnung des Anbieters versteuert der Anbieter.",
+        "country": "Land {n}",
+        "anyCountry": "Alle anderen Länder",
+        "name": "Name {n}",
+        "namePlaceholder": "MwSt.",
+        "percent": "Satz {n} (%)",
+        "rate": "Satz {n}",
+        "add": "Satz hinzufügen",
+        "save": "Sätze speichern",
+        "saved": "Sätze gespeichert.",
+        "none": "Es wird keine Steuer addiert.",
+        "badRate": "Kein Prozentsatz: 0 bis 100 mit höchstens zwei Dezimalstellen."
+      }
+    },
+    "creditNotes": {
+      "title": "Gutschriften",
+      "formLabel": "neue Gutschrift",
+      "amount": "Betrag",
+      "amountPlaceholder": "Betrag (leer: der ganze Rest)",
+      "reason": "Grund",
+      "create": "Gutschrift ausstellen",
+      "number": "Nummer",
+      "invoice": "Rechnung",
+      "customer": "Kunde",
+      "date": "Datum",
+      "empty": "Keine Gutschriften.",
+      "badAmount": "Kein Betrag in {currency}: nur Ziffern, höchstens so viele Dezimalstellen wie die Währung."
     }
   }
 }

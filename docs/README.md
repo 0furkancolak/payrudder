@@ -20,6 +20,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [11-repo-layout.md](11-repo-layout.md) | Planned monorepo structure |
 | [12-kubernetes.md](12-kubernetes.md) | Running Quotify on kind with Helm: charts, profiles, hooks, network policies, what is not covered |
 | [13-admin-ui.md](13-admin-ui.md) | The operator console: views, the typed API client, tests |
+| [15-billing-lifecycle.md](15-billing-lifecycle.md) | Yearly plans, fees in advance, upgrades and downgrades, the Paddle catalogue and API, credit notes, coupons and tax |
 | [14-billing-platform.md](14-billing-platform.md) | Subscriptions, iyzico and Paddle, routing by country and currency, provider migration, reports: the design and what was built |
 
 ## Service specifications
@@ -53,6 +54,10 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [0011](adr/0011-sandbox-environment.md) | Sandbox environment with a mock payment flow |
 | [0012](adr/0012-per-tenant-aggregate-generations.md) | Per-tenant aggregate generations |
 | [0013](adr/0013-s3-compatible-object-storage.md) | S3-compatible object storage (PDFs, multipart multi-file asset uploads) |
+| [0014](adr/0014-idempotency-key-retention.md) | Idempotency keys live in month partitions that are dropped, not deleted |
+| [0015](adr/0015-operator-console-stack.md) | The operator console is a Vue single-page app |
+| [0016](adr/0016-provider-capabilities-and-routing.md) | Payment providers declare capabilities; routing is a stored rule set |
+| [0017](adr/0017-advance-fixed-fees-and-change-modes.md) | Fixed fees are billed in advance; plan changes are explicit, previewed and credited |
 
 ## Delivery plan
 
