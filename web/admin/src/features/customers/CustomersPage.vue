@@ -9,7 +9,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CURRENCIES } from "@/shared/lib/currencies";
-import { useCreateCustomer, useCustomers } from "./api";
+import { addressLine, useCreateCustomer, useCustomers, useSetCustomerAddress, type Address } from "./api";
 
 const { t } = useI18n();
 const params = useParams({ strict: false });
@@ -22,6 +22,22 @@ const name = ref("");
 const email = ref("");
 const country = ref("");
 const currency = ref("");
+const address = ref<Address>({});
+const trimmed = (a: Address): Address => Object.fromEntries(Object.entries(a).map(([k, v]) => [k, (v ?? "").trim()]).filter(([, v]) => v !== ""));
+
+// --- editing the address of a customer in the list
+const setAddress = useSetCustomerAddress(tenantId);
+const editing = ref("");
+const editAddress = ref<Address>({});
+function edit(c: { external_id?: string; address?: Address }) {
+  editing.value = c.external_id ?? "";
+  editAddress.value = { ...(c.address ?? {}) };
+}
+function saveAddress() {
+  const a = trimmed(editAddress.value);
+  if (a.country) a.country = a.country.toUpperCase();
+  setAddress.mutate({ externalId: editing.value, address: a }, { onSuccess: () => (editing.value = "") });
+}
 
 function submit() {
   create.mutate(
@@ -31,10 +47,12 @@ function submit() {
       email: email.value.trim(),
       country: country.value.trim().toUpperCase() || undefined,
       billing_currency: currency.value || undefined,
+      address: Object.keys(trimmed(address.value)).length ? { ...trimmed(address.value), ...(country.value.trim() ? { country: country.value.trim().toUpperCase() } : {}) } : undefined,
     },
     {
       onSuccess: () => {
         externalId.value = name.value = email.value = country.value = currency.value = "";
+        address.value = {};
       },
     },
   );
@@ -53,9 +71,34 @@ function submit() {
         <option value="">{{ t("billing.customers.tenantCurrency") }}</option>
         <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
       </NativeSelect>
+      <fieldset class="grid gap-3 sm:col-span-2 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-5">
+        <legend class="text-muted-foreground mb-1 text-sm">{{ t("billing.customers.address.title") }}</legend>
+        <Input v-model="address.line1" maxlength="120" :aria-label="t('billing.customers.address.line1')" :placeholder="t('billing.customers.address.line1')" />
+        <Input v-model="address.line2" maxlength="120" :aria-label="t('billing.customers.address.line2')" :placeholder="t('billing.customers.address.line2')" />
+        <Input v-model="address.city" maxlength="120" :aria-label="t('billing.customers.address.city')" :placeholder="t('billing.customers.address.city')" />
+        <Input v-model="address.region" maxlength="120" :aria-label="t('billing.customers.address.region')" :placeholder="t('billing.customers.address.region')" />
+        <Input v-model="address.postal_code" maxlength="20" :aria-label="t('billing.customers.address.postalCode')" :placeholder="t('billing.customers.address.postalCode')" />
+      </fieldset>
       <Button type="submit" class="sm:col-span-2 lg:col-span-5" :disabled="create.isPending.value">{{ t("billing.customers.create") }}</Button>
     </form>
     <p v-if="create.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(create.error.value).message }}</p>
+  </Card>
+
+  <Card v-if="editing" class="mb-6" role="region" :aria-label="t('billing.customers.address.editing', { id: editing })">
+    <h2 class="text-lg font-semibold">{{ t("billing.customers.address.editing", { id: editing }) }}</h2>
+    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" @submit.prevent="saveAddress">
+      <Input v-model="editAddress.line1" maxlength="120" :aria-label="t('billing.customers.address.line1')" :placeholder="t('billing.customers.address.line1')" />
+      <Input v-model="editAddress.line2" maxlength="120" :aria-label="t('billing.customers.address.line2')" :placeholder="t('billing.customers.address.line2')" />
+      <Input v-model="editAddress.city" maxlength="120" :aria-label="t('billing.customers.address.city')" :placeholder="t('billing.customers.address.city')" />
+      <Input v-model="editAddress.region" maxlength="120" :aria-label="t('billing.customers.address.region')" :placeholder="t('billing.customers.address.region')" />
+      <Input v-model="editAddress.postal_code" maxlength="20" :aria-label="t('billing.customers.address.postalCode')" :placeholder="t('billing.customers.address.postalCode')" />
+      <Input v-model="editAddress.country" maxlength="2" pattern="[A-Za-z]{2}" :aria-label="t('billing.customers.country')" :placeholder="t('billing.customers.countryPlaceholder')" />
+      <div class="flex gap-2">
+        <Button type="submit" :disabled="setAddress.isPending.value">{{ t("billing.customers.address.save") }}</Button>
+        <Button type="button" variant="outline" @click="editing = ''">{{ t("billing.customers.address.cancel") }}</Button>
+      </div>
+    </form>
+    <p v-if="setAddress.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(setAddress.error.value).message }}</p>
   </Card>
 
   <Card class="p-3">
@@ -69,6 +112,7 @@ function submit() {
           <TableHead>{{ t("billing.customers.email") }}</TableHead>
           <TableHead>{{ t("billing.customers.country") }}</TableHead>
           <TableHead>{{ t("billing.customers.currency") }}</TableHead>
+          <TableHead>{{ t("billing.customers.address.title") }}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -78,6 +122,10 @@ function submit() {
           <TableCell>{{ c.email }}</TableCell>
           <TableCell>{{ c.country || "—" }}</TableCell>
           <TableCell>{{ c.billing_currency || "—" }}</TableCell>
+          <TableCell class="max-w-64">
+            <span class="text-sm">{{ addressLine(c.address) || "—" }}</span>
+            <Button size="sm" variant="ghost" @click="edit(c)">{{ t("billing.customers.address.edit") }}</Button>
+          </TableCell>
         </TableRow>
       </TableBody>
     </Table>

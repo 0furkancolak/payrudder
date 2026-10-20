@@ -8,3 +8,9 @@
 ## Exit criteria
 
 An account creates a second app with its own keys, customers and plans, isolated from the first (RLS test across apps); an invoice shows both addresses.
+
+## As built
+
+- **Apps:** table `apps` (migration 00013 gives every existing account a `default` app and moves its tenants under it); a tenant has an `app_id`, unique with its environment; `account_id` and `app_id` are immutable. `CreateAccount` makes the default app; operator routes `POST/GET /admin/v1/accounts/{id}/apps` make and list apps, each with its own sandbox and live tenant and its own currency, time zone and grace period. Keys, customers, plans, subscriptions and invoices were already per tenant, so they are per app environment without a change of their queries. Test: a customer of one app is not visible in another app of the same account.
+- **Addresses:** one JSON object per customer and per tenant (migration 00014); `address` on customer create, `PUT /v1/customers/{external_id}/address`, and `address` in the operator's tenant settings. Validated (parts at most 120 characters, no line breaks, ISO country); the address country is the customer's country, so routing and tax read one value. The invoice snapshot freezes both addresses as printed lines (`pkg/address`), the PDF and the hosted page print them.
+- **Console:** a billing-address fieldset when creating a customer, an address column with an editor in the customer list. An account's apps and the seller address have no console page yet (the operator API has them).

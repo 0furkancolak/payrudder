@@ -258,7 +258,19 @@
       "currency": "Faturalama para birimi",
       "tenantCurrency": "Kiracının para birimi",
       "create": "Müşteri oluştur",
-      "empty": "Henüz müşteri yok."
+      "empty": "Henüz müşteri yok.",
+      "address": {
+        "title": "Fatura adresi",
+        "line1": "Adres satırı 1",
+        "line2": "Adres satırı 2",
+        "city": "Şehir",
+        "region": "İl / bölge",
+        "postalCode": "Posta kodu",
+        "edit": "Adresi düzenle",
+        "save": "Adresi kaydet",
+        "cancel": "Vazgeç",
+        "editing": "{id} adresi"
+      }
     },
     "packages": {
       "new": "Yeni paket",

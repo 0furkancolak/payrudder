@@ -65,9 +65,9 @@ func (q *Queries) CountMeterCodes(ctx context.Context) (int64, error) {
 }
 
 const createCustomer = `-- name: CreateCustomer :one
-INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7)
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency
+INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address
 `
 
 type CreateCustomerParams struct {
@@ -78,6 +78,7 @@ type CreateCustomerParams struct {
 	PaymentMethod   *string
 	Country         *string
 	BillingCurrency *string
+	Address         json.RawMessage
 }
 
 func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error) {
@@ -89,6 +90,7 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 		arg.PaymentMethod,
 		arg.Country,
 		arg.BillingCurrency,
+		arg.Address,
 	)
 	var i Customer
 	err := row.Scan(
@@ -101,6 +103,7 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 		&i.CreatedAt,
 		&i.Country,
 		&i.BillingCurrency,
+		&i.Address,
 	)
 	return i, err
 }
@@ -281,7 +284,7 @@ func (q *Queries) GetCoupon(ctx context.Context, code string) (GetCouponRow, err
 }
 
 const getCustomerByExternalID = `-- name: GetCustomerByExternalID :one
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
 `
 
 func (q *Queries) GetCustomerByExternalID(ctx context.Context, externalID string) (Customer, error) {
@@ -297,12 +300,13 @@ func (q *Queries) GetCustomerByExternalID(ctx context.Context, externalID string
 		&i.CreatedAt,
 		&i.Country,
 		&i.BillingCurrency,
+		&i.Address,
 	)
 	return i, err
 }
 
 const getCustomerByID = `-- name: GetCustomerByID :one
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency FROM customers WHERE tenant_id = app_tenant_id() AND id = $1
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address FROM customers WHERE tenant_id = app_tenant_id() AND id = $1
 `
 
 func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, error) {
@@ -318,6 +322,7 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, 
 		&i.CreatedAt,
 		&i.Country,
 		&i.BillingCurrency,
+		&i.Address,
 	)
 	return i, err
 }
@@ -1331,7 +1336,7 @@ func (q *Queries) ListCoupons(ctx context.Context) ([]ListCouponsRow, error) {
 }
 
 const listCustomers = `-- name: ListCustomers :many
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency FROM customers
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address FROM customers
 WHERE tenant_id = app_tenant_id() AND external_id > $1::text
 ORDER BY external_id
 LIMIT $2
@@ -1361,6 +1366,7 @@ func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([
 			&i.CreatedAt,
 			&i.Country,
 			&i.BillingCurrency,
+			&i.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -2081,10 +2087,40 @@ func (q *Queries) ReopenSubscription(ctx context.Context, arg ReopenSubscription
 	return result.RowsAffected(), nil
 }
 
+const setCustomerAddress = `-- name: SetCustomerAddress :one
+UPDATE customers SET address = $1::jsonb, country = COALESCE($2::text, country)
+WHERE tenant_id = app_tenant_id() AND external_id = $3
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address
+`
+
+type SetCustomerAddressParams struct {
+	Address    json.RawMessage
+	Country    *string
+	ExternalID string
+}
+
+func (q *Queries) SetCustomerAddress(ctx context.Context, arg SetCustomerAddressParams) (Customer, error) {
+	row := q.db.QueryRow(ctx, setCustomerAddress, arg.Address, arg.Country, arg.ExternalID)
+	var i Customer
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.ExternalID,
+		&i.Name,
+		&i.Email,
+		&i.PaymentMethod,
+		&i.CreatedAt,
+		&i.Country,
+		&i.BillingCurrency,
+		&i.Address,
+	)
+	return i, err
+}
+
 const setPaymentMethod = `-- name: SetPaymentMethod :one
 UPDATE customers SET payment_method = $2
 WHERE tenant_id = app_tenant_id() AND external_id = $1
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address
 `
 
 type SetPaymentMethodParams struct {
@@ -2105,6 +2141,7 @@ func (q *Queries) SetPaymentMethod(ctx context.Context, arg SetPaymentMethodPara
 		&i.CreatedAt,
 		&i.Country,
 		&i.BillingCurrency,
+		&i.Address,
 	)
 	return i, err
 }

@@ -160,3 +160,20 @@ func TestValidatePlanVersionTiers(t *testing.T) {
 		t.Fatalf("violations = %v", got)
 	}
 }
+
+func TestValidateAddress(t *testing.T) {
+	ok := &plansv1.Address{Line1: "Atatürk Cd. 1", City: "İstanbul", PostalCode: "34000", Country: "TR"}
+	if err := ValidateAddress("address", ok); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateAddress("address", nil); err != nil {
+		t.Fatalf("an absent address is fine: %v", err)
+	}
+	bad := &plansv1.Address{Line1: strings.Repeat("x", 121), Line2: "two\nlines", PostalCode: strings.Repeat("9", 21), Country: "turkey"}
+	got := fields(t, ValidateAddress("address", bad))
+	for _, f := range []string{"address.line1", "address.line2", "address.postal_code", "address.country"} {
+		if !contains(got, f) {
+			t.Errorf("missing violation for %s: %v", f, got)
+		}
+	}
+}

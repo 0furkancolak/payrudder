@@ -145,6 +145,15 @@ func (s *Server) GetHostedInvoice(ctx context.Context, req *billingv1.GetHostedI
 	if resp.Invoice.Status == "draft" {
 		return nil, errNoLink
 	}
+	var snap struct {
+		Seller   []string `json:"seller_address"`
+		Customer []string `json:"customer_address"`
+	}
+	if err := s.system.QueryRow(ctx, `SELECT COALESCE(snapshot->'seller_address', '[]'), COALESCE(snapshot->'customer_address', '[]') FROM invoices WHERE id = $1`, invoiceID).
+		Scan(&snap.Seller, &snap.Customer); err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	resp.SellerAddressLines, resp.CustomerAddressLines = snap.Seller, snap.Customer
 	resp.PdfAvailable = resp.Invoice.PdfObjectKey != "" && s.pdfs != nil
 	resp.Invoice.PdfObjectKey = "" // the visitor gets a link, not a storage key
 	return resp, nil

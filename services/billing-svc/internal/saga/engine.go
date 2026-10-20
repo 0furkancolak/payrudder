@@ -55,6 +55,9 @@ type Snapshot struct {
 	LogoObjectKey    string `json:"logo_object_key,omitempty"`
 	// ProviderMails: the provider takes the payment and mails the customer its own receipt (decided when the draft was made), so Quotify sends none.
 	ProviderMails bool `json:"provider_mails,omitempty"`
+	// The postal addresses as printed lines, frozen when the draft was made.
+	SellerAddress   []string `json:"seller_address,omitempty"`
+	CustomerAddress []string `json:"customer_address,omitempty"`
 }
 
 // Config tunes an Engine.

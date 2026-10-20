@@ -4,9 +4,18 @@
 INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING *;
 
 -- name: InsertTenant :one
-INSERT INTO tenants (id, account_id, environment, name, tier, currency, timezone, grace_period)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
+
+-- name: InsertApp :one
+INSERT INTO apps (id, account_id, name, slug) VALUES ($1, $2, $3, $4) RETURNING *;
+
+-- name: ListAccountApps :many
+SELECT * FROM apps WHERE account_id = $1 ORDER BY created_at, id;
+
+-- name: GetAccount :one
+SELECT * FROM accounts WHERE id = $1;
 
 -- name: GetTenant :one
 SELECT * FROM tenants WHERE id = $1;
@@ -18,6 +27,7 @@ SELECT * FROM tenants WHERE account_id = $1 ORDER BY environment DESC;
 UPDATE tenants
 SET grace_period = COALESCE(sqlc.narg(grace_period)::interval, grace_period),
     tier         = COALESCE(sqlc.narg(tier)::text, tier),
+    address      = COALESCE(sqlc.narg(address)::jsonb, address),
     invoice_logo_asset_id = CASE WHEN @clear_logo::bool THEN NULL ELSE COALESCE(sqlc.narg(invoice_logo_asset_id)::uuid, invoice_logo_asset_id) END
 WHERE id = @id
 RETURNING *;

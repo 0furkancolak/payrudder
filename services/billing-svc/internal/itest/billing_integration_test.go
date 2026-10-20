@@ -145,6 +145,12 @@ func testHappyPath(t *testing.T) {
 				inv.GetCustomerEmail() != "cus_a@example.com" || inv.GetTenantName() != "Acme" || c.GetEnvironment().String() != "ENVIRONMENT_LIVE" {
 				t.Errorf("render snapshot = %v (env %v)", inv, c.GetEnvironment())
 			}
+			if got := inv.GetCustomerAddressLines(); len(got) != 3 || got[0] != "cus_a street 1" || got[1] != "10115 Berlin" || got[2] != "DE" {
+				t.Errorf("customer address lines = %q", got)
+			}
+			if got := inv.GetSellerAddressLines(); len(got) != 3 || got[0] != "1 Market St" || got[1] != "London" || got[2] != "GB" {
+				t.Errorf("seller address lines = %q", got)
+			}
 			if inv.GetLines()[2].GetQuantity() != "1.250" || inv.GetLines()[2].GetUnitLabel() != "GB-h" {
 				t.Errorf("gb_hours line = %v", inv.GetLines()[2])
 			}

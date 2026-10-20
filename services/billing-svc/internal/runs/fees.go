@@ -182,7 +182,7 @@ func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *pl
 	}
 	snap, err := json.Marshal(saga.Snapshot{
 		CustomerExternalID: sub.GetCustomerExternalId(), CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
-		PaymentMethod: cu.GetCustomer().GetPaymentMethod(), Provider: sub.GetProvider(), TenantName: t.GetName(), Environment: env, CurrencyExponent: cur.Exponent, LogoObjectKey: logoKey, ProviderMails: providerMails(sub.GetProvider()),
+		PaymentMethod: cu.GetCustomer().GetPaymentMethod(), Provider: sub.GetProvider(), TenantName: t.GetName(), Environment: env, CurrencyExponent: cur.Exponent, LogoObjectKey: logoKey, ProviderMails: providerMails(sub.GetProvider()), SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetCustomer().GetAddress()),
 	})
 	if err != nil {
 		return uuid.Nil, err

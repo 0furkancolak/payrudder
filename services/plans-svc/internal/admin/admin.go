@@ -7,10 +7,13 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
@@ -18,6 +21,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/apikey"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
@@ -55,10 +59,6 @@ func (s *Server) CreateAccount(ctx context.Context, req *plansv1.CreateAccountRe
 	if err != nil {
 		return nil, err
 	}
-	envs := []string{"sandbox"}
-	if slices.Contains(s.allowedEnvs, "live") {
-		envs = append(envs, "live")
-	}
 	acct := &plansv1.Account{}
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
@@ -67,27 +67,125 @@ func (s *Server) CreateAccount(ctx context.Context, req *plansv1.CreateAccountRe
 			return err
 		}
 		acct.Id, acct.Name, acct.CreateTime = a.ID.String(), a.Name, convertTS(a.CreatedAt)
-		for _, env := range envs {
-			name := settings.Name
-			if env == "sandbox" {
-				name += " (sandbox)"
-			}
-			t, err := q.InsertTenant(ctx, sqlc.InsertTenantParams{
-				ID: idgen.NewUUIDv7(), AccountID: a.ID, Environment: env, Name: name, Tier: settings.Tier,
-				Currency: settings.Currency, Timezone: settings.Timezone, GracePeriod: convert.Interval(settings.Grace),
-			})
-			if err != nil {
-				return err
-			}
-			acct.Tenants = append(acct.Tenants, convert.Tenant(t))
+		app, err := s.insertApp(ctx, q, a.ID, settings, defaultSlug)
+		if err != nil {
+			return err
 		}
+		acct.Apps = append(acct.Apps, app)
+		acct.Tenants = app.Tenants
 		return nil
 	})
 	if err != nil {
 		return nil, convert.Err(err, "account")
 	}
-	s.log.InfoContext(ctx, "account created", "account_id", acct.GetId(), "environments", envs)
+	s.log.InfoContext(ctx, "account created", "account_id", acct.GetId())
 	return &plansv1.CreateAccountResponse{Account: acct}, nil
+}
+
+// defaultSlug is the slug of the app an account is created with.
+const defaultSlug = "default"
+
+// insertApp makes an app of the account with its sandbox tenant and, when the deployment allows live, its live tenant.
+func (s *Server) insertApp(ctx context.Context, q *sqlc.Queries, accountID uuid.UUID, settings domain.AccountSettings, slug string) (*plansv1.App, error) {
+	envs := []string{"sandbox"}
+	if slices.Contains(s.allowedEnvs, "live") {
+		envs = append(envs, "live")
+	}
+	app, err := q.InsertApp(ctx, sqlc.InsertAppParams{ID: idgen.NewUUIDv7(), AccountID: accountID, Name: settings.Name, Slug: slug})
+	if err != nil {
+		return nil, err
+	}
+	var tenants []sqlc.Tenant
+	for _, env := range envs {
+		name := settings.Name
+		if env == "sandbox" {
+			name += " (sandbox)"
+		}
+		t, err := q.InsertTenant(ctx, sqlc.InsertTenantParams{
+			ID: idgen.NewUUIDv7(), AccountID: accountID, AppID: app.ID, Environment: env, Name: name, Tier: settings.Tier,
+			Currency: settings.Currency, Timezone: settings.Timezone, GracePeriod: convert.Interval(settings.Grace),
+		})
+		if err != nil {
+			return nil, err
+		}
+		tenants = append(tenants, t)
+	}
+	return convert.App(app, tenants), nil
+}
+
+var slugRe = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// CreateApp adds an application to an account.
+func (s *Server) CreateApp(ctx context.Context, req *plansv1.CreateAppRequest) (*plansv1.CreateAppResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	accountID, err := parseID("account_id", req.GetAccountId())
+	if err != nil {
+		return nil, err
+	}
+	settings, err := domain.ValidateCreateAccount(&plansv1.CreateAccountRequest{Name: req.GetName(), Currency: req.GetCurrency(), Timezone: req.GetTimezone(), GracePeriod: req.GetGracePeriod(), Tier: req.GetTier()})
+	if err != nil {
+		return nil, err
+	}
+	slug := req.GetSlug()
+	if slug == "" {
+		slug = strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(settings.Name), "-"), "-")
+	}
+	if !slugRe.MatchString(slug) || len(slug) > 60 {
+		return nil, errkey.New(codes.InvalidArgument, "plans.app.bad_slug", "slug: lower-case letters, digits and single dashes, at most 60 characters")
+	}
+	var app *plansv1.App
+	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		if _, err := q.GetAccount(ctx, accountID); err != nil {
+			return err
+		}
+		var err error
+		app, err = s.insertApp(ctx, q, accountID, settings, slug)
+		return err
+	})
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
+		return nil, errkey.New(codes.AlreadyExists, "plans.app.slug_taken", "this account already has an app with that slug")
+	}
+	if err != nil {
+		return nil, convert.Err(err, "app")
+	}
+	return &plansv1.CreateAppResponse{App: app}, nil
+}
+
+var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
+
+// ListApps lists the apps of an account with their tenants.
+func (s *Server) ListApps(ctx context.Context, req *plansv1.ListAppsRequest) (*plansv1.ListAppsResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	accountID, err := parseID("account_id", req.GetAccountId())
+	if err != nil {
+		return nil, err
+	}
+	q := s.q()
+	apps, err := q.ListAccountApps(ctx, accountID)
+	if err != nil {
+		return nil, convert.Err(err, "app")
+	}
+	tenants, err := q.ListAccountTenants(ctx, accountID)
+	if err != nil {
+		return nil, convert.Err(err, "tenant")
+	}
+	resp := &plansv1.ListAppsResponse{}
+	for _, a := range apps {
+		var mine []sqlc.Tenant
+		for _, t := range tenants {
+			if t.AppID == a.ID {
+				mine = append(mine, t)
+			}
+		}
+		resp.Apps = append(resp.Apps, convert.App(a, mine))
+	}
+	return resp, nil
 }
 
 func parseID(field, raw string) (uuid.UUID, error) {
@@ -182,6 +280,12 @@ func (s *Server) UpdateTenantSettings(ctx context.Context, req *plansv1.UpdateTe
 		params.InvoiceLogoAssetID = &lid
 	}
 	params.ClearLogo = req.GetClearInvoiceLogo()
+	if req.GetAddress() != nil {
+		if err := domain.ValidateAddress("address", req.GetAddress()); err != nil {
+			return nil, err
+		}
+		params.Address = convert.AddressJSON(req.GetAddress())
+	}
 	t, err := s.q().UpdateTenantSettings(ctx, params)
 	if err != nil {
 		return nil, convert.Err(err, "tenant")

@@ -138,7 +138,7 @@ func (s *Server) hostedInvoicePage(w http.ResponseWriter, r *http.Request) {
 	inv := resp.GetInvoice()
 	exp := int(resp.GetCurrencyExponent())
 	page := hostedPage{
-		L: hostedText(lang), Lang: lang, Dir: hostedDir(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(), Number: inv.GetNumber(), Status: inv.GetStatus(),
+		L: hostedText(lang), Lang: lang, Dir: hostedDir(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(), SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines(), Number: inv.GetNumber(), Status: inv.GetStatus(),
 		Currency: inv.GetCurrency(), Subtotal: formatMinor(inv.GetSubtotalMinor(), exp), Total: formatMinor(inv.GetTotalMinor(), exp), HasPDF: resp.GetPdfAvailable(),
 		PDF: "/i/" + r.PathValue("token") + "/pdf",
 	}
@@ -193,6 +193,7 @@ type hostedPage struct {
 	L                                map[string]string
 	Lang, Dir                        string
 	Seller, Customer, Number, Status string
+	SellerAddress, CustomerAddress   []string
 	Date, Currency, Subtotal, Total  string
 	Lines                            []hostedLine
 	HasPDF                           bool
@@ -299,7 +300,7 @@ var hostedTemplate = template.Must(template.New("invoice").Parse(`<!doctype html
 <title>{{.L.invoice}} {{.Number}}</title><style>` + hostedCSS + `</style></head><body><main><div class="card">
 <h1>{{.L.invoice}} {{.Number}}</h1><div class="muted">{{.Seller}}</div>
 <div class="meta">
-<div><b>{{.L.from}}</b>{{.Seller}}</div><div><b>{{.L.to}}</b>{{.Customer}}</div><div><b>{{.L.date}}</b>{{.Date}}</div>
+<div><b>{{.L.from}}</b>{{.Seller}}{{range .SellerAddress}}<br><span class="muted">{{.}}</span>{{end}}</div><div><b>{{.L.to}}</b>{{.Customer}}{{range .CustomerAddress}}<br><span class="muted">{{.}}</span>{{end}}</div><div><b>{{.L.date}}</b>{{.Date}}</div>
 <div><b>{{.L.status}}</b><span class="badge {{.Status}}">{{index .L .Status}}</span></div></div>
 <table><thead><tr><th>{{.L.description}}</th><th class="n">{{.L.amount}} ({{.Currency}})</th></tr></thead><tbody>
 {{range .Lines}}<tr><td>{{.Description}}{{if .Period}}<div class="muted">{{.Period}}</div>{{end}}</td><td class="n{{if .Negative}} neg{{end}}">{{.Amount}}</td></tr>

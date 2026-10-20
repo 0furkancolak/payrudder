@@ -20,12 +20,36 @@ enum TenantTier {
   TENANT_TIER_ENTERPRISE = 3;
 }
 
-// Account is a company using Quotify. It owns one sandbox and one live tenant.
+// Address is a postal address as printed on an invoice. Every part is optional; country is ISO 3166-1 alpha-2.
+message Address {
+  string line1 = 1;
+  string line2 = 2;
+  string city = 3;
+  // State, province or county.
+  string region = 4;
+  string postal_code = 5;
+  string country = 6;
+}
+
+// Account is a company using Quotify. It has apps; each app has a sandbox and a live tenant.
 message Account {
   string id = 1;
   string name = 2;
+  // Every tenant of every app, as before.
   repeated Tenant tenants = 3;
   google.protobuf.Timestamp create_time = 4;
+  repeated App apps = 5;
+}
+
+// App is one application of an account, with a sandbox and a live environment (tenants). Its keys, customers, plans, subscriptions and invoices are its own.
+message App {
+  string id = 1;
+  string account_id = 2;
+  string name = 3;
+  // Lower case with dashes, unique within the account: "web-shop".
+  string slug = 4;
+  repeated Tenant tenants = 5;
+  google.protobuf.Timestamp create_time = 6;
 }
 
 // Tenant is one environment of an account and the unit of isolation.
@@ -44,6 +68,10 @@ message Tenant {
   google.protobuf.Timestamp create_time = 9;
   // READY invoice_logo asset (assets-svc) drawn on the tenant's invoice PDFs; empty = no logo.
   string invoice_logo_asset_id = 10;
+  // The app this environment belongs to.
+  string app_id = 11;
+  // The seller address printed on the tenant's invoices.
+  Address address = 12;
 }
 
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.
@@ -76,6 +104,8 @@ message Customer {
   string country = 7;
   // ISO 4217 code the customer is billed in. Empty = the tenant's currency.
   string billing_currency = 8;
+  // The billing address printed on the customer's invoices. Its country is the customer's country.
+  Address address = 9;
 }
 
 enum Aggregation {

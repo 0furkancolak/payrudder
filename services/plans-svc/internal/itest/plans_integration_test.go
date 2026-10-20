@@ -43,6 +43,8 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("Coupons", testCoupons)
 	t.Run("CancelCredit", testCancelCredit)
 	t.Run("Webhooks", testWebhooks)
+	t.Run("Apps", testApps)
+	t.Run("Addresses", testAddresses)
 	t.Run("TaxRates", testTaxRates)
 	t.Run("CurrencyFeesAndCustomerBilling", testCurrencyFeesAndCustomerBilling)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)

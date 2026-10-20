@@ -145,6 +145,232 @@ func (x *CreateAccountResponse) GetAccount() *Account {
 	return nil
 }
 
+type CreateAppRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	AccountId string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	Name      string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Empty: the name in lower case with dashes.
+	Slug string `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	// As in CreateAccountRequest: no defaults.
+	Currency      string               `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	Timezone      string               `protobuf:"bytes,5,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	GracePeriod   *durationpb.Duration `protobuf:"bytes,6,opt,name=grace_period,json=gracePeriod,proto3" json:"grace_period,omitempty"`
+	Tier          TenantTier           `protobuf:"varint,7,opt,name=tier,proto3,enum=quotify.plans.v1.TenantTier" json:"tier,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateAppRequest) Reset() {
+	*x = CreateAppRequest{}
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAppRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAppRequest) ProtoMessage() {}
+
+func (x *CreateAppRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAppRequest.ProtoReflect.Descriptor instead.
+func (*CreateAppRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CreateAppRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *CreateAppRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateAppRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *CreateAppRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *CreateAppRequest) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
+func (x *CreateAppRequest) GetGracePeriod() *durationpb.Duration {
+	if x != nil {
+		return x.GracePeriod
+	}
+	return nil
+}
+
+func (x *CreateAppRequest) GetTier() TenantTier {
+	if x != nil {
+		return x.Tier
+	}
+	return TenantTier_TENANT_TIER_UNSPECIFIED
+}
+
+type CreateAppResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	App           *App                   `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateAppResponse) Reset() {
+	*x = CreateAppResponse{}
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAppResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAppResponse) ProtoMessage() {}
+
+func (x *CreateAppResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAppResponse.ProtoReflect.Descriptor instead.
+func (*CreateAppResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CreateAppResponse) GetApp() *App {
+	if x != nil {
+		return x.App
+	}
+	return nil
+}
+
+type ListAppsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAppsRequest) Reset() {
+	*x = ListAppsRequest{}
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAppsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAppsRequest) ProtoMessage() {}
+
+func (x *ListAppsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAppsRequest.ProtoReflect.Descriptor instead.
+func (*ListAppsRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListAppsRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+type ListAppsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Apps          []*App                 `protobuf:"bytes,1,rep,name=apps,proto3" json:"apps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAppsResponse) Reset() {
+	*x = ListAppsResponse{}
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAppsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAppsResponse) ProtoMessage() {}
+
+func (x *ListAppsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAppsResponse.ProtoReflect.Descriptor instead.
+func (*ListAppsResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListAppsResponse) GetApps() []*App {
+	if x != nil {
+		return x.Apps
+	}
+	return nil
+}
+
 type GetTenantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
@@ -154,7 +380,7 @@ type GetTenantRequest struct {
 
 func (x *GetTenantRequest) Reset() {
 	*x = GetTenantRequest{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[2]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -166,7 +392,7 @@ func (x *GetTenantRequest) String() string {
 func (*GetTenantRequest) ProtoMessage() {}
 
 func (x *GetTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[2]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -179,7 +405,7 @@ func (x *GetTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{2}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetTenantRequest) GetTenantId() string {
@@ -198,7 +424,7 @@ type GetTenantResponse struct {
 
 func (x *GetTenantResponse) Reset() {
 	*x = GetTenantResponse{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[3]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -210,7 +436,7 @@ func (x *GetTenantResponse) String() string {
 func (*GetTenantResponse) ProtoMessage() {}
 
 func (x *GetTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[3]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -223,7 +449,7 @@ func (x *GetTenantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{3}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetTenantResponse) GetTenant() *Tenant {
@@ -244,7 +470,7 @@ type ListTenantsRequest struct {
 
 func (x *ListTenantsRequest) Reset() {
 	*x = ListTenantsRequest{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[4]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -256,7 +482,7 @@ func (x *ListTenantsRequest) String() string {
 func (*ListTenantsRequest) ProtoMessage() {}
 
 func (x *ListTenantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[4]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -269,7 +495,7 @@ func (x *ListTenantsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTenantsRequest.ProtoReflect.Descriptor instead.
 func (*ListTenantsRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{4}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListTenantsRequest) GetPageSize() int32 {
@@ -296,7 +522,7 @@ type ListTenantsResponse struct {
 
 func (x *ListTenantsResponse) Reset() {
 	*x = ListTenantsResponse{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[5]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -308,7 +534,7 @@ func (x *ListTenantsResponse) String() string {
 func (*ListTenantsResponse) ProtoMessage() {}
 
 func (x *ListTenantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[5]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -321,7 +547,7 @@ func (x *ListTenantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTenantsResponse.ProtoReflect.Descriptor instead.
 func (*ListTenantsResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{5}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListTenantsResponse) GetTenants() []*Tenant {
@@ -347,13 +573,15 @@ type UpdateTenantSettingsRequest struct {
 	// Sets the invoice logo (an invoice_logo asset of assets-svc); empty leaves it unchanged. clear_invoice_logo removes it.
 	InvoiceLogoAssetId string `protobuf:"bytes,4,opt,name=invoice_logo_asset_id,json=invoiceLogoAssetId,proto3" json:"invoice_logo_asset_id,omitempty"`
 	ClearInvoiceLogo   bool   `protobuf:"varint,5,opt,name=clear_invoice_logo,json=clearInvoiceLogo,proto3" json:"clear_invoice_logo,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Replaces the seller address printed on the tenant's invoices; unset leaves it unchanged.
+	Address       *Address `protobuf:"bytes,6,opt,name=address,proto3" json:"address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateTenantSettingsRequest) Reset() {
 	*x = UpdateTenantSettingsRequest{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[6]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -365,7 +593,7 @@ func (x *UpdateTenantSettingsRequest) String() string {
 func (*UpdateTenantSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateTenantSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[6]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -378,7 +606,7 @@ func (x *UpdateTenantSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTenantSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTenantSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{6}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UpdateTenantSettingsRequest) GetTenantId() string {
@@ -416,6 +644,13 @@ func (x *UpdateTenantSettingsRequest) GetClearInvoiceLogo() bool {
 	return false
 }
 
+func (x *UpdateTenantSettingsRequest) GetAddress() *Address {
+	if x != nil {
+		return x.Address
+	}
+	return nil
+}
+
 type UpdateTenantSettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Tenant        *Tenant                `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
@@ -425,7 +660,7 @@ type UpdateTenantSettingsResponse struct {
 
 func (x *UpdateTenantSettingsResponse) Reset() {
 	*x = UpdateTenantSettingsResponse{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[7]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -437,7 +672,7 @@ func (x *UpdateTenantSettingsResponse) String() string {
 func (*UpdateTenantSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateTenantSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[7]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -450,7 +685,7 @@ func (x *UpdateTenantSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTenantSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateTenantSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{7}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UpdateTenantSettingsResponse) GetTenant() *Tenant {
@@ -469,7 +704,7 @@ type CreateApiKeyRequest struct {
 
 func (x *CreateApiKeyRequest) Reset() {
 	*x = CreateApiKeyRequest{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[8]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -481,7 +716,7 @@ func (x *CreateApiKeyRequest) String() string {
 func (*CreateApiKeyRequest) ProtoMessage() {}
 
 func (x *CreateApiKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[8]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -494,7 +729,7 @@ func (x *CreateApiKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateApiKeyRequest.ProtoReflect.Descriptor instead.
 func (*CreateApiKeyRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{8}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CreateApiKeyRequest) GetTenantId() string {
@@ -515,7 +750,7 @@ type CreateApiKeyResponse struct {
 
 func (x *CreateApiKeyResponse) Reset() {
 	*x = CreateApiKeyResponse{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[9]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -527,7 +762,7 @@ func (x *CreateApiKeyResponse) String() string {
 func (*CreateApiKeyResponse) ProtoMessage() {}
 
 func (x *CreateApiKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[9]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -540,7 +775,7 @@ func (x *CreateApiKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateApiKeyResponse.ProtoReflect.Descriptor instead.
 func (*CreateApiKeyResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{9}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CreateApiKeyResponse) GetApiKey() *ApiKey {
@@ -566,7 +801,7 @@ type RevokeApiKeyRequest struct {
 
 func (x *RevokeApiKeyRequest) Reset() {
 	*x = RevokeApiKeyRequest{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[10]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -578,7 +813,7 @@ func (x *RevokeApiKeyRequest) String() string {
 func (*RevokeApiKeyRequest) ProtoMessage() {}
 
 func (x *RevokeApiKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[10]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -591,7 +826,7 @@ func (x *RevokeApiKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeApiKeyRequest.ProtoReflect.Descriptor instead.
 func (*RevokeApiKeyRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{10}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RevokeApiKeyRequest) GetApiKeyId() string {
@@ -610,7 +845,7 @@ type RevokeApiKeyResponse struct {
 
 func (x *RevokeApiKeyResponse) Reset() {
 	*x = RevokeApiKeyResponse{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[11]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -622,7 +857,7 @@ func (x *RevokeApiKeyResponse) String() string {
 func (*RevokeApiKeyResponse) ProtoMessage() {}
 
 func (x *RevokeApiKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[11]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -635,7 +870,7 @@ func (x *RevokeApiKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeApiKeyResponse.ProtoReflect.Descriptor instead.
 func (*RevokeApiKeyResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{11}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RevokeApiKeyResponse) GetApiKey() *ApiKey {
@@ -654,7 +889,7 @@ type ResolveApiKeyRequest struct {
 
 func (x *ResolveApiKeyRequest) Reset() {
 	*x = ResolveApiKeyRequest{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[12]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -666,7 +901,7 @@ func (x *ResolveApiKeyRequest) String() string {
 func (*ResolveApiKeyRequest) ProtoMessage() {}
 
 func (x *ResolveApiKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[12]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -679,7 +914,7 @@ func (x *ResolveApiKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveApiKeyRequest.ProtoReflect.Descriptor instead.
 func (*ResolveApiKeyRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{12}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ResolveApiKeyRequest) GetPrefix() string {
@@ -705,7 +940,7 @@ type ResolveApiKeyResponse struct {
 
 func (x *ResolveApiKeyResponse) Reset() {
 	*x = ResolveApiKeyResponse{}
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[13]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -717,7 +952,7 @@ func (x *ResolveApiKeyResponse) String() string {
 func (*ResolveApiKeyResponse) ProtoMessage() {}
 
 func (x *ResolveApiKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_admin_proto_msgTypes[13]
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -730,7 +965,7 @@ func (x *ResolveApiKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveApiKeyResponse.ProtoReflect.Descriptor instead.
 func (*ResolveApiKeyResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{13}
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ResolveApiKeyResponse) GetApiKeyId() string {
@@ -794,7 +1029,23 @@ const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	"\fgrace_period\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\vgracePeriod\x120\n" +
 	"\x04tier\x18\x05 \x01(\x0e2\x1c.quotify.plans.v1.TenantTierR\x04tier\"L\n" +
 	"\x15CreateAccountResponse\x123\n" +
-	"\aaccount\x18\x01 \x01(\v2\x19.quotify.plans.v1.AccountR\aaccount\"/\n" +
+	"\aaccount\x18\x01 \x01(\v2\x19.quotify.plans.v1.AccountR\aaccount\"\x81\x02\n" +
+	"\x10CreateAppRequest\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\x12\x1a\n" +
+	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x12\x1a\n" +
+	"\btimezone\x18\x05 \x01(\tR\btimezone\x12<\n" +
+	"\fgrace_period\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\vgracePeriod\x120\n" +
+	"\x04tier\x18\a \x01(\x0e2\x1c.quotify.plans.v1.TenantTierR\x04tier\"<\n" +
+	"\x11CreateAppResponse\x12'\n" +
+	"\x03app\x18\x01 \x01(\v2\x15.quotify.plans.v1.AppR\x03app\"0\n" +
+	"\x0fListAppsRequest\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\"=\n" +
+	"\x10ListAppsResponse\x12)\n" +
+	"\x04apps\x18\x01 \x03(\v2\x15.quotify.plans.v1.AppR\x04apps\"/\n" +
 	"\x10GetTenantRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"E\n" +
 	"\x11GetTenantResponse\x120\n" +
@@ -805,13 +1056,14 @@ const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	"page_token\x18\x02 \x01(\tR\tpageToken\"q\n" +
 	"\x13ListTenantsResponse\x122\n" +
 	"\atenants\x18\x01 \x03(\v2\x18.quotify.plans.v1.TenantR\atenants\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x8b\x02\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xc0\x02\n" +
 	"\x1bUpdateTenantSettingsRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12<\n" +
 	"\fgrace_period\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\vgracePeriod\x120\n" +
 	"\x04tier\x18\x03 \x01(\x0e2\x1c.quotify.plans.v1.TenantTierR\x04tier\x121\n" +
 	"\x15invoice_logo_asset_id\x18\x04 \x01(\tR\x12invoiceLogoAssetId\x12,\n" +
-	"\x12clear_invoice_logo\x18\x05 \x01(\bR\x10clearInvoiceLogo\"P\n" +
+	"\x12clear_invoice_logo\x18\x05 \x01(\bR\x10clearInvoiceLogo\x123\n" +
+	"\aaddress\x18\x06 \x01(\v2\x19.quotify.plans.v1.AddressR\aaddress\"P\n" +
 	"\x1cUpdateTenantSettingsResponse\x120\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x18.quotify.plans.v1.TenantR\x06tenant\"2\n" +
 	"\x13CreateApiKeyRequest\x12\x1b\n" +
@@ -834,9 +1086,11 @@ const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	"\bkey_hash\x18\x04 \x01(\fR\akeyHash\x12?\n" +
 	"\venvironment\x18\x05 \x01(\x0e2\x1d.quotify.plans.v1.EnvironmentR\venvironment\x120\n" +
 	"\x04tier\x18\x06 \x01(\x0e2\x1c.quotify.plans.v1.TenantTierR\x04tier\x12\x1a\n" +
-	"\btimezone\x18\a \x01(\tR\btimezone2\xb9\x05\n" +
+	"\btimezone\x18\a \x01(\tR\btimezone2\xe2\x06\n" +
 	"\fAdminService\x12`\n" +
 	"\rCreateAccount\x12&.quotify.plans.v1.CreateAccountRequest\x1a'.quotify.plans.v1.CreateAccountResponse\x12T\n" +
+	"\tCreateApp\x12\".quotify.plans.v1.CreateAppRequest\x1a#.quotify.plans.v1.CreateAppResponse\x12Q\n" +
+	"\bListApps\x12!.quotify.plans.v1.ListAppsRequest\x1a\".quotify.plans.v1.ListAppsResponse\x12T\n" +
 	"\tGetTenant\x12\".quotify.plans.v1.GetTenantRequest\x1a#.quotify.plans.v1.GetTenantResponse\x12Z\n" +
 	"\vListTenants\x12$.quotify.plans.v1.ListTenantsRequest\x1a%.quotify.plans.v1.ListTenantsResponse\x12u\n" +
 	"\x14UpdateTenantSettings\x12-.quotify.plans.v1.UpdateTenantSettingsRequest\x1a..quotify.plans.v1.UpdateTenantSettingsResponse\x12]\n" +
@@ -858,63 +1112,78 @@ func file_quotify_plans_v1_admin_proto_rawDescGZIP() []byte {
 	return file_quotify_plans_v1_admin_proto_rawDescData
 }
 
-var file_quotify_plans_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_quotify_plans_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_quotify_plans_v1_admin_proto_goTypes = []any{
 	(*CreateAccountRequest)(nil),         // 0: quotify.plans.v1.CreateAccountRequest
 	(*CreateAccountResponse)(nil),        // 1: quotify.plans.v1.CreateAccountResponse
-	(*GetTenantRequest)(nil),             // 2: quotify.plans.v1.GetTenantRequest
-	(*GetTenantResponse)(nil),            // 3: quotify.plans.v1.GetTenantResponse
-	(*ListTenantsRequest)(nil),           // 4: quotify.plans.v1.ListTenantsRequest
-	(*ListTenantsResponse)(nil),          // 5: quotify.plans.v1.ListTenantsResponse
-	(*UpdateTenantSettingsRequest)(nil),  // 6: quotify.plans.v1.UpdateTenantSettingsRequest
-	(*UpdateTenantSettingsResponse)(nil), // 7: quotify.plans.v1.UpdateTenantSettingsResponse
-	(*CreateApiKeyRequest)(nil),          // 8: quotify.plans.v1.CreateApiKeyRequest
-	(*CreateApiKeyResponse)(nil),         // 9: quotify.plans.v1.CreateApiKeyResponse
-	(*RevokeApiKeyRequest)(nil),          // 10: quotify.plans.v1.RevokeApiKeyRequest
-	(*RevokeApiKeyResponse)(nil),         // 11: quotify.plans.v1.RevokeApiKeyResponse
-	(*ResolveApiKeyRequest)(nil),         // 12: quotify.plans.v1.ResolveApiKeyRequest
-	(*ResolveApiKeyResponse)(nil),        // 13: quotify.plans.v1.ResolveApiKeyResponse
-	(*durationpb.Duration)(nil),          // 14: google.protobuf.Duration
-	(TenantTier)(0),                      // 15: quotify.plans.v1.TenantTier
-	(*Account)(nil),                      // 16: quotify.plans.v1.Account
-	(*Tenant)(nil),                       // 17: quotify.plans.v1.Tenant
-	(*ApiKey)(nil),                       // 18: quotify.plans.v1.ApiKey
-	(ApiKey_Status)(0),                   // 19: quotify.plans.v1.ApiKey.Status
-	(Environment)(0),                     // 20: quotify.plans.v1.Environment
+	(*CreateAppRequest)(nil),             // 2: quotify.plans.v1.CreateAppRequest
+	(*CreateAppResponse)(nil),            // 3: quotify.plans.v1.CreateAppResponse
+	(*ListAppsRequest)(nil),              // 4: quotify.plans.v1.ListAppsRequest
+	(*ListAppsResponse)(nil),             // 5: quotify.plans.v1.ListAppsResponse
+	(*GetTenantRequest)(nil),             // 6: quotify.plans.v1.GetTenantRequest
+	(*GetTenantResponse)(nil),            // 7: quotify.plans.v1.GetTenantResponse
+	(*ListTenantsRequest)(nil),           // 8: quotify.plans.v1.ListTenantsRequest
+	(*ListTenantsResponse)(nil),          // 9: quotify.plans.v1.ListTenantsResponse
+	(*UpdateTenantSettingsRequest)(nil),  // 10: quotify.plans.v1.UpdateTenantSettingsRequest
+	(*UpdateTenantSettingsResponse)(nil), // 11: quotify.plans.v1.UpdateTenantSettingsResponse
+	(*CreateApiKeyRequest)(nil),          // 12: quotify.plans.v1.CreateApiKeyRequest
+	(*CreateApiKeyResponse)(nil),         // 13: quotify.plans.v1.CreateApiKeyResponse
+	(*RevokeApiKeyRequest)(nil),          // 14: quotify.plans.v1.RevokeApiKeyRequest
+	(*RevokeApiKeyResponse)(nil),         // 15: quotify.plans.v1.RevokeApiKeyResponse
+	(*ResolveApiKeyRequest)(nil),         // 16: quotify.plans.v1.ResolveApiKeyRequest
+	(*ResolveApiKeyResponse)(nil),        // 17: quotify.plans.v1.ResolveApiKeyResponse
+	(*durationpb.Duration)(nil),          // 18: google.protobuf.Duration
+	(TenantTier)(0),                      // 19: quotify.plans.v1.TenantTier
+	(*Account)(nil),                      // 20: quotify.plans.v1.Account
+	(*App)(nil),                          // 21: quotify.plans.v1.App
+	(*Tenant)(nil),                       // 22: quotify.plans.v1.Tenant
+	(*Address)(nil),                      // 23: quotify.plans.v1.Address
+	(*ApiKey)(nil),                       // 24: quotify.plans.v1.ApiKey
+	(ApiKey_Status)(0),                   // 25: quotify.plans.v1.ApiKey.Status
+	(Environment)(0),                     // 26: quotify.plans.v1.Environment
 }
 var file_quotify_plans_v1_admin_proto_depIdxs = []int32{
-	14, // 0: quotify.plans.v1.CreateAccountRequest.grace_period:type_name -> google.protobuf.Duration
-	15, // 1: quotify.plans.v1.CreateAccountRequest.tier:type_name -> quotify.plans.v1.TenantTier
-	16, // 2: quotify.plans.v1.CreateAccountResponse.account:type_name -> quotify.plans.v1.Account
-	17, // 3: quotify.plans.v1.GetTenantResponse.tenant:type_name -> quotify.plans.v1.Tenant
-	17, // 4: quotify.plans.v1.ListTenantsResponse.tenants:type_name -> quotify.plans.v1.Tenant
-	14, // 5: quotify.plans.v1.UpdateTenantSettingsRequest.grace_period:type_name -> google.protobuf.Duration
-	15, // 6: quotify.plans.v1.UpdateTenantSettingsRequest.tier:type_name -> quotify.plans.v1.TenantTier
-	17, // 7: quotify.plans.v1.UpdateTenantSettingsResponse.tenant:type_name -> quotify.plans.v1.Tenant
-	18, // 8: quotify.plans.v1.CreateApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
-	18, // 9: quotify.plans.v1.RevokeApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
-	19, // 10: quotify.plans.v1.ResolveApiKeyResponse.status:type_name -> quotify.plans.v1.ApiKey.Status
-	20, // 11: quotify.plans.v1.ResolveApiKeyResponse.environment:type_name -> quotify.plans.v1.Environment
-	15, // 12: quotify.plans.v1.ResolveApiKeyResponse.tier:type_name -> quotify.plans.v1.TenantTier
-	0,  // 13: quotify.plans.v1.AdminService.CreateAccount:input_type -> quotify.plans.v1.CreateAccountRequest
-	2,  // 14: quotify.plans.v1.AdminService.GetTenant:input_type -> quotify.plans.v1.GetTenantRequest
-	4,  // 15: quotify.plans.v1.AdminService.ListTenants:input_type -> quotify.plans.v1.ListTenantsRequest
-	6,  // 16: quotify.plans.v1.AdminService.UpdateTenantSettings:input_type -> quotify.plans.v1.UpdateTenantSettingsRequest
-	8,  // 17: quotify.plans.v1.AdminService.CreateApiKey:input_type -> quotify.plans.v1.CreateApiKeyRequest
-	10, // 18: quotify.plans.v1.AdminService.RevokeApiKey:input_type -> quotify.plans.v1.RevokeApiKeyRequest
-	12, // 19: quotify.plans.v1.AdminService.ResolveApiKey:input_type -> quotify.plans.v1.ResolveApiKeyRequest
-	1,  // 20: quotify.plans.v1.AdminService.CreateAccount:output_type -> quotify.plans.v1.CreateAccountResponse
-	3,  // 21: quotify.plans.v1.AdminService.GetTenant:output_type -> quotify.plans.v1.GetTenantResponse
-	5,  // 22: quotify.plans.v1.AdminService.ListTenants:output_type -> quotify.plans.v1.ListTenantsResponse
-	7,  // 23: quotify.plans.v1.AdminService.UpdateTenantSettings:output_type -> quotify.plans.v1.UpdateTenantSettingsResponse
-	9,  // 24: quotify.plans.v1.AdminService.CreateApiKey:output_type -> quotify.plans.v1.CreateApiKeyResponse
-	11, // 25: quotify.plans.v1.AdminService.RevokeApiKey:output_type -> quotify.plans.v1.RevokeApiKeyResponse
-	13, // 26: quotify.plans.v1.AdminService.ResolveApiKey:output_type -> quotify.plans.v1.ResolveApiKeyResponse
-	20, // [20:27] is the sub-list for method output_type
-	13, // [13:20] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	18, // 0: quotify.plans.v1.CreateAccountRequest.grace_period:type_name -> google.protobuf.Duration
+	19, // 1: quotify.plans.v1.CreateAccountRequest.tier:type_name -> quotify.plans.v1.TenantTier
+	20, // 2: quotify.plans.v1.CreateAccountResponse.account:type_name -> quotify.plans.v1.Account
+	18, // 3: quotify.plans.v1.CreateAppRequest.grace_period:type_name -> google.protobuf.Duration
+	19, // 4: quotify.plans.v1.CreateAppRequest.tier:type_name -> quotify.plans.v1.TenantTier
+	21, // 5: quotify.plans.v1.CreateAppResponse.app:type_name -> quotify.plans.v1.App
+	21, // 6: quotify.plans.v1.ListAppsResponse.apps:type_name -> quotify.plans.v1.App
+	22, // 7: quotify.plans.v1.GetTenantResponse.tenant:type_name -> quotify.plans.v1.Tenant
+	22, // 8: quotify.plans.v1.ListTenantsResponse.tenants:type_name -> quotify.plans.v1.Tenant
+	18, // 9: quotify.plans.v1.UpdateTenantSettingsRequest.grace_period:type_name -> google.protobuf.Duration
+	19, // 10: quotify.plans.v1.UpdateTenantSettingsRequest.tier:type_name -> quotify.plans.v1.TenantTier
+	23, // 11: quotify.plans.v1.UpdateTenantSettingsRequest.address:type_name -> quotify.plans.v1.Address
+	22, // 12: quotify.plans.v1.UpdateTenantSettingsResponse.tenant:type_name -> quotify.plans.v1.Tenant
+	24, // 13: quotify.plans.v1.CreateApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
+	24, // 14: quotify.plans.v1.RevokeApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
+	25, // 15: quotify.plans.v1.ResolveApiKeyResponse.status:type_name -> quotify.plans.v1.ApiKey.Status
+	26, // 16: quotify.plans.v1.ResolveApiKeyResponse.environment:type_name -> quotify.plans.v1.Environment
+	19, // 17: quotify.plans.v1.ResolveApiKeyResponse.tier:type_name -> quotify.plans.v1.TenantTier
+	0,  // 18: quotify.plans.v1.AdminService.CreateAccount:input_type -> quotify.plans.v1.CreateAccountRequest
+	2,  // 19: quotify.plans.v1.AdminService.CreateApp:input_type -> quotify.plans.v1.CreateAppRequest
+	4,  // 20: quotify.plans.v1.AdminService.ListApps:input_type -> quotify.plans.v1.ListAppsRequest
+	6,  // 21: quotify.plans.v1.AdminService.GetTenant:input_type -> quotify.plans.v1.GetTenantRequest
+	8,  // 22: quotify.plans.v1.AdminService.ListTenants:input_type -> quotify.plans.v1.ListTenantsRequest
+	10, // 23: quotify.plans.v1.AdminService.UpdateTenantSettings:input_type -> quotify.plans.v1.UpdateTenantSettingsRequest
+	12, // 24: quotify.plans.v1.AdminService.CreateApiKey:input_type -> quotify.plans.v1.CreateApiKeyRequest
+	14, // 25: quotify.plans.v1.AdminService.RevokeApiKey:input_type -> quotify.plans.v1.RevokeApiKeyRequest
+	16, // 26: quotify.plans.v1.AdminService.ResolveApiKey:input_type -> quotify.plans.v1.ResolveApiKeyRequest
+	1,  // 27: quotify.plans.v1.AdminService.CreateAccount:output_type -> quotify.plans.v1.CreateAccountResponse
+	3,  // 28: quotify.plans.v1.AdminService.CreateApp:output_type -> quotify.plans.v1.CreateAppResponse
+	5,  // 29: quotify.plans.v1.AdminService.ListApps:output_type -> quotify.plans.v1.ListAppsResponse
+	7,  // 30: quotify.plans.v1.AdminService.GetTenant:output_type -> quotify.plans.v1.GetTenantResponse
+	9,  // 31: quotify.plans.v1.AdminService.ListTenants:output_type -> quotify.plans.v1.ListTenantsResponse
+	11, // 32: quotify.plans.v1.AdminService.UpdateTenantSettings:output_type -> quotify.plans.v1.UpdateTenantSettingsResponse
+	13, // 33: quotify.plans.v1.AdminService.CreateApiKey:output_type -> quotify.plans.v1.CreateApiKeyResponse
+	15, // 34: quotify.plans.v1.AdminService.RevokeApiKey:output_type -> quotify.plans.v1.RevokeApiKeyResponse
+	17, // 35: quotify.plans.v1.AdminService.ResolveApiKey:output_type -> quotify.plans.v1.ResolveApiKeyResponse
+	27, // [27:36] is the sub-list for method output_type
+	18, // [18:27] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_quotify_plans_v1_admin_proto_init() }
@@ -929,7 +1198,7 @@ func file_quotify_plans_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_plans_v1_admin_proto_rawDesc), len(file_quotify_plans_v1_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

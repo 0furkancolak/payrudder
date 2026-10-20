@@ -3979,9 +3979,11 @@ type GetHostedInvoiceResponse struct {
 	PdfAvailable bool                   `protobuf:"varint,4,opt,name=pdf_available,json=pdfAvailable,proto3" json:"pdf_available,omitempty"`
 	ExpireTime   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
 	// Decimal places of the invoice currency, to print minor units.
-	CurrencyExponent int32 `protobuf:"varint,6,opt,name=currency_exponent,json=currencyExponent,proto3" json:"currency_exponent,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	CurrencyExponent     int32    `protobuf:"varint,6,opt,name=currency_exponent,json=currencyExponent,proto3" json:"currency_exponent,omitempty"`
+	SellerAddressLines   []string `protobuf:"bytes,7,rep,name=seller_address_lines,json=sellerAddressLines,proto3" json:"seller_address_lines,omitempty"`
+	CustomerAddressLines []string `protobuf:"bytes,8,rep,name=customer_address_lines,json=customerAddressLines,proto3" json:"customer_address_lines,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *GetHostedInvoiceResponse) Reset() {
@@ -4054,6 +4056,20 @@ func (x *GetHostedInvoiceResponse) GetCurrencyExponent() int32 {
 		return x.CurrencyExponent
 	}
 	return 0
+}
+
+func (x *GetHostedInvoiceResponse) GetSellerAddressLines() []string {
+	if x != nil {
+		return x.SellerAddressLines
+	}
+	return nil
+}
+
+func (x *GetHostedInvoiceResponse) GetCustomerAddressLines() []string {
+	if x != nil {
+		return x.CustomerAddressLines
+	}
+	return nil
 }
 
 type GetHostedInvoicePdfUrlRequest struct {
@@ -4467,7 +4483,7 @@ const file_quotify_billing_v1_billing_proto_rawDesc = "" +
 	"\x1aRevokeInvoiceLinksResponse\x12\x18\n" +
 	"\arevoked\x18\x01 \x01(\x05R\arevoked\"/\n" +
 	"\x17GetHostedInvoiceRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"\xa6\x02\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\x8e\x03\n" +
 	"\x18GetHostedInvoiceResponse\x125\n" +
 	"\ainvoice\x18\x01 \x01(\v2\x1b.quotify.billing.v1.InvoiceR\ainvoice\x12\x1f\n" +
 	"\vseller_name\x18\x02 \x01(\tR\n" +
@@ -4476,7 +4492,9 @@ const file_quotify_billing_v1_billing_proto_rawDesc = "" +
 	"\rpdf_available\x18\x04 \x01(\bR\fpdfAvailable\x12;\n" +
 	"\vexpire_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"expireTime\x12+\n" +
-	"\x11currency_exponent\x18\x06 \x01(\x05R\x10currencyExponent\"5\n" +
+	"\x11currency_exponent\x18\x06 \x01(\x05R\x10currencyExponent\x120\n" +
+	"\x14seller_address_lines\x18\a \x03(\tR\x12sellerAddressLines\x124\n" +
+	"\x16customer_address_lines\x18\b \x03(\tR\x14customerAddressLines\"5\n" +
 	"\x1dGetHostedInvoicePdfUrlRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"o\n" +
 	"\x1eGetHostedInvoicePdfUrlResponse\x12\x10\n" +

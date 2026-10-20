@@ -200,6 +200,10 @@ func ValidateCustomer(environment string, req *plansv1.CreateCustomerRequest) er
 	if c := req.GetCountry(); c != "" && !countryRe.MatchString(c) {
 		v.Add("country", "must be an ISO 3166-1 alpha-2 code in capitals, e.g. TR")
 	}
+	v.Address("address", req.GetAddress())
+	if c, ac := req.GetCountry(), req.GetAddress().GetCountry(); c != "" && ac != "" && c != ac {
+		v.Add("address.country", "must equal country when both are given")
+	}
 	if c := req.GetBillingCurrency(); c != "" {
 		if _, ok := money.LookupCurrency(c); !ok {
 			v.Add("billing_currency", "unsupported currency; supported: "+strings.Join(money.SupportedCurrencies(), ", "))
