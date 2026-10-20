@@ -47,7 +47,11 @@ func testTenantDunningSettings(t *testing.T) {
 	})
 	e.addUsage("2026-10", "cus_a", "gb_hours", "1.000", 3)
 	e.driveRun("2026-10")
-	eventually(t, 20*time.Second, "first decline", func() bool { return e.sagaStates("2026-10")["cus_a"] == "PAYMENT_DECLINED" })
+	// Both customers' first charges must have been answered: a saga still waiting when the clock jumps would be re-sent by the sweep.
+	eventually(t, 20*time.Second, "first declines", func() bool {
+		s := e.sagaStates("2026-10")
+		return s["cus_a"] == "PAYMENT_DECLINED" && s["cus_b"] == "PAYMENT_DECLINED"
+	})
 	e.clk.Advance(2*time.Hour + time.Minute)
 	if res, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil || res.Dunned != 2 {
 		t.Fatalf("dunning pass: %+v, %v; want 2 retries", res, err)

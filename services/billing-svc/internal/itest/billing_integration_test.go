@@ -473,7 +473,11 @@ func testDunning(t *testing.T) {
 	})
 	e.addUsage("2026-10", "cus_a", "gb_hours", "1.000", 3)
 	e.driveRun("2026-10")
-	eventually(t, 20*time.Second, "first decline", func() bool { return e.sagaStates("2026-10")["cus_a"] == "PAYMENT_DECLINED" })
+	declined := func() bool {
+		s := e.sagaStates("2026-10")
+		return s["cus_a"] == "PAYMENT_DECLINED" && s["cus_b"] == "PAYMENT_DECLINED"
+	}
+	eventually(t, 20*time.Second, "first decline", declined)
 	// +1 d, +3 d, +7 d (the test clock; live tenants), then the invoice is uncollectible.
 	for attempt, delay := range []time.Duration{24 * time.Hour, 72 * time.Hour, 168 * time.Hour} {
 		e.clk.Advance(delay + time.Minute)
@@ -484,7 +488,7 @@ func testDunning(t *testing.T) {
 		want := 2 * (attempt + 2)
 		eventually(t, 20*time.Second, fmt.Sprintf("charge commands = %d", want), func() bool { return stub.Count("charge") == want })
 		if attempt < 2 {
-			eventually(t, 20*time.Second, "declined again", func() bool { return e.sagaStates("2026-10")["cus_a"] == "PAYMENT_DECLINED" })
+			eventually(t, 20*time.Second, "declined again", declined)
 		}
 	}
 	eventually(t, 30*time.Second, "uncollectible invoices to complete their notification", func() bool {
