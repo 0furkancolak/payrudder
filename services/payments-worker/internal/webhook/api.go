@@ -134,12 +134,7 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
 		return
 	}
-	var in struct {
-		PlanCode    string `json:"plan_code"`
-		PlanVersion int32  `json:"plan_version"`
-		ProductName string `json:"product_name"`
-		TaxCategory string `json:"tax_category"`
-	}
+	var in catalogueInput
 	if !decodeBody(w, r, &in) {
 		return
 	}
@@ -158,6 +153,46 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 		planFail(w, err)
 		return
 	}
+	specs, existing, err := s.missingPrices(ctx, tg, in, pv, tenantCurrency)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	productKey := "plan:" + in.PlanCode
+	productRef, _, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "product", productKey)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	res := payments.CatalogueResult{ProductRef: productRef, Prices: map[string]string{}, Skipped: map[string]string{}}
+	var syncErr error
+	if len(specs) > 0 {
+		res, syncErr = cat.SyncCatalogue(ctx, payments.CatalogueRequest{ProductRef: productRef, ProductName: in.productName(), TaxCategory: in.TaxCategory, QuotifyPlanCode: in.PlanCode, Prices: specs})
+	}
+	s.rememberCatalogue(ctx, tg, productKey, productRef, res)
+	if syncErr != nil {
+		s.providerFail(w, r, "catalogue sync", syncErr)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"plan_version_id": pv.GetId(), "product_ref": res.ProductRef, "created": res.Prices, "existing": existing, "skipped": res.Skipped})
+}
+
+type catalogueInput struct {
+	PlanCode    string `json:"plan_code"`
+	PlanVersion int32  `json:"plan_version"`
+	ProductName string `json:"product_name"`
+	TaxCategory string `json:"tax_category"`
+}
+
+func (in catalogueInput) productName() string {
+	if in.ProductName == "" {
+		return in.PlanCode
+	}
+	return in.ProductName
+}
+
+// missingPrices lists the prices a plan version needs that the provider does not hold yet, and the refs of those it does.
+func (s *Server) missingPrices(ctx context.Context, tg target, in catalogueInput, pv *plansv1.PlanVersion, tenantCurrency string) ([]payments.PriceSpec, map[string]string, error) {
 	type fee struct {
 		interval, currency string
 		amount             int64
@@ -173,39 +208,25 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 			continue // a free plan needs no price
 		}
 		key := priceKey(pv.GetId(), f.interval, f.currency)
-		if ref, found, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "price", key); err != nil {
-			fail(w, http.StatusInternalServerError, "internal error")
-			return
-		} else if found {
+		ref, found, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "price", key)
+		if err != nil {
+			return nil, nil, err
+		}
+		if found {
 			existing[key] = ref
 			continue
-		}
-		name := in.ProductName
-		if name == "" {
-			name = in.PlanCode
 		}
 		word := "monthly"
 		if f.interval == "year" {
 			word = "yearly"
 		}
-		specs = append(specs, payments.PriceSpec{Key: key, Currency: f.currency, AmountMinor: f.amount, Interval: f.interval, Name: fmt.Sprintf("%s (%s)", name, word)})
+		specs = append(specs, payments.PriceSpec{Key: key, Currency: f.currency, AmountMinor: f.amount, Interval: f.interval, Name: fmt.Sprintf("%s (%s)", in.productName(), word)})
 	}
-	productKey := "plan:" + in.PlanCode
-	productRef, _, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "product", productKey)
-	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	res := payments.CatalogueResult{ProductRef: productRef, Prices: map[string]string{}, Skipped: map[string]string{}}
-	var syncErr error
-	if len(specs) > 0 {
-		name := in.ProductName
-		if name == "" {
-			name = in.PlanCode
-		}
-		res, syncErr = cat.SyncCatalogue(ctx, payments.CatalogueRequest{ProductRef: productRef, ProductName: name, TaxCategory: in.TaxCategory, QuotifyPlanCode: in.PlanCode, Prices: specs})
-	}
-	// What was created is remembered even when a later price failed, so the retry creates only the rest.
+	return specs, existing, nil
+}
+
+// rememberCatalogue keeps what was created, even when a later price failed, so the retry creates only the rest.
+func (s *Server) rememberCatalogue(ctx context.Context, tg target, productKey, productRef string, res payments.CatalogueResult) {
 	if res.ProductRef != "" && res.ProductRef != productRef {
 		if err := s.Objects.Put(ctx, tg.tenant, tg.provider, tg.env, "product", productKey, res.ProductRef); err != nil {
 			s.Log.ErrorContext(ctx, "could not remember a product created at the provider", "provider", tg.provider, "ref", res.ProductRef, "err", err)
@@ -216,11 +237,6 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 			s.Log.ErrorContext(ctx, "could not remember a price created at the provider", "provider", tg.provider, "ref", ref, "err", err)
 		}
 	}
-	if syncErr != nil {
-		s.providerFail(w, r, "catalogue sync", syncErr)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"plan_version_id": pv.GetId(), "product_ref": res.ProductRef, "created": res.Prices, "existing": existing, "skipped": res.Skipped})
 }
 
 func (s *Server) listCatalogue(w http.ResponseWriter, r *http.Request) {

@@ -106,15 +106,47 @@ func (s *Server) reconcile(w http.ResponseWriter, r *http.Request) {
 // Reconcile runs the comparison for one billing period.
 func (s *Server) Reconcile(ctx context.Context, t uuid.UUID, period string) (*Reconciliation, error) {
 	rec := &Reconciliation{Period: period, Counts: map[string]int{}, Discrepancies: []Discrepancy{}}
-	add := func(d Discrepancy) {
-		rec.Counts[d.Kind]++
-		if len(rec.Discrepancies) < maxListed {
-			rec.Discrepancies = append(rec.Discrepancies, d)
-		} else {
-			rec.Truncated = true
-		}
+	paid, err := s.paidInvoices(ctx, t, period)
+	if err != nil {
+		return nil, err
 	}
+	rec.PaidInvoices = len(paid)
 
+	charges, err := s.Ledger.SuccessfulCharges(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+	byInvoice := map[string][]ledgerCharge{}
+	for _, c := range charges {
+		byInvoice[c.InvoiceID] = append(byInvoice[c.InvoiceID], ledgerCharge(c))
+	}
+	rec.Charges = len(charges)
+
+	rec.compare(paid, byInvoice)
+	if err := s.unpaidCharges(ctx, rec, t, paid, byInvoice); err != nil {
+		return nil, err
+	}
+	conflicts, err := s.Ledger.ConflictingCharges(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range conflicts {
+		rec.add(Discrepancy{Kind: ConflictingOutcomes, InvoiceID: c.InvoiceID, Provider: c.Provider, ProviderRef: c.ProviderRef, Detail: "a success and a failure are both recorded"})
+	}
+	return rec, nil
+}
+
+func (rec *Reconciliation) add(d Discrepancy) {
+	rec.Counts[d.Kind]++
+	if len(rec.Discrepancies) < maxListed {
+		rec.Discrepancies = append(rec.Discrepancies, d)
+	} else {
+		rec.Truncated = true
+	}
+}
+
+// paidInvoices lists the invoices billing calls paid in the period, by id.
+func (s *Server) paidInvoices(ctx context.Context, t uuid.UUID, period string) (map[string]*billingv1.Invoice, error) {
 	paid := map[string]*billingv1.Invoice{}
 	token := ""
 	for pages := 0; pages < maxInvoicePgs; pages++ {
@@ -129,33 +161,19 @@ func (s *Server) Reconcile(ctx context.Context, t uuid.UUID, period string) (*Re
 			break
 		}
 	}
-	rec.PaidInvoices = len(paid)
+	return paid, nil
+}
 
-	// Successful charges for those invoices, and for any invoice whose charge settled in the period's window.
-	charges, err := s.Ledger.SuccessfulCharges(ctx, t)
-	if err != nil {
-		return nil, err
-	}
-	byInvoice := map[string][]ledgerCharge{}
-	for _, c := range charges {
-		byInvoice[c.InvoiceID] = append(byInvoice[c.InvoiceID], ledgerCharge(c))
-	}
-	rec.Charges = len(charges)
-
-	ids := make([]string, 0, len(paid))
-	for id := range paid {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, id := range ids {
+// compare checks every paid invoice against the successful charges the ledger holds for it.
+func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge) {
+	for _, id := range sortedKeys(paid) {
 		inv := paid[id]
 		if inv.GetTotalMinor() == 0 {
 			continue // nothing is charged for an invoice of nothing
 		}
 		cs := byInvoice[id]
-		switch {
-		case len(cs) == 0:
-			add(Discrepancy{Kind: PaidWithoutCharge, InvoiceID: id, Number: inv.GetNumber(), Currency: inv.GetCurrency(), BilledMinor: inv.GetTotalMinor()})
+		if len(cs) == 0 {
+			rec.add(Discrepancy{Kind: PaidWithoutCharge, InvoiceID: id, Number: inv.GetNumber(), Currency: inv.GetCurrency(), BilledMinor: inv.GetTotalMinor()})
 			continue
 		}
 		distinct := map[string]ledgerCharge{}
@@ -163,19 +181,20 @@ func (s *Server) Reconcile(ctx context.Context, t uuid.UUID, period string) (*Re
 			distinct[c.Provider+"|"+c.ProviderRef] = c
 		}
 		if len(distinct) > 1 {
-			add(Discrepancy{Kind: DuplicateCharge, InvoiceID: id, Number: inv.GetNumber(), Currency: inv.GetCurrency(), BilledMinor: inv.GetTotalMinor(),
+			rec.add(Discrepancy{Kind: DuplicateCharge, InvoiceID: id, Number: inv.GetNumber(), Currency: inv.GetCurrency(), BilledMinor: inv.GetTotalMinor(),
 				Detail: fmt.Sprintf("%d distinct successful charges", len(distinct))})
 			continue
 		}
 		c := cs[0]
 		if c.AmountMinor != inv.GetTotalMinor() || (c.Currency != "" && c.Currency != "XXX" && c.Currency != inv.GetCurrency()) {
-			add(Discrepancy{Kind: AmountMismatch, InvoiceID: id, Number: inv.GetNumber(), Provider: c.Provider, ProviderRef: c.ProviderRef, Currency: inv.GetCurrency(),
+			rec.add(Discrepancy{Kind: AmountMismatch, InvoiceID: id, Number: inv.GetNumber(), Provider: c.Provider, ProviderRef: c.ProviderRef, Currency: inv.GetCurrency(),
 				BilledMinor: inv.GetTotalMinor(), LedgerMinor: c.AmountMinor, Detail: "ledger currency " + c.Currency})
 		}
 	}
+}
 
-	// Charges in the ledger for invoices of this period that billing does not call paid.
-	checked := 0
+// unpaidCharges finds charges in the ledger for invoices of this period that billing does not call paid.
+func (s *Server) unpaidCharges(ctx context.Context, rec *Reconciliation, t uuid.UUID, paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge) error {
 	var unknown []string
 	for id := range byInvoice {
 		if _, isPaid := paid[id]; !isPaid {
@@ -183,34 +202,34 @@ func (s *Server) Reconcile(ctx context.Context, t uuid.UUID, period string) (*Re
 		}
 	}
 	sort.Strings(unknown)
-	for _, id := range unknown {
+	for checked, id := range unknown {
 		if checked >= 500 {
 			break
 		}
-		checked++
 		inv, err := s.Billing.GetInvoice(ctx, t, id)
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				continue // not one of this tenant's invoices (or not billed through Quotify)
 			}
-			return nil, err
+			return err
 		}
-		if inv.GetPeriodId() != period || inv.GetStatus() == "paid" {
+		if inv.GetPeriodId() != rec.Period || inv.GetStatus() == "paid" {
 			continue
 		}
 		c := byInvoice[id][0]
-		add(Discrepancy{Kind: ChargeWithoutPaid, InvoiceID: id, Number: inv.GetNumber(), Provider: c.Provider, ProviderRef: c.ProviderRef, Currency: c.Currency,
+		rec.add(Discrepancy{Kind: ChargeWithoutPaid, InvoiceID: id, Number: inv.GetNumber(), Provider: c.Provider, ProviderRef: c.ProviderRef, Currency: c.Currency,
 			BilledMinor: inv.GetTotalMinor(), LedgerMinor: c.AmountMinor, Detail: "invoice status " + inv.GetStatus()})
 	}
+	return nil
+}
 
-	conflicts, err := s.Ledger.ConflictingCharges(ctx, t)
-	if err != nil {
-		return nil, err
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
 	}
-	for _, c := range conflicts {
-		add(Discrepancy{Kind: ConflictingOutcomes, InvoiceID: c.InvoiceID, Provider: c.Provider, ProviderRef: c.ProviderRef, Detail: "a success and a failure are both recorded"})
-	}
-	return rec, nil
+	sort.Strings(keys)
+	return keys
 }
 
 type ledgerCharge struct {

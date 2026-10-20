@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
@@ -139,33 +140,11 @@ func run() error {
 	paddle.Register(registry)
 	var httpHandler http.Handler
 	if cfg.SecretsKey != "" {
-		key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
-		box, err := secretbox.New(key)
-		if err != nil {
+		var closeConns func()
+		if httpHandler, closeConns, err = webhookHandler(cfg, pool, h, registry, log); err != nil {
 			return err
 		}
-		accounts := store.Accounts{DB: pool, Box: box}
-		h.Resolver = &handler.Resolver{Registry: registry, Accounts: accounts}
-		var plansSync webhook.PlansAPI
-		if cfg.PlansAddr != "" {
-			plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-			if err != nil {
-				return fmt.Errorf("plans-svc client: %w", err)
-			}
-			defer func() { _ = plansConn.Close() }()
-			plansSync = webhook.PlansClient{Client: plansv1.NewPlansServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn)}
-		}
-		var billing webhook.BillingAPI
-		if cfg.BillingAddr != "" {
-			billingConn, err := grpcx.NewClient(cfg.BillingAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-			if err != nil {
-				return fmt.Errorf("billing-svc client: %w", err)
-			}
-			defer func() { _ = billingConn.Close() }()
-			billing = webhook.BillingClient{Client: billingv1.NewBillingServiceClient(billingConn)}
-		}
-		httpHandler = (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
-			Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Objects: store.Objects{DB: pool}, Log: log, Token: cfg.InternalToken}).Handler()
+		defer closeConns()
 	}
 	w := &workerx.Worker{
 		URL: cfg.RabbitMQURL, Prefetch: cfg.Prefetch, Handler: h, Inbox: h.Attempts, Log: log,
@@ -191,6 +170,50 @@ func run() error {
 	}
 	log.Info("stopped")
 	return nil
+}
+
+// webhookHandler builds the provider-account, webhook and operator server. The returned func closes its gRPC connections.
+func webhookHandler(cfg Config, pool *pgxpool.Pool, h *handler.Handler, registry *payments.Registry, log *slog.Logger) (http.Handler, func(), error) {
+	key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
+	box, err := secretbox.New(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	accounts := store.Accounts{DB: pool, Box: box}
+	h.Resolver = &handler.Resolver{Registry: registry, Accounts: accounts}
+	var conns []*grpc.ClientConn
+	closeConns := func() {
+		for _, c := range conns {
+			_ = c.Close()
+		}
+	}
+	dial := func(addr, what string) (*grpc.ClientConn, error) {
+		conn, err := grpcx.NewClient(addr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+		if err != nil {
+			closeConns()
+			return nil, fmt.Errorf("%s client: %w", what, err)
+		}
+		conns = append(conns, conn)
+		return conn, nil
+	}
+	var plansSync webhook.PlansAPI
+	if cfg.PlansAddr != "" {
+		conn, err := dial(cfg.PlansAddr, "plans-svc")
+		if err != nil {
+			return nil, nil, err
+		}
+		plansSync = webhook.PlansClient{Client: plansv1.NewPlansServiceClient(conn), Admin: plansv1.NewAdminServiceClient(conn)}
+	}
+	var billing webhook.BillingAPI
+	if cfg.BillingAddr != "" {
+		conn, err := dial(cfg.BillingAddr, "billing-svc")
+		if err != nil {
+			return nil, nil, err
+		}
+		billing = webhook.BillingClient{Client: billingv1.NewBillingServiceClient(conn)}
+	}
+	return (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
+		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Objects: store.Objects{DB: pool}, Log: log, Token: cfg.InternalToken}).Handler(), closeConns, nil
 }
 
 // serveHTTP runs the webhook and operator server until ctx ends.

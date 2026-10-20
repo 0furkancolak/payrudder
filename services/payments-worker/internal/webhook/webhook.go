@@ -158,12 +158,7 @@ func (s *Server) receive(w http.ResponseWriter, r *http.Request, name string, te
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	// The inbox keeps the body as received (JSON), so a body that is not JSON is wrapped rather than dropped.
-	stored := body
-	if !json.Valid(body) {
-		stored, _ = json.Marshal(map[string]string{"raw": string(body)})
-	}
-	fresh, err := s.Events.Receive(ctx, name, ref.EventID, stored)
+	fresh, err := s.Events.Receive(ctx, name, ref.EventID, inboxBody(body))
 	if err != nil {
 		s.Log.ErrorContext(ctx, "webhook inbox write failed", "provider", name, "err", err)
 		fail(w, http.StatusInternalServerError, "try again")
@@ -174,120 +169,185 @@ func (s *Server) receive(w http.ResponseWriter, r *http.Request, name string, te
 		writeJSON(w, http.StatusOK, map[string]string{"status": "duplicate"})
 		return
 	}
-	finish := func(tenant uuid.UUID, status, msg string) {
-		if err := s.Events.Finish(ctx, name, ref.EventID, tenant, status, msg); err != nil {
-			s.Log.ErrorContext(ctx, "webhook inbox update failed", "provider", name, "event", ref.EventID, "err", err)
-		}
-	}
-	retry := func(tenant uuid.UUID, err error) {
-		// Not confirmed: forget the notification so the provider's retry is handled afresh, not taken for a duplicate.
-		s.Log.WarnContext(ctx, "webhook not confirmed", "provider", name, "event", ref.EventID, "err", err)
-		finish(tenant, "failed", err.Error())
-		if err := s.Events.Forget(ctx, name, ref.EventID); err != nil {
-			s.Log.ErrorContext(ctx, "webhook inbox cleanup failed", "provider", name, "event", ref.EventID, "err", err)
-		}
-		s.result(ctx, name, "retry")
-		fail(w, http.StatusServiceUnavailable, "try again")
-	}
-	ignore := func(tenant uuid.UUID, why string) {
-		finish(tenant, "ignored", why)
-		s.result(ctx, name, "ignored")
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
-	}
+	d := &delivery{s: s, w: w, r: r, name: name, eventID: ref.EventID, tenant: tenantID, env: env}
+	d.process(body, ref.IdempotencyKey)
+}
 
-	var at store.Attempt
-	if tenantID == uuid.Nil {
-		var found bool
-		if at, found, err = s.Attempts.ChargeByKey(ctx, ref.IdempotencyKey); err != nil {
-			retry(uuid.Nil, err)
-			return
-		}
-		if !found {
-			ignore(uuid.Nil, "no charge with this reference")
-			return
-		}
-		tenantID, env = at.TenantID, at.Environment
+// inboxBody is the body as the inbox keeps it (JSON): a body that is not JSON is wrapped rather than dropped.
+func inboxBody(body []byte) []byte {
+	if json.Valid(body) {
+		return body
 	}
-	prov, err := s.Resolver.Named(ctx, tenantID, name, env)
-	if err != nil {
-		retry(tenantID, err)
+	wrapped, _ := json.Marshal(map[string]string{"raw": string(body)})
+	return wrapped
+}
+
+// delivery is one received notification on its way to a ledger row, a subscription row, or an answer to the provider.
+type delivery struct {
+	s       *Server
+	w       http.ResponseWriter
+	r       *http.Request
+	name    string
+	eventID string
+	tenant  uuid.UUID
+	env     string
+	at      store.Attempt
+}
+
+func (d *delivery) finish(tenant uuid.UUID, status, msg string) {
+	if err := d.s.Events.Finish(d.r.Context(), d.name, d.eventID, tenant, status, msg); err != nil {
+		d.s.Log.ErrorContext(d.r.Context(), "webhook inbox update failed", "provider", d.name, "event", d.eventID, "err", err)
+	}
+}
+
+// retry answers 503 and forgets the notification, so the provider's retry is handled afresh, not taken for a duplicate.
+func (d *delivery) retry(tenant uuid.UUID, err error) {
+	ctx := d.r.Context()
+	d.s.Log.WarnContext(ctx, "webhook not confirmed", "provider", d.name, "event", d.eventID, "err", err)
+	d.finish(tenant, "failed", err.Error())
+	if err := d.s.Events.Forget(ctx, d.name, d.eventID); err != nil {
+		d.s.Log.ErrorContext(ctx, "webhook inbox cleanup failed", "provider", d.name, "event", d.eventID, "err", err)
+	}
+	d.s.result(ctx, d.name, "retry")
+	fail(d.w, http.StatusServiceUnavailable, "try again")
+}
+
+func (d *delivery) ignore(tenant uuid.UUID, why string) {
+	d.finish(tenant, "ignored", why)
+	d.s.result(d.r.Context(), d.name, "ignored")
+	writeJSON(d.w, http.StatusOK, map[string]string{"status": "ignored"})
+}
+
+func (d *delivery) process(body []byte, key string) {
+	ctx := d.r.Context()
+	if d.tenant == uuid.Nil && !d.findCharge(key) {
 		return
+	}
+	conf, ok := d.confirm(body)
+	if !ok || !d.apply(conf) {
+		return
+	}
+	d.finish(d.tenant, "processed", "")
+	d.s.result(ctx, d.name, "processed")
+	writeJSON(d.w, http.StatusOK, map[string]string{"status": "processed"})
+}
+
+// findCharge decides whose account confirms a notification whose URL names no tenant: the tenant and environment of the charge
+// its reference points at. It reports false once it has answered.
+func (d *delivery) findCharge(key string) bool {
+	at, found, err := d.s.Attempts.ChargeByKey(d.r.Context(), key)
+	if err != nil {
+		d.retry(uuid.Nil, err)
+		return false
+	}
+	if !found {
+		d.ignore(uuid.Nil, "no charge with this reference")
+		return false
+	}
+	d.at, d.tenant, d.env = at, at.TenantID, at.Environment
+	return true
+}
+
+// confirm asks the provider's own account whether the notification is genuine. It reports false once it has answered.
+func (d *delivery) confirm(body []byte) (payments.Notification, bool) {
+	ctx := d.r.Context()
+	prov, err := d.s.Resolver.Named(ctx, d.tenant, d.name, d.env)
+	if err != nil {
+		d.retry(d.tenant, err)
+		return payments.Notification{}, false
 	}
 	n, ok := prov.(payments.Notifier)
 	if !ok {
-		ignore(tenantID, "provider cannot confirm notifications")
-		return
+		d.ignore(d.tenant, "provider cannot confirm notifications")
+		return payments.Notification{}, false
 	}
-	conf, err := n.ConfirmNotification(ctx, body, r.Header)
+	conf, err := n.ConfirmNotification(ctx, body, d.r.Header)
+	if errors.Is(err, payments.ErrUnverified) {
+		// Not from the provider: nothing to retry. Forget it so a genuine event with the same id is not taken for a duplicate.
+		d.s.Log.WarnContext(ctx, "webhook failed verification", "provider", d.name, "tenant", d.tenant, "err", err)
+		_ = d.s.Events.Forget(ctx, d.name, d.eventID)
+		d.s.result(ctx, d.name, "unverified")
+		fail(d.w, http.StatusUnauthorized, "verification failed")
+		return payments.Notification{}, false
+	}
 	if err != nil {
-		if errors.Is(err, payments.ErrUnverified) {
-			// Not from the provider: nothing to retry. Forget it so a genuine event with the same id is not taken for a duplicate.
-			s.Log.WarnContext(ctx, "webhook failed verification", "provider", name, "tenant", tenantID, "err", err)
-			_ = s.Events.Forget(ctx, name, ref.EventID)
-			s.result(ctx, name, "unverified")
-			fail(w, http.StatusUnauthorized, "verification failed")
-			return
-		}
-		retry(tenantID, err)
-		return
+		d.retry(d.tenant, err)
+		return payments.Notification{}, false
 	}
+	return conf, true
+}
 
+// apply records what the notification says. It reports false once it has answered.
+func (d *delivery) apply(conf payments.Notification) bool {
 	switch conf.Kind {
 	case payments.KindIgnored:
-		ignore(tenantID, "event not used")
-		return
+		d.ignore(d.tenant, "event not used")
+		return false
 	case payments.KindSubscription:
-		if err := s.recordSubscription(ctx, tenantID, name, env, conf); err != nil {
-			retry(tenantID, err)
-			return
+		if err := d.s.recordSubscription(d.r.Context(), d.tenant, d.name, d.env, conf); err != nil {
+			d.retry(d.tenant, err)
+			return false
 		}
 	default:
-		kind := "charge"
-		if conf.Kind == payments.KindRefund {
-			kind = "refund"
-		}
-		entry := store.LedgerEntry{TenantID: tenantID, Provider: name, Environment: env, Kind: kind, AmountMinor: conf.AmountMinor, Currency: conf.Currency,
-			ProviderRef: conf.ProviderRef, IdempotencyKey: conf.Ref.IdempotencyKey, Source: "webhook"}
-		if at.InvoiceID != uuid.Nil {
-			entry.InvoiceID = at.InvoiceID
-			if entry.AmountMinor == 0 {
-				entry.AmountMinor, entry.Currency = at.AmountMinor, at.Currency
-			}
-		} else if conf.Ref.IdempotencyKey != "" {
-			// A charge of ours the provider settled later (a notification found by its key rather than by the URL).
-			if a, found, err := s.Attempts.ChargeByKey(ctx, conf.Ref.IdempotencyKey); err == nil && found && a.TenantID == tenantID {
-				entry.InvoiceID = a.InvoiceID
-			}
-		}
-		switch conf.State {
-		case payments.StateSucceeded:
-			entry.Status = "succeeded"
-		case payments.StateDeclined:
-			entry.Status, entry.Detail = "declined", conf.DeclineCode
-			if kind == "refund" {
-				entry.Status = "failed"
-			}
-		default:
-			retry(tenantID, errors.New("provider did not report a final state"))
-			return
-		}
-		if entry.Currency == "" {
-			entry.Currency = "XXX" // the provider did not say; the ledger requires a code
-		}
-		if _, err := s.Ledger.Append(ctx, entry); err != nil {
-			retry(tenantID, err)
-			return
-		}
-		if conf.ProviderRef != "" {
-			if n, err := s.Ledger.Outcomes(ctx, name, kind, conf.ProviderRef); err == nil && n > 1 {
-				discrepancy.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", name)))
-				s.Log.ErrorContext(ctx, "payment outcomes disagree", "provider", name, "ref", conf.ProviderRef, "tenant", tenantID, "invoice", at.InvoiceID)
-			}
+		if err := d.recordCharge(conf); err != nil {
+			d.retry(d.tenant, err)
+			return false
 		}
 	}
-	finish(tenantID, "processed", "")
-	s.result(ctx, name, "processed")
-	writeJSON(w, http.StatusOK, map[string]string{"status": "processed"})
+	return true
+}
+
+func (d *delivery) recordCharge(conf payments.Notification) error {
+	ctx := d.r.Context()
+	entry, err := d.ledgerEntry(conf)
+	if err != nil {
+		return err
+	}
+	if _, err := d.s.Ledger.Append(ctx, entry); err != nil {
+		return err
+	}
+	if conf.ProviderRef != "" {
+		if n, err := d.s.Ledger.Outcomes(ctx, d.name, entry.Kind, conf.ProviderRef); err == nil && n > 1 {
+			discrepancy.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", d.name)))
+			d.s.Log.ErrorContext(ctx, "payment outcomes disagree", "provider", d.name, "ref", conf.ProviderRef, "tenant", d.tenant, "invoice", d.at.InvoiceID)
+		}
+	}
+	return nil
+}
+
+func (d *delivery) ledgerEntry(conf payments.Notification) (store.LedgerEntry, error) {
+	kind := "charge"
+	if conf.Kind == payments.KindRefund {
+		kind = "refund"
+	}
+	entry := store.LedgerEntry{TenantID: d.tenant, Provider: d.name, Environment: d.env, Kind: kind, AmountMinor: conf.AmountMinor, Currency: conf.Currency,
+		ProviderRef: conf.ProviderRef, IdempotencyKey: conf.Ref.IdempotencyKey, Source: "webhook"}
+	if d.at.InvoiceID != uuid.Nil {
+		entry.InvoiceID = d.at.InvoiceID
+		if entry.AmountMinor == 0 {
+			entry.AmountMinor, entry.Currency = d.at.AmountMinor, d.at.Currency
+		}
+	} else if conf.Ref.IdempotencyKey != "" {
+		// A charge of ours the provider settled later (a notification found by its key rather than by the URL).
+		if a, found, err := d.s.Attempts.ChargeByKey(d.r.Context(), conf.Ref.IdempotencyKey); err == nil && found && a.TenantID == d.tenant {
+			entry.InvoiceID = a.InvoiceID
+		}
+	}
+	switch conf.State {
+	case payments.StateSucceeded:
+		entry.Status = "succeeded"
+	case payments.StateDeclined:
+		entry.Status, entry.Detail = "declined", conf.DeclineCode
+		if kind == "refund" {
+			entry.Status = "failed"
+		}
+	default:
+		return entry, errors.New("provider did not report a final state")
+	}
+	if entry.Currency == "" {
+		entry.Currency = "XXX" // the provider did not say; the ledger requires a code
+	}
+	return entry, nil
 }
 
 func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provider, env string, n payments.Notification) error {
@@ -558,11 +618,7 @@ func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
 		return
 	}
-	var in struct {
-		SubscriptionID string `json:"subscription_id"`
-		ToProvider     string `json:"to_provider"`
-		PriceRef       string `json:"price_ref"`
-	}
+	var in migrationInput
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&in); err != nil || in.SubscriptionID == "" || in.ToProvider == "" {
 		fail(w, http.StatusBadRequest, "subscription_id and to_provider are required")
 		return
@@ -579,54 +635,51 @@ func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if target.Capabilities().Owner() == payments.OwnerProvider {
-		cp, ok := target.(payments.CheckoutProvider)
-		if !ok || in.PriceRef == "" {
-			fail(w, http.StatusBadRequest, in.ToProvider+" runs subscriptions itself: price_ref (its catalogue price) is required")
-			return
-		}
-		mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider})
-		if err != nil {
-			planFail(w, err)
-			return
-		}
-		co, err := cp.CreateCheckout(ctx, payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: 1, QuotifyMigrationID: mig.GetId()})
-		if err != nil {
-			// No checkout, no migration: leave the subscription as it was.
-			if aerr := s.Plans.AbortProviderMigration(ctx, t, mig.GetId()); aerr != nil {
-				s.Log.ErrorContext(ctx, "could not abort a migration after a failed checkout", "migration", mig.GetId(), "err", aerr)
-			}
-			fail(w, http.StatusBadGateway, err.Error())
-			return
-		}
-		writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "started", "checkout_url": co.URL})
+		s.migrateViaCheckout(w, r, t, target, in)
 		return
 	}
+	s.migrateToQuotify(w, r, t, env, sub, in)
+}
 
-	// The target is run by Quotify. From a provider-run subscription, wait for the end of the period that provider was paid for.
+type migrationInput struct {
+	SubscriptionID string `json:"subscription_id"`
+	ToProvider     string `json:"to_provider"`
+	PriceRef       string `json:"price_ref"`
+}
+
+// migrateViaCheckout starts a migration to a provider that runs subscriptions itself and returns the checkout the customer completes.
+func (s *Server) migrateViaCheckout(w http.ResponseWriter, r *http.Request, t uuid.UUID, target payments.PaymentProvider, in migrationInput) {
+	ctx := r.Context()
+	cp, ok := target.(payments.CheckoutProvider)
+	if !ok || in.PriceRef == "" {
+		fail(w, http.StatusBadRequest, in.ToProvider+" runs subscriptions itself: price_ref (its catalogue price) is required")
+		return
+	}
+	mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider})
+	if err != nil {
+		planFail(w, err)
+		return
+	}
+	co, err := cp.CreateCheckout(ctx, payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: 1, QuotifyMigrationID: mig.GetId()})
+	if err != nil {
+		// No checkout, no migration: leave the subscription as it was.
+		if aerr := s.Plans.AbortProviderMigration(ctx, t, mig.GetId()); aerr != nil {
+			s.Log.ErrorContext(ctx, "could not abort a migration after a failed checkout", "migration", mig.GetId(), "err", aerr)
+		}
+		fail(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "started", "checkout_url": co.URL})
+}
+
+// migrateToQuotify moves a subscription to a provider Quotify runs. From a provider-run subscription, it waits for the end of the period
+// that provider was paid for.
+func (s *Server) migrateToQuotify(w http.ResponseWriter, r *http.Request, t uuid.UUID, env string, sub *plansv1.Subscription, in migrationInput) {
+	ctx := r.Context()
 	var cutover *timestamppb.Timestamp
 	if sub.GetOwner() == "provider" {
-		next, found, err := s.Subscriptions.NextBilledAt(ctx, t, sub.GetProvider(), env, sub.GetProviderRef())
-		if err != nil {
-			fail(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		if !found {
-			fail(w, http.StatusConflict, "the end of the paid period at "+sub.GetProvider()+" is not known yet (no notification has told us)")
-			return
-		}
-		cutover = timestamppb.New(next)
-		old, err := s.Resolver.Named(ctx, t, sub.GetProvider(), env)
-		if err != nil {
-			fail(w, http.StatusNotFound, "no account at "+sub.GetProvider()+" for this tenant")
-			return
-		}
-		m, ok := old.(payments.SubscriptionManager)
-		if !ok {
-			fail(w, http.StatusConflict, sub.GetProvider()+" cannot cancel a subscription through Quotify")
-			return
-		}
-		if err := m.CancelSubscription(ctx, sub.GetProviderRef(), true); err != nil {
-			fail(w, http.StatusBadGateway, err.Error())
+		var ok bool
+		if cutover, ok = s.stopRenewals(w, r, t, env, sub); !ok {
 			return
 		}
 	}
@@ -637,6 +690,36 @@ func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "completed", "new_subscription": mig.GetNewSubscriptionId(),
 		"cutover": mig.GetCutoverTime().AsTime()})
+}
+
+// stopRenewals tells the old provider to stop renewing a subscription at the end of its paid period, which is the cutover time.
+// It reports false once it has answered.
+func (s *Server) stopRenewals(w http.ResponseWriter, r *http.Request, t uuid.UUID, env string, sub *plansv1.Subscription) (*timestamppb.Timestamp, bool) {
+	ctx := r.Context()
+	next, found, err := s.Subscriptions.NextBilledAt(ctx, t, sub.GetProvider(), env, sub.GetProviderRef())
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "internal error")
+		return nil, false
+	}
+	if !found {
+		fail(w, http.StatusConflict, "the end of the paid period at "+sub.GetProvider()+" is not known yet (no notification has told us)")
+		return nil, false
+	}
+	old, err := s.Resolver.Named(ctx, t, sub.GetProvider(), env)
+	if err != nil {
+		fail(w, http.StatusNotFound, "no account at "+sub.GetProvider()+" for this tenant")
+		return nil, false
+	}
+	m, ok := old.(payments.SubscriptionManager)
+	if !ok {
+		fail(w, http.StatusConflict, sub.GetProvider()+" cannot cancel a subscription through Quotify")
+		return nil, false
+	}
+	if err := m.CancelSubscription(ctx, sub.GetProviderRef(), true); err != nil {
+		fail(w, http.StatusBadGateway, err.Error())
+		return nil, false
+	}
+	return timestamppb.New(next), true
 }
 
 func (s *Server) abortMigration(w http.ResponseWriter, r *http.Request) {
