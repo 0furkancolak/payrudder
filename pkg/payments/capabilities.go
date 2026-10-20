@@ -166,6 +166,8 @@ type SubscriptionEvent struct {
 	// QuotifyMigrationID is the provider migration this subscription completes, if it says.
 	QuotifyMigrationID string
 	NextBilledAt       *time.Time
+	// PriceRefs are the provider's ids of the prices the subscription is billed for, when the notification says.
+	PriceRefs []string
 }
 
 // PendingError is returned by a charge the provider accepted but has not settled: the outcome arrives as a notification. It is not a failure,

@@ -85,3 +85,32 @@ export function useProviderSubscriptions(tenantId: MaybeRefOrGetter<string>) {
     queryFn: () => unwrap(api.GET("/admin/v1/tenants/{tenant_id}/provider-subscriptions", { params: { path: { tenant_id: toValue(tenantId) } } })),
   });
 }
+
+/** What Quotify has created at a provider: products, prices and discounts. Only providers with a catalogue answer. */
+export function useCatalogue(tenantId: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<Env>) {
+  return useQuery({
+    queryKey: computed(() => ["tenants", toValue(tenantId), "catalogue", toValue(provider), toValue(environment)] as const),
+    enabled: computed(() => toValue(provider) !== ""),
+    queryFn: () =>
+      unwrap(
+        api.GET("/admin/v1/tenants/{tenant_id}/providers/{provider}/catalogue", {
+          params: { path: { tenant_id: toValue(tenantId), provider: toValue(provider) as "paddle" }, query: { environment: toValue(environment) } },
+        }),
+      ),
+  });
+}
+
+/** Makes the provider hold a plan version: its product once, and a price per interval and currency. */
+export function useSyncCatalogue(tenantId: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<Env>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (plan_code: string) =>
+      unwrap(
+        api.POST("/admin/v1/tenants/{tenant_id}/providers/{provider}/catalogue/sync", {
+          params: { path: { tenant_id: toValue(tenantId), provider: toValue(provider) as "paddle" }, query: { environment: toValue(environment) } },
+          body: { plan_code },
+        }),
+      ),
+    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "catalogue"] }),
+  });
+}

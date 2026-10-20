@@ -655,6 +655,21 @@ func (s *Server) SyncProviderSubscription(ctx context.Context, req *plansv1.Sync
 	}
 	var out *plansv1.Subscription
 	err = s.tx(ctx, func(q *sqlc.Queries) error {
+		// Events keep naming the subscription they were first linked to; if plan changes have replaced it, the provider's id is held by its successor.
+		if live, err := q.GetSubscriptionIDByProviderRef(ctx, sqlc.GetSubscriptionIDByProviderRefParams{Provider: ptr(req.GetProvider()), ProviderRef: ptr(req.GetProviderRef())}); err == nil && live != id {
+			// Only the same chain: another subscription that names a provider id that is taken must still be refused.
+			for cur, hops := live, 0; hops < 64; hops++ {
+				prev, err := q.GetChangedFromID(ctx, cur)
+				if err != nil || prev == nil {
+					break
+				}
+				if *prev == id {
+					id = live
+					break
+				}
+				cur = *prev
+			}
+		}
 		cur, err := q.GetSubscriptionForUpdate(ctx, id)
 		if err != nil {
 			return err
@@ -689,6 +704,51 @@ func (s *Server) SyncProviderSubscription(ctx context.Context, req *plansv1.Sync
 			if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: id, State: string(state), PausedAt: pausedAt, CancelAtPeriodEnd: row.CancelAtPeriodEnd}); err != nil {
 				return err
 			}
+		}
+		// The provider bills another plan or interval than ours: follow it. The provider has billed the change itself, so no money moves here.
+		target := uuid.Nil
+		if v := req.GetPlanVersionId(); v != "" {
+			if target, err = uuid.Parse(v); err != nil {
+				return domain.Invalid("plan_version_id", "must be a UUID")
+			}
+		}
+		iv := subscription.Interval(row.Interval)
+		switch req.GetInterval() {
+		case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
+			iv = subscription.Monthly
+		case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
+			iv = subscription.Yearly
+		}
+		follow := n == 1 && req.GetOwner() == "provider" && row.OpenEnded && state != subscription.Cancelled &&
+			((target != uuid.Nil && target != row.PlanVersionID) || (req.GetInterval() != plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED && string(iv) != row.Interval))
+		if follow {
+			if target == uuid.Nil {
+				target = row.PlanVersionID
+			}
+			pv, err := q.GetPlanVersionByID(ctx, target)
+			if err != nil {
+				return convert.Err(err, "plan version")
+			}
+			at := occurred
+			if !at.After(row.StartTime) {
+				at = row.StartTime.Add(time.Microsecond)
+			}
+			cur := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, at)
+			next := state
+			if !known {
+				next = cur
+			}
+			nr, err := s.switchTo(ctx, q, ti.ID, row, successor{PlanVersion: sqlc.GetPlanVersionByCodeRow(pv), Interval: iv, State: next, TrialEnds: row.TrialEndsAt, At: at,
+				Anchor: row.BillingAnchor, FeeTiming: "arrears", Owner: "provider", ProviderRef: row.ProviderRef})
+			if err != nil {
+				return err
+			}
+			if next == subscription.Paused {
+				if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: nr.ID, State: string(next), PausedAt: &at}); err != nil {
+					return err
+				}
+			}
+			id = nr.ID
 		}
 		r, err := q.GetSubscription(ctx, id)
 		if err != nil {

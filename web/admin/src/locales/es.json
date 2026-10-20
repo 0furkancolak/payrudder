@@ -342,6 +342,15 @@
         "creditAdded": "Se añade {amount} al saldo a favor",
         "scheduled": "Programado: {plan} ({interval}) desde {date}",
         "withdraw": "Retirar"
+      },
+      "providerRun": {
+        "title": "Gestionado por {provider}",
+        "hint": "Estas acciones se hacen en el proveedor; la copia de Quotify lo sigue cuando llega su notificación. El proveedor factura el cambio y se aplica de inmediato.",
+        "none": "Sin prorrateo: se factura desde la próxima renovación",
+        "changed": "El proveedor aplicó el cambio.",
+        "atPeriodEnd": "Pausar al final del periodo pagado",
+        "paymentLink": "Enlace del método de pago",
+        "requested": "Solicitado. Esta página se actualiza cuando el proveedor lo confirma."
       }
     },
     "payments": {
@@ -405,7 +414,18 @@
       "runByProviders": "Suscripciones que gestionan los proveedores",
       "reference": "Referencia",
       "nextBilled": "Próximo cobro",
-      "noProviderSubscriptions": "Aún ninguna suscripción la gestiona un proveedor."
+      "noProviderSubscriptions": "Aún ninguna suscripción la gestiona un proveedor.",
+      "catalogue": {
+        "title": "Catálogo en el proveedor",
+        "hint": "Hace que el proveedor tenga un paquete, para venderlo y cambiarlo allí: su producto una vez y un precio por cada periodo y moneda en que la versión tiene cuota. Sincronizar dos veces no cambia nada.",
+        "package": "Paquete",
+        "sync": "Sincronizar paquete",
+        "result": "{created} precio(s) creado(s), {existing} ya estaban.",
+        "skipped": "{key}: {why}",
+        "kind": "Tipo",
+        "key": "Nombre en Quotify",
+        "empty": "Todavía no se ha creado nada en este proveedor."
+      }
     },
     "reports": {
       "kinds": "Informes",

@@ -99,6 +99,10 @@ type recPlans struct {
 	aborted    []string                                    // migrations aborted
 	completion *plansv1.CompleteProviderMigrationResponse  // what CompleteProviderMigration answers
 	startErr   error
+
+	versions  map[string]*plansv1.PlanVersion // by plan code (GetPlanVersion by code) or id
+	customers map[string]*plansv1.Customer    // by external id
+	currency  string                          // the tenant's currency
 }
 
 func (r *recPlans) SyncProviderSubscription(_ context.Context, _ uuid.UUID, req *plansv1.SyncProviderSubscriptionRequest) error {

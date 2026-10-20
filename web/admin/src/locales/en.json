@@ -342,6 +342,15 @@
         "creditAdded": "{amount} is added to the credit balance",
         "scheduled": "Scheduled: {plan} ({interval}) from {date}",
         "withdraw": "Withdraw"
+      },
+      "providerRun": {
+        "title": "Run by {provider}",
+        "hint": "These actions are made at the provider; Quotify's copy follows when the provider's notification arrives. A change is billed by the provider and applies at once.",
+        "none": "No proration: billed from the next renewal",
+        "changed": "The provider applied the change.",
+        "atPeriodEnd": "Pause at the end of the paid period",
+        "paymentLink": "Payment method link",
+        "requested": "Requested. This page updates when the provider confirms."
       }
     },
     "payments": {
@@ -405,7 +414,18 @@
       "runByProviders": "Subscriptions the providers run",
       "reference": "Reference",
       "nextBilled": "Next billed",
-      "noProviderSubscriptions": "No subscription is run by a provider yet."
+      "noProviderSubscriptions": "No subscription is run by a provider yet.",
+      "catalogue": {
+        "title": "Catalogue at the provider",
+        "hint": "Makes the provider hold a package, so it can be sold and changed there: its product once, and a price for every interval and currency the version has a fee in. Syncing twice changes nothing.",
+        "package": "Package",
+        "sync": "Sync package",
+        "result": "{created} price(s) created, {existing} already there.",
+        "skipped": "{key}: {why}",
+        "kind": "Kind",
+        "key": "Quotify's name",
+        "empty": "Nothing has been created at this provider yet."
+      }
     },
     "reports": {
       "kinds": "Reports",

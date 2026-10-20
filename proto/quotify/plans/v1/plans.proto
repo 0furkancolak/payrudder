@@ -302,6 +302,10 @@ message SyncProviderSubscriptionRequest {
   string provider_status = 5;
   // When the provider says it happened; an event older than the last one applied is ignored.
   google.protobuf.Timestamp occurred_at = 6;
+  // The plan version and interval the provider now bills the subscription for, when the provider says (a change made at the provider, or by Quotify through it).
+  // If they differ from the subscription's, it moves to them at occurred_at with no money (the provider has billed the change). Only for owner "provider".
+  string plan_version_id = 7;
+  SubscriptionInterval interval = 8;
 }
 
 message SyncProviderSubscriptionResponse {

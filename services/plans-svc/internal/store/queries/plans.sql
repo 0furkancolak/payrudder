@@ -277,3 +277,14 @@ UPDATE subscription_adjustments SET billed_at = now() WHERE tenant_id = app_tena
 
 -- name: GetSubscriptionFeeDue :one
 SELECT fee_due_at FROM subscriptions WHERE tenant_id = app_tenant_id() AND id = $1;
+
+-- name: ReleaseProviderLink :execrows
+-- An ended subscription gives its provider id to its successor (the id is unique); it keeps the provider's name for history.
+UPDATE subscriptions SET owner = 'quotify', provider_ref = NULL WHERE tenant_id = app_tenant_id() AND id = $1;
+
+-- name: GetSubscriptionIDByProviderRef :one
+-- The live subscription that holds a provider's id: after plan changes it is the last of the chain, not the one that was first linked.
+SELECT id FROM subscriptions WHERE tenant_id = app_tenant_id() AND provider = $1 AND provider_ref = $2;
+
+-- name: GetChangedFromID :one
+SELECT changed_from_id FROM subscriptions WHERE tenant_id = app_tenant_id() AND id = $1;

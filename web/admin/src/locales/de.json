@@ -342,6 +342,15 @@
         "creditAdded": "{amount} werden dem Guthaben gutgeschrieben",
         "scheduled": "Geplant: {plan} ({interval}) ab {date}",
         "withdraw": "Zurückziehen"
+      },
+      "providerRun": {
+        "title": "Betrieben von {provider}",
+        "hint": "Diese Aktionen laufen beim Anbieter; Quotifys Kopie folgt, wenn dessen Benachrichtigung eintrifft. Eine Änderung rechnet der Anbieter ab, sie gilt sofort.",
+        "none": "Keine Anteilsberechnung: ab der nächsten Verlängerung abgerechnet",
+        "changed": "Der Anbieter hat die Änderung angewendet.",
+        "atPeriodEnd": "Zum Ende des bezahlten Zeitraums pausieren",
+        "paymentLink": "Link zur Zahlungsmethode",
+        "requested": "Angefordert. Diese Seite aktualisiert sich, sobald der Anbieter bestätigt."
       }
     },
     "payments": {
@@ -405,7 +414,18 @@
       "runByProviders": "Von Anbietern geführte Abonnements",
       "reference": "Referenz",
       "nextBilled": "Nächste Abrechnung",
-      "noProviderSubscriptions": "Noch kein Abonnement wird von einem Anbieter geführt."
+      "noProviderSubscriptions": "Noch kein Abonnement wird von einem Anbieter geführt.",
+      "catalogue": {
+        "title": "Katalog beim Anbieter",
+        "hint": "Lässt den Anbieter ein Paket führen, damit es dort verkauft und geändert werden kann: das Produkt einmal und je einen Preis für jeden Zeitraum und jede Währung, in der die Version eine Gebühr hat. Zweimal abgleichen ändert nichts.",
+        "package": "Paket",
+        "sync": "Paket abgleichen",
+        "result": "{created} Preis(e) angelegt, {existing} waren schon da.",
+        "skipped": "{key}: {why}",
+        "kind": "Art",
+        "key": "Name in Quotify",
+        "empty": "Bei diesem Anbieter wurde noch nichts angelegt."
+      }
     },
     "reports": {
       "kinds": "Berichte",

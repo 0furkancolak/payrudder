@@ -25,10 +25,8 @@ func testSubscriptionChanges(t *testing.T) {
 		if _, err := e.plans.CreatePlan(ctx, &plansv1.CreatePlanRequest{Code: p.code, Name: p.code}); err != nil {
 			t.Fatal(err)
 		}
-		fees := []*plansv1.CurrencyFee{{Currency: "TRY", Interval: year, BaseFeeMinor: p.fee * 10}}
-		if p.code == "basic" {
-			fees = append(fees, &plansv1.CurrencyFee{Currency: "USD", BaseFeeMinor: 100}) // no yearly fee in USD
-		}
+		// Yearly in the tenant's currency, monthly in dollars (and no yearly fee in dollars).
+		fees := []*plansv1.CurrencyFee{{Currency: "TRY", Interval: year, BaseFeeMinor: p.fee * 10}, {Currency: "USD", BaseFeeMinor: p.fee / 30}}
 		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: p.code, BaseFeeMinor: p.fee, Fees: fees}); err != nil {
 			t.Fatal(err)
 		}
@@ -255,6 +253,56 @@ func testSubscriptionChanges(t *testing.T) {
 		for _, d := range due.GetDue() {
 			if d.GetSubscription().GetId() == nu.GetId() && (d.GetFeeMinor() != 9000 || !d.GetPeriodStart().AsTime().Equal(nu.GetTrialEndTime().AsTime())) {
 				t.Errorf("the first fee after the trial = %v; want the new plan's 9000 from the trial end", d)
+			}
+		}
+	})
+
+	t.Run("a subscription a provider runs follows the plan and interval the provider bills, with no money", func(t *testing.T) {
+		if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_paddle_follow", Name: "p", Email: "p@example.com", Country: "US", BillingCurrency: "USD"}); err != nil {
+			t.Fatal(err)
+		}
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle_follow", PlanCode: "basic", Provider: "paddle"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		first := r.GetSubscription()
+		at := time.Now().Add(-time.Hour)
+		if _, err := e.plans.SyncProviderSubscription(ctx, &plansv1.SyncProviderSubscriptionRequest{SubscriptionId: first.GetId(), Provider: "paddle", ProviderRef: "sub_follow",
+			Owner: "provider", ProviderStatus: "active", OccurredAt: timestamppb.New(at)}); err != nil {
+			t.Fatal(err)
+		}
+		pro, err := e.plans.GetPlanVersion(ctx, &plansv1.GetPlanVersionRequest{PlanCode: "pro"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sync := func(occurred time.Time, status string, pv string, iv plansv1.SubscriptionInterval) *plansv1.Subscription {
+			t.Helper()
+			resp, err := e.plans.SyncProviderSubscription(ctx, &plansv1.SyncProviderSubscriptionRequest{SubscriptionId: first.GetId(), Provider: "paddle", ProviderRef: "sub_follow",
+				Owner: "provider", ProviderStatus: status, OccurredAt: timestamppb.New(occurred), PlanVersionId: pv, Interval: iv})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return resp.GetSubscription()
+		}
+		now := time.Now()
+		got := sync(now.Add(-time.Minute), "active", pro.GetPlanVersion().GetId(), 0)
+		if got.GetId() == first.GetId() || got.GetPlanCode() != "pro" || got.GetOwner() != "provider" || got.GetProviderRef() != "sub_follow" || got.GetChangedFromId() != first.GetId() ||
+			got.GetFeeTiming() != plansv1.FeeTiming_FEE_TIMING_ARREARS {
+			t.Fatalf("after the provider moved the plan: %v", got)
+		}
+		if old, _ := e.plans.GetSubscription(ctx, &plansv1.GetSubscriptionRequest{SubscriptionId: first.GetId()}); old.GetSubscription().GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_CANCELLED {
+			t.Errorf("the old subscription is %v", old.GetSubscription().GetState())
+		}
+		// The same event again changes nothing; it is not a second switch.
+		again := sync(now.Add(-time.Minute), "active", pro.GetPlanVersion().GetId(), 0)
+		if again.GetId() != got.GetId() {
+			t.Errorf("a repeated event made another subscription: %s then %s", got.GetId(), again.GetId())
+		}
+		// Nor does money move, and nothing is invoiced in advance for a provider-run subscription.
+		adj, _ := e.plans.ListSubscriptionAdjustments(ctx, &plansv1.ListSubscriptionAdjustmentsRequest{PageSize: 500})
+		for _, a := range adj.GetAdjustments() {
+			if a.GetSubscription().GetId() == got.GetId() {
+				t.Errorf("an adjustment for a provider-run change: %v", a)
 			}
 		}
 	})

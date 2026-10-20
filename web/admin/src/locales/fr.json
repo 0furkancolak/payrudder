@@ -342,6 +342,15 @@
         "creditAdded": "{amount} sont ajoutés au solde créditeur",
         "scheduled": "Programmé : {plan} ({interval}) à partir du {date}",
         "withdraw": "Retirer"
+      },
+      "providerRun": {
+        "title": "Géré par {provider}",
+        "hint": "Ces actions se font chez le fournisseur ; la copie de Quotify suit à l'arrivée de sa notification. Le fournisseur facture le changement, appliqué immédiatement.",
+        "none": "Sans proratisation : facturé dès le prochain renouvellement",
+        "changed": "Le fournisseur a appliqué le changement.",
+        "atPeriodEnd": "Suspendre à la fin de la période payée",
+        "paymentLink": "Lien du moyen de paiement",
+        "requested": "Demandé. Cette page se met à jour quand le fournisseur confirme."
       }
     },
     "payments": {
@@ -405,7 +414,18 @@
       "runByProviders": "Abonnements gérés par les prestataires",
       "reference": "Référence",
       "nextBilled": "Prochaine facturation",
-      "noProviderSubscriptions": "Aucun abonnement n'est encore géré par un prestataire."
+      "noProviderSubscriptions": "Aucun abonnement n'est encore géré par un prestataire.",
+      "catalogue": {
+        "title": "Catalogue chez le fournisseur",
+        "hint": "Fait détenir un forfait par le fournisseur, pour le vendre et le modifier là-bas : son produit une fois et un prix pour chaque période et devise où la version a un tarif. Synchroniser deux fois ne change rien.",
+        "package": "Forfait",
+        "sync": "Synchroniser le forfait",
+        "result": "{created} prix créé(s), {existing} déjà présent(s).",
+        "skipped": "{key} : {why}",
+        "kind": "Type",
+        "key": "Nom dans Quotify",
+        "empty": "Rien n'a encore été créé chez ce fournisseur."
+      }
     },
     "reports": {
       "kinds": "Rapports",

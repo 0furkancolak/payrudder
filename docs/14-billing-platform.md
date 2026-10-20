@@ -141,6 +141,11 @@ and keep usage in arrears on the monthly run. The "yearly subscriptions are refu
 Details in [phase 20](phases/phase-20-plan-changes.md). Advance-billed subscriptions change plan or interval with a preview that is the same calculation as the change: upgrades and monthly-to-yearly at once with the unused time credited, downgrades and
 yearly-to-monthly at the end of the paid period, as a scheduled change the customer can withdraw. What a change moves becomes an invoice or a credit balance in billing-svc. Quantity changes are not in this release.
 
+## As built: phase 21
+
+Details in [phase 21](phases/phase-21-paddle-api.md). Optional provider interfaces (catalogue, customers, subscriptions, discounts, documents) let Quotify create a plan's product and prices at Paddle, ensure customers, preview and apply plan or interval changes, pause, resume, hand out payment-method and portal links, create discounts and fetch invoice links, all through operator endpoints and the console. Quotify's copy of a Paddle-run subscription follows a plan change the provider billed, with no money moved on Quotify's side.
+Nothing has run against Paddle's sandbox; the points the reference does not settle are marked UNVERIFIED.
+
 ## Currency
 
 The old rule "one currency per tenant, immutable" moves down a level. The tenant keeps a **default currency**. A subscription and its invoices have one currency, fixed for the

@@ -402,6 +402,11 @@ type subscriptionData struct {
 	Status       string     `json:"status"`
 	CustomData   customData `json:"custom_data"`
 	NextBilledAt *string    `json:"next_billed_at"`
+	Items        []struct {
+		Price struct {
+			ID string `json:"id"`
+		} `json:"price"`
+	} `json:"items"`
 }
 
 type adjustmentData struct {
@@ -471,6 +476,11 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		if s.NextBilledAt != nil {
 			if t, err := time.Parse(time.RFC3339, *s.NextBilledAt); err == nil {
 				ev.NextBilledAt = &t
+			}
+		}
+		for _, it := range s.Items {
+			if it.Price.ID != "" {
+				ev.PriceRefs = append(ev.PriceRefs, it.Price.ID)
 			}
 		}
 		n.Kind, n.ProviderRef, n.Subscription = payments.KindSubscription, s.ID, ev

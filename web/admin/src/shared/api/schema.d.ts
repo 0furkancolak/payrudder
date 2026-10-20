@@ -1046,6 +1046,202 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/catalogue/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make the provider hold a plan version, so it can be sold there
+         * @description Creates the plan's product at the provider once and a recurring price for every interval and currency the plan version has a fee in. What is there already is left alone, so syncing twice is syncing once. A price in a currency the provider cannot bill is reported under `skipped`. Prices are immutable at the provider, which suits plan versions: a new version is new prices. Needs a provider whose adapter has a catalogue (Paddle).
+         */
+        post: operations["syncProviderCatalogue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What Quotify has created at the provider (products, prices, discounts) */
+        get: operations["listProviderCatalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make sure the customer exists at the provider, with an address for their country */
+        post: operations["ensureProviderCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A page where the customer manages payment methods and sees invoices at the provider */
+        post: operations["createProviderPortalLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What the provider would bill for a change of plan or interval of a subscription it runs
+         * @description Needs the plan version's price in the catalogue (sync it first). The provider applies a change at once; a change for the end of the period is refused.
+         */
+        post: operations["previewProviderSubscriptionChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change the plan or interval of a subscription the provider runs, at the provider, and let Quotify's copy follow
+         * @description 200 when the provider applied the change and Quotify followed; 202 when the provider applied it and Quotify will follow when the provider's notification arrives. A payment that fails prevents the change.
+         */
+        post: operations["changeProviderSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause a subscription the provider runs, now or at the end of the paid period */
+        post: operations["pauseProviderSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume a paused subscription now (the provider starts a new billing period and charges it) */
+        post: operations["resumeProviderSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/payment-method-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A page where the customer updates the payment method of a subscription the provider runs */
+        post: operations["createProviderPaymentMethodLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/discounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a coupon at the provider */
+        post: operations["createProviderDiscount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/transactions/{ref}/invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The invoice document the provider issued for a transaction */
+        get: operations["getProviderInvoiceLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{tenant_id}/reconciliation": {
         parameters: {
             query?: never;
@@ -3973,6 +4169,433 @@ export interface operations {
             };
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    syncProviderCatalogue: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    plan_code?: string;
+                    /** @description 0 = latest */
+                    plan_version?: number;
+                    product_name?: string;
+                    /** @description Default saas */
+                    tax_category?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What was created, what was there already and what was skipped */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        plan_version_id?: string;
+                        product_ref?: string;
+                        /** @description Quotify's key of each price created to the provider's id */
+                        created?: {
+                            [key: string]: string;
+                        };
+                        existing?: {
+                            [key: string]: string;
+                        };
+                        /** @description Key to the reason */
+                        skipped?: {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listProviderCatalogue: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        objects?: {
+                            kind?: string;
+                            key?: string;
+                            ref?: string;
+                        }[];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    ensureProviderCustomer: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The provider's ids */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        customer_ref?: string;
+                        address_ref?: string;
+                        business_ref?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    createProviderPortalLink: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    previewProviderSubscriptionChange: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description The provider's figures, in the shape of a tenant change quote */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeQuote"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    changeProviderSubscription: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Changed and followed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Changed at the provider; Quotify follows later */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    pauseProviderSubscription: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    at_period_end?: boolean;
+                    /** Format: date-time */
+                    resume_at?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Requested; Quotify's copy follows the provider's notification */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    resumeProviderSubscription: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Requested; Quotify's copy follows the provider's notification */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    createProviderPaymentMethodLink: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    createProviderDiscount: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    Description?: string;
+                    /** @enum {string} */
+                    Type?: "percentage" | "flat";
+                    /** @description A percentage (10 for 10 %) or minor units of Currency */
+                    Amount?: string;
+                    Currency?: string;
+                    Code?: string;
+                    Recurring?: boolean;
+                    MaxIntervals?: number;
+                    UsageLimit?: number;
+                    /** Format: date-time */
+                    ExpiresAt?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        discount_ref?: string;
+                        code?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    getProviderInvoiceLink: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle";
+                ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
     };
