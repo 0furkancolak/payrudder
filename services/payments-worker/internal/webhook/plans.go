@@ -11,7 +11,11 @@ import (
 )
 
 // PlansClient talks to plans-svc's tenant-scoped API as billing-svc does: the tenant travels in the call's metadata.
-type PlansClient struct{ Client plansv1.PlansServiceClient }
+type PlansClient struct {
+	Client plansv1.PlansServiceClient
+	// Admin reads tenant settings (the currency); optional.
+	Admin plansv1.AdminServiceClient
+}
 
 func as(ctx context.Context, id uuid.UUID) context.Context {
 	return tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: id}))
@@ -46,4 +50,25 @@ func (p PlansClient) CompleteProviderMigration(ctx context.Context, id uuid.UUID
 func (p PlansClient) AbortProviderMigration(ctx context.Context, id uuid.UUID, migration string) error {
 	_, err := p.Client.AbortProviderMigration(as(ctx, id), &plansv1.AbortProviderMigrationRequest{MigrationId: migration})
 	return err
+}
+
+// GetPlanVersion implements PlansAPI. The gRPC status is kept so callers can relay it.
+func (p PlansClient) GetPlanVersion(ctx context.Context, id uuid.UUID, req *plansv1.GetPlanVersionRequest) (*plansv1.PlanVersion, error) {
+	r, err := p.Client.GetPlanVersion(as(ctx, id), req)
+	return r.GetPlanVersion(), err
+}
+
+// GetCustomer implements PlansAPI.
+func (p PlansClient) GetCustomer(ctx context.Context, id uuid.UUID, externalID string) (*plansv1.Customer, error) {
+	r, err := p.Client.GetCustomer(as(ctx, id), &plansv1.GetCustomerRequest{ExternalId: externalID})
+	return r.GetCustomer(), err
+}
+
+// TenantCurrency implements PlansAPI: the currency of base_fee_minor.
+func (p PlansClient) TenantCurrency(ctx context.Context, id uuid.UUID) (string, error) {
+	if p.Admin == nil {
+		return "", fmt.Errorf("plans-svc admin API is not configured")
+	}
+	r, err := p.Admin.GetTenant(tenant.OutgoingContext(tenant.WithOperator(ctx)), &plansv1.GetTenantRequest{TenantId: id.String()})
+	return r.GetTenant().GetCurrency(), err
 }

@@ -342,6 +342,15 @@
         "creditAdded": "{amount} kredi bakiyesine eklenir",
         "scheduled": "Planlandı: {plan} ({interval}), {date} tarihinden itibaren",
         "withdraw": "Geri çek"
+      },
+      "providerRun": {
+        "title": "{provider} yönetiyor",
+        "hint": "Bu işlemler sağlayıcıda yapılır; sağlayıcının bildirimi gelince Quotify'ın kopyası onu izler. Değişikliği sağlayıcı faturalar ve hemen uygulanır.",
+        "none": "Orantılama yok: sonraki yenilemeden itibaren faturalanır",
+        "changed": "Sağlayıcı değişikliği uyguladı.",
+        "atPeriodEnd": "Ödenmiş dönemin sonunda duraklat",
+        "paymentLink": "Ödeme yöntemi bağlantısı",
+        "requested": "İstendi. Sağlayıcı onaylayınca bu sayfa güncellenir."
       }
     },
     "payments": {
@@ -405,7 +414,18 @@
       "runByProviders": "Sağlayıcıların yönettiği abonelikler",
       "reference": "Referans",
       "nextBilled": "Sonraki faturalama",
-      "noProviderSubscriptions": "Henüz bir sağlayıcının yönettiği abonelik yok."
+      "noProviderSubscriptions": "Henüz bir sağlayıcının yönettiği abonelik yok.",
+      "catalogue": {
+        "title": "Sağlayıcıdaki katalog",
+        "hint": "Sağlayıcının bir paketi tutmasını sağlar, böylece orada satılabilir ve değiştirilebilir: ürün bir kez, sürümün ücreti olan her dönem ve para birimi için bir fiyat. İki kez eşitlemek bir şey değiştirmez.",
+        "package": "Paket",
+        "sync": "Paketi eşitle",
+        "result": "{created} fiyat oluşturuldu, {existing} zaten vardı.",
+        "skipped": "{key}: {why}",
+        "kind": "Tür",
+        "key": "Quotify adı",
+        "empty": "Bu sağlayıcıda henüz bir şey oluşturulmadı."
+      }
     },
     "reports": {
       "kinds": "Raporlar",

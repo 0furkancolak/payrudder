@@ -207,10 +207,24 @@ func (s *Server) PreviewSubscriptionChange(ctx context.Context, preview *plansv1
 	return &plansv1.PreviewSubscriptionChangeResponse{Quote: out}, nil
 }
 
-// switchTo ends old at the effective time and starts its successor on newPV, in the same transaction. The successor carries the
-// anchor and the next fee period the quote worked out.
-func (s *Server) switchTo(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, old sqlc.GetSubscriptionRow, newPV sqlc.GetPlanVersionByCodeRow,
-	newInterval subscription.Interval, state subscription.State, trialEnds *time.Time, at, anchor, feeDue time.Time) (sqlc.InsertSubscriptionRow, error) {
+// successor is the subscription that takes over from another at a plan or interval change.
+type successor struct {
+	PlanVersion sqlc.GetPlanVersionByCodeRow
+	Interval    subscription.Interval
+	State       subscription.State
+	TrialEnds   *time.Time
+	At, Anchor  time.Time
+	// FeeTiming and FeeDue: "advance" with the start of the next period to invoice, or "arrears" with none.
+	FeeTiming string
+	FeeDue    *time.Time
+	// Owner and ProviderRef carry a provider-run subscription's link over.
+	Owner       string
+	ProviderRef *string
+}
+
+// switchTo ends old at next.At and starts its successor in the same transaction, with the entitlements of both.
+func (s *Server) switchTo(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, old sqlc.GetSubscriptionRow, next successor) (sqlc.InsertSubscriptionRow, error) {
+	at := next.At
 	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: old.ID, EndTime: at}); err != nil {
 		return sqlc.InsertSubscriptionRow{}, err
 	} else if n != 1 {
@@ -219,11 +233,21 @@ func (s *Server) switchTo(ctx context.Context, q *sqlc.Queries, tenantID uuid.UU
 	if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: old.ID, State: string(subscription.Cancelled), PausedAt: old.PausedAt}); err != nil {
 		return sqlc.InsertSubscriptionRow{}, err
 	}
+	if next.ProviderRef != nil && old.ProviderRef != nil && *next.ProviderRef == *old.ProviderRef {
+		if _, err := q.ReleaseProviderLink(ctx, old.ID); err != nil {
+			return sqlc.InsertSubscriptionRow{}, err
+		}
+	}
 	oldID := old.ID
+	owner := next.Owner
+	if owner == "" {
+		owner = "quotify"
+	}
+	providerRef := next.ProviderRef
 	nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
-		ID: idgen.NewUUIDv7(), CustomerID: old.CustomerID, PlanVersionID: newPV.ID, StartTime: at,
-		State: string(state), Interval: string(newInterval), Currency: old.Currency, TrialEndsAt: trialEnds,
-		BillingAnchor: anchor, ChangedFromID: &oldID, Provider: old.Provider, Owner: "quotify", FeeTiming: "advance", FeeDueAt: &feeDue,
+		ID: idgen.NewUUIDv7(), CustomerID: old.CustomerID, PlanVersionID: next.PlanVersion.ID, StartTime: at,
+		State: string(next.State), Interval: string(next.Interval), Currency: old.Currency, TrialEndsAt: next.TrialEnds,
+		BillingAnchor: next.Anchor, ChangedFromID: &oldID, Provider: old.Provider, ProviderRef: providerRef, Owner: owner, FeeTiming: next.FeeTiming, FeeDueAt: next.FeeDue,
 	})
 	if err != nil {
 		return nr, err
@@ -277,7 +301,9 @@ func (s *Server) ChangeSubscription(ctx context.Context, req *plansv1.ChangeSubs
 		if pc.trial {
 			state = subscription.Trialing
 		}
-		nr, err := s.switchTo(ctx, q, ti.ID, row, pc.newPV, pc.newInterval, state, row.TrialEndsAt, pc.at, qt.NewAnchor, qt.NewFeeDue)
+		feeDue := qt.NewFeeDue
+		nr, err := s.switchTo(ctx, q, ti.ID, row, successor{PlanVersion: pc.newPV, Interval: pc.newInterval, State: state, TrialEnds: row.TrialEndsAt, At: pc.at,
+			Anchor: qt.NewAnchor, FeeTiming: "advance", FeeDue: &feeDue})
 		if err != nil {
 			return err
 		}
@@ -365,8 +391,9 @@ func (s *Server) ApplyScheduledChanges(ctx context.Context, req *plansv1.ApplySc
 			if err != nil {
 				return err
 			}
-			nr, err := s.switchTo(ctx, q, ti.ID, row, sqlc.GetPlanVersionByCodeRow(pv), subscription.Interval(c.Interval), subscription.Active, nil,
-				c.EffectiveAt, c.EffectiveAt, c.EffectiveAt)
+			effective := c.EffectiveAt
+			nr, err := s.switchTo(ctx, q, ti.ID, row, successor{PlanVersion: sqlc.GetPlanVersionByCodeRow(pv), Interval: subscription.Interval(c.Interval), State: subscription.Active,
+				At: effective, Anchor: effective, FeeTiming: "advance", FeeDue: &effective})
 			if err != nil {
 				return err
 			}

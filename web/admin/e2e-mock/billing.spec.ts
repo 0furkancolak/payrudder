@@ -281,6 +281,38 @@ test.describe("subscriptions", () => {
     await expect(panel).not.toContainText("Scheduled:");
   });
 
+  test("a subscription a provider runs is changed, paused and given a payment link through the provider", async ({ page }) => {
+    const base = `/admin/v1/tenants/${TENANT}/providers/paddle/subscriptions/s1`;
+    const gw = common(new MockGateway(), [sub("s1", { provider: "paddle", provider_ref: "sub_9", owner: "provider", currency: "USD" })]).on((c) => {
+      if (c.method === "POST" && c.path === `${base}/change-preview`) {
+        return { body: { currency: "USD", credit_minor: "300", charge_minor: "900", net_minor: "600", next_renewal_minor: "2900", by_provider: true } };
+      }
+      if (c.method === "POST" && c.path === `${base}/change`) return { body: { changed_at_provider: true, followed: true } };
+      if (c.method === "POST" && c.path === `${base}/pause`) return { status: 202, body: { requested: true } };
+      if (c.method === "POST" && c.path === `${base}/payment-method-link`) return { body: { url: "https://pay.example/update" } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/subscriptions");
+    await page.getByRole("button", { name: "Manage" }).click();
+    const panel = page.getByRole("region", { name: "Run by paddle" });
+    await panel.getByLabel("New package").selectOption("pro");
+    await panel.getByLabel("New interval").selectOption("SUBSCRIPTION_INTERVAL_YEAR");
+    await panel.getByRole("button", { name: "Preview" }).click();
+    const quote = panel.getByLabel("What this change costs");
+    await expect(quote).toContainText("$6.00 is invoiced now");
+    await expect(quote).toContainText("$29.00");
+    expect(gw.called("POST", `${base}/change-preview`)[0]?.query.get("environment")).toBe("live");
+    expect(gw.called("POST", `${base}/change-preview`)[0]?.body).toEqual({ plan_code: "pro", interval: "SUBSCRIPTION_INTERVAL_YEAR" });
+    await panel.getByRole("button", { name: "Apply change" }).click();
+    await expect(panel).toContainText("The provider applied the change.");
+    await panel.getByRole("button", { name: "Pause" }).click();
+    await expect.poll(() => gw.called("POST", `${base}/pause`).length).toBe(1);
+    expect(gw.called("POST", `${base}/pause`)[0]?.body).toEqual({ at_period_end: true });
+    await panel.getByRole("button", { name: "Payment method link" }).click();
+    await expect(panel.getByRole("link", { name: "https://pay.example/update" })).toBeVisible();
+  });
+
   test("a subscription a provider runs cannot be changed here, only moved", async ({ page }) => {
     const gw = common(new MockGateway(), [sub("s2", { provider: "paddle", provider_ref: "sub_01", owner: "provider", currency: "USD" })]);
     await gw.install(page);
@@ -289,8 +321,8 @@ test.describe("subscriptions", () => {
     await page.getByRole("button", { name: "Manage" }).click();
     const panel = page.getByRole("region", { name: "Manage cus_1" });
     await expect(panel).toContainText("paddle runs this subscription");
-    await expect(panel.getByRole("button", { name: "Pause" })).toHaveCount(0);
     await expect(panel.getByRole("button", { name: "Change package" })).toHaveCount(0);
+    await expect(panel.getByRole("region", { name: "Run by paddle" })).toBeVisible();
     await expect(panel.getByLabel("Move to provider")).toBeVisible();
   });
 
@@ -337,6 +369,35 @@ test.describe("providers", () => {
     if (c.path === "/v1/routing-rules" && c.method === "GET") return { body: { rules: [] } };
     return undefined;
   };
+
+  test("a package is synced to the provider's catalogue and what exists there is listed", async ({ page }) => {
+    const cat = `/admin/v1/tenants/${TENANT}/providers/paddle/catalogue`;
+    const objects: Record<string, string>[] = [{ kind: "product", key: "plan:pro", ref: "pro_1" }];
+    const gw = baseTenant(new MockGateway())
+      .on(quiet)
+      .on((c) => {
+        if (c.path === "/v1/plans") return { body: { plans: [{ id: "p2", code: "pro", name: "Pro", latest_version: 1 }] } };
+        if (c.path.startsWith("/v1/plans/") && c.path.endsWith("/versions/latest")) return { body: { version: 1, base_fee_minor: "1000" } };
+        if (c.method === "GET" && c.path === cat) return { body: { objects } };
+        if (c.method === "POST" && c.path === `${cat}/sync`) {
+          objects.push({ kind: "price", key: "v1|month|USD", ref: "pri_1" });
+          return { body: { created: { "v1|month|USD": "pri_1" }, existing: {}, skipped: { "v1|month|TRY": "Paddle cannot bill in TRY" } } };
+        }
+        return undefined;
+      });
+    await gw.install(page);
+    await openTenantPage(page, "/providers");
+    const form = page.getByRole("form", { name: "Catalogue at the provider" });
+    await form.getByLabel("Provider").selectOption("paddle");
+    await expect(page.getByRole("row", { name: /plan:pro/ })).toContainText("pro_1");
+    await form.getByLabel("Package", { exact: true }).selectOption("pro");
+    await form.getByRole("button", { name: "Sync package" }).click();
+    await expect.poll(() => gw.called("POST", cat + "/sync").length).toBe(1);
+    expect(gw.called("POST", cat + "/sync")[0]?.body).toEqual({ plan_code: "pro" });
+    expect(gw.called("POST", cat + "/sync")[0]?.query.get("environment")).toBe("live");
+    await expect(page.getByRole("status").filter({ hasText: "1 price(s) created" })).toContainText("v1|month|TRY: Paddle cannot bill in TRY");
+    await expect(page.getByRole("row", { name: /v1\|month\|USD/ })).toContainText("pri_1");
+  });
 
   test("an account's settings are validated as JSON, sent with the environment, and never shown again", async ({ page }) => {
     const gw = baseTenant(new MockGateway())

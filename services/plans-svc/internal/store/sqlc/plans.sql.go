@@ -187,6 +187,17 @@ func (q *Queries) FinishProviderMigration(ctx context.Context, arg FinishProvide
 	return i, err
 }
 
+const getChangedFromID = `-- name: GetChangedFromID :one
+SELECT changed_from_id FROM subscriptions WHERE tenant_id = app_tenant_id() AND id = $1
+`
+
+func (q *Queries) GetChangedFromID(ctx context.Context, id uuid.UUID) (*uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getChangedFromID, id)
+	var changed_from_id *uuid.UUID
+	err := row.Scan(&changed_from_id)
+	return changed_from_id, err
+}
+
 const getCustomerByExternalID = `-- name: GetCustomerByExternalID :one
 SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
 `
@@ -538,6 +549,23 @@ func (q *Queries) GetSubscriptionForUpdate(ctx context.Context, id uuid.UUID) (G
 		&i.PlanVersion,
 	)
 	return i, err
+}
+
+const getSubscriptionIDByProviderRef = `-- name: GetSubscriptionIDByProviderRef :one
+SELECT id FROM subscriptions WHERE tenant_id = app_tenant_id() AND provider = $1 AND provider_ref = $2
+`
+
+type GetSubscriptionIDByProviderRefParams struct {
+	Provider    *string
+	ProviderRef *string
+}
+
+// The live subscription that holds a provider's id: after plan changes it is the last of the chain, not the one that was first linked.
+func (q *Queries) GetSubscriptionIDByProviderRef(ctx context.Context, arg GetSubscriptionIDByProviderRefParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getSubscriptionIDByProviderRef, arg.Provider, arg.ProviderRef)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const insertMeter = `-- name: InsertMeter :one
@@ -1664,6 +1692,19 @@ SELECT pg_notify('outbox_new', '')
 func (q *Queries) NotifyOutbox(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, notifyOutbox)
 	return err
+}
+
+const releaseProviderLink = `-- name: ReleaseProviderLink :execrows
+UPDATE subscriptions SET owner = 'quotify', provider_ref = NULL WHERE tenant_id = app_tenant_id() AND id = $1
+`
+
+// An ended subscription gives its provider id to its successor (the id is unique); it keeps the provider's name for history.
+func (q *Queries) ReleaseProviderLink(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, releaseProviderLink, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const reopenSubscription = `-- name: ReopenSubscription :execrows

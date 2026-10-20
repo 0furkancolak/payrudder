@@ -1294,6 +1294,272 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/catalogue/sync:
+    post:
+      operationId: syncProviderCatalogue
+      summary: Make the provider hold a plan version, so it can be sold there
+      description: >
+        Creates the plan's product at the provider once and a recurring price for every interval and currency the plan version has a fee in. What is there already is
+        left alone, so syncing twice is syncing once. A price in a currency the provider cannot bill is reported under `skipped`. Prices are immutable at the provider, which
+        suits plan versions: a new version is new prices. Needs a provider whose adapter has a catalogue (Paddle).
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan_code: { type: string }
+                plan_version: { type: integer, description: 0 = latest }
+                product_name: { type: string }
+                tax_category: { type: string, description: Default saas }
+      responses:
+        "200":
+          description: What was created, what was there already and what was skipped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan_version_id: { type: string }
+                  product_ref: { type: string }
+                  created: { type: object, additionalProperties: { type: string }, description: Quotify's key of each price created to the provider's id }
+                  existing: { type: object, additionalProperties: { type: string } }
+                  skipped: { type: object, additionalProperties: { type: string }, description: Key to the reason }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/catalogue:
+    get:
+      operationId: listProviderCatalogue
+      summary: What Quotify has created at the provider (products, prices, discounts)
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  objects:
+                    type: array
+                    items: { type: object, properties: { kind: { type: string }, key: { type: string }, ref: { type: string } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}:
+    post:
+      operationId: ensureProviderCustomer
+      summary: Make sure the customer exists at the provider, with an address for their country
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: external_id, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      responses:
+        "200":
+          description: The provider's ids
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_ref: { type: string }
+                  address_ref: { type: string }
+                  business_ref: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}/portal:
+    post:
+      operationId: createProviderPortalLink
+      summary: A page where the customer manages payment methods and sees invoices at the provider
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: external_id, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { url: { type: string } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change-preview:
+    post:
+      operationId: previewProviderSubscriptionChange
+      summary: What the provider would bill for a change of plan or interval of a subscription it runs
+      description: Needs the plan version's price in the catalogue (sync it first). The provider applies a change at once; a change for the end of the period is refused.
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ChangeRequest" } } }
+      responses:
+        "200":
+          description: The provider's figures, in the shape of a tenant change quote
+          content: { application/json: { schema: { $ref: "#/components/schemas/ChangeQuote" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change:
+    post:
+      operationId: changeProviderSubscription
+      summary: Change the plan or interval of a subscription the provider runs, at the provider, and let Quotify's copy follow
+      description: >
+        200 when the provider applied the change and Quotify followed; 202 when the provider applied it and Quotify will follow when the provider's notification arrives.
+        A payment that fails prevents the change.
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ChangeRequest" } } }
+      responses:
+        "200": { description: Changed and followed }
+        "202": { description: Changed at the provider; Quotify follows later }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/pause:
+    post:
+      operationId: pauseProviderSubscription
+      summary: Pause a subscription the provider runs, now or at the end of the paid period
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                at_period_end: { type: boolean }
+                resume_at: { type: string, format: date-time }
+      responses:
+        "202": { description: Requested; Quotify's copy follows the provider's notification }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/resume:
+    post:
+      operationId: resumeProviderSubscription
+      summary: Resume a paused subscription now (the provider starts a new billing period and charges it)
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      responses:
+        "202": { description: Requested; Quotify's copy follows the provider's notification }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/payment-method-link:
+    post:
+      operationId: createProviderPaymentMethodLink
+      summary: A page where the customer updates the payment method of a subscription the provider runs
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { url: { type: string } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/discounts:
+    post:
+      operationId: createProviderDiscount
+      summary: Create a coupon at the provider
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Description: { type: string }
+                Type: { type: string, enum: [percentage, flat] }
+                Amount: { type: string, description: "A percentage (10 for 10 %) or minor units of Currency" }
+                Currency: { type: string }
+                Code: { type: string }
+                Recurring: { type: boolean }
+                MaxIntervals: { type: integer }
+                UsageLimit: { type: integer }
+                ExpiresAt: { type: string, format: date-time }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { discount_ref: { type: string }, code: { type: string } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/transactions/{ref}/invoice:
+    get:
+      operationId: getProviderInvoiceLink
+      summary: The invoice document the provider issued for a transaction
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: ref, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { url: { type: string } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/reconciliation:
     get:
       operationId: reconcilePayments

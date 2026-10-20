@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -88,6 +89,14 @@ func (s *Server) providerMigrate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) providerMigrationAbort(w http.ResponseWriter, r *http.Request) {
 	s.paymentsProxy(func(r *http.Request) string {
 		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/migrations/" + url.PathEscape(r.PathValue("migration_id")) + "/abort"
+	})(w, r)
+}
+
+// providerAPI forwards what a provider can do beyond charging (catalogue, customers, subscriptions, discounts, documents) to payments-worker, which keeps the
+// admin path below /admin/v1 as /admin/tenants/{tenant}/providers/....
+func (s *Server) providerAPI(w http.ResponseWriter, r *http.Request) {
+	s.paymentsProxy(func(r *http.Request) string {
+		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + strings.TrimPrefix(r.URL.Path, "/admin/v1/tenants/"+r.PathValue("tenant_id"))
 	})(w, r)
 }
 

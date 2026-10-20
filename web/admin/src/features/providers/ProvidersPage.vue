@@ -14,6 +14,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
 import { useAccountActions, usePreviewRouting, useProviderAccounts, useProviderSubscriptions, useRoutingRules, useSetRoutingRules, type Rule } from "./api";
+import CatalogueCard from "./CatalogueCard.vue";
 import { templateText } from "./templates";
 
 const { t, locale } = useI18n();
@@ -159,6 +160,8 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       <template v-else>{{ t("billing.providers.goesToDefault") }}</template>
     </p>
   </Card>
+
+  <CatalogueCard :tenant-id="tenantId" />
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.providers.runByProviders") }}</h2>

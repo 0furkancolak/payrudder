@@ -16,6 +16,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useEntitlements, useSubscriptionActions, useSubscriptions } from "./api";
 import ChangePanel from "./ChangePanel.vue";
+import ProviderRunPanel from "./ProviderRunPanel.vue";
 
 const { t, te, locale } = useI18n();
 const params = useParams({ strict: false });
@@ -148,6 +149,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
   <Card v-if="selected" role="region" :aria-label="t('billing.subscriptions.managing', { customer: selected.customer_external_id ?? '' })">
     <h2 class="text-lg font-semibold">{{ t("billing.subscriptions.managing", { customer: selected.customer_external_id ?? "" }) }}</h2>
     <p v-if="providerRuns" class="text-muted-foreground text-sm">{{ t("billing.subscriptions.providerRuns", { provider: selected.provider ?? "" }) }}</p>
+    <ProviderRunPanel v-if="providerRuns && !selected.end_time" :subscription="selected" :packages="packages.data.value ?? []" :tenant-id="tenantId" :environment="environment" />
     <div v-else class="flex flex-wrap gap-2">
       <Button v-if="state(selected) === 'active'" variant="outline" :disabled="act.pause.isPending.value" @click="act.pause.mutate(selected.id ?? '')">{{ t("billing.subscriptions.pause") }}</Button>
       <Button v-if="state(selected) === 'paused'" variant="outline" :disabled="act.resume.isPending.value" @click="act.resume.mutate(selected.id ?? '')">{{ t("billing.subscriptions.resume") }}</Button>

@@ -86,3 +86,35 @@ export function useEntitlements(tenantId: MaybeRefOrGetter<string>, customer: Ma
     queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/entitlements", { params: { path: { external_id: toValue(customer) } } })),
   });
 }
+
+type Env = "sandbox" | "live";
+
+/** What an operator can do to a subscription a provider runs, through the provider's API. Quotify's copy follows the provider's notification. */
+export function useProviderRunActions(tenantId: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  const refresh = () => queries.invalidateQueries({ queryKey: subscriptionKeys.list(toValue(tenantId)) });
+  const at = (id: string) => ({
+    params: { path: { tenant_id: toValue(tenantId), provider: toValue(provider) as "paddle", id }, query: { environment: toValue(environment) as Env } },
+  });
+  return {
+    preview: useMutation({
+      mutationFn: (v: ChangeInput) => unwrap(api.POST("/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change-preview", { ...at(v.id), body: changeBody(v) })),
+    }),
+    change: useMutation({
+      mutationFn: (v: ChangeInput) => unwrap(api.POST("/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change", { ...at(v.id), body: changeBody(v) })),
+      onSuccess: refresh,
+    }),
+    pause: useMutation({
+      mutationFn: (v: { id: string; atPeriodEnd: boolean }) =>
+        unwrap(api.POST("/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/pause", { ...at(v.id), body: { at_period_end: v.atPeriodEnd } })),
+      onSuccess: refresh,
+    }),
+    resume: useMutation({
+      mutationFn: (id: string) => unwrap(api.POST("/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/resume", at(id))),
+      onSuccess: refresh,
+    }),
+    paymentLink: useMutation({
+      mutationFn: (id: string) => unwrap(api.POST("/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/payment-method-link", at(id))),
+    }),
+  };
+}

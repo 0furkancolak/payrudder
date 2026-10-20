@@ -149,7 +149,7 @@ func run() error {
 				return fmt.Errorf("plans-svc client: %w", err)
 			}
 			defer func() { _ = plansConn.Close() }()
-			plansSync = webhook.PlansClient{Client: plansv1.NewPlansServiceClient(plansConn)}
+			plansSync = webhook.PlansClient{Client: plansv1.NewPlansServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn)}
 		}
 		var billing webhook.BillingAPI
 		if cfg.BillingAddr != "" {
@@ -161,7 +161,7 @@ func run() error {
 			billing = webhook.BillingClient{Client: billingv1.NewBillingServiceClient(billingConn)}
 		}
 		httpHandler = (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
-			Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Log: log, Token: cfg.InternalToken}).Handler()
+			Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Objects: store.Objects{DB: pool}, Log: log, Token: cfg.InternalToken}).Handler()
 	}
 	w := &workerx.Worker{
 		URL: cfg.RabbitMQURL, Prefetch: cfg.Prefetch, Handler: h, Inbox: h.Attempts, Log: log,

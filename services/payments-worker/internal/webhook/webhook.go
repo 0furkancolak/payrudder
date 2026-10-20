@@ -40,7 +40,9 @@ type Server struct {
 	Attempts      store.Attempts
 	Ledger        store.Ledger
 	Subscriptions store.Subscriptions
-	Log           *slog.Logger
+	// Objects remembers what was created at a provider (products, prices, customers, discounts).
+	Objects store.Objects
+	Log     *slog.Logger
 	// Token guards /admin. Empty disables the admin endpoints entirely.
 	Token string
 	// Billing, when set, lets the reconciliation read the tenant's invoices.
@@ -57,6 +59,9 @@ type PlansAPI interface {
 	StartProviderMigration(ctx context.Context, tenant uuid.UUID, req *plansv1.StartProviderMigrationRequest) (*plansv1.ProviderMigration, error)
 	CompleteProviderMigration(ctx context.Context, tenant uuid.UUID, req *plansv1.CompleteProviderMigrationRequest) (*plansv1.CompleteProviderMigrationResponse, error)
 	AbortProviderMigration(ctx context.Context, tenant uuid.UUID, id string) error
+	GetPlanVersion(ctx context.Context, tenant uuid.UUID, req *plansv1.GetPlanVersionRequest) (*plansv1.PlanVersion, error)
+	GetCustomer(ctx context.Context, tenant uuid.UUID, externalID string) (*plansv1.Customer, error)
+	TenantCurrency(ctx context.Context, tenant uuid.UUID) (string, error)
 }
 
 const maxBody = 64 << 10
@@ -89,6 +94,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.putAccount))
 	mux.HandleFunc("DELETE /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.deleteAccount))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/ledger", s.admin(s.ledger))
+	s.apiRoutes(mux)
 	return mux
 }
 
@@ -336,9 +342,14 @@ func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provi
 		}
 		q = &known
 	}
-	return s.Plans.SyncProviderSubscription(ctx, tenant, &plansv1.SyncProviderSubscriptionRequest{
+	req := &plansv1.SyncProviderSubscriptionRequest{
 		SubscriptionId: q.String(), Provider: provider, ProviderRef: ev.ProviderRef, Owner: owner, ProviderStatus: ev.Status, OccurredAt: timestamppb.New(occurred),
-	})
+	}
+	// What the provider bills the subscription for: if it is a price Quotify created, the plan version and interval follow.
+	if pv, iv, ok := s.catalogueTarget(ctx, tenant, provider, env, ev.PriceRefs); ok {
+		req.PlanVersionId, req.Interval = pv, iv
+	}
+	return s.Plans.SyncProviderSubscription(ctx, tenant, req)
 }
 
 // releaseSource stops the old provider from billing a subscription that has moved: a subscription the old provider ran is cancelled there.
