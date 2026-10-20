@@ -52,7 +52,7 @@ type BillingServiceClient interface {
 	GetCreditNote(ctx context.Context, in *GetCreditNoteRequest, opts ...grpc.CallOption) (*GetCreditNoteResponse, error)
 	ListCreditNotes(ctx context.Context, in *ListCreditNotesRequest, opts ...grpc.CallOption) (*ListCreditNotesResponse, error)
 	// GetEInvoice returns one e-document (the legal copy of an invoice or credit note) and its state.
-	GetEInvoice(ctx context.Context, in *GetEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error)
+	GetEInvoice(ctx context.Context, in *GetEInvoiceRequest, opts ...grpc.CallOption) (*GetEInvoiceResponse, error)
 	// ListEInvoices lists the tenant's e-documents, newest first.
 	ListEInvoices(ctx context.Context, in *ListEInvoicesRequest, opts ...grpc.CallOption) (*ListEInvoicesResponse, error)
 	// GetEInvoiceFileUrl returns a presigned link (5 minutes) to the document's UBL XML or PDF.
@@ -145,9 +145,9 @@ func (c *billingServiceClient) ListCreditNotes(ctx context.Context, in *ListCred
 	return out, nil
 }
 
-func (c *billingServiceClient) GetEInvoice(ctx context.Context, in *GetEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error) {
+func (c *billingServiceClient) GetEInvoice(ctx context.Context, in *GetEInvoiceRequest, opts ...grpc.CallOption) (*GetEInvoiceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EInvoiceDocument)
+	out := new(GetEInvoiceResponse)
 	err := c.cc.Invoke(ctx, BillingService_GetEInvoice_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -232,7 +232,7 @@ type BillingServiceServer interface {
 	GetCreditNote(context.Context, *GetCreditNoteRequest) (*GetCreditNoteResponse, error)
 	ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error)
 	// GetEInvoice returns one e-document (the legal copy of an invoice or credit note) and its state.
-	GetEInvoice(context.Context, *GetEInvoiceRequest) (*EInvoiceDocument, error)
+	GetEInvoice(context.Context, *GetEInvoiceRequest) (*GetEInvoiceResponse, error)
 	// ListEInvoices lists the tenant's e-documents, newest first.
 	ListEInvoices(context.Context, *ListEInvoicesRequest) (*ListEInvoicesResponse, error)
 	// GetEInvoiceFileUrl returns a presigned link (5 minutes) to the document's UBL XML or PDF.
@@ -276,7 +276,7 @@ func (UnimplementedBillingServiceServer) GetCreditNote(context.Context, *GetCred
 func (UnimplementedBillingServiceServer) ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCreditNotes not implemented")
 }
-func (UnimplementedBillingServiceServer) GetEInvoice(context.Context, *GetEInvoiceRequest) (*EInvoiceDocument, error) {
+func (UnimplementedBillingServiceServer) GetEInvoice(context.Context, *GetEInvoiceRequest) (*GetEInvoiceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetEInvoice not implemented")
 }
 func (UnimplementedBillingServiceServer) ListEInvoices(context.Context, *ListEInvoicesRequest) (*ListEInvoicesResponse, error) {
@@ -925,9 +925,9 @@ type BillingAdminServiceClient interface {
 	// RetryCreditNoteRefund asks the provider again for a refund that failed.
 	RetryCreditNoteRefund(ctx context.Context, in *RetryCreditNoteRefundRequest, opts ...grpc.CallOption) (*RetryCreditNoteRefundResponse, error)
 	// RetryEInvoice sends a failed e-document again, with the seller's and buyer's data read afresh. Lines, amounts, number and date stay as they were.
-	RetryEInvoice(ctx context.Context, in *RetryEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error)
+	RetryEInvoice(ctx context.Context, in *RetryEInvoiceRequest, opts ...grpc.CallOption) (*RetryEInvoiceResponse, error)
 	// CancelEInvoice cancels an issued e-document where the provider and the law allow it.
-	CancelEInvoice(ctx context.Context, in *CancelEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error)
+	CancelEInvoice(ctx context.Context, in *CancelEInvoiceRequest, opts ...grpc.CallOption) (*CancelEInvoiceResponse, error)
 	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
 	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
 	// Idempotent per (tenant, period, plan version).
@@ -1009,9 +1009,9 @@ func (c *billingAdminServiceClient) RetryCreditNoteRefund(ctx context.Context, i
 	return out, nil
 }
 
-func (c *billingAdminServiceClient) RetryEInvoice(ctx context.Context, in *RetryEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error) {
+func (c *billingAdminServiceClient) RetryEInvoice(ctx context.Context, in *RetryEInvoiceRequest, opts ...grpc.CallOption) (*RetryEInvoiceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EInvoiceDocument)
+	out := new(RetryEInvoiceResponse)
 	err := c.cc.Invoke(ctx, BillingAdminService_RetryEInvoice_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1019,9 +1019,9 @@ func (c *billingAdminServiceClient) RetryEInvoice(ctx context.Context, in *Retry
 	return out, nil
 }
 
-func (c *billingAdminServiceClient) CancelEInvoice(ctx context.Context, in *CancelEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error) {
+func (c *billingAdminServiceClient) CancelEInvoice(ctx context.Context, in *CancelEInvoiceRequest, opts ...grpc.CallOption) (*CancelEInvoiceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EInvoiceDocument)
+	out := new(CancelEInvoiceResponse)
 	err := c.cc.Invoke(ctx, BillingAdminService_CancelEInvoice_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -1098,9 +1098,9 @@ type BillingAdminServiceServer interface {
 	// RetryCreditNoteRefund asks the provider again for a refund that failed.
 	RetryCreditNoteRefund(context.Context, *RetryCreditNoteRefundRequest) (*RetryCreditNoteRefundResponse, error)
 	// RetryEInvoice sends a failed e-document again, with the seller's and buyer's data read afresh. Lines, amounts, number and date stay as they were.
-	RetryEInvoice(context.Context, *RetryEInvoiceRequest) (*EInvoiceDocument, error)
+	RetryEInvoice(context.Context, *RetryEInvoiceRequest) (*RetryEInvoiceResponse, error)
 	// CancelEInvoice cancels an issued e-document where the provider and the law allow it.
-	CancelEInvoice(context.Context, *CancelEInvoiceRequest) (*EInvoiceDocument, error)
+	CancelEInvoice(context.Context, *CancelEInvoiceRequest) (*CancelEInvoiceResponse, error)
 	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
 	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
 	// Idempotent per (tenant, period, plan version).
@@ -1140,10 +1140,10 @@ func (UnimplementedBillingAdminServiceServer) CreateCreditNote(context.Context, 
 func (UnimplementedBillingAdminServiceServer) RetryCreditNoteRefund(context.Context, *RetryCreditNoteRefundRequest) (*RetryCreditNoteRefundResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RetryCreditNoteRefund not implemented")
 }
-func (UnimplementedBillingAdminServiceServer) RetryEInvoice(context.Context, *RetryEInvoiceRequest) (*EInvoiceDocument, error) {
+func (UnimplementedBillingAdminServiceServer) RetryEInvoice(context.Context, *RetryEInvoiceRequest) (*RetryEInvoiceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RetryEInvoice not implemented")
 }
-func (UnimplementedBillingAdminServiceServer) CancelEInvoice(context.Context, *CancelEInvoiceRequest) (*EInvoiceDocument, error) {
+func (UnimplementedBillingAdminServiceServer) CancelEInvoice(context.Context, *CancelEInvoiceRequest) (*CancelEInvoiceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelEInvoice not implemented")
 }
 func (UnimplementedBillingAdminServiceServer) StartRerating(context.Context, *StartReratingRequest) (*StartReratingResponse, error) {

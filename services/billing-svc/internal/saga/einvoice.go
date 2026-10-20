@@ -190,17 +190,15 @@ func ProrateLines(lines []*commandsv1.InvoiceLineSnapshot, target int64) []*comm
 		return nil
 	}
 	type part struct {
-		idx  int
-		rem  *big.Int
-		cut  int64
-		sign int
+		rem *big.Int
+		cut int64
 	}
 	parts := make([]part, len(keep))
 	var assigned int64
 	for i, l := range keep {
 		num := new(big.Int).Mul(big.NewInt(l.GetAmountMinor()), big.NewInt(target))
 		q, r := new(big.Int).QuoRem(num, big.NewInt(base), new(big.Int))
-		parts[i] = part{idx: i, rem: r, cut: q.Int64()}
+		parts[i] = part{rem: r, cut: q.Int64()}
 		assigned += q.Int64()
 	}
 	// QuoRem truncates toward zero; the leftover goes, one minor unit each, to the lines with the largest remainder in the direction of the shortfall.

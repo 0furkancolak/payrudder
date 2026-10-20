@@ -136,7 +136,7 @@ func (c *Commands) Sweep(ctx context.Context, limit int) (int, error) {
 				}
 				return err
 			}
-			doc, err := q.LockEInvoiceDocument(ctx, sqlc.LockEInvoiceDocumentParams{TenantID: d.TenantID, ID: d.ID})
+			doc, err := q.LockEInvoiceDocument(ctx, sqlc.LockEInvoiceDocumentParams(d))
 			if err != nil {
 				return err
 			}

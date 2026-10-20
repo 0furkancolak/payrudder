@@ -94,6 +94,6 @@ func (s *Server) WithDeadLetters(a *dlq.Admin) *Server {
 func (s *Server) WithPDFs(p PDFSigner) *Server {
 	s.invoiceHandler.WithPDFs(p)
 	s.hostedHandler.WithPDFs(p)
-	s.einvoiceHandler.WithFiles(p)
+	s.WithFiles(p)
 	return s
 }

@@ -16,6 +16,7 @@ import (
 	pkg "github.com/0furkancolak/quotify/pkg/einvoice"
 	"github.com/0furkancolak/quotify/pkg/einvoice/mock"
 	"github.com/0furkancolak/quotify/pkg/einvoice/ubl"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/workerx"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
 )
@@ -39,14 +40,14 @@ type Blobs interface {
 }
 
 // Error keys carried by a failed EInvoiceResult (docs/error-keys.md).
-const (
-	KeyAccountMissing = "einvoice.account.missing"
-	KeyAccountInvalid = "einvoice.account.invalid"
-	KeySellerData     = "einvoice.seller.incomplete"
-	KeyBuyerData      = "einvoice.buyer.incomplete"
-	KeyRejected       = "einvoice.provider.rejected"
-	KeyUnavailable    = "einvoice.provider.unavailable"
-	KeyCancel         = "einvoice.cancel.unsupported"
+var (
+	KeyAccountMissing = errkey.Key("einvoice.account.missing")
+	KeyAccountInvalid = errkey.Key("einvoice.account.invalid")
+	KeySellerData     = errkey.Key("einvoice.seller.incomplete")
+	KeyBuyerData      = errkey.Key("einvoice.buyer.incomplete")
+	KeyRejected       = errkey.Key("einvoice.provider.rejected")
+	KeyUnavailable    = errkey.Key("einvoice.provider.unavailable")
+	KeyCancel         = errkey.Key("einvoice.cancel.unsupported")
 )
 
 // Handler executes IssueEInvoice commands.

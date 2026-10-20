@@ -17,7 +17,7 @@ service BillingService {
   rpc GetCreditNote(GetCreditNoteRequest) returns (GetCreditNoteResponse);
   rpc ListCreditNotes(ListCreditNotesRequest) returns (ListCreditNotesResponse);
   // GetEInvoice returns one e-document (the legal copy of an invoice or credit note) and its state.
-  rpc GetEInvoice(GetEInvoiceRequest) returns (EInvoiceDocument);
+  rpc GetEInvoice(GetEInvoiceRequest) returns (GetEInvoiceResponse);
   // ListEInvoices lists the tenant's e-documents, newest first.
   rpc ListEInvoices(ListEInvoicesRequest) returns (ListEInvoicesResponse);
   // GetEInvoiceFileUrl returns a presigned link (5 minutes) to the document's UBL XML or PDF.
@@ -59,9 +59,9 @@ service BillingAdminService {
   // RetryCreditNoteRefund asks the provider again for a refund that failed.
   rpc RetryCreditNoteRefund(RetryCreditNoteRefundRequest) returns (RetryCreditNoteRefundResponse);
   // RetryEInvoice sends a failed e-document again, with the seller's and buyer's data read afresh. Lines, amounts, number and date stay as they were.
-  rpc RetryEInvoice(RetryEInvoiceRequest) returns (EInvoiceDocument);
+  rpc RetryEInvoice(RetryEInvoiceRequest) returns (RetryEInvoiceResponse);
   // CancelEInvoice cancels an issued e-document where the provider and the law allow it.
-  rpc CancelEInvoice(CancelEInvoiceRequest) returns (EInvoiceDocument);
+  rpc CancelEInvoice(CancelEInvoiceRequest) returns (CancelEInvoiceResponse);
   // StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
   // a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
   // Idempotent per (tenant, period, plan version).
@@ -556,6 +556,10 @@ message GetEInvoiceRequest {
   string id = 1;
 }
 
+message GetEInvoiceResponse {
+  EInvoiceDocument document = 1;
+}
+
 message ListEInvoicesRequest {
   string invoice_id = 1;
   string credit_note_id = 2;
@@ -592,4 +596,12 @@ message CancelEInvoiceRequest {
   string tenant_id = 1;
   string id = 2;
   string reason = 3;
+}
+
+message RetryEInvoiceResponse {
+  EInvoiceDocument document = 1;
+}
+
+message CancelEInvoiceResponse {
+  EInvoiceDocument document = 1;
 }

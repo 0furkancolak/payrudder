@@ -7,6 +7,7 @@ import (
 
 	"github.com/0furkancolak/quotify/pkg/einvoice"
 	"github.com/0furkancolak/quotify/pkg/einvoice/mock"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
 )
 
@@ -77,10 +78,10 @@ func (s *Server) putEInvoiceAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case env == "sandbox" && in.Provider != mock.Name:
-		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", "einvoice.account.sandbox_mock_only", "a sandbox account can only use the mock provider")
+		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", errkey.Key("einvoice.account.sandbox_mock_only"), "a sandbox account can only use the mock provider")
 		return
 	case env == "live" && in.Provider == mock.Name && !s.AllowMockLive:
-		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", "einvoice.account.invalid", "the mock provider is not allowed in the live environment")
+		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", errkey.Key("einvoice.account.invalid"), "the mock provider is not allowed in the live environment")
 		return
 	}
 	if in.Mode == "" {
@@ -90,7 +91,7 @@ func (s *Server) putEInvoiceAccount(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if in.Mode != "test" && in.Mode != "production" {
-		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", "einvoice.account.invalid", "mode must be test or production")
+		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", errkey.Key("einvoice.account.invalid"), "mode must be test or production")
 		return
 	}
 	settings := map[string]string{}
@@ -102,10 +103,10 @@ func (s *Server) putEInvoiceAccount(w http.ResponseWriter, r *http.Request) {
 	// Building the adapter validates the settings (a URL that is not https, a missing key). The error text never contains a credential: adapters do not echo them.
 	if _, err := s.EInvoiceRegistry.Build(in.Provider, raw); err != nil {
 		if errors.Is(err, einvoice.ErrUnknownProvider) {
-			keyFail(w, http.StatusNotFound, "NOT_FOUND", "einvoice.account.invalid", "unknown provider; known: "+join(s.EInvoiceRegistry.Names()))
+			keyFail(w, http.StatusNotFound, "NOT_FOUND", errkey.Key("einvoice.account.invalid"), "unknown provider; known: "+join(s.EInvoiceRegistry.Names()))
 			return
 		}
-		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", "einvoice.account.invalid", err.Error())
+		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", errkey.Key("einvoice.account.invalid"), err.Error())
 		return
 	}
 	if err := s.EInvoiceAccounts.Put(r.Context(), t, env, in.Provider, in.Mode, raw); err != nil {
@@ -130,7 +131,7 @@ func (s *Server) deleteEInvoiceAccount(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		fail(w, http.StatusInternalServerError, "internal error")
 	case !deleted:
-		keyFail(w, http.StatusNotFound, "NOT_FOUND", "einvoice.account.missing", "no such account")
+		keyFail(w, http.StatusNotFound, "NOT_FOUND", errkey.Key("einvoice.account.missing"), "no such account")
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}

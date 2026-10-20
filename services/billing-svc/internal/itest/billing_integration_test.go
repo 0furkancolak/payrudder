@@ -70,6 +70,10 @@ func TestBilling(t *testing.T) {
 		{"FeeInvoiceCarriesTheCouponAndServicePeriod", testFeeInvoiceCarriesTheCouponAndServicePeriod},
 		{"TaxIsAddedOnTopOfTheInvoicesQuotifyRaises", testTaxIsAddedOnTopOfTheInvoicesQuotifyRaises},
 		{"FeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit", testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit},
+		{"EInvoiceFinalizedIssuesInvoicesAndCreditNotes", testEInvoiceFinalizedIssuesInvoicesAndCreditNotes},
+		{"EInvoicePaidModeWaitsForPayment", testEInvoicePaidModeWaitsForPayment},
+		{"EInvoiceRetriesWithBackoffAndTheOperatorRetriesFailures", testEInvoiceRetriesWithBackoffAndTheOperatorRetriesFailures},
+		{"EInvoiceSilentWorkerIsAskedAgain", testEInvoiceSilentWorkerIsAskedAgain},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

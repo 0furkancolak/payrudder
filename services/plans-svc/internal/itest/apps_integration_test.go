@@ -126,4 +126,33 @@ func testAddresses(t *testing.T) {
 	if again, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), Tier: plansv1.TenantTier_TENANT_TIER_ENTERPRISE}); err != nil || again.GetTenant().GetAddress().GetCity() != "London" {
 		t.Errorf("an update without an address changed it: %v, %v", again, err)
 	}
+
+	// E-invoice data: the buyer's tax data on the customer, the seller's legal data and the trigger on the tenant.
+	taxed, err := e.plans.SetCustomerTax(ctx, &plansv1.SetCustomerTaxRequest{ExternalId: "cus_a", TaxId: "1234567890", TaxOffice: "Kadikoy", EInvoiceRegistered: true})
+	if err != nil || taxed.GetCustomer().GetTaxId() != "1234567890" || taxed.GetCustomer().GetTaxOffice() != "Kadikoy" || !taxed.GetCustomer().GetEInvoiceRegistered() {
+		t.Fatalf("tax = %v, %v", taxed, err)
+	}
+	if got, err := e.plans.GetCustomer(ctx, &plansv1.GetCustomerRequest{ExternalId: "cus_a"}); err != nil || got.GetCustomer().GetTaxId() != "1234567890" {
+		t.Errorf("stored tax data = %v, %v", got, err)
+	}
+	if _, err := e.plans.SetCustomerTax(ctx, &plansv1.SetCustomerTaxRequest{ExternalId: "cus_a", TaxId: "12 3"}); errkey.Of(err) != "plans.customer.tax_invalid" {
+		t.Errorf("a bad tax id: %v", err)
+	}
+	if _, err := e.plans.SetCustomerTax(ctx, &plansv1.SetCustomerTaxRequest{ExternalId: "nobody", TaxId: "1234567890"}); status.Code(err) != codes.NotFound {
+		t.Errorf("unknown customer: %v", err)
+	}
+	if live.GetEInvoiceOn() != "off" {
+		t.Errorf("a new tenant has e_invoice_on %q, want off", live.GetEInvoiceOn())
+	}
+	legal := &plansv1.LegalInfo{LegalName: "Acme Yazilim A.S.", TaxId: "9876543210", TaxOffice: "Besiktas", MersisNo: "0123456789012345"}
+	on, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), Legal: legal, EInvoiceOn: "paid"})
+	if err != nil || on.GetTenant().GetEInvoiceOn() != "paid" || on.GetTenant().GetLegal().GetTaxOffice() != "Besiktas" || on.GetTenant().GetLegal().GetMersisNo() != "0123456789012345" {
+		t.Fatalf("legal = %v, %v", on, err)
+	}
+	if _, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), EInvoiceOn: "sometimes"}); errkey.Of(err) != "einvoice.setting.invalid" {
+		t.Errorf("a bad setting: %v", err)
+	}
+	if kept, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), Tier: plansv1.TenantTier_TENANT_TIER_STANDARD}); err != nil || kept.GetTenant().GetEInvoiceOn() != "paid" || kept.GetTenant().GetLegal().GetTaxId() != "9876543210" {
+		t.Errorf("an update without them changed them: %v, %v", kept, err)
+	}
 }

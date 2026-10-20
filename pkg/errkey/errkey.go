@@ -26,6 +26,10 @@ func New(c codes.Code, key, msg string) error {
 	return st.Err()
 }
 
+// Key declares a key that travels outside a gRPC status (in a worker's reply, or in an HTTP body a service writes itself). It returns k, and exists so that
+// the key is found by the test that lists docs/error-keys.md.
+func Key(k string) string { return k }
+
 // Newf is New with a formatted message.
 func Newf(c codes.Code, key, format string, args ...any) error {
 	return New(c, key, fmt.Sprintf(format, args...))

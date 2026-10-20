@@ -133,18 +133,32 @@ Error keys: `einvoice.account.missing`, `einvoice.account.invalid`, `einvoice.ac
 `einvoice.document.not_found`, `einvoice.document.not_failed`, `einvoice.document.not_issued`, `einvoice.cancel.unsupported`, `einvoice.file.not_ready`,
 `einvoice.provider.rejected`, `einvoice.provider.unavailable`, `einvoice.setting.invalid`, `plans.customer.tax_invalid`.
 
+## As built: differences from the plan and known gaps
+
+- **Error keys** are the ones in [error-keys.md](../error-keys.md); `einvoice.provider.rejected` and the other keys a worker answers with (`errkey.Key`) are listed there too, although they travel in a reply, not
+  in a gRPC status. The console translates all of them.
+- **`e_invoice_on` is frozen with the draft** (as the seller address already is): changing the setting between a draft and its finalization does not change that invoice. Credit notes follow the invoice they correct.
+- **Parties are frozen too**, and refreshed only by the operator's retry of a *failed* document. A pending document that is retried by backoff keeps the data it was created with.
+- **The seller's country decides the channel.** A seller without an address country gets `einvoice.seller.incomplete` in live; the sandbox defaults it to TR and fills placeholder ids so the mock accepts any sandbox invoice.
+- **Nilvera**: the status endpoints do not return the legal number, and the send answer is not documented to return it either. When it is not in the answer the adapter returns `pending`, the worker asks `Status`, and a
+  document without a number is never recorded as issued: it is retried with backoff and fails after six attempts (`einvoice.provider.unavailable`, "has not confirmed the document yet"). Whether Nilvera's real
+  answer carries `InvoiceNumber` is the first thing to check against a sandbox account.
+- **A late "issued"** (an answer that arrives after the automatic attempts were used up) still marks a failed document issued: the document exists at the integrator and that fact must not be lost.
+- **Cancel** is an operator action; the mock and the Nilvera e-arşiv path support it, e-fatura and most `webhook` endpoints do not (`einvoice.cancel.unsupported`). A cancelled document keeps its legal number.
+- Not built: tenant webhook events for documents, backfill, the PDF in the hosted invoice page, per-line tax categories.
+
 ## Tasks
 
 - [x] Plan (this file)
-- [ ] `pkg/einvoice`: types, `Provider`, `Capabilities`, registry, errors
-- [ ] `pkg/einvoice/ubl`: UBL-TR 1.2 and EN 16931 / BIS 3 builders, golden files, structural checks
-- [ ] Adapters `mock`, `nilvera` (UNVERIFIED against a sandbox), `webhook`, with `httptest` tests
-- [ ] Protos: tenant legal data and `e_invoice_on`, customer tax data, `IssueEInvoice` command and `EInvoiceResult` reply, billing e-invoice RPCs; `make gen`
-- [ ] plans-svc: migration 00015, tenant settings, customer tax RPC
-- [ ] billing-svc: migration `einvoice_documents` (RLS), `einvoices` module (command/ query/ handler), snapshot, trigger on finalize/paid/credit note, replies, sweeper
-- [ ] payments-worker: migration, sealed accounts, `einvoice.issue` consumer, S3 storage, HTTP admin for accounts
-- [ ] Gateway routes + OpenAPI + contract test
-- [ ] Console: settings form, status badge, retry and download on invoice and credit-note pages; six languages; tests
-- [ ] Tests: unit, golden UBL, adapter httptest, integration (invoice finalized → document issued with the mock), console
-- [ ] Docs: roadmap, error keys, data model, config, deploy env
+- [x] `pkg/einvoice`: types, `Provider`, `Capabilities`, registry, errors
+- [x] `pkg/einvoice/ubl`: UBL-TR 1.2 and EN 16931 / BIS 3 builders, golden files, structural checks
+- [x] Adapters `mock`, `nilvera` (UNVERIFIED against a sandbox), `webhook`, with `httptest` tests
+- [x] Protos: tenant legal data and `e_invoice_on`, customer tax data, `IssueEInvoice` command and `EInvoiceResult` reply, billing e-invoice RPCs; `make gen`
+- [x] plans-svc: migration 00015, tenant settings, customer tax RPC
+- [x] billing-svc: migration `einvoice_documents` (RLS), `einvoices` module (command/ query/ handler), snapshot, trigger on finalize/paid/credit note, replies, sweeper
+- [x] payments-worker: migration, sealed accounts, `einvoice.issue` consumer, S3 storage, HTTP admin for accounts
+- [x] Gateway routes + OpenAPI + contract test
+- [x] Console: settings form, status badge, retry and download on invoice and credit-note pages; six languages; tests
+- [x] Tests: unit, golden UBL, adapter httptest, integration (invoice finalized → document issued with the mock), console
+- [x] Docs: roadmap, error keys, data model, config, deploy env
 - [ ] Follow-up (needs real accounts): run the UBL through the official UBL-TR and Peppol schematron; one full run against Nilvera's test portal

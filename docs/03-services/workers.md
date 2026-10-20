@@ -158,3 +158,14 @@ sandbox commands always go to mock-psp. See [phase 14](../phases/phase-14-provid
 
 Phase 15 adds Paddle: `POST /webhooks/{provider}/{tenant}/{environment}` (a notification destination per account, verified by signature), the tenant's provider subscriptions
 and hosted checkouts under `/admin/tenants/{tenant}/`, and `QUOTIFY_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See [phase 15](../phases/phase-15-paddle.md).
+
+## As built: e-invoices in payments-worker (Phase 30)
+
+payments-worker also consumes `einvoice.issue` (`IssueEInvoice`: issue or cancel one document) and answers with an `EInvoiceResult` (`issued`, `cancelled`, `failed` with
+`retryable` and an error key). The choice of this worker over invoice-worker or a new service is in [phase 30](../phases/phase-30-e-invoice.md#decisions): it already has the
+database, the sealed per-tenant accounts and the HTTP port the gateway forwards to, and gains only the `S3_*` settings for the UBL and PDF files (`{tenant}/einvoice/{document}/document.xml|pdf`
+in the invoices bucket). A sandbox tenant's documents always go to the `mock` adapter; a live tenant's go to its sealed account (`nilvera`, `webhook`), and `QUOTIFY_DEMO` forces the mock.
+`einvoice_issuances` is the idempotency record (one row per document UUID, written before the integrator is called, the legal number unique per tenant and environment).
+Operator endpoints: `GET /admin/tenants/{tenant}/e-invoice-accounts`, `PUT|DELETE …/e-invoice-accounts/{environment}`. Settings: `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`,
+`S3_SECRET_KEY`, `S3_FORCE_PATH_STYLE`, `EINVOICE_ALLOW_PRIVATE_URLS` (development only).
+

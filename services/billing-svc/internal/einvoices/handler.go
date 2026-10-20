@@ -72,7 +72,7 @@ func parseID(field, v string) (uuid.UUID, error) {
 }
 
 // GetEInvoice implements billingv1.BillingServiceServer.
-func (h *Handler) GetEInvoice(ctx context.Context, req *billingv1.GetEInvoiceRequest) (*billingv1.EInvoiceDocument, error) {
+func (h *Handler) GetEInvoice(ctx context.Context, req *billingv1.GetEInvoiceRequest) (*billingv1.GetEInvoiceResponse, error) {
 	ti, err := tenant.Require(ctx)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (h *Handler) GetEInvoice(ctx context.Context, req *billingv1.GetEInvoiceReq
 	if err != nil {
 		return nil, err
 	}
-	return docProto(d), nil
+	return &billingv1.GetEInvoiceResponse{Document: docProto(d)}, nil
 }
 
 // ListEInvoices implements billingv1.BillingServiceServer.
@@ -124,13 +124,21 @@ func (h *Handler) GetEInvoiceFileUrl(ctx context.Context, req *billingv1.GetEInv
 }
 
 // RetryEInvoice implements billingv1.BillingAdminServiceServer.
-func (h *Handler) RetryEInvoice(ctx context.Context, req *billingv1.RetryEInvoiceRequest) (*billingv1.EInvoiceDocument, error) {
-	return h.operate(ctx, req.GetTenantId(), req.GetId(), func(tid, id uuid.UUID) error { return h.cmd.Retry(ctx, tid, id) })
+func (h *Handler) RetryEInvoice(ctx context.Context, req *billingv1.RetryEInvoiceRequest) (*billingv1.RetryEInvoiceResponse, error) {
+	d, err := h.operate(ctx, req.GetTenantId(), req.GetId(), func(tid, id uuid.UUID) error { return h.cmd.Retry(ctx, tid, id) })
+	if err != nil {
+		return nil, err
+	}
+	return &billingv1.RetryEInvoiceResponse{Document: d}, nil
 }
 
 // CancelEInvoice implements billingv1.BillingAdminServiceServer.
-func (h *Handler) CancelEInvoice(ctx context.Context, req *billingv1.CancelEInvoiceRequest) (*billingv1.EInvoiceDocument, error) {
-	return h.operate(ctx, req.GetTenantId(), req.GetId(), func(tid, id uuid.UUID) error { return h.cmd.Cancel(ctx, tid, id, req.GetReason()) })
+func (h *Handler) CancelEInvoice(ctx context.Context, req *billingv1.CancelEInvoiceRequest) (*billingv1.CancelEInvoiceResponse, error) {
+	d, err := h.operate(ctx, req.GetTenantId(), req.GetId(), func(tid, id uuid.UUID) error { return h.cmd.Cancel(ctx, tid, id, req.GetReason()) })
+	if err != nil {
+		return nil, err
+	}
+	return &billingv1.CancelEInvoiceResponse{Document: d}, nil
 }
 
 func (h *Handler) operate(ctx context.Context, tenantID, docID string, do func(tid, id uuid.UUID) error) (*billingv1.EInvoiceDocument, error) {

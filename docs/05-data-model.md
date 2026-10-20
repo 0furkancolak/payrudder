@@ -501,6 +501,30 @@ CREATE TABLE sent_notifications (
 );
 ```
 
+```sql
+-- payments_db, phase 30: e-invoice integrator accounts (sealed) and the idempotency record of issued documents
+CREATE TABLE einvoice_accounts (
+  tenant_id uuid NOT NULL, environment text NOT NULL CHECK (environment IN ('sandbox','live')), provider text NOT NULL, mode text NOT NULL CHECK (mode IN ('test','production')),
+  settings_enc bytea NOT NULL, PRIMARY KEY (tenant_id, environment)          -- AES-256-GCM, bound to tenant|einvoice|environment
+);
+CREATE TABLE einvoice_issuances (
+  document_id uuid PRIMARY KEY, tenant_id uuid NOT NULL, environment text NOT NULL, provider text NOT NULL, kind text NOT NULL, document_type text NOT NULL,
+  status text NOT NULL CHECK (status IN ('started','issued','cancelled')), legal_number text, external_id text NOT NULL DEFAULT '', xml_key text, pdf_key text
+);
+CREATE UNIQUE INDEX ON einvoice_issuances (tenant_id, environment, legal_number) WHERE legal_number IS NOT NULL;   -- a legal number is never reused
+```
+
+```sql
+-- billing_db, phase 30 (RLS on tenant_id like every tenant table): what the tenant sees of an e-document
+CREATE TABLE einvoice_documents (
+  tenant_id uuid NOT NULL, id uuid NOT NULL,                       -- id = uuidv5(tenant|kind|source id) = the UBL UUID
+  kind text NOT NULL CHECK (kind IN ('invoice','credit_note')), invoice_id uuid NOT NULL, credit_note_id uuid, number text NOT NULL,
+  status text NOT NULL CHECK (status IN ('pending','issued','failed','cancelled')), attempts int NOT NULL, streak int NOT NULL, next_attempt_at timestamptz,
+  legal_number text, external_id text NOT NULL DEFAULT '', xml_key text, pdf_key text, request bytea NOT NULL,   -- request = the frozen IssueEInvoice command
+  PRIMARY KEY (tenant_id, id)
+);
+```
+
 Workers are internal and single-purpose, and are not RLS'd: every row is keyed by a command ID from billing-svc.
 `tenant_id` is still stored for audit and per-tenant metrics.
 

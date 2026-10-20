@@ -37,7 +37,7 @@ func (s *Server) listEInvoices(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getEInvoice(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Billing.GetEInvoice(r.Context(), &billingv1.GetEInvoiceRequest{Id: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp, err)
+	respond(w, r, http.StatusOK, resp.GetDocument(), err)
 }
 
 func (s *Server) getEInvoiceFile(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +71,7 @@ func (s *Server) adminGetEInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp, err := s.d.Billing.GetEInvoice(ctx, &billingv1.GetEInvoiceRequest{Id: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp, err)
+	respond(w, r, http.StatusOK, resp.GetDocument(), err)
 }
 
 func (s *Server) adminGetEInvoiceFile(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +90,7 @@ func (s *Server) adminGetEInvoiceFile(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) adminRetryEInvoice(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.BillingAdmin.RetryEInvoice(r.Context(), &billingv1.RetryEInvoiceRequest{TenantId: r.PathValue("tenant_id"), Id: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp, err)
+	respond(w, r, http.StatusOK, resp.GetDocument(), err)
 }
 
 func (s *Server) adminCancelEInvoice(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +103,7 @@ func (s *Server) adminCancelEInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 	req.TenantId, req.Id = r.PathValue("tenant_id"), r.PathValue("id")
 	resp, err := s.d.BillingAdmin.CancelEInvoice(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
+	respond(w, r, http.StatusOK, resp.GetDocument(), err)
 }
 
 // setCustomerTax is PUT /v1/customers/{external_id}/tax: the body is {tax_id, tax_office, e_invoice_registered}.
