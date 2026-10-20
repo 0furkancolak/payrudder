@@ -359,7 +359,10 @@
         "code": "Coupon code",
         "apply": "Apply coupon",
         "remove": "Remove coupon"
-      }
+      },
+      "endNowCredit": "End now and credit the unused part",
+      "confirmEndCredit": "End this subscription now and credit the customer with the unused part of the fee they paid in advance?",
+      "credited": "Credited {amount} to the customer's balance."
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",

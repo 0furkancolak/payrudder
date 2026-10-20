@@ -359,7 +359,10 @@
         "code": "Gutscheincode",
         "apply": "Gutschein anwenden",
         "remove": "Gutschein entfernen"
-      }
+      },
+      "endNowCredit": "Jetzt beenden und Rest gutschreiben",
+      "confirmEndCredit": "Dieses Abonnement jetzt beenden und dem Kunden den ungenutzten Teil der im Voraus bezahlten Gebühr gutschreiben?",
+      "credited": "{amount} dem Guthaben des Kunden gutgeschrieben."
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",

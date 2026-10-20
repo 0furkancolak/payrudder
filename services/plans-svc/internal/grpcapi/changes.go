@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -492,4 +493,76 @@ func attachExtras(ctx context.Context, q *sqlc.Queries, subs ...*plansv1.Subscri
 		}
 	}
 	return nil
+}
+
+// unusedFee is the prepaid, unused part of a subscription's fixed fee from at to the end of the paid period, and the end of that period.
+// It is zero (ok=false) when nothing was prepaid for the period at is in: a trial, a pause, or a fee billing has not invoiced yet. The caller
+// holds the row locked. A coupon makes the fee actually paid differ from the list fee, so a subscription with one is refused (errCouponOnCredit).
+func (s *Server) unusedFee(ctx context.Context, q *sqlc.Queries, row sqlc.GetSubscriptionRow, at time.Time) (credit int64, periodEnd time.Time, ok bool, err error) {
+	if row.FeeTiming != "advance" {
+		return 0, time.Time{}, false, nil
+	}
+	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, s.now())
+	if eff != subscription.Active {
+		return 0, time.Time{}, false, nil
+	}
+	due, err := q.GetSubscriptionFeeDue(ctx, row.ID)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	if due == nil || !due.After(at) {
+		return 0, time.Time{}, false, nil
+	}
+	if _, err := q.GetSubscriptionCoupon(ctx, row.ID); err == nil {
+		return 0, time.Time{}, false, errCouponOnCredit
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return 0, time.Time{}, false, err
+	}
+	t, err := current(ctx, q)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	loc, err := location(t.Timezone)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	pv, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	interval := subscription.Interval(row.Interval)
+	fee, err := feeIn(ctx, q, pv.ID, pv.BaseFeeMinor, t.Currency, row.Currency, interval)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	n, err := subscription.PeriodIndex(row.BillingAnchor, interval, at, loc)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	ps, err := subscription.PeriodStart(row.BillingAnchor, interval, n, loc)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	pe, err := subscription.PeriodEnd(row.BillingAnchor, interval, n, loc)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	credit, err = subscription.Portion(fee, at, pe, ps, pe)
+	if err != nil {
+		return 0, time.Time{}, false, err
+	}
+	return credit, pe, credit > 0, nil
+}
+
+// errCouponOnCredit: the unused part of a discounted fee is not worked out automatically.
+var errCouponOnCredit = status.Error(codes.FailedPrecondition, "this subscription has a coupon; credit the unused part with a credit note on its fee invoice instead")
+
+// creditUnusedFee records the unused prepaid fee as an adjustment on the subscription, which billing turns into credit balance.
+func (s *Server) creditUnusedFee(ctx context.Context, q *sqlc.Queries, row sqlc.GetSubscriptionRow, at time.Time) (int64, error) {
+	credit, pe, ok, err := s.unusedFee(ctx, q, row, at)
+	if err != nil || !ok {
+		return 0, err
+	}
+	return credit, q.InsertSubscriptionAdjustment(ctx, sqlc.InsertSubscriptionAdjustmentParams{
+		ID: idgen.NewUUIDv7(), SubscriptionID: row.ID, OldPlanCode: row.PlanCode, FromAt: at, ToAt: pe, CreditMinor: credit, ChargeMinor: 0})
 }

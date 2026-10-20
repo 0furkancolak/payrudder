@@ -310,11 +310,25 @@ paths:
     delete:
       operationId: cancelSubscription
       summary: End a subscription (now, or at end_time)
+      description: >
+        With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in
+        advance that Quotify runs, ended now, without a coupon); the response is then {subscription, credited_minor}.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: end_time, in: query, schema: { type: string, format: date-time } }
+        - { name: credit_unused, in: query, schema: { type: boolean, default: false } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Subscription"
+                  - type: object
+                    properties:
+                      subscription: { $ref: "#/components/schemas/Subscription" }
+                      credited_minor: { type: string, description: "Minor units of the subscription's currency" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /v1/subscriptions/{id}/pause:

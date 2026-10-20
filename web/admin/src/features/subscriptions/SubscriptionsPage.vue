@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { toApiError, type Subscription } from "@/shared/api/client";
 import { CURRENCIES, PROVIDERS } from "@/shared/lib/currencies";
 import { enumWord, label } from "@/shared/lib/labels";
+import { formatMinor } from "@/shared/lib/money";
 import { useCustomers } from "@/features/customers";
 import { usePackages } from "@/features/packages";
 import { useTenant } from "@/features/tenants";
@@ -68,6 +69,13 @@ const migration = computed(() => act.migrate.data.value as { state?: string; che
 function end(id: string | undefined) {
   if (id && window.confirm(t("billing.subscriptions.confirmEnd"))) act.endNow.mutate(id);
 }
+function endAndCredit(id: string | undefined) {
+  if (id && window.confirm(t("billing.subscriptions.confirmEndCredit"))) act.endNowCredit.mutate(id);
+}
+const credited = computed(() => {
+  const r = act.endNowCredit.data.value as { credited_minor?: string } | undefined;
+  return r?.credited_minor ?? "";
+});
 const failure = computed(() => {
   for (const m of Object.values(act)) if (m.error.value) return toApiError(m.error.value).message;
   return "";
@@ -160,7 +168,19 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
       <Button v-if="!selected.cancel_at_period_end && !selected.end_time" variant="outline" @click="act.scheduleCancel.mutate(selected.id ?? '')">{{ t("billing.subscriptions.cancelAtPeriodEnd") }}</Button>
       <Button v-if="selected.cancel_at_period_end" variant="outline" @click="act.withdrawCancel.mutate(selected.id ?? '')">{{ t("billing.subscriptions.withdrawCancel") }}</Button>
       <Button v-if="!selected.end_time" variant="destructive" @click="end(selected.id)">{{ t("billing.subscriptions.endNow") }}</Button>
+      <Button
+        v-if="!selected.end_time && selected.fee_timing === 'FEE_TIMING_ADVANCE' && !selected.coupon_code && state(selected) === 'active'"
+        variant="destructive"
+        :disabled="act.endNowCredit.isPending.value"
+        @click="endAndCredit(selected.id)"
+        >
+{{ t("billing.subscriptions.endNowCredit") }}
+</Button
+      >
     </div>
+    <p v-if="act.endNowCredit.isSuccess.value" class="text-success text-sm" role="status">
+      {{ t("billing.subscriptions.credited", { amount: formatMinor(credited, selected.currency, locale) }) }}
+    </p>
 
     <div v-if="!providerRuns && !selected.end_time && selected.fee_timing === 'FEE_TIMING_ADVANCE'" class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('billing.subscriptions.coupon.label')">
       <template v-if="selected.coupon_code">

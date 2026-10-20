@@ -261,7 +261,10 @@ export interface paths {
         get: operations["getSubscription"];
         put?: never;
         post?: never;
-        /** End a subscription (now, or at end_time) */
+        /**
+         * End a subscription (now, or at end_time)
+         * @description With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in advance that Quotify runs, ended now, without a coupon); the response is then {subscription, credited_minor}.
+         */
         delete: operations["cancelSubscription"];
         options?: never;
         head?: never;
@@ -2794,6 +2797,7 @@ export interface operations {
         parameters: {
             query?: {
                 end_time?: string;
+                credit_unused?: boolean;
             };
             header?: never;
             path: {
@@ -2809,7 +2813,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Subscription"];
+                    "application/json": components["schemas"]["Subscription"] | {
+                        subscription?: components["schemas"]["Subscription"];
+                        /** @description Minor units of the subscription's currency */
+                        credited_minor?: string;
+                    };
                 };
             };
             404: components["responses"]["Error"];

@@ -237,10 +237,15 @@ message CancelSubscriptionRequest {
   string subscription_id = 1;
   // Unset = now.
   google.protobuf.Timestamp end_time = 2;
+  // Credit the customer's balance with the unused part of the fee that was paid in advance for the current period. Only for a subscription billed in
+  // advance that Quotify runs, ended now (not later), and without a coupon. Off by default: the customer keeps what they paid for.
+  bool credit_unused = 3;
 }
 
 message CancelSubscriptionResponse {
   Subscription subscription = 1;
+  // What was credited (minor units of the subscription's currency); 0 when credit_unused was off or nothing was prepaid.
+  int64 credited_minor = 2;
 }
 
 message ListSubscriptionsForPeriodRequest {
