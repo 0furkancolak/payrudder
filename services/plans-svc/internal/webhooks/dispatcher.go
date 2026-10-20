@@ -20,6 +20,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/brand"
 	"github.com/0furkancolak/quotify/pkg/secretbox"
 	"github.com/0furkancolak/quotify/pkg/webhooksig"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
 )
 
 // Backoff is the wait before attempt 2, 3, ...; a delivery that fails after the last one is failed (7 attempts in about 32 hours).
@@ -95,28 +96,13 @@ type claimed struct {
 func (d *Dispatcher) Once(ctx context.Context) (int, error) {
 	d.defaults()
 	now := d.Now()
-	rows, err := d.Pool.Query(ctx, `
-		WITH due AS (
-			SELECT tenant_id, id FROM webhook_deliveries WHERE state = 'pending' AND next_attempt_at <= $1
-			ORDER BY next_attempt_at LIMIT $2 FOR UPDATE SKIP LOCKED)
-		UPDATE webhook_deliveries d SET attempts = d.attempts + 1, next_attempt_at = $1::timestamptz + make_interval(secs => $3), last_attempt_at = $1
-		FROM due WHERE d.tenant_id = due.tenant_id AND d.id = due.id
-		RETURNING d.tenant_id, d.id, d.event_id, d.endpoint_id, d.attempts`, now, d.Batch, lease.Seconds())
+	rows, err := sqlc.New(d.Pool).ClaimDueWebhookDeliveries(ctx, sqlc.ClaimDueWebhookDeliveriesParams{Now: now, Batch: int32(d.Batch), LeaseSecs: lease.Seconds()}) //nolint:gosec // a small batch size
 	if err != nil {
 		return 0, err
 	}
-	var batch []claimed
-	for rows.Next() {
-		var c claimed
-		if err := rows.Scan(&c.tenant, &c.id, &c.event, &c.endpoint, &c.attempt); err != nil {
-			rows.Close()
-			return 0, err
-		}
-		batch = append(batch, c)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return 0, err
+	batch := make([]claimed, len(rows))
+	for i, r := range rows {
+		batch[i] = claimed{tenant: r.TenantID, id: r.ID, event: r.EventID, endpoint: r.EndpointID, attempt: int(r.Attempts)}
 	}
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, d.Workers)
@@ -150,35 +136,22 @@ type Envelope struct {
 }
 
 func (d *Dispatcher) deliver(ctx context.Context, c claimed) error {
-	var (
-		url, typ          string
-		active            bool
-		secretEnc, prevEn []byte
-		prevUntil         *time.Time
-		data              []byte
-		occurred          time.Time
-	)
-	err := d.Pool.QueryRow(ctx, `
-		SELECT e.url, e.active, e.secret_enc, e.prev_secret_enc, e.prev_secret_until, ev.type, ev.data, ev.occurred_at
-		FROM webhook_deliveries d
-		JOIN webhook_endpoints e ON e.tenant_id = d.tenant_id AND e.id = d.endpoint_id
-		JOIN webhook_events ev ON ev.tenant_id = d.tenant_id AND ev.id = d.event_id
-		WHERE d.tenant_id = $1 AND d.id = $2`, c.tenant, c.id).Scan(&url, &active, &secretEnc, &prevEn, &prevUntil, &typ, &data, &occurred)
+	t, err := sqlc.New(d.Pool).GetWebhookDeliveryTarget(ctx, sqlc.GetWebhookDeliveryTargetParams{TenantID: c.tenant, ID: c.id})
 	if err != nil {
 		return err
 	}
-	if !active {
+	if !t.Active {
 		return d.finish(ctx, c, "failed", 0, "the endpoint is not active")
 	}
-	secrets, err := d.secrets(c.endpoint, secretEnc, prevEn, prevUntil)
+	secrets, err := d.secrets(c.endpoint, t.SecretEnc, t.PrevSecretEnc, t.PrevSecretUntil)
 	if err != nil {
 		return d.finish(ctx, c, "failed", 0, "the signing secret cannot be read: "+err.Error())
 	}
-	body, err := json.Marshal(Envelope{ID: c.event.String(), Type: typ, Created: occurred.UTC().Format(time.RFC3339), TenantID: c.tenant.String(), Data: data})
+	body, err := json.Marshal(Envelope{ID: c.event.String(), Type: t.Type, Created: t.OccurredAt.UTC().Format(time.RFC3339), TenantID: c.tenant.String(), Data: t.Data})
 	if err != nil {
 		return err
 	}
-	status, errText := d.post(ctx, url, c, typ, body, secrets)
+	status, errText := d.post(ctx, t.Url, c, t.Type, body, secrets)
 	if errText == "" {
 		return d.finish(ctx, c, "delivered", status, "")
 	}
@@ -186,9 +159,9 @@ func (d *Dispatcher) deliver(ctx context.Context, c claimed) error {
 		return d.finish(ctx, c, "failed", status, errText)
 	}
 	wait := Backoff[c.attempt-1]
-	_, err = d.Pool.Exec(ctx, `UPDATE webhook_deliveries SET next_attempt_at = $3, last_status = NULLIF($4, 0), last_error = $5 WHERE tenant_id = $1 AND id = $2`,
-		c.tenant, c.id, d.Now().Add(wait), status, errText)
-	return err
+	return sqlc.New(d.Pool).RescheduleWebhookDelivery(ctx, sqlc.RescheduleWebhookDeliveryParams{
+		TenantID: c.tenant, ID: c.id, NextAttemptAt: d.Now().Add(wait), LastStatus: int32(status), LastError: errText, //nolint:gosec // an HTTP status
+	})
 }
 
 func (d *Dispatcher) secrets(endpoint uuid.UUID, current, previous []byte, until *time.Time) ([]string, error) {
@@ -235,16 +208,13 @@ func (d *Dispatcher) post(ctx context.Context, url string, c claimed, typ string
 }
 
 func (d *Dispatcher) finish(ctx context.Context, c claimed, state string, status int, errText string) error {
-	_, err := d.Pool.Exec(ctx, `UPDATE webhook_deliveries SET state = $3, last_status = NULLIF($4, 0), last_error = NULLIF($5, ''),
-		delivered_at = CASE WHEN $3 = 'delivered' THEN $6::timestamptz ELSE NULL END WHERE tenant_id = $1 AND id = $2`, c.tenant, c.id, state, status, errText, d.Now())
-	return err
+	return sqlc.New(d.Pool).FinishWebhookDelivery(ctx, sqlc.FinishWebhookDeliveryParams{
+		TenantID: c.tenant, ID: c.id, State: state, LastStatus: int32(status), LastError: errText, DeliveredAt: d.Now(), //nolint:gosec // an HTTP status
+	})
 }
 
 func (d *Dispatcher) prune(ctx context.Context, now time.Time) error {
-	if _, err := d.Pool.Exec(ctx, `DELETE FROM webhook_events WHERE created_at < $1`, now.Add(-retention)); err != nil {
-		return err
-	}
-	return nil
+	return sqlc.New(d.Pool).PruneWebhookEvents(ctx, now.Add(-retention))
 }
 
 func truncate(s string, n int) string {

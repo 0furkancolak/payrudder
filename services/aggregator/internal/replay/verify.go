@@ -3,6 +3,8 @@ package replay
 import (
 	"context"
 	"fmt"
+
+	"github.com/0furkancolak/quotify/services/aggregator/internal/store/sqlc"
 )
 
 // Verification is the difference between the live generation and the rebuilt one, over the job's periods.
@@ -16,85 +18,61 @@ type Verification struct {
 
 // Diff is one aggregate that differs.
 type Diff struct {
-	Kind           string `json:"kind"` // usage | late
-	Customer       string `json:"customer_id"`
-	Meter          string `json:"meter_code"`
-	Period         string `json:"period_id"`
-	OriginPeriod   string `json:"origin_period_id,omitempty"`
-	OldQuantity    string `json:"old_quantity"`
-	NewQuantity    string `json:"new_quantity"`
-	OldEventCount  int64  `json:"old_event_count"`
-	NewEventCount  int64  `json:"new_event_count"`
-	OldQuantityNil bool   `json:"-"`
+	Kind          string `json:"kind"` // usage | late
+	Customer      string `json:"customer_id"`
+	Meter         string `json:"meter_code"`
+	Period        string `json:"period_id"`
+	OriginPeriod  string `json:"origin_period_id,omitempty"`
+	OldQuantity   string `json:"old_quantity"`
+	NewQuantity   string `json:"new_quantity"`
+	OldEventCount int64  `json:"old_event_count"`
+	NewEventCount int64  `json:"new_event_count"`
 }
 
 const maxDiffs = 100
 
 // verify compares generation source and target for the tenant's periods [from, to], for on-time aggregates and late usage.
 func (m *Manager) verify(ctx context.Context, job *Job) (*Verification, error) {
+	q := sqlc.New(m.cfg.Pool)
 	out := &Verification{}
-	// quantity is numeric(38,0); NULL on a side means the row does not exist in that generation.
-	type spec struct {
-		kind, query string
+	usage, err := q.CompareUsage(ctx, sqlc.CompareUsageParams{
+		TenantID: job.TenantID, Source: job.SourceGeneration, Target: job.TargetGeneration, FromPeriod: job.From, ToPeriod: job.To,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("verify usage: %w", err)
 	}
-	for _, s := range []spec{
-		{"usage", `
-			SELECT COALESCE(a.period_id, b.period_id), COALESCE(a.customer_id, b.customer_id)::text, COALESCE(a.meter_code, b.meter_code), '',
-			       a.quantity::text, b.quantity::text, COALESCE(a.event_count, 0), COALESCE(b.event_count, 0)
-			FROM (SELECT period_id, customer_id, meter_code, quantity, event_count FROM usage_aggregates
-			      WHERE tenant_id = $1 AND generation = $2 AND period_id BETWEEN $4 AND $5) a
-			FULL OUTER JOIN (SELECT period_id, customer_id, meter_code, quantity, event_count FROM usage_aggregates
-			      WHERE tenant_id = $1 AND generation = $3 AND period_id BETWEEN $4 AND $5) b
-			  USING (period_id, customer_id, meter_code)
-			ORDER BY 1, 2, 3`},
-		{"late", `
-			SELECT COALESCE(a.billed_period_id, b.billed_period_id), COALESCE(a.customer_id, b.customer_id)::text, COALESCE(a.meter_code, b.meter_code),
-			       COALESCE(a.origin_period_id, b.origin_period_id),
-			       a.quantity::text, b.quantity::text, COALESCE(a.event_count, 0), COALESCE(b.event_count, 0)
-			FROM (SELECT billed_period_id, customer_id, meter_code, origin_period_id, quantity, event_count FROM late_usage
-			      WHERE tenant_id = $1 AND generation = $2 AND origin_period_id BETWEEN $4 AND $5) a
-			FULL OUTER JOIN (SELECT billed_period_id, customer_id, meter_code, origin_period_id, quantity, event_count FROM late_usage
-			      WHERE tenant_id = $1 AND generation = $3 AND origin_period_id BETWEEN $4 AND $5) b
-			  USING (billed_period_id, customer_id, meter_code, origin_period_id)
-			ORDER BY 1, 2, 3, 4`},
-	} {
-		rows, err := m.cfg.Pool.Query(ctx, s.query, job.TenantID, job.SourceGeneration, job.TargetGeneration, job.From, job.To)
-		if err != nil {
-			return nil, fmt.Errorf("verify %s: %w", s.kind, err)
-		}
-		for rows.Next() {
-			var d Diff
-			var oldQ, newQ *string
-			if err := rows.Scan(&d.Period, &d.Customer, &d.Meter, &d.OriginPeriod, &oldQ, &newQ, &d.OldEventCount, &d.NewEventCount); err != nil {
-				rows.Close()
-				return nil, err
-			}
-			d.Kind = s.kind
-			out.RowsCompared++
-			switch {
-			case oldQ != nil && newQ != nil && *oldQ == *newQ && d.OldEventCount == d.NewEventCount:
-				continue
-			case oldQ == nil:
-				out.RowsOnlyInNew++
-			case newQ == nil:
-				out.RowsOnlyInOld++
-			default:
-				out.RowsChanged++
-			}
-			if oldQ != nil {
-				d.OldQuantity = *oldQ
-			}
-			if newQ != nil {
-				d.NewQuantity = *newQ
-			}
-			if len(out.Diffs) < maxDiffs {
-				out.Diffs = append(out.Diffs, d)
-			}
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
-			return nil, err
-		}
+	for _, r := range usage {
+		out.record("usage", r)
+	}
+	late, err := q.CompareLateUsage(ctx, sqlc.CompareLateUsageParams{
+		TenantID: job.TenantID, Source: job.SourceGeneration, Target: job.TargetGeneration, FromPeriod: job.From, ToPeriod: job.To,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("verify late: %w", err)
+	}
+	for _, r := range late {
+		out.record("late", sqlc.CompareUsageRow(r)) // both queries return the same columns
 	}
 	return out, nil
+}
+
+// record counts one compared row and keeps it, up to maxDiffs, when the generations differ.
+func (v *Verification) record(kind string, r sqlc.CompareUsageRow) {
+	v.RowsCompared++
+	switch {
+	case r.InOld && r.InNew && r.OldQuantity == r.NewQuantity && r.OldEventCount == r.NewEventCount:
+		return
+	case !r.InOld:
+		v.RowsOnlyInNew++
+	case !r.InNew:
+		v.RowsOnlyInOld++
+	default:
+		v.RowsChanged++
+	}
+	if len(v.Diffs) < maxDiffs {
+		v.Diffs = append(v.Diffs, Diff{
+			Kind: kind, Customer: r.CustomerID, Meter: r.MeterCode, Period: r.PeriodID, OriginPeriod: r.OriginPeriodID,
+			OldQuantity: r.OldQuantity, NewQuantity: r.NewQuantity, OldEventCount: r.OldEventCount, NewEventCount: r.NewEventCount,
+		})
+	}
 }

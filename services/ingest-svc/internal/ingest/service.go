@@ -331,10 +331,10 @@ func (s *Service) write(ctx context.Context, ti tenant.Info, todo []*pending, re
 	}
 
 	err := pgxx.InTenantTx(ctx, s.o.App, ti.ID, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `SELECT set_config('transaction_timeout', '5s', true)`); err != nil {
+		q := sqlc.New(tx)
+		if err := q.SetTransactionTimeout(ctx, "5s"); err != nil {
 			return fmt.Errorf("set transaction_timeout: %w", err)
 		}
-		q := sqlc.New(tx)
 		now, err := s.o.NowInTx(ctx, q)
 		if err != nil {
 			return fmt.Errorf("clock: %w", err)
@@ -403,20 +403,47 @@ func (s *Service) dedup(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID
 	// Sorted so that concurrent batches claim keys in the same order and cannot deadlock on each other.
 	sort.Slice(keyed, func(i, j int) bool { return keyed[i].key < keyed[j].key })
 
-	known := map[string]sqlc.FindIdempotencyKeysRow{}
+	fresh, err := skipPreviousBucket(ctx, q, tenantID, prev, keyed, results)
+	if err != nil {
+		return nil, err
+	}
+	if len(fresh) == 0 {
+		return accepted, nil
+	}
+	won, err := claimKeys(ctx, q, tenantID, bucket, fresh)
+	if err != nil {
+		return nil, err
+	}
+	var lost []*pending
+	for _, p := range fresh {
+		if won[p.key] {
+			accepted = append(accepted, p)
+		} else {
+			lost = append(lost, p)
+		}
+	}
+	if err := readClaimed(ctx, q, tenantID, bucket, lost, results); err != nil {
+		return nil, err
+	}
+	sort.Slice(accepted, func(i, j int) bool { return accepted[i].idx < accepted[j].idx })
+	return accepted, nil
+}
+
+// skipPreviousBucket writes the result of every event whose key the previous month's bucket already holds, which ON
+// CONFLICT does not cover, and returns the others.
+func skipPreviousBucket(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, prev time.Time, keyed []*pending, results []*ingestv1.EventResult) ([]*pending, error) {
 	keys := make([]string, len(keyed))
 	for i, p := range keyed {
 		keys[i] = p.key
 	}
-	// The previous month's bucket is not covered by ON CONFLICT: check it explicitly.
 	rows, err := q.FindIdempotencyKeys(ctx, sqlc.FindIdempotencyKeysParams{TenantID: tenantID, Keys: keys, Buckets: []time.Time{prev}})
 	if err != nil {
 		return nil, fmt.Errorf("find previous bucket: %w", err)
 	}
+	known := make(map[string]sqlc.FindIdempotencyKeysRow, len(rows))
 	for _, r := range rows {
 		known[r.IdempotencyKey] = r
 	}
-
 	var fresh []*pending
 	for _, p := range keyed {
 		if r, ok := known[p.key]; ok {
@@ -425,10 +452,11 @@ func (s *Service) dedup(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID
 			fresh = append(fresh, p)
 		}
 	}
-	if len(fresh) == 0 {
-		return accepted, nil
-	}
+	return fresh, nil
+}
 
+// claimKeys inserts the keys into this month's bucket and returns the ones this transaction won.
+func claimKeys(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, bucket time.Time, fresh []*pending) (map[string]bool, error) {
 	ins := sqlc.InsertIdempotencyKeysParams{TenantID: tenantID, CreatedAt: bucket}
 	for _, p := range fresh {
 		ins.Keys = append(ins.Keys, p.key)
@@ -443,37 +471,35 @@ func (s *Service) dedup(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID
 	for _, k := range won {
 		isNew[k] = true
 	}
-	var lost []string
-	for _, p := range fresh {
-		if isNew[p.key] {
-			accepted = append(accepted, p)
-		} else {
-			lost = append(lost, p.key)
-		}
+	return isNew, nil
+}
+
+// readClaimed writes the result of the events whose keys another transaction claimed first (it has committed by now,
+// because ON CONFLICT waited for it).
+func readClaimed(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, bucket time.Time, lost []*pending, results []*ingestv1.EventResult) error {
+	if len(lost) == 0 {
+		return nil
 	}
-	if len(lost) > 0 {
-		// Another transaction claimed these keys first (it has committed by now, because ON CONFLICT waited for it).
-		rows, err := q.FindIdempotencyKeys(ctx, sqlc.FindIdempotencyKeysParams{TenantID: tenantID, Keys: lost, Buckets: []time.Time{bucket}})
-		if err != nil {
-			return nil, fmt.Errorf("find conflicting keys: %w", err)
-		}
-		byKey := map[string]sqlc.FindIdempotencyKeysRow{}
-		for _, r := range rows {
-			byKey[r.IdempotencyKey] = r
-		}
-		for _, p := range fresh {
-			if isNew[p.key] {
-				continue
-			}
-			r, ok := byKey[p.key]
-			if !ok {
-				return nil, fmt.Errorf("idempotency key %q conflicted but cannot be read back", p.key)
-			}
-			results[p.idx] = existingResult(r, p)
-		}
+	keys := make([]string, len(lost))
+	for i, p := range lost {
+		keys[i] = p.key
 	}
-	sort.Slice(accepted, func(i, j int) bool { return accepted[i].idx < accepted[j].idx })
-	return accepted, nil
+	rows, err := q.FindIdempotencyKeys(ctx, sqlc.FindIdempotencyKeysParams{TenantID: tenantID, Keys: keys, Buckets: []time.Time{bucket}})
+	if err != nil {
+		return fmt.Errorf("find conflicting keys: %w", err)
+	}
+	byKey := make(map[string]sqlc.FindIdempotencyKeysRow, len(rows))
+	for _, r := range rows {
+		byKey[r.IdempotencyKey] = r
+	}
+	for _, p := range lost {
+		r, ok := byKey[p.key]
+		if !ok {
+			return fmt.Errorf("idempotency key %q conflicted but cannot be read back", p.key)
+		}
+		results[p.idx] = existingResult(r, p)
+	}
+	return nil
 }
 
 func existingResult(r sqlc.FindIdempotencyKeysRow, p *pending) *ingestv1.EventResult {

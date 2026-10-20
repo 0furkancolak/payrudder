@@ -65,35 +65,15 @@ func (c pricedChange) message() *plansv1.ChangeQuote {
 
 // priceChange works out a change of the (locked) subscription row. It writes nothing.
 func (s *Server) priceChange(ctx context.Context, q *sqlc.Queries, row sqlc.GetSubscriptionRow, req *plansv1.ChangeSubscriptionRequest) (*pricedChange, error) {
-	if err := requireQuotifyOwned(row.Owner, row.Provider); err != nil {
+	now := s.now()
+	eff, err := requireChangeable(row, now)
+	if err != nil {
 		return nil, err
 	}
-	if row.FeeTiming != "advance" {
-		return nil, status.Error(codes.FailedPrecondition, "this subscription is billed in arrears; ChangePlan splits the month by time")
+	at, err := changeInstant(req, now, row.StartTime)
+	if err != nil {
+		return nil, err
 	}
-	if !row.OpenEnded || row.CancelAtPeriodEnd {
-		return nil, status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot change")
-	}
-	now := s.now()
-	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
-	if eff != subscription.Active && eff != subscription.Trialing {
-		return nil, status.Errorf(codes.FailedPrecondition, "a %s subscription cannot change", eff)
-	}
-	// Postgres keeps microseconds: a change at a finer instant would price a period start the stored subscription does not have.
-	at := now.Truncate(time.Microsecond)
-	if req.GetChangeTime() != nil {
-		if err := req.GetChangeTime().CheckValid(); err != nil {
-			return nil, domain.Invalid("change_time", "invalid timestamp")
-		}
-		at = req.GetChangeTime().AsTime().Truncate(time.Microsecond)
-		if at.After(now) {
-			return nil, domain.Invalid("change_time", "cannot be in the future; ask for a change at the end of the period instead")
-		}
-	}
-	if !at.After(row.StartTime) {
-		return nil, domain.Invalid("change_time", "must be after the subscription start")
-	}
-
 	t, err := current(ctx, q)
 	if err != nil {
 		return nil, err
@@ -103,15 +83,9 @@ func (s *Server) priceChange(ctx context.Context, q *sqlc.Queries, row sqlc.GetS
 		return nil, err
 	}
 	oldInterval := subscription.Interval(row.Interval)
-	newInterval := oldInterval
-	switch req.GetInterval() {
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED:
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
-		newInterval = subscription.Monthly
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
-		newInterval = subscription.Yearly
-	default:
-		return nil, domain.Invalid("interval", "unknown interval")
+	newInterval, err := changeInterval(req.GetInterval(), oldInterval)
+	if err != nil {
+		return nil, err
 	}
 	oldPV, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
 	if err != nil {
@@ -140,18 +114,11 @@ func (s *Server) priceChange(ctx context.Context, q *sqlc.Queries, row sqlc.GetS
 
 	pc := &pricedChange{row: row, newPV: newPV, newInterval: newInterval, at: at}
 	if eff == subscription.Trialing {
-		// Nothing has been paid yet: the plan changes now and the first fee, at the end of the trial, is the new plan's.
-		if req.GetTiming() == plansv1.ChangeTiming_CHANGE_TIMING_PERIOD_END {
-			return nil, domain.Invalid("timing", "a trial changes immediately")
-		}
-		pc.trial = true
-		pc.quote = subscription.Quote{
-			Timing: subscription.Immediately, Proration: subscription.NoProration, Effective: at, PeriodStart: at, PeriodEnd: *row.TrialEndsAt,
-			NewAnchor: row.BillingAnchor, NewFeeDue: row.BillingAnchor, NextRenewal: row.BillingAnchor, NextRenewalMinor: newFee,
+		if err := pc.quoteTrial(req.GetTiming(), newFee); err != nil {
+			return nil, err
 		}
 		return pc, nil
 	}
-
 	// The credit is for a fee that was invoiced. If billing has not yet invoiced the period the change falls in, wait for it.
 	due, err := q.GetSubscriptionFeeDue(ctx, row.ID)
 	if err != nil {
@@ -160,29 +127,101 @@ func (s *Server) priceChange(ctx context.Context, q *sqlc.Queries, row sqlc.GetS
 	if due != nil && !due.After(at) {
 		return nil, status.Error(codes.Aborted, "the fee of the current period has not been invoiced yet; try again in a moment")
 	}
-	timing, proration := subscription.Timing(""), subscription.Proration("")
-	switch req.GetTiming() {
-	case plansv1.ChangeTiming_CHANGE_TIMING_IMMEDIATELY:
-		timing = subscription.Immediately
-	case plansv1.ChangeTiming_CHANGE_TIMING_PERIOD_END:
-		timing = subscription.AtPeriodEnd
-	}
-	switch req.GetProration() {
-	case plansv1.ChangeProration_CHANGE_PRORATION_PRORATE:
-		proration = subscription.Prorate
-	case plansv1.ChangeProration_CHANGE_PRORATION_FULL:
-		proration = subscription.Full
-	case plansv1.ChangeProration_CHANGE_PRORATION_NONE:
-		proration = subscription.NoProration
-	}
 	pc.quote, err = subscription.QuoteChange(subscription.ChangeRequest{
 		Old: subscription.Plan{FeeMinor: oldFee, Interval: oldInterval}, New: subscription.Plan{FeeMinor: newFee, Interval: newInterval},
-		Anchor: row.BillingAnchor, At: at, Loc: loc, Timing: timing, Proration: proration,
+		Anchor: row.BillingAnchor, At: at, Loc: loc, Timing: timingFromProto(req.GetTiming()), Proration: prorationFromProto(req.GetProration()),
 	})
 	if errors.Is(err, subscription.ErrBadChange) {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	return pc, err
+}
+
+// requireChangeable refuses a subscription that cannot change and returns its effective state.
+func requireChangeable(row sqlc.GetSubscriptionRow, now time.Time) (subscription.State, error) {
+	if err := requireQuotifyOwned(row.Owner, row.Provider); err != nil {
+		return "", err
+	}
+	if row.FeeTiming != "advance" {
+		return "", status.Error(codes.FailedPrecondition, "this subscription is billed in arrears; ChangePlan splits the month by time")
+	}
+	if !row.OpenEnded || row.CancelAtPeriodEnd {
+		return "", status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot change")
+	}
+	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
+	if eff != subscription.Active && eff != subscription.Trialing {
+		return "", status.Errorf(codes.FailedPrecondition, "a %s subscription cannot change", eff)
+	}
+	return eff, nil
+}
+
+// changeInstant is the moment the change is priced at: now, or a past instant the request names.
+func changeInstant(req *plansv1.ChangeSubscriptionRequest, now, start time.Time) (time.Time, error) {
+	// Postgres keeps microseconds: a change at a finer instant would price a period start the stored subscription does not have.
+	at := now.Truncate(time.Microsecond)
+	if req.GetChangeTime() != nil {
+		if err := req.GetChangeTime().CheckValid(); err != nil {
+			return at, domain.Invalid("change_time", "invalid timestamp")
+		}
+		at = req.GetChangeTime().AsTime().Truncate(time.Microsecond)
+		if at.After(now) {
+			return at, domain.Invalid("change_time", "cannot be in the future; ask for a change at the end of the period instead")
+		}
+	}
+	if !at.After(start) {
+		return at, domain.Invalid("change_time", "must be after the subscription start")
+	}
+	return at, nil
+}
+
+// changeInterval is the interval after the change: the request's, or the old one when it names none.
+func changeInterval(asked plansv1.SubscriptionInterval, old subscription.Interval) (subscription.Interval, error) {
+	switch asked {
+	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED:
+		return old, nil
+	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
+		return subscription.Monthly, nil
+	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
+		return subscription.Yearly, nil
+	}
+	return old, domain.Invalid("interval", "unknown interval")
+}
+
+// quoteTrial prices a change during a trial: nothing has been paid yet, so the plan changes now and the first fee, at the
+// end of the trial, is the new plan's.
+func (pc *pricedChange) quoteTrial(timing plansv1.ChangeTiming, newFee int64) error {
+	if timing == plansv1.ChangeTiming_CHANGE_TIMING_PERIOD_END {
+		return domain.Invalid("timing", "a trial changes immediately")
+	}
+	row := pc.row
+	pc.trial = true
+	pc.quote = subscription.Quote{
+		Timing: subscription.Immediately, Proration: subscription.NoProration, Effective: pc.at, PeriodStart: pc.at, PeriodEnd: *row.TrialEndsAt,
+		NewAnchor: row.BillingAnchor, NewFeeDue: row.BillingAnchor, NextRenewal: row.BillingAnchor, NextRenewalMinor: newFee,
+	}
+	return nil
+}
+
+func timingFromProto(t plansv1.ChangeTiming) subscription.Timing {
+	switch t {
+	case plansv1.ChangeTiming_CHANGE_TIMING_IMMEDIATELY:
+		return subscription.Immediately
+	case plansv1.ChangeTiming_CHANGE_TIMING_PERIOD_END:
+		return subscription.AtPeriodEnd
+	}
+	return ""
+}
+
+func prorationFromProto(p plansv1.ChangeProration) subscription.Proration {
+	switch p {
+	case plansv1.ChangeProration_CHANGE_PRORATION_PRORATE:
+		return subscription.Prorate
+	case plansv1.ChangeProration_CHANGE_PRORATION_FULL:
+		return subscription.Full
+	case plansv1.ChangeProration_CHANGE_PRORATION_NONE:
+		return subscription.NoProration
+	}
+	return ""
 }
 
 // PreviewSubscriptionChange prices a change without making it.

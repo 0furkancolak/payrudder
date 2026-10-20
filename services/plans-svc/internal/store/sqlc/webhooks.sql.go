@@ -13,6 +13,57 @@ import (
 	"github.com/google/uuid"
 )
 
+const claimDueWebhookDeliveries = `-- name: ClaimDueWebhookDeliveries :many
+WITH args AS (
+  SELECT $1::timestamptz AS at, $2::float8 AS lease
+), due AS (
+  SELECT tenant_id, id FROM webhook_deliveries WHERE state = 'pending' AND next_attempt_at <= (SELECT at FROM args)
+  ORDER BY next_attempt_at LIMIT $3 FOR UPDATE SKIP LOCKED)
+UPDATE webhook_deliveries d SET attempts = d.attempts + 1, next_attempt_at = args.at + make_interval(secs => args.lease), last_attempt_at = args.at
+FROM due, args WHERE d.tenant_id = due.tenant_id AND d.id = due.id
+RETURNING d.tenant_id, d.id, d.event_id, d.endpoint_id, d.attempts
+`
+
+type ClaimDueWebhookDeliveriesParams struct {
+	Now       time.Time
+	LeaseSecs float64
+	Batch     int32
+}
+
+type ClaimDueWebhookDeliveriesRow struct {
+	TenantID   uuid.UUID
+	ID         uuid.UUID
+	EventID    uuid.UUID
+	EndpointID uuid.UUID
+	Attempts   int32
+}
+
+func (q *Queries) ClaimDueWebhookDeliveries(ctx context.Context, arg ClaimDueWebhookDeliveriesParams) ([]ClaimDueWebhookDeliveriesRow, error) {
+	rows, err := q.db.Query(ctx, claimDueWebhookDeliveries, arg.Now, arg.LeaseSecs, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ClaimDueWebhookDeliveriesRow{}
+	for rows.Next() {
+		var i ClaimDueWebhookDeliveriesRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ID,
+			&i.EventID,
+			&i.EndpointID,
+			&i.Attempts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countWebhookEndpoints = `-- name: CountWebhookEndpoints :one
 SELECT count(*) FROM webhook_endpoints WHERE tenant_id = app_tenant_id()
 `
@@ -34,6 +85,33 @@ func (q *Queries) DeleteWebhookEndpoint(ctx context.Context, id uuid.UUID) (int6
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const finishWebhookDelivery = `-- name: FinishWebhookDelivery :exec
+UPDATE webhook_deliveries SET state = $1::text, last_status = NULLIF($2::int, 0), last_error = NULLIF($3::text, ''),
+  delivered_at = CASE WHEN $1::text = 'delivered' THEN $4::timestamptz ELSE NULL END
+WHERE tenant_id = $5 AND id = $6
+`
+
+type FinishWebhookDeliveryParams struct {
+	State       string
+	LastStatus  int32
+	LastError   string
+	DeliveredAt time.Time
+	TenantID    uuid.UUID
+	ID          uuid.UUID
+}
+
+func (q *Queries) FinishWebhookDelivery(ctx context.Context, arg FinishWebhookDeliveryParams) error {
+	_, err := q.db.Exec(ctx, finishWebhookDelivery,
+		arg.State,
+		arg.LastStatus,
+		arg.LastError,
+		arg.DeliveredAt,
+		arg.TenantID,
+		arg.ID,
+	)
+	return err
 }
 
 const getWebhookDelivery = `-- name: GetWebhookDelivery :one
@@ -71,6 +149,46 @@ func (q *Queries) GetWebhookDelivery(ctx context.Context, id uuid.UUID) (GetWebh
 		&i.LastError,
 		&i.CreatedAt,
 		&i.DeliveredAt,
+	)
+	return i, err
+}
+
+const getWebhookDeliveryTarget = `-- name: GetWebhookDeliveryTarget :one
+SELECT e.url, e.active, e.secret_enc, e.prev_secret_enc, e.prev_secret_until, ev.type, ev.data, ev.occurred_at
+FROM webhook_deliveries d
+JOIN webhook_endpoints e ON e.tenant_id = d.tenant_id AND e.id = d.endpoint_id
+JOIN webhook_events ev ON ev.tenant_id = d.tenant_id AND ev.id = d.event_id
+WHERE d.tenant_id = $1 AND d.id = $2
+`
+
+type GetWebhookDeliveryTargetParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+type GetWebhookDeliveryTargetRow struct {
+	Url             string
+	Active          bool
+	SecretEnc       []byte
+	PrevSecretEnc   []byte
+	PrevSecretUntil *time.Time
+	Type            string
+	Data            json.RawMessage
+	OccurredAt      time.Time
+}
+
+func (q *Queries) GetWebhookDeliveryTarget(ctx context.Context, arg GetWebhookDeliveryTargetParams) (GetWebhookDeliveryTargetRow, error) {
+	row := q.db.QueryRow(ctx, getWebhookDeliveryTarget, arg.TenantID, arg.ID)
+	var i GetWebhookDeliveryTargetRow
+	err := row.Scan(
+		&i.Url,
+		&i.Active,
+		&i.SecretEnc,
+		&i.PrevSecretEnc,
+		&i.PrevSecretUntil,
+		&i.Type,
+		&i.Data,
+		&i.OccurredAt,
 	)
 	return i, err
 }
@@ -290,6 +408,15 @@ func (q *Queries) ListWebhookEndpoints(ctx context.Context) ([]ListWebhookEndpoi
 	return items, nil
 }
 
+const pruneWebhookEvents = `-- name: PruneWebhookEvents :exec
+DELETE FROM webhook_events WHERE created_at < $1
+`
+
+func (q *Queries) PruneWebhookEvents(ctx context.Context, before time.Time) error {
+	_, err := q.db.Exec(ctx, pruneWebhookEvents, before)
+	return err
+}
+
 const queueWebhookDeliveries = `-- name: QueueWebhookDeliveries :execrows
 INSERT INTO webhook_deliveries (tenant_id, id, event_id, endpoint_id)
 SELECT app_tenant_id(), gen_random_uuid(), $1::uuid, e.id FROM webhook_endpoints e
@@ -340,6 +467,30 @@ func (q *Queries) RedeliverWebhook(ctx context.Context, id uuid.UUID) (uuid.UUID
 	var id_2 uuid.UUID
 	err := row.Scan(&id_2)
 	return id_2, err
+}
+
+const rescheduleWebhookDelivery = `-- name: RescheduleWebhookDelivery :exec
+UPDATE webhook_deliveries SET next_attempt_at = $1, last_status = NULLIF($2::int, 0), last_error = $3::text
+WHERE tenant_id = $4 AND id = $5
+`
+
+type RescheduleWebhookDeliveryParams struct {
+	NextAttemptAt time.Time
+	LastStatus    int32
+	LastError     string
+	TenantID      uuid.UUID
+	ID            uuid.UUID
+}
+
+func (q *Queries) RescheduleWebhookDelivery(ctx context.Context, arg RescheduleWebhookDeliveryParams) error {
+	_, err := q.db.Exec(ctx, rescheduleWebhookDelivery,
+		arg.NextAttemptAt,
+		arg.LastStatus,
+		arg.LastError,
+		arg.TenantID,
+		arg.ID,
+	)
+	return err
 }
 
 const rotateWebhookSecret = `-- name: RotateWebhookSecret :one

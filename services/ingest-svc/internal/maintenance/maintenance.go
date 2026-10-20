@@ -9,17 +9,17 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/0furkancolak/quotify/services/ingest-svc/internal/store/sqlc"
 )
 
 // Once creates missing partitions and drops expired ones as of now, and reports what it did.
 func Once(ctx context.Context, pool *pgxpool.Pool, now time.Time) (created, dropped []string, err error) {
-	err = pool.QueryRow(ctx,
-		`SELECT created, dropped FROM maintain_idempotency_partitions($1::timestamptz, 2, interval '45 days')`, now).
-		Scan(&created, &dropped)
+	row, err := sqlc.New(pool).MaintainIdempotencyPartitions(ctx, now)
 	if err != nil {
 		return nil, nil, fmt.Errorf("maintenance: %w", err)
 	}
-	return created, dropped, nil
+	return row.Created, row.Dropped, nil
 }
 
 // Run calls Once immediately and then every interval until ctx is done. A failed run is logged and retried on the next tick.
