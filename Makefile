@@ -172,6 +172,10 @@ helm-lint: $(BIN)/helm $(BIN)/kubeconform ## helm lint + kubeconform for every v
 	  done; \
 	done
 
+.PHONY: mem-budget
+mem-budget: ## Fail when a running Quotify service uses more memory than deploy/compose/memory-budgets.yaml allows (make up and make e2e first)
+	cd tests && go test -count=1 -tags membudget -v -run TestStackStaysInBudget ./membudget/
+
 .PHONY: e2e-kind
 e2e-kind: ## End-to-end tests against the kind cluster (make kind-up kind-images helm-install first)
 	cd tests && QUOTIFY_KAFKA_BROKERS=localhost:31092$(if $(filter kind,$(KIND_PROFILE)),$(comma)localhost:31093$(comma)localhost:31094) \

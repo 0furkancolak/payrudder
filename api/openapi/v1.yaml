@@ -753,6 +753,27 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RoutingRules" } } } }
         "400": { $ref: "#/components/responses/Error" }
+  /v1/mail-settings:
+    get:
+      operationId: getMailSettings
+      summary: Which kinds of e-mail Quotify sends for the tenant (all on until switched off)
+      description: |
+        Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`. A mail of a category that is off is dropped by the notifier
+        (counted in `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule (Paddle does, so Quotify sends none for its payments).
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MailSettings" } } } }
+    put:
+      operationId: setMailSettings
+      summary: Switch the listed categories on or off; the others keep their setting
+      description: An unknown category is rejected with the error key `plans.mail.unknown_category`. A category listed twice takes its last value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MailSettings" }
+      responses:
+        "200": { description: Every category with its new state, content: { application/json: { schema: { $ref: "#/components/schemas/MailSettings" } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /v1/routing-rules/preview:
     post:
       operationId: previewRouting
@@ -2726,6 +2747,16 @@ components:
         currency: { type: string }
         base_fee_minor: { type: string }
         interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR], description: Default month }
+    MailSettings:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category: { type: string, enum: [invoice_issued, payment_receipts, payment_failed, usage_alerts, system] }
+              enabled: { type: boolean }
     RoutingRules:
       type: object
       properties:

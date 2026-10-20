@@ -1,0 +1,24 @@
+# Memory budgets of the Quotify services, checked in CI (the e2e job) and by `make mem-budget`.
+#
+# After the smoke run (the stack is up and `make e2e` and the console's browser test have run), every service's memory as `docker stats` reports it
+# (the container's working set, in practice its resident set) must be at or below budget_mib. A service that grows past its budget fails the build.
+#
+# budget_mib    the limit. Set from measured_mib plus headroom: 40 % or 16 MiB, whichever is more, rounded up to a multiple of 8 (the check prints the figure as
+#               "suggested budget"). The compose container limit stays the hard ceiling; the budget is the early warning below it.
+# measured_mib  what the run measured when the budget was last set. Documentation only.
+#
+# How to change a budget: docs/benchmarks.md#memory-budgets.
+services:
+  admin-ui: { budget_mib: 192, measured_mib: 0 }
+  aggregator: { budget_mib: 192, measured_mib: 0 }
+  analytics-svc: { budget_mib: 128, measured_mib: 0 }
+  assets-svc: { budget_mib: 96, measured_mib: 0 }
+  billing-svc: { budget_mib: 192, measured_mib: 0 }
+  gateway: { budget_mib: 128, measured_mib: 0 }
+  ingest-svc: { budget_mib: 128, measured_mib: 0 }
+  invoice-worker: { budget_mib: 128, measured_mib: 0 }
+  limits-svc: { budget_mib: 128, measured_mib: 0 }
+  mockpsp: { budget_mib: 96, measured_mib: 0 }
+  notifier: { budget_mib: 96, measured_mib: 0 }
+  payments-worker: { budget_mib: 96, measured_mib: 0 }
+  plans-svc: { budget_mib: 128, measured_mib: 0 }

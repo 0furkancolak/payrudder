@@ -242,7 +242,8 @@
       "providers": "مزوّدو الدفع",
       "reports": "التقارير",
       "pricing": "القسائم والضريبة",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mail": "البريد"
     },
     "common": {
       "remove": "إزالة"
@@ -581,6 +582,25 @@
       "refundRequested": "طُلب الاسترداد",
       "refundFailed": "فشل الاسترداد",
       "retryRefund": "إعادة محاولة الاسترداد"
+    },
+    "mail": {
+      "title": "البريد الإلكتروني",
+      "hint": "اختر أنواع البريد الإلكتروني التي يرسلها Quotify إلى عملاء هذا المستأجر. النوع المعطّل يُهمل ولا يوضع في قائمة الانتظار: إعادة تفعيله لا ترسل ما تم تخطيه.",
+      "categories": {
+        "invoice_issued": "إصدار فاتورة",
+        "payment_receipts": "إيصالات الدفع",
+        "payment_failed": "فشل الدفع",
+        "usage_alerts": "تنبيهات الاستخدام",
+        "system": "النظام"
+      },
+      "descriptions": {
+        "invoice_issued": "يُعلم العميل بأن فاتورة جديدة قد اعتُمدت.",
+        "payment_receipts": "الإيصال بعد دفعة ناجحة.",
+        "payment_failed": "دفعة فاشلة ومحاولة جديدة وإشعار بأن Quotify توقف عن التحصيل.",
+        "usage_alerts": "تجاوز عميل حد الاستخدام في خطته.",
+        "system": "كل رسالة أخرى يرسلها Quotify."
+      },
+      "providerNote": "مزوّد الدفع الذي يرسل إيصالاته بنفسه (Paddle) يواصل إرسالها؛ هذا المفتاح يتحكم في بريد Quotify فقط."
     },
     "webhooks": {
       "title": "Webhooks",

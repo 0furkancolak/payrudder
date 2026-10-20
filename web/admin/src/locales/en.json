@@ -242,7 +242,8 @@
       "providers": "Providers",
       "reports": "Reports",
       "pricing": "Coupons & tax",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mail": "Mail"
     },
     "common": {
       "remove": "Remove"
@@ -581,6 +582,25 @@
       "refundRequested": "Refund requested",
       "refundFailed": "Refund failed",
       "retryRefund": "Retry refund"
+    },
+    "mail": {
+      "title": "E-mail",
+      "hint": "Choose which kinds of e-mail Quotify sends to this tenant's customers. A kind that is switched off is dropped, not queued: switching it on again does not send what was skipped.",
+      "categories": {
+        "invoice_issued": "Invoice issued",
+        "payment_receipts": "Payment receipts",
+        "payment_failed": "Payment failed",
+        "usage_alerts": "Usage alerts",
+        "system": "System"
+      },
+      "descriptions": {
+        "invoice_issued": "Tells the customer that a new invoice was finalized.",
+        "payment_receipts": "The receipt after a successful payment.",
+        "payment_failed": "A failed payment, a retry and the notice that Quotify gave up collecting.",
+        "usage_alerts": "A customer passed a usage limit of its plan.",
+        "system": "Every other message Quotify sends."
+      },
+      "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Quotify's mail."
     },
     "webhooks": {
       "title": "Webhooks",

@@ -1,6 +1,7 @@
 import { createRoute, type AnyRoute } from "@tanstack/vue-router";
 import { customerRoutes } from "@/features/customers/routes";
 import InvoicePage from "@/features/invoices/InvoicePage.vue";
+import { mailRoutes } from "@/features/mail/routes";
 import { packageRoutes } from "@/features/packages/routes";
 import { paymentRoutes } from "@/features/payments/routes";
 import { pricingRoutes } from "@/features/pricing/routes";
@@ -23,6 +24,6 @@ export function tenantRoutes(parent: AnyRoute) {
   const invoice = createRoute({ getParentRoute: () => tenant, path: "invoices/$invoiceId", component: InvoicePage });
   return [
     list,
-    tenant.addChildren([overview, invoice, ...customerRoutes(tenant), ...packageRoutes(tenant), ...subscriptionRoutes(tenant), ...pricingRoutes(tenant), ...paymentRoutes(tenant), ...providerRoutes(tenant), ...reportRoutes(tenant), ...webhookRoutes(tenant)]),
+    tenant.addChildren([overview, invoice, ...customerRoutes(tenant), ...packageRoutes(tenant), ...subscriptionRoutes(tenant), ...pricingRoutes(tenant), ...paymentRoutes(tenant), ...providerRoutes(tenant), ...reportRoutes(tenant), ...webhookRoutes(tenant), ...mailRoutes(tenant)]),
   ];
 }

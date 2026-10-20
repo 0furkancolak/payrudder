@@ -693,6 +693,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/mail-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Which kinds of e-mail Quotify sends for the tenant (all on until switched off)
+         * @description Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`. A mail of a category that is off is dropped by the notifier
+         *     (counted in `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule (Paddle does, so Quotify sends none for its payments).
+         */
+        get: operations["getMailSettings"];
+        /**
+         * Switch the listed categories on or off; the others keep their setting
+         * @description An unknown category is rejected with the error key `plans.mail.unknown_category`. A category listed twice takes its last value.
+         */
+        put: operations["setMailSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/routing-rules/preview": {
         parameters: {
             query?: never;
@@ -2530,6 +2555,13 @@ export interface components {
              */
             interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
         };
+        MailSettings: {
+            categories?: {
+                /** @enum {string} */
+                category?: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
+                enabled?: boolean;
+            }[];
+        };
         RoutingRules: {
             rules?: {
                 /** @description ISO 3166-1 alpha-2; empty matches any country */
@@ -4001,6 +4033,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoutingRules"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getMailSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailSettings"];
+                };
+            };
+        };
+    };
+    setMailSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailSettings"];
+            };
+        };
+        responses: {
+            /** @description Every category with its new state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailSettings"];
                 };
             };
             400: components["responses"]["Error"];

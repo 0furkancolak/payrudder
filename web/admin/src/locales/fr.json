@@ -242,7 +242,8 @@
       "providers": "Prestataires",
       "reports": "Rapports",
       "pricing": "Coupons et taxes",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mail": "E-mail"
     },
     "common": {
       "remove": "Retirer"
@@ -581,6 +582,25 @@
       "refundRequested": "Remboursement demandé",
       "refundFailed": "Remboursement échoué",
       "retryRefund": "Réessayer le remboursement"
+    },
+    "mail": {
+      "title": "E-mail",
+      "hint": "Choisissez les types d'e-mails que Quotify envoie aux clients de ce locataire. Un type désactivé est ignoré, pas mis en file : le réactiver n'envoie pas ce qui a été sauté.",
+      "categories": {
+        "invoice_issued": "Facture émise",
+        "payment_receipts": "Reçus de paiement",
+        "payment_failed": "Paiement échoué",
+        "usage_alerts": "Alertes d'usage",
+        "system": "Système"
+      },
+      "descriptions": {
+        "invoice_issued": "Prévient le client qu'une nouvelle facture a été finalisée.",
+        "payment_receipts": "Le reçu après un paiement réussi.",
+        "payment_failed": "Un paiement échoué, une nouvelle tentative et l'avis que Quotify a renoncé à encaisser.",
+        "usage_alerts": "Un client a dépassé une limite d'usage de son offre.",
+        "system": "Tous les autres messages envoyés par Quotify."
+      },
+      "providerNote": "Un prestataire de paiement qui envoie ses propres reçus (Paddle) continue de les envoyer ; cet interrupteur ne commande que les e-mails de Quotify."
     },
     "webhooks": {
       "title": "Webhooks",
