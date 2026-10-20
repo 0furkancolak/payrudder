@@ -75,12 +75,13 @@ func (s *Server) priceChange(ctx context.Context, q *sqlc.Queries, row sqlc.GetS
 	if eff != subscription.Active && eff != subscription.Trialing {
 		return nil, status.Errorf(codes.FailedPrecondition, "a %s subscription cannot change", eff)
 	}
-	at := now
+	// Postgres keeps microseconds: a change at a finer instant would price a period start the stored subscription does not have.
+	at := now.Truncate(time.Microsecond)
 	if req.GetChangeTime() != nil {
 		if err := req.GetChangeTime().CheckValid(); err != nil {
 			return nil, domain.Invalid("change_time", "invalid timestamp")
 		}
-		at = req.GetChangeTime().AsTime()
+		at = req.GetChangeTime().AsTime().Truncate(time.Microsecond)
 		if at.After(now) {
 			return nil, domain.Invalid("change_time", "cannot be in the future; ask for a change at the end of the period instead")
 		}
