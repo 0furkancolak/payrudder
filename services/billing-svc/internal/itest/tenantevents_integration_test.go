@@ -65,14 +65,14 @@ func testTenantEvents(t *testing.T) {
 	if err := e.mgr.FlushTenantEvents(context.Background()); err == nil {
 		t.Fatal("a failed hand-over must be reported")
 	}
-	if len(e.events.recorded()) != 0 {
+	if len(e.events.recorded(e.tid)) != 0 {
 		t.Fatal("nothing should be recorded while plans-svc is down")
 	}
 	e.events.failWith(nil)
 	if err := e.mgr.FlushTenantEvents(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	got := e.events.recorded()
+	got := e.events.recorded(e.tid)
 	if len(got) != 5 {
 		t.Fatalf("handed over %d events, want 5", len(got))
 	}
