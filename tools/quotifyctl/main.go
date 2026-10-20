@@ -221,7 +221,7 @@ func seedCatalog(c *client, key, env string, customers int) error {
 		if err := c.call("POST", "/v1/customers", key, body, nil); err != nil {
 			return err
 		}
-		if err := c.call("POST", "/v1/subscriptions", key, map[string]any{"customer_external_id": ext, "plan_code": "pro"}, nil); err != nil {
+		if err := c.call("POST", "/v1/subscriptions", key, map[string]any{"customer_external_id": ext, "plan_code": "pro", "fee_timing": "FEE_TIMING_ARREARS"}, nil); err != nil {
 			return err
 		}
 	}
