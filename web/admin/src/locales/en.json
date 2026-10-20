@@ -548,7 +548,14 @@
       "customer": "Customer",
       "date": "Date",
       "empty": "No credit notes.",
-      "badAmount": "Not an amount in {currency}: digits only, with at most as many decimals as the currency has."
+      "badAmount": "Not an amount in {currency}: digits only, with at most as many decimals as the currency has.",
+      "refundToCard": "Refund to the card",
+      "where": "Went to",
+      "toCredit": "Credit balance",
+      "refunded": "Refunded to the card",
+      "refundRequested": "Refund requested",
+      "refundFailed": "Refund failed",
+      "retryRefund": "Retry refund"
     }
   }
 }

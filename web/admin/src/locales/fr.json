@@ -548,7 +548,14 @@
       "customer": "Client",
       "date": "Date",
       "empty": "Aucun avoir.",
-      "badAmount": "Pas un montant en {currency} : des chiffres seulement, avec au plus les décimales de la devise."
+      "badAmount": "Pas un montant en {currency} : des chiffres seulement, avec au plus les décimales de la devise.",
+      "refundToCard": "Rembourser sur la carte",
+      "where": "Destination",
+      "toCredit": "Solde créditeur",
+      "refunded": "Remboursé sur la carte",
+      "refundRequested": "Remboursement demandé",
+      "refundFailed": "Remboursement échoué",
+      "retryRefund": "Réessayer le remboursement"
     }
   }
 }

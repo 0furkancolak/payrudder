@@ -18,6 +18,7 @@ import (
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
 )
 
@@ -81,6 +82,10 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 		if tag.RowsAffected() == 0 {
 			c.duplicates.Add(ctx, 1, metric.WithAttributes(attribute.String("kind", kind)))
 			return nil
+		}
+		// A refund of a credit note is answered like any command, but no saga is waiting for it.
+		if handled, err := runs.SettleRefund(ctx, tx, tenantID, cmdID, &reply); err != nil || handled {
+			return err
 		}
 		out, err := c.Engine.Handle(ctx, tx, tenantID, sagaID, ev, cause, &cmdID)
 		if err != nil {

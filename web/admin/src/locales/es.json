@@ -548,7 +548,14 @@
       "customer": "Cliente",
       "date": "Fecha",
       "empty": "No hay notas de crédito.",
-      "badAmount": "No es un importe en {currency}: solo dígitos, con como mucho los decimales de la moneda."
+      "badAmount": "No es un importe en {currency}: solo dígitos, con como mucho los decimales de la moneda.",
+      "refundToCard": "Reembolsar a la tarjeta",
+      "where": "Destino",
+      "toCredit": "Saldo a favor",
+      "refunded": "Reembolsado a la tarjeta",
+      "refundRequested": "Reembolso solicitado",
+      "refundFailed": "Reembolso fallido",
+      "retryRefund": "Reintentar el reembolso"
     }
   }
 }

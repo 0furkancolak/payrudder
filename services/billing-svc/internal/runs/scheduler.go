@@ -25,6 +25,9 @@ func (m *Manager) Tick(ctx context.Context) error {
 	if err := m.BillFees(ctx); err != nil {
 		m.log.WarnContext(ctx, "scheduler: fee billing failed", "error", err)
 	}
+	if err := m.SweepRefunds(ctx); err != nil {
+		m.log.WarnContext(ctx, "scheduler: credit note refunds not swept", "error", err)
+	}
 	if err := m.ResumeRerating(ctx); err != nil {
 		m.log.WarnContext(ctx, "scheduler: re-rating resume failed", "error", err)
 	}

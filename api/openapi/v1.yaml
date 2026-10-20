@@ -1969,10 +1969,11 @@ paths:
   /admin/v1/invoices/{id}/credit-notes:
     post:
       operationId: adminCreateCreditNote
-      summary: Correct a paid invoice with a numbered credit note, added to the customer's credit balance
+      summary: Correct a paid invoice with a numbered credit note, added to the customer's credit balance or refunded to the card
       description: >
-        An issued invoice is never edited. The note's amount goes to the customer's credit balance in the invoice's currency and pays their next invoice. The notes of an invoice never add up
-        to more than the invoice. Only a paid invoice can be credited (an open one is voided).
+        An issued invoice is never edited. The note's amount goes to the customer's credit balance in the invoice's currency and pays their next invoice, or, with refund_to_card, back to the card
+        through the payment provider that took the payment (the note's refund_state says whether it went through; a refund nobody answers is sent again, and a failed one can be retried).
+        The notes of an invoice never add up to more than the invoice. Only a paid invoice can be credited (an open one is voided).
       security: [{ operatorToken: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
@@ -1986,9 +1987,29 @@ paths:
                 tenant_id: { type: string, format: uuid }
                 amount_minor: { type: string, description: "int64 minor units; 0 or absent = what is left of the invoice" }
                 reason: { type: string, maxLength: 500 }
+                refund_to_card: { type: boolean, description: "Refund the amount to the card instead of adding it to the credit balance" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CreditNote" } } } }
         "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/credit-notes/{id}/retry-refund:
+    post:
+      operationId: adminRetryCreditNoteRefund
+      summary: Ask the payment provider again for a credit note refund that failed
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id]
+              properties:
+                tenant_id: { type: string, format: uuid }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditNote" } } } }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /admin/v1/api-keys/{id}:
@@ -2360,6 +2381,9 @@ components:
         total_minor: { type: string }
         reason: { type: string }
         create_time: { type: string, format: date-time }
+        disposition: { type: string, enum: [CREDIT_NOTE_DISPOSITION_CREDIT, CREDIT_NOTE_DISPOSITION_REFUND], description: "Where the amount went: the credit balance, or back to the card" }
+        refund_state: { type: string, enum: [REFUND_STATE_REQUESTED, REFUND_STATE_REFUNDED, REFUND_STATE_FAILED], description: "Only for a refund to the card" }
+        refund_error: { type: string }
     TaxRates:
       type: object
       properties:

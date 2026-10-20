@@ -574,6 +574,37 @@ test.describe("credit notes", () => {
     await expect(page.getByRole("row", { name: /CN-2026-000001/ })).toContainText("$25.50");
   });
 
+  test("a credit note can be refunded to the card, and a failed refund is retried", async ({ page }) => {
+    const notes: Record<string, unknown>[] = [];
+    const gw = common("paid", notes).on((c) => {
+      if (c.method === "POST" && c.path === "/admin/v1/invoices/inv1/credit-notes") {
+        notes.push({ id: "cn1", number: "CN-2026-000001", invoice_number: "INV-2026-000001", customer_external_id: "cus_1", currency: "USD", total_minor: "1000",
+          disposition: "CREDIT_NOTE_DISPOSITION_REFUND", refund_state: "REFUND_STATE_FAILED", refund_error: "rejected: card closed", create_time: "2026-10-20T10:00:00Z" });
+        return { status: 201, body: notes[0] };
+      }
+      if (c.method === "POST" && c.path === "/admin/v1/credit-notes/cn1/retry-refund") {
+        notes[0] = { ...notes[0], refund_state: "REFUND_STATE_REQUESTED", refund_error: "" };
+        return { body: notes[0] };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/invoices/inv1");
+    const form = page.getByRole("form", { name: "new credit note" });
+    await form.getByLabel("Amount").fill("10");
+    await form.getByLabel("Refund to the card").check();
+    await form.getByRole("button", { name: "Issue credit note" }).click();
+    await expect.poll(() => gw.called("POST", "/admin/v1/invoices/inv1/credit-notes").length).toBe(1);
+    expect(gw.called("POST", "/admin/v1/invoices/inv1/credit-notes")[0]?.body).toEqual({ tenant_id: TENANT, amount_minor: "1000", reason: "", refund_to_card: true });
+    const row = page.getByRole("row", { name: /CN-2026-000001/ });
+    await expect(row).toContainText("Refund failed");
+    await expect(row).toContainText("card closed");
+    await row.getByRole("button", { name: "Retry refund" }).click();
+    await expect.poll(() => gw.called("POST", "/admin/v1/credit-notes/cn1/retry-refund").length).toBe(1);
+    expect(gw.called("POST", "/admin/v1/credit-notes/cn1/retry-refund")[0]?.body).toEqual({ tenant_id: TENANT });
+    await expect(row).toContainText("Refund requested");
+  });
+
   test("an invoice that is not paid cannot be credited here, and an empty amount credits what is left", async ({ page }) => {
     const gw = common("open", []);
     await gw.install(page);

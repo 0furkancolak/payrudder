@@ -547,16 +547,17 @@ var SandboxService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	BillingAdminService_ClosePeriod_FullMethodName        = "/quotify.billing.v1.BillingAdminService/ClosePeriod"
-	BillingAdminService_GetBillingRun_FullMethodName      = "/quotify.billing.v1.BillingAdminService/GetBillingRun"
-	BillingAdminService_RetryInvoiceSaga_FullMethodName   = "/quotify.billing.v1.BillingAdminService/RetryInvoiceSaga"
-	BillingAdminService_VoidInvoice_FullMethodName        = "/quotify.billing.v1.BillingAdminService/VoidInvoice"
-	BillingAdminService_CreateCreditNote_FullMethodName   = "/quotify.billing.v1.BillingAdminService/CreateCreditNote"
-	BillingAdminService_StartRerating_FullMethodName      = "/quotify.billing.v1.BillingAdminService/StartRerating"
-	BillingAdminService_GetReratingJob_FullMethodName     = "/quotify.billing.v1.BillingAdminService/GetReratingJob"
-	BillingAdminService_GetInvoiceSaga_FullMethodName     = "/quotify.billing.v1.BillingAdminService/GetInvoiceSaga"
-	BillingAdminService_ListDeadLetters_FullMethodName    = "/quotify.billing.v1.BillingAdminService/ListDeadLetters"
-	BillingAdminService_RedriveDeadLetters_FullMethodName = "/quotify.billing.v1.BillingAdminService/RedriveDeadLetters"
+	BillingAdminService_ClosePeriod_FullMethodName           = "/quotify.billing.v1.BillingAdminService/ClosePeriod"
+	BillingAdminService_GetBillingRun_FullMethodName         = "/quotify.billing.v1.BillingAdminService/GetBillingRun"
+	BillingAdminService_RetryInvoiceSaga_FullMethodName      = "/quotify.billing.v1.BillingAdminService/RetryInvoiceSaga"
+	BillingAdminService_VoidInvoice_FullMethodName           = "/quotify.billing.v1.BillingAdminService/VoidInvoice"
+	BillingAdminService_CreateCreditNote_FullMethodName      = "/quotify.billing.v1.BillingAdminService/CreateCreditNote"
+	BillingAdminService_RetryCreditNoteRefund_FullMethodName = "/quotify.billing.v1.BillingAdminService/RetryCreditNoteRefund"
+	BillingAdminService_StartRerating_FullMethodName         = "/quotify.billing.v1.BillingAdminService/StartRerating"
+	BillingAdminService_GetReratingJob_FullMethodName        = "/quotify.billing.v1.BillingAdminService/GetReratingJob"
+	BillingAdminService_GetInvoiceSaga_FullMethodName        = "/quotify.billing.v1.BillingAdminService/GetInvoiceSaga"
+	BillingAdminService_ListDeadLetters_FullMethodName       = "/quotify.billing.v1.BillingAdminService/ListDeadLetters"
+	BillingAdminService_RedriveDeadLetters_FullMethodName    = "/quotify.billing.v1.BillingAdminService/RedriveDeadLetters"
 )
 
 // BillingAdminServiceClient is the client API for BillingAdminService service.
@@ -575,6 +576,8 @@ type BillingAdminServiceClient interface {
 	// CreateCreditNote corrects a paid invoice without editing it: a numbered credit note whose amount is added to the customer's credit balance, which pays their
 	// next invoice in that currency. The notes of an invoice never add up to more than the invoice.
 	CreateCreditNote(ctx context.Context, in *CreateCreditNoteRequest, opts ...grpc.CallOption) (*CreateCreditNoteResponse, error)
+	// RetryCreditNoteRefund asks the provider again for a refund that failed.
+	RetryCreditNoteRefund(ctx context.Context, in *RetryCreditNoteRefundRequest, opts ...grpc.CallOption) (*RetryCreditNoteRefundResponse, error)
 	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
 	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
 	// Idempotent per (tenant, period, plan version).
@@ -640,6 +643,16 @@ func (c *billingAdminServiceClient) CreateCreditNote(ctx context.Context, in *Cr
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateCreditNoteResponse)
 	err := c.cc.Invoke(ctx, BillingAdminService_CreateCreditNote_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingAdminServiceClient) RetryCreditNoteRefund(ctx context.Context, in *RetryCreditNoteRefundRequest, opts ...grpc.CallOption) (*RetryCreditNoteRefundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RetryCreditNoteRefundResponse)
+	err := c.cc.Invoke(ctx, BillingAdminService_RetryCreditNoteRefund_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -712,6 +725,8 @@ type BillingAdminServiceServer interface {
 	// CreateCreditNote corrects a paid invoice without editing it: a numbered credit note whose amount is added to the customer's credit balance, which pays their
 	// next invoice in that currency. The notes of an invoice never add up to more than the invoice.
 	CreateCreditNote(context.Context, *CreateCreditNoteRequest) (*CreateCreditNoteResponse, error)
+	// RetryCreditNoteRefund asks the provider again for a refund that failed.
+	RetryCreditNoteRefund(context.Context, *RetryCreditNoteRefundRequest) (*RetryCreditNoteRefundResponse, error)
 	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
 	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
 	// Idempotent per (tenant, period, plan version).
@@ -747,6 +762,9 @@ func (UnimplementedBillingAdminServiceServer) VoidInvoice(context.Context, *Void
 }
 func (UnimplementedBillingAdminServiceServer) CreateCreditNote(context.Context, *CreateCreditNoteRequest) (*CreateCreditNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateCreditNote not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) RetryCreditNoteRefund(context.Context, *RetryCreditNoteRefundRequest) (*RetryCreditNoteRefundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RetryCreditNoteRefund not implemented")
 }
 func (UnimplementedBillingAdminServiceServer) StartRerating(context.Context, *StartReratingRequest) (*StartReratingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartRerating not implemented")
@@ -874,6 +892,24 @@ func _BillingAdminService_CreateCreditNote_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingAdminService_RetryCreditNoteRefund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RetryCreditNoteRefundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).RetryCreditNoteRefund(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_RetryCreditNoteRefund_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).RetryCreditNoteRefund(ctx, req.(*RetryCreditNoteRefundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BillingAdminService_StartRerating_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StartReratingRequest)
 	if err := dec(in); err != nil {
@@ -990,6 +1026,10 @@ var BillingAdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateCreditNote",
 			Handler:    _BillingAdminService_CreateCreditNote_Handler,
+		},
+		{
+			MethodName: "RetryCreditNoteRefund",
+			Handler:    _BillingAdminService_RetryCreditNoteRefund_Handler,
 		},
 		{
 			MethodName: "StartRerating",

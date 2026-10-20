@@ -21,13 +21,23 @@ export function useCreditNotes(tenantId: MaybeRefOrGetter<string>, invoiceId: Ma
 export function useCreateCreditNote(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { invoiceId: string; amountMinor: string; reason: string }) =>
+    mutationFn: (v: { invoiceId: string; amountMinor: string; reason: string; refundToCard?: boolean }) =>
       unwrap(
         api.POST("/admin/v1/invoices/{id}/credit-notes", {
           params: { path: { id: v.invoiceId } },
-          body: { tenant_id: toValue(tenantId), amount_minor: v.amountMinor, reason: v.reason },
+          body: { tenant_id: toValue(tenantId), amount_minor: v.amountMinor, reason: v.reason, ...(v.refundToCard ? { refund_to_card: true } : {}) },
         }),
       ),
+    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "credit-notes"] }),
+  });
+}
+
+/** Asks the payment provider again for a credit note refund that failed (an operator action). */
+export function useRetryCreditNoteRefund(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (creditNoteId: string) =>
+      unwrap(api.POST("/admin/v1/credit-notes/{id}/retry-refund", { params: { path: { id: creditNoteId } }, body: { tenant_id: toValue(tenantId) } })),
     onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "credit-notes"] }),
   });
 }
