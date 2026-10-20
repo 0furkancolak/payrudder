@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useParams } from "@tanstack/vue-router";
+import { useParams, useRouter } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { toApiError } from "@/shared/api/client";
@@ -9,12 +9,18 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CURRENCIES } from "@/shared/lib/currencies";
+import CustomerLinksCard from "@/features/paymentlinks/CustomerLinksCard.vue";
 import { addressLine, useCreateCustomer, useCustomers, useSetCustomerAddress, type Address } from "./api";
 
 const { t } = useI18n();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const customers = useCustomers(tenantId);
+const router = useRouter();
+const portalFor = ref("");
+function paymentLink(externalId?: string) {
+  void router.navigate({ to: "/tenants/$id/payment-links", params: { id: tenantId.value }, search: { customer: externalId ?? "" } as never });
+}
 const create = useCreateCustomer(tenantId);
 
 const externalId = ref("");
@@ -101,6 +107,8 @@ function submit() {
     <p v-if="setAddress.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(setAddress.error.value).message }}</p>
   </Card>
 
+  <CustomerLinksCard v-if="portalFor" :tenant-id="tenantId" :customer="portalFor" @close="portalFor = ''" />
+
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.tabs.customers") }}</h2>
     <p v-if="customers.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(customers.error.value).message }}</p>
@@ -113,6 +121,7 @@ function submit() {
           <TableHead>{{ t("billing.customers.country") }}</TableHead>
           <TableHead>{{ t("billing.customers.currency") }}</TableHead>
           <TableHead>{{ t("billing.customers.address.title") }}</TableHead>
+          <TableHead class="text-end">{{ t("billing.paymentLinks.links") }}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -126,6 +135,12 @@ function submit() {
             <span class="text-sm">{{ addressLine(c.address) || "—" }}</span>
             <Button size="sm" variant="ghost" @click="edit(c)">{{ t("billing.customers.address.edit") }}</Button>
           </TableCell>
+          <TableCell class="w-40 text-end">
+<div class="flex flex-col items-end gap-1">
+            <Button size="sm" variant="outline" :aria-label="t('billing.paymentLinks.portal.open') + ' ' + c.external_id" @click="portalFor = c.external_id ?? ''">{{ t("billing.paymentLinks.portal.open") }}</Button>
+            <Button size="sm" variant="outline" :aria-label="t('billing.paymentLinks.paymentLink') + ' ' + c.external_id" @click="paymentLink(c.external_id)">{{ t("billing.paymentLinks.paymentLink") }}</Button>
+          </div>
+</TableCell>
         </TableRow>
       </TableBody>
     </Table>

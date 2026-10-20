@@ -106,17 +106,23 @@ stateDiagram-v2
     PDF_REQUESTED --> PDF_FAILED: PdfFailed / StepExhausted
     PDF_FAILED --> PDF_REQUESTED: Retry
     PDF_RENDERED --> PAYMENT_REQUESTED: Continue [total > 0]
+    PDF_RENDERED --> AWAITING_PAYMENT: Continue [total > 0, customer pays]
     PDF_RENDERED --> NOTIFY_REQUESTED: Continue [total = 0]
-    PAYMENT_REQUESTED --> PAID: PaymentSucceeded
+    PAYMENT_REQUESTED --> PAID: PaymentSucceeded / Settled
     PAYMENT_REQUESTED --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left]
     PAYMENT_REQUESTED --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted]
+    PAYMENT_REQUESTED --> AWAITING_PAYMENT: PaymentDeclined [customer pays, no dunning]
     PAYMENT_REQUESTED --> PAYMENT_UNKNOWN: PaymentErrored / StepExhausted
-    PAYMENT_UNKNOWN --> PAID: PaymentSucceeded / StatusSucceeded
+    PAYMENT_UNKNOWN --> PAID: PaymentSucceeded / StatusSucceeded / Settled
     PAYMENT_UNKNOWN --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left] / StatusDeclined [dunning attempts left]
     PAYMENT_UNKNOWN --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted] / StatusDeclined [dunning exhausted]
+    PAYMENT_UNKNOWN --> AWAITING_PAYMENT: PaymentDeclined [customer pays, no dunning] / StatusDeclined [customer pays, no dunning]
     PAYMENT_UNKNOWN --> PAYMENT_REQUESTED: StatusNotFound
     PAYMENT_UNKNOWN --> PAYMENT_UNKNOWN: Retry / StepExhausted
-    PAYMENT_DECLINED --> PAYMENT_REQUESTED: DunningDue
+    PAYMENT_DECLINED --> PAYMENT_REQUESTED: DunningDue / PayRequested
+    AWAITING_PAYMENT --> PAYMENT_REQUESTED: PayRequested
+    AWAITING_PAYMENT --> PAID: Settled
+    PAYMENT_DECLINED --> PAID: Settled
     PAID --> COMPLETED: Continue [the provider mails the receipt]
     PAID --> NOTIFY_REQUESTED: Continue
     UNCOLLECTIBLE --> NOTIFY_REQUESTED: Continue
@@ -127,6 +133,7 @@ stateDiagram-v2
     PDF_REQUESTED --> VOIDED: Void
     PDF_FAILED --> VOIDED: Void
     PAYMENT_DECLINED --> VOIDED: Void
+    AWAITING_PAYMENT --> VOIDED: Void
     NOTIFY_REQUESTED --> REFUND_REQUESTED: Void [paid, total > 0]
     NOTIFY_REQUESTED --> VOIDED: Void [nothing to refund]
     NOTIFY_FAILED --> REFUND_REQUESTED: Void [paid, total > 0]

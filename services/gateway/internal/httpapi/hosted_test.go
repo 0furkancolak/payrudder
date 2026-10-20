@@ -29,6 +29,9 @@ func (fakeBilling) RevokeInvoiceLinks(context.Context, *billingv1.RevokeInvoiceL
 }
 
 func (fakeBilling) GetHostedInvoice(_ context.Context, req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHostedInvoiceResponse, error) {
+	if r, ok := scenarioInvoice(req); ok {
+		return r, nil
+	}
 	if req.GetToken() != goodToken {
 		return nil, status.Error(codes.NotFound, "this link does not exist or has expired")
 	}

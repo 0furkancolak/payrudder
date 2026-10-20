@@ -18,6 +18,8 @@ func (s *Server) routes() []Route {
 		s.ingestAndCatalogRoutes(),
 		s.subscriptionRoutes(),
 		s.webhookAndInvoiceLinkRoutes(),
+		s.paymentLinkRoutes(),
+		s.hostedPublicRoutes(),
 		s.reportingAndRoutingRoutes(),
 		s.assetRoutes(),
 		s.billingReadRoutes(),
@@ -93,8 +95,6 @@ func (s *Server) webhookAndInvoiceLinkRoutes() []Route {
 		// Hosted invoice page: links the tenant makes, and the public pages they open
 		{"POST", "/v1/invoices/{id}/links", AccessTenant, ratelimit.ClassWrite, s.createInvoiceLink},
 		{"DELETE", "/v1/invoices/{id}/links", AccessTenant, ratelimit.ClassWrite, s.revokeInvoiceLinks},
-		{"GET", "/i/{token}", AccessPublic, "", s.hostedInvoicePage},
-		{"GET", "/i/{token}/pdf", AccessPublic, "", s.hostedInvoicePDF},
 	}
 }
 

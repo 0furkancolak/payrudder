@@ -151,7 +151,8 @@
       "link": "Fatura bağlantısı",
       "copy": "Kopyala",
       "revoked": "Bu faturanın tüm bağlantıları iptal edildi.",
-      "badDays": "Gün: 1 ile 365 arasında bir tam sayı."
+      "badDays": "Gün: 1 ile 365 arasında bir tam sayı.",
+      "paymentLink": "Ödeme bağlantısı"
     }
   },
   "deadLetters": {
@@ -242,7 +243,8 @@
       "providers": "Sağlayıcılar",
       "reports": "Raporlar",
       "pricing": "Kupon ve vergi",
-      "webhooks": "Webhooklar"
+      "webhooks": "Webhooklar",
+      "paymentLinks": "Ödeme bağlantıları"
     },
     "common": {
       "remove": "Kaldır"
@@ -617,6 +619,80 @@
         "delivered": "Teslim edildi",
         "failed": "Başarısız"
       }
+    },
+    "paymentLinks": {
+      "title": "Ödeme bağlantıları",
+      "hint": "Müşterinin giriş yapmadan ödeme yapmak için açtığı bağlantı. Açık bir fatura için ya da sabit bir tutar için (fatura müşteri ilk kullandığında oluşturulur). Bağlantıya sahip olan herkes ödeme yapabilir; süresi dolunca ya da iptal edilince çalışmaz.",
+      "formLabel": "yeni ödeme bağlantısı",
+      "kind": "Tür",
+      "kinds": {
+        "adhoc": "Sabit tutar",
+        "invoice": "Açık fatura"
+      },
+      "invoiceId": "Fatura kimliği",
+      "amount": "Tutar",
+      "currency": "Para birimi",
+      "description": "Ne için",
+      "customer": "Müşteri",
+      "customerOptional": "Müşteri kimliği (isteğe bağlı)",
+      "days": "Geçerlilik (gün)",
+      "singleUse": "Tek kullanımlık (bir ödenmiş fatura)",
+      "singleUseShort": "tek kullanımlık",
+      "create": "Bağlantı oluştur",
+      "adhocHint": "Müşteri sayfada Devam'a bastığında fatura oluşturulur ve numaralandırılır.",
+      "invoiceHint": "Fatura kesinleşmiş ve ödenmemiş olmalı.",
+      "shownOnce": "Bağlantıyı şimdi kopyalayın: yalnızca bir kez gösterilir, sonradan okunamaz.",
+      "url": "Ödeme bağlantısı",
+      "copy": "Kopyala",
+      "replayed": "Bu istek zaten işlendi: bağlantı var, ancak adresi yalnızca bir kez gösterilir.",
+      "list": "Bağlantılar",
+      "anyKind": "Her tür",
+      "anyStatus": "Her durum",
+      "status": "Durum",
+      "statuses": {
+        "active": "Etkin",
+        "paid": "Ödendi",
+        "expired": "Süresi doldu",
+        "revoked": "İptal edildi"
+      },
+      "uses": "Kullanım / ödenen",
+      "usesValue": "{used} / {paid}",
+      "expires": "Bitiş",
+      "createdAt": "Oluşturuldu",
+      "revoke": "İptal et",
+      "confirmRevoke": "Bu bağlantı iptal edilsin mi? Ondan oluşan ödenmemiş faturalar iptal edilir.",
+      "empty": "Henüz ödeme bağlantısı yok.",
+      "previous": "Önceki",
+      "next": "Sonraki",
+      "links": "Bağlantılar",
+      "paymentLink": "Ödeme bağlantısı",
+      "errors": {
+        "invoice": "Fatura kimliğini girin.",
+        "amount": "Para biriminin ondalık basamaklarıyla pozitif bir tutar girin.",
+        "description": "Ödemenin ne için olduğunu yazın.",
+        "days": "Gün: 1 ile 365 arasında tam sayı."
+      },
+      "portal": {
+        "open": "Ödeme sayfası",
+        "title": "{id} için ödeme sayfası",
+        "hint": "Bu müşterinin faturalarını ve ödemelerini görebildiği, PDF ve makbuzları indirebildiği ve açık olanı ödeyebildiği sayfaya bağlantı. Salt okunur.",
+        "close": "Kapat",
+        "create": "Bağlantı oluştur",
+        "revoke": "Hepsini iptal et",
+        "revoked": "Bu müşterinin tüm ödeme sayfası bağlantıları iptal edildi.",
+        "confirmRevoke": "Bu müşterinin tüm ödeme sayfası bağlantıları iptal edilsin mi?",
+        "link": "Ödeme sayfası bağlantısı",
+        "payments": "Ödemeler",
+        "date": "Tarih",
+        "invoice": "Fatura",
+        "type": "Tür",
+        "noPayments": "Kayıtlı ödeme yok.",
+        "kinds": {
+          "charge": "Tahsilat",
+          "refund": "İade"
+        }
+      },
+      "for": "Konu"
     }
   }
 }

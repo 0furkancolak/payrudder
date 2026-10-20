@@ -19,17 +19,24 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	BillingService_GetInvoice_FullMethodName         = "/quotify.billing.v1.BillingService/GetInvoice"
-	BillingService_ListInvoices_FullMethodName       = "/quotify.billing.v1.BillingService/ListInvoices"
-	BillingService_GetInvoicePdfUrl_FullMethodName   = "/quotify.billing.v1.BillingService/GetInvoicePdfUrl"
-	BillingService_GetRevenueReport_FullMethodName   = "/quotify.billing.v1.BillingService/GetRevenueReport"
-	BillingService_GetDunningReport_FullMethodName   = "/quotify.billing.v1.BillingService/GetDunningReport"
-	BillingService_GetCreditNote_FullMethodName      = "/quotify.billing.v1.BillingService/GetCreditNote"
-	BillingService_ListCreditNotes_FullMethodName    = "/quotify.billing.v1.BillingService/ListCreditNotes"
-	BillingService_CreateInvoiceLink_FullMethodName  = "/quotify.billing.v1.BillingService/CreateInvoiceLink"
-	BillingService_RevokeInvoiceLinks_FullMethodName = "/quotify.billing.v1.BillingService/RevokeInvoiceLinks"
-	BillingService_GetDunningSettings_FullMethodName = "/quotify.billing.v1.BillingService/GetDunningSettings"
-	BillingService_SetDunningSettings_FullMethodName = "/quotify.billing.v1.BillingService/SetDunningSettings"
+	BillingService_GetInvoice_FullMethodName           = "/quotify.billing.v1.BillingService/GetInvoice"
+	BillingService_ListInvoices_FullMethodName         = "/quotify.billing.v1.BillingService/ListInvoices"
+	BillingService_GetInvoicePdfUrl_FullMethodName     = "/quotify.billing.v1.BillingService/GetInvoicePdfUrl"
+	BillingService_GetRevenueReport_FullMethodName     = "/quotify.billing.v1.BillingService/GetRevenueReport"
+	BillingService_GetDunningReport_FullMethodName     = "/quotify.billing.v1.BillingService/GetDunningReport"
+	BillingService_GetCreditNote_FullMethodName        = "/quotify.billing.v1.BillingService/GetCreditNote"
+	BillingService_ListCreditNotes_FullMethodName      = "/quotify.billing.v1.BillingService/ListCreditNotes"
+	BillingService_CreateInvoiceLink_FullMethodName    = "/quotify.billing.v1.BillingService/CreateInvoiceLink"
+	BillingService_RevokeInvoiceLinks_FullMethodName   = "/quotify.billing.v1.BillingService/RevokeInvoiceLinks"
+	BillingService_CreatePaymentLink_FullMethodName    = "/quotify.billing.v1.BillingService/CreatePaymentLink"
+	BillingService_GetPaymentLink_FullMethodName       = "/quotify.billing.v1.BillingService/GetPaymentLink"
+	BillingService_ListPaymentLinks_FullMethodName     = "/quotify.billing.v1.BillingService/ListPaymentLinks"
+	BillingService_RevokePaymentLink_FullMethodName    = "/quotify.billing.v1.BillingService/RevokePaymentLink"
+	BillingService_CreatePortalLink_FullMethodName     = "/quotify.billing.v1.BillingService/CreatePortalLink"
+	BillingService_RevokePortalLinks_FullMethodName    = "/quotify.billing.v1.BillingService/RevokePortalLinks"
+	BillingService_SettleInvoicePayment_FullMethodName = "/quotify.billing.v1.BillingService/SettleInvoicePayment"
+	BillingService_GetDunningSettings_FullMethodName   = "/quotify.billing.v1.BillingService/GetDunningSettings"
+	BillingService_SetDunningSettings_FullMethodName   = "/quotify.billing.v1.BillingService/SetDunningSettings"
 )
 
 // BillingServiceClient is the client API for BillingService service.
@@ -52,6 +59,17 @@ type BillingServiceClient interface {
 	CreateInvoiceLink(ctx context.Context, in *CreateInvoiceLinkRequest, opts ...grpc.CallOption) (*CreateInvoiceLinkResponse, error)
 	// RevokeInvoiceLinks makes every link to an invoice stop working.
 	RevokeInvoiceLinks(ctx context.Context, in *RevokeInvoiceLinksRequest, opts ...grpc.CallOption) (*RevokeInvoiceLinksResponse, error)
+	// CreatePaymentLink makes a payment link (phase 34): for an open invoice, or ad hoc for a fixed amount. The token is returned once. Idempotent per idempotency_key.
+	CreatePaymentLink(ctx context.Context, in *CreatePaymentLinkRequest, opts ...grpc.CallOption) (*CreatePaymentLinkResponse, error)
+	GetPaymentLink(ctx context.Context, in *GetPaymentLinkRequest, opts ...grpc.CallOption) (*GetPaymentLinkResponse, error)
+	ListPaymentLinks(ctx context.Context, in *ListPaymentLinksRequest, opts ...grpc.CallOption) (*ListPaymentLinksResponse, error)
+	// RevokePaymentLink stops a link (and the links it handed out) from working. An ad-hoc invoice nobody has paid is voided.
+	RevokePaymentLink(ctx context.Context, in *RevokePaymentLinkRequest, opts ...grpc.CallOption) (*RevokePaymentLinkResponse, error)
+	// CreatePortalLink makes the link to a customer's payment-history page. The token is returned once.
+	CreatePortalLink(ctx context.Context, in *CreatePortalLinkRequest, opts ...grpc.CallOption) (*CreatePortalLinkResponse, error)
+	RevokePortalLinks(ctx context.Context, in *RevokePortalLinksRequest, opts ...grpc.CallOption) (*RevokePortalLinksResponse, error)
+	// SettleInvoicePayment is called by payments-worker when a provider confirmed a payment made on a hosted page. It moves the invoice's saga to paid.
+	SettleInvoicePayment(ctx context.Context, in *SettleInvoicePaymentRequest, opts ...grpc.CallOption) (*SettleInvoicePaymentResponse, error)
 	// GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
 	GetDunningSettings(ctx context.Context, in *GetDunningSettingsRequest, opts ...grpc.CallOption) (*GetDunningSettingsResponse, error)
 	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
@@ -156,6 +174,76 @@ func (c *billingServiceClient) RevokeInvoiceLinks(ctx context.Context, in *Revok
 	return out, nil
 }
 
+func (c *billingServiceClient) CreatePaymentLink(ctx context.Context, in *CreatePaymentLinkRequest, opts ...grpc.CallOption) (*CreatePaymentLinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePaymentLinkResponse)
+	err := c.cc.Invoke(ctx, BillingService_CreatePaymentLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) GetPaymentLink(ctx context.Context, in *GetPaymentLinkRequest, opts ...grpc.CallOption) (*GetPaymentLinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPaymentLinkResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetPaymentLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ListPaymentLinks(ctx context.Context, in *ListPaymentLinksRequest, opts ...grpc.CallOption) (*ListPaymentLinksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPaymentLinksResponse)
+	err := c.cc.Invoke(ctx, BillingService_ListPaymentLinks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) RevokePaymentLink(ctx context.Context, in *RevokePaymentLinkRequest, opts ...grpc.CallOption) (*RevokePaymentLinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokePaymentLinkResponse)
+	err := c.cc.Invoke(ctx, BillingService_RevokePaymentLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) CreatePortalLink(ctx context.Context, in *CreatePortalLinkRequest, opts ...grpc.CallOption) (*CreatePortalLinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePortalLinkResponse)
+	err := c.cc.Invoke(ctx, BillingService_CreatePortalLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) RevokePortalLinks(ctx context.Context, in *RevokePortalLinksRequest, opts ...grpc.CallOption) (*RevokePortalLinksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokePortalLinksResponse)
+	err := c.cc.Invoke(ctx, BillingService_RevokePortalLinks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) SettleInvoicePayment(ctx context.Context, in *SettleInvoicePaymentRequest, opts ...grpc.CallOption) (*SettleInvoicePaymentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SettleInvoicePaymentResponse)
+	err := c.cc.Invoke(ctx, BillingService_SettleInvoicePayment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *billingServiceClient) GetDunningSettings(ctx context.Context, in *GetDunningSettingsRequest, opts ...grpc.CallOption) (*GetDunningSettingsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetDunningSettingsResponse)
@@ -196,6 +284,17 @@ type BillingServiceServer interface {
 	CreateInvoiceLink(context.Context, *CreateInvoiceLinkRequest) (*CreateInvoiceLinkResponse, error)
 	// RevokeInvoiceLinks makes every link to an invoice stop working.
 	RevokeInvoiceLinks(context.Context, *RevokeInvoiceLinksRequest) (*RevokeInvoiceLinksResponse, error)
+	// CreatePaymentLink makes a payment link (phase 34): for an open invoice, or ad hoc for a fixed amount. The token is returned once. Idempotent per idempotency_key.
+	CreatePaymentLink(context.Context, *CreatePaymentLinkRequest) (*CreatePaymentLinkResponse, error)
+	GetPaymentLink(context.Context, *GetPaymentLinkRequest) (*GetPaymentLinkResponse, error)
+	ListPaymentLinks(context.Context, *ListPaymentLinksRequest) (*ListPaymentLinksResponse, error)
+	// RevokePaymentLink stops a link (and the links it handed out) from working. An ad-hoc invoice nobody has paid is voided.
+	RevokePaymentLink(context.Context, *RevokePaymentLinkRequest) (*RevokePaymentLinkResponse, error)
+	// CreatePortalLink makes the link to a customer's payment-history page. The token is returned once.
+	CreatePortalLink(context.Context, *CreatePortalLinkRequest) (*CreatePortalLinkResponse, error)
+	RevokePortalLinks(context.Context, *RevokePortalLinksRequest) (*RevokePortalLinksResponse, error)
+	// SettleInvoicePayment is called by payments-worker when a provider confirmed a payment made on a hosted page. It moves the invoice's saga to paid.
+	SettleInvoicePayment(context.Context, *SettleInvoicePaymentRequest) (*SettleInvoicePaymentResponse, error)
 	// GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
 	GetDunningSettings(context.Context, *GetDunningSettingsRequest) (*GetDunningSettingsResponse, error)
 	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
@@ -236,6 +335,27 @@ func (UnimplementedBillingServiceServer) CreateInvoiceLink(context.Context, *Cre
 }
 func (UnimplementedBillingServiceServer) RevokeInvoiceLinks(context.Context, *RevokeInvoiceLinksRequest) (*RevokeInvoiceLinksResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RevokeInvoiceLinks not implemented")
+}
+func (UnimplementedBillingServiceServer) CreatePaymentLink(context.Context, *CreatePaymentLinkRequest) (*CreatePaymentLinkResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePaymentLink not implemented")
+}
+func (UnimplementedBillingServiceServer) GetPaymentLink(context.Context, *GetPaymentLinkRequest) (*GetPaymentLinkResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPaymentLink not implemented")
+}
+func (UnimplementedBillingServiceServer) ListPaymentLinks(context.Context, *ListPaymentLinksRequest) (*ListPaymentLinksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPaymentLinks not implemented")
+}
+func (UnimplementedBillingServiceServer) RevokePaymentLink(context.Context, *RevokePaymentLinkRequest) (*RevokePaymentLinkResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokePaymentLink not implemented")
+}
+func (UnimplementedBillingServiceServer) CreatePortalLink(context.Context, *CreatePortalLinkRequest) (*CreatePortalLinkResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePortalLink not implemented")
+}
+func (UnimplementedBillingServiceServer) RevokePortalLinks(context.Context, *RevokePortalLinksRequest) (*RevokePortalLinksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokePortalLinks not implemented")
+}
+func (UnimplementedBillingServiceServer) SettleInvoicePayment(context.Context, *SettleInvoicePaymentRequest) (*SettleInvoicePaymentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SettleInvoicePayment not implemented")
 }
 func (UnimplementedBillingServiceServer) GetDunningSettings(context.Context, *GetDunningSettingsRequest) (*GetDunningSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDunningSettings not implemented")
@@ -426,6 +546,132 @@ func _BillingService_RevokeInvoiceLinks_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_CreatePaymentLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePaymentLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).CreatePaymentLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_CreatePaymentLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).CreatePaymentLink(ctx, req.(*CreatePaymentLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_GetPaymentLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPaymentLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetPaymentLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetPaymentLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetPaymentLink(ctx, req.(*GetPaymentLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ListPaymentLinks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPaymentLinksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ListPaymentLinks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ListPaymentLinks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ListPaymentLinks(ctx, req.(*ListPaymentLinksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_RevokePaymentLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokePaymentLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).RevokePaymentLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_RevokePaymentLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).RevokePaymentLink(ctx, req.(*RevokePaymentLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_CreatePortalLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePortalLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).CreatePortalLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_CreatePortalLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).CreatePortalLink(ctx, req.(*CreatePortalLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_RevokePortalLinks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokePortalLinksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).RevokePortalLinks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_RevokePortalLinks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).RevokePortalLinks(ctx, req.(*RevokePortalLinksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_SettleInvoicePayment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SettleInvoicePaymentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).SettleInvoicePayment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_SettleInvoicePayment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).SettleInvoicePayment(ctx, req.(*SettleInvoicePaymentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BillingService_GetDunningSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetDunningSettingsRequest)
 	if err := dec(in); err != nil {
@@ -506,6 +752,34 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _BillingService_RevokeInvoiceLinks_Handler,
 		},
 		{
+			MethodName: "CreatePaymentLink",
+			Handler:    _BillingService_CreatePaymentLink_Handler,
+		},
+		{
+			MethodName: "GetPaymentLink",
+			Handler:    _BillingService_GetPaymentLink_Handler,
+		},
+		{
+			MethodName: "ListPaymentLinks",
+			Handler:    _BillingService_ListPaymentLinks_Handler,
+		},
+		{
+			MethodName: "RevokePaymentLink",
+			Handler:    _BillingService_RevokePaymentLink_Handler,
+		},
+		{
+			MethodName: "CreatePortalLink",
+			Handler:    _BillingService_CreatePortalLink_Handler,
+		},
+		{
+			MethodName: "RevokePortalLinks",
+			Handler:    _BillingService_RevokePortalLinks_Handler,
+		},
+		{
+			MethodName: "SettleInvoicePayment",
+			Handler:    _BillingService_SettleInvoicePayment_Handler,
+		},
+		{
 			MethodName: "GetDunningSettings",
 			Handler:    _BillingService_GetDunningSettings_Handler,
 		},
@@ -521,6 +795,10 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 const (
 	HostedInvoiceService_GetHostedInvoice_FullMethodName       = "/quotify.billing.v1.HostedInvoiceService/GetHostedInvoice"
 	HostedInvoiceService_GetHostedInvoicePdfUrl_FullMethodName = "/quotify.billing.v1.HostedInvoiceService/GetHostedInvoicePdfUrl"
+	HostedInvoiceService_GetHostedLogoUrl_FullMethodName       = "/quotify.billing.v1.HostedInvoiceService/GetHostedLogoUrl"
+	HostedInvoiceService_StartLinkPayment_FullMethodName       = "/quotify.billing.v1.HostedInvoiceService/StartLinkPayment"
+	HostedInvoiceService_RequestHostedPayment_FullMethodName   = "/quotify.billing.v1.HostedInvoiceService/RequestHostedPayment"
+	HostedInvoiceService_GetPortal_FullMethodName              = "/quotify.billing.v1.HostedInvoiceService/GetPortal"
 )
 
 // HostedInvoiceServiceClient is the client API for HostedInvoiceService service.
@@ -531,6 +809,15 @@ const (
 type HostedInvoiceServiceClient interface {
 	GetHostedInvoice(ctx context.Context, in *GetHostedInvoiceRequest, opts ...grpc.CallOption) (*GetHostedInvoiceResponse, error)
 	GetHostedInvoicePdfUrl(ctx context.Context, in *GetHostedInvoicePdfUrlRequest, opts ...grpc.CallOption) (*GetHostedInvoicePdfUrlResponse, error)
+	// GetHostedLogoUrl returns a short-lived link to the seller's logo, when the invoice has one.
+	GetHostedLogoUrl(ctx context.Context, in *GetHostedLogoUrlRequest, opts ...grpc.CallOption) (*GetHostedLogoUrlResponse, error)
+	// StartLinkPayment is the first use of an ad-hoc link: it creates the invoice and hands out the invoice link the payer continues on.
+	StartLinkPayment(ctx context.Context, in *StartLinkPaymentRequest, opts ...grpc.CallOption) (*StartLinkPaymentResponse, error)
+	// RequestHostedPayment asks to pay a payable invoice by a method. "mock" (sandbox and demo only) charges through the saga; any other method returns the
+	// context the gateway needs to ask payments-worker for a provider checkout or payment instructions.
+	RequestHostedPayment(ctx context.Context, in *RequestHostedPaymentRequest, opts ...grpc.CallOption) (*RequestHostedPaymentResponse, error)
+	// GetPortal returns a customer's page: who they are and their invoices.
+	GetPortal(ctx context.Context, in *GetPortalRequest, opts ...grpc.CallOption) (*GetPortalResponse, error)
 }
 
 type hostedInvoiceServiceClient struct {
@@ -561,6 +848,46 @@ func (c *hostedInvoiceServiceClient) GetHostedInvoicePdfUrl(ctx context.Context,
 	return out, nil
 }
 
+func (c *hostedInvoiceServiceClient) GetHostedLogoUrl(ctx context.Context, in *GetHostedLogoUrlRequest, opts ...grpc.CallOption) (*GetHostedLogoUrlResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHostedLogoUrlResponse)
+	err := c.cc.Invoke(ctx, HostedInvoiceService_GetHostedLogoUrl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostedInvoiceServiceClient) StartLinkPayment(ctx context.Context, in *StartLinkPaymentRequest, opts ...grpc.CallOption) (*StartLinkPaymentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartLinkPaymentResponse)
+	err := c.cc.Invoke(ctx, HostedInvoiceService_StartLinkPayment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostedInvoiceServiceClient) RequestHostedPayment(ctx context.Context, in *RequestHostedPaymentRequest, opts ...grpc.CallOption) (*RequestHostedPaymentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestHostedPaymentResponse)
+	err := c.cc.Invoke(ctx, HostedInvoiceService_RequestHostedPayment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostedInvoiceServiceClient) GetPortal(ctx context.Context, in *GetPortalRequest, opts ...grpc.CallOption) (*GetPortalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPortalResponse)
+	err := c.cc.Invoke(ctx, HostedInvoiceService_GetPortal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // HostedInvoiceServiceServer is the server API for HostedInvoiceService service.
 // All implementations must embed UnimplementedHostedInvoiceServiceServer
 // for forward compatibility.
@@ -569,6 +896,15 @@ func (c *hostedInvoiceServiceClient) GetHostedInvoicePdfUrl(ctx context.Context,
 type HostedInvoiceServiceServer interface {
 	GetHostedInvoice(context.Context, *GetHostedInvoiceRequest) (*GetHostedInvoiceResponse, error)
 	GetHostedInvoicePdfUrl(context.Context, *GetHostedInvoicePdfUrlRequest) (*GetHostedInvoicePdfUrlResponse, error)
+	// GetHostedLogoUrl returns a short-lived link to the seller's logo, when the invoice has one.
+	GetHostedLogoUrl(context.Context, *GetHostedLogoUrlRequest) (*GetHostedLogoUrlResponse, error)
+	// StartLinkPayment is the first use of an ad-hoc link: it creates the invoice and hands out the invoice link the payer continues on.
+	StartLinkPayment(context.Context, *StartLinkPaymentRequest) (*StartLinkPaymentResponse, error)
+	// RequestHostedPayment asks to pay a payable invoice by a method. "mock" (sandbox and demo only) charges through the saga; any other method returns the
+	// context the gateway needs to ask payments-worker for a provider checkout or payment instructions.
+	RequestHostedPayment(context.Context, *RequestHostedPaymentRequest) (*RequestHostedPaymentResponse, error)
+	// GetPortal returns a customer's page: who they are and their invoices.
+	GetPortal(context.Context, *GetPortalRequest) (*GetPortalResponse, error)
 	mustEmbedUnimplementedHostedInvoiceServiceServer()
 }
 
@@ -584,6 +920,18 @@ func (UnimplementedHostedInvoiceServiceServer) GetHostedInvoice(context.Context,
 }
 func (UnimplementedHostedInvoiceServiceServer) GetHostedInvoicePdfUrl(context.Context, *GetHostedInvoicePdfUrlRequest) (*GetHostedInvoicePdfUrlResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetHostedInvoicePdfUrl not implemented")
+}
+func (UnimplementedHostedInvoiceServiceServer) GetHostedLogoUrl(context.Context, *GetHostedLogoUrlRequest) (*GetHostedLogoUrlResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetHostedLogoUrl not implemented")
+}
+func (UnimplementedHostedInvoiceServiceServer) StartLinkPayment(context.Context, *StartLinkPaymentRequest) (*StartLinkPaymentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartLinkPayment not implemented")
+}
+func (UnimplementedHostedInvoiceServiceServer) RequestHostedPayment(context.Context, *RequestHostedPaymentRequest) (*RequestHostedPaymentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RequestHostedPayment not implemented")
+}
+func (UnimplementedHostedInvoiceServiceServer) GetPortal(context.Context, *GetPortalRequest) (*GetPortalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPortal not implemented")
 }
 func (UnimplementedHostedInvoiceServiceServer) mustEmbedUnimplementedHostedInvoiceServiceServer() {}
 func (UnimplementedHostedInvoiceServiceServer) testEmbeddedByValue()                              {}
@@ -642,6 +990,78 @@ func _HostedInvoiceService_GetHostedInvoicePdfUrl_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HostedInvoiceService_GetHostedLogoUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHostedLogoUrlRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostedInvoiceServiceServer).GetHostedLogoUrl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostedInvoiceService_GetHostedLogoUrl_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostedInvoiceServiceServer).GetHostedLogoUrl(ctx, req.(*GetHostedLogoUrlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HostedInvoiceService_StartLinkPayment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartLinkPaymentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostedInvoiceServiceServer).StartLinkPayment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostedInvoiceService_StartLinkPayment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostedInvoiceServiceServer).StartLinkPayment(ctx, req.(*StartLinkPaymentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HostedInvoiceService_RequestHostedPayment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestHostedPaymentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostedInvoiceServiceServer).RequestHostedPayment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostedInvoiceService_RequestHostedPayment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostedInvoiceServiceServer).RequestHostedPayment(ctx, req.(*RequestHostedPaymentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HostedInvoiceService_GetPortal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPortalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostedInvoiceServiceServer).GetPortal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostedInvoiceService_GetPortal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostedInvoiceServiceServer).GetPortal(ctx, req.(*GetPortalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // HostedInvoiceService_ServiceDesc is the grpc.ServiceDesc for HostedInvoiceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -656,6 +1076,22 @@ var HostedInvoiceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHostedInvoicePdfUrl",
 			Handler:    _HostedInvoiceService_GetHostedInvoicePdfUrl_Handler,
+		},
+		{
+			MethodName: "GetHostedLogoUrl",
+			Handler:    _HostedInvoiceService_GetHostedLogoUrl_Handler,
+		},
+		{
+			MethodName: "StartLinkPayment",
+			Handler:    _HostedInvoiceService_StartLinkPayment_Handler,
+		},
+		{
+			MethodName: "RequestHostedPayment",
+			Handler:    _HostedInvoiceService_RequestHostedPayment_Handler,
+		},
+		{
+			MethodName: "GetPortal",
+			Handler:    _HostedInvoiceService_GetPortal_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

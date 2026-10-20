@@ -151,7 +151,8 @@
       "link": "Invoice link",
       "copy": "Copy",
       "revoked": "Every link to this invoice has been revoked.",
-      "badDays": "Days: a whole number from 1 to 365."
+      "badDays": "Days: a whole number from 1 to 365.",
+      "paymentLink": "Payment link"
     }
   },
   "deadLetters": {
@@ -242,7 +243,8 @@
       "providers": "Providers",
       "reports": "Reports",
       "pricing": "Coupons & tax",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "paymentLinks": "Payment links"
     },
     "common": {
       "remove": "Remove"
@@ -617,6 +619,80 @@
         "delivered": "Delivered",
         "failed": "Failed"
       }
+    },
+    "paymentLinks": {
+      "title": "Payment links",
+      "hint": "A link the customer opens without signing in to pay. For an open invoice, or ad hoc for a fixed amount (the invoice is made when the customer first uses it). Anyone who has the link can pay; it stops working when it expires or is revoked.",
+      "formLabel": "new payment link",
+      "kind": "Kind",
+      "kinds": {
+        "adhoc": "Fixed amount",
+        "invoice": "Open invoice"
+      },
+      "invoiceId": "Invoice id",
+      "amount": "Amount",
+      "currency": "Currency",
+      "description": "What it is for",
+      "customer": "Customer",
+      "customerOptional": "Customer id (optional)",
+      "days": "Valid for (days)",
+      "singleUse": "Single use (one paid invoice)",
+      "singleUseShort": "single use",
+      "create": "Create link",
+      "adhocHint": "The invoice is made, and numbered, when the customer presses Continue on the page.",
+      "invoiceHint": "The invoice must be finalized and unpaid.",
+      "shownOnce": "Copy the link now: it is shown once and cannot be read back.",
+      "url": "Payment link",
+      "copy": "Copy",
+      "replayed": "This request was already handled: the link exists, but its address is shown only once.",
+      "list": "Links",
+      "anyKind": "Any kind",
+      "anyStatus": "Any status",
+      "status": "Status",
+      "statuses": {
+        "active": "Active",
+        "paid": "Paid",
+        "expired": "Expired",
+        "revoked": "Revoked"
+      },
+      "uses": "Uses / paid",
+      "usesValue": "{used} / {paid}",
+      "expires": "Expires",
+      "createdAt": "Created",
+      "revoke": "Revoke",
+      "confirmRevoke": "Revoke this link? Unpaid invoices made from it are voided.",
+      "empty": "No payment links yet.",
+      "previous": "Previous",
+      "next": "Next",
+      "links": "Links",
+      "paymentLink": "Payment link",
+      "errors": {
+        "invoice": "Enter the invoice id.",
+        "amount": "Enter a positive amount with the currency's decimals.",
+        "description": "Say what the payment is for.",
+        "days": "Days: a whole number from 1 to 365."
+      },
+      "portal": {
+        "open": "Payment page",
+        "title": "Payment page of {id}",
+        "hint": "A link to a page where this customer sees their invoices and payments, downloads PDFs and receipts, and pays what is open. Read-only.",
+        "close": "Close",
+        "create": "Make a link",
+        "revoke": "Revoke all",
+        "revoked": "Every payment page link of this customer has been revoked.",
+        "confirmRevoke": "Revoke every payment page link of this customer?",
+        "link": "Payment page link",
+        "payments": "Payments",
+        "date": "Date",
+        "invoice": "Invoice",
+        "type": "Type",
+        "noPayments": "No payments recorded.",
+        "kinds": {
+          "charge": "Charge",
+          "refund": "Refund"
+        }
+      },
+      "for": "For"
     }
   }
 }

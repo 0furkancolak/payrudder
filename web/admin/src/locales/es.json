@@ -151,7 +151,8 @@
       "link": "Enlace de la factura",
       "copy": "Copiar",
       "revoked": "Se revocaron todos los enlaces de esta factura.",
-      "badDays": "Días: un número entero de 1 a 365."
+      "badDays": "Días: un número entero de 1 a 365.",
+      "paymentLink": "Enlace de pago"
     }
   },
   "deadLetters": {
@@ -242,7 +243,8 @@
       "providers": "Proveedores",
       "reports": "Informes",
       "pricing": "Cupones e impuestos",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "paymentLinks": "Enlaces de pago"
     },
     "common": {
       "remove": "Quitar"
@@ -617,6 +619,80 @@
         "delivered": "Entregado",
         "failed": "Fallido"
       }
+    },
+    "paymentLinks": {
+      "title": "Enlaces de pago",
+      "hint": "Un enlace que el cliente abre sin iniciar sesión para pagar. Para una factura abierta, o ad hoc por un importe fijo (la factura se crea al primer uso). Quien tenga el enlace puede pagar; deja de funcionar al caducar o al revocarse.",
+      "formLabel": "nuevo enlace de pago",
+      "kind": "Tipo",
+      "kinds": {
+        "adhoc": "Importe fijo",
+        "invoice": "Factura abierta"
+      },
+      "invoiceId": "ID de factura",
+      "amount": "Importe",
+      "currency": "Moneda",
+      "description": "Concepto",
+      "customer": "Cliente",
+      "customerOptional": "ID de cliente (opcional)",
+      "days": "Válido (días)",
+      "singleUse": "Un solo uso (una factura pagada)",
+      "singleUseShort": "un solo uso",
+      "create": "Crear enlace",
+      "adhocHint": "La factura se crea y numera cuando el cliente pulsa Continuar en la página.",
+      "invoiceHint": "La factura debe estar finalizada y sin pagar.",
+      "shownOnce": "Copie el enlace ahora: se muestra una sola vez y no se puede volver a leer.",
+      "url": "Enlace de pago",
+      "copy": "Copiar",
+      "replayed": "Esta solicitud ya se procesó: el enlace existe, pero su dirección se muestra una sola vez.",
+      "list": "Enlaces",
+      "anyKind": "Cualquier tipo",
+      "anyStatus": "Cualquier estado",
+      "status": "Estado",
+      "statuses": {
+        "active": "Activo",
+        "paid": "Pagado",
+        "expired": "Caducado",
+        "revoked": "Revocado"
+      },
+      "uses": "Usos / pagados",
+      "usesValue": "{used} / {paid}",
+      "expires": "Caduca",
+      "createdAt": "Creado",
+      "revoke": "Revocar",
+      "confirmRevoke": "¿Revocar este enlace? Las facturas sin pagar creadas con él se anulan.",
+      "empty": "Aún no hay enlaces de pago.",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "links": "Enlaces",
+      "paymentLink": "Enlace de pago",
+      "errors": {
+        "invoice": "Introduzca el ID de la factura.",
+        "amount": "Introduzca un importe positivo con los decimales de la moneda.",
+        "description": "Indique el concepto del pago.",
+        "days": "Días: un número entero de 1 a 365."
+      },
+      "portal": {
+        "open": "Página de pagos",
+        "title": "Página de pagos de {id}",
+        "hint": "Un enlace a una página donde este cliente ve sus facturas y pagos, descarga PDF y recibos, y paga lo pendiente. Solo lectura.",
+        "close": "Cerrar",
+        "create": "Crear enlace",
+        "revoke": "Revocar todos",
+        "revoked": "Se revocaron todos los enlaces de la página de pagos de este cliente.",
+        "confirmRevoke": "¿Revocar todos los enlaces de la página de pagos de este cliente?",
+        "link": "Enlace de la página de pagos",
+        "payments": "Pagos",
+        "date": "Fecha",
+        "invoice": "Factura",
+        "type": "Tipo",
+        "noPayments": "No hay pagos registrados.",
+        "kinds": {
+          "charge": "Cobro",
+          "refund": "Reembolso"
+        }
+      },
+      "for": "Para"
     }
   }
 }

@@ -151,7 +151,8 @@
       "link": "Lien de la facture",
       "copy": "Copier",
       "revoked": "Tous les liens de cette facture ont été révoqués.",
-      "badDays": "Jours : un entier de 1 à 365."
+      "badDays": "Jours : un entier de 1 à 365.",
+      "paymentLink": "Lien de paiement"
     }
   },
   "deadLetters": {
@@ -242,7 +243,8 @@
       "providers": "Prestataires",
       "reports": "Rapports",
       "pricing": "Coupons et taxes",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "paymentLinks": "Liens de paiement"
     },
     "common": {
       "remove": "Retirer"
@@ -617,6 +619,80 @@
         "delivered": "Livré",
         "failed": "Échoué"
       }
+    },
+    "paymentLinks": {
+      "title": "Liens de paiement",
+      "hint": "Un lien que le client ouvre sans se connecter pour payer. Pour une facture ouverte, ou ad hoc pour un montant fixe (la facture est créée à la première utilisation). Toute personne qui a le lien peut payer ; il cesse de fonctionner à l'expiration ou à la révocation.",
+      "formLabel": "nouveau lien de paiement",
+      "kind": "Type",
+      "kinds": {
+        "adhoc": "Montant fixe",
+        "invoice": "Facture ouverte"
+      },
+      "invoiceId": "ID de facture",
+      "amount": "Montant",
+      "currency": "Devise",
+      "description": "Objet",
+      "customer": "Client",
+      "customerOptional": "ID client (facultatif)",
+      "days": "Valable (jours)",
+      "singleUse": "Usage unique (une facture payée)",
+      "singleUseShort": "usage unique",
+      "create": "Créer le lien",
+      "adhocHint": "La facture est créée et numérotée quand le client appuie sur Continuer sur la page.",
+      "invoiceHint": "La facture doit être finalisée et impayée.",
+      "shownOnce": "Copiez le lien maintenant : il n'est affiché qu'une fois et ne peut plus être relu.",
+      "url": "Lien de paiement",
+      "copy": "Copier",
+      "replayed": "Cette demande a déjà été traitée : le lien existe, mais son adresse n'est affichée qu'une fois.",
+      "list": "Liens",
+      "anyKind": "Tout type",
+      "anyStatus": "Tout statut",
+      "status": "Statut",
+      "statuses": {
+        "active": "Actif",
+        "paid": "Payé",
+        "expired": "Expiré",
+        "revoked": "Révoqué"
+      },
+      "uses": "Usages / payés",
+      "usesValue": "{used} / {paid}",
+      "expires": "Expire",
+      "createdAt": "Créé",
+      "revoke": "Révoquer",
+      "confirmRevoke": "Révoquer ce lien ? Les factures impayées qui en sont issues sont annulées.",
+      "empty": "Aucun lien de paiement pour l'instant.",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "links": "Liens",
+      "paymentLink": "Lien de paiement",
+      "errors": {
+        "invoice": "Saisissez l'ID de la facture.",
+        "amount": "Saisissez un montant positif avec les décimales de la devise.",
+        "description": "Indiquez l'objet du paiement.",
+        "days": "Jours : un entier de 1 à 365."
+      },
+      "portal": {
+        "open": "Page de paiement",
+        "title": "Page de paiement de {id}",
+        "hint": "Un lien vers une page où ce client voit ses factures et paiements, télécharge PDF et reçus, et paie ce qui est ouvert. Lecture seule.",
+        "close": "Fermer",
+        "create": "Créer un lien",
+        "revoke": "Tout révoquer",
+        "revoked": "Tous les liens de la page de paiement de ce client ont été révoqués.",
+        "confirmRevoke": "Révoquer tous les liens de la page de paiement de ce client ?",
+        "link": "Lien de la page de paiement",
+        "payments": "Paiements",
+        "date": "Date",
+        "invoice": "Facture",
+        "type": "Type",
+        "noPayments": "Aucun paiement enregistré.",
+        "kinds": {
+          "charge": "Paiement",
+          "refund": "Remboursement"
+        }
+      },
+      "for": "Pour"
     }
   }
 }

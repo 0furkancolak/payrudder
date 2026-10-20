@@ -20,6 +20,17 @@ service BillingService {
   rpc CreateInvoiceLink(CreateInvoiceLinkRequest) returns (CreateInvoiceLinkResponse);
   // RevokeInvoiceLinks makes every link to an invoice stop working.
   rpc RevokeInvoiceLinks(RevokeInvoiceLinksRequest) returns (RevokeInvoiceLinksResponse);
+  // CreatePaymentLink makes a payment link (phase 34): for an open invoice, or ad hoc for a fixed amount. The token is returned once. Idempotent per idempotency_key.
+  rpc CreatePaymentLink(CreatePaymentLinkRequest) returns (CreatePaymentLinkResponse);
+  rpc GetPaymentLink(GetPaymentLinkRequest) returns (GetPaymentLinkResponse);
+  rpc ListPaymentLinks(ListPaymentLinksRequest) returns (ListPaymentLinksResponse);
+  // RevokePaymentLink stops a link (and the links it handed out) from working. An ad-hoc invoice nobody has paid is voided.
+  rpc RevokePaymentLink(RevokePaymentLinkRequest) returns (RevokePaymentLinkResponse);
+  // CreatePortalLink makes the link to a customer's payment-history page. The token is returned once.
+  rpc CreatePortalLink(CreatePortalLinkRequest) returns (CreatePortalLinkResponse);
+  rpc RevokePortalLinks(RevokePortalLinksRequest) returns (RevokePortalLinksResponse);
+  // SettleInvoicePayment is called by payments-worker when a provider confirmed a payment made on a hosted page. It moves the invoice's saga to paid.
+  rpc SettleInvoicePayment(SettleInvoicePaymentRequest) returns (SettleInvoicePaymentResponse);
   // GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
   rpc GetDunningSettings(GetDunningSettingsRequest) returns (GetDunningSettingsResponse);
   // SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
@@ -30,6 +41,15 @@ service BillingService {
 service HostedInvoiceService {
   rpc GetHostedInvoice(GetHostedInvoiceRequest) returns (GetHostedInvoiceResponse);
   rpc GetHostedInvoicePdfUrl(GetHostedInvoicePdfUrlRequest) returns (GetHostedInvoicePdfUrlResponse);
+  // GetHostedLogoUrl returns a short-lived link to the seller's logo, when the invoice has one.
+  rpc GetHostedLogoUrl(GetHostedLogoUrlRequest) returns (GetHostedLogoUrlResponse);
+  // StartLinkPayment is the first use of an ad-hoc link: it creates the invoice and hands out the invoice link the payer continues on.
+  rpc StartLinkPayment(StartLinkPaymentRequest) returns (StartLinkPaymentResponse);
+  // RequestHostedPayment asks to pay a payable invoice by a method. "mock" (sandbox and demo only) charges through the saga; any other method returns the
+  // context the gateway needs to ask payments-worker for a provider checkout or payment instructions.
+  rpc RequestHostedPayment(RequestHostedPaymentRequest) returns (RequestHostedPaymentResponse);
+  // GetPortal returns a customer's page: who they are and their invoices.
+  rpc GetPortal(GetPortalRequest) returns (GetPortalResponse);
 }
 
 // SandboxService is for sandbox tenants only (FAILED_PRECONDITION otherwise).
@@ -107,7 +127,7 @@ message Invoice {
   string customer_id = 2;
   string customer_external_id = 3;
   string period_id = 4;
-  // REGULAR (a month's usage), CORRECTION (a re-rating), or FEE (a fixed fee in advance, or what a plan change moved).
+  // REGULAR (a month's usage), CORRECTION (a re-rating), FEE (a fixed fee in advance, or what a plan change moved) or LINK (made from an ad-hoc payment link).
   string kind = 5;
   // Empty until finalized, e.g. INV-2026-000123 (live) or SBX-2026-000123 (sandbox).
   string number = 6;
@@ -491,7 +511,12 @@ message CreateInvoiceLinkResponse {
 message RevokeInvoiceLinksRequest { string invoice_id = 1; }
 message RevokeInvoiceLinksResponse { int32 revoked = 1; }
 
-message GetHostedInvoiceRequest { string token = 1; }
+// A visitor holds either a link token (token) or a customer portal token (portal_token) together with the invoice of the portal they want (invoice_id).
+message GetHostedInvoiceRequest {
+  string token = 1;
+  string portal_token = 2;
+  string invoice_id = 3;
+}
 message GetHostedInvoiceResponse {
   Invoice invoice = 1;
   // Who issued the invoice and who it is for, as printed on it.
@@ -503,10 +528,202 @@ message GetHostedInvoiceResponse {
   int32 currency_exponent = 6;
   repeated string seller_address_lines = 7;
   repeated string customer_address_lines = 8;
+  // "invoice" or "adhoc". An ad-hoc link before its first use has no invoice (invoice is unset) and carries adhoc.
+  string kind = 9;
+  // open (waiting for the customer), processing (a payment is on its way), failed (the last attempt was declined), paid, void.
+  string payment_state = 10;
+  // The invoice can be paid on the page now.
+  bool payable = 11;
+  bool logo_available = 12;
+  // "sandbox" or "live": a sandbox invoice offers the mock payment.
+  string environment = 13;
+  // What payments-worker needs to offer or start a payment.
+  HostedPaymentContext payment = 14;
+  HostedAdhoc adhoc = 15;
 }
 
-message GetHostedInvoicePdfUrlRequest { string token = 1; }
+// HostedAdhoc is what a visitor sees of an ad-hoc link before paying.
+message HostedAdhoc {
+  string description = 1;
+  int64 amount_minor = 2;
+  string currency = 3;
+  int32 currency_exponent = 4;
+  // A single-use link that has been paid cannot be used again.
+  bool consumed = 5;
+  string seller_name = 6;
+  bool logo_available = 7;
+  string environment = 8;
+}
+
+// HostedPaymentContext is what payments-worker needs about an invoice to offer or start a payment.
+message HostedPaymentContext {
+  string tenant_id = 1;
+  string invoice_id = 2;
+  string saga_id = 3;
+  string number = 4;
+  int64 amount_minor = 5;
+  string currency = 6;
+  // The payment provider the invoice was routed to; empty is the tenant's default.
+  string provider = 7;
+  string country = 8;
+  string customer_email = 9;
+  string customer_name = 10;
+  string description = 11;
+  string environment = 12;
+}
+
+message GetHostedInvoicePdfUrlRequest {
+  string token = 1;
+  string portal_token = 2;
+  string invoice_id = 3;
+}
 message GetHostedInvoicePdfUrlResponse {
   string url = 1;
   google.protobuf.Timestamp expire_time = 2;
+}
+
+message GetHostedLogoUrlRequest {
+  string token = 1;
+  string portal_token = 2;
+  string invoice_id = 3;
+}
+message GetHostedLogoUrlResponse { string url = 1; }
+
+message StartLinkPaymentRequest { string token = 1; }
+message StartLinkPaymentResponse {
+  // The token of the invoice link the payer continues on; shown once, in the redirect.
+  string invoice_token = 1;
+}
+
+message RequestHostedPaymentRequest {
+  string token = 1;
+  string portal_token = 2;
+  string invoice_id = 3;
+  // "mock" or the id of a method the gateway got from payments-worker (checkout, bank_transfer…).
+  string method = 4;
+}
+message RequestHostedPaymentResponse {
+  // "started" when billing took the payment on (mock); "provider" when the gateway has to continue with payments-worker using payment.
+  string action = 1;
+  HostedPaymentContext payment = 2;
+}
+
+message GetPortalRequest { string portal_token = 1; }
+message PortalInvoice {
+  string id = 1;
+  string number = 2;
+  string status = 3;
+  string payment_state = 4;
+  bool payable = 5;
+  int64 total_minor = 6;
+  string currency = 7;
+  int32 currency_exponent = 8;
+  google.protobuf.Timestamp issue_time = 9;
+  string kind = 10;
+  bool pdf_available = 11;
+}
+message GetPortalResponse {
+  string customer_name = 1;
+  string seller_name = 2;
+  bool logo_available = 3;
+  string environment = 4;
+  google.protobuf.Timestamp expire_time = 5;
+  repeated PortalInvoice invoices = 6;
+  // For the gateway to look up the ledger rows of these invoices.
+  string tenant_id = 7;
+  string customer_id = 8;
+}
+
+// PaymentLink is a link the tenant handed out. The secret part is never stored, only its hash.
+message PaymentLink {
+  string id = 1;
+  // "invoice" (pays an existing invoice) or "adhoc" (a fixed amount; the invoice is made when the customer first uses it).
+  string kind = 2;
+  // active, paid (a single-use link that was paid), expired or revoked.
+  string status = 3;
+  string invoice_id = 4;
+  string customer_external_id = 5;
+  bool single_use = 6;
+  int64 amount_minor = 7;
+  string currency = 8;
+  string description = 9;
+  google.protobuf.Timestamp create_time = 10;
+  google.protobuf.Timestamp expire_time = 11;
+  google.protobuf.Timestamp revoke_time = 12;
+  // How many invoices were paid through the link, and when last.
+  int32 paid_count = 13;
+  google.protobuf.Timestamp last_paid_time = 14;
+  // How many invoices the link created (ad hoc).
+  int32 use_count = 15;
+  string idempotency_key = 16;
+}
+
+message CreatePaymentLinkRequest {
+  // "invoice" or "adhoc"; empty means "invoice" when invoice_id is set, else "adhoc".
+  string kind = 1;
+  // kind invoice: the finalized, unpaid invoice.
+  string invoice_id = 2;
+  // kind adhoc: a positive amount in minor units, its currency (the tenant's when empty) and what it is for.
+  int64 amount_minor = 3;
+  string currency = 4;
+  string description = 5;
+  // kind adhoc, optional: the invoice is made out to this customer (their name, address and country apply).
+  string customer_external_id = 6;
+  // Unset: true for an ad-hoc link, false for an invoice link.
+  optional bool single_use = 7;
+  // 1..365; 0 means 30 for an ad-hoc link and 90 for an invoice link.
+  int32 expires_in_days = 8;
+  // The same key from the same tenant returns the link made the first time (without the token, which is shown once).
+  string idempotency_key = 9;
+}
+message CreatePaymentLinkResponse {
+  PaymentLink link = 1;
+  // Empty when replayed.
+  string token = 2;
+  bool replayed = 3;
+}
+
+message GetPaymentLinkRequest { string link_id = 1; }
+message GetPaymentLinkResponse { PaymentLink link = 1; }
+
+message ListPaymentLinksRequest {
+  // Optional filters: kind, status (active, paid, expired, revoked), invoice, customer.
+  string kind = 1;
+  string status = 2;
+  string invoice_id = 3;
+  string customer_external_id = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+message ListPaymentLinksResponse {
+  repeated PaymentLink links = 1;
+  string next_page_token = 2;
+}
+
+message RevokePaymentLinkRequest { string link_id = 1; }
+message RevokePaymentLinkResponse { PaymentLink link = 1; }
+
+message CreatePortalLinkRequest {
+  string customer_external_id = 1;
+  // 1..365; 0 means 30.
+  int32 expires_in_days = 2;
+}
+message CreatePortalLinkResponse {
+  string token = 1;
+  google.protobuf.Timestamp expire_time = 2;
+  string customer_id = 3;
+}
+message RevokePortalLinksRequest { string customer_external_id = 1; }
+message RevokePortalLinksResponse { int32 revoked = 1; }
+
+message SettleInvoicePaymentRequest {
+  string invoice_id = 1;
+  string provider = 2;
+  string provider_ref = 3;
+  int64 amount_minor = 4;
+  string currency = 5;
+}
+message SettleInvoicePaymentResponse {
+  // False when the invoice was already paid or is not waiting for a payment.
+  bool settled = 1;
 }

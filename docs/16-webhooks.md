@@ -25,6 +25,9 @@ A development stack may lift the address rule with `QUOTIFY_WEBHOOK_ALLOW_PRIVAT
 | `subscription.cancellation_scheduled` · `subscription.cancellation_withdrawn` | cancel at period end was set / taken back | `subscription` |
 | `subscription.paused` · `subscription.resumed` | | `subscription` |
 | `subscription.moved_to_provider` | a provider migration took over | `subscription`, `previous_subscription_id`, `to_provider` |
+| `payment_link.created` | a payment link was made (not the invoice links an ad-hoc link hands out) | `link_id`, `kind`, `invoice_id` or `amount_minor`, `currency`, `description`, `customer_external_id`, `single_use`, `expires_at` |
+| `payment_link.paid` | an invoice was paid through the link (once per link and invoice) | `link_id`, `kind`, `invoice_id`, `invoice_number`, `customer_external_id`, `currency`, `total_minor`, `paid_count` |
+| `payment_link.expired` | the link expired unpaid (a single-use link that was paid is used, not expired) | `link_id`, `kind`, `invoice_id` or `amount_minor`, `currency`, `expires_at` |
 
 A delivery is a JSON `POST`:
 
@@ -91,3 +94,14 @@ once the PDF is rendered. No sign-in: the token is 256 random bits and only its 
 
 The page is rendered by the gateway with escaped HTML, in English, Turkish, German, French, Spanish or Arabic (`?lang=` or the browser's language), and sends `Cache-Control: no-store`, `X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer` and a CSP that allows nothing to load from elsewhere. It is limited to 60 requests a minute per address
 (the connection's; a proxy in front of the gateway must be the address the limiter sees). The link starts with `QUOTIFY_PUBLIC_URL` when the gateway has one (compose: `http://localhost:8000`; Helm: `global.publicURL`), else it is relative.
+
+## Payment links and the customer payment page (phase 34)
+
+[Phase 34](phases/phase-34-payment-links.md) turns the invoice link into a **payment link**: the customer opens it without signing in and pays.
+
+- `POST /v1/payment-links` with `kind: invoice` (`invoice_id`, an unpaid finalized invoice) or `kind: adhoc` (`amount_minor`, optional `currency`, `description`, `customer_external_id`). The token is returned once (`token`, `url`). `Idempotency-Key` (or `idempotency_key`) makes a retry return the first link without its token (`replayed: true`); the same key with other parameters is `billing.payment_link.idempotency_conflict`. `single_use` defaults to true for ad hoc, false for an invoice link; links last 30 days (ad hoc) or 90 days, at most 365.
+- An **ad-hoc link is a factory**: its page shows the request and a *Continue* button. Continue (not the page view) makes the invoice (kind `LINK`, gap-free number, the same saga; no tax is added) and hands the payer an invoice link. A single-use link is consumed by its first paid invoice; a reusable one makes an invoice per use. Revoking it (`DELETE /v1/payment-links/{id}`) or its expiry voids the invoices nobody paid.
+- The invoice page shows the amount, lines, seller (name, logo, address) and the **methods the invoice has**: `mock` for sandbox tenants and `QUOTIFY_DEMO`; for live tenants whatever payments-worker's provider catalogue offers (a hosted checkout of the routed provider, payment instructions of a manual provider such as a bank transfer). The state shown is `open`, `processing`, `failed`, `paid` or `void`; the page refreshes by itself while `processing`. **Only the saga and the ledger change the state**: a provider's confirmed notification reaches the saga as `Settled`; the browser's return from a checkout shows the state and settles nothing.
+- `POST /v1/customers/{external_id}/portal-links` makes the customer's page (`/c/{token}`, 30 days by default): their invoices, payments (ledger rows: charge or refund, status, date, amount, provider), PDFs, printable receipts and a pay button on open invoices. It is read-only and scoped to that customer of that tenant; `DELETE` revokes. `GET /v1/customers/{external_id}/payments` lists the same rows for the tenant.
+- Public routes: `/i/{token}` (`/start`, `/pay`, `/pdf`, `/receipt`, `/logo`) and `/c/{token}` (`/logo`, `/invoices/{id}`, `/invoices/{id}/pdf|receipt|pay`). Same headers and 60 requests a minute as the invoice page, 10 a minute for the POSTs that start a payment.
+- The saga waits in `AWAITING_PAYMENT` for a link-collected invoice (no stored method is charged, a decline is the customer's to retry, no dunning). An invoice in dunning can be paid through its link too; invoices the dunning gave up on cannot.

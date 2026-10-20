@@ -19,6 +19,8 @@ import (
 type BillingAPI interface {
 	ListInvoices(ctx context.Context, tenant uuid.UUID, req *billingv1.ListInvoicesRequest) (*billingv1.ListInvoicesResponse, error)
 	GetInvoice(ctx context.Context, tenant uuid.UUID, id string) (*billingv1.Invoice, error)
+	// SettleInvoicePayment tells billing that a provider confirmed a payment made on a hosted page.
+	SettleInvoicePayment(ctx context.Context, tenant uuid.UUID, req *billingv1.SettleInvoicePaymentRequest) (*billingv1.SettleInvoicePaymentResponse, error)
 }
 
 // BillingClient talks to billing-svc's tenant API.
@@ -33,6 +35,10 @@ func (b BillingClient) ListInvoices(ctx context.Context, id uuid.UUID, req *bill
 func (b BillingClient) GetInvoice(ctx context.Context, id uuid.UUID, invoice string) (*billingv1.Invoice, error) {
 	r, err := b.Client.GetInvoice(tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: id})), &billingv1.GetInvoiceRequest{InvoiceId: invoice})
 	return r.GetInvoice(), err
+}
+
+func (b BillingClient) SettleInvoicePayment(ctx context.Context, id uuid.UUID, req *billingv1.SettleInvoicePaymentRequest) (*billingv1.SettleInvoicePaymentResponse, error) {
+	return b.Client.SettleInvoicePayment(tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: id})), req)
 }
 
 // Discrepancy kinds.

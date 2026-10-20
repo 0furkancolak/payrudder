@@ -125,6 +125,12 @@ func newTestServer(t *testing.T) (*httptest.Server, *fakePlans) {
 
 func newFullTestServer(t *testing.T) (*httptest.Server, *fakePlans, *fakeIngest, *fakeLimiter) {
 	t.Helper()
+	return newTestServerWith(t, nil)
+}
+
+// newTestServerWith is newFullTestServer with a change to the dependencies (a fake payments-worker, demo mode).
+func newTestServerWith(t *testing.T, tweak func(*Deps)) (*httptest.Server, *fakePlans, *fakeIngest, *fakeLimiter) {
+	t.Helper()
 	f := &fakePlans{}
 	ing := &fakeIngest{}
 	lim := &fakeLimiter{}
@@ -150,11 +156,14 @@ func newFullTestServer(t *testing.T) (*httptest.Server, *fakePlans, *fakeIngest,
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cc.Close() })
-	api := New(Deps{Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc),
+	deps := Deps{Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc),
 		Ingest: ingestv1.NewIngestServiceClient(cc), Usage: aggregatorv1.NewUsageQueryServiceClient(cc), Limits: limitsv1.NewLimitsServiceClient(cc), Billing: billingv1.NewBillingServiceClient(cc), Analytics: analyticsv1.NewAnalyticsServiceClient(cc), Assets: assetsv1.NewAssetsServiceClient(cc),
 		Sandbox: billingv1.NewSandboxServiceClient(cc), BillingAdmin: billingv1.NewBillingAdminServiceClient(cc), Hosted: billingv1.NewHostedInvoiceServiceClient(cc), PublicURL: "https://api.example.test", Auth: fakeAuth{},
-		Limiter: lim, OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
-	ts := httptest.NewServer(api)
+		Limiter: lim, OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	if tweak != nil {
+		tweak(&deps)
+	}
+	ts := httptest.NewServer(New(deps))
 	t.Cleanup(ts.Close)
 	return ts, f, ing, lim
 }

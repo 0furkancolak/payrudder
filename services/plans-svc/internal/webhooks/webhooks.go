@@ -32,6 +32,9 @@ const (
 	SubscriptionPaused          = "subscription.paused"
 	SubscriptionResumed         = "subscription.resumed"
 	SubscriptionMovedToProvider = "subscription.moved_to_provider"
+	PaymentLinkCreated          = "payment_link.created"
+	PaymentLinkPaid             = "payment_link.paid"
+	PaymentLinkExpired          = "payment_link.expired"
 )
 
 // Types lists every event type, in the order the documentation gives them.
@@ -40,6 +43,7 @@ var Types = []string{
 	CreditNoteCreated, CreditNoteRefunded, CreditNoteRefundFailed,
 	SubscriptionCreated, SubscriptionChanged, SubscriptionChangeScheduled, SubscriptionCancelled, SubscriptionCancelScheduled, SubscriptionCancelWithdrawn,
 	SubscriptionPaused, SubscriptionResumed, SubscriptionMovedToProvider,
+	PaymentLinkCreated, PaymentLinkPaid, PaymentLinkExpired,
 }
 
 // Known reports whether t is an event type (ping is sent only on request and cannot be subscribed to).

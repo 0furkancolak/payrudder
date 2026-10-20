@@ -55,7 +55,7 @@ func (q *Queries) AppendLedger(ctx context.Context, arg AppendLedgerParams) (int
 }
 
 const countLedgerOutcomes = `-- name: CountLedgerOutcomes :one
-SELECT count(DISTINCT status) FROM payment_ledger WHERE provider = $1 AND kind = $2 AND provider_ref = $3
+SELECT count(DISTINCT status) FROM payment_ledger WHERE provider = $1 AND kind = $2 AND provider_ref = $3 AND status <> 'pending'
 `
 
 type CountLedgerOutcomesParams struct {
@@ -69,6 +69,46 @@ func (q *Queries) CountLedgerOutcomes(ctx context.Context, arg CountLedgerOutcom
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const findOpenCheckout = `-- name: FindOpenCheckout :one
+SELECT l.provider, l.provider_ref, l.detail, l.idempotency_key FROM payment_ledger l
+WHERE l.tenant_id = $1 AND l.invoice_id = $2 AND l.provider = $3 AND l.kind = 'charge' AND l.status = 'pending'
+  AND l.detail LIKE 'checkout:%' AND l.occurred_at > $4::timestamptz
+  AND NOT EXISTS (SELECT 1 FROM payment_ledger d WHERE d.idempotency_key = l.idempotency_key AND d.status IN ('succeeded', 'declined'))
+ORDER BY l.id DESC LIMIT 1
+`
+
+type FindOpenCheckoutParams struct {
+	TenantID  uuid.UUID
+	InvoiceID *uuid.UUID
+	Provider  string
+	Since     time.Time
+}
+
+type FindOpenCheckoutRow struct {
+	Provider       string
+	ProviderRef    *string
+	Detail         *string
+	IdempotencyKey *string
+}
+
+// The newest checkout opened for an invoice in the last half hour that no notification has settled either way.
+func (q *Queries) FindOpenCheckout(ctx context.Context, arg FindOpenCheckoutParams) (FindOpenCheckoutRow, error) {
+	row := q.db.QueryRow(ctx, findOpenCheckout,
+		arg.TenantID,
+		arg.InvoiceID,
+		arg.Provider,
+		arg.Since,
+	)
+	var i FindOpenCheckoutRow
+	err := row.Scan(
+		&i.Provider,
+		&i.ProviderRef,
+		&i.Detail,
+		&i.IdempotencyKey,
+	)
+	return i, err
 }
 
 const getChargeFact = `-- name: GetChargeFact :one
@@ -210,6 +250,58 @@ func (q *Queries) ListSuccessfulCharges(ctx context.Context, tenantID uuid.UUID)
 			&i.ProviderRef,
 			&i.Currency,
 			&i.AmountMinor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lookupLedgerByInvoices = `-- name: LookupLedgerByInvoices :many
+SELECT id, invoice_id::text AS invoice_id, provider, environment, kind, status, amount_minor, currency, occurred_at
+FROM payment_ledger WHERE tenant_id = $1 AND invoice_id = ANY($2::uuid[]) ORDER BY id DESC LIMIT 1000
+`
+
+type LookupLedgerByInvoicesParams struct {
+	TenantID   uuid.UUID
+	InvoiceIds []uuid.UUID
+}
+
+type LookupLedgerByInvoicesRow struct {
+	ID          int64
+	InvoiceID   string
+	Provider    string
+	Environment string
+	Kind        string
+	Status      string
+	AmountMinor int64
+	Currency    string
+	OccurredAt  time.Time
+}
+
+func (q *Queries) LookupLedgerByInvoices(ctx context.Context, arg LookupLedgerByInvoicesParams) ([]LookupLedgerByInvoicesRow, error) {
+	rows, err := q.db.Query(ctx, lookupLedgerByInvoices, arg.TenantID, arg.InvoiceIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LookupLedgerByInvoicesRow{}
+	for rows.Next() {
+		var i LookupLedgerByInvoicesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.InvoiceID,
+			&i.Provider,
+			&i.Environment,
+			&i.Kind,
+			&i.Status,
+			&i.AmountMinor,
+			&i.Currency,
+			&i.OccurredAt,
 		); err != nil {
 			return nil, err
 		}

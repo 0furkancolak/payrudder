@@ -30,11 +30,13 @@ const (
 	RefundFailed     State = "REFUND_FAILED"
 	Refunded         State = "REFUNDED"
 	Voided           State = "VOIDED"
+	// AwaitingPayment: a link-collected invoice (phase 34) waits for its customer to pay; nothing is outstanding, so there is no deadline.
+	AwaitingPayment State = "AWAITING_PAYMENT"
 )
 
 // States lists every state.
 var States = []State{Draft, Finalized, PdfRequested, PdfRendered, PdfFailed, PaymentRequested, Paid, PaymentDeclined, PaymentUnknown,
-	Uncollectible, NotifyRequested, NotifyFailed, Completed, RefundRequested, RefundFailed, Refunded, Voided}
+	Uncollectible, NotifyRequested, NotifyFailed, Completed, RefundRequested, RefundFailed, Refunded, Voided, AwaitingPayment}
 
 // Terminal states end the saga (COMPLETED can still be voided, which refunds a paid invoice).
 func (s State) Terminal() bool { return s == Completed || s == Voided }
@@ -68,11 +70,13 @@ const (
 	EvDunningDue      Event = "DunningDue"       // dunning scheduler
 	EvRetry           Event = "Retry"            // operator
 	EvVoid            Event = "Void"             // operator
+	EvPayRequested    Event = "PayRequested"     // the customer asks to pay now on a hosted page (mock payment); counts as a retry
+	EvSettled         Event = "Settled"          // a provider confirmed a payment the customer made on its hosted page (payments-worker)
 )
 
 // Events lists every event.
 var Events = []Event{EvStart, EvContinue, EvPdfRendered, EvPdfFailed, EvPaymentOK, EvPaymentDeclined, EvPaymentErrored,
-	EvStatusSucceeded, EvStatusNotFound, EvStatusDeclined, EvRefunded, EvNotified, EvExhausted, EvDunningDue, EvRetry, EvVoid}
+	EvStatusSucceeded, EvStatusNotFound, EvStatusDeclined, EvRefunded, EvNotified, EvExhausted, EvDunningDue, EvRetry, EvVoid, EvPayRequested, EvSettled}
 
 // Effect is what the engine does when a transition fires.
 type Effect string
@@ -100,6 +104,10 @@ const (
 	PaidWithMoney   Guard = "paid, total > 0"
 	NothingToRefund Guard = "nothing to refund"
 	ProviderMails   Guard = "the provider mails the receipt"
+	// AwaitCustomer: a link-collected invoice is not charged by the saga; the customer pays.
+	AwaitCustomer Guard = "total > 0, customer pays"
+	// LinkDeclined: a declined payment on a link-collected invoice is the customer's to retry; there is no dunning.
+	LinkDeclined Guard = "customer pays, no dunning"
 )
 
 // Ctx is what guards look at.
@@ -110,6 +118,8 @@ type Ctx struct {
 	MaxDunning     int
 	// ProviderMails: the provider that took the payment sends the customer its own receipt, so Quotify sends none.
 	ProviderMails bool
+	// Link: the invoice is collected through a payment link (the customer pays), not charged by the saga.
+	Link bool
 }
 
 func (g Guard) holds(c Ctx) bool {
@@ -119,11 +129,15 @@ func (g Guard) holds(c Ctx) bool {
 	case TotalZero:
 		return c.TotalMinor == 0
 	case TotalPositive:
-		return c.TotalMinor > 0
+		return c.TotalMinor > 0 && !c.Link
+	case AwaitCustomer:
+		return c.TotalMinor > 0 && c.Link
+	case LinkDeclined:
+		return c.Link
 	case DunningLeft:
-		return c.DunningAttempt < c.MaxDunning
+		return !c.Link && c.DunningAttempt < c.MaxDunning
 	case DunningSpent:
-		return c.DunningAttempt >= c.MaxDunning
+		return !c.Link && c.DunningAttempt >= c.MaxDunning
 	case PaidWithMoney:
 		return c.Paid && c.TotalMinor > 0
 	case ProviderMails:
@@ -152,11 +166,13 @@ var Table = []Row{
 	{PdfRequested, EvExhausted, Always, PdfFailed, EffNone},
 	{PdfFailed, EvRetry, Always, PdfRequested, EffRender},
 	{PdfRendered, EvContinue, TotalPositive, PaymentRequested, EffCharge},
+	{PdfRendered, EvContinue, AwaitCustomer, AwaitingPayment, EffNone},
 	{PdfRendered, EvContinue, TotalZero, NotifyRequested, EffNotify},
 
 	{PaymentRequested, EvPaymentOK, Always, Paid, EffNone},
 	{PaymentRequested, EvPaymentDeclined, DunningLeft, PaymentDeclined, EffScheduleDunning},
 	{PaymentRequested, EvPaymentDeclined, DunningSpent, Uncollectible, EffNone},
+	{PaymentRequested, EvPaymentDeclined, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentRequested, EvPaymentErrored, Always, PaymentUnknown, EffQueryStatus},
 	{PaymentRequested, EvExhausted, Always, PaymentUnknown, EffQueryStatus},
 
@@ -164,14 +180,25 @@ var Table = []Row{
 	{PaymentUnknown, EvPaymentOK, Always, Paid, EffNone},
 	{PaymentUnknown, EvPaymentDeclined, DunningLeft, PaymentDeclined, EffScheduleDunning},
 	{PaymentUnknown, EvPaymentDeclined, DunningSpent, Uncollectible, EffNone},
+	{PaymentUnknown, EvPaymentDeclined, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentUnknown, EvStatusSucceeded, Always, Paid, EffNone},
 	{PaymentUnknown, EvStatusNotFound, Always, PaymentRequested, EffCharge},
 	{PaymentUnknown, EvStatusDeclined, DunningLeft, PaymentDeclined, EffScheduleDunning},
 	{PaymentUnknown, EvStatusDeclined, DunningSpent, Uncollectible, EffNone},
+	{PaymentUnknown, EvStatusDeclined, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentUnknown, EvRetry, Always, PaymentUnknown, EffQueryStatus},
 	{PaymentUnknown, EvExhausted, Always, PaymentUnknown, EffNone}, // parks for the operator
 
 	{PaymentDeclined, EvDunningDue, Always, PaymentRequested, EffChargeDunning},
+
+	// A customer pays on a hosted page (phase 34): a charge now, or a provider's confirmed payment. A payment racing a dunning charge is settled once:
+	// after PAID the late reply has no row.
+	{AwaitingPayment, EvPayRequested, Always, PaymentRequested, EffChargeDunning},
+	{AwaitingPayment, EvSettled, Always, Paid, EffNone},
+	{PaymentDeclined, EvPayRequested, Always, PaymentRequested, EffChargeDunning},
+	{PaymentDeclined, EvSettled, Always, Paid, EffNone},
+	{PaymentRequested, EvSettled, Always, Paid, EffNone},
+	{PaymentUnknown, EvSettled, Always, Paid, EffNone},
 
 	{Paid, EvContinue, ProviderMails, Completed, EffNone},
 	{Paid, EvContinue, Always, NotifyRequested, EffNotify},
@@ -185,6 +212,7 @@ var Table = []Row{
 	{PdfRequested, EvVoid, Always, Voided, EffNone},
 	{PdfFailed, EvVoid, Always, Voided, EffNone},
 	{PaymentDeclined, EvVoid, Always, Voided, EffNone},
+	{AwaitingPayment, EvVoid, Always, Voided, EffNone},
 	{NotifyRequested, EvVoid, PaidWithMoney, RefundRequested, EffRefund},
 	{NotifyRequested, EvVoid, NothingToRefund, Voided, EffNone},
 	{NotifyFailed, EvVoid, PaidWithMoney, RefundRequested, EffRefund},

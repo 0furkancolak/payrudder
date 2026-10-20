@@ -12,6 +12,22 @@ import (
 	"github.com/google/uuid"
 )
 
+const countLinkAttempts = `-- name: CountLinkAttempts :one
+SELECT count(*) FROM payment_attempts WHERE tenant_id = $1 AND invoice_id = $2 AND kind = 'charge' AND idempotency_key LIKE 'link:%'
+`
+
+type CountLinkAttemptsParams struct {
+	TenantID  uuid.UUID
+	InvoiceID uuid.UUID
+}
+
+func (q *Queries) CountLinkAttempts(ctx context.Context, arg CountLinkAttemptsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countLinkAttempts, arg.TenantID, arg.InvoiceID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getAttemptReply = `-- name: GetAttemptReply :one
 SELECT reply FROM payment_attempts WHERE command_id = $1 AND status = 'DONE'
 `

@@ -64,6 +64,12 @@ func (p PlansClient) GetCustomer(ctx context.Context, id uuid.UUID, externalID s
 	return r.GetCustomer(), err
 }
 
+// PreviewRouting implements PlansAPI.
+func (p PlansClient) PreviewRouting(ctx context.Context, id uuid.UUID, country, currency string) (string, error) {
+	r, err := p.Client.PreviewRouting(as(ctx, id), &plansv1.PreviewRoutingRequest{Country: country, Currency: currency})
+	return r.GetProvider(), err
+}
+
 // TenantCurrency implements PlansAPI: the currency of base_fee_minor.
 func (p PlansClient) TenantCurrency(ctx context.Context, id uuid.UUID) (string, error) {
 	if p.Admin == nil {

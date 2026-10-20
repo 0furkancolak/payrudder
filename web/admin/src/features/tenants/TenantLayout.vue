@@ -24,6 +24,7 @@ const tabs = [
   { to: "/tenants/$id/payments", key: "payments", exact: false },
   { to: "/tenants/$id/providers", key: "providers", exact: false },
   { to: "/tenants/$id/reports", key: "reports", exact: false },
+  { to: "/tenants/$id/payment-links", key: "paymentLinks", exact: false },
   { to: "/tenants/$id/webhooks", key: "webhooks", exact: false },
 ] as const;
 </script>

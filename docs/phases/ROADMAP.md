@@ -34,6 +34,7 @@ updated `docs/` (design changes discovered while building are written back into 
 | 26 | [Demo mode and mail by provider](phase-26-demo-and-mail.md) | One-command demo, mail only for payments Quotify ran | 24 | Demo populated in one command; iyzico payments mail, Paddle's do not | done, without a per-tenant mail switch |
 | 27 | [Development, Kubernetes, memory, edge](phase-27-dev-and-operations.md) | `make setup`/`make dev`, one-command k8s install, memory budgets, cacheable reads | 24 | Two commands to a dev stack; chart installs on kind; budgets enforced | done, memory budgets are limits, not enforced measurements |
 | 28 | [Cells](phase-28-cells.md) | Tenant directory, schema-per-tenant mode, converted jobs, fenced moves | 24, 25 | Suites pass in both modes; cross-tenant read test; no row lost in a move | planned, staged |
+| 34 | [Payment links](phase-34-payment-links.md) | Payment links, hosted payment page, customer portal | 23 | Ad-hoc link paid with the mock through the saga; portal isolation test | built |
 
 ```mermaid
 flowchart LR

@@ -154,6 +154,10 @@ Details in [phase 22](phases/phase-22-billing-documents.md). Credit notes (paid 
 
 Details in [phase 23](phases/phase-23-remaining-gaps.md) and [16-webhooks.md](16-webhooks.md). Tenants set their own dunning delays; ending a subscription early (or moving it to another provider) can credit the unused prepaid fee; a credit note can refund the card instead of the credit balance; tenants receive signed, retried webhook events for subscriptions, invoices and credit notes; and an invoice can be shared with its customer as a hosted page. Quantity changes and tax calculation are still not built.
 
+## As built: phase 34
+
+Details in [phase 34](phases/phase-34-payment-links.md) and [16-webhooks.md](16-webhooks.md). Payment links (for an open invoice, or ad hoc for a fixed amount that becomes an invoice on first use), a public payment page with the methods the provider catalogue offers, and a read-only customer portal with payment history. Provider checkouts for iyzico and Paddle are written from public documentation (UNVERIFIED); a bank-transfer provider appears on the page by implementing `payments.InstructionsProvider`.
+
 ## Currency
 
 The old rule "one currency per tenant, immutable" moves down a level. The tenant keeps a **default currency**. A subscription and its invoices have one currency, fixed for the
