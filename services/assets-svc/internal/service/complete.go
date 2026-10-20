@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -14,48 +13,46 @@ import (
 	"github.com/0furkancolak/quotify/pkg/blob"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/quotify/services/assets-svc/internal/store/sqlc"
 )
 
 // reject marks an asset REJECTED after the caller removed what S3 held.
-func reject(ctx context.Context, tx pgx.Tx, id uuid.UUID, reason string) (*asset, error) {
-	if _, err := tx.Exec(ctx, `UPDATE assets SET status = 'REJECTED', reject_reason = $2, s3_upload_id = NULL WHERE id = $1`, id, reason); err != nil {
-		return nil, err
+func reject(ctx context.Context, q *sqlc.Queries, id uuid.UUID, reason string) (sqlc.Asset, error) {
+	if err := q.RejectAsset(ctx, sqlc.RejectAssetParams{ID: id, Reason: reason}); err != nil {
+		return sqlc.Asset{}, err
 	}
-	return loadAsset(ctx, tx, id, false)
+	return loadAsset(ctx, q, id, false)
 }
 
 // finish turns a complete S3 object into a READY asset: quota update and the status change in the caller's transaction.
-func (s *Service) finish(ctx context.Context, tx pgx.Tx, ti tenant.Info, a *asset, size int64, sha []byte) (*asset, error) {
+func (s *Service) finish(ctx context.Context, q *sqlc.Queries, ti tenant.Info, a sqlc.Asset, size int64, sha []byte) (sqlc.Asset, error) {
 	if a.DeclaredSize != nil && size != *a.DeclaredSize {
 		_ = s.blob.Delete(ctx, a.ObjectKey)
-		return reject(ctx, tx, a.ID, policy.SizeMismatch)
+		return reject(ctx, q, a.ID, policy.SizeMismatch)
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO storage_usage (tenant_id, bytes_used) VALUES (app_tenant_id(), 0) ON CONFLICT DO NOTHING`); err != nil {
-		return nil, err
+	if err := q.EnsureStorageUsage(ctx); err != nil {
+		return sqlc.Asset{}, err
 	}
-	tag, err := tx.Exec(ctx, `UPDATE storage_usage SET bytes_used = bytes_used + $1 WHERE tenant_id = app_tenant_id() AND bytes_used + $1 <= $2`, size, s.quota(ti))
+	reserved, err := q.ReserveStorage(ctx, sqlc.ReserveStorageParams{Size: size, Quota: s.quota(ti)})
 	if err != nil {
-		return nil, err
+		return sqlc.Asset{}, err
 	}
-	if tag.RowsAffected() == 0 {
+	if reserved == 0 {
 		_ = s.blob.Delete(ctx, a.ObjectKey)
-		return reject(ctx, tx, a.ID, policy.StorageQuotaExceeded)
+		return reject(ctx, q, a.ID, policy.StorageQuotaExceeded)
 	}
-	var shaArg any
-	if len(sha) > 0 {
-		shaArg = sha
+	if len(sha) == 0 {
+		sha = nil
 	}
-	if _, err := tx.Exec(ctx, `UPDATE assets SET status = 'READY', size_bytes = $2, completed_at = $3, s3_upload_id = NULL, sha256 = COALESCE($4, sha256) WHERE id = $1`,
-		a.ID, size, s.now(), shaArg); err != nil {
-		return nil, err
+	if err := q.MarkAssetReady(ctx, sqlc.MarkAssetReadyParams{ID: a.ID, SizeBytes: size, CompletedAt: s.now(), Sha256: sha}); err != nil {
+		return sqlc.Asset{}, err
 	}
 	if a.SessionID != nil {
-		if _, err := tx.Exec(ctx, `UPDATE upload_sessions SET status = 'COMPLETED' WHERE id = $1 AND status = 'OPEN'
-			AND NOT EXISTS (SELECT 1 FROM assets WHERE session_id = $1 AND status IN ('PENDING','UPLOADING'))`, *a.SessionID); err != nil {
-			return nil, err
+		if err := q.CompleteSessionIfDrained(ctx, *a.SessionID); err != nil {
+			return sqlc.Asset{}, err
 		}
 	}
-	return loadAsset(ctx, tx, a.ID, false)
+	return loadAsset(ctx, q, a.ID, false)
 }
 
 // CompleteFile implements assetsv1.AssetsServiceServer. The asset row stays locked from the first check to the last
@@ -73,90 +70,97 @@ func (s *Service) CompleteFile(ctx context.Context, req *assetsv1.CompleteFileRe
 	if err != nil {
 		return nil, err
 	}
-	var out *asset
-	err = s.tx(ctx, func(tx pgx.Tx) error {
-		a, err := loadAsset(ctx, tx, aid, true)
-		if err != nil {
-			return err
-		}
-		if a.SessionID == nil || *a.SessionID != sid {
-			return status.Error(codes.NotFound, "asset not found in this session")
-		}
-		switch a.Status {
-		case "READY", "REJECTED":
-			out = a // completing twice returns the same asset
-			return nil
-		case "PENDING", "UPLOADING":
-		default:
-			return status.Errorf(codes.FailedPrecondition, "the file is %s", a.Status)
-		}
-		sess, err := loadSession(ctx, tx, sid, false)
-		if err != nil {
-			return err
-		}
-		if sess.Status != "OPEN" || !sess.ExpiresAt.After(s.now()) {
-			return status.Error(codes.FailedPrecondition, "the upload session is no longer open")
-		}
-
-		parts, err := s.blob.ListParts(ctx, a.ObjectKey, *a.UploadID)
-		if errors.Is(err, blob.ErrNoSuchUpload) {
-			// A previous CompleteFile assembled the object and crashed before recording it: finish from the object.
-			info, herr := s.blob.Head(ctx, a.ObjectKey)
-			if herr != nil {
-				return status.Error(codes.FailedPrecondition, "the multipart upload no longer exists")
-			}
-			out, err = s.finish(ctx, tx, ti, a, info.Size, nil)
-			return err
-		}
-		if err != nil {
-			return status.Error(codes.Unavailable, "object storage unavailable")
-		}
-
-		rejectUpload := func(reason string) error {
-			if err := s.blob.AbortMultipart(ctx, a.ObjectKey, *a.UploadID); err != nil {
-				return status.Error(codes.Unavailable, "object storage unavailable")
-			}
-			out, err = reject(ctx, tx, a.ID, reason)
-			return err
-		}
-		given := make(map[int32]string, len(req.GetParts()))
-		for _, p := range req.GetParts() {
-			given[p.GetPartNumber()] = etagOf(p.GetEtag())
-		}
-		if len(given) != len(req.GetParts()) || int32(len(parts)) != *a.PartCount || len(given) != len(parts) { //nolint:gosec // ≤ 10 000
-			return rejectUpload(policy.PartMismatch)
-		}
-		var sum int64
-		for i, p := range parts {
-			if p.Number != int32(i+1) || given[p.Number] != etagOf(p.ETag) { //nolint:gosec // ≤ 10 000
-				return rejectUpload(policy.PartMismatch)
-			}
-			if i < len(parts)-1 && p.Size != *a.PartSize {
-				return rejectUpload(policy.SizeMismatch)
-			}
-			sum += p.Size
-		}
-		// The sizes S3 reports decide, never what the client claims.
-		if a.DeclaredSize != nil && sum != *a.DeclaredSize {
-			return rejectUpload(policy.SizeMismatch)
-		}
-		if err := s.blob.CompleteMultipart(ctx, a.ObjectKey, *a.UploadID, parts); err != nil {
-			if errors.Is(err, blob.ErrNoSuchUpload) {
-				return status.Error(codes.Aborted, "the upload changed concurrently; retry")
-			}
-			return status.Error(codes.Unavailable, "object storage unavailable")
-		}
-		info, err := s.blob.Head(ctx, a.ObjectKey)
-		if err != nil {
-			return status.Error(codes.Unavailable, "object storage unavailable")
-		}
-		out, err = s.finish(ctx, tx, ti, a, info.Size, nil)
+	var out sqlc.Asset
+	err = s.tx(ctx, func(q *sqlc.Queries) error {
+		var err error
+		out, err = s.completeFile(ctx, q, ti, sid, aid, req.GetParts())
 		return err
 	})
 	if err != nil {
 		return nil, internal(err)
 	}
-	return &assetsv1.CompleteFileResponse{Asset: out.proto()}, nil
+	return &assetsv1.CompleteFileResponse{Asset: assetProto(out)}, nil
+}
+
+func (s *Service) completeFile(ctx context.Context, q *sqlc.Queries, ti tenant.Info, sid, aid uuid.UUID, given []*assetsv1.PartETag) (sqlc.Asset, error) {
+	a, err := loadAsset(ctx, q, aid, true)
+	if err != nil {
+		return a, err
+	}
+	if !inSession(a, sid) {
+		return a, status.Error(codes.NotFound, "asset not found in this session")
+	}
+	switch a.Status {
+	case "READY", "REJECTED":
+		return a, nil // completing twice returns the same asset
+	case "PENDING", "UPLOADING":
+	default:
+		return a, status.Errorf(codes.FailedPrecondition, "the file is %s", a.Status)
+	}
+	sess, err := loadSession(ctx, q, sid, false)
+	if err != nil {
+		return a, err
+	}
+	if !s.sessionOpen(sess) {
+		return a, status.Error(codes.FailedPrecondition, "the upload session is no longer open")
+	}
+
+	parts, err := s.blob.ListParts(ctx, a.ObjectKey, *a.S3UploadID)
+	if errors.Is(err, blob.ErrNoSuchUpload) {
+		// A previous CompleteFile assembled the object and crashed before recording it: finish from the object.
+		info, herr := s.blob.Head(ctx, a.ObjectKey)
+		if herr != nil {
+			return a, status.Error(codes.FailedPrecondition, "the multipart upload no longer exists")
+		}
+		return s.finish(ctx, q, ti, a, info.Size, nil)
+	}
+	if err != nil {
+		return a, status.Error(codes.Unavailable, "object storage unavailable")
+	}
+
+	if reason := checkParts(a, given, parts); reason != "" {
+		if err := s.blob.AbortMultipart(ctx, a.ObjectKey, *a.S3UploadID); err != nil {
+			return a, status.Error(codes.Unavailable, "object storage unavailable")
+		}
+		return reject(ctx, q, a.ID, reason)
+	}
+	if err := s.blob.CompleteMultipart(ctx, a.ObjectKey, *a.S3UploadID, parts); err != nil {
+		if errors.Is(err, blob.ErrNoSuchUpload) {
+			return a, status.Error(codes.Aborted, "the upload changed concurrently; retry")
+		}
+		return a, status.Error(codes.Unavailable, "object storage unavailable")
+	}
+	info, err := s.blob.Head(ctx, a.ObjectKey)
+	if err != nil {
+		return a, status.Error(codes.Unavailable, "object storage unavailable")
+	}
+	return s.finish(ctx, q, ti, a, info.Size, nil)
+}
+
+// checkParts compares the parts the client lists with what S3 holds and returns the rejection reason, or "" when they
+// agree. The sizes S3 reports decide, never what the client claims.
+func checkParts(a sqlc.Asset, given []*assetsv1.PartETag, parts []blob.Part) string {
+	etags := make(map[int32]string, len(given))
+	for _, p := range given {
+		etags[p.GetPartNumber()] = etagOf(p.GetEtag())
+	}
+	if len(etags) != len(given) || int32(len(parts)) != *a.PartCount || len(etags) != len(parts) { //nolint:gosec // ≤ 10 000
+		return policy.PartMismatch
+	}
+	var sum int64
+	for i, p := range parts {
+		if p.Number != int32(i+1) || etags[p.Number] != etagOf(p.ETag) { //nolint:gosec // ≤ 10 000
+			return policy.PartMismatch
+		}
+		if i < len(parts)-1 && p.Size != *a.PartSize {
+			return policy.SizeMismatch
+		}
+		sum += p.Size
+	}
+	if a.DeclaredSize != nil && sum != *a.DeclaredSize {
+		return policy.SizeMismatch
+	}
+	return ""
 }
 
 // AbortUpload implements assetsv1.AssetsServiceServer.
@@ -174,51 +178,21 @@ func (s *Service) AbortUpload(ctx context.Context, req *assetsv1.AbortUploadRequ
 		aid = &id
 	}
 	var out *assetsv1.UploadSession
-	err = s.tx(ctx, func(tx pgx.Tx) error {
-		if _, err := loadSession(ctx, tx, sid, true); err != nil {
+	err = s.tx(ctx, func(q *sqlc.Queries) error {
+		if _, err := loadSession(ctx, q, sid, true); err != nil {
 			return err
 		}
-		rows, err := tx.Query(ctx, `SELECT `+assetColumns+` FROM assets WHERE session_id = $1 AND status IN ('PENDING','UPLOADING') AND ($2::uuid IS NULL OR id = $2) FOR UPDATE`, sid, aid)
-		if err != nil {
+		if err := s.abortAssets(ctx, q, sid, aid); err != nil {
 			return err
-		}
-		var as []*asset
-		for rows.Next() {
-			a, err := scanAsset(rows)
-			if err != nil {
-				rows.Close()
-				return err
-			}
-			as = append(as, a)
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		if aid != nil && len(as) == 0 {
-			if _, err := loadAsset(ctx, tx, *aid, false); err != nil {
-				return err
-			}
-		}
-		for _, a := range as {
-			if a.UploadID != nil {
-				if err := s.blob.AbortMultipart(ctx, a.ObjectKey, *a.UploadID); err != nil {
-					return status.Error(codes.Unavailable, "object storage unavailable")
-				}
-			}
-			if _, err := tx.Exec(ctx, `UPDATE assets SET status = 'ABORTED', s3_upload_id = NULL WHERE id = $1`, a.ID); err != nil {
-				return err
-			}
 		}
 		next := "COMPLETED"
 		if aid == nil {
 			next = "ABORTED"
 		}
-		if _, err := tx.Exec(ctx, `UPDATE upload_sessions SET status = $2 WHERE id = $1 AND status = 'OPEN'
-			AND ($3 OR NOT EXISTS (SELECT 1 FROM assets WHERE session_id = $1 AND status IN ('PENDING','UPLOADING')))`, sid, next, aid == nil); err != nil {
+		if err := q.SettleSession(ctx, sqlc.SettleSessionParams{ID: sid, Status: next, Force: aid == nil}); err != nil {
 			return err
 		}
-		out, err = s.sessionView(ctx, tx, sid)
+		out, err = s.sessionView(ctx, q, sid)
 		return err
 	})
 	if err != nil {
@@ -227,21 +201,51 @@ func (s *Service) AbortUpload(ctx context.Context, req *assetsv1.AbortUploadRequ
 	return &assetsv1.AbortUploadResponse{Session: out}, nil
 }
 
+// abortAssets aborts the uploadable assets of a session, or just the one asset when assetID is set.
+func (s *Service) abortAssets(ctx context.Context, q *sqlc.Queries, sessionID uuid.UUID, assetID *uuid.UUID) error {
+	as, err := q.LockUploadableSessionAssets(ctx, sqlc.LockUploadableSessionAssetsParams{SessionID: sessionID, AssetID: assetID})
+	if err != nil {
+		return err
+	}
+	if assetID != nil && len(as) == 0 {
+		if _, err := loadAsset(ctx, q, *assetID, false); err != nil {
+			return err
+		}
+	}
+	for _, a := range as {
+		if a.S3UploadID != nil {
+			if err := s.blob.AbortMultipart(ctx, a.ObjectKey, *a.S3UploadID); err != nil {
+				return status.Error(codes.Unavailable, "object storage unavailable")
+			}
+		}
+		if err := q.MarkAssetAborted(ctx, a.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetAsset implements assetsv1.AssetsServiceServer.
 func (s *Service) GetAsset(ctx context.Context, req *assetsv1.GetAssetRequest) (*assetsv1.GetAssetResponse, error) {
 	id, err := parseID("asset_id", req.GetAssetId())
 	if err != nil {
 		return nil, err
 	}
-	var a *asset
-	if err := s.tx(ctx, func(tx pgx.Tx) error {
-		var err error
-		a, err = loadAsset(ctx, tx, id, false)
-		return err
-	}); err != nil {
+	a, err := s.readAsset(ctx, id)
+	if err != nil {
 		return nil, internal(err)
 	}
-	return &assetsv1.GetAssetResponse{Asset: a.proto()}, nil
+	return &assetsv1.GetAssetResponse{Asset: assetProto(a)}, nil
+}
+
+func (s *Service) readAsset(ctx context.Context, id uuid.UUID) (sqlc.Asset, error) {
+	var a sqlc.Asset
+	err := s.tx(ctx, func(q *sqlc.Queries) error {
+		var err error
+		a, err = loadAsset(ctx, q, id, false)
+		return err
+	})
+	return a, err
 }
 
 // ListAssets implements assetsv1.AssetsServiceServer.
@@ -260,29 +264,22 @@ func (s *Service) ListAssets(ctx context.Context, req *assetsv1.ListAssetsReques
 			return nil, status.Error(codes.InvalidArgument, "page_token is invalid")
 		}
 	}
-	purpose := policy.PurposeName(req.GetPurpose())
-	resp := &assetsv1.ListAssetsResponse{}
-	err := s.tx(ctx, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT `+assetColumns+` FROM assets WHERE status = 'READY' AND ($1 = '' OR purpose = $1) AND id > $2 ORDER BY id LIMIT $3`, purpose, after, size+1)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			a, err := scanAsset(rows)
-			if err != nil {
-				return err
-			}
-			if len(resp.Assets) == size {
-				resp.NextPageToken = resp.Assets[size-1].Id
-				break
-			}
-			resp.Assets = append(resp.Assets, a.proto())
-		}
-		return rows.Err()
+	var rows []sqlc.Asset
+	err := s.tx(ctx, func(q *sqlc.Queries) error {
+		var err error
+		rows, err = q.ListReadyAssets(ctx, sqlc.ListReadyAssetsParams{Purpose: policy.PurposeName(req.GetPurpose()), After: after, PageSize: int32(size + 1)}) //nolint:gosec // ≤ 501
+		return err
 	})
 	if err != nil {
 		return nil, internal(err)
+	}
+	resp := &assetsv1.ListAssetsResponse{}
+	for _, a := range rows {
+		if len(resp.Assets) == size {
+			resp.NextPageToken = resp.Assets[size-1].Id
+			break
+		}
+		resp.Assets = append(resp.Assets, assetProto(a))
 	}
 	return resp, nil
 }
@@ -293,12 +290,8 @@ func (s *Service) GetDownloadUrl(ctx context.Context, req *assetsv1.GetDownloadU
 	if err != nil {
 		return nil, err
 	}
-	var a *asset
-	if err := s.tx(ctx, func(tx pgx.Tx) error {
-		var err error
-		a, err = loadAsset(ctx, tx, id, false)
-		return err
-	}); err != nil {
+	a, err := s.readAsset(ctx, id)
+	if err != nil {
 		return nil, internal(err)
 	}
 	if a.Status != "READY" {
@@ -317,35 +310,39 @@ func (s *Service) DeleteAsset(ctx context.Context, req *assetsv1.DeleteAssetRequ
 	if err != nil {
 		return nil, err
 	}
-	var out *asset
-	err = s.tx(ctx, func(tx pgx.Tx) error {
-		a, err := loadAsset(ctx, tx, id, true)
-		if err != nil {
-			return err
-		}
-		if a.Status == "DELETED" {
-			out = a
-			return nil
-		}
-		if a.Status != "READY" && a.Status != "CORRUPT" {
-			return status.Errorf(codes.FailedPrecondition, "the asset is %s; abort the upload instead", a.Status)
-		}
-		if err := s.blob.Delete(ctx, a.ObjectKey); err != nil {
-			return status.Error(codes.Unavailable, "object storage unavailable")
-		}
-		if a.SizeBytes != nil {
-			if _, err := tx.Exec(ctx, `UPDATE storage_usage SET bytes_used = GREATEST(bytes_used - $1, 0) WHERE tenant_id = app_tenant_id()`, *a.SizeBytes); err != nil {
-				return err
-			}
-		}
-		if _, err := tx.Exec(ctx, `UPDATE assets SET status = 'DELETED' WHERE id = $1`, id); err != nil {
-			return err
-		}
-		out, err = loadAsset(ctx, tx, id, false)
+	var out sqlc.Asset
+	err = s.tx(ctx, func(q *sqlc.Queries) error {
+		var err error
+		out, err = s.deleteAsset(ctx, q, id)
 		return err
 	})
 	if err != nil {
 		return nil, internal(err)
 	}
-	return &assetsv1.DeleteAssetResponse{Asset: out.proto()}, nil
+	return &assetsv1.DeleteAssetResponse{Asset: assetProto(out)}, nil
+}
+
+func (s *Service) deleteAsset(ctx context.Context, q *sqlc.Queries, id uuid.UUID) (sqlc.Asset, error) {
+	a, err := loadAsset(ctx, q, id, true)
+	if err != nil {
+		return a, err
+	}
+	if a.Status == "DELETED" {
+		return a, nil
+	}
+	if a.Status != "READY" && a.Status != "CORRUPT" {
+		return a, status.Errorf(codes.FailedPrecondition, "the asset is %s; abort the upload instead", a.Status)
+	}
+	if err := s.blob.Delete(ctx, a.ObjectKey); err != nil {
+		return a, status.Error(codes.Unavailable, "object storage unavailable")
+	}
+	if a.SizeBytes != nil {
+		if err := q.ReleaseStorage(ctx, *a.SizeBytes); err != nil {
+			return a, err
+		}
+	}
+	if err := q.MarkAssetDeleted(ctx, id); err != nil {
+		return a, err
+	}
+	return loadAsset(ctx, q, id, false)
 }

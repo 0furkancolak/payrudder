@@ -17,6 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/0furkancolak/quotify/tools/mockpsp/internal/store/sqlc"
 )
 
 // Config holds the environment-wide failure knobs (used by chaos and load tests). Scenario tokens take precedence.
@@ -33,7 +35,7 @@ type Config struct {
 // Server is the HTTP API.
 type Server struct {
 	cfg  Config
-	db   *pgxpool.Pool
+	q    *sqlc.Queries
 	mux  *http.ServeMux
 	rand func() float64
 }
@@ -43,7 +45,7 @@ func New(db *pgxpool.Pool, cfg Config) *Server {
 	if cfg.HangFor <= 0 {
 		cfg.HangFor = 30 * time.Second
 	}
-	s := &Server{cfg: cfg, db: db, mux: http.NewServeMux(), rand: rand.Float64}
+	s := &Server{cfg: cfg, q: sqlc.New(db), mux: http.NewServeMux(), rand: rand.Float64}
 	s.mux.HandleFunc("POST /v1/charges", s.charge)
 	s.mux.HandleFunc("GET /v1/charges", s.getCharges)
 	s.mux.HandleFunc("POST /v1/refunds", s.refund)
@@ -77,28 +79,28 @@ func decline(w http.ResponseWriter, code string) {
 	writeJSON(w, http.StatusPaymentRequired, map[string]any{"error": map[string]string{"code": code}})
 }
 
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 func (s *Server) lookup(ctx context.Context, key string) (*stored, error) {
-	var c stored
-	var dc *string
-	err := s.db.QueryRow(ctx, `UPDATE charges SET requests = requests + 1 WHERE idempotency_key = $1 RETURNING id, status, decline_code`, key).Scan(&c.ID, &c.Status, &dc)
+	row, err := s.q.BumpCharge(ctx, key)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	if dc != nil {
-		c.DeclineCode = *dc
-	}
-	return &c, nil
+	return &stored{ID: row.ID, Status: row.Status, DeclineCode: deref(row.DeclineCode)}, nil
 }
 
 // attempt counts a request for a key that has no charge yet and returns its ordinal (1, 2, ...).
 func (s *Server) attempt(ctx context.Context, key string) (int, error) {
-	var n int
-	err := s.db.QueryRow(ctx, `INSERT INTO attempts (idempotency_key, requests) VALUES ($1, 1)
-		ON CONFLICT (idempotency_key) DO UPDATE SET requests = attempts.requests + 1 RETURNING requests`, key).Scan(&n)
-	return n, err
+	n, err := s.q.CountAttempt(ctx, key)
+	return int(n), err
 }
 
 func (s *Server) commit(ctx context.Context, key string, b chargeBody, status, declineCode string) (*stored, error) {
@@ -107,21 +109,17 @@ func (s *Server) commit(ctx context.Context, key string, b chargeBody, status, d
 	if declineCode != "" {
 		dc = &declineCode
 	}
-	_, err := s.db.Exec(ctx, `INSERT INTO charges (idempotency_key, id, invoice_id, payment_method, amount_minor, currency, status, decline_code)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (idempotency_key) DO NOTHING`, key, id, b.InvoiceID, b.PaymentMethod, b.AmountMinor, b.Currency, status, dc)
+	err := s.q.InsertCharge(ctx, sqlc.InsertChargeParams{IdempotencyKey: key, ID: id, InvoiceID: b.InvoiceID, PaymentMethod: b.PaymentMethod,
+		AmountMinor: b.AmountMinor, Currency: b.Currency, Status: status, DeclineCode: dc})
 	if err != nil {
 		return nil, err
 	}
 	// A concurrent request with the same key may have won: the stored row is the truth.
-	var out stored
-	var d *string
-	if err := s.db.QueryRow(ctx, `SELECT id, status, decline_code FROM charges WHERE idempotency_key = $1`, key).Scan(&out.ID, &out.Status, &d); err != nil {
+	row, err := s.q.GetCharge(ctx, key)
+	if err != nil {
 		return nil, err
 	}
-	if d != nil {
-		out.DeclineCode = *d
-	}
-	return &out, nil
+	return &stored{ID: row.ID, Status: row.Status, DeclineCode: deref(row.DeclineCode)}, nil
 }
 
 func (s *Server) respond(w http.ResponseWriter, c *stored) {
@@ -176,8 +174,7 @@ func (s *Server) charge(w http.ResponseWriter, r *http.Request) {
 		case "declined":
 			s.finish(w, r, key, b, "declined", "card_declined")
 		case "insufficient_funds_once":
-			var earlier int
-			_ = s.db.QueryRow(ctx, `SELECT count(*) FROM charges WHERE invoice_id = $1 AND status = 'declined'`, b.InvoiceID).Scan(&earlier)
+			earlier, _ := s.q.CountDeclinedCharges(ctx, b.InvoiceID)
 			if earlier == 0 {
 				s.finish(w, r, key, b, "declined", "insufficient_funds")
 			} else {
@@ -237,9 +234,7 @@ func (s *Server) finish(w http.ResponseWriter, r *http.Request, key string, b ch
 func (s *Server) getCharges(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if key := q.Get("idempotency_key"); key != "" {
-		var id, status string
-		var dc *string
-		err := s.db.QueryRow(r.Context(), `SELECT id, status, decline_code FROM charges WHERE idempotency_key = $1`, key).Scan(&id, &status, &dc)
+		row, err := s.q.GetCharge(r.Context(), key)
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeJSON(w, http.StatusNotFound, map[string]any{"found": false})
 			return
@@ -248,34 +243,28 @@ func (s *Server) getCharges(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
-		out := map[string]any{"found": true, "id": id, "status": status}
-		if dc != nil {
-			out["decline_code"] = *dc
+		out := map[string]any{"found": true, "id": row.ID, "status": row.Status}
+		if row.DeclineCode != nil {
+			out["decline_code"] = *row.DeclineCode
 		}
 		writeJSON(w, http.StatusOK, out)
 		return
 	}
-	rows, err := s.db.Query(r.Context(), `SELECT idempotency_key, id, status, amount_minor, requests FROM charges WHERE invoice_id = $1 ORDER BY created_at`, q.Get("invoice_id"))
+	rows, err := s.q.ListInvoiceCharges(r.Context(), q.Get("invoice_id"))
 	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
 	type item struct {
 		Key         string `json:"idempotency_key"`
 		ID          string `json:"id"`
 		Status      string `json:"status"`
 		AmountMinor int64  `json:"amount_minor"`
-		Requests    int    `json:"requests"`
+		Requests    int32  `json:"requests"`
 	}
-	items := []item{}
-	for rows.Next() {
-		var it item
-		if err := rows.Scan(&it.Key, &it.ID, &it.Status, &it.AmountMinor, &it.Requests); err != nil {
-			http.Error(w, "database error", http.StatusInternalServerError)
-			return
-		}
-		items = append(items, it)
+	items := make([]item, 0, len(rows))
+	for _, c := range rows {
+		items = append(items, item{Key: c.IdempotencyKey, ID: c.ID, Status: c.Status, AmountMinor: c.AmountMinor, Requests: c.Requests})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"charges": items})
 }
@@ -293,13 +282,14 @@ func (s *Server) refund(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := fmt.Sprintf("re_%s", uuid.NewString())
-	if _, err := s.db.Exec(r.Context(), `INSERT INTO refunds (idempotency_key, id, invoice_id, charge_id, amount_minor, currency)
-		VALUES ($1,$2,$3,NULLIF($4,''),$5,$6) ON CONFLICT (idempotency_key) DO NOTHING`, key, id, b.InvoiceID, b.ChargeID, b.AmountMinor, b.Currency); err != nil {
+	ctx := r.Context()
+	if err := s.q.InsertRefund(ctx, sqlc.InsertRefundParams{IdempotencyKey: key, ID: id, InvoiceID: b.InvoiceID, ChargeID: b.ChargeID,
+		AmountMinor: b.AmountMinor, Currency: b.Currency}); err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	var out string
-	if err := s.db.QueryRow(r.Context(), `SELECT id FROM refunds WHERE idempotency_key = $1`, key).Scan(&out); err != nil {
+	out, err := s.q.GetRefundID(ctx, key)
+	if err != nil {
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
+	"github.com/0furkancolak/quotify/services/notifier/internal/store/sqlc"
 )
 
 // Claim is the outcome of trying to take the right to send one email.
@@ -50,29 +51,23 @@ func (n Notifications) Claim(ctx context.Context, key string, commandID *uuid.UU
 		return 0, "", err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	tag, err := tx.Exec(ctx, `INSERT INTO sent_notifications (dedup_key, command_id, kind, template, recipient, status)
-		VALUES ($1,$2,$3,$4,$5,'SENDING') ON CONFLICT (dedup_key) DO NOTHING`, key, commandID, kind, template, recipient)
+	q := sqlc.New(tx)
+	inserted, err := q.ClaimNotification(ctx, sqlc.ClaimNotificationParams{DedupKey: key, CommandID: commandID, Kind: kind, Template: template, Recipient: recipient})
 	if err != nil {
 		return 0, "", err
 	}
-	if tag.RowsAffected() == 1 {
+	if inserted == 1 {
 		return Claimed, "", tx.Commit(ctx)
 	}
-	var status string
-	var claimed time.Time
-	var msgID *string
-	if err := tx.QueryRow(ctx, `SELECT status, claimed_at, smtp_message_id FROM sent_notifications WHERE dedup_key = $1 FOR UPDATE`, key).Scan(&status, &claimed, &msgID); err != nil {
+	row, err := q.LockNotification(ctx, key)
+	if err != nil {
 		return 0, "", err
 	}
-	id := ""
-	if msgID != nil {
-		id = *msgID
-	}
 	switch {
-	case status == "SENT":
-		return AlreadySent, id, tx.Commit(ctx)
-	case time.Since(claimed) > n.stale():
-		if _, err := tx.Exec(ctx, `UPDATE sent_notifications SET claimed_at = now() WHERE dedup_key = $1`, key); err != nil {
+	case row.Status == "SENT":
+		return AlreadySent, deref(row.SmtpMessageID), tx.Commit(ctx)
+	case time.Since(row.ClaimedAt) > n.stale():
+		if err := q.RenewClaim(ctx, key); err != nil {
 			return 0, "", err
 		}
 		return Reclaimed, "", tx.Commit(ctx)
@@ -81,32 +76,33 @@ func (n Notifications) Claim(ctx context.Context, key string, commandID *uuid.UU
 	}
 }
 
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 // MarkSent records the SMTP message id.
 func (n Notifications) MarkSent(ctx context.Context, key, messageID string) error {
-	_, err := n.DB.Exec(ctx, `UPDATE sent_notifications SET status = 'SENT', sent_at = now(), smtp_message_id = $2 WHERE dedup_key = $1`, key, messageID)
-	return err
+	return sqlc.New(n.DB).MarkNotificationSent(ctx, sqlc.MarkNotificationSentParams{DedupKey: key, SmtpMessageID: &messageID})
 }
 
 // Release deletes a claim whose email was certainly not sent, so the next delivery starts clean.
 func (n Notifications) Release(ctx context.Context, key string) error {
-	_, err := n.DB.Exec(ctx, `DELETE FROM sent_notifications WHERE dedup_key = $1 AND status = 'SENDING'`, key)
-	return err
+	return sqlc.New(n.DB).ReleaseNotification(ctx, key)
 }
 
 // Lookup implements workerx.Inbox: a command whose email was sent gets its NotificationSent again.
 func (n Notifications) Lookup(ctx context.Context, commandID uuid.UUID) (*commandsv1.ReplyEnvelope, bool, error) {
-	var msgID *string
-	err := n.DB.QueryRow(ctx, `SELECT smtp_message_id FROM sent_notifications WHERE dedup_key = $1 AND status = 'SENT'`, commandID.String()).Scan(&msgID)
+	msgID, err := sqlc.New(n.DB).GetSentMessageID(ctx, commandID.String())
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	id := ""
-	if msgID != nil {
-		id = *msgID
-	}
+	id := deref(msgID)
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_NotificationSent{NotificationSent: &commandsv1.NotificationSent{MessageId: id}}}, true, nil
 }
 
@@ -122,27 +118,18 @@ type Offsets struct {
 
 // Load implements kafkax.OffsetLoader.
 func (o Offsets) Load(ctx context.Context, _ string, partitions []int32) (map[int32]int64, error) {
-	rows, err := o.DB.Query(ctx, `SELECT partition, next_offset FROM kafka_offsets WHERE consumer_group = $1 AND topic = $2 AND partition = ANY($3)`, o.Group, o.Topic, partitions)
+	rows, err := sqlc.New(o.DB).LoadOffsets(ctx, sqlc.LoadOffsetsParams{ConsumerGroup: o.Group, Topic: o.Topic, Partitions: partitions})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := map[int32]int64{}
-	for rows.Next() {
-		var p int32
-		var next int64
-		if err := rows.Scan(&p, &next); err != nil {
-			return nil, err
-		}
-		out[p] = next
+	out := make(map[int32]int64, len(rows))
+	for _, r := range rows {
+		out[r.Partition] = r.NextOffset
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // Save advances the offset of a partition (never backwards).
 func (o Offsets) Save(ctx context.Context, partition int32, next int64) error {
-	_, err := o.DB.Exec(ctx, `INSERT INTO kafka_offsets (consumer_group, topic, partition, next_offset) VALUES ($1,$2,$3,$4)
-		ON CONFLICT (consumer_group, topic, partition) DO UPDATE SET next_offset = GREATEST(kafka_offsets.next_offset, EXCLUDED.next_offset), updated_at = now()`,
-		o.Group, o.Topic, partition, next)
-	return err
+	return sqlc.New(o.DB).SaveOffset(ctx, sqlc.SaveOffsetParams{ConsumerGroup: o.Group, Topic: o.Topic, Partition: partition, NextOffset: next})
 }
