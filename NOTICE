@@ -1,0 +1,5 @@
+Quotify is licensed under the Elastic License 2.0 (see LICENSE) from the first release after v0.4.0.
+Releases v0.1.0 to v0.4.0 were published under the Apache License 2.0 and remain available under it to those who received them.
+
+Third-party components keep their own licences. `make licenses` lists them (Go modules and npm packages); the list is checked in CI so that no dependency
+with a copyleft licence is added without a decision recorded in docs/adr/0019-license.md.
