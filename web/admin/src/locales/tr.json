@@ -548,7 +548,14 @@
       "customer": "Müşteri",
       "date": "Tarih",
       "empty": "Alacak dekontu yok.",
-      "badAmount": "{currency} cinsinden tutar değil: yalnızca rakamlar, para biriminin ondalığını aşmadan."
+      "badAmount": "{currency} cinsinden tutar değil: yalnızca rakamlar, para biriminin ondalığını aşmadan.",
+      "refundToCard": "Karta iade et",
+      "where": "Gittiği yer",
+      "toCredit": "Kredi bakiyesi",
+      "refunded": "Karta iade edildi",
+      "refundRequested": "İade istendi",
+      "refundFailed": "İade başarısız",
+      "retryRefund": "İadeyi yeniden dene"
     }
   }
 }

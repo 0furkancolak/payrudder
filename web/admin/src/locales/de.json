@@ -548,7 +548,14 @@
       "customer": "Kunde",
       "date": "Datum",
       "empty": "Keine Gutschriften.",
-      "badAmount": "Kein Betrag in {currency}: nur Ziffern, höchstens so viele Dezimalstellen wie die Währung."
+      "badAmount": "Kein Betrag in {currency}: nur Ziffern, höchstens so viele Dezimalstellen wie die Währung.",
+      "refundToCard": "Auf die Karte erstatten",
+      "where": "Gegangen an",
+      "toCredit": "Guthaben",
+      "refunded": "Auf die Karte erstattet",
+      "refundRequested": "Erstattung angefordert",
+      "refundFailed": "Erstattung fehlgeschlagen",
+      "retryRefund": "Erstattung wiederholen"
     }
   }
 }

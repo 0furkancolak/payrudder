@@ -40,6 +40,8 @@ service BillingAdminService {
   // CreateCreditNote corrects a paid invoice without editing it: a numbered credit note whose amount is added to the customer's credit balance, which pays their
   // next invoice in that currency. The notes of an invoice never add up to more than the invoice.
   rpc CreateCreditNote(CreateCreditNoteRequest) returns (CreateCreditNoteResponse);
+  // RetryCreditNoteRefund asks the provider again for a refund that failed.
+  rpc RetryCreditNoteRefund(RetryCreditNoteRefundRequest) returns (RetryCreditNoteRefundResponse);
   // StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
   // a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
   // Idempotent per (tenant, period, plan version).
@@ -386,6 +388,24 @@ message CreditNote {
   int64 total_minor = 8;
   string reason = 9;
   google.protobuf.Timestamp create_time = 10;
+  // Where the amount went: the customer's credit balance, or back to their card.
+  CreditNoteDisposition disposition = 11;
+  // For a refund to the card: requested until the provider answers, then refunded or failed.
+  RefundState refund_state = 12;
+  string refund_error = 13;
+}
+
+enum CreditNoteDisposition {
+  CREDIT_NOTE_DISPOSITION_UNSPECIFIED = 0;
+  CREDIT_NOTE_DISPOSITION_CREDIT = 1;
+  CREDIT_NOTE_DISPOSITION_REFUND = 2;
+}
+
+enum RefundState {
+  REFUND_STATE_UNSPECIFIED = 0;
+  REFUND_STATE_REQUESTED = 1;
+  REFUND_STATE_REFUNDED = 2;
+  REFUND_STATE_FAILED = 3;
 }
 
 message CreateCreditNoteRequest {
@@ -394,6 +414,18 @@ message CreateCreditNoteRequest {
   // 0 = whatever is left of the invoice after earlier credit notes.
   int64 amount_minor = 3;
   string reason = 4;
+  // Return the amount to the card the invoice was paid with instead of adding it to the credit balance. The refund is asked of the payment provider; the
+  // note says whether it went through.
+  bool refund_to_card = 5;
+}
+
+message RetryCreditNoteRefundRequest {
+  string tenant_id = 1;
+  string credit_note_id = 2;
+}
+
+message RetryCreditNoteRefundResponse {
+  CreditNote credit_note = 1;
 }
 
 message CreateCreditNoteResponse {

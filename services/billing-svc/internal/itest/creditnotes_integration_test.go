@@ -5,6 +5,7 @@ package itest
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
+	"github.com/0furkancolak/quotify/pkg/stubworker"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
 )
@@ -134,5 +137,114 @@ func testCreditNotes(t *testing.T) {
 	}
 	if credited != 1100 {
 		t.Errorf("credited in the report = %d; want 1100", credited)
+	}
+}
+
+// seedSaga gives a seeded paid invoice the (completed) saga a refund command is sent on behalf of.
+func seedSaga(t *testing.T, tid, invoice uuid.UUID) {
+	t.Helper()
+	if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'COMPLETED',1)`, tid, uuid.New(), invoice); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func testCreditNoteRefundToCard(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	// The refund of "failing" is rejected the first time; the one of "silent" is never answered the first two times.
+	var failing, silent uuid.UUID
+	stub := e.startWorkers(func(c *commandsv1.CommandEnvelope, _ int) stubworker.Action {
+		if stubworker.Kind(c) != "refund" {
+			return stubworker.Action{Reply: stubworker.Succeed}
+		}
+		rf := c.GetRefundPayment()
+		switch {
+		case rf.GetInvoiceId() == failing.String() && !strings.HasSuffix(rf.GetIdempotencyKey(), ":1"):
+			return stubworker.Action{Reply: stubworker.Errored}
+		case rf.GetInvoiceId() == silent.String() && c.GetAttempt() < 3:
+			return stubworker.Action{}
+		}
+		return stubworker.Action{Reply: stubworker.Succeed}
+	})
+	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	op := tenant.WithOperator(context.Background())
+	tctx := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
+	customer := uuid.New()
+	code := func(err error) codes.Code { return status.Code(err) }
+	refund := func(inv uuid.UUID, amount int64) (*billingv1.CreditNote, error) {
+		r, err := svc.CreateCreditNote(op, &billingv1.CreateCreditNoteRequest{TenantId: e.tid.String(), InvoiceId: inv.String(), AmountMinor: amount, RefundToCard: true})
+		return r.GetCreditNote(), err
+	}
+	state := func(id string) billingv1.RefundState {
+		r, err := svc.GetCreditNote(tctx, &billingv1.GetCreditNoteRequest{CreditNoteId: id})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r.GetCreditNote().GetRefundState()
+	}
+
+	// A refund asks the provider for the money and puts nothing on the credit balance.
+	ok := seedOne(t, e.tid, customer, "cus_rf", "paid", "USD", "INV-2026-000101", 1000, "live")
+	seedSaga(t, e.tid, ok)
+	cn, err := refund(ok, 400)
+	if err != nil || cn.GetDisposition() != billingv1.CreditNoteDisposition_CREDIT_NOTE_DISPOSITION_REFUND || cn.GetRefundState() != billingv1.RefundState_REFUND_STATE_REQUESTED {
+		t.Fatalf("refund = %v, %v", cn, err)
+	}
+	eventually(t, 30*time.Second, "the refund to be confirmed", func() bool { return state(cn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
+	var balances int
+	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND source_credit_note_id = $2`, e.tid, cn.GetId()).Scan(&balances); err != nil || balances != 0 {
+		t.Fatalf("a refunded note left %d credit balances, %v", balances, err)
+	}
+	if n := stub.Count("refund"); n != 1 {
+		t.Fatalf("refund commands = %d, want 1", n)
+	}
+	// The refunded part counts against the invoice like any credit note.
+	if _, err := refund(ok, 700); code(err) != codes.InvalidArgument {
+		t.Fatalf("refund above what is left: %v", err)
+	}
+
+	// A refund the provider rejects fails the note; a retry asks with a new key and goes through.
+	bad := seedOne(t, e.tid, customer, "cus_rf2", "paid", "USD", "INV-2026-000102", 500, "live")
+	failing = bad
+	seedSaga(t, e.tid, bad)
+	fcn, err := refund(bad, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, 30*time.Second, "the rejected refund to fail", func() bool { return state(fcn.GetId()) == billingv1.RefundState_REFUND_STATE_FAILED })
+	if _, err := svc.RetryCreditNoteRefund(op, &billingv1.RetryCreditNoteRefundRequest{TenantId: e.tid.String(), CreditNoteId: ok.String()}); code(err) != codes.NotFound {
+		t.Errorf("retry of an invoice id: %v", err)
+	}
+	if _, err := svc.RetryCreditNoteRefund(op, &billingv1.RetryCreditNoteRefundRequest{TenantId: e.tid.String(), CreditNoteId: cn.GetId()}); code(err) != codes.FailedPrecondition {
+		t.Errorf("retry of a refund that went through: %v", err)
+	}
+	if _, err := svc.RetryCreditNoteRefund(op, &billingv1.RetryCreditNoteRefundRequest{TenantId: e.tid.String(), CreditNoteId: fcn.GetId()}); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, 30*time.Second, "the retried refund to go through", func() bool { return state(fcn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
+
+	// A refund nobody answers is sent again, with the same key, until it is answered.
+	quiet := seedOne(t, e.tid, customer, "cus_rf3", "paid", "USD", "INV-2026-000103", 300, "live")
+	silent = quiet
+	seedSaga(t, e.tid, quiet)
+	scn, err := refund(quiet, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		eventually(t, 20*time.Second, "the unanswered command to arrive", func() bool { return stub.Count("refund") >= 4+i })
+		e.clk.Advance(6 * time.Minute)
+		if err := e.mgr.SweepRefunds(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	eventually(t, 30*time.Second, "the resent refund to be confirmed", func() bool { return state(scn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
+	keys := map[string]int{}
+	for _, c := range stub.Commands() {
+		if rf := c.GetRefundPayment(); rf != nil && rf.GetInvoiceId() == quiet.String() {
+			keys[rf.GetIdempotencyKey()]++
+		}
+	}
+	if len(keys) != 1 {
+		t.Errorf("a resent refund used %d idempotency keys: %v, want one", len(keys), keys)
 	}
 }

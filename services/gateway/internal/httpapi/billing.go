@@ -178,6 +178,18 @@ func (s *Server) adminCreateCreditNote(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusCreated, resp.GetCreditNote(), err)
 }
 
+// adminRetryCreditNoteRefund is POST /admin/v1/credit-notes/{id}/retry-refund.
+func (s *Server) adminRetryCreditNoteRefund(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.RetryCreditNoteRefundRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.CreditNoteId = r.PathValue("id")
+	resp, err := s.d.BillingAdmin.RetryCreditNoteRefund(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetCreditNote(), err)
+}
+
 func (s *Server) getCreditNote(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Billing.GetCreditNote(r.Context(), &billingv1.GetCreditNoteRequest{CreditNoteId: r.PathValue("id")})
 	respond(w, r, http.StatusOK, resp.GetCreditNote(), err)

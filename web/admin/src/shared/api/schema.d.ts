@@ -1671,10 +1671,27 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Correct a paid invoice with a numbered credit note, added to the customer's credit balance
-         * @description An issued invoice is never edited. The note's amount goes to the customer's credit balance in the invoice's currency and pays their next invoice. The notes of an invoice never add up to more than the invoice. Only a paid invoice can be credited (an open one is voided).
+         * Correct a paid invoice with a numbered credit note, added to the customer's credit balance or refunded to the card
+         * @description An issued invoice is never edited. The note's amount goes to the customer's credit balance in the invoice's currency and pays their next invoice, or, with refund_to_card, back to the card through the payment provider that took the payment (the note's refund_state says whether it went through; a refund nobody answers is sent again, and a failed one can be retried). The notes of an invoice never add up to more than the invoice. Only a paid invoice can be credited (an open one is voided).
          */
         post: operations["adminCreateCreditNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/credit-notes/{id}/retry-refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask the payment provider again for a credit note refund that failed */
+        post: operations["adminRetryCreditNoteRefund"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2104,6 +2121,17 @@ export interface components {
             reason?: string;
             /** Format: date-time */
             create_time?: string;
+            /**
+             * @description Where the amount went: the credit balance, or back to the card
+             * @enum {string}
+             */
+            disposition?: "CREDIT_NOTE_DISPOSITION_CREDIT" | "CREDIT_NOTE_DISPOSITION_REFUND";
+            /**
+             * @description Only for a refund to the card
+             * @enum {string}
+             */
+            refund_state?: "REFUND_STATE_REQUESTED" | "REFUND_STATE_REFUNDED" | "REFUND_STATE_FAILED";
+            refund_error?: string;
         };
         TaxRates: {
             rates?: {
@@ -5619,6 +5647,8 @@ export interface operations {
                     /** @description int64 minor units; 0 or absent = what is left of the invoice */
                     amount_minor?: string;
                     reason?: string;
+                    /** @description Refund the amount to the card instead of adding it to the credit balance */
+                    refund_to_card?: boolean;
                 };
             };
         };
@@ -5633,6 +5663,37 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    adminRetryCreditNoteRefund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    tenant_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
         };

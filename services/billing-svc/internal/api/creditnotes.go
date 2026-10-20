@@ -18,11 +18,22 @@ import (
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 )
 
+var refundStates = map[string]billingv1.RefundState{
+	runs.RefundRequested: billingv1.RefundState_REFUND_STATE_REQUESTED,
+	runs.RefundRefunded:  billingv1.RefundState_REFUND_STATE_REFUNDED,
+	runs.RefundFailed:    billingv1.RefundState_REFUND_STATE_FAILED,
+}
+
 func creditNoteProto(c *runs.CreditNote, customerExternalID string) *billingv1.CreditNote {
-	return &billingv1.CreditNote{
+	out := &billingv1.CreditNote{
 		Id: c.ID.String(), Number: c.Number, InvoiceId: c.InvoiceID.String(), InvoiceNumber: c.InvoiceNumber, CustomerId: c.CustomerID.String(),
 		CustomerExternalId: customerExternalID, Currency: c.Currency, TotalMinor: c.TotalMinor, Reason: c.Reason, CreateTime: timestamppb.New(c.CreatedAt),
+		Disposition: billingv1.CreditNoteDisposition_CREDIT_NOTE_DISPOSITION_CREDIT, RefundError: c.RefundError,
 	}
+	if c.Refund {
+		out.Disposition, out.RefundState = billingv1.CreditNoteDisposition_CREDIT_NOTE_DISPOSITION_REFUND, refundStates[c.RefundState]
+	}
+	return out
 }
 
 // CreateCreditNote implements billingv1.BillingAdminServiceServer.
@@ -41,11 +52,11 @@ func (s *Server) CreateCreditNote(ctx context.Context, req *billingv1.CreateCred
 	if len(req.GetReason()) > 500 {
 		return nil, invalid("reason is at most 500 characters")
 	}
-	cn, err := s.runs.CreateCreditNote(ctx, tid, iid, req.GetAmountMinor(), strings.TrimSpace(req.GetReason()))
+	cn, err := s.runs.CreateCreditNote(ctx, tid, iid, req.GetAmountMinor(), strings.TrimSpace(req.GetReason()), req.GetRefundToCard())
 	switch {
 	case errors.Is(err, runs.ErrInvoiceNotFound):
 		return nil, status.Error(codes.NotFound, "invoice not found")
-	case errors.Is(err, runs.ErrNotPaid), errors.Is(err, runs.ErrNothingLeft):
+	case errors.Is(err, runs.ErrNotPaid), errors.Is(err, runs.ErrNothingLeft), errors.Is(err, runs.ErrNoRefund):
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, runs.ErrBadAmount):
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -57,15 +68,42 @@ func (s *Server) CreateCreditNote(ctx context.Context, req *billingv1.CreateCred
 	return &billingv1.CreateCreditNoteResponse{CreditNote: creditNoteProto(cn, external)}, nil
 }
 
+// RetryCreditNoteRefund implements billingv1.BillingAdminServiceServer.
+func (s *Server) RetryCreditNoteRefund(ctx context.Context, req *billingv1.RetryCreditNoteRefundRequest) (*billingv1.RetryCreditNoteRefundResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	tid, err := uuid.Parse(req.GetTenantId())
+	if err != nil {
+		return nil, invalid("tenant_id must be a UUID")
+	}
+	id, err := uuid.Parse(req.GetCreditNoteId())
+	if err != nil {
+		return nil, invalid("credit_note_id must be a UUID")
+	}
+	cn, err := s.runs.RetryRefund(ctx, tid, id)
+	switch {
+	case errors.Is(err, runs.ErrInvoiceNotFound):
+		return nil, status.Error(codes.NotFound, "credit note not found")
+	case errors.Is(err, runs.ErrRefundNotFailed):
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	case err != nil:
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	var external string
+	_ = s.system.QueryRow(ctx, `SELECT COALESCE(snapshot->>'customer_external_id', '') FROM invoices WHERE tenant_id = $1 AND id = $2`, tid, cn.InvoiceID).Scan(&external)
+	return &billingv1.RetryCreditNoteRefundResponse{CreditNote: creditNoteProto(cn, external)}, nil
+}
+
 //nolint:gosec // a SQL select, not a credential
 const creditNoteSelect = `SELECT c.id, c.customer_id, c.invoice_id, c.number, COALESCE(i.number, ''), c.currency, c.total_minor, c.reason, c.created_at,
-	COALESCE(i.snapshot->>'customer_external_id', '')
+	COALESCE(i.snapshot->>'customer_external_id', ''), c.disposition = 'refund', c.refund_state, COALESCE(c.refund_error, '')
 	FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id`
 
 func scanCreditNote(row pgx.Row) (*billingv1.CreditNote, error) {
 	var c runs.CreditNote
 	var external string
-	if err := row.Scan(&c.ID, &c.CustomerID, &c.InvoiceID, &c.Number, &c.InvoiceNumber, &c.Currency, &c.TotalMinor, &c.Reason, &c.CreatedAt, &external); err != nil {
+	if err := row.Scan(&c.ID, &c.CustomerID, &c.InvoiceID, &c.Number, &c.InvoiceNumber, &c.Currency, &c.TotalMinor, &c.Reason, &c.CreatedAt, &external, &c.Refund, &c.RefundState, &c.RefundError); err != nil {
 		return nil, err
 	}
 	return creditNoteProto(&c, external), nil
