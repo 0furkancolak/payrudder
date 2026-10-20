@@ -28,7 +28,8 @@ and a `BREAKING CHANGE:` footer.
 ```bash
 make tools        # pinned tools into ./bin (first run takes a few minutes)
 make up-infra     # infrastructure only
-make dev          # whole stack in Docker + the console on :3001 with hot reload
+make setup        # once: tools, the infrastructure containers, the console's packages
+make dev          # every day: the services on your machine with reload, the console on :3001 (ONLY=gateway,plans-svc to run some)
 make logs         # follow all service logs (make logs S=gateway for one)
 make test         # unit tests
 make test-integration

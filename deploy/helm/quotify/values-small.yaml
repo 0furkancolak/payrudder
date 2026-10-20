@@ -1,0 +1,17 @@
+# A small real cluster (a few GiB free, one or two nodes): one replica of everything, tight memory limits, the gateway as a ClusterIP Service for your
+# Ingress or load balancer. Pair it with a secrets file (values-secrets.example.yaml) and your image registry:
+#   make k8s-install REGISTRY=ghcr.io/you/ TAG=v0.5.0 SECRETS=my-secrets.yaml
+global:
+  environment: kind
+  topologySpread: false
+defaults:
+  replicas: 1
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 128Mi }
+services:
+  gateway:
+    nodePort: null
+    replicas: 1
+payments:
+  liveProvider: ""           # no mock provider outside a demo: live charges need a tenant's own provider account

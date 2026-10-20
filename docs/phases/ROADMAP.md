@@ -32,7 +32,7 @@ updated `docs/` (design changes discovered while building are written back into 
 | 24 | [Foundations](phase-24-foundations.md) | Rename-able brand, YAML config defaults, error keys, Elastic License 2.0 | — | The brand changes without code; services start from YAML defaults; every error has a key | planned |
 | 25 | [Addresses and apps](phase-25-accounts-apps.md) | Customer and seller addresses; apps under an account with their own keys and data | 24 | Two apps of one account are isolated; invoices show both addresses | done, without console pages for apps and the seller address |
 | 26 | [Demo mode and mail by provider](phase-26-demo-and-mail.md) | One-command demo, mail only for payments Quotify ran | 24 | Demo populated in one command; iyzico payments mail, Paddle's do not | done, without a per-tenant mail switch |
-| 27 | [Development, Kubernetes, memory, edge](phase-27-dev-and-operations.md) | `make setup`/`make dev`, one-command k8s install, memory budgets, cacheable reads | 24 | Two commands to a dev stack; chart installs on kind; budgets enforced | planned |
+| 27 | [Development, Kubernetes, memory, edge](phase-27-dev-and-operations.md) | `make setup`/`make dev`, one-command k8s install, memory budgets, cacheable reads | 24 | Two commands to a dev stack; chart installs on kind; budgets enforced | done, memory budgets are limits, not enforced measurements |
 | 28 | [Cells](phase-28-cells.md) | Tenant directory, schema-per-tenant mode, converted jobs, fenced moves | 24, 25 | Suites pass in both modes; cross-tenant read test; no row lost in a move | planned, staged |
 
 ```mermaid

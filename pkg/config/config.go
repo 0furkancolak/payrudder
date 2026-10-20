@@ -19,6 +19,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/0furkancolak/quotify/pkg/brand"
+	"github.com/0furkancolak/quotify/pkg/memlimit"
 )
 
 //go:embed base.default.yaml
@@ -67,7 +68,10 @@ func (b Base) Validate() error {
 }
 
 // Apply puts the settings that other packages read into effect; Load calls it after Validate.
-func (b Base) Apply() { brand.Set(b.BrandName) }
+func (b Base) Apply() {
+	brand.Set(b.BrandName)
+	memlimit.Apply()
+}
 
 type applier interface{ Apply() }
 

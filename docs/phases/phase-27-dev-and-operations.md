@@ -10,3 +10,10 @@
 ## Exit criteria
 
 A new clone reaches a running dev stack with two commands; the chart installs on kind with the small values; the memory report is in the repository and CI fails if a service exceeds its budget by 25 %.
+
+## As built
+
+- **`make setup` / `make dev`:** as described in [10-local-dev.md](../10-local-dev.md); `quotifyctl dev` reads the compose file, so there is no second list of settings. Tested: the address rewrite and the service selection (unit), and a real run of the gateway against the containers. The old `make dev` is `make dev-docker`.
+- **Kubernetes:** `make k8s-install` / `k8s-uninstall` on the cluster `kubectl` points at, `values-small.yaml`, and `values-secrets.example.yaml` (one file for both charts). Rendered and linted by `make helm-lint` and the chart tests; **not installed on a cluster other than kind in CI**.
+- **Memory:** every service sets the Go soft memory limit to 90 % of its container limit at start (`pkg/memlimit`, called from `config.Load`); `make mem-report` prints the resident memory of the running containers. The budget below is the chart's limit per service, not a measurement; **CI does not enforce a budget** (it would need a load profile and a stable runner).
+- **Edge:** every successful `GET` carries a weak `ETag` and `Cache-Control: private, no-cache` and answers `If-None-Match` with `304`, `Vary: Authorization, X-Quotify-Tenant`; a published plan version (`/versions/{n}`) adds `max-age=300`. The hosted invoice page stays `no-store`. The gateway and the other services hold no state between requests.

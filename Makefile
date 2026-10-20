@@ -141,6 +141,22 @@ helm-install: $(BIN)/helm ## Install (or upgrade) quotify-infra, then quotify: m
 	$(BIN)/helm upgrade --install quotify deploy/helm/quotify -n $(HELM_NS) --kube-context kind-quotify --wait --timeout 10m \
 		-f deploy/helm/quotify/values-$(KIND_PROFILE).yaml $(HELM_ARGS)
 
+K8S_NS ?= quotify
+REGISTRY ?=
+TAG ?= dev
+.PHONY: k8s-install
+k8s-install: $(BIN)/helm ## Install on the cluster kubectl points at: make k8s-install REGISTRY=ghcr.io/you/ TAG=v0.5.0 SECRETS=my-secrets.yaml (see deploy/helm/quotify/values-secrets.example.yaml)
+	@test -f "$(SECRETS)" || { echo "SECRETS=<file> is required: copy deploy/helm/quotify/values-secrets.example.yaml and change every value"; exit 2; }
+	$(BIN)/helm upgrade --install quotify-infra deploy/helm/quotify-infra -n $(K8S_NS) --create-namespace --wait --timeout 10m -f $(SECRETS)
+	$(BIN)/helm upgrade --install quotify deploy/helm/quotify -n $(K8S_NS) --wait --timeout 10m -f deploy/helm/quotify/values-small.yaml -f $(SECRETS) \
+		--set global.imageRegistry=$(REGISTRY) --set global.imageTag=$(TAG) $(HELM_ARGS)
+	@echo "Installed. Reach the gateway with: kubectl -n $(K8S_NS) port-forward svc/gateway 8000:8000"
+
+.PHONY: k8s-uninstall
+k8s-uninstall: $(BIN)/helm ## Remove both releases from the cluster kubectl points at (volumes stay until you delete the namespace)
+	-$(BIN)/helm uninstall quotify -n $(K8S_NS)
+	-$(BIN)/helm uninstall quotify-infra -n $(K8S_NS)
+
 .PHONY: helm-uninstall
 helm-uninstall: $(BIN)/helm ## Remove both releases
 	-$(BIN)/helm uninstall quotify -n $(HELM_NS) --kube-context kind-quotify
@@ -184,7 +200,7 @@ topics: ## Create the Kafka topics (idempotent; needs redpanda running)
 	$(COMPOSE) exec -T redpanda sh -s < deploy/compose/redpanda/topics.sh
 
 .PHONY: up-infra
-up-infra: ## Start infrastructure only (run services from your IDE)
+up-infra: ## Start the infrastructure containers only (make setup does this and more)
 	$(COMPOSE) up -d --wait
 	$(COMPOSE) run --rm minio-init
 	$(MAKE) topics
@@ -194,13 +210,31 @@ up: ## Start infrastructure + observability + Quotify services
 	$(MAKE) up-infra
 	$(COMPOSE) --profile obs --profile app up -d --build --wait
 
+.PHONY: setup
+setup: tools ## Once per machine: build the tools, start the infrastructure containers (Postgres, Redpanda, RabbitMQ, Redis, MinIO, Mailpit…), install the console's packages
+	$(MAKE) up-infra
+	cd web/admin && ([ -d node_modules ] || npm ci --no-audit --no-fund)
+	@echo "Ready. Run: make dev"
+
 .PHONY: dev
-dev: ## Development stack: services in Docker, the console on http://localhost:3001 with hot reload (make logs in a second terminal)
+dev: ## Every day: the services run on your machine with reload (against the containers from make setup), the console on http://localhost:3001. Ctrl-C stops all. make dev ONLY=gateway,plans-svc runs some.
+	cd tools/quotifyctl && go build -o $(BIN)/quotifyctl .
+	@trap 'kill 0' INT TERM EXIT; \
+	  $(BIN)/quotifyctl dev $(if $(ONLY),--only $(ONLY)) $(if $(SKIP),--skip $(SKIP)) & \
+	  (cd web/admin && exec npm run dev) & \
+	  wait
+
+.PHONY: dev-docker
+dev-docker: ## The services in Docker too, with the console on http://localhost:3001 (what make dev used to do; for checking the images)
 	$(MAKE) up-infra
 	COMPOSE_PARALLEL_LIMIT=1 $(COMPOSE) --profile obs --profile app up -d --build --wait --scale admin-ui=0
 	@echo "Stack is up. Logs: make logs  (one service: make logs S=gateway). Stop: make down."
 	@echo "Console: http://localhost:3001, operator token and playground form are pre-filled."
 	cd web/admin && ([ -d node_modules ] || npm ci --no-audit --no-fund) && exec npm run dev
+
+.PHONY: mem-report
+mem-report: ## Resident memory of every running Quotify container (the budget is in docs/phases/phase-27-dev-and-operations.md)
+	@docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}' $$(docker ps --filter name=quotify- --format '{{.Names}}' | sort)
 
 .PHONY: logs
 logs: ## Follow service logs: make logs, or make logs S=gateway

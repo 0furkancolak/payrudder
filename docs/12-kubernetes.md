@@ -26,6 +26,19 @@ A Docker VM with less than about 6 GiB cannot hold the three-worker cluster. Use
 The kind node maps the host ports 8000 (gateway), 8090 (mock-psp), 8025 (Mailpit), 9001 (MinIO S3, the public endpoint in presigned URLs) and
 31092-31094 (the Redpanda brokers, advertised to clients outside the cluster as `localhost:3109x`).
 
+## Install on your own cluster
+
+```bash
+cp deploy/helm/quotify/values-secrets.example.yaml my-secrets.yaml      # change EVERY value; keep the file out of git
+make k8s-install REGISTRY=ghcr.io/you/ TAG=v0.5.0 SECRETS=my-secrets.yaml
+kubectl -n quotify port-forward svc/gateway 8000:8000                   # or put an Ingress in front of the gateway Service
+make k8s-uninstall                                                      # the volumes stay until you delete the namespace
+```
+
+`k8s-install` applies `quotify-infra` (single replica of everything, or add `-f deploy/helm/quotify-infra/values-ha.yaml` through `HELM_ARGS` for three Redpanda and RabbitMQ nodes) and then `quotify` with `values-small.yaml`: one replica, 128 MiB limits, the gateway as a ClusterIP Service,
+no mock provider. The cluster is the one `kubectl` points at (`kubectl config use-context`). Build and push the images first (`docker compose --profile app build`, then tag `quotify/<service>` with your registry and push); a managed Postgres, Redis, Kafka, RabbitMQ or S3 replaces its part of `quotify-infra` through values (see below).
+Each service reads its container memory limit and tells the Go runtime to collect before reaching 90 % of it (`pkg/memlimit`), so a small limit means more collecting, not a kill.
+
 ## Values
 
 | File | For |

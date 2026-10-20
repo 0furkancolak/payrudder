@@ -278,6 +278,8 @@ func (s *Server) getPlanVersion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		req.Version = int32(n)
+		// A published version never changes: the caller (or an edge in front) may keep it for a while without asking.
+		w.Header().Set("Cache-Control", "private, max-age=300")
 	}
 	resp, err := s.d.Plans.GetPlanVersion(r.Context(), req)
 	respond(w, r, http.StatusOK, resp.GetPlanVersion(), err)
