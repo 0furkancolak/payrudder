@@ -193,7 +193,7 @@ func Subscription(s SubscriptionFields) *plansv1.Subscription {
 		Id: s.ID, CustomerId: s.CustomerID, CustomerExternalId: s.CustomerExternalID, PlanVersionId: s.PlanVersionID,
 		StartTime: ts(s.Start), CreateTime: ts(s.Created), Currency: s.Currency, CancelAtPeriodEnd: s.CancelAtPeriodEnd, ChangedFromId: s.ChangedFromID, Provider: s.Provider, ProviderRef: s.ProviderRef, Owner: ownerOrDefault(s.Owner), PlanCode: s.PlanCode, PlanVersion: s.PlanVersion,
 		FeeTiming: feeTimingToProto(s.FeeTiming),
-		State: stateToProto[SubscriptionState(s.State, s.TrialEnds, s.OpenEnded, s.End, now)],
+		State:     stateToProto[SubscriptionState(s.State, s.TrialEnds, s.OpenEnded, s.End, now)],
 	}
 	if s.Interval == string(subscription.Yearly) {
 		out.Interval = plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR
