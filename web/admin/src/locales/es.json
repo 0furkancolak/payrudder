@@ -519,6 +519,18 @@
         "saved": "Tasas guardadas.",
         "none": "No se añade ningún impuesto.",
         "badRate": "No es un porcentaje: de 0 a 100 con como mucho dos decimales."
+      },
+      "dunning": {
+        "title": "Reintentos de pago",
+        "hint": "Cuando se rechaza un cobro, Quotify lo reintenta tras cada espera de abajo y después da la factura por incobrable. Las esperas son en horas (en minutos en una cuenta sandbox).",
+        "defaults": "No has configurado nada: se muestran las esperas estándar.",
+        "retry": "Reintento {n}",
+        "delay": "Horas antes del reintento {n}",
+        "add": "Añadir un reintento",
+        "save": "Guardar reintentos",
+        "saved": "Reintentos guardados.",
+        "none": "Sin reintentos: un cobro rechazado se abandona de inmediato.",
+        "bad": "Cada espera es un número entero de 1 a 720."
       }
     },
     "creditNotes": {

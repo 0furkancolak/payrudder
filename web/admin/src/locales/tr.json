@@ -519,6 +519,18 @@
         "saved": "Oranlar kaydedildi.",
         "none": "Vergi eklenmiyor.",
         "badRate": "Yüzde değil: 0 ile 100 arası, en fazla iki ondalık."
+      },
+      "dunning": {
+        "title": "Ödeme yeniden denemeleri",
+        "hint": "Bir tahsilat reddedilirse Quotify aşağıdaki her gecikmeden sonra yeniden dener, sonunda faturayı tahsil edilemez sayar. Gecikmeler saat cinsindendir (sandbox hesapta dakika).",
+        "defaults": "Hiç ayarlamadınız: standart gecikmeler gösteriliyor.",
+        "retry": "{n}. deneme",
+        "delay": "{n}. denemeden önceki saat",
+        "add": "Deneme ekle",
+        "save": "Denemeleri kaydet",
+        "saved": "Denemeler kaydedildi.",
+        "none": "Deneme yok: reddedilen tahsilattan hemen vazgeçilir.",
+        "bad": "Her gecikme 1 ile 720 arasında bir tam sayıdır."
       }
     },
     "creditNotes": {

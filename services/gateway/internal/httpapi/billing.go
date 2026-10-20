@@ -197,3 +197,20 @@ func (s *Server) listCreditNotes(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Billing.ListCreditNotes(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
+
+// getDunningSettings is GET /v1/dunning-settings.
+func (s *Server) getDunningSettings(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Billing.GetDunningSettings(r.Context(), &billingv1.GetDunningSettingsRequest{})
+	respond(w, r, http.StatusOK, resp.GetSettings(), err)
+}
+
+// setDunningSettings is PUT /v1/dunning-settings.
+func (s *Server) setDunningSettings(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.SetDunningSettingsRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Billing.SetDunningSettings(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetSettings(), err)
+}

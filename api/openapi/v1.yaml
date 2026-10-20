@@ -462,6 +462,24 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TaxRates" } } } }
         "400": { $ref: "#/components/responses/Error" }
+  /v1/dunning-settings:
+    get:
+      operationId: getDunningSettings
+      summary: How long Quotify waits before it retries a declined payment
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DunningSettings" } } } }
+    put:
+      operationId: setDunningSettings
+      summary: Replace the retry delays
+      description: >
+        Up to six delays, each 1 to 720 hours (minutes in a sandbox tenant). A declined charge is retried after the first delay, then the second, and so on; when
+        the delays run out the invoice is given up as uncollectible. An empty list gives up on the first decline.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DunningSettings" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DunningSettings" } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /v1/coupons:
     post:
       operationId: createCoupon
@@ -2339,6 +2357,15 @@ components:
               country: { type: string, description: "ISO 3166-1 alpha-2; empty for every country without a rate of its own" }
               name: { type: string, description: "Shown on the invoice, e.g. VAT" }
               rate_bps: { type: integer, minimum: 0, maximum: 10000, description: "2000 is 20 %" }
+    DunningSettings:
+      type: object
+      properties:
+        retry_hours:
+          type: array
+          maxItems: 6
+          items: { type: integer, minimum: 1, maximum: 720 }
+        defaults_in_use: { type: boolean, readOnly: true, description: "True when nothing was set and the service-wide delays apply" }
+        update_time: { type: string, format: date-time, readOnly: true }
     Coupon:
       type: object
       properties:

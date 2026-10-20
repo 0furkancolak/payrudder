@@ -421,6 +421,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dunning-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How long Quotify waits before it retries a declined payment */
+        get: operations["getDunningSettings"];
+        /**
+         * Replace the retry delays
+         * @description Up to six delays, each 1 to 720 hours (minutes in a sandbox tenant). A declined charge is retried after the first delay, then the second, and so on; when the delays run out the invoice is given up as uncollectible. An empty list gives up on the first decline.
+         */
+        put: operations["setDunningSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/coupons": {
         parameters: {
             query?: never;
@@ -2091,6 +2112,13 @@ export interface components {
                 rate_bps?: number;
             }[];
         };
+        DunningSettings: {
+            retry_hours?: number[];
+            /** @description True when nothing was set and the service-wide delays apply */
+            readonly defaults_in_use?: boolean;
+            /** Format: date-time */
+            readonly update_time?: string;
+        };
         Coupon: {
             /** @description 2–40 letters, digits, - or _ */
             code?: string;
@@ -3086,6 +3114,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaxRates"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getDunningSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DunningSettings"];
+                };
+            };
+        };
+    };
+    setDunningSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DunningSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DunningSettings"];
                 };
             };
             400: components["responses"]["Error"];

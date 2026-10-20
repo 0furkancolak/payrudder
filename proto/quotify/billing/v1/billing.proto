@@ -16,6 +16,10 @@ service BillingService {
   rpc GetDunningReport(GetDunningReportRequest) returns (GetDunningReportResponse);
   rpc GetCreditNote(GetCreditNoteRequest) returns (GetCreditNoteResponse);
   rpc ListCreditNotes(ListCreditNotesRequest) returns (ListCreditNotesResponse);
+  // GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
+  rpc GetDunningSettings(GetDunningSettingsRequest) returns (GetDunningSettingsResponse);
+  // SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
+  rpc SetDunningSettings(SetDunningSettingsRequest) returns (SetDunningSettingsResponse);
 }
 
 // SandboxService is for sandbox tenants only (FAILED_PRECONDITION otherwise).
@@ -418,3 +422,15 @@ message ListCreditNotesResponse {
   repeated CreditNote credit_notes = 1;
   string next_page_token = 2;
 }
+
+message DunningSettings {
+  // Delay before retry 1..n, in hours (minutes for a sandbox tenant). Each is 1..720.
+  repeated int32 retry_hours = 1;
+  // True when the tenant has set nothing and the service-wide defaults apply.
+  bool defaults_in_use = 2;
+  google.protobuf.Timestamp update_time = 3;
+}
+message GetDunningSettingsRequest {}
+message GetDunningSettingsResponse { DunningSettings settings = 1; }
+message SetDunningSettingsRequest { repeated int32 retry_hours = 1; }
+message SetDunningSettingsResponse { DunningSettings settings = 1; }

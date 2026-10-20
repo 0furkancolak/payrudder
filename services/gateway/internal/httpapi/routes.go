@@ -55,6 +55,8 @@ func (s *Server) routes() []Route {
 		{"DELETE", "/v1/subscriptions/{id}/scheduled-change", AccessTenant, ratelimit.ClassWrite, s.cancelScheduledChange},
 		// Reports
 		{"GET", "/v1/reports/revenue", AccessTenant, ratelimit.ClassRead, s.revenueReport},
+		{"GET", "/v1/dunning-settings", AccessTenant, ratelimit.ClassRead, s.getDunningSettings},
+		{"PUT", "/v1/dunning-settings", AccessTenant, ratelimit.ClassWrite, s.setDunningSettings},
 		{"GET", "/v1/reports/dunning", AccessTenant, ratelimit.ClassRead, s.dunningReport},
 		{"GET", "/v1/reports/subscriptions", AccessTenant, ratelimit.ClassRead, s.subscriptionReport},
 		// Payment provider routing

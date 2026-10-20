@@ -5,6 +5,7 @@ import { tenantApi, unwrap } from "@/shared/api/client";
 export const pricingKeys = {
   coupons: (tenantId: string) => ["tenants", tenantId, "coupons"] as const,
   tax: (tenantId: string) => ["tenants", tenantId, "tax-rates"] as const,
+  dunning: (tenantId: string) => ["tenants", tenantId, "dunning-settings"] as const,
 };
 
 export function useCoupons(tenantId: MaybeRefOrGetter<string>) {
@@ -76,5 +77,20 @@ export function useSetTaxRates(tenantId: MaybeRefOrGetter<string>) {
   return useMutation({
     mutationFn: (rates: { country: string; name: string; rate_bps: number }[]) => unwrap(tenantApi(toValue(tenantId)).PUT("/v1/tax-rates", { body: { rates } })),
     onSuccess: () => queries.invalidateQueries({ queryKey: pricingKeys.tax(toValue(tenantId)) }),
+  });
+}
+
+export function useDunningSettings(tenantId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => pricingKeys.dunning(toValue(tenantId))),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/dunning-settings")),
+  });
+}
+
+export function useSetDunningSettings(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (retry_hours: number[]) => unwrap(tenantApi(toValue(tenantId)).PUT("/v1/dunning-settings", { body: { retry_hours } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: pricingKeys.dunning(toValue(tenantId)) }),
   });
 }
