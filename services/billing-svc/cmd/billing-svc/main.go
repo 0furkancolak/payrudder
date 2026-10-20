@@ -13,9 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	grpchealth "google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
@@ -125,41 +127,54 @@ func run() error {
 		_ = providers.Shutdown(c)
 	}()
 
+	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
+}
+
+// migrate applies the migrations when asked to; done reports that the process should exit afterwards (QUOTIFY_MIGRATE_ONLY).
+func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
 	if cfg.MigrateOnStart {
 		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return err
+			return false, err
 		}
 	}
 	if cfg.MigrateOnly {
 		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
-		return nil
+		return true, nil
 	}
-	appPool, err := pgxx.NewPool(ctx, cfg.PGAppDSN)
+	return false, nil
+}
+
+// openPools opens the application-role and system-role Postgres pools.
+func openPools(ctx context.Context, cfg *Config) (appPool, systemPool *pgxpool.Pool, err error) {
+	appPool, err = pgxx.NewPool(ctx, cfg.PGAppDSN)
+	if err != nil {
+		return nil, nil, err
+	}
+	systemPool, err = pgxx.NewPool(ctx, cfg.PGSystemDSN)
+	if err != nil {
+		appPool.Close()
+		return nil, nil, err
+	}
+	return appPool, systemPool, nil
+}
+
+// start wires billing-svc's dependencies and runs it until ctx is cancelled.
+func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler) error {
+	if done, err := migrate(ctx, cfg, log); err != nil || done {
+		return err
+	}
+	appPool, systemPool, err := openPools(ctx, cfg)
 	if err != nil {
 		return err
 	}
 	defer appPool.Close()
-	systemPool, err := pgxx.NewPool(ctx, cfg.PGSystemDSN)
+	defer systemPool.Close()
+
+	be, err := dialBackends(cfg)
 	if err != nil {
 		return err
 	}
-	defer systemPool.Close()
-
-	plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()), grpc.WithChainStreamInterceptor(tenant.StreamClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("plans-svc client: %w", err)
-	}
-	defer func() { _ = plansConn.Close() }()
-	ingestConn, err := grpcx.NewClient(cfg.IngestAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("ingest-svc client: %w", err)
-	}
-	defer func() { _ = ingestConn.Close() }()
-	aggConn, err := grpcx.NewClient(cfg.AggregatorAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()), grpc.WithChainStreamInterceptor(tenant.StreamClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("aggregator client: %w", err)
-	}
-	defer func() { _ = aggConn.Close() }()
+	defer be.close()
 
 	producer, err := kafkax.NewProducer(cfg.KafkaBrokers)
 	if err != nil {
@@ -176,24 +191,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	mgr, err := runs.NewManager(runs.Config{
-		Pool: systemPool, Engine: eng,
-		Plans: plansv1.NewPlansServiceClient(plansConn), Events: plansv1.NewWebhookServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn),
-		Ingest: ingestv1.NewIngestServiceClient(ingestConn), Aggregator: aggregatorv1.NewUsageQueryServiceClient(aggConn),
-		EndOffsets: func(ctx context.Context) (map[int32]int64, error) {
-			ends, err := kadm.NewClient(producer).ListEndOffsets(ctx, usageTopic)
-			if err != nil {
-				return nil, err
-			}
-			if err := ends.Error(); err != nil {
-				return nil, err
-			}
-			out := map[int32]int64{}
-			ends.Each(func(o kadm.ListedOffset) { out[o.Partition] = o.Offset })
-			return out, nil
-		},
-		WatermarkDelay: cfg.WatermarkDelay, Log: log,
-	})
+	mgr, err := newRunManager(cfg, log, systemPool, eng, be, usageEndOffsets(kadm.NewClient(producer)))
 	if err != nil {
 		return err
 	}
@@ -207,11 +205,96 @@ func run() error {
 		return err
 	}
 
-	hh := health.New(reg, 2*time.Second)
 	hh.AddCheck("postgres", appPool.Ping)
 	hh.AddCheck("kafka", producer.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return pub.Ping() })
 
+	srv, grpcHealth, err := newGRPCServer(cfg, log, appPool, systemPool, mgr, eng)
+	if err != nil {
+		return err
+	}
+	lis, err := net.Listen("tcp", cfg.GRPCAddr)
+	if err != nil {
+		return err
+	}
+	w := &workers{cfg: cfg, log: log, pool: systemPool, eng: eng, mgr: mgr, relay: relay, replies: rc,
+		health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis}
+	return w.run(ctx)
+}
+
+// backends are the gRPC connections to the services billing-svc calls.
+type backends struct {
+	plans, ingest, aggregator *grpc.ClientConn
+}
+
+// dialBackends connects to every backend; on failure it closes the connections already made.
+func dialBackends(cfg *Config) (b *backends, err error) {
+	b = &backends{}
+	defer func() {
+		if err != nil {
+			b.close()
+		}
+	}()
+	unary := grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor())
+	stream := grpc.WithChainStreamInterceptor(tenant.StreamClientInterceptor())
+	targets := []struct {
+		dst  **grpc.ClientConn
+		name string
+		addr string
+		opts []grpc.DialOption
+	}{
+		{&b.plans, "plans-svc", cfg.PlansAddr, []grpc.DialOption{unary, stream}},
+		{&b.ingest, "ingest-svc", cfg.IngestAddr, []grpc.DialOption{unary}},
+		{&b.aggregator, "aggregator", cfg.AggregatorAddr, []grpc.DialOption{unary, stream}},
+	}
+	for _, t := range targets {
+		conn, dialErr := grpcx.NewClient(t.addr, t.opts...)
+		if dialErr != nil {
+			return b, fmt.Errorf("%s client: %w", t.name, dialErr)
+		}
+		*t.dst = conn
+	}
+	return b, nil
+}
+
+// close closes the connections that were opened, in reverse dial order.
+func (b *backends) close() {
+	for _, c := range []*grpc.ClientConn{b.aggregator, b.ingest, b.plans} {
+		if c != nil {
+			_ = c.Close()
+		}
+	}
+}
+
+// newRunManager builds the billing-run manager from the backend clients and the usage topic's end offsets.
+func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *saga.Engine, be *backends, endOffsets func(context.Context) (map[int32]int64, error)) (*runs.Manager, error) {
+	return runs.NewManager(runs.Config{
+		Pool: systemPool, Engine: eng,
+		Plans: plansv1.NewPlansServiceClient(be.plans), Events: plansv1.NewWebhookServiceClient(be.plans), Admin: plansv1.NewAdminServiceClient(be.plans),
+		Ingest: ingestv1.NewIngestServiceClient(be.ingest), Aggregator: aggregatorv1.NewUsageQueryServiceClient(be.aggregator),
+		EndOffsets:     endOffsets,
+		WatermarkDelay: cfg.WatermarkDelay, Log: log,
+	})
+}
+
+// usageEndOffsets returns a func that reads the current end offset of every usage topic partition.
+func usageEndOffsets(adm *kadm.Client) func(context.Context) (map[int32]int64, error) {
+	return func(ctx context.Context) (map[int32]int64, error) {
+		ends, err := adm.ListEndOffsets(ctx, usageTopic)
+		if err != nil {
+			return nil, err
+		}
+		if err := ends.Error(); err != nil {
+			return nil, err
+		}
+		out := map[int32]int64{}
+		ends.Each(func(o kadm.ListedOffset) { out[o.Partition] = o.Offset })
+		return out, nil
+	}
+}
+
+// newGRPCServer builds the gRPC server with every billing service registered; the PDF store is optional.
+func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) (*grpc.Server, *grpchealth.Server, error) {
 	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
 		Logger: log, Reflection: cfg.Env == config.EnvLocal,
 		Extra: []grpc.ServerOption{
@@ -224,7 +307,7 @@ func run() error {
 		store, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, PublicEndpoint: cfg.S3PublicEndpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
 			AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		svc.WithPDFs(store)
 	}
@@ -232,42 +315,62 @@ func run() error {
 	billingv1.RegisterSandboxServiceServer(srv, svc)
 	billingv1.RegisterHostedInvoiceServiceServer(srv, svc)
 	billingv1.RegisterBillingAdminServiceServer(srv, svc)
+	return srv, grpcHealth, nil
+}
 
-	lis, err := net.Listen("tcp", cfg.GRPCAddr)
-	if err != nil {
-		return err
-	}
+// workers are the long-running parts of billing-svc: the outbox relay, the reply consumer, the periodic loops and the gRPC server.
+type workers struct {
+	cfg        *Config
+	log        *slog.Logger
+	pool       *pgxpool.Pool
+	eng        *saga.Engine
+	mgr        *runs.Manager
+	relay      *outbox.Relay
+	replies    *replies.Consumer
+	health     *health.Handler
+	srv        *grpc.Server
+	grpcHealth *grpchealth.Server
+	lis        net.Listener
+}
+
+// run starts everything and blocks until ctx is cancelled or one of them fails, then drains the gRPC server.
+func (w *workers) run(ctx context.Context) error {
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
-	g.Go(func() error { return relay.Run(gctx) })
-	g.Go(func() error { return rc.Run(gctx) })
-	g.Go(func() error { loop(gctx, cfg.SchedulerInterval, "scheduler", log, mgr.Tick); return nil })
-	g.Go(func() error { loop(gctx, 5*time.Second, "tenant-events", log, mgr.FlushTenantEvents); return nil })
+	g.Go(func() error { return health.Serve(gctx, w.cfg.MetricsAddr, w.health) })
+	g.Go(func() error { return w.relay.Run(gctx) })
+	g.Go(func() error { return w.replies.Run(gctx) })
+	w.startLoops(gctx, g)
 	g.Go(func() error {
-		loop(gctx, cfg.SweepInterval, "sweeper", log, func(ctx context.Context) error {
-			res, err := eng.Sweep(ctx, systemPool, 200)
-			if err == nil && (res.Reissued+res.Exhausted+res.Dunned) > 0 {
-				log.InfoContext(ctx, "saga sweep", "reissued", res.Reissued, "exhausted", res.Exhausted, "dunning", res.Dunned)
-			}
-			return err
-		})
-		return nil
-	})
-	g.Go(func() error {
-		log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr)
-		return srv.Serve(lis)
+		w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr)
+		return w.srv.Serve(w.lis)
 	})
 	g.Go(func() error {
 		<-gctx.Done()
-		grpcHealth.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
-		srv.GracefulStop()
+		w.grpcHealth.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
+		w.srv.GracefulStop()
 		return nil
 	})
 	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
-	log.Info("stopped")
+	w.log.Info("stopped")
 	return nil
+}
+
+// startLoops starts the scheduler, the tenant-event flusher and the saga sweeper.
+func (w *workers) startLoops(ctx context.Context, g *errgroup.Group) {
+	g.Go(func() error { loop(ctx, w.cfg.SchedulerInterval, "scheduler", w.log, w.mgr.Tick); return nil })
+	g.Go(func() error { loop(ctx, 5*time.Second, "tenant-events", w.log, w.mgr.FlushTenantEvents); return nil })
+	g.Go(func() error { loop(ctx, w.cfg.SweepInterval, "sweeper", w.log, w.sweep); return nil })
+}
+
+// sweep re-issues stuck saga steps and advances dunning.
+func (w *workers) sweep(ctx context.Context) error {
+	res, err := w.eng.Sweep(ctx, w.pool, 200)
+	if err == nil && (res.Reissued+res.Exhausted+res.Dunned) > 0 {
+		w.log.InfoContext(ctx, "saga sweep", "reissued", res.Reissued, "exhausted", res.Exhausted, "dunning", res.Dunned)
+	}
+	return err
 }
 
 // loop calls fn every interval until ctx is done; errors are logged, never fatal.

@@ -115,14 +115,27 @@ func run() error {
 		_ = providers.Shutdown(c)
 	}()
 
+	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
+}
+
+// migrate applies the migrations when asked to; done reports that the process should exit afterwards (QUOTIFY_MIGRATE_ONLY).
+func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
 	if cfg.MigrateOnStart {
 		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return err
+			return false, err
 		}
 	}
 	if cfg.MigrateOnly {
 		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
-		return nil
+		return true, nil
+	}
+	return false, nil
+}
+
+// start wires payments-worker's dependencies and runs it until ctx is cancelled.
+func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler) error {
+	if done, err := migrate(ctx, cfg, log); err != nil || done {
+		return err
 	}
 	pool, err := pgxx.NewPool(ctx, cfg.PGSystemDSN)
 	if err != nil {
@@ -130,18 +143,14 @@ func run() error {
 	}
 	defer pool.Close()
 
-	mock := payments.NewMockPSP(cfg.MockPSPURL, cfg.PSPTimeout)
-	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log, Demo: cfg.Demo}
-	if cfg.LiveProvider == "mockpsp" {
-		h.Live = mock
-	}
+	h := newHandler(cfg, pool, log)
 	registry := payments.NewRegistry()
 	iyzico.Register(registry)
 	paddle.Register(registry)
 	var httpHandler http.Handler
 	if cfg.SecretsKey != "" {
 		var closeConns func()
-		if httpHandler, closeConns, err = webhookHandler(cfg, pool, h, registry, log); err != nil {
+		if httpHandler, closeConns, err = webhookHandler(*cfg, pool, h, registry, log); err != nil {
 			return err
 		}
 		defer closeConns()
@@ -151,9 +160,23 @@ func run() error {
 		Queues: []string{rabbitx.QueuePaymentCharge, rabbitx.QueuePaymentRefund, rabbitx.QueuePaymentStatus},
 	}
 
-	hh := health.New(reg, 2*time.Second)
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
+	return serve(ctx, cfg, log, hh, w, httpHandler)
+}
+
+// newHandler builds the command handler: sandbox tenants always use mock-psp, live tenants only when configured.
+func newHandler(cfg *Config, pool *pgxpool.Pool, log *slog.Logger) *handler.Handler {
+	mock := payments.NewMockPSP(cfg.MockPSPURL, cfg.PSPTimeout)
+	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log, Demo: cfg.Demo}
+	if cfg.LiveProvider == "mockpsp" {
+		h.Live = mock
+	}
+	return h
+}
+
+// serve runs the metrics server, the optional webhook/operator HTTP server and the queue worker until ctx is cancelled or one of them fails.
+func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler, w *workerx.Worker, httpHandler http.Handler) error {
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
 	if httpHandler != nil {

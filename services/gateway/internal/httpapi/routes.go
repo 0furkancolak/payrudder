@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -13,6 +14,20 @@ import (
 )
 
 func (s *Server) routes() []Route {
+	return slices.Concat(
+		s.ingestAndCatalogRoutes(),
+		s.subscriptionRoutes(),
+		s.webhookAndInvoiceLinkRoutes(),
+		s.reportingAndRoutingRoutes(),
+		s.assetRoutes(),
+		s.billingReadRoutes(),
+		s.operatorProviderRoutes(),
+		s.operatorAdminRoutes(),
+	)
+}
+
+// ingestAndCatalogRoutes is the table for usage events, customers, meters and plans.
+func (s *Server) ingestAndCatalogRoutes() []Route {
 	return []Route{
 		// Usage events
 		{"POST", "/v1/events", AccessTenant, ratelimit.ClassIngest, s.ingestEvents},
@@ -34,6 +49,12 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/plans", AccessTenant, ratelimit.ClassRead, s.listPlans},
 		{"POST", "/v1/plans/{code}/versions", AccessTenant, ratelimit.ClassWrite, s.publishPlanVersion},
 		{"GET", "/v1/plans/{code}/versions/{version}", AccessTenant, ratelimit.ClassRead, s.getPlanVersion},
+	}
+}
+
+// subscriptionRoutes is the table for subscriptions, tax rates and coupons.
+func (s *Server) subscriptionRoutes() []Route {
+	return []Route{
 		// Subscriptions
 		{"POST", "/v1/subscriptions", AccessTenant, ratelimit.ClassWrite, s.createSubscription},
 		{"GET", "/v1/subscriptions", AccessTenant, ratelimit.ClassRead, s.listSubscriptions},
@@ -54,6 +75,12 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/coupons", AccessTenant, ratelimit.ClassRead, s.listCoupons},
 		{"DELETE", "/v1/coupons/{code}", AccessTenant, ratelimit.ClassWrite, s.deactivateCoupon},
 		{"DELETE", "/v1/subscriptions/{id}/scheduled-change", AccessTenant, ratelimit.ClassWrite, s.cancelScheduledChange},
+	}
+}
+
+// webhookAndInvoiceLinkRoutes is the table for webhook endpoints and deliveries, and the hosted invoice page.
+func (s *Server) webhookAndInvoiceLinkRoutes() []Route {
+	return []Route{
 		// Webhooks: where Quotify sends what happens in the account
 		{"POST", "/v1/webhook-endpoints", AccessTenant, ratelimit.ClassWrite, s.createWebhookEndpoint},
 		{"GET", "/v1/webhook-endpoints", AccessTenant, ratelimit.ClassRead, s.listWebhookEndpoints},
@@ -68,6 +95,12 @@ func (s *Server) routes() []Route {
 		{"DELETE", "/v1/invoices/{id}/links", AccessTenant, ratelimit.ClassWrite, s.revokeInvoiceLinks},
 		{"GET", "/i/{token}", AccessPublic, "", s.hostedInvoicePage},
 		{"GET", "/i/{token}/pdf", AccessPublic, "", s.hostedInvoicePDF},
+	}
+}
+
+// reportingAndRoutingRoutes is the table for reports, dunning settings and payment provider routing.
+func (s *Server) reportingAndRoutingRoutes() []Route {
+	return []Route{
 		// Reports
 		{"GET", "/v1/reports/revenue", AccessTenant, ratelimit.ClassRead, s.revenueReport},
 		{"GET", "/v1/dunning-settings", AccessTenant, ratelimit.ClassRead, s.getDunningSettings},
@@ -78,6 +111,12 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/routing-rules", AccessTenant, ratelimit.ClassRead, s.getRoutingRules},
 		{"PUT", "/v1/routing-rules", AccessTenant, ratelimit.ClassWrite, s.setRoutingRules},
 		{"POST", "/v1/routing-rules/preview", AccessTenant, ratelimit.ClassRead, s.previewRouting},
+	}
+}
+
+// assetRoutes is the table for asset uploads and files.
+func (s *Server) assetRoutes() []Route {
+	return []Route{
 		// Assets: direct multipart sessions, a streamed form upload, and the files themselves
 		{"POST", "/v1/assets/uploads", AccessTenant, ratelimit.ClassWrite, s.createUploadSession},
 		{"POST", "/v1/assets/uploads/{session}/files/{asset}/parts", AccessTenant, ratelimit.ClassWrite, s.presignParts},
@@ -92,6 +131,12 @@ func (s *Server) routes() []Route {
 		{"GET", "/v1/assets/{id}", AccessTenant, ratelimit.ClassRead, s.getAsset},
 		{"GET", "/v1/assets/{id}/download", AccessTenant, ratelimit.ClassRead, s.downloadAsset},
 		{"DELETE", "/v1/assets/{id}", AccessTenant, ratelimit.ClassWrite, s.deleteAsset},
+	}
+}
+
+// billingReadRoutes is the table for analytics, invoices, credit notes and the sandbox.
+func (s *Server) billingReadRoutes() []Route {
+	return []Route{
 		// Analytics (estimates: invoices come from billing)
 		{"GET", "/v1/analytics/usage", AccessTenant, ratelimit.ClassRead, s.getAnalyticsUsage},
 		{"GET", "/v1/analytics/top-customers", AccessTenant, ratelimit.ClassRead, s.getTopCustomers},
@@ -104,6 +149,12 @@ func (s *Server) routes() []Route {
 		// Sandbox
 		{"POST", "/v1/sandbox/close-period", AccessSandbox, ratelimit.ClassWrite, s.sandboxClosePeriod},
 		{"POST", "/v1/sandbox/customers/{external_id}/payment-scenario", AccessSandbox, ratelimit.ClassWrite, s.setPaymentScenario},
+	}
+}
+
+// operatorProviderRoutes is the table for operator accounts, provider accounts, provider webhooks and the provider API.
+func (s *Server) operatorProviderRoutes() []Route {
+	return []Route{
 		// Operator
 		{"POST", "/admin/v1/accounts", AccessOperator, "", s.createAccount},
 		{"POST", "/admin/v1/accounts/{id}/apps", AccessOperator, "", s.createApp},
@@ -135,6 +186,12 @@ func (s *Server) routes() []Route {
 		{"POST", "/admin/v1/tenants/{tenant_id}/checkouts", AccessOperator, "", s.providerCheckout},
 		{"POST", "/admin/v1/tenants/{tenant_id}/provider-migrations", AccessOperator, "", s.providerMigrate},
 		{"POST", "/admin/v1/tenants/{tenant_id}/provider-migrations/{migration_id}/abort", AccessOperator, "", s.providerMigrationAbort},
+	}
+}
+
+// operatorAdminRoutes is the table for operator dead letters, tenants, API keys, billing runs, replays, rerating and invoice actions.
+func (s *Server) operatorAdminRoutes() []Route {
+	return []Route{
 		{"GET", "/admin/v1/dead-letters", AccessOperator, "", s.adminListDeadLetters},
 		{"POST", "/admin/v1/dead-letters/redrive", AccessOperator, "", s.adminRedriveDeadLetters},
 		{"GET", "/admin/v1/tenants/{id}", AccessOperator, "", s.getTenant},
