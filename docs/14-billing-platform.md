@@ -1,6 +1,6 @@
 # Billing platform: subscriptions, payment providers, routing, reporting
 
-Status: phases 13 to 18 are built (see the notes below). Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
+Status: phases 13 to 18 are built (see the notes below); phases 19–22 are proposed in [15-billing-lifecycle.md](15-billing-lifecycle.md). Phases 13–18 in the [roadmap](phases/ROADMAP.md) build it. Decisions are in [ADR 0016](adr/0016-provider-capabilities-and-routing.md).
 
 ## Why
 
