@@ -58,5 +58,34 @@ UPDATE webhook_deliveries SET state = 'pending', attempts = 0, next_attempt_at =
 WHERE tenant_id = app_tenant_id() AND id = @id
 RETURNING id;
 
+-- name: ClaimDueWebhookDeliveries :many
+WITH args AS (
+  SELECT @now::timestamptz AS at, @lease_secs::float8 AS lease
+), due AS (
+  SELECT tenant_id, id FROM webhook_deliveries WHERE state = 'pending' AND next_attempt_at <= (SELECT at FROM args)
+  ORDER BY next_attempt_at LIMIT @batch FOR UPDATE SKIP LOCKED)
+UPDATE webhook_deliveries d SET attempts = d.attempts + 1, next_attempt_at = args.at + make_interval(secs => args.lease), last_attempt_at = args.at
+FROM due, args WHERE d.tenant_id = due.tenant_id AND d.id = due.id
+RETURNING d.tenant_id, d.id, d.event_id, d.endpoint_id, d.attempts;
+
+-- name: GetWebhookDeliveryTarget :one
+SELECT e.url, e.active, e.secret_enc, e.prev_secret_enc, e.prev_secret_until, ev.type, ev.data, ev.occurred_at
+FROM webhook_deliveries d
+JOIN webhook_endpoints e ON e.tenant_id = d.tenant_id AND e.id = d.endpoint_id
+JOIN webhook_events ev ON ev.tenant_id = d.tenant_id AND ev.id = d.event_id
+WHERE d.tenant_id = @tenant_id AND d.id = @id;
+
+-- name: RescheduleWebhookDelivery :exec
+UPDATE webhook_deliveries SET next_attempt_at = @next_attempt_at, last_status = NULLIF(@last_status::int, 0), last_error = @last_error::text
+WHERE tenant_id = @tenant_id AND id = @id;
+
+-- name: FinishWebhookDelivery :exec
+UPDATE webhook_deliveries SET state = @state::text, last_status = NULLIF(@last_status::int, 0), last_error = NULLIF(@last_error::text, ''),
+  delivered_at = CASE WHEN @state::text = 'delivered' THEN @delivered_at::timestamptz ELSE NULL END
+WHERE tenant_id = @tenant_id AND id = @id;
+
+-- name: PruneWebhookEvents :exec
+DELETE FROM webhook_events WHERE created_at < @before;
+
 -- name: HasWebhookTargets :one
 SELECT EXISTS (SELECT 1 FROM webhook_endpoints WHERE tenant_id = app_tenant_id() AND active AND (cardinality(event_types) = 0 OR @event_type::text = ANY(event_types)));
