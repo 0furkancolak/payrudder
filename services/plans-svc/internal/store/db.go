@@ -5,7 +5,6 @@ package store
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -27,9 +26,4 @@ func (d *DB) Tx(ctx context.Context, fn func(q *sqlc.Queries) error) error {
 		return err
 	}
 	return pgxx.InTenantTx(ctx, d.pool, t.ID, func(tx pgx.Tx) error { return fn(sqlc.New(tx)) })
-}
-
-// RawTx runs fn in a transaction of the given tenant, for a statement that is not a named sqlc query.
-func (d *DB) RawTx(ctx context.Context, tenantID uuid.UUID, fn func(tx pgx.Tx) error) error {
-	return pgxx.InTenantTx(ctx, d.pool, tenantID, fn)
 }
