@@ -43,6 +43,9 @@ func (s *Server) routes() []Route {
 		{"POST", "/v1/subscriptions/{id}/cancel-at-period-end", AccessTenant, ratelimit.ClassWrite, s.scheduleCancellation},
 		{"DELETE", "/v1/subscriptions/{id}/cancel-at-period-end", AccessTenant, ratelimit.ClassWrite, s.withdrawCancellation},
 		{"POST", "/v1/subscriptions/{id}/change-plan", AccessTenant, ratelimit.ClassWrite, s.changePlan},
+		{"POST", "/v1/subscriptions/{id}/change-preview", AccessTenant, ratelimit.ClassRead, s.previewSubscriptionChange},
+		{"POST", "/v1/subscriptions/{id}/change", AccessTenant, ratelimit.ClassWrite, s.changeSubscription},
+		{"DELETE", "/v1/subscriptions/{id}/scheduled-change", AccessTenant, ratelimit.ClassWrite, s.cancelScheduledChange},
 		// Reports
 		{"GET", "/v1/reports/revenue", AccessTenant, ratelimit.ClassRead, s.revenueReport},
 		{"GET", "/v1/reports/dunning", AccessTenant, ratelimit.ClassRead, s.dunningReport},
@@ -288,6 +291,33 @@ func (s *Server) changePlan(w http.ResponseWriter, r *http.Request) {
 	req.SubscriptionId = r.PathValue("id")
 	resp, err := s.d.Plans.ChangePlan(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) previewSubscriptionChange(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.ChangeSubscriptionRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.SubscriptionId = r.PathValue("id")
+	resp, err := s.d.Plans.PreviewSubscriptionChange(r.Context(), &plansv1.PreviewSubscriptionChangeRequest{Change: req})
+	respond(w, r, http.StatusOK, resp.GetQuote(), err)
+}
+
+func (s *Server) changeSubscription(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.ChangeSubscriptionRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.SubscriptionId = r.PathValue("id")
+	resp, err := s.d.Plans.ChangeSubscription(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) cancelScheduledChange(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.CancelScheduledChange(r.Context(), &plansv1.CancelScheduledChangeRequest{SubscriptionId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
 }
 
 func (s *Server) cancelSubscription(w http.ResponseWriter, r *http.Request) {

@@ -62,6 +62,15 @@ service PlansService {
   rpc ChangePlan(ChangePlanRequest) returns (ChangePlanResponse);
   // ListSubscriptionsForPeriod streams subscriptions overlapping [period_start, period_end). Used by billing-svc.
   // ListSubscriptionsFeeDue lists advance-billed subscriptions whose next fee period has started, with the period and the fee. Used by billing-svc.
+  // PreviewSubscriptionChange prices a change of plan or interval without making it. ChangeSubscription makes it with the same calculation.
+  rpc PreviewSubscriptionChange(PreviewSubscriptionChangeRequest) returns (PreviewSubscriptionChangeResponse);
+  rpc ChangeSubscription(ChangeSubscriptionRequest) returns (ChangeSubscriptionResponse);
+  rpc CancelScheduledChange(CancelScheduledChangeRequest) returns (CancelScheduledChangeResponse);
+  // ApplyScheduledChanges applies the changes whose effective time has come. Used by billing-svc's tick.
+  rpc ApplyScheduledChanges(ApplyScheduledChangesRequest) returns (ApplyScheduledChangesResponse);
+  // ListSubscriptionAdjustments lists the money changes moved that billing-svc has not yet invoiced or credited.
+  rpc ListSubscriptionAdjustments(ListSubscriptionAdjustmentsRequest) returns (ListSubscriptionAdjustmentsResponse);
+  rpc MarkSubscriptionAdjustmentBilled(MarkSubscriptionAdjustmentBilledRequest) returns (MarkSubscriptionAdjustmentBilledResponse);
   rpc ListSubscriptionsFeeDue(ListSubscriptionsFeeDueRequest) returns (ListSubscriptionsFeeDueResponse);
   // AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
   rpc AdvanceSubscriptionFee(AdvanceSubscriptionFeeRequest) returns (AdvanceSubscriptionFeeResponse);
@@ -477,3 +486,112 @@ message AdvanceSubscriptionFeeRequest {
 }
 
 message AdvanceSubscriptionFeeResponse {}
+
+enum ChangeTiming {
+  CHANGE_TIMING_UNSPECIFIED = 0;
+  CHANGE_TIMING_IMMEDIATELY = 1;
+  CHANGE_TIMING_PERIOD_END = 2;
+}
+
+enum ChangeProration {
+  CHANGE_PRORATION_UNSPECIFIED = 0;
+  // Credit the unused old time; within the interval charge the new plan for the rest of the period and keep the cycle.
+  CHANGE_PRORATION_PRORATE = 1;
+  // Credit the unused old time and start a new cycle now, charging the new fee in full.
+  CHANGE_PRORATION_FULL = 2;
+  // Move no money now; the new plan is billed from the next period.
+  CHANGE_PRORATION_NONE = 3;
+}
+
+message ChangeSubscriptionRequest {
+  string subscription_id = 1;
+  // Empty keeps the plan (to change the interval only).
+  string plan_code = 2;
+  // 0 = latest published version.
+  int32 plan_version = 3;
+  // Unspecified keeps the interval.
+  SubscriptionInterval interval = 4;
+  // Unspecified: an upgrade or monthly-to-yearly is immediate, a downgrade or yearly-to-monthly waits for the end of the paid period.
+  ChangeTiming timing = 5;
+  // Unspecified: prorate.
+  ChangeProration proration = 6;
+  // Unset = now. Only for immediate changes.
+  google.protobuf.Timestamp change_time = 7;
+}
+
+message ChangeQuote {
+  ChangeTiming timing = 1;
+  ChangeProration proration = 2;
+  google.protobuf.Timestamp effective_time = 3;
+  google.protobuf.Timestamp period_start = 4;
+  google.protobuf.Timestamp period_end = 5;
+  // The unused, prepaid part of the old fee.
+  int64 credit_minor = 6;
+  // What the new plan costs from the change (the period's rest, or in full for a new cycle).
+  int64 charge_minor = 7;
+  // charge - credit: positive is invoiced, negative goes to the customer's credit balance.
+  int64 net_minor = 8;
+  string currency = 9;
+  google.protobuf.Timestamp next_renewal_time = 10;
+  int64 next_renewal_minor = 11;
+  string plan_code = 12;
+  int32 plan_version = 13;
+  SubscriptionInterval interval = 14;
+}
+
+message PreviewSubscriptionChangeRequest {
+  ChangeSubscriptionRequest change = 1;
+}
+
+message PreviewSubscriptionChangeResponse {
+  ChangeQuote quote = 1;
+}
+
+message ChangeSubscriptionResponse {
+  // The subscription the customer is on after the call: the new one for an immediate change, the unchanged one (with scheduled_change) otherwise.
+  Subscription subscription = 1;
+  ChangeQuote quote = 2;
+  bool scheduled = 3;
+}
+
+message CancelScheduledChangeRequest {
+  string subscription_id = 1;
+}
+
+message CancelScheduledChangeResponse {
+  Subscription subscription = 1;
+}
+
+message ApplyScheduledChangesRequest {
+  google.protobuf.Timestamp now = 1;
+}
+
+message ApplyScheduledChangesResponse {
+  int32 applied = 1;
+}
+
+message Adjustment {
+  string id = 1;
+  // The subscription the change created.
+  Subscription subscription = 2;
+  int64 credit_minor = 3;
+  int64 charge_minor = 4;
+  google.protobuf.Timestamp from_time = 5;
+  google.protobuf.Timestamp to_time = 6;
+  string old_plan_code = 7;
+}
+
+message ListSubscriptionAdjustmentsRequest {
+  // 1..500, default 100.
+  int32 page_size = 1;
+}
+
+message ListSubscriptionAdjustmentsResponse {
+  repeated Adjustment adjustments = 1;
+}
+
+message MarkSubscriptionAdjustmentBilledRequest {
+  string adjustment_id = 1;
+}
+
+message MarkSubscriptionAdjustmentBilledResponse {}

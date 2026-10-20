@@ -140,5 +140,23 @@ A subscription is created `month` or `year`, needs a fee for that interval in it
 `ListSubscriptionsFeeDue(now, after, page_size)` is billing-svc's work list: advance, Quotify-renewed, not cancelled, `fee_due_at <= now`
 and still running at that period's start, each with the period `[start, end)` and the fee. `AdvanceSubscriptionFee(subscription_id,
 period_start)` moves `fee_due_at` to the period's end by compare-and-set, so calling it twice, or with a time that is not the next period,
-changes nothing (the latter is refused). `ChangePlan` of an advance-billed subscription is refused until phase 20. The subscription report
+changes nothing (the latter is refused). `ChangePlan` of an advance-billed subscription is refused: those are changed with `ChangeSubscription` (phase 20). The subscription report
 counts a yearly fee as a twelfth in MRR.
+
+## As built: plan and interval changes (Phase 20)
+
+`ChangeSubscription` and `PreviewSubscriptionChange` (same request) move an advance-billed, Quotify-renewed subscription to another plan version and/or interval.
+`pkg/subscription.QuoteChange` is the one calculation behind both: the preview returns it, the change performs it. Defaults by direction: an upgrade
+(or an equal-priced switch) and monthly-to-yearly are **immediate and prorated**; a cheaper plan and yearly-to-monthly **wait for the end of the paid period** and move no money.
+`timing` (`IMMEDIATELY`, `PERIOD_END`) and `proration` (`PRORATE`: credit the unused old time and, within an interval, charge the new fee for the rest of the period, keeping the cycle;
+`FULL`: credit the unused old time and start a new cycle now at the full price; `NONE`: no money now, new fee from the next period) override the defaults.
+An immediate change of interval always starts a new cycle (the year starts now) so it needs `PRORATE` or `FULL`.
+
+An immediate change ends the old subscription and starts its successor in one transaction (`changed_from_id`, the quote's anchor and next fee period, `fee_due_at`). The money it moved
+(credit = the unused, prepaid part of the old fee; charge = the new fee) is written to `subscription_adjustments` for billing-svc. A change that waits is a pending
+`subscription_changes` row (one per subscription; a new change replaces it; `CancelScheduledChange` withdraws it) that `ApplyScheduledChanges(now)` applies when its time comes: it ends
+the old subscription at the period end and starts the new one with `fee_due_at` at that instant, so the new plan's first fee is invoiced by the next fee run. A change is cancelled
+instead of applied if the subscription ended, is paused, past due, or ending by then. A change during a trial moves no money (the trial and the first fee date stay). A change is refused with
+`ABORTED` while the fee of the current period has not been invoiced yet (there would be nothing to credit), with `FAILED_PRECONDITION` for arrears, provider-owned, paused, past-due or ending subscriptions, and
+`INVALID_ARGUMENT` for combinations that make no sense. `ListSubscriptionAdjustments` and `MarkSubscriptionAdjustmentBilled` are billing-svc's work list. `Subscription.scheduled_change` shows a waiting change.
+

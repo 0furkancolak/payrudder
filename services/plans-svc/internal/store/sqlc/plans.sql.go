@@ -229,6 +229,34 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, 
 	return i, err
 }
 
+const getPendingChange = `-- name: GetPendingChange :one
+SELECT id, subscription_id, plan_version_id, interval, effective_at, state FROM subscription_changes
+WHERE tenant_id = app_tenant_id() AND subscription_id = $1 AND state = 'pending'
+`
+
+type GetPendingChangeRow struct {
+	ID             uuid.UUID
+	SubscriptionID uuid.UUID
+	PlanVersionID  uuid.UUID
+	Interval       string
+	EffectiveAt    time.Time
+	State          string
+}
+
+func (q *Queries) GetPendingChange(ctx context.Context, subscriptionID uuid.UUID) (GetPendingChangeRow, error) {
+	row := q.db.QueryRow(ctx, getPendingChange, subscriptionID)
+	var i GetPendingChangeRow
+	err := row.Scan(
+		&i.ID,
+		&i.SubscriptionID,
+		&i.PlanVersionID,
+		&i.Interval,
+		&i.EffectiveAt,
+		&i.State,
+	)
+	return i, err
+}
+
 const getPlanByCode = `-- name: GetPlanByCode :one
 SELECT p.id, p.code, p.name, p.created_at,
        COALESCE((SELECT max(v.version) FROM plan_versions v WHERE v.tenant_id = p.tenant_id AND v.plan_id = p.id), 0)::int AS latest_version
@@ -431,6 +459,17 @@ func (q *Queries) GetSubscription(ctx context.Context, id uuid.UUID) (GetSubscri
 		&i.PlanVersion,
 	)
 	return i, err
+}
+
+const getSubscriptionFeeDue = `-- name: GetSubscriptionFeeDue :one
+SELECT fee_due_at FROM subscriptions WHERE tenant_id = app_tenant_id() AND id = $1
+`
+
+func (q *Queries) GetSubscriptionFeeDue(ctx context.Context, id uuid.UUID) (*time.Time, error) {
+	row := q.db.QueryRow(ctx, getSubscriptionFeeDue, id)
+	var fee_due_at *time.Time
+	err := row.Scan(&fee_due_at)
+	return fee_due_at, err
 }
 
 const getSubscriptionForUpdate = `-- name: GetSubscriptionForUpdate :one
@@ -856,6 +895,77 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 	return i, err
 }
 
+const insertSubscriptionAdjustment = `-- name: InsertSubscriptionAdjustment :exec
+INSERT INTO subscription_adjustments (tenant_id, id, subscription_id, old_plan_code, from_at, to_at, credit_minor, charge_minor)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertSubscriptionAdjustmentParams struct {
+	ID             uuid.UUID
+	SubscriptionID uuid.UUID
+	OldPlanCode    string
+	FromAt         time.Time
+	ToAt           time.Time
+	CreditMinor    int64
+	ChargeMinor    int64
+}
+
+func (q *Queries) InsertSubscriptionAdjustment(ctx context.Context, arg InsertSubscriptionAdjustmentParams) error {
+	_, err := q.db.Exec(ctx, insertSubscriptionAdjustment,
+		arg.ID,
+		arg.SubscriptionID,
+		arg.OldPlanCode,
+		arg.FromAt,
+		arg.ToAt,
+		arg.CreditMinor,
+		arg.ChargeMinor,
+	)
+	return err
+}
+
+const insertSubscriptionChange = `-- name: InsertSubscriptionChange :one
+INSERT INTO subscription_changes (tenant_id, id, subscription_id, plan_version_id, interval, effective_at)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5)
+RETURNING id, subscription_id, plan_version_id, interval, effective_at, state
+`
+
+type InsertSubscriptionChangeParams struct {
+	ID             uuid.UUID
+	SubscriptionID uuid.UUID
+	PlanVersionID  uuid.UUID
+	Interval       string
+	EffectiveAt    time.Time
+}
+
+type InsertSubscriptionChangeRow struct {
+	ID             uuid.UUID
+	SubscriptionID uuid.UUID
+	PlanVersionID  uuid.UUID
+	Interval       string
+	EffectiveAt    time.Time
+	State          string
+}
+
+func (q *Queries) InsertSubscriptionChange(ctx context.Context, arg InsertSubscriptionChangeParams) (InsertSubscriptionChangeRow, error) {
+	row := q.db.QueryRow(ctx, insertSubscriptionChange,
+		arg.ID,
+		arg.SubscriptionID,
+		arg.PlanVersionID,
+		arg.Interval,
+		arg.EffectiveAt,
+	)
+	var i InsertSubscriptionChangeRow
+	err := row.Scan(
+		&i.ID,
+		&i.SubscriptionID,
+		&i.PlanVersionID,
+		&i.Interval,
+		&i.EffectiveAt,
+		&i.State,
+	)
+	return i, err
+}
+
 const latestMeter = `-- name: LatestMeter :one
 SELECT tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, created_at FROM meters WHERE tenant_id = app_tenant_id() AND code = $1 ORDER BY version DESC LIMIT 1
 `
@@ -947,6 +1057,50 @@ func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([
 	return items, nil
 }
 
+const listDueChanges = `-- name: ListDueChanges :many
+SELECT id, subscription_id, plan_version_id, interval, effective_at, state FROM subscription_changes
+WHERE tenant_id = app_tenant_id() AND state = 'pending' AND effective_at <= $1::timestamptz
+ORDER BY effective_at, id
+LIMIT 100
+FOR UPDATE
+`
+
+type ListDueChangesRow struct {
+	ID             uuid.UUID
+	SubscriptionID uuid.UUID
+	PlanVersionID  uuid.UUID
+	Interval       string
+	EffectiveAt    time.Time
+	State          string
+}
+
+func (q *Queries) ListDueChanges(ctx context.Context, now time.Time) ([]ListDueChangesRow, error) {
+	rows, err := q.db.Query(ctx, listDueChanges, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDueChangesRow{}
+	for rows.Next() {
+		var i ListDueChangesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubscriptionID,
+			&i.PlanVersionID,
+			&i.Interval,
+			&i.EffectiveAt,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLatestMeters = `-- name: ListLatestMeters :many
 SELECT DISTINCT ON (code) tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, created_at FROM meters WHERE tenant_id = app_tenant_id() ORDER BY code, version DESC
 `
@@ -970,6 +1124,52 @@ func (q *Queries) ListLatestMeters(ctx context.Context) ([]Meter, error) {
 			&i.QuantityScale,
 			&i.UnitLabel,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingChangesFor = `-- name: ListPendingChangesFor :many
+SELECT c.id, c.subscription_id, c.plan_version_id, c.interval, c.effective_at, pl.code AS plan_code, pv.version AS plan_version
+FROM subscription_changes c
+JOIN plan_versions pv ON pv.tenant_id = c.tenant_id AND pv.id = c.plan_version_id
+JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
+WHERE c.tenant_id = app_tenant_id() AND c.state = 'pending' AND c.subscription_id = ANY($1::uuid[])
+`
+
+type ListPendingChangesForRow struct {
+	ID             uuid.UUID
+	SubscriptionID uuid.UUID
+	PlanVersionID  uuid.UUID
+	Interval       string
+	EffectiveAt    time.Time
+	PlanCode       string
+	PlanVersion    int32
+}
+
+func (q *Queries) ListPendingChangesFor(ctx context.Context, ids []uuid.UUID) ([]ListPendingChangesForRow, error) {
+	rows, err := q.db.Query(ctx, listPendingChangesFor, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPendingChangesForRow{}
+	for rows.Next() {
+		var i ListPendingChangesForRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubscriptionID,
+			&i.PlanVersionID,
+			&i.Interval,
+			&i.EffectiveAt,
+			&i.PlanCode,
+			&i.PlanVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -1400,6 +1600,63 @@ func (q *Queries) ListSubscriptionsPage(ctx context.Context, arg ListSubscriptio
 	return items, nil
 }
 
+const listUnbilledAdjustments = `-- name: ListUnbilledAdjustments :many
+SELECT id, subscription_id, old_plan_code, from_at, to_at, credit_minor, charge_minor FROM subscription_adjustments
+WHERE tenant_id = app_tenant_id() AND billed_at IS NULL
+ORDER BY created_at, id
+LIMIT $1
+`
+
+type ListUnbilledAdjustmentsRow struct {
+	ID             uuid.UUID
+	SubscriptionID uuid.UUID
+	OldPlanCode    string
+	FromAt         time.Time
+	ToAt           time.Time
+	CreditMinor    int64
+	ChargeMinor    int64
+}
+
+func (q *Queries) ListUnbilledAdjustments(ctx context.Context, pageSize int32) ([]ListUnbilledAdjustmentsRow, error) {
+	rows, err := q.db.Query(ctx, listUnbilledAdjustments, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUnbilledAdjustmentsRow{}
+	for rows.Next() {
+		var i ListUnbilledAdjustmentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubscriptionID,
+			&i.OldPlanCode,
+			&i.FromAt,
+			&i.ToAt,
+			&i.CreditMinor,
+			&i.ChargeMinor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markAdjustmentBilled = `-- name: MarkAdjustmentBilled :execrows
+UPDATE subscription_adjustments SET billed_at = now() WHERE tenant_id = app_tenant_id() AND id = $1 AND billed_at IS NULL
+`
+
+func (q *Queries) MarkAdjustmentBilled(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markAdjustmentBilled, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const notifyOutbox = `-- name: NotifyOutbox :exec
 SELECT pg_notify('outbox_new', '')
 `
@@ -1475,6 +1732,25 @@ func (q *Queries) SetSubscriptionState(ctx context.Context, arg SetSubscriptionS
 		arg.CancelAtPeriodEnd,
 		arg.ID,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const settleChange = `-- name: SettleChange :execrows
+UPDATE subscription_changes SET state = $1, applied_at = CASE WHEN $1 = 'applied' THEN now() END, new_subscription_id = $2
+WHERE tenant_id = app_tenant_id() AND id = $3 AND state = 'pending'
+`
+
+type SettleChangeParams struct {
+	State             string
+	NewSubscriptionID *uuid.UUID
+	ID                uuid.UUID
+}
+
+func (q *Queries) SettleChange(ctx context.Context, arg SettleChangeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, settleChange, arg.State, arg.NewSubscriptionID, arg.ID)
 	if err != nil {
 		return 0, err
 	}

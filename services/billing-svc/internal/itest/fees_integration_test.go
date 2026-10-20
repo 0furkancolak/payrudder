@@ -133,3 +133,114 @@ func testAdvanceBilledSubscriptionPaysOnlyUsageAtMonthClose(t *testing.T) {
 		t.Errorf("arrears customer's invoice = %d; want fee and usage (1100)", total)
 	}
 }
+
+func (e *env) adjustment(customer string, pv *plansv1.PlanVersion, credit, charge int64) *plansv1.Adjustment {
+	s := e.sub(customer, pv, func(s *plansv1.Subscription) {
+		s.Interval = plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
+		s.FeeTiming = plansv1.FeeTiming_FEE_TIMING_ADVANCE
+		s.Currency = "USD"
+		s.PlanCode = "pro"
+	})
+	a := &plansv1.Adjustment{Id: uuid.NewString(), Subscription: s, CreditMinor: credit, ChargeMinor: charge, OldPlanCode: "basic",
+		FromTime: timestamppb.New(time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)), ToTime: timestamppb.New(time.Date(2026, 12, 3, 0, 0, 0, 0, time.UTC))}
+	e.w.mu.Lock()
+	e.w.adjusts = append(e.w.adjusts, a)
+	e.w.mu.Unlock()
+	return a
+}
+
+func (e *env) feeInvoiceLines(customer string) []lineRow {
+	e.t.Helper()
+	rows, err := shared.system.Query(context.Background(), `SELECT l.kind, l.description, l.amount_minor FROM invoice_lines l
+		JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
+		WHERE i.tenant_id = $1 AND i.kind = 'FEE' AND i.snapshot->>'customer_external_id' = $2 ORDER BY i.created_at, l.line_no`, e.tid, customer)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	defer rows.Close()
+	var out []lineRow
+	for rows.Next() {
+		var l lineRow
+		if err := rows.Scan(&l.Kind, &l.Description, &l.Amount); err != nil {
+			e.t.Fatal(err)
+		}
+		out = append(out, l)
+	}
+	return out
+}
+
+func (e *env) creditsOf(customer string) (n int, total int64, currency string) {
+	e.t.Helper()
+	err := shared.system.QueryRow(context.Background(), `SELECT count(*), COALESCE(sum(amount_minor), 0), COALESCE(max(currency), '') FROM credit_balances c
+		WHERE c.tenant_id = $1 AND c.customer_id = $2::uuid`, e.tid, e.customer(customer).Id).Scan(&n, &total, &currency)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return n, total, currency
+}
+
+func testPlanChangesAreInvoicedOrCredited(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	e.startWorkers(nil)
+	pv := e.pv()
+	e.w.customers["cus_c"] = &plansv1.Customer{Id: uuid.NewString(), ExternalId: "cus_c", Name: "Customer cus_c", Email: "cus_c@example.com", PaymentMethod: "pm_sandbox_success"}
+	up := e.adjustment("cus_a", pv, 1600, 4800)   // an upgrade: 3200 to pay
+	down := e.adjustment("cus_b", pv, 4800, 1600) // a downgrade now: 3200 of credit
+	e.adjustment("cus_c", pv, 1000, 1000)         // moves nothing
+	pass := func() {
+		t.Helper()
+		if err := e.mgr.BillFees(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pass()
+
+	if l := e.feeInvoiceLines("cus_a"); len(l) != 2 || l[0].Kind != "BASE_FEE" || l[0].Amount != 4800 || l[1].Kind != "CREDIT" || l[1].Amount != -1600 ||
+		l[0].Description != "Base fee (monthly) — pro — 2026-11-03 to 2026-12-03" || l[1].Description != "Unused time on basic — 2026-11-03 to 2026-12-03" {
+		t.Errorf("upgrade invoice lines = %+v", l)
+	}
+	if n, total, _ := e.feeInvoices("cus_a"); n != 1 || total != 3200 {
+		t.Errorf("upgrade: %d invoice(s) totalling %d; want one of 3200", n, total)
+	}
+	if n, _, _ := e.feeInvoices("cus_b"); n != 0 {
+		t.Errorf("a downgrade made %d invoice(s)", n)
+	}
+	if n, total, cur := e.creditsOf("cus_b"); n != 1 || total != 3200 || cur != "USD" {
+		t.Errorf("downgrade credit = %d × %d %s; want one of 3200 USD", n, total, cur)
+	}
+	if n, _, _ := e.feeInvoices("cus_c"); n != 0 {
+		t.Errorf("a change that moved nothing made %d invoice(s)", n)
+	}
+	e.w.mu.Lock()
+	billed, applyCalls := len(e.w.billedAdj), e.w.applyCall
+	e.w.mu.Unlock()
+	if billed != 3 || applyCalls < 1 {
+		t.Errorf("%d adjustments marked billed, %d apply calls; want 3 and at least 1", billed, applyCalls)
+	}
+
+	// A pass that could not mark them billed (the previous one crashed) must neither invoice nor credit twice.
+	e.w.mu.Lock()
+	e.w.billedAdj = nil
+	e.w.mu.Unlock()
+	pass()
+	if n, _, _ := e.feeInvoices("cus_a"); n != 1 {
+		t.Errorf("a repeated pass made %d upgrade invoices", n)
+	}
+	if n, total, _ := e.creditsOf("cus_b"); n != 1 || total != 3200 {
+		t.Errorf("a repeated pass left %d credits totalling %d", n, total)
+	}
+	_ = up
+	_ = down
+
+	// The credit pays the customer's next fee, in the same currency.
+	nov := time.Date(2026, 12, 3, 0, 0, 0, 0, time.UTC)
+	e.feeDue("cus_b", pv, plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH, nov, time.Date(2027, 1, 3, 0, 0, 0, 0, time.UTC), 5000, nil)
+	pass()
+	l := e.feeInvoiceLines("cus_b")
+	if len(l) != 2 || l[0].Amount != 5000 || l[1].Kind != "CREDIT" || l[1].Amount != -3200 {
+		t.Fatalf("fee invoice lines with the credit applied = %+v", l)
+	}
+	if n, total, _ := e.feeInvoices("cus_b"); n != 1 || total != 1800 {
+		t.Errorf("fee after credit: %d invoice(s) totalling %d; want one of 1800", n, total)
+	}
+}

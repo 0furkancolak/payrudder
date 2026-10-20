@@ -381,6 +381,55 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /v1/subscriptions/{id}/change-preview:
+    post:
+      operationId: previewSubscriptionChange
+      summary: What a change of plan or interval would cost, without making it
+      description: The same calculation as the change itself, so the preview is what is then billed. For subscriptions whose fee is invoiced in advance.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ChangeRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ChangeQuote" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/subscriptions/{id}/change:
+    post:
+      operationId: changeSubscription
+      summary: Move a subscription to another plan version and/or interval, now or at the end of the paid period
+      description: |
+        An upgrade or monthly-to-yearly change is immediate and prorated; a downgrade or yearly-to-monthly change waits for the end of the period the customer has paid for
+        (a scheduled change, shown on the subscription). Whatever moves money is invoiced, or becomes a credit balance when the new plan costs less than the unused old time was worth.
+        Answers 409 `ABORTED` if the fee of the current period has not been invoiced yet; try again in a moment.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ChangeRequest" } } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscription: { $ref: "#/components/schemas/Subscription" }
+                  quote: { $ref: "#/components/schemas/ChangeQuote" }
+                  scheduled: { type: boolean, description: True when the change waits for the end of the period }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/subscriptions/{id}/scheduled-change:
+    delete:
+      operationId: cancelScheduledChange
+      summary: Withdraw the change waiting for the end of the period
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
 
   /v1/reports/revenue:
     get:
@@ -1692,7 +1741,7 @@ components:
         customer_id: { type: string }
         customer_external_id: { type: string }
         period_id: { type: string }
-        kind: { type: string, enum: [REGULAR, CORRECTION] }
+        kind: { type: string, enum: [REGULAR, CORRECTION, FEE], description: "FEE: a fixed fee invoiced in advance for one period, or what a plan change moved" }
         number: { type: string, examples: ["INV-2026-000123"] }
         currency: { type: string }
         subtotal_minor: { type: string }
@@ -1877,6 +1926,40 @@ components:
         plan_code: { type: string }
         plan_version: { type: integer }
         fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS] }
+        scheduled_change: { $ref: "#/components/schemas/ScheduledChange" }
+    ChangeRequest:
+      type: object
+      properties:
+        plan_code: { type: string, description: Empty keeps the plan (to change the interval only) }
+        plan_version: { type: integer, description: 0 = latest }
+        interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR], description: Default keeps the interval }
+        timing: { type: string, enum: [CHANGE_TIMING_IMMEDIATELY, CHANGE_TIMING_PERIOD_END], description: Default depends on the direction of the change }
+        proration: { type: string, enum: [CHANGE_PRORATION_PRORATE, CHANGE_PRORATION_FULL, CHANGE_PRORATION_NONE], description: "Default prorate. Prorate keeps the cycle within an interval; full starts a new cycle now; none moves no money now" }
+        change_time: { type: string, format: date-time, description: Default now; not in the future }
+    ChangeQuote:
+      type: object
+      properties:
+        timing: { type: string, enum: [CHANGE_TIMING_IMMEDIATELY, CHANGE_TIMING_PERIOD_END] }
+        proration: { type: string, enum: [CHANGE_PRORATION_PRORATE, CHANGE_PRORATION_FULL, CHANGE_PRORATION_NONE] }
+        effective_time: { type: string, format: date-time }
+        period_start: { type: string, format: date-time }
+        period_end: { type: string, format: date-time }
+        credit_minor: { type: string, description: The unused, prepaid part of the old fee }
+        charge_minor: { type: string, description: What the new plan costs from the change }
+        net_minor: { type: string, description: "charge - credit: positive is invoiced, negative becomes a credit balance" }
+        currency: { type: string }
+        next_renewal_time: { type: string, format: date-time }
+        next_renewal_minor: { type: string }
+        plan_code: { type: string }
+        plan_version: { type: integer }
+        interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
+    ScheduledChange:
+      type: object
+      properties:
+        plan_code: { type: string }
+        plan_version: { type: integer }
+        interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
+        effective_time: { type: string, format: date-time }
     CurrencyFee:
       type: object
       properties:

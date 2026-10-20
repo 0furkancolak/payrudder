@@ -689,7 +689,7 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, drafts []draftInvo
 			created++
 			lines, scales := d.Lines, d.LineScales
 			// Credits from re-rating are applied to the first regular invoice that can use them.
-			credit, err := applyCredits(ctx, tx, run.TenantID, d.CustomerID, id, d.Total)
+			credit, err := applyCredits(ctx, tx, run.TenantID, d.CustomerID, id, d.Currency, d.Total)
 			if err != nil {
 				return err
 			}
@@ -736,14 +736,14 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, drafts []draftInvo
 // applyCredits consumes the customer's unapplied credit balances, oldest first, up to max minor units, records the
 // applications against the invoice and returns the amount applied. A credit larger than what is left to pay stays
 // partly unapplied for the next invoice.
-func applyCredits(ctx context.Context, tx pgx.Tx, tenantID, customerID, invoiceID uuid.UUID, max int64) (int64, error) {
+func applyCredits(ctx context.Context, tx pgx.Tx, tenantID, customerID, invoiceID uuid.UUID, currency string, max int64) (int64, error) {
 	if max <= 0 {
 		return 0, nil
 	}
 	rows, err := tx.Query(ctx, `
 		SELECT c.id, c.amount_minor - COALESCE((SELECT sum(a.amount_minor) FROM credit_applications a WHERE a.tenant_id = c.tenant_id AND a.credit_id = c.id), 0)
-		FROM credit_balances c WHERE c.tenant_id = $1 AND c.customer_id = $2 AND c.applied_invoice_id IS NULL
-		ORDER BY c.created_at, c.id FOR UPDATE OF c`, tenantID, customerID)
+		FROM credit_balances c WHERE c.tenant_id = $1 AND c.customer_id = $2 AND c.applied_invoice_id IS NULL AND (c.currency = $3 OR c.currency IS NULL)
+		ORDER BY c.created_at, c.id FOR UPDATE OF c`, tenantID, customerID, currency)
 	if err != nil {
 		return 0, err
 	}

@@ -217,6 +217,15 @@ message Subscription {
   int32 plan_version = 19;
   // When the fixed fee is invoiced: in advance at the start of each period, or in arrears with the month's usage.
   FeeTiming fee_timing = 20;
+  // A change of plan or interval that is waiting for the end of the period the customer has paid for.
+  ScheduledChange scheduled_change = 21;
+}
+
+message ScheduledChange {
+  string plan_code = 1;
+  int32 plan_version = 2;
+  SubscriptionInterval interval = 3;
+  google.protobuf.Timestamp effective_time = 4;
 }
 
 enum FeeTiming {

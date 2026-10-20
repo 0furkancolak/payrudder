@@ -136,6 +136,11 @@ as the operator, are in six languages, and are tested against a mocked gateway.
 Details in [phase 19](phases/phase-19-yearly-advance.md) and [15-billing-lifecycle.md](15-billing-lifecycle.md). Yearly subscriptions exist; a plan version has a fixed fee per interval and currency; new subscriptions are invoiced in advance (a `FEE` invoice per period)
 and keep usage in arrears on the monthly run. The "yearly subscriptions are refused" limit of phase 13 is gone.
 
+## As built: phase 20
+
+Details in [phase 20](phases/phase-20-plan-changes.md). Advance-billed subscriptions change plan or interval with a preview that is the same calculation as the change: upgrades and monthly-to-yearly at once with the unused time credited, downgrades and
+yearly-to-monthly at the end of the paid period, as a scheduled change the customer can withdraw. What a change moves becomes an invoice or a credit balance in billing-svc. Quantity changes are not in this release.
+
 ## Currency
 
 The old rule "one currency per tenant, immutable" moves down a level. The tenant keeps a **default currency**. A subscription and its invoices have one currency, fixed for the
