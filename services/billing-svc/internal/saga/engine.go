@@ -25,6 +25,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/outbox"
 	"github.com/0furkancolak/quotify/pkg/quantity"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // MaxStepAttempts is how often the sweeper issues the command of one step before giving up.
@@ -133,30 +134,29 @@ type saga struct {
 }
 
 func (e *Engine) load(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UUID) (*saga, error) {
-	var s saga
-	var raw []byte
-	var number *string
-	err := tx.QueryRow(ctx, `
-		SELECT s.tenant_id, s.id, s.invoice_id, i.customer_id, s.state, s.version, s.attempt, s.step_attempt, s.dunning_attempt,
-		       i.number, i.period_id, i.currency, i.status, i.version, i.total_minor, COALESCE(i.finalized_at, i.created_at), i.snapshot
-		FROM invoice_sagas s JOIN invoices i ON i.tenant_id = s.tenant_id AND i.id = s.invoice_id
-		WHERE s.tenant_id = $1 AND s.id = $2
-		FOR UPDATE OF s`, tenantID, sagaID).Scan(&s.TenantID, &s.ID, &s.InvoiceID, &s.CustomerID, &s.State, &s.Version, &s.Attempt,
-		&s.StepAttempt, &s.DunningAttempt, &number, &s.PeriodID, &s.Currency, &s.InvoiceStatus, &s.InvoiceVersion, &s.TotalMinor, &s.FinalizedAt, &raw)
+	q := sqlc.New(tx)
+	r, err := q.LockSagaWithInvoice(ctx, sqlc.LockSagaWithInvoiceParams{TenantID: tenantID, ID: sagaID})
 	if err != nil {
 		return nil, err
 	}
-	if number != nil {
-		s.Number = *number
+	s := saga{
+		TenantID: r.TenantID, ID: r.ID, InvoiceID: r.InvoiceID, CustomerID: r.CustomerID, State: State(r.State), Version: int(r.Version), Attempt: int(r.Attempt),
+		StepAttempt: int(r.StepAttempt), DunningAttempt: int(r.DunningAttempt), PeriodID: r.PeriodID, Currency: r.Currency, InvoiceStatus: r.Status,
+		InvoiceVersion: int(r.InvoiceVersion), TotalMinor: r.TotalMinor, FinalizedAt: r.FinalizedAt,
 	}
-	if err := json.Unmarshal(raw, &s.Snap); err != nil {
+	if r.Number != nil {
+		s.Number = *r.Number
+	}
+	if err := json.Unmarshal(r.Snapshot, &s.Snap); err != nil {
 		return nil, fmt.Errorf("invoice %s snapshot: %w", s.InvoiceID, err)
 	}
-	switch err := tx.QueryRow(ctx, `SELECT retry_hours FROM dunning_settings WHERE tenant_id = $1`, tenantID).Scan(&s.RetryHours); {
+	switch settings, err := q.GetDunningSettings(ctx, tenantID); {
 	case errors.Is(err, pgx.ErrNoRows):
 		s.RetryHours = nil
 	case err != nil:
 		return nil, fmt.Errorf("dunning settings: %w", err)
+	default:
+		s.RetryHours = settings.RetryHours
 	}
 	return &s, nil
 }
@@ -213,67 +213,92 @@ func (e *Engine) handleLoaded(ctx context.Context, tx pgx.Tx, s *saga, ev Event,
 	}
 }
 
-func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, res Result, cause string, commandID *uuid.UUID) error {
-	now := e.cfg.Now()
-	from := s.State
-	next := res.To
-	ctx, span := otel.Tracer("github.com/0furkancolak/quotify/services/billing-svc/saga").Start(ctx, "saga.transition",
-		trace.WithAttributes(attribute.String("saga.id", s.ID.String()), attribute.String("saga.from", string(from)),
-			attribute.String("saga.to", string(next)), attribute.String("saga.cause", strings.SplitN(cause, ":", 2)[0]),
-			attribute.String("quotify.tenant_id", s.TenantID.String())))
-	defer span.End()
+// step is what a transition writes to the saga row.
+type step struct {
+	attempt, stepAttempt, dunning int
+	deadline, nextAttemptAt       *time.Time
+	lastErr                       string
+}
 
-	attempt := s.Attempt
-	var stepAttempt int
-	dunning := s.DunningAttempt
-	var deadline, nextAttemptAt *time.Time
+func (e *Engine) planStep(s *saga, ev Event, res Result, now time.Time) step {
+	st := step{attempt: s.Attempt, dunning: s.DunningAttempt}
 	switch res.Effect {
 	case EffRender, EffCharge, EffChargeDunning, EffQueryStatus, EffRefund, EffNotify:
-		attempt++
-		stepAttempt = 1
+		st.attempt++
+		st.stepAttempt = 1
 		d := now.Add(e.cfg.StepTimeout)
-		deadline = &d
+		st.deadline = &d
 		if res.Effect == EffChargeDunning {
-			dunning++
+			st.dunning++
 		}
 	case EffScheduleDunning:
 		delays := e.dunningDelays(s)
 		at := now.Add(delays[min(s.DunningAttempt, len(delays)-1)]) // the table only schedules while DunningLeft, so delays is not empty
-		nextAttemptAt = &at
+		st.nextAttemptAt = &at
 	}
-	if ev == EvExhausted && next == PaymentUnknown && from == PaymentUnknown {
-		// Parked for the operator: keep the attempt counters, drop the deadline.
-		stepAttempt = s.StepAttempt
-	}
-	lastErr := ""
 	if ev == EvExhausted {
-		lastErr = "step timed out after " + fmt.Sprint(MaxStepAttempts) + " attempts"
+		st.lastErr = "step timed out after " + fmt.Sprint(MaxStepAttempts) + " attempts"
+		if res.To == PaymentUnknown && s.State == PaymentUnknown {
+			// Parked for the operator: keep the attempt counters, drop the deadline.
+			st.stepAttempt = s.StepAttempt
+		}
 	}
-	tag, err := tx.Exec(ctx, `
-		UPDATE invoice_sagas SET state = $1, version = version + 1, attempt = $2, step_attempt = $3, step_deadline = $4,
-		       dunning_attempt = $5, next_attempt_at = $6, last_error = NULLIF($7, ''), updated_at = $8
-		WHERE tenant_id = $9 AND id = $10 AND version = $11 AND state = $12`,
-		string(next), attempt, stepAttempt, deadline, dunning, nextAttemptAt, lastErr, now, s.TenantID, s.ID, s.Version, string(from))
+	return st
+}
+
+func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, res Result, cause string, commandID *uuid.UUID) error {
+	now := e.cfg.Now()
+	from, next := s.State, res.To
+	causeKind := strings.SplitN(cause, ":", 2)[0]
+	ctx, span := otel.Tracer("github.com/0furkancolak/quotify/services/billing-svc/saga").Start(ctx, "saga.transition",
+		trace.WithAttributes(attribute.String("saga.id", s.ID.String()), attribute.String("saga.from", string(from)),
+			attribute.String("saga.to", string(next)), attribute.String("saga.cause", causeKind),
+			attribute.String("quotify.tenant_id", s.TenantID.String())))
+	defer span.End()
+
+	st := e.planStep(s, ev, res, now)
+	if err := e.persistTransition(ctx, tx, s, next, st, cause, commandID, now); err != nil {
+		return err
+	}
+	e.transitions.Add(ctx, 1, metric.WithAttributes(attribute.String("from", string(from)), attribute.String("to", string(next)), attribute.String("cause", causeKind)))
+	s.State, s.Version, s.Attempt, s.StepAttempt, s.DunningAttempt = next, s.Version+1, st.attempt, st.stepAttempt, st.dunning
+
+	if err := e.mirrorInvoiceStatus(ctx, tx, s, from, next); err != nil {
+		return err
+	}
+	if res.Effect != EffNone && res.Effect != EffScheduleDunning {
+		if err := e.issue(ctx, tx, s, res.Effect); err != nil {
+			return err
+		}
+	}
+	return e.announce(ctx, tx, s, next, cause, now)
+}
+
+func (e *Engine) persistTransition(ctx context.Context, tx pgx.Tx, s *saga, next State, st step, cause string, commandID *uuid.UUID, now time.Time) error {
+	q := sqlc.New(tx)
+	n, err := q.TransitionSaga(ctx, sqlc.TransitionSagaParams{
+		State: string(next), Attempt: i32(st.attempt), StepAttempt: i32(st.stepAttempt), StepDeadline: st.deadline, DunningAttempt: i32(st.dunning),
+		NextAttemptAt: st.nextAttemptAt, LastError: st.lastErr, UpdatedAt: now, TenantID: s.TenantID, ID: s.ID, Version: i32(s.Version), FromState: string(s.State),
+	})
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() != 1 {
+	if n != 1 {
 		return fmt.Errorf("saga %s changed concurrently", s.ID)
 	}
-	var seq int
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(max(seq), 0) + 1 FROM saga_events WHERE tenant_id = $1 AND saga_id = $2`, s.TenantID, s.ID).Scan(&seq); err != nil {
+	return appendEvent(ctx, q, s, string(s.State), string(next), cause, commandID, now)
+}
+
+func appendEvent(ctx context.Context, q *sqlc.Queries, s *saga, from, to, cause string, commandID *uuid.UUID, now time.Time) error {
+	seq, err := q.NextSagaEventSeq(ctx, sqlc.NextSagaEventSeqParams{TenantID: s.TenantID, SagaID: s.ID})
+	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause, command_id, at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-		s.TenantID, s.ID, seq, string(from), string(next), cause, commandID, now); err != nil {
-		return err
-	}
-	e.transitions.Add(ctx, 1, metric.WithAttributes(attribute.String("from", string(from)), attribute.String("to", string(next)),
-		attribute.String("cause", strings.SplitN(cause, ":", 2)[0])))
+	return q.InsertSagaEvent(ctx, sqlc.InsertSagaEventParams{TenantID: s.TenantID, SagaID: s.ID, Seq: seq, FromState: from, ToState: to, Cause: cause, CommandID: commandID, At: now})
+}
 
-	s.State, s.Version, s.Attempt, s.StepAttempt, s.DunningAttempt = next, s.Version+1, attempt, stepAttempt, dunning
-
-	// Invoice status mirrors the saga's coarse outcome.
+// mirrorInvoiceStatus sets the invoice's coarse status from the saga's outcome.
+func (e *Engine) mirrorInvoiceStatus(ctx context.Context, tx pgx.Tx, s *saga, from, next State) error {
 	status := ""
 	switch {
 	case next == Paid, from == PdfRendered && next == NotifyRequested:
@@ -283,23 +308,22 @@ func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, r
 	case next == Voided:
 		status = "void"
 	}
-	if status != "" {
-		if _, err := tx.Exec(ctx, `UPDATE invoices SET status = $1 WHERE tenant_id = $2 AND id = $3`, status, s.TenantID, s.InvoiceID); err != nil {
-			return err
-		}
-		s.InvoiceStatus = status
+	if status == "" {
+		return nil
 	}
+	if err := sqlc.New(tx).SetInvoiceStatus(ctx, sqlc.SetInvoiceStatusParams{Status: status, TenantID: s.TenantID, ID: s.InvoiceID}); err != nil {
+		return err
+	}
+	s.InvoiceStatus = status
+	return nil
+}
 
-	if res.Effect != EffNone && res.Effect != EffScheduleDunning {
-		if err := e.issue(ctx, tx, s, res.Effect); err != nil {
-			return err
-		}
-	}
+// announce tells the tenant's endpoints and the invoice topic about the states that are outcomes.
+func (e *Engine) announce(ctx context.Context, tx pgx.Tx, s *saga, next State, cause string, now time.Time) error {
 	if typ := map[State]string{Paid: EventInvoicePaid, Voided: EventInvoiceVoided, Uncollectible: EventInvoiceUncollectible}[next]; typ != "" {
 		// Reaching the state again after a retry is the same occurrence: the key is the invoice.
-		status := s.InvoiceStatus
 		if err := TenantEvent(ctx, tx, s.TenantID, typ, s.InvoiceID.String(), now,
-			InvoiceData(s.InvoiceID, s.CustomerID, s.Snap.CustomerExternalID, s.Number, s.PeriodID, s.Currency, s.TotalMinor, status)); err != nil {
+			InvoiceData(s.InvoiceID, s.CustomerID, s.Snap.CustomerExternalID, s.Number, s.PeriodID, s.Currency, s.TotalMinor, s.InvoiceStatus)); err != nil {
 			return err
 		}
 	}
@@ -315,6 +339,8 @@ func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, r
 	}
 	return nil
 }
+
+func i32(n int) int32 { return int32(n) } //nolint:gosec // attempt counters and versions are small
 
 // dunningDelays are the delays before retry 1..n: the tenant's own when set (hours, or minutes in a sandbox tenant), else the defaults.
 // A tenant that set none gives up on the first declined charge.
@@ -405,12 +431,11 @@ func EnqueueOutbox(ctx context.Context, tx pgx.Tx, tenantID, messageID uuid.UUID
 	// The relay and every consumer continue the trace of the transition that produced the message.
 	kafkax.InjectTrace(ctx, h, otel.GetTextMapPropagator())
 	hdr, _ := json.Marshal(h)
-	if _, err := tx.Exec(ctx, `INSERT INTO outbox (tenant_id, topic, partition_key, payload, headers, message_id)
-		VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (message_id) DO NOTHING`, tenantID, topic, key, payload, hdr, messageID); err != nil {
+	q := sqlc.New(tx)
+	if err := q.InsertOutbox(ctx, sqlc.InsertOutboxParams{TenantID: tenantID, Topic: topic, PartitionKey: key, Payload: payload, Headers: hdr, MessageID: messageID}); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `SELECT pg_notify($1, '')`, outbox.NotifyChannel)
-	return err
+	return q.NotifyOutbox(ctx, outbox.NotifyChannel)
 }
 
 // Fact versions: consumers dedup on (invoice_id, version).

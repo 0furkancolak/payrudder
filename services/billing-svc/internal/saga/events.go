@@ -9,6 +9,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 var tenantEventNS = uuid.MustParse("3b9d6e12-7a40-5c85-91f3-e0b2a8d45c17")
@@ -34,9 +36,7 @@ func TenantEvent(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, key st
 		return err
 	}
 	id := uuid.NewSHA1(tenantEventNS, fmt.Appendf(nil, "%s|%s|%s", tenantID, typ, key))
-	_, err = tx.Exec(ctx, `INSERT INTO tenant_event_outbox (tenant_id, event_id, type, data, occurred_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
-		tenantID, id, typ, b, at)
-	return err
+	return sqlc.New(tx).InsertTenantEvent(ctx, sqlc.InsertTenantEventParams{TenantID: tenantID, EventID: id, Type: typ, Data: b, OccurredAt: at})
 }
 
 // InvoiceData is the data of an invoice event; amounts are strings like in the REST API.

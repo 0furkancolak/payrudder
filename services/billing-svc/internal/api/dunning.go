@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 const (
@@ -30,15 +31,17 @@ func (s *Server) GetDunningSettings(ctx context.Context, _ *billingv1.GetDunning
 	}
 	out := &billingv1.DunningSettings{}
 	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
-		var at time.Time
-		err := tx.QueryRow(ctx, `SELECT retry_hours, updated_at FROM dunning_settings WHERE tenant_id = $1`, ti.ID).Scan(&out.RetryHours, &at)
+		row, err := sqlc.New(tx).GetDunningSettings(ctx, ti.ID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			out.DefaultsInUse = true
 			out.RetryHours = defaultRetryHours(ti.Environment == "sandbox")
 			return nil
 		}
-		out.UpdateTime = timestamppb.New(at)
-		return err
+		if err != nil {
+			return err
+		}
+		out.RetryHours, out.UpdateTime = row.RetryHours, timestamppb.New(row.UpdatedAt)
+		return nil
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
@@ -66,9 +69,8 @@ func (s *Server) SetDunningSettings(ctx context.Context, req *billingv1.SetDunni
 	}
 	out := &billingv1.DunningSettings{RetryHours: hours}
 	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
-		var at time.Time
-		if err := tx.QueryRow(ctx, `INSERT INTO dunning_settings (tenant_id, retry_hours) VALUES ($1, $2)
-			ON CONFLICT (tenant_id) DO UPDATE SET retry_hours = EXCLUDED.retry_hours, updated_at = now() RETURNING updated_at`, ti.ID, hours).Scan(&at); err != nil {
+		at, err := sqlc.New(tx).UpsertDunningSettings(ctx, sqlc.UpsertDunningSettingsParams{TenantID: ti.ID, RetryHours: hours})
+		if err != nil {
 			return err
 		}
 		out.UpdateTime = timestamppb.New(at)

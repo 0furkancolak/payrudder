@@ -14,40 +14,14 @@ import (
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
-type lineRow struct {
-	No          int32
-	Kind        string
-	Description string
-	Meter       *string
-	Qty         *string
-	Scale       *int16
-	UnitLabel   *string
-	Amount      int64
+func (e *Engine) snapshotLines(ctx context.Context, tx pgx.Tx, s *saga) ([]sqlc.ListInvoiceLinesForSnapshotRow, error) {
+	return sqlc.New(tx).ListInvoiceLinesForSnapshot(ctx, sqlc.ListInvoiceLinesForSnapshotParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
 }
 
-func (e *Engine) snapshotLines(ctx context.Context, tx pgx.Tx, s *saga) ([]lineRow, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT line_no, kind, description, meter_code, quantity::text, quantity_scale, unit_label, amount_minor
-		FROM invoice_lines WHERE tenant_id = $1 AND invoice_id = $2 ORDER BY line_no`, s.TenantID, s.InvoiceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []lineRow
-	for rows.Next() {
-		var l lineRow
-		if err := rows.Scan(&l.No, &l.Kind, &l.Description, &l.Meter, &l.Qty, &l.Scale, &l.UnitLabel, &l.Amount); err != nil {
-			return nil, err
-		}
-		out = append(out, l)
-	}
-	return out, rows.Err()
-}
-
-func (e *Engine) invoiceSnapshot(s *saga, lines []lineRow) *commandsv1.InvoiceSnapshot {
+func (e *Engine) invoiceSnapshot(s *saga, lines []sqlc.ListInvoiceLinesForSnapshotRow) *commandsv1.InvoiceSnapshot {
 	snap := &commandsv1.InvoiceSnapshot{
 		InvoiceId: s.InvoiceID.String(), Version: int32(s.InvoiceVersion), Number: s.Number, PeriodId: s.PeriodID, Currency: s.Currency, //nolint:gosec // small
 		CurrencyExponent: int32(s.Snap.CurrencyExponent), //nolint:gosec // 0..3
@@ -57,17 +31,17 @@ func (e *Engine) invoiceSnapshot(s *saga, lines []lineRow) *commandsv1.InvoiceSn
 	}
 	var sub int64
 	for _, l := range lines {
-		ls := &commandsv1.InvoiceLineSnapshot{LineNo: l.No, Kind: l.Kind, Description: l.Description, AmountMinor: l.Amount}
-		if l.Qty != nil && l.Scale != nil {
-			if units, err := parseUnits(*l.Qty); err == nil {
-				ls.Quantity = quantity.FormatUnits(units, int(*l.Scale))
+		ls := &commandsv1.InvoiceLineSnapshot{LineNo: l.LineNo, Kind: l.Kind, Description: l.Description, AmountMinor: l.AmountMinor}
+		if l.Quantity != "" && l.QuantityScale != nil {
+			if units, err := parseUnits(l.Quantity); err == nil {
+				ls.Quantity = quantity.FormatUnits(units, int(*l.QuantityScale))
 			}
 		}
 		if l.UnitLabel != nil {
 			ls.UnitLabel = *l.UnitLabel
 		}
 		if l.Kind != "TAX" {
-			sub += l.Amount // the subtotal is before tax
+			sub += l.AmountMinor // the subtotal is before tax
 		}
 		snap.Lines = append(snap.Lines, ls)
 	}
@@ -79,11 +53,6 @@ func parseUnits(s string) (int64, error) {
 	var v int64
 	_, err := fmt.Sscan(s, &v)
 	return v, err
-}
-
-// Due is a saga whose step deadline or dunning time has passed.
-type Due struct {
-	TenantID, SagaID uuid.UUID
 }
 
 // SweepResult counts what a sweep did.
@@ -98,14 +67,24 @@ type SweepResult struct {
 func (e *Engine) Sweep(ctx context.Context, pool *pgxpool.Pool, limit int) (SweepResult, error) {
 	var res SweepResult
 	now := e.cfg.Now()
-	deadlines, err := e.due(ctx, pool, `SELECT tenant_id, id FROM invoice_sagas WHERE step_deadline IS NOT NULL AND step_deadline < $1
-		ORDER BY step_deadline LIMIT $2`, now, limit)
-	if err != nil {
+	if err := e.sweepDeadlines(ctx, pool, now, limit, &res); err != nil {
 		return res, err
 	}
-	for _, d := range deadlines {
+	err := e.sweepDunning(ctx, pool, now, limit, &res)
+	return res, err
+}
+
+func (e *Engine) sweepDeadlines(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
+	q := sqlc.New(pool)
+	due, err := q.ListSagasPastDeadline(ctx, sqlc.ListSagasPastDeadlineParams{Now: now, RowLimit: i32(limit)})
+	if err != nil {
+		return err
+	}
+	for _, d := range due {
 		err := pgxx.InTx(ctx, pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-			s, err := e.lockDue(ctx, tx, d, `step_deadline IS NOT NULL AND step_deadline < $3`, now)
+			s, err := e.lockDue(ctx, tx, d.TenantID, func(q *sqlc.Queries) (uuid.UUID, error) {
+				return q.LockSagaPastDeadline(ctx, sqlc.LockSagaPastDeadlineParams{TenantID: d.TenantID, ID: d.ID, Now: now})
+			})
 			if err != nil || s == nil {
 				return err
 			}
@@ -123,17 +102,23 @@ func (e *Engine) Sweep(ctx context.Context, pool *pgxpool.Pool, limit int) (Swee
 			return nil
 		})
 		if err != nil {
-			return res, err
+			return err
 		}
 	}
-	dunning, err := e.due(ctx, pool, `SELECT tenant_id, id FROM invoice_sagas WHERE state = 'PAYMENT_DECLINED' AND next_attempt_at <= $1
-		ORDER BY next_attempt_at LIMIT $2`, now, limit)
+	return nil
+}
+
+func (e *Engine) sweepDunning(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
+	q := sqlc.New(pool)
+	due, err := q.ListSagasDueForDunning(ctx, sqlc.ListSagasDueForDunningParams{Now: now, RowLimit: i32(limit)})
 	if err != nil {
-		return res, err
+		return err
 	}
-	for _, d := range dunning {
+	for _, d := range due {
 		err := pgxx.InTx(ctx, pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-			s, err := e.lockDue(ctx, tx, d, `state = 'PAYMENT_DECLINED' AND next_attempt_at <= $3`, now)
+			s, err := e.lockDue(ctx, tx, d.TenantID, func(q *sqlc.Queries) (uuid.UUID, error) {
+				return q.LockSagaDueForDunning(ctx, sqlc.LockSagaDueForDunningParams{TenantID: d.TenantID, ID: d.ID, Now: now})
+			})
 			if err != nil || s == nil {
 				return err
 			}
@@ -144,40 +129,22 @@ func (e *Engine) Sweep(ctx context.Context, pool *pgxpool.Pool, limit int) (Swee
 			return err
 		})
 		if err != nil {
-			return res, err
+			return err
 		}
 	}
-	return res, nil
+	return nil
 }
 
-func (e *Engine) due(ctx context.Context, pool *pgxpool.Pool, q string, now time.Time, limit int) ([]Due, error) {
-	rows, err := pool.Query(ctx, q, now, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []Due
-	for rows.Next() {
-		var d Due
-		if err := rows.Scan(&d.TenantID, &d.SagaID); err != nil {
-			return nil, err
-		}
-		out = append(out, d)
-	}
-	return out, rows.Err()
-}
-
-// lockDue re-reads a due saga under FOR UPDATE SKIP LOCKED, re-checking the condition: another pod may have handled it.
-func (e *Engine) lockDue(ctx context.Context, tx pgx.Tx, d Due, cond string, now time.Time) (*saga, error) {
-	var id uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT id FROM invoice_sagas WHERE tenant_id = $1 AND id = $2 AND `+cond+` FOR UPDATE SKIP LOCKED`, d.TenantID, d.SagaID, now).Scan(&id)
+// lockDue re-reads a due saga under FOR UPDATE SKIP LOCKED, re-checking the condition the lock query carries: another pod may have handled it.
+func (e *Engine) lockDue(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, lock func(*sqlc.Queries) (uuid.UUID, error)) (*saga, error) {
+	id, err := lock(sqlc.New(tx))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return e.load(ctx, tx, d.TenantID, d.SagaID)
+	return e.load(ctx, tx, tenantID, id)
 }
 
 // reissue publishes the command of the saga's current step again with a fresh attempt (a fresh command id; the PSP
@@ -201,32 +168,29 @@ func (e *Engine) reissue(ctx context.Context, tx pgx.Tx, s *saga, now time.Time)
 	s.Attempt++
 	s.StepAttempt++
 	deadline := now.Add(e.cfg.StepTimeout)
-	if _, err := tx.Exec(ctx, `UPDATE invoice_sagas SET attempt = $1, step_attempt = $2, step_deadline = $3, version = version + 1, updated_at = $4
-		WHERE tenant_id = $5 AND id = $6`, s.Attempt, s.StepAttempt, deadline, now, s.TenantID, s.ID); err != nil {
+	q := sqlc.New(tx)
+	if err := q.ReissueSaga(ctx, sqlc.ReissueSagaParams{Attempt: i32(s.Attempt), StepAttempt: i32(s.StepAttempt), StepDeadline: deadline, UpdatedAt: now, TenantID: s.TenantID, ID: s.ID}); err != nil {
 		return err
 	}
 	s.Version++
 	if err := e.issue(ctx, tx, s, eff); err != nil {
 		return err
 	}
-	var seq int
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(max(seq), 0) + 1 FROM saga_events WHERE tenant_id = $1 AND saga_id = $2`, s.TenantID, s.ID).Scan(&seq); err != nil {
+	seq, err := q.NextSagaEventSeq(ctx, sqlc.NextSagaEventSeqParams{TenantID: s.TenantID, SagaID: s.ID})
+	if err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause, at) VALUES ($1,$2,$3,$4,$4,'timeout:reissue',$5)`,
-		s.TenantID, s.ID, seq, string(s.State), now)
-	return err
+	return q.InsertSagaReissueEvent(ctx, sqlc.InsertSagaReissueEventParams{TenantID: s.TenantID, SagaID: s.ID, Seq: seq, State: string(s.State), At: now})
 }
 
 // Start creates the saga of a finalized invoice and issues its first command (the PDF render) in tx.
 func (e *Engine) Start(ctx context.Context, tx pgx.Tx, tenantID, invoiceID uuid.UUID) (uuid.UUID, error) {
 	sagaID := uuid.NewSHA1(commandNS, fmt.Appendf(nil, "saga|%s", invoiceID))
-	tag, err := tx.Exec(ctx, `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'FINALIZED',1)
-		ON CONFLICT (tenant_id, invoice_id) DO NOTHING`, tenantID, sagaID, invoiceID)
+	n, err := sqlc.New(tx).InsertSaga(ctx, sqlc.InsertSagaParams{TenantID: tenantID, ID: sagaID, InvoiceID: invoiceID})
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if tag.RowsAffected() == 0 {
+	if n == 0 {
 		return sagaID, nil // already started: idempotent
 	}
 	if _, err := e.Handle(ctx, tx, tenantID, sagaID, EvStart, "finalize", nil); err != nil {
@@ -264,5 +228,3 @@ func ReplyEvent(r *commandsv1.ReplyEnvelope) (Event, string, bool) {
 	}
 	return "", "", false
 }
-
-var _ = rabbitx.ReplyQueue
