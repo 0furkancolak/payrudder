@@ -23,6 +23,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/blob"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/quotify/services/assets-svc/internal/store/sqlc"
 )
 
 // Store is the object storage the jobs use (*blob.Store).
@@ -79,68 +80,16 @@ func (j *Jobs) SweepExpired(ctx context.Context, limit int) (int, error) {
 	if err := j.init(); err != nil {
 		return 0, err
 	}
-	rows, err := j.DB.Query(ctx, `SELECT tenant_id, id FROM upload_sessions WHERE status = 'OPEN' AND expires_at < $1 ORDER BY expires_at LIMIT $2`, j.Now(), limit)
+	due, err := sqlc.New(j.DB).ListExpiredSessions(ctx, sqlc.ListExpiredSessionsParams{Now: j.Now(), Batch: int32(limit)}) //nolint:gosec // a small batch size
 	if err != nil {
-		return 0, err
-	}
-	type key struct{ tenant, id uuid.UUID }
-	var due []key
-	for rows.Next() {
-		var k key
-		if err := rows.Scan(&k.tenant, &k.id); err != nil {
-			rows.Close()
-			return 0, err
-		}
-		due = append(due, k)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return 0, err
 	}
 	done := 0
 	for _, k := range due {
-		err := pgxx.InTx(ctx, j.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
-			var st string
-			err := tx.QueryRow(ctx, `SELECT status FROM upload_sessions WHERE tenant_id = $1 AND id = $2 FOR UPDATE SKIP LOCKED`, k.tenant, k.id).Scan(&st)
-			if errors.Is(err, pgx.ErrNoRows) || (err == nil && st != "OPEN") {
-				return nil // another pod took it
-			}
-			if err != nil {
-				return err
-			}
-			arows, err := tx.Query(ctx, `SELECT id, object_key, s3_upload_id FROM assets WHERE tenant_id = $1 AND session_id = $2 AND status IN ('PENDING','UPLOADING')`, k.tenant, k.id)
-			if err != nil {
-				return err
-			}
-			type pending struct {
-				id       uuid.UUID
-				key      string
-				uploadID *string
-			}
-			var as []pending
-			for arows.Next() {
-				var p pending
-				if err := arows.Scan(&p.id, &p.key, &p.uploadID); err != nil {
-					arows.Close()
-					return err
-				}
-				as = append(as, p)
-			}
-			arows.Close()
-			for _, p := range as {
-				if p.uploadID != nil {
-					if err := j.Store.AbortMultipart(ctx, p.key, *p.uploadID); err != nil {
-						return err
-					}
-				}
-				if _, err := tx.Exec(ctx, `UPDATE assets SET status = 'ABORTED', s3_upload_id = NULL WHERE tenant_id = $1 AND id = $2`, k.tenant, p.id); err != nil {
-					return err
-				}
-			}
-			_, err = tx.Exec(ctx, `UPDATE upload_sessions SET status = 'EXPIRED' WHERE tenant_id = $1 AND id = $2`, k.tenant, k.id)
+		swept, err := j.sweepSession(ctx, k)
+		if swept {
 			done++
-			return err
-		})
+		}
 		if err != nil {
 			return done, err
 		}
@@ -149,90 +98,110 @@ func (j *Jobs) SweepExpired(ctx context.Context, limit int) (int, error) {
 	return done, nil
 }
 
+// sweepSession expires one session under its row lock; it reports false when another pod took it.
+func (j *Jobs) sweepSession(ctx context.Context, k sqlc.ListExpiredSessionsRow) (swept bool, err error) {
+	err = pgxx.InTx(ctx, j.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		st, err := q.LockOpenSessionStatus(ctx, sqlc.LockOpenSessionStatusParams(k))
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && st != "OPEN") {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		pending, err := q.ListUploadableSessionObjects(ctx, sqlc.ListUploadableSessionObjectsParams{TenantID: k.TenantID, SessionID: k.ID})
+		if err != nil {
+			return err
+		}
+		for _, p := range pending {
+			if p.S3UploadID != nil {
+				if err := j.Store.AbortMultipart(ctx, p.ObjectKey, *p.S3UploadID); err != nil {
+					return err
+				}
+			}
+			if err := q.AbortTenantAsset(ctx, sqlc.AbortTenantAssetParams{TenantID: k.TenantID, ID: p.ID}); err != nil {
+				return err
+			}
+		}
+		swept = true
+		return q.ExpireSession(ctx, sqlc.ExpireSessionParams(k))
+	})
+	return swept, err
+}
+
 // VerifyUploads checks direct uploads that became READY: the content must match the declared type (sniffed from the
 // first bytes), and a declared sha256 must match the object's. A mismatch rejects (type) or marks CORRUPT (hash).
 func (j *Jobs) VerifyUploads(ctx context.Context, limit int) (int, error) {
 	if err := j.init(); err != nil {
 		return 0, err
 	}
-	rows, err := j.DB.Query(ctx, `SELECT tenant_id, id, object_key, content_type, size_bytes, sha256 FROM assets
-		WHERE status = 'READY' AND verified_at IS NULL AND session_id IS NOT NULL ORDER BY created_at LIMIT $1`, limit)
+	items, err := sqlc.New(j.DB).ListUnverifiedAssets(ctx, int32(limit)) //nolint:gosec // a small batch size
 	if err != nil {
 		return 0, err
 	}
-	type item struct {
-		tenant, id  uuid.UUID
-		key, ct     string
-		size        *int64
-		declaredSHA []byte
-	}
-	var items []item
-	for rows.Next() {
-		var it item
-		if err := rows.Scan(&it.tenant, &it.id, &it.key, &it.ct, &it.size, &it.declaredSHA); err != nil {
-			rows.Close()
-			return 0, err
-		}
-		items = append(items, it)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return 0, err
-	}
 	for _, it := range items {
-		result, reason := "ok", ""
-		head, err := j.Store.GetRange(ctx, it.key, 512)
-		switch {
-		case errors.Is(err, blob.ErrNotFound):
-			result, reason = "missing", "OBJECT_MISSING"
-		case err != nil:
-			return 0, err
-		case !policy.Sniff(it.ct, head):
-			result, reason = "type_mismatch", policy.ContentTypeMismatch
-		case len(it.declaredSHA) == 32:
-			body, err := j.Store.Open(ctx, it.key)
-			if err != nil {
-				return 0, err
-			}
-			h := sha256.New()
-			_, cerr := io.Copy(h, body)
-			_ = body.Close()
-			if cerr != nil {
-				return 0, cerr
-			}
-			if !bytes.Equal(h.Sum(nil), it.declaredSHA) {
-				result, reason = "corrupt", "SHA256_MISMATCH"
-			}
-		}
-		err = pgxx.InTx(ctx, j.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
-			switch result {
-			case "ok":
-				_, err := tx.Exec(ctx, `UPDATE assets SET verified_at = $3 WHERE tenant_id = $1 AND id = $2`, it.tenant, it.id, j.Now())
-				return err
-			case "corrupt":
-				_, err := tx.Exec(ctx, `UPDATE assets SET status = 'CORRUPT', reject_reason = $3, verified_at = $4 WHERE tenant_id = $1 AND id = $2`, it.tenant, it.id, reason, j.Now())
-				return err
-			default: // the content is not what was declared (or gone): the file is refused and its bytes leave the quota
-				if result == "type_mismatch" {
-					if err := j.Store.Delete(ctx, it.key); err != nil {
-						return err
-					}
-				}
-				if it.size != nil {
-					if _, err := tx.Exec(ctx, `UPDATE storage_usage SET bytes_used = GREATEST(bytes_used - $2, 0) WHERE tenant_id = $1`, it.tenant, *it.size); err != nil {
-						return err
-					}
-				}
-				_, err := tx.Exec(ctx, `UPDATE assets SET status = 'REJECTED', reject_reason = $3, verified_at = $4 WHERE tenant_id = $1 AND id = $2`, it.tenant, it.id, reason, j.Now())
-				return err
-			}
-		})
+		result, reason, err := j.inspect(ctx, it)
 		if err != nil {
+			return 0, err
+		}
+		if err := j.recordVerification(ctx, it, result, reason); err != nil {
 			return 0, err
 		}
 		j.verified.Add(ctx, 1, metric.WithAttributes(attribute.String("result", result)))
 	}
 	return len(items), nil
+}
+
+// inspect checks one object and returns the verdict (ok, missing, type_mismatch or corrupt) with the reject reason.
+func (j *Jobs) inspect(ctx context.Context, it sqlc.ListUnverifiedAssetsRow) (result, reason string, err error) {
+	head, err := j.Store.GetRange(ctx, it.ObjectKey, 512)
+	switch {
+	case errors.Is(err, blob.ErrNotFound):
+		return "missing", "OBJECT_MISSING", nil
+	case err != nil:
+		return "", "", err
+	case !policy.Sniff(it.ContentType, head):
+		return "type_mismatch", policy.ContentTypeMismatch, nil
+	case len(it.Sha256) == 32:
+		body, err := j.Store.Open(ctx, it.ObjectKey)
+		if err != nil {
+			return "", "", err
+		}
+		h := sha256.New()
+		_, cerr := io.Copy(h, body)
+		_ = body.Close()
+		if cerr != nil {
+			return "", "", cerr
+		}
+		if !bytes.Equal(h.Sum(nil), it.Sha256) {
+			return "corrupt", "SHA256_MISMATCH", nil
+		}
+	}
+	return "ok", "", nil
+}
+
+func (j *Jobs) recordVerification(ctx context.Context, it sqlc.ListUnverifiedAssetsRow, result, reason string) error {
+	return pgxx.InTx(ctx, j.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		switch result {
+		case "ok":
+			return q.MarkAssetVerified(ctx, sqlc.MarkAssetVerifiedParams{TenantID: it.TenantID, ID: it.ID, VerifiedAt: j.Now()})
+		case "corrupt":
+			return q.MarkAssetCorrupt(ctx, sqlc.MarkAssetCorruptParams{TenantID: it.TenantID, ID: it.ID, Reason: reason, VerifiedAt: j.Now()})
+		default: // the content is not what was declared (or gone): the file is refused and its bytes leave the quota
+			if result == "type_mismatch" {
+				if err := j.Store.Delete(ctx, it.ObjectKey); err != nil {
+					return err
+				}
+			}
+			if it.SizeBytes != nil {
+				if err := q.ReleaseTenantStorage(ctx, sqlc.ReleaseTenantStorageParams{TenantID: it.TenantID, Size: *it.SizeBytes}); err != nil {
+					return err
+				}
+			}
+			return q.RejectVerifiedAsset(ctx, sqlc.RejectVerifiedAssetParams{TenantID: it.TenantID, ID: it.ID, Reason: reason, VerifiedAt: j.Now()})
+		}
+	})
 }
 
 // ReconcileOrphans deletes objects under {tenant}/assets/ that have no asset row and are older than OrphanAge (an upload
@@ -245,45 +214,10 @@ func (j *Jobs) ReconcileOrphans(ctx context.Context) (int, error) {
 	deleted := 0
 	var batch []string
 	flush := func() error {
-		if len(batch) == 0 {
-			return nil
-		}
-		ids := make([]uuid.UUID, 0, len(batch))
-		byID := map[uuid.UUID]string{}
-		for _, k := range batch {
-			parts := strings.Split(k, "/")
-			if len(parts) != 3 || parts[1] != "assets" {
-				continue
-			}
-			id, err := uuid.Parse(parts[2])
-			if err != nil {
-				continue
-			}
-			ids = append(ids, id)
-			byID[id] = k
-		}
-		rows, err := j.DB.Query(ctx, `SELECT id FROM assets WHERE id = ANY($1)`, ids)
-		if err != nil {
-			return err
-		}
-		for rows.Next() {
-			var id uuid.UUID
-			if err := rows.Scan(&id); err != nil {
-				rows.Close()
-				return err
-			}
-			delete(byID, id)
-		}
-		rows.Close()
-		for _, k := range byID {
-			if err := j.Store.Delete(ctx, k); err != nil {
-				return err
-			}
-			deleted++
-			j.orphans.Add(ctx, 1)
-		}
+		n, err := j.deleteOrphans(ctx, batch)
+		deleted += n
 		batch = batch[:0]
-		return rows.Err()
+		return err
 	}
 	err := j.Store.Keys(ctx, "", func(key string, modified time.Time) error {
 		if modified.After(cutoff) {
@@ -299,6 +233,43 @@ func (j *Jobs) ReconcileOrphans(ctx context.Context) (int, error) {
 		return deleted, err
 	}
 	return deleted, flush()
+}
+
+// deleteOrphans deletes the objects of keys that have no asset row and returns how many it deleted.
+func (j *Jobs) deleteOrphans(ctx context.Context, keys []string) (int, error) {
+	if len(keys) == 0 {
+		return 0, nil
+	}
+	ids := make([]uuid.UUID, 0, len(keys))
+	byID := map[uuid.UUID]string{}
+	for _, k := range keys {
+		parts := strings.Split(k, "/")
+		if len(parts) != 3 || parts[1] != "assets" {
+			continue
+		}
+		id, err := uuid.Parse(parts[2])
+		if err != nil {
+			continue
+		}
+		ids = append(ids, id)
+		byID[id] = k
+	}
+	known, err := sqlc.New(j.DB).ListExistingAssetIDs(ctx, ids)
+	if err != nil {
+		return 0, err
+	}
+	for _, id := range known {
+		delete(byID, id)
+	}
+	deleted := 0
+	for _, k := range byID {
+		if err := j.Store.Delete(ctx, k); err != nil {
+			return deleted, err
+		}
+		deleted++
+		j.orphans.Add(ctx, 1)
+	}
+	return deleted, nil
 }
 
 // Run runs the jobs on their intervals until ctx is done.
