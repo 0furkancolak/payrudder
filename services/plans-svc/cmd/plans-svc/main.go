@@ -15,9 +15,11 @@ import (
 	"time"
 	_ "time/tzdata" // tenant time zones must load in distroless images
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	grpchealth "google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
@@ -122,57 +124,121 @@ func run() error {
 		_ = providers.Shutdown(c)
 	}()
 
+	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
+}
+
+// migrate applies the migrations when asked to; done reports that the process should exit afterwards (QUOTIFY_MIGRATE_ONLY).
+func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
 	if cfg.MigrateOnStart {
 		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return err
+			return false, err
 		}
 	}
 	if cfg.MigrateOnly {
 		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
-		return nil
+		return true, nil
 	}
-	appPool, err := pgxx.NewPool(ctx, cfg.PGAppDSN)
+	return false, nil
+}
+
+// openPools opens the application-role and system-role Postgres pools.
+func openPools(ctx context.Context, cfg *Config) (appPool, systemPool *pgxpool.Pool, err error) {
+	appPool, err = pgxx.NewPool(ctx, cfg.PGAppDSN)
+	if err != nil {
+		return nil, nil, err
+	}
+	systemPool, err = pgxx.NewPool(ctx, cfg.PGSystemDSN)
+	if err != nil {
+		appPool.Close()
+		return nil, nil, err
+	}
+	return appPool, systemPool, nil
+}
+
+// start wires plans-svc's dependencies and runs it until ctx is cancelled.
+func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler) error {
+	if done, err := migrate(ctx, cfg, log); err != nil || done {
+		return err
+	}
+	appPool, systemPool, err := openPools(ctx, cfg)
 	if err != nil {
 		return err
 	}
 	defer appPool.Close()
-	systemPool, err := pgxx.NewPool(ctx, cfg.PGSystemDSN)
+	defer systemPool.Close()
+
+	hh.AddCheck("postgres", appPool.Ping)
+	evictor, closeRedis, err := newEvictor(cfg, log)
 	if err != nil {
 		return err
 	}
-	defer systemPool.Close()
+	defer closeRedis()
+	relay, closeRelay, err := newRelay(cfg, log, systemPool, hh)
+	if err != nil {
+		return err
+	}
+	defer closeRelay()
 
-	var evictor admin.CacheEvictor
-	hh := health.New(reg, 2*time.Second)
-	hh.AddCheck("postgres", appPool.Ping)
-	if cfg.RedisURL != "" {
-		opts, err := redis.ParseURL(cfg.RedisURL)
-		if err != nil {
-			return fmt.Errorf("QUOTIFY_REDIS_URL: %w", err)
-		}
-		rc := redis.NewClient(opts)
-		defer func() { _ = rc.Close() }()
-		evictor = redisEvictor{c: rc}
-	} else {
+	srv, grpcHealth, box, err := newGRPCServer(cfg, log, appPool, systemPool, evictor)
+	if err != nil {
+		return err
+	}
+	lis, err := net.Listen("tcp", cfg.GRPCAddr)
+	if err != nil {
+		return err
+	}
+	w := &workers{cfg: cfg, log: log, pool: systemPool, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis}
+	return w.run(ctx)
+}
+
+// newEvictor connects to Redis for gateway API-key cache eviction; without QUOTIFY_REDIS_URL it returns a nil evictor.
+// The returned func releases the connection.
+func newEvictor(cfg *Config, log *slog.Logger) (admin.CacheEvictor, func(), error) {
+	if cfg.RedisURL == "" {
 		log.Warn("QUOTIFY_REDIS_URL unset: revoked keys stay valid in the gateway cache until its TTL")
+		return nil, func() {}, nil
 	}
+	opts, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("QUOTIFY_REDIS_URL: %w", err)
+	}
+	rc := redis.NewClient(opts)
+	return redisEvictor{c: rc}, func() { _ = rc.Close() }, nil
+}
 
-	var relay *outbox.Relay
-	if len(cfg.KafkaBrokers) > 0 {
-		producer, err := kafkax.NewProducer(cfg.KafkaBrokers)
-		if err != nil {
-			return err
-		}
-		defer producer.Close()
-		hh.AddCheck("kafka", producer.Ping)
-		if relay, err = outbox.NewRelay(systemPool, outbox.KafkaSink{Client: producer},
-			outbox.Config{Workers: cfg.RelayWorkers, BatchSize: cfg.RelayBatchSize}, log); err != nil {
-			return err
-		}
-	} else {
+// newRelay builds the outbox relay and registers its Kafka readiness check; without QUOTIFY_KAFKA_BROKERS it returns a nil relay.
+// The returned func closes the Kafka producer.
+func newRelay(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, hh *health.Handler) (*outbox.Relay, func(), error) {
+	if len(cfg.KafkaBrokers) == 0 {
 		log.Warn("QUOTIFY_KAFKA_BROKERS unset: entitlement changes stay in the outbox and limits-svc will not see them")
+		return nil, func() {}, nil
 	}
+	producer, err := kafkax.NewProducer(cfg.KafkaBrokers)
+	if err != nil {
+		return nil, nil, err
+	}
+	hh.AddCheck("kafka", producer.Ping)
+	relay, err := outbox.NewRelay(systemPool, outbox.KafkaSink{Client: producer},
+		outbox.Config{Workers: cfg.RelayWorkers, BatchSize: cfg.RelayBatchSize}, log)
+	if err != nil {
+		producer.Close()
+		return nil, nil, err
+	}
+	return relay, producer.Close, nil
+}
 
+// newSecretBox opens the box that seals webhook signing secrets; without QUOTIFY_SECRETS_KEY it returns nil.
+func newSecretBox(cfg *Config, log *slog.Logger) (*secretbox.Box, error) {
+	if cfg.SecretsKey == "" {
+		log.Warn("QUOTIFY_SECRETS_KEY is not set: tenants cannot register webhook endpoints")
+		return nil, nil
+	}
+	key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
+	return secretbox.New(key)
+}
+
+// newGRPCServer builds the gRPC server with the plans, webhook and admin services registered.
+func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor admin.CacheEvictor) (*grpc.Server, *grpchealth.Server, *secretbox.Box, error) {
 	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
 		Logger: log, Reflection: cfg.Env == config.EnvLocal,
 		Extra: []grpc.ServerOption{
@@ -182,44 +248,52 @@ func run() error {
 	})
 	plansSrv := grpcapi.New(appPool, log)
 	plansv1.RegisterPlansServiceServer(srv, plansSrv)
-	var box *secretbox.Box
-	if cfg.SecretsKey != "" {
-		key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
-		if box, err = secretbox.New(key); err != nil {
-			return err
-		}
-	} else {
-		log.Warn("QUOTIFY_SECRETS_KEY is not set: tenants cannot register webhook endpoints")
+	box, err := newSecretBox(cfg, log)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, cfg.WebhookAllowPrivate))
 	plansv1.RegisterAdminServiceServer(srv, admin.New(systemPool, evictor, cfg.AllowedEnvs, log))
+	return srv, grpcHealth, box, nil
+}
 
-	lis, err := net.Listen("tcp", cfg.GRPCAddr)
-	if err != nil {
-		return err
-	}
+// workers are the long-running parts of plans-svc: the outbox relay, the webhook dispatcher and the gRPC server.
+type workers struct {
+	cfg        *Config
+	log        *slog.Logger
+	pool       *pgxpool.Pool
+	relay      *outbox.Relay  // nil without Kafka
+	box        *secretbox.Box // nil without a secrets key
+	health     *health.Handler
+	srv        *grpc.Server
+	grpcHealth *grpchealth.Server
+	lis        net.Listener
+}
+
+// run starts everything and blocks until ctx is cancelled or one of them fails, then drains the gRPC server.
+func (w *workers) run(ctx context.Context) error {
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
-	if relay != nil {
-		g.Go(func() error { return relay.Run(gctx) })
+	g.Go(func() error { return health.Serve(gctx, w.cfg.MetricsAddr, w.health) })
+	if w.relay != nil {
+		g.Go(func() error { return w.relay.Run(gctx) })
 	}
-	if box != nil {
-		disp := &webhooks.Dispatcher{Pool: systemPool, Box: box, Client: safehttp.NewClient(10*time.Second, cfg.WebhookAllowPrivate), Log: log}
+	if w.box != nil {
+		disp := &webhooks.Dispatcher{Pool: w.pool, Box: w.box, Client: safehttp.NewClient(10*time.Second, w.cfg.WebhookAllowPrivate), Log: w.log}
 		g.Go(func() error { return disp.Run(gctx) })
 	}
 	g.Go(func() error {
-		log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr, "environments", cfg.AllowedEnvs)
-		return srv.Serve(lis)
+		w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr, "environments", w.cfg.AllowedEnvs)
+		return w.srv.Serve(w.lis)
 	})
 	g.Go(func() error {
 		<-gctx.Done()
-		grpcHealth.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
-		srv.GracefulStop()
+		w.grpcHealth.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
+		w.srv.GracefulStop()
 		return nil
 	})
 	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
-	log.Info("stopped")
+	w.log.Info("stopped")
 	return nil
 }

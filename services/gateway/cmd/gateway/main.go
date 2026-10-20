@@ -113,84 +113,101 @@ func run() error {
 	rdb := redis.NewClient(opts)
 	defer func() { _ = rdb.Close() }()
 
-	plansConn, err := grpcx.NewClient(cfg.PlansAddr,
-		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()),
-		grpc.WithChainStreamInterceptor(tenant.StreamClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("plans-svc client: %w", err)
-	}
-	defer func() { _ = plansConn.Close() }()
-	adminClient := plansv1.NewAdminServiceClient(plansConn)
-
-	ingestConn, err := grpcx.NewClient(cfg.IngestAddr,
-		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("ingest-svc client: %w", err)
-	}
-	defer func() { _ = ingestConn.Close() }()
-
-	aggConn, err := grpcx.NewClient(cfg.AggregatorAddr,
-		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("aggregator client: %w", err)
-	}
-	defer func() { _ = aggConn.Close() }()
-
-	limitsConn, err := grpcx.NewClient(cfg.LimitsAddr,
-		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("limits-svc client: %w", err)
-	}
-	defer func() { _ = limitsConn.Close() }()
-
-	billingConn, err := grpcx.NewClient(cfg.BillingAddr,
-		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("billing-svc client: %w", err)
-	}
-	defer func() { _ = billingConn.Close() }()
-
-	analyticsConn, err := grpcx.NewClient(cfg.AnalyticsAddr,
-		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("analytics-svc client: %w", err)
-	}
-	defer func() { _ = analyticsConn.Close() }()
-
-	assetsConn, err := grpcx.NewClient(cfg.AssetsAddr,
-		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()),
-		grpc.WithChainStreamInterceptor(tenant.StreamClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("assets-svc client: %w", err)
-	}
-	defer func() { _ = assetsConn.Close() }()
-
-	authn, err := auth.New(auth.NewRedisCache(rdb), auth.AdminResolver{Client: adminClient}, cfg.AllowedEnvs, log)
+	up, err := dialUpstreams(&cfg)
 	if err != nil {
 		return err
+	}
+	defer up.close()
+
+	api, err := newAPI(&cfg, log, rdb, up)
+	if err != nil {
+		return err
+	}
+	hh := health.New(reg, 2*time.Second)
+	addReadinessChecks(hh, up)
+	return serve(ctx, &cfg, log, api, hh)
+}
+
+// upstreams are the gateway's gRPC connections, one per backend service.
+type upstreams struct {
+	plans, ingest, aggregator, limits, billing, analytics, assets *grpc.ClientConn
+}
+
+// dialUpstreams connects to every backend; on failure it closes the connections already made.
+func dialUpstreams(cfg *Config) (u *upstreams, err error) {
+	u = &upstreams{}
+	defer func() {
+		if err != nil {
+			u.close()
+		}
+	}()
+	unary := grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor())
+	stream := grpc.WithChainStreamInterceptor(tenant.StreamClientInterceptor())
+	targets := []struct {
+		dst  **grpc.ClientConn
+		name string
+		addr string
+		opts []grpc.DialOption
+	}{
+		{&u.plans, "plans-svc", cfg.PlansAddr, []grpc.DialOption{unary, stream}},
+		{&u.ingest, "ingest-svc", cfg.IngestAddr, []grpc.DialOption{unary}},
+		{&u.aggregator, "aggregator", cfg.AggregatorAddr, []grpc.DialOption{unary}},
+		{&u.limits, "limits-svc", cfg.LimitsAddr, []grpc.DialOption{unary}},
+		{&u.billing, "billing-svc", cfg.BillingAddr, []grpc.DialOption{unary}},
+		{&u.analytics, "analytics-svc", cfg.AnalyticsAddr, []grpc.DialOption{unary}},
+		{&u.assets, "assets-svc", cfg.AssetsAddr, []grpc.DialOption{unary, stream}},
+	}
+	for _, t := range targets {
+		conn, dialErr := grpcx.NewClient(t.addr, t.opts...)
+		if dialErr != nil {
+			return u, fmt.Errorf("%s client: %w", t.name, dialErr)
+		}
+		*t.dst = conn
+	}
+	return u, nil
+}
+
+// close closes the connections that were opened, in reverse dial order.
+func (u *upstreams) close() {
+	for _, c := range []*grpc.ClientConn{u.assets, u.analytics, u.billing, u.limits, u.aggregator, u.ingest, u.plans} {
+		if c != nil {
+			_ = c.Close()
+		}
+	}
+}
+
+// newAPI wires auth, the rate limiter and the backend clients into the HTTP handler.
+func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*httpapi.Server, error) {
+	adminClient := plansv1.NewAdminServiceClient(up.plans)
+	authn, err := auth.New(auth.NewRedisCache(rdb), auth.AdminResolver{Client: adminClient}, cfg.AllowedEnvs, log)
+	if err != nil {
+		return nil, err
 	}
 	limiter, err := ratelimit.NewLimiter(rdb, cfg.Replicas, log)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var paymentsURL *url.URL
 	if cfg.PaymentsURL != "" {
 		if paymentsURL, err = url.Parse(cfg.PaymentsURL); err != nil {
-			return fmt.Errorf("QUOTIFY_PAYMENTS_URL: %w", err)
+			return nil, fmt.Errorf("QUOTIFY_PAYMENTS_URL: %w", err)
 		}
 	}
-	api := httpapi.New(httpapi.Deps{
-		Plans: plansv1.NewPlansServiceClient(plansConn), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(plansConn), Ingest: ingestv1.NewIngestServiceClient(ingestConn),
-		Usage: aggregatorv1.NewUsageQueryServiceClient(aggConn), Replay: aggregatorv1.NewReplayServiceClient(aggConn), Limits: limitsv1.NewLimitsServiceClient(limitsConn),
-		Billing: billingv1.NewBillingServiceClient(billingConn), Sandbox: billingv1.NewSandboxServiceClient(billingConn),
-		BillingAdmin: billingv1.NewBillingAdminServiceClient(billingConn), Hosted: billingv1.NewHostedInvoiceServiceClient(billingConn), PublicURL: strings.TrimRight(cfg.PublicURL, "/"), Analytics: analyticsv1.NewAnalyticsServiceClient(analyticsConn),
-		Assets: assetsv1.NewAssetsServiceClient(assetsConn),
+	return httpapi.New(httpapi.Deps{
+		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
+		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),
+		Billing: billingv1.NewBillingServiceClient(up.billing), Sandbox: billingv1.NewSandboxServiceClient(up.billing),
+		BillingAdmin: billingv1.NewBillingAdminServiceClient(up.billing), Hosted: billingv1.NewHostedInvoiceServiceClient(up.billing), PublicURL: strings.TrimRight(cfg.PublicURL, "/"), Analytics: analyticsv1.NewAnalyticsServiceClient(up.analytics),
+		Assets: assetsv1.NewAssetsServiceClient(up.assets),
 		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
 		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken,
-	})
+	}), nil
+}
 
-	hh := health.New(reg, 2*time.Second)
-	// Readiness doesn't include Redis: the gateway serves (fail-open limits, plans-svc lookups) without it.
+// addReadinessChecks registers what readiness depends on.
+// Readiness doesn't include Redis: the gateway serves (fail-open limits, plans-svc lookups) without it.
+func addReadinessChecks(hh *health.Handler, up *upstreams) {
+	adminClient := plansv1.NewAdminServiceClient(up.plans)
 	hh.AddCheck("plans-svc", func(ctx context.Context) error {
 		_, err := adminClient.ResolveApiKey(ctx, &plansv1.ResolveApiKeyRequest{Prefix: "00000000"})
 		if err != nil && grpcCodeIsUp(err) {
@@ -198,7 +215,10 @@ func run() error {
 		}
 		return err
 	})
+}
 
+// serve runs the HTTP and metrics servers until ctx is cancelled or one of them fails, then shuts down gracefully.
+func serve(ctx context.Context, cfg *Config, log *slog.Logger, api http.Handler, hh *health.Handler) error {
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: api, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second,
 		WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
 	g, gctx := errgroup.WithContext(ctx)
