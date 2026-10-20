@@ -21,10 +21,10 @@ $(BIN)/buf: tools/go.mod tools/go.sum
 tools: $(BIN)/buf ## Build pinned dev tools into ./bin (buf, golangci-lint, goose, sqlc, protoc plugins)
 
 .PHONY: gen
-gen: tools ## Generate code (buf, sqlc for every service with a sqlc.yaml)
+gen: tools ## Generate code (buf, sqlc for every service and tool with a sqlc.yaml)
 	rm -rf gen/go/quotify
 	$(BIN)/buf generate
-	@for f in services/*/sqlc.yaml; do (cd $$(dirname $$f) && $(BIN)/sqlc generate); done
+	@for f in services/*/sqlc.yaml tools/*/sqlc.yaml; do (cd $$(dirname $$f) && $(BIN)/sqlc generate); done
 	@for m in $(MODULES); do (cd $$m && GOWORK=off go mod tidy); done
 
 .PHONY: lint

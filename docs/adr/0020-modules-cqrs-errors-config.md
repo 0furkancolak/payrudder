@@ -17,7 +17,7 @@ Services grew by feature (`grpcapi/changes.go`, `grpcapi/coupons.go`…) with ha
 
 ## Consequences
 
-- Hand-written pgx SQL in billing-svc, payments-worker and the others is moved to sqlc as the modules are split; the services that already use sqlc (plans-svc) keep it.
+- All Postgres SQL in the services is now sqlc-generated (plans-svc, billing-svc, payments-worker, assets-svc, notifier, aggregator, ingest-svc, tools/mockpsp, `pkg/outbox`). `tests/sqlguard_test.go` rejects SQL assembled with `fmt.Sprintf` or `+`. Exceptions: analytics-svc ClickHouse queries (sqlc does not support ClickHouse) and DDL in `pkg/testkit/servicedb.go`.
 
 - New code is written in this shape from phase 24; the previous phases' files are moved into modules when a change touches them, to keep each pull request reviewable.
 - A rename of an error key is a breaking change and follows the API's deprecation rule.
