@@ -61,6 +61,7 @@ func TestBilling(t *testing.T) {
 		{"ReportsSumInvoicesByPeriodProviderCountryAndCurrency", testReports},
 		{"AdvanceFeesAreInvoicedOncePerPeriod", testAdvanceFeesAreInvoicedOncePerPeriod},
 		{"AdvanceBilledSubscriptionPaysOnlyUsageAtMonthClose", testAdvanceBilledSubscriptionPaysOnlyUsageAtMonthClose},
+		{"PlanChangesAreInvoicedOrCredited", testPlanChangesAreInvoicedOrCredited},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

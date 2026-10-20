@@ -121,6 +121,9 @@ type world struct {
 	subs      []*plansv1.Subscription // active over the test periods
 	feeDue    []*plansv1.FeeDue       // advance fee periods waiting to be invoiced
 	advanced  []string                // subscription id|period start (RFC 3339) of the fee periods advanced
+	adjusts   []*plansv1.Adjustment   // what plan changes moved, until marked billed
+	billedAdj []string
+	applyCall int
 
 	usage     map[string][]*aggregatorv1.UsageAggregate // by period id
 	late      map[string][]*aggregatorv1.LateUsage      // by billed period id
@@ -190,6 +193,36 @@ func (f fakeAll) AdvanceSubscriptionFee(_ context.Context, in *plansv1.AdvanceSu
 	defer f.w.mu.Unlock()
 	f.w.advanced = append(f.w.advanced, in.GetSubscriptionId()+"|"+in.GetPeriodStart().AsTime().UTC().Format(time.RFC3339))
 	return &plansv1.AdvanceSubscriptionFeeResponse{}, nil
+}
+
+func (f fakeAll) ApplyScheduledChanges(context.Context, *plansv1.ApplyScheduledChangesRequest, ...grpc.CallOption) (*plansv1.ApplyScheduledChangesResponse, error) {
+	f.w.mu.Lock()
+	defer f.w.mu.Unlock()
+	f.w.applyCall++
+	return &plansv1.ApplyScheduledChangesResponse{}, nil
+}
+
+func (f fakeAll) ListSubscriptionAdjustments(context.Context, *plansv1.ListSubscriptionAdjustmentsRequest, ...grpc.CallOption) (*plansv1.ListSubscriptionAdjustmentsResponse, error) {
+	f.w.mu.Lock()
+	defer f.w.mu.Unlock()
+	out := &plansv1.ListSubscriptionAdjustmentsResponse{}
+	for _, a := range f.w.adjusts {
+		done := false
+		for _, b := range f.w.billedAdj {
+			done = done || b == a.GetId()
+		}
+		if !done {
+			out.Adjustments = append(out.Adjustments, a)
+		}
+	}
+	return out, nil
+}
+
+func (f fakeAll) MarkSubscriptionAdjustmentBilled(_ context.Context, in *plansv1.MarkSubscriptionAdjustmentBilledRequest, _ ...grpc.CallOption) (*plansv1.MarkSubscriptionAdjustmentBilledResponse, error) {
+	f.w.mu.Lock()
+	defer f.w.mu.Unlock()
+	f.w.billedAdj = append(f.w.billedAdj, in.GetAdjustmentId())
+	return &plansv1.MarkSubscriptionAdjustmentBilledResponse{}, nil
 }
 
 // Admin.

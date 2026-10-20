@@ -1636,9 +1636,11 @@ type Subscription struct {
 	PlanCode    string `protobuf:"bytes,18,opt,name=plan_code,json=planCode,proto3" json:"plan_code,omitempty"`
 	PlanVersion int32  `protobuf:"varint,19,opt,name=plan_version,json=planVersion,proto3" json:"plan_version,omitempty"`
 	// When the fixed fee is invoiced: in advance at the start of each period, or in arrears with the month's usage.
-	FeeTiming     FeeTiming `protobuf:"varint,20,opt,name=fee_timing,json=feeTiming,proto3,enum=quotify.plans.v1.FeeTiming" json:"fee_timing,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	FeeTiming FeeTiming `protobuf:"varint,20,opt,name=fee_timing,json=feeTiming,proto3,enum=quotify.plans.v1.FeeTiming" json:"fee_timing,omitempty"`
+	// A change of plan or interval that is waiting for the end of the period the customer has paid for.
+	ScheduledChange *ScheduledChange `protobuf:"bytes,21,opt,name=scheduled_change,json=scheduledChange,proto3" json:"scheduled_change,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Subscription) Reset() {
@@ -1811,6 +1813,81 @@ func (x *Subscription) GetFeeTiming() FeeTiming {
 	return FeeTiming_FEE_TIMING_UNSPECIFIED
 }
 
+func (x *Subscription) GetScheduledChange() *ScheduledChange {
+	if x != nil {
+		return x.ScheduledChange
+	}
+	return nil
+}
+
+type ScheduledChange struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlanCode      string                 `protobuf:"bytes,1,opt,name=plan_code,json=planCode,proto3" json:"plan_code,omitempty"`
+	PlanVersion   int32                  `protobuf:"varint,2,opt,name=plan_version,json=planVersion,proto3" json:"plan_version,omitempty"`
+	Interval      SubscriptionInterval   `protobuf:"varint,3,opt,name=interval,proto3,enum=quotify.plans.v1.SubscriptionInterval" json:"interval,omitempty"`
+	EffectiveTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=effective_time,json=effectiveTime,proto3" json:"effective_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScheduledChange) Reset() {
+	*x = ScheduledChange{}
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScheduledChange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScheduledChange) ProtoMessage() {}
+
+func (x *ScheduledChange) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScheduledChange.ProtoReflect.Descriptor instead.
+func (*ScheduledChange) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ScheduledChange) GetPlanCode() string {
+	if x != nil {
+		return x.PlanCode
+	}
+	return ""
+}
+
+func (x *ScheduledChange) GetPlanVersion() int32 {
+	if x != nil {
+		return x.PlanVersion
+	}
+	return 0
+}
+
+func (x *ScheduledChange) GetInterval() SubscriptionInterval {
+	if x != nil {
+		return x.Interval
+	}
+	return SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED
+}
+
+func (x *ScheduledChange) GetEffectiveTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EffectiveTime
+	}
+	return nil
+}
+
 var File_quotify_plans_v1_resources_proto protoreflect.FileDescriptor
 
 const file_quotify_plans_v1_resources_proto_rawDesc = "" +
@@ -1927,7 +2004,7 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\vCurrencyFee\x12\x1a\n" +
 	"\bcurrency\x18\x01 \x01(\tR\bcurrency\x12$\n" +
 	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\x12B\n" +
-	"\binterval\x18\x03 \x01(\x0e2&.quotify.plans.v1.SubscriptionIntervalR\binterval\"\x8a\a\n" +
+	"\binterval\x18\x03 \x01(\x0e2&.quotify.plans.v1.SubscriptionIntervalR\binterval\"\xd8\a\n" +
 	"\fSubscription\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -1954,7 +2031,13 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\tplan_code\x18\x12 \x01(\tR\bplanCode\x12!\n" +
 	"\fplan_version\x18\x13 \x01(\x05R\vplanVersion\x12:\n" +
 	"\n" +
-	"fee_timing\x18\x14 \x01(\x0e2\x1b.quotify.plans.v1.FeeTimingR\tfeeTiming*Y\n" +
+	"fee_timing\x18\x14 \x01(\x0e2\x1b.quotify.plans.v1.FeeTimingR\tfeeTiming\x12L\n" +
+	"\x10scheduled_change\x18\x15 \x01(\v2!.quotify.plans.v1.ScheduledChangeR\x0fscheduledChange\"\xd8\x01\n" +
+	"\x0fScheduledChange\x12\x1b\n" +
+	"\tplan_code\x18\x01 \x01(\tR\bplanCode\x12!\n" +
+	"\fplan_version\x18\x02 \x01(\x05R\vplanVersion\x12B\n" +
+	"\binterval\x18\x03 \x01(\x0e2&.quotify.plans.v1.SubscriptionIntervalR\binterval\x12A\n" +
+	"\x0eeffective_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveTime*Y\n" +
 	"\vEnvironment\x12\x1b\n" +
 	"\x17ENVIRONMENT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ENVIRONMENT_SANDBOX\x10\x01\x12\x14\n" +
@@ -2000,7 +2083,7 @@ func file_quotify_plans_v1_resources_proto_rawDescGZIP() []byte {
 }
 
 var file_quotify_plans_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_quotify_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_quotify_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_quotify_plans_v1_resources_proto_goTypes = []any{
 	(Environment)(0),              // 0: quotify.plans.v1.Environment
 	(TenantTier)(0),               // 1: quotify.plans.v1.TenantTier
@@ -2026,51 +2109,55 @@ var file_quotify_plans_v1_resources_proto_goTypes = []any{
 	(*CurrencyPrices)(nil),        // 21: quotify.plans.v1.CurrencyPrices
 	(*CurrencyFee)(nil),           // 22: quotify.plans.v1.CurrencyFee
 	(*Subscription)(nil),          // 23: quotify.plans.v1.Subscription
-	nil,                           // 24: quotify.plans.v1.Meter.FilterEntry
-	(*timestamppb.Timestamp)(nil), // 25: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 26: google.protobuf.Duration
+	(*ScheduledChange)(nil),       // 24: quotify.plans.v1.ScheduledChange
+	nil,                           // 25: quotify.plans.v1.Meter.FilterEntry
+	(*timestamppb.Timestamp)(nil), // 26: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 27: google.protobuf.Duration
 }
 var file_quotify_plans_v1_resources_proto_depIdxs = []int32{
 	8,  // 0: quotify.plans.v1.Account.tenants:type_name -> quotify.plans.v1.Tenant
-	25, // 1: quotify.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
+	26, // 1: quotify.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
 	0,  // 2: quotify.plans.v1.Tenant.environment:type_name -> quotify.plans.v1.Environment
 	1,  // 3: quotify.plans.v1.Tenant.tier:type_name -> quotify.plans.v1.TenantTier
-	26, // 4: quotify.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
-	25, // 5: quotify.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
+	27, // 4: quotify.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
+	26, // 5: quotify.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
 	0,  // 6: quotify.plans.v1.ApiKey.environment:type_name -> quotify.plans.v1.Environment
 	6,  // 7: quotify.plans.v1.ApiKey.status:type_name -> quotify.plans.v1.ApiKey.Status
-	25, // 8: quotify.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
-	25, // 9: quotify.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
-	25, // 10: quotify.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
+	26, // 8: quotify.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
+	26, // 9: quotify.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
+	26, // 10: quotify.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
 	2,  // 11: quotify.plans.v1.Meter.aggregation:type_name -> quotify.plans.v1.Aggregation
-	24, // 12: quotify.plans.v1.Meter.filter:type_name -> quotify.plans.v1.Meter.FilterEntry
-	25, // 13: quotify.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
-	25, // 14: quotify.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
+	25, // 12: quotify.plans.v1.Meter.filter:type_name -> quotify.plans.v1.Meter.FilterEntry
+	26, // 13: quotify.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
+	26, // 14: quotify.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
 	14, // 15: quotify.plans.v1.TieredGraduatedPrice.tiers:type_name -> quotify.plans.v1.PriceTier
 	15, // 16: quotify.plans.v1.Price.per_unit:type_name -> quotify.plans.v1.PerUnitPrice
 	16, // 17: quotify.plans.v1.Price.tiered:type_name -> quotify.plans.v1.TieredGraduatedPrice
 	17, // 18: quotify.plans.v1.Price.package:type_name -> quotify.plans.v1.PackagePrice
 	18, // 19: quotify.plans.v1.PlanVersion.prices:type_name -> quotify.plans.v1.Price
 	19, // 20: quotify.plans.v1.PlanVersion.entitlements:type_name -> quotify.plans.v1.Entitlement
-	25, // 21: quotify.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
+	26, // 21: quotify.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
 	22, // 22: quotify.plans.v1.PlanVersion.fees:type_name -> quotify.plans.v1.CurrencyFee
 	21, // 23: quotify.plans.v1.PlanVersion.currency_prices:type_name -> quotify.plans.v1.CurrencyPrices
 	18, // 24: quotify.plans.v1.CurrencyPrices.prices:type_name -> quotify.plans.v1.Price
 	5,  // 25: quotify.plans.v1.CurrencyFee.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	25, // 26: quotify.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
-	25, // 27: quotify.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
-	25, // 28: quotify.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
+	26, // 26: quotify.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
+	26, // 27: quotify.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
+	26, // 28: quotify.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
 	4,  // 29: quotify.plans.v1.Subscription.state:type_name -> quotify.plans.v1.SubscriptionState
 	5,  // 30: quotify.plans.v1.Subscription.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	25, // 31: quotify.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
-	25, // 32: quotify.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
+	26, // 31: quotify.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
+	26, // 32: quotify.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
 	3,  // 33: quotify.plans.v1.Subscription.fee_timing:type_name -> quotify.plans.v1.FeeTiming
-	11, // 34: quotify.plans.v1.Meter.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
-	35, // [35:35] is the sub-list for method output_type
-	35, // [35:35] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	24, // 34: quotify.plans.v1.Subscription.scheduled_change:type_name -> quotify.plans.v1.ScheduledChange
+	5,  // 35: quotify.plans.v1.ScheduledChange.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	26, // 36: quotify.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
+	11, // 37: quotify.plans.v1.Meter.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
+	38, // [38:38] is the sub-list for method output_type
+	38, // [38:38] is the sub-list for method input_type
+	38, // [38:38] is the sub-list for extension type_name
+	38, // [38:38] is the sub-list for extension extendee
+	0,  // [0:38] is the sub-list for field type_name
 }
 
 func init() { file_quotify_plans_v1_resources_proto_init() }
@@ -2089,7 +2176,7 @@ func file_quotify_plans_v1_resources_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_plans_v1_resources_proto_rawDesc), len(file_quotify_plans_v1_resources_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   18,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

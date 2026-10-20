@@ -39,6 +39,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("SandboxPaymentMethods", testSandboxPaymentMethods)
 	t.Run("Subscriptions", testSubscriptions)
 	t.Run("SubscriptionLifecycle", testSubscriptionLifecycle)
+	t.Run("SubscriptionChanges", testSubscriptionChanges)
 	t.Run("CurrencyFeesAndCustomerBilling", testCurrencyFeesAndCustomerBilling)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
@@ -75,6 +76,16 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 	if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
 		_, err := tx.Exec(context.Background(), `INSERT INTO provider_migrations (tenant_id, id, subscription_id, to_provider, state)
 			SELECT app_tenant_id(), gen_random_uuid(), id, 'iyzico', 'aborted' FROM subscriptions LIMIT 1`)
+		if err != nil {
+			return err
+		}
+		// Likewise a scheduled change and a billed adjustment, which ChangeSubscription would make by moving the subscription.
+		if _, err = tx.Exec(context.Background(), `INSERT INTO subscription_changes (tenant_id, id, subscription_id, plan_version_id, interval, effective_at, state)
+			SELECT app_tenant_id(), gen_random_uuid(), id, plan_version_id, 'month', now(), 'cancelled' FROM subscriptions LIMIT 1`); err != nil {
+			return err
+		}
+		_, err = tx.Exec(context.Background(), `INSERT INTO subscription_adjustments (tenant_id, id, subscription_id, old_plan_code, from_at, to_at, credit_minor, charge_minor, billed_at)
+			SELECT app_tenant_id(), gen_random_uuid(), id, 'pro', now(), now(), 1, 2, now() FROM subscriptions LIMIT 1`)
 		return err
 	}); err != nil {
 		t.Fatal(err)

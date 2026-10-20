@@ -234,3 +234,46 @@ LIMIT @page_size;
 -- Moves the next period to invoice forward. Compare-and-set on the period that was invoiced, so a repeated call changes nothing.
 UPDATE subscriptions SET fee_due_at = @next_due::timestamptz
 WHERE tenant_id = app_tenant_id() AND id = @id AND fee_due_at = @period_start::timestamptz;
+
+-- name: InsertSubscriptionChange :one
+INSERT INTO subscription_changes (tenant_id, id, subscription_id, plan_version_id, interval, effective_at)
+VALUES (app_tenant_id(), @id, @subscription_id, @plan_version_id, @interval, @effective_at)
+RETURNING id, subscription_id, plan_version_id, interval, effective_at, state;
+
+-- name: GetPendingChange :one
+SELECT id, subscription_id, plan_version_id, interval, effective_at, state FROM subscription_changes
+WHERE tenant_id = app_tenant_id() AND subscription_id = $1 AND state = 'pending';
+
+-- name: ListPendingChangesFor :many
+SELECT c.id, c.subscription_id, c.plan_version_id, c.interval, c.effective_at, pl.code AS plan_code, pv.version AS plan_version
+FROM subscription_changes c
+JOIN plan_versions pv ON pv.tenant_id = c.tenant_id AND pv.id = c.plan_version_id
+JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
+WHERE c.tenant_id = app_tenant_id() AND c.state = 'pending' AND c.subscription_id = ANY(@ids::uuid[]);
+
+-- name: ListDueChanges :many
+SELECT id, subscription_id, plan_version_id, interval, effective_at, state FROM subscription_changes
+WHERE tenant_id = app_tenant_id() AND state = 'pending' AND effective_at <= @now::timestamptz
+ORDER BY effective_at, id
+LIMIT 100
+FOR UPDATE;
+
+-- name: SettleChange :execrows
+UPDATE subscription_changes SET state = @state, applied_at = CASE WHEN @state = 'applied' THEN now() END, new_subscription_id = @new_subscription_id
+WHERE tenant_id = app_tenant_id() AND id = @id AND state = 'pending';
+
+-- name: InsertSubscriptionAdjustment :exec
+INSERT INTO subscription_adjustments (tenant_id, id, subscription_id, old_plan_code, from_at, to_at, credit_minor, charge_minor)
+VALUES (app_tenant_id(), @id, @subscription_id, @old_plan_code, @from_at, @to_at, @credit_minor, @charge_minor);
+
+-- name: ListUnbilledAdjustments :many
+SELECT id, subscription_id, old_plan_code, from_at, to_at, credit_minor, charge_minor FROM subscription_adjustments
+WHERE tenant_id = app_tenant_id() AND billed_at IS NULL
+ORDER BY created_at, id
+LIMIT @page_size;
+
+-- name: MarkAdjustmentBilled :execrows
+UPDATE subscription_adjustments SET billed_at = now() WHERE tenant_id = app_tenant_id() AND id = @id AND billed_at IS NULL;
+
+-- name: GetSubscriptionFeeDue :one
+SELECT fee_due_at FROM subscriptions WHERE tenant_id = app_tenant_id() AND id = $1;
