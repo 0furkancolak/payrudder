@@ -146,41 +146,25 @@ func (s *Service) GetUsageBatch(ctx context.Context, req *aggregatorv1.GetUsageB
 	resp := &aggregatorv1.GetUsageBatchResponse{ConsumerOffsets: map[int32]int64{}}
 	// One snapshot for the usage and the offsets: "usage as of these offsets".
 	err = pgxx.InTx(ctx, s.app, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `SELECT set_config('app.tenant_id', $1, true)`, ti.ID.String()); err != nil {
+		q := sqlc.New(tx)
+		if err := q.SetAppTenant(ctx, ti.ID.String()); err != nil {
 			return err
 		}
-		q := sqlc.New(tx)
 		gen, err := generation(ctx, q, req.GetGeneration())
 		if err != nil {
 			return err
 		}
-		rows, err := tx.Query(ctx, `SELECT a.quantity::text, a.quantity_scale::int, a.event_count
-			FROM unnest($1::uuid[], $2::text[], $3::text[]) WITH ORDINALITY AS k(c, m, p, i)
-			LEFT JOIN usage_aggregates a ON a.customer_id = k.c AND a.meter_code = k.m AND a.period_id = k.p AND a.generation = $4
-			ORDER BY k.i`, customers, meterCodes, periods, gen)
+		rows, err := q.UsageBatch(ctx, sqlc.UsageBatchParams{Customers: customers, MeterCodes: meterCodes, Periods: periods, Generation: gen})
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
-		i := 0
-		for rows.Next() {
-			var qty *string
-			var scale *int32
-			var events *int64
-			if err := rows.Scan(&qty, &scale, &events); err != nil {
-				return err
-			}
+		for i, r := range rows {
 			agg := &aggregatorv1.UsageAggregate{CustomerId: customers[i].String(), MeterCode: meterCodes[i], PeriodId: periods[i], Quantity: "0"}
-			if qty != nil {
-				agg = usageRow(customers[i], meterCodes[i], periods[i], *qty, *scale, *events)
+			if r.Found {
+				agg = usageRow(customers[i], meterCodes[i], periods[i], r.Quantity, r.QuantityScale, r.EventCount)
 			}
 			resp.Usage = append(resp.Usage, agg)
-			i++
 		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		rows.Close()
 		offs, err := q.ListOffsets(ctx, sqlc.ListOffsetsParams{ConsumerGroup: s.group, Topic: s.topic})
 		if err != nil {
 			return err

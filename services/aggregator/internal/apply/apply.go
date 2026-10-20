@@ -298,151 +298,166 @@ func (h *Handler) prepare(ctx context.Context, items []item) error {
 // consumer is already further along.
 func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items []item, next int64) (bool, error) {
 	q := sqlc.New(tx)
-	delta := domain.NewDelta()
-
 	if len(items) > 0 {
-		if _, err := tx.Exec(ctx, `SELECT set_config('transaction_timeout', '30s', true)`); err != nil {
-			return false, err
-		}
-		tenants, periods := distinct(items)
-		cfgRows, err := q.LockPeriodSettings(ctx, sqlc.LockPeriodSettingsParams{Tenants: tenants, Periods: periods})
-		if err != nil {
-			return false, fmt.Errorf("lock period settings: %w", err)
-		}
-		cfg := make(map[settings.Key]sqlc.LockPeriodSettingsRow, len(cfgRows))
-		for _, r := range cfgRows {
-			cfg[settings.Key{Tenant: r.TenantID, Period: r.PeriodID}] = r
-		}
-		var gens generationSet
-		if h.Replay != nil {
-			gens = generationSet{h.Replay.Tenant: {h.Replay.Generation}}
-		} else if gens, err = h.generations(ctx, q, tenants); err != nil {
-			return false, err
-		}
-
-		// 1. dedup against the inbox: one row per (event, target generation).
-		type dkey struct {
-			tenant uuid.UUID
-			event  string
-			gen    int32
-		}
-		var (
-			dT []uuid.UUID
-			dE []string
-			dG []int32
-			dP []string
-		)
-		first := map[dkey]int{}
-		for i, it := range items {
-			for _, g := range gens.targets(it.ev.TenantID) {
-				k := dkey{it.ev.TenantID, it.ev.EventID, g}
-				if _, dup := first[k]; dup {
-					h.m.duplicates.Add(ctx, 1, tenantAttr(it.ev.TenantID))
-					continue
-				}
-				first[k] = i
-				dT, dE, dG, dP = append(dT, it.ev.TenantID), append(dE, it.ev.EventID), append(dG, g), append(dP, it.ev.Period)
-			}
-		}
-		rows, err := tx.Query(ctx, `INSERT INTO processed_events (tenant_id, event_id, generation, period_id)
-			SELECT * FROM unnest($1::uuid[], $2::text[], $3::int[], $4::text[])
-			ON CONFLICT DO NOTHING RETURNING tenant_id, event_id, generation`, dT, dE, dG, dP)
-		if err != nil {
-			return false, fmt.Errorf("inbox insert: %w", err)
-		}
-		type newRow struct {
-			idx int
-			gen int32
-		}
-		var fresh []newRow
-		for rows.Next() {
-			var k dkey
-			if err := rows.Scan(&k.tenant, &k.event, &k.gen); err != nil {
-				rows.Close()
-				return false, err
-			}
-			fresh = append(fresh, newRow{first[k], k.gen})
-		}
-		if err := rows.Err(); err != nil {
-			return false, err
-		}
-		if len(dT) > len(fresh) {
-			seen := make(map[dkey]struct{}, len(fresh))
-			for _, f := range fresh {
-				seen[dkey{items[f.idx].ev.TenantID, items[f.idx].ev.EventID, f.gen}] = struct{}{}
-			}
-			perTenant := map[uuid.UUID]int64{}
-			for i := range dT {
-				if _, ok := seen[dkey{dT[i], dE[i], dG[i]}]; !ok {
-					perTenant[dT[i]]++
-				}
-			}
-			for t, n := range perTenant {
-				h.m.duplicates.Add(ctx, n, tenantAttr(t))
-			}
-		}
-		sort.Slice(fresh, func(i, j int) bool {
-			if fresh[i].idx != fresh[j].idx {
-				return fresh[i].idx < fresh[j].idx
-			}
-			return fresh[i].gen < fresh[j].gen
-		})
-
-		// 2. classify and pre-sum.
-		for _, f := range fresh {
-			it := items[f.idx]
-			if !it.meter.Matches(it.ev.Props) {
-				h.m.filtered.Add(ctx, 1, tenantAttr(it.ev.TenantID))
-				continue
-			}
-			c, ok := cfg[settings.Key{Tenant: it.ev.TenantID, Period: it.ev.Period}]
-			if !ok {
-				return false, fmt.Errorf("no period settings for %s %s", it.ev.TenantID, it.ev.Period)
-			}
-			class := period.Classify(it.ev.IngestedAt, c.CutoffAt)
-			if c.FrozenAt != nil && h.Replay == nil { // a replay classifies by ingested_at alone, as the live path did at the time
-				if class == period.OnTime {
-					h.m.frozen.Add(ctx, 1, tenantAttr(it.ev.TenantID))
-					h.Log.ErrorContext(ctx, "event for a frozen period arrived on time; routing it to late usage",
-						"tenant", it.ev.TenantID, "period", it.ev.Period, "event_id", it.ev.EventID)
-				}
-				class = period.Late
-			}
-			if class == period.OnTime {
-				delta.AddOnTime(domain.OnTimeKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
-					Period: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
-				h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("on_time"))
-				continue
-			}
-			loc, err := time.LoadLocation(c.Timezone)
-			if err != nil {
-				return false, fmt.Errorf("period settings of %s have unusable time zone %q", it.ev.TenantID, c.Timezone)
-			}
-			delta.AddLate(domain.LateKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
-				Billed: period.PeriodOf(it.ev.IngestedAt, loc), Origin: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
-			h.m.late.Add(ctx, 1, tenantAttr(it.ev.TenantID))
-			h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("late"))
-		}
-
-		// 3. upserts.
-		if err := upsertOnTime(ctx, tx, delta); err != nil {
-			return false, err
-		}
-		if err := upsertLate(ctx, tx, delta); err != nil {
+		if err := h.applyItems(ctx, q, items); err != nil {
 			return false, err
 		}
 	}
-
-	// 4. advance the offset, fenced: it never moves backwards.
-	tag, err := tx.Exec(ctx, `INSERT INTO consumer_offsets (consumer_group, topic, partition, next_offset)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (consumer_group, topic, partition) DO UPDATE
-		SET next_offset = EXCLUDED.next_offset, updated_at = now()
-		WHERE consumer_offsets.next_offset <= EXCLUDED.next_offset`, h.ConsumerGroup, h.Topic, partition, next)
+	// The offset never moves backwards.
+	n, err := q.AdvanceOffset(ctx, sqlc.AdvanceOffsetParams{ConsumerGroup: h.ConsumerGroup, Topic: h.Topic, Partition: partition, NextOffset: next})
 	if err != nil {
 		return false, fmt.Errorf("advance offset: %w", err)
 	}
-	return tag.RowsAffected() == 0, nil
+	return n == 0, nil
+}
+
+// applyItems locks the batch's period settings and generations, then dedups, classifies, pre-sums and upserts.
+func (h *Handler) applyItems(ctx context.Context, q *sqlc.Queries, items []item) error {
+	if err := q.SetTransactionTimeout(ctx, "30s"); err != nil {
+		return err
+	}
+	tenants, periods := distinct(items)
+	cfgRows, err := q.LockPeriodSettings(ctx, sqlc.LockPeriodSettingsParams{Tenants: tenants, Periods: periods})
+	if err != nil {
+		return fmt.Errorf("lock period settings: %w", err)
+	}
+	cfg := make(map[settings.Key]sqlc.LockPeriodSettingsRow, len(cfgRows))
+	for _, r := range cfgRows {
+		cfg[settings.Key{Tenant: r.TenantID, Period: r.PeriodID}] = r
+	}
+	gens, err := h.targetGenerations(ctx, q, tenants)
+	if err != nil {
+		return err
+	}
+	fresh, err := h.dedup(ctx, q, items, gens)
+	if err != nil {
+		return err
+	}
+	delta, err := h.classify(ctx, items, fresh, cfg)
+	if err != nil {
+		return err
+	}
+	if err := upsertOnTime(ctx, q, delta); err != nil {
+		return err
+	}
+	return upsertLate(ctx, q, delta)
+}
+
+func (h *Handler) targetGenerations(ctx context.Context, q *sqlc.Queries, tenants []uuid.UUID) (generationSet, error) {
+	if h.Replay != nil {
+		return generationSet{h.Replay.Tenant: {h.Replay.Generation}}, nil
+	}
+	return h.generations(ctx, q, tenants)
+}
+
+// inboxKey is an (event, generation) pair of the inbox; freshRow is a new pair and the first item it came from.
+type inboxKey struct {
+	tenant uuid.UUID
+	event  string
+	gen    int32
+}
+
+type freshRow struct {
+	idx int
+	gen int32
+}
+
+// dedup claims the batch's (event, generation) pairs in the inbox and returns the new ones in item order.
+func (h *Handler) dedup(ctx context.Context, q *sqlc.Queries, items []item, gens generationSet) ([]freshRow, error) {
+	var p sqlc.InsertProcessedEventsParams
+	first := map[inboxKey]int{}
+	for i, it := range items {
+		for _, g := range gens.targets(it.ev.TenantID) {
+			k := inboxKey{it.ev.TenantID, it.ev.EventID, g}
+			if _, dup := first[k]; dup {
+				h.m.duplicates.Add(ctx, 1, tenantAttr(it.ev.TenantID))
+				continue
+			}
+			first[k] = i
+			p.Tenants, p.EventIds, p.Generations, p.Periods = append(p.Tenants, it.ev.TenantID), append(p.EventIds, it.ev.EventID), append(p.Generations, g), append(p.Periods, it.ev.Period)
+		}
+	}
+	rows, err := q.InsertProcessedEvents(ctx, p)
+	if err != nil {
+		return nil, fmt.Errorf("inbox insert: %w", err)
+	}
+	fresh := make([]freshRow, len(rows))
+	for i, r := range rows {
+		fresh[i] = freshRow{first[inboxKey{r.TenantID, r.EventID, r.Generation}], r.Generation}
+	}
+	if len(p.Tenants) > len(fresh) {
+		h.countInboxDuplicates(ctx, p, rows)
+	}
+	sort.Slice(fresh, func(i, j int) bool {
+		if fresh[i].idx != fresh[j].idx {
+			return fresh[i].idx < fresh[j].idx
+		}
+		return fresh[i].gen < fresh[j].gen
+	})
+	return fresh, nil
+}
+
+// countInboxDuplicates counts, per tenant, the pairs of the batch that the inbox already had.
+func (h *Handler) countInboxDuplicates(ctx context.Context, p sqlc.InsertProcessedEventsParams, fresh []sqlc.InsertProcessedEventsRow) {
+	seen := make(map[inboxKey]struct{}, len(fresh))
+	for _, f := range fresh {
+		seen[inboxKey{f.TenantID, f.EventID, f.Generation}] = struct{}{}
+	}
+	perTenant := map[uuid.UUID]int64{}
+	for i := range p.Tenants {
+		if _, ok := seen[inboxKey{p.Tenants[i], p.EventIds[i], p.Generations[i]}]; !ok {
+			perTenant[p.Tenants[i]]++
+		}
+	}
+	for t, n := range perTenant {
+		h.m.duplicates.Add(ctx, n, tenantAttr(t))
+	}
+}
+
+// classify routes every new pair to on-time or late usage and pre-sums them into a delta.
+func (h *Handler) classify(ctx context.Context, items []item, fresh []freshRow, cfg map[settings.Key]sqlc.LockPeriodSettingsRow) (*domain.Delta, error) {
+	delta := domain.NewDelta()
+	for _, f := range fresh {
+		it := items[f.idx]
+		if !it.meter.Matches(it.ev.Props) {
+			h.m.filtered.Add(ctx, 1, tenantAttr(it.ev.TenantID))
+			continue
+		}
+		c, ok := cfg[settings.Key{Tenant: it.ev.TenantID, Period: it.ev.Period}]
+		if !ok {
+			return nil, fmt.Errorf("no period settings for %s %s", it.ev.TenantID, it.ev.Period)
+		}
+		if h.classOf(ctx, it.ev, c) == period.OnTime {
+			delta.AddOnTime(domain.OnTimeKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
+				Period: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
+			h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("on_time"))
+			continue
+		}
+		loc, err := time.LoadLocation(c.Timezone)
+		if err != nil {
+			return nil, fmt.Errorf("period settings of %s have unusable time zone %q", it.ev.TenantID, c.Timezone)
+		}
+		delta.AddLate(domain.LateKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
+			Billed: period.PeriodOf(it.ev.IngestedAt, loc), Origin: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
+		h.m.late.Add(ctx, 1, tenantAttr(it.ev.TenantID))
+		h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("late"))
+	}
+	return delta, nil
+}
+
+// classOf is the class of an event by its ingestion time. A frozen period takes everything as late usage; a replay
+// classifies by ingested_at alone, as the live path did at the time.
+func (h *Handler) classOf(ctx context.Context, ev domain.Event, c sqlc.LockPeriodSettingsRow) period.Class {
+	class := period.Classify(ev.IngestedAt, c.CutoffAt)
+	if c.FrozenAt == nil || h.Replay != nil {
+		return class
+	}
+	if class == period.OnTime {
+		h.m.frozen.Add(ctx, 1, tenantAttr(ev.TenantID))
+		h.Log.ErrorContext(ctx, "event for a frozen period arrived on time; routing it to late usage",
+			"tenant", ev.TenantID, "period", ev.Period, "event_id", ev.EventID)
+	}
+	return period.Late
 }
 
 func distinct(items []item) ([]uuid.UUID, []string) {
@@ -473,7 +488,7 @@ func (g generationSet) targets(t uuid.UUID) []int32 {
 }
 
 // generations reads each tenant's active and catching-up generation FOR SHARE, so a promotion can't race the batch.
-// During a replay's catch-up a tenant's events go to both (dual write); the replay itself arrives in Phase 11.
+// During a replay's catch-up a tenant's events go to both (dual write).
 func (h *Handler) generations(ctx context.Context, q *sqlc.Queries, tenants []uuid.UUID) (generationSet, error) {
 	// Twice, on purpose. The first statement takes the locks: it waits for a promotion or a replay's flip that holds the tenant's
 	// active row FOR UPDATE. But a row that became 'catching_up' while it waited is not in that statement's result (READ
@@ -494,81 +509,44 @@ func (h *Handler) generations(ctx context.Context, q *sqlc.Queries, tenants []uu
 	return out, nil
 }
 
-func upsertOnTime(ctx context.Context, tx pgx.Tx, d *domain.Delta) error {
-	for _, agg := range []domain.Aggregation{domain.Sum, domain.Max} {
-		var (
-			t []uuid.UUID
-			p []string
-			c []uuid.UUID
-			m []string
-			g []int32
-			q []string
-			s []int16
-			n []int64
-		)
+// upsertOnTime writes the delta's on-time cells in sorted key order: the sum meters first, then the max meters.
+func upsertOnTime(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
+	for _, isMax := range []bool{false, true} {
+		p := sqlc.UpsertUsageAggregatesParams{IsMax: isMax}
 		for _, k := range d.SortedOnTime() {
 			cell := d.OnTime[k]
-			if (cell.Aggregation == domain.Max) != (agg == domain.Max) {
+			if (cell.Aggregation == domain.Max) != isMax {
 				continue
 			}
-			t, p, c, m, g = append(t, k.Tenant), append(p, k.Period), append(c, k.Customer), append(m, k.Meter), append(g, k.Generation)
-			q, s, n = append(q, cell.Value.String()), append(s, int16(cell.Scale)), append(n, cell.Events) //nolint:gosec // 0..6
+			p.Tenants, p.Periods, p.Customers, p.MeterCodes, p.Generations = append(p.Tenants, k.Tenant), append(p.Periods, k.Period), append(p.Customers, k.Customer), append(p.MeterCodes, k.Meter), append(p.Generations, k.Generation)
+			p.Quantities, p.Scales, p.EventCounts = append(p.Quantities, cell.Value.String()), append(p.Scales, int16(cell.Scale)), append(p.EventCounts, cell.Events) //nolint:gosec // 0..6
 		}
-		if len(t) == 0 {
+		if len(p.Tenants) == 0 {
 			continue
 		}
-		merge := "usage_aggregates.quantity + EXCLUDED.quantity"
-		if agg == domain.Max {
-			merge = "GREATEST(usage_aggregates.quantity, EXCLUDED.quantity)"
-		}
-		_, err := tx.Exec(ctx, `INSERT INTO usage_aggregates (tenant_id, period_id, customer_id, meter_code, generation, quantity, quantity_scale, event_count, updated_at)
-			SELECT u.t, u.p, u.c, u.m, u.g, u.q::numeric, u.s, u.n, clock_timestamp()
-			FROM unnest($1::uuid[], $2::text[], $3::uuid[], $4::text[], $5::int[], $6::text[], $7::smallint[], $8::bigint[]) AS u(t, p, c, m, g, q, s, n)
-			ON CONFLICT (tenant_id, period_id, customer_id, meter_code, generation) DO UPDATE
-			SET quantity = `+merge+`, event_count = usage_aggregates.event_count + EXCLUDED.event_count, updated_at = EXCLUDED.updated_at`,
-			t, p, c, m, g, q, s, n)
-		if err != nil {
+		if err := q.UpsertUsageAggregates(ctx, p); err != nil {
 			return fmt.Errorf("upsert usage_aggregates: %w", err)
 		}
 	}
 	return nil
 }
 
-func upsertLate(ctx context.Context, tx pgx.Tx, d *domain.Delta) error {
-	for _, agg := range []domain.Aggregation{domain.Sum, domain.Max} {
-		var (
-			t  []uuid.UUID
-			b  []string
-			c  []uuid.UUID
-			m  []string
-			o  []string
-			g  []int32
-			q  []string
-			s  []int16
-			ec []int64
-		)
+// upsertLate is upsertOnTime for late usage.
+func upsertLate(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
+	for _, isMax := range []bool{false, true} {
+		p := sqlc.UpsertLateUsageParams{IsMax: isMax}
 		for _, k := range d.SortedLate() {
 			cell := d.Late[k]
-			if (cell.Aggregation == domain.Max) != (agg == domain.Max) {
+			if (cell.Aggregation == domain.Max) != isMax {
 				continue
 			}
-			t, b, c, m, o, g = append(t, k.Tenant), append(b, k.Billed), append(c, k.Customer), append(m, k.Meter), append(o, k.Origin), append(g, k.Generation)
-			q, s, ec = append(q, cell.Value.String()), append(s, int16(cell.Scale)), append(ec, cell.Events) //nolint:gosec // 0..6
+			p.Tenants, p.BilledPeriods, p.Customers, p.MeterCodes, p.OriginPeriods, p.Generations = append(p.Tenants, k.Tenant), append(p.BilledPeriods, k.Billed), append(p.Customers, k.Customer), append(p.MeterCodes, k.Meter), append(p.OriginPeriods, k.Origin), append(p.Generations, k.Generation)
+			p.Quantities, p.Scales, p.EventCounts = append(p.Quantities, cell.Value.String()), append(p.Scales, int16(cell.Scale)), append(p.EventCounts, cell.Events) //nolint:gosec // 0..6
 		}
-		if len(t) == 0 {
+		if len(p.Tenants) == 0 {
 			continue
 		}
-		merge := "late_usage.quantity + EXCLUDED.quantity"
-		if agg == domain.Max {
-			merge = "GREATEST(late_usage.quantity, EXCLUDED.quantity)"
-		}
-		_, err := tx.Exec(ctx, `INSERT INTO late_usage (tenant_id, billed_period_id, customer_id, meter_code, origin_period_id, generation, quantity, quantity_scale, event_count, updated_at)
-			SELECT u.t, u.b, u.c, u.m, u.o, u.g, u.q::numeric, u.s, u.n, clock_timestamp()
-			FROM unnest($1::uuid[], $2::text[], $3::uuid[], $4::text[], $5::text[], $6::int[], $7::text[], $8::smallint[], $9::bigint[]) AS u(t, b, c, m, o, g, q, s, n)
-			ON CONFLICT (tenant_id, billed_period_id, customer_id, meter_code, origin_period_id, generation) DO UPDATE
-			SET quantity = `+merge+`, event_count = late_usage.event_count + EXCLUDED.event_count, updated_at = EXCLUDED.updated_at`,
-			t, b, c, m, o, g, q, s, ec)
-		if err != nil {
+		if err := q.UpsertLateUsage(ctx, p); err != nil {
 			return fmt.Errorf("upsert late_usage: %w", err)
 		}
 	}

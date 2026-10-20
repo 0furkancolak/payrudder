@@ -37,6 +37,7 @@ import (
 
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/services/aggregator/internal/apply"
+	"github.com/0furkancolak/quotify/services/aggregator/internal/store/sqlc"
 )
 
 // Job statuses (replay_jobs.status).
@@ -125,33 +126,35 @@ type Job struct {
 	CompletedAt      *time.Time
 }
 
-const jobColumns = `id, tenant_id, from_period_id, to_period_id, COALESCE(source_generation, 1), target_generation, status, reason,
-	start_offsets, end_offsets, dual_write_from, verification, COALESCE(last_error, ''), created_at, completed_at`
-
-func scanJob(row pgx.Row) (*Job, error) {
-	var j Job
-	var start, end, dual, ver []byte
-	if err := row.Scan(&j.ID, &j.TenantID, &j.From, &j.To, &j.SourceGeneration, &j.TargetGeneration, &j.Status, &j.Reason,
-		&start, &end, &dual, &ver, &j.LastError, &j.CreatedAt, &j.CompletedAt); err != nil {
-		return nil, err
+// jobOf converts a row; a job from before source_generation existed read generation 1.
+func jobOf(r sqlc.ReplayJob) (*Job, error) {
+	j := &Job{
+		ID: r.ID, TenantID: r.TenantID, From: r.FromPeriodID, To: r.ToPeriodID, SourceGeneration: 1,
+		TargetGeneration: r.TargetGeneration, Status: r.Status, Reason: r.Reason, CreatedAt: r.CreatedAt, CompletedAt: r.CompletedAt,
+	}
+	if r.SourceGeneration != nil {
+		j.SourceGeneration = *r.SourceGeneration
+	}
+	if r.LastError != nil {
+		j.LastError = *r.LastError
 	}
 	var err error
-	if j.StartOffsets, err = offsetsOf(start); err != nil {
+	if j.StartOffsets, err = offsetsOf(r.StartOffsets); err != nil {
 		return nil, err
 	}
-	if j.EndOffsets, err = offsetsOf(end); err != nil {
+	if j.EndOffsets, err = offsetsOf(r.EndOffsets); err != nil {
 		return nil, err
 	}
-	if j.DualWriteFrom, err = offsetsOf(dual); err != nil {
+	if j.DualWriteFrom, err = offsetsOf(r.DualWriteFrom); err != nil {
 		return nil, err
 	}
-	if len(ver) > 0 {
+	if len(r.Verification) > 0 {
 		j.Verification = &Verification{}
-		if err := json.Unmarshal(ver, j.Verification); err != nil {
+		if err := json.Unmarshal(r.Verification, j.Verification); err != nil {
 			return nil, err
 		}
 	}
-	return &j, nil
+	return j, nil
 }
 
 func offsetsOf(b []byte) (map[int32]int64, error) {
@@ -184,53 +187,76 @@ func offsetsJSON(m map[int32]int64) []byte {
 
 // Get loads a job.
 func (m *Manager) Get(ctx context.Context, tenantID, jobID uuid.UUID) (*Job, error) {
-	j, err := scanJob(m.cfg.Pool.QueryRow(ctx, `SELECT `+jobColumns+` FROM replay_jobs WHERE tenant_id = $1 AND id = $2`, tenantID, jobID))
+	r, err := sqlc.New(m.cfg.Pool).GetReplayJob(ctx, sqlc.GetReplayJobParams{TenantID: tenantID, ID: jobID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
-	return j, err
+	if err != nil {
+		return nil, err
+	}
+	return jobOf(r)
 }
 
 func (m *Manager) group(job *Job) string { return "aggregator-replay-" + job.ID.String() }
-
-func periodStart(p string) (time.Time, error) {
-	t, err := time.Parse("2006-01", p)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return t, nil
-}
 
 // Start creates generation N+1 for the tenant and a job that rebuilds it. The job runs on whichever replica picks it up.
 func (m *Manager) Start(ctx context.Context, tenantID uuid.UUID, from, to, reason string) (*Job, error) {
 	if to == "" {
 		to = from
 	}
-	if !periodRe.MatchString(from) || !periodRe.MatchString(to) || from > to {
-		return nil, fmt.Errorf("%w: periods must look like 2026-10 and from <= to", ErrInvalid)
-	}
-	if reason == "" {
-		return nil, fmt.Errorf("%w: a reason is required", ErrInvalid)
-	}
-	start, err := periodStart(from)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
-	}
-	cl, err := kgo.NewClient(kgo.SeedBrokers(m.cfg.Brokers...))
+	start, err := validateStart(from, to, reason)
 	if err != nil {
 		return nil, err
+	}
+	startOffsets, endOffsets, err := m.logRange(ctx, start)
+	if err != nil {
+		return nil, err
+	}
+	nj := newJob{id: uuid.New(), tenantID: tenantID, from: from, to: to, reason: reason, start: startOffsets, end: endOffsets}
+	err = pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error { return insertJob(ctx, sqlc.New(tx), nj) })
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "one_open_replay" {
+		return nil, ErrOpen
+	}
+	if err != nil {
+		return nil, err
+	}
+	return m.Get(ctx, tenantID, nj.id)
+}
+
+// validateStart checks the request and returns the first instant of the first period.
+func validateStart(from, to, reason string) (time.Time, error) {
+	if !periodRe.MatchString(from) || !periodRe.MatchString(to) || from > to {
+		return time.Time{}, fmt.Errorf("%w: periods must look like 2026-10 and from <= to", ErrInvalid)
+	}
+	if reason == "" {
+		return time.Time{}, fmt.Errorf("%w: a reason is required", ErrInvalid)
+	}
+	start, err := time.Parse("2006-01", from)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
+	return start, nil
+}
+
+// logRange reads the topic's offsets per partition: where the first period's events can begin (the lateness before
+// start) and where the log ends now.
+func (m *Manager) logRange(ctx context.Context, start time.Time) (startOffsets, endOffsets map[int32]int64, err error) {
+	cl, err := kgo.NewClient(kgo.SeedBrokers(m.cfg.Brokers...))
+	if err != nil {
+		return nil, nil, err
 	}
 	defer cl.Close()
 	adm := kadm.NewClient(cl)
 	ends, err := adm.ListEndOffsets(ctx, m.cfg.Topic)
 	if err != nil {
-		return nil, fmt.Errorf("end offsets: %w", err)
+		return nil, nil, fmt.Errorf("end offsets: %w", err)
 	}
 	after, err := adm.ListOffsetsAfterMilli(ctx, start.Add(-m.cfg.Lateness).UnixMilli(), m.cfg.Topic)
 	if err != nil {
-		return nil, fmt.Errorf("start offsets: %w", err)
+		return nil, nil, fmt.Errorf("start offsets: %w", err)
 	}
-	endOffsets, startOffsets := map[int32]int64{}, map[int32]int64{}
+	endOffsets, startOffsets = map[int32]int64{}, map[int32]int64{}
 	ends.Each(func(o kadm.ListedOffset) { endOffsets[o.Partition] = o.Offset })
 	after.Each(func(o kadm.ListedOffset) {
 		off := o.Offset
@@ -239,36 +265,35 @@ func (m *Manager) Start(ctx context.Context, tenantID uuid.UUID, from, to, reaso
 		}
 		startOffsets[o.Partition] = off
 	})
+	return startOffsets, endOffsets, nil
+}
 
-	id := uuid.New()
-	var source, target int32
-	err = pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		// A tenant without rows is on generation 1: make that explicit, so there is an active row to lock.
-		if _, err := tx.Exec(ctx, `INSERT INTO aggregate_generations (tenant_id, generation, status) VALUES ($1, 1, 'active')
-			ON CONFLICT DO NOTHING`, tenantID); err != nil {
-			return err
-		}
-		if err := tx.QueryRow(ctx, `SELECT generation FROM aggregate_generations WHERE tenant_id = $1 AND status = 'active'`, tenantID).Scan(&source); err != nil {
-			return err
-		}
-		if err := tx.QueryRow(ctx, `SELECT COALESCE(max(generation), 0) + 1 FROM aggregate_generations WHERE tenant_id = $1`, tenantID).Scan(&target); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `INSERT INTO aggregate_generations (tenant_id, generation, status) VALUES ($1, $2, 'building')`, tenantID, target); err != nil {
-			return err
-		}
-		_, err := tx.Exec(ctx, `INSERT INTO replay_jobs (id, tenant_id, from_period_id, to_period_id, target_generation, source_generation, status, start_offsets, end_offsets, reason)
-			VALUES ($1,$2,$3,$4,$5,$6,'running',$7,$8,$9)`, id, tenantID, from, to, target, source, offsetsJSON(startOffsets), offsetsJSON(endOffsets), reason)
+type newJob struct {
+	id, tenantID     uuid.UUID
+	from, to, reason string
+	start, end       map[int32]int64
+}
+
+// insertJob adds the building generation after the tenant's newest and the job that rebuilds it.
+func insertJob(ctx context.Context, q *sqlc.Queries, nj newJob) error {
+	if err := q.EnsureActiveGenerationOne(ctx, nj.tenantID); err != nil {
 		return err
-	})
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "one_open_replay" {
-		return nil, ErrOpen
 	}
+	source, err := q.TenantActiveGeneration(ctx, nj.tenantID)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return m.Get(ctx, tenantID, id)
+	target, err := q.NextGeneration(ctx, nj.tenantID)
+	if err != nil {
+		return err
+	}
+	if err := q.InsertBuildingGeneration(ctx, sqlc.InsertBuildingGenerationParams{TenantID: nj.tenantID, Generation: target}); err != nil {
+		return err
+	}
+	return q.InsertReplayJob(ctx, sqlc.InsertReplayJobParams{
+		ID: nj.id, TenantID: nj.tenantID, FromPeriodID: nj.from, ToPeriodID: nj.to, TargetGeneration: target, SourceGeneration: &source,
+		StartOffsets: offsetsJSON(nj.start), EndOffsets: offsetsJSON(nj.end), Reason: nj.reason,
+	})
 }
 
 // Run looks for jobs that need work until ctx ends.
@@ -286,53 +311,57 @@ func (m *Manager) Run(ctx context.Context) error {
 }
 
 func (m *Manager) scan(ctx context.Context) {
-	rows, err := m.cfg.Pool.Query(ctx, `SELECT `+jobColumns+` FROM replay_jobs WHERE status IN ('running', 'catching_up') ORDER BY created_at`)
+	rows, err := sqlc.New(m.cfg.Pool).ListOpenReplayJobs(ctx)
 	if err != nil {
 		m.cfg.Log.WarnContext(ctx, "replay: scan failed", "error", err)
 		return
 	}
-	var jobs []*Job
-	for rows.Next() {
-		j, err := scanJob(rows)
-		if err != nil {
-			rows.Close()
+	jobs := make([]*Job, len(rows))
+	for i, r := range rows {
+		if jobs[i], err = jobOf(r); err != nil {
 			m.cfg.Log.WarnContext(ctx, "replay: bad job row", "error", err)
 			return
 		}
-		jobs = append(jobs, j)
 	}
-	rows.Close()
 	for _, j := range jobs {
+		m.launch(ctx, j)
+	}
+}
+
+// launch runs the job on its own goroutine unless this replica is already running it.
+func (m *Manager) launch(ctx context.Context, j *Job) {
+	m.mu.Lock()
+	busy := m.running[j.ID]
+	if !busy {
+		m.running[j.ID] = true
+	}
+	m.mu.Unlock()
+	if busy {
+		return
+	}
+	go func() {
+		defer func() { m.mu.Lock(); delete(m.running, j.ID); m.mu.Unlock() }()
+		m.afterRun(ctx, j, m.runJob(ctx, j.TenantID, j.ID))
+	}()
+}
+
+// afterRun counts consecutive interruptions of a job and gives up on it after maxFailures.
+func (m *Manager) afterRun(ctx context.Context, j *Job, err error) {
+	if err == nil || ctx.Err() != nil || errors.Is(err, errGone) {
 		m.mu.Lock()
-		busy := m.running[j.ID]
-		if !busy {
-			m.running[j.ID] = true
-		}
+		delete(m.failures, j.ID)
 		m.mu.Unlock()
-		if busy {
-			continue
-		}
-		go func() {
-			defer func() { m.mu.Lock(); delete(m.running, j.ID); m.mu.Unlock() }()
-			err := m.runJob(ctx, j.TenantID, j.ID)
-			switch {
-			case err == nil || ctx.Err() != nil || errors.Is(err, errGone):
-				m.mu.Lock()
-				delete(m.failures, j.ID)
-				m.mu.Unlock()
-			default:
-				m.mu.Lock()
-				m.failures[j.ID]++
-				n := m.failures[j.ID]
-				m.mu.Unlock()
-				m.cfg.Log.WarnContext(ctx, "replay: job interrupted; it will be retried", "job", j.ID, "tenant", j.TenantID, "attempt", n, "error", err)
-				if n >= maxFailures {
-					_, _ = m.cfg.Pool.Exec(ctx, `UPDATE replay_jobs SET status = 'failed', last_error = $3, updated_at = now(), completed_at = now()
-						WHERE tenant_id = $1 AND id = $2 AND status IN ('running', 'catching_up')`, j.TenantID, j.ID, err.Error())
-					_, _ = m.cfg.Pool.Exec(ctx, `UPDATE aggregate_generations SET status = 'discarded' WHERE tenant_id = $1 AND generation = $2 AND status IN ('building', 'catching_up')`, j.TenantID, j.TargetGeneration)
-				}
-			}
-		}()
+		return
+	}
+	m.mu.Lock()
+	m.failures[j.ID]++
+	n := m.failures[j.ID]
+	m.mu.Unlock()
+	m.cfg.Log.WarnContext(ctx, "replay: job interrupted; it will be retried", "job", j.ID, "tenant", j.TenantID, "attempt", n, "error", err)
+	if n >= maxFailures {
+		q := sqlc.New(m.cfg.Pool)
+		_ = q.FailReplayJob(ctx, sqlc.FailReplayJobParams{TenantID: j.TenantID, ID: j.ID, LastError: err.Error()})
+		_ = q.DiscardOpenGeneration(ctx, sqlc.DiscardOpenGenerationParams{TenantID: j.TenantID, Generation: j.TargetGeneration})
 	}
 }
 
@@ -356,11 +385,12 @@ func (m *Manager) runJob(ctx context.Context, tenantID, jobID uuid.UUID) error {
 		return err
 	}
 	defer conn.Release()
-	var got bool
-	if err := conn.QueryRow(ctx, `SELECT pg_try_advisory_lock($1)`, lockKey(jobID)).Scan(&got); err != nil || !got {
+	lock := sqlc.New(conn)
+	got, err := lock.TryReplayLock(ctx, lockKey(jobID))
+	if err != nil || !got {
 		return err
 	}
-	defer func() { _, _ = conn.Exec(context.WithoutCancel(ctx), `SELECT pg_advisory_unlock($1)`, lockKey(jobID)) }()
+	defer func() { _ = lock.ReplayUnlock(context.WithoutCancel(ctx), lockKey(jobID)) }()
 
 	for {
 		job, err := m.Get(ctx, tenantID, jobID)
@@ -369,30 +399,42 @@ func (m *Manager) runJob(ctx context.Context, tenantID, jobID uuid.UUID) error {
 		}
 		switch job.Status {
 		case Running:
-			if err := m.readTo(ctx, job, job.EndOffsets); err != nil {
-				return err
-			}
-			if err := m.beginCatchUp(ctx, job); err != nil {
-				return err
-			}
+			err = m.readHistory(ctx, job)
 		case CatchingUp:
-			if err := m.readTo(ctx, job, job.DualWriteFrom); err != nil {
-				return err
-			}
-			ver, err := m.verify(ctx, job)
-			if err != nil {
-				return err
-			}
-			b, _ := json.Marshal(ver)
-			if _, err := m.cfg.Pool.Exec(ctx, `UPDATE replay_jobs SET status = 'ready', verification = $3, updated_at = now() WHERE tenant_id = $1 AND id = $2 AND status = 'catching_up'`,
-				job.TenantID, job.ID, b); err != nil {
-				return err
-			}
-			m.cfg.Log.InfoContext(ctx, "replay: ready to promote", "job", job.ID, "tenant", job.TenantID, "changed", ver.RowsChanged, "only_old", ver.RowsOnlyInOld, "only_new", ver.RowsOnlyInNew)
+			err = m.catchUpAndVerify(ctx, job)
 		default:
 			return nil
 		}
+		if err != nil {
+			return err
+		}
 	}
+}
+
+// readHistory applies the log up to the end offsets taken at the start, then starts the dual write.
+func (m *Manager) readHistory(ctx context.Context, job *Job) error {
+	if err := m.readTo(ctx, job, job.EndOffsets); err != nil {
+		return err
+	}
+	return m.beginCatchUp(ctx, job)
+}
+
+// catchUpAndVerify applies the log up to the live consumer's position when the dual write began, compares the two
+// generations and marks the job ready.
+func (m *Manager) catchUpAndVerify(ctx context.Context, job *Job) error {
+	if err := m.readTo(ctx, job, job.DualWriteFrom); err != nil {
+		return err
+	}
+	ver, err := m.verify(ctx, job)
+	if err != nil {
+		return err
+	}
+	b, _ := json.Marshal(ver)
+	if err := sqlc.New(m.cfg.Pool).MarkReplayReady(ctx, sqlc.MarkReplayReadyParams{TenantID: job.TenantID, ID: job.ID, Verification: b}); err != nil {
+		return err
+	}
+	m.cfg.Log.InfoContext(ctx, "replay: ready to promote", "job", job.ID, "tenant", job.TenantID, "changed", ver.RowsChanged, "only_old", ver.RowsOnlyInOld, "only_new", ver.RowsOnlyInNew)
+	return nil
 }
 
 var errGone = errors.New("replay: the job was discarded or finished elsewhere")
@@ -496,8 +538,8 @@ func (m *Manager) readPartition(ctx context.Context, job *Job, h *apply.Handler,
 }
 
 func (m *Manager) stillWanted(ctx context.Context, job *Job) error {
-	var status string
-	if err := m.cfg.Pool.QueryRow(ctx, `SELECT status FROM replay_jobs WHERE tenant_id = $1 AND id = $2`, job.TenantID, job.ID).Scan(&status); err != nil {
+	status, err := sqlc.New(m.cfg.Pool).ReplayJobStatus(ctx, sqlc.ReplayJobStatusParams{TenantID: job.TenantID, ID: job.ID})
+	if err != nil {
 		return err
 	}
 	if status != Running && status != CatchingUp {
@@ -511,26 +553,17 @@ func (m *Manager) stillWanted(ctx context.Context, job *Job) error {
 // the batches after it see catching_up and dual-write. The live consumer's position at that moment is dual_write_from.
 func (m *Manager) beginCatchUp(ctx context.Context, job *Job) error {
 	return pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		if err := tx.QueryRow(ctx, `SELECT generation FROM aggregate_generations WHERE tenant_id = $1 AND status = 'active' FOR UPDATE`, job.TenantID).Scan(new(int32)); err != nil {
+		q := sqlc.New(tx)
+		if _, err := q.LockActiveGeneration(ctx, job.TenantID); err != nil {
 			return err
 		}
-		rows, err := tx.Query(ctx, `SELECT partition, next_offset FROM consumer_offsets WHERE consumer_group = $1 AND topic = $2`, m.cfg.LiveGroup, m.cfg.Topic)
+		offs, err := q.ListOffsets(ctx, sqlc.ListOffsetsParams{ConsumerGroup: m.cfg.LiveGroup, Topic: m.cfg.Topic})
 		if err != nil {
 			return err
 		}
-		dual := map[int32]int64{}
-		for rows.Next() {
-			var p int32
-			var o int64
-			if err := rows.Scan(&p, &o); err != nil {
-				rows.Close()
-				return err
-			}
-			dual[p] = o
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
-			return err
+		dual := make(map[int32]int64, len(offs))
+		for _, o := range offs {
+			dual[o.Partition] = o.NextOffset
 		}
 		// A partition the live consumer has never read has nothing before it that the live generation holds.
 		for p := range job.EndOffsets {
@@ -538,26 +571,34 @@ func (m *Manager) beginCatchUp(ctx context.Context, job *Job) error {
 				dual[p] = 0
 			}
 		}
-		tag, err := tx.Exec(ctx, `UPDATE aggregate_generations SET status = 'catching_up' WHERE tenant_id = $1 AND generation = $2 AND status = 'building'`, job.TenantID, job.TargetGeneration)
+		n, err := q.MarkGenerationCatchingUp(ctx, sqlc.MarkGenerationCatchingUpParams{TenantID: job.TenantID, Generation: job.TargetGeneration})
 		if err != nil {
 			return err
 		}
-		if tag.RowsAffected() != 1 {
+		if n != 1 {
 			return errGone
 		}
-		_, err = tx.Exec(ctx, `UPDATE replay_jobs SET status = 'catching_up', dual_write_from = $3, updated_at = now() WHERE tenant_id = $1 AND id = $2 AND status = 'running'`,
-			job.TenantID, job.ID, offsetsJSON(dual))
-		return err
+		return q.MarkReplayCatchingUp(ctx, sqlc.MarkReplayCatchingUpParams{TenantID: job.TenantID, ID: job.ID, DualWriteFrom: offsetsJSON(dual)})
 	})
+}
+
+// lockJob loads the job row FOR UPDATE.
+func lockJob(ctx context.Context, q *sqlc.Queries, tenantID, jobID uuid.UUID) (*Job, error) {
+	r, err := q.GetReplayJobForUpdate(ctx, sqlc.GetReplayJobForUpdateParams{TenantID: tenantID, ID: jobID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return jobOf(r)
 }
 
 // Promote makes the job's generation the tenant's active one.
 func (m *Manager) Promote(ctx context.Context, tenantID, jobID uuid.UUID) (*Job, error) {
 	err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		j, err := scanJob(tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM replay_jobs WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, tenantID, jobID))
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
+		q := sqlc.New(tx)
+		j, err := lockJob(ctx, q, tenantID, jobID)
 		if err != nil {
 			return err
 		}
@@ -567,22 +608,7 @@ func (m *Manager) Promote(ctx context.Context, tenantID, jobID uuid.UUID) (*Job,
 		if j.Status != Ready {
 			return fmt.Errorf("%w: the job is %s, only a ready job can be promoted", ErrState, j.Status)
 		}
-		// Wait for the live batches that hold the tenant's generation rows; new ones wait for this transaction.
-		if _, err := tx.Exec(ctx, `SELECT 1 FROM aggregate_generations WHERE tenant_id = $1 AND status IN ('active', 'catching_up') FOR UPDATE`, tenantID); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE aggregate_generations SET status = 'retired' WHERE tenant_id = $1 AND generation = $2 AND status = 'active'`, tenantID, j.SourceGeneration); err != nil {
-			return err
-		}
-		tag, err := tx.Exec(ctx, `UPDATE aggregate_generations SET status = 'active', promoted_at = now() WHERE tenant_id = $1 AND generation = $2 AND status = 'catching_up'`, tenantID, j.TargetGeneration)
-		if err != nil {
-			return err
-		}
-		if tag.RowsAffected() != 1 {
-			return fmt.Errorf("%w: generation %d is not catching up", ErrState, j.TargetGeneration)
-		}
-		_, err = tx.Exec(ctx, `UPDATE replay_jobs SET status = 'promoted', updated_at = now(), completed_at = now() WHERE tenant_id = $1 AND id = $2`, tenantID, jobID)
-		return err
+		return swapGenerations(ctx, q, j)
 	})
 	if err != nil {
 		return nil, err
@@ -590,14 +616,31 @@ func (m *Manager) Promote(ctx context.Context, tenantID, jobID uuid.UUID) (*Job,
 	return m.Get(ctx, tenantID, jobID)
 }
 
+// swapGenerations retires the source generation and activates the target one.
+func swapGenerations(ctx context.Context, q *sqlc.Queries, j *Job) error {
+	// Wait for the live batches that hold the tenant's generation rows; new ones wait for this transaction.
+	if err := q.LockLiveGenerations(ctx, j.TenantID); err != nil {
+		return err
+	}
+	if err := q.RetireActiveGeneration(ctx, sqlc.RetireActiveGenerationParams{TenantID: j.TenantID, Generation: j.SourceGeneration}); err != nil {
+		return err
+	}
+	n, err := q.ActivateGeneration(ctx, sqlc.ActivateGenerationParams{TenantID: j.TenantID, Generation: j.TargetGeneration})
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return fmt.Errorf("%w: generation %d is not catching up", ErrState, j.TargetGeneration)
+	}
+	return q.MarkReplayPromoted(ctx, sqlc.MarkReplayPromotedParams{TenantID: j.TenantID, ID: j.ID})
+}
+
 // Discard abandons a generation that was not promoted and deletes its rows.
 func (m *Manager) Discard(ctx context.Context, tenantID, jobID uuid.UUID) (*Job, error) {
 	var job *Job
 	err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		j, err := scanJob(tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM replay_jobs WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, tenantID, jobID))
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
+		q := sqlc.New(tx)
+		j, err := lockJob(ctx, q, tenantID, jobID)
 		if err != nil {
 			return err
 		}
@@ -608,27 +651,31 @@ func (m *Manager) Discard(ctx context.Context, tenantID, jobID uuid.UUID) (*Job,
 		case Promoted:
 			return fmt.Errorf("%w: a promoted generation is live; replay again to go back", ErrState)
 		}
-		if _, err := tx.Exec(ctx, `SELECT 1 FROM aggregate_generations WHERE tenant_id = $1 AND status IN ('active', 'catching_up') FOR UPDATE`, tenantID); err != nil {
+		if err := q.LockLiveGenerations(ctx, tenantID); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE aggregate_generations SET status = 'discarded' WHERE tenant_id = $1 AND generation = $2`, tenantID, j.TargetGeneration); err != nil {
+		if err := q.DiscardGeneration(ctx, sqlc.DiscardGenerationParams{TenantID: tenantID, Generation: j.TargetGeneration}); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `UPDATE replay_jobs SET status = 'discarded', updated_at = now(), completed_at = now() WHERE tenant_id = $1 AND id = $2`, tenantID, jobID)
-		return err
+		return q.MarkReplayDiscarded(ctx, sqlc.MarkReplayDiscardedParams{TenantID: tenantID, ID: jobID})
 	})
 	if err != nil {
 		return nil, err
 	}
-	// The rows of the abandoned generation: nothing reads or writes them any more.
-	for _, q := range []string{
-		`DELETE FROM usage_aggregates WHERE tenant_id = $1 AND generation = $2`,
-		`DELETE FROM late_usage WHERE tenant_id = $1 AND generation = $2`,
-		`DELETE FROM processed_events WHERE tenant_id = $1 AND generation = $2`,
-	} {
-		if _, err := m.cfg.Pool.Exec(ctx, q, tenantID, job.TargetGeneration); err != nil {
-			return nil, err
-		}
+	if err := m.deleteGeneration(ctx, tenantID, job.TargetGeneration); err != nil {
+		return nil, err
 	}
 	return m.Get(ctx, tenantID, jobID)
+}
+
+// deleteGeneration removes the rows of an abandoned generation: nothing reads or writes them any more.
+func (m *Manager) deleteGeneration(ctx context.Context, tenantID uuid.UUID, generation int32) error {
+	q := sqlc.New(m.cfg.Pool)
+	if err := q.DeleteGenerationUsage(ctx, sqlc.DeleteGenerationUsageParams{TenantID: tenantID, Generation: generation}); err != nil {
+		return err
+	}
+	if err := q.DeleteGenerationLateUsage(ctx, sqlc.DeleteGenerationLateUsageParams{TenantID: tenantID, Generation: generation}); err != nil {
+		return err
+	}
+	return q.DeleteGenerationProcessedEvents(ctx, sqlc.DeleteGenerationProcessedEventsParams{TenantID: tenantID, Generation: generation})
 }
