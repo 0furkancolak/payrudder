@@ -57,6 +57,11 @@ export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, envir
     scheduleCancel: useMutation({ mutationFn: (id: string) => unwrap(t().POST("/v1/subscriptions/{id}/cancel-at-period-end", path(id))), onSuccess: refresh }),
     withdrawCancel: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}/cancel-at-period-end", path(id))), onSuccess: refresh }),
     endNow: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}", path(id))), onSuccess: refresh }),
+    /** Ends it now and credits the customer's balance with the unused part of the fee paid in advance. */
+    endNowCredit: useMutation({
+      mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}", { params: { path: { id }, query: { credit_unused: true } } })),
+      onSuccess: refresh,
+    }),
     /** Prices a change of plan or interval without making it. */
     previewChange: useMutation({ mutationFn: (v: ChangeInput) => unwrap(t().POST("/v1/subscriptions/{id}/change-preview", { ...path(v.id), body: changeBody(v) })) }),
     change: useMutation({ mutationFn: (v: ChangeInput) => unwrap(t().POST("/v1/subscriptions/{id}/change", { ...path(v.id), body: changeBody(v) })), onSuccess: refresh }),

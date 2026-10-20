@@ -359,7 +359,10 @@
         "code": "Kupon kodu",
         "apply": "Kuponu uygula",
         "remove": "Kuponu kaldır"
-      }
+      },
+      "endNowCredit": "Şimdi bitir, kullanılmayanı kredilendir",
+      "confirmEndCredit": "Abonelik şimdi bitirilsin ve müşterinin peşin ödediği ücretin kullanılmayan kısmı bakiyesine kredi olarak yazılsın mı?",
+      "credited": "{amount} müşterinin bakiyesine kredi olarak yazıldı."
     },
     "payments": {
       "reconcile": "Defterle mutabakat",

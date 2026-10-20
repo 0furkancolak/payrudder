@@ -41,6 +41,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("SubscriptionLifecycle", testSubscriptionLifecycle)
 	t.Run("SubscriptionChanges", testSubscriptionChanges)
 	t.Run("Coupons", testCoupons)
+	t.Run("CancelCredit", testCancelCredit)
 	t.Run("TaxRates", testTaxRates)
 	t.Run("CurrencyFeesAndCustomerBilling", testCurrencyFeesAndCustomerBilling)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)

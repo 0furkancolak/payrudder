@@ -359,7 +359,10 @@
         "code": "Code du coupon",
         "apply": "Appliquer le coupon",
         "remove": "Retirer le coupon"
-      }
+      },
+      "endNowCredit": "Terminer maintenant et créditer le reste",
+      "confirmEndCredit": "Terminer cet abonnement maintenant et créditer le client de la part inutilisée des frais payés d'avance ?",
+      "credited": "{amount} crédités sur le solde du client."
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",

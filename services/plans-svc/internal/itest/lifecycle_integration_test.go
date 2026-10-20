@@ -340,6 +340,10 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatalf("a second migration while one is under way: %v", err)
 		}
 		cut := time.Now().Add(-time.Minute).Truncate(time.Microsecond)
+		// The first fee was invoiced in advance: what is left of that period is credited at the cutover.
+		if _, err := e.plans.AdvanceSubscriptionFee(ctx, &plansv1.AdvanceSubscriptionFeeRequest{SubscriptionId: old.GetId(), PeriodStart: old.GetStartTime()}); err != nil {
+			t.Fatal(err)
+		}
 		done, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: mig, ProviderRef: "sub_NEW", CutoverTime: timestamppb.New(cut)})
 		if err != nil {
 			t.Fatal(err)
@@ -359,6 +363,19 @@ func testSubscriptionLifecycle(t *testing.T) {
 		again, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: mig, ProviderRef: "sub_NEW"})
 		if err != nil || again.GetSubscription().GetId() != nw.GetId() {
 			t.Fatalf("complete again = %v, %v; it must return the same subscription", again, err)
+		}
+		if adj, err := e.plans.ListSubscriptionAdjustments(ctx, &plansv1.ListSubscriptionAdjustmentsRequest{}); err != nil {
+			t.Fatal(err)
+		} else {
+			var credited int
+			for _, a := range adj.GetAdjustments() {
+				if a.GetSubscription().GetId() == old.GetId() && a.GetCreditMinor() > 0 && a.GetChargeMinor() == 0 {
+					credited++
+				}
+			}
+			if credited != 1 {
+				t.Errorf("the unused prepaid fee was credited %d times at the cutover, want once", credited)
+			}
 		}
 		if _, err := e.plans.CompleteProviderMigration(ctx, &plansv1.CompleteProviderMigrationRequest{MigrationId: mig, ProviderRef: "sub_OTHER"}); code(t, err) != codes.FailedPrecondition {
 			t.Fatalf("complete with another provider id: %v", err)

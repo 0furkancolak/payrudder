@@ -314,7 +314,11 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 	if err != nil {
 		return nil, err
 	}
+	if req.GetCreditUnused() && end.After(s.now()) {
+		return nil, domain.Invalid("credit_unused", "needs a subscription that ends now; schedule the cancellation for the end of the period instead")
+	}
 	var out *plansv1.Subscription
+	var credited int64
 	err = s.tx(ctx, func(q *sqlc.Queries) error {
 		cur, err := q.GetSubscriptionForUpdate(ctx, id)
 		if err != nil {
@@ -325,6 +329,11 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 		}
 		if !cur.OpenEnded {
 			return status.Error(codes.FailedPrecondition, "subscription already ended")
+		}
+		if req.GetCreditUnused() {
+			if sqlcRow := sqlc.GetSubscriptionRow(cur); sqlcRow.FeeTiming != "advance" {
+				return status.Error(codes.FailedPrecondition, "this subscription is billed in arrears: no fee was paid in advance")
+			}
 		}
 		if !end.After(cur.StartTime) {
 			return domain.Invalid("end_time", "must be after the subscription start")
@@ -338,6 +347,12 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 		}
 		if n != 1 {
 			return status.Error(codes.Aborted, "subscription changed concurrently; retry")
+		}
+		if req.GetCreditUnused() {
+			// The row as it was before it ended: it still says what was prepaid.
+			if credited, err = s.creditUnusedFee(ctx, q, sqlc.GetSubscriptionRow(cur), end); err != nil {
+				return err
+			}
 		}
 		if !end.After(s.now()) {
 			if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: id, State: string(subscription.Cancelled), PausedAt: cur.PausedAt}); err != nil {
@@ -354,7 +369,7 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
 	}
-	return &plansv1.CancelSubscriptionResponse{Subscription: out}, nil
+	return &plansv1.CancelSubscriptionResponse{Subscription: out, CreditedMinor: credited}, nil
 }
 
 // moveSubscription applies event to the subscription's effective state and stores the result.

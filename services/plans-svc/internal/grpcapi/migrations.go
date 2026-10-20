@@ -2,6 +2,7 @@ package grpcapi
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,6 +53,13 @@ func (s *Server) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUI
 	eff := convert.SubscriptionState(old.State, old.TrialEndsAt, old.OpenEnded, old.EndTime, now)
 	if !when.After(now) {
 		if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: old.ID, State: string(subscription.Cancelled), PausedAt: old.PausedAt}); err != nil {
+			return sqlc.InsertSubscriptionRow{}, err
+		}
+	}
+	// A fee paid in advance for the rest of the period the old provider-side subscription will not serve goes to the customer's credit balance.
+	// A coupon makes that sum differ from the list fee: such a subscription is left to a credit note.
+	if old.Owner == "quotify" {
+		if _, err := s.creditUnusedFee(ctx, q, old, when); err != nil && !errors.Is(err, errCouponOnCredit) {
 			return sqlc.InsertSubscriptionRow{}, err
 		}
 	}

@@ -402,7 +402,20 @@ func (s *Server) cancelSubscription(w http.ResponseWriter, r *http.Request) {
 		}
 		req.EndTime = timestamppb.New(t)
 	}
+	switch r.URL.Query().Get("credit_unused") {
+	case "", "false":
+	case "true":
+		req.CreditUnused = true
+	default:
+		writeError(w, r, invalid("credit_unused", "true or false"))
+		return
+	}
 	resp, err := s.d.Plans.CancelSubscription(r.Context(), req)
+	if req.CreditUnused {
+		// {subscription, credited_minor}: the caller asked what was credited.
+		respond(w, r, http.StatusOK, resp, err)
+		return
+	}
 	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
 }
 

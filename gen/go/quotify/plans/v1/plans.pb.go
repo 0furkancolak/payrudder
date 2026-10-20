@@ -1576,7 +1576,10 @@ type CancelSubscriptionRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	SubscriptionId string                 `protobuf:"bytes,1,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
 	// Unset = now.
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	EndTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	// Credit the customer's balance with the unused part of the fee that was paid in advance for the current period. Only for a subscription billed in
+	// advance that Quotify runs, ended now (not later), and without a coupon. Off by default: the customer keeps what they paid for.
+	CreditUnused  bool `protobuf:"varint,3,opt,name=credit_unused,json=creditUnused,proto3" json:"credit_unused,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1625,9 +1628,18 @@ func (x *CancelSubscriptionRequest) GetEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *CancelSubscriptionRequest) GetCreditUnused() bool {
+	if x != nil {
+		return x.CreditUnused
+	}
+	return false
+}
+
 type CancelSubscriptionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Subscription  *Subscription          `protobuf:"bytes,1,opt,name=subscription,proto3" json:"subscription,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Subscription *Subscription          `protobuf:"bytes,1,opt,name=subscription,proto3" json:"subscription,omitempty"`
+	// What was credited (minor units of the subscription's currency); 0 when credit_unused was off or nothing was prepaid.
+	CreditedMinor int64 `protobuf:"varint,2,opt,name=credited_minor,json=creditedMinor,proto3" json:"credited_minor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1667,6 +1679,13 @@ func (x *CancelSubscriptionResponse) GetSubscription() *Subscription {
 		return x.Subscription
 	}
 	return nil
+}
+
+func (x *CancelSubscriptionResponse) GetCreditedMinor() int64 {
+	if x != nil {
+		return x.CreditedMinor
+	}
+	return 0
 }
 
 type ListSubscriptionsForPeriodRequest struct {
@@ -5524,12 +5543,14 @@ const file_quotify_plans_v1_plans_proto_rawDesc = "" +
 	" \x01(\tR\n" +
 	"couponCode\"`\n" +
 	"\x1aCreateSubscriptionResponse\x12B\n" +
-	"\fsubscription\x18\x01 \x01(\v2\x1e.quotify.plans.v1.SubscriptionR\fsubscription\"{\n" +
+	"\fsubscription\x18\x01 \x01(\v2\x1e.quotify.plans.v1.SubscriptionR\fsubscription\"\xa0\x01\n" +
 	"\x19CancelSubscriptionRequest\x12'\n" +
 	"\x0fsubscription_id\x18\x01 \x01(\tR\x0esubscriptionId\x125\n" +
-	"\bend_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\aendTime\"`\n" +
+	"\bend_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\aendTime\x12#\n" +
+	"\rcredit_unused\x18\x03 \x01(\bR\fcreditUnused\"\x87\x01\n" +
 	"\x1aCancelSubscriptionResponse\x12B\n" +
-	"\fsubscription\x18\x01 \x01(\v2\x1e.quotify.plans.v1.SubscriptionR\fsubscription\"\x9d\x01\n" +
+	"\fsubscription\x18\x01 \x01(\v2\x1e.quotify.plans.v1.SubscriptionR\fsubscription\x12%\n" +
+	"\x0ecredited_minor\x18\x02 \x01(\x03R\rcreditedMinor\"\x9d\x01\n" +
 	"!ListSubscriptionsForPeriodRequest\x12=\n" +
 	"\fperiod_start\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\vperiodStart\x129\n" +
 	"\n" +

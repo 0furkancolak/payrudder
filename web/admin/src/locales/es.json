@@ -359,7 +359,10 @@
         "code": "Código de cupón",
         "apply": "Aplicar cupón",
         "remove": "Quitar cupón"
-      }
+      },
+      "endNowCredit": "Terminar ahora y abonar lo no usado",
+      "confirmEndCredit": "¿Terminar esta suscripción ahora y abonar al cliente la parte no usada de la tarifa pagada por adelantado?",
+      "credited": "Se abonaron {amount} al saldo del cliente."
     },
     "payments": {
       "reconcile": "Conciliar con el libro",
