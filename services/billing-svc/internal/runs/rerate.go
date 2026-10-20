@@ -18,6 +18,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/period"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/rating"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // Re-rating prices a closed period again under another plan version, on the same usage, and bills the difference
@@ -55,23 +56,22 @@ type ReratingJob struct {
 	CompletedAt     *time.Time
 }
 
-const reratingColumns = `id, tenant_id, period_id, plan_version_id, generation, status, customers_rated, corrections, credits,
-	correction_minor, credit_minor, COALESCE(last_error, ''), created_at, completed_at`
-
-func scanJob(row pgx.Row) (*ReratingJob, error) {
-	var j ReratingJob
-	err := row.Scan(&j.ID, &j.TenantID, &j.PeriodID, &j.PlanVersionID, &j.Generation, &j.Status, &j.CustomersRated, &j.Corrections,
-		&j.Credits, &j.CorrectionMinor, &j.CreditMinor, &j.LastError, &j.CreatedAt, &j.CompletedAt)
-	return &j, err
+func jobOf(r sqlc.ReratingJob) *ReratingJob {
+	return &ReratingJob{ID: r.ID, TenantID: r.TenantID, PeriodID: r.PeriodID, PlanVersionID: r.PlanVersionID, Generation: r.Generation, Status: r.Status,
+		CustomersRated: int(r.CustomersRated), Corrections: int(r.Corrections), Credits: int(r.Credits), CorrectionMinor: r.CorrectionMinor, CreditMinor: r.CreditMinor,
+		LastError: deref(r.LastError), CreatedAt: r.CreatedAt, CompletedAt: r.CompletedAt}
 }
 
 // GetReratingJob loads a job.
 func (m *Manager) GetReratingJob(ctx context.Context, tenantID, jobID uuid.UUID) (*ReratingJob, error) {
-	j, err := scanJob(m.cfg.Pool.QueryRow(ctx, `SELECT `+reratingColumns+` FROM rerating_jobs WHERE tenant_id = $1 AND id = $2`, tenantID, jobID))
+	row, err := m.q.GetReratingJob(ctx, sqlc.GetReratingJobParams{TenantID: tenantID, ID: jobID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrReratingNotFound
 	}
-	return j, err
+	if err != nil {
+		return nil, err
+	}
+	return jobOf(row), nil
 }
 
 // StartRerating creates the job for (tenant, period, plan version) and runs it. A repeated request returns the
@@ -99,18 +99,15 @@ func (m *Manager) StartRerating(ctx context.Context, tenantID uuid.UUID, periodI
 	if run.Generation != nil {
 		gen = *run.Generation
 	}
-	tag, err := m.cfg.Pool.Exec(ctx, `INSERT INTO rerating_jobs (tenant_id, id, period_id, plan_version_id, generation, status)
-		VALUES ($1,$2,$3,$4,$5,'RUNNING') ON CONFLICT (tenant_id, period_id, plan_version_id) DO NOTHING`,
-		tenantID, uuid.New(), periodID, planVersionID, gen)
+	inserted, err := m.q.InsertReratingJob(ctx, sqlc.InsertReratingJobParams{TenantID: tenantID, ID: uuid.New(), PeriodID: periodID, PlanVersionID: planVersionID, Generation: gen})
 	if err != nil {
 		return nil, false, err
 	}
-	job, err := scanJob(m.cfg.Pool.QueryRow(ctx, `SELECT `+reratingColumns+` FROM rerating_jobs WHERE tenant_id = $1 AND period_id = $2 AND plan_version_id = $3`,
-		tenantID, periodID, planVersionID))
+	row, err := m.q.GetReratingJobByPlanVersion(ctx, sqlc.GetReratingJobByPlanVersionParams{TenantID: tenantID, PeriodID: periodID, PlanVersionID: planVersionID})
 	if err != nil {
 		return nil, false, err
 	}
-	created := tag.RowsAffected() == 1
+	job, created := jobOf(row), inserted == 1
 	if job.Status == ReratingRunning {
 		if job, err = m.rerate(ctx, job); err != nil {
 			return job, created, err
@@ -121,74 +118,43 @@ func (m *Manager) StartRerating(ctx context.Context, tenantID uuid.UUID, periodI
 
 // ResumeRerating finishes jobs a crash left RUNNING (called by the scheduler loop).
 func (m *Manager) ResumeRerating(ctx context.Context) error {
-	rows, err := m.cfg.Pool.Query(ctx, `SELECT `+reratingColumns+` FROM rerating_jobs WHERE status = 'RUNNING' AND created_at < $1 ORDER BY created_at LIMIT 20`,
-		m.cfg.Now().Add(-time.Minute))
+	rows, err := m.q.ListRunningReratingJobs(ctx, m.cfg.Now().Add(-time.Minute))
 	if err != nil {
 		return err
 	}
-	var jobs []*ReratingJob
-	for rows.Next() {
-		j, err := scanJob(rows)
-		if err != nil {
-			rows.Close()
-			return err
-		}
-		jobs = append(jobs, j)
-	}
-	rows.Close()
-	for _, j := range jobs {
+	for _, r := range rows {
+		j := jobOf(r)
 		if _, err := m.rerate(ctx, j); err != nil {
 			m.log.WarnContext(ctx, "re-rating: job failed to finish", "tenant", j.TenantID, "job", j.ID, "error", err)
 		}
 	}
-	return rows.Err()
+	return nil
 }
 
 // billedComponents sums what a customer was already billed for the period's own usage: base fee, usage lines and the
 // lines of earlier corrections, per meter ("" is the base fee). Late-usage and credit lines are other things.
 func (m *Manager) billedComponents(ctx context.Context, tenantID uuid.UUID, periodID string) (map[string]map[string]int64, map[string]json.RawMessage, error) {
-	rows, err := m.cfg.Pool.Query(ctx, `
-		SELECT i.customer_id::text, COALESCE(l.meter_code, ''), sum(l.amount_minor)::bigint
-		FROM invoices i JOIN invoice_lines l ON l.tenant_id = i.tenant_id AND l.invoice_id = i.id
-		WHERE i.tenant_id = $1 AND i.period_id = $2 AND i.kind IN ('REGULAR','CORRECTION') AND i.status <> 'void'
-		  AND l.kind IN ('BASE_FEE','USAGE','CORRECTION')
-		GROUP BY 1, 2`, tenantID, periodID)
+	rows, err := m.q.BilledComponents(ctx, sqlc.BilledComponentsParams{TenantID: tenantID, PeriodID: periodID})
 	if err != nil {
 		return nil, nil, err
 	}
 	billed := map[string]map[string]int64{}
-	for rows.Next() {
-		var c, meter string
-		var amount int64
-		if err := rows.Scan(&c, &meter, &amount); err != nil {
-			rows.Close()
-			return nil, nil, err
+	for _, r := range rows {
+		if billed[r.CustomerID] == nil {
+			billed[r.CustomerID] = map[string]int64{}
 		}
-		if billed[c] == nil {
-			billed[c] = map[string]int64{}
-		}
-		billed[c][meter] = amount
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return nil, nil, err
+		billed[r.CustomerID][r.MeterCode] = r.AmountMinor
 	}
 	// The snapshot of each customer's regular invoice (a correction repeats who it is addressed to).
-	srows, err := m.cfg.Pool.Query(ctx, `SELECT customer_id::text, snapshot FROM invoices WHERE tenant_id = $1 AND period_id = $2 AND kind = 'REGULAR' AND status <> 'void'`, tenantID, periodID)
+	srows, err := m.q.ListRegularInvoiceSnapshots(ctx, sqlc.ListRegularInvoiceSnapshotsParams{TenantID: tenantID, PeriodID: periodID})
 	if err != nil {
 		return nil, nil, err
 	}
-	defer srows.Close()
-	snaps := map[string]json.RawMessage{}
-	for srows.Next() {
-		var c string
-		var s json.RawMessage
-		if err := srows.Scan(&c, &s); err != nil {
-			return nil, nil, err
-		}
-		snaps[c] = s
+	snaps := make(map[string]json.RawMessage, len(srows))
+	for _, r := range srows {
+		snaps[r.CustomerID] = r.Snapshot
 	}
-	return billed, snaps, srows.Err()
+	return billed, snaps, nil
 }
 
 // rerate does the work of a job. Everything it writes is keyed by the job, so running it again completes what a
@@ -197,55 +163,99 @@ func (m *Manager) rerate(ctx context.Context, job *ReratingJob) (*ReratingJob, e
 	if err := m.rerateOnce(ctx, job); err != nil {
 		var p permanent
 		if errors.As(err, &p) {
-			_, _ = m.cfg.Pool.Exec(ctx, `UPDATE rerating_jobs SET status = 'FAILED', last_error = $3 WHERE tenant_id = $1 AND id = $2`, job.TenantID, job.ID, err.Error())
+			_ = m.q.FailReratingJob(ctx, sqlc.FailReratingJobParams{LastError: err.Error(), TenantID: job.TenantID, ID: job.ID})
 		}
 		return job, err
 	}
 	return m.GetReratingJob(ctx, job.TenantID, job.ID)
 }
 
+// reratePass is what one pass over a job reads before it prices any customer.
+type reratePass struct {
+	job      *ReratingJob
+	tctx     context.Context
+	currency string
+	meters   map[string]meterInfo
+	subs     map[string]subscription
+	target   rating.PlanVersion
+	planCode string
+	usage    map[string][]rating.Usage
+	billed   map[string]map[string]int64
+	snaps    map[string]json.RawMessage
+	codes    map[string]string // plan version id -> plan code
+}
+
 func (m *Manager) rerateOnce(ctx context.Context, job *ReratingJob) error {
-	tid, tctx := job.TenantID, tenantCtx(ctx, job.TenantID)
-	tn, err := m.cfg.Admin.GetTenant(operatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tid.String()})
-	if err != nil {
-		return fmt.Errorf("get tenant: %w", err)
-	}
-	loc, err := time.LoadLocation(tn.GetTenant().GetTimezone())
-	if err != nil {
-		return permanent{err}
-	}
-	start, end, err := period.Bounds(job.PeriodID, loc)
-	if err != nil {
-		return permanent{err}
-	}
-	metersResp, err := m.cfg.Plans.ListMeters(tctx, &plansv1.ListMetersRequest{})
-	if err != nil {
-		return fmt.Errorf("list meters: %w", err)
-	}
-	meters := map[string]meterInfo{}
-	for _, mt := range metersResp.GetMeters() {
-		meters[mt.GetCode()] = meterInfo{Unit: mt.GetUnitLabel(), Scale: int(mt.GetQuantityScale())}
-	}
-	subs, err := m.subscriptions(ctx, tid, start, end)
+	rp, err := m.loadRerating(ctx, job)
 	if err != nil {
 		return err
 	}
+	rated := 0
+	for _, cid := range rp.customers() {
+		priced, err := m.rerateCustomer(ctx, rp, cid)
+		if err != nil {
+			return err
+		}
+		if priced {
+			rated++
+		}
+	}
+	return m.finishRerating(ctx, job, rated)
+}
 
-	// The target plan version and the plan it belongs to.
-	tgtResp, err := m.cfg.Plans.GetPlanVersion(tctx, &plansv1.GetPlanVersionRequest{PlanVersionId: job.PlanVersionID.String()})
+// loadRerating reads the tenant, the period, the subscriptions, the target plan version, the period's usage and what was billed for it.
+func (m *Manager) loadRerating(ctx context.Context, job *ReratingJob) (*reratePass, error) {
+	tid := job.TenantID
+	rp := &reratePass{job: job, tctx: tenantCtx(ctx, tid), usage: map[string][]rating.Usage{}, codes: map[string]string{}}
+	tn, err := m.cfg.Admin.GetTenant(operatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tid.String()})
+	if err != nil {
+		return nil, fmt.Errorf("get tenant: %w", err)
+	}
+	rp.currency = tn.GetTenant().GetCurrency()
+	loc, err := time.LoadLocation(tn.GetTenant().GetTimezone())
+	if err != nil {
+		return nil, permanent{err}
+	}
+	start, end, err := period.Bounds(job.PeriodID, loc)
+	if err != nil {
+		return nil, permanent{err}
+	}
+	if rp.meters, err = m.meters(rp.tctx); err != nil {
+		return nil, err
+	}
+	if rp.subs, err = m.subscriptions(ctx, tid, start, end); err != nil {
+		return nil, err
+	}
+	if err := m.loadTarget(rp); err != nil {
+		return nil, err
+	}
+	if err := m.streamReratingUsage(ctx, rp); err != nil {
+		return nil, err
+	}
+	if rp.billed, rp.snaps, err = m.billedComponents(ctx, tid, job.PeriodID); err != nil {
+		return nil, err
+	}
+	return rp, nil
+}
+
+// loadTarget reads the plan version the job prices under and the plan it belongs to.
+func (m *Manager) loadTarget(rp *reratePass) error {
+	resp, err := m.cfg.Plans.GetPlanVersion(rp.tctx, &plansv1.GetPlanVersionRequest{PlanVersionId: rp.job.PlanVersionID.String()})
 	if err != nil {
 		return fmt.Errorf("get plan version: %w", err)
 	}
-	target, err := convertPlanVersion(tgtResp.GetPlanVersion(), "", "")
-	if err != nil {
+	if rp.target, err = convertPlanVersion(resp.GetPlanVersion(), "", ""); err != nil {
 		return permanent{err}
 	}
-	planCode := tgtResp.GetPlanVersion().GetPlanCode()
+	rp.planCode = resp.GetPlanVersion().GetPlanCode()
+	return nil
+}
 
-	// Usage of the period at the tenant's active generation (a replay may have corrected it since the run).
-	usage := map[string][]rating.Usage{}
+// streamReratingUsage reads the usage of the period at the tenant's active generation (a replay may have corrected it since the run).
+func (m *Manager) streamReratingUsage(ctx context.Context, rp *reratePass) error {
+	job := rp.job
 	gen := int32(0)
-	us, err := m.cfg.Aggregator.StreamPeriodUsage(tctx, &aggregatorv1.StreamPeriodUsageRequest{PeriodId: job.PeriodID})
+	us, err := m.cfg.Aggregator.StreamPeriodUsage(rp.tctx, &aggregatorv1.StreamPeriodUsageRequest{PeriodId: job.PeriodID})
 	if err != nil {
 		return fmt.Errorf("stream usage: %w", err)
 	}
@@ -263,148 +273,134 @@ func (m *Manager) rerateOnce(ctx context.Context, job *ReratingJob) error {
 		if err != nil {
 			return permanent{err}
 		}
-		usage[u.GetCustomerId()] = append(usage[u.GetCustomerId()], rating.Usage{MeterCode: u.GetMeterCode(), Quantity: q, UnitLabel: meters[u.GetMeterCode()].Unit})
+		rp.usage[u.GetCustomerId()] = append(rp.usage[u.GetCustomerId()], rating.Usage{MeterCode: u.GetMeterCode(), Quantity: q, UnitLabel: rp.meters[u.GetMeterCode()].Unit})
 	}
 	if gen != 0 && gen != job.Generation {
-		if _, err := m.cfg.Pool.Exec(ctx, `UPDATE rerating_jobs SET generation = $3 WHERE tenant_id = $1 AND id = $2`, tid, job.ID, gen); err != nil {
+		if err := m.q.SetReratingJobGeneration(ctx, sqlc.SetReratingJobGenerationParams{Generation: gen, TenantID: job.TenantID, ID: job.ID}); err != nil {
 			return err
 		}
 		job.Generation = gen
 	}
+	return nil
+}
 
-	billed, snaps, err := m.billedComponents(ctx, tid, job.PeriodID)
+// customers are the subscribed customers, in a stable order.
+func (rp *reratePass) customers() []string {
+	ids := make([]string, 0, len(rp.subs))
+	for c := range rp.subs {
+		ids = append(ids, c)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// planCodeOf is the plan code of a plan version.
+func (m *Manager) planCodeOf(rp *reratePass, pvID string) (string, error) {
+	if c, ok := rp.codes[pvID]; ok {
+		return c, nil
+	}
+	resp, err := m.cfg.Plans.GetPlanVersion(rp.tctx, &plansv1.GetPlanVersionRequest{PlanVersionId: pvID})
 	if err != nil {
-		return err
+		return "", fmt.Errorf("get plan version %s: %w", pvID, err)
 	}
+	rp.codes[pvID] = resp.GetPlanVersion().GetPlanCode()
+	return rp.codes[pvID], nil
+}
 
-	versions := map[string]string{} // plan version id -> plan code
-	planOf := func(pvID string) (string, error) {
-		if c, ok := versions[pvID]; ok {
-			return c, nil
-		}
-		resp, err := m.cfg.Plans.GetPlanVersion(tctx, &plansv1.GetPlanVersionRequest{PlanVersionId: pvID})
-		if err != nil {
-			return "", fmt.Errorf("get plan version %s: %w", pvID, err)
-		}
-		versions[pvID] = resp.GetPlanVersion().GetPlanCode()
-		return versions[pvID], nil
+// rerateCustomer prices one customer under the target and records the difference; it reports whether the customer was priced.
+func (m *Manager) rerateCustomer(ctx context.Context, rp *reratePass, cid string) (bool, error) {
+	job, sub := rp.job, rp.subs[cid]
+	snap, invoiced := rp.snaps[cid]
+	if !invoiced || sub.PlanVersionID == job.PlanVersionID.String() {
+		return false, nil // never billed for the period, or already on the target version
 	}
-
-	customers := make([]string, 0, len(subs))
-	for c := range subs {
-		customers = append(customers, c)
+	if (sub.Currency != "" && sub.Currency != rp.currency) || len(sub.Chain) > 1 {
+		// Re-rating prices in the tenant currency and compares whole-period fees; a subscription sold in another
+		// currency or changed inside the period would be compared against the wrong amounts.
+		m.log.WarnContext(ctx, "re-rating skips a subscription in another currency or changed inside the period", "tenant", job.TenantID, "customer", cid, "period", job.PeriodID)
+		return false, nil
 	}
-	sort.Strings(customers)
+	code, err := m.planCodeOf(rp, sub.PlanVersionID)
+	if err != nil {
+		return false, err
+	}
+	if code != rp.planCode {
+		return false, nil // another plan: not what this job re-prices
+	}
+	deltas, total, err := correctionDeltas(rp.target, rp.usage[cid], rp.billed[cid], rp.meters)
+	if err != nil {
+		return true, err
+	}
+	if total == 0 {
+		return true, nil
+	}
+	cuid, err := uuid.Parse(cid)
+	if err != nil {
+		return true, permanent{err}
+	}
+	return true, m.recordRerating(ctx, job, cuid, snap, rp.currency, deltas, total, rp.meters)
+}
 
-	rated := 0
-	for _, cid := range customers {
-		sub := subs[cid]
-		snap, invoiced := snaps[cid]
-		if !invoiced || sub.PlanVersionID == job.PlanVersionID.String() {
-			continue // never billed for the period, or already on the target version
-		}
-		if (sub.Currency != "" && sub.Currency != tn.GetTenant().GetCurrency()) || len(sub.Chain) > 1 {
-			// Re-rating prices in the tenant currency and compares whole-period fees; a subscription sold in another
-			// currency or changed inside the period would be compared against the wrong amounts.
-			m.log.WarnContext(ctx, "re-rating skips a subscription in another currency or changed inside the period", "tenant", tid, "customer", cid, "period", job.PeriodID)
+// correctionDeltas prices usage under target and returns, per component (a meter, "" for the base fee), the lines that bring what was billed to the new price
+// and their sum: positive when the customer owes more, negative when it is owed a credit.
+func correctionDeltas(target rating.PlanVersion, usage []rating.Usage, billed map[string]int64, meters map[string]meterInfo) ([]rating.Line, int64, error) {
+	lines, err := rating.Rate(target, usage)
+	if err != nil {
+		return nil, 0, permanent{err}
+	}
+	newAmount := map[string]int64{}
+	newLine := map[string]rating.Line{}
+	for _, l := range lines {
+		newAmount[l.MeterCode] += l.AmountMinor
+		newLine[l.MeterCode] = l
+	}
+	components := map[string]bool{}
+	for k := range newAmount {
+		components[k] = true
+	}
+	for k := range billed {
+		components[k] = true
+	}
+	keys := make([]string, 0, len(components))
+	for k := range components {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var deltas []rating.Line
+	var total int64
+	for _, k := range keys {
+		d := newAmount[k] - billed[k]
+		if d == 0 {
 			continue
 		}
-		code, err := planOf(sub.PlanVersionID)
-		if err != nil {
-			return err
-		}
-		if code != planCode {
-			continue // another plan: not what this job re-prices
-		}
-		rated++
-		lines, err := rating.Rate(target, usage[cid])
-		if err != nil {
-			return permanent{err}
-		}
-		newAmount := map[string]int64{}
-		newLine := map[string]rating.Line{}
-		for _, l := range lines {
-			newAmount[l.MeterCode] += l.AmountMinor
-			newLine[l.MeterCode] = l
-		}
-		components := map[string]bool{}
-		for k := range newAmount {
-			components[k] = true
-		}
-		for k := range billed[cid] {
-			components[k] = true
-		}
-		keys := make([]string, 0, len(components))
-		for k := range components {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		var deltas []rating.Line
-		var total int64
-		for _, k := range keys {
-			d := newAmount[k] - billed[cid][k]
-			if d == 0 {
-				continue
+		total += d
+		l := rating.Line{Kind: rating.KindCorrection, MeterCode: k, AmountMinor: d, Description: "Base fee: price change"}
+		if k != "" {
+			l.Description = fmt.Sprintf("%s: price change", k)
+			l.UnitLabel = meters[k].Unit
+			if nl, ok := newLine[k]; ok {
+				l.Quantity = nl.Quantity
+			} else if q := quantityOf(usage, k); q != nil {
+				l.Quantity = q
 			}
-			total += d
-			desc := "Base fee: price change"
-			l := rating.Line{Kind: rating.KindCorrection, MeterCode: k, AmountMinor: d}
-			if k != "" {
-				desc = fmt.Sprintf("%s: price change", k)
-				l.UnitLabel = meters[k].Unit
-				if nl, ok := newLine[k]; ok {
-					l.Quantity = nl.Quantity
-				} else if q := quantityOf(usage[cid], k); q != nil {
-					l.Quantity = q
-				}
-			}
-			l.Description = desc
-			deltas = append(deltas, l)
 		}
-		if total == 0 {
-			continue
-		}
-		cuid, err := uuid.Parse(cid)
-		if err != nil {
-			return permanent{err}
-		}
-		if err := m.recordRerating(ctx, job, cuid, snap, tn.GetTenant().GetCurrency(), deltas, total, meters); err != nil {
-			return err
-		}
+		deltas = append(deltas, l)
 	}
+	return deltas, total, nil
+}
 
-	// Finalize the correction invoices: number, open, saga. Finalizing twice is a no-op.
-	rows, err := m.cfg.Pool.Query(ctx, `SELECT id FROM invoices WHERE tenant_id = $1 AND rerating_job_id = $2 AND status = 'draft' ORDER BY id`, tid, job.ID)
+// finishRerating finalizes the correction invoices (number, open, saga; finalizing twice is a no-op) and completes the job.
+func (m *Manager) finishRerating(ctx context.Context, job *ReratingJob, rated int) error {
+	ids, err := m.q.ListDraftInvoiceIDsOfRerating(ctx, sqlc.ListDraftInvoiceIDsOfReratingParams{TenantID: job.TenantID, ReratingJobID: job.ID})
 	if err != nil {
-		return err
-	}
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return err
-		}
-		ids = append(ids, id)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return err
 	}
 	for _, id := range ids {
-		if err := m.Finalize(ctx, tid, id); err != nil {
+		if err := m.Finalize(ctx, job.TenantID, id); err != nil {
 			return err
 		}
 	}
-
-	_, err = m.cfg.Pool.Exec(ctx, `
-		UPDATE rerating_jobs SET status = 'COMPLETED', completed_at = $3, last_error = NULL, customers_rated = $4,
-		  corrections = (SELECT count(*) FROM invoices WHERE tenant_id = $1 AND rerating_job_id = $2),
-		  correction_minor = COALESCE((SELECT sum(total_minor) FROM invoices WHERE tenant_id = $1 AND rerating_job_id = $2), 0),
-		  credits = (SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND source_rerating_job_id = $2),
-		  credit_minor = COALESCE((SELECT sum(amount_minor + 0) FROM credit_balances WHERE tenant_id = $1 AND source_rerating_job_id = $2), 0)
-		WHERE tenant_id = $1 AND id = $2`, tid, job.ID, m.cfg.Now(), rated)
-	return err
+	return m.q.CompleteReratingJob(ctx, sqlc.CompleteReratingJobParams{CompletedAt: m.cfg.Now(), CustomersRated: i32(rated), TenantID: job.TenantID, ID: job.ID})
 }
 
 func quantityOf(us []rating.Usage, meter string) *apd.Decimal {
@@ -421,41 +417,27 @@ func quantityOf(us []rating.Usage, meter string) *apd.Decimal {
 func (m *Manager) recordRerating(ctx context.Context, job *ReratingJob, customer uuid.UUID, snapshot json.RawMessage, currency string,
 	deltas []rating.Line, total int64, meters map[string]meterInfo) error {
 	return pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := m.q.WithTx(tx)
 		if total < 0 {
-			_, err := tx.Exec(ctx, `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_rerating_job_id)
-				VALUES ($1,$2,$3,$4,$5) ON CONFLICT (tenant_id, customer_id, source_rerating_job_id) DO NOTHING`,
-				job.TenantID, customer, uuid.New(), -total, job.ID)
-			return err
+			return q.InsertCreditBalanceForRerating(ctx, sqlc.InsertCreditBalanceForReratingParams{TenantID: job.TenantID, CustomerID: customer, ID: uuid.New(),
+				AmountMinor: -total, SourceReratingJobID: job.ID})
 		}
 		id := uuid.New()
-		var got uuid.UUID
-		err := tx.QueryRow(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, rerating_job_id)
-			VALUES ($1,$2,$3,$4,'CORRECTION',$5,$6,$7,$7,'draft',$8,$9) ON CONFLICT DO NOTHING RETURNING id`,
-			job.TenantID, id, customer, job.PeriodID, job.PlanVersionID, currency, total, snapshot, job.ID).Scan(&got)
+		_, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
+			TenantID: job.TenantID, ID: id, CustomerID: customer, PeriodID: job.PeriodID, Kind: "CORRECTION", PlanVersionID: job.PlanVersionID, Currency: currency,
+			SubtotalMinor: total, TotalMinor: total, Snapshot: snapshot, ReratingJobID: &job.ID,
+		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil // this job already corrected this customer
 		}
 		if err != nil {
 			return err
 		}
+		lines, scales := make([]rating.Line, len(deltas)), make([]int, len(deltas))
 		for i, l := range deltas {
-			var qty, scale, label, meter any
-			if l.MeterCode != "" {
-				meter = l.MeterCode
-				if l.Quantity != nil {
-					units, err := unitsOf(l.Quantity, meters[l.MeterCode].Scale)
-					if err != nil {
-						return err
-					}
-					qty, scale, label = units, int16(meters[l.MeterCode].Scale), l.UnitLabel //nolint:gosec // 0..6
-				}
-			}
-			if _, err := tx.Exec(ctx, `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, meter_code, quantity, quantity_scale, unit_label, amount_minor, description)
-				VALUES ($1,$2,$3,'CORRECTION',$4,$5::numeric,$6,$7,$8,$9)`,
-				job.TenantID, id, i+1, meter, qty, scale, label, l.AmountMinor, l.Description+" ("+job.PeriodID+")"); err != nil {
-				return err
-			}
+			l.Description += " (" + job.PeriodID + ")"
+			lines[i], scales[i] = l, meters[l.MeterCode].Scale
 		}
-		return nil
+		return insertLines(ctx, q, job.TenantID, id, lines, scales)
 	})
 }

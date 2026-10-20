@@ -10,6 +10,7 @@ import (
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // watermark proves that every on-time event of the run's period is in usage_aggregates (docs/07-correctness.md §4):
@@ -38,8 +39,7 @@ func (m *Manager) watermark(ctx context.Context, run *Run) (bool, error) {
 			raw[fmt.Sprint(p)] = o
 		}
 		b, _ := json.Marshal(raw)
-		if _, err := m.cfg.Pool.Exec(ctx, `UPDATE billing_runs SET required_offsets = $3 WHERE tenant_id = $1 AND period_id = $2`,
-			run.TenantID, run.PeriodID, b); err != nil {
+		if err := m.q.SetRunOffsets(ctx, sqlc.SetRunOffsetsParams{RequiredOffsets: b, TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
 			return false, err
 		}
 		run.Offsets = offsets

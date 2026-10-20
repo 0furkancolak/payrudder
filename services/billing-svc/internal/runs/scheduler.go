@@ -15,6 +15,7 @@ import (
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/period"
 	"github.com/0furkancolak/quotify/pkg/tenant"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // Tick runs one scheduler pass: it creates the runs that became due, then drives every unfinished run it can lock.
@@ -31,31 +32,13 @@ func (m *Manager) Tick(ctx context.Context) error {
 	if err := m.ResumeRerating(ctx); err != nil {
 		m.log.WarnContext(ctx, "scheduler: re-rating resume failed", "error", err)
 	}
-	rows, err := m.cfg.Pool.Query(ctx, `SELECT tenant_id, period_id FROM billing_runs WHERE status NOT IN ('COMPLETED','FAILED')
-		AND cutoff_at + make_interval(secs => $1) <= $2 ORDER BY cutoff_at`, m.cfg.WatermarkDelay.Seconds(), m.cfg.Now())
+	open, err := m.q.ListDueRuns(ctx, sqlc.ListDueRunsParams{DelaySecs: m.cfg.WatermarkDelay.Seconds(), Now: m.cfg.Now()})
 	if err != nil {
 		return err
 	}
-	type key struct {
-		t uuid.UUID
-		p string
-	}
-	var open []key
-	for rows.Next() {
-		var k key
-		if err := rows.Scan(&k.t, &k.p); err != nil {
-			rows.Close()
-			return err
-		}
-		open = append(open, k)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return err
-	}
 	for _, k := range open {
-		if _, err := m.Drive(ctx, k.t, k.p); err != nil {
-			m.log.WarnContext(ctx, "scheduler: run failed to advance", "tenant", k.t, "period", k.p, "error", err)
+		if _, err := m.Drive(ctx, k.TenantID, k.PeriodID); err != nil {
+			m.log.WarnContext(ctx, "scheduler: run failed to advance", "tenant", k.TenantID, "period", k.PeriodID, "error", err)
 		}
 	}
 	return nil
@@ -92,8 +75,7 @@ func (m *Manager) discover(ctx context.Context) error {
 				if now.Before(cutoff.Add(m.cfg.WatermarkDelay)) {
 					continue
 				}
-				if _, err := m.cfg.Pool.Exec(ctx, `INSERT INTO billing_runs (tenant_id, period_id, status, cutoff_at) VALUES ($1,$2,'SCHEDULED',$3)
-					ON CONFLICT (tenant_id, period_id) DO NOTHING`, id, pid, cutoff); err != nil {
+				if err := m.q.InsertBillingRun(ctx, sqlc.InsertBillingRunParams{TenantID: id, PeriodID: pid, CutoffAt: cutoff}); err != nil {
 					return err
 				}
 			}

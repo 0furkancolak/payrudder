@@ -19,6 +19,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // Refusals of CreateCreditNote.
@@ -79,71 +80,47 @@ func CreditNoteNumber(environment string, year int, seq int64) string {
 func (m *Manager) CreateCreditNote(ctx context.Context, tenantID, invoiceID uuid.UUID, amount int64, reason string, refund bool) (*CreditNote, error) {
 	var out *CreditNote
 	err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		var (
-			status, currency, env string
-			number                *string
-			total                 int64
-			customer              uuid.UUID
-		)
-		err := tx.QueryRow(ctx, `SELECT status, currency, COALESCE(snapshot->>'environment', 'live'), number, total_minor, customer_id FROM invoices
-			WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, tenantID, invoiceID).Scan(&status, &currency, &env, &number, &total, &customer)
+		q := m.q.WithTx(tx)
+		inv, err := q.LockInvoiceForCreditNote(ctx, sqlc.LockInvoiceForCreditNoteParams{TenantID: tenantID, ID: invoiceID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrInvoiceNotFound
 		}
 		if err != nil {
 			return err
 		}
-		if status != "paid" {
+		if inv.Status != "paid" {
 			return ErrNotPaid
 		}
-		var credited int64
-		if err := tx.QueryRow(ctx, `SELECT COALESCE(sum(total_minor), 0) FROM credit_notes WHERE tenant_id = $1 AND invoice_id = $2`, tenantID, invoiceID).Scan(&credited); err != nil {
+		if amount, err = creditableAmount(ctx, q, tenantID, invoiceID, inv.TotalMinor, amount); err != nil {
 			return err
-		}
-		left := total - credited
-		switch {
-		case left <= 0:
-			return ErrNothingLeft
-		case amount == 0:
-			amount = left
-		case amount < 0 || amount > left:
-			return ErrBadAmount
 		}
 		now := m.cfg.Now()
-		year := now.UTC().Year()
-		if _, err := tx.Exec(ctx, `INSERT INTO credit_note_seq (tenant_id, year, next_value) VALUES ($1,$2,1) ON CONFLICT DO NOTHING`, tenantID, year); err != nil {
+		year := int32(now.UTC().Year()) //nolint:gosec // a calendar year
+		seq, err := nextCreditNoteSeq(ctx, q, tenantID, year)
+		if err != nil {
 			return err
 		}
-		var seq int64
-		if err := tx.QueryRow(ctx, `SELECT next_value FROM credit_note_seq WHERE tenant_id = $1 AND year = $2 FOR UPDATE`, tenantID, year).Scan(&seq); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE credit_note_seq SET next_value = next_value + 1 WHERE tenant_id = $1 AND year = $2`, tenantID, year); err != nil {
-			return err
-		}
-		id := uuid.New()
-		cn := &CreditNote{ID: id, CustomerID: customer, InvoiceID: invoiceID, Number: CreditNoteNumber(env, year, seq), Currency: currency, Reason: reason, TotalMinor: amount, CreatedAt: now}
-		if number != nil {
-			cn.InvoiceNumber = *number
+		cn := &CreditNote{ID: uuid.New(), CustomerID: inv.CustomerID, InvoiceID: invoiceID, Number: CreditNoteNumber(inv.Environment, int(year), seq), Currency: inv.Currency,
+			Reason: reason, TotalMinor: amount, CreatedAt: now}
+		if inv.Number != nil {
+			cn.InvoiceNumber = *inv.Number
 		}
 		disposition := "credit"
 		if refund {
 			disposition = "refund"
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor, reason, created_at, disposition) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-			tenantID, id, customer, invoiceID, cn.Number, currency, amount, reason, now, disposition); err != nil {
+		if err := q.InsertCreditNote(ctx, sqlc.InsertCreditNoteParams{TenantID: tenantID, ID: cn.ID, CustomerID: inv.CustomerID, InvoiceID: invoiceID, Number: cn.Number,
+			Currency: inv.Currency, TotalMinor: amount, Reason: reason, CreatedAt: now, Disposition: disposition}); err != nil {
 			return err
 		}
 		if refund {
 			cn.Refund = true
-			if err := m.requestRefund(ctx, tx, tenantID, cn, env, 1, 0, 0); err != nil {
-				return err
-			}
-			out = cn
-			return creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteCreated, cn.ID.String(), now, cn)
+			err = m.requestRefund(ctx, tx, tenantID, cn, inv.Environment, 1, 0, 0)
+		} else {
+			err = q.InsertCreditBalanceForNote(ctx, sqlc.InsertCreditBalanceForNoteParams{TenantID: tenantID, CustomerID: inv.CustomerID, ID: uuid.New(), AmountMinor: amount,
+				SourceCreditNoteID: cn.ID, Currency: inv.Currency})
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_credit_note_id, currency) VALUES ($1,$2,$3,$4,$5,$6)`,
-			tenantID, customer, uuid.New(), amount, id, currency); err != nil {
+		if err != nil {
 			return err
 		}
 		out = cn
@@ -152,14 +129,45 @@ func (m *Manager) CreateCreditNote(ctx context.Context, tenantID, invoiceID uuid
 	return out, err
 }
 
+// creditableAmount is the amount a new credit note takes: what was asked, or what is left of the invoice for 0.
+func creditableAmount(ctx context.Context, q *sqlc.Queries, tenantID, invoiceID uuid.UUID, total, amount int64) (int64, error) {
+	credited, err := q.SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: tenantID, InvoiceID: invoiceID})
+	if err != nil {
+		return 0, err
+	}
+	left := total - credited
+	switch {
+	case left <= 0:
+		return 0, ErrNothingLeft
+	case amount == 0:
+		return left, nil
+	case amount < 0 || amount > left:
+		return 0, ErrBadAmount
+	}
+	return amount, nil
+}
+
+// nextCreditNoteSeq takes the next gap-free number of the tenant and year.
+func nextCreditNoteSeq(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, year int32) (int64, error) {
+	if err := q.EnsureCreditNoteSeq(ctx, sqlc.EnsureCreditNoteSeqParams{TenantID: tenantID, Year: year}); err != nil {
+		return 0, err
+	}
+	seq, err := q.LockCreditNoteSeq(ctx, sqlc.LockCreditNoteSeqParams{TenantID: tenantID, Year: year})
+	if err != nil {
+		return 0, err
+	}
+	return seq, q.BumpCreditNoteSeq(ctx, sqlc.BumpCreditNoteSeqParams{TenantID: tenantID, Year: year})
+}
+
 // requestRefund sends (or resends, with a higher attempt) the RefundPayment command of a credit note and marks the note requested. The command id changes
 // with the attempt so the outbox does not swallow a resend; the idempotency key does not, so the provider refunds once.
 func (m *Manager) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, cn *CreditNote, environment string, attempt, runFrom, generation int) error {
-	var sagaID uuid.UUID
-	if err := tx.QueryRow(ctx, `SELECT id FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, tenantID, cn.InvoiceID).Scan(&sagaID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNoRefund
-		}
+	q := m.q.WithTx(tx)
+	sagaID, err := q.GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tenantID, InvoiceID: cn.InvoiceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNoRefund
+	}
+	if err != nil {
 		return err
 	}
 	cmdID := uuid.NewSHA1(refundNS, fmt.Appendf(nil, "%s|%d", cn.ID, attempt))
@@ -181,8 +189,8 @@ func (m *Manager) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.UU
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'requested', refund_attempt = $3, refund_command_id = $4, refund_requested_at = $5, refund_error = NULL,
-		refund_run_from = $6, refund_generation = $7 WHERE tenant_id = $1 AND id = $2`, tenantID, cn.ID, attempt, cmdID, now, runFrom, generation); err != nil {
+	if err := q.MarkRefundRequested(ctx, sqlc.MarkRefundRequestedParams{RefundAttempt: i32(attempt), RefundCommandID: cmdID, RefundRequestedAt: now,
+		RefundRunFrom: i32(runFrom), RefundGeneration: i32(generation), TenantID: tenantID, ID: cn.ID}); err != nil {
 		return err
 	}
 	cn.RefundState = RefundRequested
@@ -192,24 +200,20 @@ func (m *Manager) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.UU
 // SettleRefund applies a worker's reply to the credit note whose refund command it answers. handled is false when no credit note sent that command.
 // A refund that was not accepted for a reason that will not change fails the note; one that may succeed later stays requested for the resend.
 func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID, reply *commandsv1.ReplyEnvelope) (handled bool, err error) {
-	cn := &CreditNote{Refund: true}
-	err = tx.QueryRow(ctx, `SELECT id, customer_id, invoice_id, number, currency, total_minor, COALESCE(reason, ''), created_at FROM credit_notes
-		WHERE tenant_id = $1 AND refund_command_id = $2 AND refund_state = 'requested' FOR UPDATE`, tenantID, commandID).Scan(
-		&cn.ID, &cn.CustomerID, &cn.InvoiceID, &cn.Number, &cn.Currency, &cn.TotalMinor, &cn.Reason, &cn.CreatedAt)
-	id := cn.ID
+	q := sqlc.New(tx)
+	row, err := q.LockCreditNoteByRefundCommand(ctx, sqlc.LockCreditNoteByRefundCommandParams{TenantID: tenantID, RefundCommandID: commandID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		var any bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM credit_notes WHERE tenant_id = $1 AND refund_command_id = $2)`, tenantID, commandID).Scan(&any); err != nil {
-			return false, err
-		}
-		return any, nil // a late duplicate for a note that is already settled
+		// A late duplicate for a note that is already settled is still handled.
+		return q.RefundCommandExists(ctx, sqlc.RefundCommandExistsParams{TenantID: tenantID, RefundCommandID: commandID})
 	}
 	if err != nil {
 		return false, err
 	}
+	cn := &CreditNote{Refund: true, ID: row.ID, CustomerID: row.CustomerID, InvoiceID: row.InvoiceID, Number: row.Number, Currency: row.Currency, TotalMinor: row.TotalMinor,
+		Reason: row.Reason, CreatedAt: row.CreatedAt}
 	switch r := reply.GetReply().(type) {
 	case *commandsv1.ReplyEnvelope_PaymentRefunded:
-		if _, err = tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'refunded', refund_ref = $3, refund_error = NULL WHERE tenant_id = $1 AND id = $2`, tenantID, id, r.PaymentRefunded.GetPspRefundId()); err != nil {
+		if err := q.MarkRefundRefunded(ctx, sqlc.MarkRefundRefundedParams{RefundRef: r.PaymentRefunded.GetPspRefundId(), TenantID: tenantID, ID: cn.ID}); err != nil {
 			return true, err
 		}
 		cn.RefundState = RefundRefunded
@@ -219,7 +223,7 @@ func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID,
 			return true, nil
 		}
 		cn.RefundState, cn.RefundError = RefundFailed, r.PaymentErrored.GetCode()+": "+r.PaymentErrored.GetMessage()
-		if _, err = tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'failed', refund_error = $3 WHERE tenant_id = $1 AND id = $2`, tenantID, id, cn.RefundError); err != nil {
+		if err := q.MarkRefundFailed(ctx, sqlc.MarkRefundFailedParams{RefundError: cn.RefundError, TenantID: tenantID, ID: cn.ID}); err != nil {
 			return true, err
 		}
 		return true, creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteRefundFailed, commandID.String(), time.Now(), cn)
@@ -227,57 +231,24 @@ func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID,
 	return true, nil
 }
 
+// pendingRefund is a refund whose command nobody answered for a while.
+type pendingRefund struct {
+	tenant                       uuid.UUID
+	cn                           CreditNote
+	env                          string
+	attempt, runFrom, generation int
+}
+
 // SweepRefunds resends the refunds nobody answered for a while, and fails a note whose refund went unanswered refundMaxAttempts times.
 func (m *Manager) SweepRefunds(ctx context.Context) error {
-	type pending struct {
-		tenant                       uuid.UUID
-		cn                           CreditNote
-		env                          string
-		attempt, runFrom, generation int
-	}
-	rows, err := m.cfg.Pool.Query(ctx, `SELECT c.tenant_id, c.id, c.invoice_id, c.currency, c.total_minor, c.refund_attempt, c.refund_run_from, c.refund_generation, COALESCE(i.snapshot->>'environment', 'live')
-		FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id
-		WHERE c.refund_state = 'requested' AND c.refund_requested_at <= $1 ORDER BY c.refund_requested_at LIMIT 100`, m.cfg.Now().Add(-refundReplyWait))
+	rows, err := m.q.ListRefundsAwaitingReply(ctx, m.cfg.Now().Add(-refundReplyWait))
 	if err != nil {
 		return err
 	}
-	var due []pending
-	for rows.Next() {
-		var p pending
-		if err := rows.Scan(&p.tenant, &p.cn.ID, &p.cn.InvoiceID, &p.cn.Currency, &p.cn.TotalMinor, &p.attempt, &p.runFrom, &p.generation, &p.env); err != nil {
-			rows.Close()
-			return err
-		}
-		due = append(due, p)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	for _, p := range due {
-		err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-			var state string
-			var attempt int
-			if err := tx.QueryRow(ctx, `SELECT refund_state, refund_attempt FROM credit_notes WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, p.tenant, p.cn.ID).Scan(&state, &attempt); err != nil {
-				return err
-			}
-			if state != RefundRequested || attempt != p.attempt {
-				return nil // answered or resent meanwhile
-			}
-			if attempt-p.runFrom >= refundMaxAttempts {
-				p.cn.RefundError = fmt.Sprintf("%s after %d attempts", noAnswer, attempt-p.runFrom)
-				if _, err := tx.Exec(ctx, `UPDATE credit_notes SET refund_state = 'failed', refund_error = $3 WHERE tenant_id = $1 AND id = $2`, p.tenant, p.cn.ID, p.cn.RefundError); err != nil {
-					return err
-				}
-				var number, reason string
-				if err := tx.QueryRow(ctx, `SELECT number, COALESCE(reason, ''), customer_id FROM credit_notes WHERE tenant_id = $1 AND id = $2`, p.tenant, p.cn.ID).Scan(&number, &reason, &p.cn.CustomerID); err != nil {
-					return err
-				}
-				p.cn.Number, p.cn.Reason, p.cn.Refund, p.cn.RefundState = number, reason, true, RefundFailed
-				return creditNoteEvent(ctx, tx, p.tenant, saga.EventCreditNoteRefundFailed, fmt.Sprintf("%s|gen%d|%d", p.cn.ID, p.generation, attempt), m.cfg.Now(), &p.cn)
-			}
-			return m.requestRefund(ctx, tx, p.tenant, &p.cn, p.env, attempt+1, p.runFrom, p.generation)
-		})
+	for _, r := range rows {
+		p := pendingRefund{tenant: r.TenantID, cn: CreditNote{ID: r.ID, InvoiceID: r.InvoiceID, Currency: r.Currency, TotalMinor: r.TotalMinor}, env: r.Environment,
+			attempt: int(r.RefundAttempt), runFrom: int(r.RefundRunFrom), generation: int(r.RefundGeneration)}
+		err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error { return m.resendRefund(ctx, tx, &p) })
 		if err != nil {
 			m.log.WarnContext(ctx, "credit note refund not resent", "credit_note", p.cn.ID, "error", err)
 		}
@@ -285,31 +256,58 @@ func (m *Manager) SweepRefunds(ctx context.Context) error {
 	return nil
 }
 
+func (m *Manager) resendRefund(ctx context.Context, tx pgx.Tx, p *pendingRefund) error {
+	cur, err := m.q.WithTx(tx).LockCreditNoteRefundState(ctx, sqlc.LockCreditNoteRefundStateParams{TenantID: p.tenant, ID: p.cn.ID})
+	if err != nil {
+		return err
+	}
+	attempt := int(cur.RefundAttempt)
+	if cur.RefundState != RefundRequested || attempt != p.attempt {
+		return nil // answered or resent meanwhile
+	}
+	if attempt-p.runFrom >= refundMaxAttempts {
+		return m.failUnanswered(ctx, tx, p, attempt)
+	}
+	return m.requestRefund(ctx, tx, p.tenant, &p.cn, p.env, attempt+1, p.runFrom, p.generation)
+}
+
+func (m *Manager) failUnanswered(ctx context.Context, tx pgx.Tx, p *pendingRefund, attempt int) error {
+	q := m.q.WithTx(tx)
+	p.cn.RefundError = fmt.Sprintf("%s after %d attempts", noAnswer, attempt-p.runFrom)
+	if err := q.MarkRefundFailed(ctx, sqlc.MarkRefundFailedParams{RefundError: p.cn.RefundError, TenantID: p.tenant, ID: p.cn.ID}); err != nil {
+		return err
+	}
+	row, err := q.GetCreditNoteForEvent(ctx, sqlc.GetCreditNoteForEventParams{TenantID: p.tenant, ID: p.cn.ID})
+	if err != nil {
+		return err
+	}
+	p.cn.Number, p.cn.Reason, p.cn.CustomerID, p.cn.Refund, p.cn.RefundState = row.Number, row.Reason, row.CustomerID, true, RefundFailed
+	return creditNoteEvent(ctx, tx, p.tenant, saga.EventCreditNoteRefundFailed, fmt.Sprintf("%s|gen%d|%d", p.cn.ID, p.generation, attempt), m.cfg.Now(), &p.cn)
+}
+
 // RetryRefund asks again for a refund that failed: a new run of attempts.
 func (m *Manager) RetryRefund(ctx context.Context, tenantID, creditNoteID uuid.UUID) (*CreditNote, error) {
 	var out *CreditNote
 	err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		cn := &CreditNote{ID: creditNoteID, Refund: true}
-		var env, state, lastErr string
-		var attempt, generation int
-		err := tx.QueryRow(ctx, `SELECT c.invoice_id, c.customer_id, c.number, c.currency, c.total_minor, c.reason, c.created_at, c.refund_state, c.refund_attempt, c.refund_generation, COALESCE(c.refund_error, ''), COALESCE(i.snapshot->>'environment', 'live')
-			FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id
-			WHERE c.tenant_id = $1 AND c.id = $2 AND c.disposition = 'refund' FOR UPDATE OF c`, tenantID, creditNoteID).Scan(
-			&cn.InvoiceID, &cn.CustomerID, &cn.Number, &cn.Currency, &cn.TotalMinor, &cn.Reason, &cn.CreatedAt, &state, &attempt, &generation, &lastErr, &env)
+		row, err := m.q.WithTx(tx).LockRefundForRetry(ctx, sqlc.LockRefundForRetryParams{TenantID: tenantID, ID: creditNoteID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrInvoiceNotFound
 		}
 		if err != nil {
 			return err
 		}
-		if state != RefundFailed {
+		if row.RefundState != RefundFailed {
 			return ErrRefundNotFailed
 		}
+		cn := &CreditNote{ID: creditNoteID, Refund: true, InvoiceID: row.InvoiceID, CustomerID: row.CustomerID, Number: row.Number, Currency: row.Currency,
+			TotalMinor: row.TotalMinor, Reason: row.Reason, CreatedAt: row.CreatedAt}
+		generation := int(row.RefundGeneration)
 		// A refund nobody answered may have gone through: asking again must carry the same key. One the provider rejected did not, and a new key lets it be asked again.
-		if !strings.HasPrefix(lastErr, noAnswer) {
+		if !strings.HasPrefix(row.RefundError, noAnswer) {
 			generation++
 		}
-		if err := m.requestRefund(ctx, tx, tenantID, cn, env, attempt+1, attempt, generation); err != nil {
+		attempt := int(row.RefundAttempt)
+		if err := m.requestRefund(ctx, tx, tenantID, cn, row.Environment, attempt+1, attempt, generation); err != nil {
 			return err
 		}
 		out = cn
@@ -320,8 +318,8 @@ func (m *Manager) RetryRefund(ctx context.Context, tenantID, creditNoteID uuid.U
 
 // creditNoteEvent announces a credit note (or the outcome of its refund) to the tenant's endpoints.
 func creditNoteEvent(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, key string, at time.Time, cn *CreditNote) error {
-	var external string
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(snapshot->>'customer_external_id', '') FROM invoices WHERE tenant_id = $1 AND id = $2`, tenantID, cn.InvoiceID).Scan(&external); err != nil {
+	external, err := sqlc.New(tx).GetInvoiceCustomerExternalID(ctx, sqlc.GetInvoiceCustomerExternalIDParams{TenantID: tenantID, ID: cn.InvoiceID})
+	if err != nil {
 		return err
 	}
 	disposition := "credit"

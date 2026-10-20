@@ -23,6 +23,8 @@ import (
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 type meterInfo struct {
@@ -250,66 +252,130 @@ type draftInvoice struct {
 	Provider, Country string
 	Currency          string
 	CustomerID        uuid.UUID
-	PlanVersion       string
+	PlanVersion       uuid.UUID
 	Lines             []rating.Line
 	LineScales        []int
 	Total             int64
 	Snapshot          saga.Snapshot
 }
 
+// rateRun is what rating one billing run needs about the tenant and the period.
+type rateRun struct {
+	run       *Run
+	tctx      context.Context
+	tenant    *plansv1.Tenant
+	loc       *time.Location
+	start     time.Time
+	end       time.Time
+	env       string
+	logoKey   string
+	meters    map[string]meterInfo
+	subs      map[string]subscription
+	usage     map[string][]rating.Usage
+	taxes     taxTable
+	plans     map[string]rating.PlanVersion
+	lateLines map[string][]lateLine
+}
+
 // rate gathers the period's usage, late usage and subscriptions and creates a draft invoice per customer. It is
 // idempotent: drafts that exist are kept (the partial unique index one_regular_invoice), so a retried run converges.
 func (m *Manager) rate(ctx context.Context, run *Run) error {
-	tctx := tenantCtx(ctx, run.TenantID)
-	tn, err := m.cfg.Admin.GetTenant(operatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: run.TenantID.String()})
-	if err != nil {
-		return fmt.Errorf("get tenant: %w", err)
-	}
-	t := tn.GetTenant()
-	if _, ok := money.LookupCurrency(t.GetCurrency()); !ok {
-		return permanent{fmt.Errorf("tenant currency %q is not supported", t.GetCurrency())}
-	}
-	loc, err := time.LoadLocation(t.GetTimezone())
-	if err != nil {
-		return permanent{err}
-	}
-	start, end, err := period.Bounds(run.PeriodID, loc)
-	if err != nil {
-		return permanent{err}
-	}
-	env := "live"
-	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
-		env = "sandbox"
-	}
-	// The tenant's invoice logo is an assets-svc object under {tenant}/assets/{asset id}.
-	logoKey := ""
-	if id := t.GetInvoiceLogoAssetId(); id != "" {
-		logoKey = run.TenantID.String() + "/assets/" + id
-	}
-
-	metersResp, err := m.cfg.Plans.ListMeters(tctx, &plansv1.ListMetersRequest{})
-	if err != nil {
-		return fmt.Errorf("list meters: %w", err)
-	}
-	meters := map[string]meterInfo{}
-	for _, mt := range metersResp.GetMeters() {
-		meters[mt.GetCode()] = meterInfo{Unit: mt.GetUnitLabel(), Scale: int(mt.GetQuantityScale())}
-	}
-
-	subs, err := m.subscriptions(ctx, run.TenantID, start, end)
+	rr, err := m.loadRateRun(ctx, run)
 	if err != nil {
 		return err
 	}
+	if rr.subs, err = m.subscriptions(ctx, run.TenantID, rr.start, rr.end); err != nil {
+		return err
+	}
+	gen, err := m.streamUsage(ctx, rr)
+	if err != nil {
+		return err
+	}
+	late, err := m.streamLateUsage(rr, gen)
+	if err != nil {
+		return err
+	}
+	if rr.taxes, err = m.taxRates(ctx, run.TenantID); err != nil {
+		return err
+	}
+	if rr.lateLines, err = m.lateLines(ctx, run, gen, late, rr.subs, rr.meters, rr.plans, rr.loc, rr.tenant.GetCurrency()); err != nil {
+		return err
+	}
+	if err := m.draftInvoices(ctx, rr, rr.customerIDs(late)); err != nil {
+		return err
+	}
+	if err := m.q.SetRunInvoiceCount(ctx, sqlc.SetRunInvoiceCountParams{TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
+		return err
+	}
+	// The aggregates of the period are final: later on-time-looking arrivals are routed to late usage.
+	if _, err := m.cfg.Aggregator.FreezePeriod(rr.tctx, &aggregatorv1.FreezePeriodRequest{PeriodId: run.PeriodID}); err != nil {
+		return fmt.Errorf("freeze period: %w", err)
+	}
+	return nil
+}
 
-	// On-time usage of the period, at the generation the run pins.
+// loadRateRun reads the tenant, the period's bounds and the meters.
+func (m *Manager) loadRateRun(ctx context.Context, run *Run) (*rateRun, error) {
+	rr := &rateRun{run: run, tctx: tenantCtx(ctx, run.TenantID), usage: map[string][]rating.Usage{}, plans: map[string]rating.PlanVersion{}}
+	tn, err := m.cfg.Admin.GetTenant(operatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: run.TenantID.String()})
+	if err != nil {
+		return nil, fmt.Errorf("get tenant: %w", err)
+	}
+	rr.tenant = tn.GetTenant()
+	if _, ok := money.LookupCurrency(rr.tenant.GetCurrency()); !ok {
+		return nil, permanent{fmt.Errorf("tenant currency %q is not supported", rr.tenant.GetCurrency())}
+	}
+	if rr.loc, err = time.LoadLocation(rr.tenant.GetTimezone()); err != nil {
+		return nil, permanent{err}
+	}
+	if rr.start, rr.end, err = period.Bounds(run.PeriodID, rr.loc); err != nil {
+		return nil, permanent{err}
+	}
+	rr.env = environmentOf(rr.tenant)
+	rr.logoKey = logoKeyOf(run.TenantID, rr.tenant)
+	if rr.meters, err = m.meters(rr.tctx); err != nil {
+		return nil, err
+	}
+	return rr, nil
+}
+
+func environmentOf(t *plansv1.Tenant) string {
+	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
+		return "sandbox"
+	}
+	return "live"
+}
+
+// logoKeyOf is the object key of the tenant's invoice logo, an assets-svc object under {tenant}/assets/{asset id}.
+func logoKeyOf(tenantID uuid.UUID, t *plansv1.Tenant) string {
+	if id := t.GetInvoiceLogoAssetId(); id != "" {
+		return tenantID.String() + "/assets/" + id
+	}
+	return ""
+}
+
+func (m *Manager) meters(tctx context.Context) (map[string]meterInfo, error) {
+	resp, err := m.cfg.Plans.ListMeters(tctx, &plansv1.ListMetersRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("list meters: %w", err)
+	}
+	meters := map[string]meterInfo{}
+	for _, mt := range resp.GetMeters() {
+		meters[mt.GetCode()] = meterInfo{Unit: mt.GetUnitLabel(), Scale: int(mt.GetQuantityScale())}
+	}
+	return meters, nil
+}
+
+// streamUsage reads the on-time usage of the period at the generation the run pins, pinning the tenant's active one when the run has none yet.
+func (m *Manager) streamUsage(ctx context.Context, rr *rateRun) (int32, error) {
+	run := rr.run
 	gen := int32(0)
 	if run.Generation != nil {
 		gen = *run.Generation
 	}
-	usage := map[string][]rating.Usage{}
-	us, err := m.cfg.Aggregator.StreamPeriodUsage(tctx, &aggregatorv1.StreamPeriodUsageRequest{PeriodId: run.PeriodID, Generation: gen})
+	us, err := m.cfg.Aggregator.StreamPeriodUsage(rr.tctx, &aggregatorv1.StreamPeriodUsageRequest{PeriodId: run.PeriodID, Generation: gen})
 	if err != nil {
-		return fmt.Errorf("stream usage: %w", err)
+		return 0, fmt.Errorf("stream usage: %w", err)
 	}
 	for {
 		r, err := us.Recv()
@@ -317,7 +383,7 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("stream usage: %w", err)
+			return 0, fmt.Errorf("stream usage: %w", err)
 		}
 		u := r.GetUsage()
 		if gen == 0 {
@@ -325,200 +391,223 @@ func (m *Manager) rate(ctx context.Context, run *Run) error {
 		}
 		q, err := decimal(u.GetQuantity())
 		if err != nil {
-			return permanent{err}
+			return 0, permanent{err}
 		}
-		usage[u.GetCustomerId()] = append(usage[u.GetCustomerId()], rating.Usage{MeterCode: u.GetMeterCode(), Quantity: q, UnitLabel: meters[u.GetMeterCode()].Unit})
+		rr.usage[u.GetCustomerId()] = append(rr.usage[u.GetCustomerId()], rating.Usage{MeterCode: u.GetMeterCode(), Quantity: q, UnitLabel: rr.meters[u.GetMeterCode()].Unit})
 	}
 	if gen == 0 {
 		gen = 1 // no usage rows: the tenant has only ever had generation 1
 	}
 	if run.Generation == nil {
-		if _, err := m.cfg.Pool.Exec(ctx, `UPDATE billing_runs SET generation = $3 WHERE tenant_id = $1 AND period_id = $2 AND generation IS NULL`,
-			run.TenantID, run.PeriodID, gen); err != nil {
-			return err
+		if err := m.q.SetRunGeneration(ctx, sqlc.SetRunGenerationParams{Generation: gen, TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
+			return 0, err
 		}
 		run.Generation = &gen
 	}
+	return gen, nil
+}
 
-	// Late usage billed in this period.
+// streamLateUsage reads the late usage billed in this period.
+func (m *Manager) streamLateUsage(rr *rateRun, gen int32) (map[lateKey]*apd.Decimal, error) {
 	late := map[lateKey]*apd.Decimal{}
-	ls, err := m.cfg.Aggregator.StreamLateUsage(tctx, &aggregatorv1.StreamLateUsageRequest{BilledPeriodId: run.PeriodID, Generation: gen})
+	ls, err := m.cfg.Aggregator.StreamLateUsage(rr.tctx, &aggregatorv1.StreamLateUsageRequest{BilledPeriodId: rr.run.PeriodID, Generation: gen})
 	if err != nil {
-		return fmt.Errorf("stream late usage: %w", err)
+		return nil, fmt.Errorf("stream late usage: %w", err)
 	}
 	for {
 		r, err := ls.Recv()
 		if errors.Is(err, io.EOF) {
-			break
+			return late, nil
 		}
 		if err != nil {
-			return fmt.Errorf("stream late usage: %w", err)
+			return nil, fmt.Errorf("stream late usage: %w", err)
 		}
 		l := r.GetLateUsage()
 		q, err := decimal(l.GetQuantity())
 		if err != nil {
-			return permanent{err}
+			return nil, permanent{err}
 		}
 		late[lateKey{l.GetCustomerId(), l.GetMeterCode(), l.GetOriginPeriodId()}] = q
 	}
+}
 
-	customers := map[string]struct{}{}
-	for c := range subs {
-		customers[c] = struct{}{}
+// customerIDs are the customers with a subscription, usage or late usage in the period, in a stable order.
+func (rr *rateRun) customerIDs(late map[lateKey]*apd.Decimal) []string {
+	set := map[string]struct{}{}
+	for c := range rr.subs {
+		set[c] = struct{}{}
 	}
-	for c := range usage {
-		customers[c] = struct{}{}
+	for c := range rr.usage {
+		set[c] = struct{}{}
 	}
 	for k := range late {
-		customers[k.Customer] = struct{}{}
+		set[k.Customer] = struct{}{}
 	}
-
-	taxes, err := m.taxRates(ctx, run.TenantID)
-	if err != nil {
-		return err
-	}
-	plans := map[string]rating.PlanVersion{}
-	lateLines, err := m.lateLines(ctx, run, gen, late, subs, meters, plans, loc, t.GetCurrency())
-	if err != nil {
-		return err
-	}
-
-	ids := make([]string, 0, len(customers))
-	for c := range customers {
+	ids := make([]string, 0, len(set))
+	for c := range set {
 		ids = append(ids, c)
 	}
 	sort.Strings(ids)
+	return ids
+}
 
+// draftInvoices rates each customer and inserts the drafts a page at a time.
+func (m *Manager) draftInvoices(ctx context.Context, rr *rateRun, ids []string) error {
 	var drafts []draftInvoice
 	flush := func() error {
 		if len(drafts) == 0 {
 			return nil
 		}
-		n, err := m.insertDrafts(ctx, run, drafts)
-		m.invoices.Add(ctx, int64(n), metric.WithAttributes(attribute.String("environment", env)))
+		n, err := m.insertDrafts(ctx, rr.run, drafts)
+		m.invoices.Add(ctx, int64(n), metric.WithAttributes(attribute.String("environment", rr.env)))
 		drafts = drafts[:0]
 		return err
 	}
 	for _, cid := range ids {
-		sub, subscribed := subs[cid]
-		var pvID string
-		if subscribed {
-			pvID = sub.PlanVersionID
+		d, err := m.draftFor(ctx, rr, cid)
+		if err != nil {
+			return err
 		}
-		var lines []rating.Line
-		var scales []int
-		snapExternal := sub.External
-		invoiceCurrency := orDefault(sub.Currency, t.GetCurrency())
-		ll := lateLines[cid]
-		if pvID == "" && len(ll) > 0 {
-			pvID, snapExternal, invoiceCurrency = ll[0].planVersion, ll[0].external, orDefault(ll[0].currency, t.GetCurrency())
-		}
-		if pvID == "" {
-			m.noSub.Add(ctx, 1)
-			m.log.WarnContext(ctx, "customer has usage but no subscription in the period, not invoiced", "tenant", run.TenantID, "customer", cid, "period", run.PeriodID)
+		if d == nil {
 			continue
 		}
-		if subscribed {
-			pv, err := m.planVersion(ctx, plans, run.TenantID, pvID, invoiceCurrency, t.GetCurrency())
-			if err != nil {
-				return err
-			}
-			segs, err := m.feeSegments(ctx, plans, run.TenantID, sub, start, end, t.GetCurrency())
-			if err != nil {
-				return err
-			}
-			fixed, err := rating.FixedFeeLines(segs, start, end)
-			if err != nil {
-				return permanent{err}
-			}
-			used, err := rating.RateUsage(pv, usage[cid])
-			if err != nil {
-				return permanent{err}
-			}
-			for _, l := range append(fixed, used...) {
-				if l.ServiceFrom.IsZero() { // usage covers the whole period; a fixed fee line says its own segment
-					l.ServiceFrom, l.ServiceTo = start, end
-				}
-				lines = append(lines, l)
-				scales = append(scales, meters[l.MeterCode].Scale)
-			}
-		}
-		for _, l := range ll {
-			if orDefault(l.currency, t.GetCurrency()) != invoiceCurrency {
-				// Money in two currencies cannot share an invoice; the late usage of an earlier subscription in another currency is not billed.
-				m.log.WarnContext(ctx, "late usage in another currency than the invoice, not invoiced", "tenant", run.TenantID, "customer", cid,
-					"origin", l.line.OriginPeriod, "late_currency", l.currency, "invoice_currency", invoiceCurrency)
-				continue
-			}
-			lines = append(lines, l.line)
-			scales = append(scales, meters[l.line.MeterCode].Scale)
-		}
-		if len(lines) == 0 {
-			continue
-		}
-		cu, err := m.cfg.Plans.GetCustomer(tctx, &plansv1.GetCustomerRequest{ExternalId: snapExternal})
-		if err != nil {
-			return fmt.Errorf("get customer %s: %w", snapExternal, err)
-		}
-		// Tax at the tenant's rate for the customer's country, on an invoice Quotify raises. What a provider charges for is taxed by the provider.
-		if !subscribed || sub.Owner != "provider" {
-			if name, bps, ok := taxes.rateFor(cu.GetCustomer().GetCountry()); ok {
-				if tl, ok := rating.TaxLine(lines, name, bps); ok {
-					lines = append(lines, tl)
-					scales = append(scales, 0)
-				}
-			}
-		}
-		total, err := rating.Total(lines)
-		if err != nil {
-			return permanent{err}
-		}
-		if total < 0 {
-			total = 0 // a negative total (credit-like late adjustments) is clamped; credits are Phase 11
-		}
-		invCur, ok := money.LookupCurrency(invoiceCurrency)
-		if !ok {
-			return permanent{fmt.Errorf("subscription currency %q is not supported", invoiceCurrency)}
-		}
-		cuid, err := uuid.Parse(cid)
-		if err != nil {
-			return permanent{err}
-		}
-		paymentMethod, provider := cu.GetCustomer().GetPaymentMethod(), ""
-		if subscribed {
-			provider = sub.Provider
-			if sub.Owner == "provider" && sub.ProviderRef != "" {
-				// The provider holds the payment method of a subscription it runs; the charge goes to that subscription.
-				paymentMethod = sub.ProviderRef
-			}
-		}
-		drafts = append(drafts, draftInvoice{
-			Provider: provider, Country: cu.GetCustomer().GetCountry(), Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pvID, Lines: lines, LineScales: scales, Total: total,
-			Snapshot: saga.Snapshot{
-				CustomerExternalID: snapExternal, CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
-				PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: env, CurrencyExponent: invCur.Exponent, ProviderMails: providerMails(provider), SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetCustomer().GetAddress()),
-				LogoObjectKey: logoKey,
-			},
-		})
+		drafts = append(drafts, *d)
 		if len(drafts) >= m.cfg.PageSize {
 			if err := flush(); err != nil {
 				return err
 			}
 		}
 	}
-	if err := flush(); err != nil {
-		return err
-	}
+	return flush()
+}
 
-	if _, err := m.cfg.Pool.Exec(ctx, `UPDATE billing_runs SET invoice_count = (SELECT count(*) FROM invoices WHERE tenant_id = $1 AND period_id = $2 AND kind = 'REGULAR')
-		WHERE tenant_id = $1 AND period_id = $2`, run.TenantID, run.PeriodID); err != nil {
+// lineSet is the lines of an invoice with the display scale of each one's quantity.
+type lineSet struct {
+	lines  []rating.Line
+	scales []int
+}
+
+func (ls *lineSet) add(l rating.Line, scale int) {
+	ls.lines = append(ls.lines, l)
+	ls.scales = append(ls.scales, scale)
+}
+
+// draftFor rates one customer; it returns nil when the customer gets no invoice.
+func (m *Manager) draftFor(ctx context.Context, rr *rateRun, cid string) (*draftInvoice, error) {
+	run, tenantCurrency := rr.run, rr.tenant.GetCurrency()
+	sub, subscribed := rr.subs[cid]
+	pvID, snapExternal, invoiceCurrency := "", sub.External, orDefault(sub.Currency, tenantCurrency)
+	if subscribed {
+		pvID = sub.PlanVersionID
+	}
+	ll := rr.lateLines[cid]
+	if pvID == "" && len(ll) > 0 {
+		pvID, snapExternal, invoiceCurrency = ll[0].planVersion, ll[0].external, orDefault(ll[0].currency, tenantCurrency)
+	}
+	if pvID == "" {
+		m.noSub.Add(ctx, 1)
+		m.log.WarnContext(ctx, "customer has usage but no subscription in the period, not invoiced", "tenant", run.TenantID, "customer", cid, "period", run.PeriodID)
+		return nil, nil
+	}
+	var ls lineSet
+	if subscribed {
+		if err := m.subscriptionLines(ctx, rr, &ls, sub, cid, pvID, invoiceCurrency); err != nil {
+			return nil, err
+		}
+	}
+	for _, l := range ll {
+		if orDefault(l.currency, tenantCurrency) != invoiceCurrency {
+			// Money in two currencies cannot share an invoice; the late usage of an earlier subscription in another currency is not billed.
+			m.log.WarnContext(ctx, "late usage in another currency than the invoice, not invoiced", "tenant", run.TenantID, "customer", cid,
+				"origin", l.line.OriginPeriod, "late_currency", l.currency, "invoice_currency", invoiceCurrency)
+			continue
+		}
+		ls.add(l.line, rr.meters[l.line.MeterCode].Scale)
+	}
+	if len(ls.lines) == 0 {
+		return nil, nil
+	}
+	cu, err := m.cfg.Plans.GetCustomer(rr.tctx, &plansv1.GetCustomerRequest{ExternalId: snapExternal})
+	if err != nil {
+		return nil, fmt.Errorf("get customer %s: %w", snapExternal, err)
+	}
+	// Tax at the tenant's rate for the customer's country, on an invoice Quotify raises. What a provider charges for is taxed by the provider.
+	if !subscribed || sub.Owner != "provider" {
+		if name, bps, ok := rr.taxes.rateFor(cu.GetCustomer().GetCountry()); ok {
+			if tl, ok := rating.TaxLine(ls.lines, name, bps); ok {
+				ls.add(tl, 0)
+			}
+		}
+	}
+	return m.buildDraft(rr, cu.GetCustomer(), &ls, cid, pvID, snapExternal, invoiceCurrency, sub, subscribed)
+}
+
+// subscriptionLines adds the fixed fee and the usage of a customer's subscription to ls.
+func (m *Manager) subscriptionLines(ctx context.Context, rr *rateRun, ls *lineSet, sub subscription, cid, pvID, invoiceCurrency string) error {
+	tenantID, tenantCurrency := rr.run.TenantID, rr.tenant.GetCurrency()
+	pv, err := m.planVersion(ctx, rr.plans, tenantID, pvID, invoiceCurrency, tenantCurrency)
+	if err != nil {
 		return err
 	}
-	// The aggregates of the period are final: later on-time-looking arrivals are routed to late usage.
-	if _, err := m.cfg.Aggregator.FreezePeriod(tctx, &aggregatorv1.FreezePeriodRequest{PeriodId: run.PeriodID}); err != nil {
-		return fmt.Errorf("freeze period: %w", err)
+	segs, err := m.feeSegments(ctx, rr.plans, tenantID, sub, rr.start, rr.end, tenantCurrency)
+	if err != nil {
+		return err
+	}
+	fixed, err := rating.FixedFeeLines(segs, rr.start, rr.end)
+	if err != nil {
+		return permanent{err}
+	}
+	used, err := rating.RateUsage(pv, rr.usage[cid])
+	if err != nil {
+		return permanent{err}
+	}
+	for _, l := range append(fixed, used...) {
+		if l.ServiceFrom.IsZero() { // usage covers the whole period; a fixed fee line says its own segment
+			l.ServiceFrom, l.ServiceTo = rr.start, rr.end
+		}
+		ls.add(l, rr.meters[l.MeterCode].Scale)
 	}
 	return nil
+}
+
+// buildDraft totals the lines and freezes the snapshot of the invoice's addressees.
+func (m *Manager) buildDraft(rr *rateRun, cu *plansv1.Customer, ls *lineSet, cid, pvID, snapExternal, invoiceCurrency string, sub subscription, subscribed bool) (*draftInvoice, error) {
+	total, err := rating.Total(ls.lines)
+	if err != nil {
+		return nil, permanent{err}
+	}
+	if total < 0 {
+		total = 0 // a negative total (credit-like late adjustments) is clamped; credits are Phase 11
+	}
+	invCur, ok := money.LookupCurrency(invoiceCurrency)
+	if !ok {
+		return nil, permanent{fmt.Errorf("subscription currency %q is not supported", invoiceCurrency)}
+	}
+	cuid, err := uuid.Parse(cid)
+	if err != nil {
+		return nil, permanent{err}
+	}
+	pv, err := uuid.Parse(pvID)
+	if err != nil {
+		return nil, permanent{err}
+	}
+	paymentMethod, provider := cu.GetPaymentMethod(), ""
+	if subscribed {
+		provider = sub.Provider
+		if sub.Owner == "provider" && sub.ProviderRef != "" {
+			// The provider holds the payment method of a subscription it runs; the charge goes to that subscription.
+			paymentMethod = sub.ProviderRef
+		}
+	}
+	t := rr.tenant
+	return &draftInvoice{
+		Provider: provider, Country: cu.GetCountry(), Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pv, Lines: ls.lines, LineScales: ls.scales, Total: total,
+		Snapshot: saga.Snapshot{
+			CustomerExternalID: snapExternal, CustomerName: cu.GetName(), CustomerEmail: cu.GetEmail(),
+			PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: rr.env, CurrencyExponent: invCur.Exponent, ProviderMails: providerMails(provider),
+			SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetAddress()), LogoObjectKey: rr.logoKey,
+		},
+	}, nil
 }
 
 type lateLine struct {
@@ -536,45 +625,13 @@ func (m *Manager) lateLines(ctx context.Context, run *Run, gen int32, late map[l
 	if len(late) == 0 {
 		return out, nil
 	}
-	keys := make([]lateKey, 0, len(late))
-	origins := map[string]bool{}
-	for k := range late {
-		keys = append(keys, k)
-		origins[k.Origin] = true
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		a, b := keys[i], keys[j]
-		if a.Customer != b.Customer {
-			return a.Customer < b.Customer
-		}
-		if a.Meter != b.Meter {
-			return a.Meter < b.Meter
-		}
-		return a.Origin < b.Origin
-	})
-
-	// The on-time quantity of each origin period.
-	base := map[lateKey]*apd.Decimal{}
-	for start := 0; start < len(keys); start += 1000 {
-		chunk := keys[start:min(start+1000, len(keys))]
-		req := &aggregatorv1.GetUsageBatchRequest{Generation: gen}
-		for _, k := range chunk {
-			req.Keys = append(req.Keys, &aggregatorv1.UsageKey{CustomerId: k.Customer, MeterCode: k.Meter, PeriodId: k.Origin})
-		}
-		resp, err := m.cfg.Aggregator.GetUsageBatch(tenantCtx(ctx, run.TenantID), req)
-		if err != nil {
-			return nil, fmt.Errorf("origin usage: %w", err)
-		}
-		for i, u := range resp.GetUsage() {
-			q, err := decimal(u.GetQuantity())
-			if err != nil {
-				return nil, permanent{err}
-			}
-			base[chunk[i]] = q
-		}
+	keys, origins := sortedLateKeys(late)
+	base, err := m.originUsage(ctx, run.TenantID, gen, keys)
+	if err != nil {
+		return nil, err
 	}
 	// Late usage of the same origin that earlier invoices already billed.
-	prior, err := m.priorLate(ctx, run, origins, meters)
+	prior, err := m.priorLate(ctx, run, origins)
 	if err != nil {
 		return nil, err
 	}
@@ -604,19 +661,11 @@ func (m *Manager) lateLines(ctx context.Context, run *Run, gen int32, late map[l
 		if err != nil {
 			return nil, err
 		}
-		b := base[k]
-		if b == nil {
-			b = apd.New(0, 0)
+		already, err := alreadyBilled(base[k], prior[k])
+		if err != nil {
+			return nil, err
 		}
-		var already apd.Decimal
-		if p := prior[k]; p != nil {
-			if _, err := apdCtx.Add(&already, b, p); err != nil {
-				return nil, permanent{err}
-			}
-		} else {
-			already.Set(b)
-		}
-		line, has, err := rating.LateLine(pv, k.Meter, meters[k.Meter].Unit, k.Origin, &already, late[k])
+		line, has, err := rating.LateLine(pv, k.Meter, meters[k.Meter].Unit, k.Origin, already, late[k])
 		if err != nil {
 			return nil, permanent{err}
 		}
@@ -627,41 +676,92 @@ func (m *Manager) lateLines(ctx context.Context, run *Run, gen int32, late map[l
 	return out, nil
 }
 
+// sortedLateKeys are the keys of late in a stable order, and the origin periods they name.
+func sortedLateKeys(late map[lateKey]*apd.Decimal) ([]lateKey, map[string]bool) {
+	keys := make([]lateKey, 0, len(late))
+	origins := map[string]bool{}
+	for k := range late {
+		keys = append(keys, k)
+		origins[k.Origin] = true
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		a, b := keys[i], keys[j]
+		if a.Customer != b.Customer {
+			return a.Customer < b.Customer
+		}
+		if a.Meter != b.Meter {
+			return a.Meter < b.Meter
+		}
+		return a.Origin < b.Origin
+	})
+	return keys, origins
+}
+
+// originUsage is the on-time quantity of each key's origin period.
+func (m *Manager) originUsage(ctx context.Context, tenantID uuid.UUID, gen int32, keys []lateKey) (map[lateKey]*apd.Decimal, error) {
+	base := map[lateKey]*apd.Decimal{}
+	for start := 0; start < len(keys); start += 1000 {
+		chunk := keys[start:min(start+1000, len(keys))]
+		req := &aggregatorv1.GetUsageBatchRequest{Generation: gen}
+		for _, k := range chunk {
+			req.Keys = append(req.Keys, &aggregatorv1.UsageKey{CustomerId: k.Customer, MeterCode: k.Meter, PeriodId: k.Origin})
+		}
+		resp, err := m.cfg.Aggregator.GetUsageBatch(tenantCtx(ctx, tenantID), req)
+		if err != nil {
+			return nil, fmt.Errorf("origin usage: %w", err)
+		}
+		for i, u := range resp.GetUsage() {
+			q, err := decimal(u.GetQuantity())
+			if err != nil {
+				return nil, permanent{err}
+			}
+			base[chunk[i]] = q
+		}
+	}
+	return base, nil
+}
+
+// alreadyBilled is the on-time quantity of an origin period plus the late quantity earlier invoices billed for it.
+func alreadyBilled(base, prior *apd.Decimal) (*apd.Decimal, error) {
+	if base == nil {
+		base = apd.New(0, 0)
+	}
+	var already apd.Decimal
+	if prior == nil {
+		already.Set(base)
+		return &already, nil
+	}
+	if _, err := apdCtx.Add(&already, base, prior); err != nil {
+		return nil, permanent{err}
+	}
+	return &already, nil
+}
+
 var apdCtx = apd.BaseContext.WithPrecision(80)
 
 // priorLate sums the LATE_USAGE lines of earlier invoices per (customer, meter, origin).
-func (m *Manager) priorLate(ctx context.Context, run *Run, origins map[string]bool, meters map[string]meterInfo) (map[lateKey]*apd.Decimal, error) {
+func (m *Manager) priorLate(ctx context.Context, run *Run, origins map[string]bool) (map[lateKey]*apd.Decimal, error) {
 	list := make([]string, 0, len(origins))
 	for o := range origins {
 		list = append(list, o)
 	}
-	rows, err := m.cfg.Pool.Query(ctx, `
-		SELECT i.customer_id::text, l.meter_code, l.origin_period_id, sum(l.quantity)::text, max(l.quantity_scale)
-		FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
-		WHERE l.tenant_id = $1 AND l.kind = 'LATE_USAGE' AND l.origin_period_id = ANY($2) AND i.period_id <> $3 AND i.status <> 'void'
-		GROUP BY 1, 2, 3`, run.TenantID, list, run.PeriodID)
+	rows, err := m.q.PriorLateUsage(ctx, sqlc.PriorLateUsageParams{TenantID: run.TenantID, Origins: list, PeriodID: run.PeriodID})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	out := map[lateKey]*apd.Decimal{}
-	for rows.Next() {
-		var c, mc, o, sum string
-		var scale int16
-		if err := rows.Scan(&c, &mc, &o, &sum, &scale); err != nil {
-			return nil, err
-		}
-		d, err := decimal(sum)
+	for _, r := range rows {
+		d, err := decimal(r.Quantity)
 		if err != nil {
 			return nil, permanent{err}
 		}
 		var q apd.Decimal
-		if _, err := apdCtx.Quo(&q, d, apd.New(1, int32(scale))); err != nil { //nolint:gosec // scale 0..6
+		if _, err := apdCtx.Quo(&q, d, apd.New(1, int32(r.QuantityScale))); err != nil {
 			return nil, permanent{err}
 		}
-		out[lateKey{c, mc, o}] = &q
+		out[lateKey{r.CustomerID, deref(r.MeterCode), deref(r.OriginPeriodID)}] = &q
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // unitsOf renders a decimal quantity as scaled integer units with the given scale (the stored form).
@@ -681,69 +781,14 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, drafts []draftInvo
 	created := 0
 	err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		created = 0
+		q := m.q.WithTx(tx)
 		for _, d := range drafts {
-			snap, _ := json.Marshal(d.Snapshot)
-			id := uuid.New()
-			var subtotal int64 // before tax
-			for _, l := range d.Lines {
-				if l.Kind != rating.KindTax {
-					subtotal += l.AmountMinor
-				}
-			}
-			var got uuid.UUID
-			var country any
-			if d.Country != "" {
-				country = d.Country
-			}
-			err := tx.QueryRow(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, country)
-				VALUES ($1,$2,$3,$4,'REGULAR',$5,$6,$7,$8,'draft',$9,$10,$11) ON CONFLICT DO NOTHING RETURNING id`,
-				run.TenantID, id, d.CustomerID, run.PeriodID, d.PlanVersion, d.Currency, subtotal, d.Total, snap, d.Provider, country).Scan(&got)
-			if errors.Is(err, pgx.ErrNoRows) {
-				continue // this customer already has its invoice for the period
-			}
+			inserted, err := insertDraft(ctx, q, run, d)
 			if err != nil {
 				return err
 			}
-			created++
-			lines, scales := d.Lines, d.LineScales
-			// Credits from re-rating are applied to the first regular invoice that can use them.
-			credit, err := applyCredits(ctx, tx, run.TenantID, d.CustomerID, id, d.Currency, d.Total)
-			if err != nil {
-				return err
-			}
-			if credit > 0 {
-				lines = append(append([]rating.Line(nil), lines...), rating.Line{Kind: rating.KindCredit, AmountMinor: -credit,
-					Description: "Credit from a price correction of an earlier period"})
-				scales = append(append([]int(nil), scales...), 0)
-				if _, err := tx.Exec(ctx, `UPDATE invoices SET subtotal_minor = $3, total_minor = $4 WHERE tenant_id = $1 AND id = $2`,
-					run.TenantID, id, subtotal-credit, d.Total-credit); err != nil {
-					return err
-				}
-			}
-			for i, l := range lines {
-				var qty, scale, label, price any
-				if l.Quantity != nil {
-					units, err := unitsOf(l.Quantity, scales[i])
-					if err != nil {
-						return err
-					}
-					qty, scale, label = units, int16(scales[i]), l.UnitLabel //nolint:gosec // 0..6
-				}
-				if l.UnitPrice != "" {
-					price = l.UnitPrice
-				}
-				var meter, origin any
-				if l.MeterCode != "" {
-					meter = l.MeterCode
-				}
-				if l.OriginPeriod != "" {
-					origin = l.OriginPeriod
-				}
-				if _, err := tx.Exec(ctx, `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, meter_code, origin_period_id, quantity, quantity_scale, unit_label, unit_price, amount_minor, description, service_from, service_to)
-					VALUES ($1,$2,$3,$4,$5,$6,$7::numeric,$8,$9,$10::numeric,$11,$12,$13,$14)`,
-					run.TenantID, id, i+1, string(l.Kind), meter, origin, qty, scale, label, price, l.AmountMinor, l.Description, nullTime(l.ServiceFrom), nullTime(l.ServiceTo)); err != nil {
-					return err
-				}
+			if inserted {
+				created++
 			}
 		}
 		return nil
@@ -751,63 +796,94 @@ func (m *Manager) insertDrafts(ctx context.Context, run *Run, drafts []draftInvo
 	return created, err
 }
 
+// insertDraft writes one draft invoice and its lines; false means the customer already has its invoice for the period.
+func insertDraft(ctx context.Context, q *sqlc.Queries, run *Run, d draftInvoice) (bool, error) {
+	snap, _ := json.Marshal(d.Snapshot)
+	id := uuid.New()
+	var subtotal int64 // before tax
+	for _, l := range d.Lines {
+		if l.Kind != rating.KindTax {
+			subtotal += l.AmountMinor
+		}
+	}
+	_, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
+		TenantID: run.TenantID, ID: id, CustomerID: d.CustomerID, PeriodID: run.PeriodID, Kind: "REGULAR", PlanVersionID: d.PlanVersion, Currency: d.Currency,
+		SubtotalMinor: subtotal, TotalMinor: d.Total, Snapshot: snap, Provider: d.Provider, Country: store.NilIfEmpty(d.Country),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	lines, scales := d.Lines, d.LineScales
+	// Credits from re-rating are applied to the first regular invoice that can use them.
+	credit, err := applyCredits(ctx, q, run.TenantID, d.CustomerID, id, d.Currency, d.Total)
+	if err != nil {
+		return false, err
+	}
+	if credit > 0 {
+		lines = append(append([]rating.Line(nil), lines...), rating.Line{Kind: rating.KindCredit, AmountMinor: -credit,
+			Description: "Credit from a price correction of an earlier period"})
+		scales = append(append([]int(nil), scales...), 0)
+		if err := q.SetInvoiceTotals(ctx, sqlc.SetInvoiceTotalsParams{SubtotalMinor: subtotal - credit, TotalMinor: d.Total - credit, TenantID: run.TenantID, ID: id}); err != nil {
+			return false, err
+		}
+	}
+	return true, insertLines(ctx, q, run.TenantID, id, lines, scales)
+}
+
+// insertLines writes the lines of an invoice, numbered from 1; scales[i] is the scale of lines[i]'s quantity.
+func insertLines(ctx context.Context, q *sqlc.Queries, tenantID, invoiceID uuid.UUID, lines []rating.Line, scales []int) error {
+	for i, l := range lines {
+		p := sqlc.InsertInvoiceLineParams{
+			TenantID: tenantID, InvoiceID: invoiceID, LineNo: i32(i + 1), Kind: string(l.Kind), MeterCode: store.NilIfEmpty(l.MeterCode),
+			OriginPeriodID: store.NilIfEmpty(l.OriginPeriod), UnitPrice: store.NilIfEmpty(l.UnitPrice), AmountMinor: l.AmountMinor, Description: l.Description,
+			ServiceFrom: store.NilIfZero(l.ServiceFrom), ServiceTo: store.NilIfZero(l.ServiceTo),
+		}
+		if l.Quantity != nil {
+			units, err := unitsOf(l.Quantity, scales[i])
+			if err != nil {
+				return err
+			}
+			p.Quantity, p.QuantityScale, p.UnitLabel = &units, store.Ptr(int16(scales[i])), &l.UnitLabel //nolint:gosec // 0..6
+		}
+		if err := q.InsertInvoiceLine(ctx, p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // applyCredits consumes the customer's unapplied credit balances, oldest first, up to max minor units, records the
 // applications against the invoice and returns the amount applied. A credit larger than what is left to pay stays
 // partly unapplied for the next invoice.
-func applyCredits(ctx context.Context, tx pgx.Tx, tenantID, customerID, invoiceID uuid.UUID, currency string, max int64) (int64, error) {
+func applyCredits(ctx context.Context, q *sqlc.Queries, tenantID, customerID, invoiceID uuid.UUID, currency string, max int64) (int64, error) {
 	if max <= 0 {
 		return 0, nil
 	}
-	rows, err := tx.Query(ctx, `
-		SELECT c.id, c.amount_minor - COALESCE((SELECT sum(a.amount_minor) FROM credit_applications a WHERE a.tenant_id = c.tenant_id AND a.credit_id = c.id), 0)
-		FROM credit_balances c WHERE c.tenant_id = $1 AND c.customer_id = $2 AND c.applied_invoice_id IS NULL AND (c.currency = $3 OR c.currency IS NULL)
-		ORDER BY c.created_at, c.id FOR UPDATE OF c`, tenantID, customerID, currency)
+	credits, err := q.ListUnappliedCredits(ctx, sqlc.ListUnappliedCreditsParams{TenantID: tenantID, CustomerID: customerID, Currency: currency})
 	if err != nil {
 		return 0, err
 	}
-	type entry struct {
-		id        uuid.UUID
-		remaining int64
-	}
-	var entries []entry
-	for rows.Next() {
-		var e entry
-		if err := rows.Scan(&e.id, &e.remaining); err != nil {
-			rows.Close()
-			return 0, err
-		}
-		entries = append(entries, e)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return 0, err
-	}
 	var applied int64
-	for _, e := range entries {
+	for _, c := range credits {
 		if applied >= max {
 			break
 		}
-		use := min(e.remaining, max-applied)
+		use := min(c.Remaining, max-applied)
 		if use <= 0 {
 			continue
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO credit_applications (tenant_id, credit_id, invoice_id, amount_minor) VALUES ($1,$2,$3,$4)`, tenantID, e.id, invoiceID, use); err != nil {
+		if err := q.InsertCreditApplication(ctx, sqlc.InsertCreditApplicationParams{TenantID: tenantID, CreditID: c.ID, InvoiceID: invoiceID, AmountMinor: use}); err != nil {
 			return 0, err
 		}
-		if use == e.remaining {
-			if _, err := tx.Exec(ctx, `UPDATE credit_balances SET applied_invoice_id = $3 WHERE tenant_id = $1 AND id = $2`, tenantID, e.id, invoiceID); err != nil {
+		if use == c.Remaining {
+			if err := q.MarkCreditApplied(ctx, sqlc.MarkCreditAppliedParams{AppliedInvoiceID: invoiceID, TenantID: tenantID, ID: c.ID}); err != nil {
 				return 0, err
 			}
 		}
 		applied += use
 	}
 	return applied, nil
-}
-
-// nullTime is t, or NULL for the zero time.
-func nullTime(t time.Time) any {
-	if t.IsZero() {
-		return nil
-	}
-	return t
 }

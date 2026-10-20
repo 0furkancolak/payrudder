@@ -17,6 +17,8 @@ import (
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
 // BillFees invoices the fixed fees that are due in advance, for every tenant: for each advance-billed subscription whose next period has
@@ -123,113 +125,132 @@ type feeInvoiceSpec struct {
 	Lines       []rating.Line
 }
 
+// feeDraft is a FEE invoice about to be inserted.
+type feeDraft struct {
+	id, customerID, planVersionID uuid.UUID
+	key, periodID, currency       string
+	provider                      string
+	country                       *string
+	total, tax                    int64
+	snapshot                      []byte
+	lines                         []rating.Line
+}
+
 // draftFeeInvoice creates the draft FEE invoice for spec, or returns the one a previous pass created. The lines must add up to more than zero.
 func (m *Manager) draftFeeInvoice(ctx context.Context, tenantID uuid.UUID, t *plansv1.Tenant, loc *time.Location, spec feeInvoiceSpec) (uuid.UUID, error) {
-	sub := spec.Sub
-	var existing uuid.UUID
-	err := m.cfg.Pool.QueryRow(ctx, `SELECT id FROM invoices WHERE tenant_id = $1 AND fee_key = $2`, tenantID, spec.Key).Scan(&existing)
+	byKey := sqlc.GetInvoiceIDByFeeKeyParams{TenantID: tenantID, FeeKey: spec.Key}
+	existing, err := m.q.GetInvoiceIDByFeeKey(ctx, byKey)
 	if err == nil {
 		return existing, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, err
 	}
-	currency := orDefault(sub.GetCurrency(), t.GetCurrency())
-	cur, ok := money.LookupCurrency(currency)
-	if !ok {
-		return uuid.Nil, permanent{fmt.Errorf("subscription currency %q is not supported", currency)}
-	}
-	cu, err := m.cfg.Plans.GetCustomer(tenantCtx(ctx, tenantID), &plansv1.GetCustomerRequest{ExternalId: sub.GetCustomerExternalId()})
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("get customer: %w", err)
-	}
-	cuid, err := uuid.Parse(sub.GetCustomerId())
+	d, err := m.buildFeeDraft(ctx, tenantID, t, loc, spec)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	// Tax at the tenant's rate for the customer's country (not for what a provider charges for: the provider taxes that).
-	if sub.GetOwner() != "provider" {
-		taxes, err := m.taxRates(ctx, tenantID)
-		if err != nil {
-			return uuid.Nil, err
-		}
-		if name, bps, ok := taxes.rateFor(cu.GetCustomer().GetCountry()); ok {
-			if tl, ok := rating.TaxLine(spec.Lines, name, bps); ok {
-				spec.Lines = append(append([]rating.Line(nil), spec.Lines...), tl)
-			}
-		}
-	}
-	total, err := rating.Total(spec.Lines)
-	if err != nil {
-		return uuid.Nil, permanent{fmt.Errorf("invoice %s: %w", spec.Key, err)}
-	}
-	if total <= 0 {
-		return uuid.Nil, permanent{fmt.Errorf("invoice %s adds up to %d", spec.Key, total)}
-	}
-	var tax int64
-	for _, l := range spec.Lines {
-		if l.Kind == rating.KindTax {
-			tax += l.AmountMinor
-		}
-	}
-	env := "live"
-	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
-		env = "sandbox"
-	}
-	logoKey := ""
-	if id := t.GetInvoiceLogoAssetId(); id != "" {
-		logoKey = tenantID.String() + "/assets/" + id
-	}
-	snap, err := json.Marshal(saga.Snapshot{
-		CustomerExternalID: sub.GetCustomerExternalId(), CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
-		PaymentMethod: cu.GetCustomer().GetPaymentMethod(), Provider: sub.GetProvider(), TenantName: t.GetName(), Environment: env, CurrencyExponent: cur.Exponent, LogoObjectKey: logoKey, ProviderMails: providerMails(sub.GetProvider()), SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetCustomer().GetAddress()),
-	})
-	if err != nil {
+	if err := m.insertFeeDraft(ctx, tenantID, d); err != nil {
 		return uuid.Nil, err
 	}
-	var country any
-	if c := cu.GetCustomer().GetCountry(); c != "" {
-		country = c
-	}
-	id := uuid.New()
-	err = pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		var got uuid.UUID
-		err := tx.QueryRow(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, country, fee_key)
-			VALUES ($1,$2,$3,$4,'FEE',$5,$6,$7,$12,'draft',$8,$9,$10,$11) ON CONFLICT DO NOTHING RETURNING id`,
-			tenantID, id, cuid, period.PeriodOf(spec.PeriodStart, loc), sub.GetPlanVersionId(), currency, total-tax, snap, sub.GetProvider(), country, spec.Key, total).Scan(&got)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil // another pass won the race; the lookup below finds its invoice
-		}
-		if err != nil {
-			return err
-		}
-		credit, err := applyCredits(ctx, tx, tenantID, cuid, id, currency, total)
-		if err != nil {
-			return err
-		}
-		lines := spec.Lines
-		if credit > 0 {
-			lines = append(append([]rating.Line(nil), lines...), rating.Line{Kind: rating.KindCredit, AmountMinor: -credit, Description: "Credit balance"})
-			if _, err := tx.Exec(ctx, `UPDATE invoices SET subtotal_minor = $3, total_minor = $4 WHERE tenant_id = $1 AND id = $2`, tenantID, id, total-tax-credit, total-credit); err != nil {
-				return err
-			}
-		}
-		for i, l := range lines {
-			if _, err := tx.Exec(ctx, `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description, service_from, service_to) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-				tenantID, id, i+1, string(l.Kind), l.AmountMinor, l.Description, nullTime(l.ServiceFrom), nullTime(l.ServiceTo)); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return uuid.Nil, err
-	}
-	if err := m.cfg.Pool.QueryRow(ctx, `SELECT id FROM invoices WHERE tenant_id = $1 AND fee_key = $2`, tenantID, spec.Key).Scan(&existing); err != nil {
+	if existing, err = m.q.GetInvoiceIDByFeeKey(ctx, byKey); err != nil {
 		return uuid.Nil, err
 	}
 	m.invoices.Add(ctx, 1)
 	return existing, nil
+}
+
+func (m *Manager) buildFeeDraft(ctx context.Context, tenantID uuid.UUID, t *plansv1.Tenant, loc *time.Location, spec feeInvoiceSpec) (*feeDraft, error) {
+	sub := spec.Sub
+	currency := orDefault(sub.GetCurrency(), t.GetCurrency())
+	cur, ok := money.LookupCurrency(currency)
+	if !ok {
+		return nil, permanent{fmt.Errorf("subscription currency %q is not supported", currency)}
+	}
+	cu, err := m.cfg.Plans.GetCustomer(tenantCtx(ctx, tenantID), &plansv1.GetCustomerRequest{ExternalId: sub.GetCustomerExternalId()})
+	if err != nil {
+		return nil, fmt.Errorf("get customer: %w", err)
+	}
+	cuid, err := uuid.Parse(sub.GetCustomerId())
+	if err != nil {
+		return nil, err
+	}
+	pv, err := uuid.Parse(sub.GetPlanVersionId())
+	if err != nil {
+		return nil, err
+	}
+	lines, err := m.withFeeTax(ctx, tenantID, sub, cu.GetCustomer(), spec.Lines)
+	if err != nil {
+		return nil, err
+	}
+	total, err := rating.Total(lines)
+	if err != nil {
+		return nil, permanent{fmt.Errorf("invoice %s: %w", spec.Key, err)}
+	}
+	if total <= 0 {
+		return nil, permanent{fmt.Errorf("invoice %s adds up to %d", spec.Key, total)}
+	}
+	var tax int64
+	for _, l := range lines {
+		if l.Kind == rating.KindTax {
+			tax += l.AmountMinor
+		}
+	}
+	snap, err := json.Marshal(saga.Snapshot{
+		CustomerExternalID: sub.GetCustomerExternalId(), CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
+		PaymentMethod: cu.GetCustomer().GetPaymentMethod(), Provider: sub.GetProvider(), TenantName: t.GetName(), Environment: environmentOf(t), CurrencyExponent: cur.Exponent,
+		LogoObjectKey: logoKeyOf(tenantID, t), ProviderMails: providerMails(sub.GetProvider()), SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetCustomer().GetAddress()),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &feeDraft{id: uuid.New(), customerID: cuid, planVersionID: pv, key: spec.Key, periodID: period.PeriodOf(spec.PeriodStart, loc), currency: currency,
+		provider: sub.GetProvider(), country: store.NilIfEmpty(cu.GetCustomer().GetCountry()), total: total, tax: tax, snapshot: snap, lines: lines}, nil
+}
+
+// withFeeTax adds the tax line at the tenant's rate for the customer's country (not for what a provider charges for: the provider taxes that).
+func (m *Manager) withFeeTax(ctx context.Context, tenantID uuid.UUID, sub *plansv1.Subscription, cu *plansv1.Customer, lines []rating.Line) ([]rating.Line, error) {
+	if sub.GetOwner() == "provider" {
+		return lines, nil
+	}
+	taxes, err := m.taxRates(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if name, bps, ok := taxes.rateFor(cu.GetCountry()); ok {
+		if tl, ok := rating.TaxLine(lines, name, bps); ok {
+			return append(append([]rating.Line(nil), lines...), tl), nil
+		}
+	}
+	return lines, nil
+}
+
+func (m *Manager) insertFeeDraft(ctx context.Context, tenantID uuid.UUID, d *feeDraft) error {
+	return pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := m.q.WithTx(tx)
+		_, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
+			TenantID: tenantID, ID: d.id, CustomerID: d.customerID, PeriodID: d.periodID, Kind: "FEE", PlanVersionID: d.planVersionID, Currency: d.currency,
+			SubtotalMinor: d.total - d.tax, TotalMinor: d.total, Snapshot: d.snapshot, Provider: d.provider, Country: d.country, FeeKey: &d.key,
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil // another pass won the race; the lookup finds its invoice
+		}
+		if err != nil {
+			return err
+		}
+		credit, err := applyCredits(ctx, q, tenantID, d.customerID, d.id, d.currency, d.total)
+		if err != nil {
+			return err
+		}
+		lines := d.lines
+		if credit > 0 {
+			lines = append(append([]rating.Line(nil), lines...), rating.Line{Kind: rating.KindCredit, AmountMinor: -credit, Description: "Credit balance"})
+			if err := q.SetInvoiceTotals(ctx, sqlc.SetInvoiceTotalsParams{SubtotalMinor: d.total - d.tax - credit, TotalMinor: d.total - credit, TenantID: tenantID, ID: d.id}); err != nil {
+				return err
+			}
+		}
+		return insertLines(ctx, q, tenantID, d.id, lines, make([]int, len(lines)))
+	})
 }
 
 func feeWord(sub *plansv1.Subscription) string {
@@ -281,9 +302,12 @@ func (m *Manager) billAdjustment(ctx context.Context, tenantID uuid.UUID, t *pla
 		if err != nil {
 			return err
 		}
-		if _, err := m.cfg.Pool.Exec(ctx, `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_adjustment_id, currency)
-			VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (tenant_id, source_adjustment_id) WHERE source_adjustment_id IS NOT NULL DO NOTHING`,
-			tenantID, cuid, uuid.New(), -net, a.GetId(), orDefault(sub.GetCurrency(), t.GetCurrency())); err != nil {
+		adjustment, err := uuid.Parse(a.GetId())
+		if err != nil {
+			return err
+		}
+		if err := m.q.InsertCreditBalanceForAdjustment(ctx, sqlc.InsertCreditBalanceForAdjustmentParams{TenantID: tenantID, CustomerID: cuid, ID: uuid.New(), AmountMinor: -net,
+			SourceAdjustmentID: adjustment, Currency: orDefault(sub.GetCurrency(), t.GetCurrency())}); err != nil {
 			return err
 		}
 	}

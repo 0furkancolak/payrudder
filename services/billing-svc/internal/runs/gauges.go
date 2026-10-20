@@ -22,27 +22,19 @@ func (m *Manager) registerGauges(meter metric.Meter) error {
 	_, err = meter.RegisterCallback(func(ctx context.Context, ob metric.Observer) error {
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
-		for _, q := range []struct {
-			g     metric.Int64ObservableGauge
-			sql   string
-			label string
-		}{
-			{runs, `SELECT status, count(*) FROM billing_runs GROUP BY status`, "status"},
-			{sagas, `SELECT state, count(*) FROM invoice_sagas GROUP BY state`, "state"},
-		} {
-			rows, err := m.cfg.Pool.Query(ctx, q.sql)
-			if err != nil {
-				m.log.WarnContext(ctx, "billing: gauge query failed", "error", err)
-				continue
-			}
-			for rows.Next() {
-				var k string
-				var n int64
-				if rows.Scan(&k, &n) == nil {
-					ob.ObserveInt64(q.g, n, metric.WithAttributes(attribute.String(q.label, k)))
-				}
-			}
-			rows.Close()
+		runCounts, err := m.q.CountRunsByStatus(ctx)
+		if err != nil {
+			m.log.WarnContext(ctx, "billing: gauge query failed", "error", err)
+		}
+		for _, r := range runCounts {
+			ob.ObserveInt64(runs, r.Runs, metric.WithAttributes(attribute.String("status", r.Status)))
+		}
+		sagaCounts, err := m.q.CountSagasByState(ctx)
+		if err != nil {
+			m.log.WarnContext(ctx, "billing: gauge query failed", "error", err)
+		}
+		for _, r := range sagaCounts {
+			ob.ObserveInt64(sagas, r.Sagas, metric.WithAttributes(attribute.String("state", r.State)))
 		}
 		return nil
 	}, runs, sagas)
