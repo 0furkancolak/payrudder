@@ -3,7 +3,7 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { CURRENCIES } from "@/shared/lib/currencies";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { useTenant } from "@/features/tenants";
@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useCreatePackage, usePackages } from "./api";
 
 const { t, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
@@ -93,12 +94,12 @@ function submit() {
       </div>
     </form>
     <p v-if="formError" class="text-destructive text-sm" role="alert">{{ formError }}</p>
-    <p v-if="create.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(create.error.value).message }}</p>
+    <p v-if="create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(create.error.value) }}</p>
   </Card>
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.tabs.packages") }}</h2>
-    <p v-if="packages.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(packages.error.value).message }}</p>
+    <p v-if="packages.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(packages.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

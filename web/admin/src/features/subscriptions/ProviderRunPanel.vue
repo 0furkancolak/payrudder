@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError, type Subscription } from "@/shared/api/client";
+import { type Subscription } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
 import type { Package } from "@/features/packages";
 import { Button } from "@/shared/ui/button";
@@ -11,6 +12,7 @@ import { useProviderRunActions, type ChangeInput } from "./api";
 
 const props = defineProps<{ subscription: Subscription; packages: Package[]; tenantId: string; environment: string }>();
 const { t, locale } = useI18n();
+const errorText = useErrorText();
 const act = useProviderRunActions(
   () => props.tenantId,
   () => props.environment,
@@ -31,7 +33,7 @@ const outcome = computed(() => {
   return net.startsWith("-") ? t("billing.subscriptions.change.creditAdded", { amount: money(net.slice(1)) }) : t("billing.subscriptions.change.due", { amount: money(net) });
 });
 const failure = computed(() => {
-  for (const m of Object.values(act)) if (m.error.value) return toApiError(m.error.value).message;
+  for (const m of Object.values(act)) if (m.error.value) return errorText(m.error.value);
   return "";
 });
 const paymentUrl = computed(() => (act.paymentLink.data.value as { url?: string } | undefined)?.url);
