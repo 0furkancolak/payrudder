@@ -145,27 +145,41 @@ func currentPeriod(sub sqlc.GetSubscriptionRow, loc *time.Location, at time.Time
 	return start, end, err
 }
 
-func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubscriptionRequest) (*plansv1.CreateSubscriptionResponse, error) {
-	start := s.now()
+// createArgs is what a CreateSubscription request says before the database is read.
+type createArgs struct {
+	start    time.Time
+	interval subscription.Interval
+	provider *string
+}
+
+func (s *Server) parseCreate(req *plansv1.CreateSubscriptionRequest) (createArgs, error) {
+	a := createArgs{start: s.now()}
 	if req.GetStartTime() != nil {
 		if err := req.GetStartTime().CheckValid(); err != nil {
-			return nil, domain.Invalid("start_time", "invalid timestamp")
+			return a, domain.Invalid("start_time", "invalid timestamp")
 		}
-		start = req.GetStartTime().AsTime()
+		a.start = req.GetStartTime().AsTime()
 	}
 	if d := req.GetTrialDays(); d < 0 || d > 365 {
-		return nil, domain.Invalid("trial_days", "must be between 0 and 365")
+		return a, domain.Invalid("trial_days", "must be between 0 and 365")
 	}
-	interval, err := intervalFromProto(req.GetInterval())
-	if err != nil {
-		return nil, err
+	var err error
+	if a.interval, err = intervalFromProto(req.GetInterval()); err != nil {
+		return a, err
 	}
-	var provider *string
 	if p := req.GetProvider(); p != "" {
 		if !providerNameRe.MatchString(p) {
-			return nil, domain.Invalid("provider", "a lower-case provider name such as paddle")
+			return a, domain.Invalid("provider", "a lower-case provider name such as paddle")
 		}
-		provider = &p
+		a.provider = &p
+	}
+	return a, nil
+}
+
+func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubscriptionRequest) (*plansv1.CreateSubscriptionResponse, error) {
+	a, err := s.parseCreate(req)
+	if err != nil {
+		return nil, err
 	}
 	ti, err := tenant.Require(ctx)
 	if err != nil {
@@ -173,117 +187,162 @@ func (s *Server) CreateSubscription(ctx context.Context, req *plansv1.CreateSubs
 	}
 	var out *plansv1.Subscription
 	err = s.tx(ctx, func(q *sqlc.Queries) error {
-		t, err := current(ctx, q)
-		if err != nil {
-			return err
-		}
-		loc, err := location(t.Timezone)
-		if err != nil {
-			return err
-		}
-		c, err := q.GetCustomerByExternalID(ctx, req.GetCustomerExternalId())
-		if err != nil {
-			return convert.Err(err, "customer")
-		}
-		pv, err := q.GetPlanVersionByCode(ctx, sqlc.GetPlanVersionByCodeParams{PlanCode: req.GetPlanCode(), Version: req.GetPlanVersion()})
-		if err != nil {
-			return convert.Err(err, "plan version")
-		}
-		currency := req.GetCurrency()
-		if currency == "" && c.BillingCurrency != nil {
-			currency = *c.BillingCurrency
-		}
-		if currency == "" {
-			currency = t.Currency
-		}
-		if _, ok := money.LookupCurrency(currency); !ok {
-			return domain.Invalid("currency", "unsupported currency")
-		}
-		if _, err := feeIn(ctx, q, pv.ID, pv.BaseFeeMinor, t.Currency, currency, interval); err != nil {
-			return err
-		}
-		if err := requireUsagePrices(ctx, q, pv.ID, t.Currency, currency); err != nil {
-			return err
-		}
-		if provider == nil {
-			// Not named: the routing rules choose from the customer's country and the subscription's currency.
-			rules, err := loadRules(ctx, q)
-			if err != nil {
-				return err
-			}
-			if routed, _, ok := domain.Route(rules, strString(c.Country), currency); ok {
-				provider = &routed
-			}
-		}
-		providerRenews := false
-		if provider != nil {
-			caps, known := providers.Lookup(*provider)
-			providerRenews = known && caps.OwnsRenewal
-			switch {
-			case !known:
-				return domain.Invalid("provider", "unknown provider "+*provider+"; known: "+strings.Join(providers.Names(), ", "))
-			case !caps.CanCharge(currency):
-				return status.Errorf(codes.FailedPrecondition, "%s cannot charge in %s", *provider, currency)
-			}
-		}
-		state := subscription.Active
-		var trialEnds *time.Time
-		if d := int(req.GetTrialDays()); d > 0 {
-			state = subscription.Trialing
-			e := start.In(loc).AddDate(0, 0, d)
-			trialEnds = &e
-		}
-		// A subscription a provider renews keeps the old arrears behaviour (the provider bills its fee). Otherwise the fee is invoiced in
-		// advance unless arrears is asked for; a yearly subscription cannot wait a year to be charged.
-		timing := "advance"
-		switch {
-		case providerRenews:
-			timing = "arrears"
-		case req.GetFeeTiming() == plansv1.FeeTiming_FEE_TIMING_ARREARS && interval == subscription.Yearly:
-			return domain.Invalid("fee_timing", "a yearly subscription is invoiced in advance")
-		case req.GetFeeTiming() == plansv1.FeeTiming_FEE_TIMING_ARREARS:
-			timing = "arrears"
-		}
-		// Billing periods of an advance subscription start where its fee does: on the day it starts, or when its trial ends. An arrears
-		// subscription is billed by calendar month.
-		anchor, feeDue := monthStart(start, loc), (*time.Time)(nil)
-		if timing == "advance" {
-			anchor = start
-			if trialEnds != nil {
-				anchor = *trialEnds
-			}
-			feeDue = &anchor
-		}
-		r, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
-			ID: idgen.NewUUIDv7(), CustomerID: c.ID, PlanVersionID: pv.ID, StartTime: start,
-			State: string(state), Interval: string(interval), Currency: currency, TrialEndsAt: trialEnds,
-			BillingAnchor: anchor, Provider: provider, Owner: "quotify", FeeTiming: timing, FeeDueAt: feeDue,
-		})
-		if err != nil {
-			return err
-		}
-		full, err := q.GetSubscription(ctx, r.ID)
-		if err != nil {
-			return err
-		}
-		if code := req.GetCouponCode(); code != "" {
-			if err := s.redeemCoupon(ctx, q, full, code); err != nil {
-				return err
-			}
-		}
-		out = subscriptionMessage(full, s.now())
-		if err := attachExtras(ctx, q, out); err != nil {
-			return err
-		}
-		if err := s.emit(ctx, q, webhooks.SubscriptionCreated, out, nil); err != nil {
-			return err
-		}
-		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, nil, s.now())
+		var err error
+		out, err = s.createSubscription(ctx, q, ti.ID, req, a)
+		return err
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
 	}
 	return &plansv1.CreateSubscriptionResponse{Subscription: out}, nil
+}
+
+func (s *Server) createSubscription(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, req *plansv1.CreateSubscriptionRequest, a createArgs) (*plansv1.Subscription, error) {
+	t, err := current(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	loc, err := location(t.Timezone)
+	if err != nil {
+		return nil, err
+	}
+	c, err := q.GetCustomerByExternalID(ctx, req.GetCustomerExternalId())
+	if err != nil {
+		return nil, convert.Err(err, "customer")
+	}
+	pv, err := q.GetPlanVersionByCode(ctx, sqlc.GetPlanVersionByCodeParams{PlanCode: req.GetPlanCode(), Version: req.GetPlanVersion()})
+	if err != nil {
+		return nil, convert.Err(err, "plan version")
+	}
+	currency, err := subscriptionCurrency(req.GetCurrency(), c.BillingCurrency, t.Currency)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := feeIn(ctx, q, pv.ID, pv.BaseFeeMinor, t.Currency, currency, a.interval); err != nil {
+		return nil, err
+	}
+	if err := requireUsagePrices(ctx, q, pv.ID, t.Currency, currency); err != nil {
+		return nil, err
+	}
+	provider, providerRenews, err := chooseProvider(ctx, q, a.provider, strString(c.Country), currency)
+	if err != nil {
+		return nil, err
+	}
+	state, trialEnds := initialState(a.start, loc, int(req.GetTrialDays()))
+	timing, err := feeTimingFor(req.GetFeeTiming(), a.interval, providerRenews)
+	if err != nil {
+		return nil, err
+	}
+	anchor, feeDue := billingAnchor(timing, a.start, trialEnds, loc)
+	r, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
+		ID: idgen.NewUUIDv7(), CustomerID: c.ID, PlanVersionID: pv.ID, StartTime: a.start,
+		State: string(state), Interval: string(a.interval), Currency: currency, TrialEndsAt: trialEnds,
+		BillingAnchor: anchor, Provider: provider, Owner: "quotify", FeeTiming: timing, FeeDueAt: feeDue,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return s.announceCreated(ctx, q, tenantID, r, req.GetCouponCode())
+}
+
+// subscriptionCurrency is the currency the request names, else the customer's billing currency, else the tenant's.
+func subscriptionCurrency(requested string, customerBilling *string, tenantCurrency string) (string, error) {
+	currency := requested
+	if currency == "" && customerBilling != nil {
+		currency = *customerBilling
+	}
+	if currency == "" {
+		currency = tenantCurrency
+	}
+	if _, ok := money.LookupCurrency(currency); !ok {
+		return "", domain.Invalid("currency", "unsupported currency")
+	}
+	return currency, nil
+}
+
+// chooseProvider returns the provider the request names or, when it names none, the one the routing rules choose from the
+// customer's country and the subscription's currency, and whether that provider renews the subscription itself.
+func chooseProvider(ctx context.Context, q *sqlc.Queries, named *string, country, currency string) (provider *string, renews bool, err error) {
+	provider = named
+	if provider == nil {
+		rules, err := loadRules(ctx, q)
+		if err != nil {
+			return nil, false, err
+		}
+		if routed, _, ok := domain.Route(rules, country, currency); ok {
+			provider = &routed
+		}
+	}
+	if provider == nil {
+		return nil, false, nil
+	}
+	caps, known := providers.Lookup(*provider)
+	switch {
+	case !known:
+		return nil, false, domain.Invalid("provider", "unknown provider "+*provider+"; known: "+strings.Join(providers.Names(), ", "))
+	case !caps.CanCharge(currency):
+		return nil, false, status.Errorf(codes.FailedPrecondition, "%s cannot charge in %s", *provider, currency)
+	}
+	return provider, caps.OwnsRenewal, nil
+}
+
+// initialState is Trialing with the end of the trial when the subscription has trial days, else Active.
+func initialState(start time.Time, loc *time.Location, trialDays int) (subscription.State, *time.Time) {
+	if trialDays <= 0 {
+		return subscription.Active, nil
+	}
+	e := start.In(loc).AddDate(0, 0, trialDays)
+	return subscription.Trialing, &e
+}
+
+// feeTimingFor decides when the fixed fee is invoiced. A subscription a provider renews keeps the old arrears behaviour
+// (the provider bills its fee). Otherwise the fee is invoiced in advance unless arrears is asked for; a yearly subscription
+// cannot wait a year to be charged.
+func feeTimingFor(asked plansv1.FeeTiming, interval subscription.Interval, providerRenews bool) (string, error) {
+	arrears := asked == plansv1.FeeTiming_FEE_TIMING_ARREARS
+	switch {
+	case providerRenews:
+		return "arrears", nil
+	case arrears && interval == subscription.Yearly:
+		return "", domain.Invalid("fee_timing", "a yearly subscription is invoiced in advance")
+	case arrears:
+		return "arrears", nil
+	}
+	return "advance", nil
+}
+
+// billingAnchor: billing periods of an advance subscription start where its fee does, on the day it starts or when its
+// trial ends. An arrears subscription is billed by calendar month.
+func billingAnchor(timing string, start time.Time, trialEnds *time.Time, loc *time.Location) (anchor time.Time, feeDue *time.Time) {
+	if timing != "advance" {
+		return monthStart(start, loc), nil
+	}
+	anchor = start
+	if trialEnds != nil {
+		anchor = *trialEnds
+	}
+	return anchor, &anchor
+}
+
+// announceCreated redeems the coupon of a new subscription, tells the tenant's webhooks and publishes its entitlements.
+func (s *Server) announceCreated(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, r sqlc.InsertSubscriptionRow, couponCode string) (*plansv1.Subscription, error) {
+	full, err := q.GetSubscription(ctx, r.ID)
+	if err != nil {
+		return nil, err
+	}
+	if couponCode != "" {
+		if err := s.redeemCoupon(ctx, q, full, couponCode); err != nil {
+			return nil, err
+		}
+	}
+	out := subscriptionMessage(full, s.now())
+	if err := attachExtras(ctx, q, out); err != nil {
+		return nil, err
+	}
+	if err := s.emit(ctx, q, webhooks.SubscriptionCreated, out, nil); err != nil {
+		return nil, err
+	}
+	return out, publishEntitlements(ctx, q, tenantID, r.CustomerID, r.PlanVersionID, r.StartTime, nil, s.now())
 }
 
 func (s *Server) GetSubscription(ctx context.Context, req *plansv1.GetSubscriptionRequest) (*plansv1.GetSubscriptionResponse, error) {
@@ -329,22 +388,9 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 		if err != nil {
 			return err
 		}
-		if err := requireQuotifyOwned(cur.Owner, cur.Provider); err != nil {
+		row := sqlc.GetSubscriptionRow(cur)
+		if err := requireCancellable(row, end, req.GetCreditUnused()); err != nil {
 			return err
-		}
-		if !cur.OpenEnded {
-			return status.Error(codes.FailedPrecondition, "subscription already ended")
-		}
-		if req.GetCreditUnused() {
-			if sqlcRow := sqlc.GetSubscriptionRow(cur); sqlcRow.FeeTiming != "advance" {
-				return status.Error(codes.FailedPrecondition, "this subscription is billed in arrears: no fee was paid in advance")
-			}
-		}
-		if !end.After(cur.StartTime) {
-			return domain.Invalid("end_time", "must be after the subscription start")
-		}
-		if _, err := subscription.Next(subscription.State(cur.State), subscription.Cancel); err != nil {
-			return status.Error(codes.FailedPrecondition, err.Error())
 		}
 		n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: id, EndTime: end})
 		if err != nil {
@@ -355,7 +401,7 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 		}
 		if req.GetCreditUnused() {
 			// The row as it was before it ended: it still says what was prepaid.
-			if credited, err = s.creditUnusedFee(ctx, q, sqlc.GetSubscriptionRow(cur), end); err != nil {
+			if credited, err = s.creditUnusedFee(ctx, q, row, end); err != nil {
 				return err
 			}
 		}
@@ -369,15 +415,7 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 			return err
 		}
 		out = subscriptionMessage(r, s.now())
-		typ := webhooks.SubscriptionCancelled
-		if end.After(s.now()) {
-			typ = webhooks.SubscriptionCancelScheduled
-		}
-		extra := map[string]any(nil)
-		if credited > 0 {
-			extra = map[string]any{"credited_minor": strconv.FormatInt(credited, 10)}
-		}
-		if err := s.emit(ctx, q, typ, out, extra); err != nil {
+		if err := s.emitCancellation(ctx, q, out, end, credited); err != nil {
 			return err
 		}
 		return publishEntitlements(ctx, q, ti.ID, r.CustomerID, r.PlanVersionID, r.StartTime, &end, s.now())
@@ -386,6 +424,39 @@ func (s *Server) CancelSubscription(ctx context.Context, req *plansv1.CancelSubs
 		return nil, convert.Err(err, "subscription")
 	}
 	return &plansv1.CancelSubscriptionResponse{Subscription: out, CreditedMinor: credited}, nil
+}
+
+// requireCancellable refuses a subscription that cannot end at end, or whose unused fee cannot be credited.
+func requireCancellable(row sqlc.GetSubscriptionRow, end time.Time, creditUnused bool) error {
+	if err := requireQuotifyOwned(row.Owner, row.Provider); err != nil {
+		return err
+	}
+	if !row.OpenEnded {
+		return status.Error(codes.FailedPrecondition, "subscription already ended")
+	}
+	if creditUnused && row.FeeTiming != "advance" {
+		return status.Error(codes.FailedPrecondition, "this subscription is billed in arrears: no fee was paid in advance")
+	}
+	if !end.After(row.StartTime) {
+		return domain.Invalid("end_time", "must be after the subscription start")
+	}
+	if _, err := subscription.Next(subscription.State(row.State), subscription.Cancel); err != nil {
+		return status.Error(codes.FailedPrecondition, err.Error())
+	}
+	return nil
+}
+
+// emitCancellation tells the tenant's webhooks that the subscription ended, or will end, at end.
+func (s *Server) emitCancellation(ctx context.Context, q *sqlc.Queries, sub *plansv1.Subscription, end time.Time, credited int64) error {
+	typ := webhooks.SubscriptionCancelled
+	if end.After(s.now()) {
+		typ = webhooks.SubscriptionCancelScheduled
+	}
+	extra := map[string]any(nil)
+	if credited > 0 {
+		extra = map[string]any{"credited_minor": strconv.FormatInt(credited, 10)}
+	}
+	return s.emit(ctx, q, typ, sub, extra)
 }
 
 // moveSubscription applies event to the subscription's effective state and stores the result.
@@ -491,48 +562,12 @@ func (s *Server) ScheduleCancellation(ctx context.Context, req *plansv1.Schedule
 		}
 		now := s.now()
 		if req.GetCancel() {
-			if !row.OpenEnded {
-				return status.Error(codes.FailedPrecondition, "subscription already ended or already scheduled to end")
-			}
-			eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
-			if _, err := subscription.Next(eff, subscription.PeriodEndedCancelling); err != nil {
-				return status.Error(codes.FailedPrecondition, err.Error())
-			}
-			// A subscription that has not started yet ends with its first period.
-			ref := now
-			if ref.Before(row.StartTime) {
-				ref = row.StartTime
-			}
-			_, end, err := currentPeriod(row, loc, ref)
-			if err != nil {
-				return err
-			}
-			if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: id, EndTime: end}); err != nil {
-				return err
-			} else if n != 1 {
-				return status.Error(codes.Aborted, "subscription changed concurrently; retry")
-			}
-			if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: id, State: row.State, PausedAt: row.PausedAt, CancelAtPeriodEnd: true}); err != nil {
-				return err
-			}
-			if err := publishEntitlements(ctx, q, ti.ID, row.CustomerID, row.PlanVersionID, row.StartTime, &end, now); err != nil {
-				return err
-			}
+			err = scheduleEnd(ctx, q, ti.ID, row, loc, now)
 		} else {
-			if !row.CancelAtPeriodEnd || row.OpenEnded || !row.EndTime.After(now) {
-				return status.Error(codes.FailedPrecondition, "no scheduled cancellation to withdraw")
-			}
-			if n, err := q.ReopenSubscription(ctx, sqlc.ReopenSubscriptionParams{ID: id, Now: now}); err != nil {
-				return err
-			} else if n != 1 {
-				return status.Error(codes.Aborted, "subscription changed concurrently; retry")
-			}
-			if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: id, State: row.State, PausedAt: row.PausedAt, CancelAtPeriodEnd: false}); err != nil {
-				return err
-			}
-			if err := publishEntitlements(ctx, q, ti.ID, row.CustomerID, row.PlanVersionID, row.StartTime, nil, now); err != nil {
-				return err
-			}
+			err = withdrawScheduledEnd(ctx, q, ti.ID, row, now)
+		}
+		if err != nil {
+			return err
 		}
 		r, err := q.GetSubscription(ctx, id)
 		if err != nil {
@@ -548,6 +583,57 @@ func (s *Server) ScheduleCancellation(ctx context.Context, req *plansv1.Schedule
 		return nil, convert.Err(err, "subscription")
 	}
 	return &plansv1.ScheduleCancellationResponse{Subscription: out}, nil
+}
+
+// scheduleEnd makes the subscription end with its current billing period.
+func scheduleEnd(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row sqlc.GetSubscriptionRow, loc *time.Location, now time.Time) error {
+	if !row.OpenEnded {
+		return status.Error(codes.FailedPrecondition, "subscription already ended or already scheduled to end")
+	}
+	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
+	if _, err := subscription.Next(eff, subscription.PeriodEndedCancelling); err != nil {
+		return status.Error(codes.FailedPrecondition, err.Error())
+	}
+	// A subscription that has not started yet ends with its first period.
+	ref := now
+	if ref.Before(row.StartTime) {
+		ref = row.StartTime
+	}
+	_, end, err := currentPeriod(row, loc, ref)
+	if err != nil {
+		return err
+	}
+	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: row.ID, EndTime: end}); err != nil {
+		return err
+	} else if n != 1 {
+		return status.Error(codes.Aborted, "subscription changed concurrently; retry")
+	}
+	if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: row.ID, State: row.State, PausedAt: row.PausedAt, CancelAtPeriodEnd: true}); err != nil {
+		return err
+	}
+	return publishEntitlements(ctx, q, tenantID, row.CustomerID, row.PlanVersionID, row.StartTime, &end, now)
+}
+
+// withdrawScheduledEnd reopens a subscription that was scheduled to end.
+func withdrawScheduledEnd(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row sqlc.GetSubscriptionRow, now time.Time) error {
+	if !row.CancelAtPeriodEnd || row.OpenEnded || !row.EndTime.After(now) {
+		return status.Error(codes.FailedPrecondition, "no scheduled cancellation to withdraw")
+	}
+	if n, err := q.ReopenSubscription(ctx, sqlc.ReopenSubscriptionParams{ID: row.ID, Now: now}); err != nil {
+		return err
+	} else if n != 1 {
+		return status.Error(codes.Aborted, "subscription changed concurrently; retry")
+	}
+	if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: row.ID, State: row.State, PausedAt: row.PausedAt, CancelAtPeriodEnd: false}); err != nil {
+		return err
+	}
+	return publishEntitlements(ctx, q, tenantID, row.CustomerID, row.PlanVersionID, row.StartTime, nil, now)
+}
+
+// planChange is the outcome of ChangePlan: the new subscription and the time-split fees of the month.
+type planChange struct {
+	sub                    *plansv1.Subscription
+	oldPortion, newPortion int64
 }
 
 func (s *Server) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest) (*plansv1.ChangePlanResponse, error) {
@@ -566,106 +652,133 @@ func (s *Server) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest)
 	if err != nil {
 		return nil, err
 	}
-	var (
-		out                    *plansv1.Subscription
-		oldPortion, newPortion int64
-	)
+	var res planChange
 	err = s.tx(ctx, func(q *sqlc.Queries) error {
-		t, err := current(ctx, q)
-		if err != nil {
-			return err
-		}
-		loc, err := location(t.Timezone)
-		if err != nil {
-			return err
-		}
-		cur, err := q.GetSubscriptionForUpdate(ctx, id)
-		if err != nil {
-			return err
-		}
-		row := sqlc.GetSubscriptionRow(cur)
-		if err := requireQuotifyOwned(row.Owner, row.Provider); err != nil {
-			return err
-		}
-		if !row.OpenEnded || row.CancelAtPeriodEnd {
-			return status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot change plan")
-		}
-		if row.FeeTiming == "advance" {
-			return status.Error(codes.FailedPrecondition, "a subscription whose fee is invoiced in advance is changed with ChangeSubscription (POST /v1/subscriptions/{id}/change), which prices the change and credits the unused time")
-		}
-		eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, s.now())
-		if eff != subscription.Active && eff != subscription.Trialing {
-			return status.Errorf(codes.FailedPrecondition, "a %s subscription cannot change plan", eff)
-		}
-		if !at.After(row.StartTime) {
-			return domain.Invalid("change_time", "must be after the subscription start")
-		}
-		newPV, err := q.GetPlanVersionByCode(ctx, sqlc.GetPlanVersionByCodeParams{PlanCode: req.GetPlanCode(), Version: req.GetPlanVersion()})
-		if err != nil {
-			return convert.Err(err, "plan version")
-		}
-		if newPV.ID == row.PlanVersionID {
-			return domain.Invalid("plan_code", "the subscription is already on this plan version")
-		}
-		oldPV, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
-		if err != nil {
-			return err
-		}
-		newFee, err := feeIn(ctx, q, newPV.ID, newPV.BaseFeeMinor, t.Currency, row.Currency, subscription.Interval(row.Interval))
-		if err != nil {
-			return err
-		}
-		if err := requireUsagePrices(ctx, q, newPV.ID, t.Currency, row.Currency); err != nil {
-			return err
-		}
-		if eff == subscription.Active {
-			oldFee, err := feeIn(ctx, q, oldPV.ID, oldPV.BaseFeeMinor, t.Currency, row.Currency, subscription.Interval(row.Interval))
-			if err != nil {
-				return err
-			}
-			periodStart, periodEnd, err := currentPeriod(row, loc, at)
-			if err != nil {
-				return err
-			}
-			if oldPortion, err = subscription.Portion(oldFee, periodStart, at, periodStart, periodEnd); err != nil {
-				return status.Error(codes.FailedPrecondition, err.Error())
-			}
-			if newPortion, err = subscription.Portion(newFee, at, periodEnd, periodStart, periodEnd); err != nil {
-				return status.Error(codes.FailedPrecondition, err.Error())
-			}
-		}
-		if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: id, EndTime: at}); err != nil {
-			return err
-		} else if n != 1 {
-			return status.Error(codes.Aborted, "subscription changed concurrently; retry")
-		}
-		if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: id, State: string(subscription.Cancelled), PausedAt: row.PausedAt}); err != nil {
-			return err
-		}
-		anchor := row.BillingAnchor
-		nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
-			ID: idgen.NewUUIDv7(), CustomerID: row.CustomerID, PlanVersionID: newPV.ID, StartTime: at,
-			State: string(eff), Interval: row.Interval, Currency: row.Currency, TrialEndsAt: row.TrialEndsAt,
-			BillingAnchor: anchor, ChangedFromID: &id, Provider: row.Provider, Owner: "quotify", FeeTiming: row.FeeTiming,
-		})
-		if err != nil {
-			return err
-		}
-		full, err := q.GetSubscription(ctx, nr.ID)
-		if err != nil {
-			return err
-		}
-		out = subscriptionMessage(full, s.now())
-		// Old entitlements first, new ones last: the topic is compacted per customer and meter, so the last write wins.
-		if err := publishEntitlements(ctx, q, ti.ID, row.CustomerID, row.PlanVersionID, row.StartTime, &at, s.now()); err != nil {
-			return err
-		}
-		return publishEntitlements(ctx, q, ti.ID, nr.CustomerID, nr.PlanVersionID, at, nil, s.now())
+		var err error
+		res, err = s.changePlan(ctx, q, ti.ID, id, at, req)
+		return err
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
 	}
-	return &plansv1.ChangePlanResponse{Subscription: out, OldPlanFeeMinor: oldPortion, NewPlanFeeMinor: newPortion}, nil
+	return &plansv1.ChangePlanResponse{Subscription: res.sub, OldPlanFeeMinor: res.oldPortion, NewPlanFeeMinor: res.newPortion}, nil
+}
+
+func (s *Server) changePlan(ctx context.Context, q *sqlc.Queries, tenantID, id uuid.UUID, at time.Time, req *plansv1.ChangePlanRequest) (planChange, error) {
+	var res planChange
+	t, err := current(ctx, q)
+	if err != nil {
+		return res, err
+	}
+	loc, err := location(t.Timezone)
+	if err != nil {
+		return res, err
+	}
+	cur, err := q.GetSubscriptionForUpdate(ctx, id)
+	if err != nil {
+		return res, err
+	}
+	row := sqlc.GetSubscriptionRow(cur)
+	eff, err := s.requirePlanChangeable(row, at)
+	if err != nil {
+		return res, err
+	}
+	newPV, err := q.GetPlanVersionByCode(ctx, sqlc.GetPlanVersionByCodeParams{PlanCode: req.GetPlanCode(), Version: req.GetPlanVersion()})
+	if err != nil {
+		return res, convert.Err(err, "plan version")
+	}
+	if newPV.ID == row.PlanVersionID {
+		return res, domain.Invalid("plan_code", "the subscription is already on this plan version")
+	}
+	oldPV, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
+	if err != nil {
+		return res, err
+	}
+	interval := subscription.Interval(row.Interval)
+	newFee, err := feeIn(ctx, q, newPV.ID, newPV.BaseFeeMinor, t.Currency, row.Currency, interval)
+	if err != nil {
+		return res, err
+	}
+	if err := requireUsagePrices(ctx, q, newPV.ID, t.Currency, row.Currency); err != nil {
+		return res, err
+	}
+	if eff == subscription.Active {
+		oldFee, err := feeIn(ctx, q, oldPV.ID, oldPV.BaseFeeMinor, t.Currency, row.Currency, interval)
+		if err != nil {
+			return res, err
+		}
+		periodStart, periodEnd, err := currentPeriod(row, loc, at)
+		if err != nil {
+			return res, err
+		}
+		if res.oldPortion, res.newPortion, err = splitFees(oldFee, newFee, at, periodStart, periodEnd); err != nil {
+			return res, err
+		}
+	}
+	res.sub, err = s.replacePlan(ctx, q, tenantID, row, newPV.ID, eff, at)
+	return res, err
+}
+
+// requirePlanChangeable refuses a subscription ChangePlan cannot move and returns its effective state.
+func (s *Server) requirePlanChangeable(row sqlc.GetSubscriptionRow, at time.Time) (subscription.State, error) {
+	if err := requireQuotifyOwned(row.Owner, row.Provider); err != nil {
+		return "", err
+	}
+	if !row.OpenEnded || row.CancelAtPeriodEnd {
+		return "", status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot change plan")
+	}
+	if row.FeeTiming == "advance" {
+		return "", status.Error(codes.FailedPrecondition, "a subscription whose fee is invoiced in advance is changed with ChangeSubscription (POST /v1/subscriptions/{id}/change), which prices the change and credits the unused time")
+	}
+	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, s.now())
+	if eff != subscription.Active && eff != subscription.Trialing {
+		return "", status.Errorf(codes.FailedPrecondition, "a %s subscription cannot change plan", eff)
+	}
+	if !at.After(row.StartTime) {
+		return "", domain.Invalid("change_time", "must be after the subscription start")
+	}
+	return eff, nil
+}
+
+// splitFees is the part of each plan's fee the period is charged for: the old plan up to at, the new one from at.
+func splitFees(oldFee, newFee int64, at, periodStart, periodEnd time.Time) (oldPortion, newPortion int64, err error) {
+	if oldPortion, err = subscription.Portion(oldFee, periodStart, at, periodStart, periodEnd); err != nil {
+		return 0, 0, status.Error(codes.FailedPrecondition, err.Error())
+	}
+	if newPortion, err = subscription.Portion(newFee, at, periodEnd, periodStart, periodEnd); err != nil {
+		return oldPortion, 0, status.Error(codes.FailedPrecondition, err.Error())
+	}
+	return oldPortion, newPortion, nil
+}
+
+// replacePlan ends the subscription at `at` and starts its successor on another plan version.
+func (s *Server) replacePlan(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row sqlc.GetSubscriptionRow, planVersionID uuid.UUID, state subscription.State, at time.Time) (*plansv1.Subscription, error) {
+	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: row.ID, EndTime: at}); err != nil {
+		return nil, err
+	} else if n != 1 {
+		return nil, status.Error(codes.Aborted, "subscription changed concurrently; retry")
+	}
+	if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: row.ID, State: string(subscription.Cancelled), PausedAt: row.PausedAt}); err != nil {
+		return nil, err
+	}
+	nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
+		ID: idgen.NewUUIDv7(), CustomerID: row.CustomerID, PlanVersionID: planVersionID, StartTime: at,
+		State: string(state), Interval: row.Interval, Currency: row.Currency, TrialEndsAt: row.TrialEndsAt,
+		BillingAnchor: row.BillingAnchor, ChangedFromID: &row.ID, Provider: row.Provider, Owner: "quotify", FeeTiming: row.FeeTiming,
+	})
+	if err != nil {
+		return nil, err
+	}
+	full, err := q.GetSubscription(ctx, nr.ID)
+	if err != nil {
+		return nil, err
+	}
+	out := subscriptionMessage(full, s.now())
+	// Old entitlements first, new ones last: the topic is compacted per customer and meter, so the last write wins.
+	if err := publishEntitlements(ctx, q, tenantID, row.CustomerID, row.PlanVersionID, row.StartTime, &at, s.now()); err != nil {
+		return nil, err
+	}
+	return out, publishEntitlements(ctx, q, tenantID, nr.CustomerID, nr.PlanVersionID, at, nil, s.now())
 }
 
 // providerStates maps a provider's status word to the state a subscription is in. The provider is the truth for a subscription it runs,
@@ -675,27 +788,44 @@ var providerStates = map[string]subscription.State{
 	"paused": subscription.Paused, "canceled": subscription.Cancelled,
 }
 
-func (s *Server) SyncProviderSubscription(ctx context.Context, req *plansv1.SyncProviderSubscriptionRequest) (*plansv1.SyncProviderSubscriptionResponse, error) {
-	id, err := parseSubscriptionID(req.GetSubscriptionId())
-	if err != nil {
-		return nil, err
+// syncArgs is what a SyncProviderSubscription request says, checked: the state is the provider's, when it named one.
+type syncArgs struct {
+	id       uuid.UUID
+	state    subscription.State
+	known    bool
+	occurred time.Time
+}
+
+func (s *Server) parseSync(req *plansv1.SyncProviderSubscriptionRequest) (syncArgs, error) {
+	var a syncArgs
+	var err error
+	if a.id, err = parseSubscriptionID(req.GetSubscriptionId()); err != nil {
+		return a, err
 	}
 	if !providerNameRe.MatchString(req.GetProvider()) {
-		return nil, domain.Invalid("provider", "a lower-case provider name such as paddle")
+		return a, domain.Invalid("provider", "a lower-case provider name such as paddle")
 	}
 	if req.GetProviderRef() == "" {
-		return nil, domain.Invalid("provider_ref", "required")
+		return a, domain.Invalid("provider_ref", "required")
 	}
 	if o := req.GetOwner(); o != "quotify" && o != "provider" {
-		return nil, domain.Invalid("owner", `"quotify" or "provider"`)
+		return a, domain.Invalid("owner", `"quotify" or "provider"`)
 	}
-	state, known := providerStates[req.GetProviderStatus()]
-	if req.GetProviderStatus() != "" && !known {
-		return nil, domain.Invalid("provider_status", "active, trialing, past_due, paused or canceled")
+	a.state, a.known = providerStates[req.GetProviderStatus()]
+	if req.GetProviderStatus() != "" && !a.known {
+		return a, domain.Invalid("provider_status", "active, trialing, past_due, paused or canceled")
 	}
-	occurred := s.now()
+	a.occurred = s.now()
 	if req.GetOccurredAt() != nil {
-		occurred = req.GetOccurredAt().AsTime()
+		a.occurred = req.GetOccurredAt().AsTime()
+	}
+	return a, nil
+}
+
+func (s *Server) SyncProviderSubscription(ctx context.Context, req *plansv1.SyncProviderSubscriptionRequest) (*plansv1.SyncProviderSubscriptionResponse, error) {
+	a, err := s.parseSync(req)
+	if err != nil {
+		return nil, err
 	}
 	ti, err := tenant.Require(ctx)
 	if err != nil {
@@ -703,112 +833,140 @@ func (s *Server) SyncProviderSubscription(ctx context.Context, req *plansv1.Sync
 	}
 	var out *plansv1.Subscription
 	err = s.tx(ctx, func(q *sqlc.Queries) error {
-		// Events keep naming the subscription they were first linked to; if plan changes have replaced it, the provider's id is held by its successor.
-		if live, err := q.GetSubscriptionIDByProviderRef(ctx, sqlc.GetSubscriptionIDByProviderRefParams{Provider: ptr(req.GetProvider()), ProviderRef: ptr(req.GetProviderRef())}); err == nil && live != id {
-			// Only the same chain: another subscription that names a provider id that is taken must still be refused.
-			for cur, hops := live, 0; hops < 64; hops++ {
-				prev, err := q.GetChangedFromID(ctx, cur)
-				if err != nil || prev == nil {
-					break
-				}
-				if *prev == id {
-					id = live
-					break
-				}
-				cur = *prev
-			}
-		}
-		cur, err := q.GetSubscriptionForUpdate(ctx, id)
-		if err != nil {
-			return err
-		}
-		row := sqlc.GetSubscriptionRow(cur)
-		if row.ProviderRef != nil && (*row.ProviderRef != req.GetProviderRef() || strString(row.Provider) != req.GetProvider()) {
-			return status.Errorf(codes.FailedPrecondition, "subscription is already linked to %s %s", strString(row.Provider), *row.ProviderRef)
-		}
-		n, err := q.LinkProviderSubscription(ctx, sqlc.LinkProviderSubscriptionParams{
-			ID: id, Provider: ptr(req.GetProvider()), ProviderRef: ptr(req.GetProviderRef()), Owner: req.GetOwner(), OccurredAt: occurred,
-		})
-		if err != nil {
-			return err
-		}
-		if n == 1 && known && req.GetOwner() == "provider" {
-			var pausedAt *time.Time
-			if state == subscription.Paused {
-				pausedAt = &occurred
-			}
-			if state == subscription.Cancelled && row.OpenEnded {
-				end := occurred
-				if !end.After(row.StartTime) {
-					end = row.StartTime.Add(time.Microsecond)
-				}
-				if _, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: id, EndTime: end}); err != nil {
-					return err
-				}
-				if err := publishEntitlements(ctx, q, ti.ID, row.CustomerID, row.PlanVersionID, row.StartTime, &end, s.now()); err != nil {
-					return err
-				}
-			}
-			if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: id, State: string(state), PausedAt: pausedAt, CancelAtPeriodEnd: row.CancelAtPeriodEnd}); err != nil {
-				return err
-			}
-		}
-		// The provider bills another plan or interval than ours: follow it. The provider has billed the change itself, so no money moves here.
-		target := uuid.Nil
-		if v := req.GetPlanVersionId(); v != "" {
-			if target, err = uuid.Parse(v); err != nil {
-				return domain.Invalid("plan_version_id", "must be a UUID")
-			}
-		}
-		iv := subscription.Interval(row.Interval)
-		switch req.GetInterval() {
-		case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
-			iv = subscription.Monthly
-		case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
-			iv = subscription.Yearly
-		}
-		follow := n == 1 && req.GetOwner() == "provider" && row.OpenEnded && state != subscription.Cancelled &&
-			((target != uuid.Nil && target != row.PlanVersionID) || (req.GetInterval() != plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED && string(iv) != row.Interval))
-		if follow {
-			if target == uuid.Nil {
-				target = row.PlanVersionID
-			}
-			pv, err := q.GetPlanVersionByID(ctx, target)
-			if err != nil {
-				return convert.Err(err, "plan version")
-			}
-			at := occurred
-			if !at.After(row.StartTime) {
-				at = row.StartTime.Add(time.Microsecond)
-			}
-			cur := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, at)
-			next := state
-			if !known {
-				next = cur
-			}
-			nr, err := s.switchTo(ctx, q, ti.ID, row, successor{PlanVersion: sqlc.GetPlanVersionByCodeRow(pv), Interval: iv, State: next, TrialEnds: row.TrialEndsAt, At: at,
-				Anchor: row.BillingAnchor, FeeTiming: "arrears", Owner: "provider", ProviderRef: row.ProviderRef})
-			if err != nil {
-				return err
-			}
-			if next == subscription.Paused {
-				if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: nr.ID, State: string(next), PausedAt: &at}); err != nil {
-					return err
-				}
-			}
-			id = nr.ID
-		}
-		r, err := q.GetSubscription(ctx, id)
-		if err != nil {
-			return err
-		}
-		out = subscriptionMessage(r, s.now())
-		return nil
+		var err error
+		out, err = s.syncProvider(ctx, q, ti.ID, req, a)
+		return err
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
 	}
 	return &plansv1.SyncProviderSubscriptionResponse{Subscription: out}, nil
+}
+
+func (s *Server) syncProvider(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, req *plansv1.SyncProviderSubscriptionRequest, a syncArgs) (*plansv1.Subscription, error) {
+	id := currentInChain(ctx, q, a.id, req.GetProvider(), req.GetProviderRef())
+	cur, err := q.GetSubscriptionForUpdate(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	row := sqlc.GetSubscriptionRow(cur)
+	if row.ProviderRef != nil && (*row.ProviderRef != req.GetProviderRef() || strString(row.Provider) != req.GetProvider()) {
+		return nil, status.Errorf(codes.FailedPrecondition, "subscription is already linked to %s %s", strString(row.Provider), *row.ProviderRef)
+	}
+	n, err := q.LinkProviderSubscription(ctx, sqlc.LinkProviderSubscriptionParams{
+		ID: id, Provider: ptr(req.GetProvider()), ProviderRef: ptr(req.GetProviderRef()), Owner: req.GetOwner(), OccurredAt: a.occurred,
+	})
+	if err != nil {
+		return nil, err
+	}
+	linked := n == 1 && req.GetOwner() == "provider"
+	if linked && a.known {
+		if err := s.applyProviderState(ctx, q, tenantID, row, a); err != nil {
+			return nil, err
+		}
+	}
+	if id, err = s.followProviderPlan(ctx, q, tenantID, row, req, a, linked); err != nil {
+		return nil, err
+	}
+	r, err := q.GetSubscription(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return subscriptionMessage(r, s.now()), nil
+}
+
+// currentInChain returns the subscription that holds the provider's id now. Events keep naming the subscription they were
+// first linked to; if plan changes have replaced it, the provider's id is held by its successor.
+func currentInChain(ctx context.Context, q *sqlc.Queries, id uuid.UUID, provider, ref string) uuid.UUID {
+	live, err := q.GetSubscriptionIDByProviderRef(ctx, sqlc.GetSubscriptionIDByProviderRefParams{Provider: ptr(provider), ProviderRef: ptr(ref)})
+	if err != nil || live == id {
+		return id
+	}
+	// Only the same chain: another subscription that names a provider id that is taken must still be refused.
+	for cur, hops := live, 0; hops < 64; hops++ {
+		prev, err := q.GetChangedFromID(ctx, cur)
+		if err != nil || prev == nil {
+			break
+		}
+		if *prev == id {
+			return live
+		}
+		cur = *prev
+	}
+	return id
+}
+
+// applyProviderState sets the state the provider reports, ending the subscription when it was cancelled there. The
+// provider is the truth for a subscription it runs, so the state is set, not moved through subscription.Next.
+func (s *Server) applyProviderState(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row sqlc.GetSubscriptionRow, a syncArgs) error {
+	var pausedAt *time.Time
+	if a.state == subscription.Paused {
+		pausedAt = &a.occurred
+	}
+	if a.state == subscription.Cancelled && row.OpenEnded {
+		end := a.occurred
+		if !end.After(row.StartTime) {
+			end = row.StartTime.Add(time.Microsecond)
+		}
+		if _, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: row.ID, EndTime: end}); err != nil {
+			return err
+		}
+		if err := publishEntitlements(ctx, q, tenantID, row.CustomerID, row.PlanVersionID, row.StartTime, &end, s.now()); err != nil {
+			return err
+		}
+	}
+	_, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: row.ID, State: string(a.state), PausedAt: pausedAt, CancelAtPeriodEnd: row.CancelAtPeriodEnd})
+	return err
+}
+
+// followProviderPlan (after a link the provider owns) moves the subscription to the plan version or interval the provider bills, when it differs from ours,
+// and returns the id of the subscription that is current afterwards. The provider has billed the change itself, so no money moves here.
+func (s *Server) followProviderPlan(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row sqlc.GetSubscriptionRow, req *plansv1.SyncProviderSubscriptionRequest, a syncArgs, linked bool) (uuid.UUID, error) {
+	target := uuid.Nil
+	if v := req.GetPlanVersionId(); v != "" {
+		var err error
+		if target, err = uuid.Parse(v); err != nil {
+			return row.ID, domain.Invalid("plan_version_id", "must be a UUID")
+		}
+	}
+	iv := subscription.Interval(row.Interval)
+	switch req.GetInterval() {
+	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
+		iv = subscription.Monthly
+	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
+		iv = subscription.Yearly
+	}
+	newPlan := target != uuid.Nil && target != row.PlanVersionID
+	newInterval := req.GetInterval() != plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED && string(iv) != row.Interval
+	if !linked || !row.OpenEnded || a.state == subscription.Cancelled || (!newPlan && !newInterval) {
+		return row.ID, nil
+	}
+	if target == uuid.Nil {
+		target = row.PlanVersionID
+	}
+	pv, err := q.GetPlanVersionByID(ctx, target)
+	if err != nil {
+		return row.ID, convert.Err(err, "plan version")
+	}
+	at := a.occurred
+	if !at.After(row.StartTime) {
+		at = row.StartTime.Add(time.Microsecond)
+	}
+	next := a.state
+	if !a.known {
+		next = convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, at)
+	}
+	nr, err := s.switchTo(ctx, q, tenantID, row, successor{PlanVersion: sqlc.GetPlanVersionByCodeRow(pv), Interval: iv, State: next, TrialEnds: row.TrialEndsAt, At: at,
+		Anchor: row.BillingAnchor, FeeTiming: "arrears", Owner: "provider", ProviderRef: row.ProviderRef})
+	if err != nil {
+		return row.ID, err
+	}
+	if next == subscription.Paused {
+		if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: nr.ID, State: string(next), PausedAt: &at}); err != nil {
+			return row.ID, err
+		}
+	}
+	return nr.ID, nil
 }
 
 func ptr[T any](v T) *T { return &v }
