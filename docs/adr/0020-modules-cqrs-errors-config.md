@@ -19,5 +19,6 @@ Services grew by feature (`grpcapi/changes.go`, `grpcapi/coupons.go`…) with ha
 
 - All Postgres SQL in the services is now sqlc-generated (plans-svc, billing-svc, payments-worker, assets-svc, notifier, aggregator, ingest-svc, tools/mockpsp, `pkg/outbox`). `tests/sqlguard_test.go` rejects SQL assembled with `fmt.Sprintf` or `+`. Exceptions: analytics-svc ClickHouse queries (sqlc does not support ClickHouse) and DDL in `pkg/testkit/servicedb.go`.
 
+- plans-svc is moved into modules: `customers`, `meters`, `plans`, `subscriptions`, `changes`, `coupons`, `fees`, `providermigrations`, `routing`, `tax`, `reports`, `webhookendpoints` (and `tenants`, `entitlements` for what the others share), each with `command/`, `query/` and one `grpc.go`. `internal/grpcapi` only wires them into `PlansService`; a test fails when a method of the service is served by no module. `internal/store` is the tenant transaction, `internal/convert` stays the mapping package.
 - New code is written in this shape from phase 24; the previous phases' files are moved into modules when a change touches them, to keep each pull request reviewable.
 - A rename of an error key is a breaking change and follows the API's deprecation rule.
