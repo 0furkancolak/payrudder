@@ -383,6 +383,24 @@ test.describe("subscriptions", () => {
     expect(call?.headers["x-quotify-tenant"]).toBeUndefined();
   });
 
+  test("ending a prepaid subscription can credit the unused part", async ({ page }) => {
+    const gw = common(new MockGateway(), [sub("s1", { fee_timing: "FEE_TIMING_ADVANCE" }), sub("s2", { fee_timing: "FEE_TIMING_ADVANCE", coupon_code: "TEN" })]).on((c) =>
+      c.method === "DELETE" && c.path === "/v1/subscriptions/s1" ? { body: { subscription: sub("s1"), credited_minor: "1999" } } : undefined,
+    );
+    await gw.install(page);
+    await openTenantPage(page, "/subscriptions");
+    await page.getByRole("button", { name: "Manage" }).first().click();
+    const panel = page.getByRole("region", { name: "Manage cus_1" });
+    page.once("dialog", (d) => void d.accept());
+    await panel.getByRole("button", { name: "End now and credit the unused part" }).click();
+    await expect.poll(() => gw.called("DELETE", "/v1/subscriptions/s1").length).toBe(1);
+    expect(gw.called("DELETE", "/v1/subscriptions/s1")[0]?.query.get("credit_unused")).toBe("true");
+    await expect(panel.getByRole("status")).toContainText("19.99");
+    // A subscription with a coupon is left to a credit note.
+    await page.getByRole("button", { name: "Manage" }).nth(1).click();
+    await expect(page.getByRole("button", { name: "End now and credit the unused part" })).toHaveCount(0);
+  });
+
   test("ending a subscription asks first", async ({ page }) => {
     const gw = common(new MockGateway(), [sub("s1")]).on((c) => (c.method === "DELETE" && c.path === "/v1/subscriptions/s1" ? { body: sub("s1") } : undefined));
     await gw.install(page);
