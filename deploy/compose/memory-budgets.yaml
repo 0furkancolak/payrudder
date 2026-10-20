@@ -5,20 +5,20 @@
 #
 # budget_mib    the limit. Set from measured_mib plus headroom: 40 % or 16 MiB, whichever is more, rounded up to a multiple of 8 (the check prints the figure as
 #               "suggested budget"). The compose container limit stays the hard ceiling; the budget is the early warning below it.
-# measured_mib  what the run measured when the budget was last set. Documentation only.
+# measured_mib  what the run measured when the budget was last set (CI e2e job, ubuntu runner, Phase 33). Documentation only.
 #
 # How to change a budget: docs/benchmarks.md#memory-budgets.
 services:
-  admin-ui: { budget_mib: 192, measured_mib: 0 }
-  aggregator: { budget_mib: 192, measured_mib: 0 }
-  analytics-svc: { budget_mib: 128, measured_mib: 0 }
-  assets-svc: { budget_mib: 96, measured_mib: 0 }
-  billing-svc: { budget_mib: 192, measured_mib: 0 }
-  gateway: { budget_mib: 128, measured_mib: 0 }
-  ingest-svc: { budget_mib: 128, measured_mib: 0 }
-  invoice-worker: { budget_mib: 128, measured_mib: 0 }
-  limits-svc: { budget_mib: 128, measured_mib: 0 }
-  mockpsp: { budget_mib: 96, measured_mib: 0 }
-  notifier: { budget_mib: 96, measured_mib: 0 }
-  payments-worker: { budget_mib: 96, measured_mib: 0 }
-  plans-svc: { budget_mib: 128, measured_mib: 0 }
+  admin-ui: { budget_mib: 24, measured_mib: 5.0 }
+  aggregator: { budget_mib: 40, measured_mib: 16.2 }
+  analytics-svc: { budget_mib: 32, measured_mib: 12.5 }
+  assets-svc: { budget_mib: 32, measured_mib: 13.7 }
+  billing-svc: { budget_mib: 48, measured_mib: 25.4 }
+  gateway: { budget_mib: 40, measured_mib: 18.9 }
+  ingest-svc: { budget_mib: 48, measured_mib: 26.4 }
+  invoice-worker: { budget_mib: 32, measured_mib: 11.8 }
+  limits-svc: { budget_mib: 40, measured_mib: 16.3 }
+  mockpsp: { budget_mib: 24, measured_mib: 4.0 }
+  notifier: { budget_mib: 32, measured_mib: 12.9 }
+  payments-worker: { budget_mib: 32, measured_mib: 13.4 }
+  plans-svc: { budget_mib: 40, measured_mib: 19.6 }

@@ -22,7 +22,7 @@
 - **Provider rules are untouched.** Whether a provider sends its own receipts (`SendsOwnReceipts`, Phase 26) is decided in the saga when the invoice draft is made; the switch only adds a second reason not to send. Paddle payments still get no Quotify receipt whatever the switch says, and the switch cannot turn a Paddle receipt on.
 - **Console.** There is no tenant settings page, only the tenant's tabs, so the control is a new "Mail" tab.
 - **Memory budget placement.** The budget check is a step of the existing `e2e` job, not a job of its own: that job already boots the full stack and has just run the e2e scenarios and the console test against it, which is the smoke run; a separate job would boot a second stack (about ten minutes) for a check that takes seconds. The load profile of the nightly would be more demanding but is not needed to catch a service that doubles its footprint.
-- **Measure.** `docker stats` memory of the container (resident set in practice), the measure `tests/bench` already uses; the highest of three samples. Budgets are measured plus the larger of 40 % and 16 MiB, rounded up to 8 MiB. First budgets were taken from the CI runner's own measurement (the local Docker VM was shared with other work and its stack was not touched).
+- **Measure.** `docker stats` memory of the container (resident set in practice), the measure `tests/bench` already uses; the highest of three samples. Budgets are measured plus the larger of 40 % and 16 MiB, rounded up to 8 MiB. The budgets were taken from the CI runner's own measurement in the first run of this PR (4 to 26 MiB per service; the local Docker VM was shared with other work and its stack was not touched), so they are measured on ubuntu amd64, not on a laptop.
 
 ## Exit criteria
 
