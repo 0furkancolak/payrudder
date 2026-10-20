@@ -1,0 +1,15 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "deploy/railway/images/redpanda-init/Dockerfile",
+    "watchPatterns": [
+      "/deploy/railway/images/redpanda-init/**",
+      "/deploy/compose/redpanda/topics.sh"
+    ]
+  },
+  "deploy": {
+    "restartPolicyType": "NEVER",
+    "numReplicas": 1
+  }
+}

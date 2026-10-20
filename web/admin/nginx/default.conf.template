@@ -1,7 +1,9 @@
 # Serves the built console and forwards /gw/* to the gateway (GATEWAY_URL), so the browser talks to one origin and the gateway
 # needs no CORS. The gateway is resolved per request (variable + resolver) because its address changes when it is recreated.
 server {
-  listen 3001;
+  # PORT is injected by platforms such as Railway (the Dockerfile defaults it to 3001); [::] makes the console reachable over an IPv6 private network.
+  listen ${PORT};
+  listen [::]:${PORT};
   server_name _;
   root /usr/share/nginx/html;
   client_max_body_size 2m;
