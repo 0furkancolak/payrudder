@@ -435,7 +435,7 @@ func (x ApiKey_Status) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ApiKey_Status.Descriptor instead.
 func (ApiKey_Status) EnumDescriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{4, 0}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{5, 0}
 }
 
 // Address is a postal address as printed on an invoice. Every part is optional; country is ISO 3166-1 alpha-2.
@@ -524,6 +524,85 @@ func (x *Address) GetCountry() string {
 	return ""
 }
 
+// LegalInfo is the seller's company data printed on its invoices and sent in e-invoices (docs/phases/phase-30-e-invoice.md). Every part is optional.
+type LegalInfo struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	LegalName string                 `protobuf:"bytes,1,opt,name=legal_name,json=legalName,proto3" json:"legal_name,omitempty"`
+	// VKN or TCKN in Turkey, the VAT id (with country prefix) in the EU.
+	TaxId string `protobuf:"bytes,2,opt,name=tax_id,json=taxId,proto3" json:"tax_id,omitempty"`
+	// Turkey's vergi dairesi.
+	TaxOffice       string `protobuf:"bytes,3,opt,name=tax_office,json=taxOffice,proto3" json:"tax_office,omitempty"`
+	MersisNo        string `protobuf:"bytes,4,opt,name=mersis_no,json=mersisNo,proto3" json:"mersis_no,omitempty"`
+	TradeRegistryNo string `protobuf:"bytes,5,opt,name=trade_registry_no,json=tradeRegistryNo,proto3" json:"trade_registry_no,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *LegalInfo) Reset() {
+	*x = LegalInfo{}
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LegalInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LegalInfo) ProtoMessage() {}
+
+func (x *LegalInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LegalInfo.ProtoReflect.Descriptor instead.
+func (*LegalInfo) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *LegalInfo) GetLegalName() string {
+	if x != nil {
+		return x.LegalName
+	}
+	return ""
+}
+
+func (x *LegalInfo) GetTaxId() string {
+	if x != nil {
+		return x.TaxId
+	}
+	return ""
+}
+
+func (x *LegalInfo) GetTaxOffice() string {
+	if x != nil {
+		return x.TaxOffice
+	}
+	return ""
+}
+
+func (x *LegalInfo) GetMersisNo() string {
+	if x != nil {
+		return x.MersisNo
+	}
+	return ""
+}
+
+func (x *LegalInfo) GetTradeRegistryNo() string {
+	if x != nil {
+		return x.TradeRegistryNo
+	}
+	return ""
+}
+
 // Account is a company using Quotify. It has apps; each app has a sandbox and a live tenant.
 type Account struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -539,7 +618,7 @@ type Account struct {
 
 func (x *Account) Reset() {
 	*x = Account{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[1]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -551,7 +630,7 @@ func (x *Account) String() string {
 func (*Account) ProtoMessage() {}
 
 func (x *Account) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[1]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -564,7 +643,7 @@ func (x *Account) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Account.ProtoReflect.Descriptor instead.
 func (*Account) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{1}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Account) GetId() string {
@@ -618,7 +697,7 @@ type App struct {
 
 func (x *App) Reset() {
 	*x = App{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[2]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -630,7 +709,7 @@ func (x *App) String() string {
 func (*App) ProtoMessage() {}
 
 func (x *App) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[2]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -643,7 +722,7 @@ func (x *App) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use App.ProtoReflect.Descriptor instead.
 func (*App) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{2}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *App) GetId() string {
@@ -708,14 +787,18 @@ type Tenant struct {
 	// The app this environment belongs to.
 	AppId string `protobuf:"bytes,11,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
 	// The seller address printed on the tenant's invoices.
-	Address       *Address `protobuf:"bytes,12,opt,name=address,proto3" json:"address,omitempty"`
+	Address *Address `protobuf:"bytes,12,opt,name=address,proto3" json:"address,omitempty"`
+	// The company data of the seller, for e-invoices.
+	Legal *LegalInfo `protobuf:"bytes,13,opt,name=legal,proto3" json:"legal,omitempty"`
+	// When an invoice becomes an e-invoice: "off" (default), "finalized" or "paid". Credit notes follow the invoice.
+	EInvoiceOn    string `protobuf:"bytes,14,opt,name=e_invoice_on,json=eInvoiceOn,proto3" json:"e_invoice_on,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Tenant) Reset() {
 	*x = Tenant{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[3]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +810,7 @@ func (x *Tenant) String() string {
 func (*Tenant) ProtoMessage() {}
 
 func (x *Tenant) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[3]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -740,7 +823,7 @@ func (x *Tenant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Tenant.ProtoReflect.Descriptor instead.
 func (*Tenant) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{3}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Tenant) GetId() string {
@@ -827,6 +910,20 @@ func (x *Tenant) GetAddress() *Address {
 	return nil
 }
 
+func (x *Tenant) GetLegal() *LegalInfo {
+	if x != nil {
+		return x.Legal
+	}
+	return nil
+}
+
+func (x *Tenant) GetEInvoiceOn() string {
+	if x != nil {
+		return x.EInvoiceOn
+	}
+	return ""
+}
+
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.
 type ApiKey struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
@@ -844,7 +941,7 @@ type ApiKey struct {
 
 func (x *ApiKey) Reset() {
 	*x = ApiKey{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[4]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -856,7 +953,7 @@ func (x *ApiKey) String() string {
 func (*ApiKey) ProtoMessage() {}
 
 func (x *ApiKey) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[4]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -869,7 +966,7 @@ func (x *ApiKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApiKey.ProtoReflect.Descriptor instead.
 func (*ApiKey) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{4}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ApiKey) GetId() string {
@@ -936,14 +1033,18 @@ type Customer struct {
 	// ISO 4217 code the customer is billed in. Empty = the tenant's currency.
 	BillingCurrency string `protobuf:"bytes,8,opt,name=billing_currency,json=billingCurrency,proto3" json:"billing_currency,omitempty"`
 	// The billing address printed on the customer's invoices. Its country is the customer's country.
-	Address       *Address `protobuf:"bytes,9,opt,name=address,proto3" json:"address,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Address *Address `protobuf:"bytes,9,opt,name=address,proto3" json:"address,omitempty"`
+	// The customer's tax id (VKN/TCKN, VAT id), tax office and whether it is registered for e-fatura; used on e-invoices.
+	TaxId              string `protobuf:"bytes,10,opt,name=tax_id,json=taxId,proto3" json:"tax_id,omitempty"`
+	TaxOffice          string `protobuf:"bytes,11,opt,name=tax_office,json=taxOffice,proto3" json:"tax_office,omitempty"`
+	EInvoiceRegistered bool   `protobuf:"varint,12,opt,name=e_invoice_registered,json=eInvoiceRegistered,proto3" json:"e_invoice_registered,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Customer) Reset() {
 	*x = Customer{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[5]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -955,7 +1056,7 @@ func (x *Customer) String() string {
 func (*Customer) ProtoMessage() {}
 
 func (x *Customer) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[5]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -968,7 +1069,7 @@ func (x *Customer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Customer.ProtoReflect.Descriptor instead.
 func (*Customer) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{5}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Customer) GetId() string {
@@ -1034,6 +1135,27 @@ func (x *Customer) GetAddress() *Address {
 	return nil
 }
 
+func (x *Customer) GetTaxId() string {
+	if x != nil {
+		return x.TaxId
+	}
+	return ""
+}
+
+func (x *Customer) GetTaxOffice() string {
+	if x != nil {
+		return x.TaxOffice
+	}
+	return ""
+}
+
+func (x *Customer) GetEInvoiceRegistered() bool {
+	if x != nil {
+		return x.EInvoiceRegistered
+	}
+	return false
+}
+
 // FilterValues is the set of accepted values for one event property (equality only).
 type FilterValues struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1044,7 +1166,7 @@ type FilterValues struct {
 
 func (x *FilterValues) Reset() {
 	*x = FilterValues{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[6]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1056,7 +1178,7 @@ func (x *FilterValues) String() string {
 func (*FilterValues) ProtoMessage() {}
 
 func (x *FilterValues) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[6]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1069,7 +1191,7 @@ func (x *FilterValues) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilterValues.ProtoReflect.Descriptor instead.
 func (*FilterValues) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{6}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *FilterValues) GetValues() []string {
@@ -1098,7 +1220,7 @@ type Meter struct {
 
 func (x *Meter) Reset() {
 	*x = Meter{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[7]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1110,7 +1232,7 @@ func (x *Meter) String() string {
 func (*Meter) ProtoMessage() {}
 
 func (x *Meter) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[7]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1123,7 +1245,7 @@ func (x *Meter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Meter.ProtoReflect.Descriptor instead.
 func (*Meter) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{7}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Meter) GetCode() string {
@@ -1196,7 +1318,7 @@ type Plan struct {
 
 func (x *Plan) Reset() {
 	*x = Plan{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[8]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1208,7 +1330,7 @@ func (x *Plan) String() string {
 func (*Plan) ProtoMessage() {}
 
 func (x *Plan) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[8]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1221,7 +1343,7 @@ func (x *Plan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Plan.ProtoReflect.Descriptor instead.
 func (*Plan) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{8}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Plan) GetId() string {
@@ -1273,7 +1395,7 @@ type PriceTier struct {
 
 func (x *PriceTier) Reset() {
 	*x = PriceTier{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[9]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1285,7 +1407,7 @@ func (x *PriceTier) String() string {
 func (*PriceTier) ProtoMessage() {}
 
 func (x *PriceTier) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[9]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1298,7 +1420,7 @@ func (x *PriceTier) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PriceTier.ProtoReflect.Descriptor instead.
 func (*PriceTier) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{9}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PriceTier) GetUpTo() string {
@@ -1331,7 +1453,7 @@ type PerUnitPrice struct {
 
 func (x *PerUnitPrice) Reset() {
 	*x = PerUnitPrice{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[10]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1343,7 +1465,7 @@ func (x *PerUnitPrice) String() string {
 func (*PerUnitPrice) ProtoMessage() {}
 
 func (x *PerUnitPrice) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[10]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1356,7 +1478,7 @@ func (x *PerUnitPrice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PerUnitPrice.ProtoReflect.Descriptor instead.
 func (*PerUnitPrice) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{10}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *PerUnitPrice) GetUnitPrice() string {
@@ -1375,7 +1497,7 @@ type TieredGraduatedPrice struct {
 
 func (x *TieredGraduatedPrice) Reset() {
 	*x = TieredGraduatedPrice{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[11]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1387,7 +1509,7 @@ func (x *TieredGraduatedPrice) String() string {
 func (*TieredGraduatedPrice) ProtoMessage() {}
 
 func (x *TieredGraduatedPrice) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[11]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1400,7 +1522,7 @@ func (x *TieredGraduatedPrice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TieredGraduatedPrice.ProtoReflect.Descriptor instead.
 func (*TieredGraduatedPrice) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{11}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TieredGraduatedPrice) GetTiers() []*PriceTier {
@@ -1421,7 +1543,7 @@ type PackagePrice struct {
 
 func (x *PackagePrice) Reset() {
 	*x = PackagePrice{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[12]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1433,7 +1555,7 @@ func (x *PackagePrice) String() string {
 func (*PackagePrice) ProtoMessage() {}
 
 func (x *PackagePrice) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[12]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1446,7 +1568,7 @@ func (x *PackagePrice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PackagePrice.ProtoReflect.Descriptor instead.
 func (*PackagePrice) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{12}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PackagePrice) GetPackageSize() string {
@@ -1479,7 +1601,7 @@ type Price struct {
 
 func (x *Price) Reset() {
 	*x = Price{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[13]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1491,7 +1613,7 @@ func (x *Price) String() string {
 func (*Price) ProtoMessage() {}
 
 func (x *Price) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[13]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1504,7 +1626,7 @@ func (x *Price) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Price.ProtoReflect.Descriptor instead.
 func (*Price) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{13}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Price) GetMeterCode() string {
@@ -1583,7 +1705,7 @@ type Entitlement struct {
 
 func (x *Entitlement) Reset() {
 	*x = Entitlement{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[14]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1595,7 +1717,7 @@ func (x *Entitlement) String() string {
 func (*Entitlement) ProtoMessage() {}
 
 func (x *Entitlement) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[14]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1608,7 +1730,7 @@ func (x *Entitlement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Entitlement.ProtoReflect.Descriptor instead.
 func (*Entitlement) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{14}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Entitlement) GetMeterCode() string {
@@ -1653,7 +1775,7 @@ type PlanVersion struct {
 
 func (x *PlanVersion) Reset() {
 	*x = PlanVersion{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[15]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1665,7 +1787,7 @@ func (x *PlanVersion) String() string {
 func (*PlanVersion) ProtoMessage() {}
 
 func (x *PlanVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[15]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1678,7 +1800,7 @@ func (x *PlanVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlanVersion.ProtoReflect.Descriptor instead.
 func (*PlanVersion) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{15}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PlanVersion) GetId() string {
@@ -1762,7 +1884,7 @@ type CurrencyPrices struct {
 
 func (x *CurrencyPrices) Reset() {
 	*x = CurrencyPrices{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[16]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1774,7 +1896,7 @@ func (x *CurrencyPrices) String() string {
 func (*CurrencyPrices) ProtoMessage() {}
 
 func (x *CurrencyPrices) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[16]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1787,7 +1909,7 @@ func (x *CurrencyPrices) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CurrencyPrices.ProtoReflect.Descriptor instead.
 func (*CurrencyPrices) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{16}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CurrencyPrices) GetCurrency() string {
@@ -1817,7 +1939,7 @@ type CurrencyFee struct {
 
 func (x *CurrencyFee) Reset() {
 	*x = CurrencyFee{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[17]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1829,7 +1951,7 @@ func (x *CurrencyFee) String() string {
 func (*CurrencyFee) ProtoMessage() {}
 
 func (x *CurrencyFee) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[17]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1842,7 +1964,7 @@ func (x *CurrencyFee) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CurrencyFee.ProtoReflect.Descriptor instead.
 func (*CurrencyFee) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{17}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CurrencyFee) GetCurrency() string {
@@ -1910,7 +2032,7 @@ type Subscription struct {
 
 func (x *Subscription) Reset() {
 	*x = Subscription{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[18]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1922,7 +2044,7 @@ func (x *Subscription) String() string {
 func (*Subscription) ProtoMessage() {}
 
 func (x *Subscription) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[18]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1935,7 +2057,7 @@ func (x *Subscription) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Subscription.ProtoReflect.Descriptor instead.
 func (*Subscription) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{18}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Subscription) GetId() string {
@@ -2104,7 +2226,7 @@ type ScheduledChange struct {
 
 func (x *ScheduledChange) Reset() {
 	*x = ScheduledChange{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[19]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2116,7 +2238,7 @@ func (x *ScheduledChange) String() string {
 func (*ScheduledChange) ProtoMessage() {}
 
 func (x *ScheduledChange) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[19]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2129,7 +2251,7 @@ func (x *ScheduledChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduledChange.ProtoReflect.Descriptor instead.
 func (*ScheduledChange) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{19}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ScheduledChange) GetPlanCode() string {
@@ -2185,7 +2307,7 @@ type Coupon struct {
 
 func (x *Coupon) Reset() {
 	*x = Coupon{}
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[20]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2197,7 +2319,7 @@ func (x *Coupon) String() string {
 func (*Coupon) ProtoMessage() {}
 
 func (x *Coupon) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_resources_proto_msgTypes[20]
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2210,7 +2332,7 @@ func (x *Coupon) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Coupon.ProtoReflect.Descriptor instead.
 func (*Coupon) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{20}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *Coupon) GetCode() string {
@@ -2309,7 +2431,15 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x06region\x18\x04 \x01(\tR\x06region\x12\x1f\n" +
 	"\vpostal_code\x18\x05 \x01(\tR\n" +
 	"postalCode\x12\x18\n" +
-	"\acountry\x18\x06 \x01(\tR\acountry\"\xc9\x01\n" +
+	"\acountry\x18\x06 \x01(\tR\acountry\"\xa9\x01\n" +
+	"\tLegalInfo\x12\x1d\n" +
+	"\n" +
+	"legal_name\x18\x01 \x01(\tR\tlegalName\x12\x15\n" +
+	"\x06tax_id\x18\x02 \x01(\tR\x05taxId\x12\x1d\n" +
+	"\n" +
+	"tax_office\x18\x03 \x01(\tR\ttaxOffice\x12\x1b\n" +
+	"\tmersis_no\x18\x04 \x01(\tR\bmersisNo\x12*\n" +
+	"\x11trade_registry_no\x18\x05 \x01(\tR\x0ftradeRegistryNo\"\xc9\x01\n" +
 	"\aAccount\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x122\n" +
@@ -2325,7 +2455,7 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x04slug\x18\x04 \x01(\tR\x04slug\x122\n" +
 	"\atenants\x18\x05 \x03(\v2\x18.quotify.plans.v1.TenantR\atenants\x12;\n" +
 	"\vcreate_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime\"\xf0\x03\n" +
+	"createTime\"\xc5\x04\n" +
 	"\x06Tenant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -2341,7 +2471,10 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x15invoice_logo_asset_id\x18\n" +
 	" \x01(\tR\x12invoiceLogoAssetId\x12\x15\n" +
 	"\x06app_id\x18\v \x01(\tR\x05appId\x123\n" +
-	"\aaddress\x18\f \x01(\v2\x19.quotify.plans.v1.AddressR\aaddress\"\x8a\x03\n" +
+	"\aaddress\x18\f \x01(\v2\x19.quotify.plans.v1.AddressR\aaddress\x121\n" +
+	"\x05legal\x18\r \x01(\v2\x1b.quotify.plans.v1.LegalInfoR\x05legal\x12 \n" +
+	"\fe_invoice_on\x18\x0e \x01(\tR\n" +
+	"eInvoiceOn\"\x8a\x03\n" +
 	"\x06ApiKey\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x16\n" +
@@ -2355,7 +2488,7 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x06Status\x12\x16\n" +
 	"\x12STATUS_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rSTATUS_ACTIVE\x10\x01\x12\x12\n" +
-	"\x0eSTATUS_REVOKED\x10\x02\"\xc3\x02\n" +
+	"\x0eSTATUS_REVOKED\x10\x02\"\xab\x03\n" +
 	"\bCustomer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vexternal_id\x18\x02 \x01(\tR\n" +
@@ -2367,7 +2500,12 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"createTime\x12\x18\n" +
 	"\acountry\x18\a \x01(\tR\acountry\x12)\n" +
 	"\x10billing_currency\x18\b \x01(\tR\x0fbillingCurrency\x123\n" +
-	"\aaddress\x18\t \x01(\v2\x19.quotify.plans.v1.AddressR\aaddress\"&\n" +
+	"\aaddress\x18\t \x01(\v2\x19.quotify.plans.v1.AddressR\aaddress\x12\x15\n" +
+	"\x06tax_id\x18\n" +
+	" \x01(\tR\x05taxId\x12\x1d\n" +
+	"\n" +
+	"tax_office\x18\v \x01(\tR\ttaxOffice\x120\n" +
+	"\x14e_invoice_registered\x18\f \x01(\bR\x12eInvoiceRegistered\"&\n" +
 	"\fFilterValues\x12\x16\n" +
 	"\x06values\x18\x01 \x03(\tR\x06values\"\xb8\x03\n" +
 	"\x05Meter\x12\x12\n" +
@@ -2537,7 +2675,7 @@ func file_quotify_plans_v1_resources_proto_rawDescGZIP() []byte {
 }
 
 var file_quotify_plans_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_quotify_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_quotify_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_quotify_plans_v1_resources_proto_goTypes = []any{
 	(Environment)(0),              // 0: quotify.plans.v1.Environment
 	(TenantTier)(0),               // 1: quotify.plans.v1.TenantTier
@@ -2548,82 +2686,84 @@ var file_quotify_plans_v1_resources_proto_goTypes = []any{
 	(CouponDuration)(0),           // 6: quotify.plans.v1.CouponDuration
 	(ApiKey_Status)(0),            // 7: quotify.plans.v1.ApiKey.Status
 	(*Address)(nil),               // 8: quotify.plans.v1.Address
-	(*Account)(nil),               // 9: quotify.plans.v1.Account
-	(*App)(nil),                   // 10: quotify.plans.v1.App
-	(*Tenant)(nil),                // 11: quotify.plans.v1.Tenant
-	(*ApiKey)(nil),                // 12: quotify.plans.v1.ApiKey
-	(*Customer)(nil),              // 13: quotify.plans.v1.Customer
-	(*FilterValues)(nil),          // 14: quotify.plans.v1.FilterValues
-	(*Meter)(nil),                 // 15: quotify.plans.v1.Meter
-	(*Plan)(nil),                  // 16: quotify.plans.v1.Plan
-	(*PriceTier)(nil),             // 17: quotify.plans.v1.PriceTier
-	(*PerUnitPrice)(nil),          // 18: quotify.plans.v1.PerUnitPrice
-	(*TieredGraduatedPrice)(nil),  // 19: quotify.plans.v1.TieredGraduatedPrice
-	(*PackagePrice)(nil),          // 20: quotify.plans.v1.PackagePrice
-	(*Price)(nil),                 // 21: quotify.plans.v1.Price
-	(*Entitlement)(nil),           // 22: quotify.plans.v1.Entitlement
-	(*PlanVersion)(nil),           // 23: quotify.plans.v1.PlanVersion
-	(*CurrencyPrices)(nil),        // 24: quotify.plans.v1.CurrencyPrices
-	(*CurrencyFee)(nil),           // 25: quotify.plans.v1.CurrencyFee
-	(*Subscription)(nil),          // 26: quotify.plans.v1.Subscription
-	(*ScheduledChange)(nil),       // 27: quotify.plans.v1.ScheduledChange
-	(*Coupon)(nil),                // 28: quotify.plans.v1.Coupon
-	nil,                           // 29: quotify.plans.v1.Meter.FilterEntry
-	(*timestamppb.Timestamp)(nil), // 30: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 31: google.protobuf.Duration
+	(*LegalInfo)(nil),             // 9: quotify.plans.v1.LegalInfo
+	(*Account)(nil),               // 10: quotify.plans.v1.Account
+	(*App)(nil),                   // 11: quotify.plans.v1.App
+	(*Tenant)(nil),                // 12: quotify.plans.v1.Tenant
+	(*ApiKey)(nil),                // 13: quotify.plans.v1.ApiKey
+	(*Customer)(nil),              // 14: quotify.plans.v1.Customer
+	(*FilterValues)(nil),          // 15: quotify.plans.v1.FilterValues
+	(*Meter)(nil),                 // 16: quotify.plans.v1.Meter
+	(*Plan)(nil),                  // 17: quotify.plans.v1.Plan
+	(*PriceTier)(nil),             // 18: quotify.plans.v1.PriceTier
+	(*PerUnitPrice)(nil),          // 19: quotify.plans.v1.PerUnitPrice
+	(*TieredGraduatedPrice)(nil),  // 20: quotify.plans.v1.TieredGraduatedPrice
+	(*PackagePrice)(nil),          // 21: quotify.plans.v1.PackagePrice
+	(*Price)(nil),                 // 22: quotify.plans.v1.Price
+	(*Entitlement)(nil),           // 23: quotify.plans.v1.Entitlement
+	(*PlanVersion)(nil),           // 24: quotify.plans.v1.PlanVersion
+	(*CurrencyPrices)(nil),        // 25: quotify.plans.v1.CurrencyPrices
+	(*CurrencyFee)(nil),           // 26: quotify.plans.v1.CurrencyFee
+	(*Subscription)(nil),          // 27: quotify.plans.v1.Subscription
+	(*ScheduledChange)(nil),       // 28: quotify.plans.v1.ScheduledChange
+	(*Coupon)(nil),                // 29: quotify.plans.v1.Coupon
+	nil,                           // 30: quotify.plans.v1.Meter.FilterEntry
+	(*timestamppb.Timestamp)(nil), // 31: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 32: google.protobuf.Duration
 }
 var file_quotify_plans_v1_resources_proto_depIdxs = []int32{
-	11, // 0: quotify.plans.v1.Account.tenants:type_name -> quotify.plans.v1.Tenant
-	30, // 1: quotify.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
-	10, // 2: quotify.plans.v1.Account.apps:type_name -> quotify.plans.v1.App
-	11, // 3: quotify.plans.v1.App.tenants:type_name -> quotify.plans.v1.Tenant
-	30, // 4: quotify.plans.v1.App.create_time:type_name -> google.protobuf.Timestamp
+	12, // 0: quotify.plans.v1.Account.tenants:type_name -> quotify.plans.v1.Tenant
+	31, // 1: quotify.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
+	11, // 2: quotify.plans.v1.Account.apps:type_name -> quotify.plans.v1.App
+	12, // 3: quotify.plans.v1.App.tenants:type_name -> quotify.plans.v1.Tenant
+	31, // 4: quotify.plans.v1.App.create_time:type_name -> google.protobuf.Timestamp
 	0,  // 5: quotify.plans.v1.Tenant.environment:type_name -> quotify.plans.v1.Environment
 	1,  // 6: quotify.plans.v1.Tenant.tier:type_name -> quotify.plans.v1.TenantTier
-	31, // 7: quotify.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
-	30, // 8: quotify.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
+	32, // 7: quotify.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
+	31, // 8: quotify.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
 	8,  // 9: quotify.plans.v1.Tenant.address:type_name -> quotify.plans.v1.Address
-	0,  // 10: quotify.plans.v1.ApiKey.environment:type_name -> quotify.plans.v1.Environment
-	7,  // 11: quotify.plans.v1.ApiKey.status:type_name -> quotify.plans.v1.ApiKey.Status
-	30, // 12: quotify.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
-	30, // 13: quotify.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
-	30, // 14: quotify.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
-	8,  // 15: quotify.plans.v1.Customer.address:type_name -> quotify.plans.v1.Address
-	2,  // 16: quotify.plans.v1.Meter.aggregation:type_name -> quotify.plans.v1.Aggregation
-	29, // 17: quotify.plans.v1.Meter.filter:type_name -> quotify.plans.v1.Meter.FilterEntry
-	30, // 18: quotify.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
-	30, // 19: quotify.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
-	17, // 20: quotify.plans.v1.TieredGraduatedPrice.tiers:type_name -> quotify.plans.v1.PriceTier
-	18, // 21: quotify.plans.v1.Price.per_unit:type_name -> quotify.plans.v1.PerUnitPrice
-	19, // 22: quotify.plans.v1.Price.tiered:type_name -> quotify.plans.v1.TieredGraduatedPrice
-	20, // 23: quotify.plans.v1.Price.package:type_name -> quotify.plans.v1.PackagePrice
-	21, // 24: quotify.plans.v1.PlanVersion.prices:type_name -> quotify.plans.v1.Price
-	22, // 25: quotify.plans.v1.PlanVersion.entitlements:type_name -> quotify.plans.v1.Entitlement
-	30, // 26: quotify.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
-	25, // 27: quotify.plans.v1.PlanVersion.fees:type_name -> quotify.plans.v1.CurrencyFee
-	24, // 28: quotify.plans.v1.PlanVersion.currency_prices:type_name -> quotify.plans.v1.CurrencyPrices
-	21, // 29: quotify.plans.v1.CurrencyPrices.prices:type_name -> quotify.plans.v1.Price
-	5,  // 30: quotify.plans.v1.CurrencyFee.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	30, // 31: quotify.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
-	30, // 32: quotify.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
-	30, // 33: quotify.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
-	4,  // 34: quotify.plans.v1.Subscription.state:type_name -> quotify.plans.v1.SubscriptionState
-	5,  // 35: quotify.plans.v1.Subscription.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	30, // 36: quotify.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
-	30, // 37: quotify.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
-	3,  // 38: quotify.plans.v1.Subscription.fee_timing:type_name -> quotify.plans.v1.FeeTiming
-	27, // 39: quotify.plans.v1.Subscription.scheduled_change:type_name -> quotify.plans.v1.ScheduledChange
-	5,  // 40: quotify.plans.v1.ScheduledChange.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	30, // 41: quotify.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
-	6,  // 42: quotify.plans.v1.Coupon.duration:type_name -> quotify.plans.v1.CouponDuration
-	30, // 43: quotify.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
-	30, // 44: quotify.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
-	14, // 45: quotify.plans.v1.Meter.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
-	46, // [46:46] is the sub-list for method output_type
-	46, // [46:46] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	9,  // 10: quotify.plans.v1.Tenant.legal:type_name -> quotify.plans.v1.LegalInfo
+	0,  // 11: quotify.plans.v1.ApiKey.environment:type_name -> quotify.plans.v1.Environment
+	7,  // 12: quotify.plans.v1.ApiKey.status:type_name -> quotify.plans.v1.ApiKey.Status
+	31, // 13: quotify.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
+	31, // 14: quotify.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
+	31, // 15: quotify.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
+	8,  // 16: quotify.plans.v1.Customer.address:type_name -> quotify.plans.v1.Address
+	2,  // 17: quotify.plans.v1.Meter.aggregation:type_name -> quotify.plans.v1.Aggregation
+	30, // 18: quotify.plans.v1.Meter.filter:type_name -> quotify.plans.v1.Meter.FilterEntry
+	31, // 19: quotify.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
+	31, // 20: quotify.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
+	18, // 21: quotify.plans.v1.TieredGraduatedPrice.tiers:type_name -> quotify.plans.v1.PriceTier
+	19, // 22: quotify.plans.v1.Price.per_unit:type_name -> quotify.plans.v1.PerUnitPrice
+	20, // 23: quotify.plans.v1.Price.tiered:type_name -> quotify.plans.v1.TieredGraduatedPrice
+	21, // 24: quotify.plans.v1.Price.package:type_name -> quotify.plans.v1.PackagePrice
+	22, // 25: quotify.plans.v1.PlanVersion.prices:type_name -> quotify.plans.v1.Price
+	23, // 26: quotify.plans.v1.PlanVersion.entitlements:type_name -> quotify.plans.v1.Entitlement
+	31, // 27: quotify.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
+	26, // 28: quotify.plans.v1.PlanVersion.fees:type_name -> quotify.plans.v1.CurrencyFee
+	25, // 29: quotify.plans.v1.PlanVersion.currency_prices:type_name -> quotify.plans.v1.CurrencyPrices
+	22, // 30: quotify.plans.v1.CurrencyPrices.prices:type_name -> quotify.plans.v1.Price
+	5,  // 31: quotify.plans.v1.CurrencyFee.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	31, // 32: quotify.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
+	31, // 33: quotify.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
+	31, // 34: quotify.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
+	4,  // 35: quotify.plans.v1.Subscription.state:type_name -> quotify.plans.v1.SubscriptionState
+	5,  // 36: quotify.plans.v1.Subscription.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	31, // 37: quotify.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
+	31, // 38: quotify.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
+	3,  // 39: quotify.plans.v1.Subscription.fee_timing:type_name -> quotify.plans.v1.FeeTiming
+	28, // 40: quotify.plans.v1.Subscription.scheduled_change:type_name -> quotify.plans.v1.ScheduledChange
+	5,  // 41: quotify.plans.v1.ScheduledChange.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	31, // 42: quotify.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
+	6,  // 43: quotify.plans.v1.Coupon.duration:type_name -> quotify.plans.v1.CouponDuration
+	31, // 44: quotify.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
+	31, // 45: quotify.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
+	15, // 46: quotify.plans.v1.Meter.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
+	47, // [47:47] is the sub-list for method output_type
+	47, // [47:47] is the sub-list for method input_type
+	47, // [47:47] is the sub-list for extension type_name
+	47, // [47:47] is the sub-list for extension extendee
+	0,  // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_quotify_plans_v1_resources_proto_init() }
@@ -2631,7 +2771,7 @@ func file_quotify_plans_v1_resources_proto_init() {
 	if File_quotify_plans_v1_resources_proto != nil {
 		return
 	}
-	file_quotify_plans_v1_resources_proto_msgTypes[13].OneofWrappers = []any{
+	file_quotify_plans_v1_resources_proto_msgTypes[14].OneofWrappers = []any{
 		(*Price_PerUnit)(nil),
 		(*Price_Tiered)(nil),
 		(*Price_Package)(nil),
@@ -2642,7 +2782,7 @@ func file_quotify_plans_v1_resources_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_plans_v1_resources_proto_rawDesc), len(file_quotify_plans_v1_resources_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   22,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

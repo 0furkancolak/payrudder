@@ -17,6 +17,8 @@ service PlansService {
   rpc SetPaymentMethod(SetPaymentMethodRequest) returns (SetPaymentMethodResponse);
   // SetCustomerAddress replaces the customer's billing address. An empty address clears it (the country is kept unless the address names one).
   rpc SetCustomerAddress(SetCustomerAddressRequest) returns (SetCustomerAddressResponse);
+  // SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
+  rpc SetCustomerTax(SetCustomerTaxRequest) returns (SetCustomerTaxResponse);
 
   // CreateMeter creates version 1 of a code, or the next version of an existing code.
   rpc CreateMeter(CreateMeterRequest) returns (CreateMeterResponse);
@@ -148,6 +150,17 @@ message SetCustomerAddressRequest {
 }
 
 message SetCustomerAddressResponse {
+  Customer customer = 1;
+}
+
+message SetCustomerTaxRequest {
+  string external_id = 1;
+  string tax_id = 2;
+  string tax_office = 3;
+  bool e_invoice_registered = 4;
+}
+
+message SetCustomerTaxResponse {
   Customer customer = 1;
 }
 

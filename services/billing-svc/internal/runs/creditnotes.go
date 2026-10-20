@@ -123,6 +123,9 @@ func (m *Manager) CreateCreditNote(ctx context.Context, tenantID, invoiceID uuid
 		if err != nil {
 			return err
 		}
+		if err := m.einvoiceCreditNote(ctx, tx, tenantID, cn, inv.Environment); err != nil {
+			return err
+		}
 		out = cn
 		return creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteCreated, cn.ID.String(), now, cn)
 	})
@@ -337,4 +340,28 @@ func creditNoteEvent(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, ke
 		}
 	}
 	return saga.TenantEvent(ctx, tx, tenantID, typ, key, at, data)
+}
+
+// einvoiceCreditNote sends the credit note as an e-document when the invoice it corrects has one that is still alive (pending or issued). An invoice that was never
+// e-invoiced (the setting was off, or its document failed for good) leaves nothing for the note to refer to, so the note is not e-invoiced either.
+func (m *Manager) einvoiceCreditNote(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, cn *CreditNote, environment string) error {
+	orig, err := m.q.WithTx(tx).GetEInvoiceOfInvoice(ctx, sqlc.GetEInvoiceOfInvoiceParams{TenantID: tenantID, InvoiceID: cn.InvoiceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if orig.Status != saga.EInvoicePending && orig.Status != saga.EInvoiceIssued {
+		return nil
+	}
+	cmd, on, err := m.cfg.Engine.CreditNoteSnapshot(ctx, tx, tenantID, cn.InvoiceID, cn.ID, cn.Number, cn.TotalMinor, cn.CreatedAt)
+	if err != nil {
+		return err
+	}
+	if on == "" || on == "off" {
+		return nil
+	}
+	_, err = saga.EnqueueEInvoice(ctx, tx, m.cfg.Now(), tenantID, environment, saga.EInvoiceKindCreditNote, cn.InvoiceID, &cn.ID, cn.Number, cmd)
+	return err
 }

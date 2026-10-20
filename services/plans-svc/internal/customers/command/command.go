@@ -92,6 +92,27 @@ func (c *Commands) SetAddress(ctx context.Context, req *plansv1.SetCustomerAddre
 	return convert.Customer(out), nil
 }
 
+// SetTax replaces the customer's tax id, tax office and e-fatura registration flag.
+func (c *Commands) SetTax(ctx context.Context, req *plansv1.SetCustomerTaxRequest) (*plansv1.Customer, error) {
+	if req.GetExternalId() == "" {
+		return nil, domain.Invalid("external_id", "required")
+	}
+	if err := domain.ValidateCustomerTax(req); err != nil {
+		return nil, err
+	}
+	var out sqlc.Customer
+	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+		var err error
+		out, err = q.SetCustomerTax(ctx, sqlc.SetCustomerTaxParams{ExternalID: req.GetExternalId(), TaxID: req.GetTaxId(), TaxOffice: req.GetTaxOffice(),
+			EInvoiceRegistered: req.GetEInvoiceRegistered()})
+		return err
+	})
+	if err != nil {
+		return nil, convert.Err(err, "customer")
+	}
+	return convert.Customer(out), nil
+}
+
 // SetPaymentMethod replaces the customer's payment method.
 func (c *Commands) SetPaymentMethod(ctx context.Context, req *plansv1.SetPaymentMethodRequest) (*plansv1.Customer, error) {
 	var out sqlc.Customer

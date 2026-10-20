@@ -59,6 +59,10 @@ type Snapshot struct {
 	// The postal addresses as printed lines, frozen when the draft was made.
 	SellerAddress   []string `json:"seller_address,omitempty"`
 	CustomerAddress []string `json:"customer_address,omitempty"`
+	// E-invoicing (phase 30): the tenant's e_invoice_on and the parties, frozen with the draft. Empty when the tenant does not use it.
+	EInvoiceOn string `json:"e_invoice_on,omitempty"`
+	Seller     *Party `json:"seller,omitempty"`
+	Buyer      *Party `json:"buyer,omitempty"`
 }
 
 // Config tunes an Engine.
@@ -329,6 +333,9 @@ func (e *Engine) announce(ctx context.Context, tx pgx.Tx, s *saga, next State, c
 	}
 	switch next {
 	case Paid:
+		if err := e.invoiceEInvoice(ctx, tx, s, "paid"); err != nil {
+			return err
+		}
 		return e.fact(ctx, tx, s, FactPaid, func(f *eventsv1.InvoiceFact) {
 			f.Kind = &eventsv1.InvoiceFact_Paid_{Paid: &eventsv1.InvoiceFact_Paid{}}
 		})

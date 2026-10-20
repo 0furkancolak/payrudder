@@ -196,11 +196,13 @@ func (m *Manager) buildFeeDraft(ctx context.Context, tenantID uuid.UUID, t *plan
 			tax += l.AmountMinor
 		}
 	}
-	snap, err := json.Marshal(saga.Snapshot{
+	snapshot := saga.Snapshot{
 		CustomerExternalID: sub.GetCustomerExternalId(), CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
 		PaymentMethod: cu.GetCustomer().GetPaymentMethod(), Provider: sub.GetProvider(), TenantName: t.GetName(), Environment: environmentOf(t), CurrencyExponent: cur.Exponent,
 		LogoObjectKey: logoKeyOf(tenantID, t), ProviderMails: providerMails(sub.GetProvider()), SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetCustomer().GetAddress()),
-	})
+	}
+	einvoiceSnapshot(&snapshot, t, cu.GetCustomer())
+	snap, err := json.Marshal(snapshot)
 	if err != nil {
 		return nil, err
 	}

@@ -600,13 +600,15 @@ func (m *Manager) buildDraft(rr *rateRun, cu *plansv1.Customer, ls *lineSet, cid
 		}
 	}
 	t := rr.tenant
+	snapshot := saga.Snapshot{
+		CustomerExternalID: snapExternal, CustomerName: cu.GetName(), CustomerEmail: cu.GetEmail(),
+		PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: rr.env, CurrencyExponent: invCur.Exponent, ProviderMails: providerMails(provider),
+		SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetAddress()), LogoObjectKey: rr.logoKey,
+	}
+	einvoiceSnapshot(&snapshot, t, cu)
 	return &draftInvoice{
 		Provider: provider, Country: cu.GetCountry(), Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pv, Lines: ls.lines, LineScales: ls.scales, Total: total,
-		Snapshot: saga.Snapshot{
-			CustomerExternalID: snapExternal, CustomerName: cu.GetName(), CustomerEmail: cu.GetEmail(),
-			PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: rr.env, CurrencyExponent: invCur.Exponent, ProviderMails: providerMails(provider),
-			SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetAddress()), LogoObjectKey: rr.logoKey,
-		},
+		Snapshot: snapshot,
 	}, nil
 }
 

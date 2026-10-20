@@ -28,6 +28,7 @@ func (e *Engine) invoiceSnapshot(s *saga, lines []sqlc.ListInvoiceLinesForSnapsh
 		TenantName:       s.Snap.TenantName, CustomerName: s.Snap.CustomerName, CustomerEmail: s.Snap.CustomerEmail,
 		IssuedAt: timestamppb.New(s.FinalizedAt), TotalMinor: s.TotalMinor, LogoObjectKey: s.Snap.LogoObjectKey,
 		SellerAddressLines: s.Snap.SellerAddress, CustomerAddressLines: s.Snap.CustomerAddress,
+		Seller: s.Snap.Seller.Proto(), Buyer: s.Snap.Buyer.Proto(), EInvoiceOn: s.Snap.EInvoiceOn,
 	}
 	var sub int64
 	for _, l := range lines {

@@ -26,6 +26,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/einvoice"
 	"github.com/0furkancolak/quotify/pkg/payments"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
@@ -45,6 +46,10 @@ type Server struct {
 	Log     *slog.Logger
 	// Token guards /admin. Empty disables the admin endpoints entirely.
 	Token string
+	// EInvoiceAccounts and EInvoiceRegistry serve the e-invoice account endpoints (phase 30); AllowMockLive lets a live account be the mock (demo mode).
+	EInvoiceAccounts store.EInvoiceAccounts
+	EInvoiceRegistry *einvoice.Registry
+	AllowMockLive    bool
 	// Billing, when set, lets the reconciliation read the tenant's invoices.
 	Billing BillingAPI
 	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status, and runs
@@ -95,6 +100,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.deleteAccount))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/ledger", s.admin(s.ledger))
 	s.apiRoutes(mux)
+	s.einvoiceRoutes(mux)
 	return mux
 }
 

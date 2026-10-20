@@ -4168,6 +4168,609 @@ func (x *GetHostedInvoicePdfUrlResponse) GetExpireTime() *timestamppb.Timestamp 
 	return nil
 }
 
+// EInvoiceDocument is the legal e-document of an invoice or a credit note and where it stands (docs/phases/phase-30-e-invoice.md).
+type EInvoiceDocument struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// "invoice" or "credit_note".
+	Kind      string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	InvoiceId string `protobuf:"bytes,3,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
+	// Set for a credit note.
+	CreditNoteId string `protobuf:"bytes,4,opt,name=credit_note_id,json=creditNoteId,proto3" json:"credit_note_id,omitempty"`
+	// Quotify's number of the invoice or credit note.
+	Number string `protobuf:"bytes,5,opt,name=number,proto3" json:"number,omitempty"`
+	// pending, issued, failed or cancelled.
+	Status string `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	// e-fatura, e-arsiv or peppol; empty until the provider has been chosen.
+	DocumentType string `protobuf:"bytes,7,opt,name=document_type,json=documentType,proto3" json:"document_type,omitempty"`
+	Provider     string `protobuf:"bytes,8,opt,name=provider,proto3" json:"provider,omitempty"`
+	Environment  string `protobuf:"bytes,9,opt,name=environment,proto3" json:"environment,omitempty"`
+	// The number the document was issued under; never reused.
+	LegalNumber   string                 `protobuf:"bytes,10,opt,name=legal_number,json=legalNumber,proto3" json:"legal_number,omitempty"`
+	ExternalId    string                 `protobuf:"bytes,11,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	Attempts      int32                  `protobuf:"varint,12,opt,name=attempts,proto3" json:"attempts,omitempty"`
+	NextAttemptAt *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=next_attempt_at,json=nextAttemptAt,proto3" json:"next_attempt_at,omitempty"`
+	// Error key (docs/error-keys.md) and English text of the last failure.
+	LastErrorKey  string                 `protobuf:"bytes,14,opt,name=last_error_key,json=lastErrorKey,proto3" json:"last_error_key,omitempty"`
+	LastError     string                 `protobuf:"bytes,15,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	HasXml        bool                   `protobuf:"varint,16,opt,name=has_xml,json=hasXml,proto3" json:"has_xml,omitempty"`
+	HasPdf        bool                   `protobuf:"varint,17,opt,name=has_pdf,json=hasPdf,proto3" json:"has_pdf,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	IssuedAt      *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EInvoiceDocument) Reset() {
+	*x = EInvoiceDocument{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EInvoiceDocument) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EInvoiceDocument) ProtoMessage() {}
+
+func (x *EInvoiceDocument) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EInvoiceDocument.ProtoReflect.Descriptor instead.
+func (*EInvoiceDocument) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *EInvoiceDocument) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetInvoiceId() string {
+	if x != nil {
+		return x.InvoiceId
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetCreditNoteId() string {
+	if x != nil {
+		return x.CreditNoteId
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetNumber() string {
+	if x != nil {
+		return x.Number
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetDocumentType() string {
+	if x != nil {
+		return x.DocumentType
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetEnvironment() string {
+	if x != nil {
+		return x.Environment
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetLegalNumber() string {
+	if x != nil {
+		return x.LegalNumber
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetAttempts() int32 {
+	if x != nil {
+		return x.Attempts
+	}
+	return 0
+}
+
+func (x *EInvoiceDocument) GetNextAttemptAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextAttemptAt
+	}
+	return nil
+}
+
+func (x *EInvoiceDocument) GetLastErrorKey() string {
+	if x != nil {
+		return x.LastErrorKey
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetLastError() string {
+	if x != nil {
+		return x.LastError
+	}
+	return ""
+}
+
+func (x *EInvoiceDocument) GetHasXml() bool {
+	if x != nil {
+		return x.HasXml
+	}
+	return false
+}
+
+func (x *EInvoiceDocument) GetHasPdf() bool {
+	if x != nil {
+		return x.HasPdf
+	}
+	return false
+}
+
+func (x *EInvoiceDocument) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *EInvoiceDocument) GetIssuedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.IssuedAt
+	}
+	return nil
+}
+
+func (x *EInvoiceDocument) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type GetEInvoiceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEInvoiceRequest) Reset() {
+	*x = GetEInvoiceRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEInvoiceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEInvoiceRequest) ProtoMessage() {}
+
+func (x *GetEInvoiceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEInvoiceRequest.ProtoReflect.Descriptor instead.
+func (*GetEInvoiceRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *GetEInvoiceRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListEInvoicesRequest struct {
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	InvoiceId    string                 `protobuf:"bytes,1,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
+	CreditNoteId string                 `protobuf:"bytes,2,opt,name=credit_note_id,json=creditNoteId,proto3" json:"credit_note_id,omitempty"`
+	// pending, issued, failed or cancelled; empty for all.
+	Status string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	// 1..200, default 50.
+	PageSize      int32  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string `protobuf:"bytes,5,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListEInvoicesRequest) Reset() {
+	*x = ListEInvoicesRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListEInvoicesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListEInvoicesRequest) ProtoMessage() {}
+
+func (x *ListEInvoicesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListEInvoicesRequest.ProtoReflect.Descriptor instead.
+func (*ListEInvoicesRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *ListEInvoicesRequest) GetInvoiceId() string {
+	if x != nil {
+		return x.InvoiceId
+	}
+	return ""
+}
+
+func (x *ListEInvoicesRequest) GetCreditNoteId() string {
+	if x != nil {
+		return x.CreditNoteId
+	}
+	return ""
+}
+
+func (x *ListEInvoicesRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListEInvoicesRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListEInvoicesRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type ListEInvoicesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Documents     []*EInvoiceDocument    `protobuf:"bytes,1,rep,name=documents,proto3" json:"documents,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	Total         int64                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListEInvoicesResponse) Reset() {
+	*x = ListEInvoicesResponse{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListEInvoicesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListEInvoicesResponse) ProtoMessage() {}
+
+func (x *ListEInvoicesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListEInvoicesResponse.ProtoReflect.Descriptor instead.
+func (*ListEInvoicesResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *ListEInvoicesResponse) GetDocuments() []*EInvoiceDocument {
+	if x != nil {
+		return x.Documents
+	}
+	return nil
+}
+
+func (x *ListEInvoicesResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListEInvoicesResponse) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type GetEInvoiceFileUrlRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// "xml" or "pdf".
+	Kind          string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEInvoiceFileUrlRequest) Reset() {
+	*x = GetEInvoiceFileUrlRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEInvoiceFileUrlRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEInvoiceFileUrlRequest) ProtoMessage() {}
+
+func (x *GetEInvoiceFileUrlRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEInvoiceFileUrlRequest.ProtoReflect.Descriptor instead.
+func (*GetEInvoiceFileUrlRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *GetEInvoiceFileUrlRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GetEInvoiceFileUrlRequest) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+type GetEInvoiceFileUrlResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEInvoiceFileUrlResponse) Reset() {
+	*x = GetEInvoiceFileUrlResponse{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEInvoiceFileUrlResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEInvoiceFileUrlResponse) ProtoMessage() {}
+
+func (x *GetEInvoiceFileUrlResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEInvoiceFileUrlResponse.ProtoReflect.Descriptor instead.
+func (*GetEInvoiceFileUrlResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *GetEInvoiceFileUrlResponse) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *GetEInvoiceFileUrlResponse) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+type RetryEInvoiceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetryEInvoiceRequest) Reset() {
+	*x = RetryEInvoiceRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetryEInvoiceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetryEInvoiceRequest) ProtoMessage() {}
+
+func (x *RetryEInvoiceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetryEInvoiceRequest.ProtoReflect.Descriptor instead.
+func (*RetryEInvoiceRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *RetryEInvoiceRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *RetryEInvoiceRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type CancelEInvoiceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelEInvoiceRequest) Reset() {
+	*x = CancelEInvoiceRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelEInvoiceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelEInvoiceRequest) ProtoMessage() {}
+
+func (x *CancelEInvoiceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelEInvoiceRequest.ProtoReflect.Descriptor instead.
+func (*CancelEInvoiceRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *CancelEInvoiceRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *CancelEInvoiceRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CancelEInvoiceRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 var File_quotify_billing_v1_billing_proto protoreflect.FileDescriptor
 
 const file_quotify_billing_v1_billing_proto_rawDesc = "" +
@@ -4500,7 +5103,62 @@ const file_quotify_billing_v1_billing_proto_rawDesc = "" +
 	"\x1eGetHostedInvoicePdfUrlResponse\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12;\n" +
 	"\vexpire_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"expireTime*\xc5\x01\n" +
+	"expireTime\"\xd8\x05\n" +
+	"\x10EInvoiceDocument\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x1d\n" +
+	"\n" +
+	"invoice_id\x18\x03 \x01(\tR\tinvoiceId\x12$\n" +
+	"\x0ecredit_note_id\x18\x04 \x01(\tR\fcreditNoteId\x12\x16\n" +
+	"\x06number\x18\x05 \x01(\tR\x06number\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12#\n" +
+	"\rdocument_type\x18\a \x01(\tR\fdocumentType\x12\x1a\n" +
+	"\bprovider\x18\b \x01(\tR\bprovider\x12 \n" +
+	"\venvironment\x18\t \x01(\tR\venvironment\x12!\n" +
+	"\flegal_number\x18\n" +
+	" \x01(\tR\vlegalNumber\x12\x1f\n" +
+	"\vexternal_id\x18\v \x01(\tR\n" +
+	"externalId\x12\x1a\n" +
+	"\battempts\x18\f \x01(\x05R\battempts\x12B\n" +
+	"\x0fnext_attempt_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\rnextAttemptAt\x12$\n" +
+	"\x0elast_error_key\x18\x0e \x01(\tR\flastErrorKey\x12\x1d\n" +
+	"\n" +
+	"last_error\x18\x0f \x01(\tR\tlastError\x12\x17\n" +
+	"\ahas_xml\x18\x10 \x01(\bR\x06hasXml\x12\x17\n" +
+	"\ahas_pdf\x18\x11 \x01(\bR\x06hasPdf\x129\n" +
+	"\n" +
+	"created_at\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x127\n" +
+	"\tissued_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"$\n" +
+	"\x12GetEInvoiceRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xaf\x01\n" +
+	"\x14ListEInvoicesRequest\x12\x1d\n" +
+	"\n" +
+	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12$\n" +
+	"\x0ecredit_note_id\x18\x02 \x01(\tR\fcreditNoteId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1b\n" +
+	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x05 \x01(\tR\tpageToken\"\x99\x01\n" +
+	"\x15ListEInvoicesResponse\x12B\n" +
+	"\tdocuments\x18\x01 \x03(\v2$.quotify.billing.v1.EInvoiceDocumentR\tdocuments\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x03R\x05total\"?\n" +
+	"\x19GetEInvoiceFileUrlRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\"i\n" +
+	"\x1aGetEInvoiceFileUrlResponse\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x129\n" +
+	"\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"C\n" +
+	"\x14RetryEInvoiceRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"\\\n" +
+	"\x15CancelEInvoiceRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason*\xc5\x01\n" +
 	"\tRunStatus\x12\x1a\n" +
 	"\x16RUN_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14RUN_STATUS_SCHEDULED\x10\x01\x12 \n" +
@@ -4522,7 +5180,7 @@ const file_quotify_billing_v1_billing_proto_rawDesc = "" +
 	"\x18REFUND_STATE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16REFUND_STATE_REQUESTED\x10\x01\x12\x19\n" +
 	"\x15REFUND_STATE_REFUNDED\x10\x02\x12\x17\n" +
-	"\x13REFUND_STATE_FAILED\x10\x032\xc0\t\n" +
+	"\x13REFUND_STATE_FAILED\x10\x032\xf8\v\n" +
 	"\x0eBillingService\x12[\n" +
 	"\n" +
 	"GetInvoice\x12%.quotify.billing.v1.GetInvoiceRequest\x1a&.quotify.billing.v1.GetInvoiceResponse\x12a\n" +
@@ -4531,7 +5189,10 @@ const file_quotify_billing_v1_billing_proto_rawDesc = "" +
 	"\x10GetRevenueReport\x12+.quotify.billing.v1.GetRevenueReportRequest\x1a,.quotify.billing.v1.GetRevenueReportResponse\x12m\n" +
 	"\x10GetDunningReport\x12+.quotify.billing.v1.GetDunningReportRequest\x1a,.quotify.billing.v1.GetDunningReportResponse\x12d\n" +
 	"\rGetCreditNote\x12(.quotify.billing.v1.GetCreditNoteRequest\x1a).quotify.billing.v1.GetCreditNoteResponse\x12j\n" +
-	"\x0fListCreditNotes\x12*.quotify.billing.v1.ListCreditNotesRequest\x1a+.quotify.billing.v1.ListCreditNotesResponse\x12p\n" +
+	"\x0fListCreditNotes\x12*.quotify.billing.v1.ListCreditNotesRequest\x1a+.quotify.billing.v1.ListCreditNotesResponse\x12[\n" +
+	"\vGetEInvoice\x12&.quotify.billing.v1.GetEInvoiceRequest\x1a$.quotify.billing.v1.EInvoiceDocument\x12d\n" +
+	"\rListEInvoices\x12(.quotify.billing.v1.ListEInvoicesRequest\x1a).quotify.billing.v1.ListEInvoicesResponse\x12s\n" +
+	"\x12GetEInvoiceFileUrl\x12-.quotify.billing.v1.GetEInvoiceFileUrlRequest\x1a..quotify.billing.v1.GetEInvoiceFileUrlResponse\x12p\n" +
 	"\x11CreateInvoiceLink\x12,.quotify.billing.v1.CreateInvoiceLinkRequest\x1a-.quotify.billing.v1.CreateInvoiceLinkResponse\x12s\n" +
 	"\x12RevokeInvoiceLinks\x12-.quotify.billing.v1.RevokeInvoiceLinksRequest\x1a..quotify.billing.v1.RevokeInvoiceLinksResponse\x12s\n" +
 	"\x12GetDunningSettings\x12-.quotify.billing.v1.GetDunningSettingsRequest\x1a..quotify.billing.v1.GetDunningSettingsResponse\x12s\n" +
@@ -4540,14 +5201,17 @@ const file_quotify_billing_v1_billing_proto_rawDesc = "" +
 	"\x10GetHostedInvoice\x12+.quotify.billing.v1.GetHostedInvoiceRequest\x1a,.quotify.billing.v1.GetHostedInvoiceResponse\x12\x7f\n" +
 	"\x16GetHostedInvoicePdfUrl\x121.quotify.billing.v1.GetHostedInvoicePdfUrlRequest\x1a2.quotify.billing.v1.GetHostedInvoicePdfUrlResponse2y\n" +
 	"\x0eSandboxService\x12g\n" +
-	"\x0eClosePeriodNow\x12).quotify.billing.v1.ClosePeriodNowRequest\x1a*.quotify.billing.v1.ClosePeriodNowResponse2\xb0\t\n" +
+	"\x0eClosePeriodNow\x12).quotify.billing.v1.ClosePeriodNowRequest\x1a*.quotify.billing.v1.ClosePeriodNowResponse2\xf4\n" +
+	"\n" +
 	"\x13BillingAdminService\x12^\n" +
 	"\vClosePeriod\x12&.quotify.billing.v1.ClosePeriodRequest\x1a'.quotify.billing.v1.ClosePeriodResponse\x12d\n" +
 	"\rGetBillingRun\x12(.quotify.billing.v1.GetBillingRunRequest\x1a).quotify.billing.v1.GetBillingRunResponse\x12m\n" +
 	"\x10RetryInvoiceSaga\x12+.quotify.billing.v1.RetryInvoiceSagaRequest\x1a,.quotify.billing.v1.RetryInvoiceSagaResponse\x12^\n" +
 	"\vVoidInvoice\x12&.quotify.billing.v1.VoidInvoiceRequest\x1a'.quotify.billing.v1.VoidInvoiceResponse\x12m\n" +
 	"\x10CreateCreditNote\x12+.quotify.billing.v1.CreateCreditNoteRequest\x1a,.quotify.billing.v1.CreateCreditNoteResponse\x12|\n" +
-	"\x15RetryCreditNoteRefund\x120.quotify.billing.v1.RetryCreditNoteRefundRequest\x1a1.quotify.billing.v1.RetryCreditNoteRefundResponse\x12d\n" +
+	"\x15RetryCreditNoteRefund\x120.quotify.billing.v1.RetryCreditNoteRefundRequest\x1a1.quotify.billing.v1.RetryCreditNoteRefundResponse\x12_\n" +
+	"\rRetryEInvoice\x12(.quotify.billing.v1.RetryEInvoiceRequest\x1a$.quotify.billing.v1.EInvoiceDocument\x12a\n" +
+	"\x0eCancelEInvoice\x12).quotify.billing.v1.CancelEInvoiceRequest\x1a$.quotify.billing.v1.EInvoiceDocument\x12d\n" +
 	"\rStartRerating\x12(.quotify.billing.v1.StartReratingRequest\x1a).quotify.billing.v1.StartReratingResponse\x12g\n" +
 	"\x0eGetReratingJob\x12).quotify.billing.v1.GetReratingJobRequest\x1a*.quotify.billing.v1.GetReratingJobResponse\x12g\n" +
 	"\x0eGetInvoiceSaga\x12).quotify.billing.v1.GetInvoiceSagaRequest\x1a*.quotify.billing.v1.GetInvoiceSagaResponse\x12j\n" +
@@ -4568,7 +5232,7 @@ func file_quotify_billing_v1_billing_proto_rawDescGZIP() []byte {
 }
 
 var file_quotify_billing_v1_billing_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_quotify_billing_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 63)
+var file_quotify_billing_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 71)
 var file_quotify_billing_v1_billing_proto_goTypes = []any{
 	(RunStatus)(0),                         // 0: quotify.billing.v1.RunStatus
 	(ReratingStatus)(0),                    // 1: quotify.billing.v1.ReratingStatus
@@ -4637,109 +5301,133 @@ var file_quotify_billing_v1_billing_proto_goTypes = []any{
 	(*GetHostedInvoiceResponse)(nil),       // 64: quotify.billing.v1.GetHostedInvoiceResponse
 	(*GetHostedInvoicePdfUrlRequest)(nil),  // 65: quotify.billing.v1.GetHostedInvoicePdfUrlRequest
 	(*GetHostedInvoicePdfUrlResponse)(nil), // 66: quotify.billing.v1.GetHostedInvoicePdfUrlResponse
-	(*timestamppb.Timestamp)(nil),          // 67: google.protobuf.Timestamp
+	(*EInvoiceDocument)(nil),               // 67: quotify.billing.v1.EInvoiceDocument
+	(*GetEInvoiceRequest)(nil),             // 68: quotify.billing.v1.GetEInvoiceRequest
+	(*ListEInvoicesRequest)(nil),           // 69: quotify.billing.v1.ListEInvoicesRequest
+	(*ListEInvoicesResponse)(nil),          // 70: quotify.billing.v1.ListEInvoicesResponse
+	(*GetEInvoiceFileUrlRequest)(nil),      // 71: quotify.billing.v1.GetEInvoiceFileUrlRequest
+	(*GetEInvoiceFileUrlResponse)(nil),     // 72: quotify.billing.v1.GetEInvoiceFileUrlResponse
+	(*RetryEInvoiceRequest)(nil),           // 73: quotify.billing.v1.RetryEInvoiceRequest
+	(*CancelEInvoiceRequest)(nil),          // 74: quotify.billing.v1.CancelEInvoiceRequest
+	(*timestamppb.Timestamp)(nil),          // 75: google.protobuf.Timestamp
 }
 var file_quotify_billing_v1_billing_proto_depIdxs = []int32{
 	0,  // 0: quotify.billing.v1.BillingRun.status:type_name -> quotify.billing.v1.RunStatus
-	67, // 1: quotify.billing.v1.BillingRun.cutoff_time:type_name -> google.protobuf.Timestamp
-	67, // 2: quotify.billing.v1.BillingRun.start_time:type_name -> google.protobuf.Timestamp
-	67, // 3: quotify.billing.v1.BillingRun.complete_time:type_name -> google.protobuf.Timestamp
-	67, // 4: quotify.billing.v1.InvoiceLine.service_from:type_name -> google.protobuf.Timestamp
-	67, // 5: quotify.billing.v1.InvoiceLine.service_to:type_name -> google.protobuf.Timestamp
-	67, // 6: quotify.billing.v1.Invoice.create_time:type_name -> google.protobuf.Timestamp
-	67, // 7: quotify.billing.v1.Invoice.finalize_time:type_name -> google.protobuf.Timestamp
+	75, // 1: quotify.billing.v1.BillingRun.cutoff_time:type_name -> google.protobuf.Timestamp
+	75, // 2: quotify.billing.v1.BillingRun.start_time:type_name -> google.protobuf.Timestamp
+	75, // 3: quotify.billing.v1.BillingRun.complete_time:type_name -> google.protobuf.Timestamp
+	75, // 4: quotify.billing.v1.InvoiceLine.service_from:type_name -> google.protobuf.Timestamp
+	75, // 5: quotify.billing.v1.InvoiceLine.service_to:type_name -> google.protobuf.Timestamp
+	75, // 6: quotify.billing.v1.Invoice.create_time:type_name -> google.protobuf.Timestamp
+	75, // 7: quotify.billing.v1.Invoice.finalize_time:type_name -> google.protobuf.Timestamp
 	5,  // 8: quotify.billing.v1.Invoice.lines:type_name -> quotify.billing.v1.InvoiceLine
 	6,  // 9: quotify.billing.v1.GetInvoiceResponse.invoice:type_name -> quotify.billing.v1.Invoice
 	6,  // 10: quotify.billing.v1.ListInvoicesResponse.invoices:type_name -> quotify.billing.v1.Invoice
-	67, // 11: quotify.billing.v1.GetInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
+	75, // 11: quotify.billing.v1.GetInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
 	4,  // 12: quotify.billing.v1.ClosePeriodNowResponse.run:type_name -> quotify.billing.v1.BillingRun
 	4,  // 13: quotify.billing.v1.ClosePeriodResponse.run:type_name -> quotify.billing.v1.BillingRun
 	4,  // 14: quotify.billing.v1.GetBillingRunResponse.run:type_name -> quotify.billing.v1.BillingRun
 	19, // 15: quotify.billing.v1.RetryInvoiceSagaResponse.saga:type_name -> quotify.billing.v1.InvoiceSaga
 	19, // 16: quotify.billing.v1.VoidInvoiceResponse.saga:type_name -> quotify.billing.v1.InvoiceSaga
 	1,  // 17: quotify.billing.v1.ReratingJob.status:type_name -> quotify.billing.v1.ReratingStatus
-	67, // 18: quotify.billing.v1.ReratingJob.create_time:type_name -> google.protobuf.Timestamp
-	67, // 19: quotify.billing.v1.ReratingJob.complete_time:type_name -> google.protobuf.Timestamp
+	75, // 18: quotify.billing.v1.ReratingJob.create_time:type_name -> google.protobuf.Timestamp
+	75, // 19: quotify.billing.v1.ReratingJob.complete_time:type_name -> google.protobuf.Timestamp
 	24, // 20: quotify.billing.v1.StartReratingResponse.job:type_name -> quotify.billing.v1.ReratingJob
 	24, // 21: quotify.billing.v1.GetReratingJobResponse.job:type_name -> quotify.billing.v1.ReratingJob
-	67, // 22: quotify.billing.v1.SagaEvent.at:type_name -> google.protobuf.Timestamp
+	75, // 22: quotify.billing.v1.SagaEvent.at:type_name -> google.protobuf.Timestamp
 	19, // 23: quotify.billing.v1.GetInvoiceSagaResponse.saga:type_name -> quotify.billing.v1.InvoiceSaga
 	29, // 24: quotify.billing.v1.GetInvoiceSagaResponse.events:type_name -> quotify.billing.v1.SagaEvent
 	32, // 25: quotify.billing.v1.ListDeadLettersResponse.queues:type_name -> quotify.billing.v1.DeadLetterQueue
 	33, // 26: quotify.billing.v1.ListDeadLettersResponse.messages:type_name -> quotify.billing.v1.DeadLetter
 	39, // 27: quotify.billing.v1.GetRevenueReportResponse.rows:type_name -> quotify.billing.v1.RevenueRow
-	67, // 28: quotify.billing.v1.DunningInvoice.next_attempt_time:type_name -> google.protobuf.Timestamp
+	75, // 28: quotify.billing.v1.DunningInvoice.next_attempt_time:type_name -> google.protobuf.Timestamp
 	42, // 29: quotify.billing.v1.GetDunningReportResponse.invoices:type_name -> quotify.billing.v1.DunningInvoice
 	43, // 30: quotify.billing.v1.GetDunningReportResponse.summary:type_name -> quotify.billing.v1.DunningSummary
-	67, // 31: quotify.billing.v1.CreditNote.create_time:type_name -> google.protobuf.Timestamp
+	75, // 31: quotify.billing.v1.CreditNote.create_time:type_name -> google.protobuf.Timestamp
 	2,  // 32: quotify.billing.v1.CreditNote.disposition:type_name -> quotify.billing.v1.CreditNoteDisposition
 	3,  // 33: quotify.billing.v1.CreditNote.refund_state:type_name -> quotify.billing.v1.RefundState
 	45, // 34: quotify.billing.v1.RetryCreditNoteRefundResponse.credit_note:type_name -> quotify.billing.v1.CreditNote
 	45, // 35: quotify.billing.v1.CreateCreditNoteResponse.credit_note:type_name -> quotify.billing.v1.CreditNote
 	45, // 36: quotify.billing.v1.GetCreditNoteResponse.credit_note:type_name -> quotify.billing.v1.CreditNote
 	45, // 37: quotify.billing.v1.ListCreditNotesResponse.credit_notes:type_name -> quotify.billing.v1.CreditNote
-	67, // 38: quotify.billing.v1.DunningSettings.update_time:type_name -> google.protobuf.Timestamp
+	75, // 38: quotify.billing.v1.DunningSettings.update_time:type_name -> google.protobuf.Timestamp
 	54, // 39: quotify.billing.v1.GetDunningSettingsResponse.settings:type_name -> quotify.billing.v1.DunningSettings
 	54, // 40: quotify.billing.v1.SetDunningSettingsResponse.settings:type_name -> quotify.billing.v1.DunningSettings
-	67, // 41: quotify.billing.v1.CreateInvoiceLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
+	75, // 41: quotify.billing.v1.CreateInvoiceLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
 	6,  // 42: quotify.billing.v1.GetHostedInvoiceResponse.invoice:type_name -> quotify.billing.v1.Invoice
-	67, // 43: quotify.billing.v1.GetHostedInvoiceResponse.expire_time:type_name -> google.protobuf.Timestamp
-	67, // 44: quotify.billing.v1.GetHostedInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
-	7,  // 45: quotify.billing.v1.BillingService.GetInvoice:input_type -> quotify.billing.v1.GetInvoiceRequest
-	9,  // 46: quotify.billing.v1.BillingService.ListInvoices:input_type -> quotify.billing.v1.ListInvoicesRequest
-	11, // 47: quotify.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> quotify.billing.v1.GetInvoicePdfUrlRequest
-	38, // 48: quotify.billing.v1.BillingService.GetRevenueReport:input_type -> quotify.billing.v1.GetRevenueReportRequest
-	41, // 49: quotify.billing.v1.BillingService.GetDunningReport:input_type -> quotify.billing.v1.GetDunningReportRequest
-	50, // 50: quotify.billing.v1.BillingService.GetCreditNote:input_type -> quotify.billing.v1.GetCreditNoteRequest
-	52, // 51: quotify.billing.v1.BillingService.ListCreditNotes:input_type -> quotify.billing.v1.ListCreditNotesRequest
-	59, // 52: quotify.billing.v1.BillingService.CreateInvoiceLink:input_type -> quotify.billing.v1.CreateInvoiceLinkRequest
-	61, // 53: quotify.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> quotify.billing.v1.RevokeInvoiceLinksRequest
-	55, // 54: quotify.billing.v1.BillingService.GetDunningSettings:input_type -> quotify.billing.v1.GetDunningSettingsRequest
-	57, // 55: quotify.billing.v1.BillingService.SetDunningSettings:input_type -> quotify.billing.v1.SetDunningSettingsRequest
-	63, // 56: quotify.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> quotify.billing.v1.GetHostedInvoiceRequest
-	65, // 57: quotify.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> quotify.billing.v1.GetHostedInvoicePdfUrlRequest
-	13, // 58: quotify.billing.v1.SandboxService.ClosePeriodNow:input_type -> quotify.billing.v1.ClosePeriodNowRequest
-	15, // 59: quotify.billing.v1.BillingAdminService.ClosePeriod:input_type -> quotify.billing.v1.ClosePeriodRequest
-	17, // 60: quotify.billing.v1.BillingAdminService.GetBillingRun:input_type -> quotify.billing.v1.GetBillingRunRequest
-	20, // 61: quotify.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> quotify.billing.v1.RetryInvoiceSagaRequest
-	22, // 62: quotify.billing.v1.BillingAdminService.VoidInvoice:input_type -> quotify.billing.v1.VoidInvoiceRequest
-	46, // 63: quotify.billing.v1.BillingAdminService.CreateCreditNote:input_type -> quotify.billing.v1.CreateCreditNoteRequest
-	47, // 64: quotify.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> quotify.billing.v1.RetryCreditNoteRefundRequest
-	25, // 65: quotify.billing.v1.BillingAdminService.StartRerating:input_type -> quotify.billing.v1.StartReratingRequest
-	27, // 66: quotify.billing.v1.BillingAdminService.GetReratingJob:input_type -> quotify.billing.v1.GetReratingJobRequest
-	30, // 67: quotify.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> quotify.billing.v1.GetInvoiceSagaRequest
-	34, // 68: quotify.billing.v1.BillingAdminService.ListDeadLetters:input_type -> quotify.billing.v1.ListDeadLettersRequest
-	36, // 69: quotify.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> quotify.billing.v1.RedriveDeadLettersRequest
-	8,  // 70: quotify.billing.v1.BillingService.GetInvoice:output_type -> quotify.billing.v1.GetInvoiceResponse
-	10, // 71: quotify.billing.v1.BillingService.ListInvoices:output_type -> quotify.billing.v1.ListInvoicesResponse
-	12, // 72: quotify.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> quotify.billing.v1.GetInvoicePdfUrlResponse
-	40, // 73: quotify.billing.v1.BillingService.GetRevenueReport:output_type -> quotify.billing.v1.GetRevenueReportResponse
-	44, // 74: quotify.billing.v1.BillingService.GetDunningReport:output_type -> quotify.billing.v1.GetDunningReportResponse
-	51, // 75: quotify.billing.v1.BillingService.GetCreditNote:output_type -> quotify.billing.v1.GetCreditNoteResponse
-	53, // 76: quotify.billing.v1.BillingService.ListCreditNotes:output_type -> quotify.billing.v1.ListCreditNotesResponse
-	60, // 77: quotify.billing.v1.BillingService.CreateInvoiceLink:output_type -> quotify.billing.v1.CreateInvoiceLinkResponse
-	62, // 78: quotify.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> quotify.billing.v1.RevokeInvoiceLinksResponse
-	56, // 79: quotify.billing.v1.BillingService.GetDunningSettings:output_type -> quotify.billing.v1.GetDunningSettingsResponse
-	58, // 80: quotify.billing.v1.BillingService.SetDunningSettings:output_type -> quotify.billing.v1.SetDunningSettingsResponse
-	64, // 81: quotify.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> quotify.billing.v1.GetHostedInvoiceResponse
-	66, // 82: quotify.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> quotify.billing.v1.GetHostedInvoicePdfUrlResponse
-	14, // 83: quotify.billing.v1.SandboxService.ClosePeriodNow:output_type -> quotify.billing.v1.ClosePeriodNowResponse
-	16, // 84: quotify.billing.v1.BillingAdminService.ClosePeriod:output_type -> quotify.billing.v1.ClosePeriodResponse
-	18, // 85: quotify.billing.v1.BillingAdminService.GetBillingRun:output_type -> quotify.billing.v1.GetBillingRunResponse
-	21, // 86: quotify.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> quotify.billing.v1.RetryInvoiceSagaResponse
-	23, // 87: quotify.billing.v1.BillingAdminService.VoidInvoice:output_type -> quotify.billing.v1.VoidInvoiceResponse
-	49, // 88: quotify.billing.v1.BillingAdminService.CreateCreditNote:output_type -> quotify.billing.v1.CreateCreditNoteResponse
-	48, // 89: quotify.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> quotify.billing.v1.RetryCreditNoteRefundResponse
-	26, // 90: quotify.billing.v1.BillingAdminService.StartRerating:output_type -> quotify.billing.v1.StartReratingResponse
-	28, // 91: quotify.billing.v1.BillingAdminService.GetReratingJob:output_type -> quotify.billing.v1.GetReratingJobResponse
-	31, // 92: quotify.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> quotify.billing.v1.GetInvoiceSagaResponse
-	35, // 93: quotify.billing.v1.BillingAdminService.ListDeadLetters:output_type -> quotify.billing.v1.ListDeadLettersResponse
-	37, // 94: quotify.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> quotify.billing.v1.RedriveDeadLettersResponse
-	70, // [70:95] is the sub-list for method output_type
-	45, // [45:70] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	75, // 43: quotify.billing.v1.GetHostedInvoiceResponse.expire_time:type_name -> google.protobuf.Timestamp
+	75, // 44: quotify.billing.v1.GetHostedInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
+	75, // 45: quotify.billing.v1.EInvoiceDocument.next_attempt_at:type_name -> google.protobuf.Timestamp
+	75, // 46: quotify.billing.v1.EInvoiceDocument.created_at:type_name -> google.protobuf.Timestamp
+	75, // 47: quotify.billing.v1.EInvoiceDocument.issued_at:type_name -> google.protobuf.Timestamp
+	75, // 48: quotify.billing.v1.EInvoiceDocument.updated_at:type_name -> google.protobuf.Timestamp
+	67, // 49: quotify.billing.v1.ListEInvoicesResponse.documents:type_name -> quotify.billing.v1.EInvoiceDocument
+	75, // 50: quotify.billing.v1.GetEInvoiceFileUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
+	7,  // 51: quotify.billing.v1.BillingService.GetInvoice:input_type -> quotify.billing.v1.GetInvoiceRequest
+	9,  // 52: quotify.billing.v1.BillingService.ListInvoices:input_type -> quotify.billing.v1.ListInvoicesRequest
+	11, // 53: quotify.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> quotify.billing.v1.GetInvoicePdfUrlRequest
+	38, // 54: quotify.billing.v1.BillingService.GetRevenueReport:input_type -> quotify.billing.v1.GetRevenueReportRequest
+	41, // 55: quotify.billing.v1.BillingService.GetDunningReport:input_type -> quotify.billing.v1.GetDunningReportRequest
+	50, // 56: quotify.billing.v1.BillingService.GetCreditNote:input_type -> quotify.billing.v1.GetCreditNoteRequest
+	52, // 57: quotify.billing.v1.BillingService.ListCreditNotes:input_type -> quotify.billing.v1.ListCreditNotesRequest
+	68, // 58: quotify.billing.v1.BillingService.GetEInvoice:input_type -> quotify.billing.v1.GetEInvoiceRequest
+	69, // 59: quotify.billing.v1.BillingService.ListEInvoices:input_type -> quotify.billing.v1.ListEInvoicesRequest
+	71, // 60: quotify.billing.v1.BillingService.GetEInvoiceFileUrl:input_type -> quotify.billing.v1.GetEInvoiceFileUrlRequest
+	59, // 61: quotify.billing.v1.BillingService.CreateInvoiceLink:input_type -> quotify.billing.v1.CreateInvoiceLinkRequest
+	61, // 62: quotify.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> quotify.billing.v1.RevokeInvoiceLinksRequest
+	55, // 63: quotify.billing.v1.BillingService.GetDunningSettings:input_type -> quotify.billing.v1.GetDunningSettingsRequest
+	57, // 64: quotify.billing.v1.BillingService.SetDunningSettings:input_type -> quotify.billing.v1.SetDunningSettingsRequest
+	63, // 65: quotify.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> quotify.billing.v1.GetHostedInvoiceRequest
+	65, // 66: quotify.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> quotify.billing.v1.GetHostedInvoicePdfUrlRequest
+	13, // 67: quotify.billing.v1.SandboxService.ClosePeriodNow:input_type -> quotify.billing.v1.ClosePeriodNowRequest
+	15, // 68: quotify.billing.v1.BillingAdminService.ClosePeriod:input_type -> quotify.billing.v1.ClosePeriodRequest
+	17, // 69: quotify.billing.v1.BillingAdminService.GetBillingRun:input_type -> quotify.billing.v1.GetBillingRunRequest
+	20, // 70: quotify.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> quotify.billing.v1.RetryInvoiceSagaRequest
+	22, // 71: quotify.billing.v1.BillingAdminService.VoidInvoice:input_type -> quotify.billing.v1.VoidInvoiceRequest
+	46, // 72: quotify.billing.v1.BillingAdminService.CreateCreditNote:input_type -> quotify.billing.v1.CreateCreditNoteRequest
+	47, // 73: quotify.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> quotify.billing.v1.RetryCreditNoteRefundRequest
+	73, // 74: quotify.billing.v1.BillingAdminService.RetryEInvoice:input_type -> quotify.billing.v1.RetryEInvoiceRequest
+	74, // 75: quotify.billing.v1.BillingAdminService.CancelEInvoice:input_type -> quotify.billing.v1.CancelEInvoiceRequest
+	25, // 76: quotify.billing.v1.BillingAdminService.StartRerating:input_type -> quotify.billing.v1.StartReratingRequest
+	27, // 77: quotify.billing.v1.BillingAdminService.GetReratingJob:input_type -> quotify.billing.v1.GetReratingJobRequest
+	30, // 78: quotify.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> quotify.billing.v1.GetInvoiceSagaRequest
+	34, // 79: quotify.billing.v1.BillingAdminService.ListDeadLetters:input_type -> quotify.billing.v1.ListDeadLettersRequest
+	36, // 80: quotify.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> quotify.billing.v1.RedriveDeadLettersRequest
+	8,  // 81: quotify.billing.v1.BillingService.GetInvoice:output_type -> quotify.billing.v1.GetInvoiceResponse
+	10, // 82: quotify.billing.v1.BillingService.ListInvoices:output_type -> quotify.billing.v1.ListInvoicesResponse
+	12, // 83: quotify.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> quotify.billing.v1.GetInvoicePdfUrlResponse
+	40, // 84: quotify.billing.v1.BillingService.GetRevenueReport:output_type -> quotify.billing.v1.GetRevenueReportResponse
+	44, // 85: quotify.billing.v1.BillingService.GetDunningReport:output_type -> quotify.billing.v1.GetDunningReportResponse
+	51, // 86: quotify.billing.v1.BillingService.GetCreditNote:output_type -> quotify.billing.v1.GetCreditNoteResponse
+	53, // 87: quotify.billing.v1.BillingService.ListCreditNotes:output_type -> quotify.billing.v1.ListCreditNotesResponse
+	67, // 88: quotify.billing.v1.BillingService.GetEInvoice:output_type -> quotify.billing.v1.EInvoiceDocument
+	70, // 89: quotify.billing.v1.BillingService.ListEInvoices:output_type -> quotify.billing.v1.ListEInvoicesResponse
+	72, // 90: quotify.billing.v1.BillingService.GetEInvoiceFileUrl:output_type -> quotify.billing.v1.GetEInvoiceFileUrlResponse
+	60, // 91: quotify.billing.v1.BillingService.CreateInvoiceLink:output_type -> quotify.billing.v1.CreateInvoiceLinkResponse
+	62, // 92: quotify.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> quotify.billing.v1.RevokeInvoiceLinksResponse
+	56, // 93: quotify.billing.v1.BillingService.GetDunningSettings:output_type -> quotify.billing.v1.GetDunningSettingsResponse
+	58, // 94: quotify.billing.v1.BillingService.SetDunningSettings:output_type -> quotify.billing.v1.SetDunningSettingsResponse
+	64, // 95: quotify.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> quotify.billing.v1.GetHostedInvoiceResponse
+	66, // 96: quotify.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> quotify.billing.v1.GetHostedInvoicePdfUrlResponse
+	14, // 97: quotify.billing.v1.SandboxService.ClosePeriodNow:output_type -> quotify.billing.v1.ClosePeriodNowResponse
+	16, // 98: quotify.billing.v1.BillingAdminService.ClosePeriod:output_type -> quotify.billing.v1.ClosePeriodResponse
+	18, // 99: quotify.billing.v1.BillingAdminService.GetBillingRun:output_type -> quotify.billing.v1.GetBillingRunResponse
+	21, // 100: quotify.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> quotify.billing.v1.RetryInvoiceSagaResponse
+	23, // 101: quotify.billing.v1.BillingAdminService.VoidInvoice:output_type -> quotify.billing.v1.VoidInvoiceResponse
+	49, // 102: quotify.billing.v1.BillingAdminService.CreateCreditNote:output_type -> quotify.billing.v1.CreateCreditNoteResponse
+	48, // 103: quotify.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> quotify.billing.v1.RetryCreditNoteRefundResponse
+	67, // 104: quotify.billing.v1.BillingAdminService.RetryEInvoice:output_type -> quotify.billing.v1.EInvoiceDocument
+	67, // 105: quotify.billing.v1.BillingAdminService.CancelEInvoice:output_type -> quotify.billing.v1.EInvoiceDocument
+	26, // 106: quotify.billing.v1.BillingAdminService.StartRerating:output_type -> quotify.billing.v1.StartReratingResponse
+	28, // 107: quotify.billing.v1.BillingAdminService.GetReratingJob:output_type -> quotify.billing.v1.GetReratingJobResponse
+	31, // 108: quotify.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> quotify.billing.v1.GetInvoiceSagaResponse
+	35, // 109: quotify.billing.v1.BillingAdminService.ListDeadLetters:output_type -> quotify.billing.v1.ListDeadLettersResponse
+	37, // 110: quotify.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> quotify.billing.v1.RedriveDeadLettersResponse
+	81, // [81:111] is the sub-list for method output_type
+	51, // [51:81] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_quotify_billing_v1_billing_proto_init() }
@@ -4753,7 +5441,7 @@ func file_quotify_billing_v1_billing_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_billing_v1_billing_proto_rawDesc), len(file_quotify_billing_v1_billing_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   63,
+			NumMessages:   71,
 			NumExtensions: 0,
 			NumServices:   4,
 		},

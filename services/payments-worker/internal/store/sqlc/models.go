@@ -11,6 +11,32 @@ import (
 	"github.com/google/uuid"
 )
 
+type EinvoiceAccount struct {
+	TenantID    uuid.UUID
+	Environment string
+	Provider    string
+	Mode        string
+	SettingsEnc []byte
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type EinvoiceIssuance struct {
+	DocumentID   uuid.UUID
+	TenantID     uuid.UUID
+	Environment  string
+	Provider     string
+	Kind         string
+	DocumentType string
+	Status       string
+	LegalNumber  *string
+	ExternalID   string
+	XmlKey       *string
+	PdfKey       *string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type PaymentAttempt struct {
 	CommandID      uuid.UUID
 	TenantID       uuid.UUID

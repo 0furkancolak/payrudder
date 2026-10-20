@@ -37,6 +37,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
+	einvoicecmd "github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/replies"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
@@ -369,6 +370,14 @@ func (w *workers) sweep(ctx context.Context) error {
 	res, err := w.eng.Sweep(ctx, w.pool, 200)
 	if err == nil && (res.Reissued+res.Exhausted+res.Dunned) > 0 {
 		w.log.InfoContext(ctx, "saga sweep", "reissued", res.Reissued, "exhausted", res.Exhausted, "dunning", res.Dunned)
+	}
+	if err != nil {
+		return err
+	}
+	// E-documents whose retry is due or whose command went unanswered.
+	n, err := (&einvoicecmd.Commands{Pool: w.pool}).Sweep(ctx, 100)
+	if err == nil && n > 0 {
+		w.log.InfoContext(ctx, "e-invoice sweep", "documents", n)
 	}
 	return err
 }

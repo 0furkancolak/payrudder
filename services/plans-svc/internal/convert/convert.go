@@ -81,6 +81,7 @@ func Tenant(t sqlc.Tenant) *plansv1.Tenant {
 		Name: t.Name, Tier: domain.TierFromDB(t.Tier), Currency: t.Currency, Timezone: t.Timezone,
 		GracePeriod: durationpb.New(Duration(t.GracePeriod)), CreateTime: ts(t.CreatedAt),
 		InvoiceLogoAssetId: logoID(t.InvoiceLogoAssetID), AppId: t.AppID.String(), Address: AddressFromJSON(t.Address),
+		Legal: LegalFromJSON(t.Legal), EInvoiceOn: t.EInvoiceOn,
 	}
 }
 
@@ -127,6 +128,7 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 		Id: c.ID.String(), ExternalId: c.ExternalID, Name: c.Name, Email: c.Email,
 		PaymentMethod: str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
 		Country: str(c.Country), BillingCurrency: str(c.BillingCurrency), Address: AddressFromJSON(c.Address),
+		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered,
 	}
 }
 
@@ -151,6 +153,27 @@ func AddressFromJSON(raw []byte) *plansv1.Address {
 		return nil
 	}
 	return &a
+}
+
+// LegalJSON is the stored form of the seller's company data.
+func LegalJSON(l *plansv1.LegalInfo) []byte {
+	if l == nil {
+		return []byte("{}")
+	}
+	b, err := addressJSON.Marshal(l)
+	if err != nil {
+		return []byte("{}")
+	}
+	return b
+}
+
+// LegalFromJSON reads stored company data; nil when there is none.
+func LegalFromJSON(raw []byte) *plansv1.LegalInfo {
+	var l plansv1.LegalInfo
+	if len(raw) == 0 || protojson.Unmarshal(raw, &l) != nil || proto.Equal(&l, &plansv1.LegalInfo{}) {
+		return nil
+	}
+	return &l
 }
 
 // Meter maps a meter row.

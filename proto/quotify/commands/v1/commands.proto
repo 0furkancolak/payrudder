@@ -24,6 +24,7 @@ message CommandEnvelope {
     RefundPayment refund_payment = 12;
     QueryPaymentStatus query_payment_status = 13;
     SendNotification send_notification = 14;
+    IssueEInvoice issue_e_invoice = 15;
   }
 }
 
@@ -43,6 +44,7 @@ message ReplyEnvelope {
     PaymentRefunded payment_refunded = 15;
     PaymentStatus payment_status = 16;
     NotificationSent notification_sent = 17;
+    EInvoiceResult e_invoice_result = 18;
   }
 }
 
@@ -78,6 +80,66 @@ message InvoiceSnapshot {
   // The seller's and the customer's postal address as printed lines (empty when none was entered).
   repeated string seller_address_lines = 15;
   repeated string customer_address_lines = 16;
+  // Structured parties for e-invoices (docs/phases/phase-30-e-invoice.md); empty on snapshots made before.
+  PartySnapshot seller = 17;
+  PartySnapshot buyer = 18;
+  // The tenant's e_invoice_on when the draft was made: "off", "finalized" or "paid".
+  string e_invoice_on = 19;
+}
+
+// PartySnapshot is a seller or buyer with the legal data an e-invoice needs.
+message PartySnapshot {
+  string name = 1;
+  string tax_id = 2;
+  string tax_office = 3;
+  string registration_no = 4;
+  string trade_registry_no = 5;
+  string line1 = 6;
+  string line2 = 7;
+  string city = 8;
+  string region = 9;
+  string postal_code = 10;
+  string country = 11;
+  string email = 12;
+  bool e_invoice_registered = 13;
+}
+
+// IssueEInvoice asks payments-worker to issue the legal e-document of an invoice or credit note. The command is the frozen request: a resend carries the
+// same document, so what the authority holds never changes. The reply is an EInvoiceResult.
+message IssueEInvoice {
+  // "issue" or "cancel".
+  string action = 1;
+  // The einvoice_documents row; its uuidv5 form is the UBL UUID.
+  string document_id = 2;
+  // "invoice" or "credit_note".
+  string kind = 3;
+  // For an invoice, the invoice. For a credit note, a snapshot whose number is the credit note's, whose lines are the credited lines and whose totals are the credited
+  // amounts.
+  InvoiceSnapshot document = 4;
+  // Credit note only: the invoice it corrects, its document id (to find its legal number) and Quotify number and date.
+  string original_document_id = 5;
+  string original_number = 6;
+  google.protobuf.Timestamp original_issued_at = 7;
+  string reason = 8;
+  // cancel only: the external id at the provider and the reason.
+  string external_id = 9;
+  string provider = 10;
+}
+
+// EInvoiceResult is the worker's answer to IssueEInvoice.
+message EInvoiceResult {
+  // issued, cancelled, or failed.
+  string state = 1;
+  // For failed: retryable (a timeout, the original not issued yet) or a permanent refusal that waits for the operator.
+  bool retryable = 2;
+  string error_key = 3;
+  string error_message = 4;
+  string legal_number = 5;
+  string external_id = 6;
+  string document_type = 7;
+  string provider = 8;
+  string xml_object_key = 9;
+  string pdf_object_key = 10;
 }
 
 message RenderInvoicePdf {

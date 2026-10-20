@@ -79,6 +79,34 @@ type DunningSetting struct {
 	UpdatedAt  time.Time
 }
 
+type EinvoiceDocument struct {
+	TenantID        uuid.UUID
+	ID              uuid.UUID
+	Kind            string
+	InvoiceID       uuid.UUID
+	CreditNoteID    *uuid.UUID
+	Number          string
+	Environment     string
+	Status          string
+	DocumentType    string
+	Provider        string
+	Attempts        int32
+	Streak          int32
+	NextAttemptAt   *time.Time
+	LastDispatchAt  *time.Time
+	CancelRequested bool
+	LastErrorKey    string
+	LastError       string
+	LegalNumber     *string
+	ExternalID      string
+	XmlKey          *string
+	PdfKey          *string
+	Request         []byte
+	CreatedAt       time.Time
+	IssuedAt        *time.Time
+	UpdatedAt       time.Time
+}
+
 type InboxReply struct {
 	MessageID  uuid.UUID
 	ReceivedAt time.Time

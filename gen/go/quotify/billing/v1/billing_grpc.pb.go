@@ -26,6 +26,9 @@ const (
 	BillingService_GetDunningReport_FullMethodName   = "/quotify.billing.v1.BillingService/GetDunningReport"
 	BillingService_GetCreditNote_FullMethodName      = "/quotify.billing.v1.BillingService/GetCreditNote"
 	BillingService_ListCreditNotes_FullMethodName    = "/quotify.billing.v1.BillingService/ListCreditNotes"
+	BillingService_GetEInvoice_FullMethodName        = "/quotify.billing.v1.BillingService/GetEInvoice"
+	BillingService_ListEInvoices_FullMethodName      = "/quotify.billing.v1.BillingService/ListEInvoices"
+	BillingService_GetEInvoiceFileUrl_FullMethodName = "/quotify.billing.v1.BillingService/GetEInvoiceFileUrl"
 	BillingService_CreateInvoiceLink_FullMethodName  = "/quotify.billing.v1.BillingService/CreateInvoiceLink"
 	BillingService_RevokeInvoiceLinks_FullMethodName = "/quotify.billing.v1.BillingService/RevokeInvoiceLinks"
 	BillingService_GetDunningSettings_FullMethodName = "/quotify.billing.v1.BillingService/GetDunningSettings"
@@ -48,6 +51,12 @@ type BillingServiceClient interface {
 	GetDunningReport(ctx context.Context, in *GetDunningReportRequest, opts ...grpc.CallOption) (*GetDunningReportResponse, error)
 	GetCreditNote(ctx context.Context, in *GetCreditNoteRequest, opts ...grpc.CallOption) (*GetCreditNoteResponse, error)
 	ListCreditNotes(ctx context.Context, in *ListCreditNotesRequest, opts ...grpc.CallOption) (*ListCreditNotesResponse, error)
+	// GetEInvoice returns one e-document (the legal copy of an invoice or credit note) and its state.
+	GetEInvoice(ctx context.Context, in *GetEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error)
+	// ListEInvoices lists the tenant's e-documents, newest first.
+	ListEInvoices(ctx context.Context, in *ListEInvoicesRequest, opts ...grpc.CallOption) (*ListEInvoicesResponse, error)
+	// GetEInvoiceFileUrl returns a presigned link (5 minutes) to the document's UBL XML or PDF.
+	GetEInvoiceFileUrl(ctx context.Context, in *GetEInvoiceFileUrlRequest, opts ...grpc.CallOption) (*GetEInvoiceFileUrlResponse, error)
 	// CreateInvoiceLink makes an unguessable link to a finalized invoice, for the tenant to send to its customer. The token is returned once.
 	CreateInvoiceLink(ctx context.Context, in *CreateInvoiceLinkRequest, opts ...grpc.CallOption) (*CreateInvoiceLinkResponse, error)
 	// RevokeInvoiceLinks makes every link to an invoice stop working.
@@ -136,6 +145,36 @@ func (c *billingServiceClient) ListCreditNotes(ctx context.Context, in *ListCred
 	return out, nil
 }
 
+func (c *billingServiceClient) GetEInvoice(ctx context.Context, in *GetEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EInvoiceDocument)
+	err := c.cc.Invoke(ctx, BillingService_GetEInvoice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ListEInvoices(ctx context.Context, in *ListEInvoicesRequest, opts ...grpc.CallOption) (*ListEInvoicesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListEInvoicesResponse)
+	err := c.cc.Invoke(ctx, BillingService_ListEInvoices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) GetEInvoiceFileUrl(ctx context.Context, in *GetEInvoiceFileUrlRequest, opts ...grpc.CallOption) (*GetEInvoiceFileUrlResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetEInvoiceFileUrlResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetEInvoiceFileUrl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *billingServiceClient) CreateInvoiceLink(ctx context.Context, in *CreateInvoiceLinkRequest, opts ...grpc.CallOption) (*CreateInvoiceLinkResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateInvoiceLinkResponse)
@@ -192,6 +231,12 @@ type BillingServiceServer interface {
 	GetDunningReport(context.Context, *GetDunningReportRequest) (*GetDunningReportResponse, error)
 	GetCreditNote(context.Context, *GetCreditNoteRequest) (*GetCreditNoteResponse, error)
 	ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error)
+	// GetEInvoice returns one e-document (the legal copy of an invoice or credit note) and its state.
+	GetEInvoice(context.Context, *GetEInvoiceRequest) (*EInvoiceDocument, error)
+	// ListEInvoices lists the tenant's e-documents, newest first.
+	ListEInvoices(context.Context, *ListEInvoicesRequest) (*ListEInvoicesResponse, error)
+	// GetEInvoiceFileUrl returns a presigned link (5 minutes) to the document's UBL XML or PDF.
+	GetEInvoiceFileUrl(context.Context, *GetEInvoiceFileUrlRequest) (*GetEInvoiceFileUrlResponse, error)
 	// CreateInvoiceLink makes an unguessable link to a finalized invoice, for the tenant to send to its customer. The token is returned once.
 	CreateInvoiceLink(context.Context, *CreateInvoiceLinkRequest) (*CreateInvoiceLinkResponse, error)
 	// RevokeInvoiceLinks makes every link to an invoice stop working.
@@ -230,6 +275,15 @@ func (UnimplementedBillingServiceServer) GetCreditNote(context.Context, *GetCred
 }
 func (UnimplementedBillingServiceServer) ListCreditNotes(context.Context, *ListCreditNotesRequest) (*ListCreditNotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCreditNotes not implemented")
+}
+func (UnimplementedBillingServiceServer) GetEInvoice(context.Context, *GetEInvoiceRequest) (*EInvoiceDocument, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetEInvoice not implemented")
+}
+func (UnimplementedBillingServiceServer) ListEInvoices(context.Context, *ListEInvoicesRequest) (*ListEInvoicesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListEInvoices not implemented")
+}
+func (UnimplementedBillingServiceServer) GetEInvoiceFileUrl(context.Context, *GetEInvoiceFileUrlRequest) (*GetEInvoiceFileUrlResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetEInvoiceFileUrl not implemented")
 }
 func (UnimplementedBillingServiceServer) CreateInvoiceLink(context.Context, *CreateInvoiceLinkRequest) (*CreateInvoiceLinkResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateInvoiceLink not implemented")
@@ -390,6 +444,60 @@ func _BillingService_ListCreditNotes_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_GetEInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEInvoiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetEInvoice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetEInvoice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetEInvoice(ctx, req.(*GetEInvoiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ListEInvoices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListEInvoicesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ListEInvoices(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ListEInvoices_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ListEInvoices(ctx, req.(*ListEInvoicesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_GetEInvoiceFileUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEInvoiceFileUrlRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetEInvoiceFileUrl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetEInvoiceFileUrl_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetEInvoiceFileUrl(ctx, req.(*GetEInvoiceFileUrlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BillingService_CreateInvoiceLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateInvoiceLinkRequest)
 	if err := dec(in); err != nil {
@@ -496,6 +604,18 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListCreditNotes",
 			Handler:    _BillingService_ListCreditNotes_Handler,
+		},
+		{
+			MethodName: "GetEInvoice",
+			Handler:    _BillingService_GetEInvoice_Handler,
+		},
+		{
+			MethodName: "ListEInvoices",
+			Handler:    _BillingService_ListEInvoices_Handler,
+		},
+		{
+			MethodName: "GetEInvoiceFileUrl",
+			Handler:    _BillingService_GetEInvoiceFileUrl_Handler,
 		},
 		{
 			MethodName: "CreateInvoiceLink",
@@ -777,6 +897,8 @@ const (
 	BillingAdminService_VoidInvoice_FullMethodName           = "/quotify.billing.v1.BillingAdminService/VoidInvoice"
 	BillingAdminService_CreateCreditNote_FullMethodName      = "/quotify.billing.v1.BillingAdminService/CreateCreditNote"
 	BillingAdminService_RetryCreditNoteRefund_FullMethodName = "/quotify.billing.v1.BillingAdminService/RetryCreditNoteRefund"
+	BillingAdminService_RetryEInvoice_FullMethodName         = "/quotify.billing.v1.BillingAdminService/RetryEInvoice"
+	BillingAdminService_CancelEInvoice_FullMethodName        = "/quotify.billing.v1.BillingAdminService/CancelEInvoice"
 	BillingAdminService_StartRerating_FullMethodName         = "/quotify.billing.v1.BillingAdminService/StartRerating"
 	BillingAdminService_GetReratingJob_FullMethodName        = "/quotify.billing.v1.BillingAdminService/GetReratingJob"
 	BillingAdminService_GetInvoiceSaga_FullMethodName        = "/quotify.billing.v1.BillingAdminService/GetInvoiceSaga"
@@ -802,6 +924,10 @@ type BillingAdminServiceClient interface {
 	CreateCreditNote(ctx context.Context, in *CreateCreditNoteRequest, opts ...grpc.CallOption) (*CreateCreditNoteResponse, error)
 	// RetryCreditNoteRefund asks the provider again for a refund that failed.
 	RetryCreditNoteRefund(ctx context.Context, in *RetryCreditNoteRefundRequest, opts ...grpc.CallOption) (*RetryCreditNoteRefundResponse, error)
+	// RetryEInvoice sends a failed e-document again, with the seller's and buyer's data read afresh. Lines, amounts, number and date stay as they were.
+	RetryEInvoice(ctx context.Context, in *RetryEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error)
+	// CancelEInvoice cancels an issued e-document where the provider and the law allow it.
+	CancelEInvoice(ctx context.Context, in *CancelEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error)
 	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
 	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
 	// Idempotent per (tenant, period, plan version).
@@ -883,6 +1009,26 @@ func (c *billingAdminServiceClient) RetryCreditNoteRefund(ctx context.Context, i
 	return out, nil
 }
 
+func (c *billingAdminServiceClient) RetryEInvoice(ctx context.Context, in *RetryEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EInvoiceDocument)
+	err := c.cc.Invoke(ctx, BillingAdminService_RetryEInvoice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingAdminServiceClient) CancelEInvoice(ctx context.Context, in *CancelEInvoiceRequest, opts ...grpc.CallOption) (*EInvoiceDocument, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EInvoiceDocument)
+	err := c.cc.Invoke(ctx, BillingAdminService_CancelEInvoice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *billingAdminServiceClient) StartRerating(ctx context.Context, in *StartReratingRequest, opts ...grpc.CallOption) (*StartReratingResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StartReratingResponse)
@@ -951,6 +1097,10 @@ type BillingAdminServiceServer interface {
 	CreateCreditNote(context.Context, *CreateCreditNoteRequest) (*CreateCreditNoteResponse, error)
 	// RetryCreditNoteRefund asks the provider again for a refund that failed.
 	RetryCreditNoteRefund(context.Context, *RetryCreditNoteRefundRequest) (*RetryCreditNoteRefundResponse, error)
+	// RetryEInvoice sends a failed e-document again, with the seller's and buyer's data read afresh. Lines, amounts, number and date stay as they were.
+	RetryEInvoice(context.Context, *RetryEInvoiceRequest) (*EInvoiceDocument, error)
+	// CancelEInvoice cancels an issued e-document where the provider and the law allow it.
+	CancelEInvoice(context.Context, *CancelEInvoiceRequest) (*EInvoiceDocument, error)
 	// StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
 	// a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
 	// Idempotent per (tenant, period, plan version).
@@ -989,6 +1139,12 @@ func (UnimplementedBillingAdminServiceServer) CreateCreditNote(context.Context, 
 }
 func (UnimplementedBillingAdminServiceServer) RetryCreditNoteRefund(context.Context, *RetryCreditNoteRefundRequest) (*RetryCreditNoteRefundResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RetryCreditNoteRefund not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) RetryEInvoice(context.Context, *RetryEInvoiceRequest) (*EInvoiceDocument, error) {
+	return nil, status.Error(codes.Unimplemented, "method RetryEInvoice not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) CancelEInvoice(context.Context, *CancelEInvoiceRequest) (*EInvoiceDocument, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelEInvoice not implemented")
 }
 func (UnimplementedBillingAdminServiceServer) StartRerating(context.Context, *StartReratingRequest) (*StartReratingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartRerating not implemented")
@@ -1134,6 +1290,42 @@ func _BillingAdminService_RetryCreditNoteRefund_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingAdminService_RetryEInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RetryEInvoiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).RetryEInvoice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_RetryEInvoice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).RetryEInvoice(ctx, req.(*RetryEInvoiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingAdminService_CancelEInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelEInvoiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).CancelEInvoice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_CancelEInvoice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).CancelEInvoice(ctx, req.(*CancelEInvoiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BillingAdminService_StartRerating_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StartReratingRequest)
 	if err := dec(in); err != nil {
@@ -1254,6 +1446,14 @@ var BillingAdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RetryCreditNoteRefund",
 			Handler:    _BillingAdminService_RetryCreditNoteRefund_Handler,
+		},
+		{
+			MethodName: "RetryEInvoice",
+			Handler:    _BillingAdminService_RetryEInvoice_Handler,
+		},
+		{
+			MethodName: "CancelEInvoice",
+			Handler:    _BillingAdminService_CancelEInvoice_Handler,
 		},
 		{
 			MethodName: "StartRerating",

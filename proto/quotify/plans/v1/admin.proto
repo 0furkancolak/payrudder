@@ -94,6 +94,10 @@ message UpdateTenantSettingsRequest {
   bool clear_invoice_logo = 5;
   // Replaces the seller address printed on the tenant's invoices; unset leaves it unchanged.
   Address address = 6;
+  // Replaces the seller's company data; unset leaves it unchanged.
+  LegalInfo legal = 7;
+  // "off", "finalized" or "paid"; empty leaves it unchanged.
+  string e_invoice_on = 8;
 }
 
 message UpdateTenantSettingsResponse {

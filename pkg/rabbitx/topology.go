@@ -26,6 +26,7 @@ const (
 	QueuePaymentRefund    = "payment.refund"
 	QueuePaymentStatus    = "payment.status"
 	QueueNotificationSend = "notification.send"
+	QueueEInvoiceIssue    = "einvoice.issue"
 )
 
 // ReplyQueue is billing-svc's reply queue; ReplyRoutingKey binds it to billing.replies.
@@ -38,8 +39,8 @@ const (
 // ends a worker crash loop.
 const DeliveryLimit = 5
 
-// CommandQueues lists the five command queues.
-var CommandQueues = []string{QueueInvoiceRender, QueuePaymentCharge, QueuePaymentRefund, QueuePaymentStatus, QueueNotificationSend}
+// CommandQueues lists the command queues.
+var CommandQueues = []string{QueueInvoiceRender, QueuePaymentCharge, QueuePaymentRefund, QueuePaymentStatus, QueueNotificationSend, QueueEInvoiceIssue}
 
 // Tier is one delay queue of the retry topology.
 type Tier struct {

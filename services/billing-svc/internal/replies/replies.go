@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -18,6 +19,7 @@ import (
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
+	einvoicecmd "github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
@@ -64,6 +66,9 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 		c.Log.WarnContext(ctx, "undecodable reply", "error", err)
 		return rabbitx.Reject
 	}
+	if reply.GetEInvoiceResult() != nil {
+		return c.handleEInvoice(ctx, &reply)
+	}
 	ev, cause, ok := saga.ReplyEvent(&reply)
 	sagaID, err1 := uuid.Parse(reply.GetSagaId())
 	tenantID, err2 := uuid.Parse(reply.GetTenantId())
@@ -108,5 +113,29 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 		return rabbitx.Requeue
 	}
 	c.received.Add(ctx, 1, metric.WithAttributes(attribute.String("kind", kind), attribute.Bool("applied", applied)))
+	return rabbitx.Ack
+}
+
+// handleEInvoice applies the answer to an e-document command. The saga id of such a reply is the document id.
+func (c *Consumer) handleEInvoice(ctx context.Context, reply *commandsv1.ReplyEnvelope) rabbitx.Outcome {
+	docID, err1 := uuid.Parse(reply.GetSagaId())
+	tenantID, err2 := uuid.Parse(reply.GetTenantId())
+	replyID, err3 := uuid.Parse(reply.GetReplyId())
+	if err1 != nil || err2 != nil || err3 != nil {
+		c.Log.WarnContext(ctx, "malformed e-invoice reply", "document", reply.GetSagaId())
+		return rabbitx.Reject
+	}
+	err := pgxx.InTx(ctx, c.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		fresh, err := sqlc.New(tx).InsertInboxReply(ctx, replyID)
+		if err != nil || fresh == 0 {
+			return err
+		}
+		return einvoicecmd.ApplyResult(ctx, tx, time.Now(), tenantID, docID, reply.GetEInvoiceResult())
+	})
+	if err != nil {
+		c.Log.WarnContext(ctx, "e-invoice reply not applied, will be redelivered", "error", err)
+		return rabbitx.Requeue
+	}
+	c.received.Add(ctx, 1, metric.WithAttributes(attribute.String("kind", "einvoice_result"), attribute.Bool("applied", true)))
 	return rabbitx.Ack
 }
