@@ -139,6 +139,7 @@ func newFullTestServer(t *testing.T) (*httptest.Server, *fakePlans, *fakeIngest,
 	assetsv1.RegisterAssetsServiceServer(gs, fakeAssets{})
 	billingv1.RegisterSandboxServiceServer(gs, fakeBilling{})
 	billingv1.RegisterBillingAdminServiceServer(gs, fakeBilling{})
+	billingv1.RegisterHostedInvoiceServiceServer(gs, fakeBilling{})
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = gs.Serve(lis) }()
 	t.Cleanup(gs.Stop)
@@ -151,7 +152,7 @@ func newFullTestServer(t *testing.T) (*httptest.Server, *fakePlans, *fakeIngest,
 	t.Cleanup(func() { _ = cc.Close() })
 	api := New(Deps{Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc),
 		Ingest: ingestv1.NewIngestServiceClient(cc), Usage: aggregatorv1.NewUsageQueryServiceClient(cc), Limits: limitsv1.NewLimitsServiceClient(cc), Billing: billingv1.NewBillingServiceClient(cc), Analytics: analyticsv1.NewAnalyticsServiceClient(cc), Assets: assetsv1.NewAssetsServiceClient(cc),
-		Sandbox: billingv1.NewSandboxServiceClient(cc), BillingAdmin: billingv1.NewBillingAdminServiceClient(cc), Auth: fakeAuth{},
+		Sandbox: billingv1.NewSandboxServiceClient(cc), BillingAdmin: billingv1.NewBillingAdminServiceClient(cc), Hosted: billingv1.NewHostedInvoiceServiceClient(cc), PublicURL: "https://api.example.test", Auth: fakeAuth{},
 		Limiter: lim, OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	ts := httptest.NewServer(api)
 	t.Cleanup(ts.Close)

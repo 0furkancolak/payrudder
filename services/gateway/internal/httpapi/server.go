@@ -66,6 +66,7 @@ type Deps struct {
 	Billing       billingv1.BillingServiceClient
 	Sandbox       billingv1.SandboxServiceClient
 	BillingAdmin  billingv1.BillingAdminServiceClient
+	Hosted        billingv1.HostedInvoiceServiceClient
 	Auth          Authenticator
 	Limiter       Limiter
 	OperatorToken string
@@ -73,12 +74,15 @@ type Deps struct {
 	// PaymentsURL is payments-worker's HTTP address (provider webhooks, provider accounts, the ledger); nil answers 503 on those routes.
 	PaymentsURL   *url.URL
 	PaymentsToken string
+	// PublicURL is the address customers reach the gateway at (https://api.example.com), for the links it hands out. Empty gives relative links.
+	PublicURL string
 }
 
 // Server is the HTTP handler.
 type Server struct {
 	d       Deps
 	handler http.Handler
+	hosted  hostedLimiter
 }
 
 // New builds the router.

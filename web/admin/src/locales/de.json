@@ -140,6 +140,17 @@
       "to": "Nach",
       "cause": "Ursache",
       "at": "Zeitpunkt"
+    },
+    "share": {
+      "title": "Mit dem Kunden teilen",
+      "hint": "Ein Link, der diese Rechnung und ihr PDF ohne Anmeldung zeigt. Wer ihn hat, kann die Rechnung öffnen; er endet mit Ablauf oder Widerruf.",
+      "days": "Gültig (Tage)",
+      "create": "Link erstellen",
+      "revoke": "Alle Links widerrufen",
+      "link": "Rechnungslink",
+      "copy": "Kopieren",
+      "revoked": "Alle Links zu dieser Rechnung wurden widerrufen.",
+      "badDays": "Tage: eine ganze Zahl von 1 bis 365."
     }
   },
   "deadLetters": {

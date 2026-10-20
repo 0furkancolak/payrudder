@@ -7,6 +7,7 @@ global:
   imagePullPolicy: IfNotPresent
   environment: kind        # QUOTIFY_ENV: local | ci | kind
   allowedEnvironments: sandbox,live   # QUOTIFY_ALLOWED_ENVIRONMENTS of plans-svc and the gateway
+  publicURL: ""             # where customers reach the gateway (https://api.example.com); the hosted invoice links start with it. Empty: relative links
   kafkaBrokers: redpanda:9092
   redisURL: redis://redis:6379/0
   otlpEndpoint: ""         # empty disables trace export
@@ -89,6 +90,7 @@ services:
     env:
       QUOTIFY_HTTP_ADDR: ":8000"
       QUOTIFY_PAYMENTS_URL: http://payments-worker:8095
+      QUOTIFY_PUBLIC_URL: "{{ .Values.global.publicURL }}"
       QUOTIFY_REDIS_URL: "{{ .Values.global.redisURL }}"
       QUOTIFY_ALLOWED_ENVIRONMENTS: "{{ .Values.global.allowedEnvironments }}"
       QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001

@@ -274,3 +274,10 @@ repeats harmlessly. A credit balance is applied to the next invoice **in its cur
 `CreateCreditNote` (operator; `BillingAdminService`) issues a gap-free numbered credit note (`credit_note_seq`, `CN-` / `SBX-CN-`) against a **paid** invoice, in one transaction under the invoice's row lock: the notes of an invoice never exceed it, and the amount becomes a `credit_balances` row (`source_credit_note_id`) in the invoice's currency. `GetCreditNote`/`ListCreditNotes` (newest first, paged by `created_at|id`) are tenant reads. The revenue report gains `credited_minor`.
 Invoice lines can be `DISCOUNT` (a coupon, negative) or `TAX`, and carry `service_from`/`service_to`. Tax is added by `rating.TaxLine` for the customer's country from plans-svc's rates, to monthly invoices, advance fees and plan-change adjustments, but not to a subscription a provider runs; the invoice subtotal (and the PDF's) is before tax. A credit balance is applied only to invoices in its currency.
 
+
+## As built: refunds, events and hosted invoices (Phase 23)
+
+- **Credit note refunds:** `credit_notes.disposition = 'refund'` rows carry `refund_state`, `refund_attempt`, `refund_command_id`; the reply consumer matches a `RefundPayment` reply to the note by command id (`runs.SettleRefund`) before it looks for a saga; the scheduler's tick resends unanswered refunds (`SweepRefunds`).
+- **Tenant events:** `tenant_event_outbox` is written in the transaction of the change (`saga.TenantEvent`) and drained to plans-svc's `RecordTenantEvent` every five seconds (`FlushTenantEvents`).
+- **Dunning settings:** `dunning_settings` (per tenant), read by the saga engine when it loads a saga.
+- **Hosted invoices:** `invoice_links` (token hash only); `HostedInvoiceService` has no tenant, the token is the credential, and answers one error for unknown, expired and revoked tokens.

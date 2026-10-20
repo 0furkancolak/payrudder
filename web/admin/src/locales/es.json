@@ -140,6 +140,17 @@
       "to": "A",
       "cause": "Causa",
       "at": "Momento"
+    },
+    "share": {
+      "title": "Compartir con el cliente",
+      "hint": "Un enlace que muestra esta factura y su PDF sin iniciar sesión. Quien lo tenga puede abrir la factura; deja de funcionar al caducar o al revocarse.",
+      "days": "Válido (días)",
+      "create": "Crear enlace",
+      "revoke": "Revocar todos los enlaces",
+      "link": "Enlace de la factura",
+      "copy": "Copiar",
+      "revoked": "Se revocaron todos los enlaces de esta factura.",
+      "badDays": "Días: un número entero de 1 a 365."
     }
   },
   "deadLetters": {

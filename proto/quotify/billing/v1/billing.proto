@@ -16,10 +16,20 @@ service BillingService {
   rpc GetDunningReport(GetDunningReportRequest) returns (GetDunningReportResponse);
   rpc GetCreditNote(GetCreditNoteRequest) returns (GetCreditNoteResponse);
   rpc ListCreditNotes(ListCreditNotesRequest) returns (ListCreditNotesResponse);
+  // CreateInvoiceLink makes an unguessable link to a finalized invoice, for the tenant to send to its customer. The token is returned once.
+  rpc CreateInvoiceLink(CreateInvoiceLinkRequest) returns (CreateInvoiceLinkResponse);
+  // RevokeInvoiceLinks makes every link to an invoice stop working.
+  rpc RevokeInvoiceLinks(RevokeInvoiceLinksRequest) returns (RevokeInvoiceLinksResponse);
   // GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
   rpc GetDunningSettings(GetDunningSettingsRequest) returns (GetDunningSettingsResponse);
   // SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
   rpc SetDunningSettings(SetDunningSettingsRequest) returns (SetDunningSettingsResponse);
+}
+
+// HostedInvoiceService is called by the gateway on behalf of a visitor who holds an invoice link. It has no tenant: the token is the credential.
+service HostedInvoiceService {
+  rpc GetHostedInvoice(GetHostedInvoiceRequest) returns (GetHostedInvoiceResponse);
+  rpc GetHostedInvoicePdfUrl(GetHostedInvoicePdfUrlRequest) returns (GetHostedInvoicePdfUrlResponse);
 }
 
 // SandboxService is for sandbox tenants only (FAILED_PRECONDITION otherwise).
@@ -466,3 +476,35 @@ message GetDunningSettingsRequest {}
 message GetDunningSettingsResponse { DunningSettings settings = 1; }
 message SetDunningSettingsRequest { repeated int32 retry_hours = 1; }
 message SetDunningSettingsResponse { DunningSettings settings = 1; }
+
+message CreateInvoiceLinkRequest {
+  string invoice_id = 1;
+  // 1..365; 0 means 90.
+  int32 expires_in_days = 2;
+}
+message CreateInvoiceLinkResponse {
+  // The secret part of the link; shown once.
+  string token = 1;
+  google.protobuf.Timestamp expire_time = 2;
+}
+
+message RevokeInvoiceLinksRequest { string invoice_id = 1; }
+message RevokeInvoiceLinksResponse { int32 revoked = 1; }
+
+message GetHostedInvoiceRequest { string token = 1; }
+message GetHostedInvoiceResponse {
+  Invoice invoice = 1;
+  // Who issued the invoice and who it is for, as printed on it.
+  string seller_name = 2;
+  string customer_name = 3;
+  bool pdf_available = 4;
+  google.protobuf.Timestamp expire_time = 5;
+  // Decimal places of the invoice currency, to print minor units.
+  int32 currency_exponent = 6;
+}
+
+message GetHostedInvoicePdfUrlRequest { string token = 1; }
+message GetHostedInvoicePdfUrlResponse {
+  string url = 1;
+  google.protobuf.Timestamp expire_time = 2;
+}

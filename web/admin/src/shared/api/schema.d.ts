@@ -758,6 +758,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invoices/{id}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a link to the invoice that its customer can open without signing in
+         * @description The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the gateway knows its public address (QUOTIFY_PUBLIC_URL).
+         */
+        post: operations["createInvoiceLink"];
+        /** Make every link to the invoice stop working */
+        delete: operations["revokeInvoiceLinks"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The invoice as a page (public, the token in the path is the credential)
+         * @description An unknown, expired or revoked token answers the same 404 page. At most 60 requests a minute per address.
+         */
+        get: operations["hostedInvoicePage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A redirect to the invoice PDF (a link that works for five minutes) */
+        get: operations["hostedInvoicePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoices/{id}/pdf": {
         parameters: {
             query?: never;
@@ -3990,6 +4048,142 @@ export interface operations {
             };
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
+        };
+    };
+    createInvoiceLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @default 90 */
+                    expires_in_days?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        token?: string;
+                        url?: string;
+                        /** Format: date-time */
+                        expires_at?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    revokeInvoiceLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        revoked?: number;
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    hostedInvoicePage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The invoice page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The link does not exist or has expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedInvoicePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the download link */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link does not exist or has expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The PDF is not rendered yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getInvoicePdf: {

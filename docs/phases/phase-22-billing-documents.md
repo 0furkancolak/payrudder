@@ -17,9 +17,9 @@ Invoices, credit notes, coupons and tax that a finance team accepts. See [15-bil
 
 **Out of scope (not done):**
 
-- **Outbound events** (`credit_note.created`, `subscription.changed`…) for the tenant's own systems, and a **hosted invoice page**: neither exists yet.
-- **Per-tenant dunning settings.** The retry delays and the final action (uncollectible) are still the deployment's (`QUOTIFY_DUNNING_*`), as before.
-- **A credit note that refunds the card.** A credit note becomes a credit balance; refunding a card stays "void the invoice" (full, through the provider).
+- ~~**Outbound events** and a **hosted invoice page**~~: built in [phase 23](phase-23-remaining-gaps.md).
+- ~~**Per-tenant dunning settings**~~: built in phase 23 (the deployment's `QUOTIFY_DUNNING_*` stay the default).
+- ~~**A credit note that refunds the card**~~: built in phase 23.
 - Tax calculation (what is due where), inclusive prices, reverse charge, and tax on re-rating corrections. The rates and their correctness are the tenant's.
 - Coupons on subscriptions a provider runs (Paddle's own discounts are created through the provider API, phase 21), on usage charges, and on a plan change's proration charge.
 

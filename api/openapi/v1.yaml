@@ -825,6 +825,62 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Invoice" } } } }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /v1/invoices/{id}/links:
+    post:
+      operationId: createInvoiceLink
+      summary: Make a link to the invoice that its customer can open without signing in
+      description: >
+        The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days
+        (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in
+        English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the gateway knows its public address (QUOTIFY_PUBLIC_URL).
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: false
+        content: { application/json: { schema: { type: object, properties: { expires_in_days: { type: integer, minimum: 1, maximum: 365, default: 90 } } } } }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  url: { type: string }
+                  expires_at: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: revokeInvoiceLinks
+      summary: Make every link to the invoice stop working
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { revoked: { type: integer } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /i/{token}:
+    get:
+      operationId: hostedInvoicePage
+      summary: "The invoice as a page (public, the token in the path is the credential)"
+      description: An unknown, expired or revoked token answers the same 404 page. At most 60 requests a minute per address.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "The invoice page", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The link does not exist or has expired", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /i/{token}/pdf:
+    get:
+      operationId: hostedInvoicePdf
+      summary: A redirect to the invoice PDF (a link that works for five minutes)
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "302": { description: "Redirect to the download link" }
+        "404": { description: "The link does not exist or has expired" }
+        "409": { description: "The PDF is not rendered yet" }
   /v1/invoices/{id}/pdf:
     get:
       operationId: getInvoicePdf

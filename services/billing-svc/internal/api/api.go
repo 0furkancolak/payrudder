@@ -35,11 +35,12 @@ type PDFSigner interface {
 // PDFLinkTTL is how long a presigned PDF link works.
 const PDFLinkTTL = 5 * time.Minute
 
-// Server implements the three billing services.
+// Server implements the billing services.
 type Server struct {
 	billingv1.UnimplementedBillingServiceServer
 	billingv1.UnimplementedSandboxServiceServer
 	billingv1.UnimplementedBillingAdminServiceServer
+	billingv1.UnimplementedHostedInvoiceServiceServer
 
 	app    *pgxpool.Pool
 	system *pgxpool.Pool
@@ -137,6 +138,44 @@ func scanInvoice(row pgx.Row) (*billingv1.Invoice, error) {
 	return &inv, nil
 }
 
+// loadInvoice reads an invoice with its lines in tx (tenant-scoped, or the system's with the invoice id already known).
+func loadInvoice(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*billingv1.Invoice, error) {
+	inv, err := scanInvoice(tx.QueryRow(ctx, `SELECT `+invoiceColumns+` FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
+		WHERE i.id = $1`, id))
+	if err != nil {
+		return nil, err
+	}
+	rows, err := tx.Query(ctx, `SELECT line_no, kind, COALESCE(meter_code, ''), COALESCE(origin_period_id, ''), quantity::text, quantity_scale, amount_minor, description, service_from, service_to
+		FROM invoice_lines WHERE invoice_id = $1 ORDER BY line_no`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var l billingv1.InvoiceLine
+		var qty *string
+		var scale *int16
+		var from, to *time.Time
+		if err := rows.Scan(&l.LineNo, &l.Kind, &l.MeterCode, &l.OriginPeriodId, &qty, &scale, &l.AmountMinor, &l.Description, &from, &to); err != nil {
+			return nil, err
+		}
+		if from != nil {
+			l.ServiceFrom = timestamppb.New(*from)
+		}
+		if to != nil {
+			l.ServiceTo = timestamppb.New(*to)
+		}
+		if qty != nil && scale != nil {
+			var units int64
+			if err := json.Unmarshal([]byte(*qty), &units); err == nil {
+				l.Quantity = quantity.FormatUnits(units, int(*scale))
+			}
+		}
+		inv.Lines = append(inv.Lines, &l)
+	}
+	return inv, rows.Err()
+}
+
 // GetInvoice implements billingv1.BillingServiceServer.
 func (s *Server) GetInvoice(ctx context.Context, req *billingv1.GetInvoiceRequest) (*billingv1.GetInvoiceResponse, error) {
 	ti, err := tenant.Require(ctx)
@@ -150,40 +189,8 @@ func (s *Server) GetInvoice(ctx context.Context, req *billingv1.GetInvoiceReques
 	var inv *billingv1.Invoice
 	err = pgxx.InTenantTx(ctx, s.app, ti.ID, func(tx pgx.Tx) error {
 		var err error
-		inv, err = scanInvoice(tx.QueryRow(ctx, `SELECT `+invoiceColumns+` FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
-			WHERE i.id = $1`, id))
-		if err != nil {
-			return err
-		}
-		rows, err := tx.Query(ctx, `SELECT line_no, kind, COALESCE(meter_code, ''), COALESCE(origin_period_id, ''), quantity::text, quantity_scale, amount_minor, description, service_from, service_to
-			FROM invoice_lines WHERE invoice_id = $1 ORDER BY line_no`, id)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var l billingv1.InvoiceLine
-			var qty *string
-			var scale *int16
-			var from, to *time.Time
-			if err := rows.Scan(&l.LineNo, &l.Kind, &l.MeterCode, &l.OriginPeriodId, &qty, &scale, &l.AmountMinor, &l.Description, &from, &to); err != nil {
-				return err
-			}
-			if from != nil {
-				l.ServiceFrom = timestamppb.New(*from)
-			}
-			if to != nil {
-				l.ServiceTo = timestamppb.New(*to)
-			}
-			if qty != nil && scale != nil {
-				var units int64
-				if err := json.Unmarshal([]byte(*qty), &units); err == nil {
-					l.Quantity = quantity.FormatUnits(units, int(*scale))
-				}
-			}
-			inv.Lines = append(inv.Lines, &l)
-		}
-		return rows.Err()
+		inv, err = loadInvoice(ctx, tx, id)
+		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.NotFound, "invoice not found")
