@@ -137,7 +137,7 @@ func (s *Service) Run(ctx context.Context) error {
 	t := time.NewTicker(s.o.DepthRefresh)
 	defer t.Stop()
 	for {
-		d, err := outbox.Depth(ctx, s.o.System, "outbox")
+		d, err := outbox.Depth(ctx, s.o.System)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
@@ -146,7 +146,7 @@ func (s *Service) Run(ctx context.Context) error {
 		} else {
 			s.depth.Store(d)
 		}
-		if oldest, ok, err := outbox.Watermark(ctx, s.o.System, "outbox"); err == nil {
+		if oldest, ok, err := outbox.Watermark(ctx, s.o.System); err == nil {
 			if ok {
 				s.oldestMillis.Store(time.Since(oldest).Milliseconds())
 			} else {
@@ -516,7 +516,7 @@ func (s *Service) count(ctx context.Context, tenantID uuid.UUID, results []*inge
 
 // GetOutboxWatermark implements ingestv1.IngestServiceServer.
 func (s *Service) GetOutboxWatermark(ctx context.Context, _ *ingestv1.GetOutboxWatermarkRequest) (*ingestv1.GetOutboxWatermarkResponse, error) {
-	oldest, ok, err := outbox.Watermark(ctx, s.o.System, "outbox")
+	oldest, ok, err := outbox.Watermark(ctx, s.o.System)
 	if err != nil {
 		return nil, status.Error(codes.Unavailable, "outbox unavailable")
 	}
