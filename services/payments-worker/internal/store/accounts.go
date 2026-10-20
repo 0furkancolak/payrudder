@@ -12,6 +12,8 @@ import (
 
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/secretbox"
+
+	"github.com/0furkancolak/quotify/services/payments-worker/internal/store/sqlc"
 )
 
 // ErrNoAccount: the tenant has no account at that provider in that environment.
@@ -43,66 +45,52 @@ func (a Accounts) Put(ctx context.Context, tenant uuid.UUID, provider, env strin
 		return err
 	}
 	return pgxx.InTx(ctx, a.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
 		if makeDefault {
-			if _, err := tx.Exec(ctx, `UPDATE provider_accounts SET is_default = false WHERE tenant_id = $1 AND environment = $2 AND is_default AND provider <> $3`,
-				tenant, env, provider); err != nil {
+			if err := q.ClearDefaultProviderAccounts(ctx, sqlc.ClearDefaultProviderAccountsParams{TenantID: tenant, Environment: env, Provider: provider}); err != nil {
 				return err
 			}
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO provider_accounts (tenant_id, provider, environment, is_default, settings_enc)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (tenant_id, provider, environment) DO UPDATE
-			SET settings_enc = EXCLUDED.settings_enc, is_default = provider_accounts.is_default OR EXCLUDED.is_default, updated_at = now()`,
-			tenant, provider, env, makeDefault, sealed)
-		return err
+		return q.UpsertProviderAccount(ctx, sqlc.UpsertProviderAccountParams{
+			TenantID: tenant, Provider: provider, Environment: env, IsDefault: makeDefault, SettingsEnc: sealed,
+		})
 	})
 }
 
 // Delete removes an account. It reports whether there was one.
 func (a Accounts) Delete(ctx context.Context, tenant uuid.UUID, provider, env string) (bool, error) {
-	tag, err := a.DB.Exec(ctx, `DELETE FROM provider_accounts WHERE tenant_id = $1 AND provider = $2 AND environment = $3`, tenant, provider, env)
-	return tag.RowsAffected() == 1, err
+	n, err := sqlc.New(a.DB).DeleteProviderAccount(ctx, sqlc.DeleteProviderAccountParams{TenantID: tenant, Provider: provider, Environment: env})
+	return n == 1, err
 }
 
 // List returns a tenant's accounts without secrets.
 func (a Accounts) List(ctx context.Context, tenant uuid.UUID) ([]AccountInfo, error) {
-	rows, err := a.DB.Query(ctx, `SELECT provider, environment, is_default, updated_at FROM provider_accounts WHERE tenant_id = $1 ORDER BY environment, provider`, tenant)
+	rows, err := sqlc.New(a.DB).ListProviderAccounts(ctx, tenant)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []AccountInfo{}
-	for rows.Next() {
-		var i AccountInfo
-		if err := rows.Scan(&i.Provider, &i.Environment, &i.IsDefault, &i.UpdatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, i)
+	out := make([]AccountInfo, len(rows))
+	for i, r := range rows {
+		out[i] = AccountInfo{Provider: r.Provider, Environment: r.Environment, IsDefault: r.IsDefault, UpdatedAt: r.UpdatedAt}
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // Settings opens an account's settings. updated lets callers cache what they built from it.
 func (a Accounts) Settings(ctx context.Context, tenant uuid.UUID, provider, env string) (settings []byte, updated time.Time, err error) {
-	var sealed []byte
-	err = a.DB.QueryRow(ctx, `SELECT settings_enc, updated_at FROM provider_accounts WHERE tenant_id = $1 AND provider = $2 AND environment = $3`,
-		tenant, provider, env).Scan(&sealed, &updated)
+	row, err := sqlc.New(a.DB).GetProviderAccountSettings(ctx, sqlc.GetProviderAccountSettingsParams{TenantID: tenant, Provider: provider, Environment: env})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, time.Time{}, ErrNoAccount
 	}
 	if err != nil {
 		return nil, time.Time{}, err
 	}
-	settings, err = a.Box.Open(sealed, aad(tenant, provider, env))
-	return settings, updated, err
+	settings, err = a.Box.Open(row.SettingsEnc, aad(tenant, provider, env))
+	return settings, row.UpdatedAt, err
 }
 
 // Default returns the provider live charges of the tenant go to.
 func (a Accounts) Default(ctx context.Context, tenant uuid.UUID, env string) (string, bool, error) {
-	var p string
-	err := a.DB.QueryRow(ctx, `SELECT provider FROM provider_accounts WHERE tenant_id = $1 AND environment = $2 AND is_default`, tenant, env).Scan(&p)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", false, nil
-	}
-	return p, err == nil, err
+	p, err := sqlc.New(a.DB).GetDefaultProvider(ctx, sqlc.GetDefaultProviderParams{TenantID: tenant, Environment: env})
+	return found(p, err)
 }

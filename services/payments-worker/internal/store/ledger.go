@@ -2,12 +2,12 @@ package store
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/0furkancolak/quotify/services/payments-worker/internal/store/sqlc"
 )
 
 // LedgerEntry is one fact about money at a provider.
@@ -31,23 +31,24 @@ type Ledger struct{ DB *pgxpool.Pool }
 
 // Append writes a fact. The same fact (provider, kind, reference, status) reported again is not written twice; Append then returns false.
 func (l Ledger) Append(ctx context.Context, e LedgerEntry) (bool, error) {
-	var inv, ref, key, detail any
+	p := sqlc.AppendLedgerParams{
+		TenantID: e.TenantID, Provider: e.Provider, Environment: e.Environment, Kind: e.Kind, Status: e.Status,
+		AmountMinor: e.AmountMinor, Currency: e.Currency, Source: e.Source,
+	}
 	if e.InvoiceID != uuid.Nil {
-		inv = e.InvoiceID
+		p.InvoiceID = &e.InvoiceID
 	}
 	if e.ProviderRef != "" {
-		ref = e.ProviderRef
+		p.ProviderRef = &e.ProviderRef
 	}
 	if e.IdempotencyKey != "" {
-		key = e.IdempotencyKey
+		p.IdempotencyKey = &e.IdempotencyKey
 	}
 	if e.Detail != "" {
-		detail = e.Detail
+		p.Detail = &e.Detail
 	}
-	tag, err := l.DB.Exec(ctx, `INSERT INTO payment_ledger (tenant_id, invoice_id, provider, environment, kind, status, amount_minor, currency, provider_ref, idempotency_key, source, detail)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT DO NOTHING`,
-		e.TenantID, inv, e.Provider, e.Environment, e.Kind, e.Status, e.AmountMinor, e.Currency, ref, key, e.Source, detail)
-	return tag.RowsAffected() == 1, err
+	n, err := sqlc.New(l.DB).AppendLedger(ctx, p)
+	return n == 1, err
 }
 
 // Row is a ledger row as read back.
@@ -68,29 +69,29 @@ type Row struct {
 
 // List returns a tenant's most recent rows, newest first.
 func (l Ledger) List(ctx context.Context, tenant uuid.UUID, limit int) ([]Row, error) {
-	rows, err := l.DB.Query(ctx, `SELECT id, invoice_id::text, provider, environment, kind, status, amount_minor, currency, provider_ref, source, detail, occurred_at
-		FROM payment_ledger WHERE tenant_id = $1 ORDER BY id DESC LIMIT $2`, tenant, limit)
+	rows, err := sqlc.New(l.DB).ListLedger(ctx, sqlc.ListLedgerParams{TenantID: tenant, RowLimit: int64(limit)})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []Row{}
-	for rows.Next() {
-		var r Row
-		if err := rows.Scan(&r.ID, &r.InvoiceID, &r.Provider, &r.Environment, &r.Kind, &r.Status, &r.AmountMinor, &r.Currency, &r.ProviderRef, &r.Source, &r.Detail, &r.OccurredAt); err != nil {
-			return nil, err
+	out := make([]Row, len(rows))
+	for i, r := range rows {
+		out[i] = Row{
+			ID: r.ID, Provider: r.Provider, Environment: r.Environment, Kind: r.Kind, Status: r.Status, AmountMinor: r.AmountMinor,
+			Currency: r.Currency, ProviderRef: r.ProviderRef, Source: r.Source, Detail: r.Detail, OccurredAt: r.OccurredAt,
 		}
-		out = append(out, r)
+		if r.InvoiceID != nil {
+			id := r.InvoiceID.String()
+			out[i].InvoiceID = &id
+		}
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // Outcomes counts the distinct statuses recorded for one provider reference. More than one means the command's answer and the
 // provider's confirmation disagree.
 func (l Ledger) Outcomes(ctx context.Context, provider, kind, ref string) (int, error) {
-	var n int
-	err := l.DB.QueryRow(ctx, `SELECT count(DISTINCT status) FROM payment_ledger WHERE provider = $1 AND kind = $2 AND provider_ref = $3`, provider, kind, ref).Scan(&n)
-	return n, err
+	n, err := sqlc.New(l.DB).CountLedgerOutcomes(ctx, sqlc.CountLedgerOutcomesParams{Provider: provider, Kind: kind, ProviderRef: &ref})
+	return int(n), err
 }
 
 // Fact is a final outcome the ledger holds for a charge.
@@ -103,22 +104,16 @@ type Fact struct {
 // ChargeFact returns the final outcome recorded for the charge made under an idempotency key, if any. A success wins over a decline when
 // both are recorded (a notification that later overruled the first).
 func (l Ledger) ChargeFact(ctx context.Context, key string) (Fact, bool, error) {
-	var f Fact
-	var ref, detail *string
-	err := l.DB.QueryRow(ctx, `SELECT status, provider_ref, detail FROM payment_ledger
-		WHERE kind = 'charge' AND idempotency_key = $1 AND status IN ('succeeded','declined')
-		ORDER BY (status = 'succeeded') DESC, id DESC LIMIT 1`, key).Scan(&f.Status, &ref, &detail)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return Fact{}, false, nil
-		}
+	r, ok, err := found(sqlc.New(l.DB).GetChargeFact(ctx, &key))
+	if !ok {
 		return Fact{}, false, err
 	}
-	if ref != nil {
-		f.ProviderRef = *ref
+	f := Fact{Status: r.Status}
+	if r.ProviderRef != nil {
+		f.ProviderRef = *r.ProviderRef
 	}
-	if detail != nil {
-		f.Detail = *detail
+	if r.Detail != nil {
+		f.Detail = *r.Detail
 	}
 	return f, true, nil
 }
@@ -131,40 +126,26 @@ type Charge struct {
 
 // SuccessfulCharges returns the tenant's successful charges that belong to an invoice.
 func (l Ledger) SuccessfulCharges(ctx context.Context, tenant uuid.UUID) ([]Charge, error) {
-	rows, err := l.DB.Query(ctx, `SELECT DISTINCT ON (invoice_id, provider, COALESCE(provider_ref, '')) invoice_id::text, provider, COALESCE(provider_ref, ''), currency, amount_minor
-		FROM payment_ledger WHERE tenant_id = $1 AND kind = 'charge' AND status = 'succeeded' AND invoice_id IS NOT NULL
-		ORDER BY invoice_id, provider, COALESCE(provider_ref, ''), id`, tenant)
+	rows, err := sqlc.New(l.DB).ListSuccessfulCharges(ctx, tenant)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	var out []Charge
-	for rows.Next() {
-		var c Charge
-		if err := rows.Scan(&c.InvoiceID, &c.Provider, &c.ProviderRef, &c.Currency, &c.AmountMinor); err != nil {
-			return nil, err
-		}
-		out = append(out, c)
+	for _, r := range rows {
+		out = append(out, Charge{InvoiceID: r.InvoiceID, Provider: r.Provider, ProviderRef: r.ProviderRef, Currency: r.Currency, AmountMinor: r.AmountMinor})
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // ConflictingCharges returns the charges that have both a success and a failure recorded under one provider reference.
 func (l Ledger) ConflictingCharges(ctx context.Context, tenant uuid.UUID) ([]Charge, error) {
-	rows, err := l.DB.Query(ctx, `SELECT COALESCE(max(invoice_id::text), ''), provider, provider_ref
-		FROM payment_ledger WHERE tenant_id = $1 AND kind = 'charge' AND provider_ref IS NOT NULL AND status IN ('succeeded', 'declined')
-		GROUP BY provider, provider_ref HAVING count(DISTINCT status) > 1 ORDER BY provider, provider_ref`, tenant)
+	rows, err := sqlc.New(l.DB).ListConflictingCharges(ctx, tenant)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	var out []Charge
-	for rows.Next() {
-		var c Charge
-		if err := rows.Scan(&c.InvoiceID, &c.Provider, &c.ProviderRef); err != nil {
-			return nil, err
-		}
-		out = append(out, c)
+	for _, r := range rows {
+		out = append(out, Charge{InvoiceID: r.InvoiceID, Provider: r.Provider, ProviderRef: r.ProviderRef})
 	}
-	return out, rows.Err()
+	return out, nil
 }
