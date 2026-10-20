@@ -2,12 +2,12 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "deploy/railway/Dockerfile.go",
+    "dockerfilePath": "deploy/railway/go.Dockerfile",
     "watchPatterns": [
       "/pkg/**",
       "/gen/go/**",
       "/services/ingest-svc/**",
-      "/deploy/railway/Dockerfile.go"
+      "/deploy/railway/go.Dockerfile"
     ]
   },
   "deploy": {

@@ -22,8 +22,8 @@ One project, one environment, the private network between services (`<name>.rail
 3. **Listeners.** Go `:port` is dual-stack: no change. nginx gets `listen [::]`. Third-party images are set to `::` (RabbitMQ, ClickHouse, Mailpit);
    Redpanda is a switch (`REDPANDA_BIND`) because its IPv6 binding is the one thing I could not confirm.
 4. **`QUOTIFY_ENV=railway`** is added to the accepted values rather than reusing `kind`.
-5. **One Dockerfile for the Go services** (`Dockerfile.go`, `SERVICE_DIR` build argument) because Railway needs cache-mount ids no shared file can spell;
-   the per-service Dockerfiles stay as they are for compose, kind and CI. The console has its own (`Dockerfile.admin`, repo-root context).
+5. **One Dockerfile for the Go services** (`go.Dockerfile`, `SERVICE_DIR` build argument) because Railway needs cache-mount ids no shared file can spell;
+   the per-service Dockerfiles stay as they are for compose, kind and CI. The console has its own (`admin.Dockerfile`, repo-root context).
 6. **Postgres:** one managed instance, a database and three roles per service as in compose, created by an idempotent `init-postgres` job with
    three shared role passwords (a role reaches only its own database). The alternative, a Postgres service per Quotify service, costs more than it isolates.
 7. **Migrations at start** (`QUOTIFY_MIGRATE_ON_START=true`, one replica): Railway's pre-deploy command cannot run `QUOTIFY_MIGRATE_ONLY` on a distroless image.
@@ -40,7 +40,7 @@ One project, one environment, the private network between services (`<name>.rail
 - [x] gateway: liveness on the public listener, test
 - [x] admin-ui: nginx listens on `${PORT}` and `[::]` (checked in the stock nginx image)
 - [x] `deploy/railway/services/*.railway.json` for the 13 compose-built services; `infra/*.railway.json` for the 8 others
-- [x] `Dockerfile.go`, `Dockerfile.admin`
+- [x] `go.Dockerfile`, `admin.Dockerfile`
 - [x] Images: postgres-init, redpanda, redpanda-init, rabbitmq, clickhouse, minio, minio-init, mailpit
 - [x] `bootstrap.sh` (idempotent, `--dry-run`, profiles, demo, GitHub or local source) and `make railway-check`
 - [x] `deploy/railway/README.md`: steps, env table per service, migrations, first tenant, demo, mail, profiles, cost, what is verified

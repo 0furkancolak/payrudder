@@ -19,10 +19,10 @@ One Railway project, one environment. Every service talks to the others on the p
 | `clickhouse` | `images/clickhouse` | no | `/var/lib/clickhouse` | backing, full profile only |
 | `mailpit` | `images/mailpit` | no | none | mail catcher |
 | `init-postgres`, `init-redpanda`, `init-minio` | `images/*-init` | no | none | one-shot jobs (databases and roles, topics, buckets) |
-| `plans-svc` `ingest-svc` `aggregator` `limits-svc` `billing-svc` `assets-svc` `payments-worker` `invoice-worker` `notifier` `mockpsp` | `Dockerfile.go` | no | none | Quotify |
-| `analytics-svc` | `Dockerfile.go` | no | none | Quotify, full profile only |
-| `gateway` | `Dockerfile.go` | **yes** | none | Quotify |
-| `admin-ui` | `Dockerfile.admin` | **yes** | none | the operator console |
+| `plans-svc` `ingest-svc` `aggregator` `limits-svc` `billing-svc` `assets-svc` `payments-worker` `invoice-worker` `notifier` `mockpsp` | `go.Dockerfile` | no | none | Quotify |
+| `analytics-svc` | `go.Dockerfile` | no | none | Quotify, full profile only |
+| `gateway` | `go.Dockerfile` | **yes** | none | Quotify |
+| `admin-ui` | `admin.Dockerfile` | **yes** | none | the operator console |
 
 Service names are the compose names, lower-case, because they become DNS names. Do not rename them: the variables below refer to them.
 
@@ -37,7 +37,7 @@ Service names are the compose names, lower-case, because they become DNS names. 
   as it is. nginx (`admin-ui`) now listens on `[::]` too, RabbitMQ and ClickHouse are configured for `::`, Redpanda listens on `REDPANDA_BIND`
   (default `0.0.0.0`; set it to `::` if your environment is IPv6-only).
 - **`QUOTIFY_ENV=railway`**, a new accepted value (it only labels traces and keeps gRPC reflection off).
-- **Dockerfiles.** Railway rejects BuildKit cache mounts without its own `id`, so the services build from `Dockerfile.go`, which is the per-service
+- **Dockerfiles.** Railway rejects BuildKit cache mounts without its own `id`, so the services build from `go.Dockerfile`, which is the per-service
   Dockerfile minus the cache mounts and with the service directory as the build argument `SERVICE_DIR` (a service variable).
 - **Migrations** run at start (`QUOTIFY_MIGRATE_ON_START=true`, one replica of each service), not in a Job. See [Migrations](#migrations).
 - **Postgres** is one managed instance with a database and three roles per service, created by `init-postgres` (the same layout as
@@ -101,7 +101,7 @@ each service its health check, restart policy and watch paths. Until then it sti
 ## Environment variables
 
 `PORT`, `QUOTIFY_ENV` and `QUOTIFY_SERVICE_NAME` are set on every Quotify service (`railway`, the service name). `SERVICE_DIR` and
-`RAILWAY_DOCKERFILE_PATH` (`deploy/railway/Dockerfile.go`) are the build settings of the Go services. Values written `${{x.Y}}` are Railway reference
+`RAILWAY_DOCKERFILE_PATH` (`deploy/railway/go.Dockerfile`) are the build settings of the Go services. Values written `${{x.Y}}` are Railway reference
 variables; `<role>` below is `app`, `system` or `migrator`. The names here are the ones the services read; the defaults are in each
 `cmd/*/config.default.yaml`.
 
@@ -395,7 +395,7 @@ Verified (static checks, `make railway-check`, run in CI as part of `make test`)
 
 Run locally with Docker (not on Railway):
 
-- `Dockerfile.go` builds a service image; the console's nginx template starts with an injected `PORT` and answers on IPv4 and IPv6;
+- `go.Dockerfile` builds a service image; the console's nginx template starts with an injected `PORT` and answers on IPv4 and IPv6;
 - `init-postgres` creates the roles and databases, is idempotent, rotates passwords, and the roles cannot cross databases or create in `public`;
 - the RabbitMQ image renders the password into the definitions, loads the queues, rejects the local password, and listens on `::` (AMQP and health);
 - the Redpanda image starts with its admin health endpoint, and `init-redpanda` creates the seven topics.
@@ -405,7 +405,7 @@ Run locally with Docker (not on Railway):
 - no deploy has happened; the CLI commands in `bootstrap.sh` follow the CLI's `--help` (v5.55) but were never run against an account, and the shape of
   `railway service list --json` / `volume list --json` / `domain list --json` that the script matches for idempotency is assumed;
 - that `service source connect` deploys a service whose variables are already set, and the order and waits of the staged deploy;
-- that Railway passes service variables to `Dockerfile.go` as the `SERVICE_DIR` build argument, and reads config-as-code paths set in the dashboard;
+- that Railway passes service variables to `go.Dockerfile` as the `SERVICE_DIR` build argument, and reads config-as-code paths set in the dashboard;
 - reference variables such as `${{Postgres.RAILWAY_PRIVATE_DOMAIN}}` and `${{minio.RAILWAY_PUBLIC_DOMAIN}}`, and that Postgres's `postgres` user can create `BYPASSRLS` roles;
 - private-network DNS and routing (`*.railway.internal`, IPv6 or dual-stack) for gRPC, AMQP, Kafka and ClickHouse; Redpanda's `::` binding;
 - volume permissions with `RAILWAY_RUN_UID=0` for Redpanda, RabbitMQ, ClickHouse and MinIO, and the MinIO and ClickHouse images on Railway;

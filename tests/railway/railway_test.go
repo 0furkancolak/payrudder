@@ -254,7 +254,7 @@ func TestRequiredSettingsAreDocumentedAndSet(t *testing.T) {
 	}
 }
 
-// Every service the script builds from Dockerfile.go names a directory that holds its main package.
+// Every service the script builds from go.Dockerfile names a directory that holds its main package.
 func TestBootstrapServiceDirs(t *testing.T) {
 	repo := root(t)
 	script := read(t, repo, "deploy", "railway", "bootstrap.sh")

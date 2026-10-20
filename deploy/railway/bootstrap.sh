@@ -97,7 +97,7 @@ common() { # <service name> <port>
   vars "$1" QUOTIFY_ENV=railway "QUOTIFY_SERVICE_NAME=$1" "PORT=$2"
 }
 go_service() { # <service name> <dir> <port>
-  vars "$1" "SERVICE_DIR=$2" RAILWAY_DOCKERFILE_PATH=deploy/railway/Dockerfile.go
+  vars "$1" "SERVICE_DIR=$2" RAILWAY_DOCKERFILE_PATH=deploy/railway/go.Dockerfile
   common "$1" "$3"
 }
 
@@ -221,7 +221,7 @@ vars gateway "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "QUOTIFY_INGEST_AD
   'QUOTIFY_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}'
 
 note "admin-ui"
-vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/Dockerfile.admin PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "QUOTIFY_DEMO=$DEMO" BRAND_NAME=Quotify
+vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "QUOTIFY_DEMO=$DEMO" BRAND_NAME=Quotify
 
 # --- 3. public domains ------------------------------------------------------------------------------------------------------------------------
 note "Public domains (the gateway, the console, and MinIO for presigned links)"
