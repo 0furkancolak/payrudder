@@ -119,14 +119,14 @@ func run() error {
 	rdb := redis.NewClient(opts)
 	defer func() { _ = rdb.Close() }()
 
-	plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	plansConn, err := dialPeer("plans-svc", cfg.PlansAddr)
 	if err != nil {
-		return fmt.Errorf("plans-svc client: %w", err)
+		return err
 	}
 	defer func() { _ = plansConn.Close() }()
-	aggConn, err := grpcx.NewClient(cfg.AggregatorAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	aggConn, err := dialPeer("aggregator", cfg.AggregatorAddr)
 	if err != nil {
-		return fmt.Errorf("aggregator client: %w", err)
+		return err
 	}
 	defer func() { _ = aggConn.Close() }()
 
@@ -151,25 +151,11 @@ func run() error {
 	}
 
 	owned := engine.NewOwnership()
-	usage, err := kafkax.NewConsumer(kafkax.ConsumerConfig{
-		Brokers: cfg.KafkaBrokers, GroupID: cfg.GroupID, Topic: usageTopic, LoadOffsets: applier.LoadOffsets,
-		Handler: applier, MaxPollRecords: cfg.PollRecords, Backoff: cfg.Backoff, SessionTimeout: cfg.SessionTimeout, Log: log,
-		Extra: owned.Opts(usageTopic), RecordTime: kafkax.UsageRecordTime,
-	})
+	usage, entConsumer, closeConsumers, err := newConsumers(cfg, applier, ents, owned, log)
 	if err != nil {
 		return err
 	}
-	defer usage.Close()
-	// Every pod reads the whole entitlement topic from the beginning: one group per pod.
-	entConsumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{
-		Brokers: cfg.KafkaBrokers, GroupID: "limits-entitlements-" + cfg.PodName, Topic: entitlementsTopic,
-		LoadOffsets: entitlements.OffsetLoader, Handler: ents, MaxPollRecords: cfg.PollRecords, Backoff: cfg.Backoff,
-		SessionTimeout: cfg.SessionTimeout, Log: log,
-	})
-	if err != nil {
-		return err
-	}
-	defer entConsumer.Close()
+	defer closeConsumers()
 
 	rec := engine.NewReconciler(engine.ReconcilerConfig{
 		Applier: applier, Redis: rdb, Aggregator: aggregatorv1.NewUsageQueryServiceClient(aggConn), Meters: ms,
@@ -177,15 +163,7 @@ func run() error {
 	})
 
 	hh := health.New(reg, 2*time.Second)
-	hh.AddCheck("redis", func(ctx context.Context) error { return rdb.Ping(ctx).Err() })
-	hh.AddCheck("kafka", producer.Ping)
-	hh.AddCheck("entitlements", func(context.Context) error {
-		if !ents.Ready() {
-			return errors.New("entitlement map is still catching up")
-		}
-		return nil
-	})
-
+	addHealthChecks(hh, rdb, producer, ents)
 	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
 		Logger: log, Reflection: cfg.Env == config.EnvLocal,
 		Extra: []grpc.ServerOption{
@@ -223,6 +201,50 @@ func run() error {
 	}
 	log.Info("stopped")
 	return nil
+}
+
+// dialPeer connects to another service, forwarding the tenant on every call.
+func dialPeer(name, addr string) (*grpc.ClientConn, error) {
+	conn, err := grpcx.NewClient(addr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	if err != nil {
+		return nil, fmt.Errorf("%s client: %w", name, err)
+	}
+	return conn, nil
+}
+
+// newConsumers builds the usage consumer and the entitlement consumer; closeAll closes both.
+func newConsumers(cfg Config, applier *engine.Applier, ents *entitlements.Store, owned *engine.Ownership, log *slog.Logger) (usage, entConsumer *kafkax.Consumer, closeAll func(), err error) {
+	usage, err = kafkax.NewConsumer(kafkax.ConsumerConfig{
+		Brokers: cfg.KafkaBrokers, GroupID: cfg.GroupID, Topic: usageTopic, LoadOffsets: applier.LoadOffsets,
+		Handler: applier, MaxPollRecords: cfg.PollRecords, Backoff: cfg.Backoff, SessionTimeout: cfg.SessionTimeout, Log: log,
+		Extra: owned.Opts(usageTopic), RecordTime: kafkax.UsageRecordTime,
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	// Every pod reads the whole entitlement topic from the beginning: one group per pod.
+	entConsumer, err = kafkax.NewConsumer(kafkax.ConsumerConfig{
+		Brokers: cfg.KafkaBrokers, GroupID: "limits-entitlements-" + cfg.PodName, Topic: entitlementsTopic,
+		LoadOffsets: entitlements.OffsetLoader, Handler: ents, MaxPollRecords: cfg.PollRecords, Backoff: cfg.Backoff,
+		SessionTimeout: cfg.SessionTimeout, Log: log,
+	})
+	if err != nil {
+		usage.Close()
+		return nil, nil, nil, err
+	}
+	return usage, entConsumer, func() { entConsumer.Close(); usage.Close() }, nil
+}
+
+// addHealthChecks registers the readiness checks of the dependencies.
+func addHealthChecks(hh *health.Handler, rdb *redis.Client, producer *kgo.Client, ents *entitlements.Store) {
+	hh.AddCheck("redis", func(ctx context.Context) error { return rdb.Ping(ctx).Err() })
+	hh.AddCheck("kafka", producer.Ping)
+	hh.AddCheck("entitlements", func(context.Context) error {
+		if !ents.Ready() {
+			return errors.New("entitlement map is still catching up")
+		}
+		return nil
+	})
 }
 
 // recordTargets reads the end offsets of the entitlement topic once, so that readiness knows what "caught up" means,

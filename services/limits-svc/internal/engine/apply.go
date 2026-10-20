@@ -200,70 +200,122 @@ func (a *Applier) skip(ctx context.Context, reason string) {
 	a.skipped.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", reason)))
 }
 
+// batch is what a run of records adds up to before it is sent to Redis in one script call.
+type batch struct {
+	cells   map[string]*cell
+	stamps  map[uuid.UUID]time.Time
+	counted int64
+}
+
 func (a *Applier) applyRecords(ctx context.Context, p int32, recs []*kgo.Record) error {
 	if len(recs) == 0 {
 		return nil
 	}
-	cells := map[string]*cell{}
-	stamps := map[uuid.UUID]time.Time{}
-	var counted int64
+	b := &batch{cells: map[string]*cell{}, stamps: map[uuid.UUID]time.Time{}}
 	for _, rec := range recs {
-		ev, err := domain.Decode(rec)
-		if err != nil {
-			a.skip(ctx, "invalid")
-			continue
+		if err := a.accumulate(ctx, b, rec); err != nil {
+			return err
 		}
-		m, err := a.cfg.Meters.Get(ctx, ev.TenantID, ev.Meter)
-		if errors.Is(err, meters.ErrNotFound) {
-			a.skip(ctx, "unknown_meter")
-			continue
+	}
+	keys, tenantsSorted := a.batchKeys(ctx, b)
+
+	ps := a.part(p)
+	first, next := recs[0].Offset, recs[len(recs)-1].Offset+1
+	args := make([]any, 0, 6+4*len(keys)+2*len(tenantsSorted))
+	args = append(args, first, next, a.cfg.Now().UnixMilli(), ps.expect, len(keys), len(tenantsSorted))
+	for _, k := range keys {
+		c := b.cells[k]
+		op := "I"
+		if c.isMax {
+			op = "M"
 		}
-		if err != nil {
-			return fmt.Errorf("meter lookup: %w", err)
-		}
-		if !m.Matches(ev.Props) {
-			a.skip(ctx, "filtered")
-			continue
-		}
-		tn, err := a.cfg.Tenants.Tenant(ctx, ev.TenantID)
-		if err != nil {
-			return fmt.Errorf("tenant lookup: %w", err)
-		}
-		cutoff, err := period.Cutoff(ev.Period, tn.Location, tn.Grace)
-		if err != nil {
-			a.skip(ctx, "invalid")
-			continue
-		}
-		// Late events are billed in the period of their ingestion, not counted against this one's limit.
-		if period.Classify(ev.IngestedAt, cutoff) == period.Late {
-			a.skip(ctx, "late")
-			continue
-		}
-		_, end, _ := period.Bounds(ev.Period, tn.Location)
-		ref := Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: ev.Period}
-		k := ref.Key()
-		c := cells[k]
-		if c == nil {
-			c = &cell{ref: ref, isMax: m.Aggregation == domain.Max, expireAt: end.Add(KeyTTL).Unix()}
-			cells[k] = c
-		}
-		v := m.Value(ev)
-		switch {
-		case c.isMax:
-			c.delta = max(c.delta, v)
-		case c.delta > domain.MaxCounter-v:
-			c.over = true
-		default:
-			c.delta += v
-		}
-		if ev.IngestedAt.After(stamps[ev.TenantID]) {
-			stamps[ev.TenantID] = ev.IngestedAt
-		}
-		counted++
+		args = append(args, k, op, c.delta, c.expireAt)
+	}
+	for _, t := range tenantsSorted {
+		args = append(args, TSKey(t), b.stamps[t].UnixMilli())
 	}
 
-	keys := make([]string, 0, len(cells))
-	for k, c := range cells {
+	res, err := a.script.Run(ctx, a.cfg.Redis, []string{OffsetKey(p), ActiveKey(p)}, args...).Slice()
+	if err != nil {
+		return fmt.Errorf("apply_batch: %w", err)
+	}
+	if done, err := a.handleReply(ctx, p, ps, recs, res); done || err != nil {
+		return err
+	}
+	ps.expect = next
+	a.applied.Add(ctx, b.counted)
+
+	if a.cfg.AfterLua != nil {
+		if err := a.cfg.AfterLua(); err != nil {
+			return err
+		}
+	}
+	a.fireCrossed(ctx, res[1:])
+	return nil
+}
+
+// accumulate folds one record into the batch, or counts it as skipped.
+func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) error {
+	ev, err := domain.Decode(rec)
+	if err != nil {
+		a.skip(ctx, "invalid")
+		return nil
+	}
+	m, err := a.cfg.Meters.Get(ctx, ev.TenantID, ev.Meter)
+	if errors.Is(err, meters.ErrNotFound) {
+		a.skip(ctx, "unknown_meter")
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("meter lookup: %w", err)
+	}
+	if !m.Matches(ev.Props) {
+		a.skip(ctx, "filtered")
+		return nil
+	}
+	tn, err := a.cfg.Tenants.Tenant(ctx, ev.TenantID)
+	if err != nil {
+		return fmt.Errorf("tenant lookup: %w", err)
+	}
+	cutoff, err := period.Cutoff(ev.Period, tn.Location, tn.Grace)
+	if err != nil {
+		a.skip(ctx, "invalid")
+		return nil
+	}
+	// Late events are billed in the period of their ingestion, not counted against this one's limit.
+	if period.Classify(ev.IngestedAt, cutoff) == period.Late {
+		a.skip(ctx, "late")
+		return nil
+	}
+	_, end, _ := period.Bounds(ev.Period, tn.Location)
+	ref := Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: ev.Period}
+	k := ref.Key()
+	c := b.cells[k]
+	if c == nil {
+		c = &cell{ref: ref, isMax: m.Aggregation == domain.Max, expireAt: end.Add(KeyTTL).Unix()}
+		b.cells[k] = c
+	}
+	v := m.Value(ev)
+	switch {
+	case c.isMax:
+		c.delta = max(c.delta, v)
+	case c.delta > domain.MaxCounter-v:
+		c.over = true
+	default:
+		c.delta += v
+	}
+	if ev.IngestedAt.After(b.stamps[ev.TenantID]) {
+		b.stamps[ev.TenantID] = ev.IngestedAt
+	}
+	b.counted++
+	return nil
+}
+
+// batchKeys returns the counter keys to send and the tenants to stamp, both sorted. Counters whose delta overflowed are
+// left out; reconciliation repairs them.
+func (a *Applier) batchKeys(ctx context.Context, b *batch) ([]string, []uuid.UUID) {
+	keys := make([]string, 0, len(b.cells))
+	for k, c := range b.cells {
 		if c.over {
 			a.overflow.Add(ctx, 1)
 			a.log.ErrorContext(ctx, "counter delta too large, leaving the key to reconciliation", "key", k)
@@ -272,64 +324,47 @@ func (a *Applier) applyRecords(ctx context.Context, p int32, recs []*kgo.Record)
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	tenantsSorted := make([]uuid.UUID, 0, len(stamps))
-	for t := range stamps {
+	tenantsSorted := make([]uuid.UUID, 0, len(b.stamps))
+	for t := range b.stamps {
 		tenantsSorted = append(tenantsSorted, t)
 	}
 	sort.Slice(tenantsSorted, func(i, j int) bool { return tenantsSorted[i].String() < tenantsSorted[j].String() })
+	return keys, tenantsSorted
+}
 
-	ps := a.part(p)
+// handleReply interprets the status of apply_batch. done is true when the batch is settled and applyRecords returns err
+// as is; false with a nil err means the script applied the batch ("OK").
+func (a *Applier) handleReply(ctx context.Context, p int32, ps *partState, recs []*kgo.Record, res []any) (done bool, err error) {
 	first, next := recs[0].Offset, recs[len(recs)-1].Offset+1
-	args := make([]any, 0, 6+4*len(keys)+2*len(tenantsSorted))
-	args = append(args, first, next, a.cfg.Now().UnixMilli(), ps.expect, len(keys), len(tenantsSorted))
-	for _, k := range keys {
-		c := cells[k]
-		op := "I"
-		if c.isMax {
-			op = "M"
-		}
-		args = append(args, k, op, c.delta, c.expireAt)
-	}
-	for _, t := range tenantsSorted {
-		args = append(args, TSKey(t), stamps[t].UnixMilli())
-	}
-
-	res, err := a.script.Run(ctx, a.cfg.Redis, []string{OffsetKey(p), ActiveKey(p)}, args...).Slice()
-	if err != nil {
-		return fmt.Errorf("apply_batch: %w", err)
-	}
 	status, _ := res[0].(string)
 	switch status {
 	case "SKIP":
 		a.skip(ctx, "redelivered")
 		ps.expect = max(ps.expect, next)
-		return nil
+		return true, nil
 	case "PARTIAL":
 		applied, _ := strconv.ParseInt(fmt.Sprint(res[1]), 10, 64)
 		rest := recs
 		for len(rest) > 0 && rest[0].Offset < applied {
 			rest = rest[1:]
 		}
-		return a.applyRecords(ctx, p, rest)
+		return true, a.applyRecords(ctx, p, rest)
 	case "GAP":
-		return fmt.Errorf("offset gap on partition %d: redis is at %v, batch starts at %d", p, res[1], first)
+		return true, fmt.Errorf("offset gap on partition %d: redis is at %v, batch starts at %d", p, res[1], first)
 	case "RESET":
 		a.log.WarnContext(ctx, "redis lost its offset key, replaying partition", "partition", p)
 		ps.expect = 0
-		return ErrRedisReset
+		return true, ErrRedisReset
 	case "OK":
+		return false, nil
 	default:
-		return fmt.Errorf("apply_batch: unexpected reply %v", res)
+		return true, fmt.Errorf("apply_batch: unexpected reply %v", res)
 	}
-	ps.expect = next
-	a.applied.Add(ctx, counted)
+}
 
-	if a.cfg.AfterLua != nil {
-		if err := a.cfg.AfterLua(); err != nil {
-			return err
-		}
-	}
-	for _, item := range res[1:] {
+// fireCrossed checks the (key, before, after) rows of an applied batch against the thresholds.
+func (a *Applier) fireCrossed(ctx context.Context, rows []any) {
+	for _, item := range rows {
 		row, ok := item.([]any)
 		if !ok || len(row) != 3 {
 			continue
@@ -348,7 +383,6 @@ func (a *Applier) applyRecords(ctx context.Context, p int32, recs []*kgo.Record)
 		}
 		a.thresholds(ctx, ref, before, after, false)
 	}
-	return nil
 }
 
 // thresholds fires the LimitExceeded events for the thresholds a counter crossed from before to after. With sweep it
