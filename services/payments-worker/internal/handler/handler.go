@@ -170,154 +170,198 @@ func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 		return nil, fmt.Errorf("%w: command_id", workerx.ErrPoison)
 	}
 	tenantID, _ := uuid.Parse(cmd.GetTenantId())
-	env := envName(cmd.GetEnvironment())
+	run := commandRun{id: commandID, tenant: tenantID, environment: cmd.GetEnvironment(), env: envName(cmd.GetEnvironment())}
 
 	switch c := cmd.GetCommand().(type) {
 	case *commandsv1.CommandEnvelope_ChargePayment:
-		ch := c.ChargePayment
-		invoiceID, err := uuid.Parse(ch.GetInvoiceId())
-		if err != nil || ch.GetIdempotencyKey() == "" {
-			return nil, fmt.Errorf("%w: charge needs invoice_id and idempotency_key", workerx.ErrPoison)
-		}
-		prov, err := h.providerFor(ctx, tenantID, cmd.GetEnvironment(), invoiceID, true, ch.GetProvider())
-		if err != nil {
-			return unavailable(err), nil
-		}
-		if prov == nil {
-			return errored(false, CodeNotConfigured, "no live payment provider is configured"), nil
-		}
-		caps := capabilities(prov)
-		if !caps.CanCharge(ch.GetCurrency()) {
-			return errored(false, CodeCurrency, fmt.Sprintf("%s cannot charge in %s", prov.Name(), ch.GetCurrency())), nil
-		}
-		redelivered, err := h.Attempts.Start(ctx, commandID, tenantID, invoiceID, "charge", env, prov.Name(), ch.GetIdempotencyKey(), ch)
-		if err != nil {
-			return nil, err
-		}
-		entry := store.LedgerEntry{TenantID: tenantID, InvoiceID: invoiceID, Provider: prov.Name(), Environment: env, Kind: "charge",
-			AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), IdempotencyKey: ch.GetIdempotencyKey(), Source: "command"}
-		if redelivered && !caps.IdempotentCharges {
-			// The provider may have been called before the crash and does not dedupe by key: ask it, never charge blindly.
-			st, err := prov.Status(ctx, ch.GetIdempotencyKey())
-			if err != nil {
-				return nil, err
-			}
-			switch st.State {
-			case payments.StateSucceeded:
-				entry.Status, entry.ProviderRef = "succeeded", st.ChargeID
-				h.record(ctx, entry)
-				return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentSucceeded{PaymentSucceeded: &commandsv1.PaymentSucceeded{PspChargeId: st.ChargeID}}}, nil
-			case payments.StateDeclined:
-				entry.Status, entry.Detail = "declined", st.DeclineCode
-				h.record(ctx, entry)
-				return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentDeclined{PaymentDeclined: &commandsv1.PaymentDeclined{DeclineCode: st.DeclineCode}}}, nil
-			}
-		}
-		res, err := prov.Charge(ctx, payments.ChargeRequest{IdempotencyKey: ch.GetIdempotencyKey(), InvoiceID: ch.GetInvoiceId(),
-			AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), PaymentMethod: ch.GetPaymentMethod()})
-		var declined *payments.DeclinedError
-		var transient *payments.TransientError
-		var pending *payments.PendingError
-		switch {
-		case errors.As(err, &pending):
-			// Accepted, not settled: the provider's notification decides. Billing queries the status, which reads the ledger.
-			return errored(false, CodePending, pending.Error()), nil
-		case err == nil:
-			entry.Status, entry.ProviderRef = "succeeded", res.ChargeID
-			h.record(ctx, entry)
-			return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentSucceeded{PaymentSucceeded: &commandsv1.PaymentSucceeded{PspChargeId: res.ChargeID}}}, nil
-		case errors.As(err, &declined):
-			entry.Status, entry.Detail = "declined", declined.Code
-			h.record(ctx, entry)
-			return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentDeclined{PaymentDeclined: &commandsv1.PaymentDeclined{DeclineCode: declined.Code}}}, nil
-		case errors.As(err, &transient):
-			return nil, err // retried through the delay queues; a provider that does not dedupe is asked first (above)
-		case errors.Is(err, payments.ErrTimeout):
-			// Never retried blindly: billing queries the status first.
-			return errored(false, CodeTimeout, "the provider did not answer in time"), nil
-		default:
-			return errored(false, CodeRejected, err.Error()), nil
-		}
-
+		return h.charge(ctx, run, c.ChargePayment)
 	case *commandsv1.CommandEnvelope_RefundPayment:
-		rf := c.RefundPayment
-		invoiceID, err := uuid.Parse(rf.GetInvoiceId())
-		if err != nil || rf.GetIdempotencyKey() == "" {
-			return nil, fmt.Errorf("%w: refund needs invoice_id and idempotency_key", workerx.ErrPoison)
-		}
-		prov, err := h.providerFor(ctx, tenantID, cmd.GetEnvironment(), invoiceID, false, "")
-		if err != nil {
-			return unavailable(err), nil
-		}
-		if prov == nil {
-			return errored(false, CodeNotConfigured, "no live payment provider is configured"), nil
-		}
-		if !capabilities(prov).Refunds {
-			return errored(false, CodeRejected, prov.Name()+" has no refund API"), nil
-		}
-		if _, err := h.Attempts.Start(ctx, commandID, tenantID, invoiceID, "refund", env, prov.Name(), rf.GetIdempotencyKey(), rf); err != nil {
-			return nil, err
-		}
-		res, err := prov.Refund(ctx, payments.RefundRequest{IdempotencyKey: rf.GetIdempotencyKey(), InvoiceID: rf.GetInvoiceId(),
-			ChargeID: rf.GetPspChargeId(), AmountMinor: rf.GetAmountMinor(), Currency: rf.GetCurrency()})
-		var transient *payments.TransientError
-		switch {
-		case err == nil:
-			h.record(ctx, store.LedgerEntry{TenantID: tenantID, InvoiceID: invoiceID, Provider: prov.Name(), Environment: env, Kind: "refund", Status: "succeeded",
-				AmountMinor: rf.GetAmountMinor(), Currency: rf.GetCurrency(), ProviderRef: res.RefundID, IdempotencyKey: rf.GetIdempotencyKey(), Source: "command"})
-			return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentRefunded{PaymentRefunded: &commandsv1.PaymentRefunded{PspRefundId: res.RefundID}}}, nil
-		case errors.As(err, &transient):
-			return nil, err
-		case errors.Is(err, payments.ErrTimeout):
-			return errored(false, CodeTimeout, "the provider did not answer in time"), nil
-		default:
-			return errored(false, CodeRejected, err.Error()), nil
-		}
-
+		return h.refund(ctx, run, c.RefundPayment)
 	case *commandsv1.CommandEnvelope_QueryPaymentStatus:
-		q := c.QueryPaymentStatus
-		invoiceID, err := uuid.Parse(q.GetInvoiceId())
-		if err != nil || q.GetIdempotencyKey() == "" {
-			return nil, fmt.Errorf("%w: status needs invoice_id and idempotency_key", workerx.ErrPoison)
-		}
-		prov, err := h.providerFor(ctx, tenantID, cmd.GetEnvironment(), invoiceID, false, "")
-		if err != nil {
-			return unavailable(err), nil
-		}
-		if prov == nil {
-			return errored(false, CodeNotConfigured, "no live payment provider is configured"), nil
-		}
-		if _, err := h.Attempts.Start(ctx, commandID, tenantID, invoiceID, "status", env, prov.Name(), q.GetIdempotencyKey(), q); err != nil {
-			return nil, err
-		}
-		if !capabilities(prov).IdempotentCharges && h.Ledger.DB != nil {
-			// A provider that settles by notification: the ledger holds the outcome once its notification has been confirmed.
-			if f, ok, err := h.Ledger.ChargeFact(ctx, q.GetIdempotencyKey()); err != nil {
-				return nil, err
-			} else if ok {
-				reply := &commandsv1.PaymentStatus{PspChargeId: f.ProviderRef}
-				if f.Status == "succeeded" {
-					reply.State = commandsv1.PaymentStatus_STATE_SUCCEEDED
-				} else {
-					reply.State, reply.DeclineCode = commandsv1.PaymentStatus_STATE_DECLINED, f.Detail
-				}
-				return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: reply}}, nil
-			}
-		}
-		st, err := prov.Status(ctx, q.GetIdempotencyKey())
-		if err != nil {
-			return nil, err // a failed query (or "still pending") is retried; billing keeps the saga in PAYMENT_UNKNOWN meanwhile
-		}
-		reply := &commandsv1.PaymentStatus{PspChargeId: st.ChargeID, DeclineCode: st.DeclineCode}
-		switch st.State {
-		case payments.StateSucceeded:
-			reply.State = commandsv1.PaymentStatus_STATE_SUCCEEDED
-		case payments.StateDeclined:
-			reply.State = commandsv1.PaymentStatus_STATE_DECLINED
-		default:
-			reply.State = commandsv1.PaymentStatus_STATE_NOT_FOUND
-		}
-		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: reply}}, nil
+		return h.queryStatus(ctx, run, c.QueryPaymentStatus)
 	}
 	return nil, fmt.Errorf("%w: not a payment command", workerx.ErrPoison)
+}
+
+type commandRun struct {
+	id, tenant  uuid.UUID
+	environment plansv1.Environment
+	env         string
+}
+
+// providerForCommand resolves the provider of a command; a non-nil reply is the answer when there is none.
+func (h *Handler) providerForCommand(ctx context.Context, run commandRun, invoice uuid.UUID, charge bool, named string) (payments.PaymentProvider, *commandsv1.ReplyEnvelope) {
+	prov, err := h.providerFor(ctx, run.tenant, run.environment, invoice, charge, named)
+	if err != nil {
+		return nil, unavailable(err)
+	}
+	if prov == nil {
+		return nil, errored(false, CodeNotConfigured, "no live payment provider is configured")
+	}
+	return prov, nil
+}
+
+func succeededReply(chargeID string) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentSucceeded{PaymentSucceeded: &commandsv1.PaymentSucceeded{PspChargeId: chargeID}}}
+}
+
+func declinedReply(code string) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentDeclined{PaymentDeclined: &commandsv1.PaymentDeclined{DeclineCode: code}}}
+}
+
+func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.ChargePayment) (*commandsv1.ReplyEnvelope, error) {
+	invoiceID, err := uuid.Parse(ch.GetInvoiceId())
+	if err != nil || ch.GetIdempotencyKey() == "" {
+		return nil, fmt.Errorf("%w: charge needs invoice_id and idempotency_key", workerx.ErrPoison)
+	}
+	prov, reply := h.providerForCommand(ctx, run, invoiceID, true, ch.GetProvider())
+	if reply != nil {
+		return reply, nil
+	}
+	caps := capabilities(prov)
+	if !caps.CanCharge(ch.GetCurrency()) {
+		return errored(false, CodeCurrency, fmt.Sprintf("%s cannot charge in %s", prov.Name(), ch.GetCurrency())), nil
+	}
+	redelivered, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, "charge", run.env, prov.Name(), ch.GetIdempotencyKey(), ch)
+	if err != nil {
+		return nil, err
+	}
+	entry := store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoiceID, Provider: prov.Name(), Environment: run.env, Kind: "charge",
+		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), IdempotencyKey: ch.GetIdempotencyKey(), Source: "command"}
+	if redelivered && !caps.IdempotentCharges {
+		if reply, err := h.askBeforeCharging(ctx, prov, entry); reply != nil || err != nil {
+			return reply, err
+		}
+	}
+	res, err := prov.Charge(ctx, payments.ChargeRequest{IdempotencyKey: ch.GetIdempotencyKey(), InvoiceID: ch.GetInvoiceId(),
+		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), PaymentMethod: ch.GetPaymentMethod()})
+	return h.chargeOutcome(ctx, entry, res, err)
+}
+
+// askBeforeCharging handles the redelivery of a charge to a provider that does not dedupe by key: the provider may have been
+// called before the crash, so it is asked, never charged blindly. A nil reply and error mean the charge goes ahead.
+func (h *Handler) askBeforeCharging(ctx context.Context, prov payments.PaymentProvider, entry store.LedgerEntry) (*commandsv1.ReplyEnvelope, error) {
+	st, err := prov.Status(ctx, entry.IdempotencyKey)
+	if err != nil {
+		return nil, err
+	}
+	switch st.State {
+	case payments.StateSucceeded:
+		entry.Status, entry.ProviderRef = "succeeded", st.ChargeID
+		h.record(ctx, entry)
+		return succeededReply(st.ChargeID), nil
+	case payments.StateDeclined:
+		entry.Status, entry.Detail = "declined", st.DeclineCode
+		h.record(ctx, entry)
+		return declinedReply(st.DeclineCode), nil
+	}
+	return nil, nil
+}
+
+func (h *Handler) chargeOutcome(ctx context.Context, entry store.LedgerEntry, res payments.ChargeResult, err error) (*commandsv1.ReplyEnvelope, error) {
+	var declined *payments.DeclinedError
+	var transient *payments.TransientError
+	var pending *payments.PendingError
+	switch {
+	case errors.As(err, &pending):
+		// Accepted, not settled: the provider's notification decides. Billing queries the status, which reads the ledger.
+		return errored(false, CodePending, pending.Error()), nil
+	case err == nil:
+		entry.Status, entry.ProviderRef = "succeeded", res.ChargeID
+		h.record(ctx, entry)
+		return succeededReply(res.ChargeID), nil
+	case errors.As(err, &declined):
+		entry.Status, entry.Detail = "declined", declined.Code
+		h.record(ctx, entry)
+		return declinedReply(declined.Code), nil
+	case errors.As(err, &transient):
+		return nil, err // retried through the delay queues; a provider that does not dedupe is asked first
+	case errors.Is(err, payments.ErrTimeout):
+		// Never retried blindly: billing queries the status first.
+		return errored(false, CodeTimeout, "the provider did not answer in time"), nil
+	default:
+		return errored(false, CodeRejected, err.Error()), nil
+	}
+}
+
+func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.RefundPayment) (*commandsv1.ReplyEnvelope, error) {
+	invoiceID, err := uuid.Parse(rf.GetInvoiceId())
+	if err != nil || rf.GetIdempotencyKey() == "" {
+		return nil, fmt.Errorf("%w: refund needs invoice_id and idempotency_key", workerx.ErrPoison)
+	}
+	prov, reply := h.providerForCommand(ctx, run, invoiceID, false, "")
+	if reply != nil {
+		return reply, nil
+	}
+	if !capabilities(prov).Refunds {
+		return errored(false, CodeRejected, prov.Name()+" has no refund API"), nil
+	}
+	if _, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, "refund", run.env, prov.Name(), rf.GetIdempotencyKey(), rf); err != nil {
+		return nil, err
+	}
+	res, err := prov.Refund(ctx, payments.RefundRequest{IdempotencyKey: rf.GetIdempotencyKey(), InvoiceID: rf.GetInvoiceId(),
+		ChargeID: rf.GetPspChargeId(), AmountMinor: rf.GetAmountMinor(), Currency: rf.GetCurrency()})
+	var transient *payments.TransientError
+	switch {
+	case err == nil:
+		h.record(ctx, store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoiceID, Provider: prov.Name(), Environment: run.env, Kind: "refund", Status: "succeeded",
+			AmountMinor: rf.GetAmountMinor(), Currency: rf.GetCurrency(), ProviderRef: res.RefundID, IdempotencyKey: rf.GetIdempotencyKey(), Source: "command"})
+		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentRefunded{PaymentRefunded: &commandsv1.PaymentRefunded{PspRefundId: res.RefundID}}}, nil
+	case errors.As(err, &transient):
+		return nil, err
+	case errors.Is(err, payments.ErrTimeout):
+		return errored(false, CodeTimeout, "the provider did not answer in time"), nil
+	default:
+		return errored(false, CodeRejected, err.Error()), nil
+	}
+}
+
+func (h *Handler) queryStatus(ctx context.Context, run commandRun, q *commandsv1.QueryPaymentStatus) (*commandsv1.ReplyEnvelope, error) {
+	invoiceID, err := uuid.Parse(q.GetInvoiceId())
+	if err != nil || q.GetIdempotencyKey() == "" {
+		return nil, fmt.Errorf("%w: status needs invoice_id and idempotency_key", workerx.ErrPoison)
+	}
+	prov, reply := h.providerForCommand(ctx, run, invoiceID, false, "")
+	if reply != nil {
+		return reply, nil
+	}
+	if _, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, "status", run.env, prov.Name(), q.GetIdempotencyKey(), q); err != nil {
+		return nil, err
+	}
+	if !capabilities(prov).IdempotentCharges && h.Ledger.DB != nil {
+		// A provider that settles by notification: the ledger holds the outcome once its notification has been confirmed.
+		if f, ok, err := h.Ledger.ChargeFact(ctx, q.GetIdempotencyKey()); err != nil {
+			return nil, err
+		} else if ok {
+			return statusFromLedger(f), nil
+		}
+	}
+	st, err := prov.Status(ctx, q.GetIdempotencyKey())
+	if err != nil {
+		return nil, err // a failed query (or "still pending") is retried; billing keeps the saga in PAYMENT_UNKNOWN meanwhile
+	}
+	return statusFromProvider(st), nil
+}
+
+func statusFromLedger(f store.Fact) *commandsv1.ReplyEnvelope {
+	reply := &commandsv1.PaymentStatus{PspChargeId: f.ProviderRef}
+	if f.Status == "succeeded" {
+		reply.State = commandsv1.PaymentStatus_STATE_SUCCEEDED
+	} else {
+		reply.State, reply.DeclineCode = commandsv1.PaymentStatus_STATE_DECLINED, f.Detail
+	}
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: reply}}
+}
+
+func statusFromProvider(st payments.StatusResult) *commandsv1.ReplyEnvelope {
+	reply := &commandsv1.PaymentStatus{PspChargeId: st.ChargeID, DeclineCode: st.DeclineCode}
+	switch st.State {
+	case payments.StateSucceeded:
+		reply.State = commandsv1.PaymentStatus_STATE_SUCCEEDED
+	case payments.StateDeclined:
+		reply.State = commandsv1.PaymentStatus_STATE_DECLINED
+	default:
+		reply.State = commandsv1.PaymentStatus_STATE_NOT_FOUND
+	}
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: reply}}
 }
