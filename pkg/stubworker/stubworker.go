@@ -58,7 +58,7 @@ func (w *Worker) Commands() []*commandsv1.CommandEnvelope {
 	return append([]*commandsv1.CommandEnvelope(nil), w.commands...)
 }
 
-// Count returns how many distinct commands of the kind ("render", "charge", "refund", "status", "notify") arrived.
+// Count returns how many distinct commands of the kind ("render", "charge", "refund", "status", "notify", "einvoice") arrived.
 func (w *Worker) Count(kind string) int {
 	n := 0
 	for _, c := range w.Commands() {
@@ -82,6 +82,8 @@ func Kind(c *commandsv1.CommandEnvelope) string {
 		return "status"
 	case *commandsv1.CommandEnvelope_SendNotification:
 		return "notify"
+	case *commandsv1.CommandEnvelope_IssueEInvoice:
+		return "einvoice"
 	}
 	return "unknown"
 }
@@ -169,6 +171,13 @@ func Succeed(cmd *commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
 	case *commandsv1.CommandEnvelope_QueryPaymentStatus:
 		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{
 			State: commandsv1.PaymentStatus_STATE_SUCCEEDED, PspChargeId: "ch_found"}}}
+	case *commandsv1.CommandEnvelope_IssueEInvoice:
+		if c.IssueEInvoice.GetAction() == "cancel" {
+			return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_EInvoiceResult{EInvoiceResult: &commandsv1.EInvoiceResult{State: "cancelled"}}}
+		}
+		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_EInvoiceResult{EInvoiceResult: &commandsv1.EInvoiceResult{
+			State: "issued", LegalNumber: "STB" + c.IssueEInvoice.GetDocumentId()[:8], ExternalId: "ext_" + c.IssueEInvoice.GetDocumentId(), DocumentType: "e-arsiv", Provider: "mock",
+			XmlObjectKey: cmd.GetTenantId() + "/einvoice/" + c.IssueEInvoice.GetDocumentId() + "/document.xml"}}}
 	default:
 		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_NotificationSent{NotificationSent: &commandsv1.NotificationSent{MessageId: "msg_" + cmd.GetCommandId()}}}
 	}
@@ -204,6 +213,18 @@ func StatusPending(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
 // PdfFailed is a permanent render failure.
 func PdfFailed(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PdfFailed{PdfFailed: &commandsv1.PdfFailed{Reason: "template error"}}}
+}
+
+// EInvoiceRetryable is a failed e-invoice answer that billing-svc retries with backoff.
+func EInvoiceRetryable(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_EInvoiceResult{EInvoiceResult: &commandsv1.EInvoiceResult{
+		State: "failed", Retryable: true, ErrorKey: "einvoice.provider.unavailable", ErrorMessage: "timeout"}}}
+}
+
+// EInvoiceRejected is a failed e-invoice answer that waits for the operator.
+func EInvoiceRejected(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_EInvoiceResult{EInvoiceResult: &commandsv1.EInvoiceResult{
+		State: "failed", ErrorKey: "einvoice.provider.rejected", ErrorMessage: "VKN not found"}}}
 }
 
 // StatusNotFound is a payment status reply saying the PSP never saw the charge.

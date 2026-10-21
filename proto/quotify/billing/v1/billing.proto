@@ -16,6 +16,12 @@ service BillingService {
   rpc GetDunningReport(GetDunningReportRequest) returns (GetDunningReportResponse);
   rpc GetCreditNote(GetCreditNoteRequest) returns (GetCreditNoteResponse);
   rpc ListCreditNotes(ListCreditNotesRequest) returns (ListCreditNotesResponse);
+  // GetEInvoice returns one e-document (the legal copy of an invoice or credit note) and its state.
+  rpc GetEInvoice(GetEInvoiceRequest) returns (GetEInvoiceResponse);
+  // ListEInvoices lists the tenant's e-documents, newest first.
+  rpc ListEInvoices(ListEInvoicesRequest) returns (ListEInvoicesResponse);
+  // GetEInvoiceFileUrl returns a presigned link (5 minutes) to the document's UBL XML or PDF.
+  rpc GetEInvoiceFileUrl(GetEInvoiceFileUrlRequest) returns (GetEInvoiceFileUrlResponse);
   // CreateInvoiceLink makes an unguessable link to a finalized invoice, for the tenant to send to its customer. The token is returned once.
   rpc CreateInvoiceLink(CreateInvoiceLinkRequest) returns (CreateInvoiceLinkResponse);
   // RevokeInvoiceLinks makes every link to an invoice stop working.
@@ -92,6 +98,10 @@ service BillingAdminService {
   rpc CreateCreditNote(CreateCreditNoteRequest) returns (CreateCreditNoteResponse);
   // RetryCreditNoteRefund asks the provider again for a refund that failed.
   rpc RetryCreditNoteRefund(RetryCreditNoteRefundRequest) returns (RetryCreditNoteRefundResponse);
+  // RetryEInvoice sends a failed e-document again, with the seller's and buyer's data read afresh. Lines, amounts, number and date stay as they were.
+  rpc RetryEInvoice(RetryEInvoiceRequest) returns (RetryEInvoiceResponse);
+  // CancelEInvoice cancels an issued e-document where the provider and the law allow it.
+  rpc CancelEInvoice(CancelEInvoiceRequest) returns (CancelEInvoiceResponse);
   // StartRerating prices a closed period again under another plan version, on the same usage, and bills the difference:
   // a CORRECTION invoice where the customer owes more, a credit balance (applied to the next regular invoice) where less.
   // Idempotent per (tenant, period, plan version).
@@ -655,6 +665,91 @@ message GetHostedInvoicePdfUrlRequest {
 message GetHostedInvoicePdfUrlResponse {
   string url = 1;
   google.protobuf.Timestamp expire_time = 2;
+}
+
+// EInvoiceDocument is the legal e-document of an invoice or a credit note and where it stands (docs/phases/phase-30-e-invoice.md).
+message EInvoiceDocument {
+  string id = 1;
+  // "invoice" or "credit_note".
+  string kind = 2;
+  string invoice_id = 3;
+  // Set for a credit note.
+  string credit_note_id = 4;
+  // Quotify's number of the invoice or credit note.
+  string number = 5;
+  // pending, issued, failed or cancelled.
+  string status = 6;
+  // e-fatura, e-arsiv or peppol; empty until the provider has been chosen.
+  string document_type = 7;
+  string provider = 8;
+  string environment = 9;
+  // The number the document was issued under; never reused.
+  string legal_number = 10;
+  string external_id = 11;
+  int32 attempts = 12;
+  google.protobuf.Timestamp next_attempt_at = 13;
+  // Error key (docs/error-keys.md) and English text of the last failure.
+  string last_error_key = 14;
+  string last_error = 15;
+  bool has_xml = 16;
+  bool has_pdf = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp issued_at = 19;
+  google.protobuf.Timestamp updated_at = 20;
+}
+
+message GetEInvoiceRequest {
+  string id = 1;
+}
+
+message GetEInvoiceResponse {
+  EInvoiceDocument document = 1;
+}
+
+message ListEInvoicesRequest {
+  string invoice_id = 1;
+  string credit_note_id = 2;
+  // pending, issued, failed or cancelled; empty for all.
+  string status = 3;
+  // 1..200, default 50.
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListEInvoicesResponse {
+  repeated EInvoiceDocument documents = 1;
+  string next_page_token = 2;
+  int64 total = 3;
+}
+
+message GetEInvoiceFileUrlRequest {
+  string id = 1;
+  // "xml" or "pdf".
+  string kind = 2;
+}
+
+message GetEInvoiceFileUrlResponse {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+message RetryEInvoiceRequest {
+  string tenant_id = 1;
+  string id = 2;
+}
+
+message CancelEInvoiceRequest {
+  string tenant_id = 1;
+  string id = 2;
+  string reason = 3;
+}
+
+message RetryEInvoiceResponse {
+  EInvoiceDocument document = 1;
+}
+
+message CancelEInvoiceResponse {
+  EInvoiceDocument document = 1;
 }
 
 message GetHostedLogoUrlRequest {

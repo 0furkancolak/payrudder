@@ -329,6 +329,7 @@
       "reports": "Raporlar",
       "pricing": "Kupon ve vergi",
       "webhooks": "Webhooklar",
+      "einvoice": "E-fatura",
       "paymentLinks": "Ödeme bağlantıları",
       "mail": "E-posta",
       "apps": "Uygulamalar",
@@ -887,6 +888,118 @@
       }
     }
   },
+  "einvoice": {
+    "title": "E-fatura",
+    "confirmCancel": "Bu yasal e-belge iptal edilsin mi? Geri alınamaz.",
+    "retry": "Yeniden dene",
+    "cancel": "Belgeyi iptal et",
+    "downloadXml": "XML indir",
+    "downloadPdf": "PDF indir",
+    "attempts": "{count}. deneme",
+    "nextAttempt": "sonraki deneme {at}",
+    "issuedAt": "Düzenlendi {at}",
+    "status": {
+      "pending": "Bekliyor",
+      "issued": "Düzenlendi",
+      "failed": "Başarısız",
+      "cancelled": "İptal edildi"
+    },
+    "type": {
+      "e-fatura": "e-Fatura",
+      "e-arsiv": "e-Arşiv",
+      "peppol": "Peppol"
+    },
+    "settings": {
+      "title": "E-fatura",
+      "hint": "Faturaları ve iade belgelerini entegratörünüz üzerinden yasal e-belgeye (e-fatura, e-arşiv, Peppol) dönüştürün. Aşağıdaki şirket bilgileri her belgede yer alır.",
+      "formLabel": "e-fatura ayarları",
+      "on": "E-belge düzenle",
+      "onOff": "Kapalı",
+      "onFinalized": "Fatura kesinleştiğinde",
+      "onPaid": "Fatura ödendiğinde",
+      "legalName": "Unvan",
+      "taxId": "Vergi no (VKN veya KDV no)",
+      "taxOffice": "Vergi dairesi",
+      "mersis": "MERSİS numarası",
+      "tradeRegistry": "Ticaret sicil numarası",
+      "save": "Ayarları kaydet",
+      "saved": "Kaydedildi.",
+      "confirmRemove": "{provider} hesabı ({environment}) silinsin mi?"
+    },
+    "account": {
+      "title": "Entegratör hesabı",
+      "hint": "Kimlik bilgileri şifrelenerek saklanır ve bir daha gösterilmez. Sandbox ortamı yalnızca mock sağlayıcıyı kullanabilir.",
+      "provider": "Sağlayıcı",
+      "environment": "Ortam",
+      "mode": "Mod",
+      "credentials": "Kimlik bilgileri",
+      "updated": "Güncellendi",
+      "stored": "Kayıtlı",
+      "none": "Yok",
+      "empty": "Henüz e-fatura hesabı yok.",
+      "formLabel": "e-fatura hesabı",
+      "add": "Hesap ekle veya değiştir",
+      "modes": {
+        "test": "Test",
+        "production": "Canlı"
+      },
+      "sandboxHint": "Sandbox her zaman mock sağlayıcıyı kullanır: belgeler sahte bir yasal numarayla kabul edilir.",
+      "apiKey": "API anahtarı",
+      "baseUrl": "Temel URL (isteğe bağlı)",
+      "webhookUrl": "Webhook URL (https)",
+      "webhookSecret": "İmza anahtarı",
+      "neverShown": "Anahtar bir kez gönderilir, geri okunamaz.",
+      "save": "Hesabı kaydet",
+      "saved": "Hesap kaydedildi."
+    },
+    "customer": {
+      "title": "Vergi bilgisi",
+      "edit": "Vergi bilgisi",
+      "editing": "{id} vergi bilgisi",
+      "taxId": "Vergi no (VKN/TCKN veya KDV no)",
+      "taxOffice": "Vergi dairesi",
+      "registered": "e-fatura mükellefi",
+      "save": "Vergi bilgisini kaydet"
+    },
+    "errorKeys": {
+      "einvoice": {
+        "account": {
+          "missing": "Bu ortam için e-fatura hesabı tanımlı değil.",
+          "invalid": "E-fatura hesap ayarları geçersiz.",
+          "sandbox_mock_only": "Sandbox ortamı yalnızca mock sağlayıcıyı kullanabilir."
+        },
+        "seller": {
+          "incomplete": "Şirket bilgileri (unvan, vergi no) eksik."
+        },
+        "buyer": {
+          "incomplete": "Müşterinin vergi bilgileri eksik."
+        },
+        "document": {
+          "not_found": "E-belge bulunamadı.",
+          "not_failed": "Yalnızca başarısız e-belge yeniden denenebilir.",
+          "not_issued": "Yalnızca düzenlenmiş e-belge iptal edilebilir."
+        },
+        "cancel": {
+          "unsupported": "Bu sağlayıcı belgeyi iptal edemez."
+        },
+        "file": {
+          "not_ready": "Dosya henüz hazır değil."
+        },
+        "provider": {
+          "rejected": "Entegratör belgeyi reddetti.",
+          "unavailable": "Entegratöre ulaşılamadı; yeniden denenecek."
+        },
+        "setting": {
+          "invalid": "E-fatura ayarı geçersiz."
+        }
+      },
+      "plans": {
+        "customer": {
+          "tax_invalid": "Müşterinin vergi bilgisi geçersiz."
+        }
+      }
+    }
+  },
   "apps": {
     "new": "Yeni uygulama",
     "hint": "Uygulama, hesabın uygulamalarından biridir; kendi sandbox ve canlı ortamı, anahtarları, müşterileri ve planları vardır. Para birimi, saat dilimi ve ek süre burada seçilir, sonradan değiştirilemez.",
@@ -1044,6 +1157,9 @@
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
         "too_many_endpoints": "Webhook uç noktası sınırına ulaşıldı. Önce birini silin."
+      },
+      "customer": {
+        "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil."
       }
     },
     "common": {
@@ -1074,6 +1190,37 @@
         "nothing_pending": "Reddedilecek bekleyen bir havale yok.",
         "bad_outcome": "Sonuç reddedildi veya süresi doldu olmalı.",
         "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin."
+      }
+    },
+    "einvoice": {
+      "account": {
+        "invalid": "E-fatura hesabı ayarları bu sağlayıcı için geçerli değil.",
+        "missing": "Bu kiracının bu ortam için e-fatura hesabı yok. Önce bir hesap ekleyin.",
+        "sandbox_mock_only": "Sandbox ortamı yalnızca sahte (mock) e-fatura sağlayıcısını kullanabilir."
+      },
+      "buyer": {
+        "incomplete": "Müşterinin vergi bilgileri eksik: e-fatura kesmeden önce vergi numarasını (Türkiye'de vergi dairesini de) ekleyin."
+      },
+      "cancel": {
+        "unsupported": "Bu sağlayıcı kesilmiş bir e-faturayı iptal edemez. Bunun yerine alacak dekontu (kredi notu) düzenleyin."
+      },
+      "document": {
+        "not_failed": "Yalnızca başarısız olan bir e-belge yeniden denenebilir.",
+        "not_found": "Bu e-belge yok.",
+        "not_issued": "Yalnızca kesilmiş bir e-belge iptal edilebilir."
+      },
+      "file": {
+        "not_ready": "Bu e-belgenin dosyası henüz hazır değil."
+      },
+      "provider": {
+        "rejected": "E-fatura sağlayıcısı belgeyi reddetti.",
+        "unavailable": "E-fatura sağlayıcısına şu an ulaşılamıyor. Yeniden denenecek."
+      },
+      "seller": {
+        "incomplete": "Satıcının şirket bilgileri eksik: e-fatura ayarlarına unvanı ve vergi numarasını ekleyin."
+      },
+      "setting": {
+        "invalid": "E-fatura tetikleyicisi kapalı, kesinleşince veya ödenince olmalıdır."
       }
     }
   }

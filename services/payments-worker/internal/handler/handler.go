@@ -37,6 +37,8 @@ type Handler struct {
 	Log    *slog.Logger
 	// Demo makes every tenant, live ones too, use the sandbox provider: a demo stack can never reach a real provider.
 	Demo bool
+	// EInvoice executes IssueEInvoice commands (phase 30); nil makes them poison.
+	EInvoice workerx.Handler
 	// Transfers holds the pending rows, receipts and closures of providers whose payments an operator confirms by hand (a bank transfer).
 	Transfers store.Transfers
 	// TransferWindow is how long such a payment waits for its money when the tenant's account does not say (PAYMENTS_TRANSFER_WINDOW_DAYS).
@@ -162,6 +164,8 @@ func (h *Handler) count(ctx context.Context, reply *commandsv1.ReplyEnvelope, er
 			result = "refunded"
 		case *commandsv1.ReplyEnvelope_PaymentStatus:
 			result = "status"
+		case *commandsv1.ReplyEnvelope_EInvoiceResult:
+			result = "einvoice"
 		default:
 			result = "other"
 		}
@@ -179,6 +183,9 @@ var paymentsTotal = func() metric.Int64Counter {
 }()
 
 func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (*commandsv1.ReplyEnvelope, error) {
+	if cmd.GetIssueEInvoice() != nil && h.EInvoice != nil {
+		return h.EInvoice.Handle(ctx, cmd)
+	}
 	commandID, err := uuid.Parse(cmd.GetCommandId())
 	if err != nil {
 		return nil, fmt.Errorf("%w: command_id", workerx.ErrPoison)

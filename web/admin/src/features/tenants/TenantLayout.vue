@@ -31,6 +31,7 @@ const tabs = [
   { to: "/tenants/$id/mail", key: "mail", exact: false },
   { to: "/tenants/$id/apps", key: "apps", exact: false },
   { to: "/tenants/$id/address", key: "address", exact: false },
+  { to: "/tenants/$id/e-invoice", key: "einvoice", exact: false },
 ] as const;
 </script>
 

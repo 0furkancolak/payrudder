@@ -28,6 +28,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/einvoice"
 	"github.com/0furkancolak/quotify/pkg/payments"
 	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
@@ -48,6 +49,10 @@ type Server struct {
 	Log     *slog.Logger
 	// Token guards /admin. Empty disables the admin endpoints entirely.
 	Token string
+	// EInvoiceAccounts and EInvoiceRegistry serve the e-invoice account endpoints (phase 30); AllowMockLive lets a live account be the mock (demo mode).
+	EInvoiceAccounts store.EInvoiceAccounts
+	EInvoiceRegistry *einvoice.Registry
+	AllowMockLive    bool
 	// Billing, when set, lets the reconciliation read the tenant's invoices.
 	Billing BillingAPI
 	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status, and runs
@@ -112,6 +117,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /admin/tenants/{tenant}/invoice-payments", s.admin(s.invoicePayment))
 	mux.HandleFunc("POST /admin/tenants/{tenant}/ledger/lookup", s.admin(s.ledgerLookup))
 	s.apiRoutes(mux)
+	s.einvoiceRoutes(mux)
 	for _, m := range s.Modules {
 		m.Register(mux, s.admin)
 	}

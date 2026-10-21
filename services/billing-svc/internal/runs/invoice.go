@@ -71,8 +71,11 @@ func (m *Manager) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) e
 			saga.InvoiceData(invoiceID, inv.CustomerID, inv.CustomerExternalID, number, inv.PeriodID, inv.Currency, inv.TotalMinor, "open")); err != nil {
 			return err
 		}
-		_, err = m.cfg.Engine.Start(ctx, tx, tenantID, invoiceID)
-		return err
+		sagaID, err := m.cfg.Engine.Start(ctx, tx, tenantID, invoiceID)
+		if err != nil {
+			return err
+		}
+		return m.cfg.Engine.EInvoiceOnFinalize(ctx, tx, tenantID, sagaID)
 	})
 }
 

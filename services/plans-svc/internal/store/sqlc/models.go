@@ -54,16 +54,19 @@ type Coupon struct {
 }
 
 type Customer struct {
-	TenantID        uuid.UUID
-	ID              uuid.UUID
-	ExternalID      string
-	Name            string
-	Email           string
-	PaymentMethod   *string
-	CreatedAt       time.Time
-	Country         *string
-	BillingCurrency *string
-	Address         json.RawMessage
+	TenantID           uuid.UUID
+	ID                 uuid.UUID
+	ExternalID         string
+	Name               string
+	Email              string
+	PaymentMethod      *string
+	CreatedAt          time.Time
+	Country            *string
+	BillingCurrency    *string
+	Address            json.RawMessage
+	TaxID              string
+	TaxOffice          string
+	EInvoiceRegistered bool
 }
 
 type Meter struct {
@@ -237,6 +240,8 @@ type Tenant struct {
 	AppID              uuid.UUID
 	Address            json.RawMessage
 	BankTransfer       json.RawMessage
+	Legal              json.RawMessage
+	EInvoiceOn         string
 }
 
 type TenantMailSetting struct {

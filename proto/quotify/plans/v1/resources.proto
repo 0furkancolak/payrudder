@@ -46,6 +46,17 @@ message BankTransferDetails {
   bool is_default = 7;
 }
 
+// LegalInfo is the seller's company data printed on its invoices and sent in e-invoices (docs/phases/phase-30-e-invoice.md). Every part is optional.
+message LegalInfo {
+  string legal_name = 1;
+  // VKN or TCKN in Turkey, the VAT id (with country prefix) in the EU.
+  string tax_id = 2;
+  // Turkey's vergi dairesi.
+  string tax_office = 3;
+  string mersis_no = 4;
+  string trade_registry_no = 5;
+}
+
 // Account is a company using Quotify. It has apps; each app has a sandbox and a live tenant.
 message Account {
   string id = 1;
@@ -89,6 +100,10 @@ message Tenant {
   Address address = 12;
   // The bank transfer account printed on invoices paid by transfer; unset when the tenant has none.
   BankTransferDetails bank_transfer = 13;
+  // The company data of the seller, for e-invoices.
+  LegalInfo legal = 14;
+  // When an invoice becomes an e-invoice: "off" (default), "finalized" or "paid". Credit notes follow the invoice.
+  string e_invoice_on = 15;
 }
 
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.
@@ -123,6 +138,10 @@ message Customer {
   string billing_currency = 8;
   // The billing address printed on the customer's invoices. Its country is the customer's country.
   Address address = 9;
+  // The customer's tax id (VKN/TCKN, VAT id), tax office and whether it is registered for e-fatura; used on e-invoices.
+  string tax_id = 10;
+  string tax_office = 11;
+  bool e_invoice_registered = 12;
 }
 
 enum Aggregation {

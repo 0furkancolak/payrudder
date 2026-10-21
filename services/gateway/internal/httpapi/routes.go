@@ -43,6 +43,7 @@ func (s *Server) ingestAndCatalogRoutes() []Route {
 		{"GET", "/v1/customers/{external_id}/entitlements/{meter}", AccessTenant, ratelimit.ClassRead, s.getEntitlement},
 		{"PUT", "/v1/customers/{external_id}/payment-method", AccessTenant, ratelimit.ClassWrite, s.setPaymentMethod},
 		{"PUT", "/v1/customers/{external_id}/address", AccessTenant, ratelimit.ClassWrite, s.setCustomerAddress},
+		{"PUT", "/v1/customers/{external_id}/tax", AccessTenant, ratelimit.ClassWrite, s.setCustomerTax},
 		// Meters
 		{"POST", "/v1/meters", AccessTenant, ratelimit.ClassWrite, s.createMeter},
 		{"GET", "/v1/meters", AccessTenant, ratelimit.ClassRead, s.listMeters},
@@ -150,6 +151,9 @@ func (s *Server) billingReadRoutes() []Route {
 		{"GET", "/v1/credit-notes", AccessTenant, ratelimit.ClassRead, s.listCreditNotes},
 		{"GET", "/v1/credit-notes/{id}", AccessTenant, ratelimit.ClassRead, s.getCreditNote},
 		{"GET", "/v1/invoices/{id}/pdf", AccessTenant, ratelimit.ClassRead, s.getInvoicePDF},
+		{"GET", "/v1/e-invoices", AccessTenant, ratelimit.ClassRead, s.listEInvoices},
+		{"GET", "/v1/e-invoices/{id}", AccessTenant, ratelimit.ClassRead, s.getEInvoice},
+		{"GET", "/v1/e-invoices/{id}/files/{kind}", AccessTenant, ratelimit.ClassRead, s.getEInvoiceFile},
 		// Sandbox
 		{"POST", "/v1/sandbox/close-period", AccessSandbox, ratelimit.ClassWrite, s.sandboxClosePeriod},
 		{"POST", "/v1/sandbox/customers/{external_id}/payment-scenario", AccessSandbox, ratelimit.ClassWrite, s.setPaymentScenario},
@@ -219,6 +223,14 @@ func (s *Server) operatorAdminRoutes() []Route {
 		{"POST", "/admin/v1/invoices/{id}/payments", AccessOperator, "", s.adminRecordInvoicePayment},
 		{"POST", "/admin/v1/invoices/{id}/credit-notes", AccessOperator, "", s.adminCreateCreditNote},
 		{"POST", "/admin/v1/credit-notes/{id}/retry-refund", AccessOperator, "", s.adminRetryCreditNoteRefund},
+		{"GET", "/admin/v1/tenants/{tenant_id}/e-invoices", AccessOperator, "", s.adminListEInvoices},
+		{"GET", "/admin/v1/tenants/{tenant_id}/e-invoices/{id}", AccessOperator, "", s.adminGetEInvoice},
+		{"GET", "/admin/v1/tenants/{tenant_id}/e-invoices/{id}/files/{kind}", AccessOperator, "", s.adminGetEInvoiceFile},
+		{"POST", "/admin/v1/tenants/{tenant_id}/e-invoices/{id}/retry", AccessOperator, "", s.adminRetryEInvoice},
+		{"POST", "/admin/v1/tenants/{tenant_id}/e-invoices/{id}/cancel", AccessOperator, "", s.adminCancelEInvoice},
+		{"GET", "/admin/v1/tenants/{tenant_id}/e-invoice-accounts", AccessOperator, "", s.einvoiceAccounts},
+		{"PUT", "/admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}", AccessOperator, "", s.einvoiceAccount},
+		{"DELETE", "/admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}", AccessOperator, "", s.einvoiceAccount},
 	}
 }
 

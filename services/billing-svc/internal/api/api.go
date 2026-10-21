@@ -15,6 +15,8 @@ import (
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/deadletters"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dunning"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices"
+	einvoicecmd "github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/invoices"
 	invoicequery "github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
@@ -41,6 +43,7 @@ type (
 	sagaHandler       = sagas.Handler
 	reratingHandler   = rerating.Handler
 	deadLetterHandler = deadletters.Handler
+	einvoiceHandler   = einvoices.Handler
 	paymentHandler    = payments.Handler
 )
 
@@ -66,11 +69,13 @@ type Server struct {
 	*sagaHandler
 	*reratingHandler
 	*deadLetterHandler
+	*einvoiceHandler
 	*paymentHandler
 }
 
 // New returns the API. app is the billing_app pool, system the billing_system pool.
 func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server {
+	einv := &einvoicecmd.Commands{Pool: system, Parties: mgr}
 	return &Server{
 		invoiceHandler:    invoices.New(app),
 		creditNoteHandler: creditnotes.New(app, system, mgr),
@@ -82,6 +87,7 @@ func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server
 		sagaHandler:       sagas.New(system, eng),
 		reratingHandler:   rerating.New(mgr),
 		deadLetterHandler: deadletters.New(),
+		einvoiceHandler:   einvoices.New(app, system, einv),
 		paymentHandler:    payments.New(system, eng),
 	}
 }
@@ -102,5 +108,6 @@ func (s *Server) WithDemo(demo bool) *Server {
 func (s *Server) WithPDFs(p PDFSigner) *Server {
 	s.invoiceHandler.WithPDFs(p)
 	s.hostedHandler.WithPDFs(p)
+	s.WithFiles(p)
 	return s
 }

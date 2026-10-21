@@ -286,6 +286,18 @@ func (s *Server) UpdateTenantSettings(ctx context.Context, req *plansv1.UpdateTe
 		}
 		params.Address = convert.AddressJSON(req.GetAddress())
 	}
+	if req.GetLegal() != nil {
+		if err := domain.ValidateLegal(req.GetLegal()); err != nil {
+			return nil, err
+		}
+		params.Legal = convert.LegalJSON(req.GetLegal())
+	}
+	if v := req.GetEInvoiceOn(); v != "" {
+		if err := domain.ValidateEInvoiceOn(v); err != nil {
+			return nil, err
+		}
+		params.EInvoiceOn = &v
+	}
 	if d := req.GetBankTransfer(); d != nil {
 		if req.GetClearBankTransfer() {
 			return nil, domain.Invalid("clear_bank_transfer", "cannot be combined with bank_transfer")

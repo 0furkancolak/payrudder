@@ -309,3 +309,11 @@ Invoice lines can be `DISCOUNT` (a coupon, negative) or `TAX`, and carry `servic
 ## As built: prepaid credits (Phase 35)
 
 Module `credits`. `credit_packs` (what a tenant sells), `credit_lots` (one per grant: `granted`, `remaining`, optional `expires_at`, `source` purchase/promo/manual, `source_ref` unique per payment) and the append-only `credit_ledger` (`grant`, `consume`, `expire`, signed `amount`, optional `idempotency_key`). A customer's credits change under `pg_advisory_xact_lock`; `ConsumeCredits` walks the spendable lots by expiry (never-expiring last), refuses with `billing.credits.insufficient` and takes nothing when they do not cover the amount, and returns the first result for a repeated key. The sweeper calls `ExpireDue` on the system pool. Details and limits: [phase 35](../phases/phase-35-credits.md).
+
+## As built: e-documents (Phase 30)
+
+The `einvoices` module (`command/`, `query/`, `handler.go`) owns `einvoice_documents`. `saga.EnqueueEInvoice` creates a document and its `IssueEInvoice` command in the transaction of
+`Finalize` (tenant setting `e_invoice_on = finalized`), of the saga reaching `Paid` (`paid`) and of `CreateCreditNote`; the unique `(tenant, kind, source)` makes a replay a no-op. The reply consumer applies
+the worker's `EInvoiceResult` (`einvoicecmd.ApplyResult`); the existing sweeper also calls `einvoicecmd.Commands.Sweep`, which sends a retry whose backoff (1 m, 5 m, 30 m, 2 h, 12 h) has passed and a command
+nobody answered in 10 minutes, and fails a document after its sixth automatic attempt. `RetryEInvoice` and `CancelEInvoice` are operator RPCs; `GetEInvoice`, `ListEInvoices` and `GetEInvoiceFileUrl`
+serve the tenant (RLS). Snapshots now freeze the seller and buyer parties and `e_invoice_on` with the draft. See [phase 30](../phases/phase-30-e-invoice.md).

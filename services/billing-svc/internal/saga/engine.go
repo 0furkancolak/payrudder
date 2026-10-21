@@ -60,6 +60,10 @@ type Snapshot struct {
 	// The postal addresses as printed lines, frozen when the draft was made.
 	SellerAddress   []string `json:"seller_address,omitempty"`
 	CustomerAddress []string `json:"customer_address,omitempty"`
+	// E-invoicing (phase 30): the tenant's e_invoice_on and the parties, frozen with the draft. Empty when the tenant does not use it.
+	EInvoiceOn string `json:"e_invoice_on,omitempty"`
+	Seller     *Party `json:"seller,omitempty"`
+	Buyer      *Party `json:"buyer,omitempty"`
 	// Collection is "link" for an invoice the customer pays through a payment link: the saga waits for the payment instead of charging a stored method.
 	Collection string `json:"collection,omitempty"`
 	// SkipMail: no mail goes to the customer (a guest paying an ad-hoc link has no address on file).
@@ -384,6 +388,9 @@ func (e *Engine) announce(ctx context.Context, tx pgx.Tx, s *saga, next State, c
 	}
 	switch next {
 	case Paid:
+		if err := e.invoiceEInvoice(ctx, tx, s, "paid"); err != nil {
+			return err
+		}
 		if err := e.linksPaid(ctx, tx, s, now); err != nil {
 			return err
 		}

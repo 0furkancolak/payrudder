@@ -33,7 +33,7 @@ func TestKeyTravelsWithTheStatus(t *testing.T) {
 	}
 }
 
-var keyRe = regexp.MustCompile(`errkey\.Newf?\(\s*codes\.\w+,\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)+)"`)
+var keyRe = regexp.MustCompile(`errkey\.(?:Newf?\(\s*codes\.\w+,|Key\()\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)+)"`)
 var shapeRe = regexp.MustCompile(`^[a-z0-9_]+(\.[a-z0-9_]+){1,3}$`)
 
 // TestEveryKeyIsListed finds the keys the code returns and compares them with docs/error-keys.md, so that the list a client developer reads is the list the

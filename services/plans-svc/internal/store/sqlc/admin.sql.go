@@ -44,7 +44,7 @@ func (q *Queries) GetApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error) {
 }
 
 const getTenant = `-- name: GetTenant :one
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer FROM tenants WHERE id = $1
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on FROM tenants WHERE id = $1
 `
 
 func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
@@ -64,6 +64,8 @@ func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
 		&i.AppID,
 		&i.Address,
 		&i.BankTransfer,
+		&i.Legal,
+		&i.EInvoiceOn,
 	)
 	return i, err
 }
@@ -154,7 +156,7 @@ func (q *Queries) InsertApp(ctx context.Context, arg InsertAppParams) (App, erro
 const insertTenant = `-- name: InsertTenant :one
 INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on
 `
 
 type InsertTenantParams struct {
@@ -196,6 +198,8 @@ func (q *Queries) InsertTenant(ctx context.Context, arg InsertTenantParams) (Ten
 		&i.AppID,
 		&i.Address,
 		&i.BankTransfer,
+		&i.Legal,
+		&i.EInvoiceOn,
 	)
 	return i, err
 }
@@ -231,7 +235,7 @@ func (q *Queries) ListAccountApps(ctx context.Context, accountID uuid.UUID) ([]A
 }
 
 const listAccountTenants = `-- name: ListAccountTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer FROM tenants WHERE account_id = $1 ORDER BY environment DESC
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on FROM tenants WHERE account_id = $1 ORDER BY environment DESC
 `
 
 func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) ([]Tenant, error) {
@@ -257,6 +261,8 @@ func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) (
 			&i.AppID,
 			&i.Address,
 			&i.BankTransfer,
+			&i.Legal,
+			&i.EInvoiceOn,
 		); err != nil {
 			return nil, err
 		}
@@ -269,7 +275,7 @@ func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) (
 }
 
 const listTenants = `-- name: ListTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer FROM tenants WHERE id > $1::uuid ORDER BY id LIMIT $2::int
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on FROM tenants WHERE id > $1::uuid ORDER BY id LIMIT $2::int
 `
 
 type ListTenantsParams struct {
@@ -300,6 +306,8 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 			&i.AppID,
 			&i.Address,
 			&i.BankTransfer,
+			&i.Legal,
+			&i.EInvoiceOn,
 		); err != nil {
 			return nil, err
 		}
@@ -371,16 +379,20 @@ UPDATE tenants
 SET grace_period = COALESCE($1::interval, grace_period),
     tier         = COALESCE($2::text, tier),
     address      = COALESCE($3::jsonb, address),
-    bank_transfer = CASE WHEN $4::bool THEN '{}'::jsonb ELSE COALESCE($5::jsonb, bank_transfer) END,
-    invoice_logo_asset_id = CASE WHEN $6::bool THEN NULL ELSE COALESCE($7::uuid, invoice_logo_asset_id) END
-WHERE id = $8
-RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer
+    legal        = COALESCE($4::jsonb, legal),
+    e_invoice_on = COALESCE($5::text, e_invoice_on),
+    bank_transfer = CASE WHEN $6::bool THEN '{}'::jsonb ELSE COALESCE($7::jsonb, bank_transfer) END,
+    invoice_logo_asset_id = CASE WHEN $8::bool THEN NULL ELSE COALESCE($9::uuid, invoice_logo_asset_id) END
+WHERE id = $10
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on
 `
 
 type UpdateTenantSettingsParams struct {
 	GracePeriod        pgtype.Interval
 	Tier               *string
 	Address            []byte
+	Legal              []byte
+	EInvoiceOn         *string
 	ClearBankTransfer  bool
 	BankTransfer       []byte
 	ClearLogo          bool
@@ -393,6 +405,8 @@ func (q *Queries) UpdateTenantSettings(ctx context.Context, arg UpdateTenantSett
 		arg.GracePeriod,
 		arg.Tier,
 		arg.Address,
+		arg.Legal,
+		arg.EInvoiceOn,
 		arg.ClearBankTransfer,
 		arg.BankTransfer,
 		arg.ClearLogo,
@@ -414,6 +428,8 @@ func (q *Queries) UpdateTenantSettings(ctx context.Context, arg UpdateTenantSett
 		&i.AppID,
 		&i.Address,
 		&i.BankTransfer,
+		&i.Legal,
+		&i.EInvoiceOn,
 	)
 	return i, err
 }

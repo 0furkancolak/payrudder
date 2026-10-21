@@ -97,6 +97,10 @@ message UpdateTenantSettingsRequest {
   // Replaces the bank transfer details printed on invoices (payments-worker sets them with the tenant's bank transfer account); unset leaves them unchanged.
   BankTransferDetails bank_transfer = 7;
   bool clear_bank_transfer = 8;
+  // Replaces the seller's company data; unset leaves it unchanged.
+  LegalInfo legal = 9;
+  // "off", "finalized" or "paid"; empty leaves it unchanged.
+  string e_invoice_on = 10;
 }
 
 message UpdateTenantSettingsResponse {

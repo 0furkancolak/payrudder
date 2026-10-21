@@ -329,6 +329,7 @@
       "reports": "Reports",
       "pricing": "Coupons & tax",
       "webhooks": "Webhooks",
+      "einvoice": "E-invoice",
       "paymentLinks": "Payment links",
       "mail": "Mail",
       "apps": "Apps",
@@ -887,6 +888,118 @@
       }
     }
   },
+  "einvoice": {
+    "title": "E-invoice",
+    "confirmCancel": "Cancel this legal e-document? This cannot be undone.",
+    "retry": "Retry",
+    "cancel": "Cancel document",
+    "downloadXml": "Download XML",
+    "downloadPdf": "Download PDF",
+    "attempts": "Attempt {count}",
+    "nextAttempt": "next try {at}",
+    "issuedAt": "Issued {at}",
+    "status": {
+      "pending": "Pending",
+      "issued": "Issued",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "type": {
+      "e-fatura": "e-Fatura",
+      "e-arsiv": "e-Arşiv",
+      "peppol": "Peppol"
+    },
+    "settings": {
+      "title": "E-invoicing",
+      "hint": "Turn invoices and credit notes into legal e-documents (e-fatura, e-arşiv, Peppol) sent through your integrator. The company data below is printed on every document.",
+      "formLabel": "e-invoice settings",
+      "on": "Issue e-documents",
+      "onOff": "Off",
+      "onFinalized": "When an invoice is finalized",
+      "onPaid": "When an invoice is paid",
+      "legalName": "Legal name",
+      "taxId": "Tax id (VKN or VAT id)",
+      "taxOffice": "Tax office",
+      "mersis": "MERSIS number",
+      "tradeRegistry": "Trade registry number",
+      "save": "Save settings",
+      "saved": "Saved.",
+      "confirmRemove": "Remove the {provider} account ({environment})?"
+    },
+    "account": {
+      "title": "Integrator account",
+      "hint": "Credentials are stored encrypted and never shown again. The sandbox environment can only use the mock provider.",
+      "provider": "Provider",
+      "environment": "Environment",
+      "mode": "Mode",
+      "credentials": "Credentials",
+      "updated": "Updated",
+      "stored": "Stored",
+      "none": "None",
+      "empty": "No e-invoice account yet.",
+      "formLabel": "e-invoice account",
+      "add": "Add or replace an account",
+      "modes": {
+        "test": "Test",
+        "production": "Production"
+      },
+      "sandboxHint": "The sandbox always uses the mock provider: documents are accepted with a fake legal number.",
+      "apiKey": "API key",
+      "baseUrl": "Base URL (optional)",
+      "webhookUrl": "Webhook URL (https)",
+      "webhookSecret": "Signing secret",
+      "neverShown": "The secret is sent once and cannot be read back.",
+      "save": "Save account",
+      "saved": "Account saved."
+    },
+    "customer": {
+      "title": "Tax data",
+      "edit": "Tax data",
+      "editing": "Tax data of {id}",
+      "taxId": "Tax id (VKN/TCKN or VAT id)",
+      "taxOffice": "Tax office",
+      "registered": "Registered for e-fatura",
+      "save": "Save tax data"
+    },
+    "errorKeys": {
+      "einvoice": {
+        "account": {
+          "missing": "The tenant has no e-invoice account for this environment.",
+          "invalid": "The e-invoice account settings are not valid.",
+          "sandbox_mock_only": "The sandbox environment can only use the mock provider."
+        },
+        "seller": {
+          "incomplete": "The company legal data (name, tax id) is incomplete."
+        },
+        "buyer": {
+          "incomplete": "The customer's tax data is incomplete."
+        },
+        "document": {
+          "not_found": "The e-document does not exist.",
+          "not_failed": "Only a failed e-document can be retried.",
+          "not_issued": "Only an issued e-document can be cancelled."
+        },
+        "cancel": {
+          "unsupported": "This provider cannot cancel the document."
+        },
+        "file": {
+          "not_ready": "The file is not available yet."
+        },
+        "provider": {
+          "rejected": "The integrator rejected the document.",
+          "unavailable": "The integrator could not be reached; it will be tried again."
+        },
+        "setting": {
+          "invalid": "The e-invoice setting is not valid."
+        }
+      },
+      "plans": {
+        "customer": {
+          "tax_invalid": "The customer's tax data is not valid."
+        }
+      }
+    }
+  },
   "apps": {
     "new": "New app",
     "hint": "An app is one of the account's applications, with its own sandbox and live environment, keys, customers and plans. Currency, time zone and grace period are chosen here and cannot be changed later.",
@@ -1044,6 +1157,9 @@
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
         "too_many_endpoints": "The limit of webhook endpoints is reached. Delete one first."
+      },
+      "customer": {
+        "tax_invalid": "The customer's tax id or tax office is not valid."
       }
     },
     "common": {
@@ -1074,6 +1190,37 @@
         "nothing_pending": "There is no pending transfer to reject.",
         "bad_outcome": "The outcome must be rejected or expired.",
         "unavailable": "The payments service is not available right now. Try again in a moment."
+      }
+    },
+    "einvoice": {
+      "account": {
+        "invalid": "The e-invoice account settings are not valid for this provider.",
+        "missing": "This tenant has no e-invoice account for this environment. Set one up first.",
+        "sandbox_mock_only": "A sandbox environment can only use the mock e-invoice provider."
+      },
+      "buyer": {
+        "incomplete": "The customer's tax data is incomplete: add the tax id (and tax office in Turkey) before issuing an e-invoice."
+      },
+      "cancel": {
+        "unsupported": "This provider cannot cancel an issued e-invoice. Issue a credit note instead."
+      },
+      "document": {
+        "not_failed": "Only an e-document that failed can be retried.",
+        "not_found": "This e-document does not exist.",
+        "not_issued": "Only an issued e-document can be cancelled."
+      },
+      "file": {
+        "not_ready": "The file of this e-document is not available yet."
+      },
+      "provider": {
+        "rejected": "The e-invoice provider rejected the document.",
+        "unavailable": "The e-invoice provider is not reachable right now. It will be tried again."
+      },
+      "seller": {
+        "incomplete": "The seller's company data is incomplete: add the legal name and tax id in the e-invoice settings."
+      },
+      "setting": {
+        "invalid": "The e-invoice trigger must be off, finalized or paid."
       }
     }
   }

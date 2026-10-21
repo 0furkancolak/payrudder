@@ -34,6 +34,11 @@ UPDATE customers SET address = @address::jsonb, country = COALESCE(sqlc.narg(cou
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
+-- name: SetCustomerTax :one
+UPDATE customers SET tax_id = @tax_id, tax_office = @tax_office, e_invoice_registered = @e_invoice_registered
+WHERE tenant_id = app_tenant_id() AND external_id = @external_id
+RETURNING *;
+
 -- name: LatestMeter :one
 SELECT * FROM meters WHERE tenant_id = app_tenant_id() AND code = $1 ORDER BY version DESC LIMIT 1;
 

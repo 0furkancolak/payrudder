@@ -28,6 +28,8 @@ UPDATE tenants
 SET grace_period = COALESCE(sqlc.narg(grace_period)::interval, grace_period),
     tier         = COALESCE(sqlc.narg(tier)::text, tier),
     address      = COALESCE(sqlc.narg(address)::jsonb, address),
+    legal        = COALESCE(sqlc.narg(legal)::jsonb, legal),
+    e_invoice_on = COALESCE(sqlc.narg(e_invoice_on)::text, e_invoice_on),
     bank_transfer = CASE WHEN @clear_bank_transfer::bool THEN '{}'::jsonb ELSE COALESCE(sqlc.narg(bank_transfer)::jsonb, bank_transfer) END,
     invoice_logo_asset_id = CASE WHEN @clear_logo::bool THEN NULL ELSE COALESCE(sqlc.narg(invoice_logo_asset_id)::uuid, invoice_logo_asset_id) END
 WHERE id = @id

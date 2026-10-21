@@ -19,7 +19,12 @@ import (
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/blob"
 	"github.com/0furkancolak/quotify/pkg/config"
+	"github.com/0furkancolak/quotify/pkg/einvoice"
+	"github.com/0furkancolak/quotify/pkg/einvoice/mock"
+	"github.com/0furkancolak/quotify/pkg/einvoice/nilvera"
+	einvoicewebhook "github.com/0furkancolak/quotify/pkg/einvoice/webhook"
 	"github.com/0furkancolak/quotify/pkg/grpcx"
 	"github.com/0furkancolak/quotify/pkg/health"
 	"github.com/0furkancolak/quotify/pkg/logx"
@@ -33,6 +38,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/secretbox"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/pkg/workerx"
+	einvoiceworker "github.com/0furkancolak/quotify/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/transfers"
@@ -68,6 +74,15 @@ type Config struct {
 	BillingAddr string `env:"QUOTIFY_BILLING_ADDR"`
 	// InternalToken is the shared secret the gateway sends on /admin calls. Empty disables them.
 	InternalToken string `env:"PAYMENTS_INTERNAL_TOKEN"`
+	// The object storage e-invoices (UBL, PDF) are kept in: the invoices bucket invoice-worker writes to. Without S3_ACCESS_KEY documents are issued but have no files.
+	S3Endpoint  string `env:"S3_ENDPOINT"`
+	S3Region    string `env:"S3_REGION"`
+	S3Bucket    string `env:"S3_BUCKET"`
+	S3AccessKey string `env:"S3_ACCESS_KEY"`
+	S3SecretKey string `env:"S3_SECRET_KEY"`
+	S3ForcePath bool   `env:"S3_FORCE_PATH_STYLE"`
+	// EInvoiceAllowPrivateURLs lets the nilvera base_url and the webhook adapter's URL be http:// or on private addresses. For development and tests; never in production.
+	EInvoiceAllowPrivateURLs bool `env:"EINVOICE_ALLOW_PRIVATE_URLS"`
 	// TransferWindowDays is how long a bank transfer waits for its money (1 to 90 days) when the tenant's account does not say. After that the payment counts
 	// as declined and the tenant's dunning applies.
 	TransferWindowDays int `env:"PAYMENTS_TRANSFER_WINDOW_DAYS"`
@@ -157,18 +172,22 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	registry := payments.NewRegistry()
 	iyzico.Register(registry)
 	paddle.Register(registry)
+	einvoices := newEInvoiceRegistry(cfg)
+	if err := wireEInvoice(cfg, pool, h, einvoices, log); err != nil {
+		return err
+	}
 	banktransfer.Register(registry)
 	var httpHandler http.Handler
 	if cfg.SecretsKey != "" {
 		var closeConns func()
-		if httpHandler, closeConns, err = webhookHandler(*cfg, pool, h, registry, log); err != nil {
+		if httpHandler, closeConns, err = webhookHandler(*cfg, pool, h, registry, einvoices, log); err != nil {
 			return err
 		}
 		defer closeConns()
 	}
 	w := &workerx.Worker{
 		URL: cfg.RabbitMQURL, Prefetch: cfg.Prefetch, Handler: h, Inbox: h.Attempts, Log: log,
-		Queues: []string{rabbitx.QueuePaymentCharge, rabbitx.QueuePaymentRefund, rabbitx.QueuePaymentStatus},
+		Queues: []string{rabbitx.QueuePaymentCharge, rabbitx.QueuePaymentRefund, rabbitx.QueuePaymentStatus, rabbitx.QueueEInvoiceIssue},
 	}
 
 	hh.AddCheck("postgres", pool.Ping)
@@ -208,7 +227,7 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 }
 
 // webhookHandler builds the provider-account, webhook and operator server. The returned func closes its gRPC connections.
-func webhookHandler(cfg Config, pool *pgxpool.Pool, h *handler.Handler, registry *payments.Registry, log *slog.Logger) (http.Handler, func(), error) {
+func webhookHandler(cfg Config, pool *pgxpool.Pool, h *handler.Handler, registry *payments.Registry, einvoices *einvoice.Registry, log *slog.Logger) (http.Handler, func(), error) {
 	key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
 	box, err := secretbox.New(key)
 	if err != nil {
@@ -253,6 +272,7 @@ func webhookHandler(cfg Config, pool *pgxpool.Pool, h *handler.Handler, registry
 		Transfers: h.Transfers, Accounts: h.Resolver, DefaultWindow: h.TransferWindow}}}
 	return (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
 		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Objects: store.Objects{DB: pool}, Log: log, Token: cfg.InternalToken,
+		EInvoiceAccounts: store.EInvoiceAccounts{DB: pool, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
 		Modules: []webhook.RouteRegistrar{transferHandler}}).Handler(), closeConns, nil
 }
 
@@ -270,4 +290,38 @@ func serveHTTP(ctx context.Context, addr string, h http.Handler, log *slog.Logge
 		defer cancel()
 		return srv.Shutdown(c)
 	}
+}
+
+// newEInvoiceRegistry registers the e-invoice adapters: the mock, Nilvera and the generic webhook.
+func newEInvoiceRegistry(cfg *Config) *einvoice.Registry {
+	r := einvoice.NewRegistry()
+	mock.Register(r)
+	nilvera.RegisterWithOptions(r, nilvera.Options{AllowPrivate: cfg.EInvoiceAllowPrivateURLs})
+	einvoicewebhook.RegisterWithOptions(r, einvoicewebhook.Options{AllowPrivate: cfg.EInvoiceAllowPrivateURLs})
+	return r
+}
+
+// wireEInvoice gives the command handler its e-invoice side. Sandbox documents need only the database (the mock); live ones also need the sealed accounts
+// (QUOTIFY_SECRETS_KEY); files need object storage.
+func wireEInvoice(cfg *Config, pool *pgxpool.Pool, h *handler.Handler, registry *einvoice.Registry, log *slog.Logger) error {
+	ew := &einvoiceworker.Handler{Registry: registry, Issuances: store.EInvoiceIssuances{DB: pool}, Log: log, Demo: cfg.Demo}
+	if cfg.SecretsKey != "" {
+		key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
+		box, err := secretbox.New(key)
+		if err != nil {
+			return err
+		}
+		ew.Accounts = store.EInvoiceAccounts{DB: pool, Box: box}
+	}
+	if cfg.S3AccessKey != "" {
+		bs, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
+		if err != nil {
+			return err
+		}
+		ew.Blobs = bs
+	} else {
+		log.Warn("S3_ACCESS_KEY is not set: e-invoices are issued without stored UBL/PDF files")
+	}
+	h.EInvoice = ew
+	return nil
 }

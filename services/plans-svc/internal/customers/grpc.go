@@ -34,6 +34,14 @@ func (h *Handler) SetCustomerAddress(ctx context.Context, req *plansv1.SetCustom
 	return &plansv1.SetCustomerAddressResponse{Customer: c}, nil
 }
 
+func (h *Handler) SetCustomerTax(ctx context.Context, req *plansv1.SetCustomerTaxRequest) (*plansv1.SetCustomerTaxResponse, error) {
+	c, err := h.cmd.SetTax(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SetCustomerTaxResponse{Customer: c}, nil
+}
+
 func (h *Handler) SetPaymentMethod(ctx context.Context, req *plansv1.SetPaymentMethodRequest) (*plansv1.SetPaymentMethodResponse, error) {
 	c, err := h.cmd.SetPaymentMethod(ctx, req)
 	if err != nil {

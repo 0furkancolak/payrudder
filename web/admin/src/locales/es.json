@@ -329,6 +329,7 @@
       "reports": "Informes",
       "pricing": "Cupones e impuestos",
       "webhooks": "Webhooks",
+      "einvoice": "Factura electrónica",
       "paymentLinks": "Enlaces de pago",
       "mail": "Correo",
       "apps": "Apps",
@@ -887,6 +888,118 @@
       }
     }
   },
+  "einvoice": {
+    "title": "Factura electrónica",
+    "confirmCancel": "¿Anular este documento electrónico legal? No se puede deshacer.",
+    "retry": "Reintentar",
+    "cancel": "Anular documento",
+    "downloadXml": "Descargar XML",
+    "downloadPdf": "Descargar PDF",
+    "attempts": "Intento {count}",
+    "nextAttempt": "próximo intento {at}",
+    "issuedAt": "Emitida {at}",
+    "status": {
+      "pending": "Pendiente",
+      "issued": "Emitida",
+      "failed": "Fallida",
+      "cancelled": "Anulada"
+    },
+    "type": {
+      "e-fatura": "e-Fatura",
+      "e-arsiv": "e-Arşiv",
+      "peppol": "Peppol"
+    },
+    "settings": {
+      "title": "Facturación electrónica",
+      "hint": "Convierte facturas y notas de crédito en documentos electrónicos legales (e-fatura, e-arşiv, Peppol) enviados mediante su integrador. Los datos de empresa de abajo aparecen en cada documento.",
+      "formLabel": "ajustes de factura electrónica",
+      "on": "Emitir documentos electrónicos",
+      "onOff": "Desactivado",
+      "onFinalized": "Al finalizar una factura",
+      "onPaid": "Al pagarse una factura",
+      "legalName": "Razón social",
+      "taxId": "Id fiscal (VKN o NIF-IVA)",
+      "taxOffice": "Oficina tributaria",
+      "mersis": "Número MERSIS",
+      "tradeRegistry": "Número de registro mercantil",
+      "save": "Guardar ajustes",
+      "saved": "Guardado.",
+      "confirmRemove": "¿Eliminar la cuenta {provider} ({environment})?"
+    },
+    "account": {
+      "title": "Cuenta del integrador",
+      "hint": "Las credenciales se guardan cifradas y no se vuelven a mostrar. El entorno sandbox solo puede usar el proveedor mock.",
+      "provider": "Proveedor",
+      "environment": "Entorno",
+      "mode": "Modo",
+      "credentials": "Credenciales",
+      "updated": "Actualizada",
+      "stored": "Guardadas",
+      "none": "Ninguna",
+      "empty": "Aún no hay cuenta de factura electrónica.",
+      "formLabel": "cuenta de factura electrónica",
+      "add": "Añadir o reemplazar una cuenta",
+      "modes": {
+        "test": "Prueba",
+        "production": "Producción"
+      },
+      "sandboxHint": "El sandbox siempre usa el proveedor mock: los documentos se aceptan con un número legal ficticio.",
+      "apiKey": "Clave de API",
+      "baseUrl": "URL base (opcional)",
+      "webhookUrl": "URL del webhook (https)",
+      "webhookSecret": "Secreto de firma",
+      "neverShown": "El secreto se envía una vez y no se puede volver a leer.",
+      "save": "Guardar cuenta",
+      "saved": "Cuenta guardada."
+    },
+    "customer": {
+      "title": "Datos fiscales",
+      "edit": "Datos fiscales",
+      "editing": "Datos fiscales de {id}",
+      "taxId": "Id fiscal (VKN/TCKN o NIF-IVA)",
+      "taxOffice": "Oficina tributaria",
+      "registered": "Registrado en e-fatura",
+      "save": "Guardar datos fiscales"
+    },
+    "errorKeys": {
+      "einvoice": {
+        "account": {
+          "missing": "El inquilino no tiene cuenta de factura electrónica para este entorno.",
+          "invalid": "Los ajustes de la cuenta no son válidos.",
+          "sandbox_mock_only": "El entorno sandbox solo puede usar el proveedor mock."
+        },
+        "seller": {
+          "incomplete": "Los datos legales de la empresa (nombre, id fiscal) están incompletos."
+        },
+        "buyer": {
+          "incomplete": "Los datos fiscales del cliente están incompletos."
+        },
+        "document": {
+          "not_found": "El documento electrónico no existe.",
+          "not_failed": "Solo se puede reintentar un documento fallido.",
+          "not_issued": "Solo se puede anular un documento emitido."
+        },
+        "cancel": {
+          "unsupported": "Este proveedor no puede anular el documento."
+        },
+        "file": {
+          "not_ready": "El archivo aún no está disponible."
+        },
+        "provider": {
+          "rejected": "El integrador rechazó el documento.",
+          "unavailable": "No se pudo contactar con el integrador; se reintentará."
+        },
+        "setting": {
+          "invalid": "El ajuste de factura electrónica no es válido."
+        }
+      },
+      "plans": {
+        "customer": {
+          "tax_invalid": "Los datos fiscales del cliente no son válidos."
+        }
+      }
+    }
+  },
   "apps": {
     "new": "Nueva app",
     "hint": "Una app es una de las aplicaciones de la cuenta, con su propio entorno de pruebas y en producción, claves, clientes y planes. La moneda, la zona horaria y el periodo de gracia se eligen aquí y no se pueden cambiar después.",
@@ -1044,6 +1157,9 @@
       "webhook": {
         "not_configured": "Los webhooks no están configurados en este despliegue (falta la clave de secretos).",
         "too_many_endpoints": "Se alcanzó el límite de endpoints de webhook. Elimine uno primero."
+      },
+      "customer": {
+        "tax_invalid": "El identificador fiscal o la oficina fiscal del cliente no es válido."
       }
     },
     "common": {
@@ -1074,6 +1190,37 @@
         "nothing_pending": "No hay ninguna transferencia pendiente que rechazar.",
         "bad_outcome": "El resultado debe ser rechazada o caducada.",
         "unavailable": "El servicio de pagos no está disponible ahora. Inténtelo de nuevo en un momento."
+      }
+    },
+    "einvoice": {
+      "account": {
+        "invalid": "La configuración de la cuenta de factura electrónica no es válida para este proveedor.",
+        "missing": "Este tenant no tiene cuenta de factura electrónica para este entorno. Configure una primero.",
+        "sandbox_mock_only": "Un entorno sandbox solo puede usar el proveedor simulado de factura electrónica."
+      },
+      "buyer": {
+        "incomplete": "Los datos fiscales del cliente están incompletos: añada el identificador fiscal (y la oficina fiscal en Turquía) antes de emitir una factura electrónica."
+      },
+      "cancel": {
+        "unsupported": "Este proveedor no puede anular una factura electrónica emitida. Emita una nota de crédito en su lugar."
+      },
+      "document": {
+        "not_failed": "Solo se puede reintentar un documento electrónico que falló.",
+        "not_found": "Este documento electrónico no existe.",
+        "not_issued": "Solo se puede anular un documento electrónico emitido."
+      },
+      "file": {
+        "not_ready": "El archivo de este documento electrónico aún no está disponible."
+      },
+      "provider": {
+        "rejected": "El proveedor de factura electrónica rechazó el documento.",
+        "unavailable": "El proveedor de factura electrónica no está disponible ahora. Se volverá a intentar."
+      },
+      "seller": {
+        "incomplete": "Los datos de la empresa del vendedor están incompletos: añada la razón social y el identificador fiscal en los ajustes de factura electrónica."
+      },
+      "setting": {
+        "invalid": "El disparador de la factura electrónica debe ser off, finalized o paid."
       }
     }
   }

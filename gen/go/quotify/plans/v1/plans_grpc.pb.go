@@ -25,6 +25,7 @@ const (
 	PlansService_ListCustomers_FullMethodName                    = "/quotify.plans.v1.PlansService/ListCustomers"
 	PlansService_SetPaymentMethod_FullMethodName                 = "/quotify.plans.v1.PlansService/SetPaymentMethod"
 	PlansService_SetCustomerAddress_FullMethodName               = "/quotify.plans.v1.PlansService/SetCustomerAddress"
+	PlansService_SetCustomerTax_FullMethodName                   = "/quotify.plans.v1.PlansService/SetCustomerTax"
 	PlansService_CreateMeter_FullMethodName                      = "/quotify.plans.v1.PlansService/CreateMeter"
 	PlansService_GetMeter_FullMethodName                         = "/quotify.plans.v1.PlansService/GetMeter"
 	PlansService_ListMeters_FullMethodName                       = "/quotify.plans.v1.PlansService/ListMeters"
@@ -85,6 +86,8 @@ type PlansServiceClient interface {
 	SetPaymentMethod(ctx context.Context, in *SetPaymentMethodRequest, opts ...grpc.CallOption) (*SetPaymentMethodResponse, error)
 	// SetCustomerAddress replaces the customer's billing address. An empty address clears it (the country is kept unless the address names one).
 	SetCustomerAddress(ctx context.Context, in *SetCustomerAddressRequest, opts ...grpc.CallOption) (*SetCustomerAddressResponse, error)
+	// SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
+	SetCustomerTax(ctx context.Context, in *SetCustomerTaxRequest, opts ...grpc.CallOption) (*SetCustomerTaxResponse, error)
 	// CreateMeter creates version 1 of a code, or the next version of an existing code.
 	CreateMeter(ctx context.Context, in *CreateMeterRequest, opts ...grpc.CallOption) (*CreateMeterResponse, error)
 	// GetMeter returns the latest version of a code.
@@ -220,6 +223,16 @@ func (c *plansServiceClient) SetCustomerAddress(ctx context.Context, in *SetCust
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetCustomerAddressResponse)
 	err := c.cc.Invoke(ctx, PlansService_SetCustomerAddress_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) SetCustomerTax(ctx context.Context, in *SetCustomerTaxRequest, opts ...grpc.CallOption) (*SetCustomerTaxResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetCustomerTaxResponse)
+	err := c.cc.Invoke(ctx, PlansService_SetCustomerTax_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -671,6 +684,8 @@ type PlansServiceServer interface {
 	SetPaymentMethod(context.Context, *SetPaymentMethodRequest) (*SetPaymentMethodResponse, error)
 	// SetCustomerAddress replaces the customer's billing address. An empty address clears it (the country is kept unless the address names one).
 	SetCustomerAddress(context.Context, *SetCustomerAddressRequest) (*SetCustomerAddressResponse, error)
+	// SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
+	SetCustomerTax(context.Context, *SetCustomerTaxRequest) (*SetCustomerTaxResponse, error)
 	// CreateMeter creates version 1 of a code, or the next version of an existing code.
 	CreateMeter(context.Context, *CreateMeterRequest) (*CreateMeterResponse, error)
 	// GetMeter returns the latest version of a code.
@@ -769,6 +784,9 @@ func (UnimplementedPlansServiceServer) SetPaymentMethod(context.Context, *SetPay
 }
 func (UnimplementedPlansServiceServer) SetCustomerAddress(context.Context, *SetCustomerAddressRequest) (*SetCustomerAddressResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetCustomerAddress not implemented")
+}
+func (UnimplementedPlansServiceServer) SetCustomerTax(context.Context, *SetCustomerTaxRequest) (*SetCustomerTaxResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCustomerTax not implemented")
 }
 func (UnimplementedPlansServiceServer) CreateMeter(context.Context, *CreateMeterRequest) (*CreateMeterResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateMeter not implemented")
@@ -1021,6 +1039,24 @@ func _PlansService_SetCustomerAddress_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlansServiceServer).SetCustomerAddress(ctx, req.(*SetCustomerAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_SetCustomerTax_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCustomerTaxRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).SetCustomerTax(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_SetCustomerTax_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).SetCustomerTax(ctx, req.(*SetCustomerTaxRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1804,6 +1840,10 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetCustomerAddress",
 			Handler:    _PlansService_SetCustomerAddress_Handler,
+		},
+		{
+			MethodName: "SetCustomerTax",
+			Handler:    _PlansService_SetCustomerTax_Handler,
 		},
 		{
 			MethodName: "CreateMeter",

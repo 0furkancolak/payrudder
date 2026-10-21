@@ -10,7 +10,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CURRENCIES } from "@/shared/lib/currencies";
 import CustomerLinksCard from "@/features/paymentlinks/CustomerLinksCard.vue";
-import { addressLine, useCreateCustomer, useCustomers, useSetCustomerAddress, type Address } from "./api";
+import { addressLine, useCreateCustomer, useCustomers, useSetCustomerAddress, useSetCustomerTax, type Address, type CustomerTax } from "./api";
 
 const { t } = useI18n();
 const errorText = useErrorText();
@@ -44,6 +44,21 @@ function saveAddress() {
   const a = trimmed(editAddress.value);
   if (a.country) a.country = a.country.toUpperCase();
   setAddress.mutate({ externalId: editing.value, address: a }, { onSuccess: () => (editing.value = "") });
+}
+
+// --- editing the tax data (for e-invoices) of a customer in the list
+const setTax = useSetCustomerTax(tenantId);
+const editingTax = ref("");
+const editTax = ref<CustomerTax>({});
+function editTaxOf(c: { external_id?: string } & CustomerTax) {
+  editingTax.value = c.external_id ?? "";
+  editTax.value = { tax_id: c.tax_id ?? "", tax_office: c.tax_office ?? "", e_invoice_registered: c.e_invoice_registered ?? false };
+}
+function saveTax() {
+  setTax.mutate(
+    { externalId: editingTax.value, tax: { tax_id: (editTax.value.tax_id ?? "").trim(), tax_office: (editTax.value.tax_office ?? "").trim(), e_invoice_registered: !!editTax.value.e_invoice_registered } },
+    { onSuccess: () => (editingTax.value = "") },
+  );
 }
 
 function submit() {
@@ -108,6 +123,19 @@ function submit() {
     <p v-if="setAddress.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setAddress.error.value) }}</p>
   </Card>
 
+  <Card v-if="editingTax" class="mb-6" role="region" :aria-label="t('einvoice.customer.editing', { id: editingTax })">
+    <h2 class="text-lg font-semibold">{{ t("einvoice.customer.editing", { id: editingTax }) }}</h2>
+    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" @submit.prevent="saveTax">
+      <Input v-model="editTax.tax_id" maxlength="40" :aria-label="t('einvoice.customer.taxId')" :placeholder="t('einvoice.customer.taxId')" />
+      <Input v-model="editTax.tax_office" maxlength="120" :aria-label="t('einvoice.customer.taxOffice')" :placeholder="t('einvoice.customer.taxOffice')" />
+      <label class="flex items-center gap-2 text-sm"><input v-model="editTax.e_invoice_registered" type="checkbox" :aria-label="t('einvoice.customer.registered')" />{{ t("einvoice.customer.registered") }}</label>
+      <div class="flex gap-2">
+        <Button type="submit" :disabled="setTax.isPending.value">{{ t("einvoice.customer.save") }}</Button>
+        <Button type="button" variant="outline" @click="editingTax = ''">{{ t("billing.customers.address.cancel") }}</Button>
+      </div>
+    </form>
+    <p v-if="setTax.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setTax.error.value) }}</p>
+  </Card>
   <CustomerLinksCard v-if="portalFor" :tenant-id="tenantId" :customer="portalFor" @close="portalFor = ''" />
 
   <Card class="p-3">
@@ -122,6 +150,7 @@ function submit() {
           <TableHead>{{ t("billing.customers.country") }}</TableHead>
           <TableHead>{{ t("billing.customers.currency") }}</TableHead>
           <TableHead>{{ t("billing.customers.address.title") }}</TableHead>
+          <TableHead>{{ t("einvoice.customer.title") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.paymentLinks.links") }}</TableHead>
         </TableRow>
       </TableHeader>
@@ -132,9 +161,13 @@ function submit() {
           <TableCell>{{ c.email }}</TableCell>
           <TableCell>{{ c.country || "—" }}</TableCell>
           <TableCell>{{ c.billing_currency || "—" }}</TableCell>
-          <TableCell class="max-w-64">
+          <TableCell class="max-w-64 whitespace-normal">
             <span class="text-sm">{{ addressLine(c.address) || "—" }}</span>
             <Button size="sm" variant="ghost" @click="edit(c)">{{ t("billing.customers.address.edit") }}</Button>
+          </TableCell>
+          <TableCell class="max-w-56 whitespace-normal">
+            <span class="text-sm">{{ [c.tax_id, c.tax_office].filter(Boolean).join(" · ") || "—" }}</span>
+            <Button size="sm" variant="ghost" @click="editTaxOf(c)">{{ t("einvoice.customer.edit") }}</Button>
           </TableCell>
           <TableCell class="w-40 text-end">
 <div class="flex flex-col items-end gap-1">

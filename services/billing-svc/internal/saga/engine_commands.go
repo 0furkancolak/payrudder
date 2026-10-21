@@ -28,6 +28,7 @@ func (e *Engine) invoiceSnapshot(s *saga, lines []sqlc.ListInvoiceLinesForSnapsh
 		TenantName:       s.Snap.TenantName, CustomerName: s.Snap.CustomerName, CustomerEmail: s.Snap.CustomerEmail,
 		IssuedAt: timestamppb.New(s.FinalizedAt), TotalMinor: s.TotalMinor, LogoObjectKey: s.Snap.LogoObjectKey,
 		SellerAddressLines: s.Snap.SellerAddress, CustomerAddressLines: s.Snap.CustomerAddress,
+		Seller: s.Snap.Seller.Proto(), Buyer: s.Snap.Buyer.Proto(), EInvoiceOn: s.Snap.EInvoiceOn,
 	}
 	if in := s.Snap.Instructions(s.Number, s.InvoiceID); in != nil {
 		snap.PaymentInstructions = &commandsv1.PaymentInstructions{BankName: in.BankName, AccountHolder: in.AccountHolder, Iban: in.IBAN, Bic: in.BIC, Reference: in.Reference}
