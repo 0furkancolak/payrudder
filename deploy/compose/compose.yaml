@@ -41,7 +41,7 @@ services:
       - start
       - --mode=dev-container
       - --smp=1
-      - --memory=512M
+      - --memory=256M
       - --reserve-memory=0M
       - --overprovisioned
       - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
@@ -60,7 +60,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
-    deploy: { resources: { limits: { memory: 768m } } }
+    deploy: { resources: { limits: { memory: 512m } } }
 
   redpanda-console:
     <<: *defaults
@@ -84,6 +84,9 @@ services:
     <<: *defaults
     image: rabbitmq:4.2.9-management-alpine
     hostname: rabbitmq
+    environment:
+      # One scheduler and no busy-waiting: the default (one per core, spinning) costs CPU and RAM while idle.
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +sbwt none +sbwtdcpu none +sbwtdio none +A 4"
     ports: ["5672:5672", "15672:15672"]
     volumes:
       - ../rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/20-quotify.conf:ro
@@ -94,7 +97,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 12
-    deploy: { resources: { limits: { memory: 512m } } }
+    deploy: { resources: { limits: { memory: 256m } } }
 
   redis:
     <<: *defaults
@@ -129,7 +132,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
-    deploy: { resources: { limits: { memory: 1g } } }
+    deploy: { resources: { limits: { memory: 512m } } }
 
   # S3-compatible object storage (ADR 0013). MinIO no longer publishes community images to Docker Hub/Quay;
   # Chainguard's build is used, pinned by digest because its free tier only publishes :latest.
