@@ -101,11 +101,14 @@ test.describe("customer addresses", () => {
 });
 
 test.describe("packages", () => {
+  // The packages form defaults to the tenant's currency, which the page reads from the tenant list (the operator's list, or a person's apps).
+  const tenantList = (c: { method: string; path: string }) =>
+    c.method === "GET" && c.path === "/admin/v1/tenants" ? { body: { tenants: [{ id: TENANT, name: "Acme", environment: "ENVIRONMENT_LIVE", currency: "TRY", timezone: "Europe/Istanbul" }] } } : undefined;
   const plan = { id: "p1", code: "pro", name: "Pro", latest_version: 2 };
   const version = { id: "v2", plan_code: "pro", version: 2, base_fee_minor: "9900", fees: [{ currency: "USD", base_fee_minor: "300" }], prices: [{ meter_code: "calls" }] };
 
   test("packages are listed with their latest fixed fees", async ({ page }) => {
-    const gw = baseTenant(new MockGateway()).on((c) => {
+    const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
       if (c.path === "/v1/plans") return { body: { plans: [plan] } };
       if (c.path === "/v1/plans/pro/versions/latest") return { body: version };
       return undefined;
@@ -119,7 +122,7 @@ test.describe("packages", () => {
   });
 
   test("a version is published with amounts in minor units, one fee per currency", async ({ page }) => {
-    const gw = baseTenant(new MockGateway()).on((c) => {
+    const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
       if (c.method === "POST" && c.path === "/v1/plans") return { status: 201, body: { code: "team", name: "Team" } };
       if (c.method === "POST" && c.path === "/v1/plans/team/versions") return { status: 201, body: { version: 1 } };
       if (c.path === "/v1/plans") return { body: { plans: [] } };
@@ -151,7 +154,7 @@ test.describe("packages", () => {
   });
 
   test("a version of a package that exists is published without creating it again", async ({ page }) => {
-    const gw = baseTenant(new MockGateway()).on((c) => {
+    const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
       if (c.method === "POST" && c.path === "/v1/plans") return { status: 409, body: { error: { code: "ALREADY_EXISTS", message: "plan already exists" } } };
       if (c.method === "POST" && c.path === "/v1/plans/pro/versions") return { status: 201, body: { version: 3 } };
       if (c.path === "/v1/plans") return { body: { plans: [] } };
@@ -169,7 +172,7 @@ test.describe("packages", () => {
   });
 
   test("an amount with too many decimals is refused before anything is sent", async ({ page }) => {
-    const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/plans" ? { body: { plans: [] } } : undefined));
+    const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => (c.path === "/v1/plans" ? { body: { plans: [] } } : undefined));
     await gw.install(page);
     await openTenantPage(page, "/packages");
     const form = page.getByRole("form", { name: "new package" });

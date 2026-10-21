@@ -83,7 +83,7 @@ test.describe("sidebar on a desktop", () => {
     const sidebar = page.getByTestId("sidebar");
     await page.getByTestId("sidebar-toggle").click();
     await expect(sidebar).toHaveAttribute("data-collapsed", "true");
-    expect((await sidebar.boundingBox())?.width).toBeLessThan(100);
+    await expect.poll(async () => (await sidebar.boundingBox())?.width ?? 999).toBeLessThan(100);
     // Labels are still there for assistive technology and as tooltips.
     await expect(sidebar.getByRole("link", { name: "Settings" })).toHaveAttribute("title", "Settings");
     await shoot(page, "32-sidebar-collapsed");

@@ -367,11 +367,14 @@ func (b *productBilling) GetRevenueReport(ctx context.Context, _ *billingv1.GetR
 }
 
 type product struct {
-	ts      *httptest.Server
-	ident   *fakeIdentity
-	plans   *productPlans
-	billing *productBilling
-	limiter *fakeLimiter
+	// ledgerPaths are the payments-worker paths the gateway asked, in order: they name the tenant whose ledger was read.
+	ledgerMu    sync.Mutex
+	ledgerPaths []string
+	ts          *httptest.Server
+	ident       *fakeIdentity
+	plans       *productPlans
+	billing     *productBilling
+	limiter     *fakeLimiter
 }
 
 // newProduct starts the gateway with the fakes above and a fake payments-worker that answers ledger requests with `ledger` (nil: unreachable).
@@ -401,6 +404,9 @@ func newProduct(t *testing.T, ledger func() []map[string]any, tweak func(*Deps))
 		pw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case strings.HasSuffix(r.URL.Path, "/ledger"):
+				p.ledgerMu.Lock()
+				p.ledgerPaths = append(p.ledgerPaths, r.URL.Path)
+				p.ledgerMu.Unlock()
 				_ = json.NewEncoder(w).Encode(map[string]any{"entries": ledger()})
 			case strings.HasSuffix(r.URL.Path, "/provider-accounts"):
 				_ = json.NewEncoder(w).Encode(map[string]any{"accounts": []map[string]any{{"provider": "iyzico", "environment": "live", "is_default": true}}})

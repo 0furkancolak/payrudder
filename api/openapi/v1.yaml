@@ -1425,6 +1425,30 @@ paths:
                   expires_at: { type: string, format: date-time }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /v1/payments:
+    get:
+      operationId: listPayments
+      summary: The tenant's payments (charges and refunds), newest first
+      description: >
+        Reads the tenant's own payment ledger from the payment service and folds it: the rows one provider reference left behind (a charge that was pending
+        and then succeeded) are one payment with its most settled outcome. Amounts are minor-unit strings, each in its own currency; they are never summed
+        across currencies. `truncated` says the newest 1000 ledger rows were all read, so older payments may exist. The operator's
+        `/admin/v1/tenants/{tenant_id}/ledger` stays operator-only: it also carries provider references and decline details. `503` when the payment service
+        does not answer.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payments: { type: array, items: { $ref: "#/components/schemas/Payment" } }
+                  truncated: { type: boolean }
+        "400": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/assets/uploads:
     post:
       operationId: createUploadSession
@@ -2541,40 +2565,6 @@ paths:
       responses:
         "204": { description: Removed }
         "404": { $ref: "#/components/responses/Error" }
-        "503": { $ref: "#/components/responses/Error" }
-  /v1/payments:
-    get:
-      operationId: listPayments
-      summary: The tenant's most recent payment ledger rows (charges, refunds) across providers, newest first
-      description: The same rows as the operator's ledger of this tenant, for the tenant itself (an API key, or a person's session acting as a tenant of their account).
-      parameters:
-        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 1000, default: 100 } }
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  entries:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id: { type: integer }
-                        invoice_id: { type: string, format: uuid }
-                        provider: { type: string }
-                        environment: { type: string }
-                        kind: { type: string, enum: [charge, refund, dispute, payout] }
-                        status: { type: string, enum: [succeeded, declined, failed, pending] }
-                        amount_minor: { type: integer }
-                        currency: { type: string }
-                        provider_ref: { type: string }
-                        source: { type: string, enum: [command, webhook, reconciliation, manual] }
-                        detail: { type: string }
-                        occurred_at: { type: string, format: date-time }
-        "429": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/ledger:
     get:
@@ -3765,6 +3755,17 @@ components:
         display_name: { type: string }
         create_time: { type: string, format: date-time }
         email_verified: { type: boolean, description: "True once the person opened a mailed link for this address. Until then live API keys cannot be created." }
+    Payment:
+      type: object
+      properties:
+        id: { type: string, description: The ledger row that carries the outcome }
+        invoice_id: { type: string }
+        provider: { type: string }
+        kind: { type: string, enum: [charge, refund] }
+        status: { type: string, enum: [paid, processing, failed, refunded] }
+        amount_minor: { type: string, description: int64 minor units as a string }
+        currency: { type: string }
+        occurred_at: { type: string, format: date-time }
     Invitation:
       type: object
       properties:

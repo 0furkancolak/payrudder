@@ -1596,7 +1596,13 @@
       "customers": "Müşteriler",
       "paymentLinks": "Ödeme bağlantıları",
       "credits": "Krediler",
-      "webhooks": "Webhook'lar"
+      "webhooks": "Webhook'lar",
+      "invoices": "Faturalar",
+      "payments": "Ödemeler",
+      "packages": "Paketler",
+      "pricing": "Fiyatlandırma",
+      "reports": "Raporlar",
+      "readOnly": "Rolünüz görüntüleyici: burada her şeyi okuyabilirsiniz, ancak değişiklik yapamazsınız."
     },
     "settings": {
       "title": "Ayarlar",
@@ -1698,6 +1704,45 @@
       "signInJoin": "Oturum aç ve katıl",
       "createTitle": "Girişinizi oluşturun",
       "createJoin": "Girişi oluştur ve katıl"
+    },
+    "billing": {
+      "invoices": {
+        "title": "Faturalar",
+        "intro": "Bu ortamın faturaladıkları. Kalemlerini görmek ve PDF'i indirmek için birini açın.",
+        "status": "Durum",
+        "all": "Tüm durumlar",
+        "number": "Numara",
+        "customer": "Müşteri",
+        "period": "Dönem",
+        "created": "Oluşturuldu",
+        "total": "Toplam",
+        "empty": "Henüz fatura yok. Bir faturalama dönemi kapanınca görünürler.",
+        "draft": "Taslak",
+        "loadMore": "Daha fazla yükle"
+      },
+      "invoice": {
+        "back": "Tüm faturalar",
+        "issued": "Düzenlendi",
+        "openPdf": "PDF'i aç",
+        "lines": "Kalemler",
+        "description": "Açıklama",
+        "service": "Hizmet dönemi",
+        "quantity": "Miktar",
+        "amount": "Tutar",
+        "total": "Toplam"
+      },
+      "payments": {
+        "title": "Ödemeler",
+        "intro": "Tahsilatlar ve iadeler, en yeni üstte. Her ödeme, vardığı sonucu gösterir.",
+        "empty": "Henüz ödeme yok.",
+        "kind": "Tür",
+        "kinds": {
+          "charge": "Tahsilat",
+          "refund": "İade"
+        },
+        "invoice": "Fatura",
+        "viewInvoice": "Faturayı gör"
+      }
     },
     "membersPage": {
       "intro": "Bu kuruluşa kimlerin ait olduğu, rolleri ve henüz açık olan davetler."

@@ -154,11 +154,11 @@ func (s *Server) billingReadRoutes() []Route {
 		{"GET", "/v1/credit-notes", AccessTenant, ratelimit.ClassRead, s.listCreditNotes},
 		{"GET", "/v1/credit-notes/{id}", AccessTenant, ratelimit.ClassRead, s.getCreditNote},
 		{"GET", "/v1/invoices/{id}/pdf", AccessTenant, ratelimit.ClassRead, s.getInvoicePDF},
+		// The payment ledger as the tenant reads it (charges and refunds, folded); the operator's /admin/v1/tenants/{id}/ledger stays operator-only.
+		{"GET", "/v1/payments", AccessTenant, ratelimit.ClassRead, s.listPayments},
 		{"GET", "/v1/e-invoices", AccessTenant, ratelimit.ClassRead, s.listEInvoices},
 		{"GET", "/v1/e-invoices/{id}", AccessTenant, ratelimit.ClassRead, s.getEInvoice},
 		{"GET", "/v1/e-invoices/{id}/files/{kind}", AccessTenant, ratelimit.ClassRead, s.getEInvoiceFile},
-		// Payments: the tenant's own ledger
-		{"GET", "/v1/payments", AccessTenant, ratelimit.ClassRead, s.tenantPayments},
 		// Sandbox
 		{"POST", "/v1/sandbox/close-period", AccessSandbox, ratelimit.ClassWrite, s.sandboxClosePeriod},
 		{"POST", "/v1/sandbox/customers/{external_id}/payment-scenario", AccessSandbox, ratelimit.ClassWrite, s.setPaymentScenario},

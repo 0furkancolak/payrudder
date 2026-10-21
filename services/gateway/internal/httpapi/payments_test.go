@@ -80,21 +80,6 @@ func TestProviderAccountRoutesNeedTheOperatorAndAreRewritten(t *testing.T) {
 	}
 }
 
-func TestTenantPaymentsAreTheCallersOwnLedger(t *testing.T) {
-	ts, got := paymentsGateway(t, "internal-secret")
-	if resp, _ := do(t, ts, "GET", "/v1/payments?limit=5", "", ""); resp.StatusCode != 401 || got.method != "" {
-		t.Fatalf("no key reached the worker: %d %+v", resp.StatusCode, *got)
-	}
-	// A tenant's key reads its own ledger, whatever tenant the query names; the caller's Authorization never reaches the worker.
-	resp, _ := do(t, ts, "GET", "/v1/payments?limit=5&tenant_id="+sandboxTenant.String(), "live-key", "")
-	if resp.StatusCode != 200 {
-		t.Fatalf("status %d", resp.StatusCode)
-	}
-	if got.path != "/admin/tenants/"+liveTenant.String()+"/ledger" || got.authorization != "" || got.token != "internal-secret" {
-		t.Errorf("worker saw %+v", *got)
-	}
-}
-
 func TestTransferRoutesAreOperatorOnlyAndForwardedWithTheActor(t *testing.T) {
 	ts, got := paymentsGateway(t, "internal-secret")
 	base := "/admin/v1/tenants/0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e/invoices/0192f0b4-0000-7c3a-9a3e-6a1f2b3c4d5e/transfer"

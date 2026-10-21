@@ -1596,7 +1596,13 @@
       "customers": "Customers",
       "paymentLinks": "Payment links",
       "credits": "Credits",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "invoices": "Invoices",
+      "payments": "Payments",
+      "packages": "Packages",
+      "pricing": "Pricing",
+      "reports": "Reports",
+      "readOnly": "Your role is viewer: you can read everything here, but changes are not allowed."
     },
     "settings": {
       "title": "Settings",
@@ -1698,6 +1704,45 @@
       "signInJoin": "Sign in and join",
       "createTitle": "Create your login",
       "createJoin": "Create login and join"
+    },
+    "billing": {
+      "invoices": {
+        "title": "Invoices",
+        "intro": "What this environment billed. Open one to see its lines and download the PDF.",
+        "status": "Status",
+        "all": "All statuses",
+        "number": "Number",
+        "customer": "Customer",
+        "period": "Period",
+        "created": "Created",
+        "total": "Total",
+        "empty": "No invoices yet. They appear when a billing period closes.",
+        "draft": "Draft",
+        "loadMore": "Load more"
+      },
+      "invoice": {
+        "back": "All invoices",
+        "issued": "Issued",
+        "openPdf": "Open PDF",
+        "lines": "Lines",
+        "description": "Description",
+        "service": "Service period",
+        "quantity": "Quantity",
+        "amount": "Amount",
+        "total": "Total"
+      },
+      "payments": {
+        "title": "Payments",
+        "intro": "Charges and refunds, newest first. Each payment shows the outcome it settled on.",
+        "empty": "No payments yet.",
+        "kind": "Type",
+        "kinds": {
+          "charge": "Charge",
+          "refund": "Refund"
+        },
+        "invoice": "Invoice",
+        "viewInvoice": "View invoice"
+      }
     },
     "membersPage": {
       "intro": "Who belongs to this organisation, their roles, and the invitations that are still open."

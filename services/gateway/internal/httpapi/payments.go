@@ -62,13 +62,6 @@ func (s *Server) paymentLedger(w http.ResponseWriter, r *http.Request) {
 	})(w, r)
 }
 
-// tenantPayments is GET /v1/payments: the payment ledger of the caller's own tenant, the same rows the operator reads at /admin/v1/tenants/{id}/ledger. The
-// tenant is the one the credentials name (an API key, or a person's session acting as a tenant of their account), never one taken from the request.
-func (s *Server) tenantPayments(w http.ResponseWriter, r *http.Request) {
-	id := principalFrom(r.Context()).Tenant.ID.String()
-	s.paymentsProxy(func(*http.Request) string { return "/admin/tenants/" + url.PathEscape(id) + "/ledger" })(w, r)
-}
-
 func (s *Server) tenantWebhook(w http.ResponseWriter, r *http.Request) {
 	s.paymentsProxy(func(r *http.Request) string {
 		return "/webhooks/" + url.PathEscape(r.PathValue("provider")) + "/" + url.PathEscape(r.PathValue("tenant_id")) + "/" + url.PathEscape(r.PathValue("environment"))

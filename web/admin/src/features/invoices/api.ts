@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, ApiError, tenantApi, unwrap } from "@/shared/api/client";
-import { isPerson } from "@/shared/lib/session";
 
 export const invoiceKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "invoices"] as const,
@@ -10,27 +9,18 @@ export const invoiceKeys = {
   transfer: (tenantId: string, invoiceId: string) => ["tenants", tenantId, "invoices", invoiceId, "transfer"] as const,
 };
 
-/**
- * The invoices of a tenant. A person has no admin API; the tenant API (`/v1/invoices`, with the tenant named) answers the same rows, so the same pages
- * serve both. Operator-only parts of an invoice page (the saga, recording payments, credit notes) are not shown to a person.
- */
 export function useTenantInvoices(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
-    queryKey: computed(() => [...invoiceKeys.list(toValue(tenantId)), isPerson.value ? "person" : "operator"]),
-    queryFn: () =>
-      isPerson.value
-        ? unwrap(tenantApi(toValue(tenantId)).GET("/v1/invoices", { params: { query: { page_size: 100 } } }))
-        : unwrap(api.GET("/admin/v1/tenants/{tenant_id}/invoices", { params: { path: { tenant_id: toValue(tenantId) }, query: { page_size: 100 } } })),
+    queryKey: computed(() => invoiceKeys.list(toValue(tenantId))),
+    queryFn: () => unwrap(api.GET("/admin/v1/tenants/{tenant_id}/invoices", { params: { path: { tenant_id: toValue(tenantId) }, query: { page_size: 100 } } })),
   });
 }
 
 export function useInvoice(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeRefOrGetter<string>) {
   return useQuery({
-    queryKey: computed(() => [...invoiceKeys.detail(toValue(tenantId), toValue(invoiceId)), isPerson.value ? "person" : "operator"]),
+    queryKey: computed(() => invoiceKeys.detail(toValue(tenantId), toValue(invoiceId))),
     queryFn: () =>
-      isPerson.value
-        ? unwrap(tenantApi(toValue(tenantId)).GET("/v1/invoices/{id}", { params: { path: { id: toValue(invoiceId) } } }))
-        : unwrap(api.GET("/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}", { params: { path: { tenant_id: toValue(tenantId), invoice_id: toValue(invoiceId) } } })),
+      unwrap(api.GET("/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}", { params: { path: { tenant_id: toValue(tenantId), invoice_id: toValue(invoiceId) } } })),
   });
 }
 
@@ -39,8 +29,6 @@ export function useInvoiceSaga(tenantId: MaybeRefOrGetter<string>, invoiceId: Ma
     queryKey: computed(() => invoiceKeys.saga(toValue(tenantId), toValue(invoiceId))),
     queryFn: () =>
       unwrap(api.GET("/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/saga", { params: { path: { tenant_id: toValue(tenantId), invoice_id: toValue(invoiceId) } } })),
-    // The saga is an operator's view; a person's session has no admin API.
-    enabled: computed(() => !isPerson.value),
   });
 }
 
@@ -49,9 +37,7 @@ export function useOpenPdf(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeR
   return useMutation({
     mutationFn: async () => {
       const r = await unwrap(
-        isPerson.value
-          ? tenantApi(toValue(tenantId)).GET("/v1/invoices/{id}/pdf", { params: { path: { id: toValue(invoiceId) } } })
-          : api.GET("/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/pdf", { params: { path: { tenant_id: toValue(tenantId), invoice_id: toValue(invoiceId) } } }),
+        api.GET("/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/pdf", { params: { path: { tenant_id: toValue(tenantId), invoice_id: toValue(invoiceId) } } }),
       );
       if (!r.url) throw new ApiError("no link", "NO_LINK");
       return r.url;

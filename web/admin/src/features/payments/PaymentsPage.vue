@@ -5,7 +5,6 @@ import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
-import { isOperator } from "@/shared/lib/session";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -30,7 +29,7 @@ const variant = (status?: string) => (status === "succeeded" ? "success" : statu
 </script>
 
 <template>
-  <Card v-if="isOperator" class="mb-6">
+  <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.payments.reconcile") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.payments.reconcileHint") }}</p>
     <form class="flex flex-wrap items-center gap-3" role="form" :aria-label="t('billing.payments.reconcile')" @submit.prevent="reconcile.mutate(period)">

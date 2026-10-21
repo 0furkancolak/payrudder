@@ -2,11 +2,9 @@ import { createRoute, redirect, type AnyRoute } from "@tanstack/vue-router";
 import { accountingRoutes } from "@/features/accounting/routes";
 import { creditRoutes } from "@/features/credits/routes";
 import { customerRoutes } from "@/features/customers/routes";
-import { invoiceRoutes } from "@/features/invoices/routes";
 import { mailRoutes } from "@/features/mail/routes";
 import { packageRoutes } from "@/features/packages/routes";
 import { paymentLinkRoutes } from "@/features/paymentlinks/routes";
-import { paymentRoutes } from "@/features/payments/routes";
 import { pricingRoutes } from "@/features/pricing/routes";
 import { reportRoutes } from "@/features/reports/routes";
 import { subscriptionRoutes } from "@/features/subscriptions/routes";
@@ -61,12 +59,16 @@ export function personRoutes(parent: AnyRoute) {
   const members = createRoute({ getParentRoute: () => signedIn, path: "/app/members", component: lazy(() => import("./MembersPage.vue")) });
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazy(() => import("./SettingsPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazy(() => import("./ProductTenantLayout.vue")) });
+  // Invoices and payments are pages of the product: the console's versions speak operator-only routes (saga, transfers, the raw ledger).
+  const invoices = createRoute({ getParentRoute: () => tenant, path: "invoices", component: lazy(() => import("./InvoicesPage.vue")) });
+  const invoice = createRoute({ getParentRoute: () => tenant, path: "invoices/$invoiceId", component: lazy(() => import("./InvoiceDetailPage.vue")) });
+  const payments = createRoute({ getParentRoute: () => tenant, path: "payments", component: lazy(() => import("./PaymentsPage.vue")) });
   return signedIn.addChildren([
     home,
     dashboard,
-    members,
     keys,
     appSettings,
+    members,
     settings,
     // One line per page, and the same page in PERSON_PAGES (app/layout/nav.ts), which is what puts it in the sidebar.
     tenant.addChildren([
@@ -75,8 +77,9 @@ export function personRoutes(parent: AnyRoute) {
       ...creditRoutes(tenant),
       ...packageRoutes(tenant),
       ...pricingRoutes(tenant),
-      ...invoiceRoutes(tenant),
-      ...paymentRoutes(tenant),
+      invoices,
+      invoice,
+      payments,
       ...paymentLinkRoutes(tenant),
       ...accountingRoutes(tenant),
       ...reportRoutes(tenant),

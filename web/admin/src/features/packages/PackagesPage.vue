@@ -5,7 +5,8 @@ import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
-import { useTenant } from "@/features/tenants";
+import { useCanWrite } from "@/shared/lib/access";
+import { useTenantCurrency } from "@/shared/lib/tenant-currency";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -19,7 +20,8 @@ const { t, locale } = useI18n();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
-const tenant = useTenant(tenantId);
+const tenantCurrency = useTenantCurrency(tenantId);
+const canWrite = useCanWrite();
 const packages = usePackages(tenantId);
 const create = useCreatePackage(tenantId);
 
@@ -28,7 +30,6 @@ const name = ref("");
 const fee = ref("0");
 const extra = ref<{ currency: string; interval: "month" | "year"; amount: string }[]>([]);
 const formError = ref("");
-const tenantCurrency = computed(() => tenant.data.value?.currency ?? "");
 
 function addFee() {
   extra.value.push({ currency: tenantCurrency.value || "USD", interval: "year", amount: "0" });
@@ -68,7 +69,7 @@ function submit() {
 </script>
 
 <template>
-  <Card class="mb-6">
+  <Card v-if="canWrite" class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.packages.new") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.packages.intro") }}</p>
     <form class="grid gap-3" role="form" :aria-label="t('billing.packages.formLabel')" @submit.prevent="submit">

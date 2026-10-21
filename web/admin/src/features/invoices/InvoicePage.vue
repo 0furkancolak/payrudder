@@ -7,7 +7,6 @@ import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
-import { isOperator, tenantBase } from "@/shared/lib/session";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -59,12 +58,11 @@ async function copy() {
 const inv = computed(() => invoice.data.value);
 
 // --- money: a bank transfer that is awaited, and payments recorded by hand
-// Transfers, hand-recorded payments, credit notes, e-invoices and the saga are the operator's; a person reads the invoice, gets its PDF and shares it.
-const transferQuery = useInvoiceTransfer(tenantId, invoiceId, () => isOperator.value && wantsTransferState(inv.value?.status, inv.value?.saga_state));
+const transferQuery = useInvoiceTransfer(tenantId, invoiceId, () => wantsTransferState(inv.value?.status, inv.value?.saga_state));
 /** Null while loading, when the invoice is not payable, and when the transfer service did not answer: the page works without it. */
 const transfer = computed(() => transferQuery.data.value ?? null);
 const transferCharge = computed(() => isTransferCharge(transfer.value, inv.value?.status));
-const canRecord = computed(() => isOperator.value && canRecordPayment(inv.value?.status));
+const canRecord = computed(() => canRecordPayment(inv.value?.status));
 const outstanding = computed(() => (transferCharge.value ? String(transfer.value?.outstanding_minor ?? 0) : outstandingAfter(inv.value?.total_minor, inv.value?.payments)));
 const recordOpen = ref(false);
 const rejectOpen = ref(false);
@@ -77,7 +75,7 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
 </script>
 
 <template>
-  <Link :to="`${tenantBase()}/${tenantId}/invoices`" class="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 px-1 text-sm">
+  <Link to="/tenants/$id" :params="{ id: tenantId }" class="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 px-1 text-sm">
     <ArrowLeft class="rtl-flip size-4" />{{ t("invoice.back") }}
   </Link>
   <PageHeader :title="inv?.number || t('invoice.fallbackTitle')">
@@ -93,7 +91,7 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
       <span class="text-4xl font-semibold tracking-tight tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</span>
       <div class="mt-1 flex flex-wrap gap-2">
         <Badge :variant="statusVariant(inv.status)">{{ label(t, te, "invoiceStatus", inv.status) }}</Badge>
-        <Badge v-if="isOperator" :variant="sagaVariant(inv.saga_state)" class="mono">{{ label(t, te, "sagaState", inv.saga_state) }}</Badge>
+        <Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ label(t, te, "sagaState", inv.saga_state) }}</Badge>
       </div>
     </Card>
     <Card class="gap-1 text-sm">
@@ -105,8 +103,8 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
 
   <TransferCard v-if="inv && transfer && transfer.state !== 'none'" :transfer="transfer" @confirm="recordOpen = true" @reject="askReject" />
   <ManualPaymentsCard v-if="inv && (inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />
-  <RecordPaymentDialog v-if="inv && isOperator" v-model:open="recordOpen" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency ?? ''" :outstanding-minor="outstanding" :transfer="transferCharge" />
-  <RejectTransferDialog v-if="isOperator" v-model:open="rejectOpen" :tenant-id="tenantId" :invoice-id="invoiceId" :outcome="rejectOutcome" />
+  <RecordPaymentDialog v-if="inv" v-model:open="recordOpen" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency ?? ''" :outstanding-minor="outstanding" :transfer="transferCharge" />
+  <RejectTransferDialog v-model:open="rejectOpen" :tenant-id="tenantId" :invoice-id="invoiceId" :outcome="rejectOutcome" />
 
   <Card class="mb-6 p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.lines") }}</h2>
@@ -148,18 +146,18 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
       <Input :model-value="shareUrl" readonly class="mono max-w-xl" :aria-label="t('invoice.share.link')" @focus="($event.target as HTMLInputElement).select()" />
       <Button type="button" variant="outline" @click="copy">{{ t("invoice.share.copy") }}</Button>
     </div>
-    <Link :to="`${tenantBase()}/${tenantId}/payment-links`" :search="{ invoice: invoiceId } as never" class="text-sm underline">{{ t("invoice.share.paymentLink") }}</Link>
+    <Link to="/tenants/$id/payment-links" :params="{ id: tenantId }" :search="{ invoice: invoiceId } as never" class="text-sm underline">{{ t("invoice.share.paymentLink") }}</Link>
     <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
     <p v-if="linkError" class="text-destructive text-sm" role="alert">{{ linkError }}</p>
     <p v-if="links.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(links.create.error.value) }}</p>
   </Card>
 
-  <EInvoiceStatus v-if="inv && inv.number && isOperator" :tenant-id="tenantId" :invoice-id="invoiceId" boxed />
+  <EInvoiceStatus v-if="inv && inv.number" :tenant-id="tenantId" :invoice-id="invoiceId" boxed />
 
-  <CreditNotesCard v-if="inv && inv.status === 'paid' && isOperator" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" issuable />
+  <CreditNotesCard v-if="inv && inv.status === 'paid'" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" issuable />
   <CreditNotesCard v-else-if="inv" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" />
 
-  <Card v-if="isOperator" class="p-3">
+  <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.saga") }}</h2>
     <p v-if="saga.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(saga.error.value) }}</p>
     <Table :aria-label="t('invoice.saga')">
