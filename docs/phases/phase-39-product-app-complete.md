@@ -57,3 +57,48 @@ The mailed link carries the token in the **URL fragment** (`/reset#token=…`). 
 - Gateway tests: 202 for any address, locale choice, session required for resend, throttling, rate limits, the body cannot name a user.
 - Vitest (fragment token reader, error keys in six languages, locale parity) and mocked Playwright specs (taken-address notice, forgot → reset, used link, banner → resend → verify → live key enabled).
 - **Not verified:** delivery through a real SMTP relay other than Mailpit; the mail clients' rendering (HTML is simple, inline-styled, with a text part); Kubernetes values only pass `SMTP_ADDR` (set `QUOTIFY_APP_URL` for the plans-svc deployment).
+
+## 2. Members and invitations
+
+An account is a team. The schema had `account_members` since phase 38 but only the creator was ever in it; now owners and administrators invite people, and members can change roles, leave or be removed.
+
+### Who may do what
+
+| | viewer | admin | owner |
+|---|---|---|---|
+| See the members | yes | yes | yes |
+| See, send, resend and cancel invitations | no | yes (admin and viewer invitations) | yes (all) |
+| Invite as owner / make or unmake an owner / remove an owner | no | no | yes |
+| Change an admin's or viewer's role, remove an admin or viewer | no | yes | yes |
+| Rename the account | no | no | yes |
+| Leave | yes | yes | yes, unless the last owner |
+| Create apps and API keys | no | yes | yes |
+
+The checks live in plans-svc (`identity/command/members.go`, `mayHandle`) and in SQL through `account_members`; the gateway only passes the session's user and an account that is one of the session's. Another account's members, invitations and ids are "not found" (404), never "forbidden", so ids cannot be probed.
+
+### Invitations
+
+`account_invites` (migration `00020_invitations.sql`). An invitation is a `qi_` token (256 random bits) mailed to an address; **only its SHA-256 is stored**; it lives **7 days**; the link is `<app>/invite#token=…` (fragment, like the other mailed links). There is at most one open invitation per address and account (a partial unique index); inviting an address again, or pressing "send again", **replaces the link** (the old one stops working), at most once a minute (`identity.invite.throttled`). An invitation that ran out does not block a new one to the same address.
+
+- **Inviting needs a verified address** (`identity.email.not_verified`): an unproven account cannot be used to mail strangers. An account may have 50 open invitations and make 30 a day (`identity.invite.quota`). An address that is a member already is `identity.invite.already_member`.
+- **The accept page** (`/invite#token=…`) asks plans-svc what the token is for (`POST /auth/invitations/lookup`, the token in the body and never in a URL) and then asks for the right thing:
+  - an address **without an account** chooses a password (`POST /auth/invitations/accept`): a user is created with the address already verified (the mail proved it), made a member with the invited role, and signed in. They get **no account of their own**, only the invited one;
+  - an address **with an account** signs in, then joins (`POST /app/v1/invitations/accept`); the server requires the invitation to be for the **session user's own address** (`identity.invite.wrong_user`), so a token for another address cannot be used by a different account, and the public accept refuses such an address with `identity.invite.sign_in_required` instead of creating a second user;
+  - somebody already signed in with the invited address joins with one click; with another address the page says so.
+- Spending an invitation is one atomic UPDATE (`accepted_at`), so two requests with one token produce one member (tested in parallel).
+- **People with several accounts** (an invitation adds one) choose the account they work in with a switcher; the choice is kept in this tab and sent as `?account_id=`, which the gateway checks against the session. A person who left or was removed from their last account sees an explanation instead of errors.
+
+### The last owner
+
+An account always keeps one owner. Every change that could remove one (demoting an owner, removing an owner, an owner leaving) takes `pg_advisory_xact_lock` on the account, **re-reads the caller's role under the lock**, counts owners and refuses with `identity.member.last_owner` (409) when none would remain. Without the lock two owners demoting each other at the same moment could both see "another owner remains". The tests run exactly that race.
+
+### Other points
+
+- Removing a member takes effect on the next request: access is a membership join in SQL on every call, there is no cached role. The removed person's sessions stay valid (they are theirs) but find nothing of the account.
+- **Not built:** transferring ownership in one step (promote the new owner, then demote yourself), deleting an account, an audit log of member changes (the changes are logged with ids), seats or billing for members.
+
+### Verification
+
+- `internal/itest/members_integration_test.go` (real Postgres): who may invite and manage, refresh / throttle / expiry / revoke / resend of invitations, hash at rest and 7-day lifetime, accepting as a new user (parallel single use, language, session) and as an existing user (wrong user, sign-in required, proves the address), quotas, roles under every actor, leaving, the last owner including the demotion race, removal cutting off apps and tenants, and strangers (other accounts) getting "not found" from every route.
+- Gateway tests: session required on every member route, the acting user and account come from the session and not from a body, another account is refused before plans-svc is asked, viewers read and leave only, the public lookup / accept routes and their per-address limit.
+- Mocked Playwright: invite, resend, cancel, role change, remove with confirmation, the last owner, viewer / administrator views, rename, the four accept-page cases, the account switcher, no-account state.

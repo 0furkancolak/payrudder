@@ -55,6 +55,7 @@ type fakeIdentity struct {
 	keys     map[string]string
 	signIns  int
 
+	mem            memberCalls
 	signUpReqs     []*plansv1.SignUpRequest
 	resetReqs      []*plansv1.RequestPasswordResetRequest
 	resetPasswords []*plansv1.ResetPasswordRequest

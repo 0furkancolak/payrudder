@@ -120,3 +120,72 @@ RETURNING id;
 
 -- name: SetUserLocale :exec
 UPDATE users SET locale = $2 WHERE id = $1;
+
+-- Members and invitations (phase 39).
+-- One writer at a time per account for changes that must keep an owner: the lock is released at the end of the transaction.
+-- name: LockAccount :exec
+SELECT pg_advisory_xact_lock(hashtextextended(@account_id::text, 0));
+
+-- name: CountOwners :one
+SELECT count(*) FROM account_members WHERE account_id = $1 AND role = 'owner';
+
+-- name: GetMemberRole :one
+SELECT role FROM account_members WHERE account_id = @account_id AND user_id = @user_id;
+
+-- name: SetMemberRole :execrows
+UPDATE account_members SET role = @role WHERE account_id = @account_id AND user_id = @user_id;
+
+-- name: DeleteMember :execrows
+DELETE FROM account_members WHERE account_id = @account_id AND user_id = @user_id;
+
+-- name: RenameAccount :execrows
+UPDATE accounts SET name = @name WHERE id = @id;
+
+-- name: GetMemberByEmail :one
+SELECT m.user_id FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = @account_id AND lower(u.email) = lower(@email::text);
+
+-- An invitation nobody answered in time no longer blocks a new one.
+-- name: ExpireOpenInvites :exec
+UPDATE account_invites SET revoked_at = now()
+WHERE account_id = @account_id AND lower(email) = lower(@email::text) AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at <= now();
+
+-- name: GetOpenInvite :one
+SELECT * FROM account_invites WHERE account_id = @account_id AND lower(email) = lower(@email::text) AND accepted_at IS NULL AND revoked_at IS NULL;
+
+-- name: InsertInvite :one
+INSERT INTO account_invites (id, account_id, email, role, invited_by, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
+
+-- A repeated invitation (or a resend) replaces the link: the old one stops working.
+-- name: RefreshInvite :one
+UPDATE account_invites SET role = @role, invited_by = @invited_by, token_hash = @token_hash, expires_at = @expires_at, sent_at = now()
+WHERE id = @id AND accepted_at IS NULL AND revoked_at IS NULL RETURNING *;
+
+-- name: ListOpenInvites :many
+SELECT i.*, u.email AS inviter_email, u.display_name AS inviter_name
+FROM account_invites i JOIN users u ON u.id = i.invited_by
+WHERE i.account_id = $1 AND i.accepted_at IS NULL AND i.revoked_at IS NULL ORDER BY i.created_at DESC, i.id;
+
+-- name: GetOpenInviteInAccount :one
+SELECT * FROM account_invites WHERE id = @id AND account_id = @account_id AND accepted_at IS NULL AND revoked_at IS NULL;
+
+-- name: RevokeInvite :execrows
+UPDATE account_invites SET revoked_at = now() WHERE id = @id AND account_id = @account_id AND accepted_at IS NULL AND revoked_at IS NULL;
+
+-- name: CountInvitesSince :one
+SELECT count(*) FROM account_invites WHERE account_id = $1 AND created_at > now() - interval '1 day';
+
+-- name: CountOpenInvites :one
+SELECT count(*) FROM account_invites WHERE account_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now();
+
+-- A live invitation by its token: not used, not revoked, not expired.
+-- name: GetInviteByToken :one
+SELECT i.*, a.name AS account_name FROM account_invites i JOIN accounts a ON a.id = i.account_id
+WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now();
+
+-- One atomic UPDATE: of two requests carrying the same token exactly one gets a row.
+-- name: AcceptInvite :execrows
+UPDATE account_invites SET accepted_at = now() WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now();
+
+-- The address of an invited person is proven by the mail that carried the token.
+-- name: InsertVerifiedUser :one
+INSERT INTO users (id, email, display_name, password_hash, locale, email_verified_at) VALUES ($1, $2, $3, $4, $5, now()) RETURNING *;

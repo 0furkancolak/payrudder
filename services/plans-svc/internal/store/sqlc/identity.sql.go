@@ -14,6 +14,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const acceptInvite = `-- name: AcceptInvite :execrows
+UPDATE account_invites SET accepted_at = now() WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+`
+
+// One atomic UPDATE: of two requests carrying the same token exactly one gets a row.
+func (q *Queries) AcceptInvite(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, acceptInvite, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const consumeUserToken = `-- name: ConsumeUserToken :one
 UPDATE user_tokens SET used_at = now()
 WHERE token_hash = $1 AND kind = $2 AND used_at IS NULL AND expires_at > now()
@@ -33,6 +46,56 @@ func (q *Queries) ConsumeUserToken(ctx context.Context, arg ConsumeUserTokenPara
 	return user_id, err
 }
 
+const countInvitesSince = `-- name: CountInvitesSince :one
+SELECT count(*) FROM account_invites WHERE account_id = $1 AND created_at > now() - interval '1 day'
+`
+
+func (q *Queries) CountInvitesSince(ctx context.Context, accountID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countInvitesSince, accountID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countOpenInvites = `-- name: CountOpenInvites :one
+SELECT count(*) FROM account_invites WHERE account_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+`
+
+func (q *Queries) CountOpenInvites(ctx context.Context, accountID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countOpenInvites, accountID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countOwners = `-- name: CountOwners :one
+SELECT count(*) FROM account_members WHERE account_id = $1 AND role = 'owner'
+`
+
+func (q *Queries) CountOwners(ctx context.Context, accountID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countOwners, accountID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteMember = `-- name: DeleteMember :execrows
+DELETE FROM account_members WHERE account_id = $1 AND user_id = $2
+`
+
+type DeleteMemberParams struct {
+	AccountID uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) DeleteMember(ctx context.Context, arg DeleteMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMember, arg.AccountID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteStaleSessions = `-- name: DeleteStaleSessions :exec
 DELETE FROM user_sessions WHERE user_id = $1 AND (expires_at < now() - interval '1 day' OR revoked_at < now() - interval '1 day')
 `
@@ -48,6 +111,22 @@ DELETE FROM user_tokens WHERE user_id = $1 AND (expires_at < now() - interval '1
 
 func (q *Queries) DeleteStaleUserTokens(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteStaleUserTokens, userID)
+	return err
+}
+
+const expireOpenInvites = `-- name: ExpireOpenInvites :exec
+UPDATE account_invites SET revoked_at = now()
+WHERE account_id = $1 AND lower(email) = lower($2::text) AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at <= now()
+`
+
+type ExpireOpenInvitesParams struct {
+	AccountID uuid.UUID
+	Email     string
+}
+
+// An invitation nobody answered in time no longer blocks a new one.
+func (q *Queries) ExpireOpenInvites(ctx context.Context, arg ExpireOpenInvitesParams) error {
+	_, err := q.db.Exec(ctx, expireOpenInvites, arg.AccountID, arg.Email)
 	return err
 }
 
@@ -82,6 +161,47 @@ func (q *Queries) GetAppForUser(ctx context.Context, arg GetAppForUserParams) (G
 		&i.Slug,
 		&i.CreatedAt,
 		&i.Role,
+	)
+	return i, err
+}
+
+const getInviteByToken = `-- name: GetInviteByToken :one
+SELECT i.id, i.account_id, i.email, i.role, i.invited_by, i.token_hash, i.created_at, i.sent_at, i.expires_at, i.accepted_at, i.revoked_at, a.name AS account_name FROM account_invites i JOIN accounts a ON a.id = i.account_id
+WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now()
+`
+
+type GetInviteByTokenRow struct {
+	ID          uuid.UUID
+	AccountID   uuid.UUID
+	Email       string
+	Role        string
+	InvitedBy   uuid.UUID
+	TokenHash   []byte
+	CreatedAt   time.Time
+	SentAt      time.Time
+	ExpiresAt   time.Time
+	AcceptedAt  *time.Time
+	RevokedAt   *time.Time
+	AccountName string
+}
+
+// A live invitation by its token: not used, not revoked, not expired.
+func (q *Queries) GetInviteByToken(ctx context.Context, tokenHash []byte) (GetInviteByTokenRow, error) {
+	row := q.db.QueryRow(ctx, getInviteByToken, tokenHash)
+	var i GetInviteByTokenRow
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Email,
+		&i.Role,
+		&i.InvitedBy,
+		&i.TokenHash,
+		&i.CreatedAt,
+		&i.SentAt,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
+		&i.AccountName,
 	)
 	return i, err
 }
@@ -139,6 +259,38 @@ func (q *Queries) GetLiveUserToken(ctx context.Context, arg GetLiveUserTokenPara
 	return user_id, err
 }
 
+const getMemberByEmail = `-- name: GetMemberByEmail :one
+SELECT m.user_id FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = $1 AND lower(u.email) = lower($2::text)
+`
+
+type GetMemberByEmailParams struct {
+	AccountID uuid.UUID
+	Email     string
+}
+
+func (q *Queries) GetMemberByEmail(ctx context.Context, arg GetMemberByEmailParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getMemberByEmail, arg.AccountID, arg.Email)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
+const getMemberRole = `-- name: GetMemberRole :one
+SELECT role FROM account_members WHERE account_id = $1 AND user_id = $2
+`
+
+type GetMemberRoleParams struct {
+	AccountID uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (string, error) {
+	row := q.db.QueryRow(ctx, getMemberRole, arg.AccountID, arg.UserID)
+	var role string
+	err := row.Scan(&role)
+	return role, err
+}
+
 const getMembership = `-- name: GetMembership :one
 SELECT m.role, a.name AS account_name, a.created_at
 FROM account_members m JOIN accounts a ON a.id = m.account_id
@@ -160,6 +312,62 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (G
 	row := q.db.QueryRow(ctx, getMembership, arg.AccountID, arg.UserID)
 	var i GetMembershipRow
 	err := row.Scan(&i.Role, &i.AccountName, &i.CreatedAt)
+	return i, err
+}
+
+const getOpenInvite = `-- name: GetOpenInvite :one
+SELECT id, account_id, email, role, invited_by, token_hash, created_at, sent_at, expires_at, accepted_at, revoked_at FROM account_invites WHERE account_id = $1 AND lower(email) = lower($2::text) AND accepted_at IS NULL AND revoked_at IS NULL
+`
+
+type GetOpenInviteParams struct {
+	AccountID uuid.UUID
+	Email     string
+}
+
+func (q *Queries) GetOpenInvite(ctx context.Context, arg GetOpenInviteParams) (AccountInvite, error) {
+	row := q.db.QueryRow(ctx, getOpenInvite, arg.AccountID, arg.Email)
+	var i AccountInvite
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Email,
+		&i.Role,
+		&i.InvitedBy,
+		&i.TokenHash,
+		&i.CreatedAt,
+		&i.SentAt,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getOpenInviteInAccount = `-- name: GetOpenInviteInAccount :one
+SELECT id, account_id, email, role, invited_by, token_hash, created_at, sent_at, expires_at, accepted_at, revoked_at FROM account_invites WHERE id = $1 AND account_id = $2 AND accepted_at IS NULL AND revoked_at IS NULL
+`
+
+type GetOpenInviteInAccountParams struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+}
+
+func (q *Queries) GetOpenInviteInAccount(ctx context.Context, arg GetOpenInviteInAccountParams) (AccountInvite, error) {
+	row := q.db.QueryRow(ctx, getOpenInviteInAccount, arg.ID, arg.AccountID)
+	var i AccountInvite
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Email,
+		&i.Role,
+		&i.InvitedBy,
+		&i.TokenHash,
+		&i.CreatedAt,
+		&i.SentAt,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
+	)
 	return i, err
 }
 
@@ -259,6 +467,47 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.EmailVerifiedAt,
 		&i.Locale,
 		&i.TakenNoticeAt,
+	)
+	return i, err
+}
+
+const insertInvite = `-- name: InsertInvite :one
+INSERT INTO account_invites (id, account_id, email, role, invited_by, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, account_id, email, role, invited_by, token_hash, created_at, sent_at, expires_at, accepted_at, revoked_at
+`
+
+type InsertInviteParams struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+	Email     string
+	Role      string
+	InvitedBy uuid.UUID
+	TokenHash []byte
+	ExpiresAt time.Time
+}
+
+func (q *Queries) InsertInvite(ctx context.Context, arg InsertInviteParams) (AccountInvite, error) {
+	row := q.db.QueryRow(ctx, insertInvite,
+		arg.ID,
+		arg.AccountID,
+		arg.Email,
+		arg.Role,
+		arg.InvitedBy,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	var i AccountInvite
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Email,
+		&i.Role,
+		&i.InvitedBy,
+		&i.TokenHash,
+		&i.CreatedAt,
+		&i.SentAt,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
 	)
 	return i, err
 }
@@ -370,6 +619,44 @@ func (q *Queries) InsertUserToken(ctx context.Context, arg InsertUserTokenParams
 		arg.ExpiresAt,
 	)
 	return err
+}
+
+const insertVerifiedUser = `-- name: InsertVerifiedUser :one
+INSERT INTO users (id, email, display_name, password_hash, locale, email_verified_at) VALUES ($1, $2, $3, $4, $5, now()) RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at
+`
+
+type InsertVerifiedUserParams struct {
+	ID           uuid.UUID
+	Email        string
+	DisplayName  string
+	PasswordHash string
+	Locale       string
+}
+
+// The address of an invited person is proven by the mail that carried the token.
+func (q *Queries) InsertVerifiedUser(ctx context.Context, arg InsertVerifiedUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, insertVerifiedUser,
+		arg.ID,
+		arg.Email,
+		arg.DisplayName,
+		arg.PasswordHash,
+		arg.Locale,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.PasswordHash,
+		&i.FailedLogins,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.CreatedAt,
+		&i.EmailVerifiedAt,
+		&i.Locale,
+		&i.TakenNoticeAt,
+	)
+	return i, err
 }
 
 const invalidateUserTokens = `-- name: InvalidateUserTokens :exec
@@ -517,6 +804,62 @@ func (q *Queries) ListAppTenants(ctx context.Context, appID uuid.UUID) ([]Tenant
 	return items, nil
 }
 
+const listOpenInvites = `-- name: ListOpenInvites :many
+SELECT i.id, i.account_id, i.email, i.role, i.invited_by, i.token_hash, i.created_at, i.sent_at, i.expires_at, i.accepted_at, i.revoked_at, u.email AS inviter_email, u.display_name AS inviter_name
+FROM account_invites i JOIN users u ON u.id = i.invited_by
+WHERE i.account_id = $1 AND i.accepted_at IS NULL AND i.revoked_at IS NULL ORDER BY i.created_at DESC, i.id
+`
+
+type ListOpenInvitesRow struct {
+	ID           uuid.UUID
+	AccountID    uuid.UUID
+	Email        string
+	Role         string
+	InvitedBy    uuid.UUID
+	TokenHash    []byte
+	CreatedAt    time.Time
+	SentAt       time.Time
+	ExpiresAt    time.Time
+	AcceptedAt   *time.Time
+	RevokedAt    *time.Time
+	InviterEmail string
+	InviterName  string
+}
+
+func (q *Queries) ListOpenInvites(ctx context.Context, accountID uuid.UUID) ([]ListOpenInvitesRow, error) {
+	rows, err := q.db.Query(ctx, listOpenInvites, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOpenInvitesRow{}
+	for rows.Next() {
+		var i ListOpenInvitesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.Email,
+			&i.Role,
+			&i.InvitedBy,
+			&i.TokenHash,
+			&i.CreatedAt,
+			&i.SentAt,
+			&i.ExpiresAt,
+			&i.AcceptedAt,
+			&i.RevokedAt,
+			&i.InviterEmail,
+			&i.InviterName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserMemberships = `-- name: ListUserMemberships :many
 SELECT m.account_id, a.name AS account_name, m.role
 FROM account_members m JOIN accounts a ON a.id = m.account_id
@@ -547,6 +890,17 @@ func (q *Queries) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockAccount = `-- name: LockAccount :exec
+SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
+`
+
+// Members and invitations (phase 39).
+// One writer at a time per account for changes that must keep an owner: the lock is released at the end of the transaction.
+func (q *Queries) LockAccount(ctx context.Context, accountID string) error {
+	_, err := q.db.Exec(ctx, lockAccount, accountID)
+	return err
 }
 
 const markEmailVerified = `-- name: MarkEmailVerified :exec
@@ -598,6 +952,79 @@ func (q *Queries) RecordSuccessfulLogin(ctx context.Context, id uuid.UUID) error
 	return err
 }
 
+const refreshInvite = `-- name: RefreshInvite :one
+UPDATE account_invites SET role = $1, invited_by = $2, token_hash = $3, expires_at = $4, sent_at = now()
+WHERE id = $5 AND accepted_at IS NULL AND revoked_at IS NULL RETURNING id, account_id, email, role, invited_by, token_hash, created_at, sent_at, expires_at, accepted_at, revoked_at
+`
+
+type RefreshInviteParams struct {
+	Role      string
+	InvitedBy uuid.UUID
+	TokenHash []byte
+	ExpiresAt time.Time
+	ID        uuid.UUID
+}
+
+// A repeated invitation (or a resend) replaces the link: the old one stops working.
+func (q *Queries) RefreshInvite(ctx context.Context, arg RefreshInviteParams) (AccountInvite, error) {
+	row := q.db.QueryRow(ctx, refreshInvite,
+		arg.Role,
+		arg.InvitedBy,
+		arg.TokenHash,
+		arg.ExpiresAt,
+		arg.ID,
+	)
+	var i AccountInvite
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Email,
+		&i.Role,
+		&i.InvitedBy,
+		&i.TokenHash,
+		&i.CreatedAt,
+		&i.SentAt,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const renameAccount = `-- name: RenameAccount :execrows
+UPDATE accounts SET name = $1 WHERE id = $2
+`
+
+type RenameAccountParams struct {
+	Name string
+	ID   uuid.UUID
+}
+
+func (q *Queries) RenameAccount(ctx context.Context, arg RenameAccountParams) (int64, error) {
+	result, err := q.db.Exec(ctx, renameAccount, arg.Name, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const revokeInvite = `-- name: RevokeInvite :execrows
+UPDATE account_invites SET revoked_at = now() WHERE id = $1 AND account_id = $2 AND accepted_at IS NULL AND revoked_at IS NULL
+`
+
+type RevokeInviteParams struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+}
+
+func (q *Queries) RevokeInvite(ctx context.Context, arg RevokeInviteParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeInvite, arg.ID, arg.AccountID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const revokeSession = `-- name: RevokeSession :execrows
 UPDATE user_sessions SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL
 `
@@ -617,6 +1044,24 @@ UPDATE user_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS
 func (q *Queries) RevokeUserSessions(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, revokeUserSessions, userID)
 	return err
+}
+
+const setMemberRole = `-- name: SetMemberRole :execrows
+UPDATE account_members SET role = $1 WHERE account_id = $2 AND user_id = $3
+`
+
+type SetMemberRoleParams struct {
+	Role      string
+	AccountID uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) SetMemberRole(ctx context.Context, arg SetMemberRoleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setMemberRole, arg.Role, arg.AccountID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setPassword = `-- name: SetPassword :exec
