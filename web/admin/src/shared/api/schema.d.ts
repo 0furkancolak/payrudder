@@ -1832,6 +1832,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/invitations/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What a live invitation is for
+         * @description Public: the token is the credential and travels in the body, never in the URL. Answers the account, the address and the role, and whether the address already has an account (then the person signs in instead of choosing a password). A used, expired, revoked or unknown token is `400 identity.token.invalid`. Rate limited per client address (20 a minute).
+         */
+        post: operations["lookupInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join an account as a new person
+         * @description Creates the user (the address counts as verified: the token was mailed to it), makes them a member with the invited role and opens a session. An address that has an account is `409 identity.invite.sign_in_required`: that person signs in and uses `/app/v1/invitations/accept`. Single use. Public; rate limited per client address (20 a minute). The answer is `Cache-Control: no-store`.
+         */
+        post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/signin": {
         parameters: {
             query?: never;
@@ -1897,6 +1937,109 @@ export interface paths {
         get: operations["appGetAccount"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename the account (owners only) */
+        patch: operations["appRenameAccount"];
+        trace?: never;
+    };
+    "/app/v1/account/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The open invitations of the account (owners and administrators)
+         * @description An invitation whose seven days ran out is still listed, marked by its `expire_time`, until somebody revokes it. The token is never returned; it exists only in the mail.
+         */
+        get: operations["appListInvitations"];
+        put?: never;
+        /**
+         * Invite a person by e-mail
+         * @description Mails a single-use link (valid seven days) to the address. Owners and administrators may invite; only an owner may invite an owner; the inviter's own address must be verified (`403 identity.email.not_verified`). An address that is a member already is `409 identity.invite.already_member`. A second invitation to an address with an open one refreshes it (new link, old one dead) at most once a minute (`429 identity.invite.throttled`); an account has at most 50 open invitations and makes at most 30 a day (`429 identity.invite.quota`).
+         */
+        post: operations["appInviteMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account/invitations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel an open invitation; its link stops working */
+        delete: operations["appRevokeInvitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account/invitations/{id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mail a new link for an open invitation (at most one a minute); the old link stops working */
+        post: operations["appResendInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account/members/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a member, or leave the account (your own user id)
+         * @description The last owner cannot be removed (`409 identity.member.last_owner`). Owners and administrators remove others (an administrator not an owner); anybody may leave.
+         */
+        delete: operations["appRemoveMember"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a member's role
+         * @description Owners and administrators may; an administrator may not touch owners nor make one. The last owner of an account cannot be demoted (`409 identity.member.last_owner`).
+         */
+        patch: operations["appUpdateMemberRole"];
+        trace?: never;
+    };
+    "/app/v1/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join the account an invitation was sent for, as the signed-in person
+         * @description The invitation must have been sent to the person's own address (`403 identity.invite.wrong_user` otherwise). Accepting proves the address.
+         */
+        post: operations["appAcceptInvitation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3350,6 +3493,34 @@ export interface components {
             create_time?: string;
             /** @description True once the person opened a mailed link for this address. Until then live API keys cannot be created. */
             email_verified?: boolean;
+        };
+        Invitation: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: email */
+            email?: string;
+            /** @enum {string} */
+            role?: "owner" | "admin" | "viewer";
+            invited_by_email?: string;
+            invited_by_name?: string;
+            /** Format: date-time */
+            create_time?: string;
+            /**
+             * Format: date-time
+             * @description When the mail last went out
+             */
+            send_time?: string;
+            /** Format: date-time */
+            expire_time?: string;
+        };
+        InvitationLookup: {
+            account_name?: string;
+            /** Format: email */
+            email?: string;
+            /** @enum {string} */
+            role?: "owner" | "admin" | "viewer";
+            has_account?: boolean;
+            invited_by_name?: string;
         };
         Accepted: {
             /** @enum {string} */
@@ -7949,6 +8120,68 @@ export interface operations {
             429: components["responses"]["Error"];
         };
     };
+    lookupInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationLookup"];
+                };
+            };
+            400: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    acceptInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    /** Format: password */
+                    password: string;
+                    display_name?: string;
+                    /** @enum {string} */
+                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOpened"];
+                };
+            };
+            400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
     signIn: {
         parameters: {
             query?: never;
@@ -8045,6 +8278,260 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    appRenameAccount: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        name?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appListInvitations: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        invitations?: components["schemas"]["Invitation"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appInviteMember: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    /** @enum {string} */
+                    role: "owner" | "admin" | "viewer";
+                    /**
+                     * @description The language of the mail
+                     * @enum {string}
+                     */
+                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    appRevokeInvitation: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appResendInvitation: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    appRemoveMember: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appUpdateMemberRole: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    role: "owner" | "admin" | "viewer";
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        role?: "owner" | "admin" | "viewer";
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appAcceptInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Joined */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        account_id?: string;
+                        memberships?: components["schemas"]["Membership"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+        };
+    };
     appListApps: {
         parameters: {
             query?: {
@@ -8086,8 +8573,8 @@ export interface operations {
                     name: string;
                     /** @description Lower case with dashes, unique within the account; default: the name */
                     slug?: string;
-                    /** @enum {string} */
-                    currency: "CHF" | "EUR" | "GBP" | "JPY" | "KWD" | "TRY" | "USD";
+                    /** @description An active ISO 4217 code */
+                    currency: string;
                     /** @example Europe/Istanbul */
                     timezone: string;
                 };
@@ -8265,11 +8752,8 @@ export interface operations {
             content: {
                 "application/json": {
                     name: string;
-                    /**
-                     * @description Required
-                     * @enum {string}
-                     */
-                    currency: "CHF" | "EUR" | "GBP" | "JPY" | "KWD" | "TRY" | "USD";
+                    /** @description Required, no default. Immutable. An active ISO 4217 code (USD, EUR, TRY, JPY, KWD, ...); the minor-unit exponent comes from the currency (0 for JPY, 3 for KWD). */
+                    currency: string;
                     /**
                      * @description Required IANA name
                      * @example Europe/Istanbul
@@ -8339,8 +8823,8 @@ export interface operations {
                     name: string;
                     /** @description Lower case with dashes, unique within the account; default: the name */
                     slug?: string;
-                    /** @enum {string} */
-                    currency: "CHF" | "EUR" | "GBP" | "JPY" | "KWD" | "TRY" | "USD";
+                    /** @description An active ISO 4217 code */
+                    currency: string;
                     /** @example Europe/Istanbul */
                     timezone: string;
                     /** @example 86400s */

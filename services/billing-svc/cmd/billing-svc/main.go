@@ -35,6 +35,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
+	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
 	creditcmd "github.com/0furkancolak/quotify/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"

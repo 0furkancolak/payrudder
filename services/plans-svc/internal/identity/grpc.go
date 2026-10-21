@@ -144,3 +144,73 @@ func (h *Handler) RevokeMyApiKey(ctx context.Context, req *plansv1.RevokeMyApiKe
 	}
 	return &plansv1.RevokeMyApiKeyResponse{ApiKey: key}, nil
 }
+
+func (h *Handler) RenameMyAccount(ctx context.Context, req *plansv1.RenameMyAccountRequest) (*plansv1.RenameMyAccountResponse, error) {
+	name, err := h.cmd.RenameAccount(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.RenameMyAccountResponse{Name: name}, nil
+}
+
+func (h *Handler) InviteMember(ctx context.Context, req *plansv1.InviteMemberRequest) (*plansv1.InviteMemberResponse, error) {
+	inv, err := h.cmd.InviteMember(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.InviteMemberResponse{Invitation: inv}, nil
+}
+
+func (h *Handler) ListInvitations(ctx context.Context, req *plansv1.ListInvitationsRequest) (*plansv1.ListInvitationsResponse, error) {
+	list, err := h.qry.Invitations(ctx, req.GetUserId(), req.GetAccountId())
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.ListInvitationsResponse{Invitations: list}, nil
+}
+
+func (h *Handler) RevokeInvitation(ctx context.Context, req *plansv1.RevokeInvitationRequest) (*plansv1.RevokeInvitationResponse, error) {
+	if err := h.cmd.RevokeInvitation(ctx, req); err != nil {
+		return nil, err
+	}
+	return &plansv1.RevokeInvitationResponse{}, nil
+}
+
+func (h *Handler) ResendInvitation(ctx context.Context, req *plansv1.ResendInvitationRequest) (*plansv1.ResendInvitationResponse, error) {
+	inv, err := h.cmd.ResendInvitation(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.ResendInvitationResponse{Invitation: inv}, nil
+}
+
+func (h *Handler) UpdateMemberRole(ctx context.Context, req *plansv1.UpdateMemberRoleRequest) (*plansv1.UpdateMemberRoleResponse, error) {
+	role, err := h.cmd.UpdateMemberRole(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.UpdateMemberRoleResponse{Role: role}, nil
+}
+
+func (h *Handler) RemoveMember(ctx context.Context, req *plansv1.RemoveMemberRequest) (*plansv1.RemoveMemberResponse, error) {
+	if err := h.cmd.RemoveMember(ctx, req); err != nil {
+		return nil, err
+	}
+	return &plansv1.RemoveMemberResponse{}, nil
+}
+
+func (h *Handler) LookupInvitation(ctx context.Context, req *plansv1.LookupInvitationRequest) (*plansv1.LookupInvitationResponse, error) {
+	return h.cmd.LookupInvitation(ctx, req.GetToken())
+}
+
+func (h *Handler) AcceptInvitation(ctx context.Context, req *plansv1.AcceptInvitationRequest) (*plansv1.AcceptInvitationResponse, error) {
+	o, err := h.cmd.AcceptInvitation(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.AcceptInvitationResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+}
+
+func (h *Handler) AcceptInvitationAsUser(ctx context.Context, req *plansv1.AcceptInvitationAsUserRequest) (*plansv1.AcceptInvitationAsUserResponse, error) {
+	return h.cmd.AcceptInvitationAsUser(ctx, req)
+}

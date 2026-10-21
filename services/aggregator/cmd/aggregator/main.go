@@ -29,6 +29,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/otelx"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
+	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/quotify/services/aggregator/internal/apply"
 	"github.com/0furkancolak/quotify/services/aggregator/internal/maintenance"
 	"github.com/0furkancolak/quotify/services/aggregator/internal/meters"

@@ -39,6 +39,7 @@ export function publicProductRoutes(root: AnyRoute) {
     // The pages the mails open work signed in or out: the token in the link is the credential, and a person may follow it from any browser.
     createRoute({ getParentRoute: () => root, path: "/reset", component: lazy(() => import("./ResetPage.vue")) }),
     createRoute({ getParentRoute: () => root, path: "/verify", component: lazy(() => import("./VerifyPage.vue")) }),
+    createRoute({ getParentRoute: () => root, path: "/invite", component: lazy(() => import("./InvitePage.vue")) }),
   ];
 }
 

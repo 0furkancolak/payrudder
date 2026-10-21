@@ -8,7 +8,19 @@ export const SANDBOX = "a1000000-0000-4000-8000-000000000002";
 export const ACCOUNT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 export const user = { id: "11111111-1111-4111-8111-111111111111", email: "ada@example.com", display_name: "Ada Lovelace", create_time: "2026-10-01T09:00:00Z", email_verified: true };
+export const ACCOUNT2 = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 export const memberships = [{ account_id: ACCOUNT, account_name: "Ada Labs", role: "owner" }];
+const GRACE = "44444444-4444-4444-8444-444444444444";
+const LINUS = "55555555-5555-4555-8555-555555555555";
+export const member = (user_id: string, email: string, display_name: string, role: string) => ({ user_id, email, display_name, role, create_time: "2026-10-02T09:00:00Z" });
+export const team = () => [
+  member(user.id, user.email, user.display_name, "owner"),
+  member(GRACE, "grace@example.com", "Grace Hopper", "admin"),
+  member(LINUS, "linus@example.com", "Linus Torvalds", "viewer"),
+];
+export const invitation = (id: string, email: string, role: string, expire_time = "2099-10-28T09:00:00Z") => ({
+  id, email, role, invited_by_email: user.email, invited_by_name: user.display_name, create_time: "2026-10-20T09:00:00Z", send_time: "2026-10-20T09:00:00Z", expire_time,
+});
 
 export const tenant = (id: string, environment: "LIVE" | "SANDBOX", currency = "USD") => ({
   id,
@@ -99,6 +111,12 @@ export interface ProductState {
   sessionOk: boolean;
   /** Whether Ada's address is verified; a verification link flips it. */
   verified: boolean;
+  /** Ada's role in the account, its members, open invitations and name; the memberships she has (a second one makes the account switcher appear). */
+  role: string;
+  members: ReturnType<typeof team>;
+  invitations: ReturnType<typeof invitation>[];
+  accountName: string;
+  memberships: { account_id: string; account_name: string; role: string }[];
   /** The tokens the mocked mails carry. */
   verifyToken: string;
   resetToken: string;
@@ -106,13 +124,14 @@ export interface ProductState {
 
 /** A stand-in for the product API with a person signed in as Ada. `state` is the test's to change while it runs. */
 export function productGateway(gw: MockGateway, state: Partial<ProductState> = {}): { gw: MockGateway; state: ProductState } {
-  const s: ProductState = { apps: [app], keys: [...keys], overview: overview("live"), sessionOk: true, verified: true, verifyToken: "qv_good", resetToken: "qr_good", ...state };
+  const s: ProductState = { apps: [app], keys: [...keys], overview: overview("live"), sessionOk: true, verified: true, verifyToken: "qv_good", resetToken: "qr_good",
+    role: "owner", members: team(), invitations: [], accountName: "Ada Labs", memberships, ...state };
   const who = () => ({ ...user, email_verified: s.verified });
   const badLink = { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "identity.token.invalid", message: "bad link" } } };
   gw.on((c) => {
     if (c.path === "/auth/signin" && c.method === "POST") {
       return c.body?.password === "right password!" || c.body?.password === "a long enough password"
-        ? { body: { user: who(), memberships, token: SESSION, expire_time: "2026-11-04T09:00:00Z" } }
+        ? { body: { user: who(), memberships: s.memberships, token: SESSION, expire_time: "2026-11-04T09:00:00Z" } }
         : { status: 401, body: { error: { code: "UNAUTHENTICATED", key: "identity.auth.invalid_credentials", message: "wrong" } } };
     }
     // Sign-up opens no session: 202 whatever the address. The page then signs in with the same password.
@@ -134,10 +153,61 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
     if (c.path.startsWith("/app/v1") || c.path === "/auth/me") {
       if (!s.sessionOk) return { status: 401, body: { error: { code: "UNAUTHENTICATED", key: "identity.session.invalid", message: "sign in again" } } };
     }
-    if (c.path === "/auth/me") return { body: { user: who(), memberships, expire_time: "2026-11-04T09:00:00Z" } };
-    if (c.path === "/app/v1/account") {
-      return { body: { id: ACCOUNT, name: "Ada Labs", role: "owner", create_time: "2026-10-01T09:00:00Z", members: [{ user_id: user.id, email: user.email, display_name: user.display_name, role: "owner", create_time: "2026-10-01T09:00:00Z" }] } };
+    if (c.path === "/auth/me") return { body: { user: who(), memberships: s.memberships, expire_time: "2026-11-04T09:00:00Z" } };
+    if (c.path === "/app/v1/account" && c.method === "GET") {
+      const id = c.query.get("account_id") ?? ACCOUNT;
+      return { body: { id, name: id === ACCOUNT ? s.accountName : (s.memberships.find((m) => m.account_id === id)?.account_name ?? ""), role: s.role, create_time: "2026-10-01T09:00:00Z", members: s.members } };
     }
+    if (c.path === "/app/v1/account" && c.method === "PATCH") {
+      s.accountName = String(c.body?.name);
+      return { body: { name: s.accountName } };
+    }
+    const forbidden = { status: 403, body: { error: { code: "PERMISSION_DENIED", key: "identity.account.forbidden", message: "no" } } };
+    const lastOwner = { status: 409, body: { error: { code: "FAILED_PRECONDITION", key: "identity.member.last_owner", message: "keep an owner" } } };
+    if (c.path === "/app/v1/account/invitations" && c.method === "GET") return s.role === "viewer" ? forbidden : { body: { invitations: s.invitations } };
+    if (c.path === "/app/v1/account/invitations" && c.method === "POST") {
+      if (s.role === "viewer") return forbidden;
+      const email = String(c.body?.email);
+      if (s.members.some((m) => m.email === email)) return { status: 409, body: { error: { code: "ALREADY_EXISTS", key: "identity.invite.already_member", message: "member" } } };
+      const created = invitation(`inv-${s.invitations.length + 1}`, email, String(c.body?.role));
+      s.invitations = [created, ...s.invitations];
+      return { status: 201, body: created };
+    }
+    if (c.path.startsWith("/app/v1/account/invitations/") && c.method === "DELETE") {
+      s.invitations = s.invitations.filter((i) => i.id !== c.path.split("/").pop());
+      return { status: 204, body: {} };
+    }
+    if (c.path.startsWith("/app/v1/account/invitations/") && c.path.endsWith("/resend")) return { body: invitation(c.path.split("/")[5] ?? "", "x@example.com", "viewer") };
+    if (c.path.startsWith("/app/v1/account/members/") && c.method === "PATCH") {
+      const id = c.path.split("/").pop();
+      const target = s.members.find((m) => m.user_id === id);
+      if (target?.role === "owner" && c.body?.role !== "owner" && s.members.filter((m) => m.role === "owner").length === 1) return lastOwner;
+      s.members = s.members.map((m) => (m.user_id === id ? { ...m, role: String(c.body?.role) } : m));
+      return { body: { role: c.body?.role } };
+    }
+    if (c.path.startsWith("/app/v1/account/members/") && c.method === "DELETE") {
+      const id = c.path.split("/").pop();
+      const target = s.members.find((m) => m.user_id === id);
+      if (target?.role === "owner" && s.members.filter((m) => m.role === "owner").length === 1) return lastOwner;
+      s.members = s.members.filter((m) => m.user_id !== id);
+      if (id === user.id) s.memberships = s.memberships.filter((m) => m.account_id !== ACCOUNT);
+      return { status: 204, body: {} };
+    }
+    // The mailed invitation: qi_new is for an address without an account, qi_has for Ada's, qi_other for somebody else's who has one.
+    if (c.path === "/auth/invitations/lookup") {
+      const info = {
+        qi_new: { email: "ned@example.com", has_account: false },
+        qi_has: { email: "ada@example.com", has_account: true },
+        qi_other: { email: "grace@example.com", has_account: true },
+      }[String(c.body?.token)];
+      return info
+        ? { body: { account_name: "Ada Labs", role: "viewer", invited_by_name: "Ada Lovelace", ...info } }
+        : { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "identity.token.invalid", message: "bad link" } } };
+    }
+    if (c.path === "/auth/invitations/accept") {
+      return { body: { user: { ...user, email: "ned@example.com", display_name: String(c.body?.display_name ?? "") }, memberships, token: SESSION, expire_time: "2026-11-04T09:00:00Z" } };
+    }
+    if (c.path === "/app/v1/invitations/accept") return { body: { account_id: ACCOUNT, memberships } };
     if (c.path === "/app/v1/apps" && c.method === "GET") return { body: { apps: s.apps } };
     if (c.path === "/app/v1/apps" && c.method === "POST") {
       const created = { ...app, id: "b0000000-0000-4000-8000-000000000002", name: String(c.body?.name), slug: String(c.body?.name).toLowerCase().replace(/\s+/g, "-") };

@@ -1301,7 +1301,8 @@
         "unknown_category": "This mail category does not exist."
       },
       "subscription": {
-        "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead."
+        "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead.",
+        "provider_currency": "This payment provider cannot charge in this currency. Choose another provider or currency."
       },
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
@@ -1404,6 +1405,18 @@
       },
       "email": {
         "not_verified": "Confirm your e-mail address to create live API keys."
+      },
+      "invite": {
+        "already_member": "This person is a member of the account already.",
+        "not_found": "This invitation does not exist any more.",
+        "quota": "Too many invitations. Cancel some or try again tomorrow.",
+        "sign_in_required": "This address already has an account. Sign in to accept the invitation.",
+        "throttled": "This invitation was sent a moment ago. Wait a minute before sending it again.",
+        "wrong_user": "This invitation was sent to another address. Sign in with that address."
+      },
+      "member": {
+        "last_owner": "An account must keep at least one owner. Make someone else an owner first.",
+        "not_found": "This person is not a member of the account."
       }
     }
   },
@@ -1597,9 +1610,7 @@
       "appearance": "Appearance",
       "themeSystem": "System",
       "themeLight": "Light",
-      "themeDark": "Dark",
-      "members": "Members",
-      "membersNote": "Everyone with access to this organisation. Inviting people is not available yet."
+      "themeDark": "Dark"
     },
     "role": {
       "owner": "Owner",
@@ -1638,6 +1649,55 @@
       "failTitle": "This link does not work",
       "failBody": "It was already used, has expired or was replaced by a newer one. Sign in and ask for a new link.",
       "toApp": "Go to your apps"
+    },
+    "members": {
+      "title": "Members",
+      "manageNote": "Owners and administrators invite people and manage roles. An administrator cannot change owners.",
+      "readNote": "You can see who is in this account. Only owners and administrators can change it.",
+      "you": "you",
+      "roleOf": "Role of {name}",
+      "leave": "Leave",
+      "remove": "Remove",
+      "removeNamed": "Remove {name}",
+      "inviteTitle": "Invite someone",
+      "role": "Role",
+      "invite": "Send invitation",
+      "invited": "Invitation sent to {email}.",
+      "pending": "Open invitations",
+      "expiresOn": "Valid until {date}",
+      "expiredOn": "Expired on {date}",
+      "expired": "Expired",
+      "resend": "Send again",
+      "resendNamed": "Send the invitation to {email} again",
+      "cancel": "Cancel",
+      "cancelNamed": "Cancel the invitation to {email}",
+      "leaveTitle": "Leave this account?",
+      "leaveBody": "You lose access to its apps and data at once. An owner can invite you again.",
+      "removeTitle": "Remove this member?",
+      "removeBody": "{name} loses access to this account's apps and data at once."
+    },
+    "account": {
+      "switch": "Account",
+      "rename": "Account name",
+      "save": "Save name",
+      "noneTitle": "You are not in any account",
+      "noneBody": "You left your last account or were removed from it. Ask an owner to invite you again, or sign up with another address."
+    },
+    "invite": {
+      "title": "You are invited",
+      "intro": "Join {account} on Quotify as {role}.",
+      "checking": "Checking the invitation…",
+      "noToken": "This page needs the link from your invitation e-mail. Open the link again.",
+      "invalid": "This invitation is not valid any more: it was used, cancelled, replaced or has expired. Ask the person who invited you to send it again.",
+      "from": "Invited by {name}.",
+      "joinAs": "You are signed in as {email}. Join with this account.",
+      "join": "Join the account",
+      "otherUser": "This invitation is for {invited}, but you are signed in as {current}. Sign out, then open the link again.",
+      "signInTitle": "Sign in to join",
+      "hasAccount": "{email} already has an account. Sign in to join.",
+      "signInJoin": "Sign in and join",
+      "createTitle": "Create your login",
+      "createJoin": "Create login and join"
     }
   },
   "shell": {

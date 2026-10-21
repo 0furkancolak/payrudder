@@ -1301,7 +1301,8 @@
         "unknown_category": "Diese E-Mail-Kategorie existiert nicht."
       },
       "subscription": {
-        "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut."
+        "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut.",
+        "provider_currency": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen. Wählen Sie einen anderen Anbieter oder eine andere Währung."
       },
       "webhook": {
         "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
@@ -1404,6 +1405,18 @@
       },
       "email": {
         "not_verified": "Bestätigen Sie Ihre E-Mail-Adresse, um Live-API-Schlüssel zu erstellen."
+      },
+      "invite": {
+        "already_member": "Diese Person ist bereits Mitglied des Kontos.",
+        "not_found": "Diese Einladung gibt es nicht mehr.",
+        "quota": "Zu viele Einladungen. Ziehen Sie einige zurück oder versuchen Sie es morgen erneut.",
+        "sign_in_required": "Diese Adresse hat bereits ein Konto. Melden Sie sich an, um die Einladung anzunehmen.",
+        "throttled": "Diese Einladung wurde gerade gesendet. Warten Sie eine Minute, bevor Sie sie erneut senden.",
+        "wrong_user": "Diese Einladung wurde an eine andere Adresse gesendet. Melden Sie sich mit dieser Adresse an."
+      },
+      "member": {
+        "last_owner": "Ein Konto braucht mindestens einen Inhaber. Machen Sie zuerst jemand anderen zum Inhaber.",
+        "not_found": "Diese Person ist kein Mitglied des Kontos."
       }
     }
   },
@@ -1597,9 +1610,7 @@
       "appearance": "Darstellung",
       "themeSystem": "System",
       "themeLight": "Hell",
-      "themeDark": "Dunkel",
-      "members": "Mitglieder",
-      "membersNote": "Alle mit Zugriff auf diese Organisation. Personen einzuladen ist noch nicht möglich."
+      "themeDark": "Dunkel"
     },
     "role": {
       "owner": "Eigentümer",
@@ -1638,6 +1649,55 @@
       "failTitle": "Dieser Link funktioniert nicht",
       "failBody": "Er wurde schon benutzt, ist abgelaufen oder wurde durch einen neueren ersetzt. Melden Sie sich an und fordern Sie einen neuen Link an.",
       "toApp": "Zu Ihren Apps"
+    },
+    "members": {
+      "title": "Mitglieder",
+      "manageNote": "Inhaber und Administratoren laden Personen ein und verwalten Rollen. Ein Administrator kann Inhaber nicht ändern.",
+      "readNote": "Sie sehen, wer zu diesem Konto gehört. Nur Inhaber und Administratoren können es ändern.",
+      "you": "Sie",
+      "roleOf": "Rolle von {name}",
+      "leave": "Verlassen",
+      "remove": "Entfernen",
+      "removeNamed": "{name} entfernen",
+      "inviteTitle": "Jemanden einladen",
+      "role": "Rolle",
+      "invite": "Einladung senden",
+      "invited": "Einladung an {email} gesendet.",
+      "pending": "Offene Einladungen",
+      "expiresOn": "Gültig bis {date}",
+      "expiredOn": "Abgelaufen am {date}",
+      "expired": "Abgelaufen",
+      "resend": "Erneut senden",
+      "resendNamed": "Einladung an {email} erneut senden",
+      "cancel": "Zurückziehen",
+      "cancelNamed": "Einladung an {email} zurückziehen",
+      "leaveTitle": "Dieses Konto verlassen?",
+      "leaveBody": "Sie verlieren sofort den Zugriff auf Apps und Daten. Ein Inhaber kann Sie erneut einladen.",
+      "removeTitle": "Dieses Mitglied entfernen?",
+      "removeBody": "{name} verliert sofort den Zugriff auf Apps und Daten dieses Kontos."
+    },
+    "account": {
+      "switch": "Konto",
+      "rename": "Kontoname",
+      "save": "Namen speichern",
+      "noneTitle": "Sie gehören zu keinem Konto",
+      "noneBody": "Sie haben Ihr letztes Konto verlassen oder wurden entfernt. Bitten Sie einen Inhaber, Sie erneut einzuladen, oder registrieren Sie sich mit einer anderen Adresse."
+    },
+    "invite": {
+      "title": "Sie sind eingeladen",
+      "intro": "Treten Sie {account} bei Quotify als {role} bei.",
+      "checking": "Einladung wird geprüft …",
+      "noToken": "Diese Seite braucht den Link aus Ihrer Einladungs-E-Mail. Öffnen Sie den Link erneut.",
+      "invalid": "Diese Einladung ist nicht mehr gültig: Sie wurde benutzt, zurückgezogen, ersetzt oder ist abgelaufen. Bitten Sie die einladende Person, sie erneut zu senden.",
+      "from": "Eingeladen von {name}.",
+      "joinAs": "Sie sind als {email} angemeldet. Treten Sie mit diesem Konto bei.",
+      "join": "Dem Konto beitreten",
+      "otherUser": "Diese Einladung gilt für {invited}, Sie sind aber als {current} angemeldet. Melden Sie sich ab und öffnen Sie den Link erneut.",
+      "signInTitle": "Zum Beitritt anmelden",
+      "hasAccount": "{email} hat bereits ein Konto. Melden Sie sich an, um beizutreten.",
+      "signInJoin": "Anmelden und beitreten",
+      "createTitle": "Zugang einrichten",
+      "createJoin": "Zugang einrichten und beitreten"
     }
   },
   "shell": {

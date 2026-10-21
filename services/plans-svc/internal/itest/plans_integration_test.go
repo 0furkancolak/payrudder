@@ -46,10 +46,12 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("Apps", testApps)
 	t.Run("Identity", testIdentity)
 	t.Run("EmailVerificationAndReset", testEmailVerificationAndReset)
+	t.Run("MembersAndInvitations", testMembersAndInvitations)
 	t.Run("Addresses", testAddresses)
 	t.Run("TaxRates", testTaxRates)
 	t.Run("MailSettings", testMailSettings)
 	t.Run("CurrencyFeesAndCustomerBilling", testCurrencyFeesAndCustomerBilling)
+	t.Run("ManyCurrenciesAndZones", testManyCurrenciesAndZones)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
 }

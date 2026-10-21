@@ -1301,7 +1301,8 @@
         "unknown_category": "Bu e-posta kategorisi yok."
       },
       "subscription": {
-        "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın."
+        "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın.",
+        "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin."
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
@@ -1404,6 +1405,18 @@
       },
       "email": {
         "not_verified": "Canlı API anahtarı oluşturmak için e-posta adresinizi doğrulayın."
+      },
+      "invite": {
+        "already_member": "Bu kişi zaten hesabın bir üyesi.",
+        "not_found": "Bu davet artık yok.",
+        "quota": "Çok fazla davet var. Bazılarını iptal edin ya da yarın yeniden deneyin.",
+        "sign_in_required": "Bu adresin zaten bir hesabı var. Daveti kabul etmek için oturum açın.",
+        "throttled": "Bu davet az önce gönderildi. Yeniden göndermeden önce bir dakika bekleyin.",
+        "wrong_user": "Bu davet başka bir adrese gönderildi. O adresle oturum açın."
+      },
+      "member": {
+        "last_owner": "Bir hesabın en az bir sahibi olmalı. Önce başka birini sahip yapın.",
+        "not_found": "Bu kişi hesabın üyesi değil."
       }
     }
   },
@@ -1597,9 +1610,7 @@
       "appearance": "Görünüm",
       "themeSystem": "Sistem",
       "themeLight": "Açık",
-      "themeDark": "Koyu",
-      "members": "Üyeler",
-      "membersNote": "Bu kuruluşa erişimi olan herkes. Kişi davet etme henüz yok."
+      "themeDark": "Koyu"
     },
     "role": {
       "owner": "Sahip",
@@ -1638,6 +1649,55 @@
       "failTitle": "Bu bağlantı çalışmıyor",
       "failBody": "Bağlantı zaten kullanılmış, süresi dolmuş ya da daha yenisiyle değiştirilmiş. Oturum açıp yeni bir bağlantı isteyin.",
       "toApp": "Uygulamalarınıza git"
+    },
+    "members": {
+      "title": "Üyeler",
+      "manageNote": "Sahipler ve yöneticiler kişileri davet eder ve rolleri yönetir. Yönetici, sahipleri değiştiremez.",
+      "readNote": "Bu hesapta kimlerin olduğunu görebilirsiniz. Yalnızca sahipler ve yöneticiler değiştirebilir.",
+      "you": "siz",
+      "roleOf": "{name} rolü",
+      "leave": "Ayrıl",
+      "remove": "Çıkar",
+      "removeNamed": "{name} kişisini çıkar",
+      "inviteTitle": "Birini davet edin",
+      "role": "Rol",
+      "invite": "Davet gönder",
+      "invited": "Davet {email} adresine gönderildi.",
+      "pending": "Bekleyen davetler",
+      "expiresOn": "{date} tarihine kadar geçerli",
+      "expiredOn": "{date} tarihinde süresi doldu",
+      "expired": "Süresi doldu",
+      "resend": "Yeniden gönder",
+      "resendNamed": "{email} adresine daveti yeniden gönder",
+      "cancel": "İptal et",
+      "cancelNamed": "{email} adresine daveti iptal et",
+      "leaveTitle": "Bu hesaptan ayrılsın mısınız?",
+      "leaveBody": "Uygulamalarına ve verilerine erişiminizi hemen kaybedersiniz. Bir sahip sizi yeniden davet edebilir.",
+      "removeTitle": "Bu üye çıkarılsın mı?",
+      "removeBody": "{name}, bu hesabın uygulamalarına ve verilerine erişimini hemen kaybeder."
+    },
+    "account": {
+      "switch": "Hesap",
+      "rename": "Hesap adı",
+      "save": "Adı kaydet",
+      "noneTitle": "Hiçbir hesapta değilsiniz",
+      "noneBody": "Son hesabınızdan ayrıldınız ya da çıkarıldınız. Bir sahipten sizi yeniden davet etmesini isteyin ya da başka bir adresle kaydolun."
+    },
+    "invite": {
+      "title": "Davet edildiniz",
+      "intro": "Quotify'da {account} hesabına {role} olarak katılın.",
+      "checking": "Davet denetleniyor…",
+      "noToken": "Bu sayfa, davet e-postanızdaki bağlantıyla açılmalıdır. Bağlantıyı yeniden açın.",
+      "invalid": "Bu davet artık geçerli değil: kullanılmış, iptal edilmiş, değiştirilmiş ya da süresi dolmuş. Sizi davet eden kişiden yeniden göndermesini isteyin.",
+      "from": "Davet eden: {name}.",
+      "joinAs": "{email} olarak oturum açtınız. Bu hesapla katılın.",
+      "join": "Hesaba katıl",
+      "otherUser": "Bu davet {invited} için, ancak {current} olarak oturum açtınız. Çıkış yapın, sonra bağlantıyı yeniden açın.",
+      "signInTitle": "Katılmak için oturum açın",
+      "hasAccount": "{email} adresinin zaten bir hesabı var. Katılmak için oturum açın.",
+      "signInJoin": "Oturum aç ve katıl",
+      "createTitle": "Girişinizi oluşturun",
+      "createJoin": "Girişi oluştur ve katıl"
     }
   },
   "shell": {
