@@ -46,3 +46,16 @@ export function parseMajor(input: string, currency: string): string | null {
   const minor = (whole + frac.padEnd(digits, "0")).replace(/^0+(?=\d)/, "");
   return minor === "" ? "0" : minor;
 }
+
+/**
+ * An amount in minor units (a decimal string) as the plain decimal a person types for a currency ("1250" -> "12.50" for dollars, "500" -> "500" for yen).
+ * The inverse of parseMajor; done on the text, no float. Anything that is not a non-negative integer gives "".
+ */
+export function minorToMajor(minor: string | number | undefined, currency: string): string {
+  const raw = String(minor ?? "");
+  if (!/^\d+$/.test(raw)) return "";
+  const digits = minorDigits(currency);
+  const padded = raw.padStart(digits + 1, "0");
+  const whole = padded.slice(0, padded.length - digits).replace(/^0+(?=\d)/, "");
+  return digits > 0 ? `${whole}.${padded.slice(padded.length - digits)}` : whole;
+}

@@ -36,6 +36,7 @@ const invoiceTmpl = `{{define "invoice"}}{{template "head" .}}
 {{range .Lines}}<tr><td>{{.Description}}{{if .Period}}<div class="muted">{{.Period}}</div>{{end}}</td><td class="n{{if .Negative}} neg{{end}}">{{.Amount}}</td></tr>
 {{end}}</tbody><tfoot><tr><td>{{.L.subtotal}}</td><td class="n">{{.Subtotal}}</td></tr><tr><td>{{.L.total}}</td><td class="n">{{.Total}} {{.Currency}}</td></tr></tfoot></table></div>
 {{if .Hint}}<p class="hint">{{.Hint}}</p>{{end}}
+{{with .Bank}}<div class="pay"><b>{{$.L.payBy}}</b><dl><dt>{{$.L.bank}}</dt><dd>{{.Name}}</dd><dt>{{$.L.holder}}</dt><dd>{{.Holder}}</dd><dt>{{$.L.iban}}</dt><dd class="mono">{{.IBAN}}</dd>{{if .BIC}}<dt>{{$.L.bic}}</dt><dd class="mono">{{.BIC}}</dd>{{end}}<dt>{{$.L.bankRef}}</dt><dd class="mono">{{.Reference}}</dd></dl><p class="muted">{{$.L.referenceHint}}</p></div>{{end}}
 {{if .Payable}}<div class="pay"><h2>{{.L.pay_title}}</h2>
 {{range .Methods}}<form method="post" action="{{$.Pay}}"><input type="hidden" name="method" value="{{.ID}}"><button class="btn" type="submit">{{.Label}}</button></form>{{end}}
 {{if .NoMethod}}<p class="muted">{{.L.pay_none}}</p>{{end}}</div>{{end}}

@@ -157,6 +157,11 @@ Details in [phase 23](phases/phase-23-remaining-gaps.md) and [16-webhooks.md](16
 ## As built: phase 34
 
 Details in [phase 34](phases/phase-34-payment-links.md) and [16-webhooks.md](16-webhooks.md). Payment links (for an open invoice, or ad hoc for a fixed amount that becomes an invoice on first use), a public payment page with the methods the provider catalogue offers, and a read-only customer portal with payment history. Provider checkouts for iyzico and Paddle are written from public documentation (UNVERIFIED); a bank-transfer provider appears on the page by implementing `payments.InstructionsProvider`.
+## As built: phase 29
+
+Details in [phase 29](phases/phase-29-bank-transfer.md). `banktransfer` is a provider whose charge only tells the customer where to pay (bank details and a reference, by default the invoice number, on the PDF, the hosted page and a mail)
+and returns "pending"; the invoice saga waits in `PAYMENT_PENDING` and polls the ledger, an operator confirms what arrived (partial receipts add up, an overpayment is refused), and after the payment window the ordinary dunning path applies.
+Money received outside any provider (cash, a transfer for an invoice not charged through us) is recorded on the invoice with who and when. There is no refund API for a transfer, no bank statement import, and overpayment is not turned into credit.
 
 ## Currency
 

@@ -206,21 +206,27 @@ func hostedText(lang string) map[string]string {
 var hostedStrings = map[string]map[string]string{
 	"en": {"invoice": "Invoice", "from": "From", "to": "Billed to", "date": "Date", "status": "Status", "description": "Description", "amount": "Amount", "subtotal": "Subtotal", "total": "Total",
 		"pdf": "Download PDF", "gone": "This link does not exist or has expired.", "goneHint": "Ask the sender for a new link.",
+		"payBy": "Pay by bank transfer", "bank": "Bank", "holder": "Account holder", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Payment reference", "referenceHint": "Write this reference on your transfer so that we can match the payment to this invoice.",
 		"paid": "Paid", "open": "Open", "void": "Void", "uncollectible": "Uncollectible", "draft": "Draft"},
 	"tr": {"invoice": "Fatura", "from": "Düzenleyen", "to": "Fatura edilen", "date": "Tarih", "status": "Durum", "description": "Açıklama", "amount": "Tutar", "subtotal": "Ara toplam", "total": "Toplam",
 		"pdf": "PDF indir", "gone": "Bu bağlantı yok ya da süresi dolmuş.", "goneHint": "Gönderenden yeni bir bağlantı isteyin.",
+		"payBy": "Havale / EFT ile ödeyin", "bank": "Banka", "holder": "Hesap sahibi", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Ödeme referansı", "referenceHint": "Ödemenizi bu faturayla eşleştirebilmemiz için havale açıklamasına bu referansı yazın.",
 		"paid": "Ödendi", "open": "Açık", "void": "İptal", "uncollectible": "Tahsil edilemedi", "draft": "Taslak"},
 	"de": {"invoice": "Rechnung", "from": "Von", "to": "Rechnungsempfänger", "date": "Datum", "status": "Status", "description": "Beschreibung", "amount": "Betrag", "subtotal": "Zwischensumme", "total": "Gesamt",
 		"pdf": "PDF herunterladen", "gone": "Dieser Link existiert nicht oder ist abgelaufen.", "goneHint": "Bitten Sie den Absender um einen neuen Link.",
+		"payBy": "Per Überweisung zahlen", "bank": "Bank", "holder": "Kontoinhaber", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Zahlungsreferenz", "referenceHint": "Geben Sie diese Referenz bei der Überweisung an, damit wir die Zahlung dieser Rechnung zuordnen können.",
 		"paid": "Bezahlt", "open": "Offen", "void": "Storniert", "uncollectible": "Uneinbringlich", "draft": "Entwurf"},
 	"fr": {"invoice": "Facture", "from": "De", "to": "Facturé à", "date": "Date", "status": "Statut", "description": "Description", "amount": "Montant", "subtotal": "Sous-total", "total": "Total",
 		"pdf": "Télécharger le PDF", "gone": "Ce lien n'existe pas ou a expiré.", "goneHint": "Demandez un nouveau lien à l'expéditeur.",
+		"payBy": "Payer par virement", "bank": "Banque", "holder": "Titulaire du compte", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Référence de paiement", "referenceHint": "Indiquez cette référence sur votre virement afin que nous puissions rattacher le paiement à cette facture.",
 		"paid": "Payée", "open": "Ouverte", "void": "Annulée", "uncollectible": "Irrécouvrable", "draft": "Brouillon"},
 	"es": {"invoice": "Factura", "from": "De", "to": "Facturado a", "date": "Fecha", "status": "Estado", "description": "Descripción", "amount": "Importe", "subtotal": "Subtotal", "total": "Total",
 		"pdf": "Descargar PDF", "gone": "Este enlace no existe o ha caducado.", "goneHint": "Pide un enlace nuevo a quien te lo envió.",
+		"payBy": "Pagar por transferencia", "bank": "Banco", "holder": "Titular de la cuenta", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Referencia de pago", "referenceHint": "Indica esta referencia en tu transferencia para que podamos asociar el pago a esta factura.",
 		"paid": "Pagada", "open": "Abierta", "void": "Anulada", "uncollectible": "Incobrable", "draft": "Borrador"},
 	"ar": {"invoice": "فاتورة", "from": "من", "to": "الفاتورة إلى", "date": "التاريخ", "status": "الحالة", "description": "الوصف", "amount": "المبلغ", "subtotal": "المجموع الفرعي", "total": "الإجمالي",
 		"pdf": "تنزيل PDF", "gone": "هذا الرابط غير موجود أو انتهت صلاحيته.", "goneHint": "اطلب رابطًا جديدًا من المرسل.",
+		"payBy": "الدفع بالتحويل المصرفي", "bank": "البنك", "holder": "صاحب الحساب", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "مرجع الدفع", "referenceHint": "اكتب هذا المرجع في التحويل حتى نتمكن من مطابقة الدفعة مع هذه الفاتورة.",
 		"paid": "مدفوعة", "open": "مفتوحة", "void": "ملغاة", "uncollectible": "غير قابلة للتحصيل", "draft": "مسودة"},
 }
 
@@ -234,8 +240,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px 8px;border-bottom:1
 th{font-size:.8rem;color:#5b6472;text-transform:uppercase;letter-spacing:.04em}td.n,th.n{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
 tfoot td{font-weight:600;border-bottom:0}.neg{color:#087443}
 .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.8rem;background:#e8ebf0}.badge.paid{background:#d9f3e4;color:#075c35}.badge.void,.badge.uncollectible{background:#fde2e1;color:#8a1c17}
+.pay{margin-top:20px;padding:16px;border:1px solid #e3e6eb;border-radius:8px}.pay b{display:block;margin-bottom:8px}.pay dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0}.pay dt{color:#5b6472;font-size:.9rem}.pay dd{margin:0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 a.btn{display:inline-block;margin-top:20px;padding:10px 16px;border-radius:8px;background:#14171c;color:#fff;text-decoration:none}
-@media (prefers-color-scheme:dark){body{background:#0f1216;color:#e8eaee}.card{background:#171b21;border-color:#262c35}th,td{border-color:#262c35}.muted,.meta b,th{color:#9aa4b2}.badge{background:#262c35}a.btn{background:#e8eaee;color:#14171c}}`
+@media (prefers-color-scheme:dark){body{background:#0f1216;color:#e8eaee}.card{background:#171b21;border-color:#262c35}.pay{border-color:#262c35}.pay dt{color:#9aa4b2}th,td{border-color:#262c35}.muted,.meta b,th{color:#9aa4b2}.badge{background:#262c35}a.btn{background:#e8eaee;color:#14171c}}`
 
 var hostedGone = template.Must(template.New("gone").Parse(`<!doctype html>
 <html lang="{{.Lang}}" dir="{{.Dir}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">

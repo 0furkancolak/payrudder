@@ -29,6 +29,7 @@ import (
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
 )
@@ -52,6 +53,8 @@ type Server struct {
 	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status, and runs
 	// provider migrations.
 	Plans PlansAPI
+	// Modules are the operator endpoints of other modules (the bank transfers), served next to these.
+	Modules []RouteRegistrar
 }
 
 // PlansAPI is what payments-worker asks of plans-svc, as the tenant.
@@ -66,6 +69,13 @@ type PlansAPI interface {
 	TenantCurrency(ctx context.Context, tenant uuid.UUID) (string, error)
 	// PreviewRouting names the provider the tenant's routing rules send a customer in a country paying in a currency to; empty when no rule matches.
 	PreviewRouting(ctx context.Context, tenant uuid.UUID, country, currency string) (string, error)
+	// SetBankTransfer replaces the bank details printed on the tenant's invoices; nil clears them.
+	SetBankTransfer(ctx context.Context, tenant uuid.UUID, d *plansv1.BankTransferDetails) error
+}
+
+// RouteRegistrar adds routes to the server's mux, each behind the operator check.
+type RouteRegistrar interface {
+	Register(mux *http.ServeMux, guard func(http.HandlerFunc) http.HandlerFunc)
 }
 
 const maxBody = 64 << 10
@@ -102,6 +112,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /admin/tenants/{tenant}/invoice-payments", s.admin(s.invoicePayment))
 	mux.HandleFunc("POST /admin/tenants/{tenant}/ledger/lookup", s.admin(s.ledgerLookup))
 	s.apiRoutes(mux)
+	for _, m := range s.Modules {
+		m.Register(mux, s.admin)
+	}
 	return mux
 }
 
@@ -527,6 +540,13 @@ func (s *Server) putAccount(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	if env == "live" && (provider == banktransfer.Name || makeDefault) {
+		if err := s.syncBankTransfer(r.Context(), t); err != nil {
+			s.Log.ErrorContext(r.Context(), "bank details not passed on to plans-svc", "err", err)
+			fail(w, http.StatusBadGateway, "the account is stored, but plans-svc could not be told the bank details for the invoices; send the request again")
+			return
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"provider": provider, "environment": env, "default": makeDefault})
 }
 
@@ -545,6 +565,8 @@ func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, "internal error")
 	case !deleted:
 		fail(w, http.StatusNotFound, "no such account")
+	case env == "live" && r.PathValue("provider") == banktransfer.Name && s.syncBankTransfer(r.Context(), t) != nil:
+		fail(w, http.StatusBadGateway, "the account is removed, but plans-svc could not be told; its bank details stay on new invoices until the request is sent again")
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}

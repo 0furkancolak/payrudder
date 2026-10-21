@@ -17,6 +17,9 @@ import (
 
 const goodToken = "0123456789abcdefghijklmnopqrstuvwxyz0123456"
 
+// transferToken is the link of an open invoice paid by bank transfer.
+const transferToken = "transfer56789abcdefghijklmnopqrstuvwxyz01234"
+
 func (fakeBilling) CreateInvoiceLink(_ context.Context, req *billingv1.CreateInvoiceLinkRequest) (*billingv1.CreateInvoiceLinkResponse, error) {
 	if req.GetInvoiceId() == "draft" {
 		return nil, status.Error(codes.FailedPrecondition, "a draft invoice has no number yet and cannot be shared")
@@ -31,6 +34,13 @@ func (fakeBilling) RevokeInvoiceLinks(context.Context, *billingv1.RevokeInvoiceL
 func (fakeBilling) GetHostedInvoice(_ context.Context, req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHostedInvoiceResponse, error) {
 	if r, ok := scenarioInvoice(req); ok {
 		return r, nil
+	}
+	if req.GetToken() == transferToken {
+		return &billingv1.GetHostedInvoiceResponse{
+			Invoice:    &billingv1.Invoice{Number: "INV-2026-000009", Currency: "TRY", SubtotalMinor: 150000, TotalMinor: 150000, Status: "open"},
+			SellerName: "Acme", CustomerName: "Ada", CurrencyExponent: 2,
+			PaymentInstructions: &billingv1.BankTransferInstructions{BankName: "Example <Bank>", AccountHolder: "Acme Ltd", Iban: "TR330006100519786457841326", Bic: "TCZBTR2A", Reference: "INV-2026-000009"},
+		}, nil
 	}
 	if req.GetToken() != goodToken {
 		return nil, status.Error(codes.NotFound, "this link does not exist or has expired")
@@ -143,6 +153,40 @@ func TestHostedInvoicePage(t *testing.T) {
 	defer func() { _ = pdf.Body.Close() }()
 	if pdf.StatusCode != http.StatusFound || pdf.Header.Get("Location") != "https://files.example/inv.pdf?sig=1" || pdf.Header.Get("Referrer-Policy") != "no-referrer" {
 		t.Errorf("pdf = %d %v", pdf.StatusCode, pdf.Header)
+	}
+}
+
+func TestHostedPageTellsAnInvoicePaidByTransferWhereToPay(t *testing.T) {
+	ts, _ := newTestServer(t)
+	get := func(path string) string {
+		t.Helper()
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL+path, nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+		b, _ := io.ReadAll(resp.Body)
+		return string(b)
+	}
+	en := get("/i/" + transferToken)
+	for _, want := range []string{"Pay by bank transfer", "Example &lt;Bank&gt;", "Acme Ltd", "TR33 0006 1005 1978 6457 8413 26", "TCZBTR2A", "Payment reference", "INV-2026-000009", "Write this reference"} {
+		if !strings.Contains(en, want) {
+			t.Errorf("the page lacks %q", want)
+		}
+	}
+	if tr := get("/i/" + transferToken + "?lang=tr"); !strings.Contains(tr, "Havale / EFT ile ödeyin") || !strings.Contains(tr, "Ödeme referansı") {
+		t.Errorf("the Turkish page is not translated")
+	}
+	for _, lang := range hostedLangs {
+		for _, key := range []string{"payBy", "bank", "holder", "iban", "bic", "bankRef", "referenceHint"} {
+			if hostedText(lang)[key] == "" {
+				t.Errorf("%s lacks the text %q", lang, key)
+			}
+		}
+	}
+	if paid := get("/i/" + goodToken); strings.Contains(paid, "Pay by bank transfer") {
+		t.Error("an invoice that is not paid by transfer has no bank block")
 	}
 }
 

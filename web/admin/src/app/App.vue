@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterProvider } from "@tanstack/vue-router";
 import { useI18n } from "vue-i18n";
+import { Toaster } from "@/shared/ui/sonner";
 import { router } from "./router";
 
 const { t } = useI18n();
@@ -11,4 +12,5 @@ const demo = window.__QUOTIFY__?.demo === true;
 <template>
   <div v-if="demo" class="bg-warning/15 text-foreground border-b px-4 py-1.5 text-center text-sm" role="status">{{ t("app.demo") }}</div>
   <RouterProvider :router="router" />
+  <Toaster position="bottom-right" />
 </template>

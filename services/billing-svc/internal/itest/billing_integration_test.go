@@ -76,6 +76,9 @@ func TestBilling(t *testing.T) {
 		{"FeeInvoiceCarriesTheCouponAndServicePeriod", testFeeInvoiceCarriesTheCouponAndServicePeriod},
 		{"TaxIsAddedOnTopOfTheInvoicesQuotifyRaises", testTaxIsAddedOnTopOfTheInvoicesQuotifyRaises},
 		{"FeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit", testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit},
+		{"BankTransferSagaWaitsForTheMoneyAndSettlesOnANudge", testBankTransferSagaWaitsForTheMoney},
+		{"ExpiredBankTransferFollowsDunning", testExpiredTransferFollowsDunning},
+		{"OfflinePaymentsSettleAnInvoice", testOfflinePaymentsSettleAnInvoice},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

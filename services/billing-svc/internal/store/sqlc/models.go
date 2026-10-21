@@ -130,6 +130,20 @@ type InvoiceNumberSeq struct {
 	NextValue int64
 }
 
+type InvoicePayment struct {
+	TenantID    uuid.UUID
+	ID          uuid.UUID
+	InvoiceID   uuid.UUID
+	Method      string
+	AmountMinor int64
+	Currency    string
+	ReceivedAt  time.Time
+	Reference   string
+	Note        string
+	RecordedBy  string
+	RecordedAt  time.Time
+}
+
 type InvoiceSaga struct {
 	TenantID       uuid.UUID
 	ID             uuid.UUID

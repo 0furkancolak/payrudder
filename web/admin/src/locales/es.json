@@ -75,12 +75,28 @@
     "ledgerSource": {
       "command": "Quotify",
       "webhook": "notificación del proveedor",
-      "reconciliation": "conciliación"
+      "reconciliation": "conciliación",
+      "manual": "registrado a mano"
     },
     "dunningState": {
       "PAYMENT_DECLINED": "rechazado, reintentando",
       "PAYMENT_UNKNOWN": "resultado desconocido",
       "UNCOLLECTIBLE": "abandonado"
+    },
+    "sagaState": {
+      "PAYMENT_PENDING": "esperando la transferencia"
+    },
+    "paymentMethod": {
+      "bank_transfer": "Transferencia bancaria",
+      "cash": "Efectivo",
+      "other": "Otro"
+    },
+    "transferState": {
+      "none": "sin transferencia",
+      "pending": "esperando el dinero",
+      "paid": "pagada",
+      "expired": "caducada",
+      "rejected": "rechazada"
     }
   },
   "tenants": {
@@ -153,6 +169,75 @@
       "revoked": "Se revocaron todos los enlaces de esta factura.",
       "badDays": "Días: un número entero de 1 a 365.",
       "paymentLink": "Enlace de pago"
+    },
+    "payment": {
+      "record": "Registrar pago",
+      "confirmTransfer": "Confirmar transferencia bancaria",
+      "offlineHint": "Registre el dinero recibido fuera de Quotify (transferencia, efectivo, otro). Se admiten importes parciales: la factura se paga cuando los pagos suman el total.",
+      "transferHint": "Confirme lo que llegó al extracto bancario. Un importe parcial se registra y la factura se paga cuando las transferencias suman el total.",
+      "method": "Método",
+      "amount": "Importe ({currency})",
+      "amountHint": "Por defecto es lo pendiente ({outstanding}). Más que eso se rechaza.",
+      "receivedAt": "Recibido",
+      "reference": "Referencia",
+      "referenceHint": "Opcional. La misma referencia otra vez se trata como el mismo pago.",
+      "bankReference": "Referencia bancaria",
+      "bankReferenceHint": "La referencia de la operación o del extracto del banco. Obligatoria: así repetirla es inofensivo.",
+      "note": "Nota",
+      "cancel": "Cancelar",
+      "submit": "Registrar pago",
+      "confirmSubmit": "Confirmar transferencia",
+      "badAmount": "No es un importe en {currency}: solo dígitos, mayor que cero y con como máximo los decimales de la moneda.",
+      "badDate": "La fecha de recepción debe ser una fecha y hora válidas, no futuras.",
+      "needReference": "La referencia bancaria es obligatoria.",
+      "listTitle": "Pagos registrados a mano",
+      "columns": {
+        "method": "Método",
+        "amount": "Importe",
+        "receivedAt": "Recibido",
+        "reference": "Referencia",
+        "note": "Nota",
+        "recordedBy": "Registrado por"
+      },
+      "toast": {
+        "paid": "Factura pagada: {received} recibidos.",
+        "partly": "Pago parcial: {received} recibidos, quedan {outstanding} pendientes.",
+        "duplicate": "Este pago ya estaba registrado."
+      }
+    },
+    "transfer": {
+      "title": "Transferencia bancaria",
+      "reference": "Referencia de pago",
+      "bank": "Banco",
+      "holder": "Titular de la cuenta",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "total": "Total de la factura",
+      "received": "Recibido",
+      "outstanding": "Pendiente",
+      "pendingSince": "Esperando desde",
+      "expiresAt": "Fin del plazo de pago",
+      "receipts": "Transferencias recibidas",
+      "receiptColumns": {
+        "receivedAt": "Recibido",
+        "amount": "Importe",
+        "bankReference": "Referencia bancaria",
+        "note": "Nota",
+        "recordedBy": "Registrado por"
+      },
+      "reject": "Rechazar",
+      "expire": "Marcar como caducada",
+      "rejectTitle": "Rechazar la transferencia bancaria",
+      "expireTitle": "Marcar la transferencia bancaria como caducada",
+      "rejectHint": "Úselo cuando la transferencia del cliente fue rechazada o no llegará. La factura no se da por pagada y el calendario de reclamación del inquilino se aplica de inmediato: un nuevo plazo de pago, o incobrable si no quedan reintentos. Los recibos ya registrados se conservan.",
+      "expireHint": "Úselo cuando el plazo de pago terminó sin el dinero. La factura no se da por pagada y el calendario de reclamación del inquilino se aplica de inmediato: un nuevo plazo de pago, o incobrable si no quedan reintentos. Los recibos ya registrados se conservan.",
+      "reason": "Motivo (opcional)",
+      "expiredNote": "El plazo de pago terminó sin el importe completo. Se aplica la reclamación.",
+      "rejectedNote": "La transferencia fue rechazada. Se aplica la reclamación.",
+      "toast": {
+        "rejected": "Transferencia rechazada. Se aplica la reclamación.",
+        "expired": "Transferencia marcada como caducada. Se aplica la reclamación."
+      }
     }
   },
   "deadLetters": {
@@ -466,6 +551,31 @@
         "kind": "Tipo",
         "key": "Nombre en Quotify",
         "empty": "Todavía no se ha creado nada en este proveedor."
+      },
+      "bank": {
+        "title": "Cuenta de transferencia bancaria",
+        "sandboxNote": "Los cobros de sandbox nunca llegan a este proveedor (los atiende el proveedor de pago simulado). Guarde la cuenta en live para usarla.",
+        "bankName": "Nombre del banco",
+        "accountHolder": "Titular de la cuenta",
+        "iban": "IBAN",
+        "ibanHint": "Se quitan espacios y guiones y se pasan las letras a mayúsculas; se verifican los dígitos de control.",
+        "bic": "BIC (opcional)",
+        "referenceTemplate": "Referencia de pago (opcional)",
+        "referenceHint": "Lo que el cliente escribe en la transferencia. Están disponibles {number} y {id}; por defecto es el número de factura.",
+        "currencies": "Monedas",
+        "currenciesHint": "Las monedas que recibe esta cuenta. Ninguna marcada: todas.",
+        "windowDays": "Plazo de pago (días)",
+        "windowHint": "Cuánto se espera el dinero, de 0 a 90. 0 o vacío usa el valor por defecto del despliegue.",
+        "errors": {
+          "required": "Obligatorio.",
+          "empty": "Obligatorio.",
+          "length": "Un IBAN tiene de 15 a 34 caracteres.",
+          "format": "Un IBAN son dos letras, dos dígitos y luego letras y dígitos.",
+          "checksum": "Los dígitos de control no coinciden: busque una errata.",
+          "badBic": "Un BIC tiene 8 u 11 letras y dígitos.",
+          "badTemplate": "Entre llaves solo pueden aparecer {number} y {id}.",
+          "badWindow": "Un número entero de días de 0 a 90."
+        }
       }
     },
     "reports": {
@@ -815,8 +925,15 @@
       },
       "payment": {
         "amount_mismatch": "El pago no corresponde al importe de la factura.",
-        "invoice_not_payable": "Esta factura no se puede pagar ahora.",
-        "method_unavailable": "Elija un método de pago."
+        "invoice_not_payable": "Solo una factura abierta o incobrable se puede pagar a mano.",
+        "method_unavailable": "Elija un método de pago.",
+        "bad_method": "El método debe ser transferencia bancaria, efectivo u otro.",
+        "bad_amount": "El importe debe ser un número entero de unidades menores mayor que cero.",
+        "bad_date": "La fecha de recepción no es válida o es futura.",
+        "overpayment": "Es más de lo pendiente. Registre solo el importe pendiente.",
+        "already_paid": "La factura ya está pagada.",
+        "not_payable": "El estado de pago de la factura no permite un pago manual ahora.",
+        "reference_reused": "Esta referencia ya se registró con otro importe."
       },
       "payment_link": {
         "bad_amount": "El importe debe ser un número positivo de unidades menores.",
@@ -867,6 +984,22 @@
       "conflict": "Los datos cambiaron mientras trabajaba. Recargue e inténtelo de nuevo.",
       "not_implemented": "Aún no es compatible.",
       "internal": "Algo falló por nuestra parte. Inténtelo de nuevo; si sigue fallando, busque en los registros con el id de la solicitud."
+    },
+    "payments": {
+      "transfer": {
+        "not_a_transfer": "Esta factura no se cobró por transferencia bancaria. Use Registrar pago.",
+        "invoice_closed": "La factura ya está pagada o anulada.",
+        "bad_amount": "El importe debe ser un número entero de unidades menores mayor que cero.",
+        "bad_currency": "La moneda difiere de la de la factura.",
+        "overpayment": "Es más de lo pendiente. Registre solo el importe pendiente y resuelva el resto fuera de Quotify.",
+        "reference_reused": "Esta referencia bancaria ya se registró con otro importe.",
+        "bad_reference": "Falta la referencia bancaria o no es válida.",
+        "bad_note": "La nota es demasiado larga (500 caracteres como máximo).",
+        "bad_date": "La fecha de recepción no es válida o es futura.",
+        "nothing_pending": "No hay ninguna transferencia pendiente que rechazar.",
+        "bad_outcome": "El resultado debe ser rechazada o caducada.",
+        "unavailable": "El servicio de pagos no está disponible ahora. Inténtelo de nuevo en un momento."
+      }
     }
   }
 }

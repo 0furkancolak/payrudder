@@ -140,6 +140,21 @@ func newBase(lang string) pageBase {
 	return pageBase{L: hostedText(lang), Lang: lang, Dir: hostedDir(lang), Brand: brand.Name()}
 }
 
+// hostedBank is where to send the money for an invoice paid by bank transfer.
+type hostedBank struct{ Name, Holder, IBAN, BIC, Reference string }
+
+// groupIBAN writes an IBAN in blocks of four, the way it is printed on bank documents.
+func groupIBAN(iban string) string {
+	var b strings.Builder
+	for i, c := range iban {
+		if i > 0 && i%4 == 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteRune(c)
+	}
+	return b.String()
+}
+
 type invoiceView struct {
 	pageBase
 	Seller, Customer, Number, Status string
@@ -150,6 +165,7 @@ type invoiceView struct {
 	HasPDF                           bool
 	PDF, Receipt, Back, Pay          string
 	Payable, NoMethod                bool
+	Bank                             *hostedBank
 	Methods                          []methodView
 	Hint                             string
 }
@@ -231,6 +247,9 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 			line.Period = f.AsTime().UTC().Format("2006-01-02") + " – " + t.AsTime().UTC().Format("2006-01-02")
 		}
 		v.Lines = append(v.Lines, line)
+	}
+	if in := resp.GetPaymentInstructions(); in.GetIban() != "" {
+		v.Bank = &hostedBank{Name: in.GetBankName(), Holder: in.GetAccountHolder(), IBAN: groupIBAN(in.GetIban()), BIC: in.GetBic(), Reference: in.GetReference()}
 	}
 	rows, _ := s.ledgerLookup(ctx, resp.GetPayment().GetTenantId(), []string{inv.GetId()})
 	v.State = refineState(v.State, rows, inv.GetId())

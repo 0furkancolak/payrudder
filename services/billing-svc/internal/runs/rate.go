@@ -606,6 +606,7 @@ func (m *Manager) buildDraft(rr *rateRun, cu *plansv1.Customer, ls *lineSet, cid
 			CustomerExternalID: snapExternal, CustomerName: cu.GetName(), CustomerEmail: cu.GetEmail(),
 			PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: rr.env, CurrencyExponent: invCur.Exponent, ProviderMails: providerMails(provider),
 			SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetAddress()), LogoObjectKey: rr.logoKey,
+			BankTransfer: bankTransfer(t, provider, invoiceCurrency),
 		},
 	}, nil
 }

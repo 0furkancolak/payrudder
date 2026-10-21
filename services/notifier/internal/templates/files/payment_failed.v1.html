@@ -5,5 +5,7 @@
 <p>Hi {{index .D "customer_name"}}, the payment of <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> for invoice
 <strong>{{index .D "invoice_number"}}</strong> (period {{index .D "period"}}) did not go through after several attempts.
 Please update your payment method.</p>
+{{if index .D "iban"}}<p>You can still pay this invoice by bank transfer to {{index .D "account_holder"}}, IBAN <strong>{{index .D "iban"}}</strong>{{if index .D "bank_name"}} ({{index .D "bank_name"}}){{end}},
+payment reference <strong>{{index .D "reference"}}</strong>.</p>{{end}}
 <p>— {{index .D "tenant_name"}}</p>
 </body></html>

@@ -1,0 +1,16 @@
+<!doctype html>
+<html><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — this is not a real invoice.</strong></p>{{end}}
+<h2>Invoice {{index .D "invoice_number"}}: please pay by bank transfer</h2>
+<p>Hi {{index .D "customer_name"}}, your invoice <strong>{{index .D "invoice_number"}}</strong> (period {{index .D "period"}}) is
+<strong>{{index .D "amount"}} {{index .D "currency"}}</strong>. Please send the amount by bank transfer:</p>
+<table style="border-collapse: collapse">
+{{if index .D "bank_name"}}<tr><td style="padding: 2px 16px 2px 0">Bank</td><td>{{index .D "bank_name"}}</td></tr>{{end}}
+{{if index .D "account_holder"}}<tr><td style="padding: 2px 16px 2px 0">Account holder</td><td>{{index .D "account_holder"}}</td></tr>{{end}}
+{{if index .D "iban"}}<tr><td style="padding: 2px 16px 2px 0">IBAN</td><td><strong>{{index .D "iban"}}</strong></td></tr>{{end}}
+{{if index .D "bic"}}<tr><td style="padding: 2px 16px 2px 0">BIC / SWIFT</td><td>{{index .D "bic"}}</td></tr>{{end}}
+{{if index .D "reference"}}<tr><td style="padding: 2px 16px 2px 0">Payment reference</td><td><strong>{{index .D "reference"}}</strong></td></tr>{{end}}
+</table>
+<p>Write the payment reference on your transfer so that we can match it to this invoice. We will confirm by e-mail once the money has arrived.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

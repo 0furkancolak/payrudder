@@ -176,7 +176,7 @@ func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in Se
 		if err != nil {
 			return err
 		}
-		out, err := d.Engine.Handle(ctx, tx, tenantID, sagaID, saga.EvSettled, "settle:"+in.Provider+":"+in.ProviderRef, nil)
+		out, err := d.Engine.Handle(ctx, tx, tenantID, sagaID, saga.EvProviderSettled, "settle:"+in.Provider+":"+in.ProviderRef, nil)
 		applied = out.Applied
 		return err
 	})

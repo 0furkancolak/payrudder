@@ -319,6 +319,10 @@ func pageProto(scope *query.Scope, p *query.Page) *billingv1.GetHostedInvoiceRes
 	}
 	resp.Invoice = invoices.Proto(p.Invoice)
 	resp.Invoice.PdfObjectKey = "" // the visitor gets a link, not a storage key
+	resp.Invoice.Payments = nil    // what an operator recorded is the tenant's business
+	if in := p.PaymentInstructions; in != nil {
+		resp.PaymentInstructions = &billingv1.BankTransferInstructions{BankName: in.BankName, AccountHolder: in.AccountHolder, Iban: in.IBAN, Bic: in.BIC, Reference: in.Reference}
+	}
 	resp.CustomerName, resp.CurrencyExponent, resp.PdfAvailable = p.CustomerName, p.CurrencyExponent, p.PDFAvailable
 	resp.SellerAddressLines, resp.CustomerAddressLines = p.SellerAddressLines, p.CustomerAddressLines
 	resp.PaymentState, resp.Payable = p.State, p.Payable

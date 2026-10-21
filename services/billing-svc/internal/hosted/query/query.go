@@ -201,6 +201,8 @@ type Page struct {
 	Environment          string
 	State                string
 	Payable              bool
+	// PaymentInstructions say where to send the money, for an open invoice paid by bank transfer.
+	PaymentInstructions *saga.BankInstructions
 }
 
 // Get returns what the visitor in scope sees. An ad-hoc link before its first use returns the Adhoc part and no invoice.
@@ -275,6 +277,9 @@ func (d Deps) invoice(ctx context.Context, s *Scope) (*Page, error) {
 	p.PDFAvailable = p.Invoice.Row.PdfObjectKey != "" && d.PDFs != nil
 	p.LogoAvailable = snap.LogoObjectKey != "" && d.PDFs != nil
 	p.State, p.Payable = State(p.Invoice.Row.Status, p.SagaState)
+	if p.Invoice.Row.Status == "open" {
+		p.PaymentInstructions = snap.Instructions(p.Invoice.Row.Number, s.InvoiceID)
+	}
 	return p, nil
 }
 

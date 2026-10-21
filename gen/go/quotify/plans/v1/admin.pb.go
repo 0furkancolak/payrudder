@@ -574,9 +574,12 @@ type UpdateTenantSettingsRequest struct {
 	InvoiceLogoAssetId string `protobuf:"bytes,4,opt,name=invoice_logo_asset_id,json=invoiceLogoAssetId,proto3" json:"invoice_logo_asset_id,omitempty"`
 	ClearInvoiceLogo   bool   `protobuf:"varint,5,opt,name=clear_invoice_logo,json=clearInvoiceLogo,proto3" json:"clear_invoice_logo,omitempty"`
 	// Replaces the seller address printed on the tenant's invoices; unset leaves it unchanged.
-	Address       *Address `protobuf:"bytes,6,opt,name=address,proto3" json:"address,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Address *Address `protobuf:"bytes,6,opt,name=address,proto3" json:"address,omitempty"`
+	// Replaces the bank transfer details printed on invoices (payments-worker sets them with the tenant's bank transfer account); unset leaves them unchanged.
+	BankTransfer      *BankTransferDetails `protobuf:"bytes,7,opt,name=bank_transfer,json=bankTransfer,proto3" json:"bank_transfer,omitempty"`
+	ClearBankTransfer bool                 `protobuf:"varint,8,opt,name=clear_bank_transfer,json=clearBankTransfer,proto3" json:"clear_bank_transfer,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdateTenantSettingsRequest) Reset() {
@@ -649,6 +652,20 @@ func (x *UpdateTenantSettingsRequest) GetAddress() *Address {
 		return x.Address
 	}
 	return nil
+}
+
+func (x *UpdateTenantSettingsRequest) GetBankTransfer() *BankTransferDetails {
+	if x != nil {
+		return x.BankTransfer
+	}
+	return nil
+}
+
+func (x *UpdateTenantSettingsRequest) GetClearBankTransfer() bool {
+	if x != nil {
+		return x.ClearBankTransfer
+	}
+	return false
 }
 
 type UpdateTenantSettingsResponse struct {
@@ -1056,14 +1073,16 @@ const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	"page_token\x18\x02 \x01(\tR\tpageToken\"q\n" +
 	"\x13ListTenantsResponse\x122\n" +
 	"\atenants\x18\x01 \x03(\v2\x18.quotify.plans.v1.TenantR\atenants\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xc0\x02\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xbc\x03\n" +
 	"\x1bUpdateTenantSettingsRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12<\n" +
 	"\fgrace_period\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\vgracePeriod\x120\n" +
 	"\x04tier\x18\x03 \x01(\x0e2\x1c.quotify.plans.v1.TenantTierR\x04tier\x121\n" +
 	"\x15invoice_logo_asset_id\x18\x04 \x01(\tR\x12invoiceLogoAssetId\x12,\n" +
 	"\x12clear_invoice_logo\x18\x05 \x01(\bR\x10clearInvoiceLogo\x123\n" +
-	"\aaddress\x18\x06 \x01(\v2\x19.quotify.plans.v1.AddressR\aaddress\"P\n" +
+	"\aaddress\x18\x06 \x01(\v2\x19.quotify.plans.v1.AddressR\aaddress\x12J\n" +
+	"\rbank_transfer\x18\a \x01(\v2%.quotify.plans.v1.BankTransferDetailsR\fbankTransfer\x12.\n" +
+	"\x13clear_bank_transfer\x18\b \x01(\bR\x11clearBankTransfer\"P\n" +
 	"\x1cUpdateTenantSettingsResponse\x120\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x18.quotify.plans.v1.TenantR\x06tenant\"2\n" +
 	"\x13CreateApiKeyRequest\x12\x1b\n" +
@@ -1138,9 +1157,10 @@ var file_quotify_plans_v1_admin_proto_goTypes = []any{
 	(*App)(nil),                          // 21: quotify.plans.v1.App
 	(*Tenant)(nil),                       // 22: quotify.plans.v1.Tenant
 	(*Address)(nil),                      // 23: quotify.plans.v1.Address
-	(*ApiKey)(nil),                       // 24: quotify.plans.v1.ApiKey
-	(ApiKey_Status)(0),                   // 25: quotify.plans.v1.ApiKey.Status
-	(Environment)(0),                     // 26: quotify.plans.v1.Environment
+	(*BankTransferDetails)(nil),          // 24: quotify.plans.v1.BankTransferDetails
+	(*ApiKey)(nil),                       // 25: quotify.plans.v1.ApiKey
+	(ApiKey_Status)(0),                   // 26: quotify.plans.v1.ApiKey.Status
+	(Environment)(0),                     // 27: quotify.plans.v1.Environment
 }
 var file_quotify_plans_v1_admin_proto_depIdxs = []int32{
 	18, // 0: quotify.plans.v1.CreateAccountRequest.grace_period:type_name -> google.protobuf.Duration
@@ -1155,35 +1175,36 @@ var file_quotify_plans_v1_admin_proto_depIdxs = []int32{
 	18, // 9: quotify.plans.v1.UpdateTenantSettingsRequest.grace_period:type_name -> google.protobuf.Duration
 	19, // 10: quotify.plans.v1.UpdateTenantSettingsRequest.tier:type_name -> quotify.plans.v1.TenantTier
 	23, // 11: quotify.plans.v1.UpdateTenantSettingsRequest.address:type_name -> quotify.plans.v1.Address
-	22, // 12: quotify.plans.v1.UpdateTenantSettingsResponse.tenant:type_name -> quotify.plans.v1.Tenant
-	24, // 13: quotify.plans.v1.CreateApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
-	24, // 14: quotify.plans.v1.RevokeApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
-	25, // 15: quotify.plans.v1.ResolveApiKeyResponse.status:type_name -> quotify.plans.v1.ApiKey.Status
-	26, // 16: quotify.plans.v1.ResolveApiKeyResponse.environment:type_name -> quotify.plans.v1.Environment
-	19, // 17: quotify.plans.v1.ResolveApiKeyResponse.tier:type_name -> quotify.plans.v1.TenantTier
-	0,  // 18: quotify.plans.v1.AdminService.CreateAccount:input_type -> quotify.plans.v1.CreateAccountRequest
-	2,  // 19: quotify.plans.v1.AdminService.CreateApp:input_type -> quotify.plans.v1.CreateAppRequest
-	4,  // 20: quotify.plans.v1.AdminService.ListApps:input_type -> quotify.plans.v1.ListAppsRequest
-	6,  // 21: quotify.plans.v1.AdminService.GetTenant:input_type -> quotify.plans.v1.GetTenantRequest
-	8,  // 22: quotify.plans.v1.AdminService.ListTenants:input_type -> quotify.plans.v1.ListTenantsRequest
-	10, // 23: quotify.plans.v1.AdminService.UpdateTenantSettings:input_type -> quotify.plans.v1.UpdateTenantSettingsRequest
-	12, // 24: quotify.plans.v1.AdminService.CreateApiKey:input_type -> quotify.plans.v1.CreateApiKeyRequest
-	14, // 25: quotify.plans.v1.AdminService.RevokeApiKey:input_type -> quotify.plans.v1.RevokeApiKeyRequest
-	16, // 26: quotify.plans.v1.AdminService.ResolveApiKey:input_type -> quotify.plans.v1.ResolveApiKeyRequest
-	1,  // 27: quotify.plans.v1.AdminService.CreateAccount:output_type -> quotify.plans.v1.CreateAccountResponse
-	3,  // 28: quotify.plans.v1.AdminService.CreateApp:output_type -> quotify.plans.v1.CreateAppResponse
-	5,  // 29: quotify.plans.v1.AdminService.ListApps:output_type -> quotify.plans.v1.ListAppsResponse
-	7,  // 30: quotify.plans.v1.AdminService.GetTenant:output_type -> quotify.plans.v1.GetTenantResponse
-	9,  // 31: quotify.plans.v1.AdminService.ListTenants:output_type -> quotify.plans.v1.ListTenantsResponse
-	11, // 32: quotify.plans.v1.AdminService.UpdateTenantSettings:output_type -> quotify.plans.v1.UpdateTenantSettingsResponse
-	13, // 33: quotify.plans.v1.AdminService.CreateApiKey:output_type -> quotify.plans.v1.CreateApiKeyResponse
-	15, // 34: quotify.plans.v1.AdminService.RevokeApiKey:output_type -> quotify.plans.v1.RevokeApiKeyResponse
-	17, // 35: quotify.plans.v1.AdminService.ResolveApiKey:output_type -> quotify.plans.v1.ResolveApiKeyResponse
-	27, // [27:36] is the sub-list for method output_type
-	18, // [18:27] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	24, // 12: quotify.plans.v1.UpdateTenantSettingsRequest.bank_transfer:type_name -> quotify.plans.v1.BankTransferDetails
+	22, // 13: quotify.plans.v1.UpdateTenantSettingsResponse.tenant:type_name -> quotify.plans.v1.Tenant
+	25, // 14: quotify.plans.v1.CreateApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
+	25, // 15: quotify.plans.v1.RevokeApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
+	26, // 16: quotify.plans.v1.ResolveApiKeyResponse.status:type_name -> quotify.plans.v1.ApiKey.Status
+	27, // 17: quotify.plans.v1.ResolveApiKeyResponse.environment:type_name -> quotify.plans.v1.Environment
+	19, // 18: quotify.plans.v1.ResolveApiKeyResponse.tier:type_name -> quotify.plans.v1.TenantTier
+	0,  // 19: quotify.plans.v1.AdminService.CreateAccount:input_type -> quotify.plans.v1.CreateAccountRequest
+	2,  // 20: quotify.plans.v1.AdminService.CreateApp:input_type -> quotify.plans.v1.CreateAppRequest
+	4,  // 21: quotify.plans.v1.AdminService.ListApps:input_type -> quotify.plans.v1.ListAppsRequest
+	6,  // 22: quotify.plans.v1.AdminService.GetTenant:input_type -> quotify.plans.v1.GetTenantRequest
+	8,  // 23: quotify.plans.v1.AdminService.ListTenants:input_type -> quotify.plans.v1.ListTenantsRequest
+	10, // 24: quotify.plans.v1.AdminService.UpdateTenantSettings:input_type -> quotify.plans.v1.UpdateTenantSettingsRequest
+	12, // 25: quotify.plans.v1.AdminService.CreateApiKey:input_type -> quotify.plans.v1.CreateApiKeyRequest
+	14, // 26: quotify.plans.v1.AdminService.RevokeApiKey:input_type -> quotify.plans.v1.RevokeApiKeyRequest
+	16, // 27: quotify.plans.v1.AdminService.ResolveApiKey:input_type -> quotify.plans.v1.ResolveApiKeyRequest
+	1,  // 28: quotify.plans.v1.AdminService.CreateAccount:output_type -> quotify.plans.v1.CreateAccountResponse
+	3,  // 29: quotify.plans.v1.AdminService.CreateApp:output_type -> quotify.plans.v1.CreateAppResponse
+	5,  // 30: quotify.plans.v1.AdminService.ListApps:output_type -> quotify.plans.v1.ListAppsResponse
+	7,  // 31: quotify.plans.v1.AdminService.GetTenant:output_type -> quotify.plans.v1.GetTenantResponse
+	9,  // 32: quotify.plans.v1.AdminService.ListTenants:output_type -> quotify.plans.v1.ListTenantsResponse
+	11, // 33: quotify.plans.v1.AdminService.UpdateTenantSettings:output_type -> quotify.plans.v1.UpdateTenantSettingsResponse
+	13, // 34: quotify.plans.v1.AdminService.CreateApiKey:output_type -> quotify.plans.v1.CreateApiKeyResponse
+	15, // 35: quotify.plans.v1.AdminService.RevokeApiKey:output_type -> quotify.plans.v1.RevokeApiKeyResponse
+	17, // 36: quotify.plans.v1.AdminService.ResolveApiKey:output_type -> quotify.plans.v1.ResolveApiKeyResponse
+	28, // [28:37] is the sub-list for method output_type
+	19, // [19:28] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_quotify_plans_v1_admin_proto_init() }
