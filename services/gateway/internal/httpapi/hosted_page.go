@@ -32,6 +32,7 @@ func (s *Server) hostedPublicRoutes() []Route {
 		{"POST", "/i/{token}/pay", AccessPublic, "", s.hostedInvoicePay},
 		{"GET", "/c/{token}", AccessPublic, "", s.portalPage},
 		{"GET", "/c/{token}/logo", AccessPublic, "", s.portalLogo},
+		{"POST", "/c/{token}/credits/buy", AccessPublic, "", s.portalCreditsBuy},
 		{"GET", "/c/{token}/invoices/{invoice_id}", AccessPublic, "", s.portalInvoicePage},
 		{"GET", "/c/{token}/invoices/{invoice_id}/pdf", AccessPublic, "", s.portalInvoicePDF},
 		{"GET", "/c/{token}/invoices/{invoice_id}/receipt", AccessPublic, "", s.portalInvoiceReceipt},
@@ -300,6 +301,14 @@ type adhocView struct {
 	Amount, Currency    string
 	Consumed            bool
 	Start               string
+	// Pack is set for a credit-pack link: what the payer gets.
+	Pack *packView
+}
+
+// packView is what a credit-pack link sells, as the payer reads it.
+type packView struct {
+	Name, Credits, Valid string
+	Quantity             int32
 }
 
 func (v *adhocView) Title() string { return v.Description }
@@ -309,6 +318,9 @@ func (s *Server) adhocPage(w http.ResponseWriter, r *http.Request, sc scope, lan
 	v := &adhocView{pageBase: newBase(lang), Seller: orDefault(a.GetSellerName(), resp.GetSellerName()), Description: a.GetDescription(),
 		Amount: formatMinor(a.GetAmountMinor(), int(a.GetCurrencyExponent())), Currency: a.GetCurrency(), Consumed: a.GetConsumed(), Start: sc.page() + "/start" + langSuffix(r)}
 	v.Test = orDefault(a.GetEnvironment(), resp.GetEnvironment()) == "sandbox"
+	if k := a.GetPack(); k != nil {
+		v.Pack = &packView{Name: k.GetName(), Credits: formatMinor(k.GetCredits(), 0), Valid: validText(v.L, k.GetValidityDays()), Quantity: k.GetQuantity()}
+	}
 	if a.GetLogoAvailable() || resp.GetLogoAvailable() {
 		v.Logo = sc.logo()
 	}

@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,8 +29,62 @@ func StartLinkPayment(ctx context.Context, d Deps, token string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	r := link.Row
-	if r.Kind != KindAdhoc || r.AmountMinor == nil || r.Currency == nil {
+	return startLink(ctx, d, link.Row)
+}
+
+// StartPortalPurchase is the "Buy" button of a customer's portal: it makes the credit-pack link for the portal's customer (or continues the one an earlier press made
+// and nobody paid, so pressing twice leads to one invoice), then starts it like a visitor pressing Continue. It returns the token of the invoice link to pay on.
+func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken, packID string, quantity int32) (string, error) {
+	scope, err := query.Resolve(ctx, qd.System, "", portalToken, "")
+	if err != nil {
+		return "", err
+	}
+	if scope.Portal.ExternalID == "" {
+		// A portal link made before phase 36 does not know the customer's external id, which the invoice is made out by.
+		return "", errkey.New(codes.FailedPrecondition, "billing.credits.portal_cannot_buy", "this portal link cannot buy credits; ask for a new one")
+	}
+	pid, err := uuid.Parse(packID)
+	if err != nil {
+		return "", errkey.New(codes.NotFound, "billing.credits.pack_not_found", "no such credit pack")
+	}
+	if quantity == 0 {
+		quantity = 1
+	}
+	if quantity < 1 || quantity > MaxQuantity {
+		return "", errkey.New(codes.InvalidArgument, "billing.credits.bad_quantity", "quantity must be 1 to 1000")
+	}
+	var open *sqlc.FindActiveInvoiceLinkRow
+	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
+		row, err := sqlc.New(tx).FindOpenPortalPackLink(ctx, sqlc.FindOpenPortalPackLinkParams{TenantID: scope.TenantID, CustomerID: &scope.Portal.CustomerID, PackID: &pid, Quantity: &quantity})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		r := sqlc.FindActiveInvoiceLinkRow(row)
+		open = &r
+		return err
+	})
+	if err != nil {
+		return "", internal(err)
+	}
+	if open != nil {
+		return startLink(ctx, d, *open)
+	}
+	days := int32(ChildDays)
+	if left := int32(scope.ExpiresAt.Sub(d.now()).Hours() / 24); left >= 1 && left < days { //nolint:gosec // at most 365
+		days = left
+	}
+	created, err := CreateLink(ctx, d, scope.TenantID, CreateInput{Kind: KindCreditPack, PackID: pid, Quantity: quantity, CustomerExternalID: scope.Portal.ExternalID,
+		ExpiresInDays: days, IdempotencyKey: "portal:" + uuid.NewString()})
+	if err != nil {
+		return "", err
+	}
+	return StartLinkPayment(ctx, d, created.Token)
+}
+
+// startLink makes the invoice of one use of a factory link and the invoice link the payer continues on.
+func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow) (string, error) {
+	var err error
+	if !factory(r.Kind) || r.AmountMinor == nil || r.Currency == nil {
 		return "", query.NoLink()
 	}
 	child, err := NewToken()
@@ -59,6 +114,9 @@ func StartLinkPayment(ctx context.Context, d Deps, token string) (string, error)
 			spec := runs.LinkInvoiceSpec{AmountMinor: *r.AmountMinor, Currency: *r.Currency}
 			if r.Description != nil {
 				spec.Description = *r.Description
+			}
+			if r.Kind == KindCreditPack && r.Quantity != nil && *r.Quantity > 1 {
+				spec.Description += " x" + strconv.Itoa(int(*r.Quantity))
 			}
 			if r.CustomerExternalID != nil {
 				spec.CustomerExternalID = *r.CustomerExternalID

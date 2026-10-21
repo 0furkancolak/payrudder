@@ -45,6 +45,7 @@ const invoiceTmpl = `{{define "invoice"}}{{template "head" .}}
 
 const adhocTmpl = `{{define "adhoc"}}{{template "head" .}}
 <div class="muted">{{.Seller}}</div><h1>{{.Description}}</h1>
+{{with .Pack}}<div class="muted">{{$.L.cr_you_get}}</div><div class="big">{{.Credits}} {{$.L.cr_unit}}</div><p class="muted">{{.Valid}}{{if gt .Quantity 1}} · {{$.L.cr_qty}} {{.Quantity}}{{end}}</p>{{end}}
 <div class="muted">{{.L.adhoc_amount}}</div><div class="big">{{.Amount}} {{.Currency}}</div>
 {{if .Consumed}}<p class="hint">{{.L.adhoc_used}}</p>{{else}}<form method="post" action="{{.Start}}"><button class="btn" type="submit">{{.L.adhoc_continue}}</button></form>{{end}}
 {{template "foot" .}}{{end}}`
@@ -81,6 +82,16 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 {{if .Payments}}<div class="wrap"><table><thead><tr><th>{{.L.date}}</th><th>{{.L.type}}</th><th>{{.L.number}}</th><th>{{.L.status}}</th><th>{{.L.provider}}</th><th class="n">{{.L.amount}}</th></tr></thead><tbody>
 {{range .Payments}}<tr><td>{{.Date}}</td><td>{{.Kind}}</td><td>{{.Number}}</td><td>{{.Status}}</td><td>{{.Provider}}</td><td class="n{{if .Negative}} neg{{end}}">{{.Amount}} {{.Currency}}</td></tr>
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.portal_none_pay}}</p>{{end}}
+{{if .ShowCredits}}<h2 class="sec">{{.L.cr_title}}</h2>
+<p><span class="muted">{{.L.cr_balance}}</span> <span class="big">{{.Balance}}</span> {{.L.cr_unit}}</p>
+{{if .Lots}}<div class="wrap"><table><thead><tr><th class="n">{{.L.cr_left}}</th><th>{{.L.cr_expires}}</th></tr></thead><tbody>
+{{range .Lots}}<tr><td class="n">{{.Remaining}} / {{.Granted}}</td><td>{{if .Expires}}{{.Expires}}{{else}}{{$.L.cr_never}}{{end}}</td></tr>
+{{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.cr_none}}</p>{{end}}
+{{if .Packs}}<h2 class="sec">{{.L.cr_buy_title}}</h2>
+<div class="wrap"><table><thead><tr><th>{{.L.cr_pack}}</th><th class="n">{{.L.cr_unit}}</th><th class="n">{{.L.cr_price}}</th><th></th></tr></thead><tbody>
+{{range .Packs}}<tr><td>{{.Name}}<div class="muted">{{.Valid}}</div></td><td class="n">{{.Credits}}</td><td class="n">{{.Price}} {{.Currency}}</td>
+<td>{{if $.CanBuy}}<form method="post" action="{{$.Buy}}"><input type="hidden" name="pack_id" value="{{.ID}}"><button class="btn" type="submit">{{$.L.cr_buy}}</button></form>{{end}}</td></tr>
+{{end}}</tbody></table></div>{{end}}{{end}}
 {{template "foot" .}}{{end}}`
 
 var pageTemplates = template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl))

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCustomers } from "@/features/customers/api";
+import { absoluteUrl } from "@/features/paymentlinks/lib";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { useErrorText } from "@/shared/lib/errors";
 import { CURRENCIES } from "@/shared/lib/currencies";
@@ -12,7 +13,17 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { useCreateCreditPack, useCreditBalance, useCreditLedger, useCreditPacks, useGrantCredits, useSetCreditPackActive } from "./api";
+import {
+  useCreateCreditPack,
+  useCreatePurchaseLink,
+  useCreditBalance,
+  useCreditLedger,
+  useCreditPacks,
+  useCreditSettings,
+  useGrantCredits,
+  useSetCreditPackActive,
+  useSetCreditSettings,
+} from "./api";
 
 const { t, locale } = useI18n();
 const errorText = useErrorText();
@@ -31,17 +42,63 @@ const packCredits = ref("");
 const packPrice = ref("");
 const packCurrency = ref<string>("USD");
 const priceMinor = computed(() => parseMajor(packPrice.value, packCurrency.value));
+const packValidity = ref("");
 const creditsValid = computed(() => /^[1-9]\d{0,11}$/.test(packCredits.value.trim()));
+const validityValid = computed(() => packValidity.value.trim() === "" || (/^\d{1,4}$/.test(packValidity.value.trim()) && Number(packValidity.value) >= 1 && Number(packValidity.value) <= 3650));
 function submitPack() {
-  if (!priceMinor.value || !creditsValid.value) return;
+  if (!priceMinor.value || !creditsValid.value || !validityValid.value) return;
+  const days = Number(packValidity.value.trim());
   createPack.mutate(
-    { name: packName.value.trim(), credits: packCredits.value.trim(), price_minor: priceMinor.value, currency: packCurrency.value },
+    { name: packName.value.trim(), credits: packCredits.value.trim(), price_minor: priceMinor.value, currency: packCurrency.value, ...(days > 0 ? { validity_days: days } : {}) },
     {
       onSuccess: () => {
-        packName.value = packCredits.value = packPrice.value = "";
+        packName.value = packCredits.value = packPrice.value = packValidity.value = "";
       },
     },
   );
+}
+
+// --- a purchase link for one pack: the customer opens it to buy
+const linkPack = ref<{ id: string; name: string } | null>(null);
+const linkCustomer = ref("");
+const linkQuantity = ref("1");
+const linkKey = ref(crypto.randomUUID());
+const createLink = useCreatePurchaseLink(tenantId);
+const quantityValid = computed(() => Number.isInteger(Number(linkQuantity.value)) && Number(linkQuantity.value) >= 1 && Number(linkQuantity.value) <= 1000);
+/** The URL is returned once, right after creation, and is not kept anywhere else. */
+const created = computed(() => createLink.data.value as { url?: string; replayed?: boolean } | undefined);
+const shownUrl = computed(() => absoluteUrl(created.value?.url, window.location.origin));
+function openLink(p: { id?: string; name?: string }) {
+  createLink.reset();
+  linkPack.value = { id: p.id ?? "", name: p.name ?? "" };
+  linkKey.value = crypto.randomUUID();
+}
+function submitLink() {
+  if (!linkPack.value || !linkCustomer.value || !quantityValid.value) return;
+  createLink.mutate({ packId: linkPack.value.id, customer: linkCustomer.value, quantity: Number(linkQuantity.value), key: linkKey.value });
+}
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(shownUrl.value);
+  } catch {
+    /* the field is selectable */
+  }
+}
+
+// --- the low-balance alert
+const settings = useCreditSettings(tenantId);
+const setSettings = useSetCreditSettings(tenantId);
+const threshold = ref("");
+watch(
+  () => settings.data.value?.low_threshold,
+  (v) => {
+    threshold.value = v && v !== "0" ? v : "";
+  },
+  { immediate: true },
+);
+const thresholdValid = computed(() => threshold.value.trim() === "" || /^(0|[1-9]\d{0,11})$/.test(threshold.value.trim()));
+function saveThreshold() {
+  if (thresholdValid.value) setSettings.mutate(threshold.value.trim() || "0");
 }
 
 // --- one customer's credits
@@ -80,14 +137,15 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.credits.packs.new") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.credits.packs.hint") }}</p>
-    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" role="form" :aria-label="t('billing.credits.packs.formLabel')" @submit.prevent="submitPack">
+    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6" role="form" :aria-label="t('billing.credits.packs.formLabel')" @submit.prevent="submitPack">
       <Input v-model="packName" :aria-label="t('billing.credits.packs.name')" :placeholder="t('billing.credits.packs.name')" maxlength="80" required />
       <Input v-model="packCredits" inputmode="numeric" :aria-label="t('billing.credits.packs.credits')" :placeholder="t('billing.credits.packs.credits')" required />
       <Input v-model="packPrice" inputmode="decimal" :aria-label="t('billing.credits.packs.price')" :placeholder="t('billing.credits.packs.price')" required />
       <NativeSelect v-model="packCurrency" :aria-label="t('billing.credits.packs.currency')">
         <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
       </NativeSelect>
-      <Button type="submit" :disabled="createPack.isPending.value || !priceMinor || !creditsValid">{{ t("billing.credits.packs.create") }}</Button>
+      <Input v-model="packValidity" inputmode="numeric" :aria-label="t('billing.credits.packs.validity')" :placeholder="t('billing.credits.packs.validity')" />
+      <Button type="submit" :disabled="createPack.isPending.value || !priceMinor || !creditsValid || !validityValid">{{ t("billing.credits.packs.create") }}</Button>
     </form>
     <p v-if="createPack.error.value" class="text-destructive text-sm" role="alert">{{ errorText(createPack.error.value) }}</p>
   </Card>
@@ -102,6 +160,7 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
           <TableHead>{{ t("billing.credits.packs.name") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.credits.packs.credits") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.credits.packs.price") }}</TableHead>
+          <TableHead>{{ t("billing.credits.packs.validityCol") }}</TableHead>
           <TableHead>{{ t("billing.credits.packs.state") }}</TableHead>
           <TableHead />
         </TableRow>
@@ -111,10 +170,12 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
           <TableCell class="font-medium">{{ p.name }}</TableCell>
           <TableCell class="text-end">{{ credits(p.credits) }}</TableCell>
           <TableCell class="text-end">{{ formatMinor(p.price_minor, p.currency, locale) }}</TableCell>
+          <TableCell>{{ p.validity_days ? t("billing.credits.packs.days", { n: p.validity_days }) : t("billing.credits.packs.noExpiry") }}</TableCell>
           <TableCell>
             <Badge :variant="p.active ? 'success' : 'secondary'">{{ p.active ? t("billing.credits.packs.onSale") : t("billing.credits.packs.withdrawn") }}</Badge>
           </TableCell>
-          <TableCell class="text-end">
+          <TableCell class="space-x-2 text-end">
+            <Button v-if="p.active" type="button" size="sm" @click="openLink(p)">{{ t("billing.credits.packs.purchaseLink") }}</Button>
             <Button type="button" variant="outline" size="sm" :disabled="setActive.isPending.value" @click="setActive.mutate({ id: p.id ?? '', active: !p.active })">
               {{ p.active ? t("billing.credits.packs.withdraw") : t("billing.credits.packs.restore") }}
             </Button>
@@ -123,6 +184,39 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
       </TableBody>
     </Table>
     <p v-if="setActive.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(setActive.error.value) }}</p>
+  </Card>
+
+  <Card v-if="linkPack" class="mb-6">
+    <h2 class="text-lg font-semibold">{{ t("billing.credits.purchase.title") }}: {{ linkPack.name }}</h2>
+    <p class="text-muted-foreground text-sm">{{ t("billing.credits.purchase.hint") }}</p>
+    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="form" :aria-label="t('billing.credits.purchase.formLabel')" @submit.prevent="submitLink">
+      <NativeSelect v-model="linkCustomer" :aria-label="t('billing.credits.purchase.customer')" required>
+        <option value="">{{ t("billing.credits.purchase.pickCustomer") }}</option>
+        <option v-for="c in customers.data.value?.customers ?? []" :key="c.id" :value="c.external_id">{{ c.name }} ({{ c.external_id }})</option>
+      </NativeSelect>
+      <Input v-model="linkQuantity" inputmode="numeric" :aria-label="t('billing.credits.purchase.quantity')" :placeholder="t('billing.credits.purchase.quantity')" />
+      <Button type="submit" :disabled="createLink.isPending.value || !linkCustomer || !quantityValid">{{ t("billing.credits.purchase.create") }}</Button>
+      <Button type="button" variant="outline" @click="linkPack = null">{{ t("billing.credits.purchase.close") }}</Button>
+    </form>
+    <p v-if="createLink.error.value" class="text-destructive text-sm" role="alert">{{ errorText(createLink.error.value) }}</p>
+    <div v-if="created && createLink.isSuccess.value && shownUrl" class="border-warning/50 bg-warning/10 grid gap-2 rounded-md border p-3" role="status">
+      <p class="text-sm font-medium">{{ t("billing.credits.purchase.shownOnce") }}</p>
+      <div class="flex flex-wrap items-center gap-2">
+        <Input :model-value="shownUrl" readonly class="mono max-w-xl" :aria-label="t('billing.credits.purchase.url')" data-testid="purchase-link-url" @focus="($event.target as HTMLInputElement).select()" />
+        <Button type="button" variant="outline" @click="copyLink">{{ t("billing.credits.purchase.copy") }}</Button>
+      </div>
+    </div>
+  </Card>
+
+  <Card class="mb-6">
+    <h2 class="text-lg font-semibold">{{ t("billing.credits.settings.title") }}</h2>
+    <p class="text-muted-foreground text-sm">{{ t("billing.credits.settings.hint") }}</p>
+    <form class="grid gap-3 sm:grid-cols-3" role="form" :aria-label="t('billing.credits.settings.formLabel')" @submit.prevent="saveThreshold">
+      <Input v-model="threshold" inputmode="numeric" :aria-label="t('billing.credits.settings.threshold')" :placeholder="t('billing.credits.settings.threshold')" />
+      <Button type="submit" :disabled="setSettings.isPending.value || !thresholdValid">{{ t("billing.credits.settings.save") }}</Button>
+      <span v-if="setSettings.isSuccess.value" class="text-muted-foreground self-center text-sm" role="status">{{ t("billing.credits.settings.saved") }}</span>
+    </form>
+    <p v-if="setSettings.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setSettings.error.value) }}</p>
   </Card>
 
   <Card class="mb-6">
@@ -184,6 +278,7 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
         <TableRow class="hover:bg-transparent">
           <TableHead>{{ t("billing.credits.ledger.time") }}</TableHead>
           <TableHead>{{ t("billing.credits.ledger.kind") }}</TableHead>
+          <TableHead>{{ t("billing.credits.ledger.source") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.credits.ledger.amount") }}</TableHead>
           <TableHead>{{ t("billing.credits.ledger.reason") }}</TableHead>
         </TableRow>
@@ -193,6 +288,10 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
           <TableCell>{{ when(e.create_time) }}</TableCell>
           <TableCell>
             <Badge :variant="kindVariant(e.kind)">{{ t(`billing.credits.kind.${e.kind}`) }}</Badge>
+          </TableCell>
+          <TableCell>
+            <Badge v-if="e.source === 'purchase'" variant="success">{{ t("billing.credits.source.purchase") }}</Badge>
+            <span v-else-if="e.source" class="text-muted-foreground text-sm">{{ t(`billing.credits.source.${e.source}`) }}</span>
           </TableCell>
           <TableCell class="text-end tabular-nums">{{ credits(e.amount) }}</TableCell>
           <TableCell class="text-muted-foreground">{{ e.reason }}</TableCell>

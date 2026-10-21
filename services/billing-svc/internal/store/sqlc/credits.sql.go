@@ -72,7 +72,7 @@ func (q *Queries) GetCreditBalance(ctx context.Context, arg GetCreditBalancePara
 }
 
 const getCreditPack = `-- name: GetCreditPack :one
-SELECT id, name, credits, price_minor, currency, active, created_at FROM credit_packs WHERE tenant_id = $1 AND id = $2
+SELECT id, name, credits, price_minor, currency, active, created_at, validity_days FROM credit_packs WHERE tenant_id = $1 AND id = $2
 `
 
 type GetCreditPackParams struct {
@@ -81,13 +81,14 @@ type GetCreditPackParams struct {
 }
 
 type GetCreditPackRow struct {
-	ID         uuid.UUID
-	Name       string
-	Credits    int64
-	PriceMinor int64
-	Currency   string
-	Active     bool
-	CreatedAt  time.Time
+	ID           uuid.UUID
+	Name         string
+	Credits      int64
+	PriceMinor   int64
+	Currency     string
+	Active       bool
+	CreatedAt    time.Time
+	ValidityDays *int32
 }
 
 func (q *Queries) GetCreditPack(ctx context.Context, arg GetCreditPackParams) (GetCreditPackRow, error) {
@@ -101,8 +102,20 @@ func (q *Queries) GetCreditPack(ctx context.Context, arg GetCreditPackParams) (G
 		&i.Currency,
 		&i.Active,
 		&i.CreatedAt,
+		&i.ValidityDays,
 	)
 	return i, err
+}
+
+const getCreditSettings = `-- name: GetCreditSettings :one
+SELECT low_threshold FROM credit_settings WHERE tenant_id = $1
+`
+
+func (q *Queries) GetCreditSettings(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getCreditSettings, tenantID)
+	var low_threshold int64
+	err := row.Scan(&low_threshold)
+	return low_threshold, err
 }
 
 const getLedgerByKey = `-- name: GetLedgerByKey :many
@@ -153,18 +166,19 @@ func (q *Queries) GetLedgerByKey(ctx context.Context, arg GetLedgerByKeyParams) 
 
 const insertCreditPack = `-- name: InsertCreditPack :one
 
-INSERT INTO credit_packs (tenant_id, id, name, credits, price_minor, currency)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO credit_packs (tenant_id, id, name, credits, price_minor, currency, validity_days)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING created_at
 `
 
 type InsertCreditPackParams struct {
-	TenantID   uuid.UUID
-	ID         uuid.UUID
-	Name       string
-	Credits    int64
-	PriceMinor int64
-	Currency   string
+	TenantID     uuid.UUID
+	ID           uuid.UUID
+	Name         string
+	Credits      int64
+	PriceMinor   int64
+	Currency     string
+	ValidityDays *int32
 }
 
 // Prepaid credits: packs, lots, the ledger (tenant-scoped, billing_app; expiry runs as billing_system).
@@ -176,6 +190,7 @@ func (q *Queries) InsertCreditPack(ctx context.Context, arg InsertCreditPackPara
 		arg.Credits,
 		arg.PriceMinor,
 		arg.Currency,
+		arg.ValidityDays,
 	)
 	var created_at time.Time
 	err := row.Scan(&created_at)
@@ -245,10 +260,11 @@ func (q *Queries) InsertLot(ctx context.Context, arg InsertLotParams) (uuid.UUID
 }
 
 const listCreditLedger = `-- name: ListCreditLedger :many
-SELECT id, lot_id, kind, amount, COALESCE(idempotency_key, '')::text AS idempotency_key, reason, created_at FROM credit_ledger
-WHERE tenant_id = $1 AND customer_id = $2
-  AND ($3::timestamptz IS NULL OR (created_at, id) < ($3::timestamptz, $4::uuid))
-ORDER BY created_at DESC, id DESC
+SELECT e.id, e.lot_id, e.kind, e.amount, COALESCE(e.idempotency_key, '')::text AS idempotency_key, e.reason, e.created_at, l.source
+FROM credit_ledger e JOIN credit_lots l ON l.tenant_id = e.tenant_id AND l.id = e.lot_id
+WHERE e.tenant_id = $1 AND e.customer_id = $2
+  AND ($3::timestamptz IS NULL OR (e.created_at, e.id) < ($3::timestamptz, $4::uuid))
+ORDER BY e.created_at DESC, e.id DESC
 LIMIT $5
 `
 
@@ -268,6 +284,7 @@ type ListCreditLedgerRow struct {
 	IdempotencyKey string
 	Reason         string
 	CreatedAt      time.Time
+	Source         string
 }
 
 func (q *Queries) ListCreditLedger(ctx context.Context, arg ListCreditLedgerParams) ([]ListCreditLedgerRow, error) {
@@ -293,6 +310,7 @@ func (q *Queries) ListCreditLedger(ctx context.Context, arg ListCreditLedgerPara
 			&i.IdempotencyKey,
 			&i.Reason,
 			&i.CreatedAt,
+			&i.Source,
 		); err != nil {
 			return nil, err
 		}
@@ -354,7 +372,7 @@ func (q *Queries) ListCreditLots(ctx context.Context, arg ListCreditLotsParams) 
 }
 
 const listCreditPacks = `-- name: ListCreditPacks :many
-SELECT id, name, credits, price_minor, currency, active, created_at
+SELECT id, name, credits, price_minor, currency, active, created_at, validity_days
 FROM credit_packs
 WHERE tenant_id = $1 AND (NOT $2::boolean OR active)
 ORDER BY created_at, id
@@ -366,13 +384,14 @@ type ListCreditPacksParams struct {
 }
 
 type ListCreditPacksRow struct {
-	ID         uuid.UUID
-	Name       string
-	Credits    int64
-	PriceMinor int64
-	Currency   string
-	Active     bool
-	CreatedAt  time.Time
+	ID           uuid.UUID
+	Name         string
+	Credits      int64
+	PriceMinor   int64
+	Currency     string
+	Active       bool
+	CreatedAt    time.Time
+	ValidityDays *int32
 }
 
 func (q *Queries) ListCreditPacks(ctx context.Context, arg ListCreditPacksParams) ([]ListCreditPacksRow, error) {
@@ -392,6 +411,7 @@ func (q *Queries) ListCreditPacks(ctx context.Context, arg ListCreditPacksParams
 			&i.Currency,
 			&i.Active,
 			&i.CreatedAt,
+			&i.ValidityDays,
 		); err != nil {
 			return nil, err
 		}
@@ -508,6 +528,21 @@ func (q *Queries) TakeFromLot(ctx context.Context, arg TakeFromLotParams) (int64
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const upsertCreditSettings = `-- name: UpsertCreditSettings :exec
+INSERT INTO credit_settings (tenant_id, low_threshold) VALUES ($1, $2)
+ON CONFLICT (tenant_id) DO UPDATE SET low_threshold = EXCLUDED.low_threshold, updated_at = now()
+`
+
+type UpsertCreditSettingsParams struct {
+	TenantID     uuid.UUID
+	LowThreshold int64
+}
+
+func (q *Queries) UpsertCreditSettings(ctx context.Context, arg UpsertCreditSettingsParams) error {
+	_, err := q.db.Exec(ctx, upsertCreditSettings, arg.TenantID, arg.LowThreshold)
+	return err
 }
 
 const zeroLot = `-- name: ZeroLot :exec

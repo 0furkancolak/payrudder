@@ -80,7 +80,7 @@ function filter() {
 }
 const when = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "short", timeStyle: "short" }).format(new Date(v)) : "—");
 const what = (l: { kind?: string; amount_minor?: string; currency?: string; invoice_id?: string }) =>
-  l.kind === "adhoc" ? formatMinor(l.amount_minor, l.currency, locale.value) : (l.invoice_id ?? "");
+  l.kind !== "invoice" ? formatMinor(l.amount_minor, l.currency, locale.value) : (l.invoice_id ?? "");
 </script>
 
 <template>
@@ -129,6 +129,7 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
         <option value="">{{ t("billing.paymentLinks.anyKind") }}</option>
         <option value="adhoc">{{ t("billing.paymentLinks.kinds.adhoc") }}</option>
         <option value="invoice">{{ t("billing.paymentLinks.kinds.invoice") }}</option>
+        <option value="credit_pack">{{ t("billing.paymentLinks.kinds.credit_pack") }}</option>
       </NativeSelect>
       <NativeSelect v-model="status" class="w-40" :aria-label="t('billing.paymentLinks.status')" @change="filter">
         <option value="">{{ t("billing.paymentLinks.anyStatus") }}</option>

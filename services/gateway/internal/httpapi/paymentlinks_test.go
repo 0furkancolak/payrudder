@@ -25,6 +25,7 @@ const (
 	tokAdhocUsed   = "tok-adhoc-used-0123456789abcdefghijklmnopq"
 	tokOpenSandbox = "tok-open-sandbox-0123456789abcdefghijklmn"
 	tokOpenLive    = "tok-open-live-0123456789abcdefghijklmnopq"
+	tokPack        = "tok-pack-0123456789abcdefghijklmnopqrstuvw"
 	tokProcessing  = "tok-processing-0123456789abcdefghijklmnop"
 	tokHostile     = "tok-hostile-0123456789abcdefghijklmnopqrs"
 	portalTok      = "portal-0123456789abcdefghijklmnopqrstuvwxyz"
@@ -46,6 +47,10 @@ func scenarioInvoice(req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHost
 			Adhoc: &billingv1.HostedAdhoc{Description: "Consulting <b>day</b>", AmountMinor: 25000, Currency: "EUR", CurrencyExponent: 2}}, true
 	case req.GetToken() == tokAdhocUsed:
 		return &billingv1.GetHostedInvoiceResponse{Kind: "adhoc", SellerName: "Acme", Adhoc: &billingv1.HostedAdhoc{Description: "Once", AmountMinor: 100, Currency: "EUR", CurrencyExponent: 2, Consumed: true}}, true
+	case req.GetToken() == tokPack:
+		return &billingv1.GetHostedInvoiceResponse{Kind: "adhoc", SellerName: "Acme", Environment: "live",
+			Adhoc: &billingv1.HostedAdhoc{Description: "Starter <i>pack</i>", AmountMinor: 1000, Currency: "USD", CurrencyExponent: 2,
+				Pack: &billingv1.HostedCreditPack{Name: "Starter <i>pack</i>", Credits: 20000, Quantity: 2, ValidityDays: 30}}}, true
 	case req.GetToken() == tokOpenSandbox:
 		return openInvoice("sandbox", "open", true), true
 	case req.GetToken() == tokOpenLive:
@@ -150,6 +155,15 @@ func (fakeBilling) GetPortal(_ context.Context, req *billingv1.GetPortalRequest)
 		Invoices: []*billingv1.PortalInvoice{
 			{Id: "inv-open", Number: "INV-2026-000009", Status: "open", PaymentState: "open", Payable: true, TotalMinor: 5000, Currency: "USD", CurrencyExponent: 2, IssueTime: timestamppb.New(time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC))},
 			{Id: "inv-paid", Number: "INV-2026-000003", Status: "paid", TotalMinor: 1500, Currency: "USD", CurrencyExponent: 2, IssueTime: timestamppb.New(time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC))},
+		},
+		CreditBalance: 12500, CanBuyCredits: true,
+		CreditLots: []*billingv1.PortalCreditLot{
+			{Granted: 10000, Remaining: 2500, ExpireTime: timestamppb.New(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC))},
+			{Granted: 10000, Remaining: 10000},
+		},
+		CreditPacks: []*billingv1.PortalCreditPack{
+			{Id: "pack-1", Name: "Starter <b>pack</b>", Credits: 10000, PriceMinor: 500, Currency: "USD", CurrencyExponent: 2, ValidityDays: 30},
+			{Id: "pack-2", Name: "Team", Credits: 100000, PriceMinor: 4000, Currency: "USD", CurrencyExponent: 2},
 		}}, nil
 }
 

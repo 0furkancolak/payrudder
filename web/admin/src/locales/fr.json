@@ -743,7 +743,8 @@
       "kind": "Type",
       "kinds": {
         "adhoc": "Montant fixe",
-        "invoice": "Facture ouverte"
+        "invoice": "Facture ouverte",
+        "credit_pack": "Pack de crédits"
       },
       "invoiceId": "ID de facture",
       "amount": "Montant",
@@ -845,7 +846,12 @@
         "onSale": "En vente",
         "withdrawn": "Retiré",
         "withdraw": "Retirer de la vente",
-        "restore": "Remettre en vente"
+        "restore": "Remettre en vente",
+        "validity": "Valable (jours, facultatif)",
+        "validityCol": "Validité",
+        "noExpiry": "N'expire jamais",
+        "days": "{n} jours",
+        "purchaseLink": "Créer un lien d'achat"
       },
       "customer": {
         "title": "Crédits d'un client",
@@ -880,12 +886,35 @@
         "time": "Date",
         "kind": "Type",
         "amount": "Crédits",
-        "reason": "Note"
+        "reason": "Note",
+        "source": "Origine"
       },
       "kind": {
         "grant": "Ajouté",
         "consume": "Dépensé",
         "expire": "Expiré"
+      },
+      "purchase": {
+        "title": "Lien d'achat",
+        "hint": "Un lien que le client ouvre pour acheter ce pack. Une fois le paiement confirmé, les crédits sont ajoutés une seule fois. Le prix est toujours celui du pack.",
+        "formLabel": "Créer un lien d'achat",
+        "pack": "Pack",
+        "customer": "Client",
+        "pickCustomer": "Choisir un client",
+        "quantity": "Quantité",
+        "create": "Créer le lien",
+        "shownOnce": "Copiez le lien maintenant : il n'est affiché qu'une fois et ne peut plus être relu.",
+        "url": "Lien d'achat",
+        "copy": "Copier",
+        "close": "Fermer"
+      },
+      "settings": {
+        "title": "Alerte de solde bas",
+        "hint": "Lorsque le solde d'un client passe sous ce nombre, Quotify envoie une seule fois l'événement webhook credits.low. 0 le désactive.",
+        "formLabel": "Alerte de solde bas",
+        "threshold": "Alerter sous (crédits)",
+        "save": "Enregistrer",
+        "saved": "Enregistré."
       }
     },
     "accounting": {
@@ -1216,7 +1245,9 @@
         "idempotency_conflict": "Cette clé d'idempotence a servi pour un autre lien de paiement.",
         "invoice_not_payable": "Une facture payée ou annulée n'a pas besoin de lien de paiement.",
         "invoice_required": "Un lien de paiement de type facture nécessite une facture.",
-        "not_found": "Ce lien de paiement n'existe pas."
+        "not_found": "Ce lien de paiement n'existe pas.",
+        "customer_required": "Un lien de pack de crédits a besoin du client qui reçoit les crédits.",
+        "pack_required": "Un lien de pack de crédits a besoin d'un pack."
       },
       "portal_link": {
         "customer_not_found": "Ce client n'existe pas.",
@@ -1235,7 +1266,12 @@
         "key_required": "Une clé d'idempotence est requise pour dépenser des crédits.",
         "key_reused": "Cette clé d'idempotence a déjà servi pour une autre requête.",
         "pack_not_found": "Ce pack de crédits n'existe pas.",
-        "unknown_currency": "Cette devise n'est pas prise en charge."
+        "unknown_currency": "Cette devise n'est pas prise en charge.",
+        "bad_quantity": "La quantité doit être comprise entre 1 et 1000.",
+        "bad_threshold": "Le seuil doit être 0 ou un nombre entier de crédits.",
+        "bad_validity": "La validité doit être de 1 à 3650 jours, ou vide pour des crédits qui n'expirent pas.",
+        "pack_inactive": "Ce pack de crédits n'est pas en vente.",
+        "portal_cannot_buy": "Ce lien de portail ne permet pas d'acheter des crédits. Demandez-en un nouveau."
       },
       "accounting": {
         "bad_app": "L'application n'est pas valide.",

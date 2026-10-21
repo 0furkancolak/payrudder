@@ -759,6 +759,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/credits/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The low-balance threshold of the credits.low event */
+        get: operations["getCreditSettings"];
+        /**
+         * Set the low-balance threshold
+         * @description A consume that takes a customer's balance from at least `low_threshold` credits to fewer announces `credits.low` once (the webhook event). 0, the default, turns it off.
+         */
+        put: operations["setCreditSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhook-endpoints": {
         parameters: {
             query?: never;
@@ -1260,6 +1281,26 @@ export interface paths {
         get: operations["portalLogo"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/credits/buy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start buying a credit pack from the customer's portal
+         * @description Form fields `pack_id` and, optionally, `quantity` (1 to 1000). Makes a credit-pack payment link for the portal's customer (or continues the one an earlier press made and nobody paid), makes its invoice, and redirects to the invoice page to pay. The price comes from the pack, never from the form. The credits are granted once, when the payment is confirmed. At most 10 a minute per address.
+         */
+        post: operations["portalCreditsBuy"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3696,6 +3737,8 @@ export interface components {
             /** @description int64 minor units of the currency, above zero */
             price_minor: string;
             currency: string;
+            /** @description The credits bought expire after this many days; 0 or absent: they never expire */
+            validity_days?: number;
         };
         CreditPack: {
             /** Format: uuid */
@@ -3709,6 +3752,12 @@ export interface components {
             active?: boolean;
             /** Format: date-time */
             create_time?: string;
+            /** @description 0: the credits bought never expire */
+            validity_days?: number;
+        };
+        CreditSettings: {
+            /** @description int64 credits; 0 turns credits.low off */
+            low_threshold?: string;
         };
         CreditPackList: {
             packs?: components["schemas"]["CreditPack"][];
@@ -3777,6 +3826,11 @@ export interface components {
             amount?: string;
             reason?: string;
             idempotency_key?: string;
+            /**
+             * @description Where the credits it touched came from; a purchase is a credit pack that was paid for
+             * @enum {string}
+             */
+            source?: "purchase" | "promo" | "manual";
             /** Format: date-time */
             create_time?: string;
         };
@@ -3904,17 +3958,23 @@ export interface components {
             active?: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "payment_link.created" | "payment_link.paid" | "payment_link.expired";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low";
         PaymentLink: {
             /** Format: uuid */
             id?: string;
             /** @enum {string} */
-            kind?: "invoice" | "adhoc";
+            kind?: "invoice" | "adhoc" | "credit_pack";
             /**
              * @description paid: a single-use link that was paid
              * @enum {string}
              */
             status?: "active" | "paid" | "expired" | "revoked";
+            /** @description kind credit_pack: the pack sold */
+            pack_id?: string;
+            /** @description kind credit_pack: how many packs one use buys */
+            quantity?: number;
+            /** @description kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string */
+            credits?: string;
             /** @description kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
             invoice_id?: string;
             customer_external_id?: string;
@@ -3939,19 +3999,26 @@ export interface components {
         };
         CreatePaymentLinkRequest: {
             /**
-             * @description Default: invoice when invoice_id is set, else adhoc
+             * @description Default: invoice when invoice_id is set, credit_pack when pack_id is set, else adhoc
              * @enum {string}
              */
-            kind?: "invoice" | "adhoc";
+            kind?: "invoice" | "adhoc" | "credit_pack";
             /** Format: uuid */
             invoice_id?: string;
+            /**
+             * Format: uuid
+             * @description credit_pack: the active credit pack to sell. Its price and currency become the link's amount; they are never taken from the request
+             */
+            pack_id?: string;
+            /** @description credit_pack: how many packs one payment buys (default 1) */
+            quantity?: number;
             /** @description adhoc: a positive int64 in minor units (a string or a number) */
             amount_minor?: string;
             /** @description adhoc: ISO 4217; the tenant's currency when empty */
             currency?: string;
             /** @description adhoc: what it is for; printed on the invoice */
             description?: string;
-            /** @description adhoc: make the invoice out to this customer */
+            /** @description adhoc: make the invoice out to this customer. credit_pack: required, the customer who receives the credits */
             customer_external_id?: string;
             /** @description Default true for adhoc, false for invoice */
             single_use?: boolean;
@@ -4021,7 +4088,7 @@ export interface components {
             /** Format: date-time */
             delivered_time?: string;
         };
-        /** @description The body of a delivery. data depends on the type: invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change. */
+        /** @description The body of a delivery. data depends on the type: credits.purchased carries the customer, the credits granted, the new balance and the invoice; credits.low the customer, the balance and the threshold; invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change. */
         WebhookEvent: {
             /** Format: uuid */
             id?: string;
@@ -5614,6 +5681,50 @@ export interface operations {
                     "text/csv": string;
                 };
             };
+        };
+    };
+    getCreditSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditSettings"];
+                };
+            };
+        };
+    };
+    setCreditSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditSettings"];
+                };
+            };
             400: components["responses"]["Error"];
         };
     };
@@ -6637,6 +6748,52 @@ export interface operations {
             };
             /** @description No logo, or the link does not exist */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalCreditsBuy: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    /** Format: uuid */
+                    pack_id: string;
+                    quantity?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Redirect to the invoice page (/i/{invoice token}) */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link does not exist or has expired, or the pack is not on sale */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
