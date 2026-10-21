@@ -812,6 +812,30 @@
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
         "draft_invoice": "Eine Rechnung im Entwurf kann nicht per Link geteilt werden.",
         "not_found": "Der Rechnungslink wurde nicht gefunden."
+      },
+      "payment": {
+        "amount_mismatch": "Die Zahlung entspricht nicht dem Rechnungsbetrag.",
+        "invoice_not_payable": "Diese Rechnung kann jetzt nicht bezahlt werden.",
+        "method_unavailable": "Wählen Sie eine Zahlungsmethode."
+      },
+      "payment_link": {
+        "bad_amount": "Der Betrag muss eine positive Zahl in der kleinsten Einheit sein.",
+        "bad_currency": "Diese Währung wird nicht unterstützt.",
+        "bad_description": "Eine Beschreibung ist erforderlich (höchstens 200 Zeichen).",
+        "bad_key": "Der Idempotency-Schlüssel ist zu lang (höchstens 200 Zeichen).",
+        "bad_kind": "Betrag, Währung, Beschreibung und Kunde gehören zu einem freien Link; ein Rechnungslink übernimmt sie von der Rechnung.",
+        "bad_page": "Die Seitengröße muss zwischen 1 und 200 liegen.",
+        "bad_status": "Der Status muss active, paid, expired oder revoked sein.",
+        "consumed": "Dieser Link wurde bereits verwendet.",
+        "customer_not_found": "Diesen Kunden gibt es nicht.",
+        "idempotency_conflict": "Dieser Idempotency-Schlüssel wurde für einen anderen Zahlungslink verwendet.",
+        "invoice_not_payable": "Eine bezahlte oder stornierte Rechnung braucht keinen Zahlungslink.",
+        "invoice_required": "Ein Zahlungslink der Art Rechnung braucht eine Rechnung.",
+        "not_found": "Diesen Zahlungslink gibt es nicht."
+      },
+      "portal_link": {
+        "customer_not_found": "Diesen Kunden gibt es nicht.",
+        "customer_required": "Ein Kunde ist erforderlich."
       }
     },
     "plans": {

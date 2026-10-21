@@ -812,6 +812,30 @@
         "bad_expiry": "Le lien doit expirer dans 1 à 365 jours.",
         "draft_invoice": "Une facture brouillon ne peut pas être partagée par lien.",
         "not_found": "Le lien de la facture est introuvable."
+      },
+      "payment": {
+        "amount_mismatch": "Le paiement ne correspond pas au montant de la facture.",
+        "invoice_not_payable": "Cette facture ne peut pas être payée maintenant.",
+        "method_unavailable": "Choisissez un moyen de paiement."
+      },
+      "payment_link": {
+        "bad_amount": "Le montant doit être un nombre positif d'unités mineures.",
+        "bad_currency": "Cette devise n'est pas prise en charge.",
+        "bad_description": "Une description est requise (200 caractères au plus).",
+        "bad_key": "La clé d'idempotence est trop longue (200 caractères au plus).",
+        "bad_kind": "Montant, devise, description et client appartiennent à un lien libre ; un lien de facture les reprend de la facture.",
+        "bad_page": "La taille de page doit être comprise entre 1 et 200.",
+        "bad_status": "Le statut doit être active, paid, expired ou revoked.",
+        "consumed": "Ce lien a déjà été utilisé.",
+        "customer_not_found": "Ce client n'existe pas.",
+        "idempotency_conflict": "Cette clé d'idempotence a servi pour un autre lien de paiement.",
+        "invoice_not_payable": "Une facture payée ou annulée n'a pas besoin de lien de paiement.",
+        "invoice_required": "Un lien de paiement de type facture nécessite une facture.",
+        "not_found": "Ce lien de paiement n'existe pas."
+      },
+      "portal_link": {
+        "customer_not_found": "Ce client n'existe pas.",
+        "customer_required": "Un client est requis."
       }
     },
     "plans": {

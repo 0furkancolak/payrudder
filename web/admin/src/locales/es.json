@@ -812,6 +812,30 @@
         "bad_expiry": "El enlace debe caducar entre 1 y 365 días.",
         "draft_invoice": "Una factura en borrador no se puede compartir por enlace.",
         "not_found": "No se encontró el enlace de la factura."
+      },
+      "payment": {
+        "amount_mismatch": "El pago no corresponde al importe de la factura.",
+        "invoice_not_payable": "Esta factura no se puede pagar ahora.",
+        "method_unavailable": "Elija un método de pago."
+      },
+      "payment_link": {
+        "bad_amount": "El importe debe ser un número positivo de unidades menores.",
+        "bad_currency": "Esta moneda no es compatible.",
+        "bad_description": "La descripción es obligatoria (como máximo 200 caracteres).",
+        "bad_key": "La clave de idempotencia es demasiado larga (como máximo 200 caracteres).",
+        "bad_kind": "Importe, moneda, descripción y cliente pertenecen a un enlace libre; un enlace de factura los toma de la factura.",
+        "bad_page": "El tamaño de página debe estar entre 1 y 200.",
+        "bad_status": "El estado debe ser active, paid, expired o revoked.",
+        "consumed": "Este enlace ya se ha usado.",
+        "customer_not_found": "No existe ese cliente.",
+        "idempotency_conflict": "Esta clave de idempotencia se usó para otro enlace de pago.",
+        "invoice_not_payable": "Una factura pagada o anulada no necesita enlace de pago.",
+        "invoice_required": "Un enlace de pago de tipo factura necesita una factura.",
+        "not_found": "No existe ese enlace de pago."
+      },
+      "portal_link": {
+        "customer_not_found": "No existe ese cliente.",
+        "customer_required": "El cliente es obligatorio."
       }
     },
     "plans": {

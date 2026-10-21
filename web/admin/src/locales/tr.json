@@ -812,6 +812,30 @@
         "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
         "draft_invoice": "Taslak bir fatura bağlantıyla paylaşılamaz.",
         "not_found": "Fatura bağlantısı bulunamadı."
+      },
+      "payment": {
+        "amount_mismatch": "Ödeme, faturanın tutarı için değil.",
+        "invoice_not_payable": "Bu fatura şu an ödenemez.",
+        "method_unavailable": "Bir ödeme yöntemi seçin."
+      },
+      "payment_link": {
+        "bad_amount": "Tutar, küçük birimlerde pozitif bir sayı olmalıdır.",
+        "bad_currency": "Bu para birimi desteklenmiyor.",
+        "bad_description": "Açıklama zorunludur, en fazla 200 karakter.",
+        "bad_key": "Idempotency anahtarı çok uzun (en fazla 200 karakter).",
+        "bad_kind": "Tutar, para birimi, açıklama ve müşteri tek seferlik bağlantıya aittir; fatura bağlantısı bunları faturadan alır.",
+        "bad_page": "Sayfa boyutu 1 ile 200 arasında olmalıdır.",
+        "bad_status": "Durum active, paid, expired veya revoked olmalıdır.",
+        "consumed": "Bu bağlantı zaten kullanıldı.",
+        "customer_not_found": "Böyle bir müşteri yok.",
+        "idempotency_conflict": "Bu idempotency anahtarı başka bir ödeme bağlantısı için kullanıldı.",
+        "invoice_not_payable": "Ödenmiş veya iptal edilmiş faturaya ödeme bağlantısı gerekmez.",
+        "invoice_required": "Fatura türündeki ödeme bağlantısı için bir fatura gerekir.",
+        "not_found": "Böyle bir ödeme bağlantısı yok."
+      },
+      "portal_link": {
+        "customer_not_found": "Böyle bir müşteri yok.",
+        "customer_required": "Müşteri zorunludur."
       }
     },
     "plans": {

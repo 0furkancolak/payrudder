@@ -812,6 +812,30 @@
         "bad_expiry": "The link must expire in 1 to 365 days.",
         "draft_invoice": "A draft invoice cannot be shared by link.",
         "not_found": "The invoice link was not found."
+      },
+      "payment": {
+        "amount_mismatch": "The payment is not for the amount of the invoice.",
+        "invoice_not_payable": "This invoice cannot be paid now.",
+        "method_unavailable": "Choose a payment method."
+      },
+      "payment_link": {
+        "bad_amount": "The amount must be a positive number of minor units.",
+        "bad_currency": "This currency is not supported.",
+        "bad_description": "A description is required, at most 200 characters.",
+        "bad_key": "The idempotency key is too long (at most 200 characters).",
+        "bad_kind": "Amount, currency, description and customer belong to an ad-hoc link; an invoice link takes them from the invoice.",
+        "bad_page": "The page size must be 1 to 200.",
+        "bad_status": "The status must be active, paid, expired or revoked.",
+        "consumed": "This link has already been used.",
+        "customer_not_found": "There is no such customer.",
+        "idempotency_conflict": "This idempotency key was used for a different payment link.",
+        "invoice_not_payable": "A paid or void invoice needs no payment link.",
+        "invoice_required": "A payment link of kind invoice needs an invoice.",
+        "not_found": "There is no such payment link."
+      },
+      "portal_link": {
+        "customer_not_found": "There is no such customer.",
+        "customer_required": "A customer is required."
       }
     },
     "plans": {
