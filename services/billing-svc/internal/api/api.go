@@ -11,6 +11,7 @@ import (
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/billingruns"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/creditnotes"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/credits"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/deadletters"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dunning"
@@ -33,6 +34,7 @@ type (
 	invoiceHandler    = invoices.Handler
 	creditNoteHandler = creditnotes.Handler
 	dunningHandler    = dunning.Handler
+	creditsHandler    = credits.Handler
 	reportHandler     = reports.Handler
 	hostedHandler     = hosted.Handler
 	runHandler        = billingruns.Handler
@@ -57,6 +59,7 @@ type Server struct {
 	*invoiceHandler
 	*creditNoteHandler
 	*dunningHandler
+	*creditsHandler
 	*reportHandler
 	*hostedHandler
 	*runHandler
@@ -72,6 +75,7 @@ func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server
 		invoiceHandler:    invoices.New(app),
 		creditNoteHandler: creditnotes.New(app, system, mgr),
 		dunningHandler:    dunning.New(app),
+		creditsHandler:    credits.New(app),
 		reportHandler:     reports.New(app),
 		hostedHandler:     hosted.New(app, system),
 		runHandler:        billingruns.New(mgr),

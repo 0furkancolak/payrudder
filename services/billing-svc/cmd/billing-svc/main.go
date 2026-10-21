@@ -36,6 +36,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
+	creditcmd "github.com/0furkancolak/quotify/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/replies"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
@@ -369,11 +370,18 @@ func (w *workers) startLoops(ctx context.Context, g *errgroup.Group) {
 	g.Go(func() error { loop(ctx, w.cfg.SweepInterval, "sweeper", w.log, w.sweep); return nil })
 }
 
-// sweep re-issues stuck saga steps and advances dunning.
+// sweep re-issues stuck saga steps, advances dunning and writes off credits whose time has come.
 func (w *workers) sweep(ctx context.Context) error {
 	res, err := w.eng.Sweep(ctx, w.pool, 200)
 	if err == nil && (res.Reissued+res.Exhausted+res.Dunned+res.Polled) > 0 {
 		w.log.InfoContext(ctx, "saga sweep", "reissued", res.Reissued, "exhausted", res.Exhausted, "dunning", res.Dunned, "polled", res.Polled)
+	}
+	if err != nil {
+		return err
+	}
+	expired, err := creditcmd.ExpireDue(ctx, w.pool, 200)
+	if err == nil && expired > 0 {
+		w.log.InfoContext(ctx, "credits expired", "lots", expired)
 	}
 	return err
 }

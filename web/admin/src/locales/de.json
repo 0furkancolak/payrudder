@@ -330,7 +330,8 @@
       "webhooks": "Webhooks",
       "mail": "E-Mail",
       "apps": "Apps",
-      "address": "Verkäuferadresse"
+      "address": "Verkäuferadresse",
+      "credits": "Guthaben"
     },
     "common": {
       "remove": "Entfernen"
@@ -695,6 +696,25 @@
       "refundFailed": "Erstattung fehlgeschlagen",
       "retryRefund": "Erstattung wiederholen"
     },
+    "mail": {
+      "title": "E-Mail",
+      "hint": "Legen Sie fest, welche Arten von E-Mails Quotify an die Kunden dieses Mandanten sendet. Eine abgeschaltete Art wird verworfen, nicht vorgemerkt: Wieder einschalten sendet das Übersprungene nicht nach.",
+      "categories": {
+        "invoice_issued": "Rechnung erstellt",
+        "payment_receipts": "Zahlungsbelege",
+        "payment_failed": "Zahlung fehlgeschlagen",
+        "usage_alerts": "Nutzungswarnungen",
+        "system": "System"
+      },
+      "descriptions": {
+        "invoice_issued": "Teilt dem Kunden mit, dass eine neue Rechnung abgeschlossen wurde.",
+        "payment_receipts": "Der Beleg nach einer erfolgreichen Zahlung.",
+        "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Quotify die Einziehung aufgegeben hat.",
+        "usage_alerts": "Ein Kunde hat ein Nutzungslimit seines Tarifs überschritten.",
+        "system": "Alle übrigen Nachrichten von Quotify."
+      },
+      "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Quotify."
+    },
     "webhooks": {
       "title": "Webhooks",
       "hint": "Quotify sendet an diese HTTPS-Endpunkte einen signierten JSON-POST, wenn im Konto etwas passiert: eine Rechnung wird bezahlt, eine Gutschrift ausgestellt, ein Abonnement ändert sich. Prüfen Sie den Header Quotify-Signature mit dem Secret des Endpunkts; fehlgeschlagene Zustellungen werden etwa eineinhalb Tage lang wiederholt.",
@@ -731,104 +751,64 @@
         "failed": "Fehlgeschlagen"
       }
     },
-    "mail": {
-      "title": "E-Mail",
-      "hint": "Legen Sie fest, welche Arten von E-Mails Quotify an die Kunden dieses Mandanten sendet. Eine abgeschaltete Art wird verworfen, nicht vorgemerkt: Wieder einschalten sendet das Übersprungene nicht nach.",
-      "categories": {
-        "invoice_issued": "Rechnung erstellt",
-        "payment_receipts": "Zahlungsbelege",
-        "payment_failed": "Zahlung fehlgeschlagen",
-        "usage_alerts": "Nutzungswarnungen",
-        "system": "System"
+    "credits": {
+      "packs": {
+        "new": "Neues Guthabenpaket",
+        "hint": "Ein Paket ist eine Anzahl Guthaben zu einem Preis. Kunden kaufen es über einen Zahlungslink; das Guthaben wird gutgeschrieben, sobald die Zahlung bestätigt ist.",
+        "formLabel": "Neues Guthabenpaket",
+        "name": "Paketname",
+        "credits": "Guthaben",
+        "price": "Preis",
+        "currency": "Währung",
+        "create": "Paket hinzufügen",
+        "title": "Guthabenpakete",
+        "none": "Noch keine Guthabenpakete.",
+        "state": "Status",
+        "onSale": "Im Verkauf",
+        "withdrawn": "Zurückgezogen",
+        "withdraw": "Zurückziehen",
+        "restore": "Wieder verkaufen"
       },
-      "descriptions": {
-        "invoice_issued": "Teilt dem Kunden mit, dass eine neue Rechnung abgeschlossen wurde.",
-        "payment_receipts": "Der Beleg nach einer erfolgreichen Zahlung.",
-        "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Quotify die Einziehung aufgegeben hat.",
-        "usage_alerts": "Ein Kunde hat ein Nutzungslimit seines Tarifs überschritten.",
-        "system": "Alle übrigen Nachrichten von Quotify."
+      "customer": {
+        "title": "Guthaben eines Kunden",
+        "pick": "Kunden wählen",
+        "balance": "Guthaben verfügbar",
+        "nextExpiry": "Ein Teil verfällt am {when}"
       },
-      "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Quotify."
-    }
-  },
-  "errors": {
-    "payments": {
-      "transfer": {
-        "not_a_transfer": "Diese Rechnung wurde nicht per Banküberweisung belastet. Verwenden Sie stattdessen Zahlung erfassen.",
-        "invoice_closed": "Die Rechnung ist bereits bezahlt oder storniert.",
-        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
-        "bad_currency": "Die Währung weicht von der der Rechnung ab.",
-        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag und klären Sie den Rest außerhalb von Quotify.",
-        "reference_reused": "Diese Bankreferenz wurde bereits mit einem anderen Betrag erfasst.",
-        "bad_reference": "Die Bankreferenz fehlt oder ist ungültig.",
-        "bad_note": "Die Notiz ist zu lang (höchstens 500 Zeichen).",
-        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
-        "nothing_pending": "Es gibt keine ausstehende Überweisung, die abgelehnt werden könnte.",
-        "bad_outcome": "Das Ergebnis muss abgelehnt oder abgelaufen sein.",
-        "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal."
+      "lots": {
+        "source": "Quelle",
+        "remaining": "Übrig",
+        "granted": "Gewährt",
+        "expires": "Verfällt",
+        "never": "Nie"
+      },
+      "source": {
+        "promo": "Aktion",
+        "manual": "Manuell",
+        "purchase": "Kauf"
+      },
+      "grant": {
+        "formLabel": "Guthaben hinzufügen",
+        "credits": "Hinzuzufügendes Guthaben",
+        "source": "Art",
+        "expiry": "Ablaufdatum",
+        "expiryHint": "Leer lassen für Guthaben ohne Ablauf",
+        "reason": "Notiz (optional)",
+        "submit": "Guthaben hinzufügen"
+      },
+      "ledger": {
+        "title": "Guthabenverlauf",
+        "none": "Noch keine Änderungen.",
+        "time": "Zeit",
+        "kind": "Art",
+        "amount": "Guthaben",
+        "reason": "Notiz"
+      },
+      "kind": {
+        "grant": "Hinzugefügt",
+        "consume": "Verbraucht",
+        "expire": "Verfallen"
       }
-    },
-    "billing": {
-      "payment": {
-        "bad_method": "Die Zahlungsart muss Banküberweisung, Bar oder Sonstiges sein.",
-        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
-        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
-        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag.",
-        "already_paid": "Die Rechnung ist bereits bezahlt.",
-        "invoice_not_payable": "Nur eine offene oder uneinbringliche Rechnung kann von Hand bezahlt werden.",
-        "not_payable": "Der Zahlungsstatus der Rechnung erlaubt gerade keine manuelle Zahlung.",
-        "reference_reused": "Diese Referenz wurde bereits mit einem anderen Betrag erfasst."
-      },
-      "credit_note": {
-        "bad_amount": "Der Gutschriftbetrag ist ungültig: Er muss größer als null sein und darf den noch gutschreibbaren Rest der Rechnung nicht übersteigen.",
-        "fully_credited": "Diese Rechnung wurde bereits vollständig gutgeschrieben.",
-        "not_paid": "Nur eine bezahlte Rechnung kann gutgeschrieben werden.",
-        "nothing_to_refund": "Für diese Gutschrift gibt es nichts auf die Karte zurückzuerstatten.",
-        "refund_not_failed": "Nur eine Gutschrift mit fehlgeschlagener Rückerstattung kann erneut versucht werden."
-      },
-      "dunning": {
-        "bad_delay": "Jede Wiederholungsverzögerung muss zwischen 1 und 720 Stunden liegen.",
-        "too_many_retries": "Es können höchstens 6 Wiederholungsverzögerungen festgelegt werden."
-      },
-      "invoice": {
-        "not_found": "Die Rechnung wurde nicht gefunden.",
-        "pdf_not_ready": "Das PDF der Rechnung wurde noch nicht erstellt. Versuchen Sie es gleich noch einmal."
-      },
-      "invoice_link": {
-        "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
-        "draft_invoice": "Eine Rechnung im Entwurf kann nicht per Link geteilt werden.",
-        "not_found": "Der Rechnungslink wurde nicht gefunden."
-      }
-    },
-    "plans": {
-      "app": {
-        "bad_slug": "Das Kürzel der App darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten und höchstens 60 Zeichen lang sein.",
-        "slug_taken": "Dieses Konto hat bereits eine App mit diesem Kürzel."
-      },
-      "mail": {
-        "unknown_category": "Diese E-Mail-Kategorie existiert nicht."
-      },
-      "subscription": {
-        "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut."
-      },
-      "webhook": {
-        "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
-        "too_many_endpoints": "Die Höchstzahl an Webhook-Endpunkten ist erreicht. Löschen Sie zuerst einen."
-      }
-    },
-    "common": {
-      "invalid_argument": "Etwas in der Anfrage ist ungültig.",
-      "not_found": "Nicht gefunden.",
-      "already_exists": "Existiert bereits.",
-      "failed_precondition": "Das ist im aktuellen Zustand nicht möglich.",
-      "permission_denied": "Dafür fehlt Ihnen die Berechtigung.",
-      "unauthenticated": "Melden Sie sich erneut an: Das Token fehlt oder ist nicht mehr gültig.",
-      "rate_limited": "Zu viele Anfragen. Warten Sie kurz und versuchen Sie es erneut.",
-      "unavailable": "Der Dienst ist gerade nicht verfügbar. Versuchen Sie es in Kürze erneut.",
-      "timeout": "Die Anfrage hat zu lange gedauert. Versuchen Sie es erneut.",
-      "conflict": "Die Daten haben sich während Ihrer Arbeit geändert. Laden Sie neu und versuchen Sie es erneut.",
-      "not_implemented": "Das wird noch nicht unterstützt.",
-      "internal": "Auf unserer Seite ist etwas schiefgelaufen. Versuchen Sie es erneut; bleibt es dabei, suchen Sie mit der Anfrage-ID in den Logs."
     }
   },
   "apps": {
@@ -903,6 +883,101 @@
       "hint": "So erscheint der Verkäufer auf einer Rechnung.",
       "from": "Von",
       "empty": "Keine Adresse: Die Rechnung zeigt nur den Namen."
+    }
+  },
+  "errors": {
+    "billing": {
+      "credit_note": {
+        "bad_amount": "Der Gutschriftbetrag ist ungültig: Er muss größer als null sein und darf den noch gutschreibbaren Rest der Rechnung nicht übersteigen.",
+        "fully_credited": "Diese Rechnung wurde bereits vollständig gutgeschrieben.",
+        "not_paid": "Nur eine bezahlte Rechnung kann gutgeschrieben werden.",
+        "nothing_to_refund": "Für diese Gutschrift gibt es nichts auf die Karte zurückzuerstatten.",
+        "refund_not_failed": "Nur eine Gutschrift mit fehlgeschlagener Rückerstattung kann erneut versucht werden."
+      },
+      "dunning": {
+        "bad_delay": "Jede Wiederholungsverzögerung muss zwischen 1 und 720 Stunden liegen.",
+        "too_many_retries": "Es können höchstens 6 Wiederholungsverzögerungen festgelegt werden."
+      },
+      "invoice": {
+        "not_found": "Die Rechnung wurde nicht gefunden.",
+        "pdf_not_ready": "Das PDF der Rechnung wurde noch nicht erstellt. Versuchen Sie es gleich noch einmal."
+      },
+      "invoice_link": {
+        "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
+        "draft_invoice": "Eine Rechnung im Entwurf kann nicht per Link geteilt werden.",
+        "not_found": "Der Rechnungslink wurde nicht gefunden."
+      },
+      "credits": {
+        "bad_amount": "Der Betrag muss eine ganze Zahl über null sein.",
+        "bad_customer": "Der Kunde ist nicht gültig.",
+        "bad_expiry": "Das Ablaufdatum muss in der Zukunft liegen.",
+        "bad_key": "Der Idempotency-Schlüssel ist zu lang (höchstens 128 Zeichen).",
+        "bad_pack": "Ein Paket braucht einen Namen sowie Guthaben und einen Preis über null.",
+        "bad_page_token": "Das Seitentoken ist nicht gültig.",
+        "bad_reason": "Die Notiz ist zu lang (höchstens 200 Zeichen).",
+        "bad_source": "Die Art muss Aktion oder manuell sein.",
+        "insufficient": "Der Kunde hat zu wenig Guthaben.",
+        "key_required": "Zum Verbrauchen von Guthaben ist ein Idempotency-Schlüssel nötig.",
+        "key_reused": "Dieser Idempotency-Schlüssel wurde schon für eine andere Anfrage verwendet.",
+        "pack_not_found": "Es gibt kein solches Guthabenpaket.",
+        "unknown_currency": "Diese Währung wird nicht unterstützt."
+      },
+      "payment": {
+        "bad_method": "Die Zahlungsart muss Banküberweisung, Bar oder Sonstiges sein.",
+        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
+        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
+        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag.",
+        "already_paid": "Die Rechnung ist bereits bezahlt.",
+        "invoice_not_payable": "Nur eine offene oder uneinbringliche Rechnung kann von Hand bezahlt werden.",
+        "not_payable": "Der Zahlungsstatus der Rechnung erlaubt gerade keine manuelle Zahlung.",
+        "reference_reused": "Diese Referenz wurde bereits mit einem anderen Betrag erfasst."
+      }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "Das Kürzel der App darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten und höchstens 60 Zeichen lang sein.",
+        "slug_taken": "Dieses Konto hat bereits eine App mit diesem Kürzel."
+      },
+      "mail": {
+        "unknown_category": "Diese E-Mail-Kategorie existiert nicht."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut."
+      },
+      "webhook": {
+        "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
+        "too_many_endpoints": "Die Höchstzahl an Webhook-Endpunkten ist erreicht. Löschen Sie zuerst einen."
+      }
+    },
+    "common": {
+      "invalid_argument": "Etwas in der Anfrage ist ungültig.",
+      "not_found": "Nicht gefunden.",
+      "already_exists": "Existiert bereits.",
+      "failed_precondition": "Das ist im aktuellen Zustand nicht möglich.",
+      "permission_denied": "Dafür fehlt Ihnen die Berechtigung.",
+      "unauthenticated": "Melden Sie sich erneut an: Das Token fehlt oder ist nicht mehr gültig.",
+      "rate_limited": "Zu viele Anfragen. Warten Sie kurz und versuchen Sie es erneut.",
+      "unavailable": "Der Dienst ist gerade nicht verfügbar. Versuchen Sie es in Kürze erneut.",
+      "timeout": "Die Anfrage hat zu lange gedauert. Versuchen Sie es erneut.",
+      "conflict": "Die Daten haben sich während Ihrer Arbeit geändert. Laden Sie neu und versuchen Sie es erneut.",
+      "not_implemented": "Das wird noch nicht unterstützt.",
+      "internal": "Auf unserer Seite ist etwas schiefgelaufen. Versuchen Sie es erneut; bleibt es dabei, suchen Sie mit der Anfrage-ID in den Logs."
+    },
+    "payments": {
+      "transfer": {
+        "not_a_transfer": "Diese Rechnung wurde nicht per Banküberweisung belastet. Verwenden Sie stattdessen Zahlung erfassen.",
+        "invoice_closed": "Die Rechnung ist bereits bezahlt oder storniert.",
+        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
+        "bad_currency": "Die Währung weicht von der der Rechnung ab.",
+        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag und klären Sie den Rest außerhalb von Quotify.",
+        "reference_reused": "Diese Bankreferenz wurde bereits mit einem anderen Betrag erfasst.",
+        "bad_reference": "Die Bankreferenz fehlt oder ist ungültig.",
+        "bad_note": "Die Notiz ist zu lang (höchstens 500 Zeichen).",
+        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
+        "nothing_pending": "Es gibt keine ausstehende Überweisung, die abgelehnt werden könnte.",
+        "bad_outcome": "Das Ergebnis muss abgelehnt oder abgelaufen sein.",
+        "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal."
+      }
     }
   }
 }

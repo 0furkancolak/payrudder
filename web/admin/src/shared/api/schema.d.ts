@@ -465,6 +465,141 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/credit-packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The credit packs the tenant sells */
+        get: operations["listCreditPacks"];
+        put?: never;
+        /**
+         * Add a credit pack
+         * @description A pack is a number of credits for a price in one currency. A customer buys it through a payment link; the credits are granted when the payment is confirmed.
+         */
+        post: operations["createCreditPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit-packs/{id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a credit pack back on sale */
+        post: operations["activateCreditPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit-packs/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw a credit pack from sale
+         * @description Credits already sold are not touched.
+         */
+        post: operations["deactivateCreditPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What a customer can spend now
+         * @description The balance leaves out credits whose time has passed. `lots` shows where it comes from, the credits that expire first at the top.
+         */
+        get: operations["getCreditBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/credits/grant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add credits to a customer
+         * @description For a promotion, a goodwill gesture or a sale made outside Quotify. With an `idempotency_key` (or the `Idempotency-Key` header) a repeat of the call adds nothing and returns `replayed: true`; the same key with other values is `billing.credits.key_reused`.
+         */
+        post: operations["grantCredits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/credits/consume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Spend credits
+         * @description Takes the credits that expire first. With too few credits nothing is taken and the answer is 409 `billing.credits.insufficient`. An `idempotency_key` (or the `Idempotency-Key` header) is required: a retried call returns the first result with `replayed: true` instead of charging twice.
+         */
+        post: operations["consumeCredits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/credits/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every change to a customer's credits, newest first */
+        get: operations["listCreditLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhook-endpoints": {
         parameters: {
             query?: never;
@@ -2566,6 +2701,101 @@ export interface components {
             /** Format: date-time */
             readonly update_time?: string;
         };
+        CreditPackInput: {
+            name: string;
+            /** @description int64, above zero (a number is accepted too) */
+            credits: string;
+            /** @description int64 minor units of the currency, above zero */
+            price_minor: string;
+            currency: string;
+        };
+        CreditPack: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** @description int64 as a string */
+            credits?: string;
+            /** @description int64 as a string */
+            price_minor?: string;
+            currency?: string;
+            active?: boolean;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        CreditPackList: {
+            packs?: components["schemas"]["CreditPack"][];
+        };
+        CreditLot: {
+            /** Format: uuid */
+            id?: string;
+            /** @description int64 as a string */
+            granted?: string;
+            /** @description int64 as a string */
+            remaining?: string;
+            /** @enum {string} */
+            source?: "purchase" | "promo" | "manual";
+            /**
+             * Format: date-time
+             * @description Null: the credits never expire
+             */
+            expire_time?: string | null;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        CreditBalance: {
+            /** @description int64 as a string */
+            balance?: string;
+            /**
+             * Format: date-time
+             * @description When some of the credits run out; null when none does
+             */
+            next_expire_time?: string | null;
+            lots?: components["schemas"]["CreditLot"][];
+        };
+        CreditGrantInput: {
+            /** @description int64, above zero (a number is accepted too) */
+            credits: string;
+            /** @enum {string} */
+            source: "promo" | "manual";
+            /**
+             * Format: date-time
+             * @description Must lie in the future; leave out for credits that never expire
+             */
+            expire_time?: string;
+            reason?: string;
+            idempotency_key?: string;
+        };
+        CreditConsumeInput: {
+            /** @description int64, above zero (a number is accepted too) */
+            credits: string;
+            reason?: string;
+            /** @description Required, here or in the Idempotency-Key header */
+            idempotency_key?: string;
+        };
+        CreditResult: {
+            /** @description int64 as a string: what the customer can spend after the call */
+            balance?: string;
+            /** @description True when the key had been used: nothing changed */
+            replayed?: boolean;
+        };
+        CreditLedgerEntry: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            lot_id?: string;
+            /** @enum {string} */
+            kind?: "grant" | "consume" | "expire";
+            /** @description int64 as a string; negative for consume and expire */
+            amount?: string;
+            reason?: string;
+            idempotency_key?: string;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        CreditLedgerPage: {
+            entries?: components["schemas"]["CreditLedgerEntry"][];
+            next_page_token?: string;
+        };
         WebhookEndpointInput: {
             /**
              * Format: uri
@@ -3728,6 +3958,208 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+        };
+    };
+    listCreditPacks: {
+        parameters: {
+            query?: {
+                /** @description true leaves out packs withdrawn from sale */
+                active?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditPackList"];
+                };
+            };
+        };
+    };
+    createCreditPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditPackInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditPack"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    activateCreditPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    deactivateCreditPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getCreditBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditBalance"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    grantCredits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditGrantInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    consumeCredits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditConsumeInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    listCreditLedger: {
+        parameters: {
+            query?: {
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditLedgerPage"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     listWebhookEndpoints: {

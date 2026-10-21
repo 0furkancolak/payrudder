@@ -330,7 +330,8 @@
       "webhooks": "Webhooklar",
       "mail": "E-posta",
       "apps": "Uygulamalar",
-      "address": "Satıcı adresi"
+      "address": "Satıcı adresi",
+      "credits": "Krediler"
     },
     "common": {
       "remove": "Kaldır"
@@ -695,6 +696,25 @@
       "refundFailed": "İade başarısız",
       "retryRefund": "İadeyi yeniden dene"
     },
+    "mail": {
+      "title": "E-posta",
+      "hint": "Quotify'ın bu kiracının müşterilerine hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
+      "categories": {
+        "invoice_issued": "Fatura kesildi",
+        "payment_receipts": "Ödeme makbuzları",
+        "payment_failed": "Ödeme başarısız",
+        "usage_alerts": "Kullanım uyarıları",
+        "system": "Sistem"
+      },
+      "descriptions": {
+        "invoice_issued": "Müşteriye yeni bir faturanın kesildiğini bildirir.",
+        "payment_receipts": "Başarılı bir ödemeden sonraki makbuz.",
+        "payment_failed": "Başarısız ödeme, yeniden deneme ve Quotify'ın tahsilattan vazgeçtiği bildirimi.",
+        "usage_alerts": "Bir müşteri planının kullanım limitini aştı.",
+        "system": "Quotify'ın gönderdiği diğer tüm iletiler."
+      },
+      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Quotify'ın e-postalarını yönetir."
+    },
     "webhooks": {
       "title": "Webhooklar",
       "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Quotify bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Quotify-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
@@ -731,104 +751,64 @@
         "failed": "Başarısız"
       }
     },
-    "mail": {
-      "title": "E-posta",
-      "hint": "Quotify'ın bu kiracının müşterilerine hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
-      "categories": {
-        "invoice_issued": "Fatura kesildi",
-        "payment_receipts": "Ödeme makbuzları",
-        "payment_failed": "Ödeme başarısız",
-        "usage_alerts": "Kullanım uyarıları",
-        "system": "Sistem"
+    "credits": {
+      "packs": {
+        "new": "Yeni kredi paketi",
+        "hint": "Paket, bir fiyata satılan belirli sayıda kredidir. Müşteri bir ödeme bağlantısıyla satın alır; krediler ödeme onaylanınca eklenir.",
+        "formLabel": "Yeni kredi paketi",
+        "name": "Paket adı",
+        "credits": "Kredi",
+        "price": "Fiyat",
+        "currency": "Para birimi",
+        "create": "Paketi ekle",
+        "title": "Kredi paketleri",
+        "none": "Henüz kredi paketi yok.",
+        "state": "Durum",
+        "onSale": "Satışta",
+        "withdrawn": "Satıştan kaldırıldı",
+        "withdraw": "Satıştan kaldır",
+        "restore": "Yeniden satışa koy"
       },
-      "descriptions": {
-        "invoice_issued": "Müşteriye yeni bir faturanın kesildiğini bildirir.",
-        "payment_receipts": "Başarılı bir ödemeden sonraki makbuz.",
-        "payment_failed": "Başarısız ödeme, yeniden deneme ve Quotify'ın tahsilattan vazgeçtiği bildirimi.",
-        "usage_alerts": "Bir müşteri planının kullanım limitini aştı.",
-        "system": "Quotify'ın gönderdiği diğer tüm iletiler."
+      "customer": {
+        "title": "Bir müşterinin kredileri",
+        "pick": "Müşteri seçin",
+        "balance": "kullanılabilir kredi",
+        "nextExpiry": "Bir kısmı {when} tarihinde sona erer"
       },
-      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Quotify'ın e-postalarını yönetir."
-    }
-  },
-  "errors": {
-    "payments": {
-      "transfer": {
-        "not_a_transfer": "Bu fatura banka havalesiyle tahsil edilmedi. Bunun yerine Ödeme kaydet'i kullanın.",
-        "invoice_closed": "Fatura zaten ödenmiş veya iptal edilmiş.",
-        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
-        "bad_currency": "Para birimi faturanınkinden farklı.",
-        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin, fazlasını Quotify dışında halledin.",
-        "reference_reused": "Bu banka referansı farklı bir tutarla zaten kaydedilmiş.",
-        "bad_reference": "Banka referansı eksik veya geçersiz.",
-        "bad_note": "Not çok uzun (en fazla 500 karakter).",
-        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
-        "nothing_pending": "Reddedilecek bekleyen bir havale yok.",
-        "bad_outcome": "Sonuç reddedildi veya süresi doldu olmalı.",
-        "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin."
+      "lots": {
+        "source": "Kaynak",
+        "remaining": "Kalan",
+        "granted": "Verilen",
+        "expires": "Sona erer",
+        "never": "Asla"
+      },
+      "source": {
+        "promo": "Promosyon",
+        "manual": "Elle",
+        "purchase": "Satın alma"
+      },
+      "grant": {
+        "formLabel": "Kredi ekle",
+        "credits": "Eklenecek kredi",
+        "source": "Tür",
+        "expiry": "Son kullanma tarihi",
+        "expiryHint": "Hiç sona ermeyen krediler için boş bırakın",
+        "reason": "Not (isteğe bağlı)",
+        "submit": "Kredi ekle"
+      },
+      "ledger": {
+        "title": "Kredi geçmişi",
+        "none": "Henüz kredi hareketi yok.",
+        "time": "Zaman",
+        "kind": "Tür",
+        "amount": "Kredi",
+        "reason": "Not"
+      },
+      "kind": {
+        "grant": "Eklendi",
+        "consume": "Harcandı",
+        "expire": "Süresi doldu"
       }
-    },
-    "billing": {
-      "payment": {
-        "bad_method": "Yöntem banka havalesi, nakit veya diğer olmalı.",
-        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
-        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
-        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin.",
-        "already_paid": "Fatura zaten ödenmiş.",
-        "invoice_not_payable": "Yalnızca açık veya tahsil edilemeyen bir fatura elle ödenebilir.",
-        "not_payable": "Faturanın ödeme durumu şu an elle ödemeye izin vermiyor.",
-        "reference_reused": "Bu referans farklı bir tutarla zaten kaydedilmiş."
-      },
-      "credit_note": {
-        "bad_amount": "Alacak tutarı geçerli değil: sıfırdan büyük olmalı ve faturada kalan alacak tutarını aşmamalı.",
-        "fully_credited": "Bu faturanın tamamı zaten alacaklandırılmış.",
-        "not_paid": "Yalnızca ödenmiş bir fatura için alacak dekontu düzenlenebilir.",
-        "nothing_to_refund": "Bu alacak dekontu için karta iade edilecek bir tutar yok.",
-        "refund_not_failed": "Yalnızca iadesi başarısız olan bir alacak dekontu yeniden denenebilir."
-      },
-      "dunning": {
-        "bad_delay": "Her yeniden deneme gecikmesi 1 ile 720 saat arasında olmalı.",
-        "too_many_retries": "En fazla 6 yeniden deneme gecikmesi tanımlanabilir."
-      },
-      "invoice": {
-        "not_found": "Fatura bulunamadı.",
-        "pdf_not_ready": "Fatura PDF'i henüz hazırlanmadı. Birazdan tekrar deneyin."
-      },
-      "invoice_link": {
-        "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
-        "draft_invoice": "Taslak bir fatura bağlantıyla paylaşılamaz.",
-        "not_found": "Fatura bağlantısı bulunamadı."
-      }
-    },
-    "plans": {
-      "app": {
-        "bad_slug": "Uygulama kısaltması yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter olmalı.",
-        "slug_taken": "Bu hesapta aynı kısaltmaya sahip bir uygulama zaten var."
-      },
-      "mail": {
-        "unknown_category": "Bu e-posta kategorisi yok."
-      },
-      "subscription": {
-        "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın."
-      },
-      "webhook": {
-        "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
-        "too_many_endpoints": "Webhook uç noktası sınırına ulaşıldı. Önce birini silin."
-      }
-    },
-    "common": {
-      "invalid_argument": "İstekteki bir şey geçerli değil.",
-      "not_found": "Bulunamadı.",
-      "already_exists": "Zaten var.",
-      "failed_precondition": "Bu işlem mevcut durumda yapılamaz.",
-      "permission_denied": "Bu işlem için yetkiniz yok.",
-      "unauthenticated": "Yeniden oturum açın: token eksik veya artık geçerli değil.",
-      "rate_limited": "Çok fazla istek. Biraz bekleyip tekrar deneyin.",
-      "unavailable": "Servis şu anda kullanılamıyor. Kısa süre sonra tekrar deneyin.",
-      "timeout": "İstek çok uzun sürdü. Tekrar deneyin.",
-      "conflict": "Siz çalışırken veri değişti. Sayfayı yenileyip tekrar deneyin.",
-      "not_implemented": "Bu henüz desteklenmiyor.",
-      "internal": "Bizim tarafta bir sorun oluştu. Tekrar deneyin; sürerse istek kimliğiyle günlüklere bakın."
     }
   },
   "apps": {
@@ -903,6 +883,101 @@
       "hint": "Satıcı faturada böyle görünür.",
       "from": "Satıcı",
       "empty": "Adres yok: faturada yalnızca ad görünür."
+    }
+  },
+  "errors": {
+    "billing": {
+      "credit_note": {
+        "bad_amount": "Alacak tutarı geçerli değil: sıfırdan büyük olmalı ve faturada kalan alacak tutarını aşmamalı.",
+        "fully_credited": "Bu faturanın tamamı zaten alacaklandırılmış.",
+        "not_paid": "Yalnızca ödenmiş bir fatura için alacak dekontu düzenlenebilir.",
+        "nothing_to_refund": "Bu alacak dekontu için karta iade edilecek bir tutar yok.",
+        "refund_not_failed": "Yalnızca iadesi başarısız olan bir alacak dekontu yeniden denenebilir."
+      },
+      "dunning": {
+        "bad_delay": "Her yeniden deneme gecikmesi 1 ile 720 saat arasında olmalı.",
+        "too_many_retries": "En fazla 6 yeniden deneme gecikmesi tanımlanabilir."
+      },
+      "invoice": {
+        "not_found": "Fatura bulunamadı.",
+        "pdf_not_ready": "Fatura PDF'i henüz hazırlanmadı. Birazdan tekrar deneyin."
+      },
+      "invoice_link": {
+        "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
+        "draft_invoice": "Taslak bir fatura bağlantıyla paylaşılamaz.",
+        "not_found": "Fatura bağlantısı bulunamadı."
+      },
+      "credits": {
+        "bad_amount": "Miktar, sıfırdan büyük tam sayıda kredi olmalıdır.",
+        "bad_customer": "Müşteri geçerli değil.",
+        "bad_expiry": "Son kullanma tarihi gelecekte olmalıdır.",
+        "bad_key": "Idempotency anahtarı çok uzun (en fazla 128 karakter).",
+        "bad_pack": "Paketin adı, kredisi ve sıfırdan büyük bir fiyatı olmalıdır.",
+        "bad_page_token": "Sayfa belirteci geçerli değil.",
+        "bad_reason": "Not çok uzun (en fazla 200 karakter).",
+        "bad_source": "Tür promosyon veya elle olmalıdır.",
+        "insufficient": "Müşterinin yeterli kredisi yok.",
+        "key_required": "Kredi harcamak için bir idempotency anahtarı gerekir.",
+        "key_reused": "Bu idempotency anahtarı başka bir istek için zaten kullanıldı.",
+        "pack_not_found": "Böyle bir kredi paketi yok.",
+        "unknown_currency": "Bu para birimi desteklenmiyor."
+      },
+      "payment": {
+        "bad_method": "Yöntem banka havalesi, nakit veya diğer olmalı.",
+        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
+        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
+        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin.",
+        "already_paid": "Fatura zaten ödenmiş.",
+        "invoice_not_payable": "Yalnızca açık veya tahsil edilemeyen bir fatura elle ödenebilir.",
+        "not_payable": "Faturanın ödeme durumu şu an elle ödemeye izin vermiyor.",
+        "reference_reused": "Bu referans farklı bir tutarla zaten kaydedilmiş."
+      }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "Uygulama kısaltması yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter olmalı.",
+        "slug_taken": "Bu hesapta aynı kısaltmaya sahip bir uygulama zaten var."
+      },
+      "mail": {
+        "unknown_category": "Bu e-posta kategorisi yok."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın."
+      },
+      "webhook": {
+        "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
+        "too_many_endpoints": "Webhook uç noktası sınırına ulaşıldı. Önce birini silin."
+      }
+    },
+    "common": {
+      "invalid_argument": "İstekteki bir şey geçerli değil.",
+      "not_found": "Bulunamadı.",
+      "already_exists": "Zaten var.",
+      "failed_precondition": "Bu işlem mevcut durumda yapılamaz.",
+      "permission_denied": "Bu işlem için yetkiniz yok.",
+      "unauthenticated": "Yeniden oturum açın: token eksik veya artık geçerli değil.",
+      "rate_limited": "Çok fazla istek. Biraz bekleyip tekrar deneyin.",
+      "unavailable": "Servis şu anda kullanılamıyor. Kısa süre sonra tekrar deneyin.",
+      "timeout": "İstek çok uzun sürdü. Tekrar deneyin.",
+      "conflict": "Siz çalışırken veri değişti. Sayfayı yenileyip tekrar deneyin.",
+      "not_implemented": "Bu henüz desteklenmiyor.",
+      "internal": "Bizim tarafta bir sorun oluştu. Tekrar deneyin; sürerse istek kimliğiyle günlüklere bakın."
+    },
+    "payments": {
+      "transfer": {
+        "not_a_transfer": "Bu fatura banka havalesiyle tahsil edilmedi. Bunun yerine Ödeme kaydet'i kullanın.",
+        "invoice_closed": "Fatura zaten ödenmiş veya iptal edilmiş.",
+        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
+        "bad_currency": "Para birimi faturanınkinden farklı.",
+        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin, fazlasını Quotify dışında halledin.",
+        "reference_reused": "Bu banka referansı farklı bir tutarla zaten kaydedilmiş.",
+        "bad_reference": "Banka referansı eksik veya geçersiz.",
+        "bad_note": "Not çok uzun (en fazla 500 karakter).",
+        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
+        "nothing_pending": "Reddedilecek bekleyen bir havale yok.",
+        "bad_outcome": "Sonuç reddedildi veya süresi doldu olmalı.",
+        "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin."
+      }
     }
   }
 }

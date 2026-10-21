@@ -46,6 +46,30 @@ type CreditBalance struct {
 	SourceCreditNoteID  *uuid.UUID
 }
 
+type CreditLedger struct {
+	TenantID       uuid.UUID
+	ID             uuid.UUID
+	CustomerID     uuid.UUID
+	LotID          uuid.UUID
+	Kind           string
+	Amount         int64
+	IdempotencyKey *string
+	Reason         string
+	CreatedAt      time.Time
+}
+
+type CreditLot struct {
+	TenantID   uuid.UUID
+	ID         uuid.UUID
+	CustomerID uuid.UUID
+	Granted    int64
+	Remaining  int64
+	Source     string
+	SourceRef  *string
+	ExpiresAt  *time.Time
+	CreatedAt  time.Time
+}
+
 type CreditNote struct {
 	TenantID          uuid.UUID
 	ID                uuid.UUID
@@ -71,6 +95,17 @@ type CreditNoteSeq struct {
 	TenantID  uuid.UUID
 	Year      int32
 	NextValue int64
+}
+
+type CreditPack struct {
+	TenantID   uuid.UUID
+	ID         uuid.UUID
+	Name       string
+	Credits    int64
+	PriceMinor int64
+	Currency   string
+	Active     bool
+	CreatedAt  time.Time
 }
 
 type DunningSetting struct {
