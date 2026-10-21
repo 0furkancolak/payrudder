@@ -1596,7 +1596,13 @@
       "customers": "Clients",
       "paymentLinks": "Liens de paiement",
       "credits": "Crédits",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "invoices": "Factures",
+      "payments": "Paiements",
+      "packages": "Forfaits",
+      "pricing": "Tarification",
+      "reports": "Rapports",
+      "readOnly": "Votre rôle est lecteur : vous pouvez tout lire ici, mais pas modifier."
     },
     "settings": {
       "title": "Réglages",
@@ -1698,6 +1704,45 @@
       "signInJoin": "Se connecter et rejoindre",
       "createTitle": "Créez votre accès",
       "createJoin": "Créer l'accès et rejoindre"
+    },
+    "billing": {
+      "invoices": {
+        "title": "Factures",
+        "intro": "Ce que cet environnement a facturé. Ouvrez une facture pour voir ses lignes et télécharger le PDF.",
+        "status": "Statut",
+        "all": "Tous les statuts",
+        "number": "Numéro",
+        "customer": "Client",
+        "period": "Période",
+        "created": "Créée",
+        "total": "Total",
+        "empty": "Pas encore de factures. Elles apparaissent à la clôture d'une période de facturation.",
+        "draft": "Brouillon",
+        "loadMore": "Charger plus"
+      },
+      "invoice": {
+        "back": "Toutes les factures",
+        "issued": "Émise",
+        "openPdf": "Ouvrir le PDF",
+        "lines": "Lignes",
+        "description": "Description",
+        "service": "Période de service",
+        "quantity": "Quantité",
+        "amount": "Montant",
+        "total": "Total"
+      },
+      "payments": {
+        "title": "Paiements",
+        "intro": "Paiements et remboursements, du plus récent au plus ancien. Chaque paiement indique l'issue à laquelle il a abouti.",
+        "empty": "Pas encore de paiements.",
+        "kind": "Type",
+        "kinds": {
+          "charge": "Paiement",
+          "refund": "Remboursement"
+        },
+        "invoice": "Facture",
+        "viewInvoice": "Voir la facture"
+      }
     }
   }
 }

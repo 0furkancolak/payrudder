@@ -1596,7 +1596,13 @@
       "customers": "Kunden",
       "paymentLinks": "Zahlungslinks",
       "credits": "Guthaben",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "invoices": "Rechnungen",
+      "payments": "Zahlungen",
+      "packages": "Pakete",
+      "pricing": "Preise",
+      "reports": "Berichte",
+      "readOnly": "Ihre Rolle ist Betrachter: Sie können hier alles lesen, aber nichts ändern."
     },
     "settings": {
       "title": "Einstellungen",
@@ -1698,6 +1704,45 @@
       "signInJoin": "Anmelden und beitreten",
       "createTitle": "Zugang einrichten",
       "createJoin": "Zugang einrichten und beitreten"
+    },
+    "billing": {
+      "invoices": {
+        "title": "Rechnungen",
+        "intro": "Was diese Umgebung abgerechnet hat. Öffnen Sie eine Rechnung für die Positionen und das PDF.",
+        "status": "Status",
+        "all": "Alle Status",
+        "number": "Nummer",
+        "customer": "Kunde",
+        "period": "Zeitraum",
+        "created": "Erstellt",
+        "total": "Summe",
+        "empty": "Noch keine Rechnungen. Sie erscheinen, wenn ein Abrechnungszeitraum schließt.",
+        "draft": "Entwurf",
+        "loadMore": "Mehr laden"
+      },
+      "invoice": {
+        "back": "Alle Rechnungen",
+        "issued": "Ausgestellt",
+        "openPdf": "PDF öffnen",
+        "lines": "Positionen",
+        "description": "Beschreibung",
+        "service": "Leistungszeitraum",
+        "quantity": "Menge",
+        "amount": "Betrag",
+        "total": "Summe"
+      },
+      "payments": {
+        "title": "Zahlungen",
+        "intro": "Abbuchungen und Erstattungen, neueste zuerst. Jede Zahlung zeigt das Ergebnis, auf dem sie endete.",
+        "empty": "Noch keine Zahlungen.",
+        "kind": "Art",
+        "kinds": {
+          "charge": "Abbuchung",
+          "refund": "Erstattung"
+        },
+        "invoice": "Rechnung",
+        "viewInvoice": "Rechnung ansehen"
+      }
     }
   }
 }

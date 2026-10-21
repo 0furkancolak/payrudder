@@ -2,7 +2,10 @@ import { createRoute, redirect, type AnyRoute, type RouteComponent } from "@tans
 import { defineAsyncComponent } from "vue";
 import { creditRoutes } from "@/features/credits/routes";
 import { customerRoutes } from "@/features/customers/routes";
+import { packageRoutes } from "@/features/packages/routes";
 import { paymentLinkRoutes } from "@/features/paymentlinks/routes";
+import { pricingRoutes } from "@/features/pricing/routes";
+import { reportRoutes } from "@/features/reports/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
 import { isOperator, isPerson } from "@/shared/lib/session";
 
@@ -49,10 +52,25 @@ export function personRoutes(parent: AnyRoute) {
   });
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazy(() => import("./SettingsPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazy(() => import("./ProductTenantLayout.vue")) });
+  // Invoices and payments are pages of the product: the console's versions speak operator-only routes (saga, transfers, the raw ledger).
+  const invoices = createRoute({ getParentRoute: () => tenant, path: "invoices", component: lazy(() => import("./InvoicesPage.vue")) });
+  const invoice = createRoute({ getParentRoute: () => tenant, path: "invoices/$invoiceId", component: lazy(() => import("./InvoiceDetailPage.vue")) });
+  const payments = createRoute({ getParentRoute: () => tenant, path: "payments", component: lazy(() => import("./PaymentsPage.vue")) });
   return signedIn.addChildren([
     home,
     dashboard,
     settings,
-    tenant.addChildren([...customerRoutes(tenant), ...paymentLinkRoutes(tenant), ...creditRoutes(tenant), ...webhookRoutes(tenant)]),
+    tenant.addChildren([
+      ...customerRoutes(tenant),
+      invoices,
+      invoice,
+      payments,
+      ...packageRoutes(tenant),
+      ...pricingRoutes(tenant),
+      ...reportRoutes(tenant),
+      ...paymentLinkRoutes(tenant),
+      ...creditRoutes(tenant),
+      ...webhookRoutes(tenant),
+    ]),
   ]);
 }

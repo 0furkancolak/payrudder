@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
+import { tenantBase } from "@/shared/lib/session";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -157,7 +158,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       </TableHeader>
       <TableBody>
         <TableRow v-for="d in dunning.data.value?.invoices ?? []" :key="d.invoice_id">
-          <TableCell><Link to="/tenants/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: d.invoice_id ?? '' }" class="font-medium hover:underline">{{ d.number || d.invoice_id?.slice(0, 8) }}</Link></TableCell>
+          <TableCell><Link :to="`${tenantBase()}/$id/invoices/$invoiceId`" :params="{ id: tenantId, invoiceId: d.invoice_id ?? '' }" class="font-medium hover:underline">{{ d.number || d.invoice_id?.slice(0, 8) }}</Link></TableCell>
           <TableCell>{{ d.customer_external_id }}</TableCell>
           <TableCell>{{ d.period }}</TableCell>
           <TableCell>{{ d.provider || "—" }}</TableCell>

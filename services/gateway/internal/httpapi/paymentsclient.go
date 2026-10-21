@@ -180,3 +180,19 @@ type paymentStart struct {
 }
 
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
+
+// recentLedger reads the newest ledgerWindowRows rows of one tenant's ledger from payments-worker (newest first, every kind). The tenant id is always the
+// caller's own: the gateway takes it from the authenticated principal or from plans-svc's membership-checked answer, never from a request.
+func (s *Server) recentLedger(ctx context.Context, tenantID string) ([]ledgerEntry, error) {
+	var out struct {
+		Entries []ledgerEntry `json:"entries"`
+	}
+	code, err := s.paymentsDo(ctx, http.MethodGet, "/admin/tenants/"+url.PathEscape(tenantID)+"/ledger", url.Values{"limit": {itoa(ledgerWindowRows)}}, nil, &out)
+	if err != nil {
+		return nil, err
+	}
+	if code/100 != 2 {
+		return nil, fmt.Errorf("%w: ledger answered %d", errPaymentsDown, code)
+	}
+	return out.Entries, nil
+}

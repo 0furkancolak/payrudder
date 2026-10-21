@@ -405,15 +405,12 @@ func (s *Server) buildOverview(ctx context.Context, appID, envName string, t *pl
 	var providers []providerView
 	paymentsUp := true
 	section("payments", func() error {
-		var out struct {
-			Entries []ledgerEntry `json:"entries"`
-		}
-		code, err := s.paymentsDo(ctx, http.MethodGet, "/admin/tenants/"+url.PathEscape(t.GetId())+"/ledger", url.Values{"limit": {itoa(ledgerWindowRows)}}, nil, &out)
-		if err != nil || code/100 != 2 {
+		entries, err := s.recentLedger(ctx, t.GetId())
+		if err != nil {
 			paymentsUp = false
 			return status.Error(codes.Unavailable, "payments")
 		}
-		rows = out.Entries
+		rows = entries
 		var accts struct {
 			Accounts []providerView `json:"accounts"`
 		}
