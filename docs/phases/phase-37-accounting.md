@@ -4,7 +4,7 @@
 
 - [x] **Plan** (this file).
 - [x] **Expenses** (billing-svc module `accounting`, ADR 0020 shape: `model/`, `command/`, `query/`, `handler.go`).
-  - [x] Migration `00022_accounting.sql`: table `expenses` under RLS; an index on `saga_events` for the income queries.
+  - [x] Migration `00023_accounting.sql`: table `expenses` under RLS; an index on `saga_events` for the income queries.
   - [x] sqlc queries (`accounting.sql`), no SQL assembled at run time.
   - [x] Commands: create, update, void (with a reason). Queries: list (keyset pages), summary.
   - [x] `BillingService` RPCs `CreateExpense`, `UpdateExpense`, `VoidExpense`, `ListExpenses`, `GetAccountingSummary`; error keys `billing.accounting.*`.
