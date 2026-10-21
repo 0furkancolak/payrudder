@@ -3,7 +3,7 @@ import { Link, useParams } from "@tanstack/vue-router";
 import { ArrowLeft, FileText } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
@@ -17,6 +17,7 @@ import { Input } from "@/shared/ui/input";
 import { useInvoice, useInvoiceLinks, useInvoiceSaga, useOpenPdf } from "./api";
 
 const { t, te, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const invoiceId = computed(() => String(params.value.invoiceId ?? ""));
@@ -56,10 +57,10 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
     <ArrowLeft class="rtl-flip size-4" />{{ t("invoice.back") }}
   </Link>
   <PageHeader :title="inv?.number || t('invoice.fallbackTitle')">
-    <span v-if="pdf.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(pdf.error.value).message }}</span>
+    <span v-if="pdf.error.value" class="text-destructive text-sm" role="alert">{{ errorText(pdf.error.value) }}</span>
     <Button type="button" :disabled="!inv?.number || pdf.isPending.value" @click="pdf.mutate()"><FileText />{{ t("invoice.openPdf") }}</Button>
   </PageHeader>
-  <p v-if="invoice.error.value" class="text-destructive mb-3" role="alert">{{ toApiError(invoice.error.value).message }}</p>
+  <p v-if="invoice.error.value" class="text-destructive mb-3" role="alert">{{ errorText(invoice.error.value) }}</p>
 
   <div v-if="inv" class="mb-6 grid gap-4 sm:grid-cols-2">
     <Card class="gap-2">
@@ -119,7 +120,7 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
     </div>
     <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
     <p v-if="linkError" class="text-destructive text-sm" role="alert">{{ linkError }}</p>
-    <p v-if="links.create.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(links.create.error.value).message }}</p>
+    <p v-if="links.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(links.create.error.value) }}</p>
   </Card>
 
   <CreditNotesCard v-if="inv && inv.status === 'paid'" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" issuable />
@@ -127,7 +128,7 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.saga") }}</h2>
-    <p v-if="saga.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(saga.error.value).message }}</p>
+    <p v-if="saga.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(saga.error.value) }}</p>
     <Table :aria-label="t('invoice.saga')">
       <TableHeader>
         <TableRow class="hover:bg-transparent">

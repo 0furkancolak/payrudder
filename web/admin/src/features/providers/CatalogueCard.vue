@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { PROVIDERS } from "@/shared/lib/currencies";
 import { usePackages } from "@/features/packages";
 import { Badge } from "@/shared/ui/badge";
@@ -13,6 +13,7 @@ import { useCatalogue, useSyncCatalogue } from "./api";
 
 const props = defineProps<{ tenantId: string }>();
 const { t } = useI18n();
+const errorText = useErrorText();
 const tenantId = computed(() => props.tenantId);
 const packages = usePackages(tenantId);
 const provider = ref("");
@@ -43,7 +44,7 @@ const skipped = computed(() => Object.entries(summary.value?.skipped ?? {}));
       </NativeSelect>
       <Button type="submit" :disabled="sync.isPending.value || provider === '' || plan === ''">{{ t("billing.providers.catalogue.sync") }}</Button>
     </form>
-    <p v-if="sync.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(sync.error.value).message }}</p>
+    <p v-if="sync.error.value" class="text-destructive text-sm" role="alert">{{ errorText(sync.error.value) }}</p>
     <div v-if="summary" class="bg-secondary/50 grid gap-1 rounded-2xl px-4 py-3 text-sm" role="status">
       <p>{{ t("billing.providers.catalogue.result", { created: Object.keys(summary.created ?? {}).length, existing: Object.keys(summary.existing ?? {}).length }) }}</p>
       <p v-for="[key, why] in skipped" :key="key" class="text-muted-foreground">{{ t("billing.providers.catalogue.skipped", { key, why }) }}</p>

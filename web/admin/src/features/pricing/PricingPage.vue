@@ -3,7 +3,7 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { COUNTRY_HINTS, CURRENCIES } from "@/shared/lib/currencies";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { Badge } from "@/shared/ui/badge";
@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { parsePercent, useCouponActions, useCoupons, useDunningSettings, useSetDunningSettings, useSetTaxRates, useTaxRates, type NewCoupon, type Rate } from "./api";
 
 const { t, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 
@@ -140,8 +141,8 @@ function saveDunning() {
       <Button type="submit" :disabled="actions.create.isPending.value">{{ t("billing.pricing.coupons.create") }}</Button>
     </form>
     <p v-if="couponError" class="text-destructive text-sm" role="alert">{{ couponError }}</p>
-    <p v-if="actions.create.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(actions.create.error.value).message }}</p>
-    <p v-if="actions.deactivate.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(actions.deactivate.error.value).message }}</p>
+    <p v-if="actions.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.create.error.value) }}</p>
+    <p v-if="actions.deactivate.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.deactivate.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -175,7 +176,7 @@ function saveDunning() {
     <h2 class="text-lg font-semibold">{{ t("billing.pricing.dunning.title") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.pricing.dunning.hint") }}</p>
     <p v-if="dunningStored.data.value?.defaults_in_use" class="text-muted-foreground text-sm">{{ t("billing.pricing.dunning.defaults") }}</p>
-    <p v-if="dunningStored.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(dunningStored.error.value).message }}</p>
+    <p v-if="dunningStored.error.value" class="text-destructive text-sm" role="alert">{{ errorText(dunningStored.error.value) }}</p>
     <div v-for="(_, i) in retryHours" :key="i" class="flex items-center gap-3" role="group" :aria-label="t('billing.pricing.dunning.retry', { n: i + 1 })">
       <Input v-model="retryHours[i]" inputmode="numeric" class="max-w-32" :aria-label="t('billing.pricing.dunning.delay', { n: i + 1 })" required />
       <Button type="button" variant="ghost" size="icon" :aria-label="t('billing.common.remove')" @click="retryHours.splice(i, 1)"><X class="size-4" /></Button>
@@ -186,14 +187,14 @@ function saveDunning() {
       <Button type="button" :disabled="setDunning.isPending.value" @click="saveDunning">{{ t("billing.pricing.dunning.save") }}</Button>
     </div>
     <p v-if="dunningError" class="text-destructive text-sm" role="alert">{{ dunningError }}</p>
-    <p v-if="setDunning.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(setDunning.error.value).message }}</p>
+    <p v-if="setDunning.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setDunning.error.value) }}</p>
     <p v-if="setDunning.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.pricing.dunning.saved") }}</p>
   </Card>
 
   <Card>
     <h2 class="text-lg font-semibold">{{ t("billing.pricing.tax.title") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.pricing.tax.hint") }}</p>
-    <p v-if="stored.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(stored.error.value).message }}</p>
+    <p v-if="stored.error.value" class="text-destructive text-sm" role="alert">{{ errorText(stored.error.value) }}</p>
     <datalist id="tax-countries"><option v-for="c in COUNTRY_HINTS" :key="c" :value="c" /></datalist>
     <div v-for="(r, i) in rates" :key="i" class="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3" role="group" :aria-label="t('billing.pricing.tax.rate', { n: i + 1 })">
       <Input v-model="r.country" list="tax-countries" maxlength="2" :aria-label="t('billing.pricing.tax.country', { n: i + 1 })" :placeholder="t('billing.pricing.tax.anyCountry')" />
@@ -207,7 +208,7 @@ function saveDunning() {
       <Button type="button" :disabled="setRates.isPending.value" @click="saveRates">{{ t("billing.pricing.tax.save") }}</Button>
     </div>
     <p v-if="taxError" class="text-destructive text-sm" role="alert">{{ taxError }}</p>
-    <p v-if="setRates.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(setRates.error.value).message }}</p>
+    <p v-if="setRates.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setRates.error.value) }}</p>
     <p v-if="setRates.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.pricing.tax.saved") }}</p>
   </Card>
 </template>
