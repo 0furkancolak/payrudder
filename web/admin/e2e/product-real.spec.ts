@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { verifyAddress } from "./operator";
 import { pickLanguage } from "../e2e-mock/ui";
 
 // The product app against the REAL stack (make dev / make up): nothing is mocked. It signs a fresh person up, seeds real money data in the app's sandbox
@@ -54,6 +55,7 @@ async function must(method: string, path: string, token: string, body: unknown, 
 
 async function signUp(): Promise<{ email: string; token: string }> {
   const email = `ui-${randomUUID().slice(0, 8)}@example.com`;
+  const since = Date.now() - 2000;
   const res = await fetch(gateway + "/auth/signup", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -61,6 +63,8 @@ async function signUp(): Promise<{ email: string; token: string }> {
   });
   // Sign-up answers 202 and opens no session (phase 39): the person signs in with the password just chosen.
   expect(res.status).toBe(202);
+  // A live API key needs a proven address (phase 39): follow the mailed link like the person would.
+  await verifyAddress(email, since);
   const signin = await fetch(gateway + "/auth/signin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
   expect(signin.status).toBe(200);
   return { email, token: ((await signin.json()) as Json).token };

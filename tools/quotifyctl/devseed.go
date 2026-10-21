@@ -245,13 +245,6 @@ var devPeople = []devPerson{
 	}},
 }
 
-type session struct {
-	Token       string
-	Verified    bool
-	AccountID   string
-	AccountName string
-}
-
 type sessionOpened struct {
 	Token string `json:"token"`
 	User  struct {

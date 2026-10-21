@@ -36,6 +36,25 @@ export async function mailedCode(address: string, since: number): Promise<string
   throw new Error(`no sign-in code arrived for ${address}: is Mailpit at ${mailpit}? (a code is mailed at most once a minute per address and five a minute per client address: wait a minute and run again)`);
 }
 
+/** Follows the verification link a sign-up mailed to an address (the link's token is in the mail's text, after "#token="), as the person would. */
+export async function verifyAddress(address: string, since: number): Promise<void> {
+  for (let i = 0; i < 60; i++) {
+    const res = await fetch(`${mailpit}/api/v1/search?query=${encodeURIComponent(`to:${address}`)}`);
+    const list = ((await res.json()) as { messages?: { ID: string; Subject: string; Created: string }[] }).messages ?? [];
+    const mail = list.find((m) => /confirm/i.test(m.Subject) && new Date(m.Created).getTime() > since);
+    if (mail) {
+      const text = ((await (await fetch(`${mailpit}/api/v1/message/${mail.ID}`)).json()) as { Text?: string }).Text ?? "";
+      const token = /token=(qv_[A-Za-z0-9_-]+)/.exec(text)?.[1];
+      if (token) {
+        expect((await post("/auth/verify", { token })).status).toBe(200);
+        return;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`no verification mail arrived for ${address}`);
+}
+
 let session: Promise<string> | undefined;
 
 /** The session token of the operator user: signed in once and kept for the run. */
