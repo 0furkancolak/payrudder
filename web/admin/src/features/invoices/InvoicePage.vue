@@ -145,6 +145,7 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
       <Input :model-value="shareUrl" readonly class="mono max-w-xl" :aria-label="t('invoice.share.link')" @focus="($event.target as HTMLInputElement).select()" />
       <Button type="button" variant="outline" @click="copy">{{ t("invoice.share.copy") }}</Button>
     </div>
+    <Link to="/tenants/$id/payment-links" :params="{ id: tenantId }" :search="{ invoice: invoiceId } as never" class="text-sm underline">{{ t("invoice.share.paymentLink") }}</Link>
     <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
     <p v-if="linkError" class="text-destructive text-sm" role="alert">{{ linkError }}</p>
     <p v-if="links.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(links.create.error.value) }}</p>

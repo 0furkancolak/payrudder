@@ -167,7 +167,8 @@
       "link": "Invoice link",
       "copy": "Copy",
       "revoked": "Every link to this invoice has been revoked.",
-      "badDays": "Days: a whole number from 1 to 365."
+      "badDays": "Days: a whole number from 1 to 365.",
+      "paymentLink": "Payment link"
     },
     "payment": {
       "record": "Record payment",
@@ -328,6 +329,7 @@
       "reports": "Reports",
       "pricing": "Coupons & tax",
       "webhooks": "Webhooks",
+      "paymentLinks": "Payment links",
       "mail": "Mail",
       "apps": "Apps",
       "address": "Seller address",
@@ -696,25 +698,6 @@
       "refundFailed": "Refund failed",
       "retryRefund": "Retry refund"
     },
-    "mail": {
-      "title": "E-mail",
-      "hint": "Choose which kinds of e-mail Quotify sends to this tenant's customers. A kind that is switched off is dropped, not queued: switching it on again does not send what was skipped.",
-      "categories": {
-        "invoice_issued": "Invoice issued",
-        "payment_receipts": "Payment receipts",
-        "payment_failed": "Payment failed",
-        "usage_alerts": "Usage alerts",
-        "system": "System"
-      },
-      "descriptions": {
-        "invoice_issued": "Tells the customer that a new invoice was finalized.",
-        "payment_receipts": "The receipt after a successful payment.",
-        "payment_failed": "A failed payment, a retry and the notice that Quotify gave up collecting.",
-        "usage_alerts": "A customer passed a usage limit of its plan.",
-        "system": "Every other message Quotify sends."
-      },
-      "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Quotify's mail."
-    },
     "webhooks": {
       "title": "Webhooks",
       "hint": "Quotify sends a signed JSON POST to these HTTPS endpoints when something happens in the account: an invoice is paid, a credit note is issued, a subscription changes. Verify the Quotify-Signature header with the endpoint's secret; failed deliveries are retried for about a day and a half.",
@@ -750,6 +733,99 @@
         "delivered": "Delivered",
         "failed": "Failed"
       }
+    },
+    "paymentLinks": {
+      "title": "Payment links",
+      "hint": "A link the customer opens without signing in to pay. For an open invoice, or ad hoc for a fixed amount (the invoice is made when the customer first uses it). Anyone who has the link can pay; it stops working when it expires or is revoked.",
+      "formLabel": "new payment link",
+      "kind": "Kind",
+      "kinds": {
+        "adhoc": "Fixed amount",
+        "invoice": "Open invoice"
+      },
+      "invoiceId": "Invoice id",
+      "amount": "Amount",
+      "currency": "Currency",
+      "description": "What it is for",
+      "customer": "Customer",
+      "customerOptional": "Customer id (optional)",
+      "days": "Valid for (days)",
+      "singleUse": "Single use (one paid invoice)",
+      "singleUseShort": "single use",
+      "create": "Create link",
+      "adhocHint": "The invoice is made, and numbered, when the customer presses Continue on the page.",
+      "invoiceHint": "The invoice must be finalized and unpaid.",
+      "shownOnce": "Copy the link now: it is shown once and cannot be read back.",
+      "url": "Payment link",
+      "copy": "Copy",
+      "replayed": "This request was already handled: the link exists, but its address is shown only once.",
+      "list": "Links",
+      "anyKind": "Any kind",
+      "anyStatus": "Any status",
+      "status": "Status",
+      "statuses": {
+        "active": "Active",
+        "paid": "Paid",
+        "expired": "Expired",
+        "revoked": "Revoked"
+      },
+      "uses": "Uses / paid",
+      "usesValue": "{used} / {paid}",
+      "expires": "Expires",
+      "createdAt": "Created",
+      "revoke": "Revoke",
+      "confirmRevoke": "Revoke this link? Unpaid invoices made from it are voided.",
+      "empty": "No payment links yet.",
+      "previous": "Previous",
+      "next": "Next",
+      "links": "Links",
+      "paymentLink": "Payment link",
+      "errors": {
+        "invoice": "Enter the invoice id.",
+        "amount": "Enter a positive amount with the currency's decimals.",
+        "description": "Say what the payment is for.",
+        "days": "Days: a whole number from 1 to 365."
+      },
+      "portal": {
+        "open": "Payment page",
+        "title": "Payment page of {id}",
+        "hint": "A link to a page where this customer sees their invoices and payments, downloads PDFs and receipts, and pays what is open. Read-only.",
+        "close": "Close",
+        "create": "Make a link",
+        "revoke": "Revoke all",
+        "revoked": "Every payment page link of this customer has been revoked.",
+        "confirmRevoke": "Revoke every payment page link of this customer?",
+        "link": "Payment page link",
+        "payments": "Payments",
+        "date": "Date",
+        "invoice": "Invoice",
+        "type": "Type",
+        "noPayments": "No payments recorded.",
+        "kinds": {
+          "charge": "Charge",
+          "refund": "Refund"
+        }
+      },
+      "for": "For"
+    },
+    "mail": {
+      "title": "E-mail",
+      "hint": "Choose which kinds of e-mail Quotify sends to this tenant's customers. A kind that is switched off is dropped, not queued: switching it on again does not send what was skipped.",
+      "categories": {
+        "invoice_issued": "Invoice issued",
+        "payment_receipts": "Payment receipts",
+        "payment_failed": "Payment failed",
+        "usage_alerts": "Usage alerts",
+        "system": "System"
+      },
+      "descriptions": {
+        "invoice_issued": "Tells the customer that a new invoice was finalized.",
+        "payment_receipts": "The receipt after a successful payment.",
+        "payment_failed": "A failed payment, a retry and the notice that Quotify gave up collecting.",
+        "usage_alerts": "A customer passed a usage limit of its plan.",
+        "system": "Every other message Quotify sends."
+      },
+      "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Quotify's mail."
     },
     "credits": {
       "packs": {
@@ -907,6 +983,37 @@
         "draft_invoice": "A draft invoice cannot be shared by link.",
         "not_found": "The invoice link was not found."
       },
+      "payment": {
+        "amount_mismatch": "The payment is not for the amount of the invoice.",
+        "invoice_not_payable": "Only an open or uncollectible invoice can be paid by hand.",
+        "method_unavailable": "Choose a payment method.",
+        "bad_method": "The method must be bank transfer, cash or other.",
+        "bad_amount": "The amount must be a whole number of minor units above zero.",
+        "bad_date": "The received date is not valid or lies in the future.",
+        "overpayment": "That is more than is outstanding. Record only the outstanding amount.",
+        "already_paid": "The invoice is already paid.",
+        "not_payable": "The invoice's payment state does not allow a manual payment right now.",
+        "reference_reused": "This reference was already recorded with a different amount."
+      },
+      "payment_link": {
+        "bad_amount": "The amount must be a positive number of minor units.",
+        "bad_currency": "This currency is not supported.",
+        "bad_description": "A description is required, at most 200 characters.",
+        "bad_key": "The idempotency key is too long (at most 200 characters).",
+        "bad_kind": "Amount, currency, description and customer belong to an ad-hoc link; an invoice link takes them from the invoice.",
+        "bad_page": "The page size must be 1 to 200.",
+        "bad_status": "The status must be active, paid, expired or revoked.",
+        "consumed": "This link has already been used.",
+        "customer_not_found": "There is no such customer.",
+        "idempotency_conflict": "This idempotency key was used for a different payment link.",
+        "invoice_not_payable": "A paid or void invoice needs no payment link.",
+        "invoice_required": "A payment link of kind invoice needs an invoice.",
+        "not_found": "There is no such payment link."
+      },
+      "portal_link": {
+        "customer_not_found": "There is no such customer.",
+        "customer_required": "A customer is required."
+      },
       "credits": {
         "bad_amount": "The amount must be a whole number of credits above zero.",
         "bad_customer": "The customer is not valid.",
@@ -921,16 +1028,6 @@
         "key_reused": "This idempotency key was already used for a different request.",
         "pack_not_found": "There is no such credit pack.",
         "unknown_currency": "This currency is not supported."
-      },
-      "payment": {
-        "bad_method": "The method must be bank transfer, cash or other.",
-        "bad_amount": "The amount must be a whole number of minor units above zero.",
-        "bad_date": "The received date is not valid or lies in the future.",
-        "overpayment": "That is more than is outstanding. Record only the outstanding amount.",
-        "already_paid": "The invoice is already paid.",
-        "invoice_not_payable": "Only an open or uncollectible invoice can be paid by hand.",
-        "not_payable": "The invoice's payment state does not allow a manual payment right now.",
-        "reference_reused": "This reference was already recorded with a different amount."
       }
     },
     "plans": {

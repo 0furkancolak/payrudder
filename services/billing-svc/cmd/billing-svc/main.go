@@ -308,7 +308,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 			grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
 		},
 	})
-	svc := api.New(appPool, systemPool, mgr, eng).WithDeadLetters(&dlq.Admin{URL: cfg.RabbitMQURL})
+	svc := api.New(appPool, systemPool, mgr, eng).WithDeadLetters(&dlq.Admin{URL: cfg.RabbitMQURL}).WithDemo(cfg.Demo)
 	if cfg.S3AccessKey != "" {
 		store, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, PublicEndpoint: cfg.S3PublicEndpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
 			AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})

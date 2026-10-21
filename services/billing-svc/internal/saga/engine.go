@@ -60,10 +60,21 @@ type Snapshot struct {
 	// The postal addresses as printed lines, frozen when the draft was made.
 	SellerAddress   []string `json:"seller_address,omitempty"`
 	CustomerAddress []string `json:"customer_address,omitempty"`
+	// Collection is "link" for an invoice the customer pays through a payment link: the saga waits for the payment instead of charging a stored method.
+	Collection string `json:"collection,omitempty"`
+	// SkipMail: no mail goes to the customer (a guest paying an ad-hoc link has no address on file).
+	SkipMail bool `json:"skip_mail,omitempty"`
+	// Description is what an ad-hoc link is for, shown on the payment page.
+	Description string `json:"description,omitempty"`
+	// Country of the customer (ISO 3166-1 alpha-2), for the payment methods routing picks.
+	Country string `json:"country,omitempty"`
 	// BankTransfer are the tenant's bank details, for an invoice whose provider is a bank transfer; frozen when the draft was made. The payment reference
 	// is worked out from the template and the invoice number.
 	BankTransfer *BankTransfer `json:"bank_transfer,omitempty"`
 }
+
+// CollectionLink is the Snapshot.Collection of an invoice the customer pays through a payment link.
+const CollectionLink = "link"
 
 // BankTransfer is where an invoice is paid by bank transfer.
 type BankTransfer struct {
@@ -221,7 +232,8 @@ func (e *Engine) Handle(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UU
 }
 
 func (e *Engine) guardCtx(s *saga) Ctx {
-	return Ctx{TotalMinor: s.TotalMinor, Paid: s.InvoiceStatus == "paid", DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)), ProviderMails: s.Snap.ProviderMails}
+	return Ctx{TotalMinor: s.TotalMinor, Paid: s.InvoiceStatus == "paid", DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)),
+		ProviderMails: s.Snap.ProviderMails || s.Snap.SkipMail, Link: s.Snap.Collection == CollectionLink}
 }
 
 func (e *Engine) handleLoaded(ctx context.Context, tx pgx.Tx, s *saga, ev Event, cause string, commandID *uuid.UUID) (Outcome, error) {
@@ -372,6 +384,9 @@ func (e *Engine) announce(ctx context.Context, tx pgx.Tx, s *saga, next State, c
 	}
 	switch next {
 	case Paid:
+		if err := e.linksPaid(ctx, tx, s, now); err != nil {
+			return err
+		}
 		return e.fact(ctx, tx, s, FactPaid, func(f *eventsv1.InvoiceFact) {
 			f.Kind = &eventsv1.InvoiceFact_Paid_{Paid: &eventsv1.InvoiceFact_Paid{}}
 		})

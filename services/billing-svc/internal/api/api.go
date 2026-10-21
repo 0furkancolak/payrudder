@@ -77,7 +77,7 @@ func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server
 		dunningHandler:    dunning.New(app),
 		creditsHandler:    credits.New(app),
 		reportHandler:     reports.New(app),
-		hostedHandler:     hosted.New(app, system),
+		hostedHandler:     hosted.New(app, system, mgr, eng),
 		runHandler:        billingruns.New(mgr),
 		sagaHandler:       sagas.New(system, eng),
 		reratingHandler:   rerating.New(mgr),
@@ -89,6 +89,12 @@ func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server
 // WithDeadLetters enables the dead-letter operations of BillingAdminService.
 func (s *Server) WithDeadLetters(a *dlq.Admin) *Server {
 	s.deadLetterHandler.WithDeadLetters(a)
+	return s
+}
+
+// WithDemo allows the mock payment on hosted pages for live tenants too (QUOTIFY_DEMO).
+func (s *Server) WithDemo(demo bool) *Server {
+	s.hostedHandler.WithDemo(demo)
 	return s
 }
 

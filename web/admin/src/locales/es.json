@@ -167,7 +167,8 @@
       "link": "Enlace de la factura",
       "copy": "Copiar",
       "revoked": "Se revocaron todos los enlaces de esta factura.",
-      "badDays": "Días: un número entero de 1 a 365."
+      "badDays": "Días: un número entero de 1 a 365.",
+      "paymentLink": "Enlace de pago"
     },
     "payment": {
       "record": "Registrar pago",
@@ -328,6 +329,7 @@
       "reports": "Informes",
       "pricing": "Cupones e impuestos",
       "webhooks": "Webhooks",
+      "paymentLinks": "Enlaces de pago",
       "mail": "Correo",
       "apps": "Apps",
       "address": "Dirección del vendedor",
@@ -696,25 +698,6 @@
       "refundFailed": "Reembolso fallido",
       "retryRefund": "Reintentar el reembolso"
     },
-    "mail": {
-      "title": "Correo electrónico",
-      "hint": "Elija qué tipos de correo envía Quotify a los clientes de este inquilino. Un tipo desactivado se descarta, no se pone en cola: al activarlo de nuevo no se envía lo omitido.",
-      "categories": {
-        "invoice_issued": "Factura emitida",
-        "payment_receipts": "Recibos de pago",
-        "payment_failed": "Pago fallido",
-        "usage_alerts": "Alertas de uso",
-        "system": "Sistema"
-      },
-      "descriptions": {
-        "invoice_issued": "Avisa al cliente de que se emitió una factura nueva.",
-        "payment_receipts": "El recibo tras un pago correcto.",
-        "payment_failed": "Un pago fallido, un reintento y el aviso de que Quotify dejó de cobrar.",
-        "usage_alerts": "Un cliente superó un límite de uso de su plan.",
-        "system": "Cualquier otro mensaje que envía Quotify."
-      },
-      "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Quotify."
-    },
     "webhooks": {
       "title": "Webhooks",
       "hint": "Quotify envía un POST JSON firmado a estos endpoints HTTPS cuando ocurre algo en la cuenta: se paga una factura, se emite una nota de crédito, cambia una suscripción. Verifica la cabecera Quotify-Signature con el secreto del endpoint; las entregas fallidas se reintentan durante día y medio aproximadamente.",
@@ -750,6 +733,99 @@
         "delivered": "Entregado",
         "failed": "Fallido"
       }
+    },
+    "paymentLinks": {
+      "title": "Enlaces de pago",
+      "hint": "Un enlace que el cliente abre sin iniciar sesión para pagar. Para una factura abierta, o ad hoc por un importe fijo (la factura se crea al primer uso). Quien tenga el enlace puede pagar; deja de funcionar al caducar o al revocarse.",
+      "formLabel": "nuevo enlace de pago",
+      "kind": "Tipo",
+      "kinds": {
+        "adhoc": "Importe fijo",
+        "invoice": "Factura abierta"
+      },
+      "invoiceId": "ID de factura",
+      "amount": "Importe",
+      "currency": "Moneda",
+      "description": "Concepto",
+      "customer": "Cliente",
+      "customerOptional": "ID de cliente (opcional)",
+      "days": "Válido (días)",
+      "singleUse": "Un solo uso (una factura pagada)",
+      "singleUseShort": "un solo uso",
+      "create": "Crear enlace",
+      "adhocHint": "La factura se crea y numera cuando el cliente pulsa Continuar en la página.",
+      "invoiceHint": "La factura debe estar finalizada y sin pagar.",
+      "shownOnce": "Copie el enlace ahora: se muestra una sola vez y no se puede volver a leer.",
+      "url": "Enlace de pago",
+      "copy": "Copiar",
+      "replayed": "Esta solicitud ya se procesó: el enlace existe, pero su dirección se muestra una sola vez.",
+      "list": "Enlaces",
+      "anyKind": "Cualquier tipo",
+      "anyStatus": "Cualquier estado",
+      "status": "Estado",
+      "statuses": {
+        "active": "Activo",
+        "paid": "Pagado",
+        "expired": "Caducado",
+        "revoked": "Revocado"
+      },
+      "uses": "Usos / pagados",
+      "usesValue": "{used} / {paid}",
+      "expires": "Caduca",
+      "createdAt": "Creado",
+      "revoke": "Revocar",
+      "confirmRevoke": "¿Revocar este enlace? Las facturas sin pagar creadas con él se anulan.",
+      "empty": "Aún no hay enlaces de pago.",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "links": "Enlaces",
+      "paymentLink": "Enlace de pago",
+      "errors": {
+        "invoice": "Introduzca el ID de la factura.",
+        "amount": "Introduzca un importe positivo con los decimales de la moneda.",
+        "description": "Indique el concepto del pago.",
+        "days": "Días: un número entero de 1 a 365."
+      },
+      "portal": {
+        "open": "Página de pagos",
+        "title": "Página de pagos de {id}",
+        "hint": "Un enlace a una página donde este cliente ve sus facturas y pagos, descarga PDF y recibos, y paga lo pendiente. Solo lectura.",
+        "close": "Cerrar",
+        "create": "Crear enlace",
+        "revoke": "Revocar todos",
+        "revoked": "Se revocaron todos los enlaces de la página de pagos de este cliente.",
+        "confirmRevoke": "¿Revocar todos los enlaces de la página de pagos de este cliente?",
+        "link": "Enlace de la página de pagos",
+        "payments": "Pagos",
+        "date": "Fecha",
+        "invoice": "Factura",
+        "type": "Tipo",
+        "noPayments": "No hay pagos registrados.",
+        "kinds": {
+          "charge": "Cobro",
+          "refund": "Reembolso"
+        }
+      },
+      "for": "Para"
+    },
+    "mail": {
+      "title": "Correo electrónico",
+      "hint": "Elija qué tipos de correo envía Quotify a los clientes de este inquilino. Un tipo desactivado se descarta, no se pone en cola: al activarlo de nuevo no se envía lo omitido.",
+      "categories": {
+        "invoice_issued": "Factura emitida",
+        "payment_receipts": "Recibos de pago",
+        "payment_failed": "Pago fallido",
+        "usage_alerts": "Alertas de uso",
+        "system": "Sistema"
+      },
+      "descriptions": {
+        "invoice_issued": "Avisa al cliente de que se emitió una factura nueva.",
+        "payment_receipts": "El recibo tras un pago correcto.",
+        "payment_failed": "Un pago fallido, un reintento y el aviso de que Quotify dejó de cobrar.",
+        "usage_alerts": "Un cliente superó un límite de uso de su plan.",
+        "system": "Cualquier otro mensaje que envía Quotify."
+      },
+      "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Quotify."
     },
     "credits": {
       "packs": {
@@ -907,6 +983,37 @@
         "draft_invoice": "Una factura en borrador no se puede compartir por enlace.",
         "not_found": "No se encontró el enlace de la factura."
       },
+      "payment": {
+        "amount_mismatch": "El pago no corresponde al importe de la factura.",
+        "invoice_not_payable": "Solo una factura abierta o incobrable se puede pagar a mano.",
+        "method_unavailable": "Elija un método de pago.",
+        "bad_method": "El método debe ser transferencia bancaria, efectivo u otro.",
+        "bad_amount": "El importe debe ser un número entero de unidades menores mayor que cero.",
+        "bad_date": "La fecha de recepción no es válida o es futura.",
+        "overpayment": "Es más de lo pendiente. Registre solo el importe pendiente.",
+        "already_paid": "La factura ya está pagada.",
+        "not_payable": "El estado de pago de la factura no permite un pago manual ahora.",
+        "reference_reused": "Esta referencia ya se registró con otro importe."
+      },
+      "payment_link": {
+        "bad_amount": "El importe debe ser un número positivo de unidades menores.",
+        "bad_currency": "Esta moneda no es compatible.",
+        "bad_description": "La descripción es obligatoria (como máximo 200 caracteres).",
+        "bad_key": "La clave de idempotencia es demasiado larga (como máximo 200 caracteres).",
+        "bad_kind": "Importe, moneda, descripción y cliente pertenecen a un enlace libre; un enlace de factura los toma de la factura.",
+        "bad_page": "El tamaño de página debe estar entre 1 y 200.",
+        "bad_status": "El estado debe ser active, paid, expired o revoked.",
+        "consumed": "Este enlace ya se ha usado.",
+        "customer_not_found": "No existe ese cliente.",
+        "idempotency_conflict": "Esta clave de idempotencia se usó para otro enlace de pago.",
+        "invoice_not_payable": "Una factura pagada o anulada no necesita enlace de pago.",
+        "invoice_required": "Un enlace de pago de tipo factura necesita una factura.",
+        "not_found": "No existe ese enlace de pago."
+      },
+      "portal_link": {
+        "customer_not_found": "No existe ese cliente.",
+        "customer_required": "El cliente es obligatorio."
+      },
       "credits": {
         "bad_amount": "El importe debe ser un número entero de créditos mayor que cero.",
         "bad_customer": "El cliente no es válido.",
@@ -921,16 +1028,6 @@
         "key_reused": "Esta clave de idempotencia ya se usó para otra solicitud.",
         "pack_not_found": "No existe ese paquete de créditos.",
         "unknown_currency": "Esta moneda no es compatible."
-      },
-      "payment": {
-        "bad_method": "El método debe ser transferencia bancaria, efectivo u otro.",
-        "bad_amount": "El importe debe ser un número entero de unidades menores mayor que cero.",
-        "bad_date": "La fecha de recepción no es válida o es futura.",
-        "overpayment": "Es más de lo pendiente. Registre solo el importe pendiente.",
-        "already_paid": "La factura ya está pagada.",
-        "invoice_not_payable": "Solo una factura abierta o incobrable se puede pagar a mano.",
-        "not_payable": "El estado de pago de la factura no permite un pago manual ahora.",
-        "reference_reused": "Esta referencia ya se registró con otro importe."
       }
     },
     "plans": {

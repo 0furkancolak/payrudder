@@ -167,7 +167,8 @@
       "link": "Lien de la facture",
       "copy": "Copier",
       "revoked": "Tous les liens de cette facture ont été révoqués.",
-      "badDays": "Jours : un entier de 1 à 365."
+      "badDays": "Jours : un entier de 1 à 365.",
+      "paymentLink": "Lien de paiement"
     },
     "payment": {
       "record": "Enregistrer un paiement",
@@ -328,6 +329,7 @@
       "reports": "Rapports",
       "pricing": "Coupons et taxes",
       "webhooks": "Webhooks",
+      "paymentLinks": "Liens de paiement",
       "mail": "E-mail",
       "apps": "Apps",
       "address": "Adresse du vendeur",
@@ -696,25 +698,6 @@
       "refundFailed": "Remboursement échoué",
       "retryRefund": "Réessayer le remboursement"
     },
-    "mail": {
-      "title": "E-mail",
-      "hint": "Choisissez les types d'e-mails que Quotify envoie aux clients de ce locataire. Un type désactivé est ignoré, pas mis en file : le réactiver n'envoie pas ce qui a été sauté.",
-      "categories": {
-        "invoice_issued": "Facture émise",
-        "payment_receipts": "Reçus de paiement",
-        "payment_failed": "Paiement échoué",
-        "usage_alerts": "Alertes d'usage",
-        "system": "Système"
-      },
-      "descriptions": {
-        "invoice_issued": "Prévient le client qu'une nouvelle facture a été finalisée.",
-        "payment_receipts": "Le reçu après un paiement réussi.",
-        "payment_failed": "Un paiement échoué, une nouvelle tentative et l'avis que Quotify a renoncé à encaisser.",
-        "usage_alerts": "Un client a dépassé une limite d'usage de son offre.",
-        "system": "Tous les autres messages envoyés par Quotify."
-      },
-      "providerNote": "Un prestataire de paiement qui envoie ses propres reçus (Paddle) continue de les envoyer ; cet interrupteur ne commande que les e-mails de Quotify."
-    },
     "webhooks": {
       "title": "Webhooks",
       "hint": "Quotify envoie un POST JSON signé à ces points de terminaison HTTPS quand il se passe quelque chose dans le compte : une facture est payée, un avoir est émis, un abonnement change. Vérifiez l'en-tête Quotify-Signature avec le secret du point de terminaison ; les livraisons échouées sont retentées pendant environ un jour et demi.",
@@ -750,6 +733,99 @@
         "delivered": "Livré",
         "failed": "Échoué"
       }
+    },
+    "paymentLinks": {
+      "title": "Liens de paiement",
+      "hint": "Un lien que le client ouvre sans se connecter pour payer. Pour une facture ouverte, ou ad hoc pour un montant fixe (la facture est créée à la première utilisation). Toute personne qui a le lien peut payer ; il cesse de fonctionner à l'expiration ou à la révocation.",
+      "formLabel": "nouveau lien de paiement",
+      "kind": "Type",
+      "kinds": {
+        "adhoc": "Montant fixe",
+        "invoice": "Facture ouverte"
+      },
+      "invoiceId": "ID de facture",
+      "amount": "Montant",
+      "currency": "Devise",
+      "description": "Objet",
+      "customer": "Client",
+      "customerOptional": "ID client (facultatif)",
+      "days": "Valable (jours)",
+      "singleUse": "Usage unique (une facture payée)",
+      "singleUseShort": "usage unique",
+      "create": "Créer le lien",
+      "adhocHint": "La facture est créée et numérotée quand le client appuie sur Continuer sur la page.",
+      "invoiceHint": "La facture doit être finalisée et impayée.",
+      "shownOnce": "Copiez le lien maintenant : il n'est affiché qu'une fois et ne peut plus être relu.",
+      "url": "Lien de paiement",
+      "copy": "Copier",
+      "replayed": "Cette demande a déjà été traitée : le lien existe, mais son adresse n'est affichée qu'une fois.",
+      "list": "Liens",
+      "anyKind": "Tout type",
+      "anyStatus": "Tout statut",
+      "status": "Statut",
+      "statuses": {
+        "active": "Actif",
+        "paid": "Payé",
+        "expired": "Expiré",
+        "revoked": "Révoqué"
+      },
+      "uses": "Usages / payés",
+      "usesValue": "{used} / {paid}",
+      "expires": "Expire",
+      "createdAt": "Créé",
+      "revoke": "Révoquer",
+      "confirmRevoke": "Révoquer ce lien ? Les factures impayées qui en sont issues sont annulées.",
+      "empty": "Aucun lien de paiement pour l'instant.",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "links": "Liens",
+      "paymentLink": "Lien de paiement",
+      "errors": {
+        "invoice": "Saisissez l'ID de la facture.",
+        "amount": "Saisissez un montant positif avec les décimales de la devise.",
+        "description": "Indiquez l'objet du paiement.",
+        "days": "Jours : un entier de 1 à 365."
+      },
+      "portal": {
+        "open": "Page de paiement",
+        "title": "Page de paiement de {id}",
+        "hint": "Un lien vers une page où ce client voit ses factures et paiements, télécharge PDF et reçus, et paie ce qui est ouvert. Lecture seule.",
+        "close": "Fermer",
+        "create": "Créer un lien",
+        "revoke": "Tout révoquer",
+        "revoked": "Tous les liens de la page de paiement de ce client ont été révoqués.",
+        "confirmRevoke": "Révoquer tous les liens de la page de paiement de ce client ?",
+        "link": "Lien de la page de paiement",
+        "payments": "Paiements",
+        "date": "Date",
+        "invoice": "Facture",
+        "type": "Type",
+        "noPayments": "Aucun paiement enregistré.",
+        "kinds": {
+          "charge": "Paiement",
+          "refund": "Remboursement"
+        }
+      },
+      "for": "Pour"
+    },
+    "mail": {
+      "title": "E-mail",
+      "hint": "Choisissez les types d'e-mails que Quotify envoie aux clients de ce locataire. Un type désactivé est ignoré, pas mis en file : le réactiver n'envoie pas ce qui a été sauté.",
+      "categories": {
+        "invoice_issued": "Facture émise",
+        "payment_receipts": "Reçus de paiement",
+        "payment_failed": "Paiement échoué",
+        "usage_alerts": "Alertes d'usage",
+        "system": "Système"
+      },
+      "descriptions": {
+        "invoice_issued": "Prévient le client qu'une nouvelle facture a été finalisée.",
+        "payment_receipts": "Le reçu après un paiement réussi.",
+        "payment_failed": "Un paiement échoué, une nouvelle tentative et l'avis que Quotify a renoncé à encaisser.",
+        "usage_alerts": "Un client a dépassé une limite d'usage de son offre.",
+        "system": "Tous les autres messages envoyés par Quotify."
+      },
+      "providerNote": "Un prestataire de paiement qui envoie ses propres reçus (Paddle) continue de les envoyer ; cet interrupteur ne commande que les e-mails de Quotify."
     },
     "credits": {
       "packs": {
@@ -907,6 +983,37 @@
         "draft_invoice": "Une facture brouillon ne peut pas être partagée par lien.",
         "not_found": "Le lien de la facture est introuvable."
       },
+      "payment": {
+        "amount_mismatch": "Le paiement ne correspond pas au montant de la facture.",
+        "invoice_not_payable": "Seule une facture ouverte ou irrécouvrable peut être payée à la main.",
+        "method_unavailable": "Choisissez un moyen de paiement.",
+        "bad_method": "Le moyen doit être virement bancaire, espèces ou autre.",
+        "bad_amount": "Le montant doit être un nombre entier d'unités mineures supérieur à zéro.",
+        "bad_date": "La date de réception est invalide ou dans le futur.",
+        "overpayment": "C'est plus que le reste à payer. Enregistrez seulement le reste à payer.",
+        "already_paid": "La facture est déjà payée.",
+        "not_payable": "L'état de paiement de la facture n'autorise pas de paiement manuel pour le moment.",
+        "reference_reused": "Cette référence a déjà été enregistrée avec un autre montant."
+      },
+      "payment_link": {
+        "bad_amount": "Le montant doit être un nombre positif d'unités mineures.",
+        "bad_currency": "Cette devise n'est pas prise en charge.",
+        "bad_description": "Une description est requise (200 caractères au plus).",
+        "bad_key": "La clé d'idempotence est trop longue (200 caractères au plus).",
+        "bad_kind": "Montant, devise, description et client appartiennent à un lien libre ; un lien de facture les reprend de la facture.",
+        "bad_page": "La taille de page doit être comprise entre 1 et 200.",
+        "bad_status": "Le statut doit être active, paid, expired ou revoked.",
+        "consumed": "Ce lien a déjà été utilisé.",
+        "customer_not_found": "Ce client n'existe pas.",
+        "idempotency_conflict": "Cette clé d'idempotence a servi pour un autre lien de paiement.",
+        "invoice_not_payable": "Une facture payée ou annulée n'a pas besoin de lien de paiement.",
+        "invoice_required": "Un lien de paiement de type facture nécessite une facture.",
+        "not_found": "Ce lien de paiement n'existe pas."
+      },
+      "portal_link": {
+        "customer_not_found": "Ce client n'existe pas.",
+        "customer_required": "Un client est requis."
+      },
       "credits": {
         "bad_amount": "Le montant doit être un nombre entier de crédits supérieur à zéro.",
         "bad_customer": "Le client n'est pas valide.",
@@ -921,16 +1028,6 @@
         "key_reused": "Cette clé d'idempotence a déjà servi pour une autre requête.",
         "pack_not_found": "Ce pack de crédits n'existe pas.",
         "unknown_currency": "Cette devise n'est pas prise en charge."
-      },
-      "payment": {
-        "bad_method": "Le moyen doit être virement bancaire, espèces ou autre.",
-        "bad_amount": "Le montant doit être un nombre entier d'unités mineures supérieur à zéro.",
-        "bad_date": "La date de réception est invalide ou dans le futur.",
-        "overpayment": "C'est plus que le reste à payer. Enregistrez seulement le reste à payer.",
-        "already_paid": "La facture est déjà payée.",
-        "invoice_not_payable": "Seule une facture ouverte ou irrécouvrable peut être payée à la main.",
-        "not_payable": "L'état de paiement de la facture n'autorise pas de paiement manuel pour le moment.",
-        "reference_reused": "Cette référence a déjà été enregistrée avec un autre montant."
       }
     },
     "plans": {

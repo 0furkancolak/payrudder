@@ -200,7 +200,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		BillingAdmin: billingv1.NewBillingAdminServiceClient(up.billing), Hosted: billingv1.NewHostedInvoiceServiceClient(up.billing), PublicURL: strings.TrimRight(cfg.PublicURL, "/"), Analytics: analyticsv1.NewAnalyticsServiceClient(up.analytics),
 		Assets: assetsv1.NewAssetsServiceClient(up.assets),
 		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
-		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken,
+		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken, Demo: cfg.Demo,
 	}), nil
 }
 

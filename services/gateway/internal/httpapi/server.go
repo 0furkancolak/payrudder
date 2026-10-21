@@ -78,6 +78,8 @@ type Deps struct {
 	PaymentsToken string
 	// PublicURL is the address customers reach the gateway at (https://api.example.com), for the links it hands out. Empty gives relative links.
 	PublicURL string
+	// Demo makes the hosted pages offer the mock payment for every tenant (QUOTIFY_DEMO); a sandbox tenant always gets it.
+	Demo bool
 }
 
 // Server is the HTTP handler.
@@ -85,6 +87,8 @@ type Server struct {
 	d       Deps
 	handler http.Handler
 	hosted  hostedLimiter
+	// hostedPays limits the POSTs that start a payment on a public page.
+	hostedPays hostedLimiter
 }
 
 // New builds the router.

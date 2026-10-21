@@ -996,6 +996,271 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/i/{token}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * First use of an ad-hoc payment link — makes the invoice and continues on its page
+         * @description The payer presses *Continue*. This is the point at which the invoice gets its number, not when the page is fetched. A redirect to the invoice page. At most 10 a minute per address.
+         */
+        post: operations["hostedLinkStart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay the invoice by one of the methods the page offers
+         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address.
+         */
+        post: operations["hostedInvoicePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A printable receipt of a paid invoice */
+        get: operations["hostedInvoiceReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The seller's logo */
+        get: operations["hostedInvoiceLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A customer's invoices and payments (public, the token in the path is the credential)
+         * @description Read-only, for one customer of one tenant: their finalized invoices, the payments recorded for them (charges and refunds), PDFs and receipts, and a pay button on what is open. Expires and can be revoked like a payment link. At most 60 requests a minute per address.
+         */
+        get: operations["portalPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The seller's logo */
+        get: operations["portalLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of the customer's invoices, with its payment state and the ways to pay it */
+        get: operations["portalInvoicePage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A redirect to the invoice PDF */
+        get: operations["portalInvoicePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A printable receipt of a paid invoice */
+        get: operations["portalInvoiceReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay one of the customer's open invoices
+         * @description Same as the payment link's pay, scoped to the portal's customer. At most 10 a minute per address.
+         */
+        post: operations["portalInvoicePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List payment links */
+        get: operations["listPaymentLinks"];
+        put?: never;
+        /**
+         * Make a payment link for an open invoice, or ad hoc for a fixed amount
+         * @description `kind: invoice` (needs `invoice_id`, a finalized unpaid invoice) or `kind: adhoc` (needs `amount_minor`, optionally `currency` — the tenant's by default — `description` and a `customer_external_id`; the invoice is made when the customer first presses Continue). The token is returned once. `Idempotency-Key` (or `idempotency_key`) makes a retry return the link made the first time, without the token (`replayed: true`); the same key with other parameters is refused. Single-use links stop after one paid invoice; a reusable ad-hoc link makes one invoice per use.
+         */
+        post: operations["createPaymentLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment-links/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One payment link */
+        get: operations["getPaymentLink"];
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a payment link
+         * @description The link and the invoice links it handed out stop working. Unpaid invoices made from an ad-hoc link are voided; paid ones are untouched. Revoking twice is not an error.
+         */
+        delete: operations["revokePaymentLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/portal-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make the link to a customer's payment page
+         * @description Shows the customer's invoices, payments, PDFs and receipts, read-only, with a pay button on open invoices. Works until expires_in_days (default 30, at most 365) or until revoked; the token is returned once.
+         */
+        post: operations["createPortalLink"];
+        /** Make every portal link of the customer stop working */
+        delete: operations["revokePortalLinks"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The customer's invoices and the payments recorded for them
+         * @description The same rows the customer sees on their payment page, newest first (charges and refunds from the ledger; an invoice may have several attempts).
+         */
+        get: operations["listCustomerPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoices/{id}/pdf": {
         parameters: {
             query?: never;
@@ -2329,10 +2594,10 @@ export interface components {
             customer_external_id?: string;
             period_id?: string;
             /**
-             * @description FEE: a fixed fee invoiced in advance for one period, or what a plan change moved
+             * @description FEE: a fixed fee invoiced in advance for one period, or what a plan change moved. LINK: made from an ad-hoc payment link
              * @enum {string}
              */
-            kind?: "REGULAR" | "CORRECTION" | "FEE";
+            kind?: "REGULAR" | "CORRECTION" | "FEE" | "LINK";
             /** @example INV-2026-000123 */
             number?: string;
             currency?: string;
@@ -2809,7 +3074,84 @@ export interface components {
             active?: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "payment_link.created" | "payment_link.paid" | "payment_link.expired";
+        PaymentLink: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            kind?: "invoice" | "adhoc";
+            /**
+             * @description paid: a single-use link that was paid
+             * @enum {string}
+             */
+            status?: "active" | "paid" | "expired" | "revoked";
+            /** @description kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
+            invoice_id?: string;
+            customer_external_id?: string;
+            single_use?: boolean;
+            /** @description kind adhoc: int64 minor units as a string */
+            amount_minor?: string;
+            currency?: string;
+            description?: string;
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            expire_time?: string;
+            /** Format: date-time */
+            revoke_time?: string | null;
+            /** @description Invoices paid through the link */
+            paid_count?: number;
+            /** Format: date-time */
+            last_paid_time?: string | null;
+            /** @description Invoices the link created (ad hoc) */
+            use_count?: number;
+            idempotency_key?: string;
+        };
+        CreatePaymentLinkRequest: {
+            /**
+             * @description Default: invoice when invoice_id is set, else adhoc
+             * @enum {string}
+             */
+            kind?: "invoice" | "adhoc";
+            /** Format: uuid */
+            invoice_id?: string;
+            /** @description adhoc: a positive int64 in minor units (a string or a number) */
+            amount_minor?: string;
+            /** @description adhoc: ISO 4217; the tenant's currency when empty */
+            currency?: string;
+            /** @description adhoc: what it is for; printed on the invoice */
+            description?: string;
+            /** @description adhoc: make the invoice out to this customer */
+            customer_external_id?: string;
+            /** @description Default true for adhoc, false for invoice */
+            single_use?: boolean;
+            /** @description Default 30 for adhoc, 90 for invoice */
+            expires_in_days?: number;
+            idempotency_key?: string;
+        };
+        CreatedPaymentLink: components["schemas"]["PaymentLink"] & {
+            /** @description The secret part of the link; shown once, empty on a replay */
+            token?: string;
+            /** @description Absolute when the gateway knows its public address (QUOTIFY_PUBLIC_URL); empty on a replay */
+            url?: string;
+            replayed?: boolean;
+        };
+        CustomerPayment: {
+            /** Format: uuid */
+            invoice_id?: string;
+            invoice_number?: string;
+            /** @enum {string} */
+            kind?: "charge" | "refund";
+            /** @enum {string} */
+            status?: "succeeded" | "declined" | "failed" | "pending";
+            amount_minor?: string;
+            currency?: string;
+            provider?: string;
+            /** @enum {string} */
+            environment?: "sandbox" | "live";
+            /** Format: date-time */
+            occurred_at?: string;
+        };
         WebhookEndpoint: {
             /** Format: uuid */
             id?: string;
@@ -4962,6 +5304,607 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    hostedLinkStart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the invoice page (/i/{invoice token}) */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link does not exist, has expired, or a single-use link was already paid */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedInvoicePay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    method: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Payment instructions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Redirect to the provider's page, or back to the invoice page */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link does not exist or has expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The invoice cannot be paid now */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedInvoiceReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The receipt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The link does not exist, has expired, or the invoice is not paid */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    hostedInvoiceLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logo image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description No logo, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalPage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The link does not exist or has expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logo image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description No logo, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalInvoicePage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Not the customer's invoice, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalInvoicePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the download link */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not the customer's invoice, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The PDF is not rendered yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalInvoiceReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The receipt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Not the customer's paid invoice, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    portalInvoicePay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    method: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Payment instructions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Redirect to the provider's page, or back to the invoice page */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not the customer's invoice, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The invoice cannot be paid now */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listPaymentLinks: {
+        parameters: {
+            query?: {
+                kind?: "invoice" | "adhoc";
+                status?: "active" | "paid" | "expired" | "revoked";
+                invoice_id?: string;
+                /** @description The customer's external id */
+                customer?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        links?: components["schemas"]["PaymentLink"][];
+                        next_page_token?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    createPaymentLink: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePaymentLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Replayed: the link made the first time, without the token */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedPaymentLink"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedPaymentLink"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getPaymentLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentLink"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    revokePaymentLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentLink"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    createPortalLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @default 30 */
+                    expires_in_days?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        token?: string;
+                        url?: string;
+                        /** Format: date-time */
+                        expires_at?: string;
+                        customer_id?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    revokePortalLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        revoked?: number;
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listCustomerPayments: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        invoices?: components["schemas"]["Invoice"][];
+                        payments?: components["schemas"]["CustomerPayment"][];
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     getInvoicePdf: {

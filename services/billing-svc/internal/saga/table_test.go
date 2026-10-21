@@ -12,6 +12,9 @@ var guardContexts = []Ctx{
 	{TotalMinor: 100, Paid: true, DunningAttempt: 1, MaxDunning: 3},
 	{TotalMinor: 100, Paid: false, DunningAttempt: 3, MaxDunning: 3},
 	{TotalMinor: 0, Paid: true, DunningAttempt: 3, MaxDunning: 3},
+	{TotalMinor: 100, Link: true, DunningAttempt: 0, MaxDunning: 3},
+	{TotalMinor: 100, Link: true, DunningAttempt: 3, MaxDunning: 3},
+	{TotalMinor: 0, Link: true, Paid: true, DunningAttempt: 0, MaxDunning: 0},
 }
 
 // Every (state, event) pair either has exactly one row for each guard context or none: guards never overlap and never
@@ -59,7 +62,14 @@ func TestInvalidPairsAreRejected(t *testing.T) {
 		{PaymentRequested, EvVoid}, // never void while a charge is in flight
 		{PaymentUnknown, EvVoid},
 		{Finalized, EvPaymentOK},
-		{Draft, EvStart}, // drafts are finalized by the run, not by the saga
+		{Draft, EvStart},  // drafts are finalized by the run, not by the saga
+		{Paid, EvSettled}, // a second payment of a paid invoice is a discrepancy for the operator, not a transition
+		{Completed, EvPayRequested},
+		{Voided, EvSettled},
+		{Paid, EvProviderSettled}, // a second payment of a paid invoice is a discrepancy for the operator, not a transition
+		{Completed, EvProviderSettled},
+		{Voided, EvProviderSettled},
+		{PdfRequested, EvPayRequested}, // the invoice is not ready to be paid yet
 	}
 	for _, tc := range invalid {
 		if _, ok := Next(tc.s, tc.ev, Ctx{TotalMinor: 100, MaxDunning: 3}); ok {
@@ -145,6 +155,30 @@ func TestDocsDiagramIsInSync(t *testing.T) {
 		}
 		t.Fatalf("the saga diagram in the docs is stale; run UPDATE_DOCS=1 go test ./internal/saga")
 	}
+}
+
+// A link-collected invoice (phase 34) waits for its customer; a decline is the customer's to retry, never dunning.
+func TestLinkCollectedInvoiceWaitsForTheCustomer(t *testing.T) {
+	link := Ctx{TotalMinor: 500, Link: true, MaxDunning: 3}
+	check := func(s State, ev Event, ctx Ctx, to State, eff Effect) {
+		t.Helper()
+		r, ok := Next(s, ev, ctx)
+		if !ok || r.To != to || r.Effect != eff {
+			t.Errorf("Next(%s, %s) = %+v %v, want %s/%q", s, ev, r, ok, to, eff)
+		}
+	}
+	check(PdfRendered, EvContinue, link, AwaitingPayment, EffNone) // no charge of a stored method
+	check(AwaitingPayment, EvPayRequested, link, PaymentRequested, EffChargeDunning)
+	check(AwaitingPayment, EvProviderSettled, link, Paid, EffNone)
+	check(AwaitingPayment, EvVoid, link, Voided, EffNone)
+	check(PaymentRequested, EvPaymentDeclined, link, AwaitingPayment, EffNone)
+	check(PaymentUnknown, EvStatusDeclined, link, AwaitingPayment, EffNone)
+	check(PaymentRequested, EvProviderSettled, link, Paid, EffNone)
+	// An ordinary invoice in dunning can be paid by its customer too.
+	check(PaymentDeclined, EvPayRequested, Ctx{TotalMinor: 500, MaxDunning: 3}, PaymentRequested, EffChargeDunning)
+	check(PaymentDeclined, EvProviderSettled, Ctx{TotalMinor: 500, MaxDunning: 3}, Paid, EffNone)
+	// And an ordinary invoice is still charged by the saga.
+	check(PdfRendered, EvContinue, Ctx{TotalMinor: 500, MaxDunning: 3}, PaymentRequested, EffCharge)
 }
 
 func TestProviderThatMailsItsOwnReceiptSkipsOurs(t *testing.T) {

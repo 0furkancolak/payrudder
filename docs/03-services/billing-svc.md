@@ -106,14 +106,17 @@ stateDiagram-v2
     PDF_REQUESTED --> PDF_FAILED: PdfFailed / StepExhausted
     PDF_FAILED --> PDF_REQUESTED: Retry
     PDF_RENDERED --> PAYMENT_REQUESTED: Continue [total > 0]
+    PDF_RENDERED --> AWAITING_PAYMENT: Continue [total > 0, customer pays]
     PDF_RENDERED --> NOTIFY_REQUESTED: Continue [total = 0]
-    PAYMENT_REQUESTED --> PAID: PaymentSucceeded
+    PAYMENT_REQUESTED --> PAID: PaymentSucceeded / Settled
     PAYMENT_REQUESTED --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left]
     PAYMENT_REQUESTED --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted]
+    PAYMENT_REQUESTED --> AWAITING_PAYMENT: PaymentDeclined [customer pays, no dunning]
     PAYMENT_REQUESTED --> PAYMENT_UNKNOWN: PaymentErrored / StepExhausted
-    PAYMENT_UNKNOWN --> PAID: PaymentSucceeded / StatusSucceeded / OfflineSettlement
+    PAYMENT_UNKNOWN --> PAID: PaymentSucceeded / StatusSucceeded / OfflineSettlement / Settled
     PAYMENT_UNKNOWN --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left] / StatusDeclined [dunning attempts left]
     PAYMENT_UNKNOWN --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted] / StatusDeclined [dunning exhausted]
+    PAYMENT_UNKNOWN --> AWAITING_PAYMENT: PaymentDeclined [customer pays, no dunning] / StatusDeclined [customer pays, no dunning]
     PAYMENT_UNKNOWN --> PAYMENT_REQUESTED: StatusNotFound
     PAYMENT_UNKNOWN --> PAYMENT_PENDING: StatusPending
     PAYMENT_UNKNOWN --> PAYMENT_UNKNOWN: Retry / StepExhausted
@@ -122,12 +125,15 @@ stateDiagram-v2
     PAYMENT_PENDING --> PAYMENT_REQUESTED: StatusNotFound
     PAYMENT_PENDING --> PAYMENT_DECLINED: StatusDeclined [dunning attempts left]
     PAYMENT_PENDING --> UNCOLLECTIBLE: StatusDeclined [dunning exhausted]
-    PAYMENT_DECLINED --> PAYMENT_REQUESTED: DunningDue
+    PAYMENT_PENDING --> AWAITING_PAYMENT: StatusDeclined [customer pays, no dunning]
+    PAYMENT_DECLINED --> PAYMENT_REQUESTED: DunningDue / PayRequested
     PAYMENT_DECLINED --> PAYMENT_UNKNOWN: Retry
-    PAYMENT_DECLINED --> PAID: OfflineSettlement
+    PAYMENT_DECLINED --> PAID: OfflineSettlement / Settled
     NOTIFY_REQUESTED --> PAID: OfflineSettlement
     NOTIFY_FAILED --> PAID: OfflineSettlement
     COMPLETED --> PAID: OfflineSettlement
+    AWAITING_PAYMENT --> PAYMENT_REQUESTED: PayRequested
+    AWAITING_PAYMENT --> PAID: Settled
     PAID --> COMPLETED: Continue [the provider mails the receipt]
     PAID --> NOTIFY_REQUESTED: Continue
     UNCOLLECTIBLE --> NOTIFY_REQUESTED: Continue
@@ -138,6 +144,7 @@ stateDiagram-v2
     PDF_REQUESTED --> VOIDED: Void
     PDF_FAILED --> VOIDED: Void
     PAYMENT_DECLINED --> VOIDED: Void
+    AWAITING_PAYMENT --> VOIDED: Void
     PAYMENT_PENDING --> VOIDED: Void
     NOTIFY_REQUESTED --> REFUND_REQUESTED: Void [paid, total > 0]
     NOTIFY_REQUESTED --> VOIDED: Void [nothing to refund]

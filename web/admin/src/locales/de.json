@@ -167,7 +167,8 @@
       "link": "Rechnungslink",
       "copy": "Kopieren",
       "revoked": "Alle Links zu dieser Rechnung wurden widerrufen.",
-      "badDays": "Tage: eine ganze Zahl von 1 bis 365."
+      "badDays": "Tage: eine ganze Zahl von 1 bis 365.",
+      "paymentLink": "Zahlungslink"
     },
     "payment": {
       "record": "Zahlung erfassen",
@@ -328,6 +329,7 @@
       "reports": "Berichte",
       "pricing": "Gutscheine & Steuer",
       "webhooks": "Webhooks",
+      "paymentLinks": "Zahlungslinks",
       "mail": "E-Mail",
       "apps": "Apps",
       "address": "Verkäuferadresse",
@@ -696,25 +698,6 @@
       "refundFailed": "Erstattung fehlgeschlagen",
       "retryRefund": "Erstattung wiederholen"
     },
-    "mail": {
-      "title": "E-Mail",
-      "hint": "Legen Sie fest, welche Arten von E-Mails Quotify an die Kunden dieses Mandanten sendet. Eine abgeschaltete Art wird verworfen, nicht vorgemerkt: Wieder einschalten sendet das Übersprungene nicht nach.",
-      "categories": {
-        "invoice_issued": "Rechnung erstellt",
-        "payment_receipts": "Zahlungsbelege",
-        "payment_failed": "Zahlung fehlgeschlagen",
-        "usage_alerts": "Nutzungswarnungen",
-        "system": "System"
-      },
-      "descriptions": {
-        "invoice_issued": "Teilt dem Kunden mit, dass eine neue Rechnung abgeschlossen wurde.",
-        "payment_receipts": "Der Beleg nach einer erfolgreichen Zahlung.",
-        "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Quotify die Einziehung aufgegeben hat.",
-        "usage_alerts": "Ein Kunde hat ein Nutzungslimit seines Tarifs überschritten.",
-        "system": "Alle übrigen Nachrichten von Quotify."
-      },
-      "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Quotify."
-    },
     "webhooks": {
       "title": "Webhooks",
       "hint": "Quotify sendet an diese HTTPS-Endpunkte einen signierten JSON-POST, wenn im Konto etwas passiert: eine Rechnung wird bezahlt, eine Gutschrift ausgestellt, ein Abonnement ändert sich. Prüfen Sie den Header Quotify-Signature mit dem Secret des Endpunkts; fehlgeschlagene Zustellungen werden etwa eineinhalb Tage lang wiederholt.",
@@ -750,6 +733,99 @@
         "delivered": "Zugestellt",
         "failed": "Fehlgeschlagen"
       }
+    },
+    "paymentLinks": {
+      "title": "Zahlungslinks",
+      "hint": "Ein Link, den der Kunde ohne Anmeldung öffnet, um zu bezahlen. Für eine offene Rechnung oder ad hoc für einen festen Betrag (die Rechnung entsteht bei der ersten Nutzung). Wer den Link hat, kann zahlen; er endet bei Ablauf oder Widerruf.",
+      "formLabel": "neuer Zahlungslink",
+      "kind": "Art",
+      "kinds": {
+        "adhoc": "Fester Betrag",
+        "invoice": "Offene Rechnung"
+      },
+      "invoiceId": "Rechnungs-ID",
+      "amount": "Betrag",
+      "currency": "Währung",
+      "description": "Wofür",
+      "customer": "Kunde",
+      "customerOptional": "Kunden-ID (optional)",
+      "days": "Gültig (Tage)",
+      "singleUse": "Einmalig (eine bezahlte Rechnung)",
+      "singleUseShort": "einmalig",
+      "create": "Link erstellen",
+      "adhocHint": "Die Rechnung wird erstellt und nummeriert, wenn der Kunde auf der Seite auf Weiter klickt.",
+      "invoiceHint": "Die Rechnung muss abgeschlossen und unbezahlt sein.",
+      "shownOnce": "Kopieren Sie den Link jetzt: Er wird nur einmal angezeigt und kann nicht erneut gelesen werden.",
+      "url": "Zahlungslink",
+      "copy": "Kopieren",
+      "replayed": "Diese Anfrage wurde bereits bearbeitet: Der Link existiert, seine Adresse wird aber nur einmal angezeigt.",
+      "list": "Links",
+      "anyKind": "Jede Art",
+      "anyStatus": "Jeder Status",
+      "status": "Status",
+      "statuses": {
+        "active": "Aktiv",
+        "paid": "Bezahlt",
+        "expired": "Abgelaufen",
+        "revoked": "Widerrufen"
+      },
+      "uses": "Nutzungen / bezahlt",
+      "usesValue": "{used} / {paid}",
+      "expires": "Läuft ab",
+      "createdAt": "Erstellt",
+      "revoke": "Widerrufen",
+      "confirmRevoke": "Diesen Link widerrufen? Daraus entstandene unbezahlte Rechnungen werden storniert.",
+      "empty": "Noch keine Zahlungslinks.",
+      "previous": "Zurück",
+      "next": "Weiter",
+      "links": "Links",
+      "paymentLink": "Zahlungslink",
+      "errors": {
+        "invoice": "Rechnungs-ID eingeben.",
+        "amount": "Einen positiven Betrag mit den Dezimalstellen der Währung eingeben.",
+        "description": "Angeben, wofür die Zahlung ist.",
+        "days": "Tage: eine ganze Zahl von 1 bis 365."
+      },
+      "portal": {
+        "open": "Zahlungsseite",
+        "title": "Zahlungsseite von {id}",
+        "hint": "Ein Link zu einer Seite, auf der dieser Kunde seine Rechnungen und Zahlungen sieht, PDFs und Belege lädt und Offenes bezahlt. Nur lesend.",
+        "close": "Schließen",
+        "create": "Link erstellen",
+        "revoke": "Alle widerrufen",
+        "revoked": "Alle Zahlungsseiten-Links dieses Kunden wurden widerrufen.",
+        "confirmRevoke": "Alle Zahlungsseiten-Links dieses Kunden widerrufen?",
+        "link": "Link zur Zahlungsseite",
+        "payments": "Zahlungen",
+        "date": "Datum",
+        "invoice": "Rechnung",
+        "type": "Art",
+        "noPayments": "Keine Zahlungen erfasst.",
+        "kinds": {
+          "charge": "Zahlung",
+          "refund": "Erstattung"
+        }
+      },
+      "for": "Für"
+    },
+    "mail": {
+      "title": "E-Mail",
+      "hint": "Legen Sie fest, welche Arten von E-Mails Quotify an die Kunden dieses Mandanten sendet. Eine abgeschaltete Art wird verworfen, nicht vorgemerkt: Wieder einschalten sendet das Übersprungene nicht nach.",
+      "categories": {
+        "invoice_issued": "Rechnung erstellt",
+        "payment_receipts": "Zahlungsbelege",
+        "payment_failed": "Zahlung fehlgeschlagen",
+        "usage_alerts": "Nutzungswarnungen",
+        "system": "System"
+      },
+      "descriptions": {
+        "invoice_issued": "Teilt dem Kunden mit, dass eine neue Rechnung abgeschlossen wurde.",
+        "payment_receipts": "Der Beleg nach einer erfolgreichen Zahlung.",
+        "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Quotify die Einziehung aufgegeben hat.",
+        "usage_alerts": "Ein Kunde hat ein Nutzungslimit seines Tarifs überschritten.",
+        "system": "Alle übrigen Nachrichten von Quotify."
+      },
+      "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Quotify."
     },
     "credits": {
       "packs": {
@@ -907,6 +983,37 @@
         "draft_invoice": "Eine Rechnung im Entwurf kann nicht per Link geteilt werden.",
         "not_found": "Der Rechnungslink wurde nicht gefunden."
       },
+      "payment": {
+        "amount_mismatch": "Die Zahlung entspricht nicht dem Rechnungsbetrag.",
+        "invoice_not_payable": "Nur eine offene oder uneinbringliche Rechnung kann von Hand bezahlt werden.",
+        "method_unavailable": "Wählen Sie eine Zahlungsmethode.",
+        "bad_method": "Die Zahlungsart muss Banküberweisung, Bar oder Sonstiges sein.",
+        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
+        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
+        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag.",
+        "already_paid": "Die Rechnung ist bereits bezahlt.",
+        "not_payable": "Der Zahlungsstatus der Rechnung erlaubt gerade keine manuelle Zahlung.",
+        "reference_reused": "Diese Referenz wurde bereits mit einem anderen Betrag erfasst."
+      },
+      "payment_link": {
+        "bad_amount": "Der Betrag muss eine positive Zahl in der kleinsten Einheit sein.",
+        "bad_currency": "Diese Währung wird nicht unterstützt.",
+        "bad_description": "Eine Beschreibung ist erforderlich (höchstens 200 Zeichen).",
+        "bad_key": "Der Idempotency-Schlüssel ist zu lang (höchstens 200 Zeichen).",
+        "bad_kind": "Betrag, Währung, Beschreibung und Kunde gehören zu einem freien Link; ein Rechnungslink übernimmt sie von der Rechnung.",
+        "bad_page": "Die Seitengröße muss zwischen 1 und 200 liegen.",
+        "bad_status": "Der Status muss active, paid, expired oder revoked sein.",
+        "consumed": "Dieser Link wurde bereits verwendet.",
+        "customer_not_found": "Diesen Kunden gibt es nicht.",
+        "idempotency_conflict": "Dieser Idempotency-Schlüssel wurde für einen anderen Zahlungslink verwendet.",
+        "invoice_not_payable": "Eine bezahlte oder stornierte Rechnung braucht keinen Zahlungslink.",
+        "invoice_required": "Ein Zahlungslink der Art Rechnung braucht eine Rechnung.",
+        "not_found": "Diesen Zahlungslink gibt es nicht."
+      },
+      "portal_link": {
+        "customer_not_found": "Diesen Kunden gibt es nicht.",
+        "customer_required": "Ein Kunde ist erforderlich."
+      },
       "credits": {
         "bad_amount": "Der Betrag muss eine ganze Zahl über null sein.",
         "bad_customer": "Der Kunde ist nicht gültig.",
@@ -921,16 +1028,6 @@
         "key_reused": "Dieser Idempotency-Schlüssel wurde schon für eine andere Anfrage verwendet.",
         "pack_not_found": "Es gibt kein solches Guthabenpaket.",
         "unknown_currency": "Diese Währung wird nicht unterstützt."
-      },
-      "payment": {
-        "bad_method": "Die Zahlungsart muss Banküberweisung, Bar oder Sonstiges sein.",
-        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
-        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
-        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag.",
-        "already_paid": "Die Rechnung ist bereits bezahlt.",
-        "invoice_not_payable": "Nur eine offene oder uneinbringliche Rechnung kann von Hand bezahlt werden.",
-        "not_payable": "Der Zahlungsstatus der Rechnung erlaubt gerade keine manuelle Zahlung.",
-        "reference_reused": "Diese Referenz wurde bereits mit einem anderen Betrag erfasst."
       }
     },
     "plans": {

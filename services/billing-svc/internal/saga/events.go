@@ -26,6 +26,9 @@ const (
 	EventCreditNoteCreated      = "credit_note.created"
 	EventCreditNoteRefunded     = "credit_note.refunded"
 	EventCreditNoteRefundFailed = "credit_note.refund_failed"
+	EventPaymentLinkCreated     = "payment_link.created"
+	EventPaymentLinkPaid        = "payment_link.paid"
+	EventPaymentLinkExpired     = "payment_link.expired"
 )
 
 // TenantEvent writes an event for the tenant's endpoints in tx. key says which occurrence it is (an invoice id, a credit note id and an outcome): the same

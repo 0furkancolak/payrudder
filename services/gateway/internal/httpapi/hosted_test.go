@@ -32,6 +32,9 @@ func (fakeBilling) RevokeInvoiceLinks(context.Context, *billingv1.RevokeInvoiceL
 }
 
 func (fakeBilling) GetHostedInvoice(_ context.Context, req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHostedInvoiceResponse, error) {
+	if r, ok := scenarioInvoice(req); ok {
+		return r, nil
+	}
 	if req.GetToken() == transferToken {
 		return &billingv1.GetHostedInvoiceResponse{
 			Invoice:    &billingv1.Invoice{Number: "INV-2026-000009", Currency: "TRY", SubtotalMinor: 150000, TotalMinor: 150000, Status: "open"},
@@ -176,7 +179,7 @@ func TestHostedPageTellsAnInvoicePaidByTransferWhereToPay(t *testing.T) {
 		t.Errorf("the Turkish page is not translated")
 	}
 	for _, lang := range hostedLangs {
-		for _, key := range []string{"payBy", "bank", "holder", "iban", "bic", "reference", "referenceHint"} {
+		for _, key := range []string{"payBy", "bank", "holder", "iban", "bic", "bankRef", "referenceHint"} {
 			if hostedText(lang)[key] == "" {
 				t.Errorf("%s lacks the text %q", lang, key)
 			}

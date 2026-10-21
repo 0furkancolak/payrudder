@@ -1003,6 +1003,238 @@ paths:
         "302": { description: "Redirect to the download link" }
         "404": { description: "The link does not exist or has expired" }
         "409": { description: "The PDF is not rendered yet" }
+  /i/{token}/start:
+    post:
+      operationId: hostedLinkStart
+      summary: First use of an ad-hoc payment link — makes the invoice and continues on its page
+      description: The payer presses *Continue*. This is the point at which the invoice gets its number, not when the page is fetched. A redirect to the invoice page. At most 10 a minute per address.
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "303": { description: "Redirect to the invoice page (/i/{invoice token})" }
+        "404": { description: "The link does not exist, has expired, or a single-use link was already paid", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /i/{token}/pay:
+    post:
+      operationId: hostedInvoicePay
+      summary: Pay the invoice by one of the methods the page offers
+      description: >
+        Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page) or an `instructions:<provider>` method (the page shows the payment details and a reference).
+        Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address.
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { method: { type: string } }, required: [method] }
+      responses:
+        "303": { description: "Redirect to the provider's page, or back to the invoice page" }
+        "200": { description: "Payment instructions", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The link does not exist or has expired", content: { text/html: { schema: { type: string } } } }
+        "409": { description: "The invoice cannot be paid now", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /i/{token}/receipt:
+    get:
+      operationId: hostedInvoiceReceipt
+      summary: A printable receipt of a paid invoice
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: "The receipt", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The link does not exist, has expired, or the invoice is not paid", content: { text/html: { schema: { type: string } } } }
+  /i/{token}/logo:
+    get:
+      operationId: hostedInvoiceLogo
+      summary: The seller's logo
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: "The logo image", content: { image/png: { schema: { type: string, format: binary } } } }
+        "404": { description: "No logo, or the link does not exist" }
+  /c/{token}:
+    get:
+      operationId: portalPage
+      summary: A customer's invoices and payments (public, the token in the path is the credential)
+      description: >
+        Read-only, for one customer of one tenant: their finalized invoices, the payments recorded for them (charges and refunds), PDFs and receipts, and a pay button on what is open.
+        Expires and can be revoked like a payment link. At most 60 requests a minute per address.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "The page", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The link does not exist or has expired", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /c/{token}/logo:
+    get:
+      operationId: portalLogo
+      summary: The seller's logo
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: "The logo image", content: { image/png: { schema: { type: string, format: binary } } } }
+        "404": { description: "No logo, or the link does not exist" }
+  /c/{token}/invoices/{invoice_id}:
+    get:
+      operationId: portalInvoicePage
+      summary: One of the customer's invoices, with its payment state and the ways to pay it
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: invoice_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "The page", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "Not the customer's invoice, or the link does not exist", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /c/{token}/invoices/{invoice_id}/pdf:
+    get:
+      operationId: portalInvoicePdf
+      summary: A redirect to the invoice PDF
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: invoice_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "302": { description: "Redirect to the download link" }
+        "404": { description: "Not the customer's invoice, or the link does not exist" }
+        "409": { description: "The PDF is not rendered yet" }
+  /c/{token}/invoices/{invoice_id}/receipt:
+    get:
+      operationId: portalInvoiceReceipt
+      summary: A printable receipt of a paid invoice
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: invoice_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: "The receipt", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "Not the customer's paid invoice, or the link does not exist", content: { text/html: { schema: { type: string } } } }
+  /c/{token}/invoices/{invoice_id}/pay:
+    post:
+      operationId: portalInvoicePay
+      summary: Pay one of the customer's open invoices
+      description: Same as the payment link's pay, scoped to the portal's customer. At most 10 a minute per address.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: invoice_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { method: { type: string } }, required: [method] }
+      responses:
+        "303": { description: "Redirect to the provider's page, or back to the invoice page" }
+        "200": { description: "Payment instructions", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "Not the customer's invoice, or the link does not exist", content: { text/html: { schema: { type: string } } } }
+        "409": { description: "The invoice cannot be paid now", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /v1/payment-links:
+    post:
+      operationId: createPaymentLink
+      summary: Make a payment link for an open invoice, or ad hoc for a fixed amount
+      description: >
+        `kind: invoice` (needs `invoice_id`, a finalized unpaid invoice) or `kind: adhoc` (needs `amount_minor`, optionally `currency` — the tenant's by default — `description` and a
+        `customer_external_id`; the invoice is made when the customer first presses Continue). The token is returned once. `Idempotency-Key` (or `idempotency_key`) makes a retry return the link made
+        the first time, without the token (`replayed: true`); the same key with other parameters is refused. Single-use links stop after one paid invoice; a reusable ad-hoc link makes one invoice per use.
+      parameters: [{ name: Idempotency-Key, in: header, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreatePaymentLinkRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CreatedPaymentLink" } } } }
+        "200": { description: "Replayed: the link made the first time, without the token", content: { application/json: { schema: { $ref: "#/components/schemas/CreatedPaymentLink" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listPaymentLinks
+      summary: List payment links
+      parameters:
+        - { name: kind, in: query, schema: { type: string, enum: [invoice, adhoc] } }
+        - { name: status, in: query, schema: { type: string, enum: [active, paid, expired, revoked] } }
+        - { name: invoice_id, in: query, schema: { type: string, format: uuid } }
+        - { name: customer, in: query, schema: { type: string }, description: "The customer's external id" }
+        - { name: page_size, in: query, schema: { type: integer } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  links: { type: array, items: { $ref: "#/components/schemas/PaymentLink" } }
+                  next_page_token: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/payment-links/{id}:
+    get:
+      operationId: getPaymentLink
+      summary: One payment link
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentLink" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: revokePaymentLink
+      summary: Revoke a payment link
+      description: The link and the invoice links it handed out stop working. Unpaid invoices made from an ad-hoc link are voided; paid ones are untouched. Revoking twice is not an error.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentLink" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/portal-links:
+    post:
+      operationId: createPortalLink
+      summary: Make the link to a customer's payment page
+      description: Shows the customer's invoices, payments, PDFs and receipts, read-only, with a pay button on open invoices. Works until expires_in_days (default 30, at most 365) or until revoked; the token is returned once.
+      parameters: [{ name: external_id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: false
+        content: { application/json: { schema: { type: object, properties: { expires_in_days: { type: integer, minimum: 1, maximum: 365, default: 30 } } } } }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  url: { type: string }
+                  expires_at: { type: string, format: date-time }
+                  customer_id: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: revokePortalLinks
+      summary: Make every portal link of the customer stop working
+      parameters: [{ name: external_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { revoked: { type: integer } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/payments:
+    get:
+      operationId: listCustomerPayments
+      summary: The customer's invoices and the payments recorded for them
+      description: The same rows the customer sees on their payment page, newest first (charges and refunds from the ledger; an invoice may have several attempts).
+      parameters:
+        - { name: external_id, in: path, required: true, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
+                  payments: { type: array, items: { $ref: "#/components/schemas/CustomerPayment" } }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/invoices/{id}/pdf:
     get:
       operationId: getInvoicePdf
@@ -2589,7 +2821,7 @@ components:
         customer_id: { type: string }
         customer_external_id: { type: string }
         period_id: { type: string }
-        kind: { type: string, enum: [REGULAR, CORRECTION, FEE], description: "FEE: a fixed fee invoiced in advance for one period, or what a plan change moved" }
+        kind: { type: string, enum: [REGULAR, CORRECTION, FEE, LINK], description: "FEE: a fixed fee invoiced in advance for one period, or what a plan change moved. LINK: made from an ad-hoc payment link" }
         number: { type: string, examples: ["INV-2026-000123"] }
         currency: { type: string }
         subtotal_minor: { type: string }
@@ -2998,6 +3230,60 @@ components:
         - subscription.paused
         - subscription.resumed
         - subscription.moved_to_provider
+        - payment_link.created
+        - payment_link.paid
+        - payment_link.expired
+    PaymentLink:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [invoice, adhoc] }
+        status: { type: string, enum: [active, paid, expired, revoked], description: "paid: a single-use link that was paid" }
+        invoice_id: { type: string, description: "kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)" }
+        customer_external_id: { type: string }
+        single_use: { type: boolean }
+        amount_minor: { type: string, description: "kind adhoc: int64 minor units as a string" }
+        currency: { type: string }
+        description: { type: string }
+        create_time: { type: string, format: date-time }
+        expire_time: { type: string, format: date-time }
+        revoke_time: { type: [string, "null"], format: date-time }
+        paid_count: { type: integer, description: "Invoices paid through the link" }
+        last_paid_time: { type: [string, "null"], format: date-time }
+        use_count: { type: integer, description: "Invoices the link created (ad hoc)" }
+        idempotency_key: { type: string }
+    CreatePaymentLinkRequest:
+      type: object
+      properties:
+        kind: { type: string, enum: [invoice, adhoc], description: "Default: invoice when invoice_id is set, else adhoc" }
+        invoice_id: { type: string, format: uuid }
+        amount_minor: { type: string, description: "adhoc: a positive int64 in minor units (a string or a number)" }
+        currency: { type: string, description: "adhoc: ISO 4217; the tenant's currency when empty" }
+        description: { type: string, maxLength: 200, description: "adhoc: what it is for; printed on the invoice" }
+        customer_external_id: { type: string, description: "adhoc: make the invoice out to this customer" }
+        single_use: { type: boolean, description: "Default true for adhoc, false for invoice" }
+        expires_in_days: { type: integer, minimum: 1, maximum: 365, description: "Default 30 for adhoc, 90 for invoice" }
+        idempotency_key: { type: string, maxLength: 200 }
+    CreatedPaymentLink:
+      allOf:
+        - { $ref: "#/components/schemas/PaymentLink" }
+        - type: object
+          properties:
+            token: { type: string, description: "The secret part of the link; shown once, empty on a replay" }
+            url: { type: string, description: "Absolute when the gateway knows its public address (QUOTIFY_PUBLIC_URL); empty on a replay" }
+            replayed: { type: boolean }
+    CustomerPayment:
+      type: object
+      properties:
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string }
+        kind: { type: string, enum: [charge, refund] }
+        status: { type: string, enum: [succeeded, declined, failed, pending] }
+        amount_minor: { type: string }
+        currency: { type: string }
+        provider: { type: string }
+        environment: { type: string, enum: [sandbox, live] }
+        occurred_at: { type: string, format: date-time }
     WebhookEndpoint:
       type: object
       properties:

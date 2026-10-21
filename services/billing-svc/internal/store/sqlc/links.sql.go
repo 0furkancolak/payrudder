@@ -7,42 +7,312 @@ package sqlc
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 )
 
+const bumpPaymentLinkUse = `-- name: BumpPaymentLinkUse :exec
+UPDATE payment_links SET use_count = use_count + 1 WHERE tenant_id = $1 AND id = $2
+`
+
+type BumpPaymentLinkUseParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+func (q *Queries) BumpPaymentLinkUse(ctx context.Context, arg BumpPaymentLinkUseParams) error {
+	_, err := q.db.Exec(ctx, bumpPaymentLinkUse, arg.TenantID, arg.ID)
+	return err
+}
+
+const childInvoicesToVoid = `-- name: ChildInvoicesToVoid :many
+SELECT DISTINCT l.invoice_id::uuid AS invoice_id FROM payment_links l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
+WHERE l.tenant_id = $1 AND l.parent_id = $2::uuid AND i.status = 'open' AND i.kind = 'LINK'
+`
+
+type ChildInvoicesToVoidParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+func (q *Queries) ChildInvoicesToVoid(ctx context.Context, arg ChildInvoicesToVoidParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, childInvoicesToVoid, arg.TenantID, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var invoice_id uuid.UUID
+		if err := rows.Scan(&invoice_id); err != nil {
+			return nil, err
+		}
+		items = append(items, invoice_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findActiveInvoiceLink = `-- name: FindActiveInvoiceLink :one
-SELECT tenant_id, invoice_id, expires_at FROM invoice_links WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
+SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count
+FROM payment_links WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
 `
 
 type FindActiveInvoiceLinkRow struct {
-	TenantID  uuid.UUID
-	InvoiceID uuid.UUID
-	ExpiresAt time.Time
+	TenantID           uuid.UUID
+	ID                 uuid.UUID
+	Kind               string
+	InvoiceID          *uuid.UUID
+	ParentID           *uuid.UUID
+	SingleUse          bool
+	ExpiresAt          time.Time
+	AmountMinor        *int64
+	Currency           *string
+	Description        *string
+	CustomerID         *uuid.UUID
+	CustomerExternalID *string
+	PaidCount          int32
 }
 
 func (q *Queries) FindActiveInvoiceLink(ctx context.Context, tokenHash []byte) (FindActiveInvoiceLinkRow, error) {
 	row := q.db.QueryRow(ctx, findActiveInvoiceLink, tokenHash)
 	var i FindActiveInvoiceLinkRow
-	err := row.Scan(&i.TenantID, &i.InvoiceID, &i.ExpiresAt)
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.Kind,
+		&i.InvoiceID,
+		&i.ParentID,
+		&i.SingleUse,
+		&i.ExpiresAt,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.Description,
+		&i.CustomerID,
+		&i.CustomerExternalID,
+		&i.PaidCount,
+	)
+	return i, err
+}
+
+const findActivePortalLink = `-- name: FindActivePortalLink :one
+SELECT tenant_id, customer_id, expires_at FROM portal_links WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
+`
+
+type FindActivePortalLinkRow struct {
+	TenantID   uuid.UUID
+	CustomerID uuid.UUID
+	ExpiresAt  time.Time
+}
+
+func (q *Queries) FindActivePortalLink(ctx context.Context, tokenHash []byte) (FindActivePortalLinkRow, error) {
+	row := q.db.QueryRow(ctx, findActivePortalLink, tokenHash)
+	var i FindActivePortalLinkRow
+	err := row.Scan(&i.TenantID, &i.CustomerID, &i.ExpiresAt)
+	return i, err
+}
+
+const findPaymentLinkByKey = `-- name: FindPaymentLinkByKey :one
+SELECT id, request_hash FROM payment_links WHERE tenant_id = $1 AND idempotency_key = $2::text
+`
+
+type FindPaymentLinkByKeyParams struct {
+	TenantID       uuid.UUID
+	IdempotencyKey string
+}
+
+type FindPaymentLinkByKeyRow struct {
+	ID          uuid.UUID
+	RequestHash []byte
+}
+
+func (q *Queries) FindPaymentLinkByKey(ctx context.Context, arg FindPaymentLinkByKeyParams) (FindPaymentLinkByKeyRow, error) {
+	row := q.db.QueryRow(ctx, findPaymentLinkByKey, arg.TenantID, arg.IdempotencyKey)
+	var i FindPaymentLinkByKeyRow
+	err := row.Scan(&i.ID, &i.RequestHash)
+	return i, err
+}
+
+const findUnpaidChildInvoice = `-- name: FindUnpaidChildInvoice :one
+SELECT l.invoice_id FROM payment_links l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
+WHERE l.tenant_id = $1 AND l.parent_id = $2::uuid AND i.status NOT IN ('paid', 'void')
+ORDER BY l.created_at DESC LIMIT 1
+`
+
+type FindUnpaidChildInvoiceParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+func (q *Queries) FindUnpaidChildInvoice(ctx context.Context, arg FindUnpaidChildInvoiceParams) (*uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, findUnpaidChildInvoice, arg.TenantID, arg.ID)
+	var invoice_id *uuid.UUID
+	err := row.Scan(&invoice_id)
+	return invoice_id, err
+}
+
+const getInvoiceForLink = `-- name: GetInvoiceForLink :one
+SELECT i.id, i.customer_id, i.kind, i.status, i.currency, i.total_minor, COALESCE(i.number, '')::text AS number, i.provider, COALESCE(i.country, '')::text AS country,
+       i.snapshot, COALESCE(s.state, '')::text AS saga_state, COALESCE(s.id, '00000000-0000-0000-0000-000000000000'::uuid)::uuid AS saga_id,
+       COALESCE(i.pdf_object_key, '')::text AS pdf_object_key
+FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
+WHERE i.tenant_id = $1 AND i.id = $2
+`
+
+type GetInvoiceForLinkParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+type GetInvoiceForLinkRow struct {
+	ID           uuid.UUID
+	CustomerID   uuid.UUID
+	Kind         string
+	Status       string
+	Currency     string
+	TotalMinor   int64
+	Number       string
+	Provider     string
+	Country      string
+	Snapshot     json.RawMessage
+	SagaState    string
+	SagaID       uuid.UUID
+	PdfObjectKey string
+}
+
+func (q *Queries) GetInvoiceForLink(ctx context.Context, arg GetInvoiceForLinkParams) (GetInvoiceForLinkRow, error) {
+	row := q.db.QueryRow(ctx, getInvoiceForLink, arg.TenantID, arg.ID)
+	var i GetInvoiceForLinkRow
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.Kind,
+		&i.Status,
+		&i.Currency,
+		&i.TotalMinor,
+		&i.Number,
+		&i.Provider,
+		&i.Country,
+		&i.Snapshot,
+		&i.SagaState,
+		&i.SagaID,
+		&i.PdfObjectKey,
+	)
+	return i, err
+}
+
+const getInvoiceOfCustomer = `-- name: GetInvoiceOfCustomer :one
+SELECT id FROM invoices WHERE tenant_id = $1 AND customer_id = $2 AND id = $3 AND status <> 'draft'
+`
+
+type GetInvoiceOfCustomerParams struct {
+	TenantID   uuid.UUID
+	CustomerID uuid.UUID
+	ID         uuid.UUID
+}
+
+func (q *Queries) GetInvoiceOfCustomer(ctx context.Context, arg GetInvoiceOfCustomerParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getInvoiceOfCustomer, arg.TenantID, arg.CustomerID, arg.ID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getInvoiceTotals = `-- name: GetInvoiceTotals :one
+SELECT total_minor, currency, status FROM invoices WHERE tenant_id = $1 AND id = $2
+`
+
+type GetInvoiceTotalsParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+type GetInvoiceTotalsRow struct {
+	TotalMinor int64
+	Currency   string
+	Status     string
+}
+
+func (q *Queries) GetInvoiceTotals(ctx context.Context, arg GetInvoiceTotalsParams) (GetInvoiceTotalsRow, error) {
+	row := q.db.QueryRow(ctx, getInvoiceTotals, arg.TenantID, arg.ID)
+	var i GetInvoiceTotalsRow
+	err := row.Scan(&i.TotalMinor, &i.Currency, &i.Status)
+	return i, err
+}
+
+const getPaymentLinkRow = `-- name: GetPaymentLinkRow :one
+SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count,
+       last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key,
+       (CASE WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN single_use AND paid_count > 0 THEN 'paid' WHEN expires_at <= now() THEN 'expired' ELSE 'active' END)::text AS status
+FROM payment_links WHERE tenant_id = $1 AND id = $2 AND parent_id IS NULL
+`
+
+type GetPaymentLinkRowParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+type GetPaymentLinkRowRow struct {
+	ID                 uuid.UUID
+	Kind               string
+	InvoiceID          *uuid.UUID
+	SingleUse          bool
+	ExpiresAt          time.Time
+	RevokedAt          *time.Time
+	CreatedAt          time.Time
+	AmountMinor        *int64
+	Currency           *string
+	Description        *string
+	CustomerID         *uuid.UUID
+	CustomerExternalID *string
+	UseCount           int32
+	PaidCount          int32
+	LastPaidAt         *time.Time
+	IdempotencyKey     string
+	Status             string
+}
+
+func (q *Queries) GetPaymentLinkRow(ctx context.Context, arg GetPaymentLinkRowParams) (GetPaymentLinkRowRow, error) {
+	row := q.db.QueryRow(ctx, getPaymentLinkRow, arg.TenantID, arg.ID)
+	var i GetPaymentLinkRowRow
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.InvoiceID,
+		&i.SingleUse,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.Description,
+		&i.CustomerID,
+		&i.CustomerExternalID,
+		&i.UseCount,
+		&i.PaidCount,
+		&i.LastPaidAt,
+		&i.IdempotencyKey,
+		&i.Status,
+	)
 	return i, err
 }
 
 const insertInvoiceLink = `-- name: InsertInvoiceLink :exec
-
-INSERT INTO invoice_links (tenant_id, id, invoice_id, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5)
+INSERT INTO payment_links (tenant_id, id, kind, invoice_id, token_hash, expires_at) VALUES ($1, $2, 'invoice', $3, $4, $5)
 `
 
 type InsertInvoiceLinkParams struct {
 	TenantID  uuid.UUID
 	ID        uuid.UUID
-	InvoiceID uuid.UUID
+	InvoiceID *uuid.UUID
 	TokenHash []byte
 	ExpiresAt time.Time
 }
 
-// Hosted invoice links. Visitors resolve a token through the system pool; tenants manage links through the app pool.
 func (q *Queries) InsertInvoiceLink(ctx context.Context, arg InsertInvoiceLinkParams) error {
 	_, err := q.db.Exec(ctx, insertInvoiceLink,
 		arg.TenantID,
@@ -54,14 +324,454 @@ func (q *Queries) InsertInvoiceLink(ctx context.Context, arg InsertInvoiceLinkPa
 	return err
 }
 
-const revokeInvoiceLinks = `-- name: RevokeInvoiceLinks :execrows
-UPDATE invoice_links SET revoked_at = now() WHERE invoice_id = $1 AND revoked_at IS NULL
+const insertPaymentLink = `-- name: InsertPaymentLink :exec
+
+INSERT INTO payment_links (tenant_id, id, kind, parent_id, invoice_id, token_hash, expires_at, single_use, idempotency_key, request_hash, amount_minor, currency,
+                           description, customer_id, customer_external_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+        $10, $11, $12, $13, $14, $15)
 `
 
-func (q *Queries) RevokeInvoiceLinks(ctx context.Context, invoiceID uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, revokeInvoiceLinks, invoiceID)
+type InsertPaymentLinkParams struct {
+	TenantID           uuid.UUID
+	ID                 uuid.UUID
+	Kind               string
+	ParentID           *uuid.UUID
+	InvoiceID          *uuid.UUID
+	TokenHash          []byte
+	ExpiresAt          time.Time
+	SingleUse          bool
+	IdempotencyKey     *string
+	RequestHash        []byte
+	AmountMinor        *int64
+	Currency           *string
+	Description        *string
+	CustomerID         *uuid.UUID
+	CustomerExternalID *string
+}
+
+// Payment links (phase 23 invoice links, extended in phase 34) and customer portal links. Visitors resolve a token through the system pool; tenants manage
+// links through the app pool (RLS). Every system-pool query that reads more than the link row carries the tenant id.
+func (q *Queries) InsertPaymentLink(ctx context.Context, arg InsertPaymentLinkParams) error {
+	_, err := q.db.Exec(ctx, insertPaymentLink,
+		arg.TenantID,
+		arg.ID,
+		arg.Kind,
+		arg.ParentID,
+		arg.InvoiceID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+		arg.SingleUse,
+		arg.IdempotencyKey,
+		arg.RequestHash,
+		arg.AmountMinor,
+		arg.Currency,
+		arg.Description,
+		arg.CustomerID,
+		arg.CustomerExternalID,
+	)
+	return err
+}
+
+const insertPortalLink = `-- name: InsertPortalLink :exec
+INSERT INTO portal_links (tenant_id, id, customer_id, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5)
+`
+
+type InsertPortalLinkParams struct {
+	TenantID   uuid.UUID
+	ID         uuid.UUID
+	CustomerID uuid.UUID
+	TokenHash  []byte
+	ExpiresAt  time.Time
+}
+
+func (q *Queries) InsertPortalLink(ctx context.Context, arg InsertPortalLinkParams) error {
+	_, err := q.db.Exec(ctx, insertPortalLink,
+		arg.TenantID,
+		arg.ID,
+		arg.CustomerID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
+const listLinksToExpire = `-- name: ListLinksToExpire :many
+SELECT tenant_id, id FROM payment_links
+WHERE parent_id IS NULL AND revoked_at IS NULL AND expired_notified_at IS NULL AND expires_at <= now() AND NOT (single_use AND paid_count > 0)
+ORDER BY expires_at LIMIT $1
+`
+
+type ListLinksToExpireRow struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+func (q *Queries) ListLinksToExpire(ctx context.Context, rowLimit int32) ([]ListLinksToExpireRow, error) {
+	rows, err := q.db.Query(ctx, listLinksToExpire, rowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLinksToExpireRow{}
+	for rows.Next() {
+		var i ListLinksToExpireRow
+		if err := rows.Scan(&i.TenantID, &i.ID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPaymentLinks = `-- name: ListPaymentLinks :many
+SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count, last_paid_at, idempotency_key, status FROM (
+  SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count,
+         last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key,
+         (CASE WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN single_use AND paid_count > 0 THEN 'paid' WHEN expires_at <= now() THEN 'expired' ELSE 'active' END)::text AS status
+  FROM payment_links WHERE tenant_id = $1 AND parent_id IS NULL
+) l
+WHERE ($2::text IS NULL OR l.kind = $2)
+  AND ($3::text IS NULL OR l.status = $3)
+  AND ($4::uuid IS NULL OR l.invoice_id = $4)
+  AND ($5::text IS NULL OR l.customer_external_id = $5)
+  AND (l.created_at, l.id) < ($6::timestamptz, $7::uuid)
+ORDER BY l.created_at DESC, l.id DESC
+LIMIT $8
+`
+
+type ListPaymentLinksParams struct {
+	TenantID           uuid.UUID
+	Kind               *string
+	Status             *string
+	InvoiceID          *uuid.UUID
+	CustomerExternalID *string
+	AfterAt            time.Time
+	AfterID            uuid.UUID
+	PageSize           int32
+}
+
+type ListPaymentLinksRow struct {
+	ID                 uuid.UUID
+	Kind               string
+	InvoiceID          *uuid.UUID
+	SingleUse          bool
+	ExpiresAt          time.Time
+	RevokedAt          *time.Time
+	CreatedAt          time.Time
+	AmountMinor        *int64
+	Currency           *string
+	Description        *string
+	CustomerID         *uuid.UUID
+	CustomerExternalID *string
+	UseCount           int32
+	PaidCount          int32
+	LastPaidAt         *time.Time
+	IdempotencyKey     string
+	Status             string
+}
+
+func (q *Queries) ListPaymentLinks(ctx context.Context, arg ListPaymentLinksParams) ([]ListPaymentLinksRow, error) {
+	rows, err := q.db.Query(ctx, listPaymentLinks,
+		arg.TenantID,
+		arg.Kind,
+		arg.Status,
+		arg.InvoiceID,
+		arg.CustomerExternalID,
+		arg.AfterAt,
+		arg.AfterID,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPaymentLinksRow{}
+	for rows.Next() {
+		var i ListPaymentLinksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.InvoiceID,
+			&i.SingleUse,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+			&i.AmountMinor,
+			&i.Currency,
+			&i.Description,
+			&i.CustomerID,
+			&i.CustomerExternalID,
+			&i.UseCount,
+			&i.PaidCount,
+			&i.LastPaidAt,
+			&i.IdempotencyKey,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPortalInvoices = `-- name: ListPortalInvoices :many
+SELECT i.id, i.kind, COALESCE(i.number, '')::text AS number, i.status, i.currency, i.total_minor, COALESCE(i.finalized_at, i.created_at)::timestamptz AS issued_at,
+       COALESCE(s.state, '')::text AS saga_state, (i.pdf_object_key IS NOT NULL AND i.pdf_object_key <> '')::bool AS pdf_ready,
+       COALESCE((i.snapshot->>'currency_exponent')::int, 2)::int AS currency_exponent
+FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
+WHERE i.tenant_id = $1 AND i.customer_id = $2 AND i.status <> 'draft'
+ORDER BY COALESCE(i.finalized_at, i.created_at) DESC, i.id DESC
+LIMIT $3
+`
+
+type ListPortalInvoicesParams struct {
+	TenantID   uuid.UUID
+	CustomerID uuid.UUID
+	RowLimit   int32
+}
+
+type ListPortalInvoicesRow struct {
+	ID               uuid.UUID
+	Kind             string
+	Number           string
+	Status           string
+	Currency         string
+	TotalMinor       int64
+	IssuedAt         time.Time
+	SagaState        string
+	PdfReady         bool
+	CurrencyExponent int32
+}
+
+func (q *Queries) ListPortalInvoices(ctx context.Context, arg ListPortalInvoicesParams) ([]ListPortalInvoicesRow, error) {
+	rows, err := q.db.Query(ctx, listPortalInvoices, arg.TenantID, arg.CustomerID, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPortalInvoicesRow{}
+	for rows.Next() {
+		var i ListPortalInvoicesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Number,
+			&i.Status,
+			&i.Currency,
+			&i.TotalMinor,
+			&i.IssuedAt,
+			&i.SagaState,
+			&i.PdfReady,
+			&i.CurrencyExponent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockLinkToExpire = `-- name: LockLinkToExpire :one
+SELECT id, kind, invoice_id, customer_external_id, amount_minor, currency, expires_at FROM payment_links
+WHERE tenant_id = $1 AND id = $2 AND parent_id IS NULL AND revoked_at IS NULL AND expired_notified_at IS NULL AND expires_at <= now()
+FOR UPDATE SKIP LOCKED
+`
+
+type LockLinkToExpireParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+type LockLinkToExpireRow struct {
+	ID                 uuid.UUID
+	Kind               string
+	InvoiceID          *uuid.UUID
+	CustomerExternalID *string
+	AmountMinor        *int64
+	Currency           *string
+	ExpiresAt          time.Time
+}
+
+func (q *Queries) LockLinkToExpire(ctx context.Context, arg LockLinkToExpireParams) (LockLinkToExpireRow, error) {
+	row := q.db.QueryRow(ctx, lockLinkToExpire, arg.TenantID, arg.ID)
+	var i LockLinkToExpireRow
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.InvoiceID,
+		&i.CustomerExternalID,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const lockPaymentLink = `-- name: LockPaymentLink :one
+SELECT id, single_use, paid_count, use_count FROM payment_links WHERE tenant_id = $1 AND id = $2 FOR UPDATE
+`
+
+type LockPaymentLinkParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+type LockPaymentLinkRow struct {
+	ID        uuid.UUID
+	SingleUse bool
+	PaidCount int32
+	UseCount  int32
+}
+
+func (q *Queries) LockPaymentLink(ctx context.Context, arg LockPaymentLinkParams) (LockPaymentLinkRow, error) {
+	row := q.db.QueryRow(ctx, lockPaymentLink, arg.TenantID, arg.ID)
+	var i LockPaymentLinkRow
+	err := row.Scan(
+		&i.ID,
+		&i.SingleUse,
+		&i.PaidCount,
+		&i.UseCount,
+	)
+	return i, err
+}
+
+const markLinkExpiredNotified = `-- name: MarkLinkExpiredNotified :exec
+UPDATE payment_links SET expired_notified_at = now() WHERE tenant_id = $1 AND id = $2
+`
+
+type MarkLinkExpiredNotifiedParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+func (q *Queries) MarkLinkExpiredNotified(ctx context.Context, arg MarkLinkExpiredNotifiedParams) error {
+	_, err := q.db.Exec(ctx, markLinkExpiredNotified, arg.TenantID, arg.ID)
+	return err
+}
+
+const markPaymentLinksPaid = `-- name: MarkPaymentLinksPaid :many
+UPDATE payment_links AS p SET paid_count = p.paid_count + 1, last_paid_at = now()
+WHERE p.tenant_id = $1 AND p.parent_id IS NULL AND p.id IN (
+  SELECT COALESCE(c.parent_id, c.id) FROM payment_links c WHERE c.tenant_id = $1 AND c.invoice_id = $2)
+RETURNING id, kind, invoice_id, customer_external_id, amount_minor, currency, paid_count
+`
+
+type MarkPaymentLinksPaidParams struct {
+	TenantID  uuid.UUID
+	InvoiceID *uuid.UUID
+}
+
+type MarkPaymentLinksPaidRow struct {
+	ID                 uuid.UUID
+	Kind               string
+	InvoiceID          *uuid.UUID
+	CustomerExternalID *string
+	AmountMinor        *int64
+	Currency           *string
+	PaidCount          int32
+}
+
+// The links an invoice was paid through: its own links, and the parents of its child links. Called by the saga when the invoice is paid.
+func (q *Queries) MarkPaymentLinksPaid(ctx context.Context, arg MarkPaymentLinksPaidParams) ([]MarkPaymentLinksPaidRow, error) {
+	rows, err := q.db.Query(ctx, markPaymentLinksPaid, arg.TenantID, arg.InvoiceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MarkPaymentLinksPaidRow{}
+	for rows.Next() {
+		var i MarkPaymentLinksPaidRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.InvoiceID,
+			&i.CustomerExternalID,
+			&i.AmountMinor,
+			&i.Currency,
+			&i.PaidCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const revokeInvoiceLinks = `-- name: RevokeInvoiceLinks :execrows
+UPDATE payment_links SET revoked_at = now() WHERE tenant_id = $1 AND invoice_id = $2 AND revoked_at IS NULL
+`
+
+type RevokeInvoiceLinksParams struct {
+	TenantID  uuid.UUID
+	InvoiceID *uuid.UUID
+}
+
+func (q *Queries) RevokeInvoiceLinks(ctx context.Context, arg RevokeInvoiceLinksParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeInvoiceLinks, arg.TenantID, arg.InvoiceID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const revokePaymentLink = `-- name: RevokePaymentLink :execrows
+UPDATE payment_links SET revoked_at = now() WHERE tenant_id = $1 AND (id = $2::uuid OR parent_id = $2::uuid) AND revoked_at IS NULL
+`
+
+type RevokePaymentLinkParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+func (q *Queries) RevokePaymentLink(ctx context.Context, arg RevokePaymentLinkParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokePaymentLink, arg.TenantID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const revokePortalLinks = `-- name: RevokePortalLinks :execrows
+UPDATE portal_links SET revoked_at = now() WHERE tenant_id = $1 AND customer_id = $2 AND revoked_at IS NULL
+`
+
+type RevokePortalLinksParams struct {
+	TenantID   uuid.UUID
+	CustomerID uuid.UUID
+}
+
+func (q *Queries) RevokePortalLinks(ctx context.Context, arg RevokePortalLinksParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokePortalLinks, arg.TenantID, arg.CustomerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setInvoicePaymentMethod = `-- name: SetInvoicePaymentMethod :exec
+UPDATE invoices SET snapshot = jsonb_set(snapshot, '{payment_method}', to_jsonb($1::text)) WHERE tenant_id = $2 AND id = $3
+`
+
+type SetInvoicePaymentMethodParams struct {
+	PaymentMethod string
+	TenantID      uuid.UUID
+	ID            uuid.UUID
+}
+
+func (q *Queries) SetInvoicePaymentMethod(ctx context.Context, arg SetInvoicePaymentMethodParams) error {
+	_, err := q.db.Exec(ctx, setInvoicePaymentMethod, arg.PaymentMethod, arg.TenantID, arg.ID)
+	return err
 }

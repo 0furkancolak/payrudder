@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,6 +26,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/payments"
 	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
@@ -65,6 +67,8 @@ type PlansAPI interface {
 	GetPlanVersion(ctx context.Context, tenant uuid.UUID, req *plansv1.GetPlanVersionRequest) (*plansv1.PlanVersion, error)
 	GetCustomer(ctx context.Context, tenant uuid.UUID, externalID string) (*plansv1.Customer, error)
 	TenantCurrency(ctx context.Context, tenant uuid.UUID) (string, error)
+	// PreviewRouting names the provider the tenant's routing rules send a customer in a country paying in a currency to; empty when no rule matches.
+	PreviewRouting(ctx context.Context, tenant uuid.UUID, country, currency string) (string, error)
 	// SetBankTransfer replaces the bank details printed on the tenant's invoices; nil clears them.
 	SetBankTransfer(ctx context.Context, tenant uuid.UUID, d *plansv1.BankTransferDetails) error
 }
@@ -104,6 +108,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.putAccount))
 	mux.HandleFunc("DELETE /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.deleteAccount))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/ledger", s.admin(s.ledger))
+	mux.HandleFunc("GET /admin/tenants/{tenant}/invoice-methods", s.admin(s.invoiceMethods))
+	mux.HandleFunc("POST /admin/tenants/{tenant}/invoice-payments", s.admin(s.invoicePayment))
+	mux.HandleFunc("POST /admin/tenants/{tenant}/ledger/lookup", s.admin(s.ledgerLookup))
 	s.apiRoutes(mux)
 	for _, m := range s.Modules {
 		m.Register(mux, s.admin)
@@ -316,7 +323,8 @@ func (d *delivery) recordCharge(conf payments.Notification) error {
 	if err != nil {
 		return err
 	}
-	if _, err := d.s.Ledger.Append(ctx, entry); err != nil {
+	fresh, err := d.s.Ledger.Append(ctx, entry)
+	if err != nil {
 		return err
 	}
 	if conf.ProviderRef != "" {
@@ -324,6 +332,32 @@ func (d *delivery) recordCharge(conf payments.Notification) error {
 			discrepancy.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", d.name)))
 			d.s.Log.ErrorContext(ctx, "payment outcomes disagree", "provider", d.name, "ref", conf.ProviderRef, "tenant", d.tenant, "invoice", d.at.InvoiceID)
 		}
+	}
+	return d.settleHostedPayment(ctx, entry, fresh)
+}
+
+// LinkKeyPrefix starts the idempotency key of a payment made on a hosted page (a payment link or the customer portal). The provider's confirmed
+// notification of such a charge settles the invoice in billing; the ledger row is written first and is idempotent, so a retry after a failed call is safe.
+const LinkKeyPrefix = "link:"
+
+// settleHostedPayment tells billing that a hosted payment succeeded. An error makes the provider retry the notification.
+func (d *delivery) settleHostedPayment(ctx context.Context, entry store.LedgerEntry, fresh bool) error {
+	if entry.Kind != "charge" || entry.Status != "succeeded" || !strings.HasPrefix(entry.IdempotencyKey, LinkKeyPrefix) || entry.InvoiceID == uuid.Nil {
+		return nil
+	}
+	if d.s.Billing == nil {
+		d.s.Log.WarnContext(ctx, "hosted payment confirmed but billing-svc is not configured", "tenant", d.tenant, "invoice", entry.InvoiceID)
+		return nil
+	}
+	res, err := d.s.Billing.SettleInvoicePayment(ctx, d.tenant, &billingv1.SettleInvoicePaymentRequest{
+		InvoiceId: entry.InvoiceID.String(), Provider: d.name, ProviderRef: entry.ProviderRef, AmountMinor: entry.AmountMinor, Currency: entry.Currency})
+	if err != nil {
+		return fmt.Errorf("settle invoice %s: %w", entry.InvoiceID, err)
+	}
+	if !res.GetSettled() && fresh {
+		// A new confirmed payment for an invoice that is no longer waiting for one (paid another way meanwhile): the customer paid twice. The operator refunds.
+		discrepancy.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", d.name)))
+		d.s.Log.ErrorContext(ctx, "hosted payment for an invoice that was not waiting for one", "provider", d.name, "tenant", d.tenant, "invoice", entry.InvoiceID, "ref", entry.ProviderRef)
 	}
 	return nil
 }
@@ -344,6 +378,9 @@ func (d *delivery) ledgerEntry(conf payments.Notification) (store.LedgerEntry, e
 		// A charge of ours the provider settled later (a notification found by its key rather than by the URL).
 		if a, found, err := d.s.Attempts.ChargeByKey(d.r.Context(), conf.Ref.IdempotencyKey); err == nil && found && a.TenantID == d.tenant {
 			entry.InvoiceID = a.InvoiceID
+			if entry.AmountMinor == 0 {
+				entry.AmountMinor, entry.Currency = a.AmountMinor, a.Currency
+			}
 		}
 	}
 	switch conf.State {

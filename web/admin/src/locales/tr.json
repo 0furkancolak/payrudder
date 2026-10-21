@@ -167,7 +167,8 @@
       "link": "Fatura bağlantısı",
       "copy": "Kopyala",
       "revoked": "Bu faturanın tüm bağlantıları iptal edildi.",
-      "badDays": "Gün: 1 ile 365 arasında bir tam sayı."
+      "badDays": "Gün: 1 ile 365 arasında bir tam sayı.",
+      "paymentLink": "Ödeme bağlantısı"
     },
     "payment": {
       "record": "Ödeme kaydet",
@@ -328,6 +329,7 @@
       "reports": "Raporlar",
       "pricing": "Kupon ve vergi",
       "webhooks": "Webhooklar",
+      "paymentLinks": "Ödeme bağlantıları",
       "mail": "E-posta",
       "apps": "Uygulamalar",
       "address": "Satıcı adresi",
@@ -696,25 +698,6 @@
       "refundFailed": "İade başarısız",
       "retryRefund": "İadeyi yeniden dene"
     },
-    "mail": {
-      "title": "E-posta",
-      "hint": "Quotify'ın bu kiracının müşterilerine hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
-      "categories": {
-        "invoice_issued": "Fatura kesildi",
-        "payment_receipts": "Ödeme makbuzları",
-        "payment_failed": "Ödeme başarısız",
-        "usage_alerts": "Kullanım uyarıları",
-        "system": "Sistem"
-      },
-      "descriptions": {
-        "invoice_issued": "Müşteriye yeni bir faturanın kesildiğini bildirir.",
-        "payment_receipts": "Başarılı bir ödemeden sonraki makbuz.",
-        "payment_failed": "Başarısız ödeme, yeniden deneme ve Quotify'ın tahsilattan vazgeçtiği bildirimi.",
-        "usage_alerts": "Bir müşteri planının kullanım limitini aştı.",
-        "system": "Quotify'ın gönderdiği diğer tüm iletiler."
-      },
-      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Quotify'ın e-postalarını yönetir."
-    },
     "webhooks": {
       "title": "Webhooklar",
       "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Quotify bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Quotify-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
@@ -750,6 +733,99 @@
         "delivered": "Teslim edildi",
         "failed": "Başarısız"
       }
+    },
+    "paymentLinks": {
+      "title": "Ödeme bağlantıları",
+      "hint": "Müşterinin giriş yapmadan ödeme yapmak için açtığı bağlantı. Açık bir fatura için ya da sabit bir tutar için (fatura müşteri ilk kullandığında oluşturulur). Bağlantıya sahip olan herkes ödeme yapabilir; süresi dolunca ya da iptal edilince çalışmaz.",
+      "formLabel": "yeni ödeme bağlantısı",
+      "kind": "Tür",
+      "kinds": {
+        "adhoc": "Sabit tutar",
+        "invoice": "Açık fatura"
+      },
+      "invoiceId": "Fatura kimliği",
+      "amount": "Tutar",
+      "currency": "Para birimi",
+      "description": "Ne için",
+      "customer": "Müşteri",
+      "customerOptional": "Müşteri kimliği (isteğe bağlı)",
+      "days": "Geçerlilik (gün)",
+      "singleUse": "Tek kullanımlık (bir ödenmiş fatura)",
+      "singleUseShort": "tek kullanımlık",
+      "create": "Bağlantı oluştur",
+      "adhocHint": "Müşteri sayfada Devam'a bastığında fatura oluşturulur ve numaralandırılır.",
+      "invoiceHint": "Fatura kesinleşmiş ve ödenmemiş olmalı.",
+      "shownOnce": "Bağlantıyı şimdi kopyalayın: yalnızca bir kez gösterilir, sonradan okunamaz.",
+      "url": "Ödeme bağlantısı",
+      "copy": "Kopyala",
+      "replayed": "Bu istek zaten işlendi: bağlantı var, ancak adresi yalnızca bir kez gösterilir.",
+      "list": "Bağlantılar",
+      "anyKind": "Her tür",
+      "anyStatus": "Her durum",
+      "status": "Durum",
+      "statuses": {
+        "active": "Etkin",
+        "paid": "Ödendi",
+        "expired": "Süresi doldu",
+        "revoked": "İptal edildi"
+      },
+      "uses": "Kullanım / ödenen",
+      "usesValue": "{used} / {paid}",
+      "expires": "Bitiş",
+      "createdAt": "Oluşturuldu",
+      "revoke": "İptal et",
+      "confirmRevoke": "Bu bağlantı iptal edilsin mi? Ondan oluşan ödenmemiş faturalar iptal edilir.",
+      "empty": "Henüz ödeme bağlantısı yok.",
+      "previous": "Önceki",
+      "next": "Sonraki",
+      "links": "Bağlantılar",
+      "paymentLink": "Ödeme bağlantısı",
+      "errors": {
+        "invoice": "Fatura kimliğini girin.",
+        "amount": "Para biriminin ondalık basamaklarıyla pozitif bir tutar girin.",
+        "description": "Ödemenin ne için olduğunu yazın.",
+        "days": "Gün: 1 ile 365 arasında tam sayı."
+      },
+      "portal": {
+        "open": "Ödeme sayfası",
+        "title": "{id} için ödeme sayfası",
+        "hint": "Bu müşterinin faturalarını ve ödemelerini görebildiği, PDF ve makbuzları indirebildiği ve açık olanı ödeyebildiği sayfaya bağlantı. Salt okunur.",
+        "close": "Kapat",
+        "create": "Bağlantı oluştur",
+        "revoke": "Hepsini iptal et",
+        "revoked": "Bu müşterinin tüm ödeme sayfası bağlantıları iptal edildi.",
+        "confirmRevoke": "Bu müşterinin tüm ödeme sayfası bağlantıları iptal edilsin mi?",
+        "link": "Ödeme sayfası bağlantısı",
+        "payments": "Ödemeler",
+        "date": "Tarih",
+        "invoice": "Fatura",
+        "type": "Tür",
+        "noPayments": "Kayıtlı ödeme yok.",
+        "kinds": {
+          "charge": "Tahsilat",
+          "refund": "İade"
+        }
+      },
+      "for": "Konu"
+    },
+    "mail": {
+      "title": "E-posta",
+      "hint": "Quotify'ın bu kiracının müşterilerine hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
+      "categories": {
+        "invoice_issued": "Fatura kesildi",
+        "payment_receipts": "Ödeme makbuzları",
+        "payment_failed": "Ödeme başarısız",
+        "usage_alerts": "Kullanım uyarıları",
+        "system": "Sistem"
+      },
+      "descriptions": {
+        "invoice_issued": "Müşteriye yeni bir faturanın kesildiğini bildirir.",
+        "payment_receipts": "Başarılı bir ödemeden sonraki makbuz.",
+        "payment_failed": "Başarısız ödeme, yeniden deneme ve Quotify'ın tahsilattan vazgeçtiği bildirimi.",
+        "usage_alerts": "Bir müşteri planının kullanım limitini aştı.",
+        "system": "Quotify'ın gönderdiği diğer tüm iletiler."
+      },
+      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Quotify'ın e-postalarını yönetir."
     },
     "credits": {
       "packs": {
@@ -907,6 +983,37 @@
         "draft_invoice": "Taslak bir fatura bağlantıyla paylaşılamaz.",
         "not_found": "Fatura bağlantısı bulunamadı."
       },
+      "payment": {
+        "amount_mismatch": "Ödeme, faturanın tutarı için değil.",
+        "invoice_not_payable": "Yalnızca açık veya tahsil edilemeyen bir fatura elle ödenebilir.",
+        "method_unavailable": "Bir ödeme yöntemi seçin.",
+        "bad_method": "Yöntem banka havalesi, nakit veya diğer olmalı.",
+        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
+        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
+        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin.",
+        "already_paid": "Fatura zaten ödenmiş.",
+        "not_payable": "Faturanın ödeme durumu şu an elle ödemeye izin vermiyor.",
+        "reference_reused": "Bu referans farklı bir tutarla zaten kaydedilmiş."
+      },
+      "payment_link": {
+        "bad_amount": "Tutar, küçük birimlerde pozitif bir sayı olmalıdır.",
+        "bad_currency": "Bu para birimi desteklenmiyor.",
+        "bad_description": "Açıklama zorunludur, en fazla 200 karakter.",
+        "bad_key": "Idempotency anahtarı çok uzun (en fazla 200 karakter).",
+        "bad_kind": "Tutar, para birimi, açıklama ve müşteri tek seferlik bağlantıya aittir; fatura bağlantısı bunları faturadan alır.",
+        "bad_page": "Sayfa boyutu 1 ile 200 arasında olmalıdır.",
+        "bad_status": "Durum active, paid, expired veya revoked olmalıdır.",
+        "consumed": "Bu bağlantı zaten kullanıldı.",
+        "customer_not_found": "Böyle bir müşteri yok.",
+        "idempotency_conflict": "Bu idempotency anahtarı başka bir ödeme bağlantısı için kullanıldı.",
+        "invoice_not_payable": "Ödenmiş veya iptal edilmiş faturaya ödeme bağlantısı gerekmez.",
+        "invoice_required": "Fatura türündeki ödeme bağlantısı için bir fatura gerekir.",
+        "not_found": "Böyle bir ödeme bağlantısı yok."
+      },
+      "portal_link": {
+        "customer_not_found": "Böyle bir müşteri yok.",
+        "customer_required": "Müşteri zorunludur."
+      },
       "credits": {
         "bad_amount": "Miktar, sıfırdan büyük tam sayıda kredi olmalıdır.",
         "bad_customer": "Müşteri geçerli değil.",
@@ -921,16 +1028,6 @@
         "key_reused": "Bu idempotency anahtarı başka bir istek için zaten kullanıldı.",
         "pack_not_found": "Böyle bir kredi paketi yok.",
         "unknown_currency": "Bu para birimi desteklenmiyor."
-      },
-      "payment": {
-        "bad_method": "Yöntem banka havalesi, nakit veya diğer olmalı.",
-        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
-        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
-        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin.",
-        "already_paid": "Fatura zaten ödenmiş.",
-        "invoice_not_payable": "Yalnızca açık veya tahsil edilemeyen bir fatura elle ödenebilir.",
-        "not_payable": "Faturanın ödeme durumu şu an elle ödemeye izin vermiyor.",
-        "reference_reused": "Bu referans farklı bir tutarla zaten kaydedilmiş."
       }
     },
     "plans": {
