@@ -41,7 +41,7 @@ services:
       - start
       - --mode=dev-container
       - --smp=1
-      - --memory=256M
+      - --memory=512M
       - --reserve-memory=0M
       - --overprovisioned
       - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
@@ -60,7 +60,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
-    deploy: { resources: { limits: { memory: 512m } } }
+    deploy: { resources: { limits: { memory: 768m } } }
 
   redpanda-console:
     <<: *defaults
