@@ -14,6 +14,12 @@ make e2e                       # the public API against the real stack
 make chaos N=100000            # exact totals while replicas are killed, connections reset, a broker stopped
 ```
 
+For day-to-day work on your machine, `make setup` once and `make dev` every day start the services with reload and the console at
+<http://localhost:42301>. `make dev` also fills the local stack with a **default dev seed**: sign in to the product app
+(<http://localhost:42301/app>) as **`user1@example.com` / `password123`** and every screen has something to show (two apps with customers,
+packages, invoices, payments, expenses, credits). These credentials are public and exist **only on a local dev stack**
+([docs/10-local-dev.md](docs/10-local-dev.md#default-dev-seed)); `SEED=0 make dev` skips the seed.
+
 ## Correctness in 60 seconds
 
 | Guarantee | How | Proof |
