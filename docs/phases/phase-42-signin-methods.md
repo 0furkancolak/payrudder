@@ -1,4 +1,4 @@
-# Phase 41 — Sign-in methods: password, one-time code, Google; the operator is a person
+# Phase 42 — Sign-in methods: password, one-time code, Google; the operator is a person
 
 ## Goal
 

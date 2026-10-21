@@ -4,7 +4,7 @@ import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
-import { COUNTRY_HINTS, CURRENCIES, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
+import { COUNTRY_HINTS, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -17,6 +17,7 @@ import { useAccountActions, usePreviewRouting, useProviderAccounts, useProviderS
 import CatalogueCard from "./CatalogueCard.vue";
 import BankTransferForm from "./BankTransferForm.vue";
 import { templateText } from "./templates";
+import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, locale } = useI18n();
 const errorText = useErrorText();
@@ -141,10 +142,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
     <datalist id="countries"><option v-for="c in COUNTRY_HINTS" :key="c" :value="c" /></datalist>
     <div v-for="(r, i) in rules" :key="i" class="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3" role="group" :aria-label="t('billing.providers.rule', { n: i + 1 })">
       <Input v-model="r.country" list="countries" maxlength="2" :aria-label="t('billing.providers.country', { n: i + 1 })" :placeholder="t('billing.providers.anyCountry')" />
-      <NativeSelect v-model="r.currency" :aria-label="t('billing.providers.currency', { n: i + 1 })">
-        <option value="">{{ t("billing.providers.anyCurrency") }}</option>
-        <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-      </NativeSelect>
+      <CurrencySelect v-model="r.currency" :aria-label="t('billing.providers.currency', { n: i + 1 })" :blank="t('billing.providers.anyCurrency')" />
       <NativeSelect v-model="r.provider" :aria-label="t('billing.providers.ruleProvider', { n: i + 1 })">
         <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
       </NativeSelect>
@@ -161,10 +159,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
     <form class="flex flex-wrap items-center gap-3 border-t pt-4" role="form" :aria-label="t('billing.providers.preview')" @submit.prevent="preview.mutate({ country: pCountry.trim().toUpperCase(), currency: pCurrency })">
       <h3 class="text-base font-semibold">{{ t("billing.providers.preview") }}</h3>
       <Input v-model="pCountry" class="w-32" maxlength="2" :aria-label="t('billing.providers.previewCountry')" :placeholder="t('billing.providers.previewCountry')" />
-      <NativeSelect v-model="pCurrency" :aria-label="t('billing.providers.previewCurrency')">
-        <option value="">{{ t("billing.providers.anyCurrency") }}</option>
-        <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-      </NativeSelect>
+      <CurrencySelect v-model="pCurrency" :aria-label="t('billing.providers.previewCurrency')" :blank="t('billing.providers.anyCurrency')" />
       <Button type="submit" variant="outline">{{ t("billing.providers.previewRun") }}</Button>
     </form>
     <p v-if="preview.data.value" class="text-sm" role="status">

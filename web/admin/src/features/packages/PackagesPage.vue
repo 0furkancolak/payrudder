@@ -4,9 +4,9 @@ import { computed, ref } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
-import { CURRENCIES } from "@/shared/lib/currencies";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
-import { useTenant } from "@/features/tenants";
+import { useCanWrite } from "@/shared/lib/access";
+import { useTenantCurrency } from "@/shared/lib/tenant-currency";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -14,12 +14,14 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreatePackage, usePackages } from "./api";
+import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, locale } = useI18n();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
-const tenant = useTenant(tenantId);
+const tenantCurrency = useTenantCurrency(tenantId);
+const canWrite = useCanWrite();
 const packages = usePackages(tenantId);
 const create = useCreatePackage(tenantId);
 
@@ -28,7 +30,6 @@ const name = ref("");
 const fee = ref("0");
 const extra = ref<{ currency: string; interval: "month" | "year"; amount: string }[]>([]);
 const formError = ref("");
-const tenantCurrency = computed(() => tenant.data.value?.currency ?? "");
 
 function addFee() {
   extra.value.push({ currency: tenantCurrency.value || "USD", interval: "year", amount: "0" });
@@ -68,7 +69,7 @@ function submit() {
 </script>
 
 <template>
-  <Card class="mb-6">
+  <Card v-if="canWrite" class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.packages.new") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.packages.intro") }}</p>
     <form class="grid gap-3" role="form" :aria-label="t('billing.packages.formLabel')" @submit.prevent="submit">
@@ -78,9 +79,7 @@ function submit() {
         <Input v-model="fee" inputmode="decimal" :aria-label="t('billing.packages.fee', { currency: tenantCurrency })" :placeholder="t('billing.packages.fee', { currency: tenantCurrency })" required />
       </div>
       <div v-for="(f, i) in extra" :key="i" class="grid grid-cols-[8rem_9rem_1fr_auto] gap-3">
-        <NativeSelect v-model="f.currency" :aria-label="t('billing.packages.extraCurrency')">
-          <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-        </NativeSelect>
+        <CurrencySelect v-model="f.currency" :aria-label="t('billing.packages.extraCurrency')" />
         <NativeSelect v-model="f.interval" :aria-label="t('billing.packages.interval')">
           <option value="month">{{ t("billing.packages.monthly") }}</option>
           <option value="year">{{ t("billing.packages.yearly") }}</option>

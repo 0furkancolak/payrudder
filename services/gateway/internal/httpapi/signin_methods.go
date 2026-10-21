@@ -19,7 +19,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/errkey"
 )
 
-// The three ways to sign in (phase 41): e-mail and password (signin.go's signIn), a one-time code mailed to the address, and Google. The operator console has
+// The three ways to sign in (phase 42): e-mail and password (signin.go's signIn), a one-time code mailed to the address, and Google. The operator console has
 // no sign-in of its own any more: an operator is a person who signs in one of these ways with a verified address that QUOTIFY_OPERATOR_EMAILS lists.
 
 // Per-minute limits per client address on the new public routes. The per-address limits of the code (one a minute, five an hour, five tries) are plans-svc's.

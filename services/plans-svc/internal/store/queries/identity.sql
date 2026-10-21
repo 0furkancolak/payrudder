@@ -121,7 +121,7 @@ RETURNING id;
 -- name: SetUserLocale :exec
 UPDATE users SET locale = $2 WHERE id = $1;
 
--- Sign-in by one-time code (phase 41). A row holds a keyed hash of the code, never the code.
+-- Sign-in by one-time code (phase 42). A row holds a keyed hash of the code, never the code.
 -- name: InsertLoginCode :exec
 INSERT INTO login_codes (id, email, salt, code_hash, expires_at) VALUES (@id, @email, @salt, @code_hash, now() + @ttl::interval);
 
@@ -151,7 +151,7 @@ RETURNING id, salt, code_hash, attempts;
 -- name: ConsumeLoginCode :one
 UPDATE login_codes SET used_at = now() WHERE id = $1 AND used_at IS NULL AND expires_at > now() RETURNING id;
 
--- Sign-in with an identity provider (phase 41).
+-- Sign-in with an identity provider (phase 42).
 -- name: GetIdentityUser :one
 SELECT user_id FROM user_identities WHERE provider = @provider AND subject = @subject;
 

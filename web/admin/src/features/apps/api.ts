@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap, type Tenant } from "@/shared/api/client";
 import type { Currency } from "@/shared/lib/currencies";
+import { operatorView } from "@/shared/lib/session";
 
 export const appKeys = {
   list: (accountId: string) => ["accounts", accountId, "apps"] as const,
@@ -10,8 +11,9 @@ export const appKeys = {
 /** The apps of an account, each with its sandbox and live tenant. */
 export function useApps(accountId: MaybeRefOrGetter<string>) {
   return useQuery({
-    queryKey: computed(() => appKeys.list(toValue(accountId))),
-    queryFn: () => unwrap(api.GET("/admin/v1/accounts/{id}/apps", { params: { path: { id: toValue(accountId) } } })),
+    queryKey: computed(() => [...appKeys.list(toValue(accountId)), operatorView() ? "operator" : "person"]),
+    // A person lists their own apps through the product API (the admin API is the operator's); the rows have the same shape.
+    queryFn: () => (operatorView() ? unwrap(api.GET("/admin/v1/accounts/{id}/apps", { params: { path: { id: toValue(accountId) } } })) : unwrap(api.GET("/app/v1/apps"))),
     enabled: computed(() => toValue(accountId) !== ""),
   });
 }

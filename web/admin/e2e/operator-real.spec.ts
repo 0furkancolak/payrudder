@@ -7,7 +7,7 @@ const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-toke
 const gateway = process.env.QUOTIFY_GATEWAY_URL ?? "http://localhost:42800";
 const shots = process.env.SHOTS;
 
-const tabs = ["", "apps", "customers", "subscriptions", "packages", "pricing", "payments", "reports", "credits", "payment-links", "accounting", "providers", "e-invoice", "mail", "address", "webhooks"];
+const tabs = ["", "invoices", "apps", "customers", "subscriptions", "packages", "pricing", "payments", "reports", "credits", "payment-links", "accounting", "providers", "e-invoice", "mail", "address", "webhooks"];
 
 async function tenantId(): Promise<string> {
   if (process.env.TENANT) return process.env.TENANT;

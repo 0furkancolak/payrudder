@@ -1,4 +1,4 @@
--- Phase 41: the three ways to sign in. E-mail + password existed; this adds the one-time code (OTP, passwordless) and Google. Like the other identity tables
+-- Phase 42: the three ways to sign in. E-mail + password existed; this adds the one-time code (OTP, passwordless) and Google. Like the other identity tables
 -- these are not tenant data: only the identity module, on the system pool, reads or writes them.
 
 -- +goose Up

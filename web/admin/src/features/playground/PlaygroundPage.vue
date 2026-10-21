@@ -12,7 +12,8 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PageHeader } from "@/shared/ui/page-header";
 import { Table, TableBody, TableCell, TableRow } from "@/shared/ui/table";
-import { CURRENCIES, SCENARIOS, usePlayground, type Currency, type Scenario } from "./usePlayground";
+import { SCENARIOS, usePlayground, type Currency, type Scenario } from "./usePlayground";
+import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 
 const { t, locale } = useI18n();
 const errorText = useErrorText();
@@ -41,11 +42,8 @@ function create() {
       <h2 class="text-base font-semibold">{{ t("playground.account.title") }}</h2>
       <form v-if="play.tenantId.value === null" class="grid gap-3 sm:grid-cols-2" role="form" :aria-label="t('playground.account.formLabel')" @submit.prevent="create">
         <Input v-model="name" :aria-label="t('playground.account.name')" :placeholder="t('playground.account.name')" required />
-        <NativeSelect v-model="currency" :aria-label="t('playground.account.currency')" required>
-          <option value="" disabled>{{ t("playground.account.currencyPlaceholder") }}</option>
-          <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-        </NativeSelect>
-        <Input v-model="timezone" :aria-label="t('playground.account.timezone')" :placeholder="t('playground.account.timezonePlaceholder')" required />
+        <CurrencySelect v-model="currency" :aria-label="t('playground.account.currency')" />
+        <TimezoneSelect v-model="timezone" :aria-label="t('playground.account.timezone')" />
         <Input v-model="graceHours" type="number" min="0" max="168" :aria-label="t('playground.account.grace')" :placeholder="t('playground.account.gracePlaceholder')" required />
         <Button type="submit" class="sm:col-span-2" :disabled="play.busy.value">{{ t("playground.account.create") }}</Button>
       </form>

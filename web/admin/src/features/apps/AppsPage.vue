@@ -3,16 +3,16 @@ import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useTenant } from "@/features/tenants";
-import { CURRENCIES, type Currency } from "@/shared/lib/currencies";
+import { type Currency } from "@/shared/lib/currencies";
 import { useErrorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
-import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { environmentWord, isValidSlug, useApps, useCreateApiKey, useCreateApp, useRevokeApiKey, type CreatedKey } from "./api";
+import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 
 const { t, te, locale } = useI18n();
 const errorText = useErrorText();
@@ -87,11 +87,8 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
     <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="form" :aria-label="t('apps.formLabel')" @submit.prevent="submit">
       <Input v-model="name" :aria-label="t('apps.name')" :placeholder="t('apps.name')" required />
       <Input v-model="slug" maxlength="60" :aria-label="t('apps.slug')" :placeholder="t('apps.slugPlaceholder')" :aria-invalid="!slugOk" />
-      <NativeSelect v-model="currency" :aria-label="t('apps.currency')" required>
-        <option value="" disabled>{{ t("apps.currencyPlaceholder") }}</option>
-        <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-      </NativeSelect>
-      <Input v-model="timezone" :aria-label="t('apps.timezone')" :placeholder="t('apps.timezonePlaceholder')" required />
+      <CurrencySelect v-model="currency" :aria-label="t('apps.currency')" />
+      <TimezoneSelect v-model="timezone" :aria-label="t('apps.timezone')" />
       <Input v-model="graceHours" type="number" min="0" max="168" :aria-label="t('apps.grace')" :placeholder="t('apps.gracePlaceholder')" required />
       <Button type="submit" :disabled="createApp.isPending.value || !accountId || !slugOk">{{ t("apps.create") }}</Button>
     </form>

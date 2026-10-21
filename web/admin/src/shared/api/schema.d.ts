@@ -1478,6 +1478,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tenant's payments (charges and refunds), newest first
+         * @description Reads the tenant's own payment ledger from the payment service and folds it: the rows one provider reference left behind (a charge that was pending and then succeeded) are one payment with its most settled outcome. Amounts are minor-unit strings, each in its own currency; they are never summed across currencies. `truncated` says the newest 1000 ledger rows were all read, so older payments may exist. The operator's `/admin/v1/tenants/{tenant_id}/ledger` stays operator-only: it also carries provider references and decline details. `503` when the payment service does not answer.
+         */
+        get: operations["listPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/assets/uploads": {
         parameters: {
             query?: never;
@@ -3593,6 +3613,21 @@ export interface components {
             create_time?: string;
             /** @description True once the person opened a mailed link for this address. Until then live API keys cannot be created. */
             email_verified?: boolean;
+        };
+        Payment: {
+            /** @description The ledger row that carries the outcome */
+            id?: string;
+            invoice_id?: string;
+            provider?: string;
+            /** @enum {string} */
+            kind?: "charge" | "refund";
+            /** @enum {string} */
+            status?: "paid" | "processing" | "failed" | "refunded";
+            /** @description int64 minor units as a string */
+            amount_minor?: string;
+            currency?: string;
+            /** Format: date-time */
+            occurred_at?: string;
         };
         Invitation: {
             /** Format: uuid */
@@ -7565,6 +7600,33 @@ export interface operations {
             };
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    listPayments: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        payments?: components["schemas"]["Payment"][];
+                        truncated?: boolean;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     createUploadSession: {

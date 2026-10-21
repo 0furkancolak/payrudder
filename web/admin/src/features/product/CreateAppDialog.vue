@@ -2,15 +2,15 @@
 import { useNavigate } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { CURRENCIES, type Currency } from "@/shared/lib/currencies";
+import type { Currency } from "@/shared/lib/currencies";
+import { ownZone } from "@/shared/lib/intl";
 import { useErrorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { NativeSelect } from "@/shared/ui/native-select";
+import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 import { useCreateApp } from "./api";
-import { timezoneChoices } from "./lib";
 
 const { t } = useI18n();
 const errorText = useErrorText();
@@ -18,10 +18,9 @@ const navigate = useNavigate();
 const open = defineModel<boolean>("open", { required: true });
 const create = useCreateApp();
 
-const zones = timezoneChoices();
 const name = ref("");
 const currency = ref<Currency>("USD");
-const timezone = ref(zones[0] ?? "UTC");
+const timezone = ref(ownZone());
 const ready = computed(() => name.value.trim() !== "");
 
 // A dialog that was closed opens clean: the last name and error are not shown again.
@@ -58,14 +57,14 @@ function submit() {
           <Label for="ca-name">{{ t("product.createApp.name") }}</Label>
           <Input id="ca-name" v-model="name" autocomplete="off" required />
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4">
           <div class="flex flex-col gap-1.5">
             <Label for="ca-currency">{{ t("product.createApp.currency") }}</Label>
-            <NativeSelect id="ca-currency" v-model="currency"><option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option></NativeSelect>
+            <CurrencySelect id="ca-currency" v-model="currency" :aria-label="t('product.createApp.currency')" />
           </div>
           <div class="flex flex-col gap-1.5">
             <Label for="ca-tz">{{ t("product.createApp.timezone") }}</Label>
-            <NativeSelect id="ca-tz" v-model="timezone"><option v-for="z in zones" :key="z" :value="z">{{ z }}</option></NativeSelect>
+            <TimezoneSelect id="ca-tz" v-model="timezone" :aria-label="t('product.createApp.timezone')" />
           </div>
         </div>
         <p class="text-muted-foreground text-xs">{{ t("product.createApp.immutable") }}</p>

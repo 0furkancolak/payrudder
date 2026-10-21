@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { pickLanguage } from "../e2e-mock/ui";
 
 // The product app against the REAL stack (make dev / make up): nothing is mocked. It signs a fresh person up, seeds real money data in the app's sandbox
 // through the public API (the mock payment provider plays the payments out), and checks what the pages show against what was seeded.
@@ -165,7 +166,7 @@ test.describe("product app, real stack", () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await signInUi(page, email);
     await page.waitForURL("**/app");
-    await page.goto(`/app/apps/${appId}?env=live`);
+    await page.goto(`/app/apps/${appId}/keys?env=live`);
     const keys = page.getByRole("region", { name: "API keys" });
     await keys.getByRole("button", { name: "Live key" }).click();
     const reveal = page.getByRole("dialog");
@@ -189,7 +190,7 @@ test.describe("product app, real stack", () => {
       const o = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
       expect(o.sw, `horizontal overflow on ${tag}`).toBeLessThanOrEqual(o.cw);
     };
-    const pages = [`/app`, `/app/apps/${appId}?env=sandbox`, `/app/settings`, `/app/t/${sandbox}/customers`, `/app/t/${sandbox}/payment-links`, `/app/t/${sandbox}/credits`, `/app/t/${sandbox}/webhooks`];
+    const pages = [`/app`, `/app/apps/${appId}?env=sandbox`, `/app/settings`, `/app/t/${sandbox}/customers`, `/app/t/${sandbox}/subscriptions`, `/app/t/${sandbox}/packages`, `/app/t/${sandbox}/pricing`, `/app/t/${sandbox}/invoices`, `/app/t/${sandbox}/payments`, `/app/t/${sandbox}/payment-links`, `/app/t/${sandbox}/credits`, `/app/t/${sandbox}/accounting`, `/app/t/${sandbox}/reports`, `/app/t/${sandbox}/webhooks`, `/app/t/${sandbox}/mail`, `/app/apps/${appId}/keys?env=sandbox`, `/app/apps/${appId}/settings?env=sandbox`, `/app/members`];
     for (const [w, h] of [[375, 812], [768, 1024], [1280, 900]] as [number, number][]) {
       await page.setViewportSize({ width: w, height: h });
       for (const p of pages) {
@@ -202,9 +203,8 @@ test.describe("product app, real stack", () => {
     }
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`/app/apps/${appId}?env=sandbox`);
-    const switcher = page.locator("select").first();
     for (const [code, dir] of [["tr", "ltr"], ["de", "ltr"], ["es", "ltr"], ["fr", "ltr"], ["ar", "rtl"], ["en", "ltr"]] as [string, string][]) {
-      await switcher.selectOption(code);
+      await pickLanguage(page, code);
       await expect(page.locator("html")).toHaveAttribute("lang", code);
       await expect(page.locator("html")).toHaveAttribute("dir", dir);
       await page.waitForLoadState("networkidle");

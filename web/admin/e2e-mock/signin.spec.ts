@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, signInAsOperator } from "./gateway";
 import { SESSION, productGateway } from "./product";
+import { pickLanguage } from "./ui";
 
-// The three ways to sign in (phase 41): e-mail and password, a one-time code mailed to the address, and Google. The gateway is mocked. SHOTS=<dir> also
+// The three ways to sign in (phase 42): e-mail and password, a one-time code mailed to the address, and Google. The gateway is mocked. SHOTS=<dir> also
 // writes screenshots of the pages so the look can be reviewed.
 const shots = process.env.SHOTS;
 async function shoot(page: Page, name: string): Promise<void> {
@@ -37,7 +38,7 @@ test.describe("the sign-in page", () => {
   test("the Google button speaks the page's language", async ({ page }) => {
     await productGateway(new MockGateway(), { methods: { password: true, otp: true, google: true } }).gw.install(page);
     await page.goto("/signin");
-    await page.getByLabel("Language").selectOption("de");
+    await pickLanguage(page, "de");
     const google = page.getByRole("link", { name: "Weiter mit Google" });
     await expect(google).toHaveAttribute("href", "/gw/auth/google/start?locale=de");
     // The button keeps Google's own look: a white face and the multicolour mark (light theme).
@@ -170,7 +171,7 @@ test.describe("sign in with an e-mailed code", () => {
   test("the code boxes stay left to right in Arabic, and the page is right to left", async ({ page }) => {
     await productGateway(new MockGateway()).gw.install(page);
     await page.goto("/signin");
-    await page.getByLabel("Language").selectOption("ar");
+    await pickLanguage(page, "ar");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await page.getByRole("tab", { name: "رمز بالبريد" }).click();
     await page.getByLabel("البريد الإلكتروني").fill("ada@example.com");
@@ -226,6 +227,9 @@ test.describe("the operator is a person", () => {
     await page.getByRole("link", { name: "My apps" }).click();
     await page.waitForURL("**/app");
     await expect(page.getByRole("link", { name: "Operator console" })).toBeVisible();
+    // No label is a raw translation key.
+    await expect(page.locator("body")).not.toContainText("shell.");
+    await shoot(page, "16-operator-door");
   });
 
   test("a person who is not an operator sees no door to it, and the address leads home", async ({ page }) => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatMinor, minorToMajor, parseMajor } from "./money";
+import { formatMinor, maskDigits, maskEmail, minorToMajor, parseMajor } from "./money";
+import { privacyMode } from "./prefs";
 
 describe("minorToMajor", () => {
   it("is the plain decimal a person would type", () => {
@@ -69,5 +70,34 @@ describe("formatMinor in a right-to-left language", () => {
     expect(out.startsWith("⁦")).toBe(true);
     expect(out.endsWith("⁩")).toBe(true);
     expect(formatMinor("-3000", "TRY", "en")).not.toContain("⁦");
+  });
+});
+
+describe("privacy mode", () => {
+  it("masks the figures of an amount and keeps the currency", () => {
+    privacyMode.value = true;
+    try {
+      expect(formatMinor("123456", "USD", "en")).toBe("$••••");
+      expect(formatMinor("-3000", "TRY", "en")).not.toMatch(/\d/);
+      expect(formatMinor("-3000", "TRY", "en")).toContain("•");
+      expect(formatMinor("900", "JPY", "en")).toBe("¥••••");
+      expect(formatMinor("abc", "USD", "en")).toBe("abc");
+    } finally {
+      privacyMode.value = false;
+    }
+    expect(formatMinor("123456", "USD", "en")).toBe("$1,234.56");
+  });
+  it("masks other numeral systems", () => {
+    expect(maskDigits("١٢٣٫٤٥ ر.س.")).toBe("•••• ر.س.");
+    expect(maskDigits("1 234,56 €")).toBe("•••• €");
+  });
+  it("masks an e-mail address only in privacy mode", () => {
+    expect(maskEmail("ann@example.com")).toBe("ann@example.com");
+    privacyMode.value = true;
+    try {
+      expect(maskEmail("ann@example.com")).toBe("a•••@example.com");
+    } finally {
+      privacyMode.value = false;
+    }
   });
 });

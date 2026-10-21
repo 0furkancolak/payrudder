@@ -120,7 +120,7 @@ export interface ProductState {
   /** The tokens the mocked mails carry. */
   verifyToken: string;
   resetToken: string;
-  /** Phase 41: whether the server calls Ada a platform operator, which sign-in methods it offers, and the one-time code the mocked mail carries. */
+  /** Phase 42: whether the server calls Ada a platform operator, which sign-in methods it offers, and the one-time code the mocked mail carries. */
   operator: boolean;
   methods: { password: boolean; otp: boolean; google: boolean };
   code: string;
@@ -254,4 +254,54 @@ export async function signInAsAda(page: Page): Promise<void> {
   await page.getByLabel("Password", { exact: true }).fill("right password!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("**/app");
+}
+
+export const INVOICE_1 = "d0000000-0000-4000-8000-000000000001";
+export const INVOICE_2 = "d0000000-0000-4000-8000-000000000002";
+export const INVOICE_3 = "d0000000-0000-4000-8000-000000000003";
+const invoice = (id: string, number: string, status: string, total: string, customer: string, extra: Record<string, unknown> = {}) => ({
+  id, number, status, currency: "USD", total_minor: total, subtotal_minor: total, customer_external_id: customer, period_id: "2026-09", kind: "REGULAR",
+  create_time: "2026-10-01T09:00:00Z", finalize_time: "2026-10-01T09:05:00Z", saga_state: "COMPLETED", ...extra,
+});
+export const invoiceLines = [
+  { line_no: 1, kind: "BASE_FEE", description: "Pro plan, September", service_from: "2026-09-01T00:00:00Z", service_to: "2026-09-30T00:00:00Z", quantity: "1", amount_minor: "4000" },
+  { line_no: 2, kind: "USAGE", description: "API calls", meter_code: "api_calls", quantity: "9000", amount_minor: "900" },
+];
+
+/** What the billing pages of the product app read: /v1/invoices, /v1/payments, packages and pricing, reports. Nothing here is an /admin route. */
+export function billingGateway(gw: MockGateway): MockGateway {
+  return gw.on((c) => {
+    if (c.method !== "GET" || !c.path.startsWith("/v1/")) return undefined;
+    if (c.path === "/v1/invoices") {
+      const status = c.query.get("status");
+      if (c.query.get("page_token") === "p2") return { body: { invoices: [invoice(INVOICE_3, "INV-2026-000001", "paid", "1500", "cus_old")] } };
+      const all = [invoice(INVOICE_1, "INV-2026-000003", "paid", "4900", "cus_acme"), invoice(INVOICE_2, "INV-2026-000002", "open", "29900", "cus_globex")];
+      return { body: { invoices: status ? all.filter((i) => i.status === status) : all, next_page_token: status ? "" : "p2" } };
+    }
+    if (c.path === `/v1/invoices/${INVOICE_1}`) return { body: invoice(INVOICE_1, "INV-2026-000003", "paid", "4900", "cus_acme", { lines: invoiceLines, payments: [] }) };
+    if (c.path === `/v1/invoices/${INVOICE_1}/pdf`) return { body: { url: "https://files.example.test/INV-2026-000003.pdf", expires_at: "2026-10-21T10:05:00Z" } };
+    if (c.path === "/v1/payments") {
+      return {
+        body: {
+          truncated: false,
+          payments: [
+            { id: "9", invoice_id: INVOICE_1, provider: "iyzico", kind: "charge", status: "paid", amount_minor: "4900", currency: "USD", occurred_at: "2026-10-21T09:41:00Z" },
+            { id: "8", invoice_id: INVOICE_2, provider: "iyzico", kind: "charge", status: "failed", amount_minor: "29900", currency: "USD", occurred_at: "2026-10-21T08:12:00Z" },
+            { id: "7", invoice_id: INVOICE_3, provider: "paddle", kind: "charge", status: "processing", amount_minor: "1500", currency: "USD", occurred_at: "2026-10-20T17:03:00Z" },
+            { id: "6", invoice_id: INVOICE_1, provider: "iyzico", kind: "refund", status: "refunded", amount_minor: "900", currency: "USD", occurred_at: "2026-10-19T15:20:00Z" },
+          ],
+        },
+      };
+    }
+    if (c.path === "/v1/plans") return { body: { plans: [{ id: "p1", code: "pro", name: "Pro", latest_version: 2 }] } };
+    if (c.path === "/v1/plans/pro/versions/latest") return { body: { version: 2, base_fee_minor: "4000", fees: [{ currency: "EUR", interval: "SUBSCRIPTION_INTERVAL_YEAR", base_fee_minor: "40000" }], prices: [{ meter_code: "api_calls" }] } };
+    if (c.path === "/v1/coupons") return { body: { coupons: [{ code: "SAVE10", percent_off_bps: 1000, active: true, redeemed: 3, duration: "COUPON_DURATION_ONCE" }] } };
+    if (c.path === "/v1/tax-rates") return { body: { rates: [{ country: "DE", name: "VAT", rate_bps: 1900 }] } };
+    if (c.path === "/v1/dunning-settings") return { body: { retry_hours: [24, 72, 168], defaults_in_use: true } };
+    if (c.path === "/v1/reports/revenue") return { body: { rows: [{ period: "2026-09", currency: "USD", billed_minor: "100000", collected_minor: "90000", outstanding_minor: "10000", refunded_minor: "0" }] } };
+    if (c.path === "/v1/reports/subscriptions") return { body: { rows: [{ currency: "USD", active: 4, trialing: 0, past_due: 1, mrr_minor: "490000" }] } };
+    if (c.path === "/v1/reports/dunning") return { body: { rows: [] } };
+    if (c.path === "/v1/customers") return { body: { customers: [] } };
+    return undefined;
+  });
 }

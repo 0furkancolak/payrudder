@@ -102,3 +102,47 @@ An account always keeps one owner. Every change that could remove one (demoting 
 - `internal/itest/members_integration_test.go` (real Postgres): who may invite and manage, refresh / throttle / expiry / revoke / resend of invitations, hash at rest and 7-day lifetime, accepting as a new user (parallel single use, language, session) and as an existing user (wrong user, sign-in required, proves the address), quotas, roles under every actor, leaving, the last owner including the demotion race, removal cutting off apps and tenants, and strangers (other accounts) getting "not found" from every route.
 - Gateway tests: session required on every member route, the acting user and account come from the session and not from a body, another account is refused before plans-svc is asked, viewers read and leave only, the public lookup / accept routes and their per-address limit.
 - Mocked Playwright: invite, resend, cancel, role change, remove with confirmation, the last owner, viewer / administrator views, rename, the four accept-page cases, the account switcher, no-account state.
+
+## 3. The billing pages for people
+
+Phase 38 gave people the customers, payment links, credits and webhooks pages (the console's own pages, mounted under `/app/t/{tenant}`) and left out the pages whose console versions call operator-only endpoints. Now a person has, under one tab bar per environment: **Customers, Invoices, Payments, Packages, Pricing, Reports, Payment links, Credits, Webhooks.**
+
+### Which route serves which page
+
+| Page | Calls | Notes |
+|---|---|---|
+| Invoices (list, status filter, load more) | `GET /v1/invoices` | Tenant route that existed already; a session reaches it by acting as its own tenant (`X-Quotify-Tenant`). |
+| Invoice (lines, totals, payments recorded by hand, PDF) | `GET /v1/invoices/{id}`, `/pdf` | The PDF is a presigned link (five minutes) opened in a new tab. |
+| Payments | **`GET /v1/payments`** (new) | The tenant's ledger as a person reads it: charges and refunds, each folded to its settled outcome (paid, processing, failed, refunded), newest first, minor-unit strings per currency, `truncated` when the newest 1000 ledger rows were all read, `503` when payments-worker does not answer. No provider references, no decline details, no payouts or disputes. |
+| Packages | `GET /v1/plans`, `/v1/plans/{code}/versions/{version}` | Publishing is `POST` on the same routes (owner and administrator). |
+| Pricing (coupons, retry schedule, tax rates) | `/v1/coupons`, `/v1/dunning-settings`, `/v1/tax-rates` | |
+| Reports | `/v1/reports/revenue`, `/subscriptions`, `/dunning` | A row per currency, never one total. |
+
+The new route is a tenant route, not an `/app/v1` one: it is useful to API-key holders too, it needs no second authorisation path, and "a session acting as its own tenant" is already tested for every `/v1` route. The tenant whose ledger is read is the **principal's** (from the API key, or from plans-svc's membership-checked answer for a session); nothing in the request can name another (tested with a foreign tenant id in the query).
+
+### What stays operator-only, and is not in the app
+
+The saga timeline, the transfer controls, recording a payment by hand, issuing credit notes, the raw ledger (`/admin/v1/tenants/{id}/ledger`) and the reconciliation, the operator's tenant lookup (`/admin/v1/tenants/{id}`), provider accounts and routing, dead letters, replays. The product pages for invoices and payments are new components (`features/product/InvoicesPage.vue`, `InvoiceDetailPage.vue`, `PaymentsPage.vue`, API in `billingApi.ts`) for exactly this reason: the console's versions call those routes. Two guards keep it that way:
+
+- `features/product/appBoundary.test.ts` (Vitest) reads the sources of every page mounted under `/app/t` and fails when one mentions an `/admin/v1` route or the operator's `useTenant`. (It found one: the packages page asked for the tenant's currency through `/admin/v1/tenants/{id}`; it now uses `useTenantCurrency`, which reads a person's apps instead.)
+- A mocked Playwright spec visits every tab and asserts that no `/admin/` call was made and the session survived (an operator route answers a session `401`, and a `401` signs the person out).
+- Gateway tests assert that a session gets `401` on the operator copies (`/admin/v1/tenants/{id}/ledger`, `/invoices`, `/pdf`, `/saga`, `/reconciliation`, `/provider-accounts`, the tenant lookup, recording payments, credit notes), with and without naming a tenant.
+
+### Viewers
+
+A viewer's session may only `GET` (the gateway refuses any other method with `403 identity.account.forbidden` before the handler runs: tested for packages, versions, coupons, tax rates, dunning, customers and invoice links). The pages follow: the tenant layout works out the person's role in the account that owns the tenant and provides it (`shared/lib/access.ts`); the packages form is hidden for a viewer, the pricing page is wrapped in a disabled `<fieldset>` (its forms stay visible and readable, switched off), and a note says the role is read-only. The server remains the authority; the UI only avoids offering buttons that would be refused.
+
+### Cross-account tests
+
+`billing_pages_test.go` (gateway) asks every read these pages make, plus the pages mounted earlier, as Ada acting on Bob's live and sandbox tenants, as Bob acting on Ada's, with a session and no tenant, and with no, expired and unknown credentials: always 404 `identity.tenant.not_found` or 401, and no ledger is read for a refused request. The plans-svc side of the same promise (a membership join in SQL for `ResolveMyTenant`) is the phase 38 integration test.
+
+### Not built
+
+Credit notes and refunds on the invoice page (read-only credit notes for people would need the `/v1/credit-notes` reads wired into the page), the subscriptions page (its provider-run panel is operator-only), e-invoices, the seller address and the mail switch for people. Each is a candidate for a later phase; none is stubbed.
+
+### Verification
+
+- Gateway: `billing_pages_test.go` (above) and the `/v1/payments` fold, order, limits, truncation, `503` and tenant-from-principal tests; OpenAPI contract test.
+- Vitest: the boundary test, locale parity for the new keys.
+- Mocked Playwright (`e2e-mock/product.spec.ts`): invoices (filter, load more, open, PDF), payments, packages / pricing / reports for an owner, the same for a viewer, every tab without an operator call; the existing `billing.spec.ts` packages tests now provide the tenant list the page reads its currency from.
+- **Not verified:** the pages against a real gateway and payments-worker end to end (only the mocked contract and the gateway tests with a fake payments-worker); Safari and Firefox; the PDF link in a real browser (the test checks the URL passed to `window.open`).

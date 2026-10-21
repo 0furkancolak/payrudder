@@ -14,9 +14,7 @@
     "tenants": "Locataires",
     "playground": "Bac à sable",
     "deadLetters": "Lettres mortes",
-    "signOut": "Se déconnecter",
-    "operator": "Console opérateur",
-    "myApps": "Mes applications"
+    "signOut": "Se déconnecter"
   },
   "common": {
     "loading": "Chargement…",
@@ -1635,7 +1633,13 @@
       "customers": "Clients",
       "paymentLinks": "Liens de paiement",
       "credits": "Crédits",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "invoices": "Factures",
+      "payments": "Paiements",
+      "packages": "Forfaits",
+      "pricing": "Tarification",
+      "reports": "Rapports",
+      "readOnly": "Votre rôle est lecteur : vous pouvez tout lire ici, mais pas modifier."
     },
     "settings": {
       "title": "Réglages",
@@ -1737,6 +1741,127 @@
       "signInJoin": "Se connecter et rejoindre",
       "createTitle": "Créez votre accès",
       "createJoin": "Créer l'accès et rejoindre"
+    },
+    "billing": {
+      "invoices": {
+        "title": "Factures",
+        "intro": "Ce que cet environnement a facturé. Ouvrez une facture pour voir ses lignes et télécharger le PDF.",
+        "status": "Statut",
+        "all": "Tous les statuts",
+        "number": "Numéro",
+        "customer": "Client",
+        "period": "Période",
+        "created": "Créée",
+        "total": "Total",
+        "empty": "Pas encore de factures. Elles apparaissent à la clôture d'une période de facturation.",
+        "draft": "Brouillon",
+        "loadMore": "Charger plus"
+      },
+      "invoice": {
+        "back": "Toutes les factures",
+        "issued": "Émise",
+        "openPdf": "Ouvrir le PDF",
+        "lines": "Lignes",
+        "description": "Description",
+        "service": "Période de service",
+        "quantity": "Quantité",
+        "amount": "Montant",
+        "total": "Total"
+      },
+      "payments": {
+        "title": "Paiements",
+        "intro": "Paiements et remboursements, du plus récent au plus ancien. Chaque paiement indique l'issue à laquelle il a abouti.",
+        "empty": "Pas encore de paiements.",
+        "kind": "Type",
+        "kinds": {
+          "charge": "Paiement",
+          "refund": "Remboursement"
+        },
+        "invoice": "Facture",
+        "viewInvoice": "Voir la facture"
+      }
+    },
+    "membersPage": {
+      "intro": "Qui fait partie de cette organisation, avec quels rôles, et les invitations encore ouvertes."
+    },
+    "apiKeysPage": {
+      "intro": "Les clés que votre serveur utilise pour appeler Quotify pour cette application. Une clé appartient à un environnement ; son secret n'est affiché qu'une fois."
+    },
+    "appSettings": {
+      "intro": "Ce avec quoi cette application a été créée. La devise et le fuseau horaire déterminent le calcul de chaque facture ; ils sont donc fixés une fois l'application créée.",
+      "general": "Général",
+      "slug": "Nom d'adresse",
+      "id": "Identifiant de l'application",
+      "currency": "Devise par défaut",
+      "timezone": "Fuseau horaire",
+      "grace": "Délai de grâce",
+      "tenant": "Identifiant de l'environnement",
+      "moreCurrencies": "Une application peut vendre dans plusieurs devises : ajoutez un prix dans une autre devise à un forfait, sous"
     }
+  },
+  "shell": {
+    "skip": "Aller au contenu",
+    "navLabel": "Navigation principale",
+    "breadcrumbs": "Fil d'Ariane",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "collapse": "Réduire la barre latérale",
+    "expand": "Développer la barre latérale",
+    "switchApp": "Changer d'application",
+    "apps": "Applications",
+    "allApps": "Toutes les applications",
+    "platform": "Plateforme",
+    "org": "Organisation",
+    "sections": {
+      "account": "Organisation",
+      "platform": "Plateforme",
+      "overview": "Vue d'ensemble",
+      "customers": "Clients",
+      "billing": "Facturation",
+      "developers": "Développeurs",
+      "settings": "Paramètres"
+    },
+    "items": {
+      "overview": "Applications",
+      "members": "Membres",
+      "settings": "Paramètres",
+      "tenants": "Locataires",
+      "playground": "Bac à sable",
+      "deadLetters": "Lettres mortes",
+      "dashboard": "Tableau de bord",
+      "customers": "Clients",
+      "subscriptions": "Abonnements",
+      "credits": "Crédits",
+      "packages": "Forfaits",
+      "pricing": "Prix et taxes",
+      "invoices": "Factures",
+      "payments": "Paiements",
+      "paymentLinks": "Liens de paiement",
+      "accounting": "Comptabilité",
+      "reports": "Rapports",
+      "webhooks": "Webhooks",
+      "apps": "Applications et clés API",
+      "apiKeys": "Clés API",
+      "providers": "Prestataires de paiement",
+      "mail": "E-mail",
+      "address": "Adresse de l'entreprise",
+      "einvoice": "Facture électronique",
+      "appSettings": "Paramètres de l'application",
+      "operator": "Console opérateur",
+      "myApps": "Mes applications"
+    }
+  },
+  "privacy": {
+    "hide": "Masquer les montants",
+    "show": "Afficher les montants",
+    "hidden": "Masqué",
+    "banner": "Le mode discret est activé : les montants sont masqués."
+  },
+  "picker": {
+    "currency": "Devise",
+    "currencyPlaceholder": "Rechercher une devise",
+    "timezone": "Fuseau horaire",
+    "timezonePlaceholder": "Rechercher un fuseau horaire",
+    "noMatch": "Aucun résultat"
   }
 }

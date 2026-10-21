@@ -30,6 +30,9 @@ const operatorSignIn: Handler = (c) => {
   if (c.method === "GET" && c.path === "/auth/me" && c.headers["authorization"] === `Bearer ${OPERATOR}`) {
     return { body: { user: operatorUser, memberships: [], operator: true, expire_time: "2026-11-04T09:00:00Z" } };
   }
+  // The operator is a person too, and the shell asks for their own organisation and apps (none here) whatever page they are on.
+  if (c.method === "GET" && c.path === "/app/v1/apps") return { body: { apps: [] } };
+  if (c.method === "GET" && c.path === "/app/v1/account") return { body: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Operator Co", role: "owner", members: [] } };
   return undefined;
 };
 

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickLanguage } from "../e2e-mock/ui";
 import { signInAsOperator } from "./operator";
 
 test.describe("languages", () => {
@@ -7,7 +8,7 @@ test.describe("languages", () => {
     await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
-    await page.getByLabel("Language").selectOption("tr");
+    await pickLanguage(page, "tr");
     await expect(page.getByRole("heading", { name: "Tekrar hoş geldiniz" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "tr");
     await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
@@ -18,7 +19,7 @@ test.describe("languages", () => {
 
   test("Arabic reads right to left", async ({ page }) => {
     await page.goto("/signin");
-    await page.getByLabel("Language").selectOption("ar");
+    await pickLanguage(page, "ar");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.getByRole("heading", { name: "أهلاً بعودتك" })).toBeVisible();
   });
@@ -33,7 +34,7 @@ test.describe("languages", () => {
 
   test("the signed-in pages and the playground are translated too", async ({ page }) => {
     await page.goto("/signin");
-    await page.getByLabel("Language").selectOption("fr");
+    await pickLanguage(page, "fr");
     await signInAsOperator(page, { email: "E-mail", password: "Mot de passe", submit: "Se connecter" });
     await expect(page.getByRole("heading", { name: "Locataires" })).toBeVisible();
     await page.getByRole("link", { name: "Bac à sable" }).click();

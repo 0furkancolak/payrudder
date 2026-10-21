@@ -34,7 +34,7 @@ const (
 	tokAda    = "qs_ada"
 	tokBob    = "qs_bob"
 	tokViewer = "qs_viewer" // a viewer of Ada's account
-	// Phase 41: sessions of people the operator list may name (see signin_methods_test.go).
+	// Phase 42: sessions of people the operator list may name (see signin_methods_test.go).
 	tokOperator           = "qs_operator"            // boss@example.com, verified: an operator
 	tokOperatorUnverified = "qs_operator_unverified" // the same address, never verified: not an operator
 	tokSpoof              = "qs_spoof"               // an address that only starts like a listed one
@@ -68,7 +68,7 @@ type fakeIdentity struct {
 	resetPasswords []*plansv1.ResetPasswordRequest
 	resends        int
 
-	// Phase 41: what the one-time code and provider routes passed on.
+	// Phase 42: what the one-time code and provider routes passed on.
 	codeRequests []*plansv1.RequestLoginCodeRequest
 	codeVerifies []*plansv1.VerifyLoginCodeRequest
 	identities   []*plansv1.SignInWithIdentityRequest
@@ -383,11 +383,14 @@ func (b *productBilling) GetRevenueReport(ctx context.Context, _ *billingv1.GetR
 }
 
 type product struct {
-	ts      *httptest.Server
-	ident   *fakeIdentity
-	plans   *productPlans
-	billing *productBilling
-	limiter *fakeLimiter
+	// ledgerPaths are the payments-worker paths the gateway asked, in order: they name the tenant whose ledger was read.
+	ledgerMu    sync.Mutex
+	ledgerPaths []string
+	ts          *httptest.Server
+	ident       *fakeIdentity
+	plans       *productPlans
+	billing     *productBilling
+	limiter     *fakeLimiter
 }
 
 // newProduct starts the gateway with the fakes above and a fake payments-worker that answers ledger requests with `ledger` (nil: unreachable).
@@ -417,6 +420,9 @@ func newProduct(t *testing.T, ledger func() []map[string]any, tweak func(*Deps))
 		pw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case strings.HasSuffix(r.URL.Path, "/ledger"):
+				p.ledgerMu.Lock()
+				p.ledgerPaths = append(p.ledgerPaths, r.URL.Path)
+				p.ledgerMu.Unlock()
 				_ = json.NewEncoder(w).Encode(map[string]any{"entries": ledger()})
 			case strings.HasSuffix(r.URL.Path, "/provider-accounts"):
 				_ = json.NewEncoder(w).Encode(map[string]any{"accounts": []map[string]any{{"provider": "iyzico", "environment": "live", "is_default": true}}})

@@ -221,7 +221,7 @@ type GetIdentityUserParams struct {
 	Subject  string
 }
 
-// Sign-in with an identity provider (phase 41).
+// Sign-in with an identity provider (phase 42).
 func (q *Queries) GetIdentityUser(ctx context.Context, arg GetIdentityUserParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, getIdentityUser, arg.Provider, arg.Subject)
 	var user_id uuid.UUID
@@ -611,7 +611,7 @@ type InsertLoginCodeParams struct {
 	Ttl      pgtype.Interval
 }
 
-// Sign-in by one-time code (phase 41). A row holds a keyed hash of the code, never the code.
+// Sign-in by one-time code (phase 42). A row holds a keyed hash of the code, never the code.
 func (q *Queries) InsertLoginCode(ctx context.Context, arg InsertLoginCodeParams) error {
 	_, err := q.db.Exec(ctx, insertLoginCode,
 		arg.ID,

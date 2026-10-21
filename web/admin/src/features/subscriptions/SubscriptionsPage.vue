@@ -4,7 +4,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { type Subscription } from "@/shared/api/client";
 import { useErrorText } from "@/shared/lib/errors";
-import { CURRENCIES, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
+import { PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { enumWord, label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { useCustomers } from "@/features/customers";
@@ -19,6 +19,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useEntitlements, useSubscriptionActions, useSubscriptions } from "./api";
 import ChangePanel from "./ChangePanel.vue";
 import ProviderRunPanel from "./ProviderRunPanel.vue";
+import { operatorView } from "@/shared/lib/session";
+import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, te, locale } = useI18n();
 const errorText = useErrorText();
@@ -61,6 +63,8 @@ const entitlements = useEntitlements(tenantId, usageCustomer);
 const percent = (used?: string, limit?: string | null) => (limit && Number(limit) > 0 ? Math.min(100, Math.round((Number(used ?? 0) / Number(limit)) * 100)) : 0);
 const selected = computed<Subscription | undefined>(() => (subs.data.value?.subscriptions ?? []).find((s) => s.id === selectedId.value));
 const state = (s: Subscription) => enumWord(s.state, "SUBSCRIPTION_STATE_");
+/** Moving a subscription to another payment provider, and driving one a provider runs, go through the provider accounts: operator actions. */
+const operator = computed(() => operatorView());
 const providerRuns = computed(() => selected.value?.owner === "provider");
 const newPlan = ref("");
 const target = ref("");
@@ -97,10 +101,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
         <option value="" disabled>{{ t("billing.subscriptions.package") }}</option>
         <option v-for="p in packages.data.value ?? []" :key="p.plan.id" :value="p.plan.code">{{ p.plan.code }}</option>
       </NativeSelect>
-      <NativeSelect v-model="currency" :aria-label="t('billing.subscriptions.currency')">
-        <option value="">{{ t("billing.subscriptions.defaultCurrency") }}</option>
-        <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-      </NativeSelect>
+      <CurrencySelect v-model="currency" :aria-label="t('billing.subscriptions.currency')" :blank="t('billing.subscriptions.defaultCurrency')" />
       <NativeSelect v-model="interval" :aria-label="t('billing.subscriptions.interval')">
         <option value="SUBSCRIPTION_INTERVAL_MONTH">{{ t("billing.subscriptions.monthly") }}</option>
         <option value="SUBSCRIPTION_INTERVAL_YEAR">{{ t("billing.subscriptions.yearly") }}</option>
@@ -163,8 +164,8 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
   <Card v-if="selected" role="region" :aria-label="t('billing.subscriptions.managing', { customer: selected.customer_external_id ?? '' })">
     <h2 class="text-lg font-semibold">{{ t("billing.subscriptions.managing", { customer: selected.customer_external_id ?? "" }) }}</h2>
     <p v-if="providerRuns" class="text-muted-foreground text-sm">{{ t("billing.subscriptions.providerRuns", { provider: selected.provider ?? "" }) }}</p>
-    <ProviderRunPanel v-if="providerRuns && !selected.end_time" :subscription="selected" :packages="packages.data.value ?? []" :tenant-id="tenantId" :environment="environment" />
-    <div v-else class="flex flex-wrap gap-2">
+    <ProviderRunPanel v-if="providerRuns && operator && !selected.end_time" :subscription="selected" :packages="packages.data.value ?? []" :tenant-id="tenantId" :environment="environment" />
+    <div v-else-if="!providerRuns" class="flex flex-wrap gap-2">
       <Button v-if="state(selected) === 'active'" variant="outline" :disabled="act.pause.isPending.value" @click="act.pause.mutate(selected.id ?? '')">{{ t("billing.subscriptions.pause") }}</Button>
       <Button v-if="state(selected) === 'paused'" variant="outline" :disabled="act.resume.isPending.value" @click="act.resume.mutate(selected.id ?? '')">{{ t("billing.subscriptions.resume") }}</Button>
       <Button v-if="!selected.cancel_at_period_end && !selected.end_time" variant="outline" @click="act.scheduleCancel.mutate(selected.id ?? '')">{{ t("billing.subscriptions.cancelAtPeriodEnd") }}</Button>
@@ -214,7 +215,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
       <p class="text-muted-foreground text-xs sm:col-span-2">{{ t("billing.subscriptions.changePlanHint") }}</p>
     </div>
 
-    <div v-if="!selected.end_time" class="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+    <div v-if="operator && !selected.end_time" class="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
       <NativeSelect v-model="target" :aria-label="t('billing.subscriptions.moveTo')">
         <option value="" disabled>{{ t("billing.subscriptions.moveTo") }}</option>
         <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name" :disabled="p.name === selected.provider">{{ p.name }}</option>

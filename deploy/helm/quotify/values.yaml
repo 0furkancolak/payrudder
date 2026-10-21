@@ -51,7 +51,7 @@ smtp:
 
 operatorToken: local-operator-token-change-me-0123456789   # the machine credential of the operator API (scripts, quotifyctl, tests); no page asks for it
 
-# How people sign in (phase 41): e-mail and password always, a one-time code mailed to the address, and Google when set up.
+# How people sign in (phase 42): e-mail and password always, a one-time code mailed to the address, and Google when set up.
 auth:
   appURL: http://localhost:42301   # the console's public address: mailed links and the return from Google point into it
   operatorEmails: ""               # comma separated: people who sign in with one of these (verified) addresses are platform operators

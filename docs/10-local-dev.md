@@ -40,7 +40,7 @@ To start over, wipe the databases and seed again: `make clean` (removes the volu
 
 ## Signing in locally (three methods, and the operator)
 
-The sign-in page at <http://localhost:42301/signin> offers the three methods of [phase 41](phases/phase-41-signin-methods.md):
+The sign-in page at <http://localhost:42301/signin> offers the three methods of [phase 42](phases/phase-42-signin-methods.md):
 
 - **Password.** `user1@example.com` / `password123` after `make dev` (the dev seed).
 - **An e-mailed code.** Choose the *Email code* tab, type any address (a new one gets an account when the code is entered), and open Mailpit at <http://localhost:42825>: the mail has the six digits. A code lives 10 minutes, works once, and is burned after five wrong tries; a new one can be asked for after a minute. `QUOTIFY_OTP_PEPPER` (the compose file gives plans-svc a local default) keys the hash of the code.

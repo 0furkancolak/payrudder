@@ -14,9 +14,7 @@
     "tenants": "Kiracılar",
     "playground": "Oyun alanı",
     "deadLetters": "Ölü mektuplar",
-    "signOut": "Çıkış yap",
-    "operator": "Operatör konsolu",
-    "myApps": "Uygulamalarım"
+    "signOut": "Çıkış yap"
   },
   "common": {
     "loading": "Yükleniyor…",
@@ -1635,7 +1633,13 @@
       "customers": "Müşteriler",
       "paymentLinks": "Ödeme bağlantıları",
       "credits": "Krediler",
-      "webhooks": "Webhook'lar"
+      "webhooks": "Webhook'lar",
+      "invoices": "Faturalar",
+      "payments": "Ödemeler",
+      "packages": "Paketler",
+      "pricing": "Fiyatlandırma",
+      "reports": "Raporlar",
+      "readOnly": "Rolünüz görüntüleyici: burada her şeyi okuyabilirsiniz, ancak değişiklik yapamazsınız."
     },
     "settings": {
       "title": "Ayarlar",
@@ -1737,6 +1741,127 @@
       "signInJoin": "Oturum aç ve katıl",
       "createTitle": "Girişinizi oluşturun",
       "createJoin": "Girişi oluştur ve katıl"
+    },
+    "billing": {
+      "invoices": {
+        "title": "Faturalar",
+        "intro": "Bu ortamın faturaladıkları. Kalemlerini görmek ve PDF'i indirmek için birini açın.",
+        "status": "Durum",
+        "all": "Tüm durumlar",
+        "number": "Numara",
+        "customer": "Müşteri",
+        "period": "Dönem",
+        "created": "Oluşturuldu",
+        "total": "Toplam",
+        "empty": "Henüz fatura yok. Bir faturalama dönemi kapanınca görünürler.",
+        "draft": "Taslak",
+        "loadMore": "Daha fazla yükle"
+      },
+      "invoice": {
+        "back": "Tüm faturalar",
+        "issued": "Düzenlendi",
+        "openPdf": "PDF'i aç",
+        "lines": "Kalemler",
+        "description": "Açıklama",
+        "service": "Hizmet dönemi",
+        "quantity": "Miktar",
+        "amount": "Tutar",
+        "total": "Toplam"
+      },
+      "payments": {
+        "title": "Ödemeler",
+        "intro": "Tahsilatlar ve iadeler, en yeni üstte. Her ödeme, vardığı sonucu gösterir.",
+        "empty": "Henüz ödeme yok.",
+        "kind": "Tür",
+        "kinds": {
+          "charge": "Tahsilat",
+          "refund": "İade"
+        },
+        "invoice": "Fatura",
+        "viewInvoice": "Faturayı gör"
+      }
+    },
+    "membersPage": {
+      "intro": "Bu kuruluşa kimlerin ait olduğu, rolleri ve henüz açık olan davetler."
+    },
+    "apiKeysPage": {
+      "intro": "Sunucunuzun bu uygulama için Quotify'ı çağırırken kullandığı anahtarlar. Bir anahtar tek bir ortama aittir; gizli kısmı bir kez gösterilir."
+    },
+    "appSettings": {
+      "intro": "Bu uygulamanın oluşturulurken seçilenleri. Para birimi ve saat dilimi her faturanın nasıl hesaplanacağını belirler; bu yüzden uygulama oluşturulduktan sonra değişmez.",
+      "general": "Genel",
+      "slug": "Adres adı",
+      "id": "Uygulama kimliği",
+      "currency": "Varsayılan para birimi",
+      "timezone": "Saat dilimi",
+      "grace": "Ek süre",
+      "tenant": "Ortam kimliği",
+      "moreCurrencies": "Bir uygulama birçok para biriminde satış yapabilir: bir pakete başka para biriminde fiyat ekleyin, şurada:"
     }
+  },
+  "shell": {
+    "skip": "İçeriğe geç",
+    "navLabel": "Ana gezinme",
+    "breadcrumbs": "Konum",
+    "openMenu": "Menüyü aç",
+    "closeMenu": "Menüyü kapat",
+    "collapse": "Kenar çubuğunu daralt",
+    "expand": "Kenar çubuğunu genişlet",
+    "switchApp": "Uygulama değiştir",
+    "apps": "Uygulamalar",
+    "allApps": "Tüm uygulamalar",
+    "platform": "Platform",
+    "org": "Kuruluş",
+    "sections": {
+      "account": "Kuruluş",
+      "platform": "Platform",
+      "overview": "Genel bakış",
+      "customers": "Müşteriler",
+      "billing": "Faturalama",
+      "developers": "Geliştiriciler",
+      "settings": "Ayarlar"
+    },
+    "items": {
+      "overview": "Uygulamalar",
+      "members": "Üyeler",
+      "settings": "Ayarlar",
+      "tenants": "Kiracılar",
+      "playground": "Deneme alanı",
+      "deadLetters": "Ölü mektuplar",
+      "dashboard": "Pano",
+      "customers": "Müşteriler",
+      "subscriptions": "Abonelikler",
+      "credits": "Krediler",
+      "packages": "Paketler",
+      "pricing": "Fiyat ve vergi",
+      "invoices": "Faturalar",
+      "payments": "Ödemeler",
+      "paymentLinks": "Ödeme bağlantıları",
+      "accounting": "Muhasebe",
+      "reports": "Raporlar",
+      "webhooks": "Webhook'lar",
+      "apps": "Uygulamalar ve API anahtarları",
+      "apiKeys": "API anahtarları",
+      "providers": "Ödeme sağlayıcıları",
+      "mail": "E-posta",
+      "address": "İş adresi",
+      "einvoice": "E-fatura",
+      "appSettings": "Uygulama ayarları",
+      "operator": "Operatör konsolu",
+      "myApps": "Uygulamalarım"
+    }
+  },
+  "privacy": {
+    "hide": "Tutarları gizle",
+    "show": "Tutarları göster",
+    "hidden": "Gizli",
+    "banner": "Gizli mod açık: tutarlar gizlendi."
+  },
+  "picker": {
+    "currency": "Para birimi",
+    "currencyPlaceholder": "Para birimi ara",
+    "timezone": "Saat dilimi",
+    "timezonePlaceholder": "Saat dilimi ara",
+    "noMatch": "Eşleşen yok"
   }
 }

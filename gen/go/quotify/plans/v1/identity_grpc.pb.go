@@ -75,7 +75,7 @@ type IdentityServiceClient interface {
 	RequestPasswordReset(ctx context.Context, in *RequestPasswordResetRequest, opts ...grpc.CallOption) (*RequestPasswordResetResponse, error)
 	// ResetPassword consumes a reset token (single use, one hour), sets the new password, proves the address and revokes every session of the user.
 	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error)
-	// RequestLoginCode mails a six-digit one-time code to an address (phase 41). It always succeeds for a well-formed address and never says whether the address
+	// RequestLoginCode mails a six-digit one-time code to an address (phase 42). It always succeeds for a well-formed address and never says whether the address
 	// has an account; at most one code a minute and five an hour per address are sent.
 	RequestLoginCode(ctx context.Context, in *RequestLoginCodeRequest, opts ...grpc.CallOption) (*RequestLoginCodeResponse, error)
 	// VerifyLoginCode checks a code and opens a session. The code is single use, lives ten minutes and is burned after five wrong tries. An address without an
@@ -441,7 +441,7 @@ type IdentityServiceServer interface {
 	RequestPasswordReset(context.Context, *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error)
 	// ResetPassword consumes a reset token (single use, one hour), sets the new password, proves the address and revokes every session of the user.
 	ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error)
-	// RequestLoginCode mails a six-digit one-time code to an address (phase 41). It always succeeds for a well-formed address and never says whether the address
+	// RequestLoginCode mails a six-digit one-time code to an address (phase 42). It always succeeds for a well-formed address and never says whether the address
 	// has an account; at most one code a minute and five an hour per address are sent.
 	RequestLoginCode(context.Context, *RequestLoginCodeRequest) (*RequestLoginCodeResponse, error)
 	// VerifyLoginCode checks a code and opens a session. The code is single use, lives ten minutes and is burned after five wrong tries. An address without an

@@ -22,7 +22,7 @@ import (
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
 )
 
-// The other two ways to sign in besides e-mail and password (phase 41): a one-time code mailed to the address, and an identity provider (Google).
+// The other two ways to sign in besides e-mail and password (phase 42): a one-time code mailed to the address, and an identity provider (Google).
 const (
 	// CodeTTL is how long a one-time code works.
 	CodeTTL = 10 * time.Minute

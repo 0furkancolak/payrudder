@@ -80,6 +80,18 @@ export function sessionLost(): void {
   for (const l of lostListeners) l();
 }
 
+/** The paths of the operator console. */
+const OPERATOR_VIEW = /^\/(operator|tenants|playground|dead-letters)(\/|$)/;
+
+/**
+ * Whether the page being looked at belongs to the operator console and the signed-in person may use it. An operator is also a person with an organisation of
+ * their own, so "is this an operator?" is not enough to decide which API a shared page (a tenant's pages, the apps of an account) should call: the same page
+ * is mounted under /tenants for the operator (admin API, any tenant) and under /app/t for a person (product API, their own tenants).
+ */
+export function operatorView(): boolean {
+  return isOperator.value && OPERATOR_VIEW.test(window.location.pathname);
+}
+
 /** Where the tenant pages live in the current view: the operator's console shows any tenant at /tenants, a person's own apps' tenants are at /app/t. */
 export function tenantBase(): string {
   return window.location.pathname.startsWith("/app/") ? "/app/t" : "/tenants";

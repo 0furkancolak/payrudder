@@ -14,9 +14,7 @@
     "tenants": "Mandanten",
     "playground": "Spielwiese",
     "deadLetters": "Dead Letters",
-    "signOut": "Abmelden",
-    "operator": "Betreiberkonsole",
-    "myApps": "Meine Apps"
+    "signOut": "Abmelden"
   },
   "common": {
     "loading": "Wird geladen…",
@@ -1635,7 +1633,13 @@
       "customers": "Kunden",
       "paymentLinks": "Zahlungslinks",
       "credits": "Guthaben",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "invoices": "Rechnungen",
+      "payments": "Zahlungen",
+      "packages": "Pakete",
+      "pricing": "Preise",
+      "reports": "Berichte",
+      "readOnly": "Ihre Rolle ist Betrachter: Sie können hier alles lesen, aber nichts ändern."
     },
     "settings": {
       "title": "Einstellungen",
@@ -1737,6 +1741,127 @@
       "signInJoin": "Anmelden und beitreten",
       "createTitle": "Zugang einrichten",
       "createJoin": "Zugang einrichten und beitreten"
+    },
+    "billing": {
+      "invoices": {
+        "title": "Rechnungen",
+        "intro": "Was diese Umgebung abgerechnet hat. Öffnen Sie eine Rechnung für die Positionen und das PDF.",
+        "status": "Status",
+        "all": "Alle Status",
+        "number": "Nummer",
+        "customer": "Kunde",
+        "period": "Zeitraum",
+        "created": "Erstellt",
+        "total": "Summe",
+        "empty": "Noch keine Rechnungen. Sie erscheinen, wenn ein Abrechnungszeitraum schließt.",
+        "draft": "Entwurf",
+        "loadMore": "Mehr laden"
+      },
+      "invoice": {
+        "back": "Alle Rechnungen",
+        "issued": "Ausgestellt",
+        "openPdf": "PDF öffnen",
+        "lines": "Positionen",
+        "description": "Beschreibung",
+        "service": "Leistungszeitraum",
+        "quantity": "Menge",
+        "amount": "Betrag",
+        "total": "Summe"
+      },
+      "payments": {
+        "title": "Zahlungen",
+        "intro": "Abbuchungen und Erstattungen, neueste zuerst. Jede Zahlung zeigt das Ergebnis, auf dem sie endete.",
+        "empty": "Noch keine Zahlungen.",
+        "kind": "Art",
+        "kinds": {
+          "charge": "Abbuchung",
+          "refund": "Erstattung"
+        },
+        "invoice": "Rechnung",
+        "viewInvoice": "Rechnung ansehen"
+      }
+    },
+    "membersPage": {
+      "intro": "Wer zu dieser Organisation gehört, mit welchen Rollen, und welche Einladungen noch offen sind."
+    },
+    "apiKeysPage": {
+      "intro": "Schlüssel, mit denen Ihr Server Quotify für diese App aufruft. Ein Schlüssel gehört zu einer Umgebung; sein Geheimnis wird einmal angezeigt."
+    },
+    "appSettings": {
+      "intro": "Womit diese App angelegt wurde. Währung und Zeitzone bestimmen, wie jede Rechnung berechnet wird, und sind deshalb nach dem Anlegen fest.",
+      "general": "Allgemein",
+      "slug": "Adressname",
+      "id": "App-ID",
+      "currency": "Standardwährung",
+      "timezone": "Zeitzone",
+      "grace": "Nachfrist",
+      "tenant": "Umgebungs-ID",
+      "moreCurrencies": "Eine App kann in vielen Währungen verkaufen: Fügen Sie einem Paket einen Preis in einer anderen Währung hinzu, unter"
     }
+  },
+  "shell": {
+    "skip": "Zum Inhalt springen",
+    "navLabel": "Hauptnavigation",
+    "breadcrumbs": "Brotkrumen",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen",
+    "collapse": "Seitenleiste einklappen",
+    "expand": "Seitenleiste ausklappen",
+    "switchApp": "App wechseln",
+    "apps": "Apps",
+    "allApps": "Alle Apps",
+    "platform": "Plattform",
+    "org": "Organisation",
+    "sections": {
+      "account": "Organisation",
+      "platform": "Plattform",
+      "overview": "Übersicht",
+      "customers": "Kunden",
+      "billing": "Abrechnung",
+      "developers": "Entwickler",
+      "settings": "Einstellungen"
+    },
+    "items": {
+      "overview": "Apps",
+      "members": "Mitglieder",
+      "settings": "Einstellungen",
+      "tenants": "Mandanten",
+      "playground": "Spielwiese",
+      "deadLetters": "Dead Letters",
+      "dashboard": "Dashboard",
+      "customers": "Kunden",
+      "subscriptions": "Abonnements",
+      "credits": "Guthaben",
+      "packages": "Pakete",
+      "pricing": "Preise und Steuer",
+      "invoices": "Rechnungen",
+      "payments": "Zahlungen",
+      "paymentLinks": "Zahlungslinks",
+      "accounting": "Buchhaltung",
+      "reports": "Berichte",
+      "webhooks": "Webhooks",
+      "apps": "Apps und API-Schlüssel",
+      "apiKeys": "API-Schlüssel",
+      "providers": "Zahlungsanbieter",
+      "mail": "E-Mail",
+      "address": "Geschäftsadresse",
+      "einvoice": "E-Rechnung",
+      "appSettings": "App-Einstellungen",
+      "operator": "Betreiberkonsole",
+      "myApps": "Meine Apps"
+    }
+  },
+  "privacy": {
+    "hide": "Beträge ausblenden",
+    "show": "Beträge anzeigen",
+    "hidden": "Verborgen",
+    "banner": "Privatmodus ist an: Beträge sind ausgeblendet."
+  },
+  "picker": {
+    "currency": "Währung",
+    "currencyPlaceholder": "Währung suchen",
+    "timezone": "Zeitzone",
+    "timezonePlaceholder": "Zeitzone suchen",
+    "noMatch": "Keine Treffer"
   }
 }

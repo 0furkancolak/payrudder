@@ -48,7 +48,7 @@ func (e *env) verifyCode(email, code string) (*plansv1.SignInResponse, error) {
 	return e.ident.VerifyLoginCode(context.Background(), &plansv1.VerifyLoginCodeRequest{Email: email, Code: code, AccountName: "Code Co", DisplayName: "Coder"})
 }
 
-// testSignInMethods covers phase 41: the one-time code and the identity provider sign-in. (E-mail and password is testIdentity.)
+// testSignInMethods covers phase 42: the one-time code and the identity provider sign-in. (E-mail and password is testIdentity.)
 func testSignInMethods(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()

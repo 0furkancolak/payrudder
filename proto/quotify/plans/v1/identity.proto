@@ -28,7 +28,7 @@ service IdentityService {
   // ResetPassword consumes a reset token (single use, one hour), sets the new password, proves the address and revokes every session of the user.
   rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
 
-  // RequestLoginCode mails a six-digit one-time code to an address (phase 41). It always succeeds for a well-formed address and never says whether the address
+  // RequestLoginCode mails a six-digit one-time code to an address (phase 42). It always succeeds for a well-formed address and never says whether the address
   // has an account; at most one code a minute and five an hour per address are sent.
   rpc RequestLoginCode(RequestLoginCodeRequest) returns (RequestLoginCodeResponse);
   // VerifyLoginCode checks a code and opens a session. The code is single use, lives ten minutes and is burned after five wrong tries. An address without an

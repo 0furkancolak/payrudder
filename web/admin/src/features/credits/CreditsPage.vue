@@ -6,7 +6,6 @@ import { useCustomers } from "@/features/customers/api";
 import { absoluteUrl } from "@/features/paymentlinks/lib";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { useErrorText } from "@/shared/lib/errors";
-import { CURRENCIES } from "@/shared/lib/currencies";
 import { useTenantCurrency } from "@/shared/lib/tenant-currency";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -14,6 +13,7 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { CurrencySelect } from "@/shared/ui/search-select";
 import {
   useCreateCreditPack,
   useCreatePurchaseLink,
@@ -155,9 +155,7 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
       <Input v-model="packName" :aria-label="t('billing.credits.packs.name')" :placeholder="t('billing.credits.packs.name')" maxlength="80" required />
       <Input v-model="packCredits" inputmode="numeric" :aria-label="t('billing.credits.packs.credits')" :placeholder="t('billing.credits.packs.credits')" required />
       <Input v-model="packPrice" inputmode="decimal" :aria-label="t('billing.credits.packs.price')" :placeholder="t('billing.credits.packs.price')" required />
-      <NativeSelect v-model="packCurrency" :aria-label="t('billing.credits.packs.currency')">
-        <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-      </NativeSelect>
+      <CurrencySelect v-model="packCurrency" :aria-label="t('billing.credits.packs.currency')" />
       <Input v-model="packValidity" inputmode="numeric" :aria-label="t('billing.credits.packs.validity')" :placeholder="t('billing.credits.packs.validity')" />
       <Button type="submit" :disabled="createPack.isPending.value || !priceMinor || !creditsValid || !validityValid">{{ t("billing.credits.packs.create") }}</Button>
     </form>
