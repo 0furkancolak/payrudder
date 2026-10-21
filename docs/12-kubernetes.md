@@ -18,7 +18,7 @@ resources exist, so the databases they migrate must belong to an earlier release
 make kind-up                       # 1 control plane + 3 workers (deploy/kind/cluster.yaml)
 make kind-images                   # build the 12 images (one at a time) and load them into the nodes
 make helm-install                  # quotify-infra (3-node Redpanda and RabbitMQ), then quotify (2 replicas of the busy services)
-make netpol-test e2e-kind          # NetworkPolicy enforcement, then the e2e suite against http://localhost:8000
+make netpol-test e2e-kind          # NetworkPolicy enforcement, then the e2e suite against http://localhost:42800
 ```
 
 A Docker VM with less than about 6 GiB cannot hold the three-worker cluster. Use the one-node profile instead:

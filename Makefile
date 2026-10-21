@@ -98,8 +98,8 @@ demo-k8s: ## The sandbox flow on kind: close a period, every pm_sandbox_* paymen
 
 .PHONY: chaos-kind
 chaos-kind: ## Correctness suite on kind with random pod deletion: make chaos-kind N=100000 (needs the 3-worker cluster and helm-install)
-	cd tests && QUOTIFY_CHAOS_EVENTS=$(N) QUOTIFY_CHAOS_MONKEY=1 QUOTIFY_CHAOS_PLATFORM=kubernetes QUOTIFY_PG_HOST_PORT=15432 \
-		QUOTIFY_KAFKA_BROKERS=localhost:31092$(comma)localhost:31093$(comma)localhost:31094 QUOTIFY_CLICKHOUSE_URL=http://localhost:8123 \
+	cd tests && QUOTIFY_CHAOS_EVENTS=$(N) QUOTIFY_CHAOS_MONKEY=1 QUOTIFY_CHAOS_PLATFORM=kubernetes QUOTIFY_PG_HOST_PORT=42434 \
+		QUOTIFY_KAFKA_BROKERS=localhost:31092$(comma)localhost:31093$(comma)localhost:31094 QUOTIFY_CLICKHOUSE_URL=http://localhost:42123 \
 		go test -count=1 -tags chaos -timeout 120m -v ./chaos/
 
 .PHONY: netpol-test
