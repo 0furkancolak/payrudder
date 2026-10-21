@@ -52,14 +52,14 @@ func testCreditPacks(t *testing.T) {
 		{"Starter", 100, 0, "USD", "billing.credits.bad_pack"},
 		{"Starter", 100, 500, "XXX", "billing.credits.unknown_currency"},
 	} {
-		_, err := command.CreatePack(ctx, shared.app, tid, bad.name, bad.credits, bad.price, bad.currency)
+		_, err := command.CreatePack(ctx, shared.app, tid, bad.name, bad.credits, bad.price, bad.currency, 0)
 		wantKey(t, err, codes.InvalidArgument, bad.key)
 	}
-	starter, err := command.CreatePack(ctx, shared.app, tid, "Starter", 1000, 500, "USD")
+	starter, err := command.CreatePack(ctx, shared.app, tid, "Starter", 1000, 500, "USD", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := command.CreatePack(ctx, shared.app, tid, "Team", 10000, 4000, "USD"); err != nil {
+	if _, err := command.CreatePack(ctx, shared.app, tid, "Team", 10000, 4000, "USD", 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := command.SetPackActive(ctx, shared.app, tid, starter.ID, false); err != nil {
@@ -103,7 +103,7 @@ func testCreditsConsumeTheSoonestExpiryFirst(t *testing.T) {
 	wantKey(t, err, codes.InvalidArgument, "billing.credits.bad_source")
 
 	// 120 comes from the promo lot (100, expires first), then 20 from the lot that never expires.
-	c, err := command.Consume(ctx, shared.app, tid, cid, 120, "ai run", "k1")
+	c, err := command.Consume(ctx, shared.app, tid, cid, 120, "ai run", "k1", "")
 	if err != nil || c.Balance != 30 || c.Replayed {
 		t.Fatalf("consume = %+v, %v; want balance 30", c, err)
 	}
@@ -112,21 +112,21 @@ func testCreditsConsumeTheSoonestExpiryFirst(t *testing.T) {
 		t.Fatalf("lots after the consume = %+v (next expiry %v); want only the 30 that never expire", b.Lots, b.NextExpiry)
 	}
 	// Too many: nothing is taken.
-	_, err = command.Consume(ctx, shared.app, tid, cid, 31, "", "k2")
+	_, err = command.Consume(ctx, shared.app, tid, cid, 31, "", "k2", "")
 	wantKey(t, err, codes.FailedPrecondition, "billing.credits.insufficient")
 	if got := balanceOf(t, tid, cid); got != 30 {
 		t.Fatalf("balance after a refused consume = %d, want 30", got)
 	}
 	// The key makes a retry harmless.
-	again, err := command.Consume(ctx, shared.app, tid, cid, 120, "ai run", "k1")
+	again, err := command.Consume(ctx, shared.app, tid, cid, 120, "ai run", "k1", "")
 	if err != nil || !again.Replayed || again.Balance != 30 {
 		t.Fatalf("retried consume = %+v, %v; want replayed, balance 30", again, err)
 	}
-	_, err = command.Consume(ctx, shared.app, tid, cid, 121, "", "k1")
+	_, err = command.Consume(ctx, shared.app, tid, cid, 121, "", "k1", "")
 	wantKey(t, err, codes.AlreadyExists, "billing.credits.key_reused")
-	_, err = command.Consume(ctx, shared.app, tid, cid, 1, "", "")
+	_, err = command.Consume(ctx, shared.app, tid, cid, 1, "", "", "")
 	wantKey(t, err, codes.InvalidArgument, "billing.credits.key_required")
-	_, err = command.Consume(ctx, shared.app, tid, cid, 0, "", "k3")
+	_, err = command.Consume(ctx, shared.app, tid, cid, 0, "", "k3", "")
 	wantKey(t, err, codes.InvalidArgument, "billing.credits.bad_amount")
 
 	// The ledger holds every change, newest first, and pages.
@@ -166,7 +166,7 @@ func testConcurrentConsumesNeverOverspend(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := command.Consume(ctx, shared.app, tid, cid, 10, "race", fmt.Sprintf("race-%d", i))
+			_, err := command.Consume(ctx, shared.app, tid, cid, 10, "race", fmt.Sprintf("race-%d", i), "")
 			switch {
 			case err == nil:
 				ok.Add(1)
@@ -198,7 +198,7 @@ func testExpiredCreditsAreWrittenOff(t *testing.T) {
 	if got := balanceOf(t, tid, cid); got != 10 {
 		t.Fatalf("balance with an expired lot = %d, want 10", got)
 	}
-	_, err := command.Consume(ctx, shared.app, tid, cid, 11, "", "over")
+	_, err := command.Consume(ctx, shared.app, tid, cid, 11, "", "over", "")
 	wantKey(t, err, codes.FailedPrecondition, "billing.credits.insufficient")
 
 	n, err := command.ExpireDue(ctx, shared.system, 100)
@@ -224,7 +224,7 @@ func testAPaidPackGrantsOnce(t *testing.T) {
 		var added bool
 		err := pgxx.InTenantTx(ctx, shared.app, tid, func(tx pgx.Tx) error {
 			var err error
-			added, err = command.GrantPurchase(ctx, tx, tid, cid, 1000, ref)
+			added, err = command.GrantPurchase(ctx, tx, tid, cid, 1000, ref, nil, "")
 			return err
 		})
 		if err != nil {

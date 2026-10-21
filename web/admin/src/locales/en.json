@@ -742,7 +742,8 @@
       "kind": "Kind",
       "kinds": {
         "adhoc": "Fixed amount",
-        "invoice": "Open invoice"
+        "invoice": "Open invoice",
+        "credit_pack": "Credit pack"
       },
       "invoiceId": "Invoice id",
       "amount": "Amount",
@@ -844,7 +845,12 @@
         "onSale": "On sale",
         "withdrawn": "Withdrawn",
         "withdraw": "Withdraw",
-        "restore": "Put back on sale"
+        "restore": "Put back on sale",
+        "validity": "Valid for (days, optional)",
+        "validityCol": "Validity",
+        "noExpiry": "Never expires",
+        "days": "{n} days",
+        "purchaseLink": "Create purchase link"
       },
       "customer": {
         "title": "A customer's credits",
@@ -879,12 +885,35 @@
         "time": "Time",
         "kind": "Type",
         "amount": "Credits",
-        "reason": "Note"
+        "reason": "Note",
+        "source": "Source"
       },
       "kind": {
         "grant": "Added",
         "consume": "Spent",
         "expire": "Expired"
+      },
+      "purchase": {
+        "title": "Purchase link",
+        "hint": "A link the customer opens to buy this pack. When the payment is confirmed the credits are added once. The price is always the pack's.",
+        "formLabel": "Create purchase link",
+        "pack": "Pack",
+        "customer": "Customer",
+        "pickCustomer": "Choose a customer",
+        "quantity": "Quantity",
+        "create": "Create link",
+        "shownOnce": "Copy the link now: it is shown once and cannot be read back.",
+        "url": "Purchase link",
+        "copy": "Copy",
+        "close": "Close"
+      },
+      "settings": {
+        "title": "Low-balance alert",
+        "hint": "When a customer's balance drops below this number, Quotify sends the credits.low webhook event once. 0 turns it off.",
+        "formLabel": "Low-balance alert",
+        "threshold": "Alert below (credits)",
+        "save": "Save",
+        "saved": "Saved."
       }
     }
   },
@@ -1121,7 +1150,9 @@
         "idempotency_conflict": "This idempotency key was used for a different payment link.",
         "invoice_not_payable": "A paid or void invoice needs no payment link.",
         "invoice_required": "A payment link of kind invoice needs an invoice.",
-        "not_found": "There is no such payment link."
+        "not_found": "There is no such payment link.",
+        "customer_required": "A credit pack link needs the customer who receives the credits.",
+        "pack_required": "A credit pack link needs a pack."
       },
       "portal_link": {
         "customer_not_found": "There is no such customer.",
@@ -1140,7 +1171,12 @@
         "key_required": "An idempotency key is required to spend credits.",
         "key_reused": "This idempotency key was already used for a different request.",
         "pack_not_found": "There is no such credit pack.",
-        "unknown_currency": "This currency is not supported."
+        "unknown_currency": "This currency is not supported.",
+        "bad_quantity": "The quantity must be 1 to 1000.",
+        "bad_threshold": "The threshold must be 0 or a whole number of credits.",
+        "bad_validity": "The validity must be 1 to 3650 days, or empty for credits that never expire.",
+        "pack_inactive": "This credit pack is not on sale.",
+        "portal_cannot_buy": "This portal link cannot buy credits. Ask for a new one."
       }
     },
     "plans": {

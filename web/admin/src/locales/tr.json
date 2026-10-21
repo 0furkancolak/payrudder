@@ -742,7 +742,8 @@
       "kind": "Tür",
       "kinds": {
         "adhoc": "Sabit tutar",
-        "invoice": "Açık fatura"
+        "invoice": "Açık fatura",
+        "credit_pack": "Kredi paketi"
       },
       "invoiceId": "Fatura kimliği",
       "amount": "Tutar",
@@ -844,7 +845,12 @@
         "onSale": "Satışta",
         "withdrawn": "Satıştan kaldırıldı",
         "withdraw": "Satıştan kaldır",
-        "restore": "Yeniden satışa koy"
+        "restore": "Yeniden satışa koy",
+        "validity": "Geçerlilik (gün, isteğe bağlı)",
+        "validityCol": "Geçerlilik",
+        "noExpiry": "Süresiz",
+        "days": "{n} gün",
+        "purchaseLink": "Satın alma bağlantısı oluştur"
       },
       "customer": {
         "title": "Bir müşterinin kredileri",
@@ -879,12 +885,35 @@
         "time": "Zaman",
         "kind": "Tür",
         "amount": "Kredi",
-        "reason": "Not"
+        "reason": "Not",
+        "source": "Kaynak"
       },
       "kind": {
         "grant": "Eklendi",
         "consume": "Harcandı",
         "expire": "Süresi doldu"
+      },
+      "purchase": {
+        "title": "Satın alma bağlantısı",
+        "hint": "Müşterinin bu paketi satın almak için açtığı bağlantı. Ödeme onaylandığında krediler bir kez eklenir. Fiyat her zaman paketin fiyatıdır.",
+        "formLabel": "Satın alma bağlantısı oluştur",
+        "pack": "Paket",
+        "customer": "Müşteri",
+        "pickCustomer": "Müşteri seçin",
+        "quantity": "Adet",
+        "create": "Bağlantı oluştur",
+        "shownOnce": "Bağlantıyı şimdi kopyalayın: bir kez gösterilir ve sonradan okunamaz.",
+        "url": "Satın alma bağlantısı",
+        "copy": "Kopyala",
+        "close": "Kapat"
+      },
+      "settings": {
+        "title": "Düşük bakiye uyarısı",
+        "hint": "Bir müşterinin bakiyesi bu sayının altına düştüğünde Quotify credits.low webhook olayını bir kez gönderir. 0 kapatır.",
+        "formLabel": "Düşük bakiye uyarısı",
+        "threshold": "Şunun altında uyar (kredi)",
+        "save": "Kaydet",
+        "saved": "Kaydedildi."
       }
     }
   },
@@ -1121,7 +1150,9 @@
         "idempotency_conflict": "Bu idempotency anahtarı başka bir ödeme bağlantısı için kullanıldı.",
         "invoice_not_payable": "Ödenmiş veya iptal edilmiş faturaya ödeme bağlantısı gerekmez.",
         "invoice_required": "Fatura türündeki ödeme bağlantısı için bir fatura gerekir.",
-        "not_found": "Böyle bir ödeme bağlantısı yok."
+        "not_found": "Böyle bir ödeme bağlantısı yok.",
+        "customer_required": "Kredi paketi bağlantısı için kredileri alacak müşteri gerekir.",
+        "pack_required": "Kredi paketi bağlantısı için bir paket gerekir."
       },
       "portal_link": {
         "customer_not_found": "Böyle bir müşteri yok.",
@@ -1140,7 +1171,12 @@
         "key_required": "Kredi harcamak için bir idempotency anahtarı gerekir.",
         "key_reused": "Bu idempotency anahtarı başka bir istek için zaten kullanıldı.",
         "pack_not_found": "Böyle bir kredi paketi yok.",
-        "unknown_currency": "Bu para birimi desteklenmiyor."
+        "unknown_currency": "Bu para birimi desteklenmiyor.",
+        "bad_quantity": "Adet 1 ile 1000 arasında olmalı.",
+        "bad_threshold": "Eşik 0 ya da tam sayıda kredi olmalı.",
+        "bad_validity": "Geçerlilik 1 ile 3650 gün arasında olmalı; süresiz krediler için boş bırakın.",
+        "pack_inactive": "Bu kredi paketi satışta değil.",
+        "portal_cannot_buy": "Bu portal bağlantısıyla kredi satın alınamaz. Yenisini isteyin."
       }
     },
     "plans": {

@@ -19,6 +19,8 @@ export interface NewPack {
   credits: string;
   price_minor: string;
   currency: string;
+  /** The credits bought last this many days; leave out for credits that never expire. */
+  validity_days?: number;
 }
 
 export function useCreateCreditPack(tenantId: MaybeRefOrGetter<string>) {
@@ -84,5 +86,42 @@ export function useGrantCredits(tenantId: MaybeRefOrGetter<string>) {
         }),
       ),
     onSuccess: (_data, v) => queries.invalidateQueries({ queryKey: creditKeys.customer(toValue(tenantId), v.customer) }),
+  });
+}
+
+/** The balance below which a consume sends the credits.low webhook event (0: off). */
+export function useCreditSettings(tenantId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...creditKeys.packs(toValue(tenantId)), "settings"]),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/credits/settings")),
+  });
+}
+
+export function useSetCreditSettings(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (lowThreshold: string) => unwrap(tenantApi(toValue(tenantId)).PUT("/v1/credits/settings", { body: { low_threshold: lowThreshold } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: [...creditKeys.packs(toValue(tenantId)), "settings"] }),
+  });
+}
+
+export interface PurchaseLink {
+  packId: string;
+  customer: string;
+  quantity: number;
+}
+
+/**
+ * Makes the link a customer opens to buy a pack. The price comes from the pack, so the request carries none. The URL is in the response once and is not stored: the
+ * key is made per submission, so a retry of the same click finds the link made first (without its address).
+ */
+export function useCreatePurchaseLink(tenantId: MaybeRefOrGetter<string>) {
+  return useMutation({
+    mutationFn: (v: PurchaseLink & { key: string }) =>
+      unwrap(
+        tenantApi(toValue(tenantId)).POST("/v1/payment-links", {
+          body: { kind: "credit_pack", pack_id: v.packId, customer_external_id: v.customer, quantity: v.quantity, idempotency_key: v.key },
+        }),
+      ),
   });
 }

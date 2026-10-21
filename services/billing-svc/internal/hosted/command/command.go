@@ -44,13 +44,23 @@ const (
 	maxDescription = 200
 	maxKey         = 200
 	maxAmount      = int64(1) << 50
+	maxPackCredits = int64(1_000_000_000_000)
 )
 
 // Link kinds.
 const (
 	KindInvoice = "invoice"
 	KindAdhoc   = "adhoc"
+	// KindCreditPack sells a credit pack to one customer. It is a factory like an ad-hoc link (its invoice is made when the payer presses Continue), and when that
+	// invoice is paid the saga grants the credits.
+	KindCreditPack = "credit_pack"
+
+	// MaxQuantity is the most packs one link can sell.
+	MaxQuantity = 1000
 )
+
+// factory reports whether a link of this kind makes an invoice when it is used (rather than being an invoice's link).
+func factory(kind string) bool { return kind == KindAdhoc || kind == KindCreditPack }
 
 // Directory is what the commands ask of the rest of the system: customers, the tenant's currency and the invoice of an ad-hoc use (runs.Manager).
 type Directory interface {
@@ -102,9 +112,12 @@ type CreateInput struct {
 	Currency           string
 	Description        string
 	CustomerExternalID string
-	SingleUse          *bool
-	ExpiresInDays      int32
-	IdempotencyKey     string
+	// PackID and Quantity are for kind credit_pack: the pack to sell (it must be active) and how many of it (0 means 1).
+	PackID         uuid.UUID
+	Quantity       int32
+	SingleUse      *bool
+	ExpiresInDays  int32
+	IdempotencyKey string
 	// RequireOpen refuses an invoice that is already paid or void. The phase-23 endpoint (a link to any finalized invoice, a receipt for a paid one) does not.
 	RequireOpen bool
 }
@@ -124,9 +137,15 @@ func (in *CreateInput) normalize() error {
 	}
 	if in.Kind == "" {
 		in.Kind = KindAdhoc
-		if in.InvoiceID != uuid.Nil {
+		switch {
+		case in.InvoiceID != uuid.Nil:
 			in.Kind = KindInvoice
+		case in.PackID != uuid.Nil:
+			in.Kind = KindCreditPack
 		}
+	}
+	if in.Kind != KindCreditPack && (in.PackID != uuid.Nil || in.Quantity != 0) {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "pack_id and quantity belong to a credit_pack link")
 	}
 	switch in.Kind {
 	case KindInvoice:
@@ -151,8 +170,24 @@ func (in *CreateInput) normalize() error {
 				return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_currency", "currency is not supported")
 			}
 		}
+	case KindCreditPack:
+		if in.PackID == uuid.Nil {
+			return errkey.New(codes.InvalidArgument, "billing.payment_link.pack_required", "a payment link of kind credit_pack needs pack_id")
+		}
+		if in.InvoiceID != uuid.Nil || in.AmountMinor != 0 || in.Description != "" || in.Currency != "" {
+			return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "a credit_pack link takes its amount, currency and description from the pack; pass pack_id and the customer")
+		}
+		if in.CustomerExternalID == "" {
+			return errkey.New(codes.InvalidArgument, "billing.payment_link.customer_required", "a credit_pack link needs customer_external_id: the credits go to that customer")
+		}
+		if in.Quantity == 0 {
+			in.Quantity = 1
+		}
+		if in.Quantity < 0 || in.Quantity > MaxQuantity {
+			return errkey.New(codes.InvalidArgument, "billing.credits.bad_quantity", "quantity must be 1 to 1000")
+		}
 	default:
-		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "kind must be invoice or adhoc")
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "kind must be invoice, adhoc or credit_pack")
 	}
 	if in.ExpiresInDays < 0 || in.ExpiresInDays > MaxDays {
 		return errkey.New(codes.InvalidArgument, "billing.invoice_link.bad_expiry", "expires_in_days must be 1..365")
@@ -164,7 +199,7 @@ func (in *CreateInput) days() int32 {
 	switch {
 	case in.ExpiresInDays > 0:
 		return in.ExpiresInDays
-	case in.Kind == KindAdhoc:
+	case in.Kind == KindAdhoc || in.Kind == KindCreditPack:
 		return DefaultAdhocDays
 	}
 	return DefaultInvoiceDays
@@ -174,12 +209,13 @@ func (in *CreateInput) singleUse() bool {
 	if in.SingleUse != nil {
 		return *in.SingleUse
 	}
-	return in.Kind == KindAdhoc
+	return in.Kind == KindAdhoc || in.Kind == KindCreditPack
 }
 
 // fingerprint is what an idempotency key is bound to: the same key with other parameters is a mistake, not a repeat.
 func (in *CreateInput) fingerprint() []byte {
-	h := sha256.Sum256(fmt.Appendf(nil, "%s|%s|%d|%s|%s|%s|%t|%d", in.Kind, in.InvoiceID, in.AmountMinor, in.Currency, in.Description, in.CustomerExternalID, in.singleUse(), in.days()))
+	h := sha256.Sum256(fmt.Appendf(nil, "%s|%s|%d|%s|%s|%s|%t|%d|%s|%d", in.Kind, in.InvoiceID, in.AmountMinor, in.Currency, in.Description, in.CustomerExternalID, in.singleUse(), in.days(),
+		in.PackID, in.Quantity))
 	return h[:]
 }
 
@@ -207,6 +243,19 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 			}
 		}
 	}
+	var customerID uuid.UUID
+	if in.Kind == KindCreditPack {
+		cu, found, err := d.Dir.Customer(ctx, tenantID, in.CustomerExternalID)
+		switch {
+		case err != nil:
+			return nil, status.Error(codes.Unavailable, "customer lookup unavailable")
+		case !found:
+			return nil, errkey.New(codes.NotFound, "billing.payment_link.customer_not_found", "no such customer")
+		}
+		if customerID, err = uuid.Parse(cu.GetId()); err != nil {
+			return nil, status.Error(codes.Internal, "internal error")
+		}
+	}
 	token, err := NewToken()
 	if err != nil {
 		return nil, err
@@ -231,6 +280,10 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 				return err
 			}
 			p.InvoiceID, p.CustomerExternalID = &in.InvoiceID, store.NilIfEmpty(ext)
+		case KindCreditPack:
+			if err := fillFromPack(ctx, q, tenantID, in, customerID, &p); err != nil {
+				return err
+			}
 		default:
 			p.AmountMinor, p.Currency, p.Description = &in.AmountMinor, &in.Currency, &in.Description
 			p.CustomerExternalID = store.NilIfEmpty(in.CustomerExternalID)
@@ -263,6 +316,30 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 		return nil, internal(err)
 	}
 	return out, nil
+}
+
+// fillFromPack sets what a credit-pack link sells from the pack itself: the price, the currency, the credits and their validity. None of it comes from the client, so
+// a link can never be made cheaper than the pack. A withdrawn pack cannot be sold.
+func fillFromPack(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, in CreateInput, customerID uuid.UUID, p *sqlc.InsertPaymentLinkParams) error {
+	pack, err := q.GetCreditPack(ctx, sqlc.GetCreditPackParams{TenantID: tenantID, ID: in.PackID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errkey.New(codes.NotFound, "billing.credits.pack_not_found", "no such credit pack")
+	}
+	if err != nil {
+		return err
+	}
+	if !pack.Active {
+		return errkey.New(codes.FailedPrecondition, "billing.credits.pack_inactive", "this credit pack is not on sale")
+	}
+	q64 := int64(in.Quantity)
+	if pack.PriceMinor > maxAmount/q64 || pack.Credits > maxPackCredits/q64 {
+		return errkey.New(codes.InvalidArgument, "billing.credits.bad_quantity", "quantity is too large for this pack")
+	}
+	total, credits := pack.PriceMinor*q64, pack.Credits*q64
+	p.AmountMinor, p.Currency, p.Description = &total, &pack.Currency, &pack.Name
+	p.CustomerID, p.CustomerExternalID = &customerID, store.NilIfEmpty(in.CustomerExternalID)
+	p.PackID, p.Quantity, p.Credits, p.ValidityDays = &in.PackID, &in.Quantity, &credits, pack.ValidityDays
+	return nil
 }
 
 func nilIfEmptyBytes(key string, b []byte) []byte {
@@ -361,7 +438,7 @@ func RevokeLink(ctx context.Context, d Deps, tenantID, linkID uuid.UUID) (sqlc.G
 		if err != nil {
 			return err
 		}
-		if cur.Kind == KindAdhoc {
+		if factory(cur.Kind) {
 			if voids, err = unpaidInvoices(ctx, q, tenantID, linkID); err != nil {
 				return err
 			}
@@ -425,7 +502,7 @@ func CreatePortalLink(ctx context.Context, d Deps, tenantID uuid.UUID, externalI
 	}
 	expires = d.now().Add(time.Duration(days) * 24 * time.Hour)
 	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		return sqlc.New(tx).InsertPortalLink(ctx, sqlc.InsertPortalLinkParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, TokenHash: query.TokenHash(token), ExpiresAt: expires})
+		return sqlc.New(tx).InsertPortalLink(ctx, sqlc.InsertPortalLinkParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, CustomerExternalID: &externalID, TokenHash: query.TokenHash(token), ExpiresAt: expires})
 	})
 	if err != nil {
 		return "", time.Time{}, uuid.Nil, status.Error(codes.Internal, "internal error")
@@ -471,6 +548,15 @@ func linkData(l sqlc.GetPaymentLinkRowRow) map[string]any {
 	}
 	if l.Description != nil {
 		d["description"] = *l.Description
+	}
+	if l.PackID != nil {
+		d["pack_id"] = l.PackID.String()
+	}
+	if l.Quantity != nil {
+		d["quantity"] = *l.Quantity
+	}
+	if l.Credits != nil {
+		d["credits"] = *l.Credits
 	}
 	if l.CustomerExternalID != nil {
 		d["customer_external_id"] = *l.CustomerExternalID

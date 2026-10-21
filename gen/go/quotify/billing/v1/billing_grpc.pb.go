@@ -47,6 +47,8 @@ const (
 	BillingService_GrantCredits_FullMethodName         = "/quotify.billing.v1.BillingService/GrantCredits"
 	BillingService_ConsumeCredits_FullMethodName       = "/quotify.billing.v1.BillingService/ConsumeCredits"
 	BillingService_ListCreditLedger_FullMethodName     = "/quotify.billing.v1.BillingService/ListCreditLedger"
+	BillingService_GetCreditSettings_FullMethodName    = "/quotify.billing.v1.BillingService/GetCreditSettings"
+	BillingService_SetCreditSettings_FullMethodName    = "/quotify.billing.v1.BillingService/SetCreditSettings"
 )
 
 // BillingServiceClient is the client API for BillingService service.
@@ -105,6 +107,10 @@ type BillingServiceClient interface {
 	ConsumeCredits(ctx context.Context, in *ConsumeCreditsRequest, opts ...grpc.CallOption) (*ConsumeCreditsResponse, error)
 	// ListCreditLedger lists a customer's credit changes, newest first.
 	ListCreditLedger(ctx context.Context, in *ListCreditLedgerRequest, opts ...grpc.CallOption) (*ListCreditLedgerResponse, error)
+	// GetCreditSettings returns the balance below which a customer's consume announces credits.low (0: off).
+	GetCreditSettings(ctx context.Context, in *GetCreditSettingsRequest, opts ...grpc.CallOption) (*GetCreditSettingsResponse, error)
+	// SetCreditSettings sets that balance.
+	SetCreditSettings(ctx context.Context, in *SetCreditSettingsRequest, opts ...grpc.CallOption) (*SetCreditSettingsResponse, error)
 }
 
 type billingServiceClient struct {
@@ -395,6 +401,26 @@ func (c *billingServiceClient) ListCreditLedger(ctx context.Context, in *ListCre
 	return out, nil
 }
 
+func (c *billingServiceClient) GetCreditSettings(ctx context.Context, in *GetCreditSettingsRequest, opts ...grpc.CallOption) (*GetCreditSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCreditSettingsResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetCreditSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) SetCreditSettings(ctx context.Context, in *SetCreditSettingsRequest, opts ...grpc.CallOption) (*SetCreditSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetCreditSettingsResponse)
+	err := c.cc.Invoke(ctx, BillingService_SetCreditSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BillingServiceServer is the server API for BillingService service.
 // All implementations must embed UnimplementedBillingServiceServer
 // for forward compatibility.
@@ -451,6 +477,10 @@ type BillingServiceServer interface {
 	ConsumeCredits(context.Context, *ConsumeCreditsRequest) (*ConsumeCreditsResponse, error)
 	// ListCreditLedger lists a customer's credit changes, newest first.
 	ListCreditLedger(context.Context, *ListCreditLedgerRequest) (*ListCreditLedgerResponse, error)
+	// GetCreditSettings returns the balance below which a customer's consume announces credits.low (0: off).
+	GetCreditSettings(context.Context, *GetCreditSettingsRequest) (*GetCreditSettingsResponse, error)
+	// SetCreditSettings sets that balance.
+	SetCreditSettings(context.Context, *SetCreditSettingsRequest) (*SetCreditSettingsResponse, error)
 	mustEmbedUnimplementedBillingServiceServer()
 }
 
@@ -544,6 +574,12 @@ func (UnimplementedBillingServiceServer) ConsumeCredits(context.Context, *Consum
 }
 func (UnimplementedBillingServiceServer) ListCreditLedger(context.Context, *ListCreditLedgerRequest) (*ListCreditLedgerResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCreditLedger not implemented")
+}
+func (UnimplementedBillingServiceServer) GetCreditSettings(context.Context, *GetCreditSettingsRequest) (*GetCreditSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCreditSettings not implemented")
+}
+func (UnimplementedBillingServiceServer) SetCreditSettings(context.Context, *SetCreditSettingsRequest) (*SetCreditSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCreditSettings not implemented")
 }
 func (UnimplementedBillingServiceServer) mustEmbedUnimplementedBillingServiceServer() {}
 func (UnimplementedBillingServiceServer) testEmbeddedByValue()                        {}
@@ -1070,6 +1106,42 @@ func _BillingService_ListCreditLedger_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_GetCreditSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCreditSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetCreditSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetCreditSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetCreditSettings(ctx, req.(*GetCreditSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_SetCreditSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCreditSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).SetCreditSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_SetCreditSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).SetCreditSettings(ctx, req.(*SetCreditSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BillingService_ServiceDesc is the grpc.ServiceDesc for BillingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1189,6 +1261,14 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ListCreditLedger",
 			Handler:    _BillingService_ListCreditLedger_Handler,
 		},
+		{
+			MethodName: "GetCreditSettings",
+			Handler:    _BillingService_GetCreditSettings_Handler,
+		},
+		{
+			MethodName: "SetCreditSettings",
+			Handler:    _BillingService_SetCreditSettings_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "quotify/billing/v1/billing.proto",
@@ -1201,6 +1281,7 @@ const (
 	HostedInvoiceService_StartLinkPayment_FullMethodName       = "/quotify.billing.v1.HostedInvoiceService/StartLinkPayment"
 	HostedInvoiceService_RequestHostedPayment_FullMethodName   = "/quotify.billing.v1.HostedInvoiceService/RequestHostedPayment"
 	HostedInvoiceService_GetPortal_FullMethodName              = "/quotify.billing.v1.HostedInvoiceService/GetPortal"
+	HostedInvoiceService_StartPortalPurchase_FullMethodName    = "/quotify.billing.v1.HostedInvoiceService/StartPortalPurchase"
 )
 
 // HostedInvoiceServiceClient is the client API for HostedInvoiceService service.
@@ -1220,6 +1301,9 @@ type HostedInvoiceServiceClient interface {
 	RequestHostedPayment(ctx context.Context, in *RequestHostedPaymentRequest, opts ...grpc.CallOption) (*RequestHostedPaymentResponse, error)
 	// GetPortal returns a customer's page: who they are and their invoices.
 	GetPortal(ctx context.Context, in *GetPortalRequest, opts ...grpc.CallOption) (*GetPortalResponse, error)
+	// StartPortalPurchase starts the purchase of a credit pack from a customer's portal: it makes (or finds) the credit-pack link and its invoice and returns the
+	// token of the invoice link the customer pays on.
+	StartPortalPurchase(ctx context.Context, in *StartPortalPurchaseRequest, opts ...grpc.CallOption) (*StartPortalPurchaseResponse, error)
 }
 
 type hostedInvoiceServiceClient struct {
@@ -1290,6 +1374,16 @@ func (c *hostedInvoiceServiceClient) GetPortal(ctx context.Context, in *GetPorta
 	return out, nil
 }
 
+func (c *hostedInvoiceServiceClient) StartPortalPurchase(ctx context.Context, in *StartPortalPurchaseRequest, opts ...grpc.CallOption) (*StartPortalPurchaseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartPortalPurchaseResponse)
+	err := c.cc.Invoke(ctx, HostedInvoiceService_StartPortalPurchase_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // HostedInvoiceServiceServer is the server API for HostedInvoiceService service.
 // All implementations must embed UnimplementedHostedInvoiceServiceServer
 // for forward compatibility.
@@ -1307,6 +1401,9 @@ type HostedInvoiceServiceServer interface {
 	RequestHostedPayment(context.Context, *RequestHostedPaymentRequest) (*RequestHostedPaymentResponse, error)
 	// GetPortal returns a customer's page: who they are and their invoices.
 	GetPortal(context.Context, *GetPortalRequest) (*GetPortalResponse, error)
+	// StartPortalPurchase starts the purchase of a credit pack from a customer's portal: it makes (or finds) the credit-pack link and its invoice and returns the
+	// token of the invoice link the customer pays on.
+	StartPortalPurchase(context.Context, *StartPortalPurchaseRequest) (*StartPortalPurchaseResponse, error)
 	mustEmbedUnimplementedHostedInvoiceServiceServer()
 }
 
@@ -1334,6 +1431,9 @@ func (UnimplementedHostedInvoiceServiceServer) RequestHostedPayment(context.Cont
 }
 func (UnimplementedHostedInvoiceServiceServer) GetPortal(context.Context, *GetPortalRequest) (*GetPortalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPortal not implemented")
+}
+func (UnimplementedHostedInvoiceServiceServer) StartPortalPurchase(context.Context, *StartPortalPurchaseRequest) (*StartPortalPurchaseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartPortalPurchase not implemented")
 }
 func (UnimplementedHostedInvoiceServiceServer) mustEmbedUnimplementedHostedInvoiceServiceServer() {}
 func (UnimplementedHostedInvoiceServiceServer) testEmbeddedByValue()                              {}
@@ -1464,6 +1564,24 @@ func _HostedInvoiceService_GetPortal_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HostedInvoiceService_StartPortalPurchase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartPortalPurchaseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostedInvoiceServiceServer).StartPortalPurchase(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostedInvoiceService_StartPortalPurchase_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostedInvoiceServiceServer).StartPortalPurchase(ctx, req.(*StartPortalPurchaseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // HostedInvoiceService_ServiceDesc is the grpc.ServiceDesc for HostedInvoiceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1494,6 +1612,10 @@ var HostedInvoiceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPortal",
 			Handler:    _HostedInvoiceService_GetPortal_Handler,
+		},
+		{
+			MethodName: "StartPortalPurchase",
+			Handler:    _HostedInvoiceService_StartPortalPurchase_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

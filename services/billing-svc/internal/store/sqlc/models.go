@@ -98,14 +98,21 @@ type CreditNoteSeq struct {
 }
 
 type CreditPack struct {
-	TenantID   uuid.UUID
-	ID         uuid.UUID
-	Name       string
-	Credits    int64
-	PriceMinor int64
-	Currency   string
-	Active     bool
-	CreatedAt  time.Time
+	TenantID     uuid.UUID
+	ID           uuid.UUID
+	Name         string
+	Credits      int64
+	PriceMinor   int64
+	Currency     string
+	Active       bool
+	CreatedAt    time.Time
+	ValidityDays *int32
+}
+
+type CreditSetting struct {
+	TenantID     uuid.UUID
+	LowThreshold int64
+	UpdatedAt    time.Time
 }
 
 type DunningSetting struct {
@@ -255,16 +262,21 @@ type PaymentLink struct {
 	PaidCount          int32
 	LastPaidAt         *time.Time
 	ExpiredNotifiedAt  *time.Time
+	PackID             *uuid.UUID
+	Quantity           *int32
+	Credits            *int64
+	ValidityDays       *int32
 }
 
 type PortalLink struct {
-	TenantID   uuid.UUID
-	ID         uuid.UUID
-	CustomerID uuid.UUID
-	TokenHash  []byte
-	CreatedAt  time.Time
-	ExpiresAt  time.Time
-	RevokedAt  *time.Time
+	TenantID           uuid.UUID
+	ID                 uuid.UUID
+	CustomerID         uuid.UUID
+	TokenHash          []byte
+	CreatedAt          time.Time
+	ExpiresAt          time.Time
+	RevokedAt          *time.Time
+	CustomerExternalID *string
 }
 
 type ReratingJob struct {

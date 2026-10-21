@@ -57,6 +57,10 @@ service BillingService {
   rpc ConsumeCredits(ConsumeCreditsRequest) returns (ConsumeCreditsResponse);
   // ListCreditLedger lists a customer's credit changes, newest first.
   rpc ListCreditLedger(ListCreditLedgerRequest) returns (ListCreditLedgerResponse);
+  // GetCreditSettings returns the balance below which a customer's consume announces credits.low (0: off).
+  rpc GetCreditSettings(GetCreditSettingsRequest) returns (GetCreditSettingsResponse);
+  // SetCreditSettings sets that balance.
+  rpc SetCreditSettings(SetCreditSettingsRequest) returns (SetCreditSettingsResponse);
 }
 
 // HostedInvoiceService is called by the gateway on behalf of a visitor who holds an invoice link. It has no tenant: the token is the credential.
@@ -72,6 +76,9 @@ service HostedInvoiceService {
   rpc RequestHostedPayment(RequestHostedPaymentRequest) returns (RequestHostedPaymentResponse);
   // GetPortal returns a customer's page: who they are and their invoices.
   rpc GetPortal(GetPortalRequest) returns (GetPortalResponse);
+  // StartPortalPurchase starts the purchase of a credit pack from a customer's portal: it makes (or finds) the credit-pack link and its invoice and returns the
+  // token of the invoice link the customer pays on.
+  rpc StartPortalPurchase(StartPortalPurchaseRequest) returns (StartPortalPurchaseResponse);
 }
 
 // SandboxService is for sandbox tenants only (FAILED_PRECONDITION otherwise).
@@ -638,6 +645,16 @@ message HostedAdhoc {
   string seller_name = 6;
   bool logo_available = 7;
   string environment = 8;
+  // Set for a credit-pack link: what the customer buys.
+  HostedCreditPack pack = 9;
+}
+message HostedCreditPack {
+  string name = 1;
+  // Credits in all (the pack's credits times the quantity).
+  int64 credits = 2;
+  int32 quantity = 3;
+  // 0: the credits never expire.
+  int32 validity_days = 4;
 }
 
 // HostedPaymentContext is what payments-worker needs about an invoice to offer or start a payment.
@@ -802,12 +819,44 @@ message GetPortalResponse {
   // For the gateway to look up the ledger rows of these invoices.
   string tenant_id = 7;
   string customer_id = 8;
+  // Credits (phase 36): the spendable balance and its lots, the packs on sale, and whether this portal link can buy one.
+  int64 credit_balance = 9;
+  repeated PortalCreditLot credit_lots = 10;
+  repeated PortalCreditPack credit_packs = 11;
+  bool can_buy_credits = 12;
+}
+message PortalCreditLot {
+  int64 granted = 1;
+  int64 remaining = 2;
+  // Unset when the credits never expire.
+  google.protobuf.Timestamp expire_time = 3;
+}
+message PortalCreditPack {
+  string id = 1;
+  string name = 2;
+  int64 credits = 3;
+  int64 price_minor = 4;
+  string currency = 5;
+  int32 currency_exponent = 6;
+  // 0: the credits never expire.
+  int32 validity_days = 7;
+}
+message StartPortalPurchaseRequest {
+  string portal_token = 1;
+  string pack_id = 2;
+  // 1..1000; 0 means 1.
+  int32 quantity = 3;
+}
+message StartPortalPurchaseResponse {
+  // The token of the invoice link the customer continues on; shown once, in the redirect.
+  string invoice_token = 1;
 }
 
 // PaymentLink is a link the tenant handed out. The secret part is never stored, only its hash.
 message PaymentLink {
   string id = 1;
-  // "invoice" (pays an existing invoice) or "adhoc" (a fixed amount; the invoice is made when the customer first uses it).
+  // "invoice" (pays an existing invoice), "adhoc" (a fixed amount; the invoice is made when the customer first uses it) or "credit_pack" (a credit pack for one
+  // customer; the credits are granted once when the invoice is paid).
   string kind = 2;
   // active, paid (a single-use link that was paid), expired or revoked.
   string status = 3;
@@ -826,10 +875,14 @@ message PaymentLink {
   // How many invoices the link created (ad hoc).
   int32 use_count = 15;
   string idempotency_key = 16;
+  // kind credit_pack: the pack, how many of it, and the credits one use grants (the pack's credits times the quantity, frozen when the link was made).
+  string pack_id = 17;
+  int32 quantity = 18;
+  int64 credits = 19;
 }
 
 message CreatePaymentLinkRequest {
-  // "invoice" or "adhoc"; empty means "invoice" when invoice_id is set, else "adhoc".
+  // "invoice", "adhoc" or "credit_pack"; empty means "invoice" when invoice_id is set, else "adhoc".
   string kind = 1;
   // kind invoice: the finalized, unpaid invoice.
   string invoice_id = 2;
@@ -845,6 +898,10 @@ message CreatePaymentLinkRequest {
   int32 expires_in_days = 8;
   // The same key from the same tenant returns the link made the first time (without the token, which is shown once).
   string idempotency_key = 9;
+  // kind credit_pack: the pack to sell and how many of it (1..1000; 0 means 1). Amount and currency come from the pack, never from the request; the customer is
+  // required (customer_external_id) and so is an active pack.
+  string pack_id = 10;
+  int32 quantity = 11;
 }
 message CreatePaymentLinkResponse {
   PaymentLink link = 1;
@@ -907,6 +964,8 @@ message CreditPack {
   string currency = 5;
   bool active = 6;
   google.protobuf.Timestamp create_time = 7;
+  // 0: the credits bought never expire.
+  int32 validity_days = 8;
 }
 message ListCreditPacksRequest { bool active_only = 1; }
 message ListCreditPacksResponse { repeated CreditPack packs = 1; }
@@ -915,6 +974,8 @@ message CreateCreditPackRequest {
   int64 credits = 2;
   int64 price_minor = 3;
   string currency = 4;
+  // 1..3650: the credits bought expire after this many days. 0: they never expire.
+  int32 validity_days = 5;
 }
 message CreateCreditPackResponse { CreditPack pack = 1; }
 message SetCreditPackActiveRequest {
@@ -964,6 +1025,8 @@ message ConsumeCreditsRequest {
   string reason = 3;
   // Required: a retried call must not charge twice.
   string idempotency_key = 4;
+  // Only for the credits.low event, which names the customer the way the tenant knows them; the gateway fills it in.
+  string customer_external_id = 5;
 }
 message ConsumeCreditsResponse {
   int64 balance = 1;
@@ -980,6 +1043,8 @@ message CreditLedgerEntry {
   string reason = 5;
   string idempotency_key = 6;
   google.protobuf.Timestamp create_time = 7;
+  // Where the credits it touched came from: purchase, promo or manual.
+  string source = 8;
 }
 message ListCreditLedgerRequest {
   string customer_id = 1;
@@ -990,4 +1055,17 @@ message ListCreditLedgerRequest {
 message ListCreditLedgerResponse {
   repeated CreditLedgerEntry entries = 1;
   string next_page_token = 2;
+}
+
+message GetCreditSettingsRequest {}
+message GetCreditSettingsResponse {
+  // 0: credits.low is off.
+  int64 low_threshold = 1;
+}
+message SetCreditSettingsRequest {
+  // A customer whose balance drops from at least this many credits to fewer triggers credits.low. 0 turns it off.
+  int64 low_threshold = 1;
+}
+message SetCreditSettingsResponse {
+  int64 low_threshold = 1;
 }

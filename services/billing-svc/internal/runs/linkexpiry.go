@@ -35,7 +35,7 @@ func (m *Manager) ExpireLinks(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			if l.Kind == "adhoc" {
+			if l.Kind == "adhoc" || l.Kind == "credit_pack" {
 				if voids, err = q.ChildInvoicesToVoid(ctx, sqlc.ChildInvoicesToVoidParams(d)); err != nil {
 					return err
 				}

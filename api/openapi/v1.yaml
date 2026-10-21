@@ -641,6 +641,23 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditLedgerPage" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /v1/credits/settings:
+    get:
+      operationId: getCreditSettings
+      summary: The low-balance threshold of the credits.low event
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditSettings" } } } }
+    put:
+      operationId: setCreditSettings
+      summary: Set the low-balance threshold
+      description: >
+        A consume that takes a customer's balance from at least `low_threshold` credits to fewer announces `credits.low` once (the webhook event). 0, the default, turns it off.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreditSettings" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditSettings" } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /v1/webhook-endpoints:
     post:
       operationId: createWebhookEndpoint
@@ -1121,6 +1138,26 @@ paths:
       responses:
         "200": { description: "The logo image", content: { image/png: { schema: { type: string, format: binary } } } }
         "404": { description: "No logo, or the link does not exist" }
+  /c/{token}/credits/buy:
+    post:
+      operationId: portalCreditsBuy
+      summary: Start buying a credit pack from the customer's portal
+      description: >
+        Form fields `pack_id` and, optionally, `quantity` (1 to 1000). Makes a credit-pack payment link for the portal's customer (or continues the one an earlier press made
+        and nobody paid), makes its invoice, and redirects to the invoice page to pay. The price comes from the pack, never from the form. The credits are granted once, when the
+        payment is confirmed. At most 10 a minute per address.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { pack_id: { type: string, format: uuid }, quantity: { type: integer, minimum: 1, maximum: 1000 } }, required: [pack_id] }
+      responses:
+        "303": { description: "Redirect to the invoice page (/i/{invoice token})" }
+        "404": { description: "The link does not exist or has expired, or the pack is not on sale", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
   /c/{token}/invoices/{invoice_id}:
     get:
       operationId: portalInvoicePage
@@ -3713,6 +3750,7 @@ components:
         credits: { type: string, description: "int64, above zero (a number is accepted too)" }
         price_minor: { type: string, description: "int64 minor units of the currency, above zero" }
         currency: { type: string, minLength: 3, maxLength: 3 }
+        validity_days: { type: integer, minimum: 0, maximum: 3650, description: "The credits bought expire after this many days; 0 or absent: they never expire" }
     CreditPack:
       type: object
       properties:
@@ -3723,6 +3761,11 @@ components:
         currency: { type: string }
         active: { type: boolean }
         create_time: { type: string, format: date-time }
+        validity_days: { type: integer, description: "0: the credits bought never expire" }
+    CreditSettings:
+      type: object
+      properties:
+        low_threshold: { type: string, description: "int64 credits; 0 turns credits.low off" }
     CreditPackList:
       type: object
       properties:
@@ -3772,6 +3815,7 @@ components:
         amount: { type: string, description: "int64 as a string; negative for consume and expire" }
         reason: { type: string }
         idempotency_key: { type: string }
+        source: { type: string, enum: [purchase, promo, manual], description: "Where the credits it touched came from; a purchase is a credit pack that was paid for" }
         create_time: { type: string, format: date-time }
     CreditLedgerPage:
       type: object
@@ -3811,12 +3855,17 @@ components:
         - payment_link.created
         - payment_link.paid
         - payment_link.expired
+        - credits.purchased
+        - credits.low
     PaymentLink:
       type: object
       properties:
         id: { type: string, format: uuid }
-        kind: { type: string, enum: [invoice, adhoc] }
+        kind: { type: string, enum: [invoice, adhoc, credit_pack] }
         status: { type: string, enum: [active, paid, expired, revoked], description: "paid: a single-use link that was paid" }
+        pack_id: { type: string, description: "kind credit_pack: the pack sold" }
+        quantity: { type: integer, description: "kind credit_pack: how many packs one use buys" }
+        credits: { type: string, description: "kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string" }
         invoice_id: { type: string, description: "kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)" }
         customer_external_id: { type: string }
         single_use: { type: boolean }
@@ -3833,12 +3882,14 @@ components:
     CreatePaymentLinkRequest:
       type: object
       properties:
-        kind: { type: string, enum: [invoice, adhoc], description: "Default: invoice when invoice_id is set, else adhoc" }
+        kind: { type: string, enum: [invoice, adhoc, credit_pack], description: "Default: invoice when invoice_id is set, credit_pack when pack_id is set, else adhoc" }
         invoice_id: { type: string, format: uuid }
+        pack_id: { type: string, format: uuid, description: "credit_pack: the active credit pack to sell. Its price and currency become the link's amount; they are never taken from the request" }
+        quantity: { type: integer, minimum: 1, maximum: 1000, description: "credit_pack: how many packs one payment buys (default 1)" }
         amount_minor: { type: string, description: "adhoc: a positive int64 in minor units (a string or a number)" }
         currency: { type: string, description: "adhoc: ISO 4217; the tenant's currency when empty" }
         description: { type: string, maxLength: 200, description: "adhoc: what it is for; printed on the invoice" }
-        customer_external_id: { type: string, description: "adhoc: make the invoice out to this customer" }
+        customer_external_id: { type: string, description: "adhoc: make the invoice out to this customer. credit_pack: required, the customer who receives the credits" }
         single_use: { type: boolean, description: "Default true for adhoc, false for invoice" }
         expires_in_days: { type: integer, minimum: 1, maximum: 365, description: "Default 30 for adhoc, 90 for invoice" }
         idempotency_key: { type: string, maxLength: 200 }
@@ -3888,7 +3939,7 @@ components:
         delivered_time: { type: string, format: date-time }
     WebhookEvent:
       type: object
-      description: "The body of a delivery. data depends on the type: invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change."
+      description: "The body of a delivery. data depends on the type: credits.purchased carries the customer, the credits granted, the new balance and the invoice; credits.low the customer, the balance and the threshold; invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change."
       properties:
         id: { type: string, format: uuid }
         type: { $ref: "#/components/schemas/WebhookEventType" }

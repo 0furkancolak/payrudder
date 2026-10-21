@@ -26,7 +26,7 @@ func Packs(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, activeOnl
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		rows, err := sqlc.New(tx).ListCreditPacks(ctx, sqlc.ListCreditPacksParams{TenantID: tenantID, ActiveOnly: activeOnly})
 		for _, r := range rows {
-			out = append(out, command.Pack{ID: r.ID, Name: r.Name, Credits: r.Credits, PriceMinor: r.PriceMinor, Currency: r.Currency, Active: r.Active, CreatedAt: r.CreatedAt})
+			out = append(out, command.Pack{ID: r.ID, Name: r.Name, Credits: r.Credits, PriceMinor: r.PriceMinor, Currency: r.Currency, Active: r.Active, CreatedAt: r.CreatedAt, ValidityDays: r.ValidityDays})
 		}
 		return err
 	})
@@ -44,7 +44,7 @@ func PackByID(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (*
 		if err != nil {
 			return err
 		}
-		out = &command.Pack{ID: r.ID, Name: r.Name, Credits: r.Credits, PriceMinor: r.PriceMinor, Currency: r.Currency, Active: r.Active, CreatedAt: r.CreatedAt}
+		out = &command.Pack{ID: r.ID, Name: r.Name, Credits: r.Credits, PriceMinor: r.PriceMinor, Currency: r.Currency, Active: r.Active, CreatedAt: r.CreatedAt, ValidityDays: r.ValidityDays}
 		return nil
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -104,7 +104,9 @@ type Entry struct {
 	Kind        string
 	Amount      int64
 	Reason, Key string
-	CreatedAt   time.Time
+	// Source is where the credits the entry touched came from: purchase, promo or manual.
+	Source    string
+	CreatedAt time.Time
 }
 
 // Ledger returns a page of a customer's ledger, newest first, and the token of the next page ("" at the end).
@@ -125,7 +127,7 @@ func Ledger(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UU
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		rows, err := sqlc.New(tx).ListCreditLedger(ctx, params)
 		for _, r := range rows {
-			out = append(out, Entry{ID: r.ID, LotID: r.LotID, Kind: r.Kind, Amount: r.Amount, Reason: r.Reason, Key: r.IdempotencyKey, CreatedAt: r.CreatedAt})
+			out = append(out, Entry{ID: r.ID, LotID: r.LotID, Kind: r.Kind, Amount: r.Amount, Reason: r.Reason, Key: r.IdempotencyKey, Source: r.Source, CreatedAt: r.CreatedAt})
 		}
 		return err
 	})
@@ -155,6 +157,23 @@ func parseToken(token string) (time.Time, uuid.UUID, bool) {
 		return time.Time{}, uuid.Nil, false
 	}
 	return time.UnixMicro(us).UTC(), u, true
+}
+
+// LowThreshold is the balance below which a consume announces credits.low; 0 means the tenant turned it off (or never set it).
+func LowThreshold(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID) (int64, error) {
+	var out int64
+	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
+		v, err := sqlc.New(tx).GetCreditSettings(ctx, tenantID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		out = v
+		return err
+	})
+	if err != nil {
+		return 0, internal()
+	}
+	return out, nil
 }
 
 func internal() error { return status.Error(codes.Internal, "internal error") }

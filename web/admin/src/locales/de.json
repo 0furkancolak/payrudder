@@ -742,7 +742,8 @@
       "kind": "Art",
       "kinds": {
         "adhoc": "Fester Betrag",
-        "invoice": "Offene Rechnung"
+        "invoice": "Offene Rechnung",
+        "credit_pack": "Credit-Paket"
       },
       "invoiceId": "Rechnungs-ID",
       "amount": "Betrag",
@@ -844,7 +845,12 @@
         "onSale": "Im Verkauf",
         "withdrawn": "Zurückgezogen",
         "withdraw": "Zurückziehen",
-        "restore": "Wieder verkaufen"
+        "restore": "Wieder verkaufen",
+        "validity": "Gültig für (Tage, optional)",
+        "validityCol": "Gültigkeit",
+        "noExpiry": "Läuft nie ab",
+        "days": "{n} Tage",
+        "purchaseLink": "Kauflink erstellen"
       },
       "customer": {
         "title": "Guthaben eines Kunden",
@@ -879,12 +885,35 @@
         "time": "Zeit",
         "kind": "Art",
         "amount": "Guthaben",
-        "reason": "Notiz"
+        "reason": "Notiz",
+        "source": "Quelle"
       },
       "kind": {
         "grant": "Hinzugefügt",
         "consume": "Verbraucht",
         "expire": "Verfallen"
+      },
+      "purchase": {
+        "title": "Kauflink",
+        "hint": "Ein Link, über den der Kunde dieses Paket kauft. Sobald die Zahlung bestätigt ist, werden die Credits einmalig gutgeschrieben. Der Preis ist immer der des Pakets.",
+        "formLabel": "Kauflink erstellen",
+        "pack": "Paket",
+        "customer": "Kunde",
+        "pickCustomer": "Kunden wählen",
+        "quantity": "Menge",
+        "create": "Link erstellen",
+        "shownOnce": "Kopieren Sie den Link jetzt: Er wird nur einmal angezeigt und kann nicht erneut gelesen werden.",
+        "url": "Kauflink",
+        "copy": "Kopieren",
+        "close": "Schließen"
+      },
+      "settings": {
+        "title": "Warnung bei niedrigem Guthaben",
+        "hint": "Fällt das Guthaben eines Kunden unter diese Zahl, sendet Quotify das Webhook-Ereignis credits.low einmalig. 0 schaltet es aus.",
+        "formLabel": "Warnung bei niedrigem Guthaben",
+        "threshold": "Warnen unter (Credits)",
+        "save": "Speichern",
+        "saved": "Gespeichert."
       }
     }
   },
@@ -1121,7 +1150,9 @@
         "idempotency_conflict": "Dieser Idempotency-Schlüssel wurde für einen anderen Zahlungslink verwendet.",
         "invoice_not_payable": "Eine bezahlte oder stornierte Rechnung braucht keinen Zahlungslink.",
         "invoice_required": "Ein Zahlungslink der Art Rechnung braucht eine Rechnung.",
-        "not_found": "Diesen Zahlungslink gibt es nicht."
+        "not_found": "Diesen Zahlungslink gibt es nicht.",
+        "customer_required": "Ein Credit-Paket-Link braucht den Kunden, der die Credits erhält.",
+        "pack_required": "Ein Credit-Paket-Link braucht ein Paket."
       },
       "portal_link": {
         "customer_not_found": "Diesen Kunden gibt es nicht.",
@@ -1140,7 +1171,12 @@
         "key_required": "Zum Verbrauchen von Guthaben ist ein Idempotency-Schlüssel nötig.",
         "key_reused": "Dieser Idempotency-Schlüssel wurde schon für eine andere Anfrage verwendet.",
         "pack_not_found": "Es gibt kein solches Guthabenpaket.",
-        "unknown_currency": "Diese Währung wird nicht unterstützt."
+        "unknown_currency": "Diese Währung wird nicht unterstützt.",
+        "bad_quantity": "Die Menge muss zwischen 1 und 1000 liegen.",
+        "bad_threshold": "Der Schwellenwert muss 0 oder eine ganze Zahl von Credits sein.",
+        "bad_validity": "Die Gültigkeit muss 1 bis 3650 Tage betragen, oder leer für Credits, die nie verfallen.",
+        "pack_inactive": "Dieses Credit-Paket ist nicht im Verkauf.",
+        "portal_cannot_buy": "Mit diesem Portal-Link können keine Credits gekauft werden. Fordern Sie einen neuen an."
       }
     },
     "plans": {

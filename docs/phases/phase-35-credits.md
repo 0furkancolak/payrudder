@@ -11,8 +11,8 @@
 - [x] **API.** `GET/POST /v1/credit-packs`, `POST …/{id}/activate|deactivate`, `GET /v1/customers/{id}/credits`, `POST …/credits/grant`, `POST …/credits/consume`, `GET …/credits/ledger`; OpenAPI.
 - [x] **Console.** A "Credits" tab: packs, a customer's balance and lots, grants, the ledger. Six languages.
 - [x] **Tests.** Integration (packs, expiry order, idempotency, concurrent consumes, expiry sweep, one grant per payment), gateway handlers, mocked Playwright.
-- [ ] **Buying a pack.** A customer pays for a pack through a payment link (phase 34); when the payment is confirmed the credits are granted once (`GrantPurchase`, keyed by the payment). Needs phase 34 on main.
-- [ ] **Customer portal and low-balance event.** The customer's own page shows the balance and offers the packs; a `credits.low` webhook fires below a threshold the tenant sets.
+- [x] **Buying a pack.** A customer pays for a pack through a payment link (phase 34); when the payment is confirmed the credits are granted once (`GrantPurchase`, keyed by the payment). Built in [phase 36](phase-36-credit-purchase.md).
+- [x] **Customer portal and low-balance event.** The customer's own page shows the balance and offers the packs; a `credits.low` webhook fires below a threshold the tenant sets. Built in [phase 36](phase-36-credit-purchase.md).
 
 ## Decisions
 
