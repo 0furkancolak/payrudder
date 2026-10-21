@@ -1301,7 +1301,8 @@
         "unknown_category": "Diese E-Mail-Kategorie existiert nicht."
       },
       "subscription": {
-        "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut."
+        "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut.",
+        "provider_currency": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen. Wählen Sie einen anderen Anbieter oder eine andere Währung."
       },
       "webhook": {
         "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",

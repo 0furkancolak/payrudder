@@ -44,7 +44,7 @@ service AdminService {                                               // operator
 
 message CreateAccountRequest {
   string name = 1;
-  string currency = 2;        // required, ISO 4217 from the supported list (TRY, USD, EUR, GBP, JPY, KWD…); no default
+  string currency = 2;        // required, any active ISO 4217 currency (phase 40: 153 codes with their exponents); no default
   string timezone = 3;        // required, IANA name (e.g. "Europe/Istanbul"); defines period boundaries; no default
   google.protobuf.Duration grace_period = 4;  // required, 0..7 days
   string tier = 5;

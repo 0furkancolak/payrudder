@@ -1301,7 +1301,8 @@
         "unknown_category": "Bu e-posta kategorisi yok."
       },
       "subscription": {
-        "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın."
+        "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın.",
+        "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin."
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",

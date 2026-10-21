@@ -1301,7 +1301,8 @@
         "unknown_category": "Cette catégorie d'e-mail n'existe pas."
       },
       "subscription": {
-        "coupon_blocks_credit": "Cet abonnement a un coupon. Créditez plutôt la partie non utilisée avec un avoir sur la facture de l'abonnement."
+        "coupon_blocks_credit": "Cet abonnement a un coupon. Créditez plutôt la partie non utilisée avec un avoir sur la facture de l'abonnement.",
+        "provider_currency": "Ce prestataire de paiement ne peut pas encaisser dans cette devise. Choisissez un autre prestataire ou une autre devise."
       },
       "webhook": {
         "not_configured": "Les webhooks ne sont pas configurés sur ce déploiement (la clé des secrets est absente).",
