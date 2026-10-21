@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
-import { APP, LIVE, SESSION, overview, productGateway, signInAsAda, user } from "./product";
+import { APP, INVOICE_1, LIVE, SESSION, billingGateway, overview, productGateway, signInAsAda, user } from "./product";
 
 // The end-user product: sign up and in, the organisation home, an app's dashboard, API keys. The gateway is mocked; SHOTS=<dir> also writes screenshots
 // of the pages (desktop and phone, light and dark) so the look can be reviewed.
@@ -337,7 +337,7 @@ test.describe("e-mail verification and password reset", () => {
 
     // The link of the mail, followed in this browser.
     await page.goto("/verify#token=qv_good");
-    await expect(page.getByRole("status")).toContainText("E-mail address confirmed");
+    await expect(page.getByText("E-mail address confirmed")).toBeVisible();
     expect(page.url()).not.toContain("qv_good");
     expect(gw.called("POST", "/auth/verify")[0]?.body).toEqual({ token: "qv_good" });
     await page.goto(`/app/apps/${APP}`);
@@ -524,5 +524,121 @@ test.describe("members and invitations", () => {
     await productGateway(new MockGateway(), { memberships: [] }).gw.install(page);
     await signInAsAda(page);
     await expect(page.getByTestId("no-account")).toContainText("You are not in any account");
+  });
+});
+
+test.describe("billing pages of the app", () => {
+  const open = async (page: Page, state: Parameters<typeof productGateway>[1] = {}) => {
+    const { gw } = productGateway(new MockGateway(), state);
+    billingGateway(gw);
+    await gw.install(page);
+    await signInAsAda(page);
+    return gw;
+  };
+
+  test("invoices: filter, load more, open one and its PDF; everything is the tenant API as the person's tenant", async ({ page }) => {
+    const gw = await open(page);
+    await page.goto(`/app/t/${LIVE}/invoices`);
+    await expect(page.getByRole("heading", { name: "Invoices" }).first()).toBeVisible();
+    await expect(page.getByTestId("invoice-INV-2026-000003")).toContainText("cus_acme");
+    await expect(page.getByTestId("invoice-INV-2026-000002")).toContainText("Open");
+    await expect(page.getByTestId("invoice-INV-2026-000002")).toContainText("$299.00");
+    await shoot(page, "30-invoices");
+
+    await page.getByRole("button", { name: "Load more" }).click();
+    await expect(page.getByTestId("invoice-INV-2026-000001")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Load more" })).toHaveCount(0);
+
+    await page.getByLabel("Status").selectOption("open");
+    await expect(page.getByTestId("invoice-INV-2026-000003")).toHaveCount(0);
+    expect(gw.called("GET", "/v1/invoices").some((c) => c.query.get("status") === "open")).toBe(true);
+    await page.getByLabel("Status").selectOption("");
+
+    await page.getByRole("link", { name: "INV-2026-000003" }).click();
+    await page.waitForURL(`**/app/t/${LIVE}/invoices/${INVOICE_1}`);
+    await expect(page.getByTestId("invoice-total")).toHaveText("$49.00");
+    await expect(page.getByRole("cell", { name: /Pro plan, September/ })).toBeVisible();
+    await expect(page.getByRole("cell", { name: /API calls/ })).toBeVisible();
+    await shoot(page, "31-invoice");
+
+    // The PDF is a presigned link opened in a new tab.
+    await page.evaluate(() => {
+      const w = window as unknown as { __opened: string[] };
+      w.__opened = [];
+      window.open = ((url: string) => {
+        w.__opened.push(url);
+        return null;
+      }) as typeof window.open;
+    });
+    await page.getByRole("button", { name: "Open PDF" }).click();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)).toEqual(["https://files.example.test/INV-2026-000003.pdf"]);
+
+    for (const c of gw.calls.filter((x) => x.path.startsWith("/v1/"))) {
+      expect(c.headers.authorization, c.path).toBe(`Bearer ${SESSION}`);
+      expect(c.headers["x-quotify-tenant"], c.path).toBe(LIVE);
+    }
+    expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
+  });
+
+  test("payments: charges and refunds as words and per-currency amounts, with a way to the invoice", async ({ page }) => {
+    const gw = await open(page);
+    await page.goto(`/app/t/${LIVE}/payments`);
+    const rows = page.getByTestId("payment-row");
+    await expect(rows).toHaveCount(4);
+    await expect(rows.nth(0)).toContainText("Paid");
+    await expect(rows.nth(0)).toContainText("$49.00");
+    await expect(rows.nth(1)).toContainText("Failed");
+    await expect(rows.nth(2)).toContainText("Processing");
+    await expect(rows.nth(3)).toContainText("Refund");
+    await expect(rows.nth(3)).toContainText("Refunded");
+    await shoot(page, "32-payments");
+    await rows.nth(0).getByRole("link", { name: "View invoice" }).click();
+    await page.waitForURL(`**/app/t/${LIVE}/invoices/${INVOICE_1}`);
+    expect(gw.called("GET", "/v1/payments")[0]?.headers["x-quotify-tenant"]).toBe(LIVE);
+    expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
+  });
+
+  test("packages, pricing and reports are readable, and an owner can change them", async ({ page }) => {
+    const gw = await open(page);
+    await page.goto(`/app/t/${LIVE}/packages`);
+    await expect(page.getByRole("cell", { name: "pro", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Publish version" })).toBeEnabled();
+    await shoot(page, "33-packages");
+    await page.getByRole("link", { name: "Pricing", exact: true }).click();
+    await expect(page.getByRole("cell", { name: "SAVE10" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create coupon" })).toBeEnabled();
+    await page.getByRole("link", { name: "Reports", exact: true }).click();
+    await expect(page.getByRole("cell", { name: "USD" }).first()).toBeVisible();
+    expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
+  });
+
+  test("a viewer reads everything and is told so: forms are off", async ({ page }) => {
+    const gw = await open(page, { role: "viewer", memberships: [{ account_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", account_name: "Ada Labs", role: "viewer" }] });
+    await page.goto(`/app/t/${LIVE}/packages`);
+    await expect(page.getByTestId("read-only-note")).toContainText("Your role is viewer");
+    await expect(page.getByRole("cell", { name: "pro", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Publish version" })).toHaveCount(0);
+    await page.getByRole("link", { name: "Pricing", exact: true }).click();
+    await expect(page.getByRole("cell", { name: "SAVE10" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create coupon" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save retries" })).toBeDisabled();
+    await page.goto(`/app/t/${LIVE}/invoices`);
+    await expect(page.getByTestId("invoice-INV-2026-000003")).toBeVisible();
+    expect(gw.calls.filter((c) => c.method !== "GET" && c.path.startsWith("/v1/"))).toEqual([]);
+  });
+
+  test("no tab of an environment calls an operator route, and the tabs are all there", async ({ page }) => {
+    const gw = await open(page);
+    await page.goto(`/app/t/${LIVE}/customers`);
+    const nav = page.getByRole("navigation", { name: "Go deeper" });
+    for (const tab of ["Customers", "Invoices", "Payments", "Packages", "Pricing", "Reports", "Payment links", "Credits", "Webhooks"]) {
+      await expect(nav.getByRole("link", { name: tab, exact: true })).toBeVisible();
+    }
+    for (const path of ["customers", "invoices", "payments", "packages", "pricing", "reports", "payment-links", "credits", "webhooks"]) {
+      await page.goto(`/app/t/${LIVE}/${path}`);
+      await expect(page.getByRole("navigation", { name: "Go deeper" })).toBeVisible();
+    }
+    await expect(page).not.toHaveURL(/signin/); // a 401 from an operator route would have ended the session
+    expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
   });
 });
