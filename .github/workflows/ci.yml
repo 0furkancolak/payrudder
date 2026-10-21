@@ -119,6 +119,9 @@ jobs:
           npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
           npm run e2e
+      # Phase 33: the stack has just served the e2e scenarios, so this is the cheapest honest smoke run (no second stack to boot).
+      - name: Memory budgets (deploy/compose/memory-budgets.yaml)
+        run: make mem-budget
       - name: seed demo account
         run: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h > /dev/null
       - if: failure()

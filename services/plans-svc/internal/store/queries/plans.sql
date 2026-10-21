@@ -345,3 +345,10 @@ DELETE FROM tax_rates WHERE tenant_id = app_tenant_id();
 
 -- name: InsertTaxRate :exec
 INSERT INTO tax_rates (tenant_id, country, name, rate_bps) VALUES (app_tenant_id(), @country, @name, @rate_bps);
+
+-- name: GetMailDisabled :one
+SELECT disabled FROM tenant_mail_settings WHERE tenant_id = app_tenant_id();
+
+-- name: UpsertMailDisabled :exec
+INSERT INTO tenant_mail_settings (tenant_id, disabled, updated_at) VALUES (app_tenant_id(), @disabled::text[], now())
+ON CONFLICT (tenant_id) DO UPDATE SET disabled = EXCLUDED.disabled, updated_at = EXCLUDED.updated_at;

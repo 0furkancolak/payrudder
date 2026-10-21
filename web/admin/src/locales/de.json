@@ -242,7 +242,8 @@
       "providers": "Anbieter",
       "reports": "Berichte",
       "pricing": "Gutscheine & Steuer",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mail": "E-Mail"
     },
     "common": {
       "remove": "Entfernen"
@@ -581,6 +582,25 @@
       "refundRequested": "Erstattung angefordert",
       "refundFailed": "Erstattung fehlgeschlagen",
       "retryRefund": "Erstattung wiederholen"
+    },
+    "mail": {
+      "title": "E-Mail",
+      "hint": "Legen Sie fest, welche Arten von E-Mails Quotify an die Kunden dieses Mandanten sendet. Eine abgeschaltete Art wird verworfen, nicht vorgemerkt: Wieder einschalten sendet das Übersprungene nicht nach.",
+      "categories": {
+        "invoice_issued": "Rechnung erstellt",
+        "payment_receipts": "Zahlungsbelege",
+        "payment_failed": "Zahlung fehlgeschlagen",
+        "usage_alerts": "Nutzungswarnungen",
+        "system": "System"
+      },
+      "descriptions": {
+        "invoice_issued": "Teilt dem Kunden mit, dass eine neue Rechnung abgeschlossen wurde.",
+        "payment_receipts": "Der Beleg nach einer erfolgreichen Zahlung.",
+        "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Quotify die Einziehung aufgegeben hat.",
+        "usage_alerts": "Ein Kunde hat ein Nutzungslimit seines Tarifs überschritten.",
+        "system": "Alle übrigen Nachrichten von Quotify."
+      },
+      "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Quotify."
     },
     "webhooks": {
       "title": "Webhooks",

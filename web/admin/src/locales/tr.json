@@ -242,7 +242,8 @@
       "providers": "Sağlayıcılar",
       "reports": "Raporlar",
       "pricing": "Kupon ve vergi",
-      "webhooks": "Webhooklar"
+      "webhooks": "Webhooklar",
+      "mail": "E-posta"
     },
     "common": {
       "remove": "Kaldır"
@@ -581,6 +582,25 @@
       "refundRequested": "İade istendi",
       "refundFailed": "İade başarısız",
       "retryRefund": "İadeyi yeniden dene"
+    },
+    "mail": {
+      "title": "E-posta",
+      "hint": "Quotify'ın bu kiracının müşterilerine hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
+      "categories": {
+        "invoice_issued": "Fatura kesildi",
+        "payment_receipts": "Ödeme makbuzları",
+        "payment_failed": "Ödeme başarısız",
+        "usage_alerts": "Kullanım uyarıları",
+        "system": "Sistem"
+      },
+      "descriptions": {
+        "invoice_issued": "Müşteriye yeni bir faturanın kesildiğini bildirir.",
+        "payment_receipts": "Başarılı bir ödemeden sonraki makbuz.",
+        "payment_failed": "Başarısız ödeme, yeniden deneme ve Quotify'ın tahsilattan vazgeçtiği bildirimi.",
+        "usage_alerts": "Bir müşteri planının kullanım limitini aştı.",
+        "system": "Quotify'ın gönderdiği diğer tüm iletiler."
+      },
+      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Quotify'ın e-postalarını yönetir."
     },
     "webhooks": {
       "title": "Webhooklar",

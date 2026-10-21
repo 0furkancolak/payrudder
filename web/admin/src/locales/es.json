@@ -242,7 +242,8 @@
       "providers": "Proveedores",
       "reports": "Informes",
       "pricing": "Cupones e impuestos",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mail": "Correo"
     },
     "common": {
       "remove": "Quitar"
@@ -581,6 +582,25 @@
       "refundRequested": "Reembolso solicitado",
       "refundFailed": "Reembolso fallido",
       "retryRefund": "Reintentar el reembolso"
+    },
+    "mail": {
+      "title": "Correo electrónico",
+      "hint": "Elija qué tipos de correo envía Quotify a los clientes de este inquilino. Un tipo desactivado se descarta, no se pone en cola: al activarlo de nuevo no se envía lo omitido.",
+      "categories": {
+        "invoice_issued": "Factura emitida",
+        "payment_receipts": "Recibos de pago",
+        "payment_failed": "Pago fallido",
+        "usage_alerts": "Alertas de uso",
+        "system": "Sistema"
+      },
+      "descriptions": {
+        "invoice_issued": "Avisa al cliente de que se emitió una factura nueva.",
+        "payment_receipts": "El recibo tras un pago correcto.",
+        "payment_failed": "Un pago fallido, un reintento y el aviso de que Quotify dejó de cobrar.",
+        "usage_alerts": "Un cliente superó un límite de uso de su plan.",
+        "system": "Cualquier otro mensaje que envía Quotify."
+      },
+      "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Quotify."
     },
     "webhooks": {
       "title": "Webhooks",

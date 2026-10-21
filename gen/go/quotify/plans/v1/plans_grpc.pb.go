@@ -38,6 +38,8 @@ const (
 	PlansService_ListSubscriptions_FullMethodName                = "/quotify.plans.v1.PlansService/ListSubscriptions"
 	PlansService_GetRoutingRules_FullMethodName                  = "/quotify.plans.v1.PlansService/GetRoutingRules"
 	PlansService_SetRoutingRules_FullMethodName                  = "/quotify.plans.v1.PlansService/SetRoutingRules"
+	PlansService_GetMailSettings_FullMethodName                  = "/quotify.plans.v1.PlansService/GetMailSettings"
+	PlansService_SetMailSettings_FullMethodName                  = "/quotify.plans.v1.PlansService/SetMailSettings"
 	PlansService_PreviewRouting_FullMethodName                   = "/quotify.plans.v1.PlansService/PreviewRouting"
 	PlansService_StartProviderMigration_FullMethodName           = "/quotify.plans.v1.PlansService/StartProviderMigration"
 	PlansService_CompleteProviderMigration_FullMethodName        = "/quotify.plans.v1.PlansService/CompleteProviderMigration"
@@ -102,6 +104,10 @@ type PlansServiceClient interface {
 	GetRoutingRules(ctx context.Context, in *GetRoutingRulesRequest, opts ...grpc.CallOption) (*GetRoutingRulesResponse, error)
 	// SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
 	SetRoutingRules(ctx context.Context, in *SetRoutingRulesRequest, opts ...grpc.CallOption) (*SetRoutingRulesResponse, error)
+	// GetMailSettings returns, for every mail category, whether Quotify's outgoing e-mail of that kind is on for the tenant. Every category is on until switched off.
+	GetMailSettings(ctx context.Context, in *GetMailSettingsRequest, opts ...grpc.CallOption) (*GetMailSettingsResponse, error)
+	// SetMailSettings switches the categories listed on or off; categories not listed keep their setting. Notifier drops a mail of a category that is off.
+	SetMailSettings(ctx context.Context, in *SetMailSettingsRequest, opts ...grpc.CallOption) (*SetMailSettingsResponse, error)
 	// PreviewRouting says where a customer in a country paying in a currency would go, without creating anything.
 	PreviewRouting(ctx context.Context, in *PreviewRoutingRequest, opts ...grpc.CallOption) (*PreviewRoutingResponse, error)
 	// StartProviderMigration moves a subscription to another payment provider without charging the customer twice. The old subscription ends
@@ -344,6 +350,26 @@ func (c *plansServiceClient) SetRoutingRules(ctx context.Context, in *SetRouting
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetRoutingRulesResponse)
 	err := c.cc.Invoke(ctx, PlansService_SetRoutingRules_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) GetMailSettings(ctx context.Context, in *GetMailSettingsRequest, opts ...grpc.CallOption) (*GetMailSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMailSettingsResponse)
+	err := c.cc.Invoke(ctx, PlansService_GetMailSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) SetMailSettings(ctx context.Context, in *SetMailSettingsRequest, opts ...grpc.CallOption) (*SetMailSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetMailSettingsResponse)
+	err := c.cc.Invoke(ctx, PlansService_SetMailSettings_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -664,6 +690,10 @@ type PlansServiceServer interface {
 	GetRoutingRules(context.Context, *GetRoutingRulesRequest) (*GetRoutingRulesResponse, error)
 	// SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
 	SetRoutingRules(context.Context, *SetRoutingRulesRequest) (*SetRoutingRulesResponse, error)
+	// GetMailSettings returns, for every mail category, whether Quotify's outgoing e-mail of that kind is on for the tenant. Every category is on until switched off.
+	GetMailSettings(context.Context, *GetMailSettingsRequest) (*GetMailSettingsResponse, error)
+	// SetMailSettings switches the categories listed on or off; categories not listed keep their setting. Notifier drops a mail of a category that is off.
+	SetMailSettings(context.Context, *SetMailSettingsRequest) (*SetMailSettingsResponse, error)
 	// PreviewRouting says where a customer in a country paying in a currency would go, without creating anything.
 	PreviewRouting(context.Context, *PreviewRoutingRequest) (*PreviewRoutingResponse, error)
 	// StartProviderMigration moves a subscription to another payment provider without charging the customer twice. The old subscription ends
@@ -778,6 +808,12 @@ func (UnimplementedPlansServiceServer) GetRoutingRules(context.Context, *GetRout
 }
 func (UnimplementedPlansServiceServer) SetRoutingRules(context.Context, *SetRoutingRulesRequest) (*SetRoutingRulesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetRoutingRules not implemented")
+}
+func (UnimplementedPlansServiceServer) GetMailSettings(context.Context, *GetMailSettingsRequest) (*GetMailSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMailSettings not implemented")
+}
+func (UnimplementedPlansServiceServer) SetMailSettings(context.Context, *SetMailSettingsRequest) (*SetMailSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetMailSettings not implemented")
 }
 func (UnimplementedPlansServiceServer) PreviewRouting(context.Context, *PreviewRoutingRequest) (*PreviewRoutingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PreviewRouting not implemented")
@@ -1219,6 +1255,42 @@ func _PlansService_SetRoutingRules_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlansServiceServer).SetRoutingRules(ctx, req.(*SetRoutingRulesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_GetMailSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMailSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).GetMailSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_GetMailSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).GetMailSettings(ctx, req.(*GetMailSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_SetMailSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetMailSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).SetMailSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_SetMailSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).SetMailSettings(ctx, req.(*SetMailSettingsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1784,6 +1856,14 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetRoutingRules",
 			Handler:    _PlansService_SetRoutingRules_Handler,
+		},
+		{
+			MethodName: "GetMailSettings",
+			Handler:    _PlansService_GetMailSettings_Handler,
+		},
+		{
+			MethodName: "SetMailSettings",
+			Handler:    _PlansService_SetMailSettings_Handler,
 		},
 		{
 			MethodName: "PreviewRouting",

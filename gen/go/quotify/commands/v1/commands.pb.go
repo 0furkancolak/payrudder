@@ -1413,8 +1413,11 @@ func (x *PaymentStatus) GetDeclineCode() string {
 }
 
 type NotificationSent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty when the mail was not sent.
+	MessageId string `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	// True when the tenant switched this category of mail off: nothing was sent and none will be.
+	Suppressed    bool `protobuf:"varint,2,opt,name=suppressed,proto3" json:"suppressed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1454,6 +1457,13 @@ func (x *NotificationSent) GetMessageId() string {
 		return x.MessageId
 	}
 	return ""
+}
+
+func (x *NotificationSent) GetSuppressed() bool {
+	if x != nil {
+		return x.Suppressed
+	}
+	return false
 }
 
 var File_quotify_commands_v1_commands_proto protoreflect.FileDescriptor
@@ -1577,10 +1587,13 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"\x11STATE_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fSTATE_NOT_FOUND\x10\x01\x12\x13\n" +
 	"\x0fSTATE_SUCCEEDED\x10\x02\x12\x12\n" +
-	"\x0eSTATE_DECLINED\x10\x03\"1\n" +
+	"\x0eSTATE_DECLINED\x10\x03\"Q\n" +
 	"\x10NotificationSent\x12\x1d\n" +
 	"\n" +
-	"message_id\x18\x01 \x01(\tR\tmessageIdB\xdd\x01\n" +
+	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x1e\n" +
+	"\n" +
+	"suppressed\x18\x02 \x01(\bR\n" +
+	"suppressedB\xdd\x01\n" +
 	"\x17com.quotify.commands.v1B\rCommandsProtoP\x01ZEgithub.com/0furkancolak/quotify/gen/go/quotify/commands/v1;commandsv1\xa2\x02\x03QCX\xaa\x02\x13Quotify.Commands.V1\xca\x02\x13Quotify\\Commands\\V1\xe2\x02\x1fQuotify\\Commands\\V1\\GPBMetadata\xea\x02\x15Quotify::Commands::V1b\x06proto3"
 
 var (
