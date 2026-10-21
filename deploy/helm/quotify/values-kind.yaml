@@ -1,5 +1,5 @@
 # kind with three workers (deploy/kind/cluster.yaml): two replicas of the services that carry load, HPAs on the gateway and
-# ingest-svc, a NodePort for the gateway and mock-psp so that the host reaches them on 8000 and 8090.
+# ingest-svc, a NodePort for the gateway and mock-psp so that the host reaches them on 42800 and 42890.
 global:
   environment: kind
 defaults:

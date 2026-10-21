@@ -22,7 +22,7 @@ import (
 type Config struct {
 	// Endpoint is the S3 API URL the service talks to (http://minio:9000). Empty means AWS.
 	Endpoint string
-	// PublicEndpoint is the URL clients use for presigned links (http://localhost:9001). Empty means Endpoint.
+	// PublicEndpoint is the URL clients use for presigned links (http://localhost:42901). Empty means Endpoint.
 	PublicEndpoint string
 	Region         string
 	Bucket         string

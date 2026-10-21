@@ -46,14 +46,14 @@ func envInt(k string, def int) int {
 }
 
 var (
-	pgPort        = envOr("QUOTIFY_PG_HOST_PORT", "5432")
-	gateway       = envOr("QUOTIFY_GATEWAY_URL", "http://localhost:8000")
+	pgPort        = envOr("QUOTIFY_PG_HOST_PORT", "42432")
+	gateway       = envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800")
 	operatorToken = envOr("QUOTIFY_OPERATOR_TOKEN", "local-operator-token-change-me-0123456789")
-	kafkaBrokers  = envOr("QUOTIFY_KAFKA_BROKERS", "localhost:19092")
+	kafkaBrokers  = envOr("QUOTIFY_KAFKA_BROKERS", "localhost:42092")
 	aggregatorDSN = envOr("QUOTIFY_AGGREGATOR_DSN", fmt.Sprintf("postgres://aggregator_system:aggregator_system_local@localhost:%s/aggregator_db", pgPort))
 	ingestDSN     = envOr("QUOTIFY_INGEST_DSN", fmt.Sprintf("postgres://ingest_system:ingest_system_local@localhost:%s/ingest_db", pgPort))
-	clickhouseURL = envOr("QUOTIFY_CLICKHOUSE_URL", "http://localhost:8123")
-	toxiproxyURL  = envOr("QUOTIFY_TOXIPROXY_URL", "http://localhost:8474")
+	clickhouseURL = envOr("QUOTIFY_CLICKHOUSE_URL", "http://localhost:42123")
+	toxiproxyURL  = envOr("QUOTIFY_TOXIPROXY_URL", "http://localhost:42474")
 	prometheusURL = envOr("QUOTIFY_PROMETHEUS_URL", "")
 	httpc         = &http.Client{Timeout: 30 * time.Second}
 

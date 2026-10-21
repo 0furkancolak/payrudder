@@ -5,10 +5,10 @@ name: quotify
 nodes:
   - role: control-plane
     extraPortMappings:
-      - { containerPort: 30080, hostPort: 8000, listenAddress: "127.0.0.1" }
-      - { containerPort: 30090, hostPort: 8090, listenAddress: "127.0.0.1" }
-      - { containerPort: 31025, hostPort: 8025, listenAddress: "127.0.0.1" }
-      - { containerPort: 31900, hostPort: 9001, listenAddress: "127.0.0.1" }
-      - { containerPort: 31432, hostPort: 15432, listenAddress: "127.0.0.1" }
-      - { containerPort: 31123, hostPort: 8123, listenAddress: "127.0.0.1" }
+      - { containerPort: 30080, hostPort: 42800, listenAddress: "127.0.0.1" }
+      - { containerPort: 30090, hostPort: 42890, listenAddress: "127.0.0.1" }
+      - { containerPort: 31025, hostPort: 42825, listenAddress: "127.0.0.1" }
+      - { containerPort: 31900, hostPort: 42901, listenAddress: "127.0.0.1" }
+      - { containerPort: 31432, hostPort: 42434, listenAddress: "127.0.0.1" }
+      - { containerPort: 31123, hostPort: 42123, listenAddress: "127.0.0.1" }
       - { containerPort: 31092, hostPort: 31092, listenAddress: "127.0.0.1" }

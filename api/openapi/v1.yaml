@@ -14,7 +14,7 @@ info:
 
     This file is hand-maintained. A contract test fails if a route in the gateway's route table is missing here or vice versa.
 servers:
-  - url: http://localhost:8000
+  - url: http://localhost:42800
 security:
   - apiKey: []
 

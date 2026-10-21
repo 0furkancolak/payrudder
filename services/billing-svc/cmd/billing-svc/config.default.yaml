@@ -1,9 +1,9 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
 QUOTIFY_GRPC_ADDR: ":7005"
 QUOTIFY_MIGRATE_ON_START: "false"
-QUOTIFY_PLANS_ADDR: "dns:///localhost:7001"
-QUOTIFY_INGEST_ADDR: "dns:///localhost:7002"
-QUOTIFY_AGGREGATOR_ADDR: "dns:///localhost:7003"
+QUOTIFY_PLANS_ADDR: "dns:///localhost:42701"
+QUOTIFY_INGEST_ADDR: "dns:///localhost:42702"
+QUOTIFY_AGGREGATOR_ADDR: "dns:///localhost:42703"
 QUOTIFY_SCHEDULER_INTERVAL: "1m"
 QUOTIFY_SWEEP_INTERVAL: "30s"
 QUOTIFY_STEP_TIMEOUT: "2m"

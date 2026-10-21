@@ -16,9 +16,9 @@ import (
 // re-rating bills for the difference. Everything goes through the public API and the operator endpoints, as an operator would.
 func demo(args []string) error {
 	fs := flag.NewFlagSet("demo", flag.ContinueOnError)
-	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:8000"), "gateway base URL")
+	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800"), "gateway base URL")
 	token := fs.String("operator-token", os.Getenv("QUOTIFY_OPERATOR_TOKEN"), "operator token (QUOTIFY_OPERATOR_TOKEN)")
-	mailpit := fs.String("mailpit", envOr("MAILPIT_URL", "http://localhost:8025"), "Mailpit URL")
+	mailpit := fs.String("mailpit", envOr("MAILPIT_URL", "http://localhost:42825"), "Mailpit URL")
 	events := fs.Int("events", 600, "usage events to send")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -229,11 +229,11 @@ func printPointers(mailpit string) {
 	}
 	fmt.Fprintf(os.Stdout, `
   Mailpit (receipts)   %s
-  Grafana (dashboards) http://localhost:3000   Quotify / Billing, Pipeline lag, Correctness
-  Traces (Tempo)       http://localhost:3000/explore   (data source Tempo)
-  MinIO (PDFs)         http://localhost:9002   (user quotify, password quotify_local)
+  Grafana (dashboards) http://localhost:42300   Quotify / Billing, Pipeline lag, Correctness
+  Traces (Tempo)       http://localhost:42300/explore   (data source Tempo)
+  MinIO (PDFs)         http://localhost:42902   (user quotify, password quotify_local)
   Redpanda Console     http://localhost:%s
-`, mailpit, envOr("QUOTIFY_CONSOLE_HOST_PORT", "8080"))
+`, mailpit, envOr("QUOTIFY_CONSOLE_HOST_PORT", "42080"))
 }
 
 func printInvoices(c *client, key, period string) {

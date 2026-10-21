@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var mockPSPURL = envOr("MOCKPSP_URL", "http://localhost:8090")
+var mockPSPURL = envOr("MOCKPSP_URL", "http://localhost:42890")
 
 // TestMonthCloseSurvivesBrokerRestart is the "RabbitMQ restart during the month close" scenario
 // (docs/09-testing-strategy.md#additional-chaos-scenarios): a sandbox period is closed for many customers, RabbitMQ is

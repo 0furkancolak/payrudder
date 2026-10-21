@@ -7,7 +7,7 @@
 | `make setup` | once per machine (and after `make clean`) | builds the pinned tools, starts the **infrastructure containers only** (Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO, Mailpit), creates the topics and buckets, installs the console's packages |
 | `make dev` | every day | runs the Go services **on your machine** (`quotifyctl dev`) and the console (Vite, port 3001), all with reload; Ctrl-C stops everything. `make dev ONLY=gateway,plans-svc` or `SKIP=analytics-svc` runs some |
 
-The services' settings are the compose file's, read as `docker compose config`, with each container address turned into the host port the container publishes (`postgres:5432` becomes `localhost:5432`, `dns:///plans-svc:7001` becomes `localhost:7001`, Redpanda's `9092` becomes its external `19092`): one list of settings, not one for Docker and one for the host.
+The services' settings are the compose file's, read as `docker compose config`, with each container address turned into the host port the container publishes (`postgres:5432` becomes `localhost:42432`, `dns:///plans-svc:7001` becomes `localhost:42701`, Redpanda's `9092` becomes its external `19092`): one list of settings, not one for Docker and one for the host.
 A service is rebuilt and restarted when a `.go`, `.sql` or `.yaml` file of its module or of `pkg/` changes; its log lines carry its name in colour. Tracing is off unless the observability profile is up. If another project holds port 5432, start with `QUOTIFY_PG_HOST_PORT=5440 make setup dev`.
 Application images exist for CI and releases; `make dev-docker` builds and runs them when you want to check an image. `make mem-report` shows what every running container holds.
 
@@ -30,42 +30,42 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 
 | Service | Image (pinned in compose) | Ports (host) | Notes |
 |---|---|---|---|
-| postgres | `postgres:17.11-alpine` | 5432 (`QUOTIFY_PG_HOST_PORT`) | one instance. Init script creates `plans_db`, `ingest_db`, `aggregator_db`, `billing_db`, `payments_db`, `notifier_db`, `assets_db`, `mockpsp_db` and the per-service roles |
-| redpanda | `redpandadata/redpanda` | 19092 (Kafka), 18081 (schema registry, unused), 9644 (admin) | single node, `--mode dev-container` |
-| redpanda-console | `redpandadata/console` | 8080 (`QUOTIFY_CONSOLE_HOST_PORT`) | topic browser |
-| rabbitmq | `rabbitmq:4-management` | 5672, 15672 (UI) | `definitions.json` loaded at boot |
-| redis | `redis:7` | 6379 | `appendonly yes`, `appendfsync everysec` |
-| clickhouse | `clickhouse/clickhouse-server` | 8123 (HTTP), 9000 (native) | |
-| minio | `cgr.dev/chainguard/minio@sha256:…` | 9001 (S3 API), 9002 (console) | S3-compatible store ([ADR 0013](adr/0013-s3-compatible-object-storage.md)). Bucket `invoices` + sandbox lifecycle rule created by an init container (`mc`) |
-| mailpit | `axllent/mailpit` | 1025 (SMTP), 8025 (UI) | |
-| toxiproxy | `ghcr.io/shopify/toxiproxy` | 8474 (API) | `profile: chaos` only |
+| postgres | `postgres:17.11-alpine` | 42432 (`QUOTIFY_PG_HOST_PORT`) | one instance. Init script creates `plans_db`, `ingest_db`, `aggregator_db`, `billing_db`, `payments_db`, `notifier_db`, `assets_db`, `mockpsp_db` and the per-service roles |
+| redpanda | `redpandadata/redpanda` | 42092 (Kafka), 42081 (schema registry, unused), 42644 (admin) | single node, `--mode dev-container` |
+| redpanda-console | `redpandadata/console` | 42080 (`QUOTIFY_CONSOLE_HOST_PORT`) | topic browser |
+| rabbitmq | `rabbitmq:4-management` | 42672, 42673 (UI) | `definitions.json` loaded at boot |
+| redis | `redis:7` | 42379 | `appendonly yes`, `appendfsync everysec` |
+| clickhouse | `clickhouse/clickhouse-server` | 42123 (HTTP), 42900 (native) | |
+| minio | `cgr.dev/chainguard/minio@sha256:…` | 42901 (S3 API), 42902 (console) | S3-compatible store ([ADR 0013](adr/0013-s3-compatible-object-storage.md)). Bucket `invoices` + sandbox lifecycle rule created by an init container (`mc`) |
+| mailpit | `axllent/mailpit` | 42025 (SMTP), 42825 (UI) | |
+| toxiproxy | `ghcr.io/shopify/toxiproxy` | 42474 (API) | `profile: chaos` only |
 
 ### Observability (`profile: obs`)
 
 | Service | Ports |
 |---|---|
-| otel-collector | 4317 (OTLP gRPC), 4318 (OTLP HTTP) |
-| prometheus | 9090 |
-| tempo | 3200 |
+| otel-collector | 42317 (OTLP gRPC), 42318 (OTLP HTTP) |
+| prometheus | 42990 |
+| tempo | 42200 |
 | loki | internal only (Grafana queries it; Vector ships logs to it) |
-| grafana | 3000 (anonymous admin locally, dashboards provisioned) |
+| grafana | 42300 (anonymous admin locally, dashboards provisioned) |
 
 ### Quotify services (`profile: app`)
 
 | Service | gRPC | HTTP | Metrics/health |
 |---|---|---|---|
-| gateway | — | **8000** (public API) | 9100 |
-| plans-svc | 7001 | — | 9101 |
-| ingest-svc | 7002 | — | 9102 |
-| aggregator | 7003 | — | 9103 |
-| limits-svc | 7004 | — | 9104 |
-| billing-svc | 7005 | — | 9105 |
-| analytics-svc | 7006 | — | 9106 |
-| invoice-worker | — | — | 9107 |
-| payments-worker | — | — | 9108 |
-| notifier | — | — | 9109 |
-| assets-svc | 7007 | — | 9111 |
-| mock-psp | — | 8090 | 9110 | (sandbox payment provider, also used for live tenants in the local demo)
+| gateway | — | **42800** (public API) | 42910 |
+| plans-svc | 42701 | — | 42911 |
+| ingest-svc | 42702 | — | 42912 |
+| aggregator | 42703 | — | 42913 |
+| limits-svc | 42704 | — | 42914 |
+| billing-svc | 42705 | — | 42915 |
+| analytics-svc | 42706 | — | 42916 |
+| invoice-worker | — | — | 42917 |
+| payments-worker | — | 42895 (internal API, used by the gateway) | 42918 |
+| notifier | — | — | 42919 |
+| assets-svc | 42707 | — | 42921 |
+| mock-psp | — | 42890 | 9110 | (sandbox payment provider, also used for live tenants in the local demo)
 
 Every service exposes `/healthz` (liveness), `/readyz` (readiness: DB, broker reachable, partitions assigned) and `/metrics`
 on its metrics port.

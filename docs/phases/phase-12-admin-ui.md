@@ -27,7 +27,7 @@ read-only views, plus two actions: DLQ redrive and saga retry.
 
 ## Deliverables
 
-- Admin UI at `http://localhost:3001` in the compose stack, used in the demo recording.
+- Admin UI at `http://localhost:42301` in the compose stack, used in the demo recording.
 
 ## Acceptance criteria
 
