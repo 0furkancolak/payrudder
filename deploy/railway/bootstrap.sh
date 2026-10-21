@@ -96,8 +96,11 @@ S3_VARS=('S3_ENDPOINT=http://minio.railway.internal:9000' 'S3_PUBLIC_ENDPOINT=ht
 common() { # <service name> <port>
   vars "$1" QUOTIFY_ENV=railway "QUOTIFY_SERVICE_NAME=$1" "PORT=$2"
 }
+# Railway bills by resident memory and gives a container no cgroup limit for the Go runtime to read, so the soft limit is set here: the collector
+# works before the heap grows past it. GOGC is 50 by default (pkg/memlimit). Raise GOMEMLIMIT on a service that logs "memory limit" pressure.
+GO_MEMLIMIT=${GO_MEMLIMIT:-96MiB}
 go_service() { # <service name> <dir> <port>
-  vars "$1" "SERVICE_DIR=$2" RAILWAY_DOCKERFILE_PATH=deploy/railway/go.Dockerfile
+  vars "$1" "SERVICE_DIR=$2" RAILWAY_DOCKERFILE_PATH=deploy/railway/go.Dockerfile "GOMEMLIMIT=$GO_MEMLIMIT"
   common "$1" "$3"
 }
 
