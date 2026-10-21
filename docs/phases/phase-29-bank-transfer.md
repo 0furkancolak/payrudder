@@ -84,7 +84,7 @@ A transfer invoice goes `PAYMENT_UNKNOWN → PAYMENT_PENDING → PAID → COMPLE
 ## As built
 
 - **Provider.** `pkg/payments/banktransfer` (settings, mod-97 IBAN with the length per country of the registry, BIC, reference template, `Charge` returns `*PendingError{Ref: reference}`), the optional
-  `payments.ManualCollector` interface (the payment window), `ChargePayment.invoice_number`, the catalogue entry, and plans-svc `tenants.bank_transfer` (migration 00015, `UpdateTenantSettings`) which payments-worker fills when an
+  `payments.ManualCollector` interface (the payment window), `ChargePayment.invoice_number`, the catalogue entry, and plans-svc `tenants.bank_transfer` (migration 00016, `UpdateTenantSettings`) which payments-worker fills when an
   account is stored, removed or made the default (a failed hand-over answers 502 and the PUT is repeated).
 - **Handler.** The charge leaves a `pending` ledger row (reference = the charge's idempotency key, detail = the payment reference). The status query answers from the ledger as decided in 5; the expiry writes the
   `declined` row (`transfer_expired`), a rejection writes `transfer_rejected` or `transfer_expired` with the reason and the actor. The sum of receipts is checked against the *charge's* amount (the payments_db copy of the request), so
