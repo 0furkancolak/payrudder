@@ -24,6 +24,22 @@ service BillingService {
   rpc GetDunningSettings(GetDunningSettingsRequest) returns (GetDunningSettingsResponse);
   // SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
   rpc SetDunningSettings(SetDunningSettingsRequest) returns (SetDunningSettingsResponse);
+
+  // ListCreditPacks lists the credit packs the tenant sells.
+  rpc ListCreditPacks(ListCreditPacksRequest) returns (ListCreditPacksResponse);
+  // CreateCreditPack adds a pack: a number of credits for a price in one currency.
+  rpc CreateCreditPack(CreateCreditPackRequest) returns (CreateCreditPackResponse);
+  // SetCreditPackActive withdraws a pack from sale or puts it back. Credits already sold are not touched.
+  rpc SetCreditPackActive(SetCreditPackActiveRequest) returns (SetCreditPackActiveResponse);
+  // GetCreditBalance returns what a customer can spend now and when some of it runs out.
+  rpc GetCreditBalance(GetCreditBalanceRequest) returns (GetCreditBalanceResponse);
+  // GrantCredits adds credits to a customer (a promotion, a goodwill gesture, a manual sale). With the same idempotency key a repeat does nothing.
+  rpc GrantCredits(GrantCreditsRequest) returns (GrantCreditsResponse);
+  // ConsumeCredits takes credits from a customer, the ones that expire first. FAILED_PRECONDITION (billing.credits.insufficient) when the balance is too small;
+  // nothing is taken then. With the same idempotency key a repeat returns the first result.
+  rpc ConsumeCredits(ConsumeCreditsRequest) returns (ConsumeCreditsResponse);
+  // ListCreditLedger lists a customer's credit changes, newest first.
+  rpc ListCreditLedger(ListCreditLedgerRequest) returns (ListCreditLedgerResponse);
 }
 
 // HostedInvoiceService is called by the gateway on behalf of a visitor who holds an invoice link. It has no tenant: the token is the credential.
@@ -509,4 +525,98 @@ message GetHostedInvoicePdfUrlRequest { string token = 1; }
 message GetHostedInvoicePdfUrlResponse {
   string url = 1;
   google.protobuf.Timestamp expire_time = 2;
+}
+
+message CreditPack {
+  string id = 1;
+  string name = 2;
+  int64 credits = 3;
+  // Price in minor units of the currency.
+  int64 price_minor = 4;
+  string currency = 5;
+  bool active = 6;
+  google.protobuf.Timestamp create_time = 7;
+}
+message ListCreditPacksRequest { bool active_only = 1; }
+message ListCreditPacksResponse { repeated CreditPack packs = 1; }
+message CreateCreditPackRequest {
+  string name = 1;
+  int64 credits = 2;
+  int64 price_minor = 3;
+  string currency = 4;
+}
+message CreateCreditPackResponse { CreditPack pack = 1; }
+message SetCreditPackActiveRequest {
+  string id = 1;
+  bool active = 2;
+}
+message SetCreditPackActiveResponse {}
+
+message CreditLot {
+  string id = 1;
+  int64 granted = 2;
+  int64 remaining = 3;
+  // purchase, promo or manual.
+  string source = 4;
+  // Unset when the credits never expire.
+  google.protobuf.Timestamp expire_time = 5;
+  google.protobuf.Timestamp create_time = 6;
+}
+message GetCreditBalanceRequest { string customer_id = 1; }
+message GetCreditBalanceResponse {
+  int64 balance = 1;
+  // Unset when none of the credits expires.
+  google.protobuf.Timestamp next_expire_time = 2;
+  // The lots that make up the balance, the ones that expire first at the top.
+  repeated CreditLot lots = 3;
+}
+
+message GrantCreditsRequest {
+  string customer_id = 1;
+  int64 credits = 2;
+  // promo or manual; purchases are granted by Quotify when a pack is paid.
+  string source = 3;
+  // Unset: the credits never expire.
+  google.protobuf.Timestamp expire_time = 4;
+  string reason = 5;
+  string idempotency_key = 6;
+}
+message GrantCreditsResponse {
+  int64 balance = 1;
+  // True when the key had been used: nothing was added again.
+  bool replayed = 2;
+}
+
+message ConsumeCreditsRequest {
+  string customer_id = 1;
+  int64 credits = 2;
+  string reason = 3;
+  // Required: a retried call must not charge twice.
+  string idempotency_key = 4;
+}
+message ConsumeCreditsResponse {
+  int64 balance = 1;
+  bool replayed = 2;
+}
+
+message CreditLedgerEntry {
+  string id = 1;
+  string lot_id = 2;
+  // grant, consume or expire.
+  string kind = 3;
+  // Positive for a grant, negative for consume and expire.
+  int64 amount = 4;
+  string reason = 5;
+  string idempotency_key = 6;
+  google.protobuf.Timestamp create_time = 7;
+}
+message ListCreditLedgerRequest {
+  string customer_id = 1;
+  // 1..200; 0 means 50.
+  int32 page_size = 2;
+  string page_token = 3;
+}
+message ListCreditLedgerResponse {
+  repeated CreditLedgerEntry entries = 1;
+  string next_page_token = 2;
 }
