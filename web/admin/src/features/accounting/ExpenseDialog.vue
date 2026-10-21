@@ -2,7 +2,6 @@
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
-import { CURRENCIES } from "@/shared/lib/currencies";
 import { minorToMajor, parseMajor } from "@/shared/lib/money";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
@@ -12,6 +11,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Textarea } from "@/shared/ui/textarea";
 import { CATEGORIES, useSaveExpense, type Category, type Expense } from "./api";
 import { ymd } from "./period";
+import { CurrencySelect } from "@/shared/ui/search-select";
 
 /** Adds an expense, or edits `expense`. A recurring expense is edited as a whole: every occurrence changes with it. */
 const props = defineProps<{ tenantId: string; expense: Expense | null; defaultCurrency: string; apps: { id: string; name: string }[] }>();
@@ -110,9 +110,7 @@ function submit() {
           </div>
           <div class="grid gap-1.5">
             <Label for="exp-currency">{{ t("billing.accounting.form.currency") }}</Label>
-            <NativeSelect id="exp-currency" v-model="currency">
-              <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-            </NativeSelect>
+            <CurrencySelect id="exp-currency" v-model="currency" />
           </div>
         </div>
         <div class="grid gap-3 sm:grid-cols-2">

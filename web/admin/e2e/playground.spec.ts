@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickCurrency } from "../e2e-mock/ui";
 
 const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
 
@@ -16,7 +17,7 @@ test("the playground takes a visitor from an empty account to a paid invoice", a
   await form.getByLabel("Account name").fill(`playground-${Date.now()}`);
   await form.getByLabel("Time zone").fill("Europe/Istanbul");
   await form.getByLabel("Grace period (hours)").fill("24");
-  await form.getByLabel("Currency").selectOption("TRY");
+  await pickCurrency(form.getByLabel("Currency"), "TRY");
   await form.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("Sandbox API key issued")).toBeVisible();
 
@@ -47,7 +48,7 @@ test("a declined payment outcome leaves the invoice open with the payment declin
   await form.getByLabel("Account name").fill(`playground-declined-${Date.now()}`);
   await form.getByLabel("Time zone").fill("Europe/Istanbul");
   await form.getByLabel("Grace period (hours)").fill("24");
-  await form.getByLabel("Currency").selectOption("EUR");
+  await pickCurrency(form.getByLabel("Currency"), "EUR");
   await form.getByRole("button", { name: "Create account" }).click();
   await page.getByRole("button", { name: /Create meter, plan/ }).click();
   await expect(page.getByText("Subscription to starter")).toBeVisible();

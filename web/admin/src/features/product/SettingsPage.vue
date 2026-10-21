@@ -5,7 +5,6 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { applyTheme, theme, type ThemeChoice } from "@/shared/lib/theme";
-import { setActiveAccount } from "@/shared/lib/session";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -14,7 +13,6 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useAccount, useMe, useRenameAccount, useSignOut } from "./api";
 import AccountSwitcher from "./AccountSwitcher.vue";
-import MembersPanel from "./MembersPanel.vue";
 
 const { t, locale } = useI18n();
 const errorText = useErrorText();
@@ -29,11 +27,6 @@ watch(() => account.data.value?.name, (n) => (accountName.value = n ?? ""), { im
 const isOwner = computed(() => account.data.value?.role === "owner");
 const nameChanged = computed(() => accountName.value.trim() !== "" && accountName.value.trim() !== account.data.value?.name);
 
-/** Left the account: the choice is forgotten (the next account, if any, becomes the first) and the home page shows what is left. */
-async function onLeft() {
-  setActiveAccount(null);
-  await navigate({ to: "/app" });
-}
 const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(v)) : "");
 const themes = computed(() => [
   { value: "system", label: t("product.settings.themeSystem") },
@@ -97,7 +90,5 @@ async function leave() {
         </div>
       </section>
     </div>
-
-    <MembersPanel :account="account.data.value" :my-id="me.data.value?.user?.id ?? ''" :loading="account.isPending.value" @left="onLeft" />
-  </section>
+</section>
 </template>

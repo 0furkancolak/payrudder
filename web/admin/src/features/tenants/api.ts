@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import { api, unwrap } from "@/shared/api/client";
+import { ApiError, api, unwrap, type Tenant } from "@/shared/api/client";
+import { isPerson } from "@/shared/lib/session";
 
 export const tenantKeys = {
   list: ["tenants"] as const,
@@ -14,10 +15,24 @@ export function useTenants() {
   });
 }
 
+/**
+ * One tenant. The operator reads it from the admin API; a person has no admin API, but the apps they own carry their tenants (with currency, time zone
+ * and environment), so the same pages work for both by asking the product API and picking the tenant out.
+ */
+async function personTenant(id: string): Promise<Tenant> {
+  const apps = await unwrap(api.GET("/app/v1/apps"));
+  for (const app of apps.apps ?? []) {
+    const hit = app.tenants?.find((x) => x.id === id);
+    if (hit) return hit;
+  }
+  throw new ApiError("tenant not found", "NOT_FOUND");
+}
+
 export function useTenant(id: MaybeRefOrGetter<string>) {
   return useQuery({
-    queryKey: computed(() => tenantKeys.detail(toValue(id))),
-    queryFn: () => unwrap(api.GET("/admin/v1/tenants/{id}", { params: { path: { id: toValue(id) } } })),
+    queryKey: computed(() => [...tenantKeys.detail(toValue(id)), isPerson.value ? "person" : "operator"]),
+    queryFn: () => (isPerson.value ? personTenant(toValue(id)) : unwrap(api.GET("/admin/v1/tenants/{id}", { params: { path: { id: toValue(id) } } }))),
+    enabled: computed(() => toValue(id) !== ""),
   });
 }
 

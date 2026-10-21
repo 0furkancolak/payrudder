@@ -3,7 +3,6 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toApiError } from "@/shared/api/client";
-import { CURRENCIES } from "@/shared/lib/currencies";
 import { formatMinor } from "@/shared/lib/money";
 import { useTenantCurrency } from "@/shared/lib/tenant-currency";
 import { Badge } from "@/shared/ui/badge";
@@ -14,6 +13,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { usePaymentLinkActions, usePaymentLinks } from "./api";
 import { absoluteUrl, newKey, statusVariant, toRequest, type LinkForm } from "./lib";
+import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, locale } = useI18n();
 const params = useParams({ strict: false });
@@ -111,9 +111,7 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
       </template>
       <template v-else>
         <Input v-model="form.amount" inputmode="decimal" :aria-label="t('billing.paymentLinks.amount')" :placeholder="t('billing.paymentLinks.amount')" />
-        <NativeSelect v-model="form.currency" :aria-label="t('billing.paymentLinks.currency')">
-          <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-        </NativeSelect>
+        <CurrencySelect v-model="form.currency" :aria-label="t('billing.paymentLinks.currency')" />
         <Input v-model="form.description" maxlength="200" class="sm:col-span-2" :aria-label="t('billing.paymentLinks.description')" :placeholder="t('billing.paymentLinks.description')" />
         <Input v-model="form.customer" :aria-label="t('billing.paymentLinks.customer')" :placeholder="t('billing.paymentLinks.customerOptional')" />
       </template>

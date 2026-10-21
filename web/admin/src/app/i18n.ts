@@ -1,15 +1,30 @@
 import { createI18n } from "vue-i18n";
 import { branded } from "@/shared/lib/brand";
-import ar from "@/locales/ar.json";
-import de from "@/locales/de.json";
 import en from "@/locales/en.json";
-import es from "@/locales/es.json";
-import fr from "@/locales/fr.json";
-import tr from "@/locales/tr.json";
 
-export const messages = { en: branded(en), tr: branded(tr), de: branded(de), es: branded(es), fr: branded(fr), ar: branded(ar) } as const;
-export type Locale = keyof typeof messages;
-export const locales = Object.keys(messages) as Locale[];
+/**
+ * English is bundled (it is the fallback for any text a language lacks); the other five languages are fetched when somebody uses them, so a first load
+ * carries one language, not six.
+ */
+const loaders = {
+  tr: () => import("@/locales/tr.json"),
+  de: () => import("@/locales/de.json"),
+  es: () => import("@/locales/es.json"),
+  fr: () => import("@/locales/fr.json"),
+  ar: () => import("@/locales/ar.json"),
+} as const;
+
+/** Each language in its own name and its reading direction: known without loading the language. */
+export const languages = {
+  en: { name: "English", dir: "ltr" },
+  tr: { name: "Türkçe", dir: "ltr" },
+  de: { name: "Deutsch", dir: "ltr" },
+  es: { name: "Español", dir: "ltr" },
+  fr: { name: "Français", dir: "ltr" },
+  ar: { name: "العربية", dir: "rtl" },
+} as const;
+export type Locale = keyof typeof languages;
+export const locales = Object.keys(languages) as Locale[];
 
 const KEY = "quotify.locale";
 
@@ -34,16 +49,31 @@ export function detectLocale(): Locale {
 
 export const i18n = createI18n({
   legacy: false,
-  locale: detectLocale(),
+  locale: "en",
   fallbackLocale: "en",
-  messages,
+  messages: { en: branded(en) },
 });
 
-/** Applies a locale to the page: language, reading direction, document title, and remembers it. */
-export function applyLocale(locale: Locale): void {
-  i18n.global.locale.value = locale;
+const loaded = new Set<Locale>(["en"]);
+
+async function load(locale: Locale): Promise<void> {
+  if (loaded.has(locale) || locale === "en") return;
+  const mod = await loaders[locale]();
+  i18n.global.setLocaleMessage(locale, branded(mod.default) as never);
+  loaded.add(locale);
+}
+
+/** Applies a locale to the page: loads it if needed, then language, reading direction, document title; and remembers it. */
+export async function applyLocale(locale: Locale): Promise<void> {
+  try {
+    await load(locale);
+  } catch {
+    // The file could not be fetched (offline): stay in the language that is showing.
+    return;
+  }
+  (i18n.global.locale as { value: string }).value = locale;
   document.documentElement.lang = locale;
-  document.documentElement.dir = messages[locale].meta.dir;
+  document.documentElement.dir = languages[locale].dir;
   document.title = i18n.global.t("app.title");
   try {
     window.localStorage.setItem(KEY, locale);

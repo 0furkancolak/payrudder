@@ -154,6 +154,30 @@
   :dir(rtl) .rtl-flip { transform: scaleX(-1); }
   code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; unicode-bidi: plaintext; direction: ltr; }
   :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /*
+   * Everything that can be clicked looks clickable, in one place: buttons, links, tabs, menu items, options, switches, checkboxes and radios (and the
+   * labels that carry them), select boxes and <summary>. Anything disabled says so with the not-allowed cursor. Tailwind's preflight resets buttons to
+   * the default arrow, which is why this is here and not left to each component.
+   */
+  button:not(:disabled), [type="button"]:not(:disabled), [type="submit"]:not(:disabled), [type="reset"]:not(:disabled), a[href], summary, select:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]), [role="tab"]:not([aria-disabled="true"]), [role="menuitem"]:not([data-disabled]), [role="menuitemradio"]:not([data-disabled]),
+  [role="menuitemcheckbox"]:not([data-disabled]), [role="option"]:not([aria-disabled="true"]), [role="switch"]:not(:disabled), [role="checkbox"]:not(:disabled),
+  [role="radio"]:not(:disabled), [role="combobox"]:not(:disabled), input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled), input[type="file"]:not(:disabled),
+  input[type="range"]:not(:disabled), label:has(input[type="checkbox"]:not(:disabled)), label:has(input[type="radio"]:not(:disabled)) {
+    cursor: pointer;
+  }
+  input[type="text"][role="combobox"]:not(:disabled) { cursor: text; }
+  :disabled, [aria-disabled="true"], [data-disabled], label:has(:disabled) { cursor: not-allowed; }
+
+  /* Touch targets: on a phone (or any coarse pointer) the controls that are tapped are at least 44 px high and, for the icon-only ones, wide. */
+  @media (max-width: 767px), (pointer: coarse) {
+    button:not([role="checkbox"]):not([role="switch"]), [role="button"], [role="tab"], [role="menuitem"], summary, select,
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
+      min-height: 2.75rem;
+    }
+    [data-size^="icon"] { min-width: 2.75rem; }
+  }
   @media (prefers-reduced-motion: reduce) {
     *, ::before, ::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
   }

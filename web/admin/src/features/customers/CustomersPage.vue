@@ -3,15 +3,15 @@ import { useParams, useRouter } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
+import { maskEmail } from "@/shared/lib/money";
 import { tenantBase } from "@/shared/lib/session";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
-import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { CURRENCIES } from "@/shared/lib/currencies";
 import CustomerLinksCard from "@/features/paymentlinks/CustomerLinksCard.vue";
 import { addressLine, useCreateCustomer, useCustomers, useSetCustomerAddress, useSetCustomerTax, type Address, type CustomerTax } from "./api";
+import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t } = useI18n();
 const errorText = useErrorText();
@@ -91,10 +91,7 @@ function submit() {
       <Input v-model="name" :aria-label="t('billing.customers.name')" :placeholder="t('billing.customers.name')" required />
       <Input v-model="email" type="email" :aria-label="t('billing.customers.email')" :placeholder="t('billing.customers.email')" required />
       <Input v-model="country" :aria-label="t('billing.customers.country')" :placeholder="t('billing.customers.countryPlaceholder')" maxlength="2" pattern="[A-Za-z]{2}" />
-      <NativeSelect v-model="currency" :aria-label="t('billing.customers.currency')">
-        <option value="">{{ t("billing.customers.tenantCurrency") }}</option>
-        <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-      </NativeSelect>
+      <CurrencySelect v-model="currency" :aria-label="t('billing.customers.currency')" :blank="t('billing.customers.tenantCurrency')" />
       <fieldset class="grid gap-3 sm:col-span-2 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-5">
         <legend class="text-muted-foreground mb-1 text-sm">{{ t("billing.customers.address.title") }}</legend>
         <Input v-model="address.line1" maxlength="120" :aria-label="t('billing.customers.address.line1')" :placeholder="t('billing.customers.address.line1')" />
@@ -160,7 +157,7 @@ function submit() {
         <TableRow v-for="c in customers.data.value?.customers ?? []" :key="c.id">
           <TableCell class="font-medium">{{ c.external_id }}</TableCell>
           <TableCell>{{ c.name }}</TableCell>
-          <TableCell>{{ c.email }}</TableCell>
+          <TableCell>{{ maskEmail(c.email) }}</TableCell>
           <TableCell>{{ c.country || "—" }}</TableCell>
           <TableCell>{{ c.billing_currency || "—" }}</TableCell>
           <TableCell class="max-w-64 whitespace-normal">

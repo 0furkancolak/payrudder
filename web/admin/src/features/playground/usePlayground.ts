@@ -2,9 +2,10 @@ import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, ref } from "vue";
 import { api, asTenant, unwrap, type Invoice } from "@/shared/api/client";
 
-export const CURRENCIES = ["CHF", "EUR", "GBP", "JPY", "KWD", "TRY", "USD"] as const;
+import type { Currency } from "@/shared/lib/currencies";
+
+export { CURRENCIES, type Currency } from "@/shared/lib/currencies";
 export const SCENARIOS = ["success", "declined", "insufficient_funds_once", "error_then_success", "timeout_committed", "timeout_not_committed"] as const;
-export type Currency = (typeof CURRENCIES)[number];
 export type Scenario = (typeof SCENARIOS)[number];
 
 const CUSTOMER = "cus_playground";

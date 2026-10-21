@@ -1743,6 +1743,86 @@
         "invoice": "Invoice",
         "viewInvoice": "View invoice"
       }
+    },
+    "membersPage": {
+      "intro": "Who belongs to this organisation, their roles, and the invitations that are still open."
+    },
+    "apiKeysPage": {
+      "intro": "Keys your server uses to call Quotify for this app. A key belongs to one environment; its secret is shown once."
+    },
+    "appSettings": {
+      "intro": "What this app was created with. The currency and the time zone decide how every invoice is worked out, so they are fixed once the app exists.",
+      "general": "General",
+      "slug": "Address name",
+      "id": "App id",
+      "currency": "Default currency",
+      "timezone": "Time zone",
+      "grace": "Grace period",
+      "tenant": "Environment id",
+      "moreCurrencies": "An app can sell in many currencies: add a price in another currency to a package, under"
     }
+  },
+  "shell": {
+    "skip": "Skip to content",
+    "navLabel": "Main navigation",
+    "breadcrumbs": "Breadcrumbs",
+    "openMenu": "Open the menu",
+    "closeMenu": "Close the menu",
+    "collapse": "Collapse the sidebar",
+    "expand": "Expand the sidebar",
+    "switchApp": "Switch app",
+    "apps": "Apps",
+    "allApps": "All apps",
+    "platform": "Platform",
+    "org": "Organisation",
+    "sections": {
+      "account": "Organisation",
+      "platform": "Platform",
+      "overview": "Overview",
+      "customers": "Customers",
+      "billing": "Billing",
+      "developers": "Developers",
+      "settings": "Settings"
+    },
+    "items": {
+      "overview": "Apps",
+      "members": "Members",
+      "settings": "Settings",
+      "tenants": "Tenants",
+      "playground": "Playground",
+      "deadLetters": "Dead letters",
+      "dashboard": "Dashboard",
+      "customers": "Customers",
+      "subscriptions": "Subscriptions",
+      "credits": "Credits",
+      "packages": "Packages",
+      "pricing": "Pricing and tax",
+      "invoices": "Invoices",
+      "payments": "Payments",
+      "paymentLinks": "Payment links",
+      "accounting": "Accounting",
+      "reports": "Reports",
+      "webhooks": "Webhooks",
+      "apps": "Apps and API keys",
+      "apiKeys": "API keys",
+      "providers": "Payment providers",
+      "mail": "E-mail",
+      "address": "Business address",
+      "einvoice": "E-invoice",
+      "appSettings": "App settings"
+    }
+  },
+  "privacy": {
+    "hide": "Hide amounts",
+    "show": "Show amounts",
+    "hidden": "Hidden",
+    "banner": "Privacy mode is on: amounts are hidden."
+  },
+  "picker": {
+    "currency": "Currency",
+    "currencyPlaceholder": "Search a currency",
+    "timezone": "Time zone",
+    "timezonePlaceholder": "Search a time zone",
+    "noMatch": "Nothing matches"
   }
 }

@@ -30,13 +30,14 @@ const title = (i: number) => {
         <rect :x="i * slot + slot / 2" :y="H - b.expense * H" :width="slot / 2 - 1" :height="b.expense * H" fill="#dc2626" />
       </g>
     </svg>
-    <div class="text-muted-foreground mt-1 flex items-center justify-between text-xs">
+    <!-- The first and last date under the bars, and the legend on a line of its own: on a phone the three did not fit on one line and overlapped. -->
+    <div class="text-muted-foreground mt-1 flex items-center justify-between gap-2 text-xs">
       <span>{{ points.length ? label(points[0]?.bucket ?? "") : "" }}</span>
-      <span class="flex items-center gap-3">
-        <span class="flex items-center gap-1"><span class="inline-block size-2.5 rounded-sm bg-[#059669]" aria-hidden="true" />{{ t("billing.accounting.bars.income") }}</span>
-        <span class="flex items-center gap-1"><span class="inline-block size-2.5 rounded-sm bg-[#dc2626]" aria-hidden="true" />{{ t("billing.accounting.bars.expense") }}</span>
-      </span>
       <span>{{ points.length ? label(points[points.length - 1]?.bucket ?? "") : "" }}</span>
+    </div>
+    <div class="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+      <span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-sm bg-[#059669]" aria-hidden="true" />{{ t("billing.accounting.bars.income") }}</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-sm bg-[#dc2626]" aria-hidden="true" />{{ t("billing.accounting.bars.expense") }}</span>
     </div>
   </div>
 </template>

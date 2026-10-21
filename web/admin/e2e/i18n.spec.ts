@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickLanguage } from "../e2e-mock/ui";
 
 const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
 
@@ -8,7 +9,7 @@ test.describe("languages", () => {
     await expect(page.getByRole("heading", { name: "Operator console" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
-    await page.getByLabel("Language").selectOption("tr");
+    await pickLanguage(page, "tr");
     await expect(page.getByRole("heading", { name: "Operatör konsolu" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "tr");
     await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
@@ -19,7 +20,7 @@ test.describe("languages", () => {
 
   test("Arabic reads right to left", async ({ page }) => {
     await page.goto("/operator");
-    await page.getByLabel("Language").selectOption("ar");
+    await pickLanguage(page, "ar");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.getByRole("heading", { name: "وحدة تحكم المشغّل" })).toBeVisible();
   });
@@ -34,7 +35,7 @@ test.describe("languages", () => {
 
   test("the signed-in pages and the playground are translated too", async ({ page }) => {
     await page.goto("/operator");
-    await page.getByLabel("Language").selectOption("fr");
+    await pickLanguage(page, "fr");
     await page.getByLabel("Jeton opérateur").fill(operatorToken);
     await page.getByRole("button", { name: "Se connecter" }).click();
     await expect(page.getByRole("heading", { name: "Locataires" })).toBeVisible();
