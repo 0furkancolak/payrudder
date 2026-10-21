@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/tenant"
@@ -60,8 +61,8 @@ func (r *Queries) Subscriptions(ctx context.Context, req *plansv1.GetSubscriptio
 	}
 	var splits []string
 	for _, g := range req.GetGroupBy() {
-		if g != "provider" && g != "country" {
-			return nil, domain.Invalid("group_by", "provider and country only (currency is always a split); got "+g)
+		if g != "provider" && g != "country" && g != "plan" {
+			return nil, domain.Invalid("group_by", "provider, country and plan only (currency is always a split); got "+g)
 		}
 		if !slices.Contains(splits, g) {
 			splits = append(splits, g)
@@ -86,15 +87,50 @@ func (r *Queries) Subscriptions(ctx context.Context, req *plansv1.GetSubscriptio
 	err = r.db.Tx(ctx, func(q *sqlc.Queries) error {
 		rows, err := q.SubscriptionReport(ctx, sqlc.SubscriptionReportParams{
 			MonthStart: start, MonthLast: end.Add(-time.Microsecond), MonthEnd: end, TenantCurrency: t.Currency,
-			ByProvider: slices.Contains(splits, "provider"), ByCountry: slices.Contains(splits, "country"),
+			ByProvider: slices.Contains(splits, "provider"), ByCountry: slices.Contains(splits, "country"), ByPlan: slices.Contains(splits, "plan"),
 		})
 		for _, x := range rows {
 			resp.Rows = append(resp.Rows, &plansv1.SubscriptionReportRow{
-				Provider: x.Provider, Country: x.Country, Currency: x.Currency, Active: x.Active, Trialing: x.Trialing, Paused: x.Paused,
+				Provider: x.Provider, Country: x.Country, PlanCode: x.PlanCode, Currency: x.Currency, Active: x.Active, Trialing: x.Trialing, Paused: x.Paused,
 				PastDue: x.PastDue, MrrMinor: x.MrrMinor, NewSubscriptions: x.NewSubscriptions, NewMrrMinor: x.NewMrrMinor,
 				Churned: x.Churned, ChurnedMrrMinor: x.ChurnedMrrMinor,
 			})
 		}
+		return err
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	return resp, nil
+}
+
+// Customers counts the tenant's customers, and those created in each of two ranges. A range is given as a pair of instants; an unset pair is empty.
+func (r *Queries) Customers(ctx context.Context, req *plansv1.GetCustomerStatsRequest) (*plansv1.GetCustomerStatsResponse, error) {
+	if _, err := tenant.Require(ctx); err != nil {
+		return nil, err
+	}
+	zero := time.Unix(0, 0).UTC()
+	bounds := func(from, to *timestamppb.Timestamp, field string) (time.Time, time.Time, error) {
+		if from == nil && to == nil {
+			return zero, zero, nil
+		}
+		if from == nil || to == nil || from.CheckValid() != nil || to.CheckValid() != nil || to.AsTime().Before(from.AsTime()) {
+			return zero, zero, domain.Invalid(field, "both instants, the second not before the first")
+		}
+		return from.AsTime(), to.AsTime(), nil
+	}
+	from, to, err := bounds(req.GetFromTime(), req.GetToTime(), "from_time")
+	if err != nil {
+		return nil, err
+	}
+	pfrom, pto, err := bounds(req.GetPrevFromTime(), req.GetPrevToTime(), "prev_from_time")
+	if err != nil {
+		return nil, err
+	}
+	resp := &plansv1.GetCustomerStatsResponse{}
+	err = r.db.Tx(ctx, func(q *sqlc.Queries) error {
+		row, err := q.CustomerStats(ctx, sqlc.CustomerStatsParams{FromAt: from, ToAt: to, PrevFromAt: pfrom, PrevToAt: pto})
+		resp.Total, resp.NewInRange, resp.NewInPrevious = row.Total, row.NewInRange, row.NewInPrevious
 		return err
 	})
 	if err != nil {

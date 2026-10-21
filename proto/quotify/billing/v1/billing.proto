@@ -68,6 +68,8 @@ service BillingService {
   rpc ListExpenses(ListExpensesRequest) returns (ListExpensesResponse);
   // GetAccountingSummary adds up income (from paid invoices, tax and refunds) and expenses over a period, one block per currency. Currencies are never converted or added together.
   rpc GetAccountingSummary(GetAccountingSummaryRequest) returns (GetAccountingSummaryResponse);
+  // GetDashboardStats reads what a dashboard needs that the accounting summary does not carry: the customers who paid most in a period and how old the open invoices are, one block per currency.
+  rpc GetDashboardStats(GetDashboardStatsRequest) returns (GetDashboardStatsResponse);
   // GetCreditSettings returns the balance below which a customer's consume announces credits.low (0: off).
   rpc GetCreditSettings(GetCreditSettingsRequest) returns (GetCreditSettingsResponse);
   // SetCreditSettings sets that balance.
@@ -1138,6 +1140,48 @@ message ListExpensesRequest {
 message ListExpensesResponse {
   repeated Expense expenses = 1;
   string next_page_token = 2;
+}
+
+message GetDashboardStatsRequest {
+  // Both days are inside the period (UTC days, as in the accounting summary). At most five years.
+  string from_date = 1;
+  string to_date = 2;
+  // How many top customers per currency: 1..10, default 5.
+  int32 top = 3;
+}
+message DashboardTopCustomer {
+  string customer_id = 1;
+  string customer_external_id = 2;
+  string customer_name = 3;
+  // What the customer's invoices that were paid in the period came to, tax included, in the block's currency.
+  int64 income_minor = 4;
+  int64 invoices = 5;
+}
+// Open invoices by how long they have been open: 0-7, 8-30, 31-60 and 61+ days.
+message DashboardAgingBucket {
+  string bucket = 1;
+  int64 count = 2;
+  int64 amount_minor = 3;
+}
+message DashboardCurrency {
+  string currency = 1;
+  repeated DashboardTopCustomer top_customers = 2;
+  repeated DashboardAgingBucket aging = 3;
+}
+// An invoice as the activity feed shows it.
+message DashboardInvoice {
+  string id = 1;
+  string number = 2;
+  string customer_external_id = 3;
+  string status = 4;
+  string currency = 5;
+  int64 total_minor = 6;
+  google.protobuf.Timestamp create_time = 7;
+}
+message GetDashboardStatsResponse {
+  repeated DashboardCurrency currencies = 1;
+  // The newest invoices of the tenant, newest first (at most eight).
+  repeated DashboardInvoice recent_invoices = 2;
 }
 
 message GetAccountingSummaryRequest {

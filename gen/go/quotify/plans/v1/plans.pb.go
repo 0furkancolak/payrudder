@@ -3743,7 +3743,7 @@ type GetSubscriptionReportRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// YYYY-MM in the tenant's time zone. Empty = the current month.
 	Month string `protobuf:"bytes,1,opt,name=month,proto3" json:"month,omitempty"`
-	// Which of provider and country to split by; currency is always a split.
+	// Which of provider, country and plan to split by; currency is always a split.
 	GroupBy       []string `protobuf:"bytes,2,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3812,8 +3812,10 @@ type SubscriptionReportRow struct {
 	// Subscriptions that ended in the month with no successor (a plan change or a provider migration is not churn) and the fixed fee they paid.
 	Churned         int64 `protobuf:"varint,11,opt,name=churned,proto3" json:"churned,omitempty"`
 	ChurnedMrrMinor int64 `protobuf:"varint,12,opt,name=churned_mrr_minor,json=churnedMrrMinor,proto3" json:"churned_mrr_minor,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The package code, when the report is split by plan; empty otherwise.
+	PlanCode      string `protobuf:"bytes,13,opt,name=plan_code,json=planCode,proto3" json:"plan_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SubscriptionReportRow) Reset() {
@@ -3930,6 +3932,13 @@ func (x *SubscriptionReportRow) GetChurnedMrrMinor() int64 {
 	return 0
 }
 
+func (x *SubscriptionReportRow) GetPlanCode() string {
+	if x != nil {
+		return x.PlanCode
+	}
+	return ""
+}
+
 type GetSubscriptionReportResponse struct {
 	state         protoimpl.MessageState   `protogen:"open.v1"`
 	Month         string                   `protobuf:"bytes,1,opt,name=month,proto3" json:"month,omitempty"`
@@ -3982,6 +3991,135 @@ func (x *GetSubscriptionReportResponse) GetRows() []*SubscriptionReportRow {
 	return nil
 }
 
+type GetCustomerStatsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Customers created in [from_time, to_time) and in [prev_from_time, prev_to_time). An unset pair counts none.
+	FromTime      *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=from_time,json=fromTime,proto3" json:"from_time,omitempty"`
+	ToTime        *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=to_time,json=toTime,proto3" json:"to_time,omitempty"`
+	PrevFromTime  *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=prev_from_time,json=prevFromTime,proto3" json:"prev_from_time,omitempty"`
+	PrevToTime    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=prev_to_time,json=prevToTime,proto3" json:"prev_to_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCustomerStatsRequest) Reset() {
+	*x = GetCustomerStatsRequest{}
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCustomerStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCustomerStatsRequest) ProtoMessage() {}
+
+func (x *GetCustomerStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCustomerStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetCustomerStatsRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *GetCustomerStatsRequest) GetFromTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FromTime
+	}
+	return nil
+}
+
+func (x *GetCustomerStatsRequest) GetToTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ToTime
+	}
+	return nil
+}
+
+func (x *GetCustomerStatsRequest) GetPrevFromTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PrevFromTime
+	}
+	return nil
+}
+
+func (x *GetCustomerStatsRequest) GetPrevToTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PrevToTime
+	}
+	return nil
+}
+
+type GetCustomerStatsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Total         int64                  `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	NewInRange    int64                  `protobuf:"varint,2,opt,name=new_in_range,json=newInRange,proto3" json:"new_in_range,omitempty"`
+	NewInPrevious int64                  `protobuf:"varint,3,opt,name=new_in_previous,json=newInPrevious,proto3" json:"new_in_previous,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCustomerStatsResponse) Reset() {
+	*x = GetCustomerStatsResponse{}
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCustomerStatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCustomerStatsResponse) ProtoMessage() {}
+
+func (x *GetCustomerStatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCustomerStatsResponse.ProtoReflect.Descriptor instead.
+func (*GetCustomerStatsResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *GetCustomerStatsResponse) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *GetCustomerStatsResponse) GetNewInRange() int64 {
+	if x != nil {
+		return x.NewInRange
+	}
+	return 0
+}
+
+func (x *GetCustomerStatsResponse) GetNewInPrevious() int64 {
+	if x != nil {
+		return x.NewInPrevious
+	}
+	return 0
+}
+
 type ListSubscriptionsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Optional: only this customer's.
@@ -3995,7 +4133,7 @@ type ListSubscriptionsRequest struct {
 
 func (x *ListSubscriptionsRequest) Reset() {
 	*x = ListSubscriptionsRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[70]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4007,7 +4145,7 @@ func (x *ListSubscriptionsRequest) String() string {
 func (*ListSubscriptionsRequest) ProtoMessage() {}
 
 func (x *ListSubscriptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[70]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4020,7 +4158,7 @@ func (x *ListSubscriptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSubscriptionsRequest.ProtoReflect.Descriptor instead.
 func (*ListSubscriptionsRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{70}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *ListSubscriptionsRequest) GetCustomerExternalId() string {
@@ -4054,7 +4192,7 @@ type ListSubscriptionsResponse struct {
 
 func (x *ListSubscriptionsResponse) Reset() {
 	*x = ListSubscriptionsResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[71]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4066,7 +4204,7 @@ func (x *ListSubscriptionsResponse) String() string {
 func (*ListSubscriptionsResponse) ProtoMessage() {}
 
 func (x *ListSubscriptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[71]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4079,7 +4217,7 @@ func (x *ListSubscriptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSubscriptionsResponse.ProtoReflect.Descriptor instead.
 func (*ListSubscriptionsResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{71}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *ListSubscriptionsResponse) GetSubscriptions() []*Subscription {
@@ -4109,7 +4247,7 @@ type ListSubscriptionsFeeDueRequest struct {
 
 func (x *ListSubscriptionsFeeDueRequest) Reset() {
 	*x = ListSubscriptionsFeeDueRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[72]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4121,7 +4259,7 @@ func (x *ListSubscriptionsFeeDueRequest) String() string {
 func (*ListSubscriptionsFeeDueRequest) ProtoMessage() {}
 
 func (x *ListSubscriptionsFeeDueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[72]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4134,7 +4272,7 @@ func (x *ListSubscriptionsFeeDueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSubscriptionsFeeDueRequest.ProtoReflect.Descriptor instead.
 func (*ListSubscriptionsFeeDueRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{72}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ListSubscriptionsFeeDueRequest) GetNow() *timestamppb.Timestamp {
@@ -4174,7 +4312,7 @@ type FeeDue struct {
 
 func (x *FeeDue) Reset() {
 	*x = FeeDue{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[73]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4186,7 +4324,7 @@ func (x *FeeDue) String() string {
 func (*FeeDue) ProtoMessage() {}
 
 func (x *FeeDue) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[73]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4199,7 +4337,7 @@ func (x *FeeDue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeeDue.ProtoReflect.Descriptor instead.
 func (*FeeDue) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{73}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *FeeDue) GetSubscription() *Subscription {
@@ -4253,7 +4391,7 @@ type ListSubscriptionsFeeDueResponse struct {
 
 func (x *ListSubscriptionsFeeDueResponse) Reset() {
 	*x = ListSubscriptionsFeeDueResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[74]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4265,7 +4403,7 @@ func (x *ListSubscriptionsFeeDueResponse) String() string {
 func (*ListSubscriptionsFeeDueResponse) ProtoMessage() {}
 
 func (x *ListSubscriptionsFeeDueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[74]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4278,7 +4416,7 @@ func (x *ListSubscriptionsFeeDueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSubscriptionsFeeDueResponse.ProtoReflect.Descriptor instead.
 func (*ListSubscriptionsFeeDueResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{74}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *ListSubscriptionsFeeDueResponse) GetDue() []*FeeDue {
@@ -4298,7 +4436,7 @@ type AdvanceSubscriptionFeeRequest struct {
 
 func (x *AdvanceSubscriptionFeeRequest) Reset() {
 	*x = AdvanceSubscriptionFeeRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[75]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4310,7 +4448,7 @@ func (x *AdvanceSubscriptionFeeRequest) String() string {
 func (*AdvanceSubscriptionFeeRequest) ProtoMessage() {}
 
 func (x *AdvanceSubscriptionFeeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[75]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4323,7 +4461,7 @@ func (x *AdvanceSubscriptionFeeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdvanceSubscriptionFeeRequest.ProtoReflect.Descriptor instead.
 func (*AdvanceSubscriptionFeeRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{75}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *AdvanceSubscriptionFeeRequest) GetSubscriptionId() string {
@@ -4348,7 +4486,7 @@ type AdvanceSubscriptionFeeResponse struct {
 
 func (x *AdvanceSubscriptionFeeResponse) Reset() {
 	*x = AdvanceSubscriptionFeeResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[76]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4360,7 +4498,7 @@ func (x *AdvanceSubscriptionFeeResponse) String() string {
 func (*AdvanceSubscriptionFeeResponse) ProtoMessage() {}
 
 func (x *AdvanceSubscriptionFeeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[76]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4373,7 +4511,7 @@ func (x *AdvanceSubscriptionFeeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdvanceSubscriptionFeeResponse.ProtoReflect.Descriptor instead.
 func (*AdvanceSubscriptionFeeResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{76}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{78}
 }
 
 type ChangeSubscriptionRequest struct {
@@ -4397,7 +4535,7 @@ type ChangeSubscriptionRequest struct {
 
 func (x *ChangeSubscriptionRequest) Reset() {
 	*x = ChangeSubscriptionRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[77]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4409,7 +4547,7 @@ func (x *ChangeSubscriptionRequest) String() string {
 func (*ChangeSubscriptionRequest) ProtoMessage() {}
 
 func (x *ChangeSubscriptionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[77]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4422,7 +4560,7 @@ func (x *ChangeSubscriptionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangeSubscriptionRequest.ProtoReflect.Descriptor instead.
 func (*ChangeSubscriptionRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{77}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *ChangeSubscriptionRequest) GetSubscriptionId() string {
@@ -4499,7 +4637,7 @@ type ChangeQuote struct {
 
 func (x *ChangeQuote) Reset() {
 	*x = ChangeQuote{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[78]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4511,7 +4649,7 @@ func (x *ChangeQuote) String() string {
 func (*ChangeQuote) ProtoMessage() {}
 
 func (x *ChangeQuote) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[78]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4524,7 +4662,7 @@ func (x *ChangeQuote) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangeQuote.ProtoReflect.Descriptor instead.
 func (*ChangeQuote) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{78}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *ChangeQuote) GetTiming() ChangeTiming {
@@ -4634,7 +4772,7 @@ type PreviewSubscriptionChangeRequest struct {
 
 func (x *PreviewSubscriptionChangeRequest) Reset() {
 	*x = PreviewSubscriptionChangeRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[79]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4646,7 +4784,7 @@ func (x *PreviewSubscriptionChangeRequest) String() string {
 func (*PreviewSubscriptionChangeRequest) ProtoMessage() {}
 
 func (x *PreviewSubscriptionChangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[79]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4659,7 +4797,7 @@ func (x *PreviewSubscriptionChangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewSubscriptionChangeRequest.ProtoReflect.Descriptor instead.
 func (*PreviewSubscriptionChangeRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{79}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *PreviewSubscriptionChangeRequest) GetChange() *ChangeSubscriptionRequest {
@@ -4678,7 +4816,7 @@ type PreviewSubscriptionChangeResponse struct {
 
 func (x *PreviewSubscriptionChangeResponse) Reset() {
 	*x = PreviewSubscriptionChangeResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[80]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4690,7 +4828,7 @@ func (x *PreviewSubscriptionChangeResponse) String() string {
 func (*PreviewSubscriptionChangeResponse) ProtoMessage() {}
 
 func (x *PreviewSubscriptionChangeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[80]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4703,7 +4841,7 @@ func (x *PreviewSubscriptionChangeResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use PreviewSubscriptionChangeResponse.ProtoReflect.Descriptor instead.
 func (*PreviewSubscriptionChangeResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{80}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *PreviewSubscriptionChangeResponse) GetQuote() *ChangeQuote {
@@ -4725,7 +4863,7 @@ type ChangeSubscriptionResponse struct {
 
 func (x *ChangeSubscriptionResponse) Reset() {
 	*x = ChangeSubscriptionResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[81]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4737,7 +4875,7 @@ func (x *ChangeSubscriptionResponse) String() string {
 func (*ChangeSubscriptionResponse) ProtoMessage() {}
 
 func (x *ChangeSubscriptionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[81]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4750,7 +4888,7 @@ func (x *ChangeSubscriptionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangeSubscriptionResponse.ProtoReflect.Descriptor instead.
 func (*ChangeSubscriptionResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{81}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *ChangeSubscriptionResponse) GetSubscription() *Subscription {
@@ -4783,7 +4921,7 @@ type CancelScheduledChangeRequest struct {
 
 func (x *CancelScheduledChangeRequest) Reset() {
 	*x = CancelScheduledChangeRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[82]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4795,7 +4933,7 @@ func (x *CancelScheduledChangeRequest) String() string {
 func (*CancelScheduledChangeRequest) ProtoMessage() {}
 
 func (x *CancelScheduledChangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[82]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4808,7 +4946,7 @@ func (x *CancelScheduledChangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelScheduledChangeRequest.ProtoReflect.Descriptor instead.
 func (*CancelScheduledChangeRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{82}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *CancelScheduledChangeRequest) GetSubscriptionId() string {
@@ -4827,7 +4965,7 @@ type CancelScheduledChangeResponse struct {
 
 func (x *CancelScheduledChangeResponse) Reset() {
 	*x = CancelScheduledChangeResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[83]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4839,7 +4977,7 @@ func (x *CancelScheduledChangeResponse) String() string {
 func (*CancelScheduledChangeResponse) ProtoMessage() {}
 
 func (x *CancelScheduledChangeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[83]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4852,7 +4990,7 @@ func (x *CancelScheduledChangeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelScheduledChangeResponse.ProtoReflect.Descriptor instead.
 func (*CancelScheduledChangeResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{83}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *CancelScheduledChangeResponse) GetSubscription() *Subscription {
@@ -4871,7 +5009,7 @@ type ApplyScheduledChangesRequest struct {
 
 func (x *ApplyScheduledChangesRequest) Reset() {
 	*x = ApplyScheduledChangesRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[84]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4883,7 +5021,7 @@ func (x *ApplyScheduledChangesRequest) String() string {
 func (*ApplyScheduledChangesRequest) ProtoMessage() {}
 
 func (x *ApplyScheduledChangesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[84]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4896,7 +5034,7 @@ func (x *ApplyScheduledChangesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyScheduledChangesRequest.ProtoReflect.Descriptor instead.
 func (*ApplyScheduledChangesRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{84}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *ApplyScheduledChangesRequest) GetNow() *timestamppb.Timestamp {
@@ -4915,7 +5053,7 @@ type ApplyScheduledChangesResponse struct {
 
 func (x *ApplyScheduledChangesResponse) Reset() {
 	*x = ApplyScheduledChangesResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[85]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4927,7 +5065,7 @@ func (x *ApplyScheduledChangesResponse) String() string {
 func (*ApplyScheduledChangesResponse) ProtoMessage() {}
 
 func (x *ApplyScheduledChangesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[85]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4940,7 +5078,7 @@ func (x *ApplyScheduledChangesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyScheduledChangesResponse.ProtoReflect.Descriptor instead.
 func (*ApplyScheduledChangesResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{85}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *ApplyScheduledChangesResponse) GetApplied() int32 {
@@ -4966,7 +5104,7 @@ type Adjustment struct {
 
 func (x *Adjustment) Reset() {
 	*x = Adjustment{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[86]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4978,7 +5116,7 @@ func (x *Adjustment) String() string {
 func (*Adjustment) ProtoMessage() {}
 
 func (x *Adjustment) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[86]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4991,7 +5129,7 @@ func (x *Adjustment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Adjustment.ProtoReflect.Descriptor instead.
 func (*Adjustment) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{86}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *Adjustment) GetId() string {
@@ -5053,7 +5191,7 @@ type ListSubscriptionAdjustmentsRequest struct {
 
 func (x *ListSubscriptionAdjustmentsRequest) Reset() {
 	*x = ListSubscriptionAdjustmentsRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[87]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5065,7 +5203,7 @@ func (x *ListSubscriptionAdjustmentsRequest) String() string {
 func (*ListSubscriptionAdjustmentsRequest) ProtoMessage() {}
 
 func (x *ListSubscriptionAdjustmentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[87]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5078,7 +5216,7 @@ func (x *ListSubscriptionAdjustmentsRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ListSubscriptionAdjustmentsRequest.ProtoReflect.Descriptor instead.
 func (*ListSubscriptionAdjustmentsRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{87}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *ListSubscriptionAdjustmentsRequest) GetPageSize() int32 {
@@ -5097,7 +5235,7 @@ type ListSubscriptionAdjustmentsResponse struct {
 
 func (x *ListSubscriptionAdjustmentsResponse) Reset() {
 	*x = ListSubscriptionAdjustmentsResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[88]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5109,7 +5247,7 @@ func (x *ListSubscriptionAdjustmentsResponse) String() string {
 func (*ListSubscriptionAdjustmentsResponse) ProtoMessage() {}
 
 func (x *ListSubscriptionAdjustmentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[88]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5122,7 +5260,7 @@ func (x *ListSubscriptionAdjustmentsResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use ListSubscriptionAdjustmentsResponse.ProtoReflect.Descriptor instead.
 func (*ListSubscriptionAdjustmentsResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{88}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *ListSubscriptionAdjustmentsResponse) GetAdjustments() []*Adjustment {
@@ -5141,7 +5279,7 @@ type MarkSubscriptionAdjustmentBilledRequest struct {
 
 func (x *MarkSubscriptionAdjustmentBilledRequest) Reset() {
 	*x = MarkSubscriptionAdjustmentBilledRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[89]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5153,7 +5291,7 @@ func (x *MarkSubscriptionAdjustmentBilledRequest) String() string {
 func (*MarkSubscriptionAdjustmentBilledRequest) ProtoMessage() {}
 
 func (x *MarkSubscriptionAdjustmentBilledRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[89]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5166,7 +5304,7 @@ func (x *MarkSubscriptionAdjustmentBilledRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use MarkSubscriptionAdjustmentBilledRequest.ProtoReflect.Descriptor instead.
 func (*MarkSubscriptionAdjustmentBilledRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{89}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *MarkSubscriptionAdjustmentBilledRequest) GetAdjustmentId() string {
@@ -5184,7 +5322,7 @@ type MarkSubscriptionAdjustmentBilledResponse struct {
 
 func (x *MarkSubscriptionAdjustmentBilledResponse) Reset() {
 	*x = MarkSubscriptionAdjustmentBilledResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[90]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5196,7 +5334,7 @@ func (x *MarkSubscriptionAdjustmentBilledResponse) String() string {
 func (*MarkSubscriptionAdjustmentBilledResponse) ProtoMessage() {}
 
 func (x *MarkSubscriptionAdjustmentBilledResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[90]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5209,7 +5347,7 @@ func (x *MarkSubscriptionAdjustmentBilledResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use MarkSubscriptionAdjustmentBilledResponse.ProtoReflect.Descriptor instead.
 func (*MarkSubscriptionAdjustmentBilledResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{90}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{92}
 }
 
 type CreateCouponRequest struct {
@@ -5221,7 +5359,7 @@ type CreateCouponRequest struct {
 
 func (x *CreateCouponRequest) Reset() {
 	*x = CreateCouponRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[91]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5233,7 +5371,7 @@ func (x *CreateCouponRequest) String() string {
 func (*CreateCouponRequest) ProtoMessage() {}
 
 func (x *CreateCouponRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[91]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5246,7 +5384,7 @@ func (x *CreateCouponRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCouponRequest.ProtoReflect.Descriptor instead.
 func (*CreateCouponRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{91}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *CreateCouponRequest) GetCoupon() *Coupon {
@@ -5265,7 +5403,7 @@ type CreateCouponResponse struct {
 
 func (x *CreateCouponResponse) Reset() {
 	*x = CreateCouponResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[92]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5277,7 +5415,7 @@ func (x *CreateCouponResponse) String() string {
 func (*CreateCouponResponse) ProtoMessage() {}
 
 func (x *CreateCouponResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[92]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5290,7 +5428,7 @@ func (x *CreateCouponResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCouponResponse.ProtoReflect.Descriptor instead.
 func (*CreateCouponResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{92}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *CreateCouponResponse) GetCoupon() *Coupon {
@@ -5308,7 +5446,7 @@ type ListCouponsRequest struct {
 
 func (x *ListCouponsRequest) Reset() {
 	*x = ListCouponsRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[93]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5320,7 +5458,7 @@ func (x *ListCouponsRequest) String() string {
 func (*ListCouponsRequest) ProtoMessage() {}
 
 func (x *ListCouponsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[93]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5333,7 +5471,7 @@ func (x *ListCouponsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCouponsRequest.ProtoReflect.Descriptor instead.
 func (*ListCouponsRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{93}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{95}
 }
 
 type ListCouponsResponse struct {
@@ -5345,7 +5483,7 @@ type ListCouponsResponse struct {
 
 func (x *ListCouponsResponse) Reset() {
 	*x = ListCouponsResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[94]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5357,7 +5495,7 @@ func (x *ListCouponsResponse) String() string {
 func (*ListCouponsResponse) ProtoMessage() {}
 
 func (x *ListCouponsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[94]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5370,7 +5508,7 @@ func (x *ListCouponsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCouponsResponse.ProtoReflect.Descriptor instead.
 func (*ListCouponsResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{94}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *ListCouponsResponse) GetCoupons() []*Coupon {
@@ -5389,7 +5527,7 @@ type DeactivateCouponRequest struct {
 
 func (x *DeactivateCouponRequest) Reset() {
 	*x = DeactivateCouponRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[95]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5401,7 +5539,7 @@ func (x *DeactivateCouponRequest) String() string {
 func (*DeactivateCouponRequest) ProtoMessage() {}
 
 func (x *DeactivateCouponRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[95]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5414,7 +5552,7 @@ func (x *DeactivateCouponRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeactivateCouponRequest.ProtoReflect.Descriptor instead.
 func (*DeactivateCouponRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{95}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *DeactivateCouponRequest) GetCode() string {
@@ -5433,7 +5571,7 @@ type DeactivateCouponResponse struct {
 
 func (x *DeactivateCouponResponse) Reset() {
 	*x = DeactivateCouponResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[96]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5445,7 +5583,7 @@ func (x *DeactivateCouponResponse) String() string {
 func (*DeactivateCouponResponse) ProtoMessage() {}
 
 func (x *DeactivateCouponResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[96]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5458,7 +5596,7 @@ func (x *DeactivateCouponResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeactivateCouponResponse.ProtoReflect.Descriptor instead.
 func (*DeactivateCouponResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{96}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *DeactivateCouponResponse) GetCoupon() *Coupon {
@@ -5478,7 +5616,7 @@ type ApplyCouponRequest struct {
 
 func (x *ApplyCouponRequest) Reset() {
 	*x = ApplyCouponRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[97]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5490,7 +5628,7 @@ func (x *ApplyCouponRequest) String() string {
 func (*ApplyCouponRequest) ProtoMessage() {}
 
 func (x *ApplyCouponRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[97]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5503,7 +5641,7 @@ func (x *ApplyCouponRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyCouponRequest.ProtoReflect.Descriptor instead.
 func (*ApplyCouponRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{97}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *ApplyCouponRequest) GetSubscriptionId() string {
@@ -5529,7 +5667,7 @@ type ApplyCouponResponse struct {
 
 func (x *ApplyCouponResponse) Reset() {
 	*x = ApplyCouponResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[98]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5541,7 +5679,7 @@ func (x *ApplyCouponResponse) String() string {
 func (*ApplyCouponResponse) ProtoMessage() {}
 
 func (x *ApplyCouponResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[98]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5554,7 +5692,7 @@ func (x *ApplyCouponResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyCouponResponse.ProtoReflect.Descriptor instead.
 func (*ApplyCouponResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{98}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *ApplyCouponResponse) GetSubscription() *Subscription {
@@ -5573,7 +5711,7 @@ type RemoveCouponRequest struct {
 
 func (x *RemoveCouponRequest) Reset() {
 	*x = RemoveCouponRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[99]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5585,7 +5723,7 @@ func (x *RemoveCouponRequest) String() string {
 func (*RemoveCouponRequest) ProtoMessage() {}
 
 func (x *RemoveCouponRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[99]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5598,7 +5736,7 @@ func (x *RemoveCouponRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveCouponRequest.ProtoReflect.Descriptor instead.
 func (*RemoveCouponRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{99}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *RemoveCouponRequest) GetSubscriptionId() string {
@@ -5617,7 +5755,7 @@ type RemoveCouponResponse struct {
 
 func (x *RemoveCouponResponse) Reset() {
 	*x = RemoveCouponResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[100]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5629,7 +5767,7 @@ func (x *RemoveCouponResponse) String() string {
 func (*RemoveCouponResponse) ProtoMessage() {}
 
 func (x *RemoveCouponResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[100]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5642,7 +5780,7 @@ func (x *RemoveCouponResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveCouponResponse.ProtoReflect.Descriptor instead.
 func (*RemoveCouponResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{100}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *RemoveCouponResponse) GetSubscription() *Subscription {
@@ -5667,7 +5805,7 @@ type TaxRate struct {
 
 func (x *TaxRate) Reset() {
 	*x = TaxRate{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[101]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5679,7 +5817,7 @@ func (x *TaxRate) String() string {
 func (*TaxRate) ProtoMessage() {}
 
 func (x *TaxRate) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[101]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5692,7 +5830,7 @@ func (x *TaxRate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaxRate.ProtoReflect.Descriptor instead.
 func (*TaxRate) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{101}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *TaxRate) GetCountry() string {
@@ -5724,7 +5862,7 @@ type GetTaxRatesRequest struct {
 
 func (x *GetTaxRatesRequest) Reset() {
 	*x = GetTaxRatesRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[102]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5736,7 +5874,7 @@ func (x *GetTaxRatesRequest) String() string {
 func (*GetTaxRatesRequest) ProtoMessage() {}
 
 func (x *GetTaxRatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[102]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5749,7 +5887,7 @@ func (x *GetTaxRatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTaxRatesRequest.ProtoReflect.Descriptor instead.
 func (*GetTaxRatesRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{102}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{104}
 }
 
 type GetTaxRatesResponse struct {
@@ -5761,7 +5899,7 @@ type GetTaxRatesResponse struct {
 
 func (x *GetTaxRatesResponse) Reset() {
 	*x = GetTaxRatesResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[103]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5773,7 +5911,7 @@ func (x *GetTaxRatesResponse) String() string {
 func (*GetTaxRatesResponse) ProtoMessage() {}
 
 func (x *GetTaxRatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[103]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5786,7 +5924,7 @@ func (x *GetTaxRatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTaxRatesResponse.ProtoReflect.Descriptor instead.
 func (*GetTaxRatesResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{103}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *GetTaxRatesResponse) GetRates() []*TaxRate {
@@ -5805,7 +5943,7 @@ type SetTaxRatesRequest struct {
 
 func (x *SetTaxRatesRequest) Reset() {
 	*x = SetTaxRatesRequest{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[104]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5817,7 +5955,7 @@ func (x *SetTaxRatesRequest) String() string {
 func (*SetTaxRatesRequest) ProtoMessage() {}
 
 func (x *SetTaxRatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[104]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5830,7 +5968,7 @@ func (x *SetTaxRatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetTaxRatesRequest.ProtoReflect.Descriptor instead.
 func (*SetTaxRatesRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{104}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *SetTaxRatesRequest) GetRates() []*TaxRate {
@@ -5849,7 +5987,7 @@ type SetTaxRatesResponse struct {
 
 func (x *SetTaxRatesResponse) Reset() {
 	*x = SetTaxRatesResponse{}
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[105]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5861,7 +5999,7 @@ func (x *SetTaxRatesResponse) String() string {
 func (*SetTaxRatesResponse) ProtoMessage() {}
 
 func (x *SetTaxRatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_plans_proto_msgTypes[105]
+	mi := &file_quotify_plans_v1_plans_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5874,7 +6012,7 @@ func (x *SetTaxRatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetTaxRatesResponse.ProtoReflect.Descriptor instead.
 func (*SetTaxRatesResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{105}
+	return file_quotify_plans_v1_plans_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *SetTaxRatesResponse) GetRates() []*TaxRate {
@@ -6131,7 +6269,7 @@ const file_quotify_plans_v1_plans_proto_rawDesc = "" +
 	"\tmigration\x18\x01 \x01(\v2#.quotify.plans.v1.ProviderMigrationR\tmigration\"O\n" +
 	"\x1cGetSubscriptionReportRequest\x12\x14\n" +
 	"\x05month\x18\x01 \x01(\tR\x05month\x12\x19\n" +
-	"\bgroup_by\x18\x02 \x03(\tR\agroupBy\"\x84\x03\n" +
+	"\bgroup_by\x18\x02 \x03(\tR\agroupBy\"\xa1\x03\n" +
 	"\x15SubscriptionReportRow\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x18\n" +
 	"\acountry\x18\x02 \x01(\tR\acountry\x12\x1a\n" +
@@ -6145,10 +6283,22 @@ const file_quotify_plans_v1_plans_proto_rawDesc = "" +
 	"\rnew_mrr_minor\x18\n" +
 	" \x01(\x03R\vnewMrrMinor\x12\x18\n" +
 	"\achurned\x18\v \x01(\x03R\achurned\x12*\n" +
-	"\x11churned_mrr_minor\x18\f \x01(\x03R\x0fchurnedMrrMinor\"r\n" +
+	"\x11churned_mrr_minor\x18\f \x01(\x03R\x0fchurnedMrrMinor\x12\x1b\n" +
+	"\tplan_code\x18\r \x01(\tR\bplanCode\"r\n" +
 	"\x1dGetSubscriptionReportResponse\x12\x14\n" +
 	"\x05month\x18\x01 \x01(\tR\x05month\x12;\n" +
-	"\x04rows\x18\x02 \x03(\v2'.quotify.plans.v1.SubscriptionReportRowR\x04rows\"\x88\x01\n" +
+	"\x04rows\x18\x02 \x03(\v2'.quotify.plans.v1.SubscriptionReportRowR\x04rows\"\x87\x02\n" +
+	"\x17GetCustomerStatsRequest\x127\n" +
+	"\tfrom_time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\bfromTime\x123\n" +
+	"\ato_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x06toTime\x12@\n" +
+	"\x0eprev_from_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\fprevFromTime\x12<\n" +
+	"\fprev_to_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"prevToTime\"z\n" +
+	"\x18GetCustomerStatsResponse\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x03R\x05total\x12 \n" +
+	"\fnew_in_range\x18\x02 \x01(\x03R\n" +
+	"newInRange\x12&\n" +
+	"\x0fnew_in_previous\x18\x03 \x01(\x03R\rnewInPrevious\"\x88\x01\n" +
 	"\x18ListSubscriptionsRequest\x120\n" +
 	"\x14customer_external_id\x18\x01 \x01(\tR\x12customerExternalId\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
@@ -6273,7 +6423,7 @@ const file_quotify_plans_v1_plans_proto_rawDesc = "" +
 	"\x1cCHANGE_PRORATION_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18CHANGE_PRORATION_PRORATE\x10\x01\x12\x19\n" +
 	"\x15CHANGE_PRORATION_FULL\x10\x02\x12\x19\n" +
-	"\x15CHANGE_PRORATION_NONE\x10\x032\x80*\n" +
+	"\x15CHANGE_PRORATION_NONE\x10\x032\xeb*\n" +
 	"\fPlansService\x12c\n" +
 	"\x0eCreateCustomer\x12'.quotify.plans.v1.CreateCustomerRequest\x1a(.quotify.plans.v1.CreateCustomerResponse\x12Z\n" +
 	"\vGetCustomer\x12$.quotify.plans.v1.GetCustomerRequest\x1a%.quotify.plans.v1.GetCustomerResponse\x12f\n" +
@@ -6304,7 +6454,8 @@ const file_quotify_plans_v1_plans_proto_rawDesc = "" +
 	"\x19CompleteProviderMigration\x122.quotify.plans.v1.CompleteProviderMigrationRequest\x1a3.quotify.plans.v1.CompleteProviderMigrationResponse\x12{\n" +
 	"\x16AbortProviderMigration\x12/.quotify.plans.v1.AbortProviderMigrationRequest\x1a0.quotify.plans.v1.AbortProviderMigrationResponse\x12u\n" +
 	"\x14GetProviderMigration\x12-.quotify.plans.v1.GetProviderMigrationRequest\x1a..quotify.plans.v1.GetProviderMigrationResponse\x12x\n" +
-	"\x15GetSubscriptionReport\x12..quotify.plans.v1.GetSubscriptionReportRequest\x1a/.quotify.plans.v1.GetSubscriptionReportResponse\x12\x81\x01\n" +
+	"\x15GetSubscriptionReport\x12..quotify.plans.v1.GetSubscriptionReportRequest\x1a/.quotify.plans.v1.GetSubscriptionReportResponse\x12i\n" +
+	"\x10GetCustomerStats\x12).quotify.plans.v1.GetCustomerStatsRequest\x1a*.quotify.plans.v1.GetCustomerStatsResponse\x12\x81\x01\n" +
 	"\x18SyncProviderSubscription\x121.quotify.plans.v1.SyncProviderSubscriptionRequest\x1a2.quotify.plans.v1.SyncProviderSubscriptionResponse\x12l\n" +
 	"\x11PauseSubscription\x12*.quotify.plans.v1.PauseSubscriptionRequest\x1a+.quotify.plans.v1.PauseSubscriptionResponse\x12o\n" +
 	"\x12ResumeSubscription\x12+.quotify.plans.v1.ResumeSubscriptionRequest\x1a,.quotify.plans.v1.ResumeSubscriptionResponse\x12u\n" +
@@ -6343,7 +6494,7 @@ func file_quotify_plans_v1_plans_proto_rawDescGZIP() []byte {
 }
 
 var file_quotify_plans_v1_plans_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_quotify_plans_v1_plans_proto_msgTypes = make([]protoimpl.MessageInfo, 107)
+var file_quotify_plans_v1_plans_proto_msgTypes = make([]protoimpl.MessageInfo, 109)
 var file_quotify_plans_v1_plans_proto_goTypes = []any{
 	(ChangeTiming)(0),                                // 0: quotify.plans.v1.ChangeTiming
 	(ChangeProration)(0),                             // 1: quotify.plans.v1.ChangeProration
@@ -6418,101 +6569,103 @@ var file_quotify_plans_v1_plans_proto_goTypes = []any{
 	(*GetSubscriptionReportRequest)(nil),             // 70: quotify.plans.v1.GetSubscriptionReportRequest
 	(*SubscriptionReportRow)(nil),                    // 71: quotify.plans.v1.SubscriptionReportRow
 	(*GetSubscriptionReportResponse)(nil),            // 72: quotify.plans.v1.GetSubscriptionReportResponse
-	(*ListSubscriptionsRequest)(nil),                 // 73: quotify.plans.v1.ListSubscriptionsRequest
-	(*ListSubscriptionsResponse)(nil),                // 74: quotify.plans.v1.ListSubscriptionsResponse
-	(*ListSubscriptionsFeeDueRequest)(nil),           // 75: quotify.plans.v1.ListSubscriptionsFeeDueRequest
-	(*FeeDue)(nil),                                   // 76: quotify.plans.v1.FeeDue
-	(*ListSubscriptionsFeeDueResponse)(nil),          // 77: quotify.plans.v1.ListSubscriptionsFeeDueResponse
-	(*AdvanceSubscriptionFeeRequest)(nil),            // 78: quotify.plans.v1.AdvanceSubscriptionFeeRequest
-	(*AdvanceSubscriptionFeeResponse)(nil),           // 79: quotify.plans.v1.AdvanceSubscriptionFeeResponse
-	(*ChangeSubscriptionRequest)(nil),                // 80: quotify.plans.v1.ChangeSubscriptionRequest
-	(*ChangeQuote)(nil),                              // 81: quotify.plans.v1.ChangeQuote
-	(*PreviewSubscriptionChangeRequest)(nil),         // 82: quotify.plans.v1.PreviewSubscriptionChangeRequest
-	(*PreviewSubscriptionChangeResponse)(nil),        // 83: quotify.plans.v1.PreviewSubscriptionChangeResponse
-	(*ChangeSubscriptionResponse)(nil),               // 84: quotify.plans.v1.ChangeSubscriptionResponse
-	(*CancelScheduledChangeRequest)(nil),             // 85: quotify.plans.v1.CancelScheduledChangeRequest
-	(*CancelScheduledChangeResponse)(nil),            // 86: quotify.plans.v1.CancelScheduledChangeResponse
-	(*ApplyScheduledChangesRequest)(nil),             // 87: quotify.plans.v1.ApplyScheduledChangesRequest
-	(*ApplyScheduledChangesResponse)(nil),            // 88: quotify.plans.v1.ApplyScheduledChangesResponse
-	(*Adjustment)(nil),                               // 89: quotify.plans.v1.Adjustment
-	(*ListSubscriptionAdjustmentsRequest)(nil),       // 90: quotify.plans.v1.ListSubscriptionAdjustmentsRequest
-	(*ListSubscriptionAdjustmentsResponse)(nil),      // 91: quotify.plans.v1.ListSubscriptionAdjustmentsResponse
-	(*MarkSubscriptionAdjustmentBilledRequest)(nil),  // 92: quotify.plans.v1.MarkSubscriptionAdjustmentBilledRequest
-	(*MarkSubscriptionAdjustmentBilledResponse)(nil), // 93: quotify.plans.v1.MarkSubscriptionAdjustmentBilledResponse
-	(*CreateCouponRequest)(nil),                      // 94: quotify.plans.v1.CreateCouponRequest
-	(*CreateCouponResponse)(nil),                     // 95: quotify.plans.v1.CreateCouponResponse
-	(*ListCouponsRequest)(nil),                       // 96: quotify.plans.v1.ListCouponsRequest
-	(*ListCouponsResponse)(nil),                      // 97: quotify.plans.v1.ListCouponsResponse
-	(*DeactivateCouponRequest)(nil),                  // 98: quotify.plans.v1.DeactivateCouponRequest
-	(*DeactivateCouponResponse)(nil),                 // 99: quotify.plans.v1.DeactivateCouponResponse
-	(*ApplyCouponRequest)(nil),                       // 100: quotify.plans.v1.ApplyCouponRequest
-	(*ApplyCouponResponse)(nil),                      // 101: quotify.plans.v1.ApplyCouponResponse
-	(*RemoveCouponRequest)(nil),                      // 102: quotify.plans.v1.RemoveCouponRequest
-	(*RemoveCouponResponse)(nil),                     // 103: quotify.plans.v1.RemoveCouponResponse
-	(*TaxRate)(nil),                                  // 104: quotify.plans.v1.TaxRate
-	(*GetTaxRatesRequest)(nil),                       // 105: quotify.plans.v1.GetTaxRatesRequest
-	(*GetTaxRatesResponse)(nil),                      // 106: quotify.plans.v1.GetTaxRatesResponse
-	(*SetTaxRatesRequest)(nil),                       // 107: quotify.plans.v1.SetTaxRatesRequest
-	(*SetTaxRatesResponse)(nil),                      // 108: quotify.plans.v1.SetTaxRatesResponse
-	nil,                                              // 109: quotify.plans.v1.CreateMeterRequest.FilterEntry
-	(*Address)(nil),                                  // 110: quotify.plans.v1.Address
-	(*Customer)(nil),                                 // 111: quotify.plans.v1.Customer
-	(Aggregation)(0),                                 // 112: quotify.plans.v1.Aggregation
-	(*Meter)(nil),                                    // 113: quotify.plans.v1.Meter
-	(*Plan)(nil),                                     // 114: quotify.plans.v1.Plan
-	(*Price)(nil),                                    // 115: quotify.plans.v1.Price
-	(*Entitlement)(nil),                              // 116: quotify.plans.v1.Entitlement
-	(*CurrencyFee)(nil),                              // 117: quotify.plans.v1.CurrencyFee
-	(*CurrencyPrices)(nil),                           // 118: quotify.plans.v1.CurrencyPrices
-	(*PlanVersion)(nil),                              // 119: quotify.plans.v1.PlanVersion
-	(*timestamppb.Timestamp)(nil),                    // 120: google.protobuf.Timestamp
-	(SubscriptionInterval)(0),                        // 121: quotify.plans.v1.SubscriptionInterval
-	(FeeTiming)(0),                                   // 122: quotify.plans.v1.FeeTiming
-	(*Subscription)(nil),                             // 123: quotify.plans.v1.Subscription
-	(*Coupon)(nil),                                   // 124: quotify.plans.v1.Coupon
-	(*FilterValues)(nil),                             // 125: quotify.plans.v1.FilterValues
+	(*GetCustomerStatsRequest)(nil),                  // 73: quotify.plans.v1.GetCustomerStatsRequest
+	(*GetCustomerStatsResponse)(nil),                 // 74: quotify.plans.v1.GetCustomerStatsResponse
+	(*ListSubscriptionsRequest)(nil),                 // 75: quotify.plans.v1.ListSubscriptionsRequest
+	(*ListSubscriptionsResponse)(nil),                // 76: quotify.plans.v1.ListSubscriptionsResponse
+	(*ListSubscriptionsFeeDueRequest)(nil),           // 77: quotify.plans.v1.ListSubscriptionsFeeDueRequest
+	(*FeeDue)(nil),                                   // 78: quotify.plans.v1.FeeDue
+	(*ListSubscriptionsFeeDueResponse)(nil),          // 79: quotify.plans.v1.ListSubscriptionsFeeDueResponse
+	(*AdvanceSubscriptionFeeRequest)(nil),            // 80: quotify.plans.v1.AdvanceSubscriptionFeeRequest
+	(*AdvanceSubscriptionFeeResponse)(nil),           // 81: quotify.plans.v1.AdvanceSubscriptionFeeResponse
+	(*ChangeSubscriptionRequest)(nil),                // 82: quotify.plans.v1.ChangeSubscriptionRequest
+	(*ChangeQuote)(nil),                              // 83: quotify.plans.v1.ChangeQuote
+	(*PreviewSubscriptionChangeRequest)(nil),         // 84: quotify.plans.v1.PreviewSubscriptionChangeRequest
+	(*PreviewSubscriptionChangeResponse)(nil),        // 85: quotify.plans.v1.PreviewSubscriptionChangeResponse
+	(*ChangeSubscriptionResponse)(nil),               // 86: quotify.plans.v1.ChangeSubscriptionResponse
+	(*CancelScheduledChangeRequest)(nil),             // 87: quotify.plans.v1.CancelScheduledChangeRequest
+	(*CancelScheduledChangeResponse)(nil),            // 88: quotify.plans.v1.CancelScheduledChangeResponse
+	(*ApplyScheduledChangesRequest)(nil),             // 89: quotify.plans.v1.ApplyScheduledChangesRequest
+	(*ApplyScheduledChangesResponse)(nil),            // 90: quotify.plans.v1.ApplyScheduledChangesResponse
+	(*Adjustment)(nil),                               // 91: quotify.plans.v1.Adjustment
+	(*ListSubscriptionAdjustmentsRequest)(nil),       // 92: quotify.plans.v1.ListSubscriptionAdjustmentsRequest
+	(*ListSubscriptionAdjustmentsResponse)(nil),      // 93: quotify.plans.v1.ListSubscriptionAdjustmentsResponse
+	(*MarkSubscriptionAdjustmentBilledRequest)(nil),  // 94: quotify.plans.v1.MarkSubscriptionAdjustmentBilledRequest
+	(*MarkSubscriptionAdjustmentBilledResponse)(nil), // 95: quotify.plans.v1.MarkSubscriptionAdjustmentBilledResponse
+	(*CreateCouponRequest)(nil),                      // 96: quotify.plans.v1.CreateCouponRequest
+	(*CreateCouponResponse)(nil),                     // 97: quotify.plans.v1.CreateCouponResponse
+	(*ListCouponsRequest)(nil),                       // 98: quotify.plans.v1.ListCouponsRequest
+	(*ListCouponsResponse)(nil),                      // 99: quotify.plans.v1.ListCouponsResponse
+	(*DeactivateCouponRequest)(nil),                  // 100: quotify.plans.v1.DeactivateCouponRequest
+	(*DeactivateCouponResponse)(nil),                 // 101: quotify.plans.v1.DeactivateCouponResponse
+	(*ApplyCouponRequest)(nil),                       // 102: quotify.plans.v1.ApplyCouponRequest
+	(*ApplyCouponResponse)(nil),                      // 103: quotify.plans.v1.ApplyCouponResponse
+	(*RemoveCouponRequest)(nil),                      // 104: quotify.plans.v1.RemoveCouponRequest
+	(*RemoveCouponResponse)(nil),                     // 105: quotify.plans.v1.RemoveCouponResponse
+	(*TaxRate)(nil),                                  // 106: quotify.plans.v1.TaxRate
+	(*GetTaxRatesRequest)(nil),                       // 107: quotify.plans.v1.GetTaxRatesRequest
+	(*GetTaxRatesResponse)(nil),                      // 108: quotify.plans.v1.GetTaxRatesResponse
+	(*SetTaxRatesRequest)(nil),                       // 109: quotify.plans.v1.SetTaxRatesRequest
+	(*SetTaxRatesResponse)(nil),                      // 110: quotify.plans.v1.SetTaxRatesResponse
+	nil,                                              // 111: quotify.plans.v1.CreateMeterRequest.FilterEntry
+	(*Address)(nil),                                  // 112: quotify.plans.v1.Address
+	(*Customer)(nil),                                 // 113: quotify.plans.v1.Customer
+	(Aggregation)(0),                                 // 114: quotify.plans.v1.Aggregation
+	(*Meter)(nil),                                    // 115: quotify.plans.v1.Meter
+	(*Plan)(nil),                                     // 116: quotify.plans.v1.Plan
+	(*Price)(nil),                                    // 117: quotify.plans.v1.Price
+	(*Entitlement)(nil),                              // 118: quotify.plans.v1.Entitlement
+	(*CurrencyFee)(nil),                              // 119: quotify.plans.v1.CurrencyFee
+	(*CurrencyPrices)(nil),                           // 120: quotify.plans.v1.CurrencyPrices
+	(*PlanVersion)(nil),                              // 121: quotify.plans.v1.PlanVersion
+	(*timestamppb.Timestamp)(nil),                    // 122: google.protobuf.Timestamp
+	(SubscriptionInterval)(0),                        // 123: quotify.plans.v1.SubscriptionInterval
+	(FeeTiming)(0),                                   // 124: quotify.plans.v1.FeeTiming
+	(*Subscription)(nil),                             // 125: quotify.plans.v1.Subscription
+	(*Coupon)(nil),                                   // 126: quotify.plans.v1.Coupon
+	(*FilterValues)(nil),                             // 127: quotify.plans.v1.FilterValues
 }
 var file_quotify_plans_v1_plans_proto_depIdxs = []int32{
-	110, // 0: quotify.plans.v1.CreateCustomerRequest.address:type_name -> quotify.plans.v1.Address
-	111, // 1: quotify.plans.v1.CreateCustomerResponse.customer:type_name -> quotify.plans.v1.Customer
-	111, // 2: quotify.plans.v1.GetCustomerResponse.customer:type_name -> quotify.plans.v1.Customer
-	111, // 3: quotify.plans.v1.ResolveCustomerResponse.customer:type_name -> quotify.plans.v1.Customer
-	111, // 4: quotify.plans.v1.ListCustomersResponse.customers:type_name -> quotify.plans.v1.Customer
-	111, // 5: quotify.plans.v1.SetPaymentMethodResponse.customer:type_name -> quotify.plans.v1.Customer
-	110, // 6: quotify.plans.v1.SetCustomerAddressRequest.address:type_name -> quotify.plans.v1.Address
-	111, // 7: quotify.plans.v1.SetCustomerAddressResponse.customer:type_name -> quotify.plans.v1.Customer
-	111, // 8: quotify.plans.v1.SetCustomerTaxResponse.customer:type_name -> quotify.plans.v1.Customer
-	112, // 9: quotify.plans.v1.CreateMeterRequest.aggregation:type_name -> quotify.plans.v1.Aggregation
-	109, // 10: quotify.plans.v1.CreateMeterRequest.filter:type_name -> quotify.plans.v1.CreateMeterRequest.FilterEntry
-	113, // 11: quotify.plans.v1.CreateMeterResponse.meter:type_name -> quotify.plans.v1.Meter
-	113, // 12: quotify.plans.v1.GetMeterResponse.meter:type_name -> quotify.plans.v1.Meter
-	113, // 13: quotify.plans.v1.ListMetersResponse.meters:type_name -> quotify.plans.v1.Meter
-	114, // 14: quotify.plans.v1.CreatePlanResponse.plan:type_name -> quotify.plans.v1.Plan
-	114, // 15: quotify.plans.v1.ListPlansResponse.plans:type_name -> quotify.plans.v1.Plan
-	115, // 16: quotify.plans.v1.PublishPlanVersionRequest.prices:type_name -> quotify.plans.v1.Price
-	116, // 17: quotify.plans.v1.PublishPlanVersionRequest.entitlements:type_name -> quotify.plans.v1.Entitlement
-	117, // 18: quotify.plans.v1.PublishPlanVersionRequest.fees:type_name -> quotify.plans.v1.CurrencyFee
-	118, // 19: quotify.plans.v1.PublishPlanVersionRequest.currency_prices:type_name -> quotify.plans.v1.CurrencyPrices
-	119, // 20: quotify.plans.v1.PublishPlanVersionResponse.plan_version:type_name -> quotify.plans.v1.PlanVersion
-	119, // 21: quotify.plans.v1.GetPlanVersionResponse.plan_version:type_name -> quotify.plans.v1.PlanVersion
-	120, // 22: quotify.plans.v1.CreateSubscriptionRequest.start_time:type_name -> google.protobuf.Timestamp
-	121, // 23: quotify.plans.v1.CreateSubscriptionRequest.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	122, // 24: quotify.plans.v1.CreateSubscriptionRequest.fee_timing:type_name -> quotify.plans.v1.FeeTiming
-	123, // 25: quotify.plans.v1.CreateSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	120, // 26: quotify.plans.v1.CancelSubscriptionRequest.end_time:type_name -> google.protobuf.Timestamp
-	123, // 27: quotify.plans.v1.CancelSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	120, // 28: quotify.plans.v1.ListSubscriptionsForPeriodRequest.period_start:type_name -> google.protobuf.Timestamp
-	120, // 29: quotify.plans.v1.ListSubscriptionsForPeriodRequest.period_end:type_name -> google.protobuf.Timestamp
-	123, // 30: quotify.plans.v1.ListSubscriptionsForPeriodResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	123, // 31: quotify.plans.v1.GetSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	123, // 32: quotify.plans.v1.PauseSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	123, // 33: quotify.plans.v1.ResumeSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	123, // 34: quotify.plans.v1.ScheduleCancellationResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	120, // 35: quotify.plans.v1.ChangePlanRequest.change_time:type_name -> google.protobuf.Timestamp
-	123, // 36: quotify.plans.v1.ChangePlanResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	120, // 37: quotify.plans.v1.SyncProviderSubscriptionRequest.occurred_at:type_name -> google.protobuf.Timestamp
-	121, // 38: quotify.plans.v1.SyncProviderSubscriptionRequest.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	123, // 39: quotify.plans.v1.SyncProviderSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	112, // 0: quotify.plans.v1.CreateCustomerRequest.address:type_name -> quotify.plans.v1.Address
+	113, // 1: quotify.plans.v1.CreateCustomerResponse.customer:type_name -> quotify.plans.v1.Customer
+	113, // 2: quotify.plans.v1.GetCustomerResponse.customer:type_name -> quotify.plans.v1.Customer
+	113, // 3: quotify.plans.v1.ResolveCustomerResponse.customer:type_name -> quotify.plans.v1.Customer
+	113, // 4: quotify.plans.v1.ListCustomersResponse.customers:type_name -> quotify.plans.v1.Customer
+	113, // 5: quotify.plans.v1.SetPaymentMethodResponse.customer:type_name -> quotify.plans.v1.Customer
+	112, // 6: quotify.plans.v1.SetCustomerAddressRequest.address:type_name -> quotify.plans.v1.Address
+	113, // 7: quotify.plans.v1.SetCustomerAddressResponse.customer:type_name -> quotify.plans.v1.Customer
+	113, // 8: quotify.plans.v1.SetCustomerTaxResponse.customer:type_name -> quotify.plans.v1.Customer
+	114, // 9: quotify.plans.v1.CreateMeterRequest.aggregation:type_name -> quotify.plans.v1.Aggregation
+	111, // 10: quotify.plans.v1.CreateMeterRequest.filter:type_name -> quotify.plans.v1.CreateMeterRequest.FilterEntry
+	115, // 11: quotify.plans.v1.CreateMeterResponse.meter:type_name -> quotify.plans.v1.Meter
+	115, // 12: quotify.plans.v1.GetMeterResponse.meter:type_name -> quotify.plans.v1.Meter
+	115, // 13: quotify.plans.v1.ListMetersResponse.meters:type_name -> quotify.plans.v1.Meter
+	116, // 14: quotify.plans.v1.CreatePlanResponse.plan:type_name -> quotify.plans.v1.Plan
+	116, // 15: quotify.plans.v1.ListPlansResponse.plans:type_name -> quotify.plans.v1.Plan
+	117, // 16: quotify.plans.v1.PublishPlanVersionRequest.prices:type_name -> quotify.plans.v1.Price
+	118, // 17: quotify.plans.v1.PublishPlanVersionRequest.entitlements:type_name -> quotify.plans.v1.Entitlement
+	119, // 18: quotify.plans.v1.PublishPlanVersionRequest.fees:type_name -> quotify.plans.v1.CurrencyFee
+	120, // 19: quotify.plans.v1.PublishPlanVersionRequest.currency_prices:type_name -> quotify.plans.v1.CurrencyPrices
+	121, // 20: quotify.plans.v1.PublishPlanVersionResponse.plan_version:type_name -> quotify.plans.v1.PlanVersion
+	121, // 21: quotify.plans.v1.GetPlanVersionResponse.plan_version:type_name -> quotify.plans.v1.PlanVersion
+	122, // 22: quotify.plans.v1.CreateSubscriptionRequest.start_time:type_name -> google.protobuf.Timestamp
+	123, // 23: quotify.plans.v1.CreateSubscriptionRequest.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	124, // 24: quotify.plans.v1.CreateSubscriptionRequest.fee_timing:type_name -> quotify.plans.v1.FeeTiming
+	125, // 25: quotify.plans.v1.CreateSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	122, // 26: quotify.plans.v1.CancelSubscriptionRequest.end_time:type_name -> google.protobuf.Timestamp
+	125, // 27: quotify.plans.v1.CancelSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	122, // 28: quotify.plans.v1.ListSubscriptionsForPeriodRequest.period_start:type_name -> google.protobuf.Timestamp
+	122, // 29: quotify.plans.v1.ListSubscriptionsForPeriodRequest.period_end:type_name -> google.protobuf.Timestamp
+	125, // 30: quotify.plans.v1.ListSubscriptionsForPeriodResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	125, // 31: quotify.plans.v1.GetSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	125, // 32: quotify.plans.v1.PauseSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	125, // 33: quotify.plans.v1.ResumeSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	125, // 34: quotify.plans.v1.ScheduleCancellationResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	122, // 35: quotify.plans.v1.ChangePlanRequest.change_time:type_name -> google.protobuf.Timestamp
+	125, // 36: quotify.plans.v1.ChangePlanResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	122, // 37: quotify.plans.v1.SyncProviderSubscriptionRequest.occurred_at:type_name -> google.protobuf.Timestamp
+	123, // 38: quotify.plans.v1.SyncProviderSubscriptionRequest.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	125, // 39: quotify.plans.v1.SyncProviderSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
 	50,  // 40: quotify.plans.v1.GetMailSettingsResponse.categories:type_name -> quotify.plans.v1.MailCategorySetting
 	50,  // 41: quotify.plans.v1.SetMailSettingsRequest.categories:type_name -> quotify.plans.v1.MailCategorySetting
 	50,  // 42: quotify.plans.v1.SetMailSettingsResponse.categories:type_name -> quotify.plans.v1.MailCategorySetting
@@ -6520,157 +6673,163 @@ var file_quotify_plans_v1_plans_proto_depIdxs = []int32{
 	49,  // 44: quotify.plans.v1.SetRoutingRulesRequest.rules:type_name -> quotify.plans.v1.RoutingRule
 	49,  // 45: quotify.plans.v1.SetRoutingRulesResponse.rules:type_name -> quotify.plans.v1.RoutingRule
 	2,   // 46: quotify.plans.v1.ProviderMigration.state:type_name -> quotify.plans.v1.ProviderMigration.State
-	120, // 47: quotify.plans.v1.ProviderMigration.cutover_time:type_name -> google.protobuf.Timestamp
-	120, // 48: quotify.plans.v1.ProviderMigration.create_time:type_name -> google.protobuf.Timestamp
-	120, // 49: quotify.plans.v1.StartProviderMigrationRequest.cutover_time:type_name -> google.protobuf.Timestamp
+	122, // 47: quotify.plans.v1.ProviderMigration.cutover_time:type_name -> google.protobuf.Timestamp
+	122, // 48: quotify.plans.v1.ProviderMigration.create_time:type_name -> google.protobuf.Timestamp
+	122, // 49: quotify.plans.v1.StartProviderMigrationRequest.cutover_time:type_name -> google.protobuf.Timestamp
 	61,  // 50: quotify.plans.v1.StartProviderMigrationResponse.migration:type_name -> quotify.plans.v1.ProviderMigration
-	120, // 51: quotify.plans.v1.CompleteProviderMigrationRequest.cutover_time:type_name -> google.protobuf.Timestamp
+	122, // 51: quotify.plans.v1.CompleteProviderMigrationRequest.cutover_time:type_name -> google.protobuf.Timestamp
 	61,  // 52: quotify.plans.v1.CompleteProviderMigrationResponse.migration:type_name -> quotify.plans.v1.ProviderMigration
-	123, // 53: quotify.plans.v1.CompleteProviderMigrationResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	125, // 53: quotify.plans.v1.CompleteProviderMigrationResponse.subscription:type_name -> quotify.plans.v1.Subscription
 	61,  // 54: quotify.plans.v1.AbortProviderMigrationResponse.migration:type_name -> quotify.plans.v1.ProviderMigration
 	61,  // 55: quotify.plans.v1.GetProviderMigrationResponse.migration:type_name -> quotify.plans.v1.ProviderMigration
 	71,  // 56: quotify.plans.v1.GetSubscriptionReportResponse.rows:type_name -> quotify.plans.v1.SubscriptionReportRow
-	123, // 57: quotify.plans.v1.ListSubscriptionsResponse.subscriptions:type_name -> quotify.plans.v1.Subscription
-	120, // 58: quotify.plans.v1.ListSubscriptionsFeeDueRequest.now:type_name -> google.protobuf.Timestamp
-	123, // 59: quotify.plans.v1.FeeDue.subscription:type_name -> quotify.plans.v1.Subscription
-	120, // 60: quotify.plans.v1.FeeDue.period_start:type_name -> google.protobuf.Timestamp
-	120, // 61: quotify.plans.v1.FeeDue.period_end:type_name -> google.protobuf.Timestamp
-	76,  // 62: quotify.plans.v1.ListSubscriptionsFeeDueResponse.due:type_name -> quotify.plans.v1.FeeDue
-	120, // 63: quotify.plans.v1.AdvanceSubscriptionFeeRequest.period_start:type_name -> google.protobuf.Timestamp
-	121, // 64: quotify.plans.v1.ChangeSubscriptionRequest.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	0,   // 65: quotify.plans.v1.ChangeSubscriptionRequest.timing:type_name -> quotify.plans.v1.ChangeTiming
-	1,   // 66: quotify.plans.v1.ChangeSubscriptionRequest.proration:type_name -> quotify.plans.v1.ChangeProration
-	120, // 67: quotify.plans.v1.ChangeSubscriptionRequest.change_time:type_name -> google.protobuf.Timestamp
-	0,   // 68: quotify.plans.v1.ChangeQuote.timing:type_name -> quotify.plans.v1.ChangeTiming
-	1,   // 69: quotify.plans.v1.ChangeQuote.proration:type_name -> quotify.plans.v1.ChangeProration
-	120, // 70: quotify.plans.v1.ChangeQuote.effective_time:type_name -> google.protobuf.Timestamp
-	120, // 71: quotify.plans.v1.ChangeQuote.period_start:type_name -> google.protobuf.Timestamp
-	120, // 72: quotify.plans.v1.ChangeQuote.period_end:type_name -> google.protobuf.Timestamp
-	120, // 73: quotify.plans.v1.ChangeQuote.next_renewal_time:type_name -> google.protobuf.Timestamp
-	121, // 74: quotify.plans.v1.ChangeQuote.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	80,  // 75: quotify.plans.v1.PreviewSubscriptionChangeRequest.change:type_name -> quotify.plans.v1.ChangeSubscriptionRequest
-	81,  // 76: quotify.plans.v1.PreviewSubscriptionChangeResponse.quote:type_name -> quotify.plans.v1.ChangeQuote
-	123, // 77: quotify.plans.v1.ChangeSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	81,  // 78: quotify.plans.v1.ChangeSubscriptionResponse.quote:type_name -> quotify.plans.v1.ChangeQuote
-	123, // 79: quotify.plans.v1.CancelScheduledChangeResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	120, // 80: quotify.plans.v1.ApplyScheduledChangesRequest.now:type_name -> google.protobuf.Timestamp
-	123, // 81: quotify.plans.v1.Adjustment.subscription:type_name -> quotify.plans.v1.Subscription
-	120, // 82: quotify.plans.v1.Adjustment.from_time:type_name -> google.protobuf.Timestamp
-	120, // 83: quotify.plans.v1.Adjustment.to_time:type_name -> google.protobuf.Timestamp
-	89,  // 84: quotify.plans.v1.ListSubscriptionAdjustmentsResponse.adjustments:type_name -> quotify.plans.v1.Adjustment
-	124, // 85: quotify.plans.v1.CreateCouponRequest.coupon:type_name -> quotify.plans.v1.Coupon
-	124, // 86: quotify.plans.v1.CreateCouponResponse.coupon:type_name -> quotify.plans.v1.Coupon
-	124, // 87: quotify.plans.v1.ListCouponsResponse.coupons:type_name -> quotify.plans.v1.Coupon
-	124, // 88: quotify.plans.v1.DeactivateCouponResponse.coupon:type_name -> quotify.plans.v1.Coupon
-	123, // 89: quotify.plans.v1.ApplyCouponResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	123, // 90: quotify.plans.v1.RemoveCouponResponse.subscription:type_name -> quotify.plans.v1.Subscription
-	104, // 91: quotify.plans.v1.GetTaxRatesResponse.rates:type_name -> quotify.plans.v1.TaxRate
-	104, // 92: quotify.plans.v1.SetTaxRatesRequest.rates:type_name -> quotify.plans.v1.TaxRate
-	104, // 93: quotify.plans.v1.SetTaxRatesResponse.rates:type_name -> quotify.plans.v1.TaxRate
-	125, // 94: quotify.plans.v1.CreateMeterRequest.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
-	3,   // 95: quotify.plans.v1.PlansService.CreateCustomer:input_type -> quotify.plans.v1.CreateCustomerRequest
-	5,   // 96: quotify.plans.v1.PlansService.GetCustomer:input_type -> quotify.plans.v1.GetCustomerRequest
-	7,   // 97: quotify.plans.v1.PlansService.ResolveCustomer:input_type -> quotify.plans.v1.ResolveCustomerRequest
-	9,   // 98: quotify.plans.v1.PlansService.ListCustomers:input_type -> quotify.plans.v1.ListCustomersRequest
-	11,  // 99: quotify.plans.v1.PlansService.SetPaymentMethod:input_type -> quotify.plans.v1.SetPaymentMethodRequest
-	13,  // 100: quotify.plans.v1.PlansService.SetCustomerAddress:input_type -> quotify.plans.v1.SetCustomerAddressRequest
-	15,  // 101: quotify.plans.v1.PlansService.SetCustomerTax:input_type -> quotify.plans.v1.SetCustomerTaxRequest
-	17,  // 102: quotify.plans.v1.PlansService.CreateMeter:input_type -> quotify.plans.v1.CreateMeterRequest
-	19,  // 103: quotify.plans.v1.PlansService.GetMeter:input_type -> quotify.plans.v1.GetMeterRequest
-	21,  // 104: quotify.plans.v1.PlansService.ListMeters:input_type -> quotify.plans.v1.ListMetersRequest
-	23,  // 105: quotify.plans.v1.PlansService.CreatePlan:input_type -> quotify.plans.v1.CreatePlanRequest
-	25,  // 106: quotify.plans.v1.PlansService.ListPlans:input_type -> quotify.plans.v1.ListPlansRequest
-	27,  // 107: quotify.plans.v1.PlansService.PublishPlanVersion:input_type -> quotify.plans.v1.PublishPlanVersionRequest
-	29,  // 108: quotify.plans.v1.PlansService.GetPlanVersion:input_type -> quotify.plans.v1.GetPlanVersionRequest
-	31,  // 109: quotify.plans.v1.PlansService.CreateSubscription:input_type -> quotify.plans.v1.CreateSubscriptionRequest
-	33,  // 110: quotify.plans.v1.PlansService.CancelSubscription:input_type -> quotify.plans.v1.CancelSubscriptionRequest
-	37,  // 111: quotify.plans.v1.PlansService.GetSubscription:input_type -> quotify.plans.v1.GetSubscriptionRequest
-	73,  // 112: quotify.plans.v1.PlansService.ListSubscriptions:input_type -> quotify.plans.v1.ListSubscriptionsRequest
-	55,  // 113: quotify.plans.v1.PlansService.GetRoutingRules:input_type -> quotify.plans.v1.GetRoutingRulesRequest
-	57,  // 114: quotify.plans.v1.PlansService.SetRoutingRules:input_type -> quotify.plans.v1.SetRoutingRulesRequest
-	51,  // 115: quotify.plans.v1.PlansService.GetMailSettings:input_type -> quotify.plans.v1.GetMailSettingsRequest
-	53,  // 116: quotify.plans.v1.PlansService.SetMailSettings:input_type -> quotify.plans.v1.SetMailSettingsRequest
-	59,  // 117: quotify.plans.v1.PlansService.PreviewRouting:input_type -> quotify.plans.v1.PreviewRoutingRequest
-	62,  // 118: quotify.plans.v1.PlansService.StartProviderMigration:input_type -> quotify.plans.v1.StartProviderMigrationRequest
-	64,  // 119: quotify.plans.v1.PlansService.CompleteProviderMigration:input_type -> quotify.plans.v1.CompleteProviderMigrationRequest
-	66,  // 120: quotify.plans.v1.PlansService.AbortProviderMigration:input_type -> quotify.plans.v1.AbortProviderMigrationRequest
-	68,  // 121: quotify.plans.v1.PlansService.GetProviderMigration:input_type -> quotify.plans.v1.GetProviderMigrationRequest
-	70,  // 122: quotify.plans.v1.PlansService.GetSubscriptionReport:input_type -> quotify.plans.v1.GetSubscriptionReportRequest
-	47,  // 123: quotify.plans.v1.PlansService.SyncProviderSubscription:input_type -> quotify.plans.v1.SyncProviderSubscriptionRequest
-	39,  // 124: quotify.plans.v1.PlansService.PauseSubscription:input_type -> quotify.plans.v1.PauseSubscriptionRequest
-	41,  // 125: quotify.plans.v1.PlansService.ResumeSubscription:input_type -> quotify.plans.v1.ResumeSubscriptionRequest
-	43,  // 126: quotify.plans.v1.PlansService.ScheduleCancellation:input_type -> quotify.plans.v1.ScheduleCancellationRequest
-	45,  // 127: quotify.plans.v1.PlansService.ChangePlan:input_type -> quotify.plans.v1.ChangePlanRequest
-	82,  // 128: quotify.plans.v1.PlansService.PreviewSubscriptionChange:input_type -> quotify.plans.v1.PreviewSubscriptionChangeRequest
-	80,  // 129: quotify.plans.v1.PlansService.ChangeSubscription:input_type -> quotify.plans.v1.ChangeSubscriptionRequest
-	85,  // 130: quotify.plans.v1.PlansService.CancelScheduledChange:input_type -> quotify.plans.v1.CancelScheduledChangeRequest
-	87,  // 131: quotify.plans.v1.PlansService.ApplyScheduledChanges:input_type -> quotify.plans.v1.ApplyScheduledChangesRequest
-	90,  // 132: quotify.plans.v1.PlansService.ListSubscriptionAdjustments:input_type -> quotify.plans.v1.ListSubscriptionAdjustmentsRequest
-	92,  // 133: quotify.plans.v1.PlansService.MarkSubscriptionAdjustmentBilled:input_type -> quotify.plans.v1.MarkSubscriptionAdjustmentBilledRequest
-	105, // 134: quotify.plans.v1.PlansService.GetTaxRates:input_type -> quotify.plans.v1.GetTaxRatesRequest
-	107, // 135: quotify.plans.v1.PlansService.SetTaxRates:input_type -> quotify.plans.v1.SetTaxRatesRequest
-	94,  // 136: quotify.plans.v1.PlansService.CreateCoupon:input_type -> quotify.plans.v1.CreateCouponRequest
-	96,  // 137: quotify.plans.v1.PlansService.ListCoupons:input_type -> quotify.plans.v1.ListCouponsRequest
-	98,  // 138: quotify.plans.v1.PlansService.DeactivateCoupon:input_type -> quotify.plans.v1.DeactivateCouponRequest
-	100, // 139: quotify.plans.v1.PlansService.ApplyCoupon:input_type -> quotify.plans.v1.ApplyCouponRequest
-	102, // 140: quotify.plans.v1.PlansService.RemoveCoupon:input_type -> quotify.plans.v1.RemoveCouponRequest
-	75,  // 141: quotify.plans.v1.PlansService.ListSubscriptionsFeeDue:input_type -> quotify.plans.v1.ListSubscriptionsFeeDueRequest
-	78,  // 142: quotify.plans.v1.PlansService.AdvanceSubscriptionFee:input_type -> quotify.plans.v1.AdvanceSubscriptionFeeRequest
-	35,  // 143: quotify.plans.v1.PlansService.ListSubscriptionsForPeriod:input_type -> quotify.plans.v1.ListSubscriptionsForPeriodRequest
-	4,   // 144: quotify.plans.v1.PlansService.CreateCustomer:output_type -> quotify.plans.v1.CreateCustomerResponse
-	6,   // 145: quotify.plans.v1.PlansService.GetCustomer:output_type -> quotify.plans.v1.GetCustomerResponse
-	8,   // 146: quotify.plans.v1.PlansService.ResolveCustomer:output_type -> quotify.plans.v1.ResolveCustomerResponse
-	10,  // 147: quotify.plans.v1.PlansService.ListCustomers:output_type -> quotify.plans.v1.ListCustomersResponse
-	12,  // 148: quotify.plans.v1.PlansService.SetPaymentMethod:output_type -> quotify.plans.v1.SetPaymentMethodResponse
-	14,  // 149: quotify.plans.v1.PlansService.SetCustomerAddress:output_type -> quotify.plans.v1.SetCustomerAddressResponse
-	16,  // 150: quotify.plans.v1.PlansService.SetCustomerTax:output_type -> quotify.plans.v1.SetCustomerTaxResponse
-	18,  // 151: quotify.plans.v1.PlansService.CreateMeter:output_type -> quotify.plans.v1.CreateMeterResponse
-	20,  // 152: quotify.plans.v1.PlansService.GetMeter:output_type -> quotify.plans.v1.GetMeterResponse
-	22,  // 153: quotify.plans.v1.PlansService.ListMeters:output_type -> quotify.plans.v1.ListMetersResponse
-	24,  // 154: quotify.plans.v1.PlansService.CreatePlan:output_type -> quotify.plans.v1.CreatePlanResponse
-	26,  // 155: quotify.plans.v1.PlansService.ListPlans:output_type -> quotify.plans.v1.ListPlansResponse
-	28,  // 156: quotify.plans.v1.PlansService.PublishPlanVersion:output_type -> quotify.plans.v1.PublishPlanVersionResponse
-	30,  // 157: quotify.plans.v1.PlansService.GetPlanVersion:output_type -> quotify.plans.v1.GetPlanVersionResponse
-	32,  // 158: quotify.plans.v1.PlansService.CreateSubscription:output_type -> quotify.plans.v1.CreateSubscriptionResponse
-	34,  // 159: quotify.plans.v1.PlansService.CancelSubscription:output_type -> quotify.plans.v1.CancelSubscriptionResponse
-	38,  // 160: quotify.plans.v1.PlansService.GetSubscription:output_type -> quotify.plans.v1.GetSubscriptionResponse
-	74,  // 161: quotify.plans.v1.PlansService.ListSubscriptions:output_type -> quotify.plans.v1.ListSubscriptionsResponse
-	56,  // 162: quotify.plans.v1.PlansService.GetRoutingRules:output_type -> quotify.plans.v1.GetRoutingRulesResponse
-	58,  // 163: quotify.plans.v1.PlansService.SetRoutingRules:output_type -> quotify.plans.v1.SetRoutingRulesResponse
-	52,  // 164: quotify.plans.v1.PlansService.GetMailSettings:output_type -> quotify.plans.v1.GetMailSettingsResponse
-	54,  // 165: quotify.plans.v1.PlansService.SetMailSettings:output_type -> quotify.plans.v1.SetMailSettingsResponse
-	60,  // 166: quotify.plans.v1.PlansService.PreviewRouting:output_type -> quotify.plans.v1.PreviewRoutingResponse
-	63,  // 167: quotify.plans.v1.PlansService.StartProviderMigration:output_type -> quotify.plans.v1.StartProviderMigrationResponse
-	65,  // 168: quotify.plans.v1.PlansService.CompleteProviderMigration:output_type -> quotify.plans.v1.CompleteProviderMigrationResponse
-	67,  // 169: quotify.plans.v1.PlansService.AbortProviderMigration:output_type -> quotify.plans.v1.AbortProviderMigrationResponse
-	69,  // 170: quotify.plans.v1.PlansService.GetProviderMigration:output_type -> quotify.plans.v1.GetProviderMigrationResponse
-	72,  // 171: quotify.plans.v1.PlansService.GetSubscriptionReport:output_type -> quotify.plans.v1.GetSubscriptionReportResponse
-	48,  // 172: quotify.plans.v1.PlansService.SyncProviderSubscription:output_type -> quotify.plans.v1.SyncProviderSubscriptionResponse
-	40,  // 173: quotify.plans.v1.PlansService.PauseSubscription:output_type -> quotify.plans.v1.PauseSubscriptionResponse
-	42,  // 174: quotify.plans.v1.PlansService.ResumeSubscription:output_type -> quotify.plans.v1.ResumeSubscriptionResponse
-	44,  // 175: quotify.plans.v1.PlansService.ScheduleCancellation:output_type -> quotify.plans.v1.ScheduleCancellationResponse
-	46,  // 176: quotify.plans.v1.PlansService.ChangePlan:output_type -> quotify.plans.v1.ChangePlanResponse
-	83,  // 177: quotify.plans.v1.PlansService.PreviewSubscriptionChange:output_type -> quotify.plans.v1.PreviewSubscriptionChangeResponse
-	84,  // 178: quotify.plans.v1.PlansService.ChangeSubscription:output_type -> quotify.plans.v1.ChangeSubscriptionResponse
-	86,  // 179: quotify.plans.v1.PlansService.CancelScheduledChange:output_type -> quotify.plans.v1.CancelScheduledChangeResponse
-	88,  // 180: quotify.plans.v1.PlansService.ApplyScheduledChanges:output_type -> quotify.plans.v1.ApplyScheduledChangesResponse
-	91,  // 181: quotify.plans.v1.PlansService.ListSubscriptionAdjustments:output_type -> quotify.plans.v1.ListSubscriptionAdjustmentsResponse
-	93,  // 182: quotify.plans.v1.PlansService.MarkSubscriptionAdjustmentBilled:output_type -> quotify.plans.v1.MarkSubscriptionAdjustmentBilledResponse
-	106, // 183: quotify.plans.v1.PlansService.GetTaxRates:output_type -> quotify.plans.v1.GetTaxRatesResponse
-	108, // 184: quotify.plans.v1.PlansService.SetTaxRates:output_type -> quotify.plans.v1.SetTaxRatesResponse
-	95,  // 185: quotify.plans.v1.PlansService.CreateCoupon:output_type -> quotify.plans.v1.CreateCouponResponse
-	97,  // 186: quotify.plans.v1.PlansService.ListCoupons:output_type -> quotify.plans.v1.ListCouponsResponse
-	99,  // 187: quotify.plans.v1.PlansService.DeactivateCoupon:output_type -> quotify.plans.v1.DeactivateCouponResponse
-	101, // 188: quotify.plans.v1.PlansService.ApplyCoupon:output_type -> quotify.plans.v1.ApplyCouponResponse
-	103, // 189: quotify.plans.v1.PlansService.RemoveCoupon:output_type -> quotify.plans.v1.RemoveCouponResponse
-	77,  // 190: quotify.plans.v1.PlansService.ListSubscriptionsFeeDue:output_type -> quotify.plans.v1.ListSubscriptionsFeeDueResponse
-	79,  // 191: quotify.plans.v1.PlansService.AdvanceSubscriptionFee:output_type -> quotify.plans.v1.AdvanceSubscriptionFeeResponse
-	36,  // 192: quotify.plans.v1.PlansService.ListSubscriptionsForPeriod:output_type -> quotify.plans.v1.ListSubscriptionsForPeriodResponse
-	144, // [144:193] is the sub-list for method output_type
-	95,  // [95:144] is the sub-list for method input_type
-	95,  // [95:95] is the sub-list for extension type_name
-	95,  // [95:95] is the sub-list for extension extendee
-	0,   // [0:95] is the sub-list for field type_name
+	122, // 57: quotify.plans.v1.GetCustomerStatsRequest.from_time:type_name -> google.protobuf.Timestamp
+	122, // 58: quotify.plans.v1.GetCustomerStatsRequest.to_time:type_name -> google.protobuf.Timestamp
+	122, // 59: quotify.plans.v1.GetCustomerStatsRequest.prev_from_time:type_name -> google.protobuf.Timestamp
+	122, // 60: quotify.plans.v1.GetCustomerStatsRequest.prev_to_time:type_name -> google.protobuf.Timestamp
+	125, // 61: quotify.plans.v1.ListSubscriptionsResponse.subscriptions:type_name -> quotify.plans.v1.Subscription
+	122, // 62: quotify.plans.v1.ListSubscriptionsFeeDueRequest.now:type_name -> google.protobuf.Timestamp
+	125, // 63: quotify.plans.v1.FeeDue.subscription:type_name -> quotify.plans.v1.Subscription
+	122, // 64: quotify.plans.v1.FeeDue.period_start:type_name -> google.protobuf.Timestamp
+	122, // 65: quotify.plans.v1.FeeDue.period_end:type_name -> google.protobuf.Timestamp
+	78,  // 66: quotify.plans.v1.ListSubscriptionsFeeDueResponse.due:type_name -> quotify.plans.v1.FeeDue
+	122, // 67: quotify.plans.v1.AdvanceSubscriptionFeeRequest.period_start:type_name -> google.protobuf.Timestamp
+	123, // 68: quotify.plans.v1.ChangeSubscriptionRequest.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	0,   // 69: quotify.plans.v1.ChangeSubscriptionRequest.timing:type_name -> quotify.plans.v1.ChangeTiming
+	1,   // 70: quotify.plans.v1.ChangeSubscriptionRequest.proration:type_name -> quotify.plans.v1.ChangeProration
+	122, // 71: quotify.plans.v1.ChangeSubscriptionRequest.change_time:type_name -> google.protobuf.Timestamp
+	0,   // 72: quotify.plans.v1.ChangeQuote.timing:type_name -> quotify.plans.v1.ChangeTiming
+	1,   // 73: quotify.plans.v1.ChangeQuote.proration:type_name -> quotify.plans.v1.ChangeProration
+	122, // 74: quotify.plans.v1.ChangeQuote.effective_time:type_name -> google.protobuf.Timestamp
+	122, // 75: quotify.plans.v1.ChangeQuote.period_start:type_name -> google.protobuf.Timestamp
+	122, // 76: quotify.plans.v1.ChangeQuote.period_end:type_name -> google.protobuf.Timestamp
+	122, // 77: quotify.plans.v1.ChangeQuote.next_renewal_time:type_name -> google.protobuf.Timestamp
+	123, // 78: quotify.plans.v1.ChangeQuote.interval:type_name -> quotify.plans.v1.SubscriptionInterval
+	82,  // 79: quotify.plans.v1.PreviewSubscriptionChangeRequest.change:type_name -> quotify.plans.v1.ChangeSubscriptionRequest
+	83,  // 80: quotify.plans.v1.PreviewSubscriptionChangeResponse.quote:type_name -> quotify.plans.v1.ChangeQuote
+	125, // 81: quotify.plans.v1.ChangeSubscriptionResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	83,  // 82: quotify.plans.v1.ChangeSubscriptionResponse.quote:type_name -> quotify.plans.v1.ChangeQuote
+	125, // 83: quotify.plans.v1.CancelScheduledChangeResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	122, // 84: quotify.plans.v1.ApplyScheduledChangesRequest.now:type_name -> google.protobuf.Timestamp
+	125, // 85: quotify.plans.v1.Adjustment.subscription:type_name -> quotify.plans.v1.Subscription
+	122, // 86: quotify.plans.v1.Adjustment.from_time:type_name -> google.protobuf.Timestamp
+	122, // 87: quotify.plans.v1.Adjustment.to_time:type_name -> google.protobuf.Timestamp
+	91,  // 88: quotify.plans.v1.ListSubscriptionAdjustmentsResponse.adjustments:type_name -> quotify.plans.v1.Adjustment
+	126, // 89: quotify.plans.v1.CreateCouponRequest.coupon:type_name -> quotify.plans.v1.Coupon
+	126, // 90: quotify.plans.v1.CreateCouponResponse.coupon:type_name -> quotify.plans.v1.Coupon
+	126, // 91: quotify.plans.v1.ListCouponsResponse.coupons:type_name -> quotify.plans.v1.Coupon
+	126, // 92: quotify.plans.v1.DeactivateCouponResponse.coupon:type_name -> quotify.plans.v1.Coupon
+	125, // 93: quotify.plans.v1.ApplyCouponResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	125, // 94: quotify.plans.v1.RemoveCouponResponse.subscription:type_name -> quotify.plans.v1.Subscription
+	106, // 95: quotify.plans.v1.GetTaxRatesResponse.rates:type_name -> quotify.plans.v1.TaxRate
+	106, // 96: quotify.plans.v1.SetTaxRatesRequest.rates:type_name -> quotify.plans.v1.TaxRate
+	106, // 97: quotify.plans.v1.SetTaxRatesResponse.rates:type_name -> quotify.plans.v1.TaxRate
+	127, // 98: quotify.plans.v1.CreateMeterRequest.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
+	3,   // 99: quotify.plans.v1.PlansService.CreateCustomer:input_type -> quotify.plans.v1.CreateCustomerRequest
+	5,   // 100: quotify.plans.v1.PlansService.GetCustomer:input_type -> quotify.plans.v1.GetCustomerRequest
+	7,   // 101: quotify.plans.v1.PlansService.ResolveCustomer:input_type -> quotify.plans.v1.ResolveCustomerRequest
+	9,   // 102: quotify.plans.v1.PlansService.ListCustomers:input_type -> quotify.plans.v1.ListCustomersRequest
+	11,  // 103: quotify.plans.v1.PlansService.SetPaymentMethod:input_type -> quotify.plans.v1.SetPaymentMethodRequest
+	13,  // 104: quotify.plans.v1.PlansService.SetCustomerAddress:input_type -> quotify.plans.v1.SetCustomerAddressRequest
+	15,  // 105: quotify.plans.v1.PlansService.SetCustomerTax:input_type -> quotify.plans.v1.SetCustomerTaxRequest
+	17,  // 106: quotify.plans.v1.PlansService.CreateMeter:input_type -> quotify.plans.v1.CreateMeterRequest
+	19,  // 107: quotify.plans.v1.PlansService.GetMeter:input_type -> quotify.plans.v1.GetMeterRequest
+	21,  // 108: quotify.plans.v1.PlansService.ListMeters:input_type -> quotify.plans.v1.ListMetersRequest
+	23,  // 109: quotify.plans.v1.PlansService.CreatePlan:input_type -> quotify.plans.v1.CreatePlanRequest
+	25,  // 110: quotify.plans.v1.PlansService.ListPlans:input_type -> quotify.plans.v1.ListPlansRequest
+	27,  // 111: quotify.plans.v1.PlansService.PublishPlanVersion:input_type -> quotify.plans.v1.PublishPlanVersionRequest
+	29,  // 112: quotify.plans.v1.PlansService.GetPlanVersion:input_type -> quotify.plans.v1.GetPlanVersionRequest
+	31,  // 113: quotify.plans.v1.PlansService.CreateSubscription:input_type -> quotify.plans.v1.CreateSubscriptionRequest
+	33,  // 114: quotify.plans.v1.PlansService.CancelSubscription:input_type -> quotify.plans.v1.CancelSubscriptionRequest
+	37,  // 115: quotify.plans.v1.PlansService.GetSubscription:input_type -> quotify.plans.v1.GetSubscriptionRequest
+	75,  // 116: quotify.plans.v1.PlansService.ListSubscriptions:input_type -> quotify.plans.v1.ListSubscriptionsRequest
+	55,  // 117: quotify.plans.v1.PlansService.GetRoutingRules:input_type -> quotify.plans.v1.GetRoutingRulesRequest
+	57,  // 118: quotify.plans.v1.PlansService.SetRoutingRules:input_type -> quotify.plans.v1.SetRoutingRulesRequest
+	51,  // 119: quotify.plans.v1.PlansService.GetMailSettings:input_type -> quotify.plans.v1.GetMailSettingsRequest
+	53,  // 120: quotify.plans.v1.PlansService.SetMailSettings:input_type -> quotify.plans.v1.SetMailSettingsRequest
+	59,  // 121: quotify.plans.v1.PlansService.PreviewRouting:input_type -> quotify.plans.v1.PreviewRoutingRequest
+	62,  // 122: quotify.plans.v1.PlansService.StartProviderMigration:input_type -> quotify.plans.v1.StartProviderMigrationRequest
+	64,  // 123: quotify.plans.v1.PlansService.CompleteProviderMigration:input_type -> quotify.plans.v1.CompleteProviderMigrationRequest
+	66,  // 124: quotify.plans.v1.PlansService.AbortProviderMigration:input_type -> quotify.plans.v1.AbortProviderMigrationRequest
+	68,  // 125: quotify.plans.v1.PlansService.GetProviderMigration:input_type -> quotify.plans.v1.GetProviderMigrationRequest
+	70,  // 126: quotify.plans.v1.PlansService.GetSubscriptionReport:input_type -> quotify.plans.v1.GetSubscriptionReportRequest
+	73,  // 127: quotify.plans.v1.PlansService.GetCustomerStats:input_type -> quotify.plans.v1.GetCustomerStatsRequest
+	47,  // 128: quotify.plans.v1.PlansService.SyncProviderSubscription:input_type -> quotify.plans.v1.SyncProviderSubscriptionRequest
+	39,  // 129: quotify.plans.v1.PlansService.PauseSubscription:input_type -> quotify.plans.v1.PauseSubscriptionRequest
+	41,  // 130: quotify.plans.v1.PlansService.ResumeSubscription:input_type -> quotify.plans.v1.ResumeSubscriptionRequest
+	43,  // 131: quotify.plans.v1.PlansService.ScheduleCancellation:input_type -> quotify.plans.v1.ScheduleCancellationRequest
+	45,  // 132: quotify.plans.v1.PlansService.ChangePlan:input_type -> quotify.plans.v1.ChangePlanRequest
+	84,  // 133: quotify.plans.v1.PlansService.PreviewSubscriptionChange:input_type -> quotify.plans.v1.PreviewSubscriptionChangeRequest
+	82,  // 134: quotify.plans.v1.PlansService.ChangeSubscription:input_type -> quotify.plans.v1.ChangeSubscriptionRequest
+	87,  // 135: quotify.plans.v1.PlansService.CancelScheduledChange:input_type -> quotify.plans.v1.CancelScheduledChangeRequest
+	89,  // 136: quotify.plans.v1.PlansService.ApplyScheduledChanges:input_type -> quotify.plans.v1.ApplyScheduledChangesRequest
+	92,  // 137: quotify.plans.v1.PlansService.ListSubscriptionAdjustments:input_type -> quotify.plans.v1.ListSubscriptionAdjustmentsRequest
+	94,  // 138: quotify.plans.v1.PlansService.MarkSubscriptionAdjustmentBilled:input_type -> quotify.plans.v1.MarkSubscriptionAdjustmentBilledRequest
+	107, // 139: quotify.plans.v1.PlansService.GetTaxRates:input_type -> quotify.plans.v1.GetTaxRatesRequest
+	109, // 140: quotify.plans.v1.PlansService.SetTaxRates:input_type -> quotify.plans.v1.SetTaxRatesRequest
+	96,  // 141: quotify.plans.v1.PlansService.CreateCoupon:input_type -> quotify.plans.v1.CreateCouponRequest
+	98,  // 142: quotify.plans.v1.PlansService.ListCoupons:input_type -> quotify.plans.v1.ListCouponsRequest
+	100, // 143: quotify.plans.v1.PlansService.DeactivateCoupon:input_type -> quotify.plans.v1.DeactivateCouponRequest
+	102, // 144: quotify.plans.v1.PlansService.ApplyCoupon:input_type -> quotify.plans.v1.ApplyCouponRequest
+	104, // 145: quotify.plans.v1.PlansService.RemoveCoupon:input_type -> quotify.plans.v1.RemoveCouponRequest
+	77,  // 146: quotify.plans.v1.PlansService.ListSubscriptionsFeeDue:input_type -> quotify.plans.v1.ListSubscriptionsFeeDueRequest
+	80,  // 147: quotify.plans.v1.PlansService.AdvanceSubscriptionFee:input_type -> quotify.plans.v1.AdvanceSubscriptionFeeRequest
+	35,  // 148: quotify.plans.v1.PlansService.ListSubscriptionsForPeriod:input_type -> quotify.plans.v1.ListSubscriptionsForPeriodRequest
+	4,   // 149: quotify.plans.v1.PlansService.CreateCustomer:output_type -> quotify.plans.v1.CreateCustomerResponse
+	6,   // 150: quotify.plans.v1.PlansService.GetCustomer:output_type -> quotify.plans.v1.GetCustomerResponse
+	8,   // 151: quotify.plans.v1.PlansService.ResolveCustomer:output_type -> quotify.plans.v1.ResolveCustomerResponse
+	10,  // 152: quotify.plans.v1.PlansService.ListCustomers:output_type -> quotify.plans.v1.ListCustomersResponse
+	12,  // 153: quotify.plans.v1.PlansService.SetPaymentMethod:output_type -> quotify.plans.v1.SetPaymentMethodResponse
+	14,  // 154: quotify.plans.v1.PlansService.SetCustomerAddress:output_type -> quotify.plans.v1.SetCustomerAddressResponse
+	16,  // 155: quotify.plans.v1.PlansService.SetCustomerTax:output_type -> quotify.plans.v1.SetCustomerTaxResponse
+	18,  // 156: quotify.plans.v1.PlansService.CreateMeter:output_type -> quotify.plans.v1.CreateMeterResponse
+	20,  // 157: quotify.plans.v1.PlansService.GetMeter:output_type -> quotify.plans.v1.GetMeterResponse
+	22,  // 158: quotify.plans.v1.PlansService.ListMeters:output_type -> quotify.plans.v1.ListMetersResponse
+	24,  // 159: quotify.plans.v1.PlansService.CreatePlan:output_type -> quotify.plans.v1.CreatePlanResponse
+	26,  // 160: quotify.plans.v1.PlansService.ListPlans:output_type -> quotify.plans.v1.ListPlansResponse
+	28,  // 161: quotify.plans.v1.PlansService.PublishPlanVersion:output_type -> quotify.plans.v1.PublishPlanVersionResponse
+	30,  // 162: quotify.plans.v1.PlansService.GetPlanVersion:output_type -> quotify.plans.v1.GetPlanVersionResponse
+	32,  // 163: quotify.plans.v1.PlansService.CreateSubscription:output_type -> quotify.plans.v1.CreateSubscriptionResponse
+	34,  // 164: quotify.plans.v1.PlansService.CancelSubscription:output_type -> quotify.plans.v1.CancelSubscriptionResponse
+	38,  // 165: quotify.plans.v1.PlansService.GetSubscription:output_type -> quotify.plans.v1.GetSubscriptionResponse
+	76,  // 166: quotify.plans.v1.PlansService.ListSubscriptions:output_type -> quotify.plans.v1.ListSubscriptionsResponse
+	56,  // 167: quotify.plans.v1.PlansService.GetRoutingRules:output_type -> quotify.plans.v1.GetRoutingRulesResponse
+	58,  // 168: quotify.plans.v1.PlansService.SetRoutingRules:output_type -> quotify.plans.v1.SetRoutingRulesResponse
+	52,  // 169: quotify.plans.v1.PlansService.GetMailSettings:output_type -> quotify.plans.v1.GetMailSettingsResponse
+	54,  // 170: quotify.plans.v1.PlansService.SetMailSettings:output_type -> quotify.plans.v1.SetMailSettingsResponse
+	60,  // 171: quotify.plans.v1.PlansService.PreviewRouting:output_type -> quotify.plans.v1.PreviewRoutingResponse
+	63,  // 172: quotify.plans.v1.PlansService.StartProviderMigration:output_type -> quotify.plans.v1.StartProviderMigrationResponse
+	65,  // 173: quotify.plans.v1.PlansService.CompleteProviderMigration:output_type -> quotify.plans.v1.CompleteProviderMigrationResponse
+	67,  // 174: quotify.plans.v1.PlansService.AbortProviderMigration:output_type -> quotify.plans.v1.AbortProviderMigrationResponse
+	69,  // 175: quotify.plans.v1.PlansService.GetProviderMigration:output_type -> quotify.plans.v1.GetProviderMigrationResponse
+	72,  // 176: quotify.plans.v1.PlansService.GetSubscriptionReport:output_type -> quotify.plans.v1.GetSubscriptionReportResponse
+	74,  // 177: quotify.plans.v1.PlansService.GetCustomerStats:output_type -> quotify.plans.v1.GetCustomerStatsResponse
+	48,  // 178: quotify.plans.v1.PlansService.SyncProviderSubscription:output_type -> quotify.plans.v1.SyncProviderSubscriptionResponse
+	40,  // 179: quotify.plans.v1.PlansService.PauseSubscription:output_type -> quotify.plans.v1.PauseSubscriptionResponse
+	42,  // 180: quotify.plans.v1.PlansService.ResumeSubscription:output_type -> quotify.plans.v1.ResumeSubscriptionResponse
+	44,  // 181: quotify.plans.v1.PlansService.ScheduleCancellation:output_type -> quotify.plans.v1.ScheduleCancellationResponse
+	46,  // 182: quotify.plans.v1.PlansService.ChangePlan:output_type -> quotify.plans.v1.ChangePlanResponse
+	85,  // 183: quotify.plans.v1.PlansService.PreviewSubscriptionChange:output_type -> quotify.plans.v1.PreviewSubscriptionChangeResponse
+	86,  // 184: quotify.plans.v1.PlansService.ChangeSubscription:output_type -> quotify.plans.v1.ChangeSubscriptionResponse
+	88,  // 185: quotify.plans.v1.PlansService.CancelScheduledChange:output_type -> quotify.plans.v1.CancelScheduledChangeResponse
+	90,  // 186: quotify.plans.v1.PlansService.ApplyScheduledChanges:output_type -> quotify.plans.v1.ApplyScheduledChangesResponse
+	93,  // 187: quotify.plans.v1.PlansService.ListSubscriptionAdjustments:output_type -> quotify.plans.v1.ListSubscriptionAdjustmentsResponse
+	95,  // 188: quotify.plans.v1.PlansService.MarkSubscriptionAdjustmentBilled:output_type -> quotify.plans.v1.MarkSubscriptionAdjustmentBilledResponse
+	108, // 189: quotify.plans.v1.PlansService.GetTaxRates:output_type -> quotify.plans.v1.GetTaxRatesResponse
+	110, // 190: quotify.plans.v1.PlansService.SetTaxRates:output_type -> quotify.plans.v1.SetTaxRatesResponse
+	97,  // 191: quotify.plans.v1.PlansService.CreateCoupon:output_type -> quotify.plans.v1.CreateCouponResponse
+	99,  // 192: quotify.plans.v1.PlansService.ListCoupons:output_type -> quotify.plans.v1.ListCouponsResponse
+	101, // 193: quotify.plans.v1.PlansService.DeactivateCoupon:output_type -> quotify.plans.v1.DeactivateCouponResponse
+	103, // 194: quotify.plans.v1.PlansService.ApplyCoupon:output_type -> quotify.plans.v1.ApplyCouponResponse
+	105, // 195: quotify.plans.v1.PlansService.RemoveCoupon:output_type -> quotify.plans.v1.RemoveCouponResponse
+	79,  // 196: quotify.plans.v1.PlansService.ListSubscriptionsFeeDue:output_type -> quotify.plans.v1.ListSubscriptionsFeeDueResponse
+	81,  // 197: quotify.plans.v1.PlansService.AdvanceSubscriptionFee:output_type -> quotify.plans.v1.AdvanceSubscriptionFeeResponse
+	36,  // 198: quotify.plans.v1.PlansService.ListSubscriptionsForPeriod:output_type -> quotify.plans.v1.ListSubscriptionsForPeriodResponse
+	149, // [149:199] is the sub-list for method output_type
+	99,  // [99:149] is the sub-list for method input_type
+	99,  // [99:99] is the sub-list for extension type_name
+	99,  // [99:99] is the sub-list for extension extendee
+	0,   // [0:99] is the sub-list for field type_name
 }
 
 func init() { file_quotify_plans_v1_plans_proto_init() }
@@ -6685,7 +6844,7 @@ func file_quotify_plans_v1_plans_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_plans_v1_plans_proto_rawDesc), len(file_quotify_plans_v1_plans_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   107,
+			NumMessages:   109,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

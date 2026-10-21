@@ -44,6 +44,7 @@ func TestBilling(t *testing.T) {
 		{"DunningEndsUncollectible", testDunning},
 		{"TenantDunningSettingsReplaceTheDefaults", testTenantDunningSettings},
 		{"AccountingSumsIncomeAndExpensesPerCurrency", testAccounting},
+		{"DashboardStatsTopCustomersAndAging", testDashboardStats},
 		{"CreditPacks", testCreditPacks},
 		{"CreditsConsumeTheSoonestExpiryFirst", testCreditsConsumeTheSoonestExpiryFirst},
 		{"ConcurrentConsumesNeverOverspend", testConcurrentConsumesNeverOverspend},

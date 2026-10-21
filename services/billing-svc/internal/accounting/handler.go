@@ -113,6 +113,33 @@ func (h *Handler) GetAccountingSummary(ctx context.Context, req *billingv1.GetAc
 	return out, nil
 }
 
+// GetDashboardStats implements billingv1.BillingServiceServer.
+func (h *Handler) GetDashboardStats(ctx context.Context, req *billingv1.GetDashboardStatsRequest) (*billingv1.GetDashboardStatsResponse, error) {
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cur, recent, err := query.Dashboard(ctx, h.app, ti.ID, req.GetFromDate(), req.GetToDate(), req.GetTop())
+	if err != nil {
+		return nil, err
+	}
+	out := &billingv1.GetDashboardStatsResponse{Currencies: make([]*billingv1.DashboardCurrency, 0, len(cur)), RecentInvoices: make([]*billingv1.DashboardInvoice, 0, len(recent))}
+	for _, i := range recent {
+		out.RecentInvoices = append(out.RecentInvoices, &billingv1.DashboardInvoice{Id: i.ID, Number: i.Number, CustomerExternalId: i.CustomerExternalID, Status: i.Status, Currency: i.Currency, TotalMinor: i.TotalMinor, CreateTime: timestamppb.New(i.CreatedAt)})
+	}
+	for _, c := range cur {
+		pc := &billingv1.DashboardCurrency{Currency: c.Currency, TopCustomers: make([]*billingv1.DashboardTopCustomer, 0, len(c.TopCustomers)), Aging: make([]*billingv1.DashboardAgingBucket, 0, len(c.Aging))}
+		for _, t := range c.TopCustomers {
+			pc.TopCustomers = append(pc.TopCustomers, &billingv1.DashboardTopCustomer{CustomerId: t.CustomerID, CustomerExternalId: t.ExternalID, CustomerName: t.Name, IncomeMinor: t.Income, Invoices: t.Invoices})
+		}
+		for _, a := range c.Aging {
+			pc.Aging = append(pc.Aging, &billingv1.DashboardAgingBucket{Bucket: a.Bucket, Count: a.Count, AmountMinor: a.Amount})
+		}
+		out.Currencies = append(out.Currencies, pc)
+	}
+	return out, nil
+}
+
 // scope returns the caller's tenant and the expense the request is about.
 func (h *Handler) scope(ctx context.Context, expenseID string) (tenant.Info, uuid.UUID, error) {
 	ti, err := tenant.Require(ctx)

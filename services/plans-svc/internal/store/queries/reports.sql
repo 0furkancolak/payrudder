@@ -3,7 +3,7 @@
 -- month_start/month_end bound the month [start, end); month_last is its last instant.
 WITH subs AS (
   SELECT s.id, s.currency, lower(s.active) AS starts, upper(s.active) AS ends, s.changed_from_id,
-         COALESCE(s.provider, '') AS provider, COALESCE(c.country, '') AS country,
+         COALESCE(s.provider, '') AS provider, COALESCE(c.country, '') AS country, pl.code AS plan_code,
          CASE WHEN s.state = 'paused' THEN 'paused'
               WHEN s.state = 'past_due' THEN 'past_due'
               WHEN s.state = 'trialing' AND s.trial_ends_at > sqlc.arg('month_last')::timestamptz THEN 'trialing'
@@ -14,6 +14,7 @@ WITH subs AS (
   FROM subscriptions s
   JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
   JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
+  JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
   LEFT JOIN plan_version_fees f ON f.tenant_id = s.tenant_id AND f.plan_version_id = s.plan_version_id AND f.currency = s.currency AND f.interval = s.interval
   WHERE s.tenant_id = app_tenant_id()
 ), flagged AS (
@@ -25,11 +26,12 @@ WITH subs AS (
 ), split AS (
   SELECT CASE WHEN sqlc.arg('by_provider')::bool THEN provider ELSE '' END AS provider,
          CASE WHEN sqlc.arg('by_country')::bool THEN country ELSE '' END AS country,
+         CASE WHEN sqlc.arg('by_plan')::bool THEN plan_code ELSE '' END AS plan_code,
          currency, alive, is_new, is_churned, eff, fee
   FROM flagged
   WHERE alive OR is_new OR is_churned
 )
-SELECT provider::text AS provider, country::text AS country, currency,
+SELECT provider::text AS provider, country::text AS country, plan_code::text AS plan_code, currency,
   (count(*) FILTER (WHERE alive AND eff = 'active'))::bigint AS active,
   (count(*) FILTER (WHERE alive AND eff = 'trialing'))::bigint AS trialing,
   (count(*) FILTER (WHERE alive AND eff = 'paused'))::bigint AS paused,
@@ -40,5 +42,13 @@ SELECT provider::text AS provider, country::text AS country, currency,
   (count(*) FILTER (WHERE is_churned))::bigint AS churned,
   COALESCE(sum(fee) FILTER (WHERE is_churned), 0)::bigint AS churned_mrr_minor
 FROM split
-GROUP BY provider, country, currency
-ORDER BY provider, country, currency;
+GROUP BY provider, country, plan_code, currency
+ORDER BY provider, country, plan_code, currency;
+
+-- name: CustomerStats :one
+-- How many customers the tenant has, and how many were created in two ranges (a period and the one before it, for a comparison). A range with equal bounds is empty.
+SELECT count(*)::bigint AS total,
+       (count(*) FILTER (WHERE created_at >= sqlc.arg('from_at')::timestamptz AND created_at < sqlc.arg('to_at')::timestamptz))::bigint AS new_in_range,
+       (count(*) FILTER (WHERE created_at >= sqlc.arg('prev_from_at')::timestamptz AND created_at < sqlc.arg('prev_to_at')::timestamptz))::bigint AS new_in_previous
+FROM customers
+WHERE tenant_id = app_tenant_id();

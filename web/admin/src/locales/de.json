@@ -1388,7 +1388,7 @@
         "quota": "Ein Konto kann höchstens 20 Apps haben."
       },
       "auth": {
-        "invalid_credentials": "E-Mail oder Passwort falsch oder zu viele Versuche. Versuchen Sie es in einigen Minuten erneut.",
+        "invalid_credentials": "E-Mail oder Passwort falsch oder zu viele Versuche. Nach fünf falschen Passwörtern ist die Anmeldung für diese Adresse 15 Minuten gesperrt, auch mit dem richtigen Passwort.",
         "rate_limited": "Zu viele Versuche von dieser Adresse. Versuchen Sie es in einer Minute erneut."
       },
       "session": {
@@ -1417,6 +1417,12 @@
       "member": {
         "last_owner": "Ein Konto braucht mindestens einen Inhaber. Machen Sie zuerst jemand anderen zum Inhaber.",
         "not_found": "Diese Person ist kein Mitglied des Kontos."
+      }
+    },
+    "gateway": {
+      "dashboard": {
+        "bad_period": "Dieser Zeitraum ist ungültig. Wählen Sie 7, 30 oder 90 Tage, dieses Jahr oder zwei Tage, deren erster nicht nach dem letzten liegt.",
+        "range_too_long": "Ein Zeitraum darf höchstens zwei Jahre lang sein."
       }
     }
   },
@@ -1502,7 +1508,7 @@
     "home": {
       "title": "Ihre Organisation",
       "welcome": "Willkommen, {name}",
-      "intro": "Ihre Apps und wie ihre Zahlungen in den letzten 30 Tagen liefen.",
+      "intro": "Ihre Apps und wie es ihnen geht.",
       "create": "App erstellen",
       "emptyTitle": "Erstellen Sie Ihre erste App",
       "emptyBody": "Eine App ist ein Produkt, das Sie abrechnen. Sie kommt mit einer Sandbox zum Testen und einer Live-Umgebung für echte Zahlungen, jeweils mit eigenen API-Schlüsseln.",
@@ -1824,5 +1830,138 @@
     "timezone": "Zeitzone",
     "timezonePlaceholder": "Zeitzone suchen",
     "noMatch": "Keine Treffer"
+  },
+  "dash": {
+    "retry": "Erneut versuchen",
+    "stale": "Die Zahlen konnten nicht aktualisiert werden; Sie sehen den letzten Stand.",
+    "degraded": "{sections} hat nicht geantwortet. Der Rest der Seite ist aktuell.",
+    "sections": {
+      "revenue": "Umsatz",
+      "invoices": "Rechnungen",
+      "subscriptions": "Abonnements",
+      "customers": "Kunden",
+      "payments": "Zahlungen",
+      "renewals": "Anstehende Abbuchungen",
+      "usage": "Nutzung",
+      "webhooks": "Webhooks",
+      "activity": "Aktivität"
+    },
+    "period": {
+      "label": "Zeitraum",
+      "7d": "7 Tage",
+      "30d": "30 Tage",
+      "90d": "90 Tage",
+      "ytd": "Dieses Jahr",
+      "custom": "Eigener",
+      "from": "Erster Tag",
+      "to": "Letzter Tag",
+      "compare": "Mit dem vorherigen Zeitraum vergleichen",
+      "badRange": "Der erste Tag liegt nach dem letzten."
+    },
+    "currency": {
+      "label": "Währung",
+      "own": "eigene"
+    },
+    "kpi": {
+      "net": "Nettoumsatz",
+      "netSub": "Brutto {gross} · Erstattungen {refunds}",
+      "mrr": "MRR",
+      "mrrSub": "ARR {arr} · {n} Abonnenten",
+      "arpu": "ARPU",
+      "arpuSub": "Nettoumsatz je Abonnent",
+      "customers": "Neue Kunden",
+      "customersSub": "{total} insgesamt · alle Währungen",
+      "churn": "Abwanderung",
+      "churnSub": "{n} beendet · {mrr} MRR verloren",
+      "failedRate": "Fehlgeschlagene Zahlungen",
+      "failedSub": "{failed} von {attempts} Versuchen fehlgeschlagen",
+      "refunds": "Erstattungen",
+      "refundsSub": "Eingezogene Steuer {tax}",
+      "open": "Offene Rechnungen",
+      "openSub": "{n} offen | {n} offen"
+    },
+    "delta": {
+      "new": "neu",
+      "before": "Vorher: {value}",
+      "srUp": "{percent} mehr als im vorherigen Zeitraum",
+      "srDown": "{percent} weniger als im vorherigen Zeitraum",
+      "srFlat": "Unverändert gegenüber dem vorherigen Zeitraum",
+      "srNew": "Neu gegenüber dem vorherigen Zeitraum"
+    },
+    "chart": {
+      "title": "Nettoumsatz",
+      "note": "Nach Erstattungen und Steuer: die Zahl der Buchhaltungsseite",
+      "current": "Dieser Zeitraum",
+      "previous": "Vorheriger Zeitraum",
+      "total": "Summe",
+      "before": "vorher",
+      "empty": "Kein Umsatz in diesem Zeitraum.",
+      "summary": "Nettoumsatz von {from} bis {to}: {total}"
+    },
+    "payments": {
+      "title": "Zahlungen",
+      "attempts": "Versuche",
+      "label": "{n} Zahlungsversuche",
+      "note": "Pro Versuch gezählt: eine abgelehnte Karte, die erneut versucht wird, zählt jedes Mal; Erstattungen werden getrennt gezählt.",
+      "truncated": "Es werden nur die neuesten 1000 Zahlungen gelesen; ältere dieses Zeitraums fehlen."
+    },
+    "top": {
+      "customers": "Top-Kunden",
+      "customersEmpty": "In diesem Zeitraum hat niemand gezahlt.",
+      "packages": "Top-Pakete",
+      "packagesEmpty": "Noch keine Abonnements in {currency}.",
+      "perMonth": "{amount} / Monat",
+      "subs": "{n} Abonnent | {n} Abonnenten"
+    },
+    "aging": {
+      "title": "Offene Rechnungen nach Alter",
+      "empty": "Keine offenen Rechnungen.",
+      "0-7": "0 bis 7 Tage",
+      "8-30": "8 bis 30 Tage",
+      "31-60": "31 bis 60 Tage",
+      "61+": "Über 60 Tage",
+      "count": "{n} Rechnung | {n} Rechnungen"
+    },
+    "usage": {
+      "title": "Nutzung gegen Limits",
+      "intro": "{n} Kunden mit Abonnement, {period}",
+      "over": "{n} über dem Limit",
+      "near": "{n} nahe daran",
+      "ok": "im Limit",
+      "empty": "Keiner der betrachteten Kunden hat ein Limit."
+    },
+    "renewals": {
+      "title": "Anstehende Abbuchungen",
+      "empty": "Keine Abbuchungen in {currency} in den nächsten 30 Tagen.",
+      "truncated": "Es werden nur die neuesten 200 Abonnements betrachtet.",
+      "note": "Das Datum ist der Tag, an dem die Gebühr oder die Monatsrechnung fällig wird."
+    },
+    "activity": {
+      "title": "Letzte Aktivität",
+      "empty": "Es ist noch nichts passiert.",
+      "invoice": "Rechnung {label}",
+      "payment": "Zahlung",
+      "refund": "Erstattung",
+      "subscription": "Abonnement {plan}",
+      "state": {
+        "active": "Aktiv",
+        "trialing": "Testphase",
+        "past_due": "Überfällig",
+        "paused": "Pausiert",
+        "cancelled": "Gekündigt"
+      }
+    },
+    "empty": {
+      "title": "Noch nichts zu zeigen",
+      "body": "Sobald der erste Kunde angelegt ist und zahlt, erscheinen hier Umsatz, Abonnements und Zahlungen, ein Block je Währung."
+    },
+    "org": {
+      "title": "Alle Apps",
+      "intro": "Jede App der Organisation im selben Zeitraum. Beträge verschiedener Währungen werden nie addiert.",
+      "byApp": "Nettoumsatz je App",
+      "apps": "{n} App | {n} Apps",
+      "none": "Keine App hat in diesem Zeitraum Umsatz.",
+      "open": "App öffnen"
+    }
   }
 }

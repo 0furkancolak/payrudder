@@ -85,6 +85,8 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `einvoice.provider.unavailable`
 - `einvoice.seller.incomplete`
 - `einvoice.setting.invalid`
+- `gateway.dashboard.bad_period`
+- `gateway.dashboard.range_too_long`
 - `identity.account.forbidden`
 - `identity.account.not_found`
 - `identity.api_key.bad_environment`

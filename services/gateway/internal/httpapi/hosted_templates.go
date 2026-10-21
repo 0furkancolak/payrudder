@@ -6,6 +6,7 @@ import "html/template"
 
 const pageCSS = hostedCSS + `
 .top{display:flex;align-items:center;gap:12px;margin-bottom:8px}.logo{max-height:40px;max-width:160px;object-fit:contain}
+a:not(.btn){color:#1d5fd1;text-underline-offset:3px}a:not(.btn):hover{color:#0f3f95}
 .banner{background:#fff4d6;color:#6b4e00;border-radius:8px;padding:6px 12px;font-size:.85rem;margin-bottom:12px}
 .badge.open{background:#e8ebf0}.badge.processing{background:#dbe9fd;color:#0b3d91}.badge.failed{background:#fde2e1;color:#8a1c17}
 .hint{margin:16px 0 0;padding:10px 12px;border-radius:8px;background:#eef1f5}
@@ -17,7 +18,7 @@ a.btn.alt{background:transparent;color:inherit;border:1px solid #c9ced6;margin-t
 dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px}dl.kv dt{color:#5b6472}dl.kv dd{margin:0;word-break:break-all}
 code.ref{display:block;padding:10px 12px;margin:8px 0;border-radius:8px;background:#eef1f5;font-size:1.05rem;word-break:break-all}
 h2.sec{font-size:1.1rem;margin:28px 0 8px}
-@media (prefers-color-scheme:dark){.banner{background:#3b3000;color:#ffe9a6}.hint,code.ref{background:#262c35}.badge.open{background:#262c35}button.btn,a.btn{background:#e8eaee;color:#14171c}a.btn.alt{background:transparent;color:inherit;border-color:#3a414c}.pay{border-color:#262c35}.badge.processing{background:#16315e;color:#cfe0ff}.badge.failed{background:#4a1b19;color:#ffd0cd}}
+@media (prefers-color-scheme:dark){a:not(.btn){color:#8bb8ef}a:not(.btn):hover{color:#c4dcfa}.banner{background:#3b3000;color:#ffe9a6}.hint,code.ref{background:#262c35}.badge.open{background:#262c35}button.btn,a.btn{background:#e8eaee;color:#14171c}a.btn.alt{background:transparent;color:inherit;border-color:#3a414c}.pay{border-color:#262c35}.badge.processing{background:#16315e;color:#cfe0ff}.badge.failed{background:#4a1b19;color:#ffd0cd}}
 @media print{body{background:#fff;color:#000}.card{border:0;padding:0}.noprint,.foot{display:none}}
 @media (max-width:480px){main{padding:12px 8px}.card{padding:16px;border-radius:8px}.big{font-size:1.6rem}}`
 

@@ -88,3 +88,47 @@ FROM (
 ) r
 GROUP BY 1, 2
 ORDER BY 1, 2;
+
+-- Dashboard: the customers whose invoices were paid in the window came to most, per currency (the same "paid" moment as the income above), at most @top_n of each.
+-- name: DashboardTopCustomers :many
+SELECT currency::text AS currency, customer_id, customer_external_id::text AS customer_external_id, customer_name::text AS customer_name, income_minor, invoices
+FROM (
+  SELECT i.currency AS currency, i.customer_id,
+         COALESCE(max(i.snapshot->>'customer_external_id'), '') AS customer_external_id,
+         COALESCE(max(i.snapshot->>'customer_name'), '') AS customer_name,
+         COALESCE(sum(i.total_minor), 0)::bigint AS income_minor,
+         count(*)::bigint AS invoices,
+         row_number() OVER (PARTITION BY i.currency ORDER BY sum(i.total_minor) DESC, i.customer_id) AS rn
+  FROM (
+    SELECT DISTINCT ON (s.invoice_id) s.invoice_id
+    FROM saga_events e JOIN invoice_sagas s ON s.tenant_id = e.tenant_id AND s.id = e.saga_id
+    WHERE e.tenant_id = @tenant_id AND e.to_state = 'PAID' AND e.at >= @from_at::timestamptz AND e.at < @to_at::timestamptz
+    ORDER BY s.invoice_id, e.at
+  ) p
+  JOIN invoices i ON i.tenant_id = @tenant_id AND i.id = p.invoice_id
+  GROUP BY i.currency, i.customer_id
+) t
+WHERE rn <= @top_n::int
+ORDER BY currency, rn;
+
+-- Dashboard: the open invoices by how long they have been open (UTC days since they were finalized), per currency.
+-- name: DashboardOpenAging :many
+SELECT currency::text AS currency, bucket::text AS bucket, count(*)::bigint AS invoices, COALESCE(sum(total_minor), 0)::bigint AS amount_minor
+FROM (
+  SELECT x.currency, x.total_minor,
+         CASE WHEN x.age <= 7 THEN '0-7' WHEN x.age <= 30 THEN '8-30' WHEN x.age <= 60 THEN '31-60' ELSE '61+' END AS bucket
+  FROM (
+    SELECT currency, total_minor, GREATEST(0, (now() AT TIME ZONE 'UTC')::date - (COALESCE(finalized_at, created_at) AT TIME ZONE 'UTC')::date) AS age
+    FROM invoices WHERE tenant_id = @tenant_id AND status = 'open'
+  ) x
+) y
+GROUP BY currency, bucket
+ORDER BY currency, bucket;
+
+-- Dashboard: the newest invoices, for the activity feed (the primary key is (tenant, id) and ids are time ordered, so this reads the tail of the index).
+-- name: DashboardRecentInvoices :many
+SELECT id, COALESCE(number, '')::text AS number, COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id, status::text AS status, currency::text AS currency,
+       total_minor, created_at
+FROM invoices WHERE tenant_id = @tenant_id
+ORDER BY id DESC
+LIMIT 8;
