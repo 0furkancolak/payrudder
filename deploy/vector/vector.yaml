@@ -1,0 +1,46 @@
+# Ships container logs to Loki. Vector is a single Rust binary (a few tens of MiB), so the log pipeline stays cheap.
+# Reads every container of this compose project through the Docker socket and labels each line with the compose
+# service and the slog level. Only those two are labels (low cardinality); trace_id stays inside the JSON line, where
+# Grafana's Loki data source turns it into a link to the trace.
+data_dir: /tmp/vector
+
+api:
+  enabled: true
+  address: 0.0.0.0:8686
+
+sources:
+  containers:
+    type: docker_logs
+    include_labels: ["com.docker.compose.project=quotify"]
+    exclude_containers: ["quotify-vector"]
+
+transforms:
+  label:
+    type: remap
+    inputs: [containers]
+    source: |
+      .service = string(.label."com.docker.compose.service") ?? "unknown"
+      .level = "unknown"
+      line = string(.message) ?? ""
+      parsed, err = parse_json(line)
+      if err == null && is_object(parsed) {
+        lvl = string(parsed.level) ?? string(parsed.severity) ?? ""
+        if lvl != "" { .level = downcase(lvl) }
+      } else if match(line, r'(?i)\b(error|fatal|panic)\b') {
+        .level = "error"
+      } else if match(line, r'(?i)\bwarn(ing)?\b') {
+        .level = "warn"
+      }
+
+sinks:
+  loki:
+    type: loki
+    inputs: [label]
+    endpoint: http://loki:3100
+    encoding:
+      codec: raw_message
+    labels:
+      service: "{{ service }}"
+      level: "{{ level }}"
+    out_of_order_action: accept
+    remove_label_fields: true
