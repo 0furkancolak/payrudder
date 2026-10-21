@@ -125,6 +125,7 @@ func dev(args []string) error {
 	skip := fs.String("skip", "", "do not run these services (comma separated)")
 	list := fs.Bool("list", false, "print the services and their settings, run nothing")
 	root := fs.String("root", ".", "the repository root")
+	noSeed := fs.Bool("no-seed", false, "do not run the default dev seed once the gateway is up (SEED=0 does the same)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -174,6 +175,9 @@ func dev(args []string) error {
 		}()
 	}
 	fmt.Fprintf(os.Stdout, "running %d services on the host; Ctrl-C stops them\n", len(svcs))
+	if !*noSeed && os.Getenv("SEED") != "0" && hasService(svcs, "gateway") && hasService(svcs, "plans-svc") {
+		go autoDevSeed(ctx) // not in wg: Ctrl-C must not wait for a seed in progress
+	}
 	wg.Wait()
 	return nil
 }
@@ -311,4 +315,43 @@ func prefixWriter(name string, w io.Writer) io.Writer {
 		}
 	}()
 	return pw
+}
+
+func hasService(svcs []hostService, name string) bool {
+	for _, s := range svcs {
+		if s.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// autoDevSeed runs the default dev seed once, in the background, when the stack is up (make dev). It never fails make dev:
+// an error is a warning in the log, and `make dev-seed` runs it again by hand. It is idempotent, so trying again after the
+// slower services came up is safe.
+func autoDevSeed(ctx context.Context) {
+	opts := devSeedOptions{
+		Gateway: envOr("QUOTIFY_GATEWAY_URL", defaultGatewayURL),
+		Token:   envOr("QUOTIFY_OPERATOR_TOKEN", devDefaultToken),
+		Mailpit: envOr("MAILPIT_URL", defaultMailpitURL),
+		Env:     os.Getenv("QUOTIFY_ENV"),
+		Timeout: 8 * time.Minute,
+		Out:     os.Stdout,
+	}
+	for attempt := 1; attempt <= 3; attempt++ {
+		err := runDevSeed(opts)
+		if err == nil {
+			return
+		}
+		if ctx.Err() != nil {
+			return
+		}
+		fmt.Fprintf(opts.Out, "WARNING: the default dev seed did not finish (attempt %d of 3): %v\n", attempt, err)
+		select {
+		case <-time.After(20 * time.Second):
+		case <-ctx.Done():
+			return
+		}
+	}
+	fmt.Fprintln(opts.Out, "WARNING: giving up on the default dev seed; the stack is fine. Run `make dev-seed` when the services are up, or start with SEED=0 to skip it.")
 }

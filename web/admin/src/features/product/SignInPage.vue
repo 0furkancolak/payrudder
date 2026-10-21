@@ -17,6 +17,8 @@ const search = useSearch({ strict: false });
 const email = ref("");
 const password = ref("");
 const login = useSignIn();
+// Local development only (stripped from production builds): the public credentials of the default dev seed (`make dev` creates them).
+const devHint = import.meta.env.DEV;
 const expired = computed(() => (search.value as { expired?: string }).expired === "1");
 
 function submit() {
@@ -41,6 +43,9 @@ function submit() {
       <Button type="submit" size="lg" :disabled="login.isPending.value || email.trim() === '' || password === ''">{{ t("product.signIn.submit") }}</Button>
     </form>
     <template #footer>
+      <p v-if="devHint" class="bg-muted text-muted-foreground mb-3 rounded-2xl px-4 py-3 text-xs" data-testid="dev-seed-hint">
+        Dev seed: <span class="mono">user1@example.com</span> / <span class="mono">password123</span>
+      </p>
       <p>
         {{ t("product.signIn.noAccount") }}
         <Link to="/signup" class="text-primary font-medium underline-offset-4 hover:underline">{{ t("product.signUp.cta") }}</Link>
