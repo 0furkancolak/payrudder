@@ -334,7 +334,8 @@
       "mail": "Correo",
       "apps": "Apps",
       "address": "Dirección del vendedor",
-      "credits": "Créditos"
+      "credits": "Créditos",
+      "accounting": "Contabilidad"
     },
     "common": {
       "remove": "Quitar"
@@ -886,6 +887,100 @@
         "consume": "Gastado",
         "expire": "Caducado"
       }
+    },
+    "accounting": {
+      "title": "Ingresos y gastos",
+      "intro": "Lo que el inquilino ganó con las facturas pagadas y lo que gastó, cada moneda por separado.",
+      "export": "Exportar CSV",
+      "addExpense": "Añadir gasto",
+      "currencyNote": "Cada moneda se muestra por separado. Los importes de monedas distintas nunca se suman ni se convierten.",
+      "empty": "No hay ingresos ni gastos en este periodo.",
+      "paidInvoices": "Facturas pagadas: {count}",
+      "period": {
+        "label": "Periodo",
+        "thisMonth": "Este mes",
+        "lastMonth": "Mes pasado",
+        "last30": "Últimos 30 días",
+        "thisYear": "Este año",
+        "custom": "Personalizado",
+        "from": "Desde",
+        "to": "Hasta",
+        "invalid": "Elija un primer y un último día, en orden, con como máximo cinco años de diferencia."
+      },
+      "app": {
+        "label": "Aplicación",
+        "all": "Todas las aplicaciones",
+        "note": "La aplicación solo limita los gastos. Los ingresos son los de este inquilino, que es un entorno de aplicación."
+      },
+      "stat": {
+        "income": "Ingresos (brutos)",
+        "tax": "Impuestos cobrados",
+        "refunds": "Reembolsos y notas de crédito",
+        "net": "Ingresos netos",
+        "fees": "Comisiones del proveedor",
+        "feesNotRecorded": "No registradas",
+        "feesHint": "Quotify no registra la comisión del proveedor de pagos. Añádala como gasto en la categoría Comisiones de pago.",
+        "expenses": "Gastos",
+        "profit": "Beneficio"
+      },
+      "donut": {
+        "title": "Gastos por categoría",
+        "none": "No hay gastos en este periodo."
+      },
+      "bars": {
+        "title": "Ingresos y gastos a lo largo del tiempo",
+        "income": "Ingresos netos",
+        "expense": "Gastos"
+      },
+      "category": {
+        "infrastructure": "Infraestructura",
+        "payment_fees": "Comisiones de pago",
+        "marketing": "Marketing",
+        "payroll": "Nóminas",
+        "tax": "Impuestos",
+        "software": "Software",
+        "other": "Otros"
+      },
+      "recurring": {
+        "none": "Una vez",
+        "monthly": "Mensual",
+        "yearly": "Anual"
+      },
+      "expenses": {
+        "title": "Gastos",
+        "showVoided": "Mostrar anulados",
+        "none": "Aún no hay gastos registrados.",
+        "voided": "Anulado",
+        "until": "hasta {date}",
+        "edit": "Editar",
+        "void": "Anular"
+      },
+      "form": {
+        "addTitle": "Añadir gasto",
+        "editTitle": "Editar gasto",
+        "hint": "Dinero que gastó el inquilino. Un gasto mensual o anual se repite solo desde su primer día.",
+        "vendor": "Proveedor",
+        "category": "Categoría",
+        "date": "Fecha",
+        "amount": "Importe",
+        "currency": "Moneda",
+        "recurring": "Repetición",
+        "until": "Último día (opcional)",
+        "recurringHint": "Editar un gasto recurrente cambia todas sus repeticiones, pasadas y futuras.",
+        "app": "Aplicación",
+        "wholeTenant": "Todo el inquilino",
+        "note": "Nota (opcional)",
+        "bad": "Introduzca un proveedor y un importe superior a cero, con como máximo los decimales de {currency}.",
+        "badDates": "Introduzca la fecha; el último día no puede ser anterior al primero.",
+        "cancel": "Cancelar",
+        "save": "Guardar"
+      },
+      "void": {
+        "title": "Anular el gasto de {vendor}",
+        "hint": "Un gasto anulado no se borra. Sale de todos los totales y conserva su motivo.",
+        "reason": "Motivo",
+        "submit": "Anular gasto"
+      }
     }
   },
   "einvoice": {
@@ -1141,6 +1236,21 @@
         "key_reused": "Esta clave de idempotencia ya se usó para otra solicitud.",
         "pack_not_found": "No existe ese paquete de créditos.",
         "unknown_currency": "Esta moneda no es compatible."
+      },
+      "accounting": {
+        "bad_app": "La aplicación no es válida.",
+        "bad_category": "La categoría no es una de las categorías conocidas.",
+        "bad_date": "Las fechas tienen este aspecto: 2026-10-21.",
+        "bad_expense": "Un gasto necesita un proveedor (hasta 120 caracteres), una nota de 500 caracteres como máximo y un importe superior a cero.",
+        "bad_granularity": "La serie es por día o por mes.",
+        "bad_page_token": "El token de página no es válido.",
+        "bad_period": "Indique un primer y un último día, en orden.",
+        "bad_recurring": "Un gasto se repite cada mes o cada año; su último día no puede ser anterior al primero.",
+        "expense_not_found": "No existe ese gasto.",
+        "expense_voided": "El gasto se anuló y ya no se puede cambiar.",
+        "range_too_long": "El periodo es demasiado largo: cinco años como máximo y una serie diaria de hasta 366 días.",
+        "reason_required": "Indique un motivo de hasta 200 caracteres para anular un gasto.",
+        "unknown_currency": "La moneda no es compatible."
       }
     },
     "plans": {

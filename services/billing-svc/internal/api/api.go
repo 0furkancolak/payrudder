@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/accounting"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/billingruns"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/creditnotes"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/credits"
@@ -37,6 +38,7 @@ type (
 	creditNoteHandler = creditnotes.Handler
 	dunningHandler    = dunning.Handler
 	creditsHandler    = credits.Handler
+	accountingHandler = accounting.Handler
 	reportHandler     = reports.Handler
 	hostedHandler     = hosted.Handler
 	runHandler        = billingruns.Handler
@@ -63,6 +65,7 @@ type Server struct {
 	*creditNoteHandler
 	*dunningHandler
 	*creditsHandler
+	*accountingHandler
 	*reportHandler
 	*hostedHandler
 	*runHandler
@@ -81,6 +84,7 @@ func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server
 		creditNoteHandler: creditnotes.New(app, system, mgr),
 		dunningHandler:    dunning.New(app),
 		creditsHandler:    credits.New(app),
+		accountingHandler: accounting.New(app),
 		reportHandler:     reports.New(app),
 		hostedHandler:     hosted.New(app, system, mgr, eng),
 		runHandler:        billingruns.New(mgr),

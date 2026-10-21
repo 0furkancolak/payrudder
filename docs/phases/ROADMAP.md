@@ -1,6 +1,6 @@
 # Roadmap
 
-12 core phases of ~1 week each for one developer, one optional phase, and phases 13–32, 34 and 35 for the [billing platform](../14-billing-platform.md). Each phase ends with green CI and an
+12 core phases of ~1 week each for one developer, one optional phase, and phases 13–32, 34, 35 and 37 for the [billing platform](../14-billing-platform.md). Each phase ends with green CI and an
 updated `docs/` (design changes discovered while building are written back into the docs in the same PR).
 
 | # | Phase | Goal (short) | Depends on | Key proof | Status |
@@ -39,6 +39,7 @@ updated `docs/` (design changes discovered while building are written back into 
 | 31 | [Railway](phase-31-railway.md) | Config-as-code per service, backing-service images, bootstrap script, `PORT` support | 27 | Static checks pass in CI; the guide lists what only a real deploy can confirm | done statically, never deployed to Railway |
 | 32 | [Console gaps](phase-32-console-gaps.md) | Console pages for apps and the seller address; API errors translated by key in six languages | 24, 25 | Mocked-gateway specs for both pages; a test fails when an error key has no translation | done, without app rename/delete (no API) |
 | 35 | [Credits](phase-35-credits.md) | Prepaid credit packs, lots with expiry, ledger, consume and grant API, console tab | 24, 34 | Concurrent consumes never overspend; a payment grants once; console tab in six languages |
+| 37 | [Accounting](phase-37-accounting.md) | Expenses (recurring, voidable), income from paid invoices, tax and refunds, per-currency summary, CSV and console tab | 35 | Currencies never mix; recurring expansion is exact; RLS isolates tenants; console tab in six languages |
 | 30 | [E-invoicing](phase-30-e-invoice.md) | UBL-TR / EN 16931 builder, provider interface, mock, Nilvera and webhook adapters, document state per invoice and credit note | 22 | Finalized invoice becomes an issued legal document with the mock; credit notes refer to it; retries and the operator's retry never issue twice | built; nothing run against a real integrator |
 
 ```mermaid

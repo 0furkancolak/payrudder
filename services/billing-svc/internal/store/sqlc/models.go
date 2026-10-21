@@ -142,6 +142,24 @@ type EinvoiceDocument struct {
 	UpdatedAt       time.Time
 }
 
+type Expense struct {
+	TenantID       uuid.UUID
+	ID             uuid.UUID
+	AppID          *uuid.UUID
+	Vendor         string
+	Category       string
+	AmountMinor    int64
+	Currency       string
+	IncurredOn     pgtype.Date
+	Note           string
+	Recurring      string
+	RecurringUntil pgtype.Date
+	VoidedAt       *time.Time
+	VoidReason     *string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
 type InboxReply struct {
 	MessageID  uuid.UUID
 	ReceivedAt time.Time

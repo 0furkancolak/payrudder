@@ -334,7 +334,8 @@
       "mail": "Mail",
       "apps": "Apps",
       "address": "Seller address",
-      "credits": "Credits"
+      "credits": "Credits",
+      "accounting": "Accounting"
     },
     "common": {
       "remove": "Remove"
@@ -886,6 +887,100 @@
         "consume": "Spent",
         "expire": "Expired"
       }
+    },
+    "accounting": {
+      "title": "Income and expenses",
+      "intro": "What the tenant earned from paid invoices and what it spent, in each currency on its own.",
+      "export": "Export CSV",
+      "addExpense": "Add expense",
+      "currencyNote": "Each currency is shown on its own. Amounts in different currencies are never added together or converted.",
+      "empty": "No income or expenses in this period.",
+      "paidInvoices": "Paid invoices: {count}",
+      "period": {
+        "label": "Period",
+        "thisMonth": "This month",
+        "lastMonth": "Last month",
+        "last30": "Last 30 days",
+        "thisYear": "This year",
+        "custom": "Custom",
+        "from": "From",
+        "to": "To",
+        "invalid": "Choose a first and a last day, in order, at most five years apart."
+      },
+      "app": {
+        "label": "App",
+        "all": "All apps",
+        "note": "The app limits the expenses. Income is the income of this tenant, which is one app environment."
+      },
+      "stat": {
+        "income": "Income (gross)",
+        "tax": "Tax collected",
+        "refunds": "Refunds and credit notes",
+        "net": "Net income",
+        "fees": "Provider fees",
+        "feesNotRecorded": "Not recorded",
+        "feesHint": "The payment provider's commission is not recorded by Quotify. Add it as an expense in the category Payment fees.",
+        "expenses": "Expenses",
+        "profit": "Profit"
+      },
+      "donut": {
+        "title": "Expenses by category",
+        "none": "No expenses in this period."
+      },
+      "bars": {
+        "title": "Income and expenses over time",
+        "income": "Net income",
+        "expense": "Expenses"
+      },
+      "category": {
+        "infrastructure": "Infrastructure",
+        "payment_fees": "Payment fees",
+        "marketing": "Marketing",
+        "payroll": "Payroll",
+        "tax": "Tax",
+        "software": "Software",
+        "other": "Other"
+      },
+      "recurring": {
+        "none": "Once",
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+      },
+      "expenses": {
+        "title": "Expenses",
+        "showVoided": "Show voided",
+        "none": "No expenses recorded yet.",
+        "voided": "Voided",
+        "until": "until {date}",
+        "edit": "Edit",
+        "void": "Void"
+      },
+      "form": {
+        "addTitle": "Add expense",
+        "editTitle": "Edit expense",
+        "hint": "Money the tenant spent. A monthly or yearly expense repeats on its own from its first day.",
+        "vendor": "Vendor",
+        "category": "Category",
+        "date": "Date",
+        "amount": "Amount",
+        "currency": "Currency",
+        "recurring": "Repeats",
+        "until": "Last day (optional)",
+        "recurringHint": "Editing a repeating expense changes every occurrence, past and future.",
+        "app": "App",
+        "wholeTenant": "Whole tenant",
+        "note": "Note (optional)",
+        "bad": "Enter a vendor and an amount above zero with at most the decimals of {currency}.",
+        "badDates": "Enter the date; the last day cannot be before the first.",
+        "cancel": "Cancel",
+        "save": "Save"
+      },
+      "void": {
+        "title": "Void the expense of {vendor}",
+        "hint": "A voided expense is not deleted. It leaves every total and keeps your reason.",
+        "reason": "Reason",
+        "submit": "Void expense"
+      }
     }
   },
   "einvoice": {
@@ -1141,6 +1236,21 @@
         "key_reused": "This idempotency key was already used for a different request.",
         "pack_not_found": "There is no such credit pack.",
         "unknown_currency": "This currency is not supported."
+      },
+      "accounting": {
+        "bad_app": "The app is not valid.",
+        "bad_category": "The category is not one of the known categories.",
+        "bad_date": "Dates look like 2026-10-21.",
+        "bad_expense": "An expense needs a vendor (up to 120 characters), a note of at most 500 characters and an amount above zero.",
+        "bad_granularity": "The series is by day or by month.",
+        "bad_page_token": "The page token is not valid.",
+        "bad_period": "Give a first and a last day, in order.",
+        "bad_recurring": "An expense repeats monthly or yearly; its last day cannot be before its first.",
+        "expense_not_found": "There is no such expense.",
+        "expense_voided": "The expense was voided and cannot be changed.",
+        "range_too_long": "The period is too long: five years at most, and a daily series up to 366 days.",
+        "reason_required": "Give a reason of up to 200 characters to void an expense.",
+        "unknown_currency": "The currency is not supported."
       }
     },
     "plans": {

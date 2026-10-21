@@ -641,6 +641,97 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditLedgerPage" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /v1/expenses:
+    get:
+      operationId: listExpenses
+      summary: The expenses the tenant recorded, newest first
+      description: A recurring expense is one entry, listed at its first day. Voided expenses are left out unless `include_voided` is true.
+      parameters:
+        - { name: category, in: query, schema: { $ref: "#/components/schemas/ExpenseCategory" } }
+        - { name: app_id, in: query, schema: { type: string, format: uuid } }
+        - { name: currency, in: query, schema: { type: string, minLength: 3, maxLength: 3 } }
+        - { name: from, in: query, schema: { type: string, format: date }, description: "Only entries whose (first) day is on or after this day" }
+        - { name: to, in: query, schema: { type: string, format: date }, description: "Only entries whose (first) day is on or before this day" }
+        - { name: include_voided, in: query, schema: { type: boolean } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ExpensePage" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createExpense
+      summary: Record an expense
+      description: >
+        Money the tenant spent, in one currency. A monthly or yearly expense is one entry that falls on the same day of every month or year from `incurred_on`
+        (on the last day of a shorter month) until `recurring_until`; its occurrences are worked out when a summary is asked for.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ExpenseInput" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Expense" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/expenses/{id}:
+    put:
+      operationId: updateExpense
+      summary: Replace an expense
+      description: The body replaces the whole record; a recurring expense changes in all its occurrences. A voided expense is not edited (`billing.accounting.expense_voided`).
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ExpenseInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Expense" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: voidExpense
+      summary: Void an expense
+      description: >
+        The expense is not deleted: it leaves every summary and keeps its reason. The reason (1 to 200 characters) comes in the body `{"reason": "..."}` or in `?reason=`.
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: reason, in: query, schema: { type: string, maxLength: 200 } }
+      requestBody:
+        required: false
+        content: { application/json: { schema: { type: object, properties: { reason: { type: string, maxLength: 200 } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Expense" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/accounting/summary:
+    get:
+      operationId: getAccountingSummary
+      summary: Income and expenses of a period, one block per currency
+      description: >
+        Currencies are never converted or added together. Income is read from the invoices: an invoice counts on the UTC day its payment succeeded (gross is its total, tax its TAX lines),
+        credit notes against paid invoices and invoices refunded in full are the refunds. Provider commission is not recorded by Quotify; `provider_fees_minor` is what the tenant entered as
+        `payment_fees` expenses, and `provider_fees_recorded` is false when there is none. `expenses_minor` includes those fees. `profit_minor` is net income minus expenses.
+        The series has one point for every day (or month) of the period. `app_id` limits the expenses, not the income.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date }, description: "First day, inside the period" }
+        - { name: to, in: query, required: true, schema: { type: string, format: date }, description: "Last day, inside the period; at most five years after `from`" }
+        - { name: app_id, in: query, schema: { type: string, format: uuid } }
+        - { name: granularity, in: query, schema: { type: string, enum: [day, month] }, description: "Default: day up to 62 days, month beyond. Day is allowed for at most 366 days." }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountingSummary" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/accounting/export.csv:
+    get:
+      operationId: exportAccountingCsv
+      summary: The accounting series as CSV
+      description: >
+        The query of the summary. One row per currency and day (or month), then a `total` row per currency; amounts are minor units. The `provider_fees_minor` of a total row is
+        `not_recorded` when no `payment_fees` expense exists.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: app_id, in: query, schema: { type: string, format: uuid } }
+        - { name: granularity, in: query, schema: { type: string, enum: [day, month] } }
+      responses:
+        "200": { description: OK, content: { text/csv: { schema: { type: string } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /v1/webhook-endpoints:
     post:
       operationId: createWebhookEndpoint
@@ -3421,6 +3512,80 @@ components:
       properties:
         entries: { type: array, items: { $ref: "#/components/schemas/CreditLedgerEntry" } }
         next_page_token: { type: string }
+    ExpenseCategory:
+      type: string
+      enum: [infrastructure, payment_fees, marketing, payroll, tax, software, other]
+    ExpenseInput:
+      type: object
+      required: [vendor, category, amount_minor, currency, incurred_on]
+      properties:
+        vendor: { type: string, minLength: 1, maxLength: 120 }
+        category: { $ref: "#/components/schemas/ExpenseCategory" }
+        amount_minor: { type: string, description: "int64 minor units, above zero (a number is accepted too)" }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        incurred_on: { type: string, format: date, description: "The day, or the first day of a recurring expense (UTC)" }
+        note: { type: string, maxLength: 500 }
+        app_id: { type: string, format: uuid, description: "The app of the account the cost belongs to; leave out for the whole tenant" }
+        recurring: { type: string, enum: [none, monthly, yearly], default: none }
+        recurring_until: { type: string, format: date, description: "Last day an occurrence may fall on; leave out for no end. Only for a recurring expense." }
+    Expense:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        app_id: { type: string }
+        vendor: { type: string }
+        category: { $ref: "#/components/schemas/ExpenseCategory" }
+        amount_minor: { type: string, description: int64 as a string }
+        currency: { type: string }
+        incurred_on: { type: string, format: date }
+        note: { type: string }
+        recurring: { type: string, enum: [none, monthly, yearly] }
+        recurring_until: { type: string }
+        void_time: { type: string, format: date-time, nullable: true }
+        void_reason: { type: string }
+        create_time: { type: string, format: date-time }
+        update_time: { type: string, format: date-time }
+    ExpensePage:
+      type: object
+      properties:
+        expenses: { type: array, items: { $ref: "#/components/schemas/Expense" } }
+        next_page_token: { type: string }
+    AccountingPoint:
+      type: object
+      properties:
+        bucket: { type: string, format: date, description: "The day, or the first day of the month" }
+        gross_income_minor: { type: string }
+        tax_minor: { type: string }
+        refunds_minor: { type: string }
+        net_income_minor: { type: string }
+        expenses_minor: { type: string }
+        profit_minor: { type: string }
+    AccountingCurrency:
+      type: object
+      description: One currency of the period. Every amount is int64 minor units as a string.
+      properties:
+        currency: { type: string }
+        gross_income_minor: { type: string, description: "Invoices paid in the period, tax included" }
+        tax_minor: { type: string, description: "The tax lines of those invoices" }
+        refunds_minor: { type: string, description: "Credit notes against paid invoices plus invoices refunded in full" }
+        net_income_minor: { type: string, description: "gross - tax - refunds" }
+        expenses_minor: { type: string, description: "Every live occurrence in the period, provider fees included" }
+        provider_fees_minor: { type: string, description: "The payment_fees expenses; meaningful only when provider_fees_recorded" }
+        provider_fees_recorded: { type: boolean, description: "False: no commission was entered, which is not the same as zero" }
+        profit_minor: { type: string, description: "net income - expenses; negative for a loss" }
+        paid_invoices: { type: string }
+        expense_by_category:
+          type: array
+          items: { type: object, properties: { category: { $ref: "#/components/schemas/ExpenseCategory" }, amount_minor: { type: string } } }
+        series: { type: array, items: { $ref: "#/components/schemas/AccountingPoint" } }
+    AccountingSummary:
+      type: object
+      properties:
+        from_date: { type: string, format: date }
+        to_date: { type: string, format: date }
+        granularity: { type: string, enum: [day, month] }
+        app_id: { type: string }
+        currencies: { type: array, items: { $ref: "#/components/schemas/AccountingCurrency" }, description: "Ordered by currency code; a currency with no income and no expenses has no block" }
     WebhookEndpointInput:
       type: object
       required: [url]

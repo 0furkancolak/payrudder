@@ -57,6 +57,17 @@ service BillingService {
   rpc ConsumeCredits(ConsumeCreditsRequest) returns (ConsumeCreditsResponse);
   // ListCreditLedger lists a customer's credit changes, newest first.
   rpc ListCreditLedger(ListCreditLedgerRequest) returns (ListCreditLedgerResponse);
+
+  // CreateExpense records money the tenant spent (or spends every month or year).
+  rpc CreateExpense(CreateExpenseRequest) returns (CreateExpenseResponse);
+  // UpdateExpense replaces the fields of an expense that has not been voided. A recurring expense changes as a whole, all its occurrences.
+  rpc UpdateExpense(UpdateExpenseRequest) returns (UpdateExpenseResponse);
+  // VoidExpense takes an expense out of every summary, with a reason. It stays listable (include_voided).
+  rpc VoidExpense(VoidExpenseRequest) returns (VoidExpenseResponse);
+  // ListExpenses lists the entries as recorded, newest first; a recurring expense is one entry.
+  rpc ListExpenses(ListExpensesRequest) returns (ListExpensesResponse);
+  // GetAccountingSummary adds up income (from paid invoices, tax and refunds) and expenses over a period, one block per currency. Currencies are never converted or added together.
+  rpc GetAccountingSummary(GetAccountingSummaryRequest) returns (GetAccountingSummaryResponse);
 }
 
 // HostedInvoiceService is called by the gateway on behalf of a visitor who holds an invoice link. It has no tenant: the token is the credential.
@@ -990,4 +1001,130 @@ message ListCreditLedgerRequest {
 message ListCreditLedgerResponse {
   repeated CreditLedgerEntry entries = 1;
   string next_page_token = 2;
+}
+
+// Dates are calendar days like 2026-10-21, and days are UTC days.
+message Expense {
+  string id = 1;
+  // The app of the account the cost belongs to; empty for the whole tenant.
+  string app_id = 2;
+  string vendor = 3;
+  // infrastructure, payment_fees, marketing, payroll, tax, software or other.
+  string category = 4;
+  // In minor units of the currency; above zero.
+  int64 amount_minor = 5;
+  string currency = 6;
+  // The day of the expense, or of the first occurrence of a recurring one.
+  string incurred_on = 7;
+  string note = 8;
+  // none, monthly or yearly.
+  string recurring = 9;
+  // Last day an occurrence may fall on; empty: no end.
+  string recurring_until = 10;
+  // Set when voided.
+  google.protobuf.Timestamp void_time = 11;
+  string void_reason = 12;
+  google.protobuf.Timestamp create_time = 13;
+  google.protobuf.Timestamp update_time = 14;
+}
+message CreateExpenseRequest {
+  string app_id = 1;
+  string vendor = 2;
+  string category = 3;
+  int64 amount_minor = 4;
+  string currency = 5;
+  string incurred_on = 6;
+  string note = 7;
+  string recurring = 8;
+  string recurring_until = 9;
+}
+message CreateExpenseResponse { Expense expense = 1; }
+message UpdateExpenseRequest {
+  string id = 1;
+  string app_id = 2;
+  string vendor = 3;
+  string category = 4;
+  int64 amount_minor = 5;
+  string currency = 6;
+  string incurred_on = 7;
+  string note = 8;
+  string recurring = 9;
+  string recurring_until = 10;
+}
+message UpdateExpenseResponse { Expense expense = 1; }
+message VoidExpenseRequest {
+  string id = 1;
+  // Required, at most 200 characters.
+  string reason = 2;
+}
+message VoidExpenseResponse { Expense expense = 1; }
+message ListExpensesRequest {
+  string category = 1;
+  string app_id = 2;
+  string currency = 3;
+  // Only entries whose (first) date lies in the window.
+  string from_date = 4;
+  string to_date = 5;
+  bool include_voided = 6;
+  // 1..200; 0 means 50.
+  int32 page_size = 7;
+  string page_token = 8;
+}
+message ListExpensesResponse {
+  repeated Expense expenses = 1;
+  string next_page_token = 2;
+}
+
+message GetAccountingSummaryRequest {
+  // Both days are inside the period. At most five years.
+  string from_date = 1;
+  string to_date = 2;
+  // Limits the expenses to those booked to this app. Income is the tenant's own, which is one app environment, and is not filtered.
+  string app_id = 3;
+  // day or month; empty means day for up to 62 days and month beyond. Day is allowed for at most 366 days.
+  string granularity = 4;
+}
+message AccountingCategoryTotal {
+  string category = 1;
+  int64 amount_minor = 2;
+}
+message AccountingPoint {
+  // The day, or the first day of the month.
+  string bucket = 1;
+  int64 gross_income_minor = 2;
+  int64 tax_minor = 3;
+  int64 refunds_minor = 4;
+  int64 net_income_minor = 5;
+  int64 expenses_minor = 6;
+  int64 profit_minor = 7;
+}
+// One currency of a summary. Every amount is in minor units of that currency.
+message AccountingCurrency {
+  string currency = 1;
+  // Invoices that were paid in the period, tax included.
+  int64 gross_income_minor = 2;
+  // The tax lines of those invoices (collected for the tax office, not earned).
+  int64 tax_minor = 3;
+  // Credit notes against paid invoices plus whole invoices that were refunded, in the period.
+  int64 refunds_minor = 4;
+  // gross - tax - refunds.
+  int64 net_income_minor = 5;
+  // Every live expense occurrence in the period, provider fees included.
+  int64 expenses_minor = 6;
+  // The expenses of category payment_fees. Provider commission is not in the payment ledger, so this is what the tenant entered by hand.
+  int64 provider_fees_minor = 7;
+  // False when no payment_fees expense exists in the period: the commission is not recorded, which is not the same as zero.
+  bool provider_fees_recorded = 8;
+  // net income - expenses.
+  int64 profit_minor = 9;
+  int64 paid_invoices = 10;
+  repeated AccountingCategoryTotal expense_by_category = 11;
+  repeated AccountingPoint series = 12;
+}
+message GetAccountingSummaryResponse {
+  string from_date = 1;
+  string to_date = 2;
+  string granularity = 3;
+  string app_id = 4;
+  repeated AccountingCurrency currencies = 5;
 }

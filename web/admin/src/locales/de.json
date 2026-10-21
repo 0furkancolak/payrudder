@@ -334,7 +334,8 @@
       "mail": "E-Mail",
       "apps": "Apps",
       "address": "Verkäuferadresse",
-      "credits": "Guthaben"
+      "credits": "Guthaben",
+      "accounting": "Buchhaltung"
     },
     "common": {
       "remove": "Entfernen"
@@ -886,6 +887,100 @@
         "consume": "Verbraucht",
         "expire": "Verfallen"
       }
+    },
+    "accounting": {
+      "title": "Einnahmen und Ausgaben",
+      "intro": "Was der Mandant mit bezahlten Rechnungen eingenommen und was er ausgegeben hat, jede Währung für sich.",
+      "export": "CSV exportieren",
+      "addExpense": "Ausgabe hinzufügen",
+      "currencyNote": "Jede Währung wird für sich angezeigt. Beträge in verschiedenen Währungen werden nie addiert oder umgerechnet.",
+      "empty": "In diesem Zeitraum gibt es keine Einnahmen oder Ausgaben.",
+      "paidInvoices": "Bezahlte Rechnungen: {count}",
+      "period": {
+        "label": "Zeitraum",
+        "thisMonth": "Dieser Monat",
+        "lastMonth": "Letzter Monat",
+        "last30": "Letzte 30 Tage",
+        "thisYear": "Dieses Jahr",
+        "custom": "Benutzerdefiniert",
+        "from": "Von",
+        "to": "Bis",
+        "invalid": "Wählen Sie einen ersten und einen letzten Tag in der richtigen Reihenfolge, höchstens fünf Jahre auseinander."
+      },
+      "app": {
+        "label": "App",
+        "all": "Alle Apps",
+        "note": "Die App schränkt nur die Ausgaben ein. Die Einnahmen sind die dieses Mandanten, der eine App-Umgebung ist."
+      },
+      "stat": {
+        "income": "Einnahmen (brutto)",
+        "tax": "Eingenommene Steuer",
+        "refunds": "Erstattungen und Gutschriften",
+        "net": "Nettoeinnahmen",
+        "fees": "Anbietergebühren",
+        "feesNotRecorded": "Nicht erfasst",
+        "feesHint": "Die Provision des Zahlungsanbieters erfasst Quotify nicht. Tragen Sie sie als Ausgabe in der Kategorie Zahlungsgebühren ein.",
+        "expenses": "Ausgaben",
+        "profit": "Gewinn"
+      },
+      "donut": {
+        "title": "Ausgaben nach Kategorie",
+        "none": "In diesem Zeitraum gibt es keine Ausgaben."
+      },
+      "bars": {
+        "title": "Einnahmen und Ausgaben im Zeitverlauf",
+        "income": "Nettoeinnahmen",
+        "expense": "Ausgaben"
+      },
+      "category": {
+        "infrastructure": "Infrastruktur",
+        "payment_fees": "Zahlungsgebühren",
+        "marketing": "Marketing",
+        "payroll": "Gehälter",
+        "tax": "Steuern",
+        "software": "Software",
+        "other": "Sonstiges"
+      },
+      "recurring": {
+        "none": "Einmalig",
+        "monthly": "Monatlich",
+        "yearly": "Jährlich"
+      },
+      "expenses": {
+        "title": "Ausgaben",
+        "showVoided": "Stornierte anzeigen",
+        "none": "Noch keine Ausgaben erfasst.",
+        "voided": "Storniert",
+        "until": "bis {date}",
+        "edit": "Bearbeiten",
+        "void": "Stornieren"
+      },
+      "form": {
+        "addTitle": "Ausgabe hinzufügen",
+        "editTitle": "Ausgabe bearbeiten",
+        "hint": "Geld, das der Mandant ausgegeben hat. Eine monatliche oder jährliche Ausgabe wiederholt sich ab ihrem ersten Tag von selbst.",
+        "vendor": "Lieferant",
+        "category": "Kategorie",
+        "date": "Datum",
+        "amount": "Betrag",
+        "currency": "Währung",
+        "recurring": "Wiederholung",
+        "until": "Letzter Tag (optional)",
+        "recurringHint": "Das Bearbeiten einer wiederkehrenden Ausgabe ändert alle Wiederholungen, vergangene wie künftige.",
+        "app": "App",
+        "wholeTenant": "Ganzer Mandant",
+        "note": "Notiz (optional)",
+        "bad": "Geben Sie einen Lieferanten und einen Betrag über null ein, mit höchstens den Nachkommastellen von {currency}.",
+        "badDates": "Geben Sie das Datum ein; der letzte Tag darf nicht vor dem ersten liegen.",
+        "cancel": "Abbrechen",
+        "save": "Speichern"
+      },
+      "void": {
+        "title": "Ausgabe von {vendor} stornieren",
+        "hint": "Eine stornierte Ausgabe wird nicht gelöscht. Sie fällt aus allen Summen heraus und behält Ihre Begründung.",
+        "reason": "Begründung",
+        "submit": "Ausgabe stornieren"
+      }
     }
   },
   "einvoice": {
@@ -1141,6 +1236,21 @@
         "key_reused": "Dieser Idempotency-Schlüssel wurde schon für eine andere Anfrage verwendet.",
         "pack_not_found": "Es gibt kein solches Guthabenpaket.",
         "unknown_currency": "Diese Währung wird nicht unterstützt."
+      },
+      "accounting": {
+        "bad_app": "Die App ist ungültig.",
+        "bad_category": "Die Kategorie ist keine der bekannten Kategorien.",
+        "bad_date": "Daten sehen so aus: 2026-10-21.",
+        "bad_expense": "Eine Ausgabe braucht einen Lieferanten (bis 120 Zeichen), eine Notiz von höchstens 500 Zeichen und einen Betrag über null.",
+        "bad_granularity": "Die Reihe ist nach Tag oder Monat.",
+        "bad_page_token": "Das Seitentoken ist ungültig.",
+        "bad_period": "Geben Sie einen ersten und einen letzten Tag in der richtigen Reihenfolge an.",
+        "bad_recurring": "Eine Ausgabe wiederholt sich monatlich oder jährlich; ihr letzter Tag darf nicht vor dem ersten liegen.",
+        "expense_not_found": "Diese Ausgabe gibt es nicht.",
+        "expense_voided": "Die Ausgabe wurde storniert und kann nicht mehr geändert werden.",
+        "range_too_long": "Der Zeitraum ist zu lang: höchstens fünf Jahre, eine Tagesreihe höchstens 366 Tage.",
+        "reason_required": "Geben Sie zum Stornieren einer Ausgabe eine Begründung von höchstens 200 Zeichen an.",
+        "unknown_currency": "Die Währung wird nicht unterstützt."
       }
     },
     "plans": {
