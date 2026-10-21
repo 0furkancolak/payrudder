@@ -743,6 +743,9 @@
         "bad_slug": "Uygulama kısaltması yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter olmalı.",
         "slug_taken": "Bu hesapta aynı kısaltmaya sahip bir uygulama zaten var."
       },
+      "mail": {
+        "unknown_category": "Bu e-posta kategorisi yok."
+      },
       "subscription": {
         "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın."
       },

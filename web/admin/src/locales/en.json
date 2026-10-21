@@ -743,6 +743,9 @@
         "bad_slug": "The app slug may only have lower-case letters, digits and single dashes, and at most 60 characters.",
         "slug_taken": "This account already has an app with that slug."
       },
+      "mail": {
+        "unknown_category": "This mail category does not exist."
+      },
       "subscription": {
         "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead."
       },

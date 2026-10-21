@@ -743,6 +743,9 @@
         "bad_slug": "El identificador de la app solo puede tener minúsculas, dígitos y guiones sencillos, con un máximo de 60 caracteres.",
         "slug_taken": "Esta cuenta ya tiene una app con ese identificador."
       },
+      "mail": {
+        "unknown_category": "Esta categoría de correo no existe."
+      },
       "subscription": {
         "coupon_blocks_credit": "Esta suscripción tiene un cupón. Abone la parte no utilizada con una nota de abono sobre la factura de la cuota."
       },

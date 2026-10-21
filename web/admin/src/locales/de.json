@@ -743,6 +743,9 @@
         "bad_slug": "Das Kürzel der App darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten und höchstens 60 Zeichen lang sein.",
         "slug_taken": "Dieses Konto hat bereits eine App mit diesem Kürzel."
       },
+      "mail": {
+        "unknown_category": "Diese E-Mail-Kategorie existiert nicht."
+      },
       "subscription": {
         "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut."
       },

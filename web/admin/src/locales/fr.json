@@ -743,6 +743,9 @@
         "bad_slug": "Le code de l'app ne peut contenir que des minuscules, des chiffres et des tirets simples, et au plus 60 caractères.",
         "slug_taken": "Ce compte a déjà une app avec ce code."
       },
+      "mail": {
+        "unknown_category": "Cette catégorie d'e-mail n'existe pas."
+      },
       "subscription": {
         "coupon_blocks_credit": "Cet abonnement a un coupon. Créditez plutôt la partie non utilisée avec un avoir sur la facture de l'abonnement."
       },
