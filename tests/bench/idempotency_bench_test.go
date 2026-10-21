@@ -133,7 +133,7 @@ func quantiles(d []time.Duration) (p50, p99 time.Duration) {
 
 func TestIdempotencyRetention(t *testing.T) {
 	ctx := context.Background()
-	admin, err := pgx.Connect(ctx, envOr("QUOTIFY_BENCH_DSN", fmt.Sprintf("postgres://postgres:postgres_local@localhost:%s/postgres", envOr("QUOTIFY_PG_HOST_PORT", "5432"))))
+	admin, err := pgx.Connect(ctx, envOr("QUOTIFY_BENCH_DSN", fmt.Sprintf("postgres://postgres:postgres_local@localhost:%s/postgres", envOr("QUOTIFY_PG_HOST_PORT", "42432"))))
 	if err != nil {
 		t.Fatal(err)
 	}

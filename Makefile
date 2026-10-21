@@ -192,7 +192,7 @@ demo: ## The README story on a running stack: usage, a period close, a price cha
 demo-mode: ## Demo mode: the whole stack with only the mock provider, a banner in the console, sample data and the README story
 	QUOTIFY_DEMO=true QUOTIFY_DUNNING_SANDBOX=15s,15s,15s QUOTIFY_SWEEP_INTERVAL=2s QUOTIFY_SCHEDULER_INTERVAL=5s $(COMPOSE) --profile obs --profile app up -d --wait
 	cd tools/quotifyctl && go run . demo --operator-token "$(OPERATOR_TOKEN)"
-	@echo "console: http://localhost:3001   mail: http://localhost:8025"
+	@echo "console: http://localhost:42301   mail: http://localhost:42825"
 
 .PHONY: seed
 seed: ## Seed a demo account: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GRACE=24h
@@ -228,7 +228,7 @@ setup: tools ## Once per machine: build the tools, start the infrastructure cont
 	@echo "Ready. Run: make dev"
 
 .PHONY: dev
-dev: ## Every day: the services run on your machine with reload (against the containers from make setup), the console on http://localhost:3001. Ctrl-C stops all. make dev ONLY=gateway,plans-svc runs some.
+dev: ## Every day: the services run on your machine with reload (against the containers from make setup), the console on http://localhost:42301. Ctrl-C stops all. make dev ONLY=gateway,plans-svc runs some.
 	cd tools/quotifyctl && go build -o $(BIN)/quotifyctl .
 	@trap 'kill 0' INT TERM EXIT; \
 	  $(BIN)/quotifyctl dev $(if $(ONLY),--only $(ONLY)) $(if $(SKIP),--skip $(SKIP)) & \
@@ -236,11 +236,11 @@ dev: ## Every day: the services run on your machine with reload (against the con
 	  wait
 
 .PHONY: dev-docker
-dev-docker: ## The services in Docker too, with the console on http://localhost:3001 (what make dev used to do; for checking the images)
+dev-docker: ## The services in Docker too, with the console on http://localhost:42301 (what make dev used to do; for checking the images)
 	$(MAKE) up-infra
 	COMPOSE_PARALLEL_LIMIT=1 $(COMPOSE) --profile obs --profile app up -d --build --wait --scale admin-ui=0
 	@echo "Stack is up. Logs: make logs  (one service: make logs S=gateway). Stop: make down."
-	@echo "Console: http://localhost:3001, operator token and playground form are pre-filled."
+	@echo "Console: http://localhost:42301, operator token and playground form are pre-filled."
 	cd web/admin && ([ -d node_modules ] || npm ci --no-audit --no-fund) && exec npm run dev
 
 .PHONY: mem-report

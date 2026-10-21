@@ -2,7 +2,7 @@
 
 `web/admin` is a small Vue 3 and TypeScript console (Vite, TanStack Router, TanStack Query, vue-i18n) for an operator: it makes the state of the system visible during a demo and
 offers the two actions an operator needs most, redriving dead letters and reading a saga. It is served by the Compose `app` profile at
-<http://localhost:3001> and talks to **the gateway only**: no database, broker or service port.
+<http://localhost:42301> and talks to **the gateway only**: no database, broker or service port.
 
 | View | What it shows |
 |---|---|
