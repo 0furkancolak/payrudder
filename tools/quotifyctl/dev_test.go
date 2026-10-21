@@ -34,11 +34,11 @@ func TestHostServices(t *testing.T) {
 			Published string `json:"published"`
 		}{{5432, "5432"}}},
 		"gateway": {Build: &struct{ Dockerfile string }{"services/gateway/Dockerfile"}, Environment: map[string]string{"QUOTIFY_PLANS_ADDR": "dns:///plans-svc:7001", "QUOTIFY_OTLP_ENDPOINT": "otel-collector:4317", "QUOTIFY_KAFKA_BROKERS": "redpanda:9092"}},
-		"plans-svc": {Build: &struct{ Dockerfile string }{"services/plans-svc/Dockerfile"}, Environment: map[string]string{"QUOTIFY_PG_APP_DSN": "postgres://u:p@postgres:5432/db"},
+		"plans-svc": {Build: &struct{ Dockerfile string }{"services/plans-svc/Dockerfile"}, Environment: map[string]string{"QUOTIFY_PG_APP_DSN": "postgres://u:p@postgres:5432/db", "QUOTIFY_GRPC_ADDR": ":7001"},
 			Ports: []struct {
 				Target    int    `json:"target"`
 				Published string `json:"published"`
-			}{{7001, "7001"}}},
+			}{{7001, "42701"}}},
 		"mockpsp": {Build: &struct{ Dockerfile string }{"tools/mockpsp/Dockerfile"}},
 	}
 	got := hostServices(cf)
@@ -50,11 +50,14 @@ func TestHostServices(t *testing.T) {
 		t.Fatalf("services and order = %v; postgres is infrastructure and plans-svc starts first", names)
 	}
 	gw := got[2]
-	if gw.Env["QUOTIFY_PLANS_ADDR"] != "localhost:7001" || gw.Env["QUOTIFY_OTLP_ENDPOINT"] != "" || gw.Main != "./cmd/gateway" || gw.Dir != "services/gateway" {
+	if gw.Env["QUOTIFY_PLANS_ADDR"] != "localhost:42701" || gw.Env["QUOTIFY_OTLP_ENDPOINT"] != "" || gw.Main != "./cmd/gateway" || gw.Dir != "services/gateway" {
 		t.Errorf("gateway = %+v", gw)
 	}
 	if gw.Env["QUOTIFY_KAFKA_BROKERS"] != "localhost:42092" {
 		t.Errorf("kafka = %q; the host reaches Redpanda on its external listener", gw.Env["QUOTIFY_KAFKA_BROKERS"])
+	}
+	if got[0].Env["QUOTIFY_GRPC_ADDR"] != ":42701" {
+		t.Errorf("plans-svc listens on %q; on the host it takes the port the container publishes", got[0].Env["QUOTIFY_GRPC_ADDR"])
 	}
 	if got[0].Env["QUOTIFY_PG_APP_DSN"] != "postgres://u:p@localhost:5432/db" {
 		t.Errorf("plans-svc env = %v", got[0].Env)

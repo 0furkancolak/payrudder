@@ -74,6 +74,12 @@ func hostServices(c composeFile) []hostService {
 		env := map[string]string{}
 		for k, v := range s.Environment {
 			env[k] = toHost(v, published)
+			// A listen address (":7001") moves to the port the container publishes, so a service on the host sits where the stack expects it.
+			if m := listenRe.FindStringSubmatch(v); m != nil {
+				if h, ok := published[name+":"+m[1]]; ok {
+					env[k] = ":" + strings.TrimPrefix(h, "localhost:")
+				}
+			}
 		}
 		// Tracing needs the observability stack; on the host it is off unless the collector's port is published.
 		if _, ok := published["otel-collector:4317"]; !ok {
@@ -95,6 +101,8 @@ func hostServices(c composeFile) []hostService {
 	})
 	return out
 }
+
+var listenRe = regexp.MustCompile(`^:([0-9]{2,5})$`)
 
 var addrRe = regexp.MustCompile(`([A-Za-z][A-Za-z0-9-]*):([0-9]{2,5})`)
 
