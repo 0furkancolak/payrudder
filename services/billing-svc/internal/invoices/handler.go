@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/quantity"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/payments"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
@@ -91,6 +92,9 @@ func Proto(inv *query.Invoice) *billingv1.Invoice {
 	out := invoiceProto(inv.Row)
 	for _, l := range inv.Lines {
 		out.Lines = append(out.Lines, lineProto(l))
+	}
+	for _, p := range inv.Payments {
+		out.Payments = append(out.Payments, payments.Proto(p))
 	}
 	return out
 }

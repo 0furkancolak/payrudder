@@ -57,6 +57,14 @@ SELECT id FROM invoice_sagas
 WHERE tenant_id = @tenant_id AND id = @id AND state = 'PAYMENT_DECLINED' AND next_attempt_at <= @now::timestamptz
 FOR UPDATE SKIP LOCKED;
 
+-- name: ListSagasDueForPoll :many
+SELECT tenant_id, id FROM invoice_sagas WHERE state = 'PAYMENT_PENDING' AND next_attempt_at <= @now::timestamptz ORDER BY next_attempt_at LIMIT @row_limit;
+
+-- name: LockSagaDueForPoll :one
+SELECT id FROM invoice_sagas
+WHERE tenant_id = @tenant_id AND id = @id AND state = 'PAYMENT_PENDING' AND next_attempt_at <= @now::timestamptz
+FOR UPDATE SKIP LOCKED;
+
 -- name: InsertInboxReply :execrows
 INSERT INTO inbox_replies (message_id) VALUES (@message_id) ON CONFLICT DO NOTHING;
 

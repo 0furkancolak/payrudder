@@ -75,12 +75,28 @@
     "ledgerSource": {
       "command": "Quotify",
       "webhook": "notification du prestataire",
-      "reconciliation": "rapprochement"
+      "reconciliation": "rapprochement",
+      "manual": "saisi à la main"
     },
     "dunningState": {
       "PAYMENT_DECLINED": "refusé, nouvelle tentative",
       "PAYMENT_UNKNOWN": "issue inconnue",
       "UNCOLLECTIBLE": "abandonné"
+    },
+    "sagaState": {
+      "PAYMENT_PENDING": "virement attendu"
+    },
+    "paymentMethod": {
+      "bank_transfer": "Virement bancaire",
+      "cash": "Espèces",
+      "other": "Autre"
+    },
+    "transferState": {
+      "none": "aucun virement",
+      "pending": "en attente des fonds",
+      "paid": "payé",
+      "expired": "expiré",
+      "rejected": "rejeté"
     }
   },
   "tenants": {
@@ -152,6 +168,75 @@
       "copy": "Copier",
       "revoked": "Tous les liens de cette facture ont été révoqués.",
       "badDays": "Jours : un entier de 1 à 365."
+    },
+    "payment": {
+      "record": "Enregistrer un paiement",
+      "confirmTransfer": "Confirmer le virement bancaire",
+      "offlineHint": "Enregistrez l'argent reçu en dehors de Quotify (virement, espèces, autre). Un montant partiel est permis : la facture est payée quand les paiements atteignent le total.",
+      "transferHint": "Confirmez ce qui est arrivé sur le relevé bancaire. Un montant partiel est enregistré et la facture est payée quand les virements atteignent le total.",
+      "method": "Moyen",
+      "amount": "Montant ({currency})",
+      "amountHint": "Par défaut, le reste à payer ({outstanding}). Plus que cela est refusé.",
+      "receivedAt": "Reçu le",
+      "reference": "Référence",
+      "referenceHint": "Facultative. La même référence une seconde fois est traitée comme le même paiement.",
+      "bankReference": "Référence bancaire",
+      "bankReferenceHint": "La référence d'opération ou de relevé de la banque. Obligatoire : elle rend une répétition sans danger.",
+      "note": "Note",
+      "cancel": "Annuler",
+      "submit": "Enregistrer le paiement",
+      "confirmSubmit": "Confirmer le virement",
+      "badAmount": "Ce n'est pas un montant en {currency} : des chiffres seulement, supérieur à zéro, avec au plus les décimales de la devise.",
+      "badDate": "La date de réception doit être une date et une heure valides, pas dans le futur.",
+      "needReference": "La référence bancaire est obligatoire.",
+      "listTitle": "Paiements saisis à la main",
+      "columns": {
+        "method": "Moyen",
+        "amount": "Montant",
+        "receivedAt": "Reçu le",
+        "reference": "Référence",
+        "note": "Note",
+        "recordedBy": "Saisi par"
+      },
+      "toast": {
+        "paid": "Facture payée : {received} reçus.",
+        "partly": "Payée en partie : {received} reçus, {outstanding} restent à payer.",
+        "duplicate": "Ce paiement était déjà enregistré."
+      }
+    },
+    "transfer": {
+      "title": "Virement bancaire",
+      "reference": "Référence de paiement",
+      "bank": "Banque",
+      "holder": "Titulaire du compte",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "total": "Total de la facture",
+      "received": "Reçu",
+      "outstanding": "Reste à payer",
+      "pendingSince": "En attente depuis",
+      "expiresAt": "Fin du délai de paiement",
+      "receipts": "Virements reçus",
+      "receiptColumns": {
+        "receivedAt": "Reçu le",
+        "amount": "Montant",
+        "bankReference": "Référence bancaire",
+        "note": "Note",
+        "recordedBy": "Saisi par"
+      },
+      "reject": "Rejeter",
+      "expire": "Marquer comme expiré",
+      "rejectTitle": "Rejeter le virement bancaire",
+      "expireTitle": "Marquer le virement bancaire comme expiré",
+      "rejectHint": "À utiliser quand le virement du client a été refusé ou ne viendra pas. La facture n'est pas payée et le calendrier de relance du locataire s'applique aussitôt : un nouveau délai de paiement, ou irrécouvrable s'il ne reste aucune tentative. Les reçus déjà enregistrés sont conservés.",
+      "expireHint": "À utiliser quand le délai de paiement est écoulé sans l'argent. La facture n'est pas payée et le calendrier de relance du locataire s'applique aussitôt : un nouveau délai de paiement, ou irrécouvrable s'il ne reste aucune tentative. Les reçus déjà enregistrés sont conservés.",
+      "reason": "Motif (facultatif)",
+      "expiredNote": "Le délai de paiement s'est achevé sans le montant complet. La relance s'applique.",
+      "rejectedNote": "Le virement a été rejeté. La relance s'applique.",
+      "toast": {
+        "rejected": "Virement rejeté. La relance s'applique.",
+        "expired": "Virement marqué comme expiré. La relance s'applique."
+      }
     }
   },
   "deadLetters": {
@@ -464,6 +549,31 @@
         "kind": "Type",
         "key": "Nom dans Quotify",
         "empty": "Rien n'a encore été créé chez ce fournisseur."
+      },
+      "bank": {
+        "title": "Compte de virement bancaire",
+        "sandboxNote": "Les paiements du sandbox n'atteignent jamais ce fournisseur (le faux fournisseur de paiement s'en charge). Enregistrez le compte en live pour l'utiliser.",
+        "bankName": "Nom de la banque",
+        "accountHolder": "Titulaire du compte",
+        "iban": "IBAN",
+        "ibanHint": "Les espaces et les tirets sont retirés et les lettres mises en majuscules ; la clé de contrôle est vérifiée.",
+        "bic": "BIC (facultatif)",
+        "referenceTemplate": "Référence de paiement (facultatif)",
+        "referenceHint": "Ce que le client écrit sur le virement. {number} et {id} sont disponibles ; par défaut, le numéro de facture.",
+        "currencies": "Devises",
+        "currenciesHint": "Les devises que ce compte reçoit. Aucune cochée : toutes.",
+        "windowDays": "Délai de paiement (jours)",
+        "windowHint": "Combien de temps attendre l'argent, de 0 à 90. 0 ou vide utilise la valeur par défaut du déploiement.",
+        "errors": {
+          "required": "Obligatoire.",
+          "empty": "Obligatoire.",
+          "length": "Un IBAN compte de 15 à 34 caractères.",
+          "format": "Un IBAN, c'est deux lettres, deux chiffres, puis des lettres et des chiffres.",
+          "checksum": "La clé de contrôle ne correspond pas : cherchez une faute de frappe.",
+          "badBic": "Un BIC compte 8 ou 11 lettres et chiffres.",
+          "badTemplate": "Seuls {number} et {id} peuvent apparaître entre accolades.",
+          "badWindow": "Un nombre entier de jours de 0 à 90."
+        }
       }
     },
     "reports": {
@@ -585,25 +695,6 @@
       "refundFailed": "Remboursement échoué",
       "retryRefund": "Réessayer le remboursement"
     },
-    "mail": {
-      "title": "E-mail",
-      "hint": "Choisissez les types d'e-mails que Quotify envoie aux clients de ce locataire. Un type désactivé est ignoré, pas mis en file : le réactiver n'envoie pas ce qui a été sauté.",
-      "categories": {
-        "invoice_issued": "Facture émise",
-        "payment_receipts": "Reçus de paiement",
-        "payment_failed": "Paiement échoué",
-        "usage_alerts": "Alertes d'usage",
-        "system": "Système"
-      },
-      "descriptions": {
-        "invoice_issued": "Prévient le client qu'une nouvelle facture a été finalisée.",
-        "payment_receipts": "Le reçu après un paiement réussi.",
-        "payment_failed": "Un paiement échoué, une nouvelle tentative et l'avis que Quotify a renoncé à encaisser.",
-        "usage_alerts": "Un client a dépassé une limite d'usage de son offre.",
-        "system": "Tous les autres messages envoyés par Quotify."
-      },
-      "providerNote": "Un prestataire de paiement qui envoie ses propres reçus (Paddle) continue de les envoyer ; cet interrupteur ne commande que les e-mails de Quotify."
-    },
     "webhooks": {
       "title": "Webhooks",
       "hint": "Quotify envoie un POST JSON signé à ces points de terminaison HTTPS quand il se passe quelque chose dans le compte : une facture est payée, un avoir est émis, un abonnement change. Vérifiez l'en-tête Quotify-Signature avec le secret du point de terminaison ; les livraisons échouées sont retentées pendant environ un jour et demi.",
@@ -639,6 +730,105 @@
         "delivered": "Livré",
         "failed": "Échoué"
       }
+    },
+    "mail": {
+      "title": "E-mail",
+      "hint": "Choisissez les types d'e-mails que Quotify envoie aux clients de ce locataire. Un type désactivé est ignoré, pas mis en file : le réactiver n'envoie pas ce qui a été sauté.",
+      "categories": {
+        "invoice_issued": "Facture émise",
+        "payment_receipts": "Reçus de paiement",
+        "payment_failed": "Paiement échoué",
+        "usage_alerts": "Alertes d'usage",
+        "system": "Système"
+      },
+      "descriptions": {
+        "invoice_issued": "Prévient le client qu'une nouvelle facture a été finalisée.",
+        "payment_receipts": "Le reçu après un paiement réussi.",
+        "payment_failed": "Un paiement échoué, une nouvelle tentative et l'avis que Quotify a renoncé à encaisser.",
+        "usage_alerts": "Un client a dépassé une limite d'usage de son offre.",
+        "system": "Tous les autres messages envoyés par Quotify."
+      },
+      "providerNote": "Un prestataire de paiement qui envoie ses propres reçus (Paddle) continue de les envoyer ; cet interrupteur ne commande que les e-mails de Quotify."
+    }
+  },
+  "errors": {
+    "payments": {
+      "transfer": {
+        "not_a_transfer": "Cette facture n'a pas été prélevée par virement bancaire. Utilisez plutôt Enregistrer un paiement.",
+        "invoice_closed": "La facture est déjà payée ou annulée.",
+        "bad_amount": "Le montant doit être un nombre entier d'unités mineures supérieur à zéro.",
+        "bad_currency": "La devise diffère de celle de la facture.",
+        "overpayment": "C'est plus que le reste à payer. Enregistrez seulement le reste à payer et réglez le surplus en dehors de Quotify.",
+        "reference_reused": "Cette référence bancaire a déjà été enregistrée avec un autre montant.",
+        "bad_reference": "La référence bancaire est absente ou invalide.",
+        "bad_note": "La note est trop longue (500 caractères au maximum).",
+        "bad_date": "La date de réception est invalide ou dans le futur.",
+        "nothing_pending": "Aucun virement en attente à rejeter.",
+        "bad_outcome": "Le résultat doit être rejeté ou expiré.",
+        "unavailable": "Le service de paiement est indisponible pour le moment. Réessayez dans un instant."
+      }
+    },
+    "billing": {
+      "payment": {
+        "bad_method": "Le moyen doit être virement bancaire, espèces ou autre.",
+        "bad_amount": "Le montant doit être un nombre entier d'unités mineures supérieur à zéro.",
+        "bad_date": "La date de réception est invalide ou dans le futur.",
+        "overpayment": "C'est plus que le reste à payer. Enregistrez seulement le reste à payer.",
+        "already_paid": "La facture est déjà payée.",
+        "invoice_not_payable": "Seule une facture ouverte ou irrécouvrable peut être payée à la main.",
+        "not_payable": "L'état de paiement de la facture n'autorise pas de paiement manuel pour le moment.",
+        "reference_reused": "Cette référence a déjà été enregistrée avec un autre montant."
+      },
+      "credit_note": {
+        "bad_amount": "Le montant de l'avoir n'est pas valide : il doit être supérieur à zéro et ne pas dépasser ce qui reste à créditer sur la facture.",
+        "fully_credited": "Cette facture a déjà été entièrement créditée.",
+        "not_paid": "Seule une facture payée peut être créditée.",
+        "nothing_to_refund": "Il n'y a rien à rembourser sur la carte pour cet avoir.",
+        "refund_not_failed": "Seul un avoir dont le remboursement a échoué peut être relancé."
+      },
+      "dunning": {
+        "bad_delay": "Chaque délai de nouvelle tentative doit être compris entre 1 et 720 heures.",
+        "too_many_retries": "Au plus 6 délais de nouvelle tentative peuvent être définis."
+      },
+      "invoice": {
+        "not_found": "La facture est introuvable.",
+        "pdf_not_ready": "Le PDF de la facture n'est pas encore généré. Réessayez dans un instant."
+      },
+      "invoice_link": {
+        "bad_expiry": "Le lien doit expirer dans 1 à 365 jours.",
+        "draft_invoice": "Une facture brouillon ne peut pas être partagée par lien.",
+        "not_found": "Le lien de la facture est introuvable."
+      }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "Le code de l'app ne peut contenir que des minuscules, des chiffres et des tirets simples, et au plus 60 caractères.",
+        "slug_taken": "Ce compte a déjà une app avec ce code."
+      },
+      "mail": {
+        "unknown_category": "Cette catégorie d'e-mail n'existe pas."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "Cet abonnement a un coupon. Créditez plutôt la partie non utilisée avec un avoir sur la facture de l'abonnement."
+      },
+      "webhook": {
+        "not_configured": "Les webhooks ne sont pas configurés sur ce déploiement (la clé des secrets est absente).",
+        "too_many_endpoints": "La limite de points de terminaison webhook est atteinte. Supprimez-en un d'abord."
+      }
+    },
+    "common": {
+      "invalid_argument": "Un élément de la requête n'est pas valide.",
+      "not_found": "Introuvable.",
+      "already_exists": "Existe déjà.",
+      "failed_precondition": "Impossible dans l'état actuel.",
+      "permission_denied": "Vous n'avez pas le droit de faire cela.",
+      "unauthenticated": "Reconnectez-vous : le jeton est absent ou n'est plus valide.",
+      "rate_limited": "Trop de requêtes. Patientez un instant et réessayez.",
+      "unavailable": "Le service est indisponible pour le moment. Réessayez bientôt.",
+      "timeout": "La requête a pris trop de temps. Réessayez.",
+      "conflict": "Les données ont changé pendant votre travail. Rechargez et réessayez.",
+      "not_implemented": "Pas encore pris en charge.",
+      "internal": "Un problème est survenu de notre côté. Réessayez ; si cela persiste, cherchez dans les journaux avec l'identifiant de la requête."
     }
   },
   "apps": {
@@ -713,60 +903,6 @@
       "hint": "Voici comment le vendeur apparaît sur une facture.",
       "from": "De",
       "empty": "Aucune adresse : la facture n'affiche que le nom."
-    }
-  },
-  "errors": {
-    "billing": {
-      "credit_note": {
-        "bad_amount": "Le montant de l'avoir n'est pas valide : il doit être supérieur à zéro et ne pas dépasser ce qui reste à créditer sur la facture.",
-        "fully_credited": "Cette facture a déjà été entièrement créditée.",
-        "not_paid": "Seule une facture payée peut être créditée.",
-        "nothing_to_refund": "Il n'y a rien à rembourser sur la carte pour cet avoir.",
-        "refund_not_failed": "Seul un avoir dont le remboursement a échoué peut être relancé."
-      },
-      "dunning": {
-        "bad_delay": "Chaque délai de nouvelle tentative doit être compris entre 1 et 720 heures.",
-        "too_many_retries": "Au plus 6 délais de nouvelle tentative peuvent être définis."
-      },
-      "invoice": {
-        "not_found": "La facture est introuvable.",
-        "pdf_not_ready": "Le PDF de la facture n'est pas encore généré. Réessayez dans un instant."
-      },
-      "invoice_link": {
-        "bad_expiry": "Le lien doit expirer dans 1 à 365 jours.",
-        "draft_invoice": "Une facture brouillon ne peut pas être partagée par lien.",
-        "not_found": "Le lien de la facture est introuvable."
-      }
-    },
-    "plans": {
-      "app": {
-        "bad_slug": "Le code de l'app ne peut contenir que des minuscules, des chiffres et des tirets simples, et au plus 60 caractères.",
-        "slug_taken": "Ce compte a déjà une app avec ce code."
-      },
-      "mail": {
-        "unknown_category": "Cette catégorie d'e-mail n'existe pas."
-      },
-      "subscription": {
-        "coupon_blocks_credit": "Cet abonnement a un coupon. Créditez plutôt la partie non utilisée avec un avoir sur la facture de l'abonnement."
-      },
-      "webhook": {
-        "not_configured": "Les webhooks ne sont pas configurés sur ce déploiement (la clé des secrets est absente).",
-        "too_many_endpoints": "La limite de points de terminaison webhook est atteinte. Supprimez-en un d'abord."
-      }
-    },
-    "common": {
-      "invalid_argument": "Un élément de la requête n'est pas valide.",
-      "not_found": "Introuvable.",
-      "already_exists": "Existe déjà.",
-      "failed_precondition": "Impossible dans l'état actuel.",
-      "permission_denied": "Vous n'avez pas le droit de faire cela.",
-      "unauthenticated": "Reconnectez-vous : le jeton est absent ou n'est plus valide.",
-      "rate_limited": "Trop de requêtes. Patientez un instant et réessayez.",
-      "unavailable": "Le service est indisponible pour le moment. Réessayez bientôt.",
-      "timeout": "La requête a pris trop de temps. Réessayez.",
-      "conflict": "Les données ont changé pendant votre travail. Rechargez et réessayez.",
-      "not_implemented": "Pas encore pris en charge.",
-      "internal": "Un problème est survenu de notre côté. Réessayez ; si cela persiste, cherchez dans les journaux avec l'identifiant de la requête."
     }
   }
 }

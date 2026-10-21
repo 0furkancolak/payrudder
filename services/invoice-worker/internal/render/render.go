@@ -50,6 +50,37 @@ func latin1(tr func(string) string, s string) string {
 	return tr(b.String())
 }
 
+// groupIBAN writes an IBAN in blocks of four, the way bank documents print it.
+func groupIBAN(iban string) string {
+	var b strings.Builder
+	for i, c := range iban {
+		if i > 0 && i%4 == 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteRune(c)
+	}
+	return b.String()
+}
+
+// paymentInstructions prints where to send the money and what to write on the transfer, for an invoice paid by bank transfer.
+func paymentInstructions(pdf *fpdf.Fpdf, t func(string) string, in *commandsv1.PaymentInstructions) {
+	pdf.Ln(8)
+	pdf.SetFont("Helvetica", "B", 11)
+	pdf.CellFormat(0, 6, "Pay by bank transfer", "", 1, "L", false, 0, "")
+	pdf.SetFont("Helvetica", "", 10)
+	rows := [][2]string{{"Bank", in.GetBankName()}, {"Account holder", in.GetAccountHolder()}, {"IBAN", groupIBAN(in.GetIban())}, {"BIC / SWIFT", in.GetBic()},
+		{"Payment reference", in.GetReference()}}
+	for _, r := range rows {
+		if r[1] == "" {
+			continue
+		}
+		pdf.CellFormat(40, 6, r[0], "", 0, "L", false, 0, "")
+		pdf.CellFormat(0, 6, t(r[1]), "", 1, "L", false, 0, "")
+	}
+	pdf.SetFont("Helvetica", "I", 9)
+	pdf.CellFormat(0, 6, "Please write the payment reference on your transfer so that we can match it to this invoice.", "", 1, "L", false, 0, "")
+}
+
 // PDF renders the invoice.
 func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 	if inv.GetInvoiceId() == "" || inv.GetNumber() == "" || inv.GetCurrency() == "" || inv.GetCurrencyExponent() < 0 || inv.GetCurrencyExponent() > 3 {
@@ -144,6 +175,9 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 	pdf.SetFont("Helvetica", "B", 12)
 	pdf.CellFormat(140, 9, "Total", "", 0, "R", false, 0, "")
 	pdf.CellFormat(32, 9, t(money(inv.GetTotalMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
+	if in := inv.GetPaymentInstructions(); in.GetIban() != "" {
+		paymentInstructions(pdf, t, in)
+	}
 
 	var out bytes.Buffer
 	if err := pdf.Output(&out); err != nil {

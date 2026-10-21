@@ -11,6 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type ManualReceipt struct {
+	ID            int64
+	TenantID      uuid.UUID
+	InvoiceID     uuid.UUID
+	LedgerID      int64
+	BankReference string
+	AmountMinor   int64
+	Currency      string
+	ReceivedAt    time.Time
+	Note          *string
+	RecordedBy    string
+	RecordedAt    time.Time
+}
+
 type PaymentAttempt struct {
 	CommandID      uuid.UUID
 	TenantID       uuid.UUID

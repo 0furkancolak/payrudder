@@ -11,7 +11,7 @@ import (
 )
 
 type seen struct {
-	method, path, query, token, authorization, body string
+	method, path, query, token, authorization, body, actor string
 }
 
 func paymentsGateway(t *testing.T, token string) (*httptest.Server, *seen) {
@@ -19,7 +19,7 @@ func paymentsGateway(t *testing.T, token string) (*httptest.Server, *seen) {
 	got := &seen{}
 	worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
-		*got = seen{r.Method, r.URL.Path, r.URL.RawQuery, r.Header.Get("X-Internal-Token"), r.Header.Get("Authorization"), string(b)}
+		*got = seen{r.Method, r.URL.Path, r.URL.RawQuery, r.Header.Get("X-Internal-Token"), r.Header.Get("Authorization"), string(b), r.Header.Get("X-Quotify-Actor")}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(w, `{"ok":true}`)
 	}))
@@ -77,6 +77,27 @@ func TestProviderAccountRoutesNeedTheOperatorAndAreRewritten(t *testing.T) {
 	do(t, ts, "GET", "/admin/v1/tenants/"+tenantID+"/ledger?limit=5", operatorToken, "")
 	if got.path != "/admin/tenants/"+tenantID+"/ledger" || got.query != "limit=5" {
 		t.Errorf("ledger: worker saw %+v", *got)
+	}
+}
+
+func TestTransferRoutesAreOperatorOnlyAndForwardedWithTheActor(t *testing.T) {
+	ts, got := paymentsGateway(t, "internal-secret")
+	base := "/admin/v1/tenants/0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e/invoices/0192f0b4-0000-7c3a-9a3e-6a1f2b3c4d5e/transfer"
+	if resp, _ := do(t, ts, "POST", base+"/receipts", "live-key", `{}`); resp.StatusCode != 401 || got.method != "" {
+		t.Fatalf("a tenant key reached the worker: %d %+v", resp.StatusCode, *got)
+	}
+	for _, c := range []struct{ method, tail, body string }{{"GET", "", ""}, {"POST", "/receipts", `{"amount_minor":1}`}, {"POST", "/reject", `{"outcome":"expired"}`}} {
+		req, _ := http.NewRequest(c.method, ts.URL+base+c.tail, strings.NewReader(c.body))
+		req.Header.Set("Authorization", "Bearer "+operatorToken)
+		req.Header.Set("X-Quotify-Actor", "alice@example.com")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			t.Fatalf("%s %s: %v %v", c.method, c.tail, resp, err)
+		}
+		_ = resp.Body.Close()
+		if got.method != c.method || got.path != strings.Replace(base, "/admin/v1", "/admin", 1)+c.tail || got.body != c.body || got.token != "internal-secret" || got.authorization != "" || got.actor != "alice@example.com" {
+			t.Errorf("%s %s: worker saw %+v", c.method, c.tail, *got)
+		}
 	}
 }
 

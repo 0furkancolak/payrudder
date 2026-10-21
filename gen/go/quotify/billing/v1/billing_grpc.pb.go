@@ -775,6 +775,7 @@ const (
 	BillingAdminService_GetBillingRun_FullMethodName         = "/quotify.billing.v1.BillingAdminService/GetBillingRun"
 	BillingAdminService_RetryInvoiceSaga_FullMethodName      = "/quotify.billing.v1.BillingAdminService/RetryInvoiceSaga"
 	BillingAdminService_VoidInvoice_FullMethodName           = "/quotify.billing.v1.BillingAdminService/VoidInvoice"
+	BillingAdminService_RecordInvoicePayment_FullMethodName  = "/quotify.billing.v1.BillingAdminService/RecordInvoicePayment"
 	BillingAdminService_CreateCreditNote_FullMethodName      = "/quotify.billing.v1.BillingAdminService/CreateCreditNote"
 	BillingAdminService_RetryCreditNoteRefund_FullMethodName = "/quotify.billing.v1.BillingAdminService/RetryCreditNoteRefund"
 	BillingAdminService_StartRerating_FullMethodName         = "/quotify.billing.v1.BillingAdminService/StartRerating"
@@ -797,6 +798,10 @@ type BillingAdminServiceClient interface {
 	RetryInvoiceSaga(ctx context.Context, in *RetryInvoiceSagaRequest, opts ...grpc.CallOption) (*RetryInvoiceSagaResponse, error)
 	// VoidInvoice voids an invoice, refunding it first if it was paid.
 	VoidInvoice(ctx context.Context, in *VoidInvoiceRequest, opts ...grpc.CallOption) (*VoidInvoiceResponse, error)
+	// RecordInvoicePayment records money received outside a payment provider (a bank transfer, cash, other) against an open or uncollectible invoice. Partial
+	// payments are recorded; the invoice is paid when they add up to the total. More than is outstanding is refused. Idempotent per (invoice, method, reference)
+	// when a reference is given.
+	RecordInvoicePayment(ctx context.Context, in *RecordInvoicePaymentRequest, opts ...grpc.CallOption) (*RecordInvoicePaymentResponse, error)
 	// CreateCreditNote corrects a paid invoice without editing it: a numbered credit note whose amount is added to the customer's credit balance, which pays their
 	// next invoice in that currency. The notes of an invoice never add up to more than the invoice.
 	CreateCreditNote(ctx context.Context, in *CreateCreditNoteRequest, opts ...grpc.CallOption) (*CreateCreditNoteResponse, error)
@@ -857,6 +862,16 @@ func (c *billingAdminServiceClient) VoidInvoice(ctx context.Context, in *VoidInv
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(VoidInvoiceResponse)
 	err := c.cc.Invoke(ctx, BillingAdminService_VoidInvoice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingAdminServiceClient) RecordInvoicePayment(ctx context.Context, in *RecordInvoicePaymentRequest, opts ...grpc.CallOption) (*RecordInvoicePaymentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RecordInvoicePaymentResponse)
+	err := c.cc.Invoke(ctx, BillingAdminService_RecordInvoicePayment_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -946,6 +961,10 @@ type BillingAdminServiceServer interface {
 	RetryInvoiceSaga(context.Context, *RetryInvoiceSagaRequest) (*RetryInvoiceSagaResponse, error)
 	// VoidInvoice voids an invoice, refunding it first if it was paid.
 	VoidInvoice(context.Context, *VoidInvoiceRequest) (*VoidInvoiceResponse, error)
+	// RecordInvoicePayment records money received outside a payment provider (a bank transfer, cash, other) against an open or uncollectible invoice. Partial
+	// payments are recorded; the invoice is paid when they add up to the total. More than is outstanding is refused. Idempotent per (invoice, method, reference)
+	// when a reference is given.
+	RecordInvoicePayment(context.Context, *RecordInvoicePaymentRequest) (*RecordInvoicePaymentResponse, error)
 	// CreateCreditNote corrects a paid invoice without editing it: a numbered credit note whose amount is added to the customer's credit balance, which pays their
 	// next invoice in that currency. The notes of an invoice never add up to more than the invoice.
 	CreateCreditNote(context.Context, *CreateCreditNoteRequest) (*CreateCreditNoteResponse, error)
@@ -983,6 +1002,9 @@ func (UnimplementedBillingAdminServiceServer) RetryInvoiceSaga(context.Context, 
 }
 func (UnimplementedBillingAdminServiceServer) VoidInvoice(context.Context, *VoidInvoiceRequest) (*VoidInvoiceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method VoidInvoice not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) RecordInvoicePayment(context.Context, *RecordInvoicePaymentRequest) (*RecordInvoicePaymentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RecordInvoicePayment not implemented")
 }
 func (UnimplementedBillingAdminServiceServer) CreateCreditNote(context.Context, *CreateCreditNoteRequest) (*CreateCreditNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateCreditNote not implemented")
@@ -1094,6 +1116,24 @@ func _BillingAdminService_VoidInvoice_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BillingAdminServiceServer).VoidInvoice(ctx, req.(*VoidInvoiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingAdminService_RecordInvoicePayment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecordInvoicePaymentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).RecordInvoicePayment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_RecordInvoicePayment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).RecordInvoicePayment(ctx, req.(*RecordInvoicePaymentRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1246,6 +1286,10 @@ var BillingAdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VoidInvoice",
 			Handler:    _BillingAdminService_VoidInvoice_Handler,
+		},
+		{
+			MethodName: "RecordInvoicePayment",
+			Handler:    _BillingAdminService_RecordInvoicePayment_Handler,
 		},
 		{
 			MethodName: "CreateCreditNote",

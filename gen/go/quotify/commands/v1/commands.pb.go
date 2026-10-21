@@ -31,6 +31,8 @@ const (
 	PaymentStatus_STATE_NOT_FOUND PaymentStatus_State = 1
 	PaymentStatus_STATE_SUCCEEDED PaymentStatus_State = 2
 	PaymentStatus_STATE_DECLINED  PaymentStatus_State = 3
+	// The charge was accepted but has not settled (a bank transfer that has not arrived yet). Ask again later.
+	PaymentStatus_STATE_PENDING PaymentStatus_State = 4
 )
 
 // Enum value maps for PaymentStatus_State.
@@ -40,12 +42,14 @@ var (
 		1: "STATE_NOT_FOUND",
 		2: "STATE_SUCCEEDED",
 		3: "STATE_DECLINED",
+		4: "STATE_PENDING",
 	}
 	PaymentStatus_State_value = map[string]int32{
 		"STATE_UNSPECIFIED": 0,
 		"STATE_NOT_FOUND":   1,
 		"STATE_SUCCEEDED":   2,
 		"STATE_DECLINED":    3,
+		"STATE_PENDING":     4,
 	}
 )
 
@@ -73,7 +77,7 @@ func (x PaymentStatus_State) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PaymentStatus_State.Descriptor instead.
 func (PaymentStatus_State) EnumDescriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{15, 0}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{16, 0}
 }
 
 // CommandEnvelope is a command from billing-svc to a worker, published to the billing.commands exchange.
@@ -580,8 +584,10 @@ type InvoiceSnapshot struct {
 	// The seller's and the customer's postal address as printed lines (empty when none was entered).
 	SellerAddressLines   []string `protobuf:"bytes,15,rep,name=seller_address_lines,json=sellerAddressLines,proto3" json:"seller_address_lines,omitempty"`
 	CustomerAddressLines []string `protobuf:"bytes,16,rep,name=customer_address_lines,json=customerAddressLines,proto3" json:"customer_address_lines,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Where and how to pay, for an invoice whose provider is a bank transfer; unset otherwise.
+	PaymentInstructions *PaymentInstructions `protobuf:"bytes,17,opt,name=payment_instructions,json=paymentInstructions,proto3" json:"payment_instructions,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *InvoiceSnapshot) Reset() {
@@ -726,6 +732,91 @@ func (x *InvoiceSnapshot) GetCustomerAddressLines() []string {
 	return nil
 }
 
+func (x *InvoiceSnapshot) GetPaymentInstructions() *PaymentInstructions {
+	if x != nil {
+		return x.PaymentInstructions
+	}
+	return nil
+}
+
+// PaymentInstructions are the tenant's bank details and the reference the customer puts on the transfer.
+type PaymentInstructions struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BankName      string                 `protobuf:"bytes,1,opt,name=bank_name,json=bankName,proto3" json:"bank_name,omitempty"`
+	AccountHolder string                 `protobuf:"bytes,2,opt,name=account_holder,json=accountHolder,proto3" json:"account_holder,omitempty"`
+	// Normalised: capitals, no spaces.
+	Iban          string `protobuf:"bytes,3,opt,name=iban,proto3" json:"iban,omitempty"`
+	Bic           string `protobuf:"bytes,4,opt,name=bic,proto3" json:"bic,omitempty"`
+	Reference     string `protobuf:"bytes,5,opt,name=reference,proto3" json:"reference,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PaymentInstructions) Reset() {
+	*x = PaymentInstructions{}
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PaymentInstructions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PaymentInstructions) ProtoMessage() {}
+
+func (x *PaymentInstructions) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PaymentInstructions.ProtoReflect.Descriptor instead.
+func (*PaymentInstructions) Descriptor() ([]byte, []int) {
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *PaymentInstructions) GetBankName() string {
+	if x != nil {
+		return x.BankName
+	}
+	return ""
+}
+
+func (x *PaymentInstructions) GetAccountHolder() string {
+	if x != nil {
+		return x.AccountHolder
+	}
+	return ""
+}
+
+func (x *PaymentInstructions) GetIban() string {
+	if x != nil {
+		return x.Iban
+	}
+	return ""
+}
+
+func (x *PaymentInstructions) GetBic() string {
+	if x != nil {
+		return x.Bic
+	}
+	return ""
+}
+
+func (x *PaymentInstructions) GetReference() string {
+	if x != nil {
+		return x.Reference
+	}
+	return ""
+}
+
 type RenderInvoicePdf struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Invoice       *InvoiceSnapshot       `protobuf:"bytes,1,opt,name=invoice,proto3" json:"invoice,omitempty"`
@@ -735,7 +826,7 @@ type RenderInvoicePdf struct {
 
 func (x *RenderInvoicePdf) Reset() {
 	*x = RenderInvoicePdf{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[4]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -747,7 +838,7 @@ func (x *RenderInvoicePdf) String() string {
 func (*RenderInvoicePdf) ProtoMessage() {}
 
 func (x *RenderInvoicePdf) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[4]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -760,7 +851,7 @@ func (x *RenderInvoicePdf) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenderInvoicePdf.ProtoReflect.Descriptor instead.
 func (*RenderInvoicePdf) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{4}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *RenderInvoicePdf) GetInvoice() *InvoiceSnapshot {
@@ -782,14 +873,16 @@ type ChargePayment struct {
 	// invoice_id:charge:dunning_attempt. Stable across retries of the same charge, so the PSP never charges twice.
 	IdempotencyKey string `protobuf:"bytes,6,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	// The payment provider of the customer's subscription. Empty means the tenant's default provider account.
-	Provider      string `protobuf:"bytes,7,opt,name=provider,proto3" json:"provider,omitempty"`
+	Provider string `protobuf:"bytes,7,opt,name=provider,proto3" json:"provider,omitempty"`
+	// The number of the invoice, for providers that print a payment reference on it (a bank transfer).
+	InvoiceNumber string `protobuf:"bytes,8,opt,name=invoice_number,json=invoiceNumber,proto3" json:"invoice_number,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChargePayment) Reset() {
 	*x = ChargePayment{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[5]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -801,7 +894,7 @@ func (x *ChargePayment) String() string {
 func (*ChargePayment) ProtoMessage() {}
 
 func (x *ChargePayment) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[5]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -814,7 +907,7 @@ func (x *ChargePayment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChargePayment.ProtoReflect.Descriptor instead.
 func (*ChargePayment) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{5}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ChargePayment) GetInvoiceId() string {
@@ -866,6 +959,13 @@ func (x *ChargePayment) GetProvider() string {
 	return ""
 }
 
+func (x *ChargePayment) GetInvoiceNumber() string {
+	if x != nil {
+		return x.InvoiceNumber
+	}
+	return ""
+}
+
 type RefundPayment struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	InvoiceId      string                 `protobuf:"bytes,1,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
@@ -879,7 +979,7 @@ type RefundPayment struct {
 
 func (x *RefundPayment) Reset() {
 	*x = RefundPayment{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[6]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -891,7 +991,7 @@ func (x *RefundPayment) String() string {
 func (*RefundPayment) ProtoMessage() {}
 
 func (x *RefundPayment) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[6]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -904,7 +1004,7 @@ func (x *RefundPayment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefundPayment.ProtoReflect.Descriptor instead.
 func (*RefundPayment) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{6}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RefundPayment) GetInvoiceId() string {
@@ -953,7 +1053,7 @@ type QueryPaymentStatus struct {
 
 func (x *QueryPaymentStatus) Reset() {
 	*x = QueryPaymentStatus{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[7]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -965,7 +1065,7 @@ func (x *QueryPaymentStatus) String() string {
 func (*QueryPaymentStatus) ProtoMessage() {}
 
 func (x *QueryPaymentStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[7]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -978,7 +1078,7 @@ func (x *QueryPaymentStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryPaymentStatus.ProtoReflect.Descriptor instead.
 func (*QueryPaymentStatus) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{7}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *QueryPaymentStatus) GetInvoiceId() string {
@@ -1007,7 +1107,7 @@ type SendNotification struct {
 
 func (x *SendNotification) Reset() {
 	*x = SendNotification{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[8]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1019,7 +1119,7 @@ func (x *SendNotification) String() string {
 func (*SendNotification) ProtoMessage() {}
 
 func (x *SendNotification) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[8]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1032,7 +1132,7 @@ func (x *SendNotification) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendNotification.ProtoReflect.Descriptor instead.
 func (*SendNotification) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{8}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SendNotification) GetTemplate() string {
@@ -1067,7 +1167,7 @@ type PdfRendered struct {
 
 func (x *PdfRendered) Reset() {
 	*x = PdfRendered{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[9]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1079,7 +1179,7 @@ func (x *PdfRendered) String() string {
 func (*PdfRendered) ProtoMessage() {}
 
 func (x *PdfRendered) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[9]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1092,7 +1192,7 @@ func (x *PdfRendered) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PdfRendered.ProtoReflect.Descriptor instead.
 func (*PdfRendered) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{9}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PdfRendered) GetObjectKey() string {
@@ -1125,7 +1225,7 @@ type PdfFailed struct {
 
 func (x *PdfFailed) Reset() {
 	*x = PdfFailed{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[10]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1137,7 +1237,7 @@ func (x *PdfFailed) String() string {
 func (*PdfFailed) ProtoMessage() {}
 
 func (x *PdfFailed) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[10]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1150,7 +1250,7 @@ func (x *PdfFailed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PdfFailed.ProtoReflect.Descriptor instead.
 func (*PdfFailed) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{10}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *PdfFailed) GetReason() string {
@@ -1169,7 +1269,7 @@ type PaymentSucceeded struct {
 
 func (x *PaymentSucceeded) Reset() {
 	*x = PaymentSucceeded{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[11]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1181,7 +1281,7 @@ func (x *PaymentSucceeded) String() string {
 func (*PaymentSucceeded) ProtoMessage() {}
 
 func (x *PaymentSucceeded) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[11]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1194,7 +1294,7 @@ func (x *PaymentSucceeded) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaymentSucceeded.ProtoReflect.Descriptor instead.
 func (*PaymentSucceeded) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{11}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *PaymentSucceeded) GetPspChargeId() string {
@@ -1213,7 +1313,7 @@ type PaymentDeclined struct {
 
 func (x *PaymentDeclined) Reset() {
 	*x = PaymentDeclined{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[12]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1225,7 +1325,7 @@ func (x *PaymentDeclined) String() string {
 func (*PaymentDeclined) ProtoMessage() {}
 
 func (x *PaymentDeclined) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[12]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1238,7 +1338,7 @@ func (x *PaymentDeclined) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaymentDeclined.ProtoReflect.Descriptor instead.
 func (*PaymentDeclined) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{12}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PaymentDeclined) GetDeclineCode() string {
@@ -1259,7 +1359,7 @@ type PaymentErrored struct {
 
 func (x *PaymentErrored) Reset() {
 	*x = PaymentErrored{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[13]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1271,7 +1371,7 @@ func (x *PaymentErrored) String() string {
 func (*PaymentErrored) ProtoMessage() {}
 
 func (x *PaymentErrored) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[13]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1284,7 +1384,7 @@ func (x *PaymentErrored) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaymentErrored.ProtoReflect.Descriptor instead.
 func (*PaymentErrored) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{13}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *PaymentErrored) GetRetryable() bool {
@@ -1317,7 +1417,7 @@ type PaymentRefunded struct {
 
 func (x *PaymentRefunded) Reset() {
 	*x = PaymentRefunded{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[14]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1329,7 +1429,7 @@ func (x *PaymentRefunded) String() string {
 func (*PaymentRefunded) ProtoMessage() {}
 
 func (x *PaymentRefunded) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[14]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1342,7 +1442,7 @@ func (x *PaymentRefunded) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaymentRefunded.ProtoReflect.Descriptor instead.
 func (*PaymentRefunded) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{14}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PaymentRefunded) GetPspRefundId() string {
@@ -1363,7 +1463,7 @@ type PaymentStatus struct {
 
 func (x *PaymentStatus) Reset() {
 	*x = PaymentStatus{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[15]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1375,7 +1475,7 @@ func (x *PaymentStatus) String() string {
 func (*PaymentStatus) ProtoMessage() {}
 
 func (x *PaymentStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[15]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1388,7 +1488,7 @@ func (x *PaymentStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaymentStatus.ProtoReflect.Descriptor instead.
 func (*PaymentStatus) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{15}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PaymentStatus) GetState() PaymentStatus_State {
@@ -1424,7 +1524,7 @@ type NotificationSent struct {
 
 func (x *NotificationSent) Reset() {
 	*x = NotificationSent{}
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[16]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1436,7 +1536,7 @@ func (x *NotificationSent) String() string {
 func (*NotificationSent) ProtoMessage() {}
 
 func (x *NotificationSent) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_commands_v1_commands_proto_msgTypes[16]
+	mi := &file_quotify_commands_v1_commands_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1449,7 +1549,7 @@ func (x *NotificationSent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotificationSent.ProtoReflect.Descriptor instead.
 func (*NotificationSent) Descriptor() ([]byte, []int) {
-	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{16}
+	return file_quotify_commands_v1_commands_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *NotificationSent) GetMessageId() string {
@@ -1510,7 +1610,7 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"\bquantity\x18\x04 \x01(\tR\bquantity\x12\x1d\n" +
 	"\n" +
 	"unit_label\x18\x05 \x01(\tR\tunitLabel\x12!\n" +
-	"\famount_minor\x18\x06 \x01(\x03R\vamountMinor\"\x86\x05\n" +
+	"\famount_minor\x18\x06 \x01(\x03R\vamountMinor\"\xe3\x05\n" +
 	"\x0fInvoiceSnapshot\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12\x18\n" +
@@ -1531,9 +1631,16 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"totalMinor\x12&\n" +
 	"\x0flogo_object_key\x18\x0e \x01(\tR\rlogoObjectKey\x120\n" +
 	"\x14seller_address_lines\x18\x0f \x03(\tR\x12sellerAddressLines\x124\n" +
-	"\x16customer_address_lines\x18\x10 \x03(\tR\x14customerAddressLines\"R\n" +
+	"\x16customer_address_lines\x18\x10 \x03(\tR\x14customerAddressLines\x12[\n" +
+	"\x14payment_instructions\x18\x11 \x01(\v2(.quotify.commands.v1.PaymentInstructionsR\x13paymentInstructions\"\x9d\x01\n" +
+	"\x13PaymentInstructions\x12\x1b\n" +
+	"\tbank_name\x18\x01 \x01(\tR\bbankName\x12%\n" +
+	"\x0eaccount_holder\x18\x02 \x01(\tR\raccountHolder\x12\x12\n" +
+	"\x04iban\x18\x03 \x01(\tR\x04iban\x12\x10\n" +
+	"\x03bic\x18\x04 \x01(\tR\x03bic\x12\x1c\n" +
+	"\treference\x18\x05 \x01(\tR\treference\"R\n" +
 	"\x10RenderInvoicePdf\x12>\n" +
-	"\ainvoice\x18\x01 \x01(\v2$.quotify.commands.v1.InvoiceSnapshotR\ainvoice\"\x82\x02\n" +
+	"\ainvoice\x18\x01 \x01(\v2$.quotify.commands.v1.InvoiceSnapshotR\ainvoice\"\xa9\x02\n" +
 	"\rChargePayment\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12!\n" +
@@ -1542,7 +1649,8 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"\x0epayment_method\x18\x04 \x01(\tR\rpaymentMethod\x12'\n" +
 	"\x0fdunning_attempt\x18\x05 \x01(\x05R\x0edunningAttempt\x12'\n" +
 	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\x12\x1a\n" +
-	"\bprovider\x18\a \x01(\tR\bprovider\"\xba\x01\n" +
+	"\bprovider\x18\a \x01(\tR\bprovider\x12%\n" +
+	"\x0einvoice_number\x18\b \x01(\tR\rinvoiceNumber\"\xba\x01\n" +
 	"\rRefundPayment\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12!\n" +
@@ -1578,16 +1686,17 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\"5\n" +
 	"\x0fPaymentRefunded\x12\"\n" +
-	"\rpsp_refund_id\x18\x01 \x01(\tR\vpspRefundId\"\xf4\x01\n" +
+	"\rpsp_refund_id\x18\x01 \x01(\tR\vpspRefundId\"\x87\x02\n" +
 	"\rPaymentStatus\x12>\n" +
 	"\x05state\x18\x01 \x01(\x0e2(.quotify.commands.v1.PaymentStatus.StateR\x05state\x12\"\n" +
 	"\rpsp_charge_id\x18\x02 \x01(\tR\vpspChargeId\x12!\n" +
-	"\fdecline_code\x18\x03 \x01(\tR\vdeclineCode\"\\\n" +
+	"\fdecline_code\x18\x03 \x01(\tR\vdeclineCode\"o\n" +
 	"\x05State\x12\x15\n" +
 	"\x11STATE_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fSTATE_NOT_FOUND\x10\x01\x12\x13\n" +
 	"\x0fSTATE_SUCCEEDED\x10\x02\x12\x12\n" +
-	"\x0eSTATE_DECLINED\x10\x03\"Q\n" +
+	"\x0eSTATE_DECLINED\x10\x03\x12\x11\n" +
+	"\rSTATE_PENDING\x10\x04\"Q\n" +
 	"\x10NotificationSent\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x1e\n" +
@@ -1609,56 +1718,58 @@ func file_quotify_commands_v1_commands_proto_rawDescGZIP() []byte {
 }
 
 var file_quotify_commands_v1_commands_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_quotify_commands_v1_commands_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_quotify_commands_v1_commands_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_quotify_commands_v1_commands_proto_goTypes = []any{
 	(PaymentStatus_State)(0),      // 0: quotify.commands.v1.PaymentStatus.State
 	(*CommandEnvelope)(nil),       // 1: quotify.commands.v1.CommandEnvelope
 	(*ReplyEnvelope)(nil),         // 2: quotify.commands.v1.ReplyEnvelope
 	(*InvoiceLineSnapshot)(nil),   // 3: quotify.commands.v1.InvoiceLineSnapshot
 	(*InvoiceSnapshot)(nil),       // 4: quotify.commands.v1.InvoiceSnapshot
-	(*RenderInvoicePdf)(nil),      // 5: quotify.commands.v1.RenderInvoicePdf
-	(*ChargePayment)(nil),         // 6: quotify.commands.v1.ChargePayment
-	(*RefundPayment)(nil),         // 7: quotify.commands.v1.RefundPayment
-	(*QueryPaymentStatus)(nil),    // 8: quotify.commands.v1.QueryPaymentStatus
-	(*SendNotification)(nil),      // 9: quotify.commands.v1.SendNotification
-	(*PdfRendered)(nil),           // 10: quotify.commands.v1.PdfRendered
-	(*PdfFailed)(nil),             // 11: quotify.commands.v1.PdfFailed
-	(*PaymentSucceeded)(nil),      // 12: quotify.commands.v1.PaymentSucceeded
-	(*PaymentDeclined)(nil),       // 13: quotify.commands.v1.PaymentDeclined
-	(*PaymentErrored)(nil),        // 14: quotify.commands.v1.PaymentErrored
-	(*PaymentRefunded)(nil),       // 15: quotify.commands.v1.PaymentRefunded
-	(*PaymentStatus)(nil),         // 16: quotify.commands.v1.PaymentStatus
-	(*NotificationSent)(nil),      // 17: quotify.commands.v1.NotificationSent
-	nil,                           // 18: quotify.commands.v1.SendNotification.DataEntry
-	(*timestamppb.Timestamp)(nil), // 19: google.protobuf.Timestamp
-	(v1.Environment)(0),           // 20: quotify.plans.v1.Environment
+	(*PaymentInstructions)(nil),   // 5: quotify.commands.v1.PaymentInstructions
+	(*RenderInvoicePdf)(nil),      // 6: quotify.commands.v1.RenderInvoicePdf
+	(*ChargePayment)(nil),         // 7: quotify.commands.v1.ChargePayment
+	(*RefundPayment)(nil),         // 8: quotify.commands.v1.RefundPayment
+	(*QueryPaymentStatus)(nil),    // 9: quotify.commands.v1.QueryPaymentStatus
+	(*SendNotification)(nil),      // 10: quotify.commands.v1.SendNotification
+	(*PdfRendered)(nil),           // 11: quotify.commands.v1.PdfRendered
+	(*PdfFailed)(nil),             // 12: quotify.commands.v1.PdfFailed
+	(*PaymentSucceeded)(nil),      // 13: quotify.commands.v1.PaymentSucceeded
+	(*PaymentDeclined)(nil),       // 14: quotify.commands.v1.PaymentDeclined
+	(*PaymentErrored)(nil),        // 15: quotify.commands.v1.PaymentErrored
+	(*PaymentRefunded)(nil),       // 16: quotify.commands.v1.PaymentRefunded
+	(*PaymentStatus)(nil),         // 17: quotify.commands.v1.PaymentStatus
+	(*NotificationSent)(nil),      // 18: quotify.commands.v1.NotificationSent
+	nil,                           // 19: quotify.commands.v1.SendNotification.DataEntry
+	(*timestamppb.Timestamp)(nil), // 20: google.protobuf.Timestamp
+	(v1.Environment)(0),           // 21: quotify.plans.v1.Environment
 }
 var file_quotify_commands_v1_commands_proto_depIdxs = []int32{
-	19, // 0: quotify.commands.v1.CommandEnvelope.issued_at:type_name -> google.protobuf.Timestamp
-	20, // 1: quotify.commands.v1.CommandEnvelope.environment:type_name -> quotify.plans.v1.Environment
-	5,  // 2: quotify.commands.v1.CommandEnvelope.render_invoice_pdf:type_name -> quotify.commands.v1.RenderInvoicePdf
-	6,  // 3: quotify.commands.v1.CommandEnvelope.charge_payment:type_name -> quotify.commands.v1.ChargePayment
-	7,  // 4: quotify.commands.v1.CommandEnvelope.refund_payment:type_name -> quotify.commands.v1.RefundPayment
-	8,  // 5: quotify.commands.v1.CommandEnvelope.query_payment_status:type_name -> quotify.commands.v1.QueryPaymentStatus
-	9,  // 6: quotify.commands.v1.CommandEnvelope.send_notification:type_name -> quotify.commands.v1.SendNotification
-	10, // 7: quotify.commands.v1.ReplyEnvelope.pdf_rendered:type_name -> quotify.commands.v1.PdfRendered
-	11, // 8: quotify.commands.v1.ReplyEnvelope.pdf_failed:type_name -> quotify.commands.v1.PdfFailed
-	12, // 9: quotify.commands.v1.ReplyEnvelope.payment_succeeded:type_name -> quotify.commands.v1.PaymentSucceeded
-	13, // 10: quotify.commands.v1.ReplyEnvelope.payment_declined:type_name -> quotify.commands.v1.PaymentDeclined
-	14, // 11: quotify.commands.v1.ReplyEnvelope.payment_errored:type_name -> quotify.commands.v1.PaymentErrored
-	15, // 12: quotify.commands.v1.ReplyEnvelope.payment_refunded:type_name -> quotify.commands.v1.PaymentRefunded
-	16, // 13: quotify.commands.v1.ReplyEnvelope.payment_status:type_name -> quotify.commands.v1.PaymentStatus
-	17, // 14: quotify.commands.v1.ReplyEnvelope.notification_sent:type_name -> quotify.commands.v1.NotificationSent
-	19, // 15: quotify.commands.v1.InvoiceSnapshot.issued_at:type_name -> google.protobuf.Timestamp
+	20, // 0: quotify.commands.v1.CommandEnvelope.issued_at:type_name -> google.protobuf.Timestamp
+	21, // 1: quotify.commands.v1.CommandEnvelope.environment:type_name -> quotify.plans.v1.Environment
+	6,  // 2: quotify.commands.v1.CommandEnvelope.render_invoice_pdf:type_name -> quotify.commands.v1.RenderInvoicePdf
+	7,  // 3: quotify.commands.v1.CommandEnvelope.charge_payment:type_name -> quotify.commands.v1.ChargePayment
+	8,  // 4: quotify.commands.v1.CommandEnvelope.refund_payment:type_name -> quotify.commands.v1.RefundPayment
+	9,  // 5: quotify.commands.v1.CommandEnvelope.query_payment_status:type_name -> quotify.commands.v1.QueryPaymentStatus
+	10, // 6: quotify.commands.v1.CommandEnvelope.send_notification:type_name -> quotify.commands.v1.SendNotification
+	11, // 7: quotify.commands.v1.ReplyEnvelope.pdf_rendered:type_name -> quotify.commands.v1.PdfRendered
+	12, // 8: quotify.commands.v1.ReplyEnvelope.pdf_failed:type_name -> quotify.commands.v1.PdfFailed
+	13, // 9: quotify.commands.v1.ReplyEnvelope.payment_succeeded:type_name -> quotify.commands.v1.PaymentSucceeded
+	14, // 10: quotify.commands.v1.ReplyEnvelope.payment_declined:type_name -> quotify.commands.v1.PaymentDeclined
+	15, // 11: quotify.commands.v1.ReplyEnvelope.payment_errored:type_name -> quotify.commands.v1.PaymentErrored
+	16, // 12: quotify.commands.v1.ReplyEnvelope.payment_refunded:type_name -> quotify.commands.v1.PaymentRefunded
+	17, // 13: quotify.commands.v1.ReplyEnvelope.payment_status:type_name -> quotify.commands.v1.PaymentStatus
+	18, // 14: quotify.commands.v1.ReplyEnvelope.notification_sent:type_name -> quotify.commands.v1.NotificationSent
+	20, // 15: quotify.commands.v1.InvoiceSnapshot.issued_at:type_name -> google.protobuf.Timestamp
 	3,  // 16: quotify.commands.v1.InvoiceSnapshot.lines:type_name -> quotify.commands.v1.InvoiceLineSnapshot
-	4,  // 17: quotify.commands.v1.RenderInvoicePdf.invoice:type_name -> quotify.commands.v1.InvoiceSnapshot
-	18, // 18: quotify.commands.v1.SendNotification.data:type_name -> quotify.commands.v1.SendNotification.DataEntry
-	0,  // 19: quotify.commands.v1.PaymentStatus.state:type_name -> quotify.commands.v1.PaymentStatus.State
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	5,  // 17: quotify.commands.v1.InvoiceSnapshot.payment_instructions:type_name -> quotify.commands.v1.PaymentInstructions
+	4,  // 18: quotify.commands.v1.RenderInvoicePdf.invoice:type_name -> quotify.commands.v1.InvoiceSnapshot
+	19, // 19: quotify.commands.v1.SendNotification.data:type_name -> quotify.commands.v1.SendNotification.DataEntry
+	0,  // 20: quotify.commands.v1.PaymentStatus.state:type_name -> quotify.commands.v1.PaymentStatus.State
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_quotify_commands_v1_commands_proto_init() }
@@ -1689,7 +1800,7 @@ func file_quotify_commands_v1_commands_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_commands_v1_commands_proto_rawDesc), len(file_quotify_commands_v1_commands_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   18,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

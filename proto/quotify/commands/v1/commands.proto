@@ -78,6 +78,18 @@ message InvoiceSnapshot {
   // The seller's and the customer's postal address as printed lines (empty when none was entered).
   repeated string seller_address_lines = 15;
   repeated string customer_address_lines = 16;
+  // Where and how to pay, for an invoice whose provider is a bank transfer; unset otherwise.
+  PaymentInstructions payment_instructions = 17;
+}
+
+// PaymentInstructions are the tenant's bank details and the reference the customer puts on the transfer.
+message PaymentInstructions {
+  string bank_name = 1;
+  string account_holder = 2;
+  // Normalised: capitals, no spaces.
+  string iban = 3;
+  string bic = 4;
+  string reference = 5;
 }
 
 message RenderInvoicePdf {
@@ -96,6 +108,8 @@ message ChargePayment {
   string idempotency_key = 6;
   // The payment provider of the customer's subscription. Empty means the tenant's default provider account.
   string provider = 7;
+  // The number of the invoice, for providers that print a payment reference on it (a bank transfer).
+  string invoice_number = 8;
 }
 
 message RefundPayment {
@@ -154,6 +168,8 @@ message PaymentStatus {
     STATE_NOT_FOUND = 1;
     STATE_SUCCEEDED = 2;
     STATE_DECLINED = 3;
+    // The charge was accepted but has not settled (a bank transfer that has not arrived yet). Ask again later.
+    STATE_PENDING = 4;
   }
   State state = 1;
   string psp_charge_id = 2;

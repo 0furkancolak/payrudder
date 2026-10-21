@@ -1307,6 +1307,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The bank transfer state of an invoice (what is awaited, what has arrived)
+         * @description For an invoice charged through the tenant's bank transfer account: the payment reference and bank details, the receipts recorded so far, and whether the transfer is pending, paid, expired or rejected. `state` is `none` when the invoice was not charged by bank transfer.
+         */
+        get: operations["getInvoiceTransfer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm money that arrived by bank transfer for an invoice
+         * @description Records one transfer. It is idempotent per (invoice, bank_reference): the same reference again answers 200 with `duplicate: true` (409 `payments.transfer.reference_reused` when the amount differs). The currency must be the invoice's and the amount positive and at most what is outstanding (`payments.transfer.overpayment` otherwise: record what the invoice needs and handle the rest outside Quotify). A partial amount is recorded and the invoice stays unpaid; when the receipts add up to the total the invoice saga is told and the invoice is paid. The actor is taken from the X-Quotify-Actor header.
+         */
+        post: operations["confirmInvoiceTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Give up waiting for a bank transfer (it was refused or its time is up)
+         * @description Marks the pending transfer declined and tells the invoice saga, so the tenant's dunning schedule applies at once (a new payment window, or uncollectible when no retry is left). Receipts already recorded stay recorded.
+         */
+        post: operations["rejectInvoiceTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/webhooks/{provider}": {
         parameters: {
             query?: never;
@@ -1892,6 +1952,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/invoices/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record money received outside a payment provider (a bank transfer, cash, other) against an invoice
+         * @description For an invoice that was not charged through Quotify, or whose charge is stuck. Partial payments are recorded; the invoice is paid when they add up to the total. More than is outstanding is refused (`billing.payment.overpayment`). Allowed while the invoice is open or uncollectible and its saga is waiting for or has failed a payment. Idempotent per (invoice, method, reference) when a reference is given: the same call again answers 200 with `duplicate: true`. Who and when are recorded (X-Quotify-Actor, `operator` when absent). An invoice charged by bank transfer is confirmed through its transfer endpoint instead.
+         */
+        post: operations["adminRecordInvoicePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/invoices/{id}/credit-notes": {
         parameters: {
             query?: never;
@@ -2132,6 +2212,92 @@ export interface components {
             /** Format: date-time */
             finalize_time?: string;
             lines?: components["schemas"]["InvoiceLine"][];
+            /** @description Payments recorded by hand (POST /admin/v1/invoices/{id}/payments), oldest first. Only the single-invoice reads fill it. */
+            payments?: components["schemas"]["InvoicePayment"][];
+        };
+        InvoicePayment: {
+            id?: string;
+            invoice_id?: string;
+            /** @enum {string} */
+            method?: "bank_transfer" | "cash" | "other";
+            /** @description int64 minor units as a string */
+            amount_minor?: string;
+            currency?: string;
+            /** Format: date-time */
+            received_at?: string;
+            reference?: string;
+            note?: string;
+            recorded_by?: string;
+            /** Format: date-time */
+            recorded_at?: string;
+        };
+        RecordInvoicePaymentResult: {
+            payment?: components["schemas"]["InvoicePayment"];
+            duplicate?: boolean;
+            /** @description The sum of the payments recorded by hand */
+            paid_minor?: string;
+            outstanding_minor?: string;
+            /** @description The invoice is paid */
+            settled?: boolean;
+        };
+        BankTransferInstructions: {
+            bank_name?: string;
+            account_holder?: string;
+            /** @description Normalised: capitals, no spaces */
+            iban?: string;
+            bic?: string;
+            /** @description What the customer writes on the transfer */
+            reference?: string;
+        };
+        TransferReceipt: {
+            /** @description The ledger row */
+            id?: number;
+            /** Format: int64 */
+            amount_minor?: number;
+            currency?: string;
+            /** Format: date-time */
+            received_at?: string;
+            bank_reference?: string;
+            note?: string;
+            recorded_by?: string;
+            /** Format: date-time */
+            recorded_at?: string;
+        };
+        InvoiceTransfer: {
+            /** Format: uuid */
+            invoice_id?: string;
+            /**
+             * @description none: not charged by bank transfer. pending: waiting for the money (partial receipts included). paid: the receipts reach the total. expired and rejected: given up, dunning applies.
+             * @enum {string}
+             */
+            state?: "none" | "pending" | "paid" | "expired" | "rejected";
+            reference?: string;
+            instructions?: components["schemas"]["BankTransferInstructions"];
+            currency?: string;
+            /** Format: int64 */
+            total_minor?: number;
+            /** Format: int64 */
+            received_minor?: number;
+            /** Format: int64 */
+            outstanding_minor?: number;
+            /** Format: date-time */
+            pending_since?: string;
+            /**
+             * Format: date-time
+             * @description When the payment window ends
+             */
+            expires_at?: string;
+            closed_reason?: string;
+            receipts?: components["schemas"]["TransferReceipt"][];
+        };
+        TransferReceiptResult: {
+            receipt?: components["schemas"]["TransferReceipt"];
+            duplicate?: boolean;
+            /** @description The receipts reach the total */
+            paid?: boolean;
+            /** @description False when billing-svc could not be told now; the saga notices at its next poll. */
+            saga_notified?: boolean;
+            transfer?: components["schemas"]["InvoiceTransfer"];
         };
         EntitlementStatus: {
             customer_external_id?: string;
@@ -2569,7 +2735,7 @@ export interface components {
                 /** @description ISO 4217; empty matches any currency */
                 currency?: string;
                 /** @enum {string} */
-                provider?: "iyzico" | "paddle";
+                provider?: "iyzico" | "paddle" | "banktransfer";
             }[];
         };
         Tenant: {
@@ -3930,7 +4096,7 @@ export interface operations {
                             currency?: string;
                             total_minor?: string;
                             /** @enum {string} */
-                            state?: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "UNCOLLECTIBLE";
+                            state?: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "UNCOLLECTIBLE";
                             dunning_attempt?: number;
                             /** Format: date-time */
                             next_attempt_time?: string;
@@ -5197,7 +5363,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description The provider's settings (for iyzico api_key, secret_key, base_url and the buyer defaults) */
+        /** @description The provider's settings (for iyzico api_key, secret_key, base_url and the buyer defaults; for banktransfer bank_name, account_holder, iban, bic, reference_template, currencies and payment_window_days, validated: the IBAN by its check digits, the template by its placeholders) */
         requestBody: {
             content: {
                 "application/json": Record<string, never>;
@@ -5275,7 +5441,7 @@ export interface operations {
                             currency?: string;
                             provider_ref?: string;
                             /** @enum {string} */
-                            source?: "command" | "webhook" | "reconciliation";
+                            source?: "command" | "webhook" | "reconciliation" | "manual";
                             detail?: string;
                             /** Format: date-time */
                             occurred_at?: string;
@@ -5283,6 +5449,125 @@ export interface operations {
                     };
                 };
             };
+            503: components["responses"]["Error"];
+        };
+    };
+    getInvoiceTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceTransfer"];
+                };
+            };
+            503: components["responses"]["Error"];
+        };
+    };
+    confirmInvoiceTransfer: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Who confirms it (shown in the audit trail); "operator" when absent */
+                "X-Quotify-Actor"?: string;
+            };
+            path: {
+                tenant_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: int64 */
+                    amount_minor: number;
+                    /** @example TRY */
+                    currency: string;
+                    /**
+                     * Format: date-time
+                     * @description When the bank booked it. Default now; not in the future.
+                     */
+                    received_at?: string;
+                    /** @description The bank's transaction or statement reference; it makes the call idempotent. */
+                    bank_reference: string;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The same receipt was recorded before */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferReceiptResult"];
+                };
+            };
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferReceiptResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    rejectInvoiceTransfer: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Quotify-Actor"?: string;
+            };
+            path: {
+                tenant_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /**
+                     * @default rejected
+                     * @enum {string}
+                     */
+                    outcome?: "rejected" | "expired";
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceTransfer"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
     };
@@ -5446,7 +5731,7 @@ export interface operations {
                     /** Format: uuid */
                     subscription_id: string;
                     /** @enum {string} */
-                    to_provider: "iyzico" | "paddle";
+                    to_provider: "iyzico" | "paddle" | "banktransfer";
                     /** @description The target provider's catalogue price */
                     price_ref?: string;
                 };
@@ -6434,6 +6719,60 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceSaga"];
                 };
             };
+            409: components["responses"]["Error"];
+        };
+    };
+    adminRecordInvoicePayment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Quotify-Actor"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    tenant_id: string;
+                    /** @enum {string} */
+                    method: "bank_transfer" | "cash" | "other";
+                    /** @description int64 minor units as a string */
+                    amount_minor: string;
+                    /**
+                     * Format: date-time
+                     * @description Default now; not in the future.
+                     */
+                    received_at?: string;
+                    reference?: string;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The same payment was recorded before */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordInvoicePaymentResult"];
+                };
+            };
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordInvoicePaymentResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
             409: components["responses"]["Error"];
         };
     };

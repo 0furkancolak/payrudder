@@ -22,8 +22,10 @@ type LedgerEntry struct {
 	Currency       string
 	ProviderRef    string
 	IdempotencyKey string
-	Source         string // command, webhook, reconciliation
+	Source         string // command, webhook, reconciliation, manual
 	Detail         string
+	// OccurredAt is when it happened; zero is now (the database's clock).
+	OccurredAt time.Time
 }
 
 // Ledger is the append-only payment_ledger.
@@ -46,6 +48,9 @@ func (l Ledger) Append(ctx context.Context, e LedgerEntry) (bool, error) {
 	}
 	if e.Detail != "" {
 		p.Detail = &e.Detail
+	}
+	if !e.OccurredAt.IsZero() {
+		p.OccurredAt = &e.OccurredAt
 	}
 	n, err := sqlc.New(l.DB).AppendLedger(ctx, p)
 	return n == 1, err
