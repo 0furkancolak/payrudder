@@ -8086,8 +8086,8 @@ export interface operations {
                     name: string;
                     /** @description Lower case with dashes, unique within the account; default: the name */
                     slug?: string;
-                    /** @enum {string} */
-                    currency: "CHF" | "EUR" | "GBP" | "JPY" | "KWD" | "TRY" | "USD";
+                    /** @description An active ISO 4217 code */
+                    currency: string;
                     /** @example Europe/Istanbul */
                     timezone: string;
                 };
@@ -8265,11 +8265,8 @@ export interface operations {
             content: {
                 "application/json": {
                     name: string;
-                    /**
-                     * @description Required
-                     * @enum {string}
-                     */
-                    currency: "CHF" | "EUR" | "GBP" | "JPY" | "KWD" | "TRY" | "USD";
+                    /** @description Required, no default. Immutable. An active ISO 4217 code (USD, EUR, TRY, JPY, KWD, ...); the minor-unit exponent comes from the currency (0 for JPY, 3 for KWD). */
+                    currency: string;
                     /**
                      * @description Required IANA name
                      * @example Europe/Istanbul
@@ -8339,8 +8336,8 @@ export interface operations {
                     name: string;
                     /** @description Lower case with dashes, unique within the account; default: the name */
                     slug?: string;
-                    /** @enum {string} */
-                    currency: "CHF" | "EUR" | "GBP" | "JPY" | "KWD" | "TRY" | "USD";
+                    /** @description An active ISO 4217 code */
+                    currency: string;
                     /** @example Europe/Istanbul */
                     timezone: string;
                     /** @example 86400s */

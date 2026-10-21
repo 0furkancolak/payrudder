@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/money"
 	"github.com/0furkancolak/quotify/pkg/payments/providers"
@@ -174,7 +174,7 @@ func chooseProvider(ctx context.Context, q *sqlc.Queries, named *string, country
 	case !known:
 		return nil, false, domain.Invalid("provider", "unknown provider "+*provider+"; known: "+strings.Join(providers.Names(), ", "))
 	case !caps.CanCharge(currency):
-		return nil, false, status.Errorf(codes.FailedPrecondition, "%s cannot charge in %s", *provider, currency)
+		return nil, false, errkey.Newf(codes.FailedPrecondition, "plans.subscription.provider_currency", "%s cannot charge in %s", *provider, currency)
 	}
 	return provider, caps.OwnsRenewal, nil
 }

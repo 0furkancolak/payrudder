@@ -96,9 +96,9 @@ func ValidateCreateAccount(req *plansv1.CreateAccountRequest) (AccountSettings, 
 		v.Add("name", "required, at most 200 characters")
 	}
 	if s.Currency == "" {
-		v.Add("currency", "required: choose one of "+strings.Join(money.SupportedCurrencies(), ", "))
+		v.Add("currency", "required: an active ISO 4217 code such as USD, EUR or TRY")
 	} else if _, ok := money.LookupCurrency(s.Currency); !ok {
-		v.Add("currency", "unsupported: choose one of "+strings.Join(money.SupportedCurrencies(), ", "))
+		v.Add("currency", "unsupported: use an active ISO 4217 code such as USD, EUR or TRY")
 	}
 	if err := ValidateTimezone(s.Timezone); err != nil {
 		v.Add("timezone", err.Error())
@@ -206,7 +206,7 @@ func ValidateCustomer(environment string, req *plansv1.CreateCustomerRequest) er
 	}
 	if c := req.GetBillingCurrency(); c != "" {
 		if _, ok := money.LookupCurrency(c); !ok {
-			v.Add("billing_currency", "unsupported currency; supported: "+strings.Join(money.SupportedCurrencies(), ", "))
+			v.Add("billing_currency", "unsupported currency: use an active ISO 4217 code such as USD, EUR or TRY")
 		}
 	}
 	return v.Err()

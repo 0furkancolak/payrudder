@@ -1301,7 +1301,8 @@
         "unknown_category": "This mail category does not exist."
       },
       "subscription": {
-        "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead."
+        "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead.",
+        "provider_currency": "This payment provider cannot charge in this currency. Choose another provider or currency."
       },
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",

@@ -116,5 +116,6 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.customer.tax_invalid`
 - `plans.mail.unknown_category`
 - `plans.subscription.coupon_blocks_credit`
+- `plans.subscription.provider_currency`
 - `plans.webhook.not_configured`
 - `plans.webhook.too_many_endpoints`

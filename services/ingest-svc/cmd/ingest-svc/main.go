@@ -30,6 +30,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/outbox"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
+	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/quotify/services/ingest-svc/internal/ingest"
 	"github.com/0furkancolak/quotify/services/ingest-svc/internal/lookup"
 	"github.com/0furkancolak/quotify/services/ingest-svc/internal/maintenance"
