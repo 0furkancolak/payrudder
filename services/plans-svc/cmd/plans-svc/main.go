@@ -36,6 +36,9 @@ import (
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/grpcapi"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity"
+	identitycmd "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/command"
+	identityqry "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
 	"github.com/0furkancolak/quotify/services/plans-svc/migrations"
 )
@@ -253,7 +256,9 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 		return nil, nil, nil, err
 	}
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, cfg.WebhookAllowPrivate))
-	plansv1.RegisterAdminServiceServer(srv, admin.New(systemPool, evictor, cfg.AllowedEnvs, log))
+	adminSrv := admin.New(systemPool, evictor, cfg.AllowedEnvs, log)
+	plansv1.RegisterAdminServiceServer(srv, adminSrv)
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, log), identityqry.New(systemPool)))
 	return srv, grpcHealth, box, nil
 }
 

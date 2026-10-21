@@ -67,7 +67,7 @@ func (s *Server) CreateAccount(ctx context.Context, req *plansv1.CreateAccountRe
 			return err
 		}
 		acct.Id, acct.Name, acct.CreateTime = a.ID.String(), a.Name, convertTS(a.CreatedAt)
-		app, err := s.insertApp(ctx, q, a.ID, settings, defaultSlug)
+		app, err := s.InsertApp(ctx, q, a.ID, settings, defaultSlug)
 		if err != nil {
 			return err
 		}
@@ -85,8 +85,8 @@ func (s *Server) CreateAccount(ctx context.Context, req *plansv1.CreateAccountRe
 // defaultSlug is the slug of the app an account is created with.
 const defaultSlug = "default"
 
-// insertApp makes an app of the account with its sandbox tenant and, when the deployment allows live, its live tenant.
-func (s *Server) insertApp(ctx context.Context, q *sqlc.Queries, accountID uuid.UUID, settings domain.AccountSettings, slug string) (*plansv1.App, error) {
+// InsertApp makes an app of the account with its sandbox tenant and, when the deployment allows live, its live tenant.
+func (s *Server) InsertApp(ctx context.Context, q *sqlc.Queries, accountID uuid.UUID, settings domain.AccountSettings, slug string) (*plansv1.App, error) {
 	envs := []string{"sandbox"}
 	if slices.Contains(s.allowedEnvs, "live") {
 		envs = append(envs, "live")
@@ -128,12 +128,9 @@ func (s *Server) CreateApp(ctx context.Context, req *plansv1.CreateAppRequest) (
 	if err != nil {
 		return nil, err
 	}
-	slug := req.GetSlug()
-	if slug == "" {
-		slug = strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(settings.Name), "-"), "-")
-	}
-	if !slugRe.MatchString(slug) || len(slug) > 60 {
-		return nil, errkey.New(codes.InvalidArgument, "plans.app.bad_slug", "slug: lower-case letters, digits and single dashes, at most 60 characters")
+	slug, err := ResolveSlug(settings.Name, req.GetSlug())
+	if err != nil {
+		return nil, err
 	}
 	var app *plansv1.App
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
@@ -142,7 +139,7 @@ func (s *Server) CreateApp(ctx context.Context, req *plansv1.CreateAppRequest) (
 			return err
 		}
 		var err error
-		app, err = s.insertApp(ctx, q, accountID, settings, slug)
+		app, err = s.InsertApp(ctx, q, accountID, settings, slug)
 		return err
 	})
 	var pgErr *pgconn.PgError
@@ -156,6 +153,17 @@ func (s *Server) CreateApp(ctx context.Context, req *plansv1.CreateAppRequest) (
 }
 
 var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
+
+// ResolveSlug returns the slug an app is stored under: slug itself, or the name in lower case with dashes when slug is empty.
+func ResolveSlug(name, slug string) (string, error) {
+	if slug == "" {
+		slug = strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(name), "-"), "-")
+	}
+	if !slugRe.MatchString(slug) || len(slug) > 60 {
+		return "", errkey.New(codes.InvalidArgument, "plans.app.bad_slug", "slug: lower-case letters, digits and single dashes, at most 60 characters")
+	}
+	return slug, nil
+}
 
 // ListApps lists the apps of an account with their tenants.
 func (s *Server) ListApps(ctx context.Context, req *plansv1.ListAppsRequest) (*plansv1.ListAppsResponse, error) {
@@ -323,11 +331,21 @@ func (s *Server) CreateApiKey(ctx context.Context, req *plansv1.CreateApiKeyRequ
 	if err != nil {
 		return nil, err
 	}
-	t, err := s.q().GetTenant(ctx, id)
+	key, plaintext, err := s.IssueAPIKey(ctx, id)
 	if err != nil {
-		return nil, convert.Err(err, "tenant")
+		return nil, err
 	}
-	// The key environment always follows the tenant: test ↔ sandbox, live ↔ live (ADR 0011).
+	return &plansv1.CreateApiKeyResponse{ApiKey: key, Plaintext: plaintext}, nil
+}
+
+// IssueAPIKey makes a key for the tenant and returns it with its plaintext, which is shown once. It does no authorisation: the operator RPC and the
+// identity module (a member of the tenant's account) each check theirs before calling it.
+func (s *Server) IssueAPIKey(ctx context.Context, tenantID uuid.UUID) (*plansv1.ApiKey, string, error) {
+	t, err := s.q().GetTenant(ctx, tenantID)
+	if err != nil {
+		return nil, "", convert.Err(err, "tenant")
+	}
+	// The key environment always follows the tenant: test <-> sandbox, live <-> live (ADR 0011).
 	env := apikey.EnvLive
 	if t.Environment == "sandbox" {
 		env = apikey.EnvTest
@@ -335,7 +353,7 @@ func (s *Server) CreateApiKey(ctx context.Context, req *plansv1.CreateApiKeyRequ
 	for attempt := 0; attempt < 3; attempt++ {
 		key, err := apikey.Generate(env)
 		if err != nil {
-			return nil, status.Error(codes.Internal, "key generation failed")
+			return nil, "", status.Error(codes.Internal, "key generation failed")
 		}
 		row, err := s.q().InsertApiKey(ctx, sqlc.InsertApiKeyParams{
 			ID: idgen.NewUUIDv7(), TenantID: t.ID, Prefix: key.Prefix, KeyHash: key.Hash(), Env: string(env),
@@ -344,12 +362,12 @@ func (s *Server) CreateApiKey(ctx context.Context, req *plansv1.CreateApiKeyRequ
 			continue // prefix collision (62^8 space): draw again
 		}
 		if err != nil {
-			return nil, convert.Err(err, "api key")
+			return nil, "", convert.Err(err, "api key")
 		}
 		s.log.InfoContext(ctx, "api key created", "tenant_id", t.ID, "api_key_id", row.ID, "prefix", row.Prefix)
-		return &plansv1.CreateApiKeyResponse{ApiKey: convert.APIKey(row), Plaintext: key.String()}, nil
+		return convert.APIKey(row), key.String(), nil
 	}
-	return nil, status.Error(codes.Aborted, "could not allocate a unique key prefix; retry")
+	return nil, "", status.Error(codes.Aborted, "could not allocate a unique key prefix; retry")
 }
 
 func (s *Server) RevokeApiKey(ctx context.Context, req *plansv1.RevokeApiKeyRequest) (*plansv1.RevokeApiKeyResponse, error) {
@@ -360,6 +378,15 @@ func (s *Server) RevokeApiKey(ctx context.Context, req *plansv1.RevokeApiKeyRequ
 	if err != nil {
 		return nil, err
 	}
+	key, err := s.RevokeKey(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.RevokeApiKeyResponse{ApiKey: key}, nil
+}
+
+// RevokeKey revokes the key and evicts it from the gateway cache. Like IssueAPIKey it does no authorisation.
+func (s *Server) RevokeKey(ctx context.Context, id uuid.UUID) (*plansv1.ApiKey, error) {
 	row, err := s.q().RevokeApiKey(ctx, id)
 	if err != nil {
 		return nil, convert.Err(err, "api key")
@@ -371,7 +398,7 @@ func (s *Server) RevokeApiKey(ctx context.Context, req *plansv1.RevokeApiKeyRequ
 			s.log.WarnContext(ctx, "api key cache eviction failed; bounded by cache TTL", "prefix", row.Prefix, "error", err)
 		}
 	}
-	return &plansv1.RevokeApiKeyResponse{ApiKey: convert.APIKey(row)}, nil
+	return convert.APIKey(row), nil
 }
 
 func (s *Server) ResolveApiKey(ctx context.Context, req *plansv1.ResolveApiKeyRequest) (*plansv1.ResolveApiKeyResponse, error) {

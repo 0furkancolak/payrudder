@@ -18,6 +18,13 @@ type Account struct {
 	CreatedAt time.Time
 }
 
+type AccountMember struct {
+	AccountID uuid.UUID
+	UserID    uuid.UUID
+	Role      string
+	CreatedAt time.Time
+}
+
 type ApiKey struct {
 	ID        uuid.UUID
 	TenantID  uuid.UUID
@@ -248,6 +255,27 @@ type TenantMailSetting struct {
 	TenantID  uuid.UUID
 	Disabled  []string
 	UpdatedAt time.Time
+}
+
+type User struct {
+	ID           uuid.UUID
+	Email        string
+	DisplayName  string
+	PasswordHash string
+	FailedLogins int32
+	LockedUntil  *time.Time
+	LastLoginAt  *time.Time
+	CreatedAt    time.Time
+}
+
+type UserSession struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	TokenHash  []byte
+	CreatedAt  time.Time
+	LastSeenAt time.Time
+	ExpiresAt  time.Time
+	RevokedAt  *time.Time
 }
 
 type WebhookDelivery struct {
