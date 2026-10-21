@@ -33,3 +33,5 @@ tests/load/results/*
 !tests/load/results/.gitkeep
 tests/chaos/chaos-report.json
 tools/quotifyctl/quotifyctl
+
+.playwright-mcp/
