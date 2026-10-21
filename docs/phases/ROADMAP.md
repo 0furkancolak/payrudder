@@ -36,6 +36,7 @@ updated `docs/` (design changes discovered while building are written back into 
 | 28 | [Cells](phase-28-cells.md) | Tenant directory, schema-per-tenant mode, converted jobs, fenced moves | 24, 25 | Suites pass in both modes; cross-tenant read test; no row lost in a move | planned, staged |
 | 31 | [Railway](phase-31-railway.md) | Config-as-code per service, backing-service images, bootstrap script, `PORT` support | 27 | Static checks pass in CI; the guide lists what only a real deploy can confirm | done statically, never deployed to Railway |
 | 32 | [Console gaps](phase-32-console-gaps.md) | Console pages for apps and the seller address; API errors translated by key in six languages | 24, 25 | Mocked-gateway specs for both pages; a test fails when an error key has no translation | done, without app rename/delete (no API) |
+| 35 | [Credits](phase-35-credits.md) | Prepaid credit packs, lots with expiry, ledger, consume and grant API, console tab | 24, 34 | Concurrent consumes never overspend; a payment grants once; console tab in six languages |
 
 ```mermaid
 flowchart LR
