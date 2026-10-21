@@ -10,10 +10,44 @@ import (
 	"time"
 )
 
+const customerStats = `-- name: CustomerStats :one
+SELECT count(*)::bigint AS total,
+       (count(*) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz))::bigint AS new_in_range,
+       (count(*) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz))::bigint AS new_in_previous
+FROM customers
+WHERE tenant_id = app_tenant_id()
+`
+
+type CustomerStatsParams struct {
+	FromAt     time.Time
+	ToAt       time.Time
+	PrevFromAt time.Time
+	PrevToAt   time.Time
+}
+
+type CustomerStatsRow struct {
+	Total         int64
+	NewInRange    int64
+	NewInPrevious int64
+}
+
+// How many customers the tenant has, and how many were created in two ranges (a period and the one before it, for a comparison). A range with equal bounds is empty.
+func (q *Queries) CustomerStats(ctx context.Context, arg CustomerStatsParams) (CustomerStatsRow, error) {
+	row := q.db.QueryRow(ctx, customerStats,
+		arg.FromAt,
+		arg.ToAt,
+		arg.PrevFromAt,
+		arg.PrevToAt,
+	)
+	var i CustomerStatsRow
+	err := row.Scan(&i.Total, &i.NewInRange, &i.NewInPrevious)
+	return i, err
+}
+
 const subscriptionReport = `-- name: SubscriptionReport :many
 WITH subs AS (
   SELECT s.id, s.currency, lower(s.active) AS starts, upper(s.active) AS ends, s.changed_from_id,
-         COALESCE(s.provider, '') AS provider, COALESCE(c.country, '') AS country,
+         COALESCE(s.provider, '') AS provider, COALESCE(c.country, '') AS country, pl.code AS plan_code,
          CASE WHEN s.state = 'paused' THEN 'paused'
               WHEN s.state = 'past_due' THEN 'past_due'
               WHEN s.state = 'trialing' AND s.trial_ends_at > $1::timestamptz THEN 'trialing'
@@ -24,10 +58,11 @@ WITH subs AS (
   FROM subscriptions s
   JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
   JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
+  JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
   LEFT JOIN plan_version_fees f ON f.tenant_id = s.tenant_id AND f.plan_version_id = s.plan_version_id AND f.currency = s.currency AND f.interval = s.interval
   WHERE s.tenant_id = app_tenant_id()
 ), flagged AS (
-  SELECT id, currency, starts, ends, changed_from_id, provider, country, eff, fee, has_successor,
+  SELECT id, currency, starts, ends, changed_from_id, provider, country, plan_code, eff, fee, has_successor,
          (starts <= $1::timestamptz AND (ends IS NULL OR ends > $1::timestamptz)) AS alive,
          (starts >= $3::timestamptz AND starts < $4::timestamptz AND changed_from_id IS NULL) AS is_new,
          (ends IS NOT NULL AND ends >= $3::timestamptz AND ends < $4::timestamptz AND NOT has_successor) AS is_churned
@@ -35,11 +70,12 @@ WITH subs AS (
 ), split AS (
   SELECT CASE WHEN $5::bool THEN provider ELSE '' END AS provider,
          CASE WHEN $6::bool THEN country ELSE '' END AS country,
+         CASE WHEN $7::bool THEN plan_code ELSE '' END AS plan_code,
          currency, alive, is_new, is_churned, eff, fee
   FROM flagged
   WHERE alive OR is_new OR is_churned
 )
-SELECT provider::text AS provider, country::text AS country, currency,
+SELECT provider::text AS provider, country::text AS country, plan_code::text AS plan_code, currency,
   (count(*) FILTER (WHERE alive AND eff = 'active'))::bigint AS active,
   (count(*) FILTER (WHERE alive AND eff = 'trialing'))::bigint AS trialing,
   (count(*) FILTER (WHERE alive AND eff = 'paused'))::bigint AS paused,
@@ -50,8 +86,8 @@ SELECT provider::text AS provider, country::text AS country, currency,
   (count(*) FILTER (WHERE is_churned))::bigint AS churned,
   COALESCE(sum(fee) FILTER (WHERE is_churned), 0)::bigint AS churned_mrr_minor
 FROM split
-GROUP BY provider, country, currency
-ORDER BY provider, country, currency
+GROUP BY provider, country, plan_code, currency
+ORDER BY provider, country, plan_code, currency
 `
 
 type SubscriptionReportParams struct {
@@ -61,11 +97,13 @@ type SubscriptionReportParams struct {
 	MonthEnd       time.Time
 	ByProvider     bool
 	ByCountry      bool
+	ByPlan         bool
 }
 
 type SubscriptionReportRow struct {
 	Provider         string
 	Country          string
+	PlanCode         string
 	Currency         string
 	Active           int64
 	Trialing         int64
@@ -88,6 +126,7 @@ func (q *Queries) SubscriptionReport(ctx context.Context, arg SubscriptionReport
 		arg.MonthEnd,
 		arg.ByProvider,
 		arg.ByCountry,
+		arg.ByPlan,
 	)
 	if err != nil {
 		return nil, err
@@ -99,6 +138,7 @@ func (q *Queries) SubscriptionReport(ctx context.Context, arg SubscriptionReport
 		if err := rows.Scan(
 			&i.Provider,
 			&i.Country,
+			&i.PlanCode,
 			&i.Currency,
 			&i.Active,
 			&i.Trialing,

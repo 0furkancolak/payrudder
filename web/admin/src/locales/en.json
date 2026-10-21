@@ -1388,7 +1388,7 @@
         "quota": "An account can have at most 20 apps."
       },
       "auth": {
-        "invalid_credentials": "Wrong e-mail or password, or too many attempts. Try again in a few minutes.",
+        "invalid_credentials": "Wrong e-mail or password, or too many attempts. After five wrong passwords, sign-in for that address is paused for 15 minutes, even with the right password.",
         "rate_limited": "Too many attempts from this address. Try again in a minute."
       },
       "session": {
@@ -1417,6 +1417,12 @@
       "member": {
         "last_owner": "An account must keep at least one owner. Make someone else an owner first.",
         "not_found": "This person is not a member of the account."
+      }
+    },
+    "gateway": {
+      "dashboard": {
+        "bad_period": "That period is not valid. Choose 7, 30 or 90 days, this year, or two days with the first not after the last.",
+        "range_too_long": "A period can be at most two years."
       }
     }
   },
@@ -1502,7 +1508,7 @@
     "home": {
       "title": "Your organisation",
       "welcome": "Welcome, {name}",
-      "intro": "Your apps and how their payments did over the last 30 days.",
+      "intro": "Your apps and how they are doing.",
       "create": "Create app",
       "emptyTitle": "Create your first app",
       "emptyBody": "An app is one product you bill for. It comes with a sandbox to test in and a live environment for real payments, each with its own API keys.",
@@ -1824,5 +1830,138 @@
     "timezone": "Time zone",
     "timezonePlaceholder": "Search a time zone",
     "noMatch": "Nothing matches"
+  },
+  "dash": {
+    "retry": "Try again",
+    "stale": "The numbers could not be refreshed; what you see is from the last time they could.",
+    "degraded": "{sections} did not answer. The rest of the page is up to date.",
+    "sections": {
+      "revenue": "Revenue",
+      "invoices": "Invoices",
+      "subscriptions": "Subscriptions",
+      "customers": "Customers",
+      "payments": "Payments",
+      "renewals": "Upcoming charges",
+      "usage": "Usage",
+      "webhooks": "Webhooks",
+      "activity": "Activity"
+    },
+    "period": {
+      "label": "Period",
+      "7d": "7 days",
+      "30d": "30 days",
+      "90d": "90 days",
+      "ytd": "This year",
+      "custom": "Custom",
+      "from": "First day",
+      "to": "Last day",
+      "compare": "Compare with the previous period",
+      "badRange": "The first day is after the last."
+    },
+    "currency": {
+      "label": "Currency",
+      "own": "own"
+    },
+    "kpi": {
+      "net": "Net revenue",
+      "netSub": "Gross {gross} · refunds {refunds}",
+      "mrr": "MRR",
+      "mrrSub": "ARR {arr} · {n} subscribers",
+      "arpu": "ARPU",
+      "arpuSub": "net revenue per subscriber",
+      "customers": "New customers",
+      "customersSub": "{total} in all · all currencies",
+      "churn": "Churn",
+      "churnSub": "{n} ended · {mrr} MRR lost",
+      "failedRate": "Failed payments",
+      "failedSub": "{failed} failed of {attempts} attempts",
+      "refunds": "Refunds",
+      "refundsSub": "Tax collected {tax}",
+      "open": "Open invoices",
+      "openSub": "{n} open | {n} open"
+    },
+    "delta": {
+      "new": "new",
+      "before": "Before: {value}",
+      "srUp": "Up {percent} compared with the previous period",
+      "srDown": "Down {percent} compared with the previous period",
+      "srFlat": "Unchanged compared with the previous period",
+      "srNew": "New compared with the previous period"
+    },
+    "chart": {
+      "title": "Net revenue",
+      "note": "After refunds and tax: the figure of the accounting page",
+      "current": "This period",
+      "previous": "Previous period",
+      "total": "Total",
+      "before": "before",
+      "empty": "No revenue in this period.",
+      "summary": "Net revenue from {from} to {to}: {total}"
+    },
+    "payments": {
+      "title": "Payments",
+      "attempts": "attempts",
+      "label": "{n} payment attempts",
+      "note": "Counted per attempt: a declined card that is retried counts each time, and refunds are counted apart.",
+      "truncated": "Only the newest 1000 payments are read; older ones in this period are not counted."
+    },
+    "top": {
+      "customers": "Top customers",
+      "customersEmpty": "Nobody has paid in this period.",
+      "packages": "Top packages",
+      "packagesEmpty": "No subscriptions in {currency} yet.",
+      "perMonth": "{amount} / month",
+      "subs": "{n} subscriber | {n} subscribers"
+    },
+    "aging": {
+      "title": "Open invoices by age",
+      "empty": "No open invoices.",
+      "0-7": "0 to 7 days",
+      "8-30": "8 to 30 days",
+      "31-60": "31 to 60 days",
+      "61+": "Over 60 days",
+      "count": "{n} invoice | {n} invoices"
+    },
+    "usage": {
+      "title": "Usage against limits",
+      "intro": "{n} customers with a subscription, {period}",
+      "over": "{n} over the limit",
+      "near": "{n} close to it",
+      "ok": "within limits",
+      "empty": "None of the customers looked at has a limit."
+    },
+    "renewals": {
+      "title": "Upcoming charges",
+      "empty": "No charges in {currency} in the next 30 days.",
+      "truncated": "Only the newest 200 subscriptions are looked at.",
+      "note": "The date is when the fee or the month's invoice comes due."
+    },
+    "activity": {
+      "title": "Recent activity",
+      "empty": "Nothing has happened yet.",
+      "invoice": "Invoice {label}",
+      "payment": "Payment",
+      "refund": "Refund",
+      "subscription": "Subscription to {plan}",
+      "state": {
+        "active": "Active",
+        "trialing": "Trial",
+        "past_due": "Past due",
+        "paused": "Paused",
+        "cancelled": "Cancelled"
+      }
+    },
+    "empty": {
+      "title": "Nothing to show yet",
+      "body": "When your first customer is added and pays, revenue, subscriptions and payments appear here, one block per currency."
+    },
+    "org": {
+      "title": "All apps",
+      "intro": "Every app of the organisation over the same period. Money of different currencies is never added up.",
+      "byApp": "Net revenue by app",
+      "apps": "{n} app | {n} apps",
+      "none": "No app has revenue in this period.",
+      "open": "Open the app"
+    }
   }
 }

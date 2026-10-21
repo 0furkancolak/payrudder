@@ -47,6 +47,7 @@ const (
 	PlansService_AbortProviderMigration_FullMethodName           = "/quotify.plans.v1.PlansService/AbortProviderMigration"
 	PlansService_GetProviderMigration_FullMethodName             = "/quotify.plans.v1.PlansService/GetProviderMigration"
 	PlansService_GetSubscriptionReport_FullMethodName            = "/quotify.plans.v1.PlansService/GetSubscriptionReport"
+	PlansService_GetCustomerStats_FullMethodName                 = "/quotify.plans.v1.PlansService/GetCustomerStats"
 	PlansService_SyncProviderSubscription_FullMethodName         = "/quotify.plans.v1.PlansService/SyncProviderSubscription"
 	PlansService_PauseSubscription_FullMethodName                = "/quotify.plans.v1.PlansService/PauseSubscription"
 	PlansService_ResumeSubscription_FullMethodName               = "/quotify.plans.v1.PlansService/ResumeSubscription"
@@ -123,6 +124,8 @@ type PlansServiceClient interface {
 	// GetSubscriptionReport counts the tenant's subscriptions and their monthly recurring revenue at the end of a month, with the new and the churned of that month,
 	// by payment provider, customer country and currency. Currencies are never added together.
 	GetSubscriptionReport(ctx context.Context, in *GetSubscriptionReportRequest, opts ...grpc.CallOption) (*GetSubscriptionReportResponse, error)
+	// GetCustomerStats counts the tenant's customers and how many were created in two ranges (the period of a dashboard and the one before it).
+	GetCustomerStats(ctx context.Context, in *GetCustomerStatsRequest, opts ...grpc.CallOption) (*GetCustomerStatsResponse, error)
 	// SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
 	// Internal: called by payments-worker, not exposed by the gateway.
 	SyncProviderSubscription(ctx context.Context, in *SyncProviderSubscriptionRequest, opts ...grpc.CallOption) (*SyncProviderSubscriptionResponse, error)
@@ -449,6 +452,16 @@ func (c *plansServiceClient) GetSubscriptionReport(ctx context.Context, in *GetS
 	return out, nil
 }
 
+func (c *plansServiceClient) GetCustomerStats(ctx context.Context, in *GetCustomerStatsRequest, opts ...grpc.CallOption) (*GetCustomerStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCustomerStatsResponse)
+	err := c.cc.Invoke(ctx, PlansService_GetCustomerStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) SyncProviderSubscription(ctx context.Context, in *SyncProviderSubscriptionRequest, opts ...grpc.CallOption) (*SyncProviderSubscriptionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SyncProviderSubscriptionResponse)
@@ -721,6 +734,8 @@ type PlansServiceServer interface {
 	// GetSubscriptionReport counts the tenant's subscriptions and their monthly recurring revenue at the end of a month, with the new and the churned of that month,
 	// by payment provider, customer country and currency. Currencies are never added together.
 	GetSubscriptionReport(context.Context, *GetSubscriptionReportRequest) (*GetSubscriptionReportResponse, error)
+	// GetCustomerStats counts the tenant's customers and how many were created in two ranges (the period of a dashboard and the one before it).
+	GetCustomerStats(context.Context, *GetCustomerStatsRequest) (*GetCustomerStatsResponse, error)
 	// SyncProviderSubscription records what a payment provider says about a subscription it runs: links it to ours and follows its status.
 	// Internal: called by payments-worker, not exposed by the gateway.
 	SyncProviderSubscription(context.Context, *SyncProviderSubscriptionRequest) (*SyncProviderSubscriptionResponse, error)
@@ -850,6 +865,9 @@ func (UnimplementedPlansServiceServer) GetProviderMigration(context.Context, *Ge
 }
 func (UnimplementedPlansServiceServer) GetSubscriptionReport(context.Context, *GetSubscriptionReportRequest) (*GetSubscriptionReportResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSubscriptionReport not implemented")
+}
+func (UnimplementedPlansServiceServer) GetCustomerStats(context.Context, *GetCustomerStatsRequest) (*GetCustomerStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCustomerStats not implemented")
 }
 func (UnimplementedPlansServiceServer) SyncProviderSubscription(context.Context, *SyncProviderSubscriptionRequest) (*SyncProviderSubscriptionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SyncProviderSubscription not implemented")
@@ -1439,6 +1457,24 @@ func _PlansService_GetSubscriptionReport_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_GetCustomerStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCustomerStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).GetCustomerStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_GetCustomerStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).GetCustomerStats(ctx, req.(*GetCustomerStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_SyncProviderSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SyncProviderSubscriptionRequest)
 	if err := dec(in); err != nil {
@@ -1928,6 +1964,10 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSubscriptionReport",
 			Handler:    _PlansService_GetSubscriptionReport_Handler,
+		},
+		{
+			MethodName: "GetCustomerStats",
+			Handler:    _PlansService_GetCustomerStats_Handler,
 		},
 		{
 			MethodName: "SyncProviderSubscription",

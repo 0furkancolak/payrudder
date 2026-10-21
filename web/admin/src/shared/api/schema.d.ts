@@ -2124,6 +2124,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The dashboard of one environment of an app: a period, compared with the one before, per currency
+         * @description The overview's facts over a period (7, 30 or 90 days, the year so far, or a custom range of at most two years) with the equal period before it to compare with, one block per currency: money is never added, converted or compared across currencies. Revenue, refunds, tax, expenses and the series are billing's accounting summary (an invoice counts on the day its payment settled, so this agrees with the accounting page); payments are the payment ledger's attempts (a declined card that is retried is several failed attempts; refunds are counted apart); subscriptions, MRR, new and churned are the subscription report of the month the period ends in and the month before it; new customers are counted over the period and the one before. The series is daily up to 92 days, monthly beyond. A section whose service did not answer is left out and named in `unavailable`. Answers are remembered for 15 seconds.
+         */
+        get: operations["appDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/api-keys": {
         parameters: {
             query?: never;
@@ -2863,6 +2883,26 @@ export interface paths {
         put?: never;
         /** Move dead letters of one queue back to where they came from (retry counter reset) */
         post: operations["adminRedriveDeadLetters"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The dashboard of any tenant, for the operator
+         * @description The overview's facts over a period (7, 30 or 90 days, the year so far, or a custom range of at most two years) with the equal period before it to compare with, one block per currency: money is never added, converted or compared across currencies. Revenue, refunds, tax, expenses and the series are billing's accounting summary (an invoice counts on the day its payment settled, so this agrees with the accounting page); payments are the payment ledger's attempts (a declined card that is retried is several failed attempts; refunds are counted apart); subscriptions, MRR, new and churned are the subscription report of the month the period ends in and the month before it; new customers are counted over the period and the one before. The series is daily up to 92 days, monthly beyond. A section whose service did not answer is left out and named in `unavailable`. Answers are remembered for 15 seconds.
+         */
+        get: operations["adminTenantDashboard"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3611,6 +3651,224 @@ export interface components {
             count?: number;
             /** @description The count stopped at its cap; there are more */
             more?: boolean;
+        };
+        /** @description Minor units of the block's currency. */
+        DashboardRevenue: {
+            /** Format: int64 */
+            gross_minor?: number;
+            /** Format: int64 */
+            tax_minor?: number;
+            /** Format: int64 */
+            refunds_minor?: number;
+            /**
+             * Format: int64
+             * @description gross - tax - refunds
+             */
+            net_minor?: number;
+            /** Format: int64 */
+            expenses_minor?: number;
+            /** Format: int64 */
+            profit_minor?: number;
+            /** Format: int64 */
+            paid_invoices?: number;
+        };
+        DashboardPayments: {
+            paid?: number;
+            /** @description Failed attempts; a declined card that dunning retries counts each time */
+            failed?: number;
+            processing?: number;
+            refunds?: number;
+            /** Format: int64 */
+            paid_minor?: number;
+            /** Format: int64 */
+            failed_minor?: number;
+            /** Format: int64 */
+            refunded_minor?: number;
+            /** @description failed / (paid + failed) in basis points; null when nothing settled */
+            failed_rate_bp?: number | null;
+        };
+        DashboardSubscriptions: {
+            /** @description The month of the report (YYYY-MM) */
+            month?: string;
+            /** Format: int64 */
+            active?: number;
+            /** Format: int64 */
+            trialing?: number;
+            /** Format: int64 */
+            paused?: number;
+            /** Format: int64 */
+            past_due?: number;
+            /** Format: int64 */
+            mrr_minor?: number;
+            /**
+             * Format: int64
+             * @description mrr x 12
+             */
+            arr_minor?: number;
+            /** Format: int64 */
+            new?: number;
+            /** Format: int64 */
+            new_mrr_minor?: number;
+            /** Format: int64 */
+            churned?: number;
+            /** Format: int64 */
+            churned_mrr_minor?: number;
+            churn_rate_bp?: number | null;
+        };
+        /** @description Everything the dashboard knows in one currency. Nothing in it is in another currency. */
+        DashboardCurrency: {
+            currency?: string;
+            revenue?: components["schemas"]["DashboardRevenue"];
+            prev_revenue?: components["schemas"]["DashboardRevenue"] | null;
+            /** @description Net income per bucket (day, or the first day of a month), with the bucket of the previous period at the same position */
+            series?: {
+                /** Format: date */
+                date?: string;
+                /** Format: int64 */
+                net_minor?: number;
+                /** Format: date */
+                prev_date?: string;
+                /** Format: int64 */
+                prev_net_minor?: number | null;
+            }[];
+            payments?: components["schemas"]["DashboardPayments"] | null;
+            prev_payments?: components["schemas"]["DashboardPayments"] | null;
+            subscriptions?: components["schemas"]["DashboardSubscriptions"] | null;
+            prev_subscriptions?: components["schemas"]["DashboardSubscriptions"] | null;
+            /**
+             * Format: int64
+             * @description Net revenue per active subscriber
+             */
+            arpu_minor?: number | null;
+            /** Format: int64 */
+            prev_arpu_minor?: number | null;
+            top_customers?: {
+                customer_id?: string;
+                customer_external_id?: string;
+                name?: string;
+                /** Format: int64 */
+                income_minor?: number;
+                /** Format: int64 */
+                invoices?: number;
+            }[];
+            top_packages?: {
+                plan_code?: string;
+                /** Format: int64 */
+                active?: number;
+                /** Format: int64 */
+                mrr_minor?: number;
+            }[];
+            /** @description Open invoices by days open, in the order 0-7, 8-30, 31-60, 61+ */
+            aging?: {
+                /** @enum {string} */
+                bucket?: "0-7" | "8-30" | "31-60" | "61+";
+                /** Format: int64 */
+                count?: number;
+                /** Format: int64 */
+                amount_minor?: number;
+            }[];
+            /** Format: int64 */
+            open_count?: number;
+            /** Format: int64 */
+            open_minor?: number;
+            /** @description The next charges of this currency in the coming 30 days, soonest first (at most six) */
+            renewals?: {
+                subscription_id?: string;
+                customer_external_id?: string;
+                plan_code?: string;
+                interval?: string;
+                /** Format: date-time */
+                renews_at?: string;
+                state?: string;
+            }[];
+        };
+        Dashboard: {
+            app_id?: string;
+            /** @enum {string} */
+            environment?: "live" | "sandbox";
+            /** Format: uuid */
+            tenant_id?: string;
+            timezone?: string;
+            default_currency?: string;
+            range?: {
+                period?: string;
+                /** Format: date */
+                from?: string;
+                /** Format: date */
+                to?: string;
+                days?: number;
+                /** @enum {string} */
+                granularity?: "day" | "month";
+                compare?: boolean;
+                /** Format: date */
+                prev_from?: string;
+                /** Format: date */
+                prev_to?: string;
+            };
+            /** Format: date-time */
+            generated_at?: string;
+            /** @enum {string} */
+            status?: "ok" | "attention" | "degraded";
+            unavailable?: string[];
+            /** @description The period reaches past the newest 1000 ledger rows the gateway reads */
+            payments_truncated?: boolean;
+            /** @description False when the ledger window does not reach back over the previous period */
+            payments_prev_covered?: boolean;
+            renewals_truncated?: boolean;
+            /** @description The tenant's own currency first, then by net revenue */
+            currencies?: components["schemas"]["DashboardCurrency"][];
+            customers?: {
+                /** Format: int64 */
+                total?: number;
+                /** Format: int64 */
+                new?: number;
+                /** Format: int64 */
+                prev_new?: number;
+            } | null;
+            /** @description Usage against the limits of up to ten customers who have a subscription */
+            usage?: {
+                period_id?: string;
+                sampled?: number;
+                meters?: {
+                    meter_code?: string;
+                    customers?: number;
+                    over?: number;
+                    /** @description At or above 80 % of the limit */
+                    near?: number;
+                    top?: {
+                        customer_external_id?: string;
+                        used?: string;
+                        limit?: string;
+                        /** @description For display only; the exact decimals are the entitlements endpoint's */
+                        percent?: number;
+                    }[];
+                }[];
+            } | null;
+            /** @description The newest invoices, payments and subscriptions, newest first (at most twelve) */
+            activity?: {
+                /** @enum {string} */
+                kind?: "invoice" | "payment" | "subscription";
+                /** Format: date-time */
+                at?: string;
+                ref?: string;
+                label?: string;
+                customer?: string;
+                status?: string;
+                /** Format: int64 */
+                amount_minor?: number;
+                currency?: string;
+            }[];
+            health?: {
+                payments_reachable?: boolean;
+                webhook_endpoints?: number;
+                webhook_failed?: number;
+                webhook_failed_more?: boolean;
+                providers?: {
+                    provider?: string;
+                    environment?: string;
+                    is_default?: boolean;
+                }[];
+            };
         };
         AppOverview: {
             /** Format: uuid */
@@ -8715,6 +8973,40 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    appDashboard: {
+        parameters: {
+            query?: {
+                environment?: "live" | "sandbox";
+                period?: "7d" | "30d" | "90d" | "ytd" | "custom";
+                /** @description First day of a custom period (YYYY-MM-DD */
+                from?: string;
+                /** @description Last day of a custom period; not after today */
+                to?: string;
+                /** @description 0 leaves out the comparison with the period before */
+                compare?: "0" | "1";
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
     appListApiKeys: {
         parameters: {
             query?: never;
@@ -10263,6 +10555,38 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+        };
+    };
+    adminTenantDashboard: {
+        parameters: {
+            query?: {
+                period?: "7d" | "30d" | "90d" | "ytd" | "custom";
+                /** @description First day of a custom period (YYYY-MM-DD */
+                from?: string;
+                /** @description Last day of a custom period; not after today */
+                to?: string;
+                /** @description 0 leaves out the comparison with the period before */
+                compare?: "0" | "1";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     getTenant: {

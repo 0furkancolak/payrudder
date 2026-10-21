@@ -211,6 +211,7 @@ func (s *Server) operatorAdminRoutes() []Route {
 		{"GET", "/admin/v1/dead-letters", AccessOperator, "", s.adminListDeadLetters},
 		{"POST", "/admin/v1/dead-letters/redrive", AccessOperator, "", s.adminRedriveDeadLetters},
 		{"GET", "/admin/v1/tenants/{id}", AccessOperator, "", s.getTenant},
+		{"GET", "/admin/v1/tenants/{tenant_id}/dashboard", AccessOperator, "", s.adminTenantDashboard},
 		{"PATCH", "/admin/v1/tenants/{id}", AccessOperator, "", s.updateTenant},
 		{"POST", "/admin/v1/tenants/{id}/api-keys", AccessOperator, "", s.createAPIKey},
 		{"DELETE", "/admin/v1/api-keys/{id}", AccessOperator, "", s.revokeAPIKey},

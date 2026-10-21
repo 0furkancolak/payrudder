@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useNavigate, useSearch } from "@tanstack/vue-router";
 import { Plus, Rocket } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import OrgDashboard from "@/features/dashboard/OrgDashboard.vue";
+import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
 import { useErrorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -16,6 +19,15 @@ const me = useMe();
 const account = useAccount();
 const apps = useApps();
 const creating = ref(false);
+const search = useSearch({ strict: false });
+const navigate = useNavigate();
+const query = computed(() => parseQuery(search.value as Record<string, unknown>));
+const env = computed<"live" | "sandbox">(() => ((search.value as { env?: string }).env === "sandbox" ? "sandbox" : "live"));
+
+/** The dashboard keeps its period, currency and environment in the address, like an app's dashboard does. */
+function go(q: DashQuery, e: "live" | "sandbox") {
+  void navigate({ to: "/app", search: { ...(e === "sandbox" ? { env: "sandbox" } : {}), ...toSearch(q) } as never, replace: true });
+}
 
 const list = computed(() => apps.data.value?.apps ?? []);
 const canCreate = computed(() => account.data.value?.role !== "viewer");
@@ -46,7 +58,9 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
       <Skeleton v-for="n in 3" :key="n" class="h-52 rounded-3xl" />
     </div>
 
-    <div v-else-if="list.length > 0" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+    <OrgDashboard v-else-if="list.length > 0" :apps="list" :query="query" :env="env" @update:query="go($event, env)" @update:env="go({ ...query, cur: undefined }, $event)" />
+
+    <div v-if="list.length > 0" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
       <AppCard v-for="app in list" :key="app.id" :app="app" />
       <button
         v-if="canCreate"
