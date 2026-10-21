@@ -1554,7 +1554,7 @@
       "webhooks": "Webhook'lar",
       "failedDeliveries": "{n} başarısız teslimat",
       "addEndpoint": "Uç nokta ekleyin",
-      "endpoints": "{n} uç nokta, sorun yok"
+      "endpoints": "{n} uç nokta, sorun yok | {n} uç nokta, sorun yok"
     },
     "keys": {
       "title": "API anahtarları",

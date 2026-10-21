@@ -1554,7 +1554,7 @@
       "webhooks": "Webhooks",
       "failedDeliveries": "{n} livraisons échouées",
       "addEndpoint": "Ajouter un point de terminaison",
-      "endpoints": "{n} points de terminaison, tout va bien"
+      "endpoints": "{n} point de terminaison, tout va bien | {n} points de terminaison, tout va bien"
     },
     "keys": {
       "title": "Clés d'API",

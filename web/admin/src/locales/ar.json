@@ -1554,7 +1554,7 @@
       "webhooks": "الـ webhooks",
       "failedDeliveries": "{n} عمليات تسليم فاشلة",
       "addEndpoint": "أضف نقطة نهاية",
-      "endpoints": "{n} نقاط نهاية، كلها سليمة"
+      "endpoints": "نقطة نهاية {n}، كلها سليمة | {n} نقاط نهاية، كلها سليمة"
     },
     "keys": {
       "title": "مفاتيح API",

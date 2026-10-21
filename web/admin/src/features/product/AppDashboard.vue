@@ -95,7 +95,7 @@ const links = computed(() => [
               <p v-if="lead" class="truncate text-3xl font-semibold tracking-tight tabular" data-testid="kpi-revenue">{{ money(lead.minor, lead.currency) }}</p>
               <p v-else-if="data.payments" class="text-3xl font-semibold tracking-tight tabular">{{ money(0, data.currency) }}</p>
               <p v-else class="text-muted-foreground text-sm">{{ t("product.unavailable") }}</p>
-              <p v-if="revenue.length > 1" class="text-muted-foreground mt-0.5 truncate text-xs tabular">{{ revenue.slice(1).map((r) => money(r.minor, r.currency)).join(" · ") }}</p>
+              <p v-if="revenue.length > 1" class="text-muted-foreground mt-0.5 text-xs tabular">{{ revenue.slice(1).map((r) => money(r.minor, r.currency)).join(" · ") }}</p>
             </div>
             <Sparkline v-if="lead" class="w-full" :values="seriesOf(data.payments, lead.currency)" :width="220" :height="36" />
           </div>
@@ -120,7 +120,7 @@ const links = computed(() => [
           <p class="text-muted-foreground text-sm">{{ t("product.kpi.customers") }}</p>
           <div>
             <p class="text-3xl font-semibold tracking-tight tabular" data-testid="kpi-customers">{{ countText(data.customers ?? undefined) }}</p>
-            <p class="text-muted-foreground mt-0.5 truncate text-xs tabular">{{ mrr.map((s) => t("product.kpi.mrr", { amount: money(s.mrr_minor, s.currency) })).join(" · ") || t("product.kpi.noMrr") }}</p>
+            <p class="text-muted-foreground mt-0.5 text-xs tabular">{{ mrr.map((s) => t("product.kpi.mrr", { amount: money(s.mrr_minor, s.currency) })).join(" · ") || t("product.kpi.noMrr") }}</p>
           </div>
         </article>
       </div>
