@@ -12,13 +12,13 @@ services:
   admin-ui: { budget_mib: 24, measured_mib: 5.0 }
   aggregator: { budget_mib: 40, measured_mib: 16.2 }
   analytics-svc: { budget_mib: 32, measured_mib: 12.5 }
-  assets-svc: { budget_mib: 48, measured_mib: 13.7 }
-  billing-svc: { budget_mib: 72, measured_mib: 25.4 }
+  assets-svc: { budget_mib: 56, measured_mib: 13.7 }
+  billing-svc: { budget_mib: 88, measured_mib: 25.4 }
   gateway: { budget_mib: 40, measured_mib: 18.9 }
-  ingest-svc: { budget_mib: 48, measured_mib: 26.4 }
+  ingest-svc: { budget_mib: 72, measured_mib: 26.4 }
   invoice-worker: { budget_mib: 32, measured_mib: 11.8 }
   limits-svc: { budget_mib: 40, measured_mib: 16.3 }
   mockpsp: { budget_mib: 24, measured_mib: 4.0 }
   notifier: { budget_mib: 32, measured_mib: 12.9 }
   payments-worker: { budget_mib: 32, measured_mib: 13.4 }
-  plans-svc: { budget_mib: 56, measured_mib: 19.6 }
+  plans-svc: { budget_mib: 64, measured_mib: 19.6 }
