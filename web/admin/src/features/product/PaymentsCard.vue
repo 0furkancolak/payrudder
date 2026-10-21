@@ -35,7 +35,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
             <td class="py-3 pe-4"><StatusPill :tone="toneOf(p.status)">{{ t(`product.status.${p.status}`) }}</StatusPill></td>
             <td class="text-muted-foreground py-3 pe-4 capitalize">{{ p.provider }}</td>
             <td class="py-3 text-end font-medium whitespace-nowrap tabular">
-              {{ p.status === "refunded" ? "−" : "" }}{{ formatMinor(p.amount_minor, p.currency, locale) }}
+              {{ formatMinor(p.status === "refunded" ? `-${p.amount_minor}` : p.amount_minor, p.currency, locale) }}
             </td>
           </tr>
         </tbody>

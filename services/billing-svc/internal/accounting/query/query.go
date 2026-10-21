@@ -162,7 +162,7 @@ func Summary(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Summa
 
 // period validates the dates and chooses the granularity.
 func period(p SummaryParams) (from, to time.Time, gran string, err error) {
-	bad := errkey.New(codes.InvalidArgument, "billing.accounting.bad_period", "from_date and to_date are required days like 2026-10-21, from not after to")
+	bad := errkey.New(codes.InvalidArgument, "billing.accounting.bad_period", "from and to are required days like 2026-10-21, from not after to")
 	if from, err = model.ParseDay(p.FromDate); err != nil {
 		return from, to, "", bad
 	}

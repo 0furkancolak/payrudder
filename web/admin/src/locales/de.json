@@ -1566,7 +1566,7 @@
       "webhooks": "Webhooks",
       "failedDeliveries": "{n} fehlgeschlagene Zustellungen",
       "addEndpoint": "Endpunkt hinzufügen",
-      "endpoints": "{n} Endpunkte, alles in Ordnung"
+      "endpoints": "{n} Endpunkt, alles in Ordnung | {n} Endpunkte, alles in Ordnung"
     },
     "keys": {
       "title": "API-Schlüssel",

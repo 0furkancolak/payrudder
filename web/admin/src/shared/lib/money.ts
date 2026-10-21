@@ -19,7 +19,9 @@ export function formatMinor(minor: string | number | undefined, currency: string
   const whole = padded.slice(0, padded.length - digits);
   const frac = digits > 0 ? padded.slice(padded.length - digits) : "";
   const decimal = `${negative ? "-" : ""}${whole}${frac ? "." + frac : ""}`;
-  return formatter.format(decimal as unknown as number);
+  const out = formatter.format(decimal as unknown as number);
+  // In a right-to-left page the sign and the currency of an amount land on the wrong side of the digits ("TRY 30.00-"); an amount is read left to right, so isolate it.
+  return /^(ar|he|fa|ur)\b/.test(locale) ? `⁦${out}⁩` : out;
 }
 
 /** How many digits an amount in a currency has after the point (2 for dollars, 0 for yen, 3 for dinar). */
