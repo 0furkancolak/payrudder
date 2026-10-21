@@ -243,7 +243,9 @@
       "reports": "Raporlar",
       "pricing": "Kupon ve vergi",
       "webhooks": "Webhooklar",
-      "mail": "E-posta"
+      "mail": "E-posta",
+      "apps": "Uygulamalar",
+      "address": "Satıcı adresi"
     },
     "common": {
       "remove": "Kaldır"
@@ -637,6 +639,134 @@
         "delivered": "Teslim edildi",
         "failed": "Başarısız"
       }
+    }
+  },
+  "apps": {
+    "new": "Yeni uygulama",
+    "hint": "Uygulama, hesabın uygulamalarından biridir; kendi sandbox ve canlı ortamı, anahtarları, müşterileri ve planları vardır. Para birimi, saat dilimi ve ek süre burada seçilir, sonradan değiştirilemez.",
+    "formLabel": "yeni uygulama",
+    "name": "Uygulama adı",
+    "slug": "Kısaltma",
+    "slugPlaceholder": "Kısaltma (isteğe bağlı, ör. web-shop)",
+    "currency": "Para birimi",
+    "currencyPlaceholder": "Para birimi (sonra değişmez)",
+    "timezone": "Saat dilimi",
+    "timezonePlaceholder": "IANA saat dilimi, ör. Europe/Istanbul",
+    "grace": "Ek süre (saat)",
+    "gracePlaceholder": "Ek süre, saat (0 - 168)",
+    "create": "Uygulama oluştur",
+    "badSlug": "Kısaltma yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter.",
+    "title": "Bu hesabın uygulamaları",
+    "immutable": "Bir uygulamayı yeniden adlandırma ve silme API'de henüz yok; uygulamanın para birimi, saat dilimi ve ek süresi değiştirilemez.",
+    "environments": "Ortamlar",
+    "created": "Oluşturuldu",
+    "actions": "İşlemler",
+    "empty": "Bu hesapta henüz uygulama yok.",
+    "keys": {
+      "open": "API anahtarları",
+      "title": "{app} uygulamasının API anahtarları",
+      "hint": "Bir ortam için anahtar oluşturun. Anahtar yalnızca bir kez gösterilir; API anahtarları sonradan listeleyemez, bu yüzden bu sayfada oluşturulanlar sayfadan ayrılana kadar burada listelenir. Başka yerde oluşturulmuş bir anahtar kimliğiyle iptal edilebilir.",
+      "secretOnce": "Anahtarı şimdi kopyalayın: yalnızca bir kez gösterilir.",
+      "dismiss": "Kopyaladım",
+      "createFor": "{env} için anahtar oluştur",
+      "create": "Anahtar oluştur",
+      "revoked": "İptal edildi",
+      "revoke": "İptal et",
+      "revokeForm": "anahtar iptali",
+      "revokeId": "Anahtar kimliği",
+      "revokeById": "Kimliğe göre iptal et",
+      "confirmRevoke": "Bu API anahtarı iptal edilsin mi? Onu kullanan istekler hemen çalışmaz.",
+      "revokedDone": "{id} anahtarı iptal edildi."
+    }
+  },
+  "address": {
+    "title": "Satıcı adresi",
+    "hint": "Bu kiracının yasal ve fatura adresi; her faturada (PDF ve barındırılan sayfa) satıcı olarak basılır. Kaydettikten sonra kesilen faturalara uygulanır.",
+    "formLabel": "satıcı adresi",
+    "noCountry": "Ülke yok",
+    "otherCountry": "Başka bir ülke…",
+    "labels": {
+      "country": "Ülke",
+      "countryCode": "Ülke kodu (iki harf, ör. SE)",
+      "line1": "Adres satırı 1",
+      "line2": "Adres satırı 2",
+      "city": "Şehir",
+      "region": "Bölge",
+      "state": "Eyalet",
+      "province": "İl",
+      "county": "İlçe",
+      "prefecture": "Vilayet",
+      "postalCode": "Posta kodu",
+      "zip": "ZIP kodu",
+      "postcode": "Posta kodu"
+    },
+    "problems": {
+      "tooLong": "Çok uzun: en fazla {max} karakter.",
+      "oneLine": "Tek satırlık metin olmalı.",
+      "badCountry": "İki harf (ISO 3166-1), ör. TR."
+    },
+    "postalHint": "Bu, o ülkenin posta koduna benzemiyor, örneğin {example}. Yine de kabul edilir.",
+    "save": "Adresi kaydet",
+    "saved": "Adres kaydedildi.",
+    "preview": {
+      "title": "Fatura önizlemesi",
+      "hint": "Satıcı faturada böyle görünür.",
+      "from": "Satıcı",
+      "empty": "Adres yok: faturada yalnızca ad görünür."
+    }
+  },
+  "errors": {
+    "billing": {
+      "credit_note": {
+        "bad_amount": "Alacak tutarı geçerli değil: sıfırdan büyük olmalı ve faturada kalan alacak tutarını aşmamalı.",
+        "fully_credited": "Bu faturanın tamamı zaten alacaklandırılmış.",
+        "not_paid": "Yalnızca ödenmiş bir fatura için alacak dekontu düzenlenebilir.",
+        "nothing_to_refund": "Bu alacak dekontu için karta iade edilecek bir tutar yok.",
+        "refund_not_failed": "Yalnızca iadesi başarısız olan bir alacak dekontu yeniden denenebilir."
+      },
+      "dunning": {
+        "bad_delay": "Her yeniden deneme gecikmesi 1 ile 720 saat arasında olmalı.",
+        "too_many_retries": "En fazla 6 yeniden deneme gecikmesi tanımlanabilir."
+      },
+      "invoice": {
+        "not_found": "Fatura bulunamadı.",
+        "pdf_not_ready": "Fatura PDF'i henüz hazırlanmadı. Birazdan tekrar deneyin."
+      },
+      "invoice_link": {
+        "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
+        "draft_invoice": "Taslak bir fatura bağlantıyla paylaşılamaz.",
+        "not_found": "Fatura bağlantısı bulunamadı."
+      }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "Uygulama kısaltması yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter olmalı.",
+        "slug_taken": "Bu hesapta aynı kısaltmaya sahip bir uygulama zaten var."
+      },
+      "mail": {
+        "unknown_category": "Bu e-posta kategorisi yok."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın."
+      },
+      "webhook": {
+        "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
+        "too_many_endpoints": "Webhook uç noktası sınırına ulaşıldı. Önce birini silin."
+      }
+    },
+    "common": {
+      "invalid_argument": "İstekteki bir şey geçerli değil.",
+      "not_found": "Bulunamadı.",
+      "already_exists": "Zaten var.",
+      "failed_precondition": "Bu işlem mevcut durumda yapılamaz.",
+      "permission_denied": "Bu işlem için yetkiniz yok.",
+      "unauthenticated": "Yeniden oturum açın: token eksik veya artık geçerli değil.",
+      "rate_limited": "Çok fazla istek. Biraz bekleyip tekrar deneyin.",
+      "unavailable": "Servis şu anda kullanılamıyor. Kısa süre sonra tekrar deneyin.",
+      "timeout": "İstek çok uzun sürdü. Tekrar deneyin.",
+      "conflict": "Siz çalışırken veri değişti. Sayfayı yenileyip tekrar deneyin.",
+      "not_implemented": "Bu henüz desteklenmiyor.",
+      "internal": "Bizim tarafta bir sorun oluştu. Tekrar deneyin; sürerse istek kimliğiyle günlüklere bakın."
     }
   }
 }

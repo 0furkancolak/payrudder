@@ -1,5 +1,7 @@
 apiVersion: 1
 
+# Metrics, traces and logs are linked both ways: a log line's trace_id opens the trace, a span opens the logs of its
+# service around that time, and the service map is drawn from the metrics Tempo derives from the traces.
 datasources:
   - name: Prometheus
     uid: prometheus
@@ -16,3 +18,36 @@ datasources:
     jsonData:
       serviceMap:
         datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-1m"
+        spanEndTimeShift: "1m"
+        filterByTraceID: true
+        customQuery: true
+        query: '{service="$${__span.tags["service.name"]}"} |= "$${__trace.traceId}"'
+      tracesToMetrics:
+        datasourceUid: prometheus
+        tags:
+          - key: service.name
+            value: service
+        queries:
+          - name: Request rate
+            query: 'sum(rate(traces_spanmetrics_calls_total{$$__tags}[$$__rate_interval]))'
+      streamingEnabled:
+        search: true
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 500
+      derivedFields:
+        - name: trace_id
+          datasourceUid: tempo
+          matcherRegex: '"trace_id":"(\w+)"'
+          url: '$${__value.raw}'
+          urlDisplayLabel: Open trace
