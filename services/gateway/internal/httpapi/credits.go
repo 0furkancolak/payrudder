@@ -20,6 +20,8 @@ func (s *Server) creditRoutes() []Route {
 		{"POST", "/v1/customers/{external_id}/credits/grant", AccessTenant, ratelimit.ClassWrite, s.grantCredits},
 		{"POST", "/v1/customers/{external_id}/credits/consume", AccessTenant, ratelimit.ClassWrite, s.consumeCredits},
 		{"GET", "/v1/customers/{external_id}/credits/ledger", AccessTenant, ratelimit.ClassRead, s.listCreditLedger},
+		{"GET", "/v1/credits/settings", AccessTenant, ratelimit.ClassRead, s.getCreditSettings},
+		{"PUT", "/v1/credits/settings", AccessTenant, ratelimit.ClassWrite, s.setCreditSettings},
 	}
 }
 
@@ -98,7 +100,7 @@ func (s *Server) consumeCredits(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	req.CustomerId = id
+	req.CustomerId, req.CustomerExternalId = id, r.PathValue("external_id")
 	if req.IdempotencyKey == "" {
 		req.IdempotencyKey = r.Header.Get("Idempotency-Key")
 	}
@@ -122,5 +124,22 @@ func (s *Server) listCreditLedger(w http.ResponseWriter, r *http.Request) {
 		req.PageSize = int32(n)
 	}
 	resp, err := s.d.Billing.ListCreditLedger(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// getCreditSettings is GET /v1/credits/settings.
+func (s *Server) getCreditSettings(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Billing.GetCreditSettings(r.Context(), &billingv1.GetCreditSettingsRequest{})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// setCreditSettings is PUT /v1/credits/settings.
+func (s *Server) setCreditSettings(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.SetCreditSettingsRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Billing.SetCreditSettings(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }

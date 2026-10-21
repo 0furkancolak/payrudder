@@ -337,7 +337,8 @@
       "mail": "E-Mail",
       "apps": "Apps",
       "address": "Verkäuferadresse",
-      "credits": "Guthaben"
+      "credits": "Guthaben",
+      "accounting": "Buchhaltung"
     },
     "common": {
       "remove": "Entfernen"
@@ -745,7 +746,8 @@
       "kind": "Art",
       "kinds": {
         "adhoc": "Fester Betrag",
-        "invoice": "Offene Rechnung"
+        "invoice": "Offene Rechnung",
+        "credit_pack": "Credit-Paket"
       },
       "invoiceId": "Rechnungs-ID",
       "amount": "Betrag",
@@ -847,7 +849,12 @@
         "onSale": "Im Verkauf",
         "withdrawn": "Zurückgezogen",
         "withdraw": "Zurückziehen",
-        "restore": "Wieder verkaufen"
+        "restore": "Wieder verkaufen",
+        "validity": "Gültig für (Tage, optional)",
+        "validityCol": "Gültigkeit",
+        "noExpiry": "Läuft nie ab",
+        "days": "{n} Tage",
+        "purchaseLink": "Kauflink erstellen"
       },
       "customer": {
         "title": "Guthaben eines Kunden",
@@ -882,12 +889,129 @@
         "time": "Zeit",
         "kind": "Art",
         "amount": "Guthaben",
-        "reason": "Notiz"
+        "reason": "Notiz",
+        "source": "Quelle"
       },
       "kind": {
         "grant": "Hinzugefügt",
         "consume": "Verbraucht",
         "expire": "Verfallen"
+      },
+      "purchase": {
+        "title": "Kauflink",
+        "hint": "Ein Link, über den der Kunde dieses Paket kauft. Sobald die Zahlung bestätigt ist, werden die Credits einmalig gutgeschrieben. Der Preis ist immer der des Pakets.",
+        "formLabel": "Kauflink erstellen",
+        "pack": "Paket",
+        "customer": "Kunde",
+        "pickCustomer": "Kunden wählen",
+        "quantity": "Menge",
+        "create": "Link erstellen",
+        "shownOnce": "Kopieren Sie den Link jetzt: Er wird nur einmal angezeigt und kann nicht erneut gelesen werden.",
+        "url": "Kauflink",
+        "copy": "Kopieren",
+        "close": "Schließen"
+      },
+      "settings": {
+        "title": "Warnung bei niedrigem Guthaben",
+        "hint": "Fällt das Guthaben eines Kunden unter diese Zahl, sendet Quotify das Webhook-Ereignis credits.low einmalig. 0 schaltet es aus.",
+        "formLabel": "Warnung bei niedrigem Guthaben",
+        "threshold": "Warnen unter (Credits)",
+        "save": "Speichern",
+        "saved": "Gespeichert."
+      }
+    },
+    "accounting": {
+      "title": "Einnahmen und Ausgaben",
+      "intro": "Was der Mandant mit bezahlten Rechnungen eingenommen und was er ausgegeben hat, jede Währung für sich.",
+      "export": "CSV exportieren",
+      "addExpense": "Ausgabe hinzufügen",
+      "currencyNote": "Jede Währung wird für sich angezeigt. Beträge in verschiedenen Währungen werden nie addiert oder umgerechnet.",
+      "empty": "In diesem Zeitraum gibt es keine Einnahmen oder Ausgaben.",
+      "paidInvoices": "Bezahlte Rechnungen: {count}",
+      "period": {
+        "label": "Zeitraum",
+        "thisMonth": "Dieser Monat",
+        "lastMonth": "Letzter Monat",
+        "last30": "Letzte 30 Tage",
+        "thisYear": "Dieses Jahr",
+        "custom": "Benutzerdefiniert",
+        "from": "Von",
+        "to": "Bis",
+        "invalid": "Wählen Sie einen ersten und einen letzten Tag in der richtigen Reihenfolge, höchstens fünf Jahre auseinander."
+      },
+      "app": {
+        "label": "App",
+        "all": "Alle Apps",
+        "note": "Die App schränkt nur die Ausgaben ein. Die Einnahmen sind die dieses Mandanten, der eine App-Umgebung ist."
+      },
+      "stat": {
+        "income": "Einnahmen (brutto)",
+        "tax": "Eingenommene Steuer",
+        "refunds": "Erstattungen und Gutschriften",
+        "net": "Nettoeinnahmen",
+        "fees": "Anbietergebühren",
+        "feesNotRecorded": "Nicht erfasst",
+        "feesHint": "Die Provision des Zahlungsanbieters erfasst Quotify nicht. Tragen Sie sie als Ausgabe in der Kategorie Zahlungsgebühren ein.",
+        "expenses": "Ausgaben",
+        "profit": "Gewinn"
+      },
+      "donut": {
+        "title": "Ausgaben nach Kategorie",
+        "none": "In diesem Zeitraum gibt es keine Ausgaben."
+      },
+      "bars": {
+        "title": "Einnahmen und Ausgaben im Zeitverlauf",
+        "income": "Nettoeinnahmen",
+        "expense": "Ausgaben"
+      },
+      "category": {
+        "infrastructure": "Infrastruktur",
+        "payment_fees": "Zahlungsgebühren",
+        "marketing": "Marketing",
+        "payroll": "Gehälter",
+        "tax": "Steuern",
+        "software": "Software",
+        "other": "Sonstiges"
+      },
+      "recurring": {
+        "none": "Einmalig",
+        "monthly": "Monatlich",
+        "yearly": "Jährlich"
+      },
+      "expenses": {
+        "title": "Ausgaben",
+        "showVoided": "Stornierte anzeigen",
+        "none": "Noch keine Ausgaben erfasst.",
+        "voided": "Storniert",
+        "until": "bis {date}",
+        "edit": "Bearbeiten",
+        "void": "Stornieren"
+      },
+      "form": {
+        "addTitle": "Ausgabe hinzufügen",
+        "editTitle": "Ausgabe bearbeiten",
+        "hint": "Geld, das der Mandant ausgegeben hat. Eine monatliche oder jährliche Ausgabe wiederholt sich ab ihrem ersten Tag von selbst.",
+        "vendor": "Lieferant",
+        "category": "Kategorie",
+        "date": "Datum",
+        "amount": "Betrag",
+        "currency": "Währung",
+        "recurring": "Wiederholung",
+        "until": "Letzter Tag (optional)",
+        "recurringHint": "Das Bearbeiten einer wiederkehrenden Ausgabe ändert alle Wiederholungen, vergangene wie künftige.",
+        "app": "App",
+        "wholeTenant": "Ganzer Mandant",
+        "note": "Notiz (optional)",
+        "bad": "Geben Sie einen Lieferanten und einen Betrag über null ein, mit höchstens den Nachkommastellen von {currency}.",
+        "badDates": "Geben Sie das Datum ein; der letzte Tag darf nicht vor dem ersten liegen.",
+        "cancel": "Abbrechen",
+        "save": "Speichern"
+      },
+      "void": {
+        "title": "Ausgabe von {vendor} stornieren",
+        "hint": "Eine stornierte Ausgabe wird nicht gelöscht. Sie fällt aus allen Summen heraus und behält Ihre Begründung.",
+        "reason": "Begründung",
+        "submit": "Ausgabe stornieren"
       }
     }
   },
@@ -1124,7 +1248,9 @@
         "idempotency_conflict": "Dieser Idempotency-Schlüssel wurde für einen anderen Zahlungslink verwendet.",
         "invoice_not_payable": "Eine bezahlte oder stornierte Rechnung braucht keinen Zahlungslink.",
         "invoice_required": "Ein Zahlungslink der Art Rechnung braucht eine Rechnung.",
-        "not_found": "Diesen Zahlungslink gibt es nicht."
+        "not_found": "Diesen Zahlungslink gibt es nicht.",
+        "customer_required": "Ein Credit-Paket-Link braucht den Kunden, der die Credits erhält.",
+        "pack_required": "Ein Credit-Paket-Link braucht ein Paket."
       },
       "portal_link": {
         "customer_not_found": "Diesen Kunden gibt es nicht.",
@@ -1143,7 +1269,27 @@
         "key_required": "Zum Verbrauchen von Guthaben ist ein Idempotency-Schlüssel nötig.",
         "key_reused": "Dieser Idempotency-Schlüssel wurde schon für eine andere Anfrage verwendet.",
         "pack_not_found": "Es gibt kein solches Guthabenpaket.",
-        "unknown_currency": "Diese Währung wird nicht unterstützt."
+        "unknown_currency": "Diese Währung wird nicht unterstützt.",
+        "bad_quantity": "Die Menge muss zwischen 1 und 1000 liegen.",
+        "bad_threshold": "Der Schwellenwert muss 0 oder eine ganze Zahl von Credits sein.",
+        "bad_validity": "Die Gültigkeit muss 1 bis 3650 Tage betragen, oder leer für Credits, die nie verfallen.",
+        "pack_inactive": "Dieses Credit-Paket ist nicht im Verkauf.",
+        "portal_cannot_buy": "Mit diesem Portal-Link können keine Credits gekauft werden. Fordern Sie einen neuen an."
+      },
+      "accounting": {
+        "bad_app": "Die App ist ungültig.",
+        "bad_category": "Die Kategorie ist keine der bekannten Kategorien.",
+        "bad_date": "Daten sehen so aus: 2026-10-21.",
+        "bad_expense": "Eine Ausgabe braucht einen Lieferanten (bis 120 Zeichen), eine Notiz von höchstens 500 Zeichen und einen Betrag über null.",
+        "bad_granularity": "Die Reihe ist nach Tag oder Monat.",
+        "bad_page_token": "Das Seitentoken ist ungültig.",
+        "bad_period": "Geben Sie einen ersten und einen letzten Tag in der richtigen Reihenfolge an.",
+        "bad_recurring": "Eine Ausgabe wiederholt sich monatlich oder jährlich; ihr letzter Tag darf nicht vor dem ersten liegen.",
+        "expense_not_found": "Diese Ausgabe gibt es nicht.",
+        "expense_voided": "Die Ausgabe wurde storniert und kann nicht mehr geändert werden.",
+        "range_too_long": "Der Zeitraum ist zu lang: höchstens fünf Jahre, eine Tagesreihe höchstens 366 Tage.",
+        "reason_required": "Geben Sie zum Stornieren einer Ausgabe eine Begründung von höchstens 200 Zeichen an.",
+        "unknown_currency": "Die Währung wird nicht unterstützt."
       }
     },
     "plans": {

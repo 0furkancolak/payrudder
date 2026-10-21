@@ -2,18 +2,14 @@ package saga
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/tenantevents"
 )
-
-var tenantEventNS = uuid.MustParse("3b9d6e12-7a40-5c85-91f3-e0b2a8d45c17")
 
 // Event types billing-svc announces to the tenant's webhook endpoints (plans-svc has the full list).
 //
@@ -34,12 +30,7 @@ const (
 // TenantEvent writes an event for the tenant's endpoints in tx. key says which occurrence it is (an invoice id, a credit note id and an outcome): the same
 // (tenant, type, key) is one event however often it is written.
 func TenantEvent(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, key string, at time.Time, data map[string]any) error {
-	b, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-	id := uuid.NewSHA1(tenantEventNS, fmt.Appendf(nil, "%s|%s|%s", tenantID, typ, key))
-	return sqlc.New(tx).InsertTenantEvent(ctx, sqlc.InsertTenantEventParams{TenantID: tenantID, EventID: id, Type: typ, Data: b, OccurredAt: at})
+	return tenantevents.Write(ctx, tx, tenantID, typ, key, at, data)
 }
 
 // InvoiceData is the data of an invoice event; amounts are strings like in the REST API.

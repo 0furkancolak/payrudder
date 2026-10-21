@@ -671,6 +671,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The expenses the tenant recorded, newest first
+         * @description A recurring expense is one entry, listed at its first day. Voided expenses are left out unless `include_voided` is true.
+         */
+        get: operations["listExpenses"];
+        put?: never;
+        /**
+         * Record an expense
+         * @description Money the tenant spent, in one currency. A monthly or yearly expense is one entry that falls on the same day of every month or year from `incurred_on` (on the last day of a shorter month) until `recurring_until`; its occurrences are worked out when a summary is asked for.
+         */
+        post: operations["createExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expenses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace an expense
+         * @description The body replaces the whole record; a recurring expense changes in all its occurrences. A voided expense is not edited (`billing.accounting.expense_voided`).
+         */
+        put: operations["updateExpense"];
+        post?: never;
+        /**
+         * Void an expense
+         * @description The expense is not deleted: it leaves every summary and keeps its reason. The reason (1 to 200 characters) comes in the body `{"reason": "..."}` or in `?reason=`.
+         */
+        delete: operations["voidExpense"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/accounting/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Income and expenses of a period, one block per currency
+         * @description Currencies are never converted or added together. Income is read from the invoices: an invoice counts on the UTC day its payment succeeded (gross is its total, tax its TAX lines), credit notes against paid invoices and invoices refunded in full are the refunds. Provider commission is not recorded by Quotify; `provider_fees_minor` is what the tenant entered as `payment_fees` expenses, and `provider_fees_recorded` is false when there is none. `expenses_minor` includes those fees. `profit_minor` is net income minus expenses. The series has one point for every day (or month) of the period. `app_id` limits the expenses, not the income.
+         */
+        get: operations["getAccountingSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/accounting/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The accounting series as CSV
+         * @description The query of the summary. One row per currency and day (or month), then a `total` row per currency; amounts are minor units. The `provider_fees_minor` of a total row is `not_recorded` when no `payment_fees` expense exists.
+         */
+        get: operations["exportAccountingCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credits/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The low-balance threshold of the credits.low event */
+        get: operations["getCreditSettings"];
+        /**
+         * Set the low-balance threshold
+         * @description A consume that takes a customer's balance from at least `low_threshold` credits to fewer announces `credits.low` once (the webhook event). 0, the default, turns it off.
+         */
+        put: operations["setCreditSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhook-endpoints": {
         parameters: {
             query?: never;
@@ -1172,6 +1281,26 @@ export interface paths {
         get: operations["portalLogo"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/credits/buy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start buying a credit pack from the customer's portal
+         * @description Form fields `pack_id` and, optionally, `quantity` (1 to 1000). Makes a credit-pack payment link for the portal's customer (or continues the one an earlier press made and nobody paid), makes its invoice, and redirects to the invoice page to pay. The price comes from the pack, never from the form. The credits are granted once, when the payment is confirmed. At most 10 a minute per address.
+         */
+        post: operations["portalCreditsBuy"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3608,6 +3737,8 @@ export interface components {
             /** @description int64 minor units of the currency, above zero */
             price_minor: string;
             currency: string;
+            /** @description The credits bought expire after this many days; 0 or absent: they never expire */
+            validity_days?: number;
         };
         CreditPack: {
             /** Format: uuid */
@@ -3621,6 +3752,12 @@ export interface components {
             active?: boolean;
             /** Format: date-time */
             create_time?: string;
+            /** @description 0: the credits bought never expire */
+            validity_days?: number;
+        };
+        CreditSettings: {
+            /** @description int64 credits; 0 turns credits.low off */
+            low_threshold?: string;
         };
         CreditPackList: {
             packs?: components["schemas"]["CreditPack"][];
@@ -3689,12 +3826,124 @@ export interface components {
             amount?: string;
             reason?: string;
             idempotency_key?: string;
+            /**
+             * @description Where the credits it touched came from; a purchase is a credit pack that was paid for
+             * @enum {string}
+             */
+            source?: "purchase" | "promo" | "manual";
             /** Format: date-time */
             create_time?: string;
         };
         CreditLedgerPage: {
             entries?: components["schemas"]["CreditLedgerEntry"][];
             next_page_token?: string;
+        };
+        /** @enum {string} */
+        ExpenseCategory: "infrastructure" | "payment_fees" | "marketing" | "payroll" | "tax" | "software" | "other";
+        ExpenseInput: {
+            vendor: string;
+            category: components["schemas"]["ExpenseCategory"];
+            /** @description int64 minor units, above zero (a number is accepted too) */
+            amount_minor: string;
+            currency: string;
+            /**
+             * Format: date
+             * @description The day, or the first day of a recurring expense (UTC)
+             */
+            incurred_on: string;
+            note?: string;
+            /**
+             * Format: uuid
+             * @description The app of the account the cost belongs to; leave out for the whole tenant
+             */
+            app_id?: string;
+            /**
+             * @default none
+             * @enum {string}
+             */
+            recurring: "none" | "monthly" | "yearly";
+            /**
+             * Format: date
+             * @description Last day an occurrence may fall on; leave out for no end. Only for a recurring expense.
+             */
+            recurring_until?: string;
+        };
+        Expense: {
+            /** Format: uuid */
+            id?: string;
+            app_id?: string;
+            vendor?: string;
+            category?: components["schemas"]["ExpenseCategory"];
+            /** @description int64 as a string */
+            amount_minor?: string;
+            currency?: string;
+            /** Format: date */
+            incurred_on?: string;
+            note?: string;
+            /** @enum {string} */
+            recurring?: "none" | "monthly" | "yearly";
+            recurring_until?: string;
+            /** Format: date-time */
+            void_time?: string | null;
+            void_reason?: string;
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            update_time?: string;
+        };
+        ExpensePage: {
+            expenses?: components["schemas"]["Expense"][];
+            next_page_token?: string;
+        };
+        AccountingPoint: {
+            /**
+             * Format: date
+             * @description The day, or the first day of the month
+             */
+            bucket?: string;
+            gross_income_minor?: string;
+            tax_minor?: string;
+            refunds_minor?: string;
+            net_income_minor?: string;
+            expenses_minor?: string;
+            profit_minor?: string;
+        };
+        /** @description One currency of the period. Every amount is int64 minor units as a string. */
+        AccountingCurrency: {
+            currency?: string;
+            /** @description Invoices paid in the period, tax included */
+            gross_income_minor?: string;
+            /** @description The tax lines of those invoices */
+            tax_minor?: string;
+            /** @description Credit notes against paid invoices plus invoices refunded in full */
+            refunds_minor?: string;
+            /** @description gross - tax - refunds */
+            net_income_minor?: string;
+            /** @description Every live occurrence in the period, provider fees included */
+            expenses_minor?: string;
+            /** @description The payment_fees expenses; meaningful only when provider_fees_recorded */
+            provider_fees_minor?: string;
+            /** @description False: no commission was entered, which is not the same as zero */
+            provider_fees_recorded?: boolean;
+            /** @description net income - expenses; negative for a loss */
+            profit_minor?: string;
+            paid_invoices?: string;
+            expense_by_category?: {
+                category?: components["schemas"]["ExpenseCategory"];
+                amount_minor?: string;
+            }[];
+            series?: components["schemas"]["AccountingPoint"][];
+        };
+        AccountingSummary: {
+            /** Format: date */
+            from_date?: string;
+            /** Format: date */
+            to_date?: string;
+            /** @enum {string} */
+            granularity?: "day" | "month";
+            app_id?: string;
+            /** @description Ordered by currency code; a currency with no income and no expenses has no block */
+            currencies?: components["schemas"]["AccountingCurrency"][];
         };
         WebhookEndpointInput: {
             /**
@@ -3709,17 +3958,23 @@ export interface components {
             active?: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "payment_link.created" | "payment_link.paid" | "payment_link.expired";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low";
         PaymentLink: {
             /** Format: uuid */
             id?: string;
             /** @enum {string} */
-            kind?: "invoice" | "adhoc";
+            kind?: "invoice" | "adhoc" | "credit_pack";
             /**
              * @description paid: a single-use link that was paid
              * @enum {string}
              */
             status?: "active" | "paid" | "expired" | "revoked";
+            /** @description kind credit_pack: the pack sold */
+            pack_id?: string;
+            /** @description kind credit_pack: how many packs one use buys */
+            quantity?: number;
+            /** @description kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string */
+            credits?: string;
             /** @description kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
             invoice_id?: string;
             customer_external_id?: string;
@@ -3744,19 +3999,26 @@ export interface components {
         };
         CreatePaymentLinkRequest: {
             /**
-             * @description Default: invoice when invoice_id is set, else adhoc
+             * @description Default: invoice when invoice_id is set, credit_pack when pack_id is set, else adhoc
              * @enum {string}
              */
-            kind?: "invoice" | "adhoc";
+            kind?: "invoice" | "adhoc" | "credit_pack";
             /** Format: uuid */
             invoice_id?: string;
+            /**
+             * Format: uuid
+             * @description credit_pack: the active credit pack to sell. Its price and currency become the link's amount; they are never taken from the request
+             */
+            pack_id?: string;
+            /** @description credit_pack: how many packs one payment buys (default 1) */
+            quantity?: number;
             /** @description adhoc: a positive int64 in minor units (a string or a number) */
             amount_minor?: string;
             /** @description adhoc: ISO 4217; the tenant's currency when empty */
             currency?: string;
             /** @description adhoc: what it is for; printed on the invoice */
             description?: string;
-            /** @description adhoc: make the invoice out to this customer */
+            /** @description adhoc: make the invoice out to this customer. credit_pack: required, the customer who receives the credits */
             customer_external_id?: string;
             /** @description Default true for adhoc, false for invoice */
             single_use?: boolean;
@@ -3826,7 +4088,7 @@ export interface components {
             /** Format: date-time */
             delivered_time?: string;
         };
-        /** @description The body of a delivery. data depends on the type: invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change. */
+        /** @description The body of a delivery. data depends on the type: credits.purchased carries the customer, the credits granted, the new balance and the invoice; credits.low the customer, the balance and the threshold; invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change. */
         WebhookEvent: {
             /** Format: uuid */
             id?: string;
@@ -5248,6 +5510,224 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    listExpenses: {
+        parameters: {
+            query?: {
+                category?: components["schemas"]["ExpenseCategory"];
+                app_id?: string;
+                currency?: string;
+                /** @description Only entries whose (first) day is on or after this day */
+                from?: string;
+                /** @description Only entries whose (first) day is on or before this day */
+                to?: string;
+                include_voided?: boolean;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpensePage"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    createExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    updateExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    voidExpense: {
+        parameters: {
+            query?: {
+                reason?: string;
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getAccountingSummary: {
+        parameters: {
+            query: {
+                /** @description First day, inside the period */
+                from: string;
+                /** @description Last day, inside the period; at most five years after `from` */
+                to: string;
+                app_id?: string;
+                /** @description Default: day up to 62 days, month beyond. Day is allowed for at most 366 days. */
+                granularity?: "day" | "month";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingSummary"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    exportAccountingCsv: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                app_id?: string;
+                granularity?: "day" | "month";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    getCreditSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditSettings"];
+                };
+            };
+        };
+    };
+    setCreditSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditSettings"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
     listWebhookEndpoints: {
         parameters: {
             query?: never;
@@ -6268,6 +6748,52 @@ export interface operations {
             };
             /** @description No logo, or the link does not exist */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalCreditsBuy: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    /** Format: uuid */
+                    pack_id: string;
+                    quantity?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Redirect to the invoice page (/i/{invoice token}) */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link does not exist or has expired, or the pack is not on sale */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

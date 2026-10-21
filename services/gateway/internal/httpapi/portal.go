@@ -3,8 +3,13 @@ package httpapi
 import (
 	"net/http"
 	"sort"
+	"strconv"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 )
 
 // The customer portal: GET /c/{token}. Read-only, for one customer of one tenant. billing-svc resolves the token to the tenant and the customer and returns only
@@ -25,7 +30,18 @@ type portalView struct {
 	Seller, Customer string
 	Invoices         []portalInvoiceRow
 	Payments         []portalPaymentRow
+	// Credits (phase 36). ShowCredits is true when the customer has credits or the tenant has packs on sale.
+	ShowCredits bool
+	Balance     string
+	Lots        []portalLotRow
+	Packs       []portalPackRow
+	CanBuy      bool
+	Buy         string
 }
+
+type portalLotRow struct{ Granted, Remaining, Expires string }
+
+type portalPackRow struct{ ID, Name, Credits, Price, Currency, Valid string }
 
 func (v *portalView) Title() string { return v.L["portal_title"] }
 
@@ -93,5 +109,54 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 		}
 		v.Payments = append(v.Payments, p)
 	}
+	v.Balance, v.CanBuy, v.Buy = formatMinor(resp.GetCreditBalance(), 0), resp.GetCanBuyCredits(), "/c/"+token+"/credits/buy"+q
+	for _, l := range resp.GetCreditLots() {
+		row := portalLotRow{Granted: formatMinor(l.GetGranted(), 0), Remaining: formatMinor(l.GetRemaining(), 0)}
+		if t := l.GetExpireTime(); t != nil {
+			row.Expires = t.AsTime().UTC().Format("2006-01-02")
+		}
+		v.Lots = append(v.Lots, row)
+	}
+	for _, p := range resp.GetCreditPacks() {
+		v.Packs = append(v.Packs, portalPackRow{ID: p.GetId(), Name: p.GetName(), Credits: formatMinor(p.GetCredits(), 0), Price: formatMinor(p.GetPriceMinor(), int(p.GetCurrencyExponent())),
+			Currency: p.GetCurrency(), Valid: validText(v.L, p.GetValidityDays())})
+	}
+	v.ShowCredits = len(v.Lots) > 0 || len(v.Packs) > 0 || resp.GetCreditBalance() > 0
 	s.render(w, r, http.StatusOK, "portal", v)
+}
+
+// portalCreditsBuy is POST /c/{token}/credits/buy: the "Buy" button of a credit pack. Billing makes the credit-pack link and its invoice (the price is the pack's, not the
+// form's) and the customer continues on the invoice page. The credits arrive when the payment is confirmed, never from this request.
+func (s *Server) portalCreditsBuy(w http.ResponseWriter, r *http.Request) {
+	lang := pickLang(r)
+	if !s.hostedPayAllowed(w, r) {
+		return
+	}
+	token := r.PathValue("token")
+	var packID string
+	var quantity int32
+	if err := r.ParseForm(); err == nil {
+		packID = r.PostForm.Get("pack_id")
+		if v := r.PostForm.Get("quantity"); v != "" {
+			n, perr := strconv.ParseInt(v, 10, 32)
+			if perr != nil {
+				n = -1
+			}
+			quantity = int32(n)
+		}
+	}
+	back := "/c/" + token + langSuffix(r)
+	l := hostedText(lang)
+	resp, err := s.d.Hosted.StartPortalPurchase(r.Context(), &billingv1.StartPortalPurchaseRequest{PortalToken: token, PackId: packID, Quantity: quantity})
+	switch {
+	case err == nil:
+		hostedHeaders(w)
+		http.Redirect(w, r, "/i/"+resp.GetInvoiceToken()+langSuffix(r), http.StatusSeeOther)
+	case status.Code(err) == codes.PermissionDenied || status.Code(err) == codes.InvalidArgument || errkey.Of(err) == "billing.invoice_link.not_found":
+		hostedNotFound(w, lang)
+	case status.Code(err) == codes.NotFound || status.Code(err) == codes.FailedPrecondition:
+		s.message(w, r, http.StatusConflict, lang, l["cr_buy_title"], l["cr_unavailable"], back)
+	default:
+		s.message(w, r, http.StatusServiceUnavailable, lang, l["cr_buy_title"], l["pay_unavailable"], back)
+	}
 }

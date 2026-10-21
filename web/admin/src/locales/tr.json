@@ -337,7 +337,8 @@
       "mail": "E-posta",
       "apps": "Uygulamalar",
       "address": "Satıcı adresi",
-      "credits": "Krediler"
+      "credits": "Krediler",
+      "accounting": "Muhasebe"
     },
     "common": {
       "remove": "Kaldır"
@@ -745,7 +746,8 @@
       "kind": "Tür",
       "kinds": {
         "adhoc": "Sabit tutar",
-        "invoice": "Açık fatura"
+        "invoice": "Açık fatura",
+        "credit_pack": "Kredi paketi"
       },
       "invoiceId": "Fatura kimliği",
       "amount": "Tutar",
@@ -847,7 +849,12 @@
         "onSale": "Satışta",
         "withdrawn": "Satıştan kaldırıldı",
         "withdraw": "Satıştan kaldır",
-        "restore": "Yeniden satışa koy"
+        "restore": "Yeniden satışa koy",
+        "validity": "Geçerlilik (gün, isteğe bağlı)",
+        "validityCol": "Geçerlilik",
+        "noExpiry": "Süresiz",
+        "days": "{n} gün",
+        "purchaseLink": "Satın alma bağlantısı oluştur"
       },
       "customer": {
         "title": "Bir müşterinin kredileri",
@@ -882,12 +889,129 @@
         "time": "Zaman",
         "kind": "Tür",
         "amount": "Kredi",
-        "reason": "Not"
+        "reason": "Not",
+        "source": "Kaynak"
       },
       "kind": {
         "grant": "Eklendi",
         "consume": "Harcandı",
         "expire": "Süresi doldu"
+      },
+      "purchase": {
+        "title": "Satın alma bağlantısı",
+        "hint": "Müşterinin bu paketi satın almak için açtığı bağlantı. Ödeme onaylandığında krediler bir kez eklenir. Fiyat her zaman paketin fiyatıdır.",
+        "formLabel": "Satın alma bağlantısı oluştur",
+        "pack": "Paket",
+        "customer": "Müşteri",
+        "pickCustomer": "Müşteri seçin",
+        "quantity": "Adet",
+        "create": "Bağlantı oluştur",
+        "shownOnce": "Bağlantıyı şimdi kopyalayın: bir kez gösterilir ve sonradan okunamaz.",
+        "url": "Satın alma bağlantısı",
+        "copy": "Kopyala",
+        "close": "Kapat"
+      },
+      "settings": {
+        "title": "Düşük bakiye uyarısı",
+        "hint": "Bir müşterinin bakiyesi bu sayının altına düştüğünde Quotify credits.low webhook olayını bir kez gönderir. 0 kapatır.",
+        "formLabel": "Düşük bakiye uyarısı",
+        "threshold": "Şunun altında uyar (kredi)",
+        "save": "Kaydet",
+        "saved": "Kaydedildi."
+      }
+    },
+    "accounting": {
+      "title": "Gelir ve giderler",
+      "intro": "Kiracının ödenmiş faturalardan kazandığı ve harcadığı tutarlar, her para birimi ayrı ayrı.",
+      "export": "CSV indir",
+      "addExpense": "Gider ekle",
+      "currencyNote": "Her para birimi ayrı gösterilir. Farklı para birimlerindeki tutarlar asla toplanmaz veya çevrilmez.",
+      "empty": "Bu dönemde gelir veya gider yok.",
+      "paidInvoices": "Ödenen fatura: {count}",
+      "period": {
+        "label": "Dönem",
+        "thisMonth": "Bu ay",
+        "lastMonth": "Geçen ay",
+        "last30": "Son 30 gün",
+        "thisYear": "Bu yıl",
+        "custom": "Özel",
+        "from": "Başlangıç",
+        "to": "Bitiş",
+        "invalid": "Sıralı bir ilk ve son gün seçin; en fazla beş yıl arayla."
+      },
+      "app": {
+        "label": "Uygulama",
+        "all": "Tüm uygulamalar",
+        "note": "Uygulama yalnızca giderleri sınırlar. Gelir, tek bir uygulama ortamı olan bu kiracının gelirdir."
+      },
+      "stat": {
+        "income": "Gelir (brüt)",
+        "tax": "Tahsil edilen vergi",
+        "refunds": "İadeler ve alacak dekontları",
+        "net": "Net gelir",
+        "fees": "Sağlayıcı komisyonu",
+        "feesNotRecorded": "Kayıtlı değil",
+        "feesHint": "Ödeme sağlayıcısının komisyonunu Quotify kaydetmez. Ödeme komisyonu kategorisinde gider olarak ekleyin.",
+        "expenses": "Giderler",
+        "profit": "Kâr"
+      },
+      "donut": {
+        "title": "Kategoriye göre giderler",
+        "none": "Bu dönemde gider yok."
+      },
+      "bars": {
+        "title": "Zaman içinde gelir ve gider",
+        "income": "Net gelir",
+        "expense": "Giderler"
+      },
+      "category": {
+        "infrastructure": "Altyapı",
+        "payment_fees": "Ödeme komisyonları",
+        "marketing": "Pazarlama",
+        "payroll": "Maaşlar",
+        "tax": "Vergi",
+        "software": "Yazılım",
+        "other": "Diğer"
+      },
+      "recurring": {
+        "none": "Tek seferlik",
+        "monthly": "Aylık",
+        "yearly": "Yıllık"
+      },
+      "expenses": {
+        "title": "Giderler",
+        "showVoided": "İptal edilenleri göster",
+        "none": "Henüz gider kaydedilmedi.",
+        "voided": "İptal",
+        "until": "{date} tarihine kadar",
+        "edit": "Düzenle",
+        "void": "İptal et"
+      },
+      "form": {
+        "addTitle": "Gider ekle",
+        "editTitle": "Gideri düzenle",
+        "hint": "Kiracının harcadığı tutar. Aylık veya yıllık bir gider ilk gününden itibaren kendiliğinden tekrarlanır.",
+        "vendor": "Tedarikçi",
+        "category": "Kategori",
+        "date": "Tarih",
+        "amount": "Tutar",
+        "currency": "Para birimi",
+        "recurring": "Tekrar",
+        "until": "Son gün (isteğe bağlı)",
+        "recurringHint": "Tekrarlayan bir gideri düzenlemek geçmiş ve gelecek tüm tekrarları değiştirir.",
+        "app": "Uygulama",
+        "wholeTenant": "Tüm kiracı",
+        "note": "Not (isteğe bağlı)",
+        "bad": "Bir tedarikçi ve sıfırdan büyük bir tutar girin; ondalık basamak sayısı {currency} için geçerli olanı aşmasın.",
+        "badDates": "Tarihi girin; son gün ilk günden önce olamaz.",
+        "cancel": "Vazgeç",
+        "save": "Kaydet"
+      },
+      "void": {
+        "title": "{vendor} giderini iptal et",
+        "hint": "İptal edilen gider silinmez. Tüm toplamlardan çıkar ve gerekçeniz kayıtlı kalır.",
+        "reason": "Gerekçe",
+        "submit": "Gideri iptal et"
       }
     }
   },
@@ -1124,7 +1248,9 @@
         "idempotency_conflict": "Bu idempotency anahtarı başka bir ödeme bağlantısı için kullanıldı.",
         "invoice_not_payable": "Ödenmiş veya iptal edilmiş faturaya ödeme bağlantısı gerekmez.",
         "invoice_required": "Fatura türündeki ödeme bağlantısı için bir fatura gerekir.",
-        "not_found": "Böyle bir ödeme bağlantısı yok."
+        "not_found": "Böyle bir ödeme bağlantısı yok.",
+        "customer_required": "Kredi paketi bağlantısı için kredileri alacak müşteri gerekir.",
+        "pack_required": "Kredi paketi bağlantısı için bir paket gerekir."
       },
       "portal_link": {
         "customer_not_found": "Böyle bir müşteri yok.",
@@ -1143,7 +1269,27 @@
         "key_required": "Kredi harcamak için bir idempotency anahtarı gerekir.",
         "key_reused": "Bu idempotency anahtarı başka bir istek için zaten kullanıldı.",
         "pack_not_found": "Böyle bir kredi paketi yok.",
-        "unknown_currency": "Bu para birimi desteklenmiyor."
+        "unknown_currency": "Bu para birimi desteklenmiyor.",
+        "bad_quantity": "Adet 1 ile 1000 arasında olmalı.",
+        "bad_threshold": "Eşik 0 ya da tam sayıda kredi olmalı.",
+        "bad_validity": "Geçerlilik 1 ile 3650 gün arasında olmalı; süresiz krediler için boş bırakın.",
+        "pack_inactive": "Bu kredi paketi satışta değil.",
+        "portal_cannot_buy": "Bu portal bağlantısıyla kredi satın alınamaz. Yenisini isteyin."
+      },
+      "accounting": {
+        "bad_app": "Uygulama geçerli değil.",
+        "bad_category": "Kategori bilinen kategorilerden biri değil.",
+        "bad_date": "Tarihler 2026-10-21 biçimindedir.",
+        "bad_expense": "Bir gider için tedarikçi (en fazla 120 karakter), en fazla 500 karakterlik not ve sıfırdan büyük bir tutar gerekir.",
+        "bad_granularity": "Seri günlük veya aylık olur.",
+        "bad_page_token": "Sayfa belirteci geçerli değil.",
+        "bad_period": "Sıralı bir ilk ve son gün verin.",
+        "bad_recurring": "Gider aylık veya yıllık tekrarlanır; son günü ilk gününden önce olamaz.",
+        "expense_not_found": "Böyle bir gider yok.",
+        "expense_voided": "Gider iptal edilmiş, değiştirilemez.",
+        "range_too_long": "Dönem çok uzun: en fazla beş yıl, günlük seri ise en fazla 366 gün.",
+        "reason_required": "Gideri iptal etmek için en fazla 200 karakterlik bir gerekçe verin.",
+        "unknown_currency": "Para birimi desteklenmiyor."
       }
     },
     "plans": {

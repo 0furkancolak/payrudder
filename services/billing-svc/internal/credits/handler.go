@@ -48,7 +48,7 @@ func (h *Handler) CreateCreditPack(ctx context.Context, req *billingv1.CreateCre
 	if err != nil {
 		return nil, err
 	}
-	p, err := command.CreatePack(ctx, h.app, ti.ID, req.GetName(), req.GetCredits(), req.GetPriceMinor(), req.GetCurrency())
+	p, err := command.CreatePack(ctx, h.app, ti.ID, req.GetName(), req.GetCredits(), req.GetPriceMinor(), req.GetCurrency(), req.GetValidityDays())
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (h *Handler) ConsumeCredits(ctx context.Context, req *billingv1.ConsumeCred
 	if err != nil {
 		return nil, err
 	}
-	r, err := command.Consume(ctx, h.app, ti.ID, cid, req.GetCredits(), req.GetReason(), req.GetIdempotencyKey())
+	r, err := command.Consume(ctx, h.app, ti.ID, cid, req.GetCredits(), req.GetReason(), req.GetIdempotencyKey(), req.GetCustomerExternalId())
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (h *Handler) ListCreditLedger(ctx context.Context, req *billingv1.ListCredi
 	}
 	out := &billingv1.ListCreditLedgerResponse{Entries: make([]*billingv1.CreditLedgerEntry, 0, len(entries)), NextPageToken: next}
 	for _, e := range entries {
-		out.Entries = append(out.Entries, &billingv1.CreditLedgerEntry{Id: e.ID.String(), LotId: e.LotID.String(), Kind: e.Kind, Amount: e.Amount, Reason: e.Reason, IdempotencyKey: e.Key, CreateTime: timestamppb.New(e.CreatedAt)})
+		out.Entries = append(out.Entries, &billingv1.CreditLedgerEntry{Id: e.ID.String(), LotId: e.LotID.String(), Kind: e.Kind, Amount: e.Amount, Reason: e.Reason, IdempotencyKey: e.Key, Source: e.Source, CreateTime: timestamppb.New(e.CreatedAt)})
 	}
 	return out, nil
 }
@@ -150,7 +150,36 @@ func (h *Handler) scope(ctx context.Context, customerID string) (tenant.Info, uu
 }
 
 func packProto(p *command.Pack) *billingv1.CreditPack {
-	return &billingv1.CreditPack{Id: p.ID.String(), Name: p.Name, Credits: p.Credits, PriceMinor: p.PriceMinor, Currency: p.Currency, Active: p.Active, CreateTime: timestamppb.New(p.CreatedAt)}
+	out := &billingv1.CreditPack{Id: p.ID.String(), Name: p.Name, Credits: p.Credits, PriceMinor: p.PriceMinor, Currency: p.Currency, Active: p.Active, CreateTime: timestamppb.New(p.CreatedAt)}
+	if p.ValidityDays != nil {
+		out.ValidityDays = *p.ValidityDays
+	}
+	return out
+}
+
+// GetCreditSettings implements billingv1.BillingServiceServer.
+func (h *Handler) GetCreditSettings(ctx context.Context, _ *billingv1.GetCreditSettingsRequest) (*billingv1.GetCreditSettingsResponse, error) {
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+	v, err := query.LowThreshold(ctx, h.app, ti.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &billingv1.GetCreditSettingsResponse{LowThreshold: v}, nil
+}
+
+// SetCreditSettings implements billingv1.BillingServiceServer.
+func (h *Handler) SetCreditSettings(ctx context.Context, req *billingv1.SetCreditSettingsRequest) (*billingv1.SetCreditSettingsResponse, error) {
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := command.SetLowThreshold(ctx, h.app, ti.ID, req.GetLowThreshold()); err != nil {
+		return nil, err
+	}
+	return &billingv1.SetCreditSettingsResponse{LowThreshold: req.GetLowThreshold()}, nil
 }
 
 func tsPtr(t *time.Time) *timestamppb.Timestamp {

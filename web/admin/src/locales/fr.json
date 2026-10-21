@@ -337,7 +337,8 @@
       "mail": "E-mail",
       "apps": "Apps",
       "address": "Adresse du vendeur",
-      "credits": "Crédits"
+      "credits": "Crédits",
+      "accounting": "Comptabilité"
     },
     "common": {
       "remove": "Retirer"
@@ -745,7 +746,8 @@
       "kind": "Type",
       "kinds": {
         "adhoc": "Montant fixe",
-        "invoice": "Facture ouverte"
+        "invoice": "Facture ouverte",
+        "credit_pack": "Pack de crédits"
       },
       "invoiceId": "ID de facture",
       "amount": "Montant",
@@ -847,7 +849,12 @@
         "onSale": "En vente",
         "withdrawn": "Retiré",
         "withdraw": "Retirer de la vente",
-        "restore": "Remettre en vente"
+        "restore": "Remettre en vente",
+        "validity": "Valable (jours, facultatif)",
+        "validityCol": "Validité",
+        "noExpiry": "N'expire jamais",
+        "days": "{n} jours",
+        "purchaseLink": "Créer un lien d'achat"
       },
       "customer": {
         "title": "Crédits d'un client",
@@ -882,12 +889,129 @@
         "time": "Date",
         "kind": "Type",
         "amount": "Crédits",
-        "reason": "Note"
+        "reason": "Note",
+        "source": "Origine"
       },
       "kind": {
         "grant": "Ajouté",
         "consume": "Dépensé",
         "expire": "Expiré"
+      },
+      "purchase": {
+        "title": "Lien d'achat",
+        "hint": "Un lien que le client ouvre pour acheter ce pack. Une fois le paiement confirmé, les crédits sont ajoutés une seule fois. Le prix est toujours celui du pack.",
+        "formLabel": "Créer un lien d'achat",
+        "pack": "Pack",
+        "customer": "Client",
+        "pickCustomer": "Choisir un client",
+        "quantity": "Quantité",
+        "create": "Créer le lien",
+        "shownOnce": "Copiez le lien maintenant : il n'est affiché qu'une fois et ne peut plus être relu.",
+        "url": "Lien d'achat",
+        "copy": "Copier",
+        "close": "Fermer"
+      },
+      "settings": {
+        "title": "Alerte de solde bas",
+        "hint": "Lorsque le solde d'un client passe sous ce nombre, Quotify envoie une seule fois l'événement webhook credits.low. 0 le désactive.",
+        "formLabel": "Alerte de solde bas",
+        "threshold": "Alerter sous (crédits)",
+        "save": "Enregistrer",
+        "saved": "Enregistré."
+      }
+    },
+    "accounting": {
+      "title": "Revenus et dépenses",
+      "intro": "Ce que le locataire a gagné avec les factures payées et ce qu'il a dépensé, chaque devise séparément.",
+      "export": "Exporter en CSV",
+      "addExpense": "Ajouter une dépense",
+      "currencyNote": "Chaque devise est affichée séparément. Les montants de devises différentes ne sont jamais additionnés ni convertis.",
+      "empty": "Aucun revenu ni dépense sur cette période.",
+      "paidInvoices": "Factures payées : {count}",
+      "period": {
+        "label": "Période",
+        "thisMonth": "Ce mois-ci",
+        "lastMonth": "Le mois dernier",
+        "last30": "30 derniers jours",
+        "thisYear": "Cette année",
+        "custom": "Personnalisée",
+        "from": "Du",
+        "to": "Au",
+        "invalid": "Choisissez un premier et un dernier jour, dans l'ordre, séparés d'au plus cinq ans."
+      },
+      "app": {
+        "label": "Application",
+        "all": "Toutes les applications",
+        "note": "L'application ne limite que les dépenses. Les revenus sont ceux de ce locataire, qui est un environnement d'application."
+      },
+      "stat": {
+        "income": "Revenus (bruts)",
+        "tax": "Taxes collectées",
+        "refunds": "Remboursements et avoirs",
+        "net": "Revenus nets",
+        "fees": "Frais du prestataire",
+        "feesNotRecorded": "Non enregistrés",
+        "feesHint": "Quotify n'enregistre pas la commission du prestataire de paiement. Ajoutez-la comme dépense dans la catégorie Frais de paiement.",
+        "expenses": "Dépenses",
+        "profit": "Bénéfice"
+      },
+      "donut": {
+        "title": "Dépenses par catégorie",
+        "none": "Aucune dépense sur cette période."
+      },
+      "bars": {
+        "title": "Revenus et dépenses dans le temps",
+        "income": "Revenus nets",
+        "expense": "Dépenses"
+      },
+      "category": {
+        "infrastructure": "Infrastructure",
+        "payment_fees": "Frais de paiement",
+        "marketing": "Marketing",
+        "payroll": "Salaires",
+        "tax": "Impôts",
+        "software": "Logiciels",
+        "other": "Autre"
+      },
+      "recurring": {
+        "none": "Une fois",
+        "monthly": "Mensuelle",
+        "yearly": "Annuelle"
+      },
+      "expenses": {
+        "title": "Dépenses",
+        "showVoided": "Afficher les annulées",
+        "none": "Aucune dépense enregistrée pour l'instant.",
+        "voided": "Annulée",
+        "until": "jusqu'au {date}",
+        "edit": "Modifier",
+        "void": "Annuler"
+      },
+      "form": {
+        "addTitle": "Ajouter une dépense",
+        "editTitle": "Modifier la dépense",
+        "hint": "L'argent dépensé par le locataire. Une dépense mensuelle ou annuelle se répète d'elle-même à partir de son premier jour.",
+        "vendor": "Fournisseur",
+        "category": "Catégorie",
+        "date": "Date",
+        "amount": "Montant",
+        "currency": "Devise",
+        "recurring": "Répétition",
+        "until": "Dernier jour (facultatif)",
+        "recurringHint": "Modifier une dépense récurrente change toutes ses occurrences, passées et futures.",
+        "app": "Application",
+        "wholeTenant": "Tout le locataire",
+        "note": "Note (facultative)",
+        "bad": "Saisissez un fournisseur et un montant supérieur à zéro, avec au plus les décimales de {currency}.",
+        "badDates": "Saisissez la date ; le dernier jour ne peut pas précéder le premier.",
+        "cancel": "Annuler",
+        "save": "Enregistrer"
+      },
+      "void": {
+        "title": "Annuler la dépense de {vendor}",
+        "hint": "Une dépense annulée n'est pas supprimée. Elle sort de tous les totaux et garde votre motif.",
+        "reason": "Motif",
+        "submit": "Annuler la dépense"
       }
     }
   },
@@ -1124,7 +1248,9 @@
         "idempotency_conflict": "Cette clé d'idempotence a servi pour un autre lien de paiement.",
         "invoice_not_payable": "Une facture payée ou annulée n'a pas besoin de lien de paiement.",
         "invoice_required": "Un lien de paiement de type facture nécessite une facture.",
-        "not_found": "Ce lien de paiement n'existe pas."
+        "not_found": "Ce lien de paiement n'existe pas.",
+        "customer_required": "Un lien de pack de crédits a besoin du client qui reçoit les crédits.",
+        "pack_required": "Un lien de pack de crédits a besoin d'un pack."
       },
       "portal_link": {
         "customer_not_found": "Ce client n'existe pas.",
@@ -1143,7 +1269,27 @@
         "key_required": "Une clé d'idempotence est requise pour dépenser des crédits.",
         "key_reused": "Cette clé d'idempotence a déjà servi pour une autre requête.",
         "pack_not_found": "Ce pack de crédits n'existe pas.",
-        "unknown_currency": "Cette devise n'est pas prise en charge."
+        "unknown_currency": "Cette devise n'est pas prise en charge.",
+        "bad_quantity": "La quantité doit être comprise entre 1 et 1000.",
+        "bad_threshold": "Le seuil doit être 0 ou un nombre entier de crédits.",
+        "bad_validity": "La validité doit être de 1 à 3650 jours, ou vide pour des crédits qui n'expirent pas.",
+        "pack_inactive": "Ce pack de crédits n'est pas en vente.",
+        "portal_cannot_buy": "Ce lien de portail ne permet pas d'acheter des crédits. Demandez-en un nouveau."
+      },
+      "accounting": {
+        "bad_app": "L'application n'est pas valide.",
+        "bad_category": "La catégorie n'est pas l'une des catégories connues.",
+        "bad_date": "Les dates ressemblent à 2026-10-21.",
+        "bad_expense": "Une dépense exige un fournisseur (120 caractères au plus), une note de 500 caractères au plus et un montant supérieur à zéro.",
+        "bad_granularity": "La série est par jour ou par mois.",
+        "bad_page_token": "Le jeton de page n'est pas valide.",
+        "bad_period": "Indiquez un premier et un dernier jour, dans l'ordre.",
+        "bad_recurring": "Une dépense se répète chaque mois ou chaque année ; son dernier jour ne peut pas précéder le premier.",
+        "expense_not_found": "Cette dépense n'existe pas.",
+        "expense_voided": "La dépense a été annulée et ne peut plus être modifiée.",
+        "range_too_long": "La période est trop longue : cinq ans au plus, et une série quotidienne jusqu'à 366 jours.",
+        "reason_required": "Indiquez un motif de 200 caractères au plus pour annuler une dépense.",
+        "unknown_currency": "La devise n'est pas prise en charge."
       }
     },
     "plans": {

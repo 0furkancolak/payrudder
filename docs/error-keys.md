@@ -2,6 +2,19 @@
 
 Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in `error.key` of every API error; translate keys, not messages.
 
+- `billing.accounting.bad_app`
+- `billing.accounting.bad_category`
+- `billing.accounting.bad_date`
+- `billing.accounting.bad_expense`
+- `billing.accounting.bad_granularity`
+- `billing.accounting.bad_page_token`
+- `billing.accounting.bad_period`
+- `billing.accounting.bad_recurring`
+- `billing.accounting.expense_not_found`
+- `billing.accounting.expense_voided`
+- `billing.accounting.range_too_long`
+- `billing.accounting.reason_required`
+- `billing.accounting.unknown_currency`
 - `billing.credit_note.bad_amount`
 - `billing.credit_note.fully_credited`
 - `billing.credit_note.not_paid`
@@ -13,12 +26,17 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.credits.bad_key`
 - `billing.credits.bad_pack`
 - `billing.credits.bad_page_token`
+- `billing.credits.bad_quantity`
 - `billing.credits.bad_reason`
 - `billing.credits.bad_source`
+- `billing.credits.bad_threshold`
+- `billing.credits.bad_validity`
 - `billing.credits.insufficient`
 - `billing.credits.key_required`
 - `billing.credits.key_reused`
+- `billing.credits.pack_inactive`
 - `billing.credits.pack_not_found`
+- `billing.credits.portal_cannot_buy`
 - `billing.credits.unknown_currency`
 - `billing.dunning.bad_delay`
 - `billing.dunning.too_many_retries`
@@ -46,10 +64,12 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.payment_link.bad_status`
 - `billing.payment_link.consumed`
 - `billing.payment_link.customer_not_found`
+- `billing.payment_link.customer_required`
 - `billing.payment_link.idempotency_conflict`
 - `billing.payment_link.invoice_not_payable`
 - `billing.payment_link.invoice_required`
 - `billing.payment_link.not_found`
+- `billing.payment_link.pack_required`
 - `billing.portal_link.customer_not_found`
 - `billing.portal_link.customer_required`
 - `einvoice.account.invalid`
