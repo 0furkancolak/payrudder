@@ -59,6 +59,8 @@ type Config struct {
 	AllowedEnvs   []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// PublicURL is the address customers reach the gateway at, for the invoice links it hands out (https://api.example.com). Empty: relative links.
 	PublicURL string `env:"QUOTIFY_PUBLIC_URL"`
+	// TrustForwardedFor counts the public sign-in limits by X-Forwarded-For, for requests that come from a private address (the console's nginx).
+	TrustForwardedFor bool `env:"QUOTIFY_TRUST_FORWARDED_FOR"`
 }
 
 func (c *Config) Validate() error {
@@ -201,6 +203,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		Assets: assetsv1.NewAssetsServiceClient(up.assets),
 		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
 		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken, Demo: cfg.Demo,
+		Identity: plansv1.NewIdentityServiceClient(up.plans), TrustForwardedFor: cfg.TrustForwardedFor,
 	}), nil
 }
 

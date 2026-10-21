@@ -58,6 +58,7 @@ type Limiter interface {
 type Deps struct {
 	Plans         plansv1.PlansServiceClient
 	Admin         plansv1.AdminServiceClient
+	Identity      plansv1.IdentityServiceClient
 	Webhooks      plansv1.WebhookServiceClient
 	Ingest        ingestv1.IngestServiceClient
 	Usage         aggregatorv1.UsageQueryServiceClient
@@ -78,6 +79,9 @@ type Deps struct {
 	PaymentsToken string
 	// PublicURL is the address customers reach the gateway at (https://api.example.com), for the links it hands out. Empty gives relative links.
 	PublicURL string
+	// TrustForwardedFor makes the sign-in limits count by the address a proxy in front passes in X-Forwarded-For (the console's nginx does), but only for
+	// a request that really arrived from a private or loopback address, so a client cannot choose its own bucket by sending the header.
+	TrustForwardedFor bool
 	// Demo makes the hosted pages offer the mock payment for every tenant (QUOTIFY_DEMO); a sandbox tenant always gets it.
 	Demo bool
 }
@@ -89,6 +93,8 @@ type Server struct {
 	hosted  hostedLimiter
 	// hostedPays limits the POSTs that start a payment on a public page.
 	hostedPays hostedLimiter
+	// signIns and signUps limit the public sign-in and sign-up routes, per client address.
+	signIns, signUps hostedLimiter
 }
 
 // New builds the router.
@@ -121,6 +127,8 @@ const (
 	// AccessPublic is for callers that hold no key: a payment provider's webhook. Such a route authenticates nothing and
 	// believes nothing in the request (the handler confirms with the provider).
 	AccessPublic
+	// AccessSession is for a signed-in person (phase 38): Authorization: Bearer qs_<session token>. The handler acts on the person's accounts only.
+	AccessSession
 )
 
 // Route is one entry of the route table (also checked against api/openapi/v1.yaml by a contract test).
@@ -144,6 +152,17 @@ func (s *Server) wrap(rt Route) http.Handler {
 		switch rt.Access {
 		case AccessPublic:
 			// No principal, no tenant, no rate-limit class: the worker rate-limits by never acting on unconfirmed bodies.
+		case AccessSession:
+			sess, err := s.session(r)
+			if err != nil {
+				writeError(w, r, err)
+				return
+			}
+			if !s.chargeKey(w, r, "user:"+sess.UserID, "standard", rt.Class, 1) {
+				return
+			}
+			ctx = context.WithValue(ctx, sessionKey{}, sess)
+			span.SetAttributes(attribute.String("quotify.user_id", sess.UserID))
 		case AccessOperator:
 			if !s.operatorOK(r) {
 				writeError(w, r, status.Error(codes.Unauthenticated, "operator token required"))
@@ -185,7 +204,12 @@ type principalKey struct{}
 
 // charge takes cost units from the tenant's limit for class and answers 429 itself when there are none left.
 func (s *Server) charge(w http.ResponseWriter, r *http.Request, p auth.Principal, class ratelimit.Class, cost int) bool {
-	d, err := s.d.Limiter.Allow(r.Context(), p.Tenant.ID.String(), p.Tier, class, cost)
+	return s.chargeKey(w, r, p.Tenant.ID.String(), p.Tier, class, cost)
+}
+
+// chargeKey is charge for any holder of a limit: a tenant, or a signed-in person ("user:<id>").
+func (s *Server) chargeKey(w http.ResponseWriter, r *http.Request, key, tier string, class ratelimit.Class, cost int) bool {
+	d, err := s.d.Limiter.Allow(r.Context(), key, tier, class, cost)
 	if err == nil && !d.Allowed {
 		w.Header().Set("Retry-After", ratelimit.RetryAfterSeconds(d.RetryAfter))
 		writeError(w, r, status.Error(codes.ResourceExhausted, "rate limit exceeded for "+string(class)))
@@ -206,6 +230,10 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !ok || token == "" {
 		return auth.Principal{}, status.Error(codes.Unauthenticated, "missing Authorization: Bearer <api key>")
+	}
+	// A person's session token, with a tenant named, is that tenant for the call, if the tenant belongs to one of the person's accounts.
+	if strings.HasPrefix(token, sessionPrefix) {
+		return s.sessionActAs(r)
 	}
 	// The operator token, with a tenant named, is that tenant for the call: the console shows a tenant's customers, plans and reports through
 	// the same API the tenant uses. Without the header the operator token is no tenant key and is refused here, as before.
@@ -235,7 +263,11 @@ func (s *Server) actAs(ctx context.Context, id string) (auth.Principal, error) {
 		}
 		return auth.Principal{}, status.Error(codes.Unavailable, "tenant lookup unavailable")
 	}
-	t := resp.GetTenant()
+	return principalOf(resp.GetTenant()), nil
+}
+
+// principalOf is the principal of a tenant: what a request acting as that tenant carries.
+func principalOf(t *plansv1.Tenant) auth.Principal {
 	env := tenant.EnvLive
 	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
 		env = tenant.EnvSandbox
@@ -247,7 +279,8 @@ func (s *Server) actAs(ctx context.Context, id string) (auth.Principal, error) {
 	case plansv1.TenantTier_TENANT_TIER_ENTERPRISE:
 		tier = "enterprise"
 	}
-	return auth.Principal{Tenant: tenant.Info{ID: tid, Environment: env, Timezone: t.GetTimezone()}, Tier: tier}, nil
+	id, _ := uuid.Parse(t.GetId())
+	return auth.Principal{Tenant: tenant.Info{ID: id, Environment: env, Timezone: t.GetTimezone()}, Tier: tier}
 }
 
 func (s *Server) operatorOK(r *http.Request) bool {

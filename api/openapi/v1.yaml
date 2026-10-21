@@ -1656,6 +1656,207 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
         "403": { $ref: "#/components/responses/Error" }
 
+  /auth/signup:
+    post:
+      operationId: signUp
+      tags: [Product]
+      summary: Sign up a person with a new account (organisation)
+      description: >
+        Creates the user, an account and the owner membership in one step and opens a session. The token in the answer is shown once; only its hash is stored.
+        Public and rate limited per client address (5 a minute). The answer is `Cache-Control: no-store`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, account_name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 10, maxLength: 256, format: password }
+                display_name: { type: string, maxLength: 200 }
+                account_name: { type: string, maxLength: 200, description: The organisation the person starts }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/signin:
+    post:
+      operationId: signIn
+      tags: [Product]
+      summary: Sign in with e-mail and password
+      description: >
+        A wrong password, an unknown e-mail and a locked account all answer 401 `identity.auth.invalid_credentials`. Five wrong passwords lock the account for
+        fifteen minutes. Public and rate limited per client address (10 a minute).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/signout:
+    post:
+      operationId: signOut
+      tags: [Product]
+      summary: Revoke the session of the token
+      security: [{ sessionToken: [] }]
+      responses:
+        "204": { description: Signed out }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/me:
+    get:
+      operationId: me
+      tags: [Product]
+      summary: The person behind the session token, with their accounts
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionInfo" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /app/v1/account:
+    get:
+      operationId: appGetAccount
+      tags: [Product]
+      summary: An account of the person (default the first) with its members
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyAccount" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps:
+    get:
+      operationId: appListApps
+      tags: [Product]
+      summary: The apps of an account of the person, with their sandbox and live tenants
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { apps: { type: array, items: { $ref: "#/components/schemas/App" } } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: appCreateApp
+      tags: [Product]
+      summary: Create an app (a sandbox and a live tenant) in an account the person owns or administers
+      description: Free tier and no grace period. Currency and time zone cannot be changed afterwards. At most 20 apps per account.
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, currency, timezone]
+              properties:
+                name: { type: string, maxLength: 200 }
+                slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
+                currency: { type: string, enum: [CHF, EUR, GBP, JPY, KWD, TRY, USD] }
+                timezone: { type: string, examples: [Europe/Istanbul] }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}:
+    get:
+      operationId: appGetApp
+      tags: [Product]
+      summary: One app of the person, with the person's role
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { app: { $ref: "#/components/schemas/App" }, role: { type: string, enum: [owner, admin, viewer] } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/overview:
+    get:
+      operationId: appOverview
+      tags: [Product]
+      summary: Payments, invoices, customers, subscriptions and health of one environment of an app
+      description: >
+        Composed from the services that own the facts, with the environment's tenant as the caller. Payments cover the last 30 days. Money is never added across
+        currencies. A section whose service did not answer is `null` and named in `unavailable`; `status` is then `degraded`.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: environment, in: query, schema: { type: string, enum: [live, sandbox], default: live } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppOverview" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/api-keys:
+    get:
+      operationId: appListApiKeys
+      tags: [Product]
+      summary: The API keys of both environments of an app (never their secrets)
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { api_keys: { type: array, items: { $ref: "#/components/schemas/ApiKey" } } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: appCreateApiKey
+      tags: [Product]
+      summary: Create an API key for the sandbox or the live environment of an app
+      description: The plaintext is in the answer once and never stored. At most 10 active keys per environment.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environment]
+              properties:
+                environment: { type: string, enum: [sandbox, live] }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_key: { $ref: "#/components/schemas/ApiKey" }
+                  plaintext: { type: string, description: "qk_{test|live}_<prefix>_<secret>, shown once" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/api-keys/{key_id}:
+    delete:
+      operationId: appRevokeApiKey
+      tags: [Product]
+      summary: Revoke an API key of the app
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: key_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Revoked }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/accounts:
     post:
       operationId: createAccount
@@ -2857,6 +3058,7 @@ components:
   securitySchemes:
     apiKey: { type: http, scheme: bearer, description: "qk_{test|live}_<prefix>_<secret>" }
     operatorToken: { type: http, scheme: bearer, description: Operator token (QUOTIFY_OPERATOR_TOKEN) }
+    sessionToken: { type: http, scheme: bearer, description: "A person's session token (qs_..., from /auth/signin or /auth/signup). It also works on /v1 routes together with X-Quotify-Tenant, for a tenant of one of the person's accounts (a viewer may only read)." }
   parameters:
     ExternalID: { name: external_id, in: path, required: true, schema: { type: string } }
     PlanCode: { name: code, in: path, required: true, schema: { type: string } }
@@ -3141,6 +3343,161 @@ components:
           enum: [UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME, INVALID_QUANTITY,
                  INVALID_QUANTITY_PRECISION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES]
         error_message: { type: string }
+    AuthUser:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        display_name: { type: string }
+        create_time: { type: string, format: date-time }
+    Membership:
+      type: object
+      properties:
+        account_id: { type: string, format: uuid }
+        account_name: { type: string }
+        role: { type: string, enum: [owner, admin, viewer] }
+    SessionOpened:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/AuthUser" }
+        memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
+        token: { type: string, description: "qs_..., shown once; send as Authorization: Bearer" }
+        expire_time: { type: string, format: date-time, description: 14 days from now; slides on use, never beyond 90 days from sign-in }
+    SessionInfo:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/AuthUser" }
+        memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
+        expire_time: { type: string, format: date-time }
+    MyAccount:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        role: { type: string, enum: [owner, admin, viewer], description: The caller's own role }
+        create_time: { type: string, format: date-time }
+        members:
+          type: array
+          items:
+            type: object
+            properties:
+              user_id: { type: string, format: uuid }
+              email: { type: string }
+              display_name: { type: string }
+              role: { type: string, enum: [owner, admin, viewer] }
+              create_time: { type: string, format: date-time }
+    OverviewCount:
+      type: object
+      properties:
+        count: { type: integer }
+        more: { type: boolean, description: The count stopped at its cap; there are more }
+    AppOverview:
+      type: object
+      properties:
+        app_id: { type: string, format: uuid }
+        environment: { type: string, enum: [live, sandbox] }
+        tenant_id: { type: string, format: uuid }
+        currency: { type: string, description: The environment's own currency }
+        window_days: { type: integer, examples: [30] }
+        generated_at: { type: string, format: date-time }
+        status: { type: string, enum: [ok, attention, degraded], description: "attention: a failed payment or webhook delivery; degraded: a section is unavailable" }
+        unavailable: { type: array, items: { type: string, enum: [payments, invoices, customers, subscriptions, webhooks] } }
+        payments:
+          type: [object, "null"]
+          properties:
+            truncated: { type: boolean, description: The ledger window held more rows than the gateway reads }
+            by_status:
+              type: array
+              items: { type: object, properties: { status: { type: string, enum: [paid, processing, failed, refunded] }, count: { type: integer } } }
+            by_currency:
+              type: array
+              items:
+                type: object
+                properties:
+                  currency: { type: string }
+                  paid_count: { type: integer }
+                  paid_minor: { type: integer }
+                  failed_count: { type: integer }
+                  failed_minor: { type: integer }
+                  pending_count: { type: integer }
+                  pending_minor: { type: integer }
+                  refunded_minor: { type: integer }
+            series:
+              type: array
+              description: Paid money per day of the window, per currency
+              items:
+                type: object
+                properties:
+                  currency: { type: string }
+                  points: { type: array, items: { type: object, properties: { date: { type: string, format: date }, amount_minor: { type: integer } } } }
+            recent:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  invoice_id: { type: string }
+                  provider: { type: string }
+                  kind: { type: string, enum: [charge, refund] }
+                  status: { type: string, enum: [paid, processing, failed, refunded] }
+                  amount_minor: { type: integer }
+                  currency: { type: string }
+                  occurred_at: { type: string, format: date-time }
+        invoices:
+          type: [object, "null"]
+          properties:
+            open: { $ref: "#/components/schemas/OverviewCount" }
+            paid: { $ref: "#/components/schemas/OverviewCount" }
+            revenue:
+              type: array
+              description: All periods, per currency
+              items:
+                type: object
+                properties:
+                  currency: { type: string }
+                  billed_minor: { type: integer }
+                  collected_minor: { type: integer }
+                  outstanding_minor: { type: integer }
+                  refunded_minor: { type: integer }
+            recent:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  number: { type: string }
+                  customer_id: { type: string }
+                  customer_external_id: { type: string }
+                  status: { type: string }
+                  currency: { type: string }
+                  total_minor: { type: integer }
+                  create_time: { type: string, format: date-time }
+                  finalize_time: { type: string, format: date-time }
+        customers:
+          oneOf: [{ $ref: "#/components/schemas/OverviewCount" }, { type: "null" }]
+        subscriptions:
+          type: array
+          description: Recurring revenue of the current month per currency
+          items:
+            type: object
+            properties:
+              currency: { type: string }
+              active: { type: integer }
+              trialing: { type: integer }
+              past_due: { type: integer }
+              mrr_minor: { type: integer }
+              new_mrr_minor: { type: integer }
+              churned_mrr_minor: { type: integer }
+        health:
+          type: object
+          properties:
+            payments_reachable: { type: boolean }
+            webhook_endpoints: { type: integer }
+            webhook_failed: { type: integer }
+            webhook_failed_more: { type: boolean }
+            providers:
+              type: array
+              items: { type: object, properties: { provider: { type: string }, environment: { type: string }, is_default: { type: boolean } } }
     Error:
       type: object
       required: [error]

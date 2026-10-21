@@ -1258,6 +1258,34 @@
       "setting": {
         "invalid": "E-fatura tetikleyicisi kapalı, kesinleşince veya ödenince olmalıdır."
       }
+    },
+    "identity": {
+      "account": {
+        "forbidden": "Bu hesaptaki rolünüz buna izin vermiyor.",
+        "not_found": "Bu hesap yok ya da size ait değil."
+      },
+      "api_key": {
+        "bad_environment": "Bu uygulamada böyle bir ortam yok.",
+        "not_found": "Bu API anahtarı yok.",
+        "quota": "Bir ortamda en fazla 10 etkin API anahtarı olabilir. Önce birini iptal edin."
+      },
+      "app": {
+        "not_found": "Bu uygulama yok ya da size ait değil.",
+        "quota": "Bir hesapta en fazla 20 uygulama olabilir."
+      },
+      "auth": {
+        "invalid_credentials": "E-posta ya da parola yanlış veya çok fazla deneme yapıldı. Birkaç dakika sonra yeniden deneyin.",
+        "rate_limited": "Bu adresten çok fazla deneme yapıldı. Bir dakika sonra yeniden deneyin."
+      },
+      "session": {
+        "invalid": "Oturumunuz sona erdi. Yeniden giriş yapın."
+      },
+      "signup": {
+        "email_taken": "Bu e-postayla bir hesap zaten var. Bunun yerine giriş yapın."
+      },
+      "tenant": {
+        "not_found": "Bu ortam yok ya da size ait değil."
+      }
     }
   }
 }

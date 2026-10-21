@@ -128,3 +128,8 @@ None.
 
 CPU-bound on JSON decoding and TLS. Scale horizontally on CPU (HPA at 70%).
 Keep gRPC client connections pooled. Use one `grpc.ClientConn` per upstream with round-robin load balancing over headless Services.
+
+
+## As built: sessions and the product API (Phase 38)
+
+People sign in with `POST /auth/signup` / `/auth/signin` (public; 10 sign-ins and 5 sign-ups a minute per client address; `QUOTIFY_TRUST_FORWARDED_FOR=true` makes the limit count by `X-Forwarded-For`, believed only from a private or loopback peer) and use `Authorization: Bearer qs_…` on `Access = AccessSession` routes: `/auth/signout`, `/auth/me`, `/app/v1/account`, `/app/v1/apps[/{id}]`, `/app/v1/apps/{id}/overview`, `/app/v1/apps/{id}/api-keys[/{key_id}]`. Each request resolves the token with `IdentityService.GetSession` (no session cache: sign-out is immediate) and is rate limited per user (`user:<id>`, standard tier). A session may also call `/v1/*` with `X-Quotify-Tenant` for a tenant of one of its accounts (`ResolveMyTenant`; a viewer may only GET); it is never an operator. The overview composes payments-worker's ledger, billing, plans and webhooks as the environment's tenant. See [phase 38](../phases/phase-38-product-app.md).
