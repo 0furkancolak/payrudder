@@ -26,6 +26,7 @@ import (
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/credential"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
 )
 
@@ -60,11 +61,15 @@ type Commands struct {
 	log   *slog.Logger
 	slots chan struct{}
 	now   func() time.Time
+	mail  usermail.Sender
+	// appURL is where the console lives (no trailing slash); mailed links point into it.
+	appURL string
 }
 
-// New returns the identity commands on the system pool.
-func New(systemPool *pgxpool.Pool, apps AppFactory, keys KeyAdmin, log *slog.Logger) *Commands {
-	return &Commands{pool: systemPool, apps: apps, keys: keys, log: log, slots: make(chan struct{}, HashSlots), now: time.Now}
+// New returns the identity commands on the system pool. mail sends the verification, reset, invitation and warning mails; appURL is the console's base URL.
+func New(systemPool *pgxpool.Pool, apps AppFactory, keys KeyAdmin, mail usermail.Sender, appURL string, log *slog.Logger) *Commands {
+	return &Commands{pool: systemPool, apps: apps, keys: keys, log: log, slots: make(chan struct{}, HashSlots), now: time.Now, mail: mail,
+		appURL: strings.TrimRight(appURL, "/")}
 }
 
 // invalidCredentials is every sign-in failure: unknown e-mail, wrong password, locked account. One answer, so it reveals nothing.
@@ -107,11 +112,14 @@ type Opened struct {
 	ExpireTime  time.Time
 }
 
-// SignUp creates the user, the account and the owner membership in one transaction, and opens a session.
-func (c *Commands) SignUp(ctx context.Context, req *plansv1.SignUpRequest) (Opened, error) {
+// SignUp creates the user, the account and the owner membership in one transaction and mails a verification link. It opens no session and answers the same
+// for a taken address (the existing owner is mailed a warning instead, at most once an hour), so it does not tell a visitor who has an account. The password
+// is hashed in both cases, so the time does not tell either.
+func (c *Commands) SignUp(ctx context.Context, req *plansv1.SignUpRequest) error {
 	email := NormalizeEmail(req.GetEmail())
 	name := strings.TrimSpace(req.GetAccountName())
 	display := strings.TrimSpace(req.GetDisplayName())
+	locale := usermail.Locale(req.GetLocale())
 	var v domain.Violations
 	if !validEmail(email) {
 		v.Add("email", "must be a plain e-mail address")
@@ -126,24 +134,21 @@ func (c *Commands) SignUp(ctx context.Context, req *plansv1.SignUpRequest) (Open
 		v.Add("display_name", "at most 200 characters")
 	}
 	if err := v.Err(); err != nil {
-		return Opened{}, err
+		return err
 	}
 	var hash string
 	var herr error
 	if err := c.withSlot(ctx, func() { hash, herr = credential.Hash(req.GetPassword()) }); err != nil {
-		return Opened{}, err
+		return err
 	}
 	if herr != nil {
-		return Opened{}, status.Error(codes.Internal, "password hashing failed")
+		return status.Error(codes.Internal, "password hashing failed")
 	}
-	token, tokenHash, err := credential.NewToken()
-	if err != nil {
-		return Opened{}, status.Error(codes.Internal, "token generation failed")
-	}
-	var out Opened
-	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	var userID, accountID uuid.UUID
+	var verifyToken string
+	err := pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		u, err := q.InsertUser(ctx, sqlc.InsertUserParams{ID: idgen.NewUUIDv7(), Email: email, DisplayName: display, PasswordHash: hash})
+		u, err := q.InsertUser(ctx, sqlc.InsertUserParams{ID: idgen.NewUUIDv7(), Email: email, DisplayName: display, PasswordHash: hash, Locale: locale})
 		if err != nil {
 			return err
 		}
@@ -154,23 +159,33 @@ func (c *Commands) SignUp(ctx context.Context, req *plansv1.SignUpRequest) (Open
 		if err := q.InsertMember(ctx, sqlc.InsertMemberParams{AccountID: a.ID, UserID: u.ID, Role: query.RoleOwner}); err != nil {
 			return err
 		}
-		now := c.now()
-		expires := query.SlideTo(now, now)
-		if _, err := q.InsertSession(ctx, sqlc.InsertSessionParams{ID: idgen.NewUUIDv7(), UserID: u.ID, TokenHash: tokenHash, ExpiresAt: expires}); err != nil {
-			return err
-		}
-		out = Opened{User: query.User(u), Token: token, ExpireTime: expires,
-			Memberships: []*plansv1.Membership{{AccountId: a.ID.String(), AccountName: a.Name, Role: query.RoleOwner}}}
-		return nil
+		userID, accountID = u.ID, a.ID
+		verifyToken, err = issueToken(ctx, q, u.ID, kindVerify, credential.VerifyPrefix, VerifyTTL, c.now())
+		return err
 	})
 	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
-		return Opened{}, errkey.New(codes.AlreadyExists, "identity.signup.email_taken", "an account with this e-mail already exists")
+		c.warnOwner(ctx, email)
+		return nil
 	}
 	if err != nil {
-		return Opened{}, convert.Err(err, "user")
+		return convert.Err(err, "user")
 	}
-	c.log.InfoContext(ctx, "user signed up", "user_id", out.User.GetId(), "account_id", out.Memberships[0].GetAccountId())
-	return out, nil
+	c.mail.Send(ctx, usermail.Mail{Kind: usermail.KindVerify, To: email, Locale: locale, Link: c.link("verify", verifyToken)})
+	c.log.InfoContext(ctx, "user signed up", "user_id", userID, "account_id", accountID)
+	return nil
+}
+
+// warnOwner tells the person who owns an address that somebody tried to sign up with it. Best effort; at most one mail an hour per address.
+func (c *Commands) warnOwner(ctx context.Context, email string) {
+	db := sqlc.New(c.pool)
+	u, err := db.GetUserByEmail(ctx, email)
+	if err != nil {
+		return
+	}
+	if _, err := db.TouchTakenNotice(ctx, u.ID); err != nil {
+		return // told within the hour already
+	}
+	c.mail.Send(ctx, usermail.Mail{Kind: usermail.KindTaken, To: u.Email, Locale: u.Locale})
 }
 
 // SignIn checks the password and opens a session. A failure never says which part was wrong.
@@ -353,6 +368,17 @@ func (c *Commands) CreateAPIKey(ctx context.Context, req *plansv1.CreateMyApiKey
 	}
 	if target == nil {
 		return nil, "", errkey.New(codes.InvalidArgument, "identity.api_key.bad_environment", "this app has no such environment")
+	}
+	// A live key moves real money: the person must have proven the address first. Sandbox keys do not need it.
+	if target.GetEnvironment() == plansv1.Environment_ENVIRONMENT_LIVE {
+		uid, _ := query.ParseID(req.GetUserId())
+		u, err := db.GetUser(ctx, uid)
+		if err != nil {
+			return nil, "", convert.Err(err, "user")
+		}
+		if u.EmailVerifiedAt == nil {
+			return nil, "", errkey.New(codes.PermissionDenied, "identity.email.not_verified", "confirm your e-mail address to create live API keys")
+		}
 	}
 	keys, err := query.KeysOf(ctx, db, app)
 	if err != nil {

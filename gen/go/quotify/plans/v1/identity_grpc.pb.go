@@ -19,18 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	IdentityService_SignUp_FullMethodName          = "/quotify.plans.v1.IdentityService/SignUp"
-	IdentityService_SignIn_FullMethodName          = "/quotify.plans.v1.IdentityService/SignIn"
-	IdentityService_SignOut_FullMethodName         = "/quotify.plans.v1.IdentityService/SignOut"
-	IdentityService_GetSession_FullMethodName      = "/quotify.plans.v1.IdentityService/GetSession"
-	IdentityService_GetMyAccount_FullMethodName    = "/quotify.plans.v1.IdentityService/GetMyAccount"
-	IdentityService_CreateMyApp_FullMethodName     = "/quotify.plans.v1.IdentityService/CreateMyApp"
-	IdentityService_ListMyApps_FullMethodName      = "/quotify.plans.v1.IdentityService/ListMyApps"
-	IdentityService_GetMyApp_FullMethodName        = "/quotify.plans.v1.IdentityService/GetMyApp"
-	IdentityService_ResolveMyTenant_FullMethodName = "/quotify.plans.v1.IdentityService/ResolveMyTenant"
-	IdentityService_CreateMyApiKey_FullMethodName  = "/quotify.plans.v1.IdentityService/CreateMyApiKey"
-	IdentityService_ListMyApiKeys_FullMethodName   = "/quotify.plans.v1.IdentityService/ListMyApiKeys"
-	IdentityService_RevokeMyApiKey_FullMethodName  = "/quotify.plans.v1.IdentityService/RevokeMyApiKey"
+	IdentityService_SignUp_FullMethodName               = "/quotify.plans.v1.IdentityService/SignUp"
+	IdentityService_SignIn_FullMethodName               = "/quotify.plans.v1.IdentityService/SignIn"
+	IdentityService_SignOut_FullMethodName              = "/quotify.plans.v1.IdentityService/SignOut"
+	IdentityService_GetSession_FullMethodName           = "/quotify.plans.v1.IdentityService/GetSession"
+	IdentityService_VerifyEmail_FullMethodName          = "/quotify.plans.v1.IdentityService/VerifyEmail"
+	IdentityService_ResendVerification_FullMethodName   = "/quotify.plans.v1.IdentityService/ResendVerification"
+	IdentityService_RequestPasswordReset_FullMethodName = "/quotify.plans.v1.IdentityService/RequestPasswordReset"
+	IdentityService_ResetPassword_FullMethodName        = "/quotify.plans.v1.IdentityService/ResetPassword"
+	IdentityService_GetMyAccount_FullMethodName         = "/quotify.plans.v1.IdentityService/GetMyAccount"
+	IdentityService_CreateMyApp_FullMethodName          = "/quotify.plans.v1.IdentityService/CreateMyApp"
+	IdentityService_ListMyApps_FullMethodName           = "/quotify.plans.v1.IdentityService/ListMyApps"
+	IdentityService_GetMyApp_FullMethodName             = "/quotify.plans.v1.IdentityService/GetMyApp"
+	IdentityService_ResolveMyTenant_FullMethodName      = "/quotify.plans.v1.IdentityService/ResolveMyTenant"
+	IdentityService_CreateMyApiKey_FullMethodName       = "/quotify.plans.v1.IdentityService/CreateMyApiKey"
+	IdentityService_ListMyApiKeys_FullMethodName        = "/quotify.plans.v1.IdentityService/ListMyApiKeys"
+	IdentityService_RevokeMyApiKey_FullMethodName       = "/quotify.plans.v1.IdentityService/RevokeMyApiKey"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -41,7 +45,8 @@ const (
 // Only the gateway calls it. Everything after sign-in takes the user id the gateway resolved from the session token and checks the
 // membership itself, in SQL, so a request for another account's app finds nothing even if the gateway had a bug.
 type IdentityServiceClient interface {
-	// SignUp creates the user, an account and the owner membership in one transaction and opens a session.
+	// SignUp creates the user, an account and the owner membership in one transaction and mails a verification link. It opens no session, and it answers the
+	// same whether the address was free or taken (in that case the existing owner is mailed instead), so it does not tell who has an account.
 	SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpResponse, error)
 	// SignIn checks the password and opens a session. Every failure (unknown e-mail, wrong password, locked) is the same error.
 	SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.CallOption) (*SignInResponse, error)
@@ -49,6 +54,14 @@ type IdentityServiceClient interface {
 	SignOut(ctx context.Context, in *SignOutRequest, opts ...grpc.CallOption) (*SignOutResponse, error)
 	// GetSession resolves a session token to its user and memberships, and slides the expiry.
 	GetSession(ctx context.Context, in *GetSessionRequest, opts ...grpc.CallOption) (*GetSessionResponse, error)
+	// VerifyEmail consumes a verification token and marks the address as proven. The token is single use and expires after 24 hours.
+	VerifyEmail(ctx context.Context, in *VerifyEmailRequest, opts ...grpc.CallOption) (*VerifyEmailResponse, error)
+	// ResendVerification mails a new verification link to the signed-in user (at most one a minute); older links stop working.
+	ResendVerification(ctx context.Context, in *ResendVerificationRequest, opts ...grpc.CallOption) (*ResendVerificationResponse, error)
+	// RequestPasswordReset mails a reset link when the address has an account. It always succeeds and never says whether the address is known.
+	RequestPasswordReset(ctx context.Context, in *RequestPasswordResetRequest, opts ...grpc.CallOption) (*RequestPasswordResetResponse, error)
+	// ResetPassword consumes a reset token (single use, one hour), sets the new password, proves the address and revokes every session of the user.
+	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error)
 	GetMyAccount(ctx context.Context, in *GetMyAccountRequest, opts ...grpc.CallOption) (*GetMyAccountResponse, error)
 	// CreateMyApp adds an app (a sandbox and a live tenant) to an account the user owns or administers. Free tier, no grace period.
 	CreateMyApp(ctx context.Context, in *CreateMyAppRequest, opts ...grpc.CallOption) (*CreateMyAppResponse, error)
@@ -103,6 +116,46 @@ func (c *identityServiceClient) GetSession(ctx context.Context, in *GetSessionRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetSessionResponse)
 	err := c.cc.Invoke(ctx, IdentityService_GetSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) VerifyEmail(ctx context.Context, in *VerifyEmailRequest, opts ...grpc.CallOption) (*VerifyEmailResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyEmailResponse)
+	err := c.cc.Invoke(ctx, IdentityService_VerifyEmail_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ResendVerification(ctx context.Context, in *ResendVerificationRequest, opts ...grpc.CallOption) (*ResendVerificationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResendVerificationResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ResendVerification_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) RequestPasswordReset(ctx context.Context, in *RequestPasswordResetRequest, opts ...grpc.CallOption) (*RequestPasswordResetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestPasswordResetResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RequestPasswordReset_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResetPasswordResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ResetPassword_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +250,8 @@ func (c *identityServiceClient) RevokeMyApiKey(ctx context.Context, in *RevokeMy
 // Only the gateway calls it. Everything after sign-in takes the user id the gateway resolved from the session token and checks the
 // membership itself, in SQL, so a request for another account's app finds nothing even if the gateway had a bug.
 type IdentityServiceServer interface {
-	// SignUp creates the user, an account and the owner membership in one transaction and opens a session.
+	// SignUp creates the user, an account and the owner membership in one transaction and mails a verification link. It opens no session, and it answers the
+	// same whether the address was free or taken (in that case the existing owner is mailed instead), so it does not tell who has an account.
 	SignUp(context.Context, *SignUpRequest) (*SignUpResponse, error)
 	// SignIn checks the password and opens a session. Every failure (unknown e-mail, wrong password, locked) is the same error.
 	SignIn(context.Context, *SignInRequest) (*SignInResponse, error)
@@ -205,6 +259,14 @@ type IdentityServiceServer interface {
 	SignOut(context.Context, *SignOutRequest) (*SignOutResponse, error)
 	// GetSession resolves a session token to its user and memberships, and slides the expiry.
 	GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error)
+	// VerifyEmail consumes a verification token and marks the address as proven. The token is single use and expires after 24 hours.
+	VerifyEmail(context.Context, *VerifyEmailRequest) (*VerifyEmailResponse, error)
+	// ResendVerification mails a new verification link to the signed-in user (at most one a minute); older links stop working.
+	ResendVerification(context.Context, *ResendVerificationRequest) (*ResendVerificationResponse, error)
+	// RequestPasswordReset mails a reset link when the address has an account. It always succeeds and never says whether the address is known.
+	RequestPasswordReset(context.Context, *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error)
+	// ResetPassword consumes a reset token (single use, one hour), sets the new password, proves the address and revokes every session of the user.
+	ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error)
 	GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error)
 	// CreateMyApp adds an app (a sandbox and a live tenant) to an account the user owns or administers. Free tier, no grace period.
 	CreateMyApp(context.Context, *CreateMyAppRequest) (*CreateMyAppResponse, error)
@@ -236,6 +298,18 @@ func (UnimplementedIdentityServiceServer) SignOut(context.Context, *SignOutReque
 }
 func (UnimplementedIdentityServiceServer) GetSession(context.Context, *GetSessionRequest) (*GetSessionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSession not implemented")
+}
+func (UnimplementedIdentityServiceServer) VerifyEmail(context.Context, *VerifyEmailRequest) (*VerifyEmailResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VerifyEmail not implemented")
+}
+func (UnimplementedIdentityServiceServer) ResendVerification(context.Context, *ResendVerificationRequest) (*ResendVerificationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResendVerification not implemented")
+}
+func (UnimplementedIdentityServiceServer) RequestPasswordReset(context.Context, *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RequestPasswordReset not implemented")
+}
+func (UnimplementedIdentityServiceServer) ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResetPassword not implemented")
 }
 func (UnimplementedIdentityServiceServer) GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyAccount not implemented")
@@ -350,6 +424,78 @@ func _IdentityService_GetSession_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(IdentityServiceServer).GetSession(ctx, req.(*GetSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_VerifyEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyEmailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).VerifyEmail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_VerifyEmail_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).VerifyEmail(ctx, req.(*VerifyEmailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ResendVerification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResendVerificationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ResendVerification(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ResendVerification_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ResendVerification(ctx, req.(*ResendVerificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_RequestPasswordReset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestPasswordResetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RequestPasswordReset(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RequestPasswordReset_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RequestPasswordReset(ctx, req.(*RequestPasswordResetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ResetPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetPasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ResetPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ResetPassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ResetPassword(ctx, req.(*ResetPasswordRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -520,6 +666,22 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSession",
 			Handler:    _IdentityService_GetSession_Handler,
+		},
+		{
+			MethodName: "VerifyEmail",
+			Handler:    _IdentityService_VerifyEmail_Handler,
+		},
+		{
+			MethodName: "ResendVerification",
+			Handler:    _IdentityService_ResendVerification_Handler,
+		},
+		{
+			MethodName: "RequestPasswordReset",
+			Handler:    _IdentityService_RequestPasswordReset_Handler,
+		},
+		{
+			MethodName: "ResetPassword",
+			Handler:    _IdentityService_ResetPassword_Handler,
 		},
 		{
 			MethodName: "GetMyAccount",

@@ -54,7 +54,17 @@ type fakeIdentity struct {
 	lastUser string // the user id the last account-scoped call carried
 	keys     map[string]string
 	signIns  int
+
+	signUpReqs     []*plansv1.SignUpRequest
+	resetReqs      []*plansv1.RequestPasswordResetRequest
+	resetPasswords []*plansv1.ResetPasswordRequest
+	resends        int
 }
+
+const (
+	goodVerifyToken = "qv_good"
+	goodResetToken  = "qr_good"
+)
 
 func newFakeIdentity() *fakeIdentity {
 	return &fakeIdentity{revoked: map[string]bool{}, keys: map[string]string{"key-ada": adaApp, "key-bob": bobApp}}
@@ -114,7 +124,49 @@ func (f *fakeIdentity) SignIn(_ context.Context, req *plansv1.SignInRequest) (*p
 }
 
 func (f *fakeIdentity) SignUp(_ context.Context, req *plansv1.SignUpRequest) (*plansv1.SignUpResponse, error) {
-	return &plansv1.SignUpResponse{User: &plansv1.User{Id: adaUser, Email: req.GetEmail()}, Token: tokAda, Memberships: f.memberships(adaUser), ExpireTime: timestamppb.Now()}, nil
+	f.mu.Lock()
+	f.signUpReqs = append(f.signUpReqs, req)
+	f.mu.Unlock()
+	return &plansv1.SignUpResponse{}, nil
+}
+
+func (f *fakeIdentity) VerifyEmail(_ context.Context, req *plansv1.VerifyEmailRequest) (*plansv1.VerifyEmailResponse, error) {
+	if req.GetToken() != goodVerifyToken {
+		return nil, errkey.New(codes.InvalidArgument, "identity.token.invalid", "bad link")
+	}
+	return &plansv1.VerifyEmailResponse{User: &plansv1.User{Id: adaUser, Email: "ada@example.com", EmailVerified: true}}, nil
+}
+
+func (f *fakeIdentity) ResendVerification(_ context.Context, req *plansv1.ResendVerificationRequest) (*plansv1.ResendVerificationResponse, error) {
+	f.seen(req.GetUserId())
+	f.mu.Lock()
+	f.resends++
+	n := f.resends
+	f.mu.Unlock()
+	if n > 1 {
+		return nil, errkey.New(codes.ResourceExhausted, "identity.verify.throttled", "wait")
+	}
+	return &plansv1.ResendVerificationResponse{}, nil
+}
+
+func (f *fakeIdentity) RequestPasswordReset(_ context.Context, req *plansv1.RequestPasswordResetRequest) (*plansv1.RequestPasswordResetResponse, error) {
+	f.mu.Lock()
+	f.resetReqs = append(f.resetReqs, req)
+	f.mu.Unlock()
+	if !strings.Contains(req.GetEmail(), "@") {
+		return nil, errkey.New(codes.InvalidArgument, "common.invalid_argument", "bad address")
+	}
+	return &plansv1.RequestPasswordResetResponse{}, nil
+}
+
+func (f *fakeIdentity) ResetPassword(_ context.Context, req *plansv1.ResetPasswordRequest) (*plansv1.ResetPasswordResponse, error) {
+	f.mu.Lock()
+	f.resetPasswords = append(f.resetPasswords, req)
+	f.mu.Unlock()
+	if req.GetToken() != goodResetToken {
+		return nil, errkey.New(codes.InvalidArgument, "identity.token.invalid", "bad link")
+	}
+	return &plansv1.ResetPasswordResponse{}, nil
 }
 
 func (f *fakeIdentity) SignOut(_ context.Context, req *plansv1.SignOutRequest) (*plansv1.SignOutResponse, error) {
@@ -403,8 +455,8 @@ func TestSignInAndSignUp(t *testing.T) {
 		t.Fatalf("wrong password: %d %v", resp.StatusCode, m)
 	}
 	resp, m = p.call(t, "POST", "/auth/signup", "", "", `{"email":"new@example.com","password":"a long enough password","account_name":"New"}`)
-	if resp.StatusCode != 201 || m["token"] != tokAda || resp.Header.Get("Cache-Control") != "no-store" {
-		t.Fatalf("sign-up: %d %v", resp.StatusCode, m)
+	if resp.StatusCode != 202 || m["token"] != nil || m["status"] != "accepted" || resp.Header.Get("Cache-Control") != "no-store" {
+		t.Fatalf("sign-up must answer 202 and open no session: %d %v", resp.StatusCode, m)
 	}
 	if resp, _ := p.call(t, "POST", "/auth/signin", "", "", `{not json`); resp.StatusCode != 400 {
 		t.Errorf("malformed body: %d", resp.StatusCode)
@@ -766,5 +818,134 @@ func TestPublicAuthErrorsAreKeyed(t *testing.T) {
 	}
 	if got := status.Code(notFound("app")); got != codes.NotFound {
 		t.Error("sanity")
+	}
+}
+
+func TestSignUpAnswersTheSameForEveryAddress(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	body := `{"email":"%s","password":"a long enough password","account_name":"New","locale":"%s"}`
+	_, a := p.call(t, "POST", "/auth/signup", "", "", strings.Replace(strings.Replace(body, "%s", "free@example.com", 1), "%s", "tr", 1))
+	_, b := p.call(t, "POST", "/auth/signup", "", "", strings.Replace(strings.Replace(body, "%s", "ada@example.com", 1), "%s", "xx", 1))
+	if len(a) != len(b) || a["status"] != b["status"] {
+		t.Fatalf("answers differ: %v vs %v", a, b)
+	}
+	p.ident.mu.Lock()
+	defer p.ident.mu.Unlock()
+	if len(p.ident.signUpReqs) != 2 || p.ident.signUpReqs[0].GetLocale() != "tr" || p.ident.signUpReqs[1].GetLocale() != "en" {
+		t.Errorf("locale: %v", p.ident.signUpReqs)
+	}
+}
+
+func TestLocaleOf(t *testing.T) {
+	mk := func(h string) *http.Request {
+		r := httptest.NewRequest("POST", "/", nil)
+		if h != "" {
+			r.Header.Set("Accept-Language", h)
+		}
+		return r
+	}
+	for _, c := range []struct{ asked, header, want string }{
+		{"de", "", "de"}, {"DE", "fr", "de"}, {"", "tr-TR,tr;q=0.9,en;q=0.8", "tr"}, {"", "xx, es-MX;q=0.5", "es"}, {"", "ar", "ar"},
+		{"klingon", "", "en"}, {"", "", "en"}, {"", "ja,zh", "en"},
+	} {
+		if got := localeOf(mk(c.header), c.asked); got != c.want {
+			t.Errorf("asked %q header %q: %s, want %s", c.asked, c.header, got, c.want)
+		}
+	}
+}
+
+func TestVerifyEmailRoute(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	resp, m := p.call(t, "POST", "/auth/verify", "", "", `{"token":"`+goodVerifyToken+`"}`)
+	u, _ := m["user"].(map[string]any)
+	if resp.StatusCode != 200 || u["email_verified"] != true || resp.Header.Get("Cache-Control") != "no-store" {
+		t.Fatalf("verify: %d %v", resp.StatusCode, m)
+	}
+	resp, m = p.call(t, "POST", "/auth/verify", "", "", `{"token":"qv_used"}`)
+	if resp.StatusCode != 400 || errKeyOf(m) != "identity.token.invalid" {
+		t.Fatalf("bad token: %d %v", resp.StatusCode, m)
+	}
+}
+
+func TestResendVerificationNeedsASessionAndIsThrottled(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	for _, tok := range []string{"", "qs_unknown", operatorToken, "live-key"} {
+		if resp, _ := p.call(t, "POST", "/auth/resend-verification", tok, "", ""); resp.StatusCode != 401 {
+			t.Errorf("token %q: %d, want 401", tok, resp.StatusCode)
+		}
+	}
+	if resp, _ := p.call(t, "POST", "/auth/resend-verification", tokAda, "", ""); resp.StatusCode != 204 {
+		t.Fatalf("resend: %d", resp.StatusCode)
+	}
+	p.ident.mu.Lock()
+	user := p.ident.lastUser
+	p.ident.mu.Unlock()
+	if user != adaUser {
+		t.Errorf("the user comes from the session: %s", user)
+	}
+	resp, m := p.call(t, "POST", "/auth/resend-verification", tokAda, "", "")
+	if resp.StatusCode != 429 || errKeyOf(m) != "identity.verify.throttled" {
+		t.Fatalf("throttled resend: %d %v", resp.StatusCode, m)
+	}
+}
+
+func TestForgotPasswordNeverSaysWhetherTheAddressExists(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	resp1, a := p.call(t, "POST", "/auth/forgot", "", "", `{"email":"ada@example.com"}`)
+	resp2, b := p.call(t, "POST", "/auth/forgot", "", "", `{"email":"nobody@example.com","locale":"fr"}`)
+	if resp1.StatusCode != 202 || resp2.StatusCode != 202 || a["status"] != b["status"] || resp1.Header.Get("Cache-Control") != "no-store" {
+		t.Fatalf("forgot: %d %v / %d %v", resp1.StatusCode, a, resp2.StatusCode, b)
+	}
+	if resp, m := p.call(t, "POST", "/auth/forgot", "", "", `{"email":"not an address"}`); resp.StatusCode != 400 {
+		t.Errorf("malformed address: %d %v", resp.StatusCode, m)
+	}
+	p.ident.mu.Lock()
+	defer p.ident.mu.Unlock()
+	if len(p.ident.resetReqs) != 3 || p.ident.resetReqs[1].GetLocale() != "fr" || p.ident.resetReqs[0].GetLocale() != "en" {
+		t.Errorf("requests: %v", p.ident.resetReqs)
+	}
+}
+
+func TestForgotPasswordIsRateLimitedPerAddress(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	for i := 0; i < forgotsPerMinute+2; i++ {
+		resp, m := p.call(t, "POST", "/auth/forgot", "", "", `{"email":"ada@example.com"}`)
+		if i >= forgotsPerMinute && (resp.StatusCode != 429 || errKeyOf(m) != "identity.auth.rate_limited") {
+			t.Fatalf("request %d: %d %v", i+1, resp.StatusCode, m)
+		}
+	}
+	p.ident.mu.Lock()
+	defer p.ident.mu.Unlock()
+	if len(p.ident.resetReqs) != forgotsPerMinute {
+		t.Errorf("plans-svc saw %d requests, want %d", len(p.ident.resetReqs), forgotsPerMinute)
+	}
+}
+
+func TestResetPasswordRoute(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	resp, _ := p.call(t, "POST", "/auth/reset", "", "", `{"token":"`+goodResetToken+`","password":"a brand new password"}`)
+	if resp.StatusCode != 204 || resp.Header.Get("Cache-Control") != "no-store" {
+		t.Fatalf("reset: %d", resp.StatusCode)
+	}
+	resp, m := p.call(t, "POST", "/auth/reset", "", "", `{"token":"qr_bad","password":"a brand new password"}`)
+	if resp.StatusCode != 400 || errKeyOf(m) != "identity.token.invalid" {
+		t.Fatalf("bad token: %d %v", resp.StatusCode, m)
+	}
+	// A body cannot name the user: only token and password are read.
+	p.call(t, "POST", "/auth/reset", "", "", `{"token":"`+goodResetToken+`","password":"a brand new password","user_id":"`+bobUser+`"}`)
+	p.ident.mu.Lock()
+	defer p.ident.mu.Unlock()
+	if last := p.ident.resetPasswords[len(p.ident.resetPasswords)-1]; last.GetNewPassword() != "a brand new password" {
+		t.Errorf("last = %v", last)
+	}
+}
+
+func TestSpendingATokenIsRateLimitedPerAddress(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	for i := 0; i < tokenUsesPerMinute+2; i++ {
+		resp, m := p.call(t, "POST", "/auth/verify", "", "", `{"token":"qv_guess"}`)
+		if i >= tokenUsesPerMinute && (resp.StatusCode != 429 || errKeyOf(m) != "identity.auth.rate_limited") {
+			t.Fatalf("request %d: %d %v", i+1, resp.StatusCode, m)
+		}
 	}
 }

@@ -28,6 +28,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/health"
 	"github.com/0furkancolak/quotify/pkg/kafkax"
 	"github.com/0furkancolak/quotify/pkg/logx"
+	"github.com/0furkancolak/quotify/pkg/mailx"
 	"github.com/0furkancolak/quotify/pkg/otelx"
 	"github.com/0furkancolak/quotify/pkg/outbox"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
@@ -39,6 +40,7 @@ import (
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity"
 	identitycmd "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/command"
 	identityqry "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
 	"github.com/0furkancolak/quotify/services/plans-svc/migrations"
 )
@@ -63,6 +65,12 @@ type Config struct {
 	SecretsKey string `env:"QUOTIFY_SECRETS_KEY"`
 	// WebhookAllowPrivate lets webhook endpoints be http:// and on private addresses. For development and tests; never in production.
 	WebhookAllowPrivate bool `env:"QUOTIFY_WEBHOOK_ALLOW_PRIVATE"`
+	// SMTPAddr and MailFrom are the platform's own mail path: the mail Quotify writes to people (verification, password reset, invitations). A tenant's
+	// mail to its customers goes through the notifier and the tenant's mail switch instead.
+	SMTPAddr string `env:"SMTP_ADDR"`
+	MailFrom string `env:"MAIL_FROM"`
+	// AppURL is the console's public address; the links in those mails point into it.
+	AppURL string `env:"QUOTIFY_APP_URL"`
 }
 
 func (c *Config) Validate() error {
@@ -258,7 +266,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, cfg.WebhookAllowPrivate))
 	adminSrv := admin.New(systemPool, evictor, cfg.AllowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, log), identityqry.New(systemPool)))
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log), identityqry.New(systemPool)))
 	return srv, grpcHealth, box, nil
 }
 

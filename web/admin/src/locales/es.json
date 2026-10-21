@@ -1393,11 +1393,17 @@
       "session": {
         "invalid": "Su sesión ha terminado. Inicie sesión de nuevo."
       },
-      "signup": {
-        "email_taken": "Ya existe una cuenta con este correo. Inicie sesión en su lugar."
-      },
       "tenant": {
         "not_found": "Este entorno no existe o no es suyo."
+      },
+      "token": {
+        "invalid": "Este enlace no es válido, ha caducado o ya se usó. Solicita uno nuevo."
+      },
+      "verify": {
+        "throttled": "Se acaba de enviar un enlace. Espera un minuto antes de pedir otro."
+      },
+      "email": {
+        "not_verified": "Confirma tu dirección de correo para crear claves de API en producción."
       }
     }
   },
@@ -1468,14 +1474,17 @@
       "cta": "Iniciar sesión",
       "noAccount": "¿Es nuevo aquí?",
       "operator": "Consola del operador",
-      "expired": "Su sesión ha terminado. Inicie sesión de nuevo para continuar."
+      "expired": "Su sesión ha terminado. Inicie sesión de nuevo para continuar.",
+      "forgot": "¿Olvidaste tu contraseña?"
     },
     "signUp": {
       "title": "Cree su cuenta",
       "intro": "Una organización, tantas aplicaciones como necesite, cada una con un sandbox para probar.",
       "submit": "Crear cuenta",
       "cta": "Crear una cuenta",
-      "haveAccount": "¿Ya tiene una cuenta?"
+      "haveAccount": "¿Ya tiene una cuenta?",
+      "checkTitle": "Revisa tu bandeja de entrada",
+      "checkBody": "Hemos enviado un mensaje a {email}. Si es una dirección nueva, abre el enlace que contiene para confirmarla. Si ya tiene una cuenta, inicia sesión con ella o restablece su contraseña."
     },
     "home": {
       "title": "Su organización",
@@ -1565,7 +1574,8 @@
       "copyFailed": "Su navegador no permitió copiar. Seleccione la clave y cópiela a mano.",
       "saved": "La he guardado",
       "revokeTitle": "¿Revocar esta clave?",
-      "revokeBody": "Todo lo que aún la use dejará de funcionar de inmediato. No se puede deshacer."
+      "revokeBody": "Todo lo que aún la use dejará de funcionar de inmediato. No se puede deshacer.",
+      "needsVerified": "Confirma tu dirección de correo para crear claves de producción."
     },
     "links": {
       "title": "Profundice",
@@ -1595,6 +1605,39 @@
       "owner": "Propietario",
       "admin": "Administrador",
       "viewer": "Lector"
+    },
+    "forgot": {
+      "title": "Restablece tu contraseña",
+      "intro": "Introduce la dirección de correo de tu cuenta y te enviaremos un enlace para elegir una contraseña nueva.",
+      "submit": "Enviar el enlace",
+      "doneTitle": "Revisa tu bandeja de entrada",
+      "doneBody": "Si existe una cuenta para {email}, hay un enlace en camino. Funciona una sola vez y caduca en una hora.",
+      "back": "Volver a iniciar sesión"
+    },
+    "reset": {
+      "title": "Elige una contraseña nueva",
+      "intro": "Al guardarla se cierra la sesión en todos los dispositivos.",
+      "newPassword": "Contraseña nueva",
+      "submit": "Guardar la contraseña",
+      "doneTitle": "Contraseña cambiada",
+      "doneBody": "Se cerró tu sesión en todas partes. Inicia sesión con tu contraseña nueva.",
+      "noToken": "Esta página necesita el enlace de tu correo. Ábrelo de nuevo o solicita uno nuevo.",
+      "askAgain": "Pedir un enlace nuevo"
+    },
+    "verify": {
+      "banner": "Confirma tu dirección de correo ({email}). Mientras tanto puedes usar la aplicación, pero las claves de API en producción necesitan una dirección confirmada.",
+      "resend": "Reenviar el enlace",
+      "sent": "Enlace enviado. Revisa tu bandeja de entrada."
+    },
+    "verifyPage": {
+      "title": "Confirmando tu dirección de correo",
+      "intro": "Un momento mientras comprobamos el enlace.",
+      "working": "Comprobando el enlace…",
+      "doneTitle": "Dirección de correo confirmada",
+      "doneBody": "Gracias. Ya puedes crear claves de API en producción.",
+      "failTitle": "Este enlace no funciona",
+      "failBody": "Ya se usó, ha caducado o lo reemplazó uno más reciente. Inicia sesión y pide un enlace nuevo.",
+      "toApp": "Ir a tus aplicaciones"
     }
   }
 }

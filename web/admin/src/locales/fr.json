@@ -1393,11 +1393,17 @@
       "session": {
         "invalid": "Votre session a pris fin. Reconnectez-vous."
       },
-      "signup": {
-        "email_taken": "Un compte existe déjà avec cet e-mail. Connectez-vous plutôt."
-      },
       "tenant": {
         "not_found": "Cet environnement n'existe pas, ou il n'est pas le vôtre."
+      },
+      "token": {
+        "invalid": "Ce lien est invalide, a expiré ou a déjà été utilisé. Demandez-en un nouveau."
+      },
+      "verify": {
+        "throttled": "Un lien vient d'être envoyé. Attendez une minute avant d'en redemander un."
+      },
+      "email": {
+        "not_verified": "Confirmez votre adresse e-mail pour créer des clés d'API de production."
       }
     }
   },
@@ -1468,14 +1474,17 @@
       "cta": "Se connecter",
       "noAccount": "Nouveau ici ?",
       "operator": "Console opérateur",
-      "expired": "Votre session a pris fin. Reconnectez-vous pour continuer."
+      "expired": "Votre session a pris fin. Reconnectez-vous pour continuer.",
+      "forgot": "Mot de passe oublié ?"
     },
     "signUp": {
       "title": "Créez votre compte",
       "intro": "Une organisation, autant d'applications que nécessaire, chacune avec un bac à sable pour essayer.",
       "submit": "Créer le compte",
       "cta": "Créer un compte",
-      "haveAccount": "Vous avez déjà un compte ?"
+      "haveAccount": "Vous avez déjà un compte ?",
+      "checkTitle": "Consultez votre boîte de réception",
+      "checkBody": "Nous avons envoyé un message à {email}. S'il s'agit d'une nouvelle adresse, ouvrez le lien qu'il contient pour la confirmer. Si elle a déjà un compte, connectez-vous avec celui-ci ou réinitialisez son mot de passe."
     },
     "home": {
       "title": "Votre organisation",
@@ -1565,7 +1574,8 @@
       "copyFailed": "Votre navigateur n'a pas autorisé la copie. Sélectionnez la clé et copiez-la à la main.",
       "saved": "Je l'ai enregistrée",
       "revokeTitle": "Révoquer cette clé ?",
-      "revokeBody": "Tout ce qui l'utilise encore cesse de fonctionner immédiatement. Cette action est irréversible."
+      "revokeBody": "Tout ce qui l'utilise encore cesse de fonctionner immédiatement. Cette action est irréversible.",
+      "needsVerified": "Confirmez votre adresse e-mail pour créer des clés de production."
     },
     "links": {
       "title": "Aller plus loin",
@@ -1595,6 +1605,39 @@
       "owner": "Propriétaire",
       "admin": "Administrateur",
       "viewer": "Lecteur"
+    },
+    "forgot": {
+      "title": "Réinitialisez votre mot de passe",
+      "intro": "Saisissez l'adresse e-mail de votre compte et nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+      "submit": "Envoyer le lien",
+      "doneTitle": "Consultez votre boîte de réception",
+      "doneBody": "Si un compte existe pour {email}, un lien est en route. Il ne fonctionne qu'une fois et expire au bout d'une heure.",
+      "back": "Retour à la connexion"
+    },
+    "reset": {
+      "title": "Choisissez un nouveau mot de passe",
+      "intro": "L'enregistrer vous déconnecte de tous les appareils.",
+      "newPassword": "Nouveau mot de passe",
+      "submit": "Enregistrer le mot de passe",
+      "doneTitle": "Mot de passe modifié",
+      "doneBody": "Vous avez été déconnecté partout. Connectez-vous avec votre nouveau mot de passe.",
+      "noToken": "Cette page nécessite le lien reçu par e-mail. Ouvrez-le de nouveau ou demandez-en un nouveau.",
+      "askAgain": "Demander un nouveau lien"
+    },
+    "verify": {
+      "banner": "Confirmez votre adresse e-mail ({email}). Vous pouvez utiliser l'application en attendant, mais les clés d'API de production exigent une adresse confirmée.",
+      "resend": "Renvoyer le lien",
+      "sent": "Lien envoyé. Consultez votre boîte de réception."
+    },
+    "verifyPage": {
+      "title": "Confirmation de votre adresse e-mail",
+      "intro": "Un instant, nous vérifions le lien.",
+      "working": "Vérification du lien…",
+      "doneTitle": "Adresse e-mail confirmée",
+      "doneBody": "Merci. Vous pouvez maintenant créer des clés d'API de production.",
+      "failTitle": "Ce lien ne fonctionne pas",
+      "failBody": "Il a déjà été utilisé, a expiré ou a été remplacé par un plus récent. Connectez-vous et demandez un nouveau lien.",
+      "toApp": "Aller à vos applications"
     }
   }
 }

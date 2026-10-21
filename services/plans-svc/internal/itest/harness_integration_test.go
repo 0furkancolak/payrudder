@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -30,6 +31,7 @@ import (
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity"
 	identitycmd "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/command"
 	identityqry "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/quotify/services/plans-svc/migrations"
 )
 
@@ -45,7 +47,45 @@ func (r *recordingEvictor) EvictAPIKey(_ context.Context, prefix string) error {
 	return nil
 }
 
+// recordingMail is the mail path of the tests: it keeps what would have been sent, so a test can follow the link in it (the database holds only hashes).
+type recordingMail struct {
+	mu   sync.Mutex
+	sent []usermail.Mail
+}
+
+func (r *recordingMail) Send(_ context.Context, m usermail.Mail) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.sent = append(r.sent, m)
+}
+
+// to returns the mails of a kind sent to an address, oldest first.
+func (r *recordingMail) to(kind usermail.Kind, address string) []usermail.Mail {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []usermail.Mail
+	for _, m := range r.sent {
+		if m.Kind == kind && m.To == address {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// lastToken is the token in the link of the newest mail of a kind to an address ("" when none): links are <app>/<page>#token=<token>.
+func (r *recordingMail) lastToken(kind usermail.Kind, address string) string {
+	ms := r.to(kind, address)
+	if len(ms) == 0 {
+		return ""
+	}
+	_, tok, _ := strings.Cut(ms[len(ms)-1].Link, "#token=")
+	return tok
+}
+
+const testAppURL = "http://app.test"
+
 type env struct {
+	mail    *recordingMail
 	db      testkit.ServiceDB
 	app     *pgxpool.Pool
 	system  *pgxpool.Pool
@@ -110,7 +150,8 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, true))
 	adminSrv := admin.New(system, ev, allowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, log), identityqry.New(system)))
+	mail := &recordingMail{}
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, mail, testAppURL, log), identityqry.New(system)))
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -121,7 +162,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), box: box, evicted: ev}
+		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 
 func operator() context.Context {

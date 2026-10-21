@@ -6,6 +6,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { brandName } from "@/shared/lib/brand";
 import { isOperator, isPerson, setOperatorToken } from "@/shared/lib/session";
+import VerifyBanner from "@/features/product/VerifyBanner.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
 import Rail from "./Rail.vue";
 import ThemeToggle from "./ThemeToggle.vue";
@@ -74,7 +75,7 @@ async function operatorSignOut() {
           </button>
         </div>
       </header>
-      <main :class="['mx-auto max-w-[1240px] px-4 pt-6 pb-32 md:px-8 md:pb-12', !signedIn && 'flex flex-col items-center pt-8 md:pt-14']"><Outlet /></main>
+      <main :class="['mx-auto max-w-[1240px] px-4 pt-6 pb-32 md:px-8 md:pb-12', !signedIn && 'flex flex-col items-center pt-8 md:pt-14']"><VerifyBanner v-if="isPerson" /><Outlet /></main>
     </div>
   </div>
 </template>

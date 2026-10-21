@@ -24,11 +24,39 @@ type Handler struct {
 func New(cmd *command.Commands, qry *query.Queries) *Handler { return &Handler{cmd: cmd, qry: qry} }
 
 func (h *Handler) SignUp(ctx context.Context, req *plansv1.SignUpRequest) (*plansv1.SignUpResponse, error) {
-	o, err := h.cmd.SignUp(ctx, req)
+	if err := h.cmd.SignUp(ctx, req); err != nil {
+		return nil, err
+	}
+	return &plansv1.SignUpResponse{}, nil
+}
+
+func (h *Handler) VerifyEmail(ctx context.Context, req *plansv1.VerifyEmailRequest) (*plansv1.VerifyEmailResponse, error) {
+	u, err := h.cmd.VerifyEmail(ctx, req.GetToken())
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.SignUpResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+	return &plansv1.VerifyEmailResponse{User: u}, nil
+}
+
+func (h *Handler) ResendVerification(ctx context.Context, req *plansv1.ResendVerificationRequest) (*plansv1.ResendVerificationResponse, error) {
+	if err := h.cmd.ResendVerification(ctx, req.GetUserId()); err != nil {
+		return nil, err
+	}
+	return &plansv1.ResendVerificationResponse{}, nil
+}
+
+func (h *Handler) RequestPasswordReset(ctx context.Context, req *plansv1.RequestPasswordResetRequest) (*plansv1.RequestPasswordResetResponse, error) {
+	if err := h.cmd.RequestPasswordReset(ctx, req); err != nil {
+		return nil, err
+	}
+	return &plansv1.RequestPasswordResetResponse{}, nil
+}
+
+func (h *Handler) ResetPassword(ctx context.Context, req *plansv1.ResetPasswordRequest) (*plansv1.ResetPasswordResponse, error) {
+	if err := h.cmd.ResetPassword(ctx, req); err != nil {
+		return nil, err
+	}
+	return &plansv1.ResetPasswordResponse{}, nil
 }
 
 func (h *Handler) SignIn(ctx context.Context, req *plansv1.SignInRequest) (*plansv1.SignInResponse, error) {

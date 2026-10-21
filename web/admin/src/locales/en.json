@@ -1393,11 +1393,17 @@
       "session": {
         "invalid": "Your session has ended. Sign in again."
       },
-      "signup": {
-        "email_taken": "An account with this e-mail already exists. Sign in instead."
-      },
       "tenant": {
         "not_found": "This environment does not exist, or it is not yours."
+      },
+      "token": {
+        "invalid": "This link is invalid, has expired or was already used. Ask for a new one."
+      },
+      "verify": {
+        "throttled": "A link was sent a moment ago. Wait a minute before asking again."
+      },
+      "email": {
+        "not_verified": "Confirm your e-mail address to create live API keys."
       }
     }
   },
@@ -1468,14 +1474,17 @@
       "cta": "Sign in",
       "noAccount": "New here?",
       "operator": "Operator console",
-      "expired": "Your session has ended. Sign in again to continue."
+      "expired": "Your session has ended. Sign in again to continue.",
+      "forgot": "Forgot your password?"
     },
     "signUp": {
       "title": "Create your account",
       "intro": "One organisation, as many apps as you need, each with a sandbox to try things in.",
       "submit": "Create account",
       "cta": "Create an account",
-      "haveAccount": "Already have an account?"
+      "haveAccount": "Already have an account?",
+      "checkTitle": "Check your inbox",
+      "checkBody": "We sent a message to {email}. If it is a new address, open the link in it to confirm it. If it already has an account, sign in with that account or reset its password."
     },
     "home": {
       "title": "Your organisation",
@@ -1565,7 +1574,8 @@
       "copyFailed": "Your browser did not allow copying. Select the key and copy it by hand.",
       "saved": "I have saved it",
       "revokeTitle": "Revoke this key?",
-      "revokeBody": "Anything still using it stops working at once. This cannot be undone."
+      "revokeBody": "Anything still using it stops working at once. This cannot be undone.",
+      "needsVerified": "Confirm your e-mail address to create live keys."
     },
     "links": {
       "title": "Go deeper",
@@ -1595,6 +1605,39 @@
       "owner": "Owner",
       "admin": "Administrator",
       "viewer": "Viewer"
+    },
+    "forgot": {
+      "title": "Reset your password",
+      "intro": "Enter the e-mail address of your account and we will send you a link to choose a new password.",
+      "submit": "Send reset link",
+      "doneTitle": "Check your inbox",
+      "doneBody": "If an account exists for {email}, a link is on its way. It works once and expires in one hour.",
+      "back": "Back to sign in"
+    },
+    "reset": {
+      "title": "Choose a new password",
+      "intro": "Saving it signs you out on every device.",
+      "newPassword": "New password",
+      "submit": "Save password",
+      "doneTitle": "Password changed",
+      "doneBody": "You were signed out everywhere. Sign in with your new password.",
+      "noToken": "This page needs the link from your e-mail. Open the link again, or ask for a new one.",
+      "askAgain": "Ask for a new link"
+    },
+    "verify": {
+      "banner": "Confirm your e-mail address ({email}). You can use the app meanwhile, but live API keys need a confirmed address.",
+      "resend": "Send the link again",
+      "sent": "Link sent. Check your inbox."
+    },
+    "verifyPage": {
+      "title": "Confirming your e-mail address",
+      "intro": "One moment while we check the link.",
+      "working": "Checking the link…",
+      "doneTitle": "E-mail address confirmed",
+      "doneBody": "Thank you. You can now create live API keys.",
+      "failTitle": "This link does not work",
+      "failBody": "It was already used, has expired or was replaced by a newer one. Sign in and ask for a new link.",
+      "toApp": "Go to your apps"
     }
   }
 }

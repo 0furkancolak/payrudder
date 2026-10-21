@@ -1393,11 +1393,17 @@
       "session": {
         "invalid": "Oturumunuz sona erdi. Yeniden giriş yapın."
       },
-      "signup": {
-        "email_taken": "Bu e-postayla bir hesap zaten var. Bunun yerine giriş yapın."
-      },
       "tenant": {
         "not_found": "Bu ortam yok ya da size ait değil."
+      },
+      "token": {
+        "invalid": "Bu bağlantı geçersiz, süresi dolmuş ya da daha önce kullanılmış. Yenisini isteyin."
+      },
+      "verify": {
+        "throttled": "Az önce bir bağlantı gönderildi. Tekrar istemeden önce bir dakika bekleyin."
+      },
+      "email": {
+        "not_verified": "Canlı API anahtarı oluşturmak için e-posta adresinizi doğrulayın."
       }
     }
   },
@@ -1468,14 +1474,17 @@
       "cta": "Giriş yap",
       "noAccount": "Burada yeni misiniz?",
       "operator": "Operatör konsolu",
-      "expired": "Oturumunuz sona erdi. Devam etmek için yeniden giriş yapın."
+      "expired": "Oturumunuz sona erdi. Devam etmek için yeniden giriş yapın.",
+      "forgot": "Parolanızı mı unuttunuz?"
     },
     "signUp": {
       "title": "Hesabınızı oluşturun",
       "intro": "Bir kuruluş, istediğiniz kadar uygulama; her birinde denemeler için bir sandbox.",
       "submit": "Hesap oluştur",
       "cta": "Hesap oluşturun",
-      "haveAccount": "Zaten hesabınız var mı?"
+      "haveAccount": "Zaten hesabınız var mı?",
+      "checkTitle": "Gelen kutunuza bakın",
+      "checkBody": "{email} adresine bir ileti gönderdik. Yeni bir adresse, onaylamak için içindeki bağlantıyı açın. Zaten bir hesabı varsa o hesapla oturum açın ya da parolasını sıfırlayın."
     },
     "home": {
       "title": "Kuruluşunuz",
@@ -1565,7 +1574,8 @@
       "copyFailed": "Tarayıcınız kopyalamaya izin vermedi. Anahtarı seçip elle kopyalayın.",
       "saved": "Kaydettim",
       "revokeTitle": "Bu anahtar iptal edilsin mi?",
-      "revokeBody": "Onu kullanan her şey hemen çalışmayı durdurur. Bu geri alınamaz."
+      "revokeBody": "Onu kullanan her şey hemen çalışmayı durdurur. Bu geri alınamaz.",
+      "needsVerified": "Canlı anahtar oluşturmak için e-posta adresinizi doğrulayın."
     },
     "links": {
       "title": "Daha derine inin",
@@ -1595,6 +1605,39 @@
       "owner": "Sahip",
       "admin": "Yönetici",
       "viewer": "Görüntüleyici"
+    },
+    "forgot": {
+      "title": "Parolanızı sıfırlayın",
+      "intro": "Hesabınızın e-posta adresini girin; yeni bir parola seçmeniz için size bir bağlantı gönderelim.",
+      "submit": "Sıfırlama bağlantısı gönder",
+      "doneTitle": "Gelen kutunuza bakın",
+      "doneBody": "{email} için bir hesap varsa bağlantı yolda. Bağlantı yalnızca bir kez çalışır ve bir saat sonra geçersiz olur.",
+      "back": "Oturum açmaya dön"
+    },
+    "reset": {
+      "title": "Yeni bir parola seçin",
+      "intro": "Kaydetmek, tüm cihazlardaki oturumlarınızı kapatır.",
+      "newPassword": "Yeni parola",
+      "submit": "Parolayı kaydet",
+      "doneTitle": "Parola değiştirildi",
+      "doneBody": "Her yerdeki oturumlarınız kapatıldı. Yeni parolanızla oturum açın.",
+      "noToken": "Bu sayfa, e-postanızdaki bağlantıyla açılmalıdır. Bağlantıyı yeniden açın ya da yenisini isteyin.",
+      "askAgain": "Yeni bağlantı iste"
+    },
+    "verify": {
+      "banner": "E-posta adresinizi ({email}) doğrulayın. Bu arada uygulamayı kullanabilirsiniz; ancak canlı API anahtarları için doğrulanmış bir adres gerekir.",
+      "resend": "Bağlantıyı yeniden gönder",
+      "sent": "Bağlantı gönderildi. Gelen kutunuza bakın."
+    },
+    "verifyPage": {
+      "title": "E-posta adresiniz doğrulanıyor",
+      "intro": "Bağlantıyı denetlerken lütfen bekleyin.",
+      "working": "Bağlantı denetleniyor…",
+      "doneTitle": "E-posta adresi doğrulandı",
+      "doneBody": "Teşekkürler. Artık canlı API anahtarları oluşturabilirsiniz.",
+      "failTitle": "Bu bağlantı çalışmıyor",
+      "failBody": "Bağlantı zaten kullanılmış, süresi dolmuş ya da daha yenisiyle değiştirilmiş. Oturum açıp yeni bir bağlantı isteyin.",
+      "toApp": "Uygulamalarınıza git"
     }
   }
 }

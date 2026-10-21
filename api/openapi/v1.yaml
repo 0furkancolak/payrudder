@@ -1752,8 +1752,10 @@ paths:
       tags: [Product]
       summary: Sign up a person with a new account (organisation)
       description: >
-        Creates the user, an account and the owner membership in one step and opens a session. The token in the answer is shown once; only its hash is stored.
-        Public and rate limited per client address (5 a minute). The answer is `Cache-Control: no-store`.
+        Creates the user, an account and the owner membership in one step and mails a verification link (valid 24 hours). It opens **no session**: the person
+        signs in with the password just chosen. The answer is `202` for a free and for a taken address alike (for a taken one the existing owner is mailed a
+        warning instead, at most once an hour), so the route does not tell who has an account. Public and rate limited per client address (5 a minute).
+        The answer is `Cache-Control: no-store`.
       security: []
       requestBody:
         required: true
@@ -1767,10 +1769,91 @@ paths:
                 password: { type: string, minLength: 10, maxLength: 256, format: password }
                 display_name: { type: string, maxLength: 200 }
                 account_name: { type: string, maxLength: 200, description: The organisation the person starts }
+                locale: { type: string, enum: [en, tr, de, fr, es, ar], description: "The language of the mails. Default: the first supported language of Accept-Language, else English." }
       responses:
-        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
+        "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/Accepted" } } } }
         "400": { $ref: "#/components/responses/Error" }
-        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/verify:
+    post:
+      operationId: verifyEmail
+      tags: [Product]
+      summary: Confirm an e-mail address with the token of the mailed link
+      description: >
+        The token is single use and expires 24 hours after it was mailed; a used, expired, replaced or unknown token is the same `400 identity.token.invalid`.
+        Public; rate limited per client address (20 a minute). The link in the mail carries the token in the URL fragment (`/verify#token=...`), which browsers
+        never send to a server.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "200": { description: Verified, content: { application/json: { schema: { type: object, properties: { user: { $ref: "#/components/schemas/AuthUser" } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/resend-verification:
+    post:
+      operationId: resendVerification
+      tags: [Product]
+      summary: Mail a new verification link to the signed-in person
+      description: >
+        At most one a minute (`429 identity.verify.throttled`); the older link stops working. Does nothing when the address is verified already.
+      security: [{ sessionToken: [] }]
+      responses:
+        "204": { description: Sent }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/forgot:
+    post:
+      operationId: forgotPassword
+      tags: [Product]
+      summary: Mail a password reset link
+      description: >
+        Always `202` for a well-formed address, whether or not it has an account; a link is mailed only when it has (and at most one a minute per address).
+        The link is valid one hour. Public; rate limited per client address (5 a minute).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+      responses:
+        "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/Accepted" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/reset:
+    post:
+      operationId: resetPassword
+      tags: [Product]
+      summary: Set a new password with the token of the mailed link
+      description: >
+        Single use, valid one hour. It sets the password, clears the sign-in lock, marks the address as verified (the person has just proven the mailbox) and
+        **revokes every session** of the user. It opens no session; the person signs in. Public; rate limited per client address (20 a minute).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, minLength: 10, maxLength: 256, format: password }
+      responses:
+        "204": { description: Password changed }
+        "400": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
   /auth/signin:
     post:
@@ -3148,7 +3231,7 @@ components:
   securitySchemes:
     apiKey: { type: http, scheme: bearer, description: "qk_{test|live}_<prefix>_<secret>" }
     operatorToken: { type: http, scheme: bearer, description: Operator token (QUOTIFY_OPERATOR_TOKEN) }
-    sessionToken: { type: http, scheme: bearer, description: "A person's session token (qs_..., from /auth/signin or /auth/signup). It also works on /v1 routes together with X-Quotify-Tenant, for a tenant of one of the person's accounts (a viewer may only read)." }
+    sessionToken: { type: http, scheme: bearer, description: "A person's session token (qs_..., from /auth/signin). It also works on /v1 routes together with X-Quotify-Tenant, for a tenant of one of the person's accounts (a viewer may only read)." }
   parameters:
     ExternalID: { name: external_id, in: path, required: true, schema: { type: string } }
     PlanCode: { name: code, in: path, required: true, schema: { type: string } }
@@ -3440,6 +3523,11 @@ components:
         email: { type: string, format: email }
         display_name: { type: string }
         create_time: { type: string, format: date-time }
+        email_verified: { type: boolean, description: "True once the person opened a mailed link for this address. Until then live API keys cannot be created." }
+    Accepted:
+      type: object
+      properties:
+        status: { type: string, enum: [accepted] }
     Membership:
       type: object
       properties:

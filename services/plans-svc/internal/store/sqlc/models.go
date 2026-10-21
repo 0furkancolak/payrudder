@@ -258,14 +258,17 @@ type TenantMailSetting struct {
 }
 
 type User struct {
-	ID           uuid.UUID
-	Email        string
-	DisplayName  string
-	PasswordHash string
-	FailedLogins int32
-	LockedUntil  *time.Time
-	LastLoginAt  *time.Time
-	CreatedAt    time.Time
+	ID              uuid.UUID
+	Email           string
+	DisplayName     string
+	PasswordHash    string
+	FailedLogins    int32
+	LockedUntil     *time.Time
+	LastLoginAt     *time.Time
+	CreatedAt       time.Time
+	EmailVerifiedAt *time.Time
+	Locale          string
+	TakenNoticeAt   *time.Time
 }
 
 type UserSession struct {
@@ -276,6 +279,16 @@ type UserSession struct {
 	LastSeenAt time.Time
 	ExpiresAt  time.Time
 	RevokedAt  *time.Time
+}
+
+type UserToken struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Kind      string
+	TokenHash []byte
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	UsedAt    *time.Time
 }
 
 type WebhookDelivery struct {

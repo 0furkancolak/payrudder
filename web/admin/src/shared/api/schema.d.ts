@@ -1743,9 +1743,89 @@ export interface paths {
         put?: never;
         /**
          * Sign up a person with a new account (organisation)
-         * @description Creates the user, an account and the owner membership in one step and opens a session. The token in the answer is shown once; only its hash is stored. Public and rate limited per client address (5 a minute). The answer is `Cache-Control: no-store`.
+         * @description Creates the user, an account and the owner membership in one step and mails a verification link (valid 24 hours). It opens **no session**: the person signs in with the password just chosen. The answer is `202` for a free and for a taken address alike (for a taken one the existing owner is mailed a warning instead, at most once an hour), so the route does not tell who has an account. Public and rate limited per client address (5 a minute). The answer is `Cache-Control: no-store`.
          */
         post: operations["signUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm an e-mail address with the token of the mailed link
+         * @description The token is single use and expires 24 hours after it was mailed; a used, expired, replaced or unknown token is the same `400 identity.token.invalid`. Public; rate limited per client address (20 a minute). The link in the mail carries the token in the URL fragment (`/verify#token=...`), which browsers never send to a server.
+         */
+        post: operations["verifyEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mail a new verification link to the signed-in person
+         * @description At most one a minute (`429 identity.verify.throttled`); the older link stops working. Does nothing when the address is verified already.
+         */
+        post: operations["resendVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mail a password reset link
+         * @description Always `202` for a well-formed address, whether or not it has an account; a link is mailed only when it has (and at most one a minute per address). The link is valid one hour. Public; rate limited per client address (5 a minute).
+         */
+        post: operations["forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a new password with the token of the mailed link
+         * @description Single use, valid one hour. It sets the password, clears the sign-in lock, marks the address as verified (the person has just proven the mailbox) and **revokes every session** of the user. It opens no session; the person signs in. Public; rate limited per client address (20 a minute).
+         */
+        post: operations["resetPassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3268,6 +3348,12 @@ export interface components {
             display_name?: string;
             /** Format: date-time */
             create_time?: string;
+            /** @description True once the person opened a mailed link for this address. Until then live API keys cannot be created. */
+            email_verified?: boolean;
+        };
+        Accepted: {
+            /** @enum {string} */
+            status?: "accepted";
         };
         Membership: {
             /** Format: uuid */
@@ -7732,21 +7818,134 @@ export interface operations {
                     display_name?: string;
                     /** @description The organisation the person starts */
                     account_name: string;
+                    /**
+                     * @description The language of the mails. Default: the first supported language of Accept-Language, else English.
+                     * @enum {string}
+                     */
+                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
                 };
             };
         };
         responses: {
-            /** @description Created */
-            201: {
+            /** @description Accepted */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SessionOpened"];
+                    "application/json": components["schemas"]["Accepted"];
                 };
             };
             400: components["responses"]["Error"];
-            409: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    verifyEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Verified */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        user?: components["schemas"]["AuthUser"];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    resendVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sent */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    /** @enum {string} */
+                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+                };
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Accepted"];
+                };
+            };
+            400: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    /** Format: password */
+                    password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Password changed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
             429: components["responses"]["Error"];
         };
     };

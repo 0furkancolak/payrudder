@@ -20,7 +20,7 @@ export function redirectHome(): void {
   if (isOperator.value) throw redirect({ to: "/tenants" });
 }
 
-/** The public pages: sign in and sign up (and "/", which is the sign-in page for a visitor and a redirect for somebody signed in). */
+/** The public pages: sign in, sign up, forgot and reset password, verify e-mail (and "/", which is the sign-in page for a visitor and a redirect for somebody signed in). */
 export function publicProductRoutes(root: AnyRoute) {
   const signIn = lazy(() => import("./SignInPage.vue"));
   const signUp = lazy(() => import("./SignUpPage.vue"));
@@ -29,6 +29,10 @@ export function publicProductRoutes(root: AnyRoute) {
     createRoute({ getParentRoute: () => root, path: "/", beforeLoad: redirectHome, component: signIn, validateSearch: validateSignIn }),
     createRoute({ getParentRoute: () => root, path: "/signin", beforeLoad: redirectHome, component: signIn, validateSearch: validateSignIn }),
     createRoute({ getParentRoute: () => root, path: "/signup", beforeLoad: redirectHome, component: signUp }),
+    createRoute({ getParentRoute: () => root, path: "/forgot", beforeLoad: redirectHome, component: lazy(() => import("./ForgotPage.vue")) }),
+    // The pages the mails open work signed in or out: the token in the link is the credential, and a person may follow it from any browser.
+    createRoute({ getParentRoute: () => root, path: "/reset", component: lazy(() => import("./ResetPage.vue")) }),
+    createRoute({ getParentRoute: () => root, path: "/verify", component: lazy(() => import("./VerifyPage.vue")) }),
   ];
 }
 

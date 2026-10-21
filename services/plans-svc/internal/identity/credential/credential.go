@@ -96,6 +96,28 @@ var dummyHash = sync.OnceValue(func() string {
 // BurnTime does the work of a verify without a user behind it.
 func BurnTime(password string) { _, _ = Verify(password, dummyHash()) }
 
+// Prefixes of the single-use tokens mailed to people. Like qs_ they only make a leaked one recognisable; the secret is the 256 random bits after it.
+const (
+	VerifyPrefix = "qv_"
+	ResetPrefix  = "qr_"
+	InvitePrefix = "qi_"
+)
+
+// NewPrefixedToken returns a fresh token that starts with prefix (256 random bits, URL-safe) and the hash to store.
+func NewPrefixedToken(prefix string) (token string, hash []byte, err error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", nil, fmt.Errorf("credential: token: %w", err)
+	}
+	token = prefix + base64.RawURLEncoding.EncodeToString(raw)
+	return token, HashToken(token), nil
+}
+
+// WellFormed reports whether s looks like a token with this prefix, before the database is asked about it.
+func WellFormed(prefix, s string) bool {
+	return strings.HasPrefix(s, prefix) && len(s) == len(prefix)+43
+}
+
 // NewToken returns a fresh session token (qs_ and 256 random bits, URL-safe) and the hash to store. The token is shown once.
 func NewToken() (token string, hash []byte, err error) {
 	raw := make([]byte, 32)

@@ -18,6 +18,10 @@ func (s *Server) appRoutes() []Route {
 	return []Route{
 		{"POST", "/auth/signup", AccessPublic, "", s.signUp},
 		{"POST", "/auth/signin", AccessPublic, "", s.signIn},
+		{"POST", "/auth/verify", AccessPublic, "", s.verifyEmail},
+		{"POST", "/auth/resend-verification", AccessSession, ratelimit.ClassWrite, s.resendVerification},
+		{"POST", "/auth/forgot", AccessPublic, "", s.forgotPassword},
+		{"POST", "/auth/reset", AccessPublic, "", s.resetPassword},
 		{"POST", "/auth/signout", AccessSession, ratelimit.ClassWrite, s.signOut},
 		{"GET", "/auth/me", AccessSession, ratelimit.ClassRead, s.me},
 		{"GET", "/app/v1/account", AccessSession, ratelimit.ClassRead, s.appAccount},

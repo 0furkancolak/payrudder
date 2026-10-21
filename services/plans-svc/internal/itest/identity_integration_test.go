@@ -15,17 +15,34 @@ import (
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/usermail"
 )
 
 const goodPassword = "a long enough password"
 
-func (e *env) signUp(t *testing.T, email, account string) *plansv1.SignUpResponse {
+// signUp signs up and then signs in (sign-up itself opens no session) and returns the session.
+func (e *env) signUp(t *testing.T, email, account string) *plansv1.SignInResponse {
 	t.Helper()
-	r, err := e.ident.SignUp(context.Background(), &plansv1.SignUpRequest{Email: email, Password: goodPassword, DisplayName: "Test", AccountName: account})
-	if err != nil {
+	if _, err := e.ident.SignUp(context.Background(), &plansv1.SignUpRequest{Email: email, Password: goodPassword, DisplayName: "Test", AccountName: account}); err != nil {
 		t.Fatalf("SignUp %s: %v", email, err)
 	}
+	r, err := e.ident.SignIn(context.Background(), &plansv1.SignInRequest{Email: email, Password: goodPassword})
+	if err != nil {
+		t.Fatalf("SignIn %s: %v", email, err)
+	}
 	return r
+}
+
+// verify follows the mailed verification link of an address.
+func (e *env) verify(t *testing.T, email string) {
+	t.Helper()
+	tok := e.mail.lastToken(usermail.KindVerify, email)
+	if tok == "" {
+		t.Fatalf("no verification mail was sent to %s", email)
+	}
+	if _, err := e.ident.VerifyEmail(context.Background(), &plansv1.VerifyEmailRequest{Token: tok}); err != nil {
+		t.Fatalf("VerifyEmail %s: %v", email, err)
+	}
 }
 
 func wantCode(t *testing.T, what string, err error, c codes.Code, key string) {
@@ -48,15 +65,53 @@ func testIdentity(t *testing.T) {
 		_, err := e.ident.SignUp(ctx, req)
 		wantCode(t, name, err, codes.InvalidArgument, "")
 	}
-	ada := e.signUp(t, "Ada@Example.com", "Ada Labs")
-	if ada.GetUser().GetEmail() != "ada@example.com" || len(ada.GetMemberships()) != 1 || ada.GetMemberships()[0].GetRole() != "owner" {
-		t.Fatalf("sign-up = %v", ada)
+	_, err := e.ident.SignUp(ctx, &plansv1.SignUpRequest{Email: "Ada@Example.com", Password: goodPassword, DisplayName: "Test", AccountName: "Ada Labs"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ada, err := e.ident.SignIn(ctx, &plansv1.SignInRequest{Email: "ada@example.com", Password: goodPassword})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ada.GetUser().GetEmail() != "ada@example.com" || len(ada.GetMemberships()) != 1 || ada.GetMemberships()[0].GetRole() != "owner" || ada.GetUser().GetEmailVerified() {
+		t.Fatalf("sign-in after sign-up = %v", ada)
 	}
 	if !strings.HasPrefix(ada.GetToken(), "qs_") {
 		t.Fatalf("token %q", ada.GetToken())
 	}
-	_, err := e.ident.SignUp(ctx, &plansv1.SignUpRequest{Email: "ADA@example.com", Password: goodPassword, AccountName: "Other"})
-	wantCode(t, "duplicate e-mail, other case", err, codes.AlreadyExists, "identity.signup.email_taken")
+	if len(e.mail.to(usermail.KindVerify, "ada@example.com")) != 1 {
+		t.Fatalf("sign-up must mail one verification link, sent: %+v", e.mail.sent)
+	}
+	// The same address again (another case, another account name) answers exactly like a free one: no error, no second user, no session. The owner is
+	// warned by mail instead, and only once within the hour.
+	for i := 0; i < 2; i++ {
+		resp, err := e.ident.SignUp(ctx, &plansv1.SignUpRequest{Email: "ADA@example.com", Password: goodPassword, AccountName: "Other"})
+		if err != nil || resp.String() != "" {
+			t.Fatalf("sign-up with a taken address must look like any other: %v, %v", resp, err)
+		}
+	}
+	var users, accountsNamed int
+	if err := e.system.QueryRow(ctx, `SELECT count(*) FROM users WHERE lower(email) = 'ada@example.com'`).Scan(&users); err != nil || users != 1 {
+		t.Fatalf("users with the address: %d, %v", users, err)
+	}
+	if err := e.system.QueryRow(ctx, `SELECT count(*) FROM accounts WHERE name = 'Other'`).Scan(&accountsNamed); err != nil || accountsNamed != 0 {
+		t.Fatalf("a taken address must not create an account: %d, %v", accountsNamed, err)
+	}
+	if got := len(e.mail.to(usermail.KindTaken, "ada@example.com")); got != 1 {
+		t.Fatalf("the owner is warned once an hour, got %d warnings", got)
+	}
+	if len(e.mail.to(usermail.KindVerify, "ada@example.com")) != 1 {
+		t.Fatal("a taken address gets no verification link")
+	}
+	if _, err := e.system.Exec(ctx, `UPDATE users SET taken_notice_at = now() - interval '2 hours' WHERE lower(email) = 'ada@example.com'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ident.SignUp(ctx, &plansv1.SignUpRequest{Email: "ada@example.com", Password: goodPassword, AccountName: "Other"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(e.mail.to(usermail.KindTaken, "ada@example.com")); got != 2 {
+		t.Fatalf("a new warning after the hour: %d", got)
+	}
 
 	// The database holds the hash of the token and of the password, never the secrets.
 	var stored []byte
@@ -194,6 +249,16 @@ func testIdentityApps(t *testing.T, e *env, ada *plansv1.SignInResponse) {
 		t.Errorf("the owner resolves their tenant: %v", err)
 	}
 
+	// A live key needs a proven address; a sandbox key does not.
+	_, err = e.ident.CreateMyApiKey(ctx, &plansv1.CreateMyApiKeyRequest{UserId: uid, AppId: a.GetId(), Environment: plansv1.Environment_ENVIRONMENT_LIVE})
+	wantCode(t, "live key before the address is verified", err, codes.PermissionDenied, "identity.email.not_verified")
+	if k, err := e.ident.CreateMyApiKey(ctx, &plansv1.CreateMyApiKeyRequest{UserId: uid, AppId: a.GetId(), Environment: plansv1.Environment_ENVIRONMENT_SANDBOX}); err != nil {
+		t.Fatalf("a sandbox key needs no verification: %v", err)
+	} else if _, err := e.ident.RevokeMyApiKey(ctx, &plansv1.RevokeMyApiKeyRequest{UserId: uid, AppId: a.GetId(), ApiKeyId: k.GetApiKey().GetId()}); err != nil {
+		t.Fatal(err)
+	}
+	e.verify(t, "ada@example.com")
+
 	// Keys: made per environment, shown once, listed without secrets, revoked and evicted.
 	lk, err := e.ident.CreateMyApiKey(ctx, &plansv1.CreateMyApiKeyRequest{UserId: uid, AppId: a.GetId(), Environment: plansv1.Environment_ENVIRONMENT_LIVE})
 	if err != nil || !strings.HasPrefix(lk.GetPlaintext(), "qk_live_") || lk.GetApiKey().GetTenantId() != live.GetId() {
@@ -204,7 +269,7 @@ func testIdentityApps(t *testing.T, e *env, ada *plansv1.SignInResponse) {
 		t.Fatalf("sandbox key = %v, %v", sk, err)
 	}
 	keys, err := e.ident.ListMyApiKeys(ctx, &plansv1.ListMyApiKeysRequest{UserId: uid, AppId: a.GetId()})
-	if err != nil || len(keys.GetApiKeys()) != 2 {
+	if err != nil || len(keys.GetApiKeys()) != 3 {
 		t.Fatalf("keys = %v, %v", keys, err)
 	}
 	if _, err := e.ident.RevokeMyApiKey(ctx, &plansv1.RevokeMyApiKeyRequest{UserId: uid, AppId: a.GetId(), ApiKeyId: lk.GetApiKey().GetId()}); err != nil {

@@ -1,7 +1,7 @@
 -- People: users, memberships and sessions (phase 38). Run as plans_system from internal/identity only. None of these tables is tenant data.
 
 -- name: InsertUser :one
-INSERT INTO users (id, email, display_name, password_hash) VALUES ($1, $2, $3, $4) RETURNING *;
+INSERT INTO users (id, email, display_name, password_hash, locale) VALUES ($1, $2, $3, $4, $5) RETURNING *;
 
 -- name: GetUserByEmail :one
 SELECT * FROM users WHERE lower(email) = lower(@email::text);
@@ -47,7 +47,7 @@ INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES ($1, $2, 
 
 -- A session is live while it is neither revoked nor expired; the clock is the database's.
 -- name: GetLiveSession :one
-SELECT s.id, s.user_id, s.created_at, s.last_seen_at, s.expires_at, u.email, u.display_name, u.created_at AS user_created_at
+SELECT s.id, s.user_id, s.created_at, s.last_seen_at, s.expires_at, u.email, u.display_name, u.created_at AS user_created_at, u.email_verified_at
 FROM user_sessions s JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now();
 
@@ -76,3 +76,47 @@ SELECT * FROM tenants WHERE app_id = $1 ORDER BY environment DESC;
 
 -- name: ListApiKeysOfTenants :many
 SELECT * FROM api_keys WHERE tenant_id = ANY(@tenant_ids::uuid[]) ORDER BY created_at DESC, id;
+
+-- E-mail verification and password reset (phase 39). A token row holds only the SHA-256 of the mailed token.
+-- name: InsertUserToken :exec
+INSERT INTO user_tokens (id, user_id, kind, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5);
+
+-- The newest token of a kind the user was sent, for the "at most one a minute" rule.
+-- name: LastUserTokenAt :one
+SELECT created_at FROM user_tokens WHERE user_id = @user_id AND kind = @kind ORDER BY created_at DESC LIMIT 1;
+
+-- Reading a token without using it, so a bad one is refused before the work of hashing a new password.
+-- name: GetLiveUserToken :one
+SELECT user_id FROM user_tokens WHERE token_hash = @token_hash AND kind = @kind AND used_at IS NULL AND expires_at > now();
+
+-- Using a token is one atomic UPDATE: of two requests carrying the same token exactly one gets a row.
+-- name: ConsumeUserToken :one
+UPDATE user_tokens SET used_at = now()
+WHERE token_hash = @token_hash AND kind = @kind AND used_at IS NULL AND expires_at > now()
+RETURNING user_id;
+
+-- A new link replaces the older ones: they stop working.
+-- name: InvalidateUserTokens :exec
+UPDATE user_tokens SET used_at = now() WHERE user_id = @user_id AND kind = @kind AND used_at IS NULL;
+
+-- name: DeleteStaleUserTokens :exec
+DELETE FROM user_tokens WHERE user_id = $1 AND (expires_at < now() - interval '1 day' OR used_at < now() - interval '1 day');
+
+-- name: MarkEmailVerified :exec
+UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()) WHERE id = $1;
+
+-- A new password also clears the sign-in lock: the person has proven the mailbox.
+-- name: SetPassword :exec
+UPDATE users SET password_hash = @password_hash, failed_logins = 0, locked_until = NULL WHERE id = @id;
+
+-- name: RevokeUserSessions :exec
+UPDATE user_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL;
+
+-- "Somebody tried to sign up with your address": at most one such mail an hour per address, so sign-up cannot be used to flood an inbox.
+-- name: TouchTakenNotice :one
+UPDATE users SET taken_notice_at = now()
+WHERE id = $1 AND (taken_notice_at IS NULL OR taken_notice_at < now() - interval '1 hour')
+RETURNING id;
+
+-- name: SetUserLocale :exec
+UPDATE users SET locale = $2 WHERE id = $1;

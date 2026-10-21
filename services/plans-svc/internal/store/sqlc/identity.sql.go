@@ -14,12 +14,40 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const consumeUserToken = `-- name: ConsumeUserToken :one
+UPDATE user_tokens SET used_at = now()
+WHERE token_hash = $1 AND kind = $2 AND used_at IS NULL AND expires_at > now()
+RETURNING user_id
+`
+
+type ConsumeUserTokenParams struct {
+	TokenHash []byte
+	Kind      string
+}
+
+// Using a token is one atomic UPDATE: of two requests carrying the same token exactly one gets a row.
+func (q *Queries) ConsumeUserToken(ctx context.Context, arg ConsumeUserTokenParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, consumeUserToken, arg.TokenHash, arg.Kind)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const deleteStaleSessions = `-- name: DeleteStaleSessions :exec
 DELETE FROM user_sessions WHERE user_id = $1 AND (expires_at < now() - interval '1 day' OR revoked_at < now() - interval '1 day')
 `
 
 func (q *Queries) DeleteStaleSessions(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteStaleSessions, userID)
+	return err
+}
+
+const deleteStaleUserTokens = `-- name: DeleteStaleUserTokens :exec
+DELETE FROM user_tokens WHERE user_id = $1 AND (expires_at < now() - interval '1 day' OR used_at < now() - interval '1 day')
+`
+
+func (q *Queries) DeleteStaleUserTokens(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteStaleUserTokens, userID)
 	return err
 }
 
@@ -59,20 +87,21 @@ func (q *Queries) GetAppForUser(ctx context.Context, arg GetAppForUserParams) (G
 }
 
 const getLiveSession = `-- name: GetLiveSession :one
-SELECT s.id, s.user_id, s.created_at, s.last_seen_at, s.expires_at, u.email, u.display_name, u.created_at AS user_created_at
+SELECT s.id, s.user_id, s.created_at, s.last_seen_at, s.expires_at, u.email, u.display_name, u.created_at AS user_created_at, u.email_verified_at
 FROM user_sessions s JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now()
 `
 
 type GetLiveSessionRow struct {
-	ID            uuid.UUID
-	UserID        uuid.UUID
-	CreatedAt     time.Time
-	LastSeenAt    time.Time
-	ExpiresAt     time.Time
-	Email         string
-	DisplayName   string
-	UserCreatedAt time.Time
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	CreatedAt       time.Time
+	LastSeenAt      time.Time
+	ExpiresAt       time.Time
+	Email           string
+	DisplayName     string
+	UserCreatedAt   time.Time
+	EmailVerifiedAt *time.Time
 }
 
 // A session is live while it is neither revoked nor expired; the clock is the database's.
@@ -88,8 +117,26 @@ func (q *Queries) GetLiveSession(ctx context.Context, tokenHash []byte) (GetLive
 		&i.Email,
 		&i.DisplayName,
 		&i.UserCreatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
+}
+
+const getLiveUserToken = `-- name: GetLiveUserToken :one
+SELECT user_id FROM user_tokens WHERE token_hash = $1 AND kind = $2 AND used_at IS NULL AND expires_at > now()
+`
+
+type GetLiveUserTokenParams struct {
+	TokenHash []byte
+	Kind      string
+}
+
+// Reading a token without using it, so a bad one is refused before the work of hashing a new password.
+func (q *Queries) GetLiveUserToken(ctx context.Context, arg GetLiveUserTokenParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getLiveUserToken, arg.TokenHash, arg.Kind)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
 }
 
 const getMembership = `-- name: GetMembership :one
@@ -171,7 +218,7 @@ func (q *Queries) GetTenantForUser(ctx context.Context, arg GetTenantForUserPara
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at FROM users WHERE id = $1
+SELECT id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -186,12 +233,15 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.LockedUntil,
 		&i.LastLoginAt,
 		&i.CreatedAt,
+		&i.EmailVerifiedAt,
+		&i.Locale,
+		&i.TakenNoticeAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at FROM users WHERE lower(email) = lower($1::text)
+SELECT id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at FROM users WHERE lower(email) = lower($1::text)
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -206,6 +256,9 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.LockedUntil,
 		&i.LastLoginAt,
 		&i.CreatedAt,
+		&i.EmailVerifiedAt,
+		&i.Locale,
+		&i.TakenNoticeAt,
 	)
 	return i, err
 }
@@ -258,7 +311,7 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (U
 
 const insertUser = `-- name: InsertUser :one
 
-INSERT INTO users (id, email, display_name, password_hash) VALUES ($1, $2, $3, $4) RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at
+INSERT INTO users (id, email, display_name, password_hash, locale) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at
 `
 
 type InsertUserParams struct {
@@ -266,6 +319,7 @@ type InsertUserParams struct {
 	Email        string
 	DisplayName  string
 	PasswordHash string
+	Locale       string
 }
 
 // People: users, memberships and sessions (phase 38). Run as plans_system from internal/identity only. None of these tables is tenant data.
@@ -275,6 +329,7 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, e
 		arg.Email,
 		arg.DisplayName,
 		arg.PasswordHash,
+		arg.Locale,
 	)
 	var i User
 	err := row.Scan(
@@ -286,8 +341,67 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, e
 		&i.LockedUntil,
 		&i.LastLoginAt,
 		&i.CreatedAt,
+		&i.EmailVerifiedAt,
+		&i.Locale,
+		&i.TakenNoticeAt,
 	)
 	return i, err
+}
+
+const insertUserToken = `-- name: InsertUserToken :exec
+INSERT INTO user_tokens (id, user_id, kind, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5)
+`
+
+type InsertUserTokenParams struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Kind      string
+	TokenHash []byte
+	ExpiresAt time.Time
+}
+
+// E-mail verification and password reset (phase 39). A token row holds only the SHA-256 of the mailed token.
+func (q *Queries) InsertUserToken(ctx context.Context, arg InsertUserTokenParams) error {
+	_, err := q.db.Exec(ctx, insertUserToken,
+		arg.ID,
+		arg.UserID,
+		arg.Kind,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
+const invalidateUserTokens = `-- name: InvalidateUserTokens :exec
+UPDATE user_tokens SET used_at = now() WHERE user_id = $1 AND kind = $2 AND used_at IS NULL
+`
+
+type InvalidateUserTokensParams struct {
+	UserID uuid.UUID
+	Kind   string
+}
+
+// A new link replaces the older ones: they stop working.
+func (q *Queries) InvalidateUserTokens(ctx context.Context, arg InvalidateUserTokensParams) error {
+	_, err := q.db.Exec(ctx, invalidateUserTokens, arg.UserID, arg.Kind)
+	return err
+}
+
+const lastUserTokenAt = `-- name: LastUserTokenAt :one
+SELECT created_at FROM user_tokens WHERE user_id = $1 AND kind = $2 ORDER BY created_at DESC LIMIT 1
+`
+
+type LastUserTokenAtParams struct {
+	UserID uuid.UUID
+	Kind   string
+}
+
+// The newest token of a kind the user was sent, for the "at most one a minute" rule.
+func (q *Queries) LastUserTokenAt(ctx context.Context, arg LastUserTokenAtParams) (time.Time, error) {
+	row := q.db.QueryRow(ctx, lastUserTokenAt, arg.UserID, arg.Kind)
+	var created_at time.Time
+	err := row.Scan(&created_at)
+	return created_at, err
 }
 
 const listAccountMembers = `-- name: ListAccountMembers :many
@@ -435,6 +549,15 @@ func (q *Queries) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]
 	return items, nil
 }
 
+const markEmailVerified = `-- name: MarkEmailVerified :exec
+UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()) WHERE id = $1
+`
+
+func (q *Queries) MarkEmailVerified(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markEmailVerified, id)
+	return err
+}
+
 const recordFailedLogin = `-- name: RecordFailedLogin :one
 UPDATE users SET
   failed_logins = CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END,
@@ -487,6 +610,44 @@ func (q *Queries) RevokeSession(ctx context.Context, tokenHash []byte) (int64, e
 	return result.RowsAffected(), nil
 }
 
+const revokeUserSessions = `-- name: RevokeUserSessions :exec
+UPDATE user_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL
+`
+
+func (q *Queries) RevokeUserSessions(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, revokeUserSessions, userID)
+	return err
+}
+
+const setPassword = `-- name: SetPassword :exec
+UPDATE users SET password_hash = $1, failed_logins = 0, locked_until = NULL WHERE id = $2
+`
+
+type SetPasswordParams struct {
+	PasswordHash string
+	ID           uuid.UUID
+}
+
+// A new password also clears the sign-in lock: the person has proven the mailbox.
+func (q *Queries) SetPassword(ctx context.Context, arg SetPasswordParams) error {
+	_, err := q.db.Exec(ctx, setPassword, arg.PasswordHash, arg.ID)
+	return err
+}
+
+const setUserLocale = `-- name: SetUserLocale :exec
+UPDATE users SET locale = $2 WHERE id = $1
+`
+
+type SetUserLocaleParams struct {
+	ID     uuid.UUID
+	Locale string
+}
+
+func (q *Queries) SetUserLocale(ctx context.Context, arg SetUserLocaleParams) error {
+	_, err := q.db.Exec(ctx, setUserLocale, arg.ID, arg.Locale)
+	return err
+}
+
 const slideSession = `-- name: SlideSession :exec
 UPDATE user_sessions SET last_seen_at = now(), expires_at = $1 WHERE id = $2 AND revoked_at IS NULL
 `
@@ -499,4 +660,18 @@ type SlideSessionParams struct {
 func (q *Queries) SlideSession(ctx context.Context, arg SlideSessionParams) error {
 	_, err := q.db.Exec(ctx, slideSession, arg.ExpiresAt, arg.ID)
 	return err
+}
+
+const touchTakenNotice = `-- name: TouchTakenNotice :one
+UPDATE users SET taken_notice_at = now()
+WHERE id = $1 AND (taken_notice_at IS NULL OR taken_notice_at < now() - interval '1 hour')
+RETURNING id
+`
+
+// "Somebody tried to sign up with your address": at most one such mail an hour per address, so sign-up cannot be used to flood an inbox.
+func (q *Queries) TouchTakenNotice(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, touchTakenNotice, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
 }
