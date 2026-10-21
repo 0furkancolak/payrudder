@@ -714,6 +714,8 @@ services:
       QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
       QUOTIFY_PAYMENTS_URL: http://payments-worker:8095
       QUOTIFY_PAYMENTS_INTERNAL_TOKEN: ${QUOTIFY_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
+      # The console's nginx fronts the gateway and passes the visitor's address; the sign-in limits count by it (docs/phases/phase-38-product-app.md).
+      QUOTIFY_TRUST_FORWARDED_FOR: "true"
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42800:8000", "42910:9100"]
     depends_on:

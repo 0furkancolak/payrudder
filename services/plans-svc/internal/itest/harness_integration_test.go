@@ -27,6 +27,9 @@ import (
 	"github.com/0furkancolak/quotify/pkg/testkit"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/grpcapi"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity"
+	identitycmd "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/command"
+	identityqry "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/quotify/services/plans-svc/migrations"
 )
 
@@ -48,6 +51,7 @@ type env struct {
 	system  *pgxpool.Pool
 	plans   plansv1.PlansServiceClient
 	admin   plansv1.AdminServiceClient
+	ident   plansv1.IdentityServiceClient
 	hooks   plansv1.WebhookServiceClient
 	box     *secretbox.Box
 	evicted *recordingEvictor
@@ -104,7 +108,9 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 		t.Fatal(err)
 	}
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, true))
-	plansv1.RegisterAdminServiceServer(srv, admin.New(system, ev, allowedEnvs, log))
+	adminSrv := admin.New(system, ev, allowedEnvs, log)
+	plansv1.RegisterAdminServiceServer(srv, adminSrv)
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, log), identityqry.New(system)))
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -115,7 +121,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), box: box, evicted: ev}
+		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), box: box, evicted: ev}
 }
 
 func operator() context.Context {

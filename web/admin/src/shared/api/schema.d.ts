@@ -1691,6 +1691,193 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign up a person with a new account (organisation)
+         * @description Creates the user, an account and the owner membership in one step and opens a session. The token in the answer is shown once; only its hash is stored. Public and rate limited per client address (5 a minute). The answer is `Cache-Control: no-store`.
+         */
+        post: operations["signUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/signin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with e-mail and password
+         * @description A wrong password, an unknown e-mail and a locked account all answer 401 `identity.auth.invalid_credentials`. Five wrong passwords lock the account for fifteen minutes. Public and rate limited per client address (10 a minute).
+         */
+        post: operations["signIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/signout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke the session of the token */
+        post: operations["signOut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The person behind the session token, with their accounts */
+        get: operations["me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An account of the person (default the first) with its members */
+        get: operations["appGetAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The apps of an account of the person, with their sandbox and live tenants */
+        get: operations["appListApps"];
+        put?: never;
+        /**
+         * Create an app (a sandbox and a live tenant) in an account the person owns or administers
+         * @description Free tier and no grace period. Currency and time zone cannot be changed afterwards. At most 20 apps per account.
+         */
+        post: operations["appCreateApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One app of the person, with the person's role */
+        get: operations["appGetApp"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Payments, invoices, customers, subscriptions and health of one environment of an app
+         * @description Composed from the services that own the facts, with the environment's tenant as the caller. Payments cover the last 30 days. Money is never added across currencies. A section whose service did not answer is `null` and named in `unavailable`; `status` is then `degraded`.
+         */
+        get: operations["appOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The API keys of both environments of an app (never their secrets) */
+        get: operations["appListApiKeys"];
+        put?: never;
+        /**
+         * Create an API key for the sandbox or the live environment of an app
+         * @description The plaintext is in the answer once and never stored. At most 10 active keys per environment.
+         */
+        post: operations["appCreateApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/api-keys/{key_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke an API key of the app */
+        delete: operations["appRevokeApiKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/accounts": {
         parameters: {
             query?: never;
@@ -3031,6 +3218,174 @@ export interface components {
             /** @enum {string} */
             error_code?: "UNKNOWN_METER" | "UNKNOWN_CUSTOMER" | "EVENT_TOO_OLD" | "EVENT_IN_FUTURE" | "INVALID_EVENT_TIME" | "INVALID_QUANTITY" | "INVALID_QUANTITY_PRECISION" | "IDEMPOTENCY_KEY_REQUIRED" | "IDEMPOTENCY_KEY_INVALID" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_PROPERTIES";
             error_message?: string;
+        };
+        AuthUser: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: email */
+            email?: string;
+            display_name?: string;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        Membership: {
+            /** Format: uuid */
+            account_id?: string;
+            account_name?: string;
+            /** @enum {string} */
+            role?: "owner" | "admin" | "viewer";
+        };
+        SessionOpened: {
+            user?: components["schemas"]["AuthUser"];
+            memberships?: components["schemas"]["Membership"][];
+            /** @description qs_..., shown once; send as Authorization: Bearer */
+            token?: string;
+            /**
+             * Format: date-time
+             * @description 14 days from now; slides on use
+             */
+            expire_time?: string;
+        };
+        SessionInfo: {
+            user?: components["schemas"]["AuthUser"];
+            memberships?: components["schemas"]["Membership"][];
+            /** Format: date-time */
+            expire_time?: string;
+        };
+        MyAccount: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /**
+             * @description The caller's own role
+             * @enum {string}
+             */
+            role?: "owner" | "admin" | "viewer";
+            /** Format: date-time */
+            create_time?: string;
+            members?: {
+                /** Format: uuid */
+                user_id?: string;
+                email?: string;
+                display_name?: string;
+                /** @enum {string} */
+                role?: "owner" | "admin" | "viewer";
+                /** Format: date-time */
+                create_time?: string;
+            }[];
+        };
+        OverviewCount: {
+            count?: number;
+            /** @description The count stopped at its cap; there are more */
+            more?: boolean;
+        };
+        AppOverview: {
+            /** Format: uuid */
+            app_id?: string;
+            /** @enum {string} */
+            environment?: "live" | "sandbox";
+            /** Format: uuid */
+            tenant_id?: string;
+            /** @description The environment's own currency */
+            currency?: string;
+            /** @example 30 */
+            window_days?: number;
+            /** Format: date-time */
+            generated_at?: string;
+            /**
+             * @description attention: a failed payment or webhook delivery; degraded: a section is unavailable
+             * @enum {string}
+             */
+            status?: "ok" | "attention" | "degraded";
+            unavailable?: ("payments" | "invoices" | "customers" | "subscriptions" | "webhooks")[];
+            payments?: {
+                /** @description The ledger window held more rows than the gateway reads */
+                truncated?: boolean;
+                by_status?: {
+                    /** @enum {string} */
+                    status?: "paid" | "processing" | "failed" | "refunded";
+                    count?: number;
+                }[];
+                by_currency?: {
+                    currency?: string;
+                    paid_count?: number;
+                    paid_minor?: number;
+                    failed_count?: number;
+                    failed_minor?: number;
+                    pending_count?: number;
+                    pending_minor?: number;
+                    refunded_minor?: number;
+                }[];
+                /** @description Paid money per day of the window, per currency */
+                series?: {
+                    currency?: string;
+                    points?: {
+                        /** Format: date */
+                        date?: string;
+                        amount_minor?: number;
+                    }[];
+                }[];
+                recent?: {
+                    id?: string;
+                    invoice_id?: string;
+                    provider?: string;
+                    /** @enum {string} */
+                    kind?: "charge" | "refund";
+                    /** @enum {string} */
+                    status?: "paid" | "processing" | "failed" | "refunded";
+                    amount_minor?: number;
+                    currency?: string;
+                    /** Format: date-time */
+                    occurred_at?: string;
+                }[];
+            } | null;
+            invoices?: {
+                open?: components["schemas"]["OverviewCount"];
+                paid?: components["schemas"]["OverviewCount"];
+                /** @description All periods, per currency */
+                revenue?: {
+                    currency?: string;
+                    billed_minor?: number;
+                    collected_minor?: number;
+                    outstanding_minor?: number;
+                    refunded_minor?: number;
+                }[];
+                recent?: {
+                    id?: string;
+                    number?: string;
+                    customer_id?: string;
+                    customer_external_id?: string;
+                    status?: string;
+                    currency?: string;
+                    total_minor?: number;
+                    /** Format: date-time */
+                    create_time?: string;
+                    /** Format: date-time */
+                    finalize_time?: string;
+                }[];
+            } | null;
+            customers?: components["schemas"]["OverviewCount"] | null;
+            /** @description Recurring revenue of the current month per currency */
+            subscriptions?: {
+                currency?: string;
+                active?: number;
+                trialing?: number;
+                past_due?: number;
+                mrr_minor?: number;
+                new_mrr_minor?: number;
+                churned_mrr_minor?: number;
+            }[];
+            health?: {
+                payments_reachable?: boolean;
+                webhook_endpoints?: number;
+                webhook_failed?: number;
+                webhook_failed_more?: boolean;
+                providers?: {
+                    provider?: string;
+                    environment?: string;
+                    is_default?: boolean;
+                }[];
+            };
         };
         Error: {
             error: {
@@ -7201,6 +7556,346 @@ export interface operations {
                 };
             };
             403: components["responses"]["Error"];
+        };
+    };
+    signUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    /** Format: password */
+                    password: string;
+                    display_name?: string;
+                    /** @description The organisation the person starts */
+                    account_name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOpened"];
+                };
+            };
+            400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    signIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    /** Format: password */
+                    password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOpened"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    signOut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed out */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    appGetAccount: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAccount"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appListApps: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        apps?: components["schemas"]["App"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appCreateApp: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @description Lower case with dashes, unique within the account; default: the name */
+                    slug?: string;
+                    /** @enum {string} */
+                    currency: "CHF" | "EUR" | "GBP" | "JPY" | "KWD" | "TRY" | "USD";
+                    /** @example Europe/Istanbul */
+                    timezone: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["App"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    appGetApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        app?: components["schemas"]["App"];
+                        /** @enum {string} */
+                        role?: "owner" | "admin" | "viewer";
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appOverview: {
+        parameters: {
+            query?: {
+                environment?: "live" | "sandbox";
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppOverview"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appListApiKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        api_keys?: components["schemas"]["ApiKey"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appCreateApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    environment: "sandbox" | "live";
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        api_key?: components["schemas"]["ApiKey"];
+                        /** @description qk_{test|live}_<prefix>_<secret>, shown once */
+                        plaintext?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    appRevokeApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     createAccount: {
