@@ -1222,6 +1222,34 @@
       "setting": {
         "invalid": "El disparador de la factura electrónica debe ser off, finalized o paid."
       }
+    },
+    "identity": {
+      "account": {
+        "forbidden": "Su rol en esta cuenta no lo permite.",
+        "not_found": "Esta cuenta no existe o no es suya."
+      },
+      "api_key": {
+        "bad_environment": "Esta aplicación no tiene ese entorno.",
+        "not_found": "Esta clave de API no existe.",
+        "quota": "Un entorno puede tener como máximo 10 claves de API activas. Revoque una primero."
+      },
+      "app": {
+        "not_found": "Esta aplicación no existe o no es suya.",
+        "quota": "Una cuenta puede tener como máximo 20 aplicaciones."
+      },
+      "auth": {
+        "invalid_credentials": "Correo o contraseña incorrectos, o demasiados intentos. Inténtelo de nuevo en unos minutos.",
+        "rate_limited": "Demasiados intentos desde esta dirección. Inténtelo de nuevo en un minuto."
+      },
+      "session": {
+        "invalid": "Su sesión ha terminado. Inicie sesión de nuevo."
+      },
+      "signup": {
+        "email_taken": "Ya existe una cuenta con este correo. Inicie sesión en su lugar."
+      },
+      "tenant": {
+        "not_found": "Este entorno no existe o no es suyo."
+      }
     }
   }
 }
