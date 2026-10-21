@@ -228,12 +228,16 @@ setup: tools ## Once per machine: build the tools, start the infrastructure cont
 	@echo "Ready. Run: make dev"
 
 .PHONY: dev
-dev: ## Every day: the services run on your machine with reload (against the containers from make setup), the console on http://localhost:42301. Ctrl-C stops all. make dev ONLY=gateway,plans-svc runs some.
+dev: ## Every day: the services run on your machine with reload (against the containers from make setup), the console on http://localhost:42301. Ctrl-C stops all. make dev ONLY=gateway,plans-svc runs some; SEED=0 skips the default dev seed (user1@example.com / password123).
 	cd tools/quotifyctl && go build -o $(BIN)/quotifyctl .
 	@trap 'kill 0' INT TERM EXIT; \
-	  $(BIN)/quotifyctl dev $(if $(ONLY),--only $(ONLY)) $(if $(SKIP),--skip $(SKIP)) & \
+	  $(BIN)/quotifyctl dev $(if $(ONLY),--only $(ONLY)) $(if $(SKIP),--skip $(SKIP)) $(if $(filter 0,$(SEED)),--no-seed) & \
 	  (cd web/admin && exec npm run dev) & \
 	  wait
+
+.PHONY: dev-seed
+dev-seed: ## Fill a local dev stack with sample data again (idempotent; make dev already does it once): user1@example.com / password123, two apps with customers, invoices, expenses...
+	cd tools/quotifyctl && go run . dev-seed --operator-token "$(OPERATOR_TOKEN)"
 
 .PHONY: dev-docker
 dev-docker: ## The services in Docker too, with the console on http://localhost:42301 (what make dev used to do; for checking the images)
