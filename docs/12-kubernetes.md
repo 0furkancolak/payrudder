@@ -25,7 +25,7 @@ A Docker VM with less than about 6 GiB cannot hold the three-worker cluster. Use
 `make kind-up KIND_CONFIG=deploy/kind/cluster-min.yaml kind-images helm-install KIND_PROFILE=kind-min`
 (one replica of everything, single-node Redpanda and RabbitMQ; it fits in about 3 GiB).
 
-The kind node maps the host ports 8000 (gateway), 8090 (mock-psp), 8025 (Mailpit), 9001 (MinIO S3, the public endpoint in presigned URLs) and
+The kind node maps the host ports 42800 (gateway), 42890 (mock-psp), 42825 (Mailpit), 42901 (MinIO S3, the public endpoint in presigned URLs) and
 31092-31094 (the Redpanda brokers, advertised to clients outside the cluster as `localhost:3109x`).
 
 ## Install on your own cluster
