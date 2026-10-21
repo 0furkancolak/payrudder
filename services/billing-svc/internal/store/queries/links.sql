@@ -3,9 +3,10 @@
 
 -- name: InsertPaymentLink :exec
 INSERT INTO payment_links (tenant_id, id, kind, parent_id, invoice_id, token_hash, expires_at, single_use, idempotency_key, request_hash, amount_minor, currency,
-                           description, customer_id, customer_external_id)
+                           description, customer_id, customer_external_id, pack_id, quantity, credits, validity_days)
 VALUES (@tenant_id, @id, @kind, sqlc.narg('parent_id'), sqlc.narg('invoice_id'), @token_hash, @expires_at, @single_use, sqlc.narg('idempotency_key'),
-        sqlc.narg('request_hash'), sqlc.narg('amount_minor'), sqlc.narg('currency'), sqlc.narg('description'), sqlc.narg('customer_id'), sqlc.narg('customer_external_id'));
+        sqlc.narg('request_hash'), sqlc.narg('amount_minor'), sqlc.narg('currency'), sqlc.narg('description'), sqlc.narg('customer_id'), sqlc.narg('customer_external_id'),
+        sqlc.narg('pack_id'), sqlc.narg('quantity'), sqlc.narg('credits'), sqlc.narg('validity_days'));
 
 -- name: InsertInvoiceLink :exec
 INSERT INTO payment_links (tenant_id, id, kind, invoice_id, token_hash, expires_at) VALUES (@tenant_id, @id, 'invoice', @invoice_id, @token_hash, @expires_at);
@@ -14,12 +15,12 @@ INSERT INTO payment_links (tenant_id, id, kind, invoice_id, token_hash, expires_
 UPDATE payment_links SET revoked_at = now() WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND revoked_at IS NULL;
 
 -- name: FindActiveInvoiceLink :one
-SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count
+SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count, pack_id, quantity, credits, validity_days
 FROM payment_links WHERE token_hash = @token_hash AND revoked_at IS NULL AND expires_at > now();
 
 -- name: GetPaymentLinkRow :one
 SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count,
-       last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key,
+       last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key, pack_id, quantity, credits, validity_days,
        (CASE WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN single_use AND paid_count > 0 THEN 'paid' WHEN expires_at <= now() THEN 'expired' ELSE 'active' END)::text AS status
 FROM payment_links WHERE tenant_id = @tenant_id AND id = @id AND parent_id IS NULL;
 
@@ -29,7 +30,7 @@ SELECT id, request_hash FROM payment_links WHERE tenant_id = @tenant_id AND idem
 -- name: ListPaymentLinks :many
 SELECT * FROM (
   SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count,
-         last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key,
+         last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key, pack_id, quantity, credits, validity_days,
          (CASE WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN single_use AND paid_count > 0 THEN 'paid' WHEN expires_at <= now() THEN 'expired' ELSE 'active' END)::text AS status
   FROM payment_links WHERE tenant_id = @tenant_id AND parent_id IS NULL
 ) l
@@ -60,7 +61,7 @@ ORDER BY l.created_at DESC LIMIT 1;
 UPDATE payment_links AS p SET paid_count = p.paid_count + 1, last_paid_at = now()
 WHERE p.tenant_id = @tenant_id AND p.parent_id IS NULL AND p.id IN (
   SELECT COALESCE(c.parent_id, c.id) FROM payment_links c WHERE c.tenant_id = @tenant_id AND c.invoice_id = @invoice_id)
-RETURNING id, kind, invoice_id, customer_external_id, amount_minor, currency, paid_count;
+RETURNING id, kind, invoice_id, customer_id, customer_external_id, amount_minor, currency, paid_count, description, pack_id, quantity, credits, validity_days;
 
 -- name: ListLinksToExpire :many
 SELECT tenant_id, id FROM payment_links
@@ -87,13 +88,13 @@ FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.inv
 WHERE i.tenant_id = @tenant_id AND i.id = @id;
 
 -- name: InsertPortalLink :exec
-INSERT INTO portal_links (tenant_id, id, customer_id, token_hash, expires_at) VALUES (@tenant_id, @id, @customer_id, @token_hash, @expires_at);
+INSERT INTO portal_links (tenant_id, id, customer_id, customer_external_id, token_hash, expires_at) VALUES (@tenant_id, @id, @customer_id, sqlc.narg('customer_external_id'), @token_hash, @expires_at);
 
 -- name: RevokePortalLinks :execrows
 UPDATE portal_links SET revoked_at = now() WHERE tenant_id = @tenant_id AND customer_id = @customer_id AND revoked_at IS NULL;
 
 -- name: FindActivePortalLink :one
-SELECT tenant_id, customer_id, expires_at FROM portal_links WHERE token_hash = @token_hash AND revoked_at IS NULL AND expires_at > now();
+SELECT tenant_id, customer_id, customer_external_id, expires_at FROM portal_links WHERE token_hash = @token_hash AND revoked_at IS NULL AND expires_at > now();
 
 -- name: ListPortalInvoices :many
 SELECT i.id, i.kind, COALESCE(i.number, '')::text AS number, i.status, i.currency, i.total_minor, COALESCE(i.finalized_at, i.created_at)::timestamptz AS issued_at,
@@ -112,3 +113,12 @@ UPDATE invoices SET snapshot = jsonb_set(snapshot, '{payment_method}', to_jsonb(
 
 -- name: GetInvoiceTotals :one
 SELECT total_minor, currency, status FROM invoices WHERE tenant_id = @tenant_id AND id = @id;
+
+-- name: FindOpenPortalPackLink :one
+-- The link a customer's portal made for this pack and quantity that nobody has paid or revoked yet: pressing "Buy" again continues with it. The columns are those of
+-- FindActiveInvoiceLink, so that the link can be started like one a visitor opened.
+SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count, pack_id, quantity, credits, validity_days
+FROM payment_links
+WHERE tenant_id = @tenant_id AND kind = 'credit_pack' AND customer_id = @customer_id AND pack_id = @pack_id AND quantity = @quantity AND idempotency_key LIKE 'portal:%'
+  AND revoked_at IS NULL AND expires_at > now() AND paid_count = 0
+ORDER BY created_at DESC LIMIT 1;

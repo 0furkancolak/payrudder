@@ -1,18 +1,18 @@
 -- Prepaid credits: packs, lots, the ledger (tenant-scoped, billing_app; expiry runs as billing_system).
 
 -- name: InsertCreditPack :one
-INSERT INTO credit_packs (tenant_id, id, name, credits, price_minor, currency)
-VALUES (@tenant_id, @id, @name, @credits, @price_minor, @currency)
+INSERT INTO credit_packs (tenant_id, id, name, credits, price_minor, currency, validity_days)
+VALUES (@tenant_id, @id, @name, @credits, @price_minor, @currency, sqlc.narg('validity_days'))
 RETURNING created_at;
 
 -- name: ListCreditPacks :many
-SELECT id, name, credits, price_minor, currency, active, created_at
+SELECT id, name, credits, price_minor, currency, active, created_at, validity_days
 FROM credit_packs
 WHERE tenant_id = @tenant_id AND (NOT @active_only::boolean OR active)
 ORDER BY created_at, id;
 
 -- name: GetCreditPack :one
-SELECT id, name, credits, price_minor, currency, active, created_at FROM credit_packs WHERE tenant_id = @tenant_id AND id = @id;
+SELECT id, name, credits, price_minor, currency, active, created_at, validity_days FROM credit_packs WHERE tenant_id = @tenant_id AND id = @id;
 
 -- name: SetCreditPackActive :execrows
 UPDATE credit_packs SET active = @active WHERE tenant_id = @tenant_id AND id = @id;
@@ -62,10 +62,11 @@ WHERE tenant_id = @tenant_id AND customer_id = @customer_id AND remaining > 0 AN
 ORDER BY expires_at NULLS LAST, created_at, id;
 
 -- name: ListCreditLedger :many
-SELECT id, lot_id, kind, amount, COALESCE(idempotency_key, '')::text AS idempotency_key, reason, created_at FROM credit_ledger
-WHERE tenant_id = @tenant_id AND customer_id = @customer_id
-  AND (sqlc.narg('before_time')::timestamptz IS NULL OR (created_at, id) < (sqlc.narg('before_time')::timestamptz, sqlc.narg('before_id')::uuid))
-ORDER BY created_at DESC, id DESC
+SELECT e.id, e.lot_id, e.kind, e.amount, COALESCE(e.idempotency_key, '')::text AS idempotency_key, e.reason, e.created_at, l.source
+FROM credit_ledger e JOIN credit_lots l ON l.tenant_id = e.tenant_id AND l.id = e.lot_id
+WHERE e.tenant_id = @tenant_id AND e.customer_id = @customer_id
+  AND (sqlc.narg('before_time')::timestamptz IS NULL OR (e.created_at, e.id) < (sqlc.narg('before_time')::timestamptz, sqlc.narg('before_id')::uuid))
+ORDER BY e.created_at DESC, e.id DESC
 LIMIT @row_limit;
 
 -- Expiry (billing_system, every tenant): lots whose time has come and that still hold credits.
@@ -78,3 +79,10 @@ FOR UPDATE SKIP LOCKED;
 
 -- name: ZeroLot :exec
 UPDATE credit_lots SET remaining = 0 WHERE tenant_id = @tenant_id AND id = @id;
+
+-- name: GetCreditSettings :one
+SELECT low_threshold FROM credit_settings WHERE tenant_id = @tenant_id;
+
+-- name: UpsertCreditSettings :exec
+INSERT INTO credit_settings (tenant_id, low_threshold) VALUES (@tenant_id, @low_threshold)
+ON CONFLICT (tenant_id) DO UPDATE SET low_threshold = EXCLUDED.low_threshold, updated_at = now();

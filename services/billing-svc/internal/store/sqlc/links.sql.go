@@ -58,7 +58,7 @@ func (q *Queries) ChildInvoicesToVoid(ctx context.Context, arg ChildInvoicesToVo
 }
 
 const findActiveInvoiceLink = `-- name: FindActiveInvoiceLink :one
-SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count
+SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count, pack_id, quantity, credits, validity_days
 FROM payment_links WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
 `
 
@@ -76,6 +76,10 @@ type FindActiveInvoiceLinkRow struct {
 	CustomerID         *uuid.UUID
 	CustomerExternalID *string
 	PaidCount          int32
+	PackID             *uuid.UUID
+	Quantity           *int32
+	Credits            *int64
+	ValidityDays       *int32
 }
 
 func (q *Queries) FindActiveInvoiceLink(ctx context.Context, tokenHash []byte) (FindActiveInvoiceLinkRow, error) {
@@ -95,24 +99,101 @@ func (q *Queries) FindActiveInvoiceLink(ctx context.Context, tokenHash []byte) (
 		&i.CustomerID,
 		&i.CustomerExternalID,
 		&i.PaidCount,
+		&i.PackID,
+		&i.Quantity,
+		&i.Credits,
+		&i.ValidityDays,
 	)
 	return i, err
 }
 
 const findActivePortalLink = `-- name: FindActivePortalLink :one
-SELECT tenant_id, customer_id, expires_at FROM portal_links WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
+SELECT tenant_id, customer_id, customer_external_id, expires_at FROM portal_links WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
 `
 
 type FindActivePortalLinkRow struct {
-	TenantID   uuid.UUID
-	CustomerID uuid.UUID
-	ExpiresAt  time.Time
+	TenantID           uuid.UUID
+	CustomerID         uuid.UUID
+	CustomerExternalID *string
+	ExpiresAt          time.Time
 }
 
 func (q *Queries) FindActivePortalLink(ctx context.Context, tokenHash []byte) (FindActivePortalLinkRow, error) {
 	row := q.db.QueryRow(ctx, findActivePortalLink, tokenHash)
 	var i FindActivePortalLinkRow
-	err := row.Scan(&i.TenantID, &i.CustomerID, &i.ExpiresAt)
+	err := row.Scan(
+		&i.TenantID,
+		&i.CustomerID,
+		&i.CustomerExternalID,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const findOpenPortalPackLink = `-- name: FindOpenPortalPackLink :one
+SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count, pack_id, quantity, credits, validity_days
+FROM payment_links
+WHERE tenant_id = $1 AND kind = 'credit_pack' AND customer_id = $2 AND pack_id = $3 AND quantity = $4 AND idempotency_key LIKE 'portal:%'
+  AND revoked_at IS NULL AND expires_at > now() AND paid_count = 0
+ORDER BY created_at DESC LIMIT 1
+`
+
+type FindOpenPortalPackLinkParams struct {
+	TenantID   uuid.UUID
+	CustomerID *uuid.UUID
+	PackID     *uuid.UUID
+	Quantity   *int32
+}
+
+type FindOpenPortalPackLinkRow struct {
+	TenantID           uuid.UUID
+	ID                 uuid.UUID
+	Kind               string
+	InvoiceID          *uuid.UUID
+	ParentID           *uuid.UUID
+	SingleUse          bool
+	ExpiresAt          time.Time
+	AmountMinor        *int64
+	Currency           *string
+	Description        *string
+	CustomerID         *uuid.UUID
+	CustomerExternalID *string
+	PaidCount          int32
+	PackID             *uuid.UUID
+	Quantity           *int32
+	Credits            *int64
+	ValidityDays       *int32
+}
+
+// The link a customer's portal made for this pack and quantity that nobody has paid or revoked yet: pressing "Buy" again continues with it. The columns are those of
+// FindActiveInvoiceLink, so that the link can be started like one a visitor opened.
+func (q *Queries) FindOpenPortalPackLink(ctx context.Context, arg FindOpenPortalPackLinkParams) (FindOpenPortalPackLinkRow, error) {
+	row := q.db.QueryRow(ctx, findOpenPortalPackLink,
+		arg.TenantID,
+		arg.CustomerID,
+		arg.PackID,
+		arg.Quantity,
+	)
+	var i FindOpenPortalPackLinkRow
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.Kind,
+		&i.InvoiceID,
+		&i.ParentID,
+		&i.SingleUse,
+		&i.ExpiresAt,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.Description,
+		&i.CustomerID,
+		&i.CustomerExternalID,
+		&i.PaidCount,
+		&i.PackID,
+		&i.Quantity,
+		&i.Credits,
+		&i.ValidityDays,
+	)
 	return i, err
 }
 
@@ -246,7 +327,7 @@ func (q *Queries) GetInvoiceTotals(ctx context.Context, arg GetInvoiceTotalsPara
 
 const getPaymentLinkRow = `-- name: GetPaymentLinkRow :one
 SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count,
-       last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key,
+       last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key, pack_id, quantity, credits, validity_days,
        (CASE WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN single_use AND paid_count > 0 THEN 'paid' WHEN expires_at <= now() THEN 'expired' ELSE 'active' END)::text AS status
 FROM payment_links WHERE tenant_id = $1 AND id = $2 AND parent_id IS NULL
 `
@@ -273,6 +354,10 @@ type GetPaymentLinkRowRow struct {
 	PaidCount          int32
 	LastPaidAt         *time.Time
 	IdempotencyKey     string
+	PackID             *uuid.UUID
+	Quantity           *int32
+	Credits            *int64
+	ValidityDays       *int32
 	Status             string
 }
 
@@ -296,6 +381,10 @@ func (q *Queries) GetPaymentLinkRow(ctx context.Context, arg GetPaymentLinkRowPa
 		&i.PaidCount,
 		&i.LastPaidAt,
 		&i.IdempotencyKey,
+		&i.PackID,
+		&i.Quantity,
+		&i.Credits,
+		&i.ValidityDays,
 		&i.Status,
 	)
 	return i, err
@@ -327,9 +416,10 @@ func (q *Queries) InsertInvoiceLink(ctx context.Context, arg InsertInvoiceLinkPa
 const insertPaymentLink = `-- name: InsertPaymentLink :exec
 
 INSERT INTO payment_links (tenant_id, id, kind, parent_id, invoice_id, token_hash, expires_at, single_use, idempotency_key, request_hash, amount_minor, currency,
-                           description, customer_id, customer_external_id)
+                           description, customer_id, customer_external_id, pack_id, quantity, credits, validity_days)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-        $10, $11, $12, $13, $14, $15)
+        $10, $11, $12, $13, $14, $15,
+        $16, $17, $18, $19)
 `
 
 type InsertPaymentLinkParams struct {
@@ -348,6 +438,10 @@ type InsertPaymentLinkParams struct {
 	Description        *string
 	CustomerID         *uuid.UUID
 	CustomerExternalID *string
+	PackID             *uuid.UUID
+	Quantity           *int32
+	Credits            *int64
+	ValidityDays       *int32
 }
 
 // Payment links (phase 23 invoice links, extended in phase 34) and customer portal links. Visitors resolve a token through the system pool; tenants manage
@@ -369,20 +463,25 @@ func (q *Queries) InsertPaymentLink(ctx context.Context, arg InsertPaymentLinkPa
 		arg.Description,
 		arg.CustomerID,
 		arg.CustomerExternalID,
+		arg.PackID,
+		arg.Quantity,
+		arg.Credits,
+		arg.ValidityDays,
 	)
 	return err
 }
 
 const insertPortalLink = `-- name: InsertPortalLink :exec
-INSERT INTO portal_links (tenant_id, id, customer_id, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5)
+INSERT INTO portal_links (tenant_id, id, customer_id, customer_external_id, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type InsertPortalLinkParams struct {
-	TenantID   uuid.UUID
-	ID         uuid.UUID
-	CustomerID uuid.UUID
-	TokenHash  []byte
-	ExpiresAt  time.Time
+	TenantID           uuid.UUID
+	ID                 uuid.UUID
+	CustomerID         uuid.UUID
+	CustomerExternalID *string
+	TokenHash          []byte
+	ExpiresAt          time.Time
 }
 
 func (q *Queries) InsertPortalLink(ctx context.Context, arg InsertPortalLinkParams) error {
@@ -390,6 +489,7 @@ func (q *Queries) InsertPortalLink(ctx context.Context, arg InsertPortalLinkPara
 		arg.TenantID,
 		arg.ID,
 		arg.CustomerID,
+		arg.CustomerExternalID,
 		arg.TokenHash,
 		arg.ExpiresAt,
 	)
@@ -428,9 +528,9 @@ func (q *Queries) ListLinksToExpire(ctx context.Context, rowLimit int32) ([]List
 }
 
 const listPaymentLinks = `-- name: ListPaymentLinks :many
-SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count, last_paid_at, idempotency_key, status FROM (
+SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count, last_paid_at, idempotency_key, pack_id, quantity, credits, validity_days, status FROM (
   SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count,
-         last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key,
+         last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key, pack_id, quantity, credits, validity_days,
          (CASE WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN single_use AND paid_count > 0 THEN 'paid' WHEN expires_at <= now() THEN 'expired' ELSE 'active' END)::text AS status
   FROM payment_links WHERE tenant_id = $1 AND parent_id IS NULL
 ) l
@@ -471,6 +571,10 @@ type ListPaymentLinksRow struct {
 	PaidCount          int32
 	LastPaidAt         *time.Time
 	IdempotencyKey     string
+	PackID             *uuid.UUID
+	Quantity           *int32
+	Credits            *int64
+	ValidityDays       *int32
 	Status             string
 }
 
@@ -509,6 +613,10 @@ func (q *Queries) ListPaymentLinks(ctx context.Context, arg ListPaymentLinksPara
 			&i.PaidCount,
 			&i.LastPaidAt,
 			&i.IdempotencyKey,
+			&i.PackID,
+			&i.Quantity,
+			&i.Credits,
+			&i.ValidityDays,
 			&i.Status,
 		); err != nil {
 			return nil, err
@@ -663,7 +771,7 @@ const markPaymentLinksPaid = `-- name: MarkPaymentLinksPaid :many
 UPDATE payment_links AS p SET paid_count = p.paid_count + 1, last_paid_at = now()
 WHERE p.tenant_id = $1 AND p.parent_id IS NULL AND p.id IN (
   SELECT COALESCE(c.parent_id, c.id) FROM payment_links c WHERE c.tenant_id = $1 AND c.invoice_id = $2)
-RETURNING id, kind, invoice_id, customer_external_id, amount_minor, currency, paid_count
+RETURNING id, kind, invoice_id, customer_id, customer_external_id, amount_minor, currency, paid_count, description, pack_id, quantity, credits, validity_days
 `
 
 type MarkPaymentLinksPaidParams struct {
@@ -675,10 +783,16 @@ type MarkPaymentLinksPaidRow struct {
 	ID                 uuid.UUID
 	Kind               string
 	InvoiceID          *uuid.UUID
+	CustomerID         *uuid.UUID
 	CustomerExternalID *string
 	AmountMinor        *int64
 	Currency           *string
 	PaidCount          int32
+	Description        *string
+	PackID             *uuid.UUID
+	Quantity           *int32
+	Credits            *int64
+	ValidityDays       *int32
 }
 
 // The links an invoice was paid through: its own links, and the parents of its child links. Called by the saga when the invoice is paid.
@@ -695,10 +809,16 @@ func (q *Queries) MarkPaymentLinksPaid(ctx context.Context, arg MarkPaymentLinks
 			&i.ID,
 			&i.Kind,
 			&i.InvoiceID,
+			&i.CustomerID,
 			&i.CustomerExternalID,
 			&i.AmountMinor,
 			&i.Currency,
 			&i.PaidCount,
+			&i.Description,
+			&i.PackID,
+			&i.Quantity,
+			&i.Credits,
+			&i.ValidityDays,
 		); err != nil {
 			return nil, err
 		}

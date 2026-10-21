@@ -34,6 +34,9 @@ func (fakeBilling) GetCreditBalance(_ context.Context, req *billingv1.GetCreditB
 }
 
 func (fakeBilling) ConsumeCredits(_ context.Context, req *billingv1.ConsumeCreditsRequest) (*billingv1.ConsumeCreditsResponse, error) {
+	purchaseMu.Lock()
+	lastConsume = req
+	purchaseMu.Unlock()
 	if req.GetCustomerId() != "cust-uuid" {
 		return nil, errkey.New(codes.Internal, "common.internal", "the gateway must pass the internal customer id")
 	}

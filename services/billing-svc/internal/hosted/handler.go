@@ -13,6 +13,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/quotify/pkg/money"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/query"
@@ -109,7 +110,12 @@ func (h *Handler) CreatePaymentLink(ctx context.Context, req *billingv1.CreatePa
 	}
 	in := command.CreateInput{
 		Kind: req.GetKind(), AmountMinor: req.GetAmountMinor(), Currency: req.GetCurrency(), Description: req.GetDescription(), CustomerExternalID: req.GetCustomerExternalId(),
-		SingleUse: req.SingleUse, ExpiresInDays: req.GetExpiresInDays(), IdempotencyKey: req.GetIdempotencyKey(), RequireOpen: true,
+		SingleUse: req.SingleUse, ExpiresInDays: req.GetExpiresInDays(), IdempotencyKey: req.GetIdempotencyKey(), RequireOpen: true, Quantity: req.GetQuantity(),
+	}
+	if req.GetPackId() != "" {
+		if in.PackID, err = parseUUID("pack_id", req.GetPackId()); err != nil {
+			return nil, err
+		}
 	}
 	if req.GetInvoiceId() != "" {
 		if in.InvoiceID, err = parseUUID("invoice_id", req.GetInvoiceId()); err != nil {
@@ -304,7 +310,35 @@ func (h *Handler) GetPortal(ctx context.Context, req *billingv1.GetPortalRequest
 			CurrencyExponent: r.CurrencyExponent, IssueTime: timestamppb.New(r.IssuedAt), Kind: r.Kind, PdfAvailable: r.PdfReady && h.q.PDFs != nil,
 		})
 	}
+	resp.CreditBalance, resp.CanBuyCredits = page.CreditBalance, page.CanBuy
+	for _, l := range page.CreditLots {
+		lot := &billingv1.PortalCreditLot{Granted: l.Granted, Remaining: l.Remaining}
+		if l.ExpiresAt != nil {
+			lot.ExpireTime = timestamppb.New(*l.ExpiresAt)
+		}
+		resp.CreditLots = append(resp.CreditLots, lot)
+	}
+	for _, p := range page.CreditPacks {
+		exp := int32(2)
+		if c, ok := money.LookupCurrency(p.Currency); ok {
+			exp = int32(c.Exponent) //nolint:gosec // 0..3
+		}
+		pack := &billingv1.PortalCreditPack{Id: p.ID.String(), Name: p.Name, Credits: p.Credits, PriceMinor: p.PriceMinor, Currency: p.Currency, CurrencyExponent: exp}
+		if p.ValidityDays != nil {
+			pack.ValidityDays = *p.ValidityDays
+		}
+		resp.CreditPacks = append(resp.CreditPacks, pack)
+	}
 	return resp, nil
+}
+
+// StartPortalPurchase implements billingv1.HostedInvoiceServiceServer.
+func (h *Handler) StartPortalPurchase(ctx context.Context, req *billingv1.StartPortalPurchaseRequest) (*billingv1.StartPortalPurchaseResponse, error) {
+	token, err := command.StartPortalPurchase(ctx, h.d, h.q, req.GetPortalToken(), req.GetPackId(), req.GetQuantity())
+	if err != nil {
+		return nil, err
+	}
+	return &billingv1.StartPortalPurchaseResponse{InvoiceToken: token}, nil
 }
 
 func pageProto(scope *query.Scope, p *query.Page) *billingv1.GetHostedInvoiceResponse {
@@ -314,6 +348,9 @@ func pageProto(scope *query.Scope, p *query.Page) *billingv1.GetHostedInvoiceRes
 	if p.Adhoc != nil {
 		resp.Adhoc = &billingv1.HostedAdhoc{Description: p.Adhoc.Description, AmountMinor: p.Adhoc.AmountMinor, Currency: p.Adhoc.Currency,
 			CurrencyExponent: p.Adhoc.CurrencyExponent, Consumed: p.Adhoc.Consumed, SellerName: p.SellerName, LogoAvailable: p.LogoAvailable, Environment: p.Environment}
+		if k := p.Adhoc.Pack; k != nil {
+			resp.Adhoc.Pack = &billingv1.HostedCreditPack{Name: k.Name, Credits: k.Credits, Quantity: k.Quantity, ValidityDays: k.ValidityDays}
+		}
 		resp.PaymentState = "open"
 		return resp
 	}
@@ -367,6 +404,15 @@ func linkProto(l sqlc.GetPaymentLinkRowRow) *billingv1.PaymentLink {
 	}
 	if l.LastPaidAt != nil {
 		out.LastPaidTime = timestamppb.New(*l.LastPaidAt)
+	}
+	if l.PackID != nil {
+		out.PackId = l.PackID.String()
+	}
+	if l.Quantity != nil {
+		out.Quantity = *l.Quantity
+	}
+	if l.Credits != nil {
+		out.Credits = *l.Credits
 	}
 	return out
 }

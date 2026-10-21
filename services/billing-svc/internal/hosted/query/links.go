@@ -60,8 +60,8 @@ func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Lis
 	if size > 200 {
 		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_page", "page_size must be 1..200")
 	}
-	if p.Kind != "" && p.Kind != "invoice" && p.Kind != "adhoc" {
-		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "kind must be invoice or adhoc")
+	if p.Kind != "" && p.Kind != "invoice" && p.Kind != "adhoc" && p.Kind != "credit_pack" {
+		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "kind must be invoice, adhoc or credit_pack")
 	}
 	switch p.Status {
 	case "", "active", "paid", "expired", "revoked":

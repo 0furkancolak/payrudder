@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	creditscommand "github.com/0furkancolak/quotify/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
@@ -22,8 +23,30 @@ func (e *Engine) linksPaid(ctx context.Context, tx pgx.Tx, s *saga, now time.Tim
 		if err := TenantEvent(ctx, tx, s.TenantID, EventPaymentLinkPaid, l.ID.String()+"|"+s.InvoiceID.String(), now, PaymentLinkPaidData(l, s.InvoiceID, s.Number, s.Currency, s.TotalMinor)); err != nil {
 			return err
 		}
+		if err := e.creditsPurchased(ctx, tx, s, l, now); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// creditsPurchased is the post-paid hook of a credit-pack link: the credits are granted in the same transaction that marks the invoice paid, keyed by the invoice,
+// so however often the confirmation arrives (a duplicate webhook, a replayed settlement, a retried saga step) they are granted once. Other link kinds do nothing.
+func (e *Engine) creditsPurchased(ctx context.Context, tx pgx.Tx, s *saga, l sqlc.MarkPaymentLinksPaidRow, now time.Time) error {
+	if l.Kind != "credit_pack" || l.CustomerID == nil || l.Credits == nil {
+		return nil
+	}
+	p := creditscommand.Purchase{
+		TenantID: s.TenantID, CustomerID: *l.CustomerID, CustomerExternalID: deref(l.CustomerExternalID), LinkID: l.ID, PackID: l.PackID, PackName: deref(l.Description),
+		Credits: *l.Credits, InvoiceID: s.InvoiceID, InvoiceNo: s.Number, Currency: s.Currency, AmountMinor: s.TotalMinor, Now: now,
+	}
+	if l.Quantity != nil {
+		p.Quantity = *l.Quantity
+	}
+	if l.ValidityDays != nil {
+		p.ValidityDays = *l.ValidityDays
+	}
+	return creditscommand.PurchasePaid(ctx, tx, p)
 }
 
 // PaymentLinkPaidData is the data of payment_link.paid; amounts are strings like in the REST API.

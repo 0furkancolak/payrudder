@@ -71,6 +71,8 @@ type Scope struct {
 // Portal is a customer portal link a token resolved to.
 type Portal struct {
 	CustomerID uuid.UUID
+	// ExternalID is how the tenant knows the customer; empty for a portal link made before phase 36.
+	ExternalID string
 }
 
 // Resolve turns the credentials of a request into a scope: a link token, or a portal token with the invoice the visitor asks for (which must be the customer's).
@@ -105,7 +107,7 @@ func resolvePortal(ctx context.Context, system *pgxpool.Pool, token, invoiceID s
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	s := &Scope{TenantID: row.TenantID, Portal: &Portal{CustomerID: row.CustomerID}, ExpiresAt: row.ExpiresAt}
+	s := &Scope{TenantID: row.TenantID, Portal: &Portal{CustomerID: row.CustomerID, ExternalID: deref(row.CustomerExternalID)}, ExpiresAt: row.ExpiresAt}
 	if invoiceID == "" {
 		return s, nil
 	}
@@ -175,6 +177,23 @@ type Adhoc struct {
 	Currency         string
 	CurrencyExponent int32
 	Consumed         bool
+	// Pack is set for a credit-pack link: what the customer buys.
+	Pack *PackInfo
+}
+
+// PackInfo is what a credit-pack link sells.
+type PackInfo struct {
+	Name         string
+	Credits      int64
+	Quantity     int32
+	ValidityDays int32
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 // Page is what the gateway renders for a link or an invoice of a portal.
@@ -207,7 +226,7 @@ type Page struct {
 
 // Get returns what the visitor in scope sees. An ad-hoc link before its first use returns the Adhoc part and no invoice.
 func Get(ctx context.Context, d Deps, s *Scope) (*Page, error) {
-	if s.Link != nil && s.Link.Row.Kind == "adhoc" {
+	if s.Link != nil && (s.Link.Row.Kind == "adhoc" || s.Link.Row.Kind == "credit_pack") {
 		return d.adhoc(ctx, s)
 	}
 	if s.InvoiceID == uuid.Nil {
@@ -233,6 +252,15 @@ func (d Deps) adhoc(ctx context.Context, s *Scope) (*Page, error) {
 		Adhoc: &Adhoc{AmountMinor: *r.AmountMinor, Currency: *r.Currency, CurrencyExponent: exp, Consumed: r.SingleUse && r.PaidCount > 0}}
 	if r.Description != nil {
 		p.Adhoc.Description = *r.Description
+	}
+	if r.Kind == "credit_pack" && r.Credits != nil {
+		p.Adhoc.Pack = &PackInfo{Name: p.Adhoc.Description, Credits: *r.Credits, Quantity: 1}
+		if r.Quantity != nil {
+			p.Adhoc.Pack.Quantity = *r.Quantity
+		}
+		if r.ValidityDays != nil {
+			p.Adhoc.Pack.ValidityDays = *r.ValidityDays
+		}
 	}
 	return p, nil
 }
@@ -351,6 +379,11 @@ type PortalPage struct {
 	LogoAvailable bool
 	Environment   string
 	Invoices      []PortalInvoice
+	// Credits (phase 36): the spendable balance with its lots, the packs on sale, and whether this portal link can start a purchase.
+	CreditBalance int64
+	CreditLots    []sqlc.ListCreditLotsRow
+	CreditPacks   []sqlc.ListCreditPacksRow
+	CanBuy        bool
 }
 
 // portalLimit is how many invoices the page lists, newest first.
@@ -370,6 +403,16 @@ func GetPortal(ctx context.Context, d Deps, s *Scope) (*PortalPage, error) {
 		if rows, err = q.ListPortalInvoices(ctx, sqlc.ListPortalInvoicesParams{TenantID: s.TenantID, CustomerID: s.Portal.CustomerID, RowLimit: portalLimit}); err != nil {
 			return err
 		}
+		if out.CreditBalance, err = q.GetCreditBalance(ctx, sqlc.GetCreditBalanceParams{TenantID: s.TenantID, CustomerID: s.Portal.CustomerID}); err != nil {
+			return err
+		}
+		if out.CreditLots, err = q.ListCreditLots(ctx, sqlc.ListCreditLotsParams{TenantID: s.TenantID, CustomerID: s.Portal.CustomerID}); err != nil {
+			return err
+		}
+		if out.CreditPacks, err = q.ListCreditPacks(ctx, sqlc.ListCreditPacksParams{TenantID: s.TenantID, ActiveOnly: true}); err != nil {
+			return err
+		}
+		out.CanBuy = s.Portal.ExternalID != "" && len(out.CreditPacks) > 0
 		if len(rows) > 0 {
 			meta, err := q.GetInvoiceForLink(ctx, sqlc.GetInvoiceForLinkParams{TenantID: s.TenantID, ID: rows[0].ID})
 			if err != nil {
