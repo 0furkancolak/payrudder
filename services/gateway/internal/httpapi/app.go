@@ -18,6 +18,11 @@ func (s *Server) appRoutes() []Route {
 	return []Route{
 		{"POST", "/auth/signup", AccessPublic, "", s.signUp},
 		{"POST", "/auth/signin", AccessPublic, "", s.signIn},
+		{"GET", "/auth/methods", AccessPublic, "", s.methods},
+		{"POST", "/auth/otp/request", AccessPublic, "", s.otpRequest},
+		{"POST", "/auth/otp/verify", AccessPublic, "", s.otpVerify},
+		{"GET", "/auth/google/start", AccessPublic, "", s.googleStart},
+		{"GET", "/auth/google/callback", AccessPublic, "", s.googleCallback},
 		{"POST", "/auth/verify", AccessPublic, "", s.verifyEmail},
 		{"POST", "/auth/resend-verification", AccessSession, ratelimit.ClassWrite, s.resendVerification},
 		{"POST", "/auth/forgot", AccessPublic, "", s.forgotPassword},

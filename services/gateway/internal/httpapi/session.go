@@ -78,6 +78,10 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	if err != nil {
 		return auth.Principal{}, err
 	}
+	// An operator's session acts as any tenant, like the machine token does (the console shows a tenant's data through the tenant API).
+	if s.isOperator(sess.User) {
+		return s.actAs(r.Context(), id)
+	}
 	resp, err := s.d.Identity.ResolveMyTenant(r.Context(), &plansv1.ResolveMyTenantRequest{UserId: sess.UserID, TenantId: id})
 	switch status.Code(err) {
 	case codes.OK:
@@ -177,7 +181,7 @@ func (s *Server) signIn(w http.ResponseWriter, r *http.Request) {
 	}
 	noStore(w)
 	resp, err := s.d.Identity.SignIn(r.Context(), &plansv1.SignInRequest{Email: body.Email, Password: body.Password})
-	respond(w, r, http.StatusOK, resp, err)
+	s.respondSignedIn(w, r, resp, err)
 }
 
 func (s *Server) signOut(w http.ResponseWriter, r *http.Request) {
@@ -192,7 +196,16 @@ func (s *Server) signOut(w http.ResponseWriter, r *http.Request) {
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
 	noStore(w)
-	respond(w, r, http.StatusOK, &plansv1.GetSessionResponse{User: sess.User, Memberships: sess.Memberships, ExpireTime: timestamppb.New(sess.Expire)}, nil)
+	b, err := marshal.Marshal(&plansv1.GetSessionResponse{User: sess.User, Memberships: sess.Memberships, ExpireTime: timestamppb.New(sess.Expire)})
+	if err == nil {
+		b, err = s.withOperator(sess.User, b)
+	}
+	if err != nil {
+		writeError(w, r, status.Error(codes.Internal, "encode response"))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(b)
 }
 
 // decodeJSON reads a JSON object body into v. Fields v does not name are ignored: the handler never takes a user, account or tenant id from a body.

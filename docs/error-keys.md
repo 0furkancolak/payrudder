@@ -95,6 +95,12 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.auth.invalid_credentials`
 - `identity.auth.rate_limited`
 - `identity.email.not_verified`
+- `identity.oauth.conflict`
+- `identity.oauth.email_unverified`
+- `identity.oauth.invalid`
+- `identity.oauth.not_configured`
+- `identity.operator.forbidden`
+- `identity.otp.invalid`
 - `identity.session.invalid`
 - `identity.tenant.not_found`
 - `identity.token.invalid`

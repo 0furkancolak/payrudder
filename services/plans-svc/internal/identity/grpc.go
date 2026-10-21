@@ -144,3 +144,26 @@ func (h *Handler) RevokeMyApiKey(ctx context.Context, req *plansv1.RevokeMyApiKe
 	}
 	return &plansv1.RevokeMyApiKeyResponse{ApiKey: key}, nil
 }
+
+func (h *Handler) RequestLoginCode(ctx context.Context, req *plansv1.RequestLoginCodeRequest) (*plansv1.RequestLoginCodeResponse, error) {
+	if err := h.cmd.RequestLoginCode(ctx, req); err != nil {
+		return nil, err
+	}
+	return &plansv1.RequestLoginCodeResponse{}, nil
+}
+
+func (h *Handler) VerifyLoginCode(ctx context.Context, req *plansv1.VerifyLoginCodeRequest) (*plansv1.SignInResponse, error) {
+	o, err := h.cmd.VerifyLoginCode(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SignInResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+}
+
+func (h *Handler) SignInWithIdentity(ctx context.Context, req *plansv1.SignInWithIdentityRequest) (*plansv1.SignInResponse, error) {
+	o, err := h.cmd.SignInWithIdentity(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SignInResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+}

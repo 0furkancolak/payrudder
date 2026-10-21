@@ -72,6 +72,8 @@ type Config struct {
 	MailFrom string `env:"MAIL_FROM"`
 	// AppURL is the console's public address; the links in those mails point into it.
 	AppURL string `env:"QUOTIFY_APP_URL"`
+	// OTPPepper keys the hash of one-time sign-in codes (a secret, never in YAML). Without it the hash is salted but unkeyed: fine for development, set it in production.
+	OTPPepper string `env:"QUOTIFY_OTP_PEPPER"`
 }
 
 func (c *Config) Validate() error {
@@ -267,7 +269,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, cfg.WebhookAllowPrivate))
 	adminSrv := admin.New(systemPool, evictor, cfg.AllowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log), identityqry.New(systemPool)))
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log).WithPepper(cfg.OTPPepper), identityqry.New(systemPool)))
 	return srv, grpcHealth, box, nil
 }
 

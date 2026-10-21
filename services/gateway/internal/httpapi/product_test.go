@@ -31,20 +31,27 @@ import (
 // (Ada's and Bob's) and answers like the real one: another account's objects are "not found".
 
 const (
-	tokAda     = "qs_ada"
-	tokBob     = "qs_bob"
-	tokViewer  = "qs_viewer" // a viewer of Ada's account
-	adaUser    = "11111111-1111-4111-8111-111111111111"
-	bobUser    = "22222222-2222-4222-8222-222222222222"
-	viewerUser = "33333333-3333-4333-8333-333333333333"
-	adaAcct    = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
-	bobAcct    = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
-	adaApp     = "a0000000-0000-4000-8000-000000000001"
-	bobApp     = "b0000000-0000-4000-8000-000000000001"
-	adaLive    = "a1000000-0000-4000-8000-000000000001"
-	adaSandbox = "a1000000-0000-4000-8000-000000000002"
-	bobLive    = "b1000000-0000-4000-8000-000000000001"
-	bobSandbox = "b1000000-0000-4000-8000-000000000002"
+	tokAda    = "qs_ada"
+	tokBob    = "qs_bob"
+	tokViewer = "qs_viewer" // a viewer of Ada's account
+	// Phase 41: sessions of people the operator list may name (see signin_methods_test.go).
+	tokOperator           = "qs_operator"            // boss@example.com, verified: an operator
+	tokOperatorUnverified = "qs_operator_unverified" // the same address, never verified: not an operator
+	tokSpoof              = "qs_spoof"               // an address that only starts like a listed one
+	opUser                = "44444444-4444-4444-8444-444444444444"
+	opUser2               = "55555555-5555-4555-8555-555555555555"
+	spoofUser             = "66666666-6666-4666-8666-666666666666"
+	adaUser               = "11111111-1111-4111-8111-111111111111"
+	bobUser               = "22222222-2222-4222-8222-222222222222"
+	viewerUser            = "33333333-3333-4333-8333-333333333333"
+	adaAcct               = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+	bobAcct               = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+	adaApp                = "a0000000-0000-4000-8000-000000000001"
+	bobApp                = "b0000000-0000-4000-8000-000000000001"
+	adaLive               = "a1000000-0000-4000-8000-000000000001"
+	adaSandbox            = "a1000000-0000-4000-8000-000000000002"
+	bobLive               = "b1000000-0000-4000-8000-000000000001"
+	bobSandbox            = "b1000000-0000-4000-8000-000000000002"
 )
 
 type fakeIdentity struct {
@@ -59,6 +66,11 @@ type fakeIdentity struct {
 	resetReqs      []*plansv1.RequestPasswordResetRequest
 	resetPasswords []*plansv1.ResetPasswordRequest
 	resends        int
+
+	// Phase 41: what the one-time code and provider routes passed on.
+	codeRequests []*plansv1.RequestLoginCodeRequest
+	codeVerifies []*plansv1.VerifyLoginCodeRequest
+	identities   []*plansv1.SignInWithIdentityRequest
 }
 
 const (
@@ -70,9 +82,13 @@ func newFakeIdentity() *fakeIdentity {
 	return &fakeIdentity{revoked: map[string]bool{}, keys: map[string]string{"key-ada": adaApp, "key-bob": bobApp}}
 }
 
-type fakeUser struct{ id, email string }
+type fakeUser struct {
+	id, email string
+	verified  bool
+}
 
-var tokenUsers = map[string]fakeUser{tokAda: {adaUser, "ada@example.com"}, tokBob: {bobUser, "bob@example.com"}, tokViewer: {viewerUser, "view@example.com"}}
+var tokenUsers = map[string]fakeUser{tokAda: {adaUser, "ada@example.com", true}, tokBob: {bobUser, "bob@example.com", true}, tokViewer: {viewerUser, "view@example.com", true},
+	tokOperator: {opUser, "boss@example.com", true}, tokOperatorUnverified: {opUser2, "boss@example.com", false}, tokSpoof: {spoofUser, "ada@example.com.evil.test", true}}
 
 func (f *fakeIdentity) memberships(user string) []*plansv1.Membership {
 	switch user {
@@ -183,7 +199,7 @@ func (f *fakeIdentity) GetSession(_ context.Context, req *plansv1.GetSessionRequ
 	if !ok || f.revoked[req.GetToken()] {
 		return nil, errkey.New(codes.Unauthenticated, "identity.session.invalid", "sign in again")
 	}
-	return &plansv1.GetSessionResponse{User: &plansv1.User{Id: u.id, Email: u.email}, Memberships: f.memberships(u.id), ExpireTime: timestamppb.New(time.Now().Add(time.Hour))}, nil
+	return &plansv1.GetSessionResponse{User: &plansv1.User{Id: u.id, Email: u.email, EmailVerified: u.verified}, Memberships: f.memberships(u.id), ExpireTime: timestamppb.New(time.Now().Add(time.Hour))}, nil
 }
 
 func (f *fakeIdentity) seen(user string) {
@@ -548,7 +564,7 @@ func TestSessionsCannotCallOperatorRoutes(t *testing.T) {
 	} {
 		// With and without naming a tenant: a session is never an operator.
 		for _, tn := range []string{"", adaLive} {
-			if resp, _ := p.call(t, c.method, c.path, tokAda, tn, `{}`); resp.StatusCode != 401 {
+			if resp, m := p.call(t, c.method, c.path, tokAda, tn, `{}`); resp.StatusCode != 403 || errKeyOf(m) != "identity.operator.forbidden" {
 				t.Errorf("%s %s with a session (tenant %q): %d", c.method, c.path, tn, resp.StatusCode)
 			}
 		}

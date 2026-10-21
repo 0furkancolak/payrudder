@@ -21,7 +21,7 @@ func placeholders(c copyText) string {
 }
 
 func TestEveryLanguageHasEveryMail(t *testing.T) {
-	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken}
+	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode}
 	for _, l := range Locales {
 		for _, k := range kinds {
 			got, ok := texts[l][k]
@@ -33,11 +33,11 @@ func TestEveryLanguageHasEveryMail(t *testing.T) {
 				t.Errorf("%s/%s: %d lines, English has %d", l, k, len(got.Lines), len(en.Lines))
 			}
 			// The same placeholders, in any language: a translation that drops {account} would send a mail naming nothing.
-			if k == KindInvite && placeholders(got) != placeholders(en) {
+			if (k == KindInvite || k == KindCode) && placeholders(got) != placeholders(en) {
 				t.Errorf("%s/%s: placeholders %q differ from English %q", l, k, placeholders(got), placeholders(en))
 			}
-			if (k == KindTaken) != (got.Button == "") {
-				t.Errorf("%s/%s: only the sign-up warning has no button", l, k)
+			if (k == KindTaken || k == KindCode) != (got.Button == "") {
+				t.Errorf("%s/%s: only the sign-up warning and the code mail have no button", l, k)
 			}
 		}
 		for _, r := range []string{"owner", "admin", "viewer"} {

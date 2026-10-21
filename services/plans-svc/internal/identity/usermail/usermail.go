@@ -28,6 +28,8 @@ const (
 	KindInvite Kind = "invite"
 	// KindTaken tells the owner of an address that somebody tried to sign up with it. It carries no link to anything that acts.
 	KindTaken Kind = "taken"
+	// KindCode carries a one-time sign-in code (and no link): the person types it into the page that asked for it.
+	KindCode Kind = "code"
 )
 
 // Mail is one message to compose. Link is the full URL the button opens; the token inside it is the only secret.
@@ -40,6 +42,8 @@ type Mail struct {
 	Account string
 	Inviter string
 	Role    string
+	// Code is the one-time sign-in code of a KindCode mail.
+	Code string
 }
 
 // Locales are the languages mail is written in, as in the console.
@@ -119,6 +123,7 @@ func Render(m Mail) (subject, text, htmlBody string) {
 	fill := func(l string) string {
 		l = strings.ReplaceAll(l, "{account}", oneLine(m.Account))
 		l = strings.ReplaceAll(l, "{inviter}", oneLine(m.Inviter))
+		l = strings.ReplaceAll(l, "{code}", oneLine(m.Code))
 		return strings.ReplaceAll(l, "{role}", roleWord(loc, m.Role))
 	}
 	lines := make([]string, len(c.Lines))

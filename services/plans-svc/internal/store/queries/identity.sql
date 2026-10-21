@@ -120,3 +120,50 @@ RETURNING id;
 
 -- name: SetUserLocale :exec
 UPDATE users SET locale = $2 WHERE id = $1;
+
+-- Sign-in by one-time code (phase 41). A row holds a keyed hash of the code, never the code.
+-- name: InsertLoginCode :exec
+INSERT INTO login_codes (id, email, salt, code_hash, expires_at) VALUES (@id, @email, @salt, @code_hash, now() + @ttl::interval);
+
+-- The newest code sent to an address, for the "at most one a minute" rule.
+-- name: LastLoginCodeAt :one
+SELECT created_at FROM login_codes WHERE email = @email ORDER BY created_at DESC LIMIT 1;
+
+-- name: CountRecentLoginCodes :one
+SELECT count(*) FROM login_codes WHERE email = @email AND created_at > now() - @within::interval;
+
+-- A new code replaces the older ones: they stop working.
+-- name: InvalidateLoginCodes :exec
+UPDATE login_codes SET used_at = now() WHERE email = @email AND used_at IS NULL;
+
+-- name: DeleteStaleLoginCodes :exec
+DELETE FROM login_codes WHERE email = @email AND created_at < now() - interval '1 day';
+
+-- One try at the newest live code of an address: the attempt is counted in the same statement that returns the hash, so parallel guesses cannot exceed the
+-- limit (the outer conditions are re-checked after a concurrent update). A code at its limit, used or expired returns no row.
+-- name: TryLoginCode :one
+UPDATE login_codes SET attempts = attempts + 1
+WHERE id = (SELECT c.id FROM login_codes c WHERE c.email = @email AND c.used_at IS NULL AND c.expires_at > now() AND c.attempts < @max_attempts::int ORDER BY c.created_at DESC LIMIT 1)
+  AND used_at IS NULL AND expires_at > now() AND attempts < @max_attempts::int
+RETURNING id, salt, code_hash, attempts;
+
+-- Spending a code is one atomic UPDATE: of two requests with the same right code exactly one gets a row.
+-- name: ConsumeLoginCode :one
+UPDATE login_codes SET used_at = now() WHERE id = $1 AND used_at IS NULL AND expires_at > now() RETURNING id;
+
+-- Sign-in with an identity provider (phase 41).
+-- name: GetIdentityUser :one
+SELECT user_id FROM user_identities WHERE provider = @provider AND subject = @subject;
+
+-- name: InsertIdentity :exec
+INSERT INTO user_identities (id, user_id, provider, subject, email) VALUES ($1, $2, $3, $4, $5);
+
+-- name: TouchIdentity :exec
+UPDATE user_identities SET last_login_at = now() WHERE provider = @provider AND subject = @subject;
+
+-- A password cleared: the account signs in by code or provider until the person sets a new one through "forgot password".
+-- name: ClearPassword :exec
+UPDATE users SET password_hash = '', failed_logins = 0, locked_until = NULL WHERE id = $1;
+
+-- name: SetDisplayNameIfEmpty :exec
+UPDATE users SET display_name = @display_name WHERE id = @id AND display_name = '';

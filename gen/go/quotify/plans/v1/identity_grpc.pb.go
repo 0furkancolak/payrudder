@@ -27,6 +27,9 @@ const (
 	IdentityService_ResendVerification_FullMethodName   = "/quotify.plans.v1.IdentityService/ResendVerification"
 	IdentityService_RequestPasswordReset_FullMethodName = "/quotify.plans.v1.IdentityService/RequestPasswordReset"
 	IdentityService_ResetPassword_FullMethodName        = "/quotify.plans.v1.IdentityService/ResetPassword"
+	IdentityService_RequestLoginCode_FullMethodName     = "/quotify.plans.v1.IdentityService/RequestLoginCode"
+	IdentityService_VerifyLoginCode_FullMethodName      = "/quotify.plans.v1.IdentityService/VerifyLoginCode"
+	IdentityService_SignInWithIdentity_FullMethodName   = "/quotify.plans.v1.IdentityService/SignInWithIdentity"
 	IdentityService_GetMyAccount_FullMethodName         = "/quotify.plans.v1.IdentityService/GetMyAccount"
 	IdentityService_CreateMyApp_FullMethodName          = "/quotify.plans.v1.IdentityService/CreateMyApp"
 	IdentityService_ListMyApps_FullMethodName           = "/quotify.plans.v1.IdentityService/ListMyApps"
@@ -62,6 +65,15 @@ type IdentityServiceClient interface {
 	RequestPasswordReset(ctx context.Context, in *RequestPasswordResetRequest, opts ...grpc.CallOption) (*RequestPasswordResetResponse, error)
 	// ResetPassword consumes a reset token (single use, one hour), sets the new password, proves the address and revokes every session of the user.
 	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error)
+	// RequestLoginCode mails a six-digit one-time code to an address (phase 41). It always succeeds for a well-formed address and never says whether the address
+	// has an account; at most one code a minute and five an hour per address are sent.
+	RequestLoginCode(ctx context.Context, in *RequestLoginCodeRequest, opts ...grpc.CallOption) (*RequestLoginCodeResponse, error)
+	// VerifyLoginCode checks a code and opens a session. The code is single use, lives ten minutes and is burned after five wrong tries. An address without an
+	// account gets one (a user and an organisation): the code proved the mailbox. Every failure is the same error.
+	VerifyLoginCode(ctx context.Context, in *VerifyLoginCodeRequest, opts ...grpc.CallOption) (*SignInResponse, error)
+	// SignInWithIdentity opens a session for a person an identity provider has authenticated (the gateway verified the provider's ID token; this service only
+	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
+	SignInWithIdentity(ctx context.Context, in *SignInWithIdentityRequest, opts ...grpc.CallOption) (*SignInResponse, error)
 	GetMyAccount(ctx context.Context, in *GetMyAccountRequest, opts ...grpc.CallOption) (*GetMyAccountResponse, error)
 	// CreateMyApp adds an app (a sandbox and a live tenant) to an account the user owns or administers. Free tier, no grace period.
 	CreateMyApp(ctx context.Context, in *CreateMyAppRequest, opts ...grpc.CallOption) (*CreateMyAppResponse, error)
@@ -156,6 +168,36 @@ func (c *identityServiceClient) ResetPassword(ctx context.Context, in *ResetPass
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ResetPasswordResponse)
 	err := c.cc.Invoke(ctx, IdentityService_ResetPassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) RequestLoginCode(ctx context.Context, in *RequestLoginCodeRequest, opts ...grpc.CallOption) (*RequestLoginCodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestLoginCodeResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RequestLoginCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) VerifyLoginCode(ctx context.Context, in *VerifyLoginCodeRequest, opts ...grpc.CallOption) (*SignInResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SignInResponse)
+	err := c.cc.Invoke(ctx, IdentityService_VerifyLoginCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) SignInWithIdentity(ctx context.Context, in *SignInWithIdentityRequest, opts ...grpc.CallOption) (*SignInResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SignInResponse)
+	err := c.cc.Invoke(ctx, IdentityService_SignInWithIdentity_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -267,6 +309,15 @@ type IdentityServiceServer interface {
 	RequestPasswordReset(context.Context, *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error)
 	// ResetPassword consumes a reset token (single use, one hour), sets the new password, proves the address and revokes every session of the user.
 	ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error)
+	// RequestLoginCode mails a six-digit one-time code to an address (phase 41). It always succeeds for a well-formed address and never says whether the address
+	// has an account; at most one code a minute and five an hour per address are sent.
+	RequestLoginCode(context.Context, *RequestLoginCodeRequest) (*RequestLoginCodeResponse, error)
+	// VerifyLoginCode checks a code and opens a session. The code is single use, lives ten minutes and is burned after five wrong tries. An address without an
+	// account gets one (a user and an organisation): the code proved the mailbox. Every failure is the same error.
+	VerifyLoginCode(context.Context, *VerifyLoginCodeRequest) (*SignInResponse, error)
+	// SignInWithIdentity opens a session for a person an identity provider has authenticated (the gateway verified the provider's ID token; this service only
+	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
+	SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInResponse, error)
 	GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error)
 	// CreateMyApp adds an app (a sandbox and a live tenant) to an account the user owns or administers. Free tier, no grace period.
 	CreateMyApp(context.Context, *CreateMyAppRequest) (*CreateMyAppResponse, error)
@@ -310,6 +361,15 @@ func (UnimplementedIdentityServiceServer) RequestPasswordReset(context.Context, 
 }
 func (UnimplementedIdentityServiceServer) ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResetPassword not implemented")
+}
+func (UnimplementedIdentityServiceServer) RequestLoginCode(context.Context, *RequestLoginCodeRequest) (*RequestLoginCodeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RequestLoginCode not implemented")
+}
+func (UnimplementedIdentityServiceServer) VerifyLoginCode(context.Context, *VerifyLoginCodeRequest) (*SignInResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VerifyLoginCode not implemented")
+}
+func (UnimplementedIdentityServiceServer) SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SignInWithIdentity not implemented")
 }
 func (UnimplementedIdentityServiceServer) GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyAccount not implemented")
@@ -500,6 +560,60 @@ func _IdentityService_ResetPassword_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_RequestLoginCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestLoginCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RequestLoginCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RequestLoginCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RequestLoginCode(ctx, req.(*RequestLoginCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_VerifyLoginCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyLoginCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).VerifyLoginCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_VerifyLoginCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).VerifyLoginCode(ctx, req.(*VerifyLoginCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_SignInWithIdentity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignInWithIdentityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).SignInWithIdentity(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_SignInWithIdentity_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).SignInWithIdentity(ctx, req.(*SignInWithIdentityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_GetMyAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMyAccountRequest)
 	if err := dec(in); err != nil {
@@ -682,6 +796,18 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResetPassword",
 			Handler:    _IdentityService_ResetPassword_Handler,
+		},
+		{
+			MethodName: "RequestLoginCode",
+			Handler:    _IdentityService_RequestLoginCode_Handler,
+		},
+		{
+			MethodName: "VerifyLoginCode",
+			Handler:    _IdentityService_VerifyLoginCode_Handler,
+		},
+		{
+			MethodName: "SignInWithIdentity",
+			Handler:    _IdentityService_SignInWithIdentity_Handler,
 		},
 		{
 			MethodName: "GetMyAccount",
