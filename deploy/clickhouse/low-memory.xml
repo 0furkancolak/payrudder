@@ -1,4 +1,4 @@
-<!-- Local development: keep ClickHouse inside its 1 GiB container limit. -->
+<!-- Local development: keep ClickHouse inside its 1 GiB container limit and idle when nobody queries it. -->
 <clickhouse>
     <max_server_memory_usage_to_ram_ratio>0.75</max_server_memory_usage_to_ram_ratio>
     <mark_cache_size>67108864</mark_cache_size>
@@ -6,4 +6,18 @@
     <logger>
         <level>warning</level>
     </logger>
+    <!-- ClickHouse's own diagnostic tables are written and merged in the background all the time (trace_log alone grew to
+         ~90 MiB with no query running). Quotify never reads them; query_log stays for debugging. -->
+    <trace_log remove="1"/>
+    <text_log remove="1"/>
+    <metric_log remove="1"/>
+    <asynchronous_metric_log remove="1"/>
+    <processors_profile_log remove="1"/>
+    <profiles>
+        <default>
+            <!-- These feed trace_log; without it the samplers only burn CPU. -->
+            <global_profiler_real_time_period_ns>0</global_profiler_real_time_period_ns>
+            <global_profiler_cpu_time_period_ns>0</global_profiler_cpu_time_period_ns>
+        </default>
+    </profiles>
 </clickhouse>
