@@ -1,0 +1,5 @@
+<!-- Listen on IPv6 (dual-stack) so the private network reaches the server; tolerate a host without IPv6. -->
+<clickhouse>
+    <listen_host>::</listen_host>
+    <listen_try>1</listen_try>
+</clickhouse>

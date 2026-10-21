@@ -7,6 +7,8 @@ Two charts in `deploy/helm/`:
 | `quotify-infra` | Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO and Mailpit as plain StatefulSets/Deployments, the topics Job (`rpk`), and the init script that creates a database and three roles per service. Every part has an `enabled` flag: a managed service replaces it by pointing the other chart at an address. |
 | `quotify` | The services (gateway, plans, ingest, aggregator, limits, billing, analytics, assets, the three workers) and mock-psp. One template loops over `values.yaml: services`, so adding a service is a values entry, not a new template. |
 
+Not on Kubernetes? [deploy/railway](../deploy/railway/README.md) runs the same services on Railway ([phase 31](phases/phase-31-railway.md)).
+
 They are separate releases on purpose: the migration Jobs of `quotify` are pre-install hooks, and hooks run before the release's other
 resources exist, so the databases they migrate must belong to an earlier release.
 

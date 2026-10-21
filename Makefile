@@ -199,6 +199,13 @@ seed: ## Seed a demo account: make seed CURRENCY=TRY TIMEZONE=Europe/Istanbul GR
 topics: ## Create the Kafka topics (idempotent; needs redpanda running)
 	$(COMPOSE) exec -T redpanda sh -s < deploy/compose/redpanda/topics.sh
 
+.PHONY: railway-check
+railway-check: ## Railway deploy files: static tests, shell syntax, bootstrap dry runs (no account or Docker needed)
+	cd tests && go test -count=1 ./railway/
+	bash -n deploy/railway/bootstrap.sh
+	deploy/railway/bootstrap.sh --dry-run > /dev/null
+	deploy/railway/bootstrap.sh --dry-run --profile small --demo > /dev/null
+
 .PHONY: up-infra
 up-infra: ## Start the infrastructure containers only (make setup does this and more)
 	$(COMPOSE) up -d --wait
