@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { api, unwrap } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
 import type { Currency } from "@/shared/lib/currencies";
-import { personToken, setPersonToken } from "@/shared/lib/session";
+import { personToken, setActiveAccount, setPersonToken } from "@/shared/lib/session";
 
 // The product API (/auth, /app/v1): what a signed-in person sees in their accounts. Types come from the OpenAPI file.
 
@@ -16,6 +16,9 @@ export type MyAccount = S["MyAccount"];
 export type App = S["App"];
 export type AppOverview = S["AppOverview"];
 export type ApiKey = S["ApiKey"];
+export type Invitation = S["Invitation"];
+export type InvitationLookup = S["InvitationLookup"];
+export type Role = "owner" | "admin" | "viewer";
 export type Environment = "live" | "sandbox";
 
 export const productKeys = {
@@ -25,6 +28,7 @@ export const productKeys = {
   app: (id: string) => ["app", "apps", id] as const,
   overview: (id: string, env: Environment) => ["app", "apps", id, "overview", env] as const,
   keys: (id: string) => ["app", "apps", id, "keys"] as const,
+  invitations: ["app", "account", "invitations"] as const,
 };
 
 /** Signs in and keeps the session token of this tab. */
@@ -172,4 +176,109 @@ export function useRevokeApiKey(id: MaybeRefOrGetter<string>) {
     mutationFn: (keyId: string) => unwrap(api.DELETE("/app/v1/apps/{id}/api-keys/{key_id}", { params: { path: { id: toValue(id), key_id: keyId } } })),
     onSuccess: () => queries.invalidateQueries({ queryKey: productKeys.keys(toValue(id)) }),
   });
+}
+
+// --- members and invitations (phase 39). The account is the person's chosen one (see shared/api/client.ts); the server checks the role again.
+
+function refreshAccount(queries: ReturnType<typeof useQueryClient>) {
+  return Promise.all([queries.invalidateQueries({ queryKey: productKeys.account }), queries.invalidateQueries({ queryKey: productKeys.invitations }), queries.invalidateQueries({ queryKey: productKeys.me })]);
+}
+
+/** The open invitations of the account; only owners and administrators may ask, so it is enabled for them alone. */
+export function useInvitations(enabledFor: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: productKeys.invitations,
+    queryFn: () => unwrap(api.GET("/app/v1/account/invitations")),
+    enabled: computed(() => enabled.value && toValue(enabledFor)),
+  });
+}
+
+export function useInviteMember() {
+  const queries = useQueryClient();
+  const { locale } = useI18n();
+  return useMutation({
+    mutationFn: (body: { email: string; role: Role }) => unwrap(api.POST("/app/v1/account/invitations", { body: { ...body, locale: locale.value as "en" } })),
+    onSuccess: () => refreshAccount(queries),
+  });
+}
+
+export function useRevokeInvitation() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unwrap(api.DELETE("/app/v1/account/invitations/{id}", { params: { path: { id } } })),
+    onSuccess: () => refreshAccount(queries),
+  });
+}
+
+export function useResendInvitation() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unwrap(api.POST("/app/v1/account/invitations/{id}/resend", { params: { path: { id } } })),
+    onSuccess: () => refreshAccount(queries),
+  });
+}
+
+export function useChangeRole() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { userId: string; role: Role }) => unwrap(api.PATCH("/app/v1/account/members/{user_id}", { params: { path: { user_id: v.userId } }, body: { role: v.role } })),
+    onSuccess: () => refreshAccount(queries),
+  });
+}
+
+/** Removes a member, or (with the person's own id) leaves the account. */
+export function useRemoveMember() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => unwrap(api.DELETE("/app/v1/account/members/{user_id}", { params: { path: { user_id: userId } } })),
+    onSuccess: () => refreshAccount(queries),
+  });
+}
+
+export function useRenameAccount() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => unwrap(api.PATCH("/app/v1/account", { body: { name } })),
+    onSuccess: () => refreshAccount(queries),
+  });
+}
+
+/** What the invitation of a mailed link is for (public: the token is the credential). */
+export function useLookupInvitation() {
+  return useMutation({ mutationFn: (token: string) => unwrap(api.POST("/auth/invitations/lookup", { body: { token } })) });
+}
+
+/** Joins as a new person: the answer is a session, kept like a sign-in's. */
+export function useAcceptInvitation() {
+  const queries = useQueryClient();
+  const { locale } = useI18n();
+  return useMutation({
+    mutationFn: (v: { token: string; password: string; displayName: string }) =>
+      unwrap(api.POST("/auth/invitations/accept", { body: { token: v.token, password: v.password, display_name: v.displayName, locale: locale.value as "en" } })),
+    onSuccess: (s) => {
+      queries.clear();
+      setPersonToken(s.token ?? null);
+    },
+  });
+}
+
+/** Joins as the signed-in person; the account they joined becomes the one they work in. */
+export function useAcceptInvitationAsMe() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => unwrap(api.POST("/app/v1/invitations/accept", { body: { token } })),
+    onSuccess: async (r) => {
+      if (r.account_id) setActiveAccount(r.account_id);
+      await queries.invalidateQueries({ queryKey: ["app"] });
+    },
+  });
+}
+
+/** Switches the account the person works in; everything that belongs to an account is read again. */
+export function useSwitchAccount() {
+  const queries = useQueryClient();
+  return (id: string) => {
+    setActiveAccount(id);
+    void queries.invalidateQueries({ queryKey: ["app"] });
+  };
 }

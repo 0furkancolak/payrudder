@@ -1404,6 +1404,18 @@
       },
       "email": {
         "not_verified": "Confirma tu dirección de correo para crear claves de API en producción."
+      },
+      "invite": {
+        "already_member": "Esta persona ya es miembro de la cuenta.",
+        "not_found": "Esta invitación ya no existe.",
+        "quota": "Demasiadas invitaciones. Cancela algunas o inténtalo mañana.",
+        "sign_in_required": "Esta dirección ya tiene una cuenta. Inicia sesión para aceptar la invitación.",
+        "throttled": "Esta invitación se acaba de enviar. Espera un minuto antes de reenviarla.",
+        "wrong_user": "Esta invitación se envió a otra dirección. Inicia sesión con esa dirección."
+      },
+      "member": {
+        "last_owner": "Una cuenta debe conservar al menos un propietario. Nombra primero a otro propietario.",
+        "not_found": "Esta persona no es miembro de la cuenta."
       }
     }
   },
@@ -1597,9 +1609,7 @@
       "appearance": "Apariencia",
       "themeSystem": "Sistema",
       "themeLight": "Claro",
-      "themeDark": "Oscuro",
-      "members": "Miembros",
-      "membersNote": "Todas las personas con acceso a esta organización. Aún no es posible invitar a personas."
+      "themeDark": "Oscuro"
     },
     "role": {
       "owner": "Propietario",
@@ -1638,6 +1648,55 @@
       "failTitle": "Este enlace no funciona",
       "failBody": "Ya se usó, ha caducado o lo reemplazó uno más reciente. Inicia sesión y pide un enlace nuevo.",
       "toApp": "Ir a tus aplicaciones"
+    },
+    "members": {
+      "title": "Miembros",
+      "manageNote": "Los propietarios y administradores invitan a personas y gestionan los roles. Un administrador no puede cambiar a los propietarios.",
+      "readNote": "Puedes ver quién está en esta cuenta. Solo los propietarios y administradores pueden cambiarlo.",
+      "you": "tú",
+      "roleOf": "Rol de {name}",
+      "leave": "Salir",
+      "remove": "Quitar",
+      "removeNamed": "Quitar a {name}",
+      "inviteTitle": "Invitar a alguien",
+      "role": "Rol",
+      "invite": "Enviar invitación",
+      "invited": "Invitación enviada a {email}.",
+      "pending": "Invitaciones pendientes",
+      "expiresOn": "Válida hasta el {date}",
+      "expiredOn": "Caducó el {date}",
+      "expired": "Caducada",
+      "resend": "Reenviar",
+      "resendNamed": "Reenviar la invitación a {email}",
+      "cancel": "Cancelar",
+      "cancelNamed": "Cancelar la invitación a {email}",
+      "leaveTitle": "¿Salir de esta cuenta?",
+      "leaveBody": "Pierdes de inmediato el acceso a sus aplicaciones y datos. Un propietario puede volver a invitarte.",
+      "removeTitle": "¿Quitar a este miembro?",
+      "removeBody": "{name} pierde de inmediato el acceso a las aplicaciones y los datos de esta cuenta."
+    },
+    "account": {
+      "switch": "Cuenta",
+      "rename": "Nombre de la cuenta",
+      "save": "Guardar el nombre",
+      "noneTitle": "No perteneces a ninguna cuenta",
+      "noneBody": "Saliste de tu última cuenta o te quitaron de ella. Pide a un propietario que te invite de nuevo, o regístrate con otra dirección."
+    },
+    "invite": {
+      "title": "Estás invitado",
+      "intro": "Únete a {account} en Quotify como {role}.",
+      "checking": "Comprobando la invitación…",
+      "noToken": "Esta página necesita el enlace del correo de invitación. Ábrelo de nuevo.",
+      "invalid": "Esta invitación ya no es válida: se usó, se canceló, se reemplazó o ha caducado. Pide a quien te invitó que la envíe de nuevo.",
+      "from": "Invitado por {name}.",
+      "joinAs": "Has iniciado sesión como {email}. Únete con esta cuenta.",
+      "join": "Unirme a la cuenta",
+      "otherUser": "Esta invitación es para {invited}, pero has iniciado sesión como {current}. Cierra la sesión y abre el enlace de nuevo.",
+      "signInTitle": "Inicia sesión para unirte",
+      "hasAccount": "{email} ya tiene una cuenta. Inicia sesión para unirte.",
+      "signInJoin": "Iniciar sesión y unirme",
+      "createTitle": "Crea tu acceso",
+      "createJoin": "Crear el acceso y unirme"
     }
   }
 }

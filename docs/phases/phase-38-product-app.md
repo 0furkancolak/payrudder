@@ -19,7 +19,7 @@ It shipped in two pull requests: identity and gateway first, the web app second.
 **Out (follow-ups, not stubbed):**
 
 - **E-mail verification and password reset** (built in [phase 39](phase-39-product-app-complete.md); this is what it said when it was left out). Both need a mail path for people (not for a tenant's customers): the notifier today sends a tenant's invoice mail through the tenant's mail switch (phase 26/33) and has no template or sender identity of its own for Quotify-to-person mail. Doing it properly means a sender configuration, templates in six languages and a token table; it is not cheap, so it is not here. Until then a forgotten password has no self-service path (an operator would have to replace `users.password_hash` by hand) and an address is not proven to belong to the person. Sign-up therefore tells a visitor that an address is taken (it cannot hide it without a mail to the owner) — the per-address limit and the lock are the answer to enumeration and guessing.
-- Inviting members, changing a role, removing a member, transferring ownership (built in phase 39). The schema and the checks (roles) are there; only the API and screens are missing.
+- Inviting members, changing a role, removing a member, transferring ownership (built in phase 39; ownership moves by promoting the new owner and demoting the old one). The schema and the checks (roles) are there; only the API and screens are missing.
 - Deleting or renaming an app (no API for operators either).
 - Multi-factor authentication, OAuth/SSO sign-in.
 - Platform-wide dead letters in the app overview: the queues belong to the platform, not to one tenant, and showing them to a person would leak other tenants' health. They stay in the operator console.

@@ -2,6 +2,7 @@ import { computed, readonly, ref } from "vue";
 
 const OPERATOR_KEY = "quotify.operatorToken";
 const PERSON_KEY = "quotify.sessionToken";
+const ACCOUNT_KEY = "quotify.account";
 
 function read(key: string): string | null {
   try {
@@ -22,6 +23,7 @@ function write(key: string, value: string | null): void {
 
 const operator = ref<string | null>(read(OPERATOR_KEY));
 const person = ref<string | null>(read(PERSON_KEY));
+const account = ref<string | null>(read(ACCOUNT_KEY));
 
 /**
  * The operator token of this tab: kept in session storage, so it dies with the tab and is never written anywhere else.
@@ -31,6 +33,8 @@ const person = ref<string | null>(read(PERSON_KEY));
 export const operatorToken = readonly(operator);
 export const personToken = readonly(person);
 export const isPerson = computed(() => person.value !== null);
+/** The account a person with several memberships is working in ("" or null: their first). Kept in this tab only, like the token. */
+export const activeAccount = readonly(account);
 export const isOperator = computed(() => operator.value !== null);
 
 /** The bearer credential for the gateway: whichever of the two this tab holds. */
@@ -51,6 +55,13 @@ export function setPersonToken(value: string | null): void {
   }
   person.value = value;
   write(PERSON_KEY, value);
+  // A new sign-in starts in the person's first account; a sign-out forgets the choice.
+  setActiveAccount(null);
+}
+
+export function setActiveAccount(id: string | null): void {
+  account.value = id;
+  write(ACCOUNT_KEY, id);
 }
 
 type Listener = () => void;
