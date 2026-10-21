@@ -37,7 +37,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | redis | `redis:7` | 42379 | `appendonly yes`, `appendfsync everysec` |
 | clickhouse | `clickhouse/clickhouse-server` | 42123 (HTTP), 42900 (native) | |
 | minio | `cgr.dev/chainguard/minio@sha256:…` | 42901 (S3 API), 42902 (console) | S3-compatible store ([ADR 0013](adr/0013-s3-compatible-object-storage.md)). Bucket `invoices` + sandbox lifecycle rule created by an init container (`mc`) |
-| mailpit | `axllent/mailpit` | 42025 (SMTP), 42825 (UI) | |
+| mailpit | `axllent/mailpit` | 42025 (SMTP), 42825 (UI) | catches tenants' customer mail (notifier) and the mail to people from plans-svc: verification, reset and invitation links |
 | toxiproxy | `ghcr.io/shopify/toxiproxy` | 42474 (API) | `profile: chaos` only |
 
 ### Observability (`profile: obs`)

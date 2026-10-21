@@ -94,9 +94,11 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.app.quota`
 - `identity.auth.invalid_credentials`
 - `identity.auth.rate_limited`
+- `identity.email.not_verified`
 - `identity.session.invalid`
-- `identity.signup.email_taken`
 - `identity.tenant.not_found`
+- `identity.token.invalid`
+- `identity.verify.throttled`
 - `payments.transfer.bad_amount`
 - `payments.transfer.bad_currency`
 - `payments.transfer.bad_date`

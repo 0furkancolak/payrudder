@@ -1393,11 +1393,17 @@
       "session": {
         "invalid": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
       },
-      "signup": {
-        "email_taken": "Ein Konto mit dieser E-Mail-Adresse existiert bereits. Melden Sie sich stattdessen an."
-      },
       "tenant": {
         "not_found": "Diese Umgebung existiert nicht oder gehört Ihnen nicht."
+      },
+      "token": {
+        "invalid": "Dieser Link ist ungültig, abgelaufen oder wurde schon benutzt. Fordern Sie einen neuen an."
+      },
+      "verify": {
+        "throttled": "Gerade wurde ein Link gesendet. Warten Sie eine Minute, bevor Sie erneut anfragen."
+      },
+      "email": {
+        "not_verified": "Bestätigen Sie Ihre E-Mail-Adresse, um Live-API-Schlüssel zu erstellen."
       }
     }
   },
@@ -1468,14 +1474,17 @@
       "cta": "Anmelden",
       "noAccount": "Neu hier?",
       "operator": "Betreiber-Konsole",
-      "expired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren."
+      "expired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
+      "forgot": "Passwort vergessen?"
     },
     "signUp": {
       "title": "Konto erstellen",
       "intro": "Eine Organisation, so viele Apps wie nötig, jede mit einer Sandbox zum Ausprobieren.",
       "submit": "Konto erstellen",
       "cta": "Konto erstellen",
-      "haveAccount": "Sie haben bereits ein Konto?"
+      "haveAccount": "Sie haben bereits ein Konto?",
+      "checkTitle": "Prüfen Sie Ihr Postfach",
+      "checkBody": "Wir haben eine Nachricht an {email} gesendet. Ist die Adresse neu, bestätigen Sie sie über den Link darin. Hat sie schon ein Konto, melden Sie sich damit an oder setzen Sie das Passwort zurück."
     },
     "home": {
       "title": "Ihre Organisation",
@@ -1565,7 +1574,8 @@
       "copyFailed": "Ihr Browser hat das Kopieren nicht erlaubt. Markieren Sie den Schlüssel und kopieren Sie ihn von Hand.",
       "saved": "Ich habe ihn gespeichert",
       "revokeTitle": "Diesen Schlüssel widerrufen?",
-      "revokeBody": "Alles, was ihn noch verwendet, funktioniert sofort nicht mehr. Das lässt sich nicht rückgängig machen."
+      "revokeBody": "Alles, was ihn noch verwendet, funktioniert sofort nicht mehr. Das lässt sich nicht rückgängig machen.",
+      "needsVerified": "Bestätigen Sie Ihre E-Mail-Adresse, um Live-Schlüssel zu erstellen."
     },
     "links": {
       "title": "Tiefer einsteigen",
@@ -1595,6 +1605,39 @@
       "owner": "Eigentümer",
       "admin": "Administrator",
       "viewer": "Betrachter"
+    },
+    "forgot": {
+      "title": "Passwort zurücksetzen",
+      "intro": "Geben Sie die E-Mail-Adresse Ihres Kontos ein. Wir senden Ihnen einen Link, mit dem Sie ein neues Passwort wählen.",
+      "submit": "Link zum Zurücksetzen senden",
+      "doneTitle": "Prüfen Sie Ihr Postfach",
+      "doneBody": "Falls zu {email} ein Konto existiert, ist ein Link unterwegs. Er funktioniert nur einmal und läuft nach einer Stunde ab.",
+      "back": "Zurück zur Anmeldung"
+    },
+    "reset": {
+      "title": "Neues Passwort wählen",
+      "intro": "Das Speichern meldet Sie auf allen Geräten ab.",
+      "newPassword": "Neues Passwort",
+      "submit": "Passwort speichern",
+      "doneTitle": "Passwort geändert",
+      "doneBody": "Sie wurden überall abgemeldet. Melden Sie sich mit Ihrem neuen Passwort an.",
+      "noToken": "Diese Seite braucht den Link aus Ihrer E-Mail. Öffnen Sie den Link erneut oder fordern Sie einen neuen an.",
+      "askAgain": "Neuen Link anfordern"
+    },
+    "verify": {
+      "banner": "Bestätigen Sie Ihre E-Mail-Adresse ({email}). Sie können die App in der Zwischenzeit nutzen, aber Live-API-Schlüssel brauchen eine bestätigte Adresse.",
+      "resend": "Link erneut senden",
+      "sent": "Link gesendet. Prüfen Sie Ihr Postfach."
+    },
+    "verifyPage": {
+      "title": "E-Mail-Adresse wird bestätigt",
+      "intro": "Einen Moment, wir prüfen den Link.",
+      "working": "Link wird geprüft …",
+      "doneTitle": "E-Mail-Adresse bestätigt",
+      "doneBody": "Vielen Dank. Sie können jetzt Live-API-Schlüssel erstellen.",
+      "failTitle": "Dieser Link funktioniert nicht",
+      "failBody": "Er wurde schon benutzt, ist abgelaufen oder wurde durch einen neueren ersetzt. Melden Sie sich an und fordern Sie einen neuen Link an.",
+      "toApp": "Zu Ihren Apps"
     }
   }
 }

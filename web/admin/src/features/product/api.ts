@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
+import { useI18n } from "vue-i18n";
 import { api, unwrap } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
 import type { Currency } from "@/shared/lib/currencies";
@@ -38,15 +39,51 @@ export function useSignIn() {
   });
 }
 
+/**
+ * Signs up. The gateway answers 202 for a free and for a taken address alike and opens no session, so the page then signs in with the password just
+ * typed: for a new address that works at once (the person may use the app while the address is unverified); for a taken one it fails, and the page shows
+ * the same "check your inbox" message as ever (the owner was mailed a warning).
+ */
 export function useSignUp() {
   const queries = useQueryClient();
+  const { locale } = useI18n();
   return useMutation({
-    mutationFn: (body: { email: string; password: string; display_name: string; account_name: string }) => unwrap(api.POST("/auth/signup", { body })),
-    onSuccess: (s) => {
-      queries.clear();
-      setPersonToken(s.token ?? null);
+    mutationFn: async (body: { email: string; password: string; display_name: string; account_name: string }) => {
+      await unwrap(api.POST("/auth/signup", { body: { ...body, locale: locale.value as "en" } }));
+      try {
+        const s = await unwrap(api.POST("/auth/signin", { body: { email: body.email, password: body.password } }));
+        queries.clear();
+        setPersonToken(s.token ?? null);
+        return { signedIn: true };
+      } catch {
+        return { signedIn: false };
+      }
     },
   });
+}
+
+/** Spends the token of a verification link. */
+export function useVerifyEmail() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => unwrap(api.POST("/auth/verify", { body: { token } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: productKeys.me }),
+  });
+}
+
+/** Asks for a new verification link (the gateway allows one a minute). */
+export function useResendVerification() {
+  return useMutation({ mutationFn: () => unwrap(api.POST("/auth/resend-verification")) });
+}
+
+/** "Forgot password": the answer is the same for every address. */
+export function useForgotPassword() {
+  const { locale } = useI18n();
+  return useMutation({ mutationFn: (email: string) => unwrap(api.POST("/auth/forgot", { body: { email, locale: locale.value as "en" } })) });
+}
+
+export function useResetPassword() {
+  return useMutation({ mutationFn: (v: { token: string; password: string }) => unwrap(api.POST("/auth/reset", { body: v })) });
 }
 
 /** Revokes the session at the gateway (best effort: the token is forgotten here either way) and clears everything cached. */

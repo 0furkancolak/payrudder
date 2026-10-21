@@ -137,6 +137,7 @@ func noStore(w http.ResponseWriter) {
 	w.Header().Set("Pragma", "no-cache")
 }
 
+// signUp answers 202 whether the address was free or taken: the person signs in (or opens the mailed link). It opens no session itself.
 func (s *Server) signUp(w http.ResponseWriter, r *http.Request) {
 	if !s.authAllowed(w, r, &s.signUps, signUpsPerMinute) {
 		return
@@ -146,14 +147,20 @@ func (s *Server) signUp(w http.ResponseWriter, r *http.Request) {
 		Password    string `json:"password"`
 		DisplayName string `json:"display_name"`
 		AccountName string `json:"account_name"`
+		Locale      string `json:"locale"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, r, err)
 		return
 	}
 	noStore(w)
-	resp, err := s.d.Identity.SignUp(r.Context(), &plansv1.SignUpRequest{Email: body.Email, Password: body.Password, DisplayName: body.DisplayName, AccountName: body.AccountName})
-	respond(w, r, http.StatusCreated, resp, err)
+	_, err := s.d.Identity.SignUp(r.Context(), &plansv1.SignUpRequest{Email: body.Email, Password: body.Password, DisplayName: body.DisplayName,
+		AccountName: body.AccountName, Locale: localeOf(r, body.Locale)})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSONValue(w, http.StatusAccepted, map[string]any{"status": "accepted"})
 }
 
 func (s *Server) signIn(w http.ResponseWriter, r *http.Request) {

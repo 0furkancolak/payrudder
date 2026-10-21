@@ -84,8 +84,9 @@ func (q *Queries) Session(ctx context.Context, token string) (Session, error) {
 	}
 	now := q.now()
 	s := Session{
-		ID:          row.ID,
-		User:        &plansv1.User{Id: row.UserID.String(), Email: row.Email, DisplayName: row.DisplayName, CreateTime: timestamppb.New(row.UserCreatedAt)},
+		ID: row.ID,
+		User: &plansv1.User{Id: row.UserID.String(), Email: row.Email, DisplayName: row.DisplayName, CreateTime: timestamppb.New(row.UserCreatedAt),
+			EmailVerified: row.EmailVerifiedAt != nil},
 		Memberships: ms,
 		ExpireTime:  row.ExpiresAt,
 	}
@@ -120,7 +121,7 @@ func Memberships(ctx context.Context, db *sqlc.Queries, userID uuid.UUID) ([]*pl
 
 // User is the API shape of a user row.
 func User(u sqlc.User) *plansv1.User {
-	return &plansv1.User{Id: u.ID.String(), Email: u.Email, DisplayName: u.DisplayName, CreateTime: timestamppb.New(u.CreatedAt)}
+	return &plansv1.User{Id: u.ID.String(), Email: u.Email, DisplayName: u.DisplayName, CreateTime: timestamppb.New(u.CreatedAt), EmailVerified: u.EmailVerifiedAt != nil}
 }
 
 // ParseID parses an id from a request; a malformed one finds nothing, like an unknown one.

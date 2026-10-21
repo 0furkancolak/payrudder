@@ -5,3 +5,10 @@ QUOTIFY_RELAY_WORKERS: "1"
 QUOTIFY_RELAY_BATCH_SIZE: "200"
 QUOTIFY_WEBHOOK_ALLOW_PRIVATE: "false"
 QUOTIFY_ALLOWED_ENVIRONMENTS: "sandbox,live"
+# The platform's own mail path, for the mail Quotify writes to people (e-mail verification, password reset, invitations). The default is the development
+# Mailpit (SMTP port 42025 on the host, UI on http://localhost:42825); a deployment sets SMTP_ADDR to its relay. A tenant's mail to its own customers is
+# the notifier's job and uses the tenant's mail switch.
+SMTP_ADDR: "localhost:42025"
+MAIL_FROM: "Quotify <no-reply@quotify.local>"
+# The console's public address: mailed links open <QUOTIFY_APP_URL>/verify, /reset and /invite.
+QUOTIFY_APP_URL: "http://localhost:42301"

@@ -29,7 +29,9 @@ test.describe("sign up and sign in", () => {
     await page.getByRole("button", { name: "Create account" }).click();
 
     await page.waitForURL("**/app");
-    expect(gw.called("POST", "/auth/signup")[0]?.body).toEqual({ email: "ada@example.com", password: "a long enough password", display_name: "Ada Lovelace", account_name: "Ada Labs" });
+    expect(gw.called("POST", "/auth/signup")[0]?.body).toEqual({ email: "ada@example.com", password: "a long enough password", display_name: "Ada Lovelace", account_name: "Ada Labs", locale: "en" });
+    // Sign-up opens no session; the page signed in with the password just chosen.
+    expect(gw.called("POST", "/auth/signin")[0]?.body).toEqual({ email: "ada@example.com", password: "a long enough password" });
     await expect(page.getByRole("heading", { name: "Create your first app" })).toBeVisible();
     await shoot(page, "03-empty-home");
 
@@ -263,5 +265,90 @@ test.describe("on a phone", () => {
     const rail = page.getByRole("navigation", { name: "Quotify" });
     const box = await rail.boundingBox();
     expect(box && box.y > 700).toBe(true);
+  });
+});
+
+test.describe("e-mail verification and password reset", () => {
+  test("a sign-up whose address is taken shows the same notice as ever and opens no session", async ({ page }) => {
+    const gw = productGateway(new MockGateway()).gw;
+    await gw.install(page);
+    await page.goto("/signup");
+    await page.getByLabel("Organisation").fill("Ada Labs");
+    await page.getByLabel("E-mail").fill("ada@example.com");
+    // The address exists with another password: the sign-in right after the sign-up fails, and the page says to check the inbox.
+    await page.getByLabel("Password", { exact: true }).fill("another long password");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page.getByRole("status")).toContainText("Check your inbox");
+    await expect(page.getByRole("status")).toContainText("ada@example.com");
+    expect(page.url()).toContain("/signup");
+    expect(await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"))).toBeNull();
+  });
+
+  test("forgot password: the same answer for any address, then the reset page sets a new password", async ({ page }) => {
+    const gw = productGateway(new MockGateway()).gw;
+    await gw.install(page);
+    await page.goto("/signin");
+    await page.getByRole("link", { name: "Forgot your password?" }).click();
+    await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+    await page.getByLabel("E-mail").fill("nobody@example.com");
+    await page.getByRole("button", { name: "Send reset link" }).click();
+    await expect(page.getByRole("status")).toContainText("If an account exists for nobody@example.com");
+    expect(gw.called("POST", "/auth/forgot")[0]?.body).toEqual({ email: "nobody@example.com", locale: "en" });
+
+    // The link of the mail: the token is in the fragment, is read once and leaves the address bar.
+    await page.goto("/reset#token=qr_good");
+    await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
+    expect(page.url()).not.toContain("qr_good");
+    await page.getByLabel("New password", { exact: true }).fill("short");
+    await expect(page.getByRole("button", { name: "Save password" })).toBeDisabled();
+    await page.getByLabel("New password", { exact: true }).fill("a brand new password");
+    await page.getByRole("button", { name: "Save password" }).click();
+    await expect(page.getByRole("status")).toContainText("Password changed");
+    expect(gw.called("POST", "/auth/reset")[0]?.body).toEqual({ token: "qr_good", password: "a brand new password" });
+    await page.getByRole("link", { name: "Sign in" }).click();
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  });
+
+  test("a used reset link and a page opened without a link say what to do", async ({ page }) => {
+    await productGateway(new MockGateway(), { resetToken: "" }).gw.install(page);
+    await page.goto("/reset#token=qr_good");
+    await page.getByLabel("New password", { exact: true }).fill("a brand new password");
+    await page.getByRole("button", { name: "Save password" }).click();
+    await expect(page.getByRole("alert")).toContainText("invalid, has expired or was already used");
+    await expect(page.getByRole("link", { name: "Ask for a new link" })).toBeVisible();
+    await page.goto("/reset");
+    await expect(page.getByRole("alert")).toContainText("needs the link from your e-mail");
+  });
+
+  test("an unverified person sees the banner, can resend the link and cannot make a live key until the link is followed", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { verified: false });
+    await gw.install(page);
+    await signInAsAda(page);
+    const banner = page.getByTestId("verify-banner");
+    await expect(banner).toContainText("Confirm your e-mail address (ada@example.com)");
+    await banner.getByRole("button", { name: "Send the link again" }).click();
+    await expect(banner).toContainText("Link sent");
+    expect(gw.called("POST", "/auth/resend-verification")).toHaveLength(1);
+
+    await page.goto(`/app/apps/${APP}`);
+    await expect(page.getByRole("button", { name: "Live key" })).toBeDisabled();
+    await expect(page.getByTestId("live-needs-verified")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sandbox key" })).toBeEnabled();
+
+    // The link of the mail, followed in this browser.
+    await page.goto("/verify#token=qv_good");
+    await expect(page.getByRole("status")).toContainText("E-mail address confirmed");
+    expect(page.url()).not.toContain("qv_good");
+    expect(gw.called("POST", "/auth/verify")[0]?.body).toEqual({ token: "qv_good" });
+    await page.goto(`/app/apps/${APP}`);
+    await expect(page.getByTestId("verify-banner")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Live key" })).toBeEnabled();
+  });
+
+  test("a verification link that was used is explained, signed out too", async ({ page }) => {
+    await productGateway(new MockGateway(), { verifyToken: "" }).gw.install(page);
+    await page.goto("/verify#token=qv_old");
+    await expect(page.getByRole("alert")).toContainText("This link does not work");
+    await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
   });
 });

@@ -36,6 +36,28 @@ func TestVerifyRejectsMalformedHashes(t *testing.T) {
 	}
 }
 
+func TestPrefixedTokens(t *testing.T) {
+	for _, prefix := range []string{VerifyPrefix, ResetPrefix, InvitePrefix} {
+		tok, hash, err := NewPrefixedToken(prefix)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !WellFormed(prefix, tok) || len(hash) != 32 || string(hash) != string(HashToken(tok)) {
+			t.Fatalf("%s token malformed: %q", prefix, tok)
+		}
+		if WellFormed(prefix, tok[:len(tok)-1]) || WellFormed(prefix, "x"+tok) {
+			t.Fatalf("%s: a damaged token passed", prefix)
+		}
+		if other, _, _ := NewPrefixedToken(prefix); other == tok {
+			t.Fatal("two tokens are equal")
+		}
+	}
+	tok, _, _ := NewPrefixedToken(ResetPrefix)
+	if WellFormed(VerifyPrefix, tok) || WellFormedToken(tok) {
+		t.Fatal("token kinds are not interchangeable")
+	}
+}
+
 func TestTokens(t *testing.T) {
 	tok, hash, err := NewToken()
 	if err != nil {

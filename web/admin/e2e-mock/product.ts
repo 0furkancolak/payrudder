@@ -7,7 +7,7 @@ export const LIVE = "a1000000-0000-4000-8000-000000000001";
 export const SANDBOX = "a1000000-0000-4000-8000-000000000002";
 export const ACCOUNT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-export const user = { id: "11111111-1111-4111-8111-111111111111", email: "ada@example.com", display_name: "Ada Lovelace", create_time: "2026-10-01T09:00:00Z" };
+export const user = { id: "11111111-1111-4111-8111-111111111111", email: "ada@example.com", display_name: "Ada Lovelace", create_time: "2026-10-01T09:00:00Z", email_verified: true };
 export const memberships = [{ account_id: ACCOUNT, account_name: "Ada Labs", role: "owner" }];
 
 export const tenant = (id: string, environment: "LIVE" | "SANDBOX", currency = "USD") => ({
@@ -97,23 +97,44 @@ export interface ProductState {
   keys: typeof keys;
   overview: Record<string, unknown>;
   sessionOk: boolean;
+  /** Whether Ada's address is verified; a verification link flips it. */
+  verified: boolean;
+  /** The tokens the mocked mails carry. */
+  verifyToken: string;
+  resetToken: string;
 }
 
 /** A stand-in for the product API with a person signed in as Ada. `state` is the test's to change while it runs. */
 export function productGateway(gw: MockGateway, state: Partial<ProductState> = {}): { gw: MockGateway; state: ProductState } {
-  const s: ProductState = { apps: [app], keys: [...keys], overview: overview("live"), sessionOk: true, ...state };
+  const s: ProductState = { apps: [app], keys: [...keys], overview: overview("live"), sessionOk: true, verified: true, verifyToken: "qv_good", resetToken: "qr_good", ...state };
+  const who = () => ({ ...user, email_verified: s.verified });
+  const badLink = { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "identity.token.invalid", message: "bad link" } } };
   gw.on((c) => {
     if (c.path === "/auth/signin" && c.method === "POST") {
-      return c.body?.password === "right password!"
-        ? { body: { user, memberships, token: SESSION, expire_time: "2026-11-04T09:00:00Z" } }
+      return c.body?.password === "right password!" || c.body?.password === "a long enough password"
+        ? { body: { user: who(), memberships, token: SESSION, expire_time: "2026-11-04T09:00:00Z" } }
         : { status: 401, body: { error: { code: "UNAUTHENTICATED", key: "identity.auth.invalid_credentials", message: "wrong" } } };
     }
-    if (c.path === "/auth/signup" && c.method === "POST") return { status: 201, body: { user: { ...user, email: c.body?.email }, memberships, token: SESSION, expire_time: "2026-11-04T09:00:00Z" } };
+    // Sign-up opens no session: 202 whatever the address. The page then signs in with the same password.
+    if (c.path === "/auth/signup" && c.method === "POST") return { status: 202, body: { status: "accepted" } };
+    if (c.path === "/auth/verify" && c.method === "POST") {
+      if (c.body?.token !== s.verifyToken) return badLink;
+      s.verified = true;
+      s.verifyToken = "";
+      return { body: { user: who() } };
+    }
+    if (c.path === "/auth/resend-verification" && c.method === "POST") return { status: 204, body: {} };
+    if (c.path === "/auth/forgot" && c.method === "POST") return { status: 202, body: { status: "accepted" } };
+    if (c.path === "/auth/reset" && c.method === "POST") {
+      if (c.body?.token !== s.resetToken) return badLink;
+      s.resetToken = "";
+      return { status: 204, body: {} };
+    }
     if (c.path === "/auth/signout") return { status: 200, body: {} };
     if (c.path.startsWith("/app/v1") || c.path === "/auth/me") {
       if (!s.sessionOk) return { status: 401, body: { error: { code: "UNAUTHENTICATED", key: "identity.session.invalid", message: "sign in again" } } };
     }
-    if (c.path === "/auth/me") return { body: { user, memberships, expire_time: "2026-11-04T09:00:00Z" } };
+    if (c.path === "/auth/me") return { body: { user: who(), memberships, expire_time: "2026-11-04T09:00:00Z" } };
     if (c.path === "/app/v1/account") {
       return { body: { id: ACCOUNT, name: "Ada Labs", role: "owner", create_time: "2026-10-01T09:00:00Z", members: [{ user_id: user.id, email: user.email, display_name: user.display_name, role: "owner", create_time: "2026-10-01T09:00:00Z" }] } };
     }
@@ -128,6 +149,7 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
     if (c.path === `/app/v1/apps/${APP}/api-keys` && c.method === "GET") return { body: { api_keys: s.keys } };
     if (c.path === `/app/v1/apps/${APP}/api-keys` && c.method === "POST") {
       const live = c.body?.environment === "live";
+      if (live && !s.verified) return { status: 403, body: { error: { code: "PERMISSION_DENIED", key: "identity.email.not_verified", message: "confirm" } } };
       const key = { id: "k9", tenant_id: live ? LIVE : SANDBOX, prefix: "newkey99", environment: live ? "ENVIRONMENT_LIVE" : "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", create_time: "2026-10-21T10:00:00Z" };
       s.keys = [key, ...s.keys];
       return { status: 201, body: { api_key: key, plaintext: `qk_${live ? "live" : "test"}_newkey99_SECRETSECRETSECRETSECRET` } };
