@@ -186,7 +186,9 @@ func TestMethodsEndpoint(t *testing.T) {
 	if m["password"] != true || m["otp"] != true || m["google"] != false {
 		t.Fatalf("without Google: %v", m)
 	}
-	p = newProduct(t, nil, func(d *Deps) { d.Google = oidc.New(oidc.Config{Issuer: "http://127.0.0.1:1", ClientID: "id", ClientSecret: "secret", RedirectURL: "http://x/cb"}) })
+	p = newProduct(t, nil, func(d *Deps) {
+		d.Google = oidc.New(oidc.Config{Issuer: "http://127.0.0.1:1", ClientID: "id", ClientSecret: "secret", RedirectURL: "http://x/cb"})
+	})
 	if _, m = p.call(t, "GET", "/auth/methods", "", "", ""); m["google"] != true {
 		t.Fatalf("with Google: %v", m)
 	}

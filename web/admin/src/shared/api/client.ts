@@ -1,15 +1,23 @@
 import createClient from "openapi-fetch";
-import { currentToken, sessionLost } from "@/shared/lib/session";
+import { activeAccount, currentToken, sessionLost } from "@/shared/lib/session";
 import type { components, paths } from "./schema";
 
 // Same origin: the console talks to the gateway through its own /gw path (nginx in the image, Vite in development), so the gateway
 // needs no CORS and the browser never holds a URL it cannot reach. Only the gateway is used: no database or broker access.
 export const api = createClient<paths>({ baseUrl: "/gw" });
 
+/** The product routes that are about "an account": the person's chosen one is named, else the gateway takes their first. */
+const ACCOUNT_ROUTE = /^\/gw\/app\/v1\/(account(\/.*)?|apps)$/;
+
 api.use({
   onRequest({ request }) {
     const token = currentToken();
     if (token) request.headers.set("Authorization", `Bearer ${token}`);
+    const url = new URL(request.url);
+    if (activeAccount.value && ACCOUNT_ROUTE.test(url.pathname) && !url.searchParams.has("account_id")) {
+      url.searchParams.set("account_id", activeAccount.value);
+      return new Request(url, request);
+    }
     return request;
   },
   // A 401 while a person is signed in means the session is over (expired, revoked): the app is told once and goes to the sign-in page.

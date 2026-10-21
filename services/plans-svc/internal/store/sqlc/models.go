@@ -18,6 +18,20 @@ type Account struct {
 	CreatedAt time.Time
 }
 
+type AccountInvite struct {
+	ID         uuid.UUID
+	AccountID  uuid.UUID
+	Email      string
+	Role       string
+	InvitedBy  uuid.UUID
+	TokenHash  []byte
+	CreatedAt  time.Time
+	SentAt     time.Time
+	ExpiresAt  time.Time
+	AcceptedAt *time.Time
+	RevokedAt  *time.Time
+}
+
 type AccountMember struct {
 	AccountID uuid.UUID
 	UserID    uuid.UUID

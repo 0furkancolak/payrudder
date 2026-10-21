@@ -19,25 +19,35 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	IdentityService_SignUp_FullMethodName               = "/quotify.plans.v1.IdentityService/SignUp"
-	IdentityService_SignIn_FullMethodName               = "/quotify.plans.v1.IdentityService/SignIn"
-	IdentityService_SignOut_FullMethodName              = "/quotify.plans.v1.IdentityService/SignOut"
-	IdentityService_GetSession_FullMethodName           = "/quotify.plans.v1.IdentityService/GetSession"
-	IdentityService_VerifyEmail_FullMethodName          = "/quotify.plans.v1.IdentityService/VerifyEmail"
-	IdentityService_ResendVerification_FullMethodName   = "/quotify.plans.v1.IdentityService/ResendVerification"
-	IdentityService_RequestPasswordReset_FullMethodName = "/quotify.plans.v1.IdentityService/RequestPasswordReset"
-	IdentityService_ResetPassword_FullMethodName        = "/quotify.plans.v1.IdentityService/ResetPassword"
-	IdentityService_RequestLoginCode_FullMethodName     = "/quotify.plans.v1.IdentityService/RequestLoginCode"
-	IdentityService_VerifyLoginCode_FullMethodName      = "/quotify.plans.v1.IdentityService/VerifyLoginCode"
-	IdentityService_SignInWithIdentity_FullMethodName   = "/quotify.plans.v1.IdentityService/SignInWithIdentity"
-	IdentityService_GetMyAccount_FullMethodName         = "/quotify.plans.v1.IdentityService/GetMyAccount"
-	IdentityService_CreateMyApp_FullMethodName          = "/quotify.plans.v1.IdentityService/CreateMyApp"
-	IdentityService_ListMyApps_FullMethodName           = "/quotify.plans.v1.IdentityService/ListMyApps"
-	IdentityService_GetMyApp_FullMethodName             = "/quotify.plans.v1.IdentityService/GetMyApp"
-	IdentityService_ResolveMyTenant_FullMethodName      = "/quotify.plans.v1.IdentityService/ResolveMyTenant"
-	IdentityService_CreateMyApiKey_FullMethodName       = "/quotify.plans.v1.IdentityService/CreateMyApiKey"
-	IdentityService_ListMyApiKeys_FullMethodName        = "/quotify.plans.v1.IdentityService/ListMyApiKeys"
-	IdentityService_RevokeMyApiKey_FullMethodName       = "/quotify.plans.v1.IdentityService/RevokeMyApiKey"
+	IdentityService_SignUp_FullMethodName                 = "/quotify.plans.v1.IdentityService/SignUp"
+	IdentityService_SignIn_FullMethodName                 = "/quotify.plans.v1.IdentityService/SignIn"
+	IdentityService_SignOut_FullMethodName                = "/quotify.plans.v1.IdentityService/SignOut"
+	IdentityService_GetSession_FullMethodName             = "/quotify.plans.v1.IdentityService/GetSession"
+	IdentityService_VerifyEmail_FullMethodName            = "/quotify.plans.v1.IdentityService/VerifyEmail"
+	IdentityService_ResendVerification_FullMethodName     = "/quotify.plans.v1.IdentityService/ResendVerification"
+	IdentityService_RequestPasswordReset_FullMethodName   = "/quotify.plans.v1.IdentityService/RequestPasswordReset"
+	IdentityService_ResetPassword_FullMethodName          = "/quotify.plans.v1.IdentityService/ResetPassword"
+	IdentityService_RequestLoginCode_FullMethodName       = "/quotify.plans.v1.IdentityService/RequestLoginCode"
+	IdentityService_VerifyLoginCode_FullMethodName        = "/quotify.plans.v1.IdentityService/VerifyLoginCode"
+	IdentityService_SignInWithIdentity_FullMethodName     = "/quotify.plans.v1.IdentityService/SignInWithIdentity"
+	IdentityService_GetMyAccount_FullMethodName           = "/quotify.plans.v1.IdentityService/GetMyAccount"
+	IdentityService_RenameMyAccount_FullMethodName        = "/quotify.plans.v1.IdentityService/RenameMyAccount"
+	IdentityService_InviteMember_FullMethodName           = "/quotify.plans.v1.IdentityService/InviteMember"
+	IdentityService_ListInvitations_FullMethodName        = "/quotify.plans.v1.IdentityService/ListInvitations"
+	IdentityService_RevokeInvitation_FullMethodName       = "/quotify.plans.v1.IdentityService/RevokeInvitation"
+	IdentityService_ResendInvitation_FullMethodName       = "/quotify.plans.v1.IdentityService/ResendInvitation"
+	IdentityService_UpdateMemberRole_FullMethodName       = "/quotify.plans.v1.IdentityService/UpdateMemberRole"
+	IdentityService_RemoveMember_FullMethodName           = "/quotify.plans.v1.IdentityService/RemoveMember"
+	IdentityService_LookupInvitation_FullMethodName       = "/quotify.plans.v1.IdentityService/LookupInvitation"
+	IdentityService_AcceptInvitation_FullMethodName       = "/quotify.plans.v1.IdentityService/AcceptInvitation"
+	IdentityService_AcceptInvitationAsUser_FullMethodName = "/quotify.plans.v1.IdentityService/AcceptInvitationAsUser"
+	IdentityService_CreateMyApp_FullMethodName            = "/quotify.plans.v1.IdentityService/CreateMyApp"
+	IdentityService_ListMyApps_FullMethodName             = "/quotify.plans.v1.IdentityService/ListMyApps"
+	IdentityService_GetMyApp_FullMethodName               = "/quotify.plans.v1.IdentityService/GetMyApp"
+	IdentityService_ResolveMyTenant_FullMethodName        = "/quotify.plans.v1.IdentityService/ResolveMyTenant"
+	IdentityService_CreateMyApiKey_FullMethodName         = "/quotify.plans.v1.IdentityService/CreateMyApiKey"
+	IdentityService_ListMyApiKeys_FullMethodName          = "/quotify.plans.v1.IdentityService/ListMyApiKeys"
+	IdentityService_RevokeMyApiKey_FullMethodName         = "/quotify.plans.v1.IdentityService/RevokeMyApiKey"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -75,6 +85,28 @@ type IdentityServiceClient interface {
 	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
 	SignInWithIdentity(ctx context.Context, in *SignInWithIdentityRequest, opts ...grpc.CallOption) (*SignInResponse, error)
 	GetMyAccount(ctx context.Context, in *GetMyAccountRequest, opts ...grpc.CallOption) (*GetMyAccountResponse, error)
+	// RenameMyAccount renames an account; only an owner may.
+	RenameMyAccount(ctx context.Context, in *RenameMyAccountRequest, opts ...grpc.CallOption) (*RenameMyAccountResponse, error)
+	// InviteMember mails an invitation to an address. An owner or administrator may invite, an owner may invite owners, and the inviter's own address must be
+	// verified. A second invitation to the same address refreshes the first.
+	InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error)
+	// ListInvitations lists the open invitations of an account (owner or administrator).
+	ListInvitations(ctx context.Context, in *ListInvitationsRequest, opts ...grpc.CallOption) (*ListInvitationsResponse, error)
+	// RevokeInvitation cancels an open invitation.
+	RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error)
+	// ResendInvitation mails a new link for an open invitation (at most one a minute); the old link stops working.
+	ResendInvitation(ctx context.Context, in *ResendInvitationRequest, opts ...grpc.CallOption) (*ResendInvitationResponse, error)
+	// UpdateMemberRole changes a member's role. The last owner of an account cannot be demoted.
+	UpdateMemberRole(ctx context.Context, in *UpdateMemberRoleRequest, opts ...grpc.CallOption) (*UpdateMemberRoleResponse, error)
+	// RemoveMember removes a member, or lets a member leave (their own id). The last owner cannot be removed.
+	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
+	// LookupInvitation says what a live invitation token is for, so the accept page can ask for the right thing. Public: the token is the credential.
+	LookupInvitation(ctx context.Context, in *LookupInvitationRequest, opts ...grpc.CallOption) (*LookupInvitationResponse, error)
+	// AcceptInvitation turns an invitation into a new user (verified, because the token was mailed to the address) who is a member of the account, with a
+	// session. For an address that has a user already it fails with identity.invite.sign_in_required: that person signs in and uses AcceptInvitationAsUser.
+	AcceptInvitation(ctx context.Context, in *AcceptInvitationRequest, opts ...grpc.CallOption) (*AcceptInvitationResponse, error)
+	// AcceptInvitationAsUser adds the signed-in user to the account when the invitation was sent to the user's own address.
+	AcceptInvitationAsUser(ctx context.Context, in *AcceptInvitationAsUserRequest, opts ...grpc.CallOption) (*AcceptInvitationAsUserResponse, error)
 	// CreateMyApp adds an app (a sandbox and a live tenant) to an account the user owns or administers. Free tier, no grace period.
 	CreateMyApp(ctx context.Context, in *CreateMyAppRequest, opts ...grpc.CallOption) (*CreateMyAppResponse, error)
 	ListMyApps(ctx context.Context, in *ListMyAppsRequest, opts ...grpc.CallOption) (*ListMyAppsResponse, error)
@@ -214,6 +246,106 @@ func (c *identityServiceClient) GetMyAccount(ctx context.Context, in *GetMyAccou
 	return out, nil
 }
 
+func (c *identityServiceClient) RenameMyAccount(ctx context.Context, in *RenameMyAccountRequest, opts ...grpc.CallOption) (*RenameMyAccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RenameMyAccountResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RenameMyAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InviteMemberResponse)
+	err := c.cc.Invoke(ctx, IdentityService_InviteMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ListInvitations(ctx context.Context, in *ListInvitationsRequest, opts ...grpc.CallOption) (*ListInvitationsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListInvitationsResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ListInvitations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeInvitationResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RevokeInvitation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ResendInvitation(ctx context.Context, in *ResendInvitationRequest, opts ...grpc.CallOption) (*ResendInvitationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResendInvitationResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ResendInvitation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) UpdateMemberRole(ctx context.Context, in *UpdateMemberRoleRequest, opts ...grpc.CallOption) (*UpdateMemberRoleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateMemberRoleResponse)
+	err := c.cc.Invoke(ctx, IdentityService_UpdateMemberRole_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveMemberResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RemoveMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) LookupInvitation(ctx context.Context, in *LookupInvitationRequest, opts ...grpc.CallOption) (*LookupInvitationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LookupInvitationResponse)
+	err := c.cc.Invoke(ctx, IdentityService_LookupInvitation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) AcceptInvitation(ctx context.Context, in *AcceptInvitationRequest, opts ...grpc.CallOption) (*AcceptInvitationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AcceptInvitationResponse)
+	err := c.cc.Invoke(ctx, IdentityService_AcceptInvitation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) AcceptInvitationAsUser(ctx context.Context, in *AcceptInvitationAsUserRequest, opts ...grpc.CallOption) (*AcceptInvitationAsUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AcceptInvitationAsUserResponse)
+	err := c.cc.Invoke(ctx, IdentityService_AcceptInvitationAsUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityServiceClient) CreateMyApp(ctx context.Context, in *CreateMyAppRequest, opts ...grpc.CallOption) (*CreateMyAppResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateMyAppResponse)
@@ -319,6 +451,28 @@ type IdentityServiceServer interface {
 	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
 	SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInResponse, error)
 	GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error)
+	// RenameMyAccount renames an account; only an owner may.
+	RenameMyAccount(context.Context, *RenameMyAccountRequest) (*RenameMyAccountResponse, error)
+	// InviteMember mails an invitation to an address. An owner or administrator may invite, an owner may invite owners, and the inviter's own address must be
+	// verified. A second invitation to the same address refreshes the first.
+	InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error)
+	// ListInvitations lists the open invitations of an account (owner or administrator).
+	ListInvitations(context.Context, *ListInvitationsRequest) (*ListInvitationsResponse, error)
+	// RevokeInvitation cancels an open invitation.
+	RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error)
+	// ResendInvitation mails a new link for an open invitation (at most one a minute); the old link stops working.
+	ResendInvitation(context.Context, *ResendInvitationRequest) (*ResendInvitationResponse, error)
+	// UpdateMemberRole changes a member's role. The last owner of an account cannot be demoted.
+	UpdateMemberRole(context.Context, *UpdateMemberRoleRequest) (*UpdateMemberRoleResponse, error)
+	// RemoveMember removes a member, or lets a member leave (their own id). The last owner cannot be removed.
+	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
+	// LookupInvitation says what a live invitation token is for, so the accept page can ask for the right thing. Public: the token is the credential.
+	LookupInvitation(context.Context, *LookupInvitationRequest) (*LookupInvitationResponse, error)
+	// AcceptInvitation turns an invitation into a new user (verified, because the token was mailed to the address) who is a member of the account, with a
+	// session. For an address that has a user already it fails with identity.invite.sign_in_required: that person signs in and uses AcceptInvitationAsUser.
+	AcceptInvitation(context.Context, *AcceptInvitationRequest) (*AcceptInvitationResponse, error)
+	// AcceptInvitationAsUser adds the signed-in user to the account when the invitation was sent to the user's own address.
+	AcceptInvitationAsUser(context.Context, *AcceptInvitationAsUserRequest) (*AcceptInvitationAsUserResponse, error)
 	// CreateMyApp adds an app (a sandbox and a live tenant) to an account the user owns or administers. Free tier, no grace period.
 	CreateMyApp(context.Context, *CreateMyAppRequest) (*CreateMyAppResponse, error)
 	ListMyApps(context.Context, *ListMyAppsRequest) (*ListMyAppsResponse, error)
@@ -373,6 +527,36 @@ func (UnimplementedIdentityServiceServer) SignInWithIdentity(context.Context, *S
 }
 func (UnimplementedIdentityServiceServer) GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyAccount not implemented")
+}
+func (UnimplementedIdentityServiceServer) RenameMyAccount(context.Context, *RenameMyAccountRequest) (*RenameMyAccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RenameMyAccount not implemented")
+}
+func (UnimplementedIdentityServiceServer) InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method InviteMember not implemented")
+}
+func (UnimplementedIdentityServiceServer) ListInvitations(context.Context, *ListInvitationsRequest) (*ListInvitationsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListInvitations not implemented")
+}
+func (UnimplementedIdentityServiceServer) RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeInvitation not implemented")
+}
+func (UnimplementedIdentityServiceServer) ResendInvitation(context.Context, *ResendInvitationRequest) (*ResendInvitationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResendInvitation not implemented")
+}
+func (UnimplementedIdentityServiceServer) UpdateMemberRole(context.Context, *UpdateMemberRoleRequest) (*UpdateMemberRoleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateMemberRole not implemented")
+}
+func (UnimplementedIdentityServiceServer) RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveMember not implemented")
+}
+func (UnimplementedIdentityServiceServer) LookupInvitation(context.Context, *LookupInvitationRequest) (*LookupInvitationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LookupInvitation not implemented")
+}
+func (UnimplementedIdentityServiceServer) AcceptInvitation(context.Context, *AcceptInvitationRequest) (*AcceptInvitationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AcceptInvitation not implemented")
+}
+func (UnimplementedIdentityServiceServer) AcceptInvitationAsUser(context.Context, *AcceptInvitationAsUserRequest) (*AcceptInvitationAsUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AcceptInvitationAsUser not implemented")
 }
 func (UnimplementedIdentityServiceServer) CreateMyApp(context.Context, *CreateMyAppRequest) (*CreateMyAppResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateMyApp not implemented")
@@ -632,6 +816,186 @@ func _IdentityService_GetMyAccount_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_RenameMyAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameMyAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RenameMyAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RenameMyAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RenameMyAccount(ctx, req.(*RenameMyAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_InviteMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InviteMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).InviteMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_InviteMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).InviteMember(ctx, req.(*InviteMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ListInvitations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListInvitationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ListInvitations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ListInvitations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ListInvitations(ctx, req.(*ListInvitationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_RevokeInvitation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeInvitationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RevokeInvitation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RevokeInvitation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RevokeInvitation(ctx, req.(*RevokeInvitationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ResendInvitation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResendInvitationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ResendInvitation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ResendInvitation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ResendInvitation(ctx, req.(*ResendInvitationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_UpdateMemberRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMemberRoleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).UpdateMemberRole(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_UpdateMemberRole_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).UpdateMemberRole(ctx, req.(*UpdateMemberRoleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_RemoveMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RemoveMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RemoveMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RemoveMember(ctx, req.(*RemoveMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_LookupInvitation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LookupInvitationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).LookupInvitation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_LookupInvitation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).LookupInvitation(ctx, req.(*LookupInvitationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_AcceptInvitation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AcceptInvitationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).AcceptInvitation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_AcceptInvitation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).AcceptInvitation(ctx, req.(*AcceptInvitationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_AcceptInvitationAsUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AcceptInvitationAsUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).AcceptInvitationAsUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_AcceptInvitationAsUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).AcceptInvitationAsUser(ctx, req.(*AcceptInvitationAsUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_CreateMyApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateMyAppRequest)
 	if err := dec(in); err != nil {
@@ -812,6 +1176,46 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMyAccount",
 			Handler:    _IdentityService_GetMyAccount_Handler,
+		},
+		{
+			MethodName: "RenameMyAccount",
+			Handler:    _IdentityService_RenameMyAccount_Handler,
+		},
+		{
+			MethodName: "InviteMember",
+			Handler:    _IdentityService_InviteMember_Handler,
+		},
+		{
+			MethodName: "ListInvitations",
+			Handler:    _IdentityService_ListInvitations_Handler,
+		},
+		{
+			MethodName: "RevokeInvitation",
+			Handler:    _IdentityService_RevokeInvitation_Handler,
+		},
+		{
+			MethodName: "ResendInvitation",
+			Handler:    _IdentityService_ResendInvitation_Handler,
+		},
+		{
+			MethodName: "UpdateMemberRole",
+			Handler:    _IdentityService_UpdateMemberRole_Handler,
+		},
+		{
+			MethodName: "RemoveMember",
+			Handler:    _IdentityService_RemoveMember_Handler,
+		},
+		{
+			MethodName: "LookupInvitation",
+			Handler:    _IdentityService_LookupInvitation_Handler,
+		},
+		{
+			MethodName: "AcceptInvitation",
+			Handler:    _IdentityService_AcceptInvitation_Handler,
+		},
+		{
+			MethodName: "AcceptInvitationAsUser",
+			Handler:    _IdentityService_AcceptInvitationAsUser_Handler,
 		},
 		{
 			MethodName: "CreateMyApp",

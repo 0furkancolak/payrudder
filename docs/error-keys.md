@@ -95,6 +95,14 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.auth.invalid_credentials`
 - `identity.auth.rate_limited`
 - `identity.email.not_verified`
+- `identity.invite.already_member`
+- `identity.invite.not_found`
+- `identity.invite.quota`
+- `identity.invite.sign_in_required`
+- `identity.invite.throttled`
+- `identity.invite.wrong_user`
+- `identity.member.last_owner`
+- `identity.member.not_found`
 - `identity.oauth.conflict`
 - `identity.oauth.email_unverified`
 - `identity.oauth.invalid`

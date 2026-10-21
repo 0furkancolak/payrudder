@@ -13,6 +13,31 @@ Application images exist for CI and releases; `make dev-docker` builds and runs 
 
 The sections below describe the compose stack in full.
 
+## Default dev seed
+
+`make dev` fills a **local** stack once with sample data, so that every screen of the product app has something to show. It runs in the background after the gateway and plans-svc answer (`quotifyctl dev` starts it; the first run on an empty database takes a few minutes because it closes a sandbox period with the real workers), prints `dev-seed:` lines, and **never fails or blocks `make dev`**: if it cannot finish (a service is still compiling, Mailpit is down) it logs a `WARNING` and tries again up to three times; then `make dev-seed` runs it by hand. `SEED=0 make dev` (or `quotifyctl dev --no-seed`) skips it.
+
+| Who | E-mail | Password | Account | Apps (sandbox tenant is filled) |
+|---|---|---|---|---|
+| Main dev user | `user1@example.com` | `password123` | Acme Labs | Storefront (TRY, Europe/Istanbul), Mobile Game (USD, UTC) |
+| Second user | `user2@example.com` | `password123` | Beta Studio | Notes Sync (EUR, Europe/Berlin): a tiny app, to look at isolation (user2 sees nothing of Acme Labs, and the other way round) |
+
+**These credentials are public and for local development only.** The seed refuses to run unless the gateway is `localhost`, `127.0.0.1`, `[::1]` or `*.localhost` (`--i-know-this-is-dev` lets a dev stack on another host name through) and never when `QUOTIFY_ENV` is `prod`, `production`, `live` or `staging`. No Helm values, Railway script or compose profile runs it, and the sign-in page shows the credentials only in the Vite dev server (`import.meta.env.DEV`), never in a production build.
+
+What is seeded, per app, in the **sandbox** environment (the live environment is left empty; the dashboard's Sandbox switch shows the data, and the organisation home cards show the live numbers, so they read zero):
+
+- two meters (`api_calls`, `storage_gb` with three decimals) and three packages (flat, flat + usage, usage only with tiers), entitlements with alert thresholds;
+- 6 to 7 customers, one per sandbox payment scenario (`success`, `declined`, `insufficient_funds_once`, `error_then_success`, none on file), each subscribed, one billed in advance;
+- usage events for each past day of the current month, then one sandbox period close: finalized invoices that are paid or open with a declined payment (dunning on seconds), the payments in the ledger;
+- two credit notes (a partial refund to the card, a credit to the balance), a credit pack, customers with a credit balance and spent credits, the low-balance threshold;
+- three payment links (ad hoc, credit pack, an open invoice);
+- 8 to 9 expenses in two to three currencies, several recurring, so the accounting summary has income, refunds, expenses and profit per currency;
+- a webhook endpoint (an address that does not exist, so its deliveries fail and the health card asks for attention).
+
+How it works and why it is safe to run again: it uses the public API only (a session with `X-Quotify-Tenant` for everything the product API allows, the operator token only for credit notes, and the Mailpit mail of each seeded person to prove the address, the way a person would). Every object is looked up by a stable name or key first (customers `dev_cus_NN`, usage keys `devseed:<day>:<customer>:<meter>`, grants and payment links by idempotency key, expenses by vendor and currency), so a second run changes nothing and a missing piece (an expense you voided) is put back. A person who already exists with another password is never touched: the run stops and says so. Each new day a re-run adds that day's usage events, nothing else.
+
+To start over, wipe the databases and seed again: `make clean` (removes the volumes), then `make setup` and `make dev`.
+
 
 Prerequisites: Docker (≥ 8 GB RAM for the full stack), Go 1.27+, `make`, `buf`, `sqlc`, `golangci-lint`, `k6` (optional),
 `kind` + `helm` (Phase 10). `make tools` builds the Go-based tools pinned in `tools/go.mod` into `./bin`
@@ -111,6 +136,7 @@ PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live
 | `make up-infra` | Only infrastructure (run services from your IDE) |
 | `make migrate` | Run goose migrations for every service DB |
 | `make topics` | Create Kafka topics with the configs from [04-messaging.md](04-messaging.md) (`rpk topic create …`, idempotent). `make up-infra` and `make up` run it. Compose Redpanda has topic auto-creation off, so a missing topic fails loudly |
+| `make dev-seed` | Run the default dev seed again by hand (see [Default dev seed](#default-dev-seed)); idempotent, local stacks only |
 | `make seed` | Create a demo account (currency/time zone/grace passed explicitly: `CURRENCY=TRY TZ=Europe/Istanbul GRACE=24h`), sandbox + live keys, meters (one fractional), plan, 10 customers covering every `pm_sandbox_*` scenario |
 | `make demo` | Seed → send events → sandbox `ClosePeriodNow` → every payment scenario plays out → change the price → re-rate → CORRECTION invoices and receipts → links to Mailpit, Grafana, MinIO (`quotifyctl demo`; sandbox dunning on seconds; about 2.5 minutes) |
 | `make e2e` | Run `tests/e2e` against the compose stack |
