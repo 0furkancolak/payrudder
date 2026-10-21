@@ -3,6 +3,7 @@ import { useParams, useRouter } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
+import { tenantBase } from "@/shared/lib/session";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -20,7 +21,8 @@ const customers = useCustomers(tenantId);
 const router = useRouter();
 const portalFor = ref("");
 function paymentLink(externalId?: string) {
-  void router.navigate({ to: "/tenants/$id/payment-links", params: { id: tenantId.value }, search: { customer: externalId ?? "" } as never });
+  // A person reaches their tenants under /app/t, the operator under /tenants.
+  void router.navigate({ to: `${tenantBase()}/$id/payment-links`, params: { id: tenantId.value }, search: { customer: externalId ?? "" } as never });
 }
 const create = useCreateCustomer(tenantId);
 

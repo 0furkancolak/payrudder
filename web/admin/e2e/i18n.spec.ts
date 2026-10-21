@@ -4,7 +4,7 @@ const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-toke
 
 test.describe("languages", () => {
   test("the language follows the browser, can be changed, and is remembered", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/operator");
     await expect(page.getByRole("heading", { name: "Operator console" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
@@ -18,7 +18,7 @@ test.describe("languages", () => {
   });
 
   test("Arabic reads right to left", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/operator");
     await page.getByLabel("Language").selectOption("ar");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.getByRole("heading", { name: "وحدة تحكم المشغّل" })).toBeVisible();
@@ -27,13 +27,13 @@ test.describe("languages", () => {
   test("a visitor whose browser speaks German gets German", async ({ browser }) => {
     const context = await browser.newContext({ locale: "de-DE" });
     const page = await context.newPage();
-    await page.goto("/");
+    await page.goto("/operator");
     await expect(page.getByRole("heading", { name: "Operator-Konsole" })).toBeVisible();
     await context.close();
   });
 
   test("the signed-in pages and the playground are translated too", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/operator");
     await page.getByLabel("Language").selectOption("fr");
     await page.getByLabel("Jeton opérateur").fill(operatorToken);
     await page.getByRole("button", { name: "Se connecter" }).click();

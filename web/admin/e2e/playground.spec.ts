@@ -4,7 +4,7 @@ const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-toke
 
 test("the playground takes a visitor from an empty account to a paid invoice", async ({ page }) => {
   test.setTimeout(300_000);
-  await page.goto("/");
+  await page.goto("/operator");
   // A development stack pre-fills the operator token, so signing in needs no typing.
   await expect(page.getByLabel("Operator token")).toHaveValue(operatorToken);
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -38,7 +38,7 @@ test("the playground takes a visitor from an empty account to a paid invoice", a
 
 test("a declined payment outcome leaves the invoice open with the payment declined", async ({ page }) => {
   test.setTimeout(300_000);
-  await page.goto("/");
+  await page.goto("/operator");
   await page.getByLabel("Operator token").fill(operatorToken);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();

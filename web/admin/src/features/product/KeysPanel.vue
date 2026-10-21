@@ -1,0 +1,116 @@
+<script setup lang="ts">
+import { Check, Copy, KeyRound, Plus } from "@lucide/vue";
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { copyText } from "@/shared/lib/clipboard";
+import { useErrorText } from "@/shared/lib/errors";
+import { Button } from "@/shared/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { StatusPill, toneOf } from "@/shared/ui/status-pill";
+import { useApiKeys, useCreateApiKey, useRevokeApiKey, type ApiKey, type Environment } from "./api";
+
+/**
+ * The API keys of an app, both environments. A new key's secret is shown once, in a dialog, with a copy button; closing the dialog drops it from memory
+ * and nothing about it is stored in the browser. The list shows the non-secret prefix only.
+ */
+const props = defineProps<{ appId: string; canManage: boolean }>();
+const { t, locale } = useI18n();
+const errorText = useErrorText();
+const keys = useApiKeys(() => props.appId);
+const create = useCreateApiKey(() => props.appId);
+const revoke = useRevokeApiKey(() => props.appId);
+
+const list = computed(() => (keys.data.value?.api_keys ?? []).slice().sort((a, b) => Number(isRevoked(a)) - Number(isRevoked(b))));
+const isRevoked = (k: ApiKey) => k.status === "STATUS_REVOKED";
+const envOf = (k: ApiKey): Environment => (k.environment === "ENVIRONMENT_SANDBOX" ? "sandbox" : "live");
+const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "");
+/** What the list may show of a key: its kind and prefix. The secret part is never known here after creation. */
+const shown = (k: ApiKey) => `qk_${envOf(k) === "live" ? "live" : "test"}_${k.prefix}_••••••••`;
+
+// --- a new key: its plaintext lives in this ref until the dialog closes
+const secret = ref<{ plaintext: string; env: Environment } | null>(null);
+const copied = ref(false);
+const failed = ref(false);
+const reveal = computed({ get: () => secret.value !== null, set: (v) => { if (!v) secret.value = null; } });
+
+function make(env: Environment) {
+  copied.value = failed.value = false;
+  create.mutate(env, { onSuccess: (r) => (secret.value = { plaintext: r.plaintext ?? "", env }) });
+}
+
+async function copy() {
+  if (!secret.value) return;
+  copied.value = await copyText(secret.value.plaintext);
+  failed.value = !copied.value;
+}
+
+// --- revoking asks first
+const revoking = ref<ApiKey | null>(null);
+const confirm = computed({ get: () => revoking.value !== null, set: (v) => { if (!v) revoking.value = null; } });
+function doRevoke() {
+  const id = revoking.value?.id;
+  if (id) revoke.mutate(id, { onSuccess: () => (revoking.value = null) });
+}
+</script>
+
+<template>
+  <section class="surface flex flex-col gap-4 p-6" :aria-label="t('product.keys.title')">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight">{{ t("product.keys.title") }}</h2>
+        <p class="text-muted-foreground text-sm">{{ t("product.keys.intro") }}</p>
+      </div>
+      <div v-if="canManage" class="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" :disabled="create.isPending.value" @click="make('sandbox')"><Plus />{{ t("product.keys.newSandbox") }}</Button>
+        <Button size="sm" :disabled="create.isPending.value" @click="make('live')"><Plus />{{ t("product.keys.newLive") }}</Button>
+      </div>
+    </div>
+
+    <p v-if="create.error.value || revoke.error.value || keys.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">
+      {{ errorText(create.error.value ?? revoke.error.value ?? keys.error.value) }}
+    </p>
+
+    <ul v-if="list.length > 0" class="divide-border/70 divide-y" :aria-label="t('product.keys.title')">
+      <li v-for="k in list" :key="k.id" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+        <span class="bg-brand-soft text-brand-strong flex size-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><KeyRound class="size-4" /></span>
+        <div class="min-w-0 flex-1 basis-44">
+          <p class="mono text-sm break-all" :class="isRevoked(k) && 'text-muted-foreground line-through'">{{ shown(k) }}</p>
+          <p class="text-muted-foreground text-xs">{{ t("product.keys.created", { date: when(k.create_time) }) }}</p>
+        </div>
+        <StatusPill :tone="envOf(k) === 'live' ? 'info' : 'neutral'">{{ t(`product.env.${envOf(k)}`) }}</StatusPill>
+        <StatusPill :tone="toneOf(isRevoked(k) ? 'revoked' : 'active')">{{ t(isRevoked(k) ? "product.keys.revoked" : "product.keys.active") }}</StatusPill>
+        <Button v-if="canManage && !isRevoked(k)" variant="ghost" size="sm" :aria-label="t('product.keys.revokeNamed', { key: shown(k) })" @click="revoking = k">{{ t("product.keys.revoke") }}</Button>
+      </li>
+    </ul>
+    <p v-else-if="!keys.isPending.value" class="text-muted-foreground py-4 text-center text-sm">{{ t("product.keys.empty") }}</p>
+
+    <Dialog v-model:open="reveal">
+      <DialogContent class="sm:max-w-lg" @interact-outside.prevent>
+        <DialogHeader>
+          <DialogTitle>{{ t("product.keys.revealTitle") }}</DialogTitle>
+          <DialogDescription>{{ t("product.keys.revealBody") }}</DialogDescription>
+        </DialogHeader>
+        <div class="bg-muted flex items-center gap-2 rounded-2xl p-3">
+          <code class="min-w-0 flex-1 text-sm break-all select-all" data-testid="new-key">{{ secret?.plaintext }}</code>
+          <Button size="sm" variant="outline" @click="copy"><Check v-if="copied" /><Copy v-else />{{ copied ? t("product.keys.copied") : t("product.keys.copy") }}</Button>
+        </div>
+        <p v-if="failed" class="text-warning text-sm" role="status">{{ t("product.keys.copyFailed") }}</p>
+        <DialogFooter><Button @click="reveal = false">{{ t("product.keys.saved") }}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="confirm">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{{ t("product.keys.revokeTitle") }}</DialogTitle>
+          <DialogDescription>{{ t("product.keys.revokeBody") }}</DialogDescription>
+        </DialogHeader>
+        <p class="mono bg-muted rounded-2xl p-3 text-sm">{{ revoking ? shown(revoking) : "" }}</p>
+        <DialogFooter>
+          <Button variant="ghost" @click="confirm = false">{{ t("common.cancel") }}</Button>
+          <Button variant="destructive" :disabled="revoke.isPending.value" @click="doRevoke">{{ t("product.keys.revoke") }}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </section>
+</template>

@@ -1,7 +1,7 @@
 import { redirect } from "@tanstack/vue-router";
-import { currentToken } from "@/shared/lib/session";
+import { isOperator } from "@/shared/lib/session";
 
-/** beforeLoad for every route that needs an operator: a visitor without a token is sent to the sign-in page. */
+/** beforeLoad for every route that needs an operator: a visitor without an operator token is sent to the operator's sign-in page. */
 export function requireOperator(): void {
-  if (currentToken() === null) throw redirect({ to: "/" });
+  if (!isOperator.value) throw redirect({ to: "/operator" });
 }

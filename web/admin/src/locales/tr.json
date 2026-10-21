@@ -6,7 +6,9 @@
   "app": {
     "title": "Quotify operatör konsolu",
     "language": "Dil",
-    "demo": "Demo modu: örnek veriler, sahte bir ödeme sağlayıcısı, e-postalar yerel posta yakalayıcıya gider. Buradaki hiçbir şey gerçek değildir."
+    "demo": "Demo modu: örnek veriler, sahte bir ödeme sağlayıcısı, e-postalar yerel posta yakalayıcıya gider. Buradaki hiçbir şey gerçek değildir.",
+    "themeLight": "Açık temaya geç",
+    "themeDark": "Koyu temaya geç"
   },
   "nav": {
     "tenants": "Kiracılar",
@@ -16,7 +18,8 @@
   },
   "common": {
     "loading": "Yükleniyor…",
-    "unknown": "?"
+    "unknown": "?",
+    "cancel": "Vazgeç"
   },
   "signIn": {
     "title": "Operatör konsolu",
@@ -1396,6 +1399,202 @@
       "tenant": {
         "not_found": "Bu ortam yok ya da size ait değil."
       }
+    }
+  },
+  "product": {
+    "menu": {
+      "open": "Hesap menüsü"
+    },
+    "nav": {
+      "home": "Ana sayfa",
+      "settings": "Ayarlar"
+    },
+    "hero": {
+      "title": "Tüm uygulamalarınızın tüm ödemelerini tek bir sakin yerde görün."
+    },
+    "status": {
+      "paid": "Ödendi",
+      "processing": "İşleniyor",
+      "failed": "Başarısız",
+      "refunded": "İade edildi"
+    },
+    "appStatus": {
+      "ok": "Sağlıklı",
+      "attention": "İlgi bekliyor",
+      "degraded": "Kısmen kullanılamıyor",
+      "unknown": "Veri yok"
+    },
+    "unavailable": "Şu anda kullanılamıyor.",
+    "degraded": "Bazı bölümler yanıt vermedi ({sections}). Geri kalanı güncel.",
+    "sections": {
+      "payments": "ödemeler",
+      "invoices": "faturalar",
+      "customers": "müşteriler",
+      "subscriptions": "abonelikler",
+      "webhooks": "webhook'lar"
+    },
+    "kpi": {
+      "revenue": "Gelir",
+      "revenueDays": "Gelir, son {days} gün",
+      "payments": "Ödemeler",
+      "failedCount": "Başarısız: {n}",
+      "openInvoices": "Açık faturalar",
+      "outstanding": "{amount} tahsil edilmedi",
+      "paidInvoices": "Ödenen fatura: {n}",
+      "customers": "Müşteriler",
+      "mrr": "ayda {amount}",
+      "noMrr": "Henüz yinelenen gelir yok"
+    },
+    "card": {
+      "revenue": "Gelir, son {days} gün",
+      "unavailable": "Henüz rakam yok",
+      "failed": "Başarısız ödeme: {n}",
+      "environments": "Sandbox ve canlı",
+      "open": "Aç"
+    },
+    "auth": {
+      "email": "E-posta",
+      "password": "Parola",
+      "name": "Adınız",
+      "organisation": "Kuruluş",
+      "passwordHint": "En az {min} karakter.",
+      "showPassword": "Parolayı göster",
+      "hidePassword": "Parolayı gizle"
+    },
+    "signIn": {
+      "title": "Tekrar hoş geldiniz",
+      "intro": "Uygulamalarınızın ve ödemelerinizin durumunu görmek için giriş yapın.",
+      "submit": "Giriş yap",
+      "cta": "Giriş yap",
+      "noAccount": "Burada yeni misiniz?",
+      "operator": "Operatör konsolu",
+      "expired": "Oturumunuz sona erdi. Devam etmek için yeniden giriş yapın."
+    },
+    "signUp": {
+      "title": "Hesabınızı oluşturun",
+      "intro": "Bir kuruluş, istediğiniz kadar uygulama; her birinde denemeler için bir sandbox.",
+      "submit": "Hesap oluştur",
+      "cta": "Hesap oluşturun",
+      "haveAccount": "Zaten hesabınız var mı?"
+    },
+    "home": {
+      "title": "Kuruluşunuz",
+      "welcome": "Hoş geldiniz, {name}",
+      "intro": "Uygulamalarınız ve son 30 günde ödemelerinin durumu.",
+      "create": "Uygulama oluştur",
+      "emptyTitle": "İlk uygulamanızı oluşturun",
+      "emptyBody": "Uygulama, faturalandırdığınız bir üründür. Denemek için bir sandbox ve gerçek ödemeler için bir canlı ortamla gelir; ikisinin de kendi API anahtarları vardır.",
+      "viewerEmpty": "Henüz uygulama yok. Bir sahip ya da yönetici oluşturabilir."
+    },
+    "createApp": {
+      "title": "Uygulama oluştur",
+      "intro": "Bir sandbox ve bir canlı ortam alır; her birinin kendi müşterileri, planları ve anahtarları vardır.",
+      "name": "Uygulama adı",
+      "currency": "Para birimi",
+      "timezone": "Saat dilimi",
+      "immutable": "Para birimi ve saat dilimi sonradan değiştirilemez: fatura dönemleri bu saat diliminde kesilir.",
+      "submit": "Uygulama oluştur"
+    },
+    "env": {
+      "label": "Ortam",
+      "live": "Canlı",
+      "sandbox": "Sandbox",
+      "sandboxNote": "Sandbox: deneme verileri ve sahte bir ödeme sağlayıcısı. Burada gerçek para yok."
+    },
+    "donut": {
+      "title": "Duruma göre ödemeler",
+      "label": "Duruma göre {n} ödeme",
+      "center": "ödeme"
+    },
+    "currency": {
+      "title": "Para birimine göre gelir",
+      "empty": "Henüz fatura yok.",
+      "billed": "Faturalanan {amount}",
+      "collected": "Tahsil edilen {amount}",
+      "outstanding": "Bekleyen {amount}",
+      "collectedOf": "{billed} içinden {collected} tahsil edildi"
+    },
+    "payments": {
+      "title": "Son ödemeler",
+      "empty": "Son 30 günde ödeme yok.",
+      "truncated": "Son 1000 defter kaydı",
+      "when": "Zaman",
+      "status": "Durum",
+      "provider": "Sağlayıcı",
+      "amount": "Tutar"
+    },
+    "invoices": {
+      "title": "Son faturalar",
+      "empty": "Henüz fatura yok.",
+      "draft": "Taslak"
+    },
+    "invoiceStatus": {
+      "draft": "Taslak",
+      "open": "Açık",
+      "paid": "Ödendi",
+      "uncollectible": "Tahsil edilemez",
+      "void": "Geçersiz"
+    },
+    "health": {
+      "title": "Sağlık",
+      "payments": "Ödeme hizmeti",
+      "up": "Erişilebilir",
+      "down": "Erişilemiyor",
+      "providers": "Ödeme sağlayıcıları",
+      "noProviders": "Bağlı sağlayıcı yok",
+      "webhooks": "Webhook'lar",
+      "failedDeliveries": "{n} başarısız teslimat",
+      "addEndpoint": "Uç nokta ekleyin",
+      "endpoints": "{n} uç nokta, sorun yok"
+    },
+    "keys": {
+      "title": "API anahtarları",
+      "intro": "Sunucunuz Quotify ile bir anahtarla konuşur. Sandbox anahtarları yalnızca deneme verilerine dokunur.",
+      "newSandbox": "Sandbox anahtarı",
+      "newLive": "Canlı anahtar",
+      "created": "Oluşturuldu: {date}",
+      "active": "Etkin",
+      "revoked": "İptal edildi",
+      "revoke": "İptal et",
+      "revokeNamed": "{key} anahtarını iptal et",
+      "empty": "Henüz anahtar yok. Kullanım göndermeye başlamak için bir tane oluşturun.",
+      "revealTitle": "Yeni anahtarınızı şimdi kopyalayın",
+      "revealBody": "Anahtarın tamamı yalnızca bir kez gösterilir. Güvenli bir yere kaydedin; kaybolursa iptal edin ve yenisini oluşturun.",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "copyFailed": "Tarayıcınız kopyalamaya izin vermedi. Anahtarı seçip elle kopyalayın.",
+      "saved": "Kaydettim",
+      "revokeTitle": "Bu anahtar iptal edilsin mi?",
+      "revokeBody": "Onu kullanan her şey hemen çalışmayı durdurur. Bu geri alınamaz."
+    },
+    "links": {
+      "title": "Daha derine inin",
+      "intro": "{env} ortamının çalışma sayfaları.",
+      "customers": "Müşteriler",
+      "paymentLinks": "Ödeme bağlantıları",
+      "credits": "Krediler",
+      "webhooks": "Webhook'lar"
+    },
+    "settings": {
+      "title": "Ayarlar",
+      "intro": "Kuruluşunuz, profiliniz ve bu uygulamanın görünümü.",
+      "account": "Kuruluş",
+      "organisation": "Ad",
+      "yourRole": "Rolünüz",
+      "created": "Oluşturulma",
+      "you": "Siz",
+      "sessionEnds": "Oturum bitişi",
+      "appearance": "Görünüm",
+      "themeSystem": "Sistem",
+      "themeLight": "Açık",
+      "themeDark": "Koyu",
+      "members": "Üyeler",
+      "membersNote": "Bu kuruluşa erişimi olan herkes. Kişi davet etme henüz yok."
+    },
+    "role": {
+      "owner": "Sahip",
+      "admin": "Yönetici",
+      "viewer": "Görüntüleyici"
     }
   }
 }

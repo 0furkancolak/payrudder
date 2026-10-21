@@ -6,7 +6,9 @@
   "app": {
     "title": "Quotify operator console",
     "language": "Language",
-    "demo": "Demo mode: sample data, a mock payment provider, mail goes to the local mail catcher. Nothing here is real."
+    "demo": "Demo mode: sample data, a mock payment provider, mail goes to the local mail catcher. Nothing here is real.",
+    "themeLight": "Switch to light mode",
+    "themeDark": "Switch to dark mode"
   },
   "nav": {
     "tenants": "Tenants",
@@ -16,7 +18,8 @@
   },
   "common": {
     "loading": "Loading…",
-    "unknown": "?"
+    "unknown": "?",
+    "cancel": "Cancel"
   },
   "signIn": {
     "title": "Operator console",
@@ -1396,6 +1399,202 @@
       "tenant": {
         "not_found": "This environment does not exist, or it is not yours."
       }
+    }
+  },
+  "product": {
+    "menu": {
+      "open": "Account menu"
+    },
+    "nav": {
+      "home": "Home",
+      "settings": "Settings"
+    },
+    "hero": {
+      "title": "See every payment of every app in one calm place."
+    },
+    "status": {
+      "paid": "Paid",
+      "processing": "Processing",
+      "failed": "Failed",
+      "refunded": "Refunded"
+    },
+    "appStatus": {
+      "ok": "Healthy",
+      "attention": "Needs attention",
+      "degraded": "Partly unavailable",
+      "unknown": "No data"
+    },
+    "unavailable": "Not available right now.",
+    "degraded": "Some parts did not answer ({sections}). The rest is up to date.",
+    "sections": {
+      "payments": "payments",
+      "invoices": "invoices",
+      "customers": "customers",
+      "subscriptions": "subscriptions",
+      "webhooks": "webhooks"
+    },
+    "kpi": {
+      "revenue": "Revenue",
+      "revenueDays": "Revenue, last {days} days",
+      "payments": "Payments",
+      "failedCount": "Failed: {n}",
+      "openInvoices": "Open invoices",
+      "outstanding": "{amount} outstanding",
+      "paidInvoices": "Paid invoices: {n}",
+      "customers": "Customers",
+      "mrr": "{amount} per month",
+      "noMrr": "No recurring revenue yet"
+    },
+    "card": {
+      "revenue": "Revenue, last {days} days",
+      "unavailable": "No numbers yet",
+      "failed": "Failed payments: {n}",
+      "environments": "Sandbox and live",
+      "open": "Open"
+    },
+    "auth": {
+      "email": "E-mail",
+      "password": "Password",
+      "name": "Your name",
+      "organisation": "Organisation",
+      "passwordHint": "At least {min} characters.",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password"
+    },
+    "signIn": {
+      "title": "Welcome back",
+      "intro": "Sign in to see how your apps and their payments are doing.",
+      "submit": "Sign in",
+      "cta": "Sign in",
+      "noAccount": "New here?",
+      "operator": "Operator console",
+      "expired": "Your session has ended. Sign in again to continue."
+    },
+    "signUp": {
+      "title": "Create your account",
+      "intro": "One organisation, as many apps as you need, each with a sandbox to try things in.",
+      "submit": "Create account",
+      "cta": "Create an account",
+      "haveAccount": "Already have an account?"
+    },
+    "home": {
+      "title": "Your organisation",
+      "welcome": "Welcome, {name}",
+      "intro": "Your apps and how their payments did over the last 30 days.",
+      "create": "Create app",
+      "emptyTitle": "Create your first app",
+      "emptyBody": "An app is one product you bill for. It comes with a sandbox to test in and a live environment for real payments, each with its own API keys.",
+      "viewerEmpty": "There are no apps yet. An owner or administrator can create one."
+    },
+    "createApp": {
+      "title": "Create an app",
+      "intro": "It gets a sandbox and a live environment, each with its own customers, plans and keys.",
+      "name": "App name",
+      "currency": "Currency",
+      "timezone": "Time zone",
+      "immutable": "Currency and time zone cannot be changed later: billing periods are cut in that time zone.",
+      "submit": "Create app"
+    },
+    "env": {
+      "label": "Environment",
+      "live": "Live",
+      "sandbox": "Sandbox",
+      "sandboxNote": "Sandbox: test data and a pretend payment provider. Nothing here is real money."
+    },
+    "donut": {
+      "title": "Payments by status",
+      "label": "{n} payments by status",
+      "center": "payments"
+    },
+    "currency": {
+      "title": "Revenue by currency",
+      "empty": "No invoices yet.",
+      "billed": "Billed {amount}",
+      "collected": "Collected {amount}",
+      "outstanding": "Outstanding {amount}",
+      "collectedOf": "Collected {collected} of {billed}"
+    },
+    "payments": {
+      "title": "Recent payments",
+      "empty": "No payments in the last 30 days.",
+      "truncated": "Latest 1000 ledger entries",
+      "when": "When",
+      "status": "Status",
+      "provider": "Provider",
+      "amount": "Amount"
+    },
+    "invoices": {
+      "title": "Recent invoices",
+      "empty": "No invoices yet.",
+      "draft": "Draft"
+    },
+    "invoiceStatus": {
+      "draft": "Draft",
+      "open": "Open",
+      "paid": "Paid",
+      "uncollectible": "Uncollectible",
+      "void": "Void"
+    },
+    "health": {
+      "title": "Health",
+      "payments": "Payments service",
+      "up": "Reachable",
+      "down": "Not reachable",
+      "providers": "Payment providers",
+      "noProviders": "None connected",
+      "webhooks": "Webhooks",
+      "failedDeliveries": "{n} failed deliveries",
+      "addEndpoint": "Add an endpoint",
+      "endpoints": "{n} endpoints, all fine"
+    },
+    "keys": {
+      "title": "API keys",
+      "intro": "Your server uses a key to talk to Quotify. Sandbox keys only touch test data.",
+      "newSandbox": "Sandbox key",
+      "newLive": "Live key",
+      "created": "Created {date}",
+      "active": "Active",
+      "revoked": "Revoked",
+      "revoke": "Revoke",
+      "revokeNamed": "Revoke key {key}",
+      "empty": "No keys yet. Create one to start sending usage.",
+      "revealTitle": "Copy your new key now",
+      "revealBody": "This is the only time the full key is shown. Store it somewhere safe; if it is lost, revoke it and make a new one.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Your browser did not allow copying. Select the key and copy it by hand.",
+      "saved": "I have saved it",
+      "revokeTitle": "Revoke this key?",
+      "revokeBody": "Anything still using it stops working at once. This cannot be undone."
+    },
+    "links": {
+      "title": "Go deeper",
+      "intro": "The working pages of the {env} environment.",
+      "customers": "Customers",
+      "paymentLinks": "Payment links",
+      "credits": "Credits",
+      "webhooks": "Webhooks"
+    },
+    "settings": {
+      "title": "Settings",
+      "intro": "Your organisation, your profile and how this app looks.",
+      "account": "Organisation",
+      "organisation": "Name",
+      "yourRole": "Your role",
+      "created": "Created",
+      "you": "You",
+      "sessionEnds": "Session ends",
+      "appearance": "Appearance",
+      "themeSystem": "System",
+      "themeLight": "Light",
+      "themeDark": "Dark",
+      "members": "Members",
+      "membersNote": "Everyone with access to this organisation. Inviting people is not available yet."
+    },
+    "role": {
+      "owner": "Owner",
+      "admin": "Administrator",
+      "viewer": "Viewer"
     }
   }
 }

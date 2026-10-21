@@ -6,7 +6,9 @@
   "app": {
     "title": "Quotify-Operator-Konsole",
     "language": "Sprache",
-    "demo": "Demo-Modus: Beispieldaten, ein simulierter Zahlungsanbieter, Mails gehen an den lokalen Mail-Catcher. Nichts davon ist echt."
+    "demo": "Demo-Modus: Beispieldaten, ein simulierter Zahlungsanbieter, Mails gehen an den lokalen Mail-Catcher. Nichts davon ist echt.",
+    "themeLight": "Zum hellen Design wechseln",
+    "themeDark": "Zum dunklen Design wechseln"
   },
   "nav": {
     "tenants": "Mandanten",
@@ -16,7 +18,8 @@
   },
   "common": {
     "loading": "Wird geladen…",
-    "unknown": "?"
+    "unknown": "?",
+    "cancel": "Abbrechen"
   },
   "signIn": {
     "title": "Operator-Konsole",
@@ -1396,6 +1399,202 @@
       "tenant": {
         "not_found": "Diese Umgebung existiert nicht oder gehört Ihnen nicht."
       }
+    }
+  },
+  "product": {
+    "menu": {
+      "open": "Kontomenü"
+    },
+    "nav": {
+      "home": "Start",
+      "settings": "Einstellungen"
+    },
+    "hero": {
+      "title": "Jede Zahlung jeder App an einem ruhigen Ort."
+    },
+    "status": {
+      "paid": "Bezahlt",
+      "processing": "In Bearbeitung",
+      "failed": "Fehlgeschlagen",
+      "refunded": "Erstattet"
+    },
+    "appStatus": {
+      "ok": "In Ordnung",
+      "attention": "Braucht Aufmerksamkeit",
+      "degraded": "Teilweise nicht verfügbar",
+      "unknown": "Keine Daten"
+    },
+    "unavailable": "Im Moment nicht verfügbar.",
+    "degraded": "Einige Teile haben nicht geantwortet ({sections}). Der Rest ist aktuell.",
+    "sections": {
+      "payments": "Zahlungen",
+      "invoices": "Rechnungen",
+      "customers": "Kunden",
+      "subscriptions": "Abonnements",
+      "webhooks": "Webhooks"
+    },
+    "kpi": {
+      "revenue": "Umsatz",
+      "revenueDays": "Umsatz, letzte {days} Tage",
+      "payments": "Zahlungen",
+      "failedCount": "Fehlgeschlagen: {n}",
+      "openInvoices": "Offene Rechnungen",
+      "outstanding": "{amount} offen",
+      "paidInvoices": "Bezahlte Rechnungen: {n}",
+      "customers": "Kunden",
+      "mrr": "{amount} pro Monat",
+      "noMrr": "Noch keine wiederkehrenden Einnahmen"
+    },
+    "card": {
+      "revenue": "Umsatz, letzte {days} Tage",
+      "unavailable": "Noch keine Zahlen",
+      "failed": "Fehlgeschlagene Zahlungen: {n}",
+      "environments": "Sandbox und Live",
+      "open": "Öffnen"
+    },
+    "auth": {
+      "email": "E-Mail",
+      "password": "Passwort",
+      "name": "Ihr Name",
+      "organisation": "Organisation",
+      "passwordHint": "Mindestens {min} Zeichen.",
+      "showPassword": "Passwort anzeigen",
+      "hidePassword": "Passwort verbergen"
+    },
+    "signIn": {
+      "title": "Willkommen zurück",
+      "intro": "Melden Sie sich an, um zu sehen, wie es Ihren Apps und Zahlungen geht.",
+      "submit": "Anmelden",
+      "cta": "Anmelden",
+      "noAccount": "Neu hier?",
+      "operator": "Betreiber-Konsole",
+      "expired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren."
+    },
+    "signUp": {
+      "title": "Konto erstellen",
+      "intro": "Eine Organisation, so viele Apps wie nötig, jede mit einer Sandbox zum Ausprobieren.",
+      "submit": "Konto erstellen",
+      "cta": "Konto erstellen",
+      "haveAccount": "Sie haben bereits ein Konto?"
+    },
+    "home": {
+      "title": "Ihre Organisation",
+      "welcome": "Willkommen, {name}",
+      "intro": "Ihre Apps und wie ihre Zahlungen in den letzten 30 Tagen liefen.",
+      "create": "App erstellen",
+      "emptyTitle": "Erstellen Sie Ihre erste App",
+      "emptyBody": "Eine App ist ein Produkt, das Sie abrechnen. Sie kommt mit einer Sandbox zum Testen und einer Live-Umgebung für echte Zahlungen, jeweils mit eigenen API-Schlüsseln.",
+      "viewerEmpty": "Es gibt noch keine Apps. Ein Eigentümer oder Administrator kann eine erstellen."
+    },
+    "createApp": {
+      "title": "App erstellen",
+      "intro": "Sie erhält eine Sandbox und eine Live-Umgebung, jeweils mit eigenen Kunden, Tarifen und Schlüsseln.",
+      "name": "App-Name",
+      "currency": "Währung",
+      "timezone": "Zeitzone",
+      "immutable": "Währung und Zeitzone lassen sich später nicht ändern: Abrechnungszeiträume werden in dieser Zeitzone geschnitten.",
+      "submit": "App erstellen"
+    },
+    "env": {
+      "label": "Umgebung",
+      "live": "Live",
+      "sandbox": "Sandbox",
+      "sandboxNote": "Sandbox: Testdaten und ein Schein-Zahlungsanbieter. Hier ist nichts echtes Geld."
+    },
+    "donut": {
+      "title": "Zahlungen nach Status",
+      "label": "{n} Zahlungen nach Status",
+      "center": "Zahlungen"
+    },
+    "currency": {
+      "title": "Umsatz nach Währung",
+      "empty": "Noch keine Rechnungen.",
+      "billed": "Abgerechnet {amount}",
+      "collected": "Eingezogen {amount}",
+      "outstanding": "Offen {amount}",
+      "collectedOf": "{collected} von {billed} eingezogen"
+    },
+    "payments": {
+      "title": "Letzte Zahlungen",
+      "empty": "Keine Zahlungen in den letzten 30 Tagen.",
+      "truncated": "Letzte 1000 Buchungen",
+      "when": "Wann",
+      "status": "Status",
+      "provider": "Anbieter",
+      "amount": "Betrag"
+    },
+    "invoices": {
+      "title": "Letzte Rechnungen",
+      "empty": "Noch keine Rechnungen.",
+      "draft": "Entwurf"
+    },
+    "invoiceStatus": {
+      "draft": "Entwurf",
+      "open": "Offen",
+      "paid": "Bezahlt",
+      "uncollectible": "Uneinbringlich",
+      "void": "Storniert"
+    },
+    "health": {
+      "title": "Zustand",
+      "payments": "Zahlungsdienst",
+      "up": "Erreichbar",
+      "down": "Nicht erreichbar",
+      "providers": "Zahlungsanbieter",
+      "noProviders": "Keiner verbunden",
+      "webhooks": "Webhooks",
+      "failedDeliveries": "{n} fehlgeschlagene Zustellungen",
+      "addEndpoint": "Endpunkt hinzufügen",
+      "endpoints": "{n} Endpunkte, alles in Ordnung"
+    },
+    "keys": {
+      "title": "API-Schlüssel",
+      "intro": "Ihr Server nutzt einen Schlüssel, um mit Quotify zu sprechen. Sandbox-Schlüssel berühren nur Testdaten.",
+      "newSandbox": "Sandbox-Schlüssel",
+      "newLive": "Live-Schlüssel",
+      "created": "Erstellt am {date}",
+      "active": "Aktiv",
+      "revoked": "Widerrufen",
+      "revoke": "Widerrufen",
+      "revokeNamed": "Schlüssel {key} widerrufen",
+      "empty": "Noch keine Schlüssel. Erstellen Sie einen, um Nutzung zu senden.",
+      "revealTitle": "Kopieren Sie Ihren neuen Schlüssel jetzt",
+      "revealBody": "Der vollständige Schlüssel wird nur dieses eine Mal angezeigt. Bewahren Sie ihn sicher auf; geht er verloren, widerrufen Sie ihn und erstellen Sie einen neuen.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "copyFailed": "Ihr Browser hat das Kopieren nicht erlaubt. Markieren Sie den Schlüssel und kopieren Sie ihn von Hand.",
+      "saved": "Ich habe ihn gespeichert",
+      "revokeTitle": "Diesen Schlüssel widerrufen?",
+      "revokeBody": "Alles, was ihn noch verwendet, funktioniert sofort nicht mehr. Das lässt sich nicht rückgängig machen."
+    },
+    "links": {
+      "title": "Tiefer einsteigen",
+      "intro": "Die Arbeitsseiten der Umgebung {env}.",
+      "customers": "Kunden",
+      "paymentLinks": "Zahlungslinks",
+      "credits": "Guthaben",
+      "webhooks": "Webhooks"
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "intro": "Ihre Organisation, Ihr Profil und das Aussehen dieser App.",
+      "account": "Organisation",
+      "organisation": "Name",
+      "yourRole": "Ihre Rolle",
+      "created": "Erstellt",
+      "you": "Sie",
+      "sessionEnds": "Sitzung endet",
+      "appearance": "Darstellung",
+      "themeSystem": "System",
+      "themeLight": "Hell",
+      "themeDark": "Dunkel",
+      "members": "Mitglieder",
+      "membersNote": "Alle mit Zugriff auf diese Organisation. Personen einzuladen ist noch nicht möglich."
+    },
+    "role": {
+      "owner": "Eigentümer",
+      "admin": "Administrator",
+      "viewer": "Betrachter"
     }
   }
 }

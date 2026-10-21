@@ -1,0 +1,53 @@
+import { createRoute, redirect, type AnyRoute, type RouteComponent } from "@tanstack/vue-router";
+import { defineAsyncComponent } from "vue";
+import { creditRoutes } from "@/features/credits/routes";
+import { customerRoutes } from "@/features/customers/routes";
+import { paymentLinkRoutes } from "@/features/paymentlinks/routes";
+import { webhookRoutes } from "@/features/webhooks/routes";
+import { isOperator, isPerson } from "@/shared/lib/session";
+
+// The product's pages are loaded when first visited, so the public pages stay small. The deeper views reuse the console's own route factories.
+const lazy = (load: () => Promise<{ default: object }>): RouteComponent => defineAsyncComponent(load as never) as unknown as RouteComponent;
+
+/** beforeLoad for the pages that need a signed-in person. */
+export function requirePerson(): void {
+  if (!isPerson.value) throw redirect({ to: "/signin" });
+}
+
+/** beforeLoad for the sign-in and sign-up pages and for "/": somebody who is signed in goes to their home. */
+export function redirectHome(): void {
+  if (isPerson.value) throw redirect({ to: "/app" });
+  if (isOperator.value) throw redirect({ to: "/tenants" });
+}
+
+/** The public pages: sign in and sign up (and "/", which is the sign-in page for a visitor and a redirect for somebody signed in). */
+export function publicProductRoutes(root: AnyRoute) {
+  const signIn = lazy(() => import("./SignInPage.vue"));
+  const signUp = lazy(() => import("./SignUpPage.vue"));
+  const validateSignIn = (s: Record<string, unknown>) => (s.expired === "1" ? { expired: "1" } : {});
+  return [
+    createRoute({ getParentRoute: () => root, path: "/", beforeLoad: redirectHome, component: signIn, validateSearch: validateSignIn }),
+    createRoute({ getParentRoute: () => root, path: "/signin", beforeLoad: redirectHome, component: signIn, validateSearch: validateSignIn }),
+    createRoute({ getParentRoute: () => root, path: "/signup", beforeLoad: redirectHome, component: signUp }),
+  ];
+}
+
+/** Everything under /app: a person's organisation, an app's dashboard, the account settings and the deeper views of an environment. */
+export function personRoutes(parent: AnyRoute) {
+  const signedIn = createRoute({ getParentRoute: () => parent, id: "person", beforeLoad: requirePerson });
+  const home = createRoute({ getParentRoute: () => signedIn, path: "/app", component: lazy(() => import("./OrgHome.vue")) });
+  const dashboard = createRoute({
+    getParentRoute: () => signedIn,
+    path: "/app/apps/$appId",
+    component: lazy(() => import("./AppDashboard.vue")),
+    validateSearch: (s: Record<string, unknown>) => (s.env === "sandbox" ? { env: "sandbox" } : {}),
+  });
+  const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazy(() => import("./SettingsPage.vue")) });
+  const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazy(() => import("./ProductTenantLayout.vue")) });
+  return signedIn.addChildren([
+    home,
+    dashboard,
+    settings,
+    tenant.addChildren([...customerRoutes(tenant), ...paymentLinkRoutes(tenant), ...creditRoutes(tenant), ...webhookRoutes(tenant)]),
+  ]);
+}
