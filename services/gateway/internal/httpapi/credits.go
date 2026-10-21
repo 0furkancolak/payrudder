@@ -114,7 +114,7 @@ func (s *Server) listCreditLedger(w http.ResponseWriter, r *http.Request) {
 	}
 	req := &billingv1.ListCreditLedgerRequest{CustomerId: id, PageToken: r.URL.Query().Get("page_token")}
 	if v := r.URL.Query().Get("page_size"); v != "" {
-		n, err := strconv.Atoi(v)
+		n, err := strconv.ParseInt(v, 10, 32)
 		if err != nil || n < 1 || n > 200 {
 			writeError(w, r, invalid("page_size", "must be 1 to 200"))
 			return
