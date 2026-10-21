@@ -7,7 +7,7 @@ import { useErrorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { useApiKeys, useCreateApiKey, useRevokeApiKey, type ApiKey, type Environment } from "./api";
+import { useApiKeys, useCreateApiKey, useMe, useRevokeApiKey, type ApiKey, type Environment } from "./api";
 
 /**
  * The API keys of an app, both environments. A new key's secret is shown once, in a dialog, with a copy button; closing the dialog drops it from memory
@@ -19,6 +19,9 @@ const errorText = useErrorText();
 const keys = useApiKeys(() => props.appId);
 const create = useCreateApiKey(() => props.appId);
 const revoke = useRevokeApiKey(() => props.appId);
+const me = useMe();
+/** A live key needs a verified address; until the profile has loaded the button stays usable and the server decides. */
+const unverified = computed(() => me.data.value?.user?.email_verified === false);
 
 const list = computed(() => (keys.data.value?.api_keys ?? []).slice().sort((a, b) => Number(isRevoked(a)) - Number(isRevoked(b))));
 const isRevoked = (k: ApiKey) => k.status === "STATUS_REVOKED";
@@ -62,10 +65,11 @@ function doRevoke() {
       </div>
       <div v-if="canManage" class="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" :disabled="create.isPending.value" @click="make('sandbox')"><Plus />{{ t("product.keys.newSandbox") }}</Button>
-        <Button size="sm" :disabled="create.isPending.value" @click="make('live')"><Plus />{{ t("product.keys.newLive") }}</Button>
+        <Button size="sm" :disabled="create.isPending.value || unverified" :title="unverified ? t('product.keys.needsVerified') : undefined" @click="make('live')"><Plus />{{ t("product.keys.newLive") }}</Button>
       </div>
     </div>
 
+    <p v-if="canManage && unverified" class="text-muted-foreground text-xs" data-testid="live-needs-verified">{{ t("product.keys.needsVerified") }}</p>
     <p v-if="create.error.value || revoke.error.value || keys.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">
       {{ errorText(create.error.value ?? revoke.error.value ?? keys.error.value) }}
     </p>

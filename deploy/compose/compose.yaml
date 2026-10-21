@@ -356,11 +356,15 @@ services:
       QUOTIFY_SECRETS_KEY: ${QUOTIFY_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
       # The local stack may deliver webhooks to http:// and private addresses (host.docker.internal, other containers). Never set this in production.
       QUOTIFY_WEBHOOK_ALLOW_PRIVATE: ${QUOTIFY_WEBHOOK_ALLOW_PRIVATE:-true}
+      # Mail to people (e-mail verification, password reset, invitations) goes to Mailpit; its links open the console.
+      SMTP_ADDR: mailpit:1025
+      QUOTIFY_APP_URL: ${QUOTIFY_APP_URL:-http://localhost:42301}
     ports: ["42701:7001", "42911:9101"]
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       redpanda: { condition: service_healthy }
+      mailpit: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 96m } } }
 
   ingest-svc:

@@ -95,6 +95,8 @@ type Server struct {
 	hostedPays hostedLimiter
 	// signIns and signUps limit the public sign-in and sign-up routes, per client address.
 	signIns, signUps hostedLimiter
+	// resets limits "forgot password" requests and tokenUses the routes that spend a mailed token (verify, reset, accept an invitation), per client address.
+	resets, tokenUses hostedLimiter
 }
 
 // New builds the router.

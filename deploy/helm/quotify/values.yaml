@@ -113,6 +113,7 @@ services:
       QUOTIFY_REDIS_URL: "{{ .Values.global.redisURL }}"
       QUOTIFY_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
       QUOTIFY_ALLOWED_ENVIRONMENTS: "{{ .Values.global.allowedEnvironments }}"
+      SMTP_ADDR: "{{ .Values.smtp.addr }}"
   ingest-svc:
     kind: grpc
     port: 7002

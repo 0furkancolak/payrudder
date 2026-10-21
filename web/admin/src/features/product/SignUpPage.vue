@@ -18,6 +18,8 @@ const account = ref("");
 const email = ref("");
 const password = ref("");
 const signup = useSignUp();
+/** Set when the sign-in right after sign-up did not work: the same "check your inbox" for a taken address as for a new one that could not be signed in. */
+const checkInbox = ref("");
 
 /** The same rule the server applies: at least ten characters. */
 const MIN = 10;
@@ -28,14 +30,23 @@ function submit() {
   if (!ready.value) return;
   signup.mutate(
     { email: email.value.trim(), password: password.value, display_name: name.value.trim(), account_name: account.value.trim() },
-    { onSuccess: () => navigate({ to: "/app" }) },
+    {
+      onSuccess: (r) => {
+        if (r.signedIn) void navigate({ to: "/app" });
+        else checkInbox.value = email.value.trim();
+      },
+    },
   );
 }
 </script>
 
 <template>
   <AuthShell :title="t('product.signUp.title')" :intro="t('product.signUp.intro')">
-    <form class="flex flex-col gap-4" :aria-label="t('product.signUp.title')" @submit.prevent="submit">
+    <div v-if="checkInbox" class="bg-success-soft text-success flex flex-col gap-1 rounded-2xl px-4 py-3 text-sm" role="status">
+      <p class="font-medium">{{ t("product.signUp.checkTitle") }}</p>
+      <p>{{ t("product.signUp.checkBody", { email: checkInbox }) }}</p>
+    </div>
+    <form v-else class="flex flex-col gap-4" :aria-label="t('product.signUp.title')" @submit.prevent="submit">
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="flex flex-col gap-1.5">
           <Label for="su-name">{{ t("product.auth.name") }}</Label>

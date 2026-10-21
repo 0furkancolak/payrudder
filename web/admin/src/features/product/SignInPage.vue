@@ -35,6 +35,7 @@ function submit() {
       <div class="flex flex-col gap-1.5">
         <Label for="si-password">{{ t("product.auth.password") }}</Label>
         <PasswordField id="si-password" v-model="password" autocomplete="current-password" />
+        <Link to="/forgot" class="text-muted-foreground hover:text-foreground self-end text-xs underline-offset-4 hover:underline">{{ t("product.signIn.forgot") }}</Link>
       </div>
       <p v-if="login.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(login.error.value) }}</p>
       <Button type="submit" size="lg" :disabled="login.isPending.value || email.trim() === '' || password === ''">{{ t("product.signIn.submit") }}</Button>
