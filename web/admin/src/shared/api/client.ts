@@ -57,6 +57,8 @@ export class ApiError extends Error {
     readonly code: string,
     /** The stable error key (billing.credit_note.not_paid): translate it, not the message. Empty when the server sent none. */
     readonly key = "",
+    /** Values a translated message may use ({field}, {detail}), taken from the envelope's first detail. */
+    readonly params: Readonly<Record<string, string>> = {},
   ) {
     super(message);
   }
@@ -65,8 +67,11 @@ export class ApiError extends Error {
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   if (error && typeof error === "object" && "error" in error) {
-    const e = (error as { error?: { code?: string; key?: string; message?: string } }).error;
-    if (e?.message) return new ApiError(e.message, e.code ?? "ERROR", e.key ?? "");
+    const e = (error as { error?: { code?: string; key?: string; message?: string; details?: { field?: string; description?: string }[] } }).error;
+    if (e?.message) {
+      const first = e.details?.[0];
+      return new ApiError(e.message, e.code ?? "ERROR", e.key ?? "", first ? { field: first.field ?? "", detail: first.description ?? "" } : {});
+    }
   }
   return new ApiError(error instanceof Error ? error.message : "request failed", "ERROR");
 }

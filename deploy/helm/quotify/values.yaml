@@ -72,7 +72,7 @@ defaults:
   replicas: 1
   resources:
     requests: { cpu: 25m, memory: 24Mi }
-    limits: { memory: 192Mi }
+    limits: { memory: 128Mi }
 
 # Services. kind: grpc (headless Service so that clients round-robin over every pod), http, or worker (no Service port).
 # db: roles to build DSNs for ("app" and "system" at runtime, "migrator" for the pre-install Job).

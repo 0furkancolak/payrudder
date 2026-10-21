@@ -358,7 +358,7 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       redpanda: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   ingest-svc:
     <<: *defaults
@@ -410,7 +410,7 @@ services:
       postgres: { condition: service_healthy }
       redpanda: { condition: service_healthy }
       plans-svc: { condition: service_started }
-    deploy: { resources: { limits: { memory: 192m } } }
+    deploy: { resources: { limits: { memory: 128m } } }
 
   limits-svc:
     <<: *defaults
@@ -436,7 +436,7 @@ services:
       redpanda: { condition: service_healthy }
       plans-svc: { condition: service_started }
       aggregator: { condition: service_started }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   mockpsp:
     <<: *defaults
@@ -520,7 +520,7 @@ services:
     depends_on:
       rabbitmq: { condition: service_healthy }
       minio: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   notifier:
     <<: *defaults
@@ -592,7 +592,7 @@ services:
       ingest-svc: { condition: service_started }
       aggregator: { condition: service_started }
       minio: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 192m } } }
+    deploy: { resources: { limits: { memory: 128m } } }
 
   analytics-svc:
     <<: *defaults
@@ -616,7 +616,7 @@ services:
     depends_on:
       clickhouse: { condition: service_healthy }
       redpanda: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   assets-svc:
     <<: *defaults
@@ -671,7 +671,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 12
-    deploy: { resources: { limits: { memory: 192m } } }
+    deploy: { resources: { limits: { memory: 64m } } }
 
   gateway:
     <<: *defaults
@@ -710,7 +710,7 @@ services:
       analytics-svc: { condition: service_started }
       assets-svc: { condition: service_started }
       redis: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
 volumes:
   postgres-data:

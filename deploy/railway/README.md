@@ -98,6 +98,12 @@ each service its health check, restart policy and watch paths. Until then it sti
    `ingest-svc`, `aggregator`, `limits-svc`, `assets-svc`, `mockpsp`, `analytics-svc`; `billing-svc`, `payments-worker`, `invoice-worker`, `notifier`;
    `gateway`, `admin-ui`. A service started too early restarts (`ON_FAILURE`, 10 tries) until its dependencies answer, so a wrong order is slow, not fatal.
 
+## Memory
+
+Railway bills by resident memory. Every Go service gets `GOMEMLIMIT=96MiB` (override with `GO_MEMLIMIT=128MiB deploy/railway/bootstrap.sh ...`), and
+`pkg/memlimit` defaults `GOGC` to 50, so a service that holds a few MiB of live data stays near that instead of growing to twice it. Database pools
+are 4 connections each (`pool_max_conns` in a DSN raises it) and idle ones close after a minute. Measured on the compose stack, idle services sit at 4 to 26 MiB and 12 to 60 MiB under the e2e load.
+
 ## Environment variables
 
 `PORT`, `QUOTIFY_ENV` and `QUOTIFY_SERVICE_NAME` are set on every Quotify service (`railway`, the service name). `SERVICE_DIR` and

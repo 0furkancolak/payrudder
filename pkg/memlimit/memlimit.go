@@ -16,9 +16,17 @@ const Headroom = 0.9
 // cgroupFiles are where a container's memory limit is: cgroup v2, then v1.
 var cgroupFiles = []string{"/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"}
 
-// Apply sets the runtime's soft memory limit from the container's cgroup limit. It reports the limit it set, or 0 when it set none (GOMEMLIMIT is set,
-// there is no cgroup limit, or the limit is "max"/unreasonably large).
+// GCPercent is the collector's target heap growth when GOGC is not set. The Go default (100) lets the heap reach twice the live data before it
+// collects; these services hold little live data and are idle most of the time, so the extra headroom is mostly wasted resident memory.
+const GCPercent = 50
+
+// Apply tunes the collector for a small footprint: GOGC defaults to GCPercent, and the runtime's soft memory limit comes from the container's
+// cgroup limit. It reports the limit it set, or 0 when it set none (GOMEMLIMIT is set, there is no cgroup limit, or the limit is "max"/unreasonably
+// large). Explicit GOGC and GOMEMLIMIT always win.
 func Apply() int64 {
+	if os.Getenv("GOGC") == "" {
+		debug.SetGCPercent(GCPercent)
+	}
 	if os.Getenv("GOMEMLIMIT") != "" {
 		return 0
 	}

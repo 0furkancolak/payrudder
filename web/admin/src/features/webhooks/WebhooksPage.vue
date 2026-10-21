@@ -2,7 +2,7 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EVENT_TYPES, useWebhookActions, useWebhookDeliveries, useWebhookEndpoints } from "./api";
 
 const { t, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const endpoints = useWebhookEndpoints(tenantId);
@@ -29,7 +30,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
 const stateVariant = (s?: string) => (s === "WEBHOOK_DELIVERY_STATE_DELIVERED" ? "success" : s === "WEBHOOK_DELIVERY_STATE_FAILED" ? "destructive" : "secondary");
 const stateWord = (s?: string) => t(`billing.webhooks.state.${(s ?? "").replace("WEBHOOK_DELIVERY_STATE_", "").toLowerCase()}`);
 const failure = computed(() => {
-  for (const m of Object.values(act)) if (m.error.value) return toApiError(m.error.value).message;
+  for (const m of Object.values(act)) if (m.error.value) return errorText(m.error.value);
   return "";
 });
 
@@ -67,7 +68,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       <p class="mono break-all text-sm" data-testid="webhook-secret">{{ secret }}</p>
     </div>
     <p v-if="failure" class="text-destructive text-sm" role="alert">{{ failure }}</p>
-    <p v-if="endpoints.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(endpoints.error.value).message }}</p>
+    <p v-if="endpoints.error.value" class="text-destructive text-sm" role="alert">{{ errorText(endpoints.error.value) }}</p>
   </Card>
 
   <Card class="mb-6 p-3">
