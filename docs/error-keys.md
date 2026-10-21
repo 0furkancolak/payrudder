@@ -36,6 +36,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.transfer.unavailable`
 - `plans.app.bad_slug`
 - `plans.app.slug_taken`
+- `plans.mail.unknown_category`
 - `plans.subscription.coupon_blocks_credit`
 - `plans.webhook.not_configured`
 - `plans.webhook.too_many_endpoints`

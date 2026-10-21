@@ -2,7 +2,8 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError, type Subscription } from "@/shared/api/client";
+import { type Subscription } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { CURRENCIES, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { enumWord, label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
@@ -20,6 +21,7 @@ import ChangePanel from "./ChangePanel.vue";
 import ProviderRunPanel from "./ProviderRunPanel.vue";
 
 const { t, te, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
@@ -77,7 +79,7 @@ const credited = computed(() => {
   return r?.credited_minor ?? "";
 });
 const failure = computed(() => {
-  for (const m of Object.values(act)) if (m.error.value) return toApiError(m.error.value).message;
+  for (const m of Object.values(act)) if (m.error.value) return errorText(m.error.value);
   return "";
 });
 const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
@@ -116,7 +118,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
 
   <Card class="mb-6 p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.tabs.subscriptions") }}</h2>
-    <p v-if="subs.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(subs.error.value).message }}</p>
+    <p v-if="subs.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(subs.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -230,7 +232,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
     </div>
     <div role="region" :aria-label="t('billing.subscriptions.usage')" class="grid gap-2">
       <h3 class="text-base font-semibold">{{ t("billing.subscriptions.usage") }}</h3>
-      <p v-if="entitlements.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(entitlements.error.value).message }}</p>
+      <p v-if="entitlements.error.value" class="text-destructive text-sm" role="alert">{{ errorText(entitlements.error.value) }}</p>
       <Table v-if="(entitlements.data.value?.items ?? []).length > 0">
         <TableHeader>
           <TableRow class="hover:bg-transparent">

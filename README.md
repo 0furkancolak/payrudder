@@ -197,7 +197,7 @@ gaps, and the phase files their open boxes.
 
 - [Vision](docs/00-vision.md): the problem, goals and non-goals
 - [Architecture](docs/02-architecture.md) and [Correctness](docs/07-correctness.md)
-- [Local development](docs/10-local-dev.md), [Kubernetes](docs/12-kubernetes.md), [Testing strategy](docs/09-testing-strategy.md)
+- [Local development](docs/10-local-dev.md), [Kubernetes](docs/12-kubernetes.md), [Railway](deploy/railway/README.md), [Testing strategy](docs/09-testing-strategy.md)
 - [Decisions](docs/adr/): why each technology was chosen
 
 ## License

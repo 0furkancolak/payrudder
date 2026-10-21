@@ -1,6 +1,6 @@
 # Quotify local stack. Ports and profiles: docs/10-local-dev.md
 #   default (no profile): infrastructure       make up-infra
-#   obs:   otel-collector, prometheus, tempo, grafana, postgres-exporter, redis-exporter
+#   obs:   otel-collector, prometheus, tempo, loki, vector, grafana, postgres-exporter, redis-exporter
 #   app:   Quotify services                    make up
 #   chaos: toxiproxy                           Phase 09
 #   init:  minio-init (one-shot, run by make)
@@ -200,7 +200,7 @@ services:
     ports: ["4317:4317", "4318:4318", "13133:13133"]
     depends_on: [tempo]
     # Distroless image: no shell for an exec healthcheck. `--wait` treats it as ready once running; :13133 serves health.
-    deploy: { resources: { limits: { memory: 256m } } }
+    deploy: { resources: { limits: { memory: 128m } } }
 
   tempo:
     <<: *defaults
@@ -211,15 +211,54 @@ services:
     volumes:
       - ../tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - tempo-data:/var/tempo
+    environment:
+      GOMEMLIMIT: 200MiB
     ports: ["3200:3200"]
     # Distroless image: no exec healthcheck possible. :3200/ready serves readiness.
-    deploy: { resources: { limits: { memory: 384m } } }
+    deploy: { resources: { limits: { memory: 256m } } }
+
+  loki:
+    <<: *defaults
+    profiles: [obs]
+    image: grafana/loki:3.5.5
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    user: "0"
+    volumes:
+      - ../loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
+    environment:
+      GOMEMLIMIT: 150MiB
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3100/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    deploy: { resources: { limits: { memory: 192m } } }
+
+  # Log shipper: container stdout (slog JSON) -> Loki. No ports; it only needs the Docker socket to read the logs.
+  vector:
+    <<: *defaults
+    profiles: [obs]
+    image: timberio/vector:0.50.0-alpine
+    command: ["--config", "/etc/vector/vector.yaml", "--quiet"]
+    volumes:
+      - ../vector/vector.yaml:/etc/vector/vector.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: { loki: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8686/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy: { resources: { limits: { memory: 64m } } }
 
   prometheus:
     <<: *defaults
     profiles: [obs]
     image: prom/prometheus:v3.15.0
-    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d", "--web.enable-remote-write-receiver"]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=3d", "--storage.tsdb.retention.size=768MB", "--web.enable-remote-write-receiver"]
+    environment:
+      GOMEMLIMIT: 200MiB
     volumes:
       - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ../prometheus/rules:/etc/prometheus/rules:ro
@@ -229,7 +268,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
-    deploy: { resources: { limits: { memory: 384m } } }
+    deploy: { resources: { limits: { memory: 256m } } }
 
   grafana:
     <<: *defaults
@@ -239,11 +278,18 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/services.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_PLUGINS_PLUGIN_ADMIN_ENABLED: "false"
+      GF_LOG_LEVEL: warn
+      GOMEMLIMIT: 150MiB
     volumes:
       - ../grafana/provisioning:/etc/grafana/provisioning:ro
       - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports: ["3000:3000"]
-    depends_on: [prometheus, tempo]
+    depends_on: [prometheus, tempo, loki]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/api/health"]
       interval: 5s
@@ -312,7 +358,7 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       redpanda: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   ingest-svc:
     <<: *defaults
@@ -364,7 +410,7 @@ services:
       postgres: { condition: service_healthy }
       redpanda: { condition: service_healthy }
       plans-svc: { condition: service_started }
-    deploy: { resources: { limits: { memory: 192m } } }
+    deploy: { resources: { limits: { memory: 128m } } }
 
   limits-svc:
     <<: *defaults
@@ -390,7 +436,7 @@ services:
       redpanda: { condition: service_healthy }
       plans-svc: { condition: service_started }
       aggregator: { condition: service_started }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   mockpsp:
     <<: *defaults
@@ -474,7 +520,7 @@ services:
     depends_on:
       rabbitmq: { condition: service_healthy }
       minio: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   notifier:
     <<: *defaults
@@ -546,7 +592,7 @@ services:
       ingest-svc: { condition: service_started }
       aggregator: { condition: service_started }
       minio: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 192m } } }
+    deploy: { resources: { limits: { memory: 128m } } }
 
   analytics-svc:
     <<: *defaults
@@ -570,7 +616,7 @@ services:
     depends_on:
       clickhouse: { condition: service_healthy }
       redpanda: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   assets-svc:
     <<: *defaults
@@ -625,7 +671,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 12
-    deploy: { resources: { limits: { memory: 192m } } }
+    deploy: { resources: { limits: { memory: 64m } } }
 
   gateway:
     <<: *defaults
@@ -664,7 +710,7 @@ services:
       analytics-svc: { condition: service_started }
       assets-svc: { condition: service_started }
       redis: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
 volumes:
   postgres-data:
@@ -674,3 +720,4 @@ volumes:
   clickhouse-data:
   minio-data:
   tempo-data:
+  loki-data:

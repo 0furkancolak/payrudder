@@ -177,5 +177,8 @@ message PaymentStatus {
 }
 
 message NotificationSent {
+  // Empty when the mail was not sent.
   string message_id = 1;
+  // True when the tenant switched this category of mail off: nothing was sent and none will be.
+  bool suppressed = 2;
 }

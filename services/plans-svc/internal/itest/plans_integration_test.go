@@ -46,6 +46,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("Apps", testApps)
 	t.Run("Addresses", testAddresses)
 	t.Run("TaxRates", testTaxRates)
+	t.Run("MailSettings", testMailSettings)
 	t.Run("CurrencyFeesAndCustomerBilling", testCurrencyFeesAndCustomerBilling)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
@@ -77,6 +78,7 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 		Prices:       []*plansv1.Price{{MeterCode: "gb_hours", Model: &plansv1.Price_PerUnit{PerUnit: &plansv1.PerUnitPrice{UnitPrice: "12.5"}}}},
 		Entitlements: []*plansv1.Entitlement{{MeterCode: "gb_hours", Limit: "100.5"}}}))
 	must(e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Country: "TR", Currency: "TRY", Provider: "iyzico"}}}))
+	must(e.plans.SetMailSettings(ctx, &plansv1.SetMailSettingsRequest{Categories: []*plansv1.MailCategorySetting{{Category: "usage_alerts", Enabled: false}}}))
 	must(e.plans.SetTaxRates(ctx, &plansv1.SetTaxRatesRequest{Rates: []*plansv1.TaxRate{{Country: "TR", Name: "KDV", RateBps: 2000}}}))
 	must(e.plans.CreateCoupon(ctx, &plansv1.CreateCouponRequest{Coupon: &plansv1.Coupon{Code: "SEED", PercentBps: 100, Duration: plansv1.CouponDuration_COUPON_DURATION_ONCE}}))
 	must(e.hooks.CreateWebhookEndpoint(ctx, &plansv1.CreateWebhookEndpointRequest{Url: "https://example.com/hook"}))

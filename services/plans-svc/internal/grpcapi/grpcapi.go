@@ -23,6 +23,9 @@ import (
 	feesapi "github.com/0furkancolak/quotify/services/plans-svc/internal/fees"
 	feescmd "github.com/0furkancolak/quotify/services/plans-svc/internal/fees/command"
 	feesqry "github.com/0furkancolak/quotify/services/plans-svc/internal/fees/query"
+	mailsettingsapi "github.com/0furkancolak/quotify/services/plans-svc/internal/mailsettings"
+	mailsettingscmd "github.com/0furkancolak/quotify/services/plans-svc/internal/mailsettings/command"
+	mailsettingsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/mailsettings/query"
 	metersapi "github.com/0furkancolak/quotify/services/plans-svc/internal/meters"
 	meterscmd "github.com/0furkancolak/quotify/services/plans-svc/internal/meters/command"
 	metersqry "github.com/0furkancolak/quotify/services/plans-svc/internal/meters/query"
@@ -62,6 +65,7 @@ type (
 	routingHandler       = routingapi.Handler
 	taxHandler           = taxapi.Handler
 	reportsHandler       = reportsapi.Handler
+	mailSettingsHandler  = mailsettingsapi.Handler
 )
 
 // unimplemented answers Unimplemented for a method of PlansService that no module serves yet. It is embedded one level deeper than the
@@ -84,6 +88,7 @@ type Server struct {
 	*routingHandler
 	*taxHandler
 	*reportsHandler
+	*mailSettingsHandler
 
 	db  *store.DB
 	now func() time.Time
@@ -107,6 +112,7 @@ func New(appPool *pgxpool.Pool, _ *slog.Logger) *Server {
 		routingHandler:       routingapi.New(routingcmd.New(db), routingqry.New(db)),
 		taxHandler:           taxapi.New(taxcmd.New(db), taxqry.New(db)),
 		reportsHandler:       reportsapi.New(reportsqry.New(db, now)),
+		mailSettingsHandler:  mailsettingsapi.New(mailsettingscmd.New(db), mailsettingsqry.New(db)),
 		db:                   db,
 		now:                  now,
 	}

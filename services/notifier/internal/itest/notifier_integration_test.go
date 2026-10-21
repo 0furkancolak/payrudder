@@ -71,6 +71,13 @@ func waitMail(t *testing.T, api, to string, want int) []message {
 	return mailbox(t, api, to)
 }
 
+// offSwitch is a mail switch with the categories in it switched off.
+type offSwitch map[string]bool
+
+func (o offSwitch) Enabled(_ context.Context, _ uuid.UUID, category string) (bool, error) {
+	return !o[category], nil
+}
+
 type fakePlans struct{ email string }
 
 func (f fakePlans) GetCustomer(_ context.Context, in *plansv1.GetCustomerRequest, _ ...grpc.CallOption) (*plansv1.GetCustomerResponse, error) {
@@ -166,6 +173,33 @@ func TestNotifier(t *testing.T) {
 		}
 		if other := mailbox(t, mp.APIURL, to); len(other) != 0 {
 			t.Fatalf("a sandbox email reached the default SMTP server: %+v", other)
+		}
+	})
+
+	t.Run("DisabledCategoryIsDroppedAndTheOthersStillSend", func(t *testing.T) {
+		m := &handler.Mailer{Default: mail.SMTP{Addr: mp.SMTPAddr}, From: "q@quotify.local", Notes: notes,
+			Switch: offSwitch{"payment_receipts": true}}
+		to := "switch-" + uuid.NewString()[:8] + "@example.com"
+		send := func(template string) *commandsv1.ReplyEnvelope {
+			cmd := &commandsv1.CommandEnvelope{CommandId: uuid.NewString(), TenantId: uuid.NewString(),
+				Command: &commandsv1.CommandEnvelope_SendNotification{SendNotification: &commandsv1.SendNotification{Template: template, To: to,
+					Data: map[string]string{"invoice_number": "INV-2026-000009"}}}}
+			reply, err := (&handler.Handler{Mailer: m}).Handle(context.Background(), cmd)
+			if err != nil {
+				t.Fatalf("%s: a dropped or sent mail is never an error: %v", template, err)
+			}
+			return reply
+		}
+		if r := send("invoice_paid.v1"); !r.GetNotificationSent().GetSuppressed() {
+			t.Fatalf("receipts are off, reply = %v", r)
+		}
+		if r := send("payment_failed.v1"); r.GetNotificationSent().GetSuppressed() || r.GetNotificationSent().GetMessageId() == "" {
+			t.Fatalf("payment_failed is on, reply = %v", r)
+		}
+		time.Sleep(time.Second)
+		got := waitMail(t, mp.APIURL, to, 1)
+		if len(got) != 1 || got[0].Subject != "Payment failed for invoice INV-2026-000009" {
+			t.Fatalf("mailbox = %+v, want only the payment-failed mail", got)
 		}
 	})
 

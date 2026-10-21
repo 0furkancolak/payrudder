@@ -327,7 +327,10 @@
       "providers": "Anbieter",
       "reports": "Berichte",
       "pricing": "Gutscheine & Steuer",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mail": "E-Mail",
+      "apps": "Apps",
+      "address": "Verkäuferadresse"
     },
     "common": {
       "remove": "Entfernen"
@@ -727,6 +730,25 @@
         "delivered": "Zugestellt",
         "failed": "Fehlgeschlagen"
       }
+    },
+    "mail": {
+      "title": "E-Mail",
+      "hint": "Legen Sie fest, welche Arten von E-Mails Quotify an die Kunden dieses Mandanten sendet. Eine abgeschaltete Art wird verworfen, nicht vorgemerkt: Wieder einschalten sendet das Übersprungene nicht nach.",
+      "categories": {
+        "invoice_issued": "Rechnung erstellt",
+        "payment_receipts": "Zahlungsbelege",
+        "payment_failed": "Zahlung fehlgeschlagen",
+        "usage_alerts": "Nutzungswarnungen",
+        "system": "System"
+      },
+      "descriptions": {
+        "invoice_issued": "Teilt dem Kunden mit, dass eine neue Rechnung abgeschlossen wurde.",
+        "payment_receipts": "Der Beleg nach einer erfolgreichen Zahlung.",
+        "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Quotify die Einziehung aufgegeben hat.",
+        "usage_alerts": "Ein Kunde hat ein Nutzungslimit seines Tarifs überschritten.",
+        "system": "Alle übrigen Nachrichten von Quotify."
+      },
+      "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Quotify."
     }
   },
   "errors": {
@@ -756,7 +778,131 @@
         "invoice_not_payable": "Nur eine offene oder uneinbringliche Rechnung kann von Hand bezahlt werden.",
         "not_payable": "Der Zahlungsstatus der Rechnung erlaubt gerade keine manuelle Zahlung.",
         "reference_reused": "Diese Referenz wurde bereits mit einem anderen Betrag erfasst."
+      },
+      "credit_note": {
+        "bad_amount": "Der Gutschriftbetrag ist ungültig: Er muss größer als null sein und darf den noch gutschreibbaren Rest der Rechnung nicht übersteigen.",
+        "fully_credited": "Diese Rechnung wurde bereits vollständig gutgeschrieben.",
+        "not_paid": "Nur eine bezahlte Rechnung kann gutgeschrieben werden.",
+        "nothing_to_refund": "Für diese Gutschrift gibt es nichts auf die Karte zurückzuerstatten.",
+        "refund_not_failed": "Nur eine Gutschrift mit fehlgeschlagener Rückerstattung kann erneut versucht werden."
+      },
+      "dunning": {
+        "bad_delay": "Jede Wiederholungsverzögerung muss zwischen 1 und 720 Stunden liegen.",
+        "too_many_retries": "Es können höchstens 6 Wiederholungsverzögerungen festgelegt werden."
+      },
+      "invoice": {
+        "not_found": "Die Rechnung wurde nicht gefunden.",
+        "pdf_not_ready": "Das PDF der Rechnung wurde noch nicht erstellt. Versuchen Sie es gleich noch einmal."
+      },
+      "invoice_link": {
+        "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
+        "draft_invoice": "Eine Rechnung im Entwurf kann nicht per Link geteilt werden.",
+        "not_found": "Der Rechnungslink wurde nicht gefunden."
       }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "Das Kürzel der App darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten und höchstens 60 Zeichen lang sein.",
+        "slug_taken": "Dieses Konto hat bereits eine App mit diesem Kürzel."
+      },
+      "mail": {
+        "unknown_category": "Diese E-Mail-Kategorie existiert nicht."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut."
+      },
+      "webhook": {
+        "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
+        "too_many_endpoints": "Die Höchstzahl an Webhook-Endpunkten ist erreicht. Löschen Sie zuerst einen."
+      }
+    },
+    "common": {
+      "invalid_argument": "Etwas in der Anfrage ist ungültig.",
+      "not_found": "Nicht gefunden.",
+      "already_exists": "Existiert bereits.",
+      "failed_precondition": "Das ist im aktuellen Zustand nicht möglich.",
+      "permission_denied": "Dafür fehlt Ihnen die Berechtigung.",
+      "unauthenticated": "Melden Sie sich erneut an: Das Token fehlt oder ist nicht mehr gültig.",
+      "rate_limited": "Zu viele Anfragen. Warten Sie kurz und versuchen Sie es erneut.",
+      "unavailable": "Der Dienst ist gerade nicht verfügbar. Versuchen Sie es in Kürze erneut.",
+      "timeout": "Die Anfrage hat zu lange gedauert. Versuchen Sie es erneut.",
+      "conflict": "Die Daten haben sich während Ihrer Arbeit geändert. Laden Sie neu und versuchen Sie es erneut.",
+      "not_implemented": "Das wird noch nicht unterstützt.",
+      "internal": "Auf unserer Seite ist etwas schiefgelaufen. Versuchen Sie es erneut; bleibt es dabei, suchen Sie mit der Anfrage-ID in den Logs."
+    }
+  },
+  "apps": {
+    "new": "Neue App",
+    "hint": "Eine App ist eine der Anwendungen des Kontos, mit eigener Sandbox- und Live-Umgebung, eigenen Schlüsseln, Kunden und Tarifen. Währung, Zeitzone und Karenzzeit werden hier gewählt und lassen sich später nicht ändern.",
+    "formLabel": "neue App",
+    "name": "App-Name",
+    "slug": "Kürzel",
+    "slugPlaceholder": "Kürzel (optional, z. B. web-shop)",
+    "currency": "Währung",
+    "currencyPlaceholder": "Währung (später nicht änderbar)",
+    "timezone": "Zeitzone",
+    "timezonePlaceholder": "IANA-Zeitzone, z. B. Europe/Istanbul",
+    "grace": "Karenzzeit (Stunden)",
+    "gracePlaceholder": "Karenzzeit, Stunden (0 bis 168)",
+    "create": "App erstellen",
+    "badSlug": "Das Kürzel darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten, höchstens 60 Zeichen.",
+    "title": "Apps dieses Kontos",
+    "immutable": "Umbenennen und Löschen einer App gibt es in der API noch nicht; Währung, Zeitzone und Karenzzeit einer App lassen sich nicht ändern.",
+    "environments": "Umgebungen",
+    "created": "Erstellt",
+    "actions": "Aktionen",
+    "empty": "Dieses Konto hat noch keine Apps.",
+    "keys": {
+      "open": "API-Schlüssel",
+      "title": "API-Schlüssel von {app}",
+      "hint": "Erstellen Sie einen Schlüssel für eine Umgebung. Er wird nur einmal angezeigt; die API kann Schlüssel später nicht auflisten, daher stehen hier die auf dieser Seite erstellten, bis Sie sie verlassen. Ein anderswo erstellter Schlüssel lässt sich über seine ID widerrufen.",
+      "secretOnce": "Kopieren Sie den Schlüssel jetzt: Er wird nur einmal angezeigt.",
+      "dismiss": "Ich habe ihn kopiert",
+      "createFor": "Schlüssel für {env} erstellen",
+      "create": "Schlüssel erstellen",
+      "revoked": "Widerrufen",
+      "revoke": "Widerrufen",
+      "revokeForm": "Schlüssel widerrufen",
+      "revokeId": "Schlüssel-ID",
+      "revokeById": "Per ID widerrufen",
+      "confirmRevoke": "Diesen API-Schlüssel widerrufen? Anfragen mit ihm funktionieren sofort nicht mehr.",
+      "revokedDone": "Schlüssel {id} widerrufen."
+    }
+  },
+  "address": {
+    "title": "Verkäuferadresse",
+    "hint": "Die rechtliche Adresse und Rechnungsadresse dieses Mandanten; sie steht als Verkäufer auf jeder Rechnung (PDF und gehostete Seite). Sie gilt für Rechnungen, die nach dem Speichern entstehen.",
+    "formLabel": "Verkäuferadresse",
+    "noCountry": "Kein Land",
+    "otherCountry": "Anderes Land…",
+    "labels": {
+      "country": "Land",
+      "countryCode": "Ländercode (zwei Buchstaben, z. B. SE)",
+      "line1": "Adresszeile 1",
+      "line2": "Adresszeile 2",
+      "city": "Ort",
+      "region": "Region",
+      "state": "Bundesland",
+      "province": "Provinz",
+      "county": "Landkreis",
+      "prefecture": "Präfektur",
+      "postalCode": "Postleitzahl",
+      "zip": "ZIP-Code",
+      "postcode": "Postleitzahl"
+    },
+    "problems": {
+      "tooLong": "Zu lang: höchstens {max} Zeichen.",
+      "oneLine": "Muss eine einzelne Textzeile sein.",
+      "badCountry": "Zwei Buchstaben (ISO 3166-1), z. B. TR."
+    },
+    "postalHint": "Das sieht nicht wie eine Postleitzahl dieses Landes aus, zum Beispiel {example}. Sie wird trotzdem akzeptiert.",
+    "save": "Adresse speichern",
+    "saved": "Adresse gespeichert.",
+    "preview": {
+      "title": "Rechnungsvorschau",
+      "hint": "So erscheint der Verkäufer auf einer Rechnung.",
+      "from": "Von",
+      "empty": "Keine Adresse: Die Rechnung zeigt nur den Namen."
     }
   }
 }

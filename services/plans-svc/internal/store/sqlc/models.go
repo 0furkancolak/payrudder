@@ -239,6 +239,12 @@ type Tenant struct {
 	BankTransfer       json.RawMessage
 }
 
+type TenantMailSetting struct {
+	TenantID  uuid.UUID
+	Disabled  []string
+	UpdatedAt time.Time
+}
+
 type WebhookDelivery struct {
 	TenantID      uuid.UUID
 	ID            uuid.UUID

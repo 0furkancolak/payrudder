@@ -3,8 +3,7 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
-import { errorText } from "@/shared/lib/errors";
+import { useErrorText } from "@/shared/lib/errors";
 import { COUNTRY_HINTS, CURRENCIES, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -19,7 +18,8 @@ import CatalogueCard from "./CatalogueCard.vue";
 import BankTransferForm from "./BankTransferForm.vue";
 import { templateText } from "./templates";
 
-const { t, te, locale } = useI18n();
+const { t, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 
@@ -85,7 +85,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.providers.accounts") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.providers.accountsHint") }}</p>
-    <p v-if="accounts.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(accounts.error.value).message }}</p>
+    <p v-if="accounts.error.value" class="text-destructive text-sm" role="alert">{{ errorText(accounts.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -129,15 +129,15 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       <div><Button type="submit" :disabled="actions.save.isPending.value || provider === ''">{{ t("billing.providers.saveAccount") }}</Button></div>
     </form>
     <p v-if="settingsError" class="text-destructive text-sm" role="alert">{{ settingsError }}</p>
-    <p v-if="actions.save.error.value" class="text-destructive text-sm" role="alert">{{ errorText(t, te, actions.save.error.value) }}</p>
-    <p v-if="actions.remove.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(actions.remove.error.value).message }}</p>
+    <p v-if="actions.save.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.save.error.value) }}</p>
+    <p v-if="actions.remove.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.remove.error.value) }}</p>
     <p v-if="actions.save.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.providers.saved") }}</p>
   </Card>
 
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.providers.routing") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.providers.routingHint") }}</p>
-    <p v-if="stored.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(stored.error.value).message }}</p>
+    <p v-if="stored.error.value" class="text-destructive text-sm" role="alert">{{ errorText(stored.error.value) }}</p>
     <datalist id="countries"><option v-for="c in COUNTRY_HINTS" :key="c" :value="c" /></datalist>
     <div v-for="(r, i) in rules" :key="i" class="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3" role="group" :aria-label="t('billing.providers.rule', { n: i + 1 })">
       <Input v-model="r.country" list="countries" maxlength="2" :aria-label="t('billing.providers.country', { n: i + 1 })" :placeholder="t('billing.providers.anyCountry')" />
@@ -155,7 +155,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       <Button type="button" variant="outline" @click="rules.push({ country: '', currency: '', provider: ROUTABLE_PROVIDERS[0]?.name ?? '' })"><Plus class="size-4" />{{ t("billing.providers.addRule") }}</Button>
       <Button type="button" :disabled="setRules.isPending.value" @click="setRules.mutate(rules.map((r) => ({ ...r, country: r.country.trim().toUpperCase() })))">{{ t("billing.providers.saveRules") }}</Button>
     </div>
-    <p v-if="setRules.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(setRules.error.value).message }}</p>
+    <p v-if="setRules.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setRules.error.value) }}</p>
     <p v-if="setRules.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.providers.rulesSaved") }}</p>
 
     <form class="flex flex-wrap items-center gap-3 border-t pt-4" role="form" :aria-label="t('billing.providers.preview')" @submit.prevent="preview.mutate({ country: pCountry.trim().toUpperCase(), currency: pCurrency })">

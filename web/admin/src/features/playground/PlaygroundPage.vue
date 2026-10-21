@@ -2,7 +2,7 @@
 import { Link } from "@tanstack/vue-router";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { playgroundDefaults } from "@/shared/lib/prefill";
 import { Badge } from "@/shared/ui/badge";
@@ -16,6 +16,7 @@ import { prefilledOperatorToken } from "@/shared/lib/prefill";
 import { CURRENCIES, SCENARIOS, usePlayground, type Currency, type Scenario } from "./usePlayground";
 
 const { t, locale } = useI18n();
+const errorText = useErrorText();
 const play = usePlayground();
 
 // In a development stack the account form comes pre-filled (see shared/lib/prefill.ts).
@@ -34,7 +35,7 @@ function create() {
 
 <template>
   <PageHeader :title="t('playground.title')" :description="t('playground.intro')" />
-  <p v-if="play.error.value" class="text-destructive bg-destructive/10 mb-4 rounded-2xl px-4 py-3 text-sm" role="alert">{{ toApiError(play.error.value).message }}</p>
+  <p v-if="play.error.value" class="text-destructive bg-destructive/10 mb-4 rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(play.error.value) }}</p>
 
   <div class="grid gap-4 lg:grid-cols-2">
     <Card>

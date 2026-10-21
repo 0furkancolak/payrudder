@@ -13,6 +13,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
@@ -32,6 +33,8 @@ const (
 	EnvLocal Environment = "local"
 	EnvCI    Environment = "ci"
 	EnvKind  Environment = "kind"
+	// EnvRailway is a deployment on Railway (deploy/railway).
+	EnvRailway Environment = "railway"
 )
 
 // Base holds settings shared by every Quotify process.
@@ -55,7 +58,7 @@ type Base struct {
 func (b Base) Validate() error {
 	var errs []error
 	switch b.Env {
-	case EnvLocal, EnvCI, EnvKind:
+	case EnvLocal, EnvCI, EnvKind, EnvRailway:
 	default:
 		errs = append(errs, fmt.Errorf("QUOTIFY_ENV: unknown environment %q", b.Env))
 	}
@@ -99,6 +102,9 @@ func LoadFrom[T any](environ map[string]string, defaults ...[]byte) (T, error) {
 	for k, v := range environ {
 		merged[k] = v
 	}
+	if err := applyPort[T](merged, environ); err != nil {
+		return cfg, fmt.Errorf("config: %w", err)
+	}
 	if err := env.ParseWithOptions(&cfg, env.Options{Environment: merged}); err != nil {
 		return cfg, fmt.Errorf("config: %w", err)
 	}
@@ -111,6 +117,34 @@ func LoadFrom[T any](environ map[string]string, defaults ...[]byte) (T, error) {
 		a.Apply()
 	}
 	return cfg, nil
+}
+
+// portTargets are the settings PORT can fill, in order of preference: the address of a service's public HTTP API, else its operational address.
+var portTargets = []string{"QUOTIFY_HTTP_ADDR", "MOCKPSP_HTTP_ADDR", "QUOTIFY_METRICS_ADDR"}
+
+// applyPort honours the PORT variable that platforms such as Railway inject: the platform's health check and public domain reach a process only on that
+// port. PORT fills the first of portTargets that T has, unless the environment sets that variable itself, so the YAML and environment contract is unchanged
+// where PORT is absent. A service with an HTTP API listens there; every other service serves /healthz, /readyz and /metrics there (its gRPC port stays fixed).
+func applyPort[T any](merged, environ map[string]string) error {
+	port := environ["PORT"]
+	if port == "" {
+		return nil
+	}
+	if n, err := strconv.Atoi(port); err != nil || n < 1 || n > 65535 {
+		return fmt.Errorf("PORT: %q is not a port number", port)
+	}
+	names := map[string]bool{}
+	collectTags(reflect.TypeFor[T](), names, map[string]bool{})
+	for _, target := range portTargets {
+		if !names[target] {
+			continue
+		}
+		if _, set := environ[target]; !set {
+			merged[target] = ":" + port
+		}
+		return nil
+	}
+	return nil
 }
 
 func processEnv() map[string]string {

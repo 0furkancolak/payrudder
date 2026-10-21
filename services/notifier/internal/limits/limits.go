@@ -28,6 +28,9 @@ import (
 // Topic is the limit alert topic.
 const Topic = "usage.limit-exceeded.v1"
 
+// limitTemplate is the template of the alert mail (category usage_alerts).
+const limitTemplate = "limit_exceeded.v1"
+
 // Plans is the part of plans-svc the consumer uses.
 type Plans interface {
 	GetCustomer(ctx context.Context, in *plansv1.GetCustomerRequest, opts ...grpc.CallOption) (*plansv1.GetCustomerResponse, error)
@@ -75,6 +78,11 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 	if err1 != nil || err2 != nil {
 		return c.dlq(ctx, rec, "INVALID_EVENT", errors.Join(err1, err2))
 	}
+	if ok, err := c.Mailer.Permitted(ctx, tid, limitTemplate); err != nil {
+		return err
+	} else if !ok {
+		return nil // the tenant switched usage alerts off: dropped, counted, and the offset still advances
+	}
 	octx := tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: tid}))
 	cust, err := c.Plans.GetCustomer(octx, &plansv1.GetCustomerRequest{Id: cid.String()})
 	if status.Code(err) == codes.NotFound {
@@ -93,7 +101,7 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 		"period": le.GetPeriodId(), "threshold_pct": fmt.Sprint(le.GetThresholdPct()),
 		"used": quantity.FormatUnits(le.GetUsedUnits(), scale), "limit": quantity.FormatUnits(le.GetLimitUnits(), scale),
 	}
-	_, err = c.Mailer.Deliver(ctx, le.GetEventId(), nil, "limit", "limit_exceeded.v1", cust.GetCustomer().GetEmail(), data,
+	_, err = c.Mailer.Deliver(ctx, le.GetEventId(), nil, "limit", limitTemplate, cust.GetCustomer().GetEmail(), data,
 		tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX)
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
 		return c.dlq(ctx, rec, "INVALID_EVENT", err)

@@ -8,11 +8,13 @@ offers the two actions an operator needs most, redriving dead letters and readin
 |---|---|
 | Sign-in | The operator token (`QUOTIFY_OPERATOR_TOKEN`), kept in the tab's session storage. It is checked by asking the gateway for the tenant list. |
 | Tenants | Every tenant: environment, tier, currency, time zone. |
-| Tenant | A header and seven tabs. **Overview**: its invoices (kind, period, total, status, saga state) and a lookup for replay and re-rating jobs by id. The other tabs are the billing pages below. |
+| Tenant | A header and its tabs. **Overview**: its invoices (kind, period, total, status, saga state) and a lookup for replay and re-rating jobs by id. The other tabs are the billing pages below. |
 | Customers | List and create (customer id, name, e-mail, country, billing currency). |
 | Packages | Packages with their latest version's fixed fee and fees in other currencies; publish a version (amounts typed in major units, sent as minor units; a package that exists gets a new version). |
 | Subscriptions | List, create (customer, package, currency, trial days, provider or "by the routing rules"), and a panel to pause, resume, cancel at the period end, end now, change package and **move to another payment provider** (a subscription a provider runs is only moved), with the customer's **usage against the package's limits** this period. |
 | Payments | The payment ledger across providers, and a **reconciliation** of a period's paid invoices against it. |
+| Apps | The apps of the tenant's account, each with its sandbox and live tenant; create an app (name, optional slug, currency, time zone, grace period); per environment **create an API key** (the secret is shown once) and **revoke** keys (the API cannot list keys, so those made in the visit are listed, any key can be revoked by id). Rename and delete need operator routes that do not exist yet. |
+| Seller address | The address printed as the seller on every invoice: country first, then the fields that country asks for, the backend's validation, and a **preview** of the seller block as the invoice prints it. |
 | Providers | The tenant's provider accounts (credentials are sealed and never shown again), the **routing rules** with a preview, and the subscriptions the providers run. |
 | Reports | Revenue by period, provider and country; subscriptions and monthly recurring revenue; unpaid invoices. A row per currency, never one total. |
 | Invoice | Lines, a link to the PDF (presigned for five minutes) and the **saga timeline**: every transition with its cause and time, from `saga_events`. |
@@ -36,14 +38,14 @@ to end; it never touches a live tenant. A declined payment leaves the invoice op
 
 They show a tenant's data through the tenant API the tenant itself uses, with the operator's token plus `X-Quotify-Tenant: <tenant id>` ("act as", gateway `authenticate`): the
 same endpoints, rate limits and validation, no operator-only copy. Provider accounts, the ledger, the reconciliation and provider moves are operator routes and go as the operator.
-The pages are the features `customers`, `packages`, `subscriptions`, `payments`, `providers` and `reports`; the tenant layout (`features/tenants`) hosts them as child routes.
+The pages are the features `customers`, `packages`, `subscriptions`, `payments`, `providers`, `reports`, `webhooks`, `apps` and `seller-address`; the tenant layout (`features/tenants`) hosts them as child routes.
 Their tests (`e2e-mock/`, `npm run e2e:mock`) run the built console against a **mocked gateway** (every `/gw` request is answered by the test), so they need no stack and run in the console's CI
 job; `e2e/` still drives the real stack.
 
 ## How it is built
 
 - **Feature-based layout.** `src/features/<feature>` owns everything about one part of the product: its pages (`*.vue`), its TanStack Query hooks (`api.ts`), its route
-  declarations (`routes.ts`) and a small public `index.ts`. The features are `auth`, `tenants`, `invoices`, `dead-letters`, `playground`, `customers`, `packages`, `subscriptions`, `payments`, `providers` and `reports`; `src/app` only composes them (router, query client,
+  declarations (`routes.ts`) and a small public `index.ts`. The features are `auth`, `tenants`, `invoices`, `dead-letters`, `playground`, `customers`, `packages`, `subscriptions`, `payments`, `providers`, `reports`, `webhooks`, `apps` and `seller-address`; `src/app` only composes them (router, query client,
   i18n, layout) and `src/shared` holds what several features need (the API client, the session token, money and label helpers). A feature imports another only through its `index.ts`
   (the tenant page shows `invoices`' table).
 - **TanStack Router** (`@tanstack/vue-router`, code-based routes). Every feature exports a function that creates its routes under a parent; the app mounts all but the sign-in page under one
@@ -56,6 +58,7 @@ job; `e2e/` still drives the real stack.
   (invoice status and kind, environment, tier) are translated when the locale has a label and shown as they are when it does not, so a new backend value still appears. Amounts are
   formatted from minor units with the currency's exponent and the locale (`shared/lib/money.ts`; the digits are moved as text, never through a float). A unit test fails if a locale misses a key
   or changes a `{placeholder}`. Technical identifiers (saga states, ids, causes) are not translated.
+- **Error keys.** The API sends a stable `error.key` ([error-keys.md](error-keys.md), [ADR 0020](adr/0020-modules-cqrs-errors-config.md)) with an English message. Every page shows an error through one function, `errorText` / `useErrorText()` in `shared/lib/errors.ts`: the message is `errors.<key>` in the locale file (nested, `errors.billing.credit_note.not_paid`) with the first error detail as `{field}` and `{detail}`, and the server's message when the locale has no entry, so a key newer than the console still shows something. A unit test reads `docs/error-keys.md` and the `common.*` defaults of `pkg/errkey` and fails when any of the six languages lacks a key (or keeps one the backend dropped). Adding an error in Go therefore means: regenerate the doc, add the six translations.
 
 - **Typed client.** `npm run gen` generates `src/lib/schema.d.ts` from [`api/openapi/v1.yaml`](../api/openapi/v1.yaml) with `openapi-typescript`;
   the client is `openapi-fetch` over those types, so a route or field that does not exist in the spec does not compile. CI regenerates the file and fails on a
@@ -94,7 +97,7 @@ a paid invoice, then drives the browser: sign in with the operator token, open t
 `COMPLETED`; a wrong token is refused and a signed-out visitor is sent to the sign-in page; a valid notification command put into `notification.send.dlq` appears in the dead-letter view
 and disappears when redriven (the notifier delivers it; the saga it names is already final, so its reply is ignored).
 
-`make web-check` runs install, ESLint, the type check (`vue-tsc`), the unit tests (Vitest: locale parity and money formatting), the OpenAPI type check and the build.
+`make web-check` runs install, ESLint, the type check (`vue-tsc`), the unit tests (Vitest: locale parity, error-key coverage, address rules and money formatting), the OpenAPI type check and the build.
 `web/admin/e2e/i18n.spec.ts` checks that the language follows the browser, can be changed and remembered, that Arabic is right-to-left, and that the signed-in pages and the playground are translated.
 
 ## Not covered

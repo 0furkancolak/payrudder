@@ -48,6 +48,7 @@ type Config struct {
 	SandboxSMTP    string        `env:"SANDBOX_SMTP_ADDR"`
 	MailFrom       string        `env:"MAIL_FROM"`
 	SendingStale   time.Duration `env:"NOTIFIER_SENDING_STALE"`
+	MailSwitchTTL  time.Duration `env:"NOTIFIER_MAIL_SWITCH_TTL"`
 	Group          string        `env:"QUOTIFY_CONSUMER_GROUP"`
 	DLQTopic       string        `env:"QUOTIFY_DLQ_TOPIC"`
 	SessionTimeout time.Duration `env:"QUOTIFY_CONSUMER_SESSION_TIMEOUT"`
@@ -109,19 +110,22 @@ func run() error {
 	}
 	defer pool.Close()
 
+	plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	if err != nil {
+		return fmt.Errorf("plans-svc client: %w", err)
+	}
+	defer func() { _ = plansConn.Close() }()
+
 	notes := store.Notifications{DB: pool, Stale: cfg.SendingStale}
 	mailer := &handler.Mailer{Default: mail.SMTP{Addr: cfg.SMTPAddr}, From: cfg.MailFrom, Notes: notes}
+	// A tenant's mail switch (plans-svc) is read before every send.
+	mailer.Switch = &handler.PlansSwitch{Client: plansv1.NewPlansServiceClient(plansConn), TTL: cfg.MailSwitchTTL}
 	if cfg.SandboxSMTP != "" {
 		mailer.Sandbox = mail.SMTP{Addr: cfg.SandboxSMTP}
 	}
 	w := &workerx.Worker{URL: cfg.RabbitMQURL, Handler: &handler.Handler{Mailer: mailer}, Inbox: notes, Log: log,
 		Queues: []string{rabbitx.QueueNotificationSend}}
 
-	plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return fmt.Errorf("plans-svc client: %w", err)
-	}
-	defer func() { _ = plansConn.Close() }()
 	producer, err := kafkax.NewProducer(cfg.KafkaBrokers)
 	if err != nil {
 		return err

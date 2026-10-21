@@ -39,6 +39,10 @@ service PlansService {
   rpc GetRoutingRules(GetRoutingRulesRequest) returns (GetRoutingRulesResponse);
   // SetRoutingRules replaces the rules. Existing subscriptions keep the provider they were created with.
   rpc SetRoutingRules(SetRoutingRulesRequest) returns (SetRoutingRulesResponse);
+  // GetMailSettings returns, for every mail category, whether Quotify's outgoing e-mail of that kind is on for the tenant. Every category is on until switched off.
+  rpc GetMailSettings(GetMailSettingsRequest) returns (GetMailSettingsResponse);
+  // SetMailSettings switches the categories listed on or off; categories not listed keep their setting. Notifier drops a mail of a category that is off.
+  rpc SetMailSettings(SetMailSettingsRequest) returns (SetMailSettingsResponse);
   // PreviewRouting says where a customer in a country paying in a currency would go, without creating anything.
   rpc PreviewRouting(PreviewRoutingRequest) returns (PreviewRoutingResponse);
   // StartProviderMigration moves a subscription to another payment provider without charging the customer twice. The old subscription ends
@@ -351,6 +355,28 @@ message RoutingRule {
   string currency = 2;
   // A provider name from the catalogue: iyzico or paddle.
   string provider = 3;
+}
+
+// MailCategorySetting is one kind of mail and whether it is sent. Categories: invoice_issued, payment_receipts, payment_failed, usage_alerts, system.
+message MailCategorySetting {
+  string category = 1;
+  bool enabled = 2;
+}
+
+message GetMailSettingsRequest {}
+
+message GetMailSettingsResponse {
+  // Every category, in a fixed order.
+  repeated MailCategorySetting categories = 1;
+}
+
+message SetMailSettingsRequest {
+  // The categories to change. An unknown category is rejected (plans.mail.unknown_category); a category listed twice takes its last value.
+  repeated MailCategorySetting categories = 1;
+}
+
+message SetMailSettingsResponse {
+  repeated MailCategorySetting categories = 1;
 }
 
 message GetRoutingRulesRequest {}
