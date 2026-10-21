@@ -1222,6 +1222,34 @@
       "setting": {
         "invalid": "The e-invoice trigger must be off, finalized or paid."
       }
+    },
+    "identity": {
+      "account": {
+        "forbidden": "Your role in this account does not allow this.",
+        "not_found": "This account does not exist, or it is not yours."
+      },
+      "api_key": {
+        "bad_environment": "This app has no such environment.",
+        "not_found": "This API key does not exist.",
+        "quota": "An environment can have at most 10 active API keys. Revoke one first."
+      },
+      "app": {
+        "not_found": "This app does not exist, or it is not yours.",
+        "quota": "An account can have at most 20 apps."
+      },
+      "auth": {
+        "invalid_credentials": "Wrong e-mail or password, or too many attempts. Try again in a few minutes.",
+        "rate_limited": "Too many attempts from this address. Try again in a minute."
+      },
+      "session": {
+        "invalid": "Your session has ended. Sign in again."
+      },
+      "signup": {
+        "email_taken": "An account with this e-mail already exists. Sign in instead."
+      },
+      "tenant": {
+        "not_found": "This environment does not exist, or it is not yours."
+      }
     }
   }
 }

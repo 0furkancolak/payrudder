@@ -1222,6 +1222,34 @@
       "setting": {
         "invalid": "Le déclencheur de la facture électronique doit être off, finalized ou paid."
       }
+    },
+    "identity": {
+      "account": {
+        "forbidden": "Votre rôle dans ce compte ne le permet pas.",
+        "not_found": "Ce compte n'existe pas, ou il n'est pas le vôtre."
+      },
+      "api_key": {
+        "bad_environment": "Cette application n'a pas un tel environnement.",
+        "not_found": "Cette clé d'API n'existe pas.",
+        "quota": "Un environnement peut avoir 10 clés d'API actives au plus. Révoquez-en une d'abord."
+      },
+      "app": {
+        "not_found": "Cette application n'existe pas, ou elle n'est pas la vôtre.",
+        "quota": "Un compte peut avoir 20 applications au plus."
+      },
+      "auth": {
+        "invalid_credentials": "E-mail ou mot de passe incorrect, ou trop de tentatives. Réessayez dans quelques minutes.",
+        "rate_limited": "Trop de tentatives depuis cette adresse. Réessayez dans une minute."
+      },
+      "session": {
+        "invalid": "Votre session a pris fin. Reconnectez-vous."
+      },
+      "signup": {
+        "email_taken": "Un compte existe déjà avec cet e-mail. Connectez-vous plutôt."
+      },
+      "tenant": {
+        "not_found": "Cet environnement n'existe pas, ou il n'est pas le vôtre."
+      }
     }
   }
 }

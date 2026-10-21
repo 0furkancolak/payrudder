@@ -1,0 +1,186 @@
+syntax = "proto3";
+
+package quotify.plans.v1;
+
+import "google/protobuf/timestamp.proto";
+import "quotify/plans/v1/resources.proto";
+
+// IdentityService is the people side of the platform (phase 38): users who sign up, own an account and manage its apps and keys.
+// Only the gateway calls it. Everything after sign-in takes the user id the gateway resolved from the session token and checks the
+// membership itself, in SQL, so a request for another account's app finds nothing even if the gateway had a bug.
+service IdentityService {
+  // SignUp creates the user, an account and the owner membership in one transaction and opens a session.
+  rpc SignUp(SignUpRequest) returns (SignUpResponse);
+  // SignIn checks the password and opens a session. Every failure (unknown e-mail, wrong password, locked) is the same error.
+  rpc SignIn(SignInRequest) returns (SignInResponse);
+  // SignOut revokes the session of the token. An unknown or already revoked token is not an error.
+  rpc SignOut(SignOutRequest) returns (SignOutResponse);
+  // GetSession resolves a session token to its user and memberships, and slides the expiry.
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+
+  rpc GetMyAccount(GetMyAccountRequest) returns (GetMyAccountResponse);
+  // CreateMyApp adds an app (a sandbox and a live tenant) to an account the user owns or administers. Free tier, no grace period.
+  rpc CreateMyApp(CreateMyAppRequest) returns (CreateMyAppResponse);
+  rpc ListMyApps(ListMyAppsRequest) returns (ListMyAppsResponse);
+  rpc GetMyApp(GetMyAppRequest) returns (GetMyAppResponse);
+  // ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
+  rpc ResolveMyTenant(ResolveMyTenantRequest) returns (ResolveMyTenantResponse);
+  rpc CreateMyApiKey(CreateMyApiKeyRequest) returns (CreateMyApiKeyResponse);
+  rpc ListMyApiKeys(ListMyApiKeysRequest) returns (ListMyApiKeysResponse);
+  rpc RevokeMyApiKey(RevokeMyApiKeyRequest) returns (RevokeMyApiKeyResponse);
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string display_name = 3;
+  google.protobuf.Timestamp create_time = 4;
+}
+
+// Membership is a user's role in an account: "owner", "admin" or "viewer".
+message Membership {
+  string account_id = 1;
+  string account_name = 2;
+  string role = 3;
+}
+
+message SignUpRequest {
+  string email = 1;
+  // At least 10 characters.
+  string password = 2;
+  string display_name = 3;
+  // The organisation the user starts.
+  string account_name = 4;
+}
+
+message SignUpResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  // qs_… Shown once; only its hash is stored.
+  string token = 3;
+  google.protobuf.Timestamp expire_time = 4;
+}
+
+message SignInRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message SignInResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_time = 4;
+}
+
+message SignOutRequest {
+  string token = 1;
+}
+
+message SignOutResponse {}
+
+message GetSessionRequest {
+  string token = 1;
+}
+
+message GetSessionResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  google.protobuf.Timestamp expire_time = 3;
+}
+
+message AccountMember {
+  string user_id = 1;
+  string email = 2;
+  string display_name = 3;
+  string role = 4;
+  google.protobuf.Timestamp create_time = 5;
+}
+
+message GetMyAccountRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message GetMyAccountResponse {
+  string id = 1;
+  string name = 2;
+  // The caller's own role in the account.
+  string role = 3;
+  repeated AccountMember members = 4;
+  google.protobuf.Timestamp create_time = 5;
+}
+
+message CreateMyAppRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string name = 3;
+  // Empty: the name in lower case with dashes.
+  string slug = 4;
+  string currency = 5;
+  string timezone = 6;
+}
+
+message CreateMyAppResponse {
+  App app = 1;
+}
+
+message ListMyAppsRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message ListMyAppsResponse {
+  repeated App apps = 1;
+}
+
+message GetMyAppRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message GetMyAppResponse {
+  App app = 1;
+  string role = 2;
+}
+
+message ResolveMyTenantRequest {
+  string user_id = 1;
+  string tenant_id = 2;
+}
+
+message ResolveMyTenantResponse {
+  Tenant tenant = 1;
+  string role = 2;
+}
+
+message CreateMyApiKeyRequest {
+  string user_id = 1;
+  string app_id = 2;
+  Environment environment = 3;
+}
+
+message CreateMyApiKeyResponse {
+  ApiKey api_key = 1;
+  // qk_{test|live}_{prefix}_{secret}. Shown once, never stored.
+  string plaintext = 2;
+}
+
+message ListMyApiKeysRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message ListMyApiKeysResponse {
+  repeated ApiKey api_keys = 1;
+}
+
+message RevokeMyApiKeyRequest {
+  string user_id = 1;
+  string app_id = 2;
+  string api_key_id = 3;
+}
+
+message RevokeMyApiKeyResponse {
+  ApiKey api_key = 1;
+}

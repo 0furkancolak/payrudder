@@ -1222,6 +1222,34 @@
       "setting": {
         "invalid": "Der E-Rechnungs-Auslöser muss aus, finalisiert oder bezahlt sein."
       }
+    },
+    "identity": {
+      "account": {
+        "forbidden": "Ihre Rolle in diesem Konto erlaubt das nicht.",
+        "not_found": "Dieses Konto existiert nicht oder gehört Ihnen nicht."
+      },
+      "api_key": {
+        "bad_environment": "Diese App hat keine solche Umgebung.",
+        "not_found": "Dieser API-Schlüssel existiert nicht.",
+        "quota": "Eine Umgebung kann höchstens 10 aktive API-Schlüssel haben. Widerrufen Sie zuerst einen."
+      },
+      "app": {
+        "not_found": "Diese App existiert nicht oder gehört Ihnen nicht.",
+        "quota": "Ein Konto kann höchstens 20 Apps haben."
+      },
+      "auth": {
+        "invalid_credentials": "E-Mail oder Passwort falsch oder zu viele Versuche. Versuchen Sie es in einigen Minuten erneut.",
+        "rate_limited": "Zu viele Versuche von dieser Adresse. Versuchen Sie es in einer Minute erneut."
+      },
+      "session": {
+        "invalid": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
+      },
+      "signup": {
+        "email_taken": "Ein Konto mit dieser E-Mail-Adresse existiert bereits. Melden Sie sich stattdessen an."
+      },
+      "tenant": {
+        "not_found": "Diese Umgebung existiert nicht oder gehört Ihnen nicht."
+      }
     }
   }
 }

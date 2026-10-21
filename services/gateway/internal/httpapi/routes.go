@@ -24,6 +24,7 @@ func (s *Server) routes() []Route {
 		s.creditRoutes(),
 		s.assetRoutes(),
 		s.billingReadRoutes(),
+		s.appRoutes(),
 		s.operatorProviderRoutes(),
 		s.operatorAdminRoutes(),
 	)

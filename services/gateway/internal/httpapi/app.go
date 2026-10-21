@@ -1,0 +1,134 @@
+package httpapi
+
+import (
+	"net/http"
+
+	"google.golang.org/grpc/codes"
+
+	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+)
+
+// The product API (/app/v1): what a signed-in person sees and does in their accounts. Every handler takes the user from the session and names no
+// user, account or tenant from the request body; the account comes from ?account_id= (default: the person's first account) and is checked against
+// the session's memberships here and again in SQL by plans-svc.
+
+func (s *Server) appRoutes() []Route {
+	return []Route{
+		{"POST", "/auth/signup", AccessPublic, "", s.signUp},
+		{"POST", "/auth/signin", AccessPublic, "", s.signIn},
+		{"POST", "/auth/signout", AccessSession, ratelimit.ClassWrite, s.signOut},
+		{"GET", "/auth/me", AccessSession, ratelimit.ClassRead, s.me},
+		{"GET", "/app/v1/account", AccessSession, ratelimit.ClassRead, s.appAccount},
+		{"GET", "/app/v1/apps", AccessSession, ratelimit.ClassRead, s.appList},
+		{"POST", "/app/v1/apps", AccessSession, ratelimit.ClassWrite, s.appCreate},
+		{"GET", "/app/v1/apps/{id}", AccessSession, ratelimit.ClassRead, s.appGet},
+		{"GET", "/app/v1/apps/{id}/overview", AccessSession, ratelimit.ClassRead, s.appOverview},
+		{"GET", "/app/v1/apps/{id}/api-keys", AccessSession, ratelimit.ClassRead, s.appKeys},
+		{"POST", "/app/v1/apps/{id}/api-keys", AccessSession, ratelimit.ClassWrite, s.appKeyCreate},
+		{"DELETE", "/app/v1/apps/{id}/api-keys/{key_id}", AccessSession, ratelimit.ClassWrite, s.appKeyRevoke},
+	}
+}
+
+// accountOf names the account a request is about: ?account_id= when given (it must be one of the session's), else the first. A person with no account
+// cannot happen after sign-up, but is answered like any account that is not theirs.
+func accountOf(r *http.Request, sess session) (string, error) {
+	want := r.URL.Query().Get("account_id")
+	for _, m := range sess.Memberships {
+		if want == "" || m.GetAccountId() == want {
+			return m.GetAccountId(), nil
+		}
+	}
+	return "", errkey.New(codes.NotFound, "identity.account.not_found", "no such account")
+}
+
+func (s *Server) appAccount(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	id, err := accountOf(r, sess)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Identity.GetMyAccount(r.Context(), &plansv1.GetMyAccountRequest{UserId: sess.UserID, AccountId: id})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) appList(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	id, err := accountOf(r, sess)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Identity.ListMyApps(r.Context(), &plansv1.ListMyAppsRequest{UserId: sess.UserID, AccountId: id})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) appCreate(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	id, err := accountOf(r, sess)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	var body struct {
+		Name     string `json:"name"`
+		Slug     string `json:"slug"`
+		Currency string `json:"currency"`
+		Timezone string `json:"timezone"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Identity.CreateMyApp(r.Context(), &plansv1.CreateMyAppRequest{
+		UserId: sess.UserID, AccountId: id, Name: body.Name, Slug: body.Slug, Currency: body.Currency, Timezone: body.Timezone})
+	respond(w, r, http.StatusCreated, resp.GetApp(), err)
+}
+
+func (s *Server) appGet(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	resp, err := s.d.Identity.GetMyApp(r.Context(), &plansv1.GetMyAppRequest{UserId: sess.UserID, AppId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) appKeys(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	resp, err := s.d.Identity.ListMyApiKeys(r.Context(), &plansv1.ListMyApiKeysRequest{UserId: sess.UserID, AppId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	var body struct {
+		Environment string `json:"environment"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	var env plansv1.Environment
+	switch body.Environment {
+	case "sandbox":
+		env = plansv1.Environment_ENVIRONMENT_SANDBOX
+	case "live":
+		env = plansv1.Environment_ENVIRONMENT_LIVE
+	default:
+		writeError(w, r, invalid("environment", "sandbox or live"))
+		return
+	}
+	noStore(w)
+	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: env})
+	respond(w, r, http.StatusCreated, resp, err)
+}
+
+func (s *Server) appKeyRevoke(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	_, err := s.d.Identity.RevokeMyApiKey(r.Context(), &plansv1.RevokeMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), ApiKeyId: r.PathValue("key_id")})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
