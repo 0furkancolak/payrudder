@@ -245,7 +245,8 @@
       "webhooks": "Webhooks",
       "mail": "E-Mail",
       "apps": "Apps",
-      "address": "Verkäuferadresse"
+      "address": "Verkäuferadresse",
+      "credits": "Guthaben"
     },
     "common": {
       "remove": "Entfernen"
@@ -639,6 +640,65 @@
         "delivered": "Zugestellt",
         "failed": "Fehlgeschlagen"
       }
+    },
+    "credits": {
+      "packs": {
+        "new": "Neues Guthabenpaket",
+        "hint": "Ein Paket ist eine Anzahl Guthaben zu einem Preis. Kunden kaufen es über einen Zahlungslink; das Guthaben wird gutgeschrieben, sobald die Zahlung bestätigt ist.",
+        "formLabel": "Neues Guthabenpaket",
+        "name": "Paketname",
+        "credits": "Guthaben",
+        "price": "Preis",
+        "currency": "Währung",
+        "create": "Paket hinzufügen",
+        "title": "Guthabenpakete",
+        "none": "Noch keine Guthabenpakete.",
+        "state": "Status",
+        "onSale": "Im Verkauf",
+        "withdrawn": "Zurückgezogen",
+        "withdraw": "Zurückziehen",
+        "restore": "Wieder verkaufen"
+      },
+      "customer": {
+        "title": "Guthaben eines Kunden",
+        "pick": "Kunden wählen",
+        "balance": "Guthaben verfügbar",
+        "nextExpiry": "Ein Teil verfällt am {when}"
+      },
+      "lots": {
+        "source": "Quelle",
+        "remaining": "Übrig",
+        "granted": "Gewährt",
+        "expires": "Verfällt",
+        "never": "Nie"
+      },
+      "source": {
+        "promo": "Aktion",
+        "manual": "Manuell",
+        "purchase": "Kauf"
+      },
+      "grant": {
+        "formLabel": "Guthaben hinzufügen",
+        "credits": "Hinzuzufügendes Guthaben",
+        "source": "Art",
+        "expiry": "Ablaufdatum",
+        "expiryHint": "Leer lassen für Guthaben ohne Ablauf",
+        "reason": "Notiz (optional)",
+        "submit": "Guthaben hinzufügen"
+      },
+      "ledger": {
+        "title": "Guthabenverlauf",
+        "none": "Noch keine Änderungen.",
+        "time": "Zeit",
+        "kind": "Art",
+        "amount": "Guthaben",
+        "reason": "Notiz"
+      },
+      "kind": {
+        "grant": "Hinzugefügt",
+        "consume": "Verbraucht",
+        "expire": "Verfallen"
+      }
     }
   },
   "apps": {
@@ -736,6 +796,21 @@
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
         "draft_invoice": "Eine Rechnung im Entwurf kann nicht per Link geteilt werden.",
         "not_found": "Der Rechnungslink wurde nicht gefunden."
+      },
+      "credits": {
+        "bad_amount": "Der Betrag muss eine ganze Zahl über null sein.",
+        "bad_customer": "Der Kunde ist nicht gültig.",
+        "bad_expiry": "Das Ablaufdatum muss in der Zukunft liegen.",
+        "bad_key": "Der Idempotency-Schlüssel ist zu lang (höchstens 128 Zeichen).",
+        "bad_pack": "Ein Paket braucht einen Namen sowie Guthaben und einen Preis über null.",
+        "bad_page_token": "Das Seitentoken ist nicht gültig.",
+        "bad_reason": "Die Notiz ist zu lang (höchstens 200 Zeichen).",
+        "bad_source": "Die Art muss Aktion oder manuell sein.",
+        "insufficient": "Der Kunde hat zu wenig Guthaben.",
+        "key_required": "Zum Verbrauchen von Guthaben ist ein Idempotency-Schlüssel nötig.",
+        "key_reused": "Dieser Idempotency-Schlüssel wurde schon für eine andere Anfrage verwendet.",
+        "pack_not_found": "Es gibt kein solches Guthabenpaket.",
+        "unknown_currency": "Diese Währung wird nicht unterstützt."
       }
     },
     "plans": {

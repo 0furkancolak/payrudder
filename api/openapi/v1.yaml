@@ -508,6 +508,93 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DunningSettings" } } } }
         "400": { $ref: "#/components/responses/Error" }
+  /v1/credit-packs:
+    get:
+      operationId: listCreditPacks
+      summary: The credit packs the tenant sells
+      parameters: [{ name: active, in: query, schema: { type: boolean }, description: "true leaves out packs withdrawn from sale" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditPackList" } } } }
+    post:
+      operationId: createCreditPack
+      summary: Add a credit pack
+      description: A pack is a number of credits for a price in one currency. A customer buys it through a payment link; the credits are granted when the payment is confirmed.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreditPackInput" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CreditPack" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/credit-packs/{id}/activate:
+    post:
+      operationId: activateCreditPack
+      summary: Put a credit pack back on sale
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/credit-packs/{id}/deactivate:
+    post:
+      operationId: deactivateCreditPack
+      summary: Withdraw a credit pack from sale
+      description: Credits already sold are not touched.
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/credits:
+    get:
+      operationId: getCreditBalance
+      summary: What a customer can spend now
+      description: The balance leaves out credits whose time has passed. `lots` shows where it comes from, the credits that expire first at the top.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditBalance" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/credits/grant:
+    post:
+      operationId: grantCredits
+      summary: Add credits to a customer
+      description: >
+        For a promotion, a goodwill gesture or a sale made outside Quotify. With an `idempotency_key` (or the `Idempotency-Key` header) a repeat of the call adds nothing and
+        returns `replayed: true`; the same key with other values is `billing.credits.key_reused`.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreditGrantInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditResult" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/credits/consume:
+    post:
+      operationId: consumeCredits
+      summary: Spend credits
+      description: >
+        Takes the credits that expire first. With too few credits nothing is taken and the answer is 409 `billing.credits.insufficient`. An `idempotency_key` (or the
+        `Idempotency-Key` header) is required: a retried call returns the first result with `replayed: true` instead of charging twice.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreditConsumeInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditResult" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/credits/ledger:
+    get:
+      operationId: listCreditLedger
+      summary: Every change to a customer's credits, newest first
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditLedgerPage" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/webhook-endpoints:
     post:
       operationId: createWebhookEndpoint
@@ -2630,6 +2717,79 @@ components:
           items: { type: integer, minimum: 1, maximum: 720 }
         defaults_in_use: { type: boolean, readOnly: true, description: "True when nothing was set and the service-wide delays apply" }
         update_time: { type: string, format: date-time, readOnly: true }
+    CreditPackInput:
+      type: object
+      required: [name, credits, price_minor, currency]
+      properties:
+        name: { type: string, maxLength: 80 }
+        credits: { type: string, description: "int64, above zero (a number is accepted too)" }
+        price_minor: { type: string, description: "int64 minor units of the currency, above zero" }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+    CreditPack:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        credits: { type: string, description: int64 as a string }
+        price_minor: { type: string, description: int64 as a string }
+        currency: { type: string }
+        active: { type: boolean }
+        create_time: { type: string, format: date-time }
+    CreditPackList:
+      type: object
+      properties:
+        packs: { type: array, items: { $ref: "#/components/schemas/CreditPack" } }
+    CreditLot:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        granted: { type: string, description: int64 as a string }
+        remaining: { type: string, description: int64 as a string }
+        source: { type: string, enum: [purchase, promo, manual] }
+        expire_time: { type: string, format: date-time, nullable: true, description: "Null: the credits never expire" }
+        create_time: { type: string, format: date-time }
+    CreditBalance:
+      type: object
+      properties:
+        balance: { type: string, description: int64 as a string }
+        next_expire_time: { type: string, format: date-time, nullable: true, description: "When some of the credits run out; null when none does" }
+        lots: { type: array, items: { $ref: "#/components/schemas/CreditLot" } }
+    CreditGrantInput:
+      type: object
+      required: [credits, source]
+      properties:
+        credits: { type: string, description: "int64, above zero (a number is accepted too)" }
+        source: { type: string, enum: [promo, manual] }
+        expire_time: { type: string, format: date-time, description: "Must lie in the future; leave out for credits that never expire" }
+        reason: { type: string, maxLength: 200 }
+        idempotency_key: { type: string, maxLength: 128 }
+    CreditConsumeInput:
+      type: object
+      required: [credits]
+      properties:
+        credits: { type: string, description: "int64, above zero (a number is accepted too)" }
+        reason: { type: string, maxLength: 200 }
+        idempotency_key: { type: string, maxLength: 128, description: "Required, here or in the Idempotency-Key header" }
+    CreditResult:
+      type: object
+      properties:
+        balance: { type: string, description: "int64 as a string: what the customer can spend after the call" }
+        replayed: { type: boolean, description: "True when the key had been used: nothing changed" }
+    CreditLedgerEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        lot_id: { type: string, format: uuid }
+        kind: { type: string, enum: [grant, consume, expire] }
+        amount: { type: string, description: "int64 as a string; negative for consume and expire" }
+        reason: { type: string }
+        idempotency_key: { type: string }
+        create_time: { type: string, format: date-time }
+    CreditLedgerPage:
+      type: object
+      properties:
+        entries: { type: array, items: { $ref: "#/components/schemas/CreditLedgerEntry" } }
+        next_page_token: { type: string }
     WebhookEndpointInput:
       type: object
       required: [url]

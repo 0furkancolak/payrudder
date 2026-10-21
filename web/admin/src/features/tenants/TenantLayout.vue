@@ -23,6 +23,7 @@ const tabs = [
   { to: "/tenants/$id/subscriptions", key: "subscriptions", exact: false },
   { to: "/tenants/$id/pricing", key: "pricing", exact: false },
   { to: "/tenants/$id/payments", key: "payments", exact: false },
+  { to: "/tenants/$id/credits", key: "credits", exact: false },
   { to: "/tenants/$id/providers", key: "providers", exact: false },
   { to: "/tenants/$id/reports", key: "reports", exact: false },
   { to: "/tenants/$id/webhooks", key: "webhooks", exact: false },

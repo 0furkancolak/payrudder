@@ -245,7 +245,8 @@
       "webhooks": "Webhooks",
       "mail": "E-mail",
       "apps": "Apps",
-      "address": "Adresse du vendeur"
+      "address": "Adresse du vendeur",
+      "credits": "Crédits"
     },
     "common": {
       "remove": "Retirer"
@@ -639,6 +640,65 @@
         "delivered": "Livré",
         "failed": "Échoué"
       }
+    },
+    "credits": {
+      "packs": {
+        "new": "Nouveau pack de crédits",
+        "hint": "Un pack est un nombre de crédits vendu à un prix. Le client l'achète avec un lien de paiement ; les crédits sont ajoutés quand le paiement est confirmé.",
+        "formLabel": "Nouveau pack de crédits",
+        "name": "Nom du pack",
+        "credits": "Crédits",
+        "price": "Prix",
+        "currency": "Devise",
+        "create": "Ajouter le pack",
+        "title": "Packs de crédits",
+        "none": "Aucun pack de crédits pour l'instant.",
+        "state": "État",
+        "onSale": "En vente",
+        "withdrawn": "Retiré",
+        "withdraw": "Retirer de la vente",
+        "restore": "Remettre en vente"
+      },
+      "customer": {
+        "title": "Crédits d'un client",
+        "pick": "Choisir un client",
+        "balance": "crédits disponibles",
+        "nextExpiry": "Une partie expire le {when}"
+      },
+      "lots": {
+        "source": "Source",
+        "remaining": "Restant",
+        "granted": "Accordé",
+        "expires": "Expire",
+        "never": "Jamais"
+      },
+      "source": {
+        "promo": "Promotion",
+        "manual": "Manuel",
+        "purchase": "Achat"
+      },
+      "grant": {
+        "formLabel": "Ajouter des crédits",
+        "credits": "Crédits à ajouter",
+        "source": "Type",
+        "expiry": "Date d'expiration",
+        "expiryHint": "Laisser vide pour des crédits sans expiration",
+        "reason": "Note (facultatif)",
+        "submit": "Ajouter des crédits"
+      },
+      "ledger": {
+        "title": "Historique des crédits",
+        "none": "Aucun mouvement de crédits pour l'instant.",
+        "time": "Date",
+        "kind": "Type",
+        "amount": "Crédits",
+        "reason": "Note"
+      },
+      "kind": {
+        "grant": "Ajouté",
+        "consume": "Dépensé",
+        "expire": "Expiré"
+      }
     }
   },
   "apps": {
@@ -736,6 +796,21 @@
         "bad_expiry": "Le lien doit expirer dans 1 à 365 jours.",
         "draft_invoice": "Une facture brouillon ne peut pas être partagée par lien.",
         "not_found": "Le lien de la facture est introuvable."
+      },
+      "credits": {
+        "bad_amount": "Le montant doit être un nombre entier de crédits supérieur à zéro.",
+        "bad_customer": "Le client n'est pas valide.",
+        "bad_expiry": "La date d'expiration doit être dans le futur.",
+        "bad_key": "La clé d'idempotence est trop longue (128 caractères au plus).",
+        "bad_pack": "Un pack a besoin d'un nom, de crédits et d'un prix supérieur à zéro.",
+        "bad_page_token": "Le jeton de page n'est pas valide.",
+        "bad_reason": "La note est trop longue (200 caractères au plus).",
+        "bad_source": "Le type doit être promotion ou manuel.",
+        "insufficient": "Le client n'a pas assez de crédits.",
+        "key_required": "Une clé d'idempotence est requise pour dépenser des crédits.",
+        "key_reused": "Cette clé d'idempotence a déjà servi pour une autre requête.",
+        "pack_not_found": "Ce pack de crédits n'existe pas.",
+        "unknown_currency": "Cette devise n'est pas prise en charge."
       }
     },
     "plans": {
