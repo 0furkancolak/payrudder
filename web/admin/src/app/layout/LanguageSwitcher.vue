@@ -1,22 +1,31 @@
 <script setup lang="ts">
-import { Globe } from "@lucide/vue";
+import { Check, Globe } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { NativeSelect } from "@/shared/ui/native-select";
-import { applyLocale, isLocale, locales, messages, type Locale } from "../i18n";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { applyLocale, locales, messages, type Locale } from "../i18n";
 
+/** The language menu: a globe button that opens the list of languages, each in its own name. Remembered per browser. */
 const { t, locale } = useI18n();
-
-function change(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
-  if (isLocale(value)) applyLocale(value);
-}
 </script>
 
 <template>
-  <label class="relative flex items-center">
-    <Globe class="text-muted-foreground pointer-events-none absolute start-3 z-10 size-4" />
-    <NativeSelect class="shadow-card border-border/60 ps-9" :aria-label="t('app.language')" :model-value="locale" @change="change">
-      <option v-for="code in locales" :key="code" :value="code">{{ messages[code as Locale].meta.name }}</option>
-    </NativeSelect>
-  </label>
+  <DropdownMenu>
+    <DropdownMenuTrigger as-child>
+      <button
+        type="button"
+        data-testid="language-switcher"
+        class="bg-card text-muted-foreground hover:text-foreground border-border/60 shadow-card inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold uppercase"
+        :aria-label="t('app.language')"
+        :title="t('app.language')"
+      >
+        <Globe class="size-4" aria-hidden="true" />{{ locale }}
+      </button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end" class="min-w-44">
+      <DropdownMenuItem v-for="code in locales" :key="code" class="rounded-xl" :data-testid="`lang-${code}`" @select="applyLocale(code)">
+        <span class="flex-1">{{ messages[code as Locale].meta.name }}</span>
+        <Check v-if="code === locale" class="size-4" aria-hidden="true" />
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
 </template>

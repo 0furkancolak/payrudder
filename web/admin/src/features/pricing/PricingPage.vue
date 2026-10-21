@@ -4,7 +4,7 @@ import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
-import { COUNTRY_HINTS, CURRENCIES } from "@/shared/lib/currencies";
+import { COUNTRY_HINTS } from "@/shared/lib/currencies";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -13,6 +13,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { parsePercent, useCouponActions, useCoupons, useDunningSettings, useSetDunningSettings, useSetTaxRates, useTaxRates, type NewCoupon, type Rate } from "./api";
+import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, locale } = useI18n();
 const errorText = useErrorText();
@@ -127,9 +128,7 @@ function saveDunning() {
       </NativeSelect>
       <div class="grid grid-cols-[1fr_auto] gap-2">
         <Input v-model="value" inputmode="decimal" :aria-label="t('billing.pricing.coupons.value')" :placeholder="t('billing.pricing.coupons.value')" required />
-        <NativeSelect v-if="kind === 'amount'" v-model="currency" :aria-label="t('billing.pricing.coupons.currency')">
-          <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-        </NativeSelect>
+        <CurrencySelect v-if="kind === 'amount'" v-model="currency" :aria-label="t('billing.pricing.coupons.currency')" />
       </div>
       <NativeSelect v-model="duration" :aria-label="t('billing.pricing.coupons.duration')">
         <option value="COUPON_DURATION_ONCE">{{ t("billing.pricing.coupons.once") }}</option>

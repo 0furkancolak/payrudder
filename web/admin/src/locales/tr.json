@@ -1639,5 +1639,68 @@
       "failBody": "Bağlantı zaten kullanılmış, süresi dolmuş ya da daha yenisiyle değiştirilmiş. Oturum açıp yeni bir bağlantı isteyin.",
       "toApp": "Uygulamalarınıza git"
     }
+  },
+  "shell": {
+    "skip": "İçeriğe geç",
+    "navLabel": "Ana gezinme",
+    "breadcrumbs": "Konum",
+    "openMenu": "Menüyü aç",
+    "closeMenu": "Menüyü kapat",
+    "collapse": "Kenar çubuğunu daralt",
+    "expand": "Kenar çubuğunu genişlet",
+    "switchApp": "Uygulama değiştir",
+    "apps": "Uygulamalar",
+    "allApps": "Tüm uygulamalar",
+    "platform": "Platform",
+    "org": "Kuruluş",
+    "sections": {
+      "account": "Kuruluş",
+      "platform": "Platform",
+      "overview": "Genel bakış",
+      "customers": "Müşteriler",
+      "billing": "Faturalama",
+      "developers": "Geliştiriciler",
+      "settings": "Ayarlar"
+    },
+    "items": {
+      "overview": "Uygulamalar",
+      "members": "Üyeler",
+      "settings": "Ayarlar",
+      "tenants": "Kiracılar",
+      "playground": "Deneme alanı",
+      "deadLetters": "Ölü mektuplar",
+      "dashboard": "Pano",
+      "customers": "Müşteriler",
+      "subscriptions": "Abonelikler",
+      "credits": "Krediler",
+      "packages": "Paketler",
+      "pricing": "Fiyat ve vergi",
+      "invoices": "Faturalar",
+      "payments": "Ödemeler",
+      "paymentLinks": "Ödeme bağlantıları",
+      "accounting": "Muhasebe",
+      "reports": "Raporlar",
+      "webhooks": "Webhook'lar",
+      "apps": "Uygulamalar ve API anahtarları",
+      "apiKeys": "API anahtarları",
+      "providers": "Ödeme sağlayıcıları",
+      "mail": "E-posta",
+      "address": "İş adresi",
+      "einvoice": "E-fatura",
+      "appSettings": "Uygulama ayarları"
+    }
+  },
+  "privacy": {
+    "hide": "Tutarları gizle",
+    "show": "Tutarları göster",
+    "hidden": "Gizli",
+    "banner": "Gizli mod açık: tutarlar gizlendi."
+  },
+  "picker": {
+    "currency": "Para birimi",
+    "currencyPlaceholder": "Para birimi ara",
+    "timezone": "Saat dilimi",
+    "timezonePlaceholder": "Saat dilimi ara",
+    "noMatch": "Eşleşen yok"
   }
 }

@@ -1639,5 +1639,68 @@
       "failBody": "سبق استخدامه أو انتهت صلاحيته أو حلّ محله رابط أحدث. سجّل الدخول واطلب رابطًا جديدًا.",
       "toApp": "الانتقال إلى تطبيقاتك"
     }
+  },
+  "shell": {
+    "skip": "انتقل إلى المحتوى",
+    "navLabel": "التنقل الرئيسي",
+    "breadcrumbs": "مسار التنقل",
+    "openMenu": "افتح القائمة",
+    "closeMenu": "أغلق القائمة",
+    "collapse": "طي الشريط الجانبي",
+    "expand": "توسيع الشريط الجانبي",
+    "switchApp": "تبديل التطبيق",
+    "apps": "التطبيقات",
+    "allApps": "كل التطبيقات",
+    "platform": "المنصة",
+    "org": "المؤسسة",
+    "sections": {
+      "account": "المؤسسة",
+      "platform": "المنصة",
+      "overview": "نظرة عامة",
+      "customers": "العملاء",
+      "billing": "الفوترة",
+      "developers": "المطورون",
+      "settings": "الإعدادات"
+    },
+    "items": {
+      "overview": "التطبيقات",
+      "members": "الأعضاء",
+      "settings": "الإعدادات",
+      "tenants": "المستأجرون",
+      "playground": "ساحة التجربة",
+      "deadLetters": "الرسائل الميتة",
+      "dashboard": "لوحة التحكم",
+      "customers": "العملاء",
+      "subscriptions": "الاشتراكات",
+      "credits": "الأرصدة",
+      "packages": "الباقات",
+      "pricing": "الأسعار والضريبة",
+      "invoices": "الفواتير",
+      "payments": "المدفوعات",
+      "paymentLinks": "روابط الدفع",
+      "accounting": "المحاسبة",
+      "reports": "التقارير",
+      "webhooks": "الويب هوك",
+      "apps": "التطبيقات ومفاتيح API",
+      "apiKeys": "مفاتيح API",
+      "providers": "مزودو الدفع",
+      "mail": "البريد الإلكتروني",
+      "address": "عنوان النشاط",
+      "einvoice": "الفاتورة الإلكترونية",
+      "appSettings": "إعدادات التطبيق"
+    }
+  },
+  "privacy": {
+    "hide": "إخفاء المبالغ",
+    "show": "إظهار المبالغ",
+    "hidden": "مخفي",
+    "banner": "وضع الخصوصية مفعّل: المبالغ مخفية."
+  },
+  "picker": {
+    "currency": "العملة",
+    "currencyPlaceholder": "ابحث عن عملة",
+    "timezone": "المنطقة الزمنية",
+    "timezonePlaceholder": "ابحث عن منطقة زمنية",
+    "noMatch": "لا توجد نتائج"
   }
 }

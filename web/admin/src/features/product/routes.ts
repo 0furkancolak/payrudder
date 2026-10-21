@@ -1,8 +1,14 @@
 import { createRoute, redirect, type AnyRoute, type RouteComponent } from "@tanstack/vue-router";
 import { defineAsyncComponent } from "vue";
+import { accountingRoutes } from "@/features/accounting/routes";
 import { creditRoutes } from "@/features/credits/routes";
 import { customerRoutes } from "@/features/customers/routes";
+import { mailRoutes } from "@/features/mail/routes";
+import { packageRoutes } from "@/features/packages/routes";
 import { paymentLinkRoutes } from "@/features/paymentlinks/routes";
+import { pricingRoutes } from "@/features/pricing/routes";
+import { reportRoutes } from "@/features/reports/routes";
+import { subscriptionRoutes } from "@/features/subscriptions/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
 import { isOperator, isPerson } from "@/shared/lib/session";
 
@@ -46,12 +52,29 @@ export function personRoutes(parent: AnyRoute) {
     component: lazy(() => import("./AppDashboard.vue")),
     validateSearch: (s: Record<string, unknown>) => (s.env === "sandbox" ? { env: "sandbox" } : {}),
   });
+  const envSearch = (s: Record<string, unknown>) => (s.env === "sandbox" ? { env: "sandbox" } : {});
+  const keys = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/keys", component: lazy(() => import("./ApiKeysPage.vue")), validateSearch: envSearch });
+  const appSettings = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/settings", component: lazy(() => import("./AppSettingsPage.vue")), validateSearch: envSearch });
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazy(() => import("./SettingsPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazy(() => import("./ProductTenantLayout.vue")) });
   return signedIn.addChildren([
     home,
     dashboard,
+    keys,
+    appSettings,
     settings,
-    tenant.addChildren([...customerRoutes(tenant), ...paymentLinkRoutes(tenant), ...creditRoutes(tenant), ...webhookRoutes(tenant)]),
+    // One line per page, and the same page in PERSON_PAGES (app/layout/nav.ts), which is what puts it in the sidebar.
+    tenant.addChildren([
+      ...customerRoutes(tenant),
+      ...subscriptionRoutes(tenant),
+      ...creditRoutes(tenant),
+      ...packageRoutes(tenant),
+      ...pricingRoutes(tenant),
+      ...paymentLinkRoutes(tenant),
+      ...accountingRoutes(tenant),
+      ...reportRoutes(tenant),
+      ...webhookRoutes(tenant),
+      ...mailRoutes(tenant),
+    ]),
   ]);
 }

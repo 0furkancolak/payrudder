@@ -1,18 +1,16 @@
 <script setup lang="ts">
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/vue-router";
-import { ChevronLeft, ChevronRight, FlaskConical, Gift, Link2, Users, Webhook } from "@lucide/vue";
+import { useParams, useSearch } from "@tanstack/vue-router";
+import { FlaskConical } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
 import { Donut } from "@/shared/ui/donut";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { SegmentedControl } from "@/shared/ui/segmented";
 import { Sparkline } from "@/shared/ui/sparkline";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { useAccount, useApp, useOverview, type Environment } from "./api";
+import { useApp, useOverview, type Environment } from "./api";
 import HealthCard from "./HealthCard.vue";
-import KeysPanel from "./KeysPanel.vue";
 import PaymentsCard from "./PaymentsCard.vue";
 import { PAYMENT_STATUSES, STATUS_COLORS, countOf, isEnvironment, revenueByCurrency, seriesOf, tenantOf, totalPayments } from "./lib";
 
@@ -20,7 +18,6 @@ const { t, locale } = useI18n();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const search = useSearch({ strict: false });
-const navigate = useNavigate();
 
 const appId = computed(() => String(params.value.appId ?? ""));
 const env = computed<Environment>(() => {
@@ -28,21 +25,10 @@ const env = computed<Environment>(() => {
   return isEnvironment(v) ? v : "live";
 });
 const app = useApp(appId);
-const account = useAccount();
 const overview = useOverview(appId, env);
 
 const data = computed(() => overview.data.value);
 const tenantId = computed(() => tenantOf(app.data.value?.app, env.value) || (data.value?.tenant_id ?? ""));
-const hasLive = computed(() => tenantOf(app.data.value?.app, "live") !== "");
-const environments = computed(() => [
-  ...(hasLive.value || !app.data.value ? [{ value: "live", label: t("product.env.live") }] : []),
-  { value: "sandbox", label: t("product.env.sandbox") },
-]);
-const canManage = computed(() => (app.data.value?.role ?? account.data.value?.role) !== "viewer");
-
-function pickEnv(value: string) {
-  if (isEnvironment(value)) void navigate({ to: "/app/apps/$appId", params: { appId: appId.value }, search: { env: value } as never, replace: true });
-}
 
 const revenue = computed(() => revenueByCurrency({ currency: data.value?.currency ?? "", payments: data.value?.payments }));
 const lead = computed(() => revenue.value[0]);
@@ -52,27 +38,19 @@ const money = (minor: number | undefined, currency: string | undefined) => forma
 const segments = computed(() => PAYMENT_STATUSES.map((s) => ({ key: s, value: countOf(data.value?.payments, s), color: STATUS_COLORS[s] ?? "var(--muted)" })));
 const mrr = computed(() => (data.value?.subscriptions ?? []).filter((s) => (s.mrr_minor ?? 0) > 0));
 const countText = (c?: { count?: number; more?: boolean }) => (c ? `${c.count ?? 0}${c.more ? "+" : ""}` : "—");
-
-const links = computed(() => [
-  { key: "customers", icon: Users, to: `/app/t/${tenantId.value}/customers` },
-  { key: "paymentLinks", icon: Link2, to: `/app/t/${tenantId.value}/payment-links` },
-  { key: "credits", icon: Gift, to: `/app/t/${tenantId.value}/credits` },
-  { key: "webhooks", icon: Webhook, to: `/app/t/${tenantId.value}/webhooks` },
-]);
 </script>
 
 <template>
   <section class="flex flex-col gap-6">
     <header class="flex flex-wrap items-end justify-between gap-4 px-1">
       <div class="min-w-0">
-        <Link to="/app" class="text-muted-foreground hover:text-foreground mb-1 inline-flex items-center gap-1 text-sm"><ChevronLeft class="size-4 rtl:rotate-180" />{{ account.data.value?.name || t("product.nav.home") }}</Link>
         <div class="flex flex-wrap items-center gap-3">
           <h1 class="truncate text-3xl font-semibold tracking-tight md:text-4xl">{{ app.data.value?.app?.name ?? "…" }}</h1>
           <StatusPill v-if="data" :tone="toneOf(data.status)">{{ t(`product.appStatus.${data.status}`) }}</StatusPill>
+          <StatusPill :tone="env === 'live' ? 'info' : 'neutral'">{{ t(`product.env.${env}`) }}</StatusPill>
         </div>
         <p v-if="app.data.value?.app?.slug" class="text-muted-foreground mono mt-1 text-xs">{{ app.data.value.app.slug }}</p>
       </div>
-      <SegmentedControl :model-value="env" :options="environments" :label="t('product.env.label')" @update:model-value="pickEnv" />
     </header>
 
     <p v-if="app.error.value || overview.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(app.error.value ?? overview.error.value) }}</p>
@@ -191,23 +169,5 @@ const links = computed(() => [
         </section>
       </div>
     </template>
-
-    <!-- Keys and the way deeper -->
-    <div class="grid gap-5 lg:grid-cols-3">
-      <KeysPanel class="lg:col-span-2" :app-id="appId" :can-manage="canManage" />
-      <section class="surface flex flex-col gap-3 p-6" :aria-label="t('product.links.title')">
-        <h2 class="text-lg font-semibold tracking-tight">{{ t("product.links.title") }}</h2>
-        <p class="text-muted-foreground text-sm">{{ t("product.links.intro", { env: t(`product.env.${env}`) }) }}</p>
-        <ul class="flex flex-col gap-2">
-          <li v-for="l in links" :key="l.key">
-            <Link :to="l.to" class="hover:bg-accent focus-visible:bg-accent bg-muted/60 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors">
-              <span class="bg-card text-brand-strong flex size-8 items-center justify-center rounded-xl" aria-hidden="true"><component :is="l.icon" class="size-4" /></span>
-              <span class="flex-1">{{ t(`product.links.${l.key}`) }}</span>
-              <ChevronRight class="text-muted-foreground size-4 rtl:rotate-180" aria-hidden="true" />
-            </Link>
-          </li>
-        </ul>
-      </section>
-    </div>
-  </section>
+</section>
 </template>

@@ -1,8 +1,35 @@
+import { privacyMode } from "./prefs";
+
+/** What privacy mode shows in place of the figures of an amount. A fixed width, so the mask does not tell the size of the amount. */
+export const MASK = "••••";
+
+/** Replaces every run of figures (with its separators) in an already formatted text by the mask; the sign and the currency stay. */
+export function maskDigits(text: string): string {
+  return text.replace(/\p{Nd}(?:[\p{Nd}.,٫٬'’   ]*\p{Nd})?/gu, MASK);
+}
+
+/** An e-mail address as privacy mode shows it: the first letter of the name and the domain ("a•••@example.com"). */
+export function maskEmail(email: string | undefined | null): string {
+  if (!email) return "";
+  if (!privacyMode.value) return email;
+  const at = email.lastIndexOf("@");
+  return at < 1 ? MASK : `${email.slice(0, 1)}•••${email.slice(at)}`;
+}
+
 /**
- * Formats an amount in minor units (a decimal string, as the API sends int64) for a currency and a locale. The digits are moved
+ * Formats an amount in minor units (a decimal string, as the API sends int64) for a currency and a locale. The figures are moved
  * as text, never through a float: the string goes to Intl.NumberFormat, which formats decimal strings exactly.
+ *
+ * Every amount the console shows goes through here, so privacy mode is one switch: while it is on, the figures are replaced by a mask in the text itself
+ * (not hidden by styling), which keeps them out of the page, of a screenshot, of the print preview and of what a screen reader says. The function reads
+ * the reactive flag, so a template that calls it draws again when the flag changes.
  */
 export function formatMinor(minor: string | number | undefined, currency: string | undefined, locale: string): string {
+  const text = formatAmount(minor, currency, locale);
+  return privacyMode.value ? maskDigits(text) : text;
+}
+
+function formatAmount(minor: string | number | undefined, currency: string | undefined, locale: string): string {
   if (minor === undefined || minor === "") return "";
   const raw = String(minor);
   if (!currency || !/^-?\d+$/.test(raw)) return raw;

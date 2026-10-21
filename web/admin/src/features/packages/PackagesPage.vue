@@ -4,7 +4,6 @@ import { computed, ref } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
-import { CURRENCIES } from "@/shared/lib/currencies";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { useTenant } from "@/features/tenants";
 import { Badge } from "@/shared/ui/badge";
@@ -14,6 +13,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreatePackage, usePackages } from "./api";
+import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, locale } = useI18n();
 const errorText = useErrorText();
@@ -78,9 +78,7 @@ function submit() {
         <Input v-model="fee" inputmode="decimal" :aria-label="t('billing.packages.fee', { currency: tenantCurrency })" :placeholder="t('billing.packages.fee', { currency: tenantCurrency })" required />
       </div>
       <div v-for="(f, i) in extra" :key="i" class="grid grid-cols-[8rem_9rem_1fr_auto] gap-3">
-        <NativeSelect v-model="f.currency" :aria-label="t('billing.packages.extraCurrency')">
-          <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
-        </NativeSelect>
+        <CurrencySelect v-model="f.currency" :aria-label="t('billing.packages.extraCurrency')" />
         <NativeSelect v-model="f.interval" :aria-label="t('billing.packages.interval')">
           <option value="month">{{ t("billing.packages.monthly") }}</option>
           <option value="year">{{ t("billing.packages.yearly") }}</option>
