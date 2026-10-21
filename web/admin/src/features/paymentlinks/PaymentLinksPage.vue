@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toApiError } from "@/shared/api/client";
 import { CURRENCIES } from "@/shared/lib/currencies";
 import { formatMinor } from "@/shared/lib/money";
+import { useTenantCurrency } from "@/shared/lib/tenant-currency";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -33,6 +34,19 @@ const form = ref<LinkForm>({
   key: newKey(),
 });
 const formError = ref("");
+// An ad hoc link is in the tenant's own currency unless the person picks another one.
+const tenantCurrency = useTenantCurrency(tenantId);
+let currencySeeded = false;
+watch(
+  tenantCurrency,
+  (c) => {
+    if (c && !currencySeeded) {
+      currencySeeded = true;
+      form.value.currency = c;
+    }
+  },
+  { immediate: true },
+);
 
 const kind = ref("");
 const status = ref("");

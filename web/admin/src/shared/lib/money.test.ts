@@ -62,3 +62,12 @@ describe("parseMajor", () => {
     expect(parseMajor("1.2.3", "USD")).toBeNull();
   });
 });
+
+describe("formatMinor in a right-to-left language", () => {
+  it("isolates the amount so the sign and currency stay beside the digits", () => {
+    const out = formatMinor("-3000", "TRY", "ar");
+    expect(out.startsWith("⁦")).toBe(true);
+    expect(out.endsWith("⁩")).toBe(true);
+    expect(formatMinor("-3000", "TRY", "en")).not.toContain("⁦");
+  });
+});

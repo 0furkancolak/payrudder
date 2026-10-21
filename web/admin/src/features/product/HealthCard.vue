@@ -42,7 +42,7 @@ const providers = computed(() => (h.value?.providers ?? []).map((p) => p.provide
         <span v-if="down('webhooks')" class="text-muted-foreground">{{ t("product.unavailable") }}</span>
         <StatusPill v-else-if="(h?.webhook_failed ?? 0) > 0" tone="danger">{{ t("product.health.failedDeliveries", { n: `${h?.webhook_failed}${h?.webhook_failed_more ? "+" : ""}` }) }}</StatusPill>
         <Link v-else-if="(h?.webhook_endpoints ?? 0) === 0" :to="`/app/t/${tenantId}/webhooks`" class="text-primary text-sm font-medium hover:underline">{{ t("product.health.addEndpoint") }}</Link>
-        <StatusPill v-else tone="success">{{ t("product.health.endpoints", { n: h?.webhook_endpoints ?? 0 }) }}</StatusPill>
+        <StatusPill v-else tone="success">{{ t("product.health.endpoints", { n: h?.webhook_endpoints ?? 0 }, h?.webhook_endpoints ?? 0) }}</StatusPill>
       </li>
     </ul>
   </section>

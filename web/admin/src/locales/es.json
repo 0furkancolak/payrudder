@@ -1545,7 +1545,7 @@
       "webhooks": "Webhooks",
       "failedDeliveries": "{n} entregas fallidas",
       "addEndpoint": "Añadir un endpoint",
-      "endpoints": "{n} endpoints, todo en orden"
+      "endpoints": "{n} endpoint, todo en orden | {n} endpoints, todo en orden"
     },
     "keys": {
       "title": "Claves de API",

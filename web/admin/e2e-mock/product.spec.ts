@@ -130,7 +130,7 @@ test.describe("app dashboard", () => {
     const payments = page.getByRole("region", { name: "Recent payments" });
     await expect(payments.getByRole("row")).toHaveCount(6);
     await expect(payments.getByRole("row", { name: /Failed/ })).toContainText("$150.00");
-    await expect(payments.getByRole("row", { name: /Refunded/ })).toContainText("−$49.00");
+    await expect(payments.getByRole("row", { name: /Refunded/ })).toContainText("-$49.00");
     // Health.
     const health = page.getByRole("region", { name: "Health" });
     await expect(health).toContainText("2 failed deliveries");

@@ -7,6 +7,7 @@ import { absoluteUrl } from "@/features/paymentlinks/lib";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { useErrorText } from "@/shared/lib/errors";
 import { CURRENCIES } from "@/shared/lib/currencies";
+import { useTenantCurrency } from "@/shared/lib/tenant-currency";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -41,6 +42,19 @@ const packName = ref("");
 const packCredits = ref("");
 const packPrice = ref("");
 const packCurrency = ref<string>("USD");
+// The pack is priced in the tenant's own currency unless the person picks another one.
+const tenantCurrency = useTenantCurrency(tenantId);
+let currencySeeded = false;
+watch(
+  tenantCurrency,
+  (c) => {
+    if (c && !currencySeeded) {
+      currencySeeded = true;
+      packCurrency.value = c;
+    }
+  },
+  { immediate: true },
+);
 const priceMinor = computed(() => parseMajor(packPrice.value, packCurrency.value));
 const packValidity = ref("");
 const creditsValid = computed(() => /^[1-9]\d{0,11}$/.test(packCredits.value.trim()));
