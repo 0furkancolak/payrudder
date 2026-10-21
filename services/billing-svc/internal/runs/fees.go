@@ -200,6 +200,7 @@ func (m *Manager) buildFeeDraft(ctx context.Context, tenantID uuid.UUID, t *plan
 		CustomerExternalID: sub.GetCustomerExternalId(), CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
 		PaymentMethod: cu.GetCustomer().GetPaymentMethod(), Provider: sub.GetProvider(), TenantName: t.GetName(), Environment: environmentOf(t), CurrencyExponent: cur.Exponent,
 		LogoObjectKey: logoKeyOf(tenantID, t), ProviderMails: providerMails(sub.GetProvider()), SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetCustomer().GetAddress()),
+		BankTransfer: bankTransfer(t, sub.GetProvider(), currency),
 	}
 	einvoiceSnapshot(&snapshot, t, cu.GetCustomer())
 	snap, err := json.Marshal(snapshot)

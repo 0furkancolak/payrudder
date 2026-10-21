@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useDeadLetters, useRedrive } from "./api";
 
 const { t } = useI18n();
+const errorText = useErrorText();
 const queue = ref("");
 const list = useDeadLetters(queue);
 const redrive = useRedrive();
@@ -25,8 +26,8 @@ async function run(name: string, count: number) {
 
 <template>
   <PageHeader :title="t('deadLetters.title')" :description="t('deadLetters.intro', { pattern: '{queue}.dlq' })" />
-  <p v-if="list.error.value" class="text-destructive mb-3" role="alert">{{ toApiError(list.error.value).message }}</p>
-  <p v-if="redrive.error.value" class="text-destructive mb-3" role="alert">{{ toApiError(redrive.error.value).message }}</p>
+  <p v-if="list.error.value" class="text-destructive mb-3" role="alert">{{ errorText(list.error.value) }}</p>
+  <p v-if="redrive.error.value" class="text-destructive mb-3" role="alert">{{ errorText(redrive.error.value) }}</p>
   <p v-if="note" class="text-success bg-success/10 mb-3 rounded-2xl px-4 py-3 text-sm">{{ t("deadLetters.redriven", note) }}</p>
 
   <Card class="mb-6 p-3">

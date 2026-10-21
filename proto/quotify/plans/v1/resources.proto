@@ -31,6 +31,21 @@ message Address {
   string country = 6;
 }
 
+// BankTransferDetails are the public part of a tenant's bank transfer account, printed on its invoices.
+message BankTransferDetails {
+  string bank_name = 1;
+  string account_holder = 2;
+  // Normalised: capitals, no spaces.
+  string iban = 3;
+  string bic = 4;
+  // The payment reference template, e.g. "{invoice_number}".
+  string reference_template = 5;
+  // Currencies the account takes; empty means any.
+  repeated string currencies = 6;
+  // The tenant's default payment account: invoices of customers without a provider of their own show these details.
+  bool is_default = 7;
+}
+
 // LegalInfo is the seller's company data printed on its invoices and sent in e-invoices (docs/phases/phase-30-e-invoice.md). Every part is optional.
 message LegalInfo {
   string legal_name = 1;
@@ -83,10 +98,12 @@ message Tenant {
   string app_id = 11;
   // The seller address printed on the tenant's invoices.
   Address address = 12;
+  // The bank transfer account printed on invoices paid by transfer; unset when the tenant has none.
+  BankTransferDetails bank_transfer = 13;
   // The company data of the seller, for e-invoices.
-  LegalInfo legal = 13;
+  LegalInfo legal = 14;
   // When an invoice becomes an e-invoice: "off" (default), "finalized" or "paid". Credit notes follow the invoice.
-  string e_invoice_on = 14;
+  string e_invoice_on = 15;
 }
 
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.

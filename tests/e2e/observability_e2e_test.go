@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	tempoURL      = envOr("QUOTIFY_TEMPO_URL", "http://localhost:3200")
-	prometheusURL = envOr("QUOTIFY_PROMETHEUS_URL", "http://localhost:9090")
+	tempoURL      = envOr("QUOTIFY_TEMPO_URL", "http://localhost:42200")
+	prometheusURL = envOr("QUOTIFY_PROMETHEUS_URL", "http://localhost:42990")
 )
 
 // skipWithoutObservability skips a test on a stack that has no Tempo and Prometheus (the kind install has none yet).

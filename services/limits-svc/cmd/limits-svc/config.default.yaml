@@ -1,8 +1,8 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
 QUOTIFY_GRPC_ADDR: ":7004"
-QUOTIFY_REDIS_URL: "redis://localhost:6379/0"
-QUOTIFY_PLANS_ADDR: "dns:///localhost:7001"
-QUOTIFY_AGGREGATOR_ADDR: "dns:///localhost:7003"
+QUOTIFY_REDIS_URL: "redis://localhost:42379/0"
+QUOTIFY_PLANS_ADDR: "dns:///localhost:42701"
+QUOTIFY_AGGREGATOR_ADDR: "dns:///localhost:42703"
 QUOTIFY_LIMIT_TOPIC: "usage.limit-exceeded.v1"
 QUOTIFY_CONSUMER_GROUP: "limits"
 QUOTIFY_POLL_RECORDS: "1000"

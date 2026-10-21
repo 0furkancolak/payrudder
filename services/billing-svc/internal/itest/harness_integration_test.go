@@ -397,6 +397,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 	}
 	f := fakeAll{w: w}
 	e.events = &fakeEvents{}
+	allEvents.add(e.events)
 	e.mgr, err = runs.NewManager(runs.Config{
 		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Ingest: f, Aggregator: f, Events: e.events,
 		EndOffsets: func(context.Context) (map[int32]int64, error) { return map[int32]int64{0: 10, 1: 20}, nil },
@@ -560,6 +561,30 @@ func (e *env) startConsumersWith(ctx context.Context, pub *rabbitx.Publisher, af
 		e.t.Fatal(err)
 	}
 	go func() { _ = relay.Run(ctx) }()
+}
+
+// allEvents are the fakes of every env: a scheduler left running by an earlier test may flush this tenant's events into its own fake.
+var allEvents eventFakes
+
+type eventFakes struct {
+	mu   sync.Mutex
+	list []*fakeEvents
+}
+
+func (a *eventFakes) add(f *fakeEvents) {
+	a.mu.Lock()
+	a.list = append(a.list, f)
+	a.mu.Unlock()
+}
+
+func (a *eventFakes) recorded(tenantID uuid.UUID) []*plansv1.RecordTenantEventRequest {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	var out []*plansv1.RecordTenantEventRequest
+	for _, f := range a.list {
+		out = append(out, f.recorded(tenantID)...)
+	}
+	return out
 }
 
 // fakeEvents stands in for plans-svc's webhook service: it records what billing hands over, or fails when told to.

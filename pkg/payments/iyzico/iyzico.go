@@ -115,7 +115,7 @@ func (c *Client) Capabilities() payments.Capabilities { return Caps() }
 
 // Caps are iyzico's capabilities, which do not depend on an account: routing rules are checked against them before any account exists.
 func Caps() payments.Capabilities {
-	return payments.Capabilities{Name: Name, Refunds: true, Currencies: []string{"TRY", "USD", "EUR", "GBP", "CHF"}}
+	return payments.Capabilities{Name: Name, Refunds: true, HostedCheckout: true, Currencies: []string{"TRY", "USD", "EUR", "GBP", "CHF"}}
 }
 
 func randomKey() string {
@@ -151,14 +151,21 @@ type response struct {
 func (r response) ok() bool { return strings.EqualFold(r.Status, "success") }
 
 func (c *Client) do(ctx context.Context, path string, in any) (response, error) {
+	var out response
+	err := c.doInto(ctx, path, in, &out)
+	return out, err
+}
+
+// doInto signs and sends a request and decodes the answer into out.
+func (c *Client) doInto(ctx context.Context, path string, in, out any) error {
 	body, err := json.Marshal(in)
 	if err != nil {
-		return response{}, err
+		return err
 	}
 	rnd := c.random()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.s.BaseURL+path, bytes.NewReader(body))
 	if err != nil {
-		return response{}, err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-iyzi-rnd", rnd)
@@ -167,20 +174,19 @@ func (c *Client) do(ctx context.Context, path string, in any) (response, error) 
 	if err != nil {
 		var ne net.Error
 		if errors.As(err, &ne) && ne.Timeout() || errors.Is(err, context.DeadlineExceeded) {
-			return response{}, payments.ErrTimeout
+			return payments.ErrTimeout
 		}
-		return response{}, &payments.TransientError{Err: err}
+		return &payments.TransientError{Err: err}
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
-		return response{}, &payments.TransientError{Err: fmt.Errorf("iyzico answered %d", resp.StatusCode)}
+		return &payments.TransientError{Err: fmt.Errorf("iyzico answered %d", resp.StatusCode)}
 	}
-	var out response
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return response{}, fmt.Errorf("iyzico answered garbage (%d): %w", resp.StatusCode, err)
+	if err := json.Unmarshal(raw, out); err != nil {
+		return fmt.Errorf("iyzico answered garbage (%d): %w", resp.StatusCode, err)
 	}
-	return out, nil
+	return nil
 }
 
 // price renders minor units as iyzico's decimal string in the currency's exponent: 1116 TRY is "11.16", 1116 JPY "1116".

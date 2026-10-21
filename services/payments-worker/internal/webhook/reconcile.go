@@ -12,13 +12,17 @@ import (
 	"google.golang.org/grpc/status"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
 	"github.com/0furkancolak/quotify/pkg/tenant"
+	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
 )
 
 // BillingAPI is what reconciliation asks of billing-svc, as the tenant: its invoices.
 type BillingAPI interface {
 	ListInvoices(ctx context.Context, tenant uuid.UUID, req *billingv1.ListInvoicesRequest) (*billingv1.ListInvoicesResponse, error)
 	GetInvoice(ctx context.Context, tenant uuid.UUID, id string) (*billingv1.Invoice, error)
+	// SettleInvoicePayment tells billing that a provider confirmed a payment made on a hosted page.
+	SettleInvoicePayment(ctx context.Context, tenant uuid.UUID, req *billingv1.SettleInvoicePaymentRequest) (*billingv1.SettleInvoicePaymentResponse, error)
 }
 
 // BillingClient talks to billing-svc's tenant API.
@@ -33,6 +37,10 @@ func (b BillingClient) ListInvoices(ctx context.Context, id uuid.UUID, req *bill
 func (b BillingClient) GetInvoice(ctx context.Context, id uuid.UUID, invoice string) (*billingv1.Invoice, error) {
 	r, err := b.Client.GetInvoice(tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: id})), &billingv1.GetInvoiceRequest{InvoiceId: invoice})
 	return r.GetInvoice(), err
+}
+
+func (b BillingClient) SettleInvoicePayment(ctx context.Context, id uuid.UUID, req *billingv1.SettleInvoicePaymentRequest) (*billingv1.SettleInvoicePaymentResponse, error) {
+	return b.Client.SettleInvoicePayment(tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: id})), req)
 }
 
 // Discrepancy kinds.
@@ -117,12 +125,12 @@ func (s *Server) Reconcile(ctx context.Context, t uuid.UUID, period string) (*Re
 		return nil, err
 	}
 	byInvoice := map[string][]ledgerCharge{}
-	for _, c := range charges {
+	for _, c := range mergeTransfers(charges) {
 		byInvoice[c.InvoiceID] = append(byInvoice[c.InvoiceID], ledgerCharge(c))
 	}
 	rec.Charges = len(charges)
 
-	rec.compare(paid, byInvoice)
+	rec.compare(paid, byInvoice, s.paidByHand(ctx, t))
 	if err := s.unpaidCharges(ctx, rec, t, paid, byInvoice); err != nil {
 		return nil, err
 	}
@@ -165,7 +173,7 @@ func (s *Server) paidInvoices(ctx context.Context, t uuid.UUID, period string) (
 }
 
 // compare checks every paid invoice against the successful charges the ledger holds for it.
-func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge) {
+func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge, byHand func(id string) bool) {
 	for _, id := range sortedKeys(paid) {
 		inv := paid[id]
 		if inv.GetTotalMinor() == 0 {
@@ -173,6 +181,9 @@ func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice
 		}
 		cs := byInvoice[id]
 		if len(cs) == 0 {
+			if byHand(id) {
+				continue // settled with RecordInvoicePayment: money received outside a provider, which has no charge in the ledger
+			}
 			rec.add(Discrepancy{Kind: PaidWithoutCharge, InvoiceID: id, Number: inv.GetNumber(), Currency: inv.GetCurrency(), BilledMinor: inv.GetTotalMinor()})
 			continue
 		}
@@ -235,4 +246,34 @@ func sortedKeys[V any](m map[string]V) []string {
 type ledgerCharge struct {
 	InvoiceID, Provider, ProviderRef, Currency string
 	AmountMinor                                int64
+}
+
+// mergeTransfers adds up the receipts of a bank transfer: an invoice paid by several transfers has one ledger row each, which together are one charge of the
+// invoice's total, not several charges.
+func mergeTransfers(charges []store.Charge) []store.Charge {
+	var out []store.Charge
+	at := map[string]int{}
+	for _, c := range charges {
+		if c.Provider != banktransfer.Name {
+			out = append(out, c)
+			continue
+		}
+		if i, ok := at[c.InvoiceID]; ok {
+			out[i].AmountMinor += c.AmountMinor
+			continue
+		}
+		at[c.InvoiceID] = len(out)
+		c.ProviderRef = "bank transfer"
+		out = append(out, c)
+	}
+	return out
+}
+
+// paidByHand reports whether billing-svc recorded a payment by hand for an invoice. A lookup that fails counts as no: the discrepancy is then listed, and an
+// operator looks.
+func (s *Server) paidByHand(ctx context.Context, t uuid.UUID) func(id string) bool {
+	return func(id string) bool {
+		inv, err := s.Billing.GetInvoice(ctx, t, id)
+		return err == nil && len(inv.GetPayments()) > 0
+	}
 }

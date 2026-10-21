@@ -9,6 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/exaring/otelpgx"
 	"github.com/google/uuid"
@@ -17,11 +19,25 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// DefaultMaxConns and DefaultMaxConnIdleTime keep a service's two pools small. pgx would otherwise size each pool by CPU count (a 16-core node gives
+// 16 connections per pool, each a Postgres backend and a few hundred KiB here), and keep idle connections for 30 minutes. A service that needs more
+// sets pool_max_conns in its DSN (or raises it per tenant tier); the defaults are for a lightly loaded one.
+const (
+	DefaultMaxConns        = 4
+	DefaultMaxConnIdleTime = time.Minute
+)
+
 // NewPool opens a pool with OpenTelemetry tracing and pings it.
 func NewPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("pgxx: parse dsn: %w", err)
+	}
+	if !strings.Contains(dsn, "pool_max_conns") {
+		cfg.MaxConns = DefaultMaxConns
+	}
+	if !strings.Contains(dsn, "pool_max_conn_idle_time") {
+		cfg.MaxConnIdleTime = DefaultMaxConnIdleTime
 	}
 	// Query parameters are deliberately not recorded: they include key hashes, e-mails and tenant data.
 	cfg.ConnConfig.Tracer = otelpgx.NewTracer()

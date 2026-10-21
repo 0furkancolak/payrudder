@@ -30,6 +30,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/logx"
 	"github.com/0furkancolak/quotify/pkg/otelx"
 	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
 	"github.com/0furkancolak/quotify/pkg/payments/iyzico"
 	"github.com/0furkancolak/quotify/pkg/payments/paddle"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
@@ -40,6 +41,9 @@ import (
 	einvoiceworker "github.com/0furkancolak/quotify/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	"github.com/0furkancolak/quotify/services/payments-worker/internal/transfers"
+	transfercommand "github.com/0furkancolak/quotify/services/payments-worker/internal/transfers/command"
+	transferquery "github.com/0furkancolak/quotify/services/payments-worker/internal/transfers/query"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/webhook"
 	"github.com/0furkancolak/quotify/services/payments-worker/migrations"
 )
@@ -79,6 +83,9 @@ type Config struct {
 	S3ForcePath bool   `env:"S3_FORCE_PATH_STYLE"`
 	// EInvoiceAllowPrivateURLs lets the nilvera base_url and the webhook adapter's URL be http:// or on private addresses. For development and tests; never in production.
 	EInvoiceAllowPrivateURLs bool `env:"EINVOICE_ALLOW_PRIVATE_URLS"`
+	// TransferWindowDays is how long a bank transfer waits for its money (1 to 90 days) when the tenant's account does not say. After that the payment counts
+	// as declined and the tenant's dunning applies.
+	TransferWindowDays int `env:"PAYMENTS_TRANSFER_WINDOW_DAYS"`
 }
 
 func (c *Config) Validate() error {
@@ -90,6 +97,9 @@ func (c *Config) Validate() error {
 		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
 			errs = append(errs, fmt.Errorf("QUOTIFY_SECRETS_KEY: %w", err))
 		}
+	}
+	if c.TransferWindowDays < 1 || c.TransferWindowDays > banktransfer.MaxPaymentWindowDays {
+		errs = append(errs, fmt.Errorf("PAYMENTS_TRANSFER_WINDOW_DAYS must be 1 to %d", banktransfer.MaxPaymentWindowDays))
 	}
 	if c.LiveProvider != "" && c.LiveProvider != "mockpsp" {
 		errs = append(errs, fmt.Errorf("PAYMENTS_LIVE_PROVIDER %q is not supported (v1 ships only mockpsp)", c.LiveProvider))
@@ -166,6 +176,7 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	if err := wireEInvoice(cfg, pool, h, einvoices, log); err != nil {
 		return err
 	}
+	banktransfer.Register(registry)
 	var httpHandler http.Handler
 	if cfg.SecretsKey != "" {
 		var closeConns func()
@@ -187,7 +198,8 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 // newHandler builds the command handler: sandbox tenants always use mock-psp, live tenants only when configured.
 func newHandler(cfg *Config, pool *pgxpool.Pool, log *slog.Logger) *handler.Handler {
 	mock := payments.NewMockPSP(cfg.MockPSPURL, cfg.PSPTimeout)
-	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log, Demo: cfg.Demo}
+	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log, Demo: cfg.Demo,
+		Transfers: store.Transfers{DB: pool}, TransferWindow: time.Duration(cfg.TransferWindowDays) * 24 * time.Hour}
 	if cfg.LiveProvider == "mockpsp" {
 		h.Live = mock
 	}
@@ -247,16 +259,21 @@ func webhookHandler(cfg Config, pool *pgxpool.Pool, h *handler.Handler, registry
 		plansSync = webhook.PlansClient{Client: plansv1.NewPlansServiceClient(conn), Admin: plansv1.NewAdminServiceClient(conn)}
 	}
 	var billing webhook.BillingAPI
+	var transferBilling transfercommand.Billing
 	if cfg.BillingAddr != "" {
 		conn, err := dial(cfg.BillingAddr, "billing-svc")
 		if err != nil {
 			return nil, nil, err
 		}
 		billing = webhook.BillingClient{Client: billingv1.NewBillingServiceClient(conn)}
+		transferBilling = transfers.BillingClient{Invoices: billingv1.NewBillingServiceClient(conn), Admin: billingv1.NewBillingAdminServiceClient(conn)}
 	}
+	transferHandler := &transfers.Handler{Log: log, Deps: transfercommand.Deps{Billing: transferBilling, Deps: transferquery.Deps{
+		Transfers: h.Transfers, Accounts: h.Resolver, DefaultWindow: h.TransferWindow}}}
 	return (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
 		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Objects: store.Objects{DB: pool}, Log: log, Token: cfg.InternalToken,
-		EInvoiceAccounts: store.EInvoiceAccounts{DB: pool, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo}).Handler(), closeConns, nil
+		EInvoiceAccounts: store.EInvoiceAccounts{DB: pool, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
+		Modules: []webhook.RouteRegistrar{transferHandler}}).Handler(), closeConns, nil
 }
 
 // serveHTTP runs the webhook and operator server until ctx ends.

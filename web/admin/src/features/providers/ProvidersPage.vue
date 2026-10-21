@@ -3,8 +3,8 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
-import { COUNTRY_HINTS, CURRENCIES, PROVIDERS } from "@/shared/lib/currencies";
+import { useErrorText } from "@/shared/lib/errors";
+import { COUNTRY_HINTS, CURRENCIES, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -15,9 +15,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/shared/ui/textarea";
 import { useAccountActions, usePreviewRouting, useProviderAccounts, useProviderSubscriptions, useRoutingRules, useSetRoutingRules, type Rule } from "./api";
 import CatalogueCard from "./CatalogueCard.vue";
+import BankTransferForm from "./BankTransferForm.vue";
 import { templateText } from "./templates";
 
 const { t, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 
@@ -29,9 +31,21 @@ const environment = ref<"sandbox" | "live">("live");
 const makeDefault = ref(true);
 const settings = ref("");
 const settingsError = ref("");
-watch(provider, (p) => (settings.value = p ? templateText(p) : ""));
+/** Bank transfer has a structured form instead of the JSON text. */
+const isBank = computed(() => provider.value === "banktransfer");
+const bankForm = ref<InstanceType<typeof BankTransferForm> | null>(null);
+watch(provider, (p) => (settings.value = p && p !== "banktransfer" ? templateText(p) : ""));
 function saveAccount() {
   settingsError.value = "";
+  if (isBank.value) {
+    const bank = bankForm.value?.build();
+    if (!bank) return;
+    actions.save.mutate(
+      { provider: provider.value, environment: environment.value, makeDefault: makeDefault.value, settings: { ...bank } },
+      { onSuccess: () => bankForm.value?.reset() },
+    );
+    return;
+  }
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(settings.value) as Record<string, unknown>;
@@ -71,7 +85,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.providers.accounts") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.providers.accountsHint") }}</p>
-    <p v-if="accounts.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(accounts.error.value).message }}</p>
+    <p v-if="accounts.error.value" class="text-destructive text-sm" role="alert">{{ errorText(accounts.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -109,20 +123,21 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
         </NativeSelect>
         <label class="flex items-center gap-2 text-sm"><Checkbox v-model="makeDefault" :aria-label="t('billing.providers.makeDefault')" />{{ t("billing.providers.makeDefault") }}</label>
       </div>
-      <Textarea v-model="settings" rows="10" class="mono text-xs" spellcheck="false" :aria-label="t('billing.providers.settings')" :placeholder="t('billing.providers.settings')" required />
-      <p class="text-muted-foreground text-xs">{{ t("billing.providers.webhookHint", { path: webhookPath }) }}</p>
+      <BankTransferForm v-if="isBank" ref="bankForm" :environment="environment" />
+      <Textarea v-else v-model="settings" rows="10" class="mono text-xs" spellcheck="false" :aria-label="t('billing.providers.settings')" :placeholder="t('billing.providers.settings')" required />
+      <p v-if="!isBank" class="text-muted-foreground text-xs">{{ t("billing.providers.webhookHint", { path: webhookPath }) }}</p>
       <div><Button type="submit" :disabled="actions.save.isPending.value || provider === ''">{{ t("billing.providers.saveAccount") }}</Button></div>
     </form>
     <p v-if="settingsError" class="text-destructive text-sm" role="alert">{{ settingsError }}</p>
-    <p v-if="actions.save.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(actions.save.error.value).message }}</p>
-    <p v-if="actions.remove.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(actions.remove.error.value).message }}</p>
+    <p v-if="actions.save.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.save.error.value) }}</p>
+    <p v-if="actions.remove.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.remove.error.value) }}</p>
     <p v-if="actions.save.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.providers.saved") }}</p>
   </Card>
 
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.providers.routing") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.providers.routingHint") }}</p>
-    <p v-if="stored.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(stored.error.value).message }}</p>
+    <p v-if="stored.error.value" class="text-destructive text-sm" role="alert">{{ errorText(stored.error.value) }}</p>
     <datalist id="countries"><option v-for="c in COUNTRY_HINTS" :key="c" :value="c" /></datalist>
     <div v-for="(r, i) in rules" :key="i" class="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3" role="group" :aria-label="t('billing.providers.rule', { n: i + 1 })">
       <Input v-model="r.country" list="countries" maxlength="2" :aria-label="t('billing.providers.country', { n: i + 1 })" :placeholder="t('billing.providers.anyCountry')" />
@@ -131,16 +146,16 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
         <option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option>
       </NativeSelect>
       <NativeSelect v-model="r.provider" :aria-label="t('billing.providers.ruleProvider', { n: i + 1 })">
-        <option v-for="p in PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
+        <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
       </NativeSelect>
       <Button type="button" variant="ghost" size="icon" :aria-label="t('billing.common.remove')" @click="rules.splice(i, 1)"><X class="size-4" /></Button>
     </div>
     <p v-if="rules.length === 0 && !stored.isPending.value" class="text-muted-foreground text-sm">{{ t("billing.providers.noRules") }}</p>
     <div class="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" @click="rules.push({ country: '', currency: '', provider: PROVIDERS[0].name })"><Plus class="size-4" />{{ t("billing.providers.addRule") }}</Button>
+      <Button type="button" variant="outline" @click="rules.push({ country: '', currency: '', provider: ROUTABLE_PROVIDERS[0]?.name ?? '' })"><Plus class="size-4" />{{ t("billing.providers.addRule") }}</Button>
       <Button type="button" :disabled="setRules.isPending.value" @click="setRules.mutate(rules.map((r) => ({ ...r, country: r.country.trim().toUpperCase() })))">{{ t("billing.providers.saveRules") }}</Button>
     </div>
-    <p v-if="setRules.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(setRules.error.value).message }}</p>
+    <p v-if="setRules.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setRules.error.value) }}</p>
     <p v-if="setRules.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.providers.rulesSaved") }}</p>
 
     <form class="flex flex-wrap items-center gap-3 border-t pt-4" role="form" :aria-label="t('billing.providers.preview')" @submit.prevent="preview.mutate({ country: pCountry.trim().toUpperCase(), currency: pCurrency })">

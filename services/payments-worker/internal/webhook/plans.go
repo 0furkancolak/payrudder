@@ -64,6 +64,22 @@ func (p PlansClient) GetCustomer(ctx context.Context, id uuid.UUID, externalID s
 	return r.GetCustomer(), err
 }
 
+// PreviewRouting implements PlansAPI.
+func (p PlansClient) PreviewRouting(ctx context.Context, id uuid.UUID, country, currency string) (string, error) {
+	r, err := p.Client.PreviewRouting(as(ctx, id), &plansv1.PreviewRoutingRequest{Country: country, Currency: currency})
+	return r.GetProvider(), err
+}
+
+// SetBankTransfer implements PlansAPI: it replaces the bank details printed on the tenant's invoices, or clears them for nil.
+func (p PlansClient) SetBankTransfer(ctx context.Context, id uuid.UUID, d *plansv1.BankTransferDetails) error {
+	if p.Admin == nil {
+		return fmt.Errorf("plans-svc admin API is not configured")
+	}
+	req := &plansv1.UpdateTenantSettingsRequest{TenantId: id.String(), BankTransfer: d, ClearBankTransfer: d == nil}
+	_, err := p.Admin.UpdateTenantSettings(tenant.OutgoingContext(tenant.WithOperator(ctx)), req)
+	return err
+}
+
 // TenantCurrency implements PlansAPI: the currency of base_fee_minor.
 func (p PlansClient) TenantCurrency(ctx context.Context, id uuid.UUID) (string, error) {
 	if p.Admin == nil {

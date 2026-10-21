@@ -11,6 +11,7 @@ import (
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/billingruns"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/creditnotes"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/credits"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/deadletters"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dunning"
@@ -19,6 +20,7 @@ import (
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/invoices"
 	invoicequery "github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/payments"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/reports"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/rerating"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
@@ -34,6 +36,7 @@ type (
 	invoiceHandler    = invoices.Handler
 	creditNoteHandler = creditnotes.Handler
 	dunningHandler    = dunning.Handler
+	creditsHandler    = credits.Handler
 	reportHandler     = reports.Handler
 	hostedHandler     = hosted.Handler
 	runHandler        = billingruns.Handler
@@ -41,6 +44,7 @@ type (
 	reratingHandler   = rerating.Handler
 	deadLetterHandler = deadletters.Handler
 	einvoiceHandler   = einvoices.Handler
+	paymentHandler    = payments.Handler
 )
 
 // unimplemented answers UNIMPLEMENTED for the methods no module serves. It is embedded one level deeper than the module handlers so
@@ -58,6 +62,7 @@ type Server struct {
 	*invoiceHandler
 	*creditNoteHandler
 	*dunningHandler
+	*creditsHandler
 	*reportHandler
 	*hostedHandler
 	*runHandler
@@ -65,6 +70,7 @@ type Server struct {
 	*reratingHandler
 	*deadLetterHandler
 	*einvoiceHandler
+	*paymentHandler
 }
 
 // New returns the API. app is the billing_app pool, system the billing_system pool.
@@ -74,19 +80,27 @@ func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server
 		invoiceHandler:    invoices.New(app),
 		creditNoteHandler: creditnotes.New(app, system, mgr),
 		dunningHandler:    dunning.New(app),
+		creditsHandler:    credits.New(app),
 		reportHandler:     reports.New(app),
-		hostedHandler:     hosted.New(app, system),
+		hostedHandler:     hosted.New(app, system, mgr, eng),
 		runHandler:        billingruns.New(mgr),
 		sagaHandler:       sagas.New(system, eng),
 		reratingHandler:   rerating.New(mgr),
 		deadLetterHandler: deadletters.New(),
 		einvoiceHandler:   einvoices.New(app, system, einv),
+		paymentHandler:    payments.New(system, eng),
 	}
 }
 
 // WithDeadLetters enables the dead-letter operations of BillingAdminService.
 func (s *Server) WithDeadLetters(a *dlq.Admin) *Server {
 	s.deadLetterHandler.WithDeadLetters(a)
+	return s
+}
+
+// WithDemo allows the mock payment on hosted pages for live tenants too (QUOTIFY_DEMO).
+func (s *Server) WithDemo(demo bool) *Server {
+	s.hostedHandler.WithDemo(demo)
 	return s
 }
 

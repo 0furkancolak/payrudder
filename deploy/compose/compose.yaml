@@ -1,6 +1,6 @@
 # Quotify local stack. Ports and profiles: docs/10-local-dev.md
 #   default (no profile): infrastructure       make up-infra
-#   obs:   otel-collector, prometheus, tempo, grafana, postgres-exporter, redis-exporter
+#   obs:   otel-collector, prometheus, tempo, loki, vector, grafana, postgres-exporter, redis-exporter
 #   app:   Quotify services                    make up
 #   chaos: toxiproxy                           Phase 09
 #   init:  minio-init (one-shot, run by make)
@@ -22,7 +22,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_local
     command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=200", "-c", "wal_level=logical"]
-    ports: ["${QUOTIFY_PG_HOST_PORT:-5432}:5432"]
+    ports: ["${QUOTIFY_PG_HOST_PORT:-42432}:5432"]
     volumes:
       - ./postgres/01-databases.sh:/docker-entrypoint-initdb.d/01-databases.sh:ro
       - postgres-data:/var/lib/postgresql/data
@@ -44,8 +44,8 @@ services:
       - --memory=512M
       - --reserve-memory=0M
       - --overprovisioned
-      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
-      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:42092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:42092
       - --schema-registry-addr=0.0.0.0:18081
       # Topics come from `make topics` (partitions and retention per docs/04-messaging.md). Without this a typo or a
       # missed `make topics` would silently auto-create a 1-partition topic with default retention.
@@ -53,7 +53,7 @@ services:
       - redpanda.auto_create_topics_enabled=false
       - --rpc-addr=redpanda:33145
       - --advertise-rpc-addr=redpanda:33145
-    ports: ["19092:19092", "18081:18081", "9644:9644"]
+    ports: ["42092:42092", "42081:18081", "42644:9644"]
     volumes: [redpanda-data:/var/lib/redpanda/data]
     healthcheck:
       test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true'"]
@@ -70,7 +70,7 @@ services:
     volumes:
       - ./console/config.yaml:/etc/console/config.yaml:ro
       - ../../proto:/etc/console/proto:ro
-    ports: ["${QUOTIFY_CONSOLE_HOST_PORT:-8080}:8080"]
+    ports: ["${QUOTIFY_CONSOLE_HOST_PORT:-42080}:8080"]
     depends_on:
       redpanda: { condition: service_healthy }
     healthcheck:
@@ -84,7 +84,10 @@ services:
     <<: *defaults
     image: rabbitmq:4.2.9-management-alpine
     hostname: rabbitmq
-    ports: ["5672:5672", "15672:15672"]
+    environment:
+      # One scheduler and no busy-waiting: the default (one per core, spinning) costs CPU and RAM while idle.
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +sbwt none +sbwtdcpu none +sbwtdio none +A 4"
+    ports: ["42672:5672", "42673:15672"]
     volumes:
       - ../rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/20-quotify.conf:ro
       - ../rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
@@ -94,13 +97,13 @@ services:
       interval: 10s
       timeout: 10s
       retries: 12
-    deploy: { resources: { limits: { memory: 512m } } }
+    deploy: { resources: { limits: { memory: 256m } } }
 
   redis:
     <<: *defaults
     image: redis:7.4.11-alpine
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "96mb"]
-    ports: ["6379:6379"]
+    ports: ["42379:6379"]
     volumes: [redis-data:/data]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -117,7 +120,7 @@ services:
       CLICKHOUSE_USER: quotify
       CLICKHOUSE_PASSWORD: quotify_local
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
-    ports: ["8123:8123", "9000:9000"]
+    ports: ["42123:8123", "42900:9000"]
     volumes:
       - ../clickhouse/prometheus.xml:/etc/clickhouse-server/config.d/prometheus.xml:ro
       - ../clickhouse/low-memory.xml:/etc/clickhouse-server/config.d/low-memory.xml:ro
@@ -129,7 +132,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
-    deploy: { resources: { limits: { memory: 1g } } }
+    deploy: { resources: { limits: { memory: 512m } } }
 
   # S3-compatible object storage (ADR 0013). MinIO no longer publishes community images to Docker Hub/Quay;
   # Chainguard's build is used, pinned by digest because its free tier only publishes :latest.
@@ -143,7 +146,7 @@ services:
       # MinIO's equivalent of an AbortIncompleteMultipartUpload lifecycle rule (assets-svc backstop).
       MINIO_API_STALE_UPLOADS_EXPIRY: 48h
       MINIO_API_STALE_UPLOADS_CLEANUP_INTERVAL: 6h
-    ports: ["9001:9000", "9002:9001"]
+    ports: ["42901:9000", "42902:9001"]
     volumes: [minio-data:/data]
     healthcheck:
       # The image has bash but no grep/curl: speak HTTP over /dev/tcp and check the status line.
@@ -180,7 +183,7 @@ services:
   mailpit:
     <<: *defaults
     image: axllent/mailpit:v1.31.6
-    ports: ["1025:1025", "8025:8025"]
+    ports: ["42025:1025", "42825:8025"]
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 5s
@@ -197,10 +200,10 @@ services:
     volumes: [../otel/collector.yaml:/etc/otelcol/collector.yaml:ro]
     environment:
       QUOTIFY_TRACE_SAMPLE_PERCENT: "${QUOTIFY_TRACE_SAMPLE_PERCENT:-100}"
-    ports: ["4317:4317", "4318:4318", "13133:13133"]
+    ports: ["42317:4317", "42318:4318", "42133:13133"]
     depends_on: [tempo]
     # Distroless image: no shell for an exec healthcheck. `--wait` treats it as ready once running; :13133 serves health.
-    deploy: { resources: { limits: { memory: 256m } } }
+    deploy: { resources: { limits: { memory: 128m } } }
 
   tempo:
     <<: *defaults
@@ -211,25 +214,64 @@ services:
     volumes:
       - ../tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - tempo-data:/var/tempo
-    ports: ["3200:3200"]
+    environment:
+      GOMEMLIMIT: 200MiB
+    ports: ["42200:3200"]
     # Distroless image: no exec healthcheck possible. :3200/ready serves readiness.
-    deploy: { resources: { limits: { memory: 384m } } }
+    deploy: { resources: { limits: { memory: 256m } } }
+
+  loki:
+    <<: *defaults
+    profiles: [obs]
+    image: grafana/loki:3.5.5
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    user: "0"
+    volumes:
+      - ../loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
+    environment:
+      GOMEMLIMIT: 150MiB
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3100/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    deploy: { resources: { limits: { memory: 192m } } }
+
+  # Log shipper: container stdout (slog JSON) -> Loki. No ports; it only needs the Docker socket to read the logs.
+  vector:
+    <<: *defaults
+    profiles: [obs]
+    image: timberio/vector:0.50.0-alpine
+    command: ["--config", "/etc/vector/vector.yaml", "--quiet"]
+    volumes:
+      - ../vector/vector.yaml:/etc/vector/vector.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: { loki: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8686/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy: { resources: { limits: { memory: 64m } } }
 
   prometheus:
     <<: *defaults
     profiles: [obs]
     image: prom/prometheus:v3.15.0
-    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d", "--web.enable-remote-write-receiver"]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=3d", "--storage.tsdb.retention.size=768MB", "--web.enable-remote-write-receiver"]
+    environment:
+      GOMEMLIMIT: 200MiB
     volumes:
       - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ../prometheus/rules:/etc/prometheus/rules:ro
-    ports: ["9090:9090"]
+    ports: ["42990:9090"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9090/-/ready"]
       interval: 5s
       timeout: 3s
       retries: 20
-    deploy: { resources: { limits: { memory: 384m } } }
+    deploy: { resources: { limits: { memory: 256m } } }
 
   grafana:
     <<: *defaults
@@ -239,11 +281,18 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/services.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_PLUGINS_PLUGIN_ADMIN_ENABLED: "false"
+      GF_LOG_LEVEL: warn
+      GOMEMLIMIT: 150MiB
     volumes:
       - ../grafana/provisioning:/etc/grafana/provisioning:ro
       - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
-    ports: ["3000:3000"]
-    depends_on: [prometheus, tempo]
+    ports: ["42300:3000"]
+    depends_on: [prometheus, tempo, loki]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/api/health"]
       interval: 5s
@@ -274,7 +323,7 @@ services:
     <<: *defaults
     profiles: [chaos]
     image: ghcr.io/shopify/toxiproxy:2.12.0
-    ports: ["8474:8474"]
+    ports: ["42474:8474"]
     healthcheck:
       test: ["CMD", "/toxiproxy-cli", "list"]
       interval: 5s
@@ -307,12 +356,12 @@ services:
       QUOTIFY_SECRETS_KEY: ${QUOTIFY_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
       # The local stack may deliver webhooks to http:// and private addresses (host.docker.internal, other containers). Never set this in production.
       QUOTIFY_WEBHOOK_ALLOW_PRIVATE: ${QUOTIFY_WEBHOOK_ALLOW_PRIVATE:-true}
-    ports: ["7001:7001", "9101:9101"]
+    ports: ["42701:7001", "42911:9101"]
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       redpanda: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   ingest-svc:
     <<: *defaults
@@ -333,7 +382,7 @@ services:
       QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
       QUOTIFY_KAFKA_BROKERS: redpanda:9092
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
-    ports: ["7002:7002", "9102:9102"]
+    ports: ["42702:7002", "42912:9102"]
     depends_on:
       postgres: { condition: service_healthy }
       redpanda: { condition: service_healthy }
@@ -359,12 +408,12 @@ services:
       QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
       QUOTIFY_KAFKA_BROKERS: redpanda:9092
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
-    ports: ["7003:7003", "9103:9103"]
+    ports: ["42703:7003", "42913:9103"]
     depends_on:
       postgres: { condition: service_healthy }
       redpanda: { condition: service_healthy }
       plans-svc: { condition: service_started }
-    deploy: { resources: { limits: { memory: 192m } } }
+    deploy: { resources: { limits: { memory: 128m } } }
 
   limits-svc:
     <<: *defaults
@@ -384,13 +433,13 @@ services:
       QUOTIFY_KAFKA_BROKERS: redpanda:9092
       QUOTIFY_RECONCILE_INTERVAL: ${QUOTIFY_RECONCILE_INTERVAL:-5m}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
-    ports: ["7004:7004", "9104:9104"]
+    ports: ["42704:7004", "42914:9104"]
     depends_on:
       redis: { condition: service_healthy }
       redpanda: { condition: service_healthy }
       plans-svc: { condition: service_started }
       aggregator: { condition: service_started }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   mockpsp:
     <<: *defaults
@@ -411,7 +460,7 @@ services:
       MOCKPSP_ERROR_RATE: ${MOCKPSP_ERROR_RATE:-0}
       MOCKPSP_TIMEOUT_RATE: ${MOCKPSP_TIMEOUT_RATE:-0}
       MOCKPSP_LATENCY_MS: ${MOCKPSP_LATENCY_MS:-0}
-    ports: ["8090:8090"]
+    ports: ["42890:8090"]
     depends_on:
       postgres: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 96m } } }
@@ -452,6 +501,8 @@ services:
       S3_FORCE_PATH_STYLE: "true"
       # The local stack may point an e-invoice webhook account at http:// and private addresses. Never set this in production.
       EINVOICE_ALLOW_PRIVATE_URLS: ${EINVOICE_ALLOW_PRIVATE_URLS:-true}
+    # The gateway reaches it by name in Docker; published so a service on the host (make dev) can too.
+    ports: ["42895:8095"]
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
@@ -484,7 +535,7 @@ services:
     depends_on:
       rabbitmq: { condition: service_healthy }
       minio: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   notifier:
     <<: *defaults
@@ -535,8 +586,8 @@ services:
       QUOTIFY_KAFKA_BROKERS: redpanda:9092
       QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
       S3_ENDPOINT: http://minio:9000
-      # Presigned links are opened by clients on the host, where MinIO's S3 API is published on 9001.
-      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9001}
+      # Presigned links are opened by clients on the host, where MinIO's S3 API is published on 42901.
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:42901}
       S3_BUCKET: invoices
       S3_ACCESS_KEY: quotify
       S3_SECRET_KEY: quotify_local
@@ -547,7 +598,7 @@ services:
       QUOTIFY_WATERMARK_DELAY: ${QUOTIFY_WATERMARK_DELAY:-30s}
       QUOTIFY_DUNNING_SANDBOX: ${QUOTIFY_DUNNING_SANDBOX:-1m,3m,7m}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
-    ports: ["7005:7005", "9105:9105"]
+    ports: ["42705:7005", "42915:9105"]
     depends_on:
       postgres: { condition: service_healthy }
       redpanda: { condition: service_healthy }
@@ -556,7 +607,7 @@ services:
       ingest-svc: { condition: service_started }
       aggregator: { condition: service_started }
       minio: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 192m } } }
+    deploy: { resources: { limits: { memory: 128m } } }
 
   analytics-svc:
     <<: *defaults
@@ -576,11 +627,11 @@ services:
       CLICKHOUSE_PASSWORD: quotify_local
       QUOTIFY_KAFKA_BROKERS: redpanda:9092
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
-    ports: ["7006:7006", "9106:9106"]
+    ports: ["42706:7006", "42916:9106"]
     depends_on:
       clickhouse: { condition: service_healthy }
       redpanda: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   assets-svc:
     <<: *defaults
@@ -599,8 +650,8 @@ services:
       QUOTIFY_PG_MIGRATOR_DSN: postgres://assets_migrator:assets_migrator_local@postgres:5432/assets_db
       QUOTIFY_MIGRATE_ON_START: "true"
       S3_ENDPOINT: http://minio:9000
-      # Presigned part and download URLs are opened by clients on the host, where MinIO's S3 API is published on 9001.
-      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9001}
+      # Presigned part and download URLs are opened by clients on the host, where MinIO's S3 API is published on 42901.
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:42901}
       S3_BUCKET: assets
       S3_ACCESS_KEY: quotify
       S3_SECRET_KEY: quotify_local
@@ -608,7 +659,7 @@ services:
       ASSETS_VERIFY_INTERVAL: ${ASSETS_VERIFY_INTERVAL:-30s}
       ASSETS_SWEEP_INTERVAL: ${ASSETS_SWEEP_INTERVAL:-1m}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
-    ports: ["7007:7007", "9111:9111"]
+    ports: ["42707:7007", "42921:9111"]
     depends_on:
       postgres: { condition: service_healthy }
       minio: { condition: service_healthy }
@@ -627,7 +678,7 @@ services:
       PREFILL_OPERATOR_TOKEN: ${QUOTIFY_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
       QUOTIFY_DEMO: ${QUOTIFY_DEMO:-false}
       BRAND_NAME: ${BRAND_NAME:-Quotify}
-    ports: ["3001:3001"]
+    ports: ["42301:3001"]
     depends_on:
       gateway: { condition: service_started }
     healthcheck:
@@ -635,7 +686,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 12
-    deploy: { resources: { limits: { memory: 192m } } }
+    deploy: { resources: { limits: { memory: 64m } } }
 
   gateway:
     <<: *defaults
@@ -650,7 +701,7 @@ services:
       QUOTIFY_HTTP_ADDR: ":8000"
       QUOTIFY_METRICS_ADDR: ":9100"
       # Where customers reach the gateway: the hosted invoice links it hands out start with this.
-      QUOTIFY_PUBLIC_URL: ${QUOTIFY_PUBLIC_URL:-http://localhost:8000}
+      QUOTIFY_PUBLIC_URL: ${QUOTIFY_PUBLIC_URL:-http://localhost:42800}
       QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
       QUOTIFY_INGEST_ADDR: dns:///ingest-svc:7002
       QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003
@@ -664,7 +715,7 @@ services:
       QUOTIFY_PAYMENTS_URL: http://payments-worker:8095
       QUOTIFY_PAYMENTS_INTERNAL_TOKEN: ${QUOTIFY_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
-    ports: ["8000:8000", "9100:9100"]
+    ports: ["42800:8000", "42910:9100"]
     depends_on:
       plans-svc: { condition: service_started }
       ingest-svc: { condition: service_started }
@@ -674,7 +725,7 @@ services:
       analytics-svc: { condition: service_started }
       assets-svc: { condition: service_started }
       redis: { condition: service_healthy }
-    deploy: { resources: { limits: { memory: 128m } } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
 volumes:
   postgres-data:
@@ -684,3 +735,4 @@ volumes:
   clickhouse-data:
   minio-data:
   tempo-data:
+  loki-data:

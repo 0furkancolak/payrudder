@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Link, useParams } from "@tanstack/vue-router";
-import { ArrowLeft, FileText } from "@lucide/vue";
+import { ArrowLeft, Banknote, FileText } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
@@ -16,8 +16,15 @@ import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
 import { Input } from "@/shared/ui/input";
 import { useInvoice, useInvoiceLinks, useInvoiceSaga, useOpenPdf } from "./api";
+import ManualPaymentsCard from "./ManualPaymentsCard.vue";
+import { canRecordPayment, isTransferCharge, outstandingAfter, wantsTransferState } from "./payment";
+import { useInvoiceTransfer } from "./paymentApi";
+import RecordPaymentDialog from "./RecordPaymentDialog.vue";
+import RejectTransferDialog from "./RejectTransferDialog.vue";
+import TransferCard from "./TransferCard.vue";
 
 const { t, te, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const invoiceId = computed(() => String(params.value.invoiceId ?? ""));
@@ -49,6 +56,21 @@ async function copy() {
   }
 }
 const inv = computed(() => invoice.data.value);
+
+// --- money: a bank transfer that is awaited, and payments recorded by hand
+const transferQuery = useInvoiceTransfer(tenantId, invoiceId, () => wantsTransferState(inv.value?.status, inv.value?.saga_state));
+/** Null while loading, when the invoice is not payable, and when the transfer service did not answer: the page works without it. */
+const transfer = computed(() => transferQuery.data.value ?? null);
+const transferCharge = computed(() => isTransferCharge(transfer.value, inv.value?.status));
+const canRecord = computed(() => canRecordPayment(inv.value?.status));
+const outstanding = computed(() => (transferCharge.value ? String(transfer.value?.outstanding_minor ?? 0) : outstandingAfter(inv.value?.total_minor, inv.value?.payments)));
+const recordOpen = ref(false);
+const rejectOpen = ref(false);
+const rejectOutcome = ref<"rejected" | "expired">("rejected");
+function askReject(outcome: "rejected" | "expired") {
+  rejectOutcome.value = outcome;
+  rejectOpen.value = true;
+}
 const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "");
 </script>
 
@@ -57,10 +79,11 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
     <ArrowLeft class="rtl-flip size-4" />{{ t("invoice.back") }}
   </Link>
   <PageHeader :title="inv?.number || t('invoice.fallbackTitle')">
-    <span v-if="pdf.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(pdf.error.value).message }}</span>
+    <span v-if="pdf.error.value" class="text-destructive text-sm" role="alert">{{ errorText(pdf.error.value) }}</span>
+    <Button v-if="canRecord" type="button" variant="outline" @click="recordOpen = true"><Banknote />{{ t("invoice.payment.record") }}</Button>
     <Button type="button" :disabled="!inv?.number || pdf.isPending.value" @click="pdf.mutate()"><FileText />{{ t("invoice.openPdf") }}</Button>
   </PageHeader>
-  <p v-if="invoice.error.value" class="text-destructive mb-3" role="alert">{{ toApiError(invoice.error.value).message }}</p>
+  <p v-if="invoice.error.value" class="text-destructive mb-3" role="alert">{{ errorText(invoice.error.value) }}</p>
 
   <div v-if="inv" class="mb-6 grid gap-4 sm:grid-cols-2">
     <Card class="gap-2">
@@ -68,7 +91,7 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
       <span class="text-4xl font-semibold tracking-tight tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</span>
       <div class="mt-1 flex flex-wrap gap-2">
         <Badge :variant="statusVariant(inv.status)">{{ label(t, te, "invoiceStatus", inv.status) }}</Badge>
-        <Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ inv.saga_state }}</Badge>
+        <Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ label(t, te, "sagaState", inv.saga_state) }}</Badge>
       </div>
     </Card>
     <Card class="gap-1 text-sm">
@@ -77,6 +100,11 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
       <span>{{ inv.customer_external_id }}</span>
     </Card>
   </div>
+
+  <TransferCard v-if="inv && transfer && transfer.state !== 'none'" :transfer="transfer" @confirm="recordOpen = true" @reject="askReject" />
+  <ManualPaymentsCard v-if="inv && (inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />
+  <RecordPaymentDialog v-if="inv" v-model:open="recordOpen" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency ?? ''" :outstanding-minor="outstanding" :transfer="transferCharge" />
+  <RejectTransferDialog v-model:open="rejectOpen" :tenant-id="tenantId" :invoice-id="invoiceId" :outcome="rejectOutcome" />
 
   <Card class="mb-6 p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.lines") }}</h2>
@@ -118,9 +146,10 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
       <Input :model-value="shareUrl" readonly class="mono max-w-xl" :aria-label="t('invoice.share.link')" @focus="($event.target as HTMLInputElement).select()" />
       <Button type="button" variant="outline" @click="copy">{{ t("invoice.share.copy") }}</Button>
     </div>
+    <Link to="/tenants/$id/payment-links" :params="{ id: tenantId }" :search="{ invoice: invoiceId } as never" class="text-sm underline">{{ t("invoice.share.paymentLink") }}</Link>
     <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
     <p v-if="linkError" class="text-destructive text-sm" role="alert">{{ linkError }}</p>
-    <p v-if="links.create.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(links.create.error.value).message }}</p>
+    <p v-if="links.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(links.create.error.value) }}</p>
   </Card>
 
   <EInvoiceStatus v-if="inv && inv.number" :tenant-id="tenantId" :invoice-id="invoiceId" boxed />
@@ -130,7 +159,7 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.saga") }}</h2>
-    <p v-if="saga.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(saga.error.value).message }}</p>
+    <p v-if="saga.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(saga.error.value) }}</p>
     <Table :aria-label="t('invoice.saga')">
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -145,7 +174,7 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
         <TableRow v-for="e in saga.data.value?.events ?? []" :key="e.seq" data-testid="saga-event">
           <TableCell class="text-end tabular-nums">{{ e.seq }}</TableCell>
           <TableCell class="mono text-xs">{{ e.from_state }}</TableCell>
-          <TableCell><Badge :variant="sagaVariant(e.to_state)" class="mono">{{ e.to_state }}</Badge></TableCell>
+          <TableCell><Badge :variant="sagaVariant(e.to_state)" class="mono">{{ label(t, te, "sagaState", e.to_state) }}</Badge></TableCell>
           <TableCell class="mono text-xs">{{ e.cause }}</TableCell>
           <TableCell class="mono text-muted-foreground text-xs">{{ e.at }}</TableCell>
         </TableRow>

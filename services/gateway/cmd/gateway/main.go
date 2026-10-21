@@ -200,7 +200,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		BillingAdmin: billingv1.NewBillingAdminServiceClient(up.billing), Hosted: billingv1.NewHostedInvoiceServiceClient(up.billing), PublicURL: strings.TrimRight(cfg.PublicURL, "/"), Analytics: analyticsv1.NewAnalyticsServiceClient(up.analytics),
 		Assets: assetsv1.NewAssetsServiceClient(up.assets),
 		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
-		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken,
+		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken, Demo: cfg.Demo,
 	}), nil
 }
 
@@ -219,7 +219,7 @@ func addReadinessChecks(hh *health.Handler, up *upstreams) {
 
 // serve runs the HTTP and metrics servers until ctx is cancelled or one of them fails, then shuts down gracefully.
 func serve(ctx context.Context, cfg *Config, log *slog.Logger, api http.Handler, hh *health.Handler) error {
-	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: api, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second,
+	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: withLiveness(api, hh), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second,
 		WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })

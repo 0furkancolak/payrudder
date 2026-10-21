@@ -24,9 +24,10 @@ type Rendered struct {
 
 // subjects are the subject lines; they use the same data as the template.
 var subjects = map[string]string{
-	"invoice_paid.v1":   "Receipt for invoice {{.invoice_number}}",
-	"payment_failed.v1": "Payment failed for invoice {{.invoice_number}}",
-	"limit_exceeded.v1": "You have used {{.threshold_pct}}% of your {{.meter_code}} limit",
+	"invoice_paid.v1":     "Receipt for invoice {{.invoice_number}}",
+	"payment_failed.v1":   "Payment failed for invoice {{.invoice_number}}",
+	"invoice_transfer.v1": "Invoice {{.invoice_number}}: how to pay by bank transfer",
+	"limit_exceeded.v1":   "You have used {{.threshold_pct}}% of your {{.meter_code}} limit",
 }
 
 var set = template.Must(template.New("").ParseFS(files, "files/*.html"))

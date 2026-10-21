@@ -60,12 +60,12 @@ func testHostedInvoiceLinks(t *testing.T) {
 	}
 	// Only a hash is stored.
 	var clear int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoice_links WHERE token_hash = $1`, []byte(link.GetToken())).Scan(&clear); err != nil || clear != 0 {
+	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE token_hash = $1`, []byte(link.GetToken())).Scan(&clear); err != nil || clear != 0 {
 		t.Fatalf("the token is stored as it is: %d, %v", clear, err)
 	}
 	h := sha256.Sum256([]byte(link.GetToken()))
 	var hashed int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoice_links WHERE token_hash = $1`, h[:]).Scan(&hashed); err != nil || hashed != 1 {
+	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE token_hash = $1`, h[:]).Scan(&hashed); err != nil || hashed != 1 {
 		t.Fatalf("hashed rows = %d, %v", hashed, err)
 	}
 
@@ -102,7 +102,7 @@ func testHostedInvoiceLinks(t *testing.T) {
 		}
 	}
 	if err := pgxx.InTenantTx(context.Background(), shared.app, e.tid, func(tx pgx.Tx) error {
-		_, err := tx.Exec(context.Background(), `UPDATE invoice_links SET expires_at = now() - interval '1 second' WHERE invoice_id = $1`, paid)
+		_, err := tx.Exec(context.Background(), `UPDATE payment_links SET expires_at = now() - interval '1 second' WHERE invoice_id = $1`, paid)
 		return err
 	}); err != nil {
 		t.Fatal(err)

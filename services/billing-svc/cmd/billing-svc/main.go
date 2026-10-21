@@ -36,6 +36,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
+	creditcmd "github.com/0furkancolak/quotify/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
 	einvoicecmd "github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/replies"
@@ -64,7 +65,9 @@ type Config struct {
 	SchedulerInterval time.Duration `env:"QUOTIFY_SCHEDULER_INTERVAL"`
 	SweepInterval     time.Duration `env:"QUOTIFY_SWEEP_INTERVAL"`
 	StepTimeout       time.Duration `env:"QUOTIFY_STEP_TIMEOUT"`
-	WatermarkDelay    time.Duration `env:"QUOTIFY_WATERMARK_DELAY"`
+	// TransferPoll is how often a pending bank transfer is looked for in the ledger (an operator's receipt does not wait for it).
+	TransferPoll   time.Duration `env:"QUOTIFY_TRANSFER_POLL"`
+	WatermarkDelay time.Duration `env:"QUOTIFY_WATERMARK_DELAY"`
 	// Dunning delays before payment retry 1..3 (ADR 0011: sandbox tenants run on minutes instead of days).
 	DunningLive    []time.Duration `env:"QUOTIFY_DUNNING_LIVE" envSeparator:","`
 	DunningSandbox []time.Duration `env:"QUOTIFY_DUNNING_SANDBOX" envSeparator:","`
@@ -87,6 +90,9 @@ func (c *Config) Validate() error {
 	}
 	if len(c.DunningLive) != saga.MaxDunning || len(c.DunningSandbox) != saga.MaxDunning {
 		errs = append(errs, fmt.Errorf("QUOTIFY_DUNNING_LIVE and QUOTIFY_DUNNING_SANDBOX need exactly %d delays", saga.MaxDunning))
+	}
+	if c.TransferPoll < time.Minute {
+		errs = append(errs, errors.New("QUOTIFY_TRANSFER_POLL must be at least 1m"))
 	}
 	if c.SchedulerInterval < time.Second || c.SweepInterval < time.Second {
 		errs = append(errs, errors.New("QUOTIFY_SCHEDULER_INTERVAL and QUOTIFY_SWEEP_INTERVAL must be ≥ 1s"))
@@ -188,7 +194,7 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	pub := rabbitx.NewPublisher(cfg.RabbitMQURL)
 	defer pub.Close()
 
-	eng, err := saga.NewEngine(saga.Config{StepTimeout: cfg.StepTimeout, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log})
+	eng, err := saga.NewEngine(saga.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log})
 	if err != nil {
 		return err
 	}
@@ -303,7 +309,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 			grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
 		},
 	})
-	svc := api.New(appPool, systemPool, mgr, eng).WithDeadLetters(&dlq.Admin{URL: cfg.RabbitMQURL})
+	svc := api.New(appPool, systemPool, mgr, eng).WithDeadLetters(&dlq.Admin{URL: cfg.RabbitMQURL}).WithDemo(cfg.Demo)
 	if cfg.S3AccessKey != "" {
 		store, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, PublicEndpoint: cfg.S3PublicEndpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
 			AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
@@ -365,11 +371,18 @@ func (w *workers) startLoops(ctx context.Context, g *errgroup.Group) {
 	g.Go(func() error { loop(ctx, w.cfg.SweepInterval, "sweeper", w.log, w.sweep); return nil })
 }
 
-// sweep re-issues stuck saga steps and advances dunning.
+// sweep re-issues stuck saga steps, advances dunning and writes off credits whose time has come.
 func (w *workers) sweep(ctx context.Context) error {
 	res, err := w.eng.Sweep(ctx, w.pool, 200)
-	if err == nil && (res.Reissued+res.Exhausted+res.Dunned) > 0 {
-		w.log.InfoContext(ctx, "saga sweep", "reissued", res.Reissued, "exhausted", res.Exhausted, "dunning", res.Dunned)
+	if err == nil && (res.Reissued+res.Exhausted+res.Dunned+res.Polled) > 0 {
+		w.log.InfoContext(ctx, "saga sweep", "reissued", res.Reissued, "exhausted", res.Exhausted, "dunning", res.Dunned, "polled", res.Polled)
+	}
+	if err != nil {
+		return err
+	}
+	expired, err := creditcmd.ExpireDue(ctx, w.pool, 200)
+	if err == nil && expired > 0 {
+		w.log.InfoContext(ctx, "credits expired", "lots", expired)
 	}
 	if err != nil {
 		return err

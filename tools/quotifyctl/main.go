@@ -119,7 +119,7 @@ var sandboxScenarios = []string{"success", "declined", "insufficient_funds_once"
 
 func seed(args []string) error {
 	fs := flag.NewFlagSet("seed", flag.ContinueOnError)
-	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:8000"), "gateway base URL")
+	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800"), "gateway base URL")
 	token := fs.String("operator-token", os.Getenv("QUOTIFY_OPERATOR_TOKEN"), "operator token (QUOTIFY_OPERATOR_TOKEN)")
 	name := fs.String("name", "Demo Co", "account name")
 	currency := fs.String("currency", "", "ISO 4217 currency (required, e.g. TRY)")

@@ -536,6 +536,141 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/credit-packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The credit packs the tenant sells */
+        get: operations["listCreditPacks"];
+        put?: never;
+        /**
+         * Add a credit pack
+         * @description A pack is a number of credits for a price in one currency. A customer buys it through a payment link; the credits are granted when the payment is confirmed.
+         */
+        post: operations["createCreditPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit-packs/{id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a credit pack back on sale */
+        post: operations["activateCreditPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit-packs/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw a credit pack from sale
+         * @description Credits already sold are not touched.
+         */
+        post: operations["deactivateCreditPack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What a customer can spend now
+         * @description The balance leaves out credits whose time has passed. `lots` shows where it comes from, the credits that expire first at the top.
+         */
+        get: operations["getCreditBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/credits/grant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add credits to a customer
+         * @description For a promotion, a goodwill gesture or a sale made outside Quotify. With an `idempotency_key` (or the `Idempotency-Key` header) a repeat of the call adds nothing and returns `replayed: true`; the same key with other values is `billing.credits.key_reused`.
+         */
+        post: operations["grantCredits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/credits/consume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Spend credits
+         * @description Takes the credits that expire first. With too few credits nothing is taken and the answer is 409 `billing.credits.insufficient`. An `idempotency_key` (or the `Idempotency-Key` header) is required: a retried call returns the first result with `replayed: true` instead of charging twice.
+         */
+        post: operations["consumeCredits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/credits/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every change to a customer's credits, newest first */
+        get: operations["listCreditLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhook-endpoints": {
         parameters: {
             query?: never;
@@ -764,6 +899,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/mail-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Which kinds of e-mail Quotify sends for the tenant (all on until switched off)
+         * @description Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`. A mail of a category that is off is dropped by the notifier
+         *     (counted in `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule (Paddle does, so Quotify sends none for its payments).
+         */
+        get: operations["getMailSettings"];
+        /**
+         * Switch the listed categories on or off; the others keep their setting
+         * @description An unknown category is rejected with the error key `plans.mail.unknown_category`. A category listed twice takes its last value.
+         */
+        put: operations["setMailSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/routing-rules/preview": {
         parameters: {
             query?: never;
@@ -899,6 +1059,271 @@ export interface paths {
         };
         /** A redirect to the invoice PDF (a link that works for five minutes) */
         get: operations["hostedInvoicePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * First use of an ad-hoc payment link — makes the invoice and continues on its page
+         * @description The payer presses *Continue*. This is the point at which the invoice gets its number, not when the page is fetched. A redirect to the invoice page. At most 10 a minute per address.
+         */
+        post: operations["hostedLinkStart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay the invoice by one of the methods the page offers
+         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address.
+         */
+        post: operations["hostedInvoicePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A printable receipt of a paid invoice */
+        get: operations["hostedInvoiceReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The seller's logo */
+        get: operations["hostedInvoiceLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A customer's invoices and payments (public, the token in the path is the credential)
+         * @description Read-only, for one customer of one tenant: their finalized invoices, the payments recorded for them (charges and refunds), PDFs and receipts, and a pay button on what is open. Expires and can be revoked like a payment link. At most 60 requests a minute per address.
+         */
+        get: operations["portalPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The seller's logo */
+        get: operations["portalLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of the customer's invoices, with its payment state and the ways to pay it */
+        get: operations["portalInvoicePage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A redirect to the invoice PDF */
+        get: operations["portalInvoicePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A printable receipt of a paid invoice */
+        get: operations["portalInvoiceReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay one of the customer's open invoices
+         * @description Same as the payment link's pay, scoped to the portal's customer. At most 10 a minute per address.
+         */
+        post: operations["portalInvoicePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List payment links */
+        get: operations["listPaymentLinks"];
+        put?: never;
+        /**
+         * Make a payment link for an open invoice, or ad hoc for a fixed amount
+         * @description `kind: invoice` (needs `invoice_id`, a finalized unpaid invoice) or `kind: adhoc` (needs `amount_minor`, optionally `currency` — the tenant's by default — `description` and a `customer_external_id`; the invoice is made when the customer first presses Continue). The token is returned once. `Idempotency-Key` (or `idempotency_key`) makes a retry return the link made the first time, without the token (`replayed: true`); the same key with other parameters is refused. Single-use links stop after one paid invoice; a reusable ad-hoc link makes one invoice per use.
+         */
+        post: operations["createPaymentLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment-links/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One payment link */
+        get: operations["getPaymentLink"];
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a payment link
+         * @description The link and the invoice links it handed out stop working. Unpaid invoices made from an ad-hoc link are voided; paid ones are untouched. Revoking twice is not an error.
+         */
+        delete: operations["revokePaymentLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/portal-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make the link to a customer's payment page
+         * @description Shows the customer's invoices, payments, PDFs and receipts, read-only, with a pay button on open invoices. Works until expires_in_days (default 30, at most 365) or until revoked; the token is returned once.
+         */
+        post: operations["createPortalLink"];
+        /** Make every portal link of the customer stop working */
+        delete: operations["revokePortalLinks"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The customer's invoices and the payments recorded for them
+         * @description The same rows the customer sees on their payment page, newest first (charges and refunds from the ledger; an invoice may have several attempts).
+         */
+        get: operations["listCustomerPayments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1467,6 +1892,66 @@ export interface paths {
         get: operations["listPaymentLedger"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The bank transfer state of an invoice (what is awaited, what has arrived)
+         * @description For an invoice charged through the tenant's bank transfer account: the payment reference and bank details, the receipts recorded so far, and whether the transfer is pending, paid, expired or rejected. `state` is `none` when the invoice was not charged by bank transfer.
+         */
+        get: operations["getInvoiceTransfer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm money that arrived by bank transfer for an invoice
+         * @description Records one transfer. It is idempotent per (invoice, bank_reference): the same reference again answers 200 with `duplicate: true` (409 `payments.transfer.reference_reused` when the amount differs). The currency must be the invoice's and the amount positive and at most what is outstanding (`payments.transfer.overpayment` otherwise: record what the invoice needs and handle the rest outside Quotify). A partial amount is recorded and the invoice stays unpaid; when the receipts add up to the total the invoice saga is told and the invoice is paid. The actor is taken from the X-Quotify-Actor header.
+         */
+        post: operations["confirmInvoiceTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Give up waiting for a bank transfer (it was refused or its time is up)
+         * @description Marks the pending transfer declined and tells the invoice saga, so the tenant's dunning schedule applies at once (a new payment window, or uncollectible when no retry is left). Receipts already recorded stay recorded.
+         */
+        post: operations["rejectInvoiceTransfer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2058,6 +2543,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/invoices/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record money received outside a payment provider (a bank transfer, cash, other) against an invoice
+         * @description For an invoice that was not charged through Quotify, or whose charge is stuck. Partial payments are recorded; the invoice is paid when they add up to the total. More than is outstanding is refused (`billing.payment.overpayment`). Allowed while the invoice is open or uncollectible and its saga is waiting for or has failed a payment. Idempotent per (invoice, method, reference) when a reference is given: the same call again answers 200 with `duplicate: true`. Who and when are recorded (X-Quotify-Actor, `operator` when absent). An invoice charged by bank transfer is confirmed through its transfer endpoint instead.
+         */
+        post: operations["adminRecordInvoicePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/invoices/{id}/credit-notes": {
         parameters: {
             query?: never;
@@ -2280,10 +2785,10 @@ export interface components {
             customer_external_id?: string;
             period_id?: string;
             /**
-             * @description FEE: a fixed fee invoiced in advance for one period, or what a plan change moved
+             * @description FEE: a fixed fee invoiced in advance for one period, or what a plan change moved. LINK: made from an ad-hoc payment link
              * @enum {string}
              */
-            kind?: "REGULAR" | "CORRECTION" | "FEE";
+            kind?: "REGULAR" | "CORRECTION" | "FEE" | "LINK";
             /** @example INV-2026-000123 */
             number?: string;
             currency?: string;
@@ -2298,6 +2803,92 @@ export interface components {
             /** Format: date-time */
             finalize_time?: string;
             lines?: components["schemas"]["InvoiceLine"][];
+            /** @description Payments recorded by hand (POST /admin/v1/invoices/{id}/payments), oldest first. Only the single-invoice reads fill it. */
+            payments?: components["schemas"]["InvoicePayment"][];
+        };
+        InvoicePayment: {
+            id?: string;
+            invoice_id?: string;
+            /** @enum {string} */
+            method?: "bank_transfer" | "cash" | "other";
+            /** @description int64 minor units as a string */
+            amount_minor?: string;
+            currency?: string;
+            /** Format: date-time */
+            received_at?: string;
+            reference?: string;
+            note?: string;
+            recorded_by?: string;
+            /** Format: date-time */
+            recorded_at?: string;
+        };
+        RecordInvoicePaymentResult: {
+            payment?: components["schemas"]["InvoicePayment"];
+            duplicate?: boolean;
+            /** @description The sum of the payments recorded by hand */
+            paid_minor?: string;
+            outstanding_minor?: string;
+            /** @description The invoice is paid */
+            settled?: boolean;
+        };
+        BankTransferInstructions: {
+            bank_name?: string;
+            account_holder?: string;
+            /** @description Normalised: capitals, no spaces */
+            iban?: string;
+            bic?: string;
+            /** @description What the customer writes on the transfer */
+            reference?: string;
+        };
+        TransferReceipt: {
+            /** @description The ledger row */
+            id?: number;
+            /** Format: int64 */
+            amount_minor?: number;
+            currency?: string;
+            /** Format: date-time */
+            received_at?: string;
+            bank_reference?: string;
+            note?: string;
+            recorded_by?: string;
+            /** Format: date-time */
+            recorded_at?: string;
+        };
+        InvoiceTransfer: {
+            /** Format: uuid */
+            invoice_id?: string;
+            /**
+             * @description none: not charged by bank transfer. pending: waiting for the money (partial receipts included). paid: the receipts reach the total. expired and rejected: given up, dunning applies.
+             * @enum {string}
+             */
+            state?: "none" | "pending" | "paid" | "expired" | "rejected";
+            reference?: string;
+            instructions?: components["schemas"]["BankTransferInstructions"];
+            currency?: string;
+            /** Format: int64 */
+            total_minor?: number;
+            /** Format: int64 */
+            received_minor?: number;
+            /** Format: int64 */
+            outstanding_minor?: number;
+            /** Format: date-time */
+            pending_since?: string;
+            /**
+             * Format: date-time
+             * @description When the payment window ends
+             */
+            expires_at?: string;
+            closed_reason?: string;
+            receipts?: components["schemas"]["TransferReceipt"][];
+        };
+        TransferReceiptResult: {
+            receipt?: components["schemas"]["TransferReceipt"];
+            duplicate?: boolean;
+            /** @description The receipts reach the total */
+            paid?: boolean;
+            /** @description False when billing-svc could not be told now; the saga notices at its next poll. */
+            saga_notified?: boolean;
+            transfer?: components["schemas"]["InvoiceTransfer"];
         };
         EntitlementStatus: {
             customer_external_id?: string;
@@ -2655,6 +3246,101 @@ export interface components {
             /** Format: date-time */
             readonly update_time?: string;
         };
+        CreditPackInput: {
+            name: string;
+            /** @description int64, above zero (a number is accepted too) */
+            credits: string;
+            /** @description int64 minor units of the currency, above zero */
+            price_minor: string;
+            currency: string;
+        };
+        CreditPack: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** @description int64 as a string */
+            credits?: string;
+            /** @description int64 as a string */
+            price_minor?: string;
+            currency?: string;
+            active?: boolean;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        CreditPackList: {
+            packs?: components["schemas"]["CreditPack"][];
+        };
+        CreditLot: {
+            /** Format: uuid */
+            id?: string;
+            /** @description int64 as a string */
+            granted?: string;
+            /** @description int64 as a string */
+            remaining?: string;
+            /** @enum {string} */
+            source?: "purchase" | "promo" | "manual";
+            /**
+             * Format: date-time
+             * @description Null: the credits never expire
+             */
+            expire_time?: string | null;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        CreditBalance: {
+            /** @description int64 as a string */
+            balance?: string;
+            /**
+             * Format: date-time
+             * @description When some of the credits run out; null when none does
+             */
+            next_expire_time?: string | null;
+            lots?: components["schemas"]["CreditLot"][];
+        };
+        CreditGrantInput: {
+            /** @description int64, above zero (a number is accepted too) */
+            credits: string;
+            /** @enum {string} */
+            source: "promo" | "manual";
+            /**
+             * Format: date-time
+             * @description Must lie in the future; leave out for credits that never expire
+             */
+            expire_time?: string;
+            reason?: string;
+            idempotency_key?: string;
+        };
+        CreditConsumeInput: {
+            /** @description int64, above zero (a number is accepted too) */
+            credits: string;
+            reason?: string;
+            /** @description Required, here or in the Idempotency-Key header */
+            idempotency_key?: string;
+        };
+        CreditResult: {
+            /** @description int64 as a string: what the customer can spend after the call */
+            balance?: string;
+            /** @description True when the key had been used: nothing changed */
+            replayed?: boolean;
+        };
+        CreditLedgerEntry: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            lot_id?: string;
+            /** @enum {string} */
+            kind?: "grant" | "consume" | "expire";
+            /** @description int64 as a string; negative for consume and expire */
+            amount?: string;
+            reason?: string;
+            idempotency_key?: string;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        CreditLedgerPage: {
+            entries?: components["schemas"]["CreditLedgerEntry"][];
+            next_page_token?: string;
+        };
         WebhookEndpointInput: {
             /**
              * Format: uri
@@ -2668,7 +3354,84 @@ export interface components {
             active?: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "payment_link.created" | "payment_link.paid" | "payment_link.expired";
+        PaymentLink: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            kind?: "invoice" | "adhoc";
+            /**
+             * @description paid: a single-use link that was paid
+             * @enum {string}
+             */
+            status?: "active" | "paid" | "expired" | "revoked";
+            /** @description kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
+            invoice_id?: string;
+            customer_external_id?: string;
+            single_use?: boolean;
+            /** @description kind adhoc: int64 minor units as a string */
+            amount_minor?: string;
+            currency?: string;
+            description?: string;
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            expire_time?: string;
+            /** Format: date-time */
+            revoke_time?: string | null;
+            /** @description Invoices paid through the link */
+            paid_count?: number;
+            /** Format: date-time */
+            last_paid_time?: string | null;
+            /** @description Invoices the link created (ad hoc) */
+            use_count?: number;
+            idempotency_key?: string;
+        };
+        CreatePaymentLinkRequest: {
+            /**
+             * @description Default: invoice when invoice_id is set, else adhoc
+             * @enum {string}
+             */
+            kind?: "invoice" | "adhoc";
+            /** Format: uuid */
+            invoice_id?: string;
+            /** @description adhoc: a positive int64 in minor units (a string or a number) */
+            amount_minor?: string;
+            /** @description adhoc: ISO 4217; the tenant's currency when empty */
+            currency?: string;
+            /** @description adhoc: what it is for; printed on the invoice */
+            description?: string;
+            /** @description adhoc: make the invoice out to this customer */
+            customer_external_id?: string;
+            /** @description Default true for adhoc, false for invoice */
+            single_use?: boolean;
+            /** @description Default 30 for adhoc, 90 for invoice */
+            expires_in_days?: number;
+            idempotency_key?: string;
+        };
+        CreatedPaymentLink: components["schemas"]["PaymentLink"] & {
+            /** @description The secret part of the link; shown once, empty on a replay */
+            token?: string;
+            /** @description Absolute when the gateway knows its public address (QUOTIFY_PUBLIC_URL); empty on a replay */
+            url?: string;
+            replayed?: boolean;
+        };
+        CustomerPayment: {
+            /** Format: uuid */
+            invoice_id?: string;
+            invoice_number?: string;
+            /** @enum {string} */
+            kind?: "charge" | "refund";
+            /** @enum {string} */
+            status?: "succeeded" | "declined" | "failed" | "pending";
+            amount_minor?: string;
+            currency?: string;
+            provider?: string;
+            /** @enum {string} */
+            environment?: "sandbox" | "live";
+            /** Format: date-time */
+            occurred_at?: string;
+        };
         WebhookEndpoint: {
             /** Format: uuid */
             id?: string;
@@ -2810,6 +3573,13 @@ export interface components {
              */
             interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
         };
+        MailSettings: {
+            categories?: {
+                /** @enum {string} */
+                category?: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
+                enabled?: boolean;
+            }[];
+        };
         RoutingRules: {
             rules?: {
                 /** @description ISO 3166-1 alpha-2; empty matches any country */
@@ -2817,7 +3587,7 @@ export interface components {
                 /** @description ISO 4217; empty matches any currency */
                 currency?: string;
                 /** @enum {string} */
-                provider?: "iyzico" | "paddle";
+                provider?: "iyzico" | "paddle" | "banktransfer";
             }[];
         };
         Tenant: {
@@ -3921,6 +4691,208 @@ export interface operations {
             400: components["responses"]["Error"];
         };
     };
+    listCreditPacks: {
+        parameters: {
+            query?: {
+                /** @description true leaves out packs withdrawn from sale */
+                active?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditPackList"];
+                };
+            };
+        };
+    };
+    createCreditPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditPackInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditPack"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    activateCreditPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    deactivateCreditPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getCreditBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditBalance"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    grantCredits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditGrantInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    consumeCredits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditConsumeInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    listCreditLedger: {
+        parameters: {
+            query?: {
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditLedgerPage"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
     listWebhookEndpoints: {
         parameters: {
             query?: never;
@@ -4287,7 +5259,7 @@ export interface operations {
                             currency?: string;
                             total_minor?: string;
                             /** @enum {string} */
-                            state?: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "UNCOLLECTIBLE";
+                            state?: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "UNCOLLECTIBLE";
                             dunning_attempt?: number;
                             /** Format: date-time */
                             next_attempt_time?: string;
@@ -4390,6 +5362,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoutingRules"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getMailSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailSettings"];
+                };
+            };
+        };
+    };
+    setMailSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailSettings"];
+            };
+        };
+        responses: {
+            /** @description Every category with its new state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailSettings"];
                 };
             };
             400: components["responses"]["Error"];
@@ -4676,6 +5693,607 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    hostedLinkStart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the invoice page (/i/{invoice token}) */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link does not exist, has expired, or a single-use link was already paid */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedInvoicePay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    method: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Payment instructions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Redirect to the provider's page, or back to the invoice page */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link does not exist or has expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The invoice cannot be paid now */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedInvoiceReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The receipt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The link does not exist, has expired, or the invoice is not paid */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    hostedInvoiceLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logo image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description No logo, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalPage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The link does not exist or has expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logo image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description No logo, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalInvoicePage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Not the customer's invoice, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalInvoicePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the download link */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not the customer's invoice, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The PDF is not rendered yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalInvoiceReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The receipt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Not the customer's paid invoice, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    portalInvoicePay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    method: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Payment instructions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Redirect to the provider's page, or back to the invoice page */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not the customer's invoice, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The invoice cannot be paid now */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listPaymentLinks: {
+        parameters: {
+            query?: {
+                kind?: "invoice" | "adhoc";
+                status?: "active" | "paid" | "expired" | "revoked";
+                invoice_id?: string;
+                /** @description The customer's external id */
+                customer?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        links?: components["schemas"]["PaymentLink"][];
+                        next_page_token?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    createPaymentLink: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePaymentLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Replayed: the link made the first time, without the token */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedPaymentLink"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedPaymentLink"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getPaymentLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentLink"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    revokePaymentLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentLink"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    createPortalLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @default 30 */
+                    expires_in_days?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        token?: string;
+                        url?: string;
+                        /** Format: date-time */
+                        expires_at?: string;
+                        customer_id?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    revokePortalLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        revoked?: number;
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listCustomerPayments: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        invoices?: components["schemas"]["Invoice"][];
+                        payments?: components["schemas"]["CustomerPayment"][];
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     getInvoicePdf: {
@@ -5509,7 +7127,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description The provider's settings (for iyzico api_key, secret_key, base_url and the buyer defaults) */
+        /** @description The provider's settings (for iyzico api_key, secret_key, base_url and the buyer defaults; for banktransfer bank_name, account_holder, iban, bic, reference_template, currencies and payment_window_days, validated: the IBAN by its check digits, the template by its placeholders) */
         requestBody: {
             content: {
                 "application/json": Record<string, never>;
@@ -5793,7 +7411,7 @@ export interface operations {
                             currency?: string;
                             provider_ref?: string;
                             /** @enum {string} */
-                            source?: "command" | "webhook" | "reconciliation";
+                            source?: "command" | "webhook" | "reconciliation" | "manual";
                             detail?: string;
                             /** Format: date-time */
                             occurred_at?: string;
@@ -5801,6 +7419,125 @@ export interface operations {
                     };
                 };
             };
+            503: components["responses"]["Error"];
+        };
+    };
+    getInvoiceTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceTransfer"];
+                };
+            };
+            503: components["responses"]["Error"];
+        };
+    };
+    confirmInvoiceTransfer: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Who confirms it (shown in the audit trail); "operator" when absent */
+                "X-Quotify-Actor"?: string;
+            };
+            path: {
+                tenant_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: int64 */
+                    amount_minor: number;
+                    /** @example TRY */
+                    currency: string;
+                    /**
+                     * Format: date-time
+                     * @description When the bank booked it. Default now; not in the future.
+                     */
+                    received_at?: string;
+                    /** @description The bank's transaction or statement reference; it makes the call idempotent. */
+                    bank_reference: string;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The same receipt was recorded before */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferReceiptResult"];
+                };
+            };
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferReceiptResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    rejectInvoiceTransfer: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Quotify-Actor"?: string;
+            };
+            path: {
+                tenant_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /**
+                     * @default rejected
+                     * @enum {string}
+                     */
+                    outcome?: "rejected" | "expired";
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceTransfer"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
     };
@@ -5964,7 +7701,7 @@ export interface operations {
                     /** Format: uuid */
                     subscription_id: string;
                     /** @enum {string} */
-                    to_provider: "iyzico" | "paddle";
+                    to_provider: "iyzico" | "paddle" | "banktransfer";
                     /** @description The target provider's catalogue price */
                     price_ref?: string;
                 };
@@ -6955,6 +8692,60 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceSaga"];
                 };
             };
+            409: components["responses"]["Error"];
+        };
+    };
+    adminRecordInvoicePayment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Quotify-Actor"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    tenant_id: string;
+                    /** @enum {string} */
+                    method: "bank_transfer" | "cash" | "other";
+                    /** @description int64 minor units as a string */
+                    amount_minor: string;
+                    /**
+                     * Format: date-time
+                     * @description Default now; not in the future.
+                     */
+                    received_at?: string;
+                    reference?: string;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The same payment was recorded before */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordInvoicePaymentResult"];
+                };
+            };
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordInvoicePaymentResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
             409: components["responses"]["Error"];
         };
     };

@@ -2,7 +2,29 @@
 
 Stack: **OpenTelemetry SDK** (traces + metrics) → **OTel Collector** → **Tempo** (traces) and
 **Prometheus** (metrics, via the collector's Prometheus exporter or direct `/metrics` scrape) → **Grafana**.
-Logs: `log/slog` JSON to stdout, with `trace_id`/`span_id` injected. Loki is optional (open question). Locally, `docker logs` is enough.
+Logs: `log/slog` JSON to stdout, with `trace_id`/`span_id` injected → **Vector** (Docker socket) → **Loki** → Grafana.
+
+## Logs and the service map
+
+Everything is in the compose `obs` profile (`make up` starts it) and opens in Grafana at
+`localhost:42300`, which lands on **Quotify / Services**.
+
+- **Vector** (`deploy/vector/vector.yaml`) tails every container of the compose project and labels each line with
+  `service` (compose service) and `level` (slog level, lower-cased; `unknown` for infrastructure that does not log
+  JSON). Only those two are labels, so the index stays tiny. `trace_id` stays inside the JSON line.
+- **Loki** (`deploy/loki/loki.yaml`) is a single binary on local disk: 72 h retention, 16 MiB caches, no ruler.
+- **Tempo's metrics generator** turns traces into `traces_service_graph_*` and `traces_spanmetrics_*` and remote-writes
+  them to Prometheus. That is what draws the service map (calls, failures and message hops between services, and the
+  databases and brokers behind them) and the per-service rate, error and latency panels.
+- Everything links: a log line's `trace_id` opens the trace (Loki derived field), a span opens the logs of its service
+  around that time, and the service map's nodes link to their metrics.
+
+Dashboards: **Services** (service map, RED per service, edge latency, message hop latency, failed traces, memory of the
+services and of the monitoring stack) and **Logs** (volume by level and service, filterable stream).
+
+Footprint at idle: Prometheus ~70 MiB, Loki ~90 MiB, Tempo ~45 MiB, Vector ~12 MiB, collector ~60 MiB, Grafana ~140 MiB.
+Each has a `GOMEMLIMIT` below its container limit so the GC works before the kernel does.
+
 
 ## Tracing
 

@@ -128,10 +128,10 @@ Mailpit has 18 messages, for example:
   - [SANDBOX] Receipt for invoice SBX-2026-000009
   - [SANDBOX] Receipt for invoice SBX-2026-000007
 
-  Mailpit (receipts)   http://localhost:8025
-  Grafana (dashboards) http://localhost:3000   Quotify / Billing, Pipeline lag, Correctness
-  Traces (Tempo)       http://localhost:3000/explore   (data source Tempo)
-  MinIO (PDFs)         http://localhost:9002   (user quotify, password quotify_local)
+  Mailpit (receipts)   http://localhost:42825
+  Grafana (dashboards) http://localhost:42300   Quotify / Billing, Pipeline lag, Correctness
+  Traces (Tempo)       http://localhost:42300/explore   (data source Tempo)
+  MinIO (PDFs)         http://localhost:42902   (user quotify, password quotify_local)
   Redpanda Console     http://localhost:8085
 ```
 
@@ -156,7 +156,7 @@ and the points that only a sandbox can settle are marked in the code and the pha
 
 ## The operator console
 
-`web/admin` (Vue 3, TanStack Router and Query, six languages, an API client typed from the OpenAPI file) at <http://localhost:3001> shows tenants, invoices with the **saga timeline** of each one,
+`web/admin` (Vue 3, TanStack Router and Query, six languages, an API client typed from the OpenAPI file) at <http://localhost:42301> shows tenants, invoices with the **saga timeline** of each one,
 a **playground** that walks through the whole sandbox flow in the browser (account, usage, period close, paid or declined invoice), the RabbitMQ dead-letter queues with a redrive action, and per tenant the billing pages: customers, packages, subscriptions (with usage against limits and moves between providers), payments and reconciliation, provider accounts and routing, and the reports. It talks to the gateway only. A Playwright smoke test drives it against the real stack in CI, and the billing pages are tested against a mocked gateway.
 
 ![The saga timeline of a paid invoice](docs/img/admin-invoice-saga.png)
@@ -197,7 +197,7 @@ gaps, and the phase files their open boxes.
 
 - [Vision](docs/00-vision.md): the problem, goals and non-goals
 - [Architecture](docs/02-architecture.md) and [Correctness](docs/07-correctness.md)
-- [Local development](docs/10-local-dev.md), [Kubernetes](docs/12-kubernetes.md), [Testing strategy](docs/09-testing-strategy.md)
+- [Local development](docs/10-local-dev.md), [Kubernetes](docs/12-kubernetes.md), [Railway](deploy/railway/README.md), [Testing strategy](docs/09-testing-strategy.md)
 - [Decisions](docs/adr/): why each technology was chosen
 
 ## License

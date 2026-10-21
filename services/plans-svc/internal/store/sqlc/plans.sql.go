@@ -336,6 +336,17 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, 
 	return i, err
 }
 
+const getMailDisabled = `-- name: GetMailDisabled :one
+SELECT disabled FROM tenant_mail_settings WHERE tenant_id = app_tenant_id()
+`
+
+func (q *Queries) GetMailDisabled(ctx context.Context) ([]string, error) {
+	row := q.db.QueryRow(ctx, getMailDisabled)
+	var disabled []string
+	err := row.Scan(&disabled)
+	return disabled, err
+}
+
 const getPendingChange = `-- name: GetPendingChange :one
 SELECT id, subscription_id, plan_version_id, interval, effective_at, state FROM subscription_changes
 WHERE tenant_id = app_tenant_id() AND subscription_id = $1 AND state = 'pending'
@@ -2245,4 +2256,14 @@ func (q *Queries) SettleChange(ctx context.Context, arg SettleChangeParams) (int
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const upsertMailDisabled = `-- name: UpsertMailDisabled :exec
+INSERT INTO tenant_mail_settings (tenant_id, disabled, updated_at) VALUES (app_tenant_id(), $1::text[], now())
+ON CONFLICT (tenant_id) DO UPDATE SET disabled = EXCLUDED.disabled, updated_at = EXCLUDED.updated_at
+`
+
+func (q *Queries) UpsertMailDisabled(ctx context.Context, disabled []string) error {
+	_, err := q.db.Exec(ctx, upsertMailDisabled, disabled)
+	return err
 }

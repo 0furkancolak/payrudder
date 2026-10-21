@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/quantity"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/payments"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
@@ -92,19 +93,30 @@ func Proto(inv *query.Invoice) *billingv1.Invoice {
 	for _, l := range inv.Lines {
 		out.Lines = append(out.Lines, lineProto(l))
 	}
+	for _, p := range inv.Payments {
+		out.Payments = append(out.Payments, payments.Proto(p))
+	}
 	return out
 }
 
 func invoiceProto(r sqlc.GetInvoiceRow) *billingv1.Invoice {
 	inv := &billingv1.Invoice{
 		Id: r.ID.String(), CustomerId: r.CustomerID.String(), CustomerExternalId: r.CustomerExternalID, PeriodId: r.PeriodID, Kind: r.Kind, Number: r.Number,
-		PlanVersionId: r.PlanVersionID.String(), Currency: r.Currency, SubtotalMinor: r.SubtotalMinor, TotalMinor: r.TotalMinor, Status: r.Status,
+		PlanVersionId: planVersion(r.PlanVersionID), Currency: r.Currency, SubtotalMinor: r.SubtotalMinor, TotalMinor: r.TotalMinor, Status: r.Status,
 		SagaState: r.SagaState, PdfObjectKey: r.PdfObjectKey, CreateTime: timestamppb.New(r.CreatedAt),
 	}
 	if r.FinalizedAt != nil {
 		inv.FinalizeTime = timestamppb.New(*r.FinalizedAt)
 	}
 	return inv
+}
+
+// planVersion is empty for an invoice that has no plan: the nil id of a payment-link invoice.
+func planVersion(id uuid.UUID) string {
+	if id == uuid.Nil {
+		return ""
+	}
+	return id.String()
 }
 
 func lineProto(r sqlc.ListInvoiceLinesRow) *billingv1.InvoiceLine {

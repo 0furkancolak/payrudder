@@ -23,6 +23,8 @@ type ChargeRequest struct {
 	AmountMinor    int64  `json:"amount_minor"`
 	Currency       string `json:"currency"`
 	PaymentMethod  string `json:"payment_method"`
+	// InvoiceNumber is the number printed on the invoice, for a provider that asks the customer to quote it (a bank transfer). Not sent to mock-psp.
+	InvoiceNumber string `json:"-"`
 }
 
 // ChargeResult is a successful charge.

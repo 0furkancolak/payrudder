@@ -2,8 +2,9 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError, type Subscription } from "@/shared/api/client";
-import { CURRENCIES, PROVIDERS } from "@/shared/lib/currencies";
+import { type Subscription } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
+import { CURRENCIES, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { enumWord, label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { useCustomers } from "@/features/customers";
@@ -20,6 +21,7 @@ import ChangePanel from "./ChangePanel.vue";
 import ProviderRunPanel from "./ProviderRunPanel.vue";
 
 const { t, te, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
@@ -77,7 +79,7 @@ const credited = computed(() => {
   return r?.credited_minor ?? "";
 });
 const failure = computed(() => {
-  for (const m of Object.values(act)) if (m.error.value) return toApiError(m.error.value).message;
+  for (const m of Object.values(act)) if (m.error.value) return errorText(m.error.value);
   return "";
 });
 const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
@@ -106,7 +108,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
       <Input v-model="trialDays" type="number" min="0" max="365" :aria-label="t('billing.subscriptions.trialDays')" :placeholder="t('billing.subscriptions.trialDays')" />
       <NativeSelect v-model="provider" :aria-label="t('billing.subscriptions.provider')">
         <option value="">{{ t("billing.subscriptions.byRules") }}</option>
-        <option v-for="p in PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
+        <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
       </NativeSelect>
       <Input v-model="coupon" :aria-label="t('billing.subscriptions.coupon.code')" :placeholder="t('billing.subscriptions.coupon.code')" />
       <Button type="submit" class="sm:col-span-2 lg:col-span-7" :disabled="act.create.isPending.value">{{ t("billing.subscriptions.create") }}</Button>
@@ -116,7 +118,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
 
   <Card class="mb-6 p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.tabs.subscriptions") }}</h2>
-    <p v-if="subs.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(subs.error.value).message }}</p>
+    <p v-if="subs.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(subs.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -215,7 +217,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
     <div v-if="!selected.end_time" class="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
       <NativeSelect v-model="target" :aria-label="t('billing.subscriptions.moveTo')">
         <option value="" disabled>{{ t("billing.subscriptions.moveTo") }}</option>
-        <option v-for="p in PROVIDERS" :key="p.name" :value="p.name" :disabled="p.name === selected.provider">{{ p.name }}</option>
+        <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name" :disabled="p.name === selected.provider">{{ p.name }}</option>
       </NativeSelect>
       <Input v-if="targetRunsSubscriptions" v-model="priceRef" :aria-label="t('billing.subscriptions.priceRef')" :placeholder="t('billing.subscriptions.priceRef')" />
       <span v-else />
@@ -230,7 +232,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
     </div>
     <div role="region" :aria-label="t('billing.subscriptions.usage')" class="grid gap-2">
       <h3 class="text-base font-semibold">{{ t("billing.subscriptions.usage") }}</h3>
-      <p v-if="entitlements.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(entitlements.error.value).message }}</p>
+      <p v-if="entitlements.error.value" class="text-destructive text-sm" role="alert">{{ errorText(entitlements.error.value) }}</p>
       <Table v-if="(entitlements.data.value?.items ?? []).length > 0">
         <TableHeader>
           <TableRow class="hover:bg-transparent">

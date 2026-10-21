@@ -38,7 +38,7 @@ func TestUsageSeriesLatency(t *testing.T) {
 		t.Fatalf("meter: %d", c)
 	}
 
-	chURL := envOr("QUOTIFY_CLICKHOUSE_URL", "http://localhost:8123")
+	chURL := envOr("QUOTIFY_CLICKHOUSE_URL", "http://localhost:42123")
 	exec := func(q string) string {
 		req, _ := http.NewRequest("POST", chURL+"/?database=quotify", strings.NewReader(q))
 		req.SetBasicAuth("quotify", "quotify_local")

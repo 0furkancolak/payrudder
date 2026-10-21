@@ -75,12 +75,28 @@
     "ledgerSource": {
       "command": "Quotify",
       "webhook": "Anbieter-Benachrichtigung",
-      "reconciliation": "Abgleich"
+      "reconciliation": "Abgleich",
+      "manual": "von Hand erfasst"
     },
     "dunningState": {
       "PAYMENT_DECLINED": "abgelehnt, Wiederholung läuft",
       "PAYMENT_UNKNOWN": "Ergebnis unbekannt",
       "UNCOLLECTIBLE": "aufgegeben"
+    },
+    "sagaState": {
+      "PAYMENT_PENDING": "wartet auf Überweisung"
+    },
+    "paymentMethod": {
+      "bank_transfer": "Banküberweisung",
+      "cash": "Bar",
+      "other": "Sonstiges"
+    },
+    "transferState": {
+      "none": "keine Überweisung",
+      "pending": "wartet auf das Geld",
+      "paid": "bezahlt",
+      "expired": "abgelaufen",
+      "rejected": "abgelehnt"
     }
   },
   "tenants": {
@@ -151,7 +167,77 @@
       "link": "Rechnungslink",
       "copy": "Kopieren",
       "revoked": "Alle Links zu dieser Rechnung wurden widerrufen.",
-      "badDays": "Tage: eine ganze Zahl von 1 bis 365."
+      "badDays": "Tage: eine ganze Zahl von 1 bis 365.",
+      "paymentLink": "Zahlungslink"
+    },
+    "payment": {
+      "record": "Zahlung erfassen",
+      "confirmTransfer": "Banküberweisung bestätigen",
+      "offlineHint": "Erfassen Sie Geld, das außerhalb von Quotify eingegangen ist (Überweisung, Bargeld, Sonstiges). Teilbeträge sind erlaubt: Die Rechnung ist bezahlt, sobald die Zahlungen die Summe erreichen.",
+      "transferHint": "Bestätigen Sie, was auf dem Kontoauszug eingegangen ist. Ein Teilbetrag wird erfasst; die Rechnung ist bezahlt, sobald die Überweisungen die Summe erreichen.",
+      "method": "Zahlungsart",
+      "amount": "Betrag ({currency})",
+      "amountHint": "Voreingestellt ist der offene Betrag ({outstanding}). Mehr wird abgelehnt.",
+      "receivedAt": "Eingegangen",
+      "reference": "Referenz",
+      "referenceHint": "Optional. Dieselbe Referenz noch einmal gilt als dieselbe Zahlung.",
+      "bankReference": "Bankreferenz",
+      "bankReferenceHint": "Die Transaktions- oder Auszugsreferenz der Bank. Pflicht: So ist eine Wiederholung harmlos.",
+      "note": "Notiz",
+      "cancel": "Abbrechen",
+      "submit": "Zahlung erfassen",
+      "confirmSubmit": "Überweisung bestätigen",
+      "badAmount": "Kein Betrag in {currency}: nur Ziffern, größer als null, mit höchstens so vielen Nachkommastellen wie die Währung.",
+      "badDate": "Das Eingangsdatum muss ein gültiges Datum mit Uhrzeit sein und darf nicht in der Zukunft liegen.",
+      "needReference": "Die Bankreferenz ist erforderlich.",
+      "listTitle": "Von Hand erfasste Zahlungen",
+      "columns": {
+        "method": "Zahlungsart",
+        "amount": "Betrag",
+        "receivedAt": "Eingegangen",
+        "reference": "Referenz",
+        "note": "Notiz",
+        "recordedBy": "Erfasst von"
+      },
+      "toast": {
+        "paid": "Rechnung bezahlt: {received} eingegangen.",
+        "partly": "Teilweise bezahlt: {received} eingegangen, {outstanding} noch offen.",
+        "duplicate": "Diese Zahlung war bereits erfasst."
+      }
+    },
+    "transfer": {
+      "title": "Banküberweisung",
+      "reference": "Verwendungszweck",
+      "bank": "Bank",
+      "holder": "Kontoinhaber",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "total": "Rechnungssumme",
+      "received": "Eingegangen",
+      "outstanding": "Offen",
+      "pendingSince": "Wartet seit",
+      "expiresAt": "Zahlungsfrist endet",
+      "receipts": "Eingegangene Überweisungen",
+      "receiptColumns": {
+        "receivedAt": "Eingegangen",
+        "amount": "Betrag",
+        "bankReference": "Bankreferenz",
+        "note": "Notiz",
+        "recordedBy": "Erfasst von"
+      },
+      "reject": "Ablehnen",
+      "expire": "Als abgelaufen markieren",
+      "rejectTitle": "Banküberweisung ablehnen",
+      "expireTitle": "Banküberweisung als abgelaufen markieren",
+      "rejectHint": "Verwenden Sie dies, wenn die Überweisung des Kunden zurückgewiesen wurde oder nicht mehr kommt. Die Rechnung gilt nicht als bezahlt, und der Mahnplan des Mandanten greift sofort: eine neue Zahlungsfrist oder uneinbringlich, wenn kein Versuch mehr übrig ist. Bereits erfasste Eingänge bleiben bestehen.",
+      "expireHint": "Verwenden Sie dies, wenn die Zahlungsfrist ohne das Geld abgelaufen ist. Die Rechnung gilt nicht als bezahlt, und der Mahnplan des Mandanten greift sofort: eine neue Zahlungsfrist oder uneinbringlich, wenn kein Versuch mehr übrig ist. Bereits erfasste Eingänge bleiben bestehen.",
+      "reason": "Grund (optional)",
+      "expiredNote": "Die Zahlungsfrist ist ohne den vollen Betrag abgelaufen. Der Mahnplan greift.",
+      "rejectedNote": "Die Überweisung wurde abgelehnt. Der Mahnplan greift.",
+      "toast": {
+        "rejected": "Überweisung abgelehnt. Der Mahnplan greift.",
+        "expired": "Überweisung als abgelaufen markiert. Der Mahnplan greift."
+      }
     }
   },
   "deadLetters": {
@@ -243,7 +329,12 @@
       "reports": "Berichte",
       "pricing": "Gutscheine & Steuer",
       "webhooks": "Webhooks",
-      "einvoice": "E-Rechnung"
+      "einvoice": "E-Rechnung",
+      "paymentLinks": "Zahlungslinks",
+      "mail": "E-Mail",
+      "apps": "Apps",
+      "address": "Verkäuferadresse",
+      "credits": "Guthaben"
     },
     "common": {
       "remove": "Entfernen"
@@ -462,6 +553,31 @@
         "kind": "Art",
         "key": "Name in Quotify",
         "empty": "Bei diesem Anbieter wurde noch nichts angelegt."
+      },
+      "bank": {
+        "title": "Konto für Banküberweisungen",
+        "sandboxNote": "Sandbox-Zahlungen erreichen diesen Anbieter nie (der Mock-Zahlungsanbieter übernimmt sie). Speichern Sie das Konto in live, um es zu nutzen.",
+        "bankName": "Name der Bank",
+        "accountHolder": "Kontoinhaber",
+        "iban": "IBAN",
+        "ibanHint": "Leerzeichen und Bindestriche werden entfernt, Buchstaben groß geschrieben; die Prüfziffern werden geprüft.",
+        "bic": "BIC (optional)",
+        "referenceTemplate": "Verwendungszweck (optional)",
+        "referenceHint": "Was der Kunde auf die Überweisung schreibt. {number} und {id} stehen zur Verfügung; Standard ist die Rechnungsnummer.",
+        "currencies": "Währungen",
+        "currenciesHint": "Die Währungen, die dieses Konto empfängt. Keine gewählt: alle Währungen.",
+        "windowDays": "Zahlungsfrist (Tage)",
+        "windowHint": "Wie lange auf das Geld gewartet wird, 0 bis 90. 0 oder leer verwendet den Standard der Installation.",
+        "errors": {
+          "required": "Pflichtfeld.",
+          "empty": "Pflichtfeld.",
+          "length": "Eine IBAN hat 15 bis 34 Zeichen.",
+          "format": "Eine IBAN besteht aus zwei Buchstaben, zwei Ziffern, dann Buchstaben und Ziffern.",
+          "checksum": "Die Prüfziffern stimmen nicht: Suchen Sie einen Tippfehler.",
+          "badBic": "Eine BIC hat 8 oder 11 Buchstaben und Ziffern.",
+          "badTemplate": "In geschweiften Klammern dürfen nur {number} und {id} stehen.",
+          "badWindow": "Eine ganze Zahl von 0 bis 90 Tagen."
+        }
       }
     },
     "reports": {
@@ -618,6 +734,158 @@
         "delivered": "Zugestellt",
         "failed": "Fehlgeschlagen"
       }
+    },
+    "paymentLinks": {
+      "title": "Zahlungslinks",
+      "hint": "Ein Link, den der Kunde ohne Anmeldung öffnet, um zu bezahlen. Für eine offene Rechnung oder ad hoc für einen festen Betrag (die Rechnung entsteht bei der ersten Nutzung). Wer den Link hat, kann zahlen; er endet bei Ablauf oder Widerruf.",
+      "formLabel": "neuer Zahlungslink",
+      "kind": "Art",
+      "kinds": {
+        "adhoc": "Fester Betrag",
+        "invoice": "Offene Rechnung"
+      },
+      "invoiceId": "Rechnungs-ID",
+      "amount": "Betrag",
+      "currency": "Währung",
+      "description": "Wofür",
+      "customer": "Kunde",
+      "customerOptional": "Kunden-ID (optional)",
+      "days": "Gültig (Tage)",
+      "singleUse": "Einmalig (eine bezahlte Rechnung)",
+      "singleUseShort": "einmalig",
+      "create": "Link erstellen",
+      "adhocHint": "Die Rechnung wird erstellt und nummeriert, wenn der Kunde auf der Seite auf Weiter klickt.",
+      "invoiceHint": "Die Rechnung muss abgeschlossen und unbezahlt sein.",
+      "shownOnce": "Kopieren Sie den Link jetzt: Er wird nur einmal angezeigt und kann nicht erneut gelesen werden.",
+      "url": "Zahlungslink",
+      "copy": "Kopieren",
+      "replayed": "Diese Anfrage wurde bereits bearbeitet: Der Link existiert, seine Adresse wird aber nur einmal angezeigt.",
+      "list": "Links",
+      "anyKind": "Jede Art",
+      "anyStatus": "Jeder Status",
+      "status": "Status",
+      "statuses": {
+        "active": "Aktiv",
+        "paid": "Bezahlt",
+        "expired": "Abgelaufen",
+        "revoked": "Widerrufen"
+      },
+      "uses": "Nutzungen / bezahlt",
+      "usesValue": "{used} / {paid}",
+      "expires": "Läuft ab",
+      "createdAt": "Erstellt",
+      "revoke": "Widerrufen",
+      "confirmRevoke": "Diesen Link widerrufen? Daraus entstandene unbezahlte Rechnungen werden storniert.",
+      "empty": "Noch keine Zahlungslinks.",
+      "previous": "Zurück",
+      "next": "Weiter",
+      "links": "Links",
+      "paymentLink": "Zahlungslink",
+      "errors": {
+        "invoice": "Rechnungs-ID eingeben.",
+        "amount": "Einen positiven Betrag mit den Dezimalstellen der Währung eingeben.",
+        "description": "Angeben, wofür die Zahlung ist.",
+        "days": "Tage: eine ganze Zahl von 1 bis 365."
+      },
+      "portal": {
+        "open": "Zahlungsseite",
+        "title": "Zahlungsseite von {id}",
+        "hint": "Ein Link zu einer Seite, auf der dieser Kunde seine Rechnungen und Zahlungen sieht, PDFs und Belege lädt und Offenes bezahlt. Nur lesend.",
+        "close": "Schließen",
+        "create": "Link erstellen",
+        "revoke": "Alle widerrufen",
+        "revoked": "Alle Zahlungsseiten-Links dieses Kunden wurden widerrufen.",
+        "confirmRevoke": "Alle Zahlungsseiten-Links dieses Kunden widerrufen?",
+        "link": "Link zur Zahlungsseite",
+        "payments": "Zahlungen",
+        "date": "Datum",
+        "invoice": "Rechnung",
+        "type": "Art",
+        "noPayments": "Keine Zahlungen erfasst.",
+        "kinds": {
+          "charge": "Zahlung",
+          "refund": "Erstattung"
+        }
+      },
+      "for": "Für"
+    },
+    "mail": {
+      "title": "E-Mail",
+      "hint": "Legen Sie fest, welche Arten von E-Mails Quotify an die Kunden dieses Mandanten sendet. Eine abgeschaltete Art wird verworfen, nicht vorgemerkt: Wieder einschalten sendet das Übersprungene nicht nach.",
+      "categories": {
+        "invoice_issued": "Rechnung erstellt",
+        "payment_receipts": "Zahlungsbelege",
+        "payment_failed": "Zahlung fehlgeschlagen",
+        "usage_alerts": "Nutzungswarnungen",
+        "system": "System"
+      },
+      "descriptions": {
+        "invoice_issued": "Teilt dem Kunden mit, dass eine neue Rechnung abgeschlossen wurde.",
+        "payment_receipts": "Der Beleg nach einer erfolgreichen Zahlung.",
+        "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Quotify die Einziehung aufgegeben hat.",
+        "usage_alerts": "Ein Kunde hat ein Nutzungslimit seines Tarifs überschritten.",
+        "system": "Alle übrigen Nachrichten von Quotify."
+      },
+      "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Quotify."
+    },
+    "credits": {
+      "packs": {
+        "new": "Neues Guthabenpaket",
+        "hint": "Ein Paket ist eine Anzahl Guthaben zu einem Preis. Kunden kaufen es über einen Zahlungslink; das Guthaben wird gutgeschrieben, sobald die Zahlung bestätigt ist.",
+        "formLabel": "Neues Guthabenpaket",
+        "name": "Paketname",
+        "credits": "Guthaben",
+        "price": "Preis",
+        "currency": "Währung",
+        "create": "Paket hinzufügen",
+        "title": "Guthabenpakete",
+        "none": "Noch keine Guthabenpakete.",
+        "state": "Status",
+        "onSale": "Im Verkauf",
+        "withdrawn": "Zurückgezogen",
+        "withdraw": "Zurückziehen",
+        "restore": "Wieder verkaufen"
+      },
+      "customer": {
+        "title": "Guthaben eines Kunden",
+        "pick": "Kunden wählen",
+        "balance": "Guthaben verfügbar",
+        "nextExpiry": "Ein Teil verfällt am {when}"
+      },
+      "lots": {
+        "source": "Quelle",
+        "remaining": "Übrig",
+        "granted": "Gewährt",
+        "expires": "Verfällt",
+        "never": "Nie"
+      },
+      "source": {
+        "promo": "Aktion",
+        "manual": "Manuell",
+        "purchase": "Kauf"
+      },
+      "grant": {
+        "formLabel": "Guthaben hinzufügen",
+        "credits": "Hinzuzufügendes Guthaben",
+        "source": "Art",
+        "expiry": "Ablaufdatum",
+        "expiryHint": "Leer lassen für Guthaben ohne Ablauf",
+        "reason": "Notiz (optional)",
+        "submit": "Guthaben hinzufügen"
+      },
+      "ledger": {
+        "title": "Guthabenverlauf",
+        "none": "Noch keine Änderungen.",
+        "time": "Zeit",
+        "kind": "Art",
+        "amount": "Guthaben",
+        "reason": "Notiz"
+      },
+      "kind": {
+        "grant": "Hinzugefügt",
+        "consume": "Verbraucht",
+        "expire": "Verfallen"
+      }
     }
   },
   "einvoice": {
@@ -729,6 +997,230 @@
         "customer": {
           "tax_invalid": "Die Steuerdaten des Kunden sind ungültig."
         }
+      }
+    }
+  },
+  "apps": {
+    "new": "Neue App",
+    "hint": "Eine App ist eine der Anwendungen des Kontos, mit eigener Sandbox- und Live-Umgebung, eigenen Schlüsseln, Kunden und Tarifen. Währung, Zeitzone und Karenzzeit werden hier gewählt und lassen sich später nicht ändern.",
+    "formLabel": "neue App",
+    "name": "App-Name",
+    "slug": "Kürzel",
+    "slugPlaceholder": "Kürzel (optional, z. B. web-shop)",
+    "currency": "Währung",
+    "currencyPlaceholder": "Währung (später nicht änderbar)",
+    "timezone": "Zeitzone",
+    "timezonePlaceholder": "IANA-Zeitzone, z. B. Europe/Istanbul",
+    "grace": "Karenzzeit (Stunden)",
+    "gracePlaceholder": "Karenzzeit, Stunden (0 bis 168)",
+    "create": "App erstellen",
+    "badSlug": "Das Kürzel darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten, höchstens 60 Zeichen.",
+    "title": "Apps dieses Kontos",
+    "immutable": "Umbenennen und Löschen einer App gibt es in der API noch nicht; Währung, Zeitzone und Karenzzeit einer App lassen sich nicht ändern.",
+    "environments": "Umgebungen",
+    "created": "Erstellt",
+    "actions": "Aktionen",
+    "empty": "Dieses Konto hat noch keine Apps.",
+    "keys": {
+      "open": "API-Schlüssel",
+      "title": "API-Schlüssel von {app}",
+      "hint": "Erstellen Sie einen Schlüssel für eine Umgebung. Er wird nur einmal angezeigt; die API kann Schlüssel später nicht auflisten, daher stehen hier die auf dieser Seite erstellten, bis Sie sie verlassen. Ein anderswo erstellter Schlüssel lässt sich über seine ID widerrufen.",
+      "secretOnce": "Kopieren Sie den Schlüssel jetzt: Er wird nur einmal angezeigt.",
+      "dismiss": "Ich habe ihn kopiert",
+      "createFor": "Schlüssel für {env} erstellen",
+      "create": "Schlüssel erstellen",
+      "revoked": "Widerrufen",
+      "revoke": "Widerrufen",
+      "revokeForm": "Schlüssel widerrufen",
+      "revokeId": "Schlüssel-ID",
+      "revokeById": "Per ID widerrufen",
+      "confirmRevoke": "Diesen API-Schlüssel widerrufen? Anfragen mit ihm funktionieren sofort nicht mehr.",
+      "revokedDone": "Schlüssel {id} widerrufen."
+    }
+  },
+  "address": {
+    "title": "Verkäuferadresse",
+    "hint": "Die rechtliche Adresse und Rechnungsadresse dieses Mandanten; sie steht als Verkäufer auf jeder Rechnung (PDF und gehostete Seite). Sie gilt für Rechnungen, die nach dem Speichern entstehen.",
+    "formLabel": "Verkäuferadresse",
+    "noCountry": "Kein Land",
+    "otherCountry": "Anderes Land…",
+    "labels": {
+      "country": "Land",
+      "countryCode": "Ländercode (zwei Buchstaben, z. B. SE)",
+      "line1": "Adresszeile 1",
+      "line2": "Adresszeile 2",
+      "city": "Ort",
+      "region": "Region",
+      "state": "Bundesland",
+      "province": "Provinz",
+      "county": "Landkreis",
+      "prefecture": "Präfektur",
+      "postalCode": "Postleitzahl",
+      "zip": "ZIP-Code",
+      "postcode": "Postleitzahl"
+    },
+    "problems": {
+      "tooLong": "Zu lang: höchstens {max} Zeichen.",
+      "oneLine": "Muss eine einzelne Textzeile sein.",
+      "badCountry": "Zwei Buchstaben (ISO 3166-1), z. B. TR."
+    },
+    "postalHint": "Das sieht nicht wie eine Postleitzahl dieses Landes aus, zum Beispiel {example}. Sie wird trotzdem akzeptiert.",
+    "save": "Adresse speichern",
+    "saved": "Adresse gespeichert.",
+    "preview": {
+      "title": "Rechnungsvorschau",
+      "hint": "So erscheint der Verkäufer auf einer Rechnung.",
+      "from": "Von",
+      "empty": "Keine Adresse: Die Rechnung zeigt nur den Namen."
+    }
+  },
+  "errors": {
+    "billing": {
+      "credit_note": {
+        "bad_amount": "Der Gutschriftbetrag ist ungültig: Er muss größer als null sein und darf den noch gutschreibbaren Rest der Rechnung nicht übersteigen.",
+        "fully_credited": "Diese Rechnung wurde bereits vollständig gutgeschrieben.",
+        "not_paid": "Nur eine bezahlte Rechnung kann gutgeschrieben werden.",
+        "nothing_to_refund": "Für diese Gutschrift gibt es nichts auf die Karte zurückzuerstatten.",
+        "refund_not_failed": "Nur eine Gutschrift mit fehlgeschlagener Rückerstattung kann erneut versucht werden."
+      },
+      "dunning": {
+        "bad_delay": "Jede Wiederholungsverzögerung muss zwischen 1 und 720 Stunden liegen.",
+        "too_many_retries": "Es können höchstens 6 Wiederholungsverzögerungen festgelegt werden."
+      },
+      "invoice": {
+        "not_found": "Die Rechnung wurde nicht gefunden.",
+        "pdf_not_ready": "Das PDF der Rechnung wurde noch nicht erstellt. Versuchen Sie es gleich noch einmal."
+      },
+      "invoice_link": {
+        "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
+        "draft_invoice": "Eine Rechnung im Entwurf kann nicht per Link geteilt werden.",
+        "not_found": "Der Rechnungslink wurde nicht gefunden."
+      },
+      "payment": {
+        "amount_mismatch": "Die Zahlung entspricht nicht dem Rechnungsbetrag.",
+        "invoice_not_payable": "Nur eine offene oder uneinbringliche Rechnung kann von Hand bezahlt werden.",
+        "method_unavailable": "Wählen Sie eine Zahlungsmethode.",
+        "bad_method": "Die Zahlungsart muss Banküberweisung, Bar oder Sonstiges sein.",
+        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
+        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
+        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag.",
+        "already_paid": "Die Rechnung ist bereits bezahlt.",
+        "not_payable": "Der Zahlungsstatus der Rechnung erlaubt gerade keine manuelle Zahlung.",
+        "reference_reused": "Diese Referenz wurde bereits mit einem anderen Betrag erfasst."
+      },
+      "payment_link": {
+        "bad_amount": "Der Betrag muss eine positive Zahl in der kleinsten Einheit sein.",
+        "bad_currency": "Diese Währung wird nicht unterstützt.",
+        "bad_description": "Eine Beschreibung ist erforderlich (höchstens 200 Zeichen).",
+        "bad_key": "Der Idempotency-Schlüssel ist zu lang (höchstens 200 Zeichen).",
+        "bad_kind": "Betrag, Währung, Beschreibung und Kunde gehören zu einem freien Link; ein Rechnungslink übernimmt sie von der Rechnung.",
+        "bad_page": "Die Seitengröße muss zwischen 1 und 200 liegen.",
+        "bad_status": "Der Status muss active, paid, expired oder revoked sein.",
+        "consumed": "Dieser Link wurde bereits verwendet.",
+        "customer_not_found": "Diesen Kunden gibt es nicht.",
+        "idempotency_conflict": "Dieser Idempotency-Schlüssel wurde für einen anderen Zahlungslink verwendet.",
+        "invoice_not_payable": "Eine bezahlte oder stornierte Rechnung braucht keinen Zahlungslink.",
+        "invoice_required": "Ein Zahlungslink der Art Rechnung braucht eine Rechnung.",
+        "not_found": "Diesen Zahlungslink gibt es nicht."
+      },
+      "portal_link": {
+        "customer_not_found": "Diesen Kunden gibt es nicht.",
+        "customer_required": "Ein Kunde ist erforderlich."
+      },
+      "credits": {
+        "bad_amount": "Der Betrag muss eine ganze Zahl über null sein.",
+        "bad_customer": "Der Kunde ist nicht gültig.",
+        "bad_expiry": "Das Ablaufdatum muss in der Zukunft liegen.",
+        "bad_key": "Der Idempotency-Schlüssel ist zu lang (höchstens 128 Zeichen).",
+        "bad_pack": "Ein Paket braucht einen Namen sowie Guthaben und einen Preis über null.",
+        "bad_page_token": "Das Seitentoken ist nicht gültig.",
+        "bad_reason": "Die Notiz ist zu lang (höchstens 200 Zeichen).",
+        "bad_source": "Die Art muss Aktion oder manuell sein.",
+        "insufficient": "Der Kunde hat zu wenig Guthaben.",
+        "key_required": "Zum Verbrauchen von Guthaben ist ein Idempotency-Schlüssel nötig.",
+        "key_reused": "Dieser Idempotency-Schlüssel wurde schon für eine andere Anfrage verwendet.",
+        "pack_not_found": "Es gibt kein solches Guthabenpaket.",
+        "unknown_currency": "Diese Währung wird nicht unterstützt."
+      }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "Das Kürzel der App darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten und höchstens 60 Zeichen lang sein.",
+        "slug_taken": "Dieses Konto hat bereits eine App mit diesem Kürzel."
+      },
+      "mail": {
+        "unknown_category": "Diese E-Mail-Kategorie existiert nicht."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut."
+      },
+      "webhook": {
+        "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
+        "too_many_endpoints": "Die Höchstzahl an Webhook-Endpunkten ist erreicht. Löschen Sie zuerst einen."
+      },
+      "customer": {
+        "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig."
+      }
+    },
+    "common": {
+      "invalid_argument": "Etwas in der Anfrage ist ungültig.",
+      "not_found": "Nicht gefunden.",
+      "already_exists": "Existiert bereits.",
+      "failed_precondition": "Das ist im aktuellen Zustand nicht möglich.",
+      "permission_denied": "Dafür fehlt Ihnen die Berechtigung.",
+      "unauthenticated": "Melden Sie sich erneut an: Das Token fehlt oder ist nicht mehr gültig.",
+      "rate_limited": "Zu viele Anfragen. Warten Sie kurz und versuchen Sie es erneut.",
+      "unavailable": "Der Dienst ist gerade nicht verfügbar. Versuchen Sie es in Kürze erneut.",
+      "timeout": "Die Anfrage hat zu lange gedauert. Versuchen Sie es erneut.",
+      "conflict": "Die Daten haben sich während Ihrer Arbeit geändert. Laden Sie neu und versuchen Sie es erneut.",
+      "not_implemented": "Das wird noch nicht unterstützt.",
+      "internal": "Auf unserer Seite ist etwas schiefgelaufen. Versuchen Sie es erneut; bleibt es dabei, suchen Sie mit der Anfrage-ID in den Logs."
+    },
+    "payments": {
+      "transfer": {
+        "not_a_transfer": "Diese Rechnung wurde nicht per Banküberweisung belastet. Verwenden Sie stattdessen Zahlung erfassen.",
+        "invoice_closed": "Die Rechnung ist bereits bezahlt oder storniert.",
+        "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
+        "bad_currency": "Die Währung weicht von der der Rechnung ab.",
+        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag und klären Sie den Rest außerhalb von Quotify.",
+        "reference_reused": "Diese Bankreferenz wurde bereits mit einem anderen Betrag erfasst.",
+        "bad_reference": "Die Bankreferenz fehlt oder ist ungültig.",
+        "bad_note": "Die Notiz ist zu lang (höchstens 500 Zeichen).",
+        "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
+        "nothing_pending": "Es gibt keine ausstehende Überweisung, die abgelehnt werden könnte.",
+        "bad_outcome": "Das Ergebnis muss abgelehnt oder abgelaufen sein.",
+        "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal."
+      }
+    },
+    "einvoice": {
+      "account": {
+        "invalid": "Die Einstellungen des E-Rechnungskontos sind für diesen Anbieter ungültig.",
+        "missing": "Dieser Mandant hat für diese Umgebung kein E-Rechnungskonto. Richten Sie zuerst eines ein.",
+        "sandbox_mock_only": "Eine Sandbox-Umgebung kann nur den Mock-Anbieter für E-Rechnungen nutzen."
+      },
+      "buyer": {
+        "incomplete": "Die Steuerdaten des Kunden sind unvollständig: Tragen Sie vor der E-Rechnung die Steuernummer ein (in der Türkei auch das Finanzamt)."
+      },
+      "cancel": {
+        "unsupported": "Dieser Anbieter kann eine ausgestellte E-Rechnung nicht stornieren. Stellen Sie stattdessen eine Gutschrift aus."
+      },
+      "document": {
+        "not_failed": "Nur ein fehlgeschlagenes E-Dokument kann erneut versucht werden.",
+        "not_found": "Dieses E-Dokument existiert nicht.",
+        "not_issued": "Nur ein ausgestelltes E-Dokument kann storniert werden."
+      },
+      "file": {
+        "not_ready": "Die Datei dieses E-Dokuments ist noch nicht verfügbar."
+      },
+      "provider": {
+        "rejected": "Der E-Rechnungsanbieter hat das Dokument abgelehnt.",
+        "unavailable": "Der E-Rechnungsanbieter ist gerade nicht erreichbar. Es wird erneut versucht."
+      },
+      "seller": {
+        "incomplete": "Die Firmendaten des Verkäufers sind unvollständig: Tragen Sie Firmenname und Steuernummer in den E-Rechnungs-Einstellungen ein."
+      },
+      "setting": {
+        "invalid": "Der E-Rechnungs-Auslöser muss aus, finalisiert oder bezahlt sein."
       }
     }
   }

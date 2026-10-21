@@ -27,6 +27,8 @@ type Mailer struct {
 	Sandbox mail.Sender
 	From    string
 	Notes   store.Notifications
+	// Switch, when set, is asked before a send whether the tenant has the mail's category on (see Permitted).
+	Switch Switch
 }
 
 // Deliver sends one rendered email under a dedup key. The returned id is the SMTP message id (also for an email that
@@ -79,6 +81,15 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 	id, err := uuid.Parse(cmd.GetCommandId())
 	if err != nil {
 		return nil, fmt.Errorf("%w: command_id", workerx.ErrPoison)
+	}
+	tenantID, _ := uuid.Parse(cmd.GetTenantId())
+	ok, err := h.Mailer.Permitted(ctx, tenantID, n.GetTemplate())
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		// The tenant switched this kind of mail off: the command is answered as done, so that the saga goes on.
+		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_NotificationSent{NotificationSent: &commandsv1.NotificationSent{Suppressed: true}}}, nil
 	}
 	mid, err := h.Mailer.Deliver(ctx, cmd.GetCommandId(), &id, "command", n.GetTemplate(), n.GetTo(), n.GetData(), cmd.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX)
 	if err != nil {

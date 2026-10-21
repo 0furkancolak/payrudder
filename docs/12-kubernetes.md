@@ -7,6 +7,8 @@ Two charts in `deploy/helm/`:
 | `quotify-infra` | Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO and Mailpit as plain StatefulSets/Deployments, the topics Job (`rpk`), and the init script that creates a database and three roles per service. Every part has an `enabled` flag: a managed service replaces it by pointing the other chart at an address. |
 | `quotify` | The services (gateway, plans, ingest, aggregator, limits, billing, analytics, assets, the three workers) and mock-psp. One template loops over `values.yaml: services`, so adding a service is a values entry, not a new template. |
 
+Not on Kubernetes? [deploy/railway](../deploy/railway/README.md) runs the same services on Railway ([phase 31](phases/phase-31-railway.md)).
+
 They are separate releases on purpose: the migration Jobs of `quotify` are pre-install hooks, and hooks run before the release's other
 resources exist, so the databases they migrate must belong to an earlier release.
 
@@ -16,14 +18,14 @@ resources exist, so the databases they migrate must belong to an earlier release
 make kind-up                       # 1 control plane + 3 workers (deploy/kind/cluster.yaml)
 make kind-images                   # build the 12 images (one at a time) and load them into the nodes
 make helm-install                  # quotify-infra (3-node Redpanda and RabbitMQ), then quotify (2 replicas of the busy services)
-make netpol-test e2e-kind          # NetworkPolicy enforcement, then the e2e suite against http://localhost:8000
+make netpol-test e2e-kind          # NetworkPolicy enforcement, then the e2e suite against http://localhost:42800
 ```
 
 A Docker VM with less than about 6 GiB cannot hold the three-worker cluster. Use the one-node profile instead:
 `make kind-up KIND_CONFIG=deploy/kind/cluster-min.yaml kind-images helm-install KIND_PROFILE=kind-min`
 (one replica of everything, single-node Redpanda and RabbitMQ; it fits in about 3 GiB).
 
-The kind node maps the host ports 8000 (gateway), 8090 (mock-psp), 8025 (Mailpit), 9001 (MinIO S3, the public endpoint in presigned URLs) and
+The kind node maps the host ports 42800 (gateway), 42890 (mock-psp), 42825 (Mailpit), 42901 (MinIO S3, the public endpoint in presigned URLs) and
 31092-31094 (the Redpanda brokers, advertised to clients outside the cluster as `localhost:3109x`).
 
 ## Install on your own cluster

@@ -1,6 +1,6 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
 QUOTIFY_GRPC_ADDR: ":7006"
-CLICKHOUSE_ADDR: "localhost:9000"
+CLICKHOUSE_ADDR: "localhost:42900"
 CLICKHOUSE_DB: "quotify"
 CLICKHOUSE_USER: "quotify"
 QUOTIFY_CONSUMER_GROUP: "analytics"

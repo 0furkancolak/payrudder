@@ -1,6 +1,6 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
 QUOTIFY_MIGRATE_ON_START: "false"
-MOCKPSP_URL: "http://localhost:8090"
+MOCKPSP_URL: "http://localhost:42890"
 PAYMENTS_PSP_TIMEOUT: "5s"
 QUOTIFY_PREFETCH: "16"
 PAYMENTS_HTTP_ADDR: ":8095"
@@ -8,3 +8,4 @@ S3_REGION: "us-east-1"
 S3_BUCKET: "invoices"
 S3_FORCE_PATH_STYLE: "false"
 EINVOICE_ALLOW_PRIVATE_URLS: "false"
+PAYMENTS_TRANSFER_WINDOW_DAYS: "14"

@@ -94,10 +94,13 @@ message UpdateTenantSettingsRequest {
   bool clear_invoice_logo = 5;
   // Replaces the seller address printed on the tenant's invoices; unset leaves it unchanged.
   Address address = 6;
+  // Replaces the bank transfer details printed on invoices (payments-worker sets them with the tenant's bank transfer account); unset leaves them unchanged.
+  BankTransferDetails bank_transfer = 7;
+  bool clear_bank_transfer = 8;
   // Replaces the seller's company data; unset leaves it unchanged.
-  LegalInfo legal = 7;
+  LegalInfo legal = 9;
   // "off", "finalized" or "paid"; empty leaves it unchanged.
-  string e_invoice_on = 8;
+  string e_invoice_on = 10;
 }
 
 message UpdateTenantSettingsResponse {

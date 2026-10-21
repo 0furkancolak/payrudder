@@ -1,0 +1,110 @@
+package query
+
+import (
+	"context"
+	"errors"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/quotify/pkg/pgxx"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+)
+
+// GetLink reads one payment link of a tenant.
+func GetLink(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.GetPaymentLinkRowRow, error) {
+	var row sqlc.GetPaymentLinkRowRow
+	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
+		var err error
+		row, err = sqlc.New(tx).GetPaymentLinkRow(ctx, sqlc.GetPaymentLinkRowParams{TenantID: tenantID, ID: id})
+		return err
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return row, errkey.New(codes.NotFound, "billing.payment_link.not_found", "no such payment link")
+	}
+	if err != nil {
+		return row, status.Error(codes.Internal, "internal error")
+	}
+	return row, nil
+}
+
+// ListParams filter and page the payment links of a tenant. Zero PageSize means the default.
+type ListParams struct {
+	Kind               string
+	Status             string
+	InvoiceID          string
+	CustomerExternalID string
+	PageSize           int
+	PageToken          string
+}
+
+// Page is a page of payment links; NextPageToken is empty on the last one.
+type LinkPage struct {
+	Links         []sqlc.ListPaymentLinksRow
+	NextPageToken string
+}
+
+// ListLinks returns a page of the tenant's payment links, newest first.
+func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) (*LinkPage, error) {
+	size := p.PageSize
+	if size <= 0 {
+		size = 50
+	}
+	if size > 200 {
+		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_page", "page_size must be 1..200")
+	}
+	if p.Kind != "" && p.Kind != "invoice" && p.Kind != "adhoc" {
+		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "kind must be invoice or adhoc")
+	}
+	switch p.Status {
+	case "", "active", "paid", "expired", "revoked":
+	default:
+		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_status", "status must be active, paid, expired or revoked")
+	}
+	var invoice *uuid.UUID
+	if p.InvoiceID != "" {
+		id, err := uuid.Parse(p.InvoiceID)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invoice_id must be a UUID")
+		}
+		invoice = &id
+	}
+	// The token is the created_at and id of the last link of the previous page.
+	afterAt, afterID := time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC), uuid.Max
+	if p.PageToken != "" {
+		at, id, ok := strings.Cut(p.PageToken, "|")
+		t, err1 := time.Parse(time.RFC3339Nano, at)
+		u, err2 := uuid.Parse(id)
+		if !ok || err1 != nil || err2 != nil {
+			return nil, status.Error(codes.InvalidArgument, "page_token is not one this API gave")
+		}
+		afterAt, afterID = t, u
+	}
+	var rows []sqlc.ListPaymentLinksRow
+	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
+		var err error
+		rows, err = sqlc.New(tx).ListPaymentLinks(ctx, sqlc.ListPaymentLinksParams{
+			TenantID: tenantID, Kind: store.NilIfEmpty(p.Kind), Status: store.NilIfEmpty(p.Status), InvoiceID: invoice, CustomerExternalID: store.NilIfEmpty(p.CustomerExternalID),
+			AfterAt: afterAt, AfterID: afterID, PageSize: int32(size + 1), //nolint:gosec // at most 201
+		})
+		return err
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	out := &LinkPage{}
+	if len(rows) > size {
+		last := rows[size-1]
+		out.NextPageToken = last.CreatedAt.UTC().Format(time.RFC3339Nano) + "|" + last.ID.String()
+		rows = rows[:size]
+	}
+	out.Links = rows
+	return out, nil
+}

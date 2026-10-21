@@ -75,12 +75,28 @@
     "ledgerSource": {
       "command": "Quotify",
       "webhook": "provider notification",
-      "reconciliation": "reconciliation"
+      "reconciliation": "reconciliation",
+      "manual": "recorded by hand"
     },
     "dunningState": {
       "PAYMENT_DECLINED": "declined, retrying",
       "PAYMENT_UNKNOWN": "outcome unknown",
       "UNCOLLECTIBLE": "given up"
+    },
+    "sagaState": {
+      "PAYMENT_PENDING": "waiting for transfer"
+    },
+    "paymentMethod": {
+      "bank_transfer": "Bank transfer",
+      "cash": "Cash",
+      "other": "Other"
+    },
+    "transferState": {
+      "none": "no transfer",
+      "pending": "waiting for the money",
+      "paid": "paid",
+      "expired": "expired",
+      "rejected": "rejected"
     }
   },
   "tenants": {
@@ -151,7 +167,77 @@
       "link": "Invoice link",
       "copy": "Copy",
       "revoked": "Every link to this invoice has been revoked.",
-      "badDays": "Days: a whole number from 1 to 365."
+      "badDays": "Days: a whole number from 1 to 365.",
+      "paymentLink": "Payment link"
+    },
+    "payment": {
+      "record": "Record payment",
+      "confirmTransfer": "Confirm bank transfer",
+      "offlineHint": "Record money received outside Quotify (a transfer, cash, other). A partial amount is allowed: the invoice is paid when the payments add up to the total.",
+      "transferHint": "Confirm what arrived on the bank statement. A partial amount is recorded and the invoice is paid when the transfers add up to the total.",
+      "method": "Method",
+      "amount": "Amount ({currency})",
+      "amountHint": "Defaults to what is outstanding ({outstanding}). More than that is refused.",
+      "receivedAt": "Received",
+      "reference": "Reference",
+      "referenceHint": "Optional. The same reference again is treated as the same payment.",
+      "bankReference": "Bank reference",
+      "bankReferenceHint": "The bank's transaction or statement reference. Required: it makes a repeat harmless.",
+      "note": "Note",
+      "cancel": "Cancel",
+      "submit": "Record payment",
+      "confirmSubmit": "Confirm transfer",
+      "badAmount": "Not an amount in {currency}: digits only, more than zero, with at most as many decimals as the currency has.",
+      "badDate": "The received date must be a valid date and time, not in the future.",
+      "needReference": "The bank reference is required.",
+      "listTitle": "Payments recorded by hand",
+      "columns": {
+        "method": "Method",
+        "amount": "Amount",
+        "receivedAt": "Received",
+        "reference": "Reference",
+        "note": "Note",
+        "recordedBy": "Recorded by"
+      },
+      "toast": {
+        "paid": "Invoice paid: {received} received.",
+        "partly": "Partly paid: {received} received, {outstanding} still outstanding.",
+        "duplicate": "This payment had already been recorded."
+      }
+    },
+    "transfer": {
+      "title": "Bank transfer",
+      "reference": "Payment reference",
+      "bank": "Bank",
+      "holder": "Account holder",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "total": "Invoice total",
+      "received": "Received",
+      "outstanding": "Outstanding",
+      "pendingSince": "Waiting since",
+      "expiresAt": "Payment window ends",
+      "receipts": "Transfers received",
+      "receiptColumns": {
+        "receivedAt": "Received",
+        "amount": "Amount",
+        "bankReference": "Bank reference",
+        "note": "Note",
+        "recordedBy": "Recorded by"
+      },
+      "reject": "Reject",
+      "expire": "Mark expired",
+      "rejectTitle": "Reject the bank transfer",
+      "expireTitle": "Mark the bank transfer expired",
+      "rejectHint": "Use this when the customer's transfer was refused or will not come. The invoice is not paid and the tenant's dunning schedule applies at once: a new payment window, or uncollectible when no retry is left. Receipts already recorded stay.",
+      "expireHint": "Use this when the payment window is over without the money. The invoice is not paid and the tenant's dunning schedule applies at once: a new payment window, or uncollectible when no retry is left. Receipts already recorded stay.",
+      "reason": "Reason (optional)",
+      "expiredNote": "The payment window ended without the full amount. Dunning applies.",
+      "rejectedNote": "The transfer was rejected. Dunning applies.",
+      "toast": {
+        "rejected": "Transfer rejected. Dunning applies.",
+        "expired": "Transfer marked expired. Dunning applies."
+      }
     }
   },
   "deadLetters": {
@@ -243,7 +329,12 @@
       "reports": "Reports",
       "pricing": "Coupons & tax",
       "webhooks": "Webhooks",
-      "einvoice": "E-invoice"
+      "einvoice": "E-invoice",
+      "paymentLinks": "Payment links",
+      "mail": "Mail",
+      "apps": "Apps",
+      "address": "Seller address",
+      "credits": "Credits"
     },
     "common": {
       "remove": "Remove"
@@ -462,6 +553,31 @@
         "kind": "Kind",
         "key": "Quotify's name",
         "empty": "Nothing has been created at this provider yet."
+      },
+      "bank": {
+        "title": "Bank transfer account",
+        "sandboxNote": "Sandbox charges never reach this provider (the mock payment provider handles them). Save the account in live to use it.",
+        "bankName": "Bank name",
+        "accountHolder": "Account holder",
+        "iban": "IBAN",
+        "ibanHint": "Spaces and dashes are removed and the letters upper-cased; the check digits are verified.",
+        "bic": "BIC (optional)",
+        "referenceTemplate": "Payment reference (optional)",
+        "referenceHint": "What the customer writes on the transfer. {number} and {id} are available; the default is the invoice number.",
+        "currencies": "Currencies",
+        "currenciesHint": "The currencies this account receives. None ticked: every currency.",
+        "windowDays": "Payment window (days)",
+        "windowHint": "How long to wait for the money, 0 to 90. 0 or empty uses the deployment default.",
+        "errors": {
+          "required": "Required.",
+          "empty": "Required.",
+          "length": "An IBAN has 15 to 34 characters.",
+          "format": "An IBAN is two letters, two digits, then letters and digits.",
+          "checksum": "The check digits do not match: look for a typo.",
+          "badBic": "A BIC has 8 or 11 letters and digits.",
+          "badTemplate": "Only {number} and {id} may appear in braces.",
+          "badWindow": "A whole number of days from 0 to 90."
+        }
       }
     },
     "reports": {
@@ -618,6 +734,158 @@
         "delivered": "Delivered",
         "failed": "Failed"
       }
+    },
+    "paymentLinks": {
+      "title": "Payment links",
+      "hint": "A link the customer opens without signing in to pay. For an open invoice, or ad hoc for a fixed amount (the invoice is made when the customer first uses it). Anyone who has the link can pay; it stops working when it expires or is revoked.",
+      "formLabel": "new payment link",
+      "kind": "Kind",
+      "kinds": {
+        "adhoc": "Fixed amount",
+        "invoice": "Open invoice"
+      },
+      "invoiceId": "Invoice id",
+      "amount": "Amount",
+      "currency": "Currency",
+      "description": "What it is for",
+      "customer": "Customer",
+      "customerOptional": "Customer id (optional)",
+      "days": "Valid for (days)",
+      "singleUse": "Single use (one paid invoice)",
+      "singleUseShort": "single use",
+      "create": "Create link",
+      "adhocHint": "The invoice is made, and numbered, when the customer presses Continue on the page.",
+      "invoiceHint": "The invoice must be finalized and unpaid.",
+      "shownOnce": "Copy the link now: it is shown once and cannot be read back.",
+      "url": "Payment link",
+      "copy": "Copy",
+      "replayed": "This request was already handled: the link exists, but its address is shown only once.",
+      "list": "Links",
+      "anyKind": "Any kind",
+      "anyStatus": "Any status",
+      "status": "Status",
+      "statuses": {
+        "active": "Active",
+        "paid": "Paid",
+        "expired": "Expired",
+        "revoked": "Revoked"
+      },
+      "uses": "Uses / paid",
+      "usesValue": "{used} / {paid}",
+      "expires": "Expires",
+      "createdAt": "Created",
+      "revoke": "Revoke",
+      "confirmRevoke": "Revoke this link? Unpaid invoices made from it are voided.",
+      "empty": "No payment links yet.",
+      "previous": "Previous",
+      "next": "Next",
+      "links": "Links",
+      "paymentLink": "Payment link",
+      "errors": {
+        "invoice": "Enter the invoice id.",
+        "amount": "Enter a positive amount with the currency's decimals.",
+        "description": "Say what the payment is for.",
+        "days": "Days: a whole number from 1 to 365."
+      },
+      "portal": {
+        "open": "Payment page",
+        "title": "Payment page of {id}",
+        "hint": "A link to a page where this customer sees their invoices and payments, downloads PDFs and receipts, and pays what is open. Read-only.",
+        "close": "Close",
+        "create": "Make a link",
+        "revoke": "Revoke all",
+        "revoked": "Every payment page link of this customer has been revoked.",
+        "confirmRevoke": "Revoke every payment page link of this customer?",
+        "link": "Payment page link",
+        "payments": "Payments",
+        "date": "Date",
+        "invoice": "Invoice",
+        "type": "Type",
+        "noPayments": "No payments recorded.",
+        "kinds": {
+          "charge": "Charge",
+          "refund": "Refund"
+        }
+      },
+      "for": "For"
+    },
+    "mail": {
+      "title": "E-mail",
+      "hint": "Choose which kinds of e-mail Quotify sends to this tenant's customers. A kind that is switched off is dropped, not queued: switching it on again does not send what was skipped.",
+      "categories": {
+        "invoice_issued": "Invoice issued",
+        "payment_receipts": "Payment receipts",
+        "payment_failed": "Payment failed",
+        "usage_alerts": "Usage alerts",
+        "system": "System"
+      },
+      "descriptions": {
+        "invoice_issued": "Tells the customer that a new invoice was finalized.",
+        "payment_receipts": "The receipt after a successful payment.",
+        "payment_failed": "A failed payment, a retry and the notice that Quotify gave up collecting.",
+        "usage_alerts": "A customer passed a usage limit of its plan.",
+        "system": "Every other message Quotify sends."
+      },
+      "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Quotify's mail."
+    },
+    "credits": {
+      "packs": {
+        "new": "New credit pack",
+        "hint": "A pack is a number of credits sold for a price. A customer buys it with a payment link; the credits are added when the payment is confirmed.",
+        "formLabel": "New credit pack",
+        "name": "Pack name",
+        "credits": "Credits",
+        "price": "Price",
+        "currency": "Currency",
+        "create": "Add pack",
+        "title": "Credit packs",
+        "none": "No credit packs yet.",
+        "state": "Status",
+        "onSale": "On sale",
+        "withdrawn": "Withdrawn",
+        "withdraw": "Withdraw",
+        "restore": "Put back on sale"
+      },
+      "customer": {
+        "title": "A customer's credits",
+        "pick": "Choose a customer",
+        "balance": "credits available",
+        "nextExpiry": "Some expire {when}"
+      },
+      "lots": {
+        "source": "Source",
+        "remaining": "Left",
+        "granted": "Granted",
+        "expires": "Expires",
+        "never": "Never"
+      },
+      "source": {
+        "promo": "Promotion",
+        "manual": "Manual",
+        "purchase": "Purchase"
+      },
+      "grant": {
+        "formLabel": "Add credits",
+        "credits": "Credits to add",
+        "source": "Reason type",
+        "expiry": "Expiry date",
+        "expiryHint": "Leave empty for credits that never expire",
+        "reason": "Note (optional)",
+        "submit": "Add credits"
+      },
+      "ledger": {
+        "title": "Credit history",
+        "none": "No credit changes yet.",
+        "time": "Time",
+        "kind": "Type",
+        "amount": "Credits",
+        "reason": "Note"
+      },
+      "kind": {
+        "grant": "Added",
+        "consume": "Spent",
+        "expire": "Expired"
+      }
     }
   },
   "einvoice": {
@@ -729,6 +997,230 @@
         "customer": {
           "tax_invalid": "The customer's tax data is not valid."
         }
+      }
+    }
+  },
+  "apps": {
+    "new": "New app",
+    "hint": "An app is one of the account's applications, with its own sandbox and live environment, keys, customers and plans. Currency, time zone and grace period are chosen here and cannot be changed later.",
+    "formLabel": "new app",
+    "name": "App name",
+    "slug": "Slug",
+    "slugPlaceholder": "Slug (optional, e.g. web-shop)",
+    "currency": "Currency",
+    "currencyPlaceholder": "Currency (cannot change later)",
+    "timezone": "Time zone",
+    "timezonePlaceholder": "IANA time zone, e.g. Europe/Istanbul",
+    "grace": "Grace period (hours)",
+    "gracePlaceholder": "Grace period, hours (0 to 168)",
+    "create": "Create app",
+    "badSlug": "The slug may only have lower-case letters, digits and single dashes, at most 60 characters.",
+    "title": "Apps of this account",
+    "immutable": "Renaming and deleting an app is not available in the API yet; an app's currency, time zone and grace period cannot be changed.",
+    "environments": "Environments",
+    "created": "Created",
+    "actions": "Actions",
+    "empty": "This account has no apps yet.",
+    "keys": {
+      "open": "API keys",
+      "title": "API keys of {app}",
+      "hint": "Create a key for one environment. The key is shown once; the API cannot list keys later, so keys made on this page are listed here until you leave it. A key from elsewhere can be revoked by its id.",
+      "secretOnce": "Copy the key now: it is shown only once.",
+      "dismiss": "I have copied it",
+      "createFor": "Create a key for {env}",
+      "create": "Create key",
+      "revoked": "Revoked",
+      "revoke": "Revoke",
+      "revokeForm": "revoke a key",
+      "revokeId": "Key id",
+      "revokeById": "Revoke by id",
+      "confirmRevoke": "Revoke this API key? Requests using it stop working immediately.",
+      "revokedDone": "Key {id} revoked."
+    }
+  },
+  "address": {
+    "title": "Seller address",
+    "hint": "The legal and billing address of this tenant, printed as the seller on every invoice (PDF and hosted page). It applies to invoices made after you save.",
+    "formLabel": "seller address",
+    "noCountry": "No country",
+    "otherCountry": "Another country…",
+    "labels": {
+      "country": "Country",
+      "countryCode": "Country code (two letters, e.g. SE)",
+      "line1": "Address line 1",
+      "line2": "Address line 2",
+      "city": "City",
+      "region": "Region",
+      "state": "State",
+      "province": "Province",
+      "county": "County",
+      "prefecture": "Prefecture",
+      "postalCode": "Postal code",
+      "zip": "ZIP code",
+      "postcode": "Postcode"
+    },
+    "problems": {
+      "tooLong": "Too long: at most {max} characters.",
+      "oneLine": "Must be one line of text.",
+      "badCountry": "Two letters (ISO 3166-1), e.g. TR."
+    },
+    "postalHint": "This does not look like a postal code of that country, for example {example}. It is accepted anyway.",
+    "save": "Save address",
+    "saved": "Address saved.",
+    "preview": {
+      "title": "Invoice preview",
+      "hint": "How the seller appears on an invoice.",
+      "from": "From",
+      "empty": "No address: the invoice shows only the name."
+    }
+  },
+  "errors": {
+    "billing": {
+      "credit_note": {
+        "bad_amount": "The credit amount is not valid: it must be more than zero and no more than what is left to credit on the invoice.",
+        "fully_credited": "This invoice has already been credited in full.",
+        "not_paid": "Only a paid invoice can be credited.",
+        "nothing_to_refund": "There is nothing to refund to the card for this credit note.",
+        "refund_not_failed": "Only a credit note whose refund failed can be retried."
+      },
+      "dunning": {
+        "bad_delay": "Each retry delay must be between 1 and 720 hours.",
+        "too_many_retries": "At most 6 retry delays can be set."
+      },
+      "invoice": {
+        "not_found": "The invoice was not found.",
+        "pdf_not_ready": "The invoice PDF has not been rendered yet. Try again in a moment."
+      },
+      "invoice_link": {
+        "bad_expiry": "The link must expire in 1 to 365 days.",
+        "draft_invoice": "A draft invoice cannot be shared by link.",
+        "not_found": "The invoice link was not found."
+      },
+      "payment": {
+        "amount_mismatch": "The payment is not for the amount of the invoice.",
+        "invoice_not_payable": "Only an open or uncollectible invoice can be paid by hand.",
+        "method_unavailable": "Choose a payment method.",
+        "bad_method": "The method must be bank transfer, cash or other.",
+        "bad_amount": "The amount must be a whole number of minor units above zero.",
+        "bad_date": "The received date is not valid or lies in the future.",
+        "overpayment": "That is more than is outstanding. Record only the outstanding amount.",
+        "already_paid": "The invoice is already paid.",
+        "not_payable": "The invoice's payment state does not allow a manual payment right now.",
+        "reference_reused": "This reference was already recorded with a different amount."
+      },
+      "payment_link": {
+        "bad_amount": "The amount must be a positive number of minor units.",
+        "bad_currency": "This currency is not supported.",
+        "bad_description": "A description is required, at most 200 characters.",
+        "bad_key": "The idempotency key is too long (at most 200 characters).",
+        "bad_kind": "Amount, currency, description and customer belong to an ad-hoc link; an invoice link takes them from the invoice.",
+        "bad_page": "The page size must be 1 to 200.",
+        "bad_status": "The status must be active, paid, expired or revoked.",
+        "consumed": "This link has already been used.",
+        "customer_not_found": "There is no such customer.",
+        "idempotency_conflict": "This idempotency key was used for a different payment link.",
+        "invoice_not_payable": "A paid or void invoice needs no payment link.",
+        "invoice_required": "A payment link of kind invoice needs an invoice.",
+        "not_found": "There is no such payment link."
+      },
+      "portal_link": {
+        "customer_not_found": "There is no such customer.",
+        "customer_required": "A customer is required."
+      },
+      "credits": {
+        "bad_amount": "The amount must be a whole number of credits above zero.",
+        "bad_customer": "The customer is not valid.",
+        "bad_expiry": "The expiry date must lie in the future.",
+        "bad_key": "The idempotency key is too long (at most 128 characters).",
+        "bad_pack": "A pack needs a name and credits and a price above zero.",
+        "bad_page_token": "The page token is not valid.",
+        "bad_reason": "The note is too long (at most 200 characters).",
+        "bad_source": "The type must be promotion or manual.",
+        "insufficient": "The customer has too few credits.",
+        "key_required": "An idempotency key is required to spend credits.",
+        "key_reused": "This idempotency key was already used for a different request.",
+        "pack_not_found": "There is no such credit pack.",
+        "unknown_currency": "This currency is not supported."
+      }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "The app slug may only have lower-case letters, digits and single dashes, and at most 60 characters.",
+        "slug_taken": "This account already has an app with that slug."
+      },
+      "mail": {
+        "unknown_category": "This mail category does not exist."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead."
+      },
+      "webhook": {
+        "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
+        "too_many_endpoints": "The limit of webhook endpoints is reached. Delete one first."
+      },
+      "customer": {
+        "tax_invalid": "The customer's tax id or tax office is not valid."
+      }
+    },
+    "common": {
+      "invalid_argument": "Something in the request is not valid.",
+      "not_found": "It was not found.",
+      "already_exists": "It already exists.",
+      "failed_precondition": "This cannot be done in the current state.",
+      "permission_denied": "You are not allowed to do this.",
+      "unauthenticated": "Sign in again: the token is missing or no longer valid.",
+      "rate_limited": "Too many requests. Wait a moment and try again.",
+      "unavailable": "The service is not available right now. Try again shortly.",
+      "timeout": "The request took too long. Try again.",
+      "conflict": "The data changed while you were working on it. Reload and try again.",
+      "not_implemented": "This is not supported yet.",
+      "internal": "Something went wrong on our side. Try again, and if it keeps failing look at the logs with the request id."
+    },
+    "payments": {
+      "transfer": {
+        "not_a_transfer": "This invoice was not charged by bank transfer. Use Record payment instead.",
+        "invoice_closed": "The invoice is already paid or void.",
+        "bad_amount": "The amount must be a whole number of minor units above zero.",
+        "bad_currency": "The currency differs from the invoice's.",
+        "overpayment": "That is more than is outstanding. Record only the outstanding amount and handle the rest outside Quotify.",
+        "reference_reused": "This bank reference was already recorded with a different amount.",
+        "bad_reference": "The bank reference is missing or not valid.",
+        "bad_note": "The note is too long (at most 500 characters).",
+        "bad_date": "The received date is not valid or lies in the future.",
+        "nothing_pending": "There is no pending transfer to reject.",
+        "bad_outcome": "The outcome must be rejected or expired.",
+        "unavailable": "The payments service is not available right now. Try again in a moment."
+      }
+    },
+    "einvoice": {
+      "account": {
+        "invalid": "The e-invoice account settings are not valid for this provider.",
+        "missing": "This tenant has no e-invoice account for this environment. Set one up first.",
+        "sandbox_mock_only": "A sandbox environment can only use the mock e-invoice provider."
+      },
+      "buyer": {
+        "incomplete": "The customer's tax data is incomplete: add the tax id (and tax office in Turkey) before issuing an e-invoice."
+      },
+      "cancel": {
+        "unsupported": "This provider cannot cancel an issued e-invoice. Issue a credit note instead."
+      },
+      "document": {
+        "not_failed": "Only an e-document that failed can be retried.",
+        "not_found": "This e-document does not exist.",
+        "not_issued": "Only an issued e-document can be cancelled."
+      },
+      "file": {
+        "not_ready": "The file of this e-document is not available yet."
+      },
+      "provider": {
+        "rejected": "The e-invoice provider rejected the document.",
+        "unavailable": "The e-invoice provider is not reachable right now. It will be tried again."
+      },
+      "seller": {
+        "incomplete": "The seller's company data is incomplete: add the legal name and tax id in the e-invoice settings."
+      },
+      "setting": {
+        "invalid": "The e-invoice trigger must be off, finalized or paid."
       }
     }
   }

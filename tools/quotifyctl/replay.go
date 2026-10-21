@@ -23,7 +23,7 @@ func replay(args []string) error {
 	}
 	sub, rest := args[0], args[1:]
 	fs := flag.NewFlagSet("replay "+sub, flag.ContinueOnError)
-	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:8000"), "gateway base URL")
+	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800"), "gateway base URL")
 	token := fs.String("operator-token", os.Getenv("QUOTIFY_OPERATOR_TOKEN"), "operator token (QUOTIFY_OPERATOR_TOKEN)")
 	tenantID := fs.String("tenant", "", "tenant id (required)")
 	job := fs.String("job", "", "replay job id")
@@ -98,7 +98,7 @@ func waitReplay(c *client, token, base, id string) (map[string]any, error) {
 
 func rerate(args []string) error {
 	fs := flag.NewFlagSet("rerate", flag.ContinueOnError)
-	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:8000"), "gateway base URL")
+	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800"), "gateway base URL")
 	token := fs.String("operator-token", os.Getenv("QUOTIFY_OPERATOR_TOKEN"), "operator token (QUOTIFY_OPERATOR_TOKEN)")
 	tenantID := fs.String("tenant", "", "tenant id (required)")
 	period := fs.String("period", "", "closed period to price again, e.g. 2026-10 (required)")

@@ -75,12 +75,28 @@
     "ledgerSource": {
       "command": "Quotify",
       "webhook": "sağlayıcı bildirimi",
-      "reconciliation": "mutabakat"
+      "reconciliation": "mutabakat",
+      "manual": "elle kaydedildi"
     },
     "dunningState": {
       "PAYMENT_DECLINED": "reddedildi, yeniden deneniyor",
       "PAYMENT_UNKNOWN": "sonuç bilinmiyor",
       "UNCOLLECTIBLE": "vazgeçildi"
+    },
+    "sagaState": {
+      "PAYMENT_PENDING": "havale bekleniyor"
+    },
+    "paymentMethod": {
+      "bank_transfer": "Banka havalesi",
+      "cash": "Nakit",
+      "other": "Diğer"
+    },
+    "transferState": {
+      "none": "havale yok",
+      "pending": "para bekleniyor",
+      "paid": "ödendi",
+      "expired": "süresi doldu",
+      "rejected": "reddedildi"
     }
   },
   "tenants": {
@@ -151,7 +167,77 @@
       "link": "Fatura bağlantısı",
       "copy": "Kopyala",
       "revoked": "Bu faturanın tüm bağlantıları iptal edildi.",
-      "badDays": "Gün: 1 ile 365 arasında bir tam sayı."
+      "badDays": "Gün: 1 ile 365 arasında bir tam sayı.",
+      "paymentLink": "Ödeme bağlantısı"
+    },
+    "payment": {
+      "record": "Ödeme kaydet",
+      "confirmTransfer": "Banka havalesini onayla",
+      "offlineHint": "Quotify dışında alınan parayı kaydedin (havale, nakit, diğer). Kısmi tutar girilebilir: ödemeler toplamı fatura tutarına ulaşınca fatura ödenmiş olur.",
+      "transferHint": "Banka ekstresine geçeni onaylayın. Kısmi tutar kaydedilir; havaleler toplamı fatura tutarına ulaşınca fatura ödenmiş olur.",
+      "method": "Yöntem",
+      "amount": "Tutar ({currency})",
+      "amountHint": "Varsayılan, kalan tutardır ({outstanding}). Fazlası reddedilir.",
+      "receivedAt": "Alındığı zaman",
+      "reference": "Referans",
+      "referenceHint": "İsteğe bağlı. Aynı referans yeniden girilirse aynı ödeme sayılır.",
+      "bankReference": "Banka referansı",
+      "bankReferenceHint": "Bankanın işlem veya ekstre referansı. Zorunludur: tekrarı zararsız kılar.",
+      "note": "Not",
+      "cancel": "Vazgeç",
+      "submit": "Ödemeyi kaydet",
+      "confirmSubmit": "Havaleyi onayla",
+      "badAmount": "{currency} cinsinden geçerli bir tutar değil: yalnızca rakam, sıfırdan büyük ve para biriminin ondalık basamağından fazla olmamalı.",
+      "badDate": "Alındığı zaman geçerli bir tarih ve saat olmalı, gelecekte olamaz.",
+      "needReference": "Banka referansı zorunludur.",
+      "listTitle": "Elle kaydedilen ödemeler",
+      "columns": {
+        "method": "Yöntem",
+        "amount": "Tutar",
+        "receivedAt": "Alındı",
+        "reference": "Referans",
+        "note": "Not",
+        "recordedBy": "Kaydeden"
+      },
+      "toast": {
+        "paid": "Fatura ödendi: {received} alındı.",
+        "partly": "Kısmen ödendi: {received} alındı, {outstanding} hâlâ kalıyor.",
+        "duplicate": "Bu ödeme daha önce kaydedilmişti."
+      }
+    },
+    "transfer": {
+      "title": "Banka havalesi",
+      "reference": "Ödeme referansı",
+      "bank": "Banka",
+      "holder": "Hesap sahibi",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "total": "Fatura toplamı",
+      "received": "Alınan",
+      "outstanding": "Kalan",
+      "pendingSince": "Beklemeye başladı",
+      "expiresAt": "Ödeme süresi bitiyor",
+      "receipts": "Alınan havaleler",
+      "receiptColumns": {
+        "receivedAt": "Alındı",
+        "amount": "Tutar",
+        "bankReference": "Banka referansı",
+        "note": "Not",
+        "recordedBy": "Kaydeden"
+      },
+      "reject": "Reddet",
+      "expire": "Süresi doldu olarak işaretle",
+      "rejectTitle": "Banka havalesini reddet",
+      "expireTitle": "Banka havalesini süresi doldu olarak işaretle",
+      "rejectHint": "Müşterinin havalesi geri çevrildiyse veya gelmeyecekse kullanın. Fatura ödenmiş sayılmaz ve kiracının tahsilat takvimi hemen işler: yeni bir ödeme süresi ya da deneme kalmadıysa tahsil edilemez. Daha önce kaydedilen alındılar korunur.",
+      "expireHint": "Ödeme süresi para gelmeden bittiyse kullanın. Fatura ödenmiş sayılmaz ve kiracının tahsilat takvimi hemen işler: yeni bir ödeme süresi ya da deneme kalmadıysa tahsil edilemez. Daha önce kaydedilen alındılar korunur.",
+      "reason": "Neden (isteğe bağlı)",
+      "expiredNote": "Ödeme süresi tutarın tamamı gelmeden bitti. Tahsilat takvimi işler.",
+      "rejectedNote": "Havale reddedildi. Tahsilat takvimi işler.",
+      "toast": {
+        "rejected": "Havale reddedildi. Tahsilat takvimi işler.",
+        "expired": "Havale süresi doldu olarak işaretlendi. Tahsilat takvimi işler."
+      }
     }
   },
   "deadLetters": {
@@ -243,7 +329,12 @@
       "reports": "Raporlar",
       "pricing": "Kupon ve vergi",
       "webhooks": "Webhooklar",
-      "einvoice": "E-fatura"
+      "einvoice": "E-fatura",
+      "paymentLinks": "Ödeme bağlantıları",
+      "mail": "E-posta",
+      "apps": "Uygulamalar",
+      "address": "Satıcı adresi",
+      "credits": "Krediler"
     },
     "common": {
       "remove": "Kaldır"
@@ -462,6 +553,31 @@
         "kind": "Tür",
         "key": "Quotify adı",
         "empty": "Bu sağlayıcıda henüz bir şey oluşturulmadı."
+      },
+      "bank": {
+        "title": "Banka havalesi hesabı",
+        "sandboxNote": "Sandbox ödemeleri bu sağlayıcıya hiç ulaşmaz (sahte ödeme sağlayıcısı karşılar). Kullanmak için hesabı live ortamına kaydedin.",
+        "bankName": "Banka adı",
+        "accountHolder": "Hesap sahibi",
+        "iban": "IBAN",
+        "ibanHint": "Boşluk ve tireler silinir, harfler büyütülür; kontrol basamakları doğrulanır.",
+        "bic": "BIC (isteğe bağlı)",
+        "referenceTemplate": "Ödeme referansı (isteğe bağlı)",
+        "referenceHint": "Müşterinin havaleye yazacağı metin. {number} ve {id} kullanılabilir; varsayılan fatura numarasıdır.",
+        "currencies": "Para birimleri",
+        "currenciesHint": "Bu hesabın tahsil ettiği para birimleri. Hiçbiri seçilmezse hepsi.",
+        "windowDays": "Ödeme süresi (gün)",
+        "windowHint": "Paranın ne kadar bekleneceği, 0 ile 90 arası. 0 veya boş, dağıtımın varsayılanını kullanır.",
+        "errors": {
+          "required": "Zorunlu.",
+          "empty": "Zorunlu.",
+          "length": "IBAN 15 ile 34 karakter arasındadır.",
+          "format": "IBAN iki harf, iki rakam ve ardından harf ve rakamlardan oluşur.",
+          "checksum": "Kontrol basamakları tutmuyor: yazım hatası olabilir.",
+          "badBic": "BIC 8 veya 11 harf ve rakamdan oluşur.",
+          "badTemplate": "Süslü parantez içinde yalnızca {number} ve {id} olabilir.",
+          "badWindow": "0 ile 90 arasında tam sayı gün."
+        }
       }
     },
     "reports": {
@@ -618,6 +734,158 @@
         "delivered": "Teslim edildi",
         "failed": "Başarısız"
       }
+    },
+    "paymentLinks": {
+      "title": "Ödeme bağlantıları",
+      "hint": "Müşterinin giriş yapmadan ödeme yapmak için açtığı bağlantı. Açık bir fatura için ya da sabit bir tutar için (fatura müşteri ilk kullandığında oluşturulur). Bağlantıya sahip olan herkes ödeme yapabilir; süresi dolunca ya da iptal edilince çalışmaz.",
+      "formLabel": "yeni ödeme bağlantısı",
+      "kind": "Tür",
+      "kinds": {
+        "adhoc": "Sabit tutar",
+        "invoice": "Açık fatura"
+      },
+      "invoiceId": "Fatura kimliği",
+      "amount": "Tutar",
+      "currency": "Para birimi",
+      "description": "Ne için",
+      "customer": "Müşteri",
+      "customerOptional": "Müşteri kimliği (isteğe bağlı)",
+      "days": "Geçerlilik (gün)",
+      "singleUse": "Tek kullanımlık (bir ödenmiş fatura)",
+      "singleUseShort": "tek kullanımlık",
+      "create": "Bağlantı oluştur",
+      "adhocHint": "Müşteri sayfada Devam'a bastığında fatura oluşturulur ve numaralandırılır.",
+      "invoiceHint": "Fatura kesinleşmiş ve ödenmemiş olmalı.",
+      "shownOnce": "Bağlantıyı şimdi kopyalayın: yalnızca bir kez gösterilir, sonradan okunamaz.",
+      "url": "Ödeme bağlantısı",
+      "copy": "Kopyala",
+      "replayed": "Bu istek zaten işlendi: bağlantı var, ancak adresi yalnızca bir kez gösterilir.",
+      "list": "Bağlantılar",
+      "anyKind": "Her tür",
+      "anyStatus": "Her durum",
+      "status": "Durum",
+      "statuses": {
+        "active": "Etkin",
+        "paid": "Ödendi",
+        "expired": "Süresi doldu",
+        "revoked": "İptal edildi"
+      },
+      "uses": "Kullanım / ödenen",
+      "usesValue": "{used} / {paid}",
+      "expires": "Bitiş",
+      "createdAt": "Oluşturuldu",
+      "revoke": "İptal et",
+      "confirmRevoke": "Bu bağlantı iptal edilsin mi? Ondan oluşan ödenmemiş faturalar iptal edilir.",
+      "empty": "Henüz ödeme bağlantısı yok.",
+      "previous": "Önceki",
+      "next": "Sonraki",
+      "links": "Bağlantılar",
+      "paymentLink": "Ödeme bağlantısı",
+      "errors": {
+        "invoice": "Fatura kimliğini girin.",
+        "amount": "Para biriminin ondalık basamaklarıyla pozitif bir tutar girin.",
+        "description": "Ödemenin ne için olduğunu yazın.",
+        "days": "Gün: 1 ile 365 arasında tam sayı."
+      },
+      "portal": {
+        "open": "Ödeme sayfası",
+        "title": "{id} için ödeme sayfası",
+        "hint": "Bu müşterinin faturalarını ve ödemelerini görebildiği, PDF ve makbuzları indirebildiği ve açık olanı ödeyebildiği sayfaya bağlantı. Salt okunur.",
+        "close": "Kapat",
+        "create": "Bağlantı oluştur",
+        "revoke": "Hepsini iptal et",
+        "revoked": "Bu müşterinin tüm ödeme sayfası bağlantıları iptal edildi.",
+        "confirmRevoke": "Bu müşterinin tüm ödeme sayfası bağlantıları iptal edilsin mi?",
+        "link": "Ödeme sayfası bağlantısı",
+        "payments": "Ödemeler",
+        "date": "Tarih",
+        "invoice": "Fatura",
+        "type": "Tür",
+        "noPayments": "Kayıtlı ödeme yok.",
+        "kinds": {
+          "charge": "Tahsilat",
+          "refund": "İade"
+        }
+      },
+      "for": "Konu"
+    },
+    "mail": {
+      "title": "E-posta",
+      "hint": "Quotify'ın bu kiracının müşterilerine hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
+      "categories": {
+        "invoice_issued": "Fatura kesildi",
+        "payment_receipts": "Ödeme makbuzları",
+        "payment_failed": "Ödeme başarısız",
+        "usage_alerts": "Kullanım uyarıları",
+        "system": "Sistem"
+      },
+      "descriptions": {
+        "invoice_issued": "Müşteriye yeni bir faturanın kesildiğini bildirir.",
+        "payment_receipts": "Başarılı bir ödemeden sonraki makbuz.",
+        "payment_failed": "Başarısız ödeme, yeniden deneme ve Quotify'ın tahsilattan vazgeçtiği bildirimi.",
+        "usage_alerts": "Bir müşteri planının kullanım limitini aştı.",
+        "system": "Quotify'ın gönderdiği diğer tüm iletiler."
+      },
+      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Quotify'ın e-postalarını yönetir."
+    },
+    "credits": {
+      "packs": {
+        "new": "Yeni kredi paketi",
+        "hint": "Paket, bir fiyata satılan belirli sayıda kredidir. Müşteri bir ödeme bağlantısıyla satın alır; krediler ödeme onaylanınca eklenir.",
+        "formLabel": "Yeni kredi paketi",
+        "name": "Paket adı",
+        "credits": "Kredi",
+        "price": "Fiyat",
+        "currency": "Para birimi",
+        "create": "Paketi ekle",
+        "title": "Kredi paketleri",
+        "none": "Henüz kredi paketi yok.",
+        "state": "Durum",
+        "onSale": "Satışta",
+        "withdrawn": "Satıştan kaldırıldı",
+        "withdraw": "Satıştan kaldır",
+        "restore": "Yeniden satışa koy"
+      },
+      "customer": {
+        "title": "Bir müşterinin kredileri",
+        "pick": "Müşteri seçin",
+        "balance": "kullanılabilir kredi",
+        "nextExpiry": "Bir kısmı {when} tarihinde sona erer"
+      },
+      "lots": {
+        "source": "Kaynak",
+        "remaining": "Kalan",
+        "granted": "Verilen",
+        "expires": "Sona erer",
+        "never": "Asla"
+      },
+      "source": {
+        "promo": "Promosyon",
+        "manual": "Elle",
+        "purchase": "Satın alma"
+      },
+      "grant": {
+        "formLabel": "Kredi ekle",
+        "credits": "Eklenecek kredi",
+        "source": "Tür",
+        "expiry": "Son kullanma tarihi",
+        "expiryHint": "Hiç sona ermeyen krediler için boş bırakın",
+        "reason": "Not (isteğe bağlı)",
+        "submit": "Kredi ekle"
+      },
+      "ledger": {
+        "title": "Kredi geçmişi",
+        "none": "Henüz kredi hareketi yok.",
+        "time": "Zaman",
+        "kind": "Tür",
+        "amount": "Kredi",
+        "reason": "Not"
+      },
+      "kind": {
+        "grant": "Eklendi",
+        "consume": "Harcandı",
+        "expire": "Süresi doldu"
+      }
     }
   },
   "einvoice": {
@@ -729,6 +997,230 @@
         "customer": {
           "tax_invalid": "Müşterinin vergi bilgisi geçersiz."
         }
+      }
+    }
+  },
+  "apps": {
+    "new": "Yeni uygulama",
+    "hint": "Uygulama, hesabın uygulamalarından biridir; kendi sandbox ve canlı ortamı, anahtarları, müşterileri ve planları vardır. Para birimi, saat dilimi ve ek süre burada seçilir, sonradan değiştirilemez.",
+    "formLabel": "yeni uygulama",
+    "name": "Uygulama adı",
+    "slug": "Kısaltma",
+    "slugPlaceholder": "Kısaltma (isteğe bağlı, ör. web-shop)",
+    "currency": "Para birimi",
+    "currencyPlaceholder": "Para birimi (sonra değişmez)",
+    "timezone": "Saat dilimi",
+    "timezonePlaceholder": "IANA saat dilimi, ör. Europe/Istanbul",
+    "grace": "Ek süre (saat)",
+    "gracePlaceholder": "Ek süre, saat (0 - 168)",
+    "create": "Uygulama oluştur",
+    "badSlug": "Kısaltma yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter.",
+    "title": "Bu hesabın uygulamaları",
+    "immutable": "Bir uygulamayı yeniden adlandırma ve silme API'de henüz yok; uygulamanın para birimi, saat dilimi ve ek süresi değiştirilemez.",
+    "environments": "Ortamlar",
+    "created": "Oluşturuldu",
+    "actions": "İşlemler",
+    "empty": "Bu hesapta henüz uygulama yok.",
+    "keys": {
+      "open": "API anahtarları",
+      "title": "{app} uygulamasının API anahtarları",
+      "hint": "Bir ortam için anahtar oluşturun. Anahtar yalnızca bir kez gösterilir; API anahtarları sonradan listeleyemez, bu yüzden bu sayfada oluşturulanlar sayfadan ayrılana kadar burada listelenir. Başka yerde oluşturulmuş bir anahtar kimliğiyle iptal edilebilir.",
+      "secretOnce": "Anahtarı şimdi kopyalayın: yalnızca bir kez gösterilir.",
+      "dismiss": "Kopyaladım",
+      "createFor": "{env} için anahtar oluştur",
+      "create": "Anahtar oluştur",
+      "revoked": "İptal edildi",
+      "revoke": "İptal et",
+      "revokeForm": "anahtar iptali",
+      "revokeId": "Anahtar kimliği",
+      "revokeById": "Kimliğe göre iptal et",
+      "confirmRevoke": "Bu API anahtarı iptal edilsin mi? Onu kullanan istekler hemen çalışmaz.",
+      "revokedDone": "{id} anahtarı iptal edildi."
+    }
+  },
+  "address": {
+    "title": "Satıcı adresi",
+    "hint": "Bu kiracının yasal ve fatura adresi; her faturada (PDF ve barındırılan sayfa) satıcı olarak basılır. Kaydettikten sonra kesilen faturalara uygulanır.",
+    "formLabel": "satıcı adresi",
+    "noCountry": "Ülke yok",
+    "otherCountry": "Başka bir ülke…",
+    "labels": {
+      "country": "Ülke",
+      "countryCode": "Ülke kodu (iki harf, ör. SE)",
+      "line1": "Adres satırı 1",
+      "line2": "Adres satırı 2",
+      "city": "Şehir",
+      "region": "Bölge",
+      "state": "Eyalet",
+      "province": "İl",
+      "county": "İlçe",
+      "prefecture": "Vilayet",
+      "postalCode": "Posta kodu",
+      "zip": "ZIP kodu",
+      "postcode": "Posta kodu"
+    },
+    "problems": {
+      "tooLong": "Çok uzun: en fazla {max} karakter.",
+      "oneLine": "Tek satırlık metin olmalı.",
+      "badCountry": "İki harf (ISO 3166-1), ör. TR."
+    },
+    "postalHint": "Bu, o ülkenin posta koduna benzemiyor, örneğin {example}. Yine de kabul edilir.",
+    "save": "Adresi kaydet",
+    "saved": "Adres kaydedildi.",
+    "preview": {
+      "title": "Fatura önizlemesi",
+      "hint": "Satıcı faturada böyle görünür.",
+      "from": "Satıcı",
+      "empty": "Adres yok: faturada yalnızca ad görünür."
+    }
+  },
+  "errors": {
+    "billing": {
+      "credit_note": {
+        "bad_amount": "Alacak tutarı geçerli değil: sıfırdan büyük olmalı ve faturada kalan alacak tutarını aşmamalı.",
+        "fully_credited": "Bu faturanın tamamı zaten alacaklandırılmış.",
+        "not_paid": "Yalnızca ödenmiş bir fatura için alacak dekontu düzenlenebilir.",
+        "nothing_to_refund": "Bu alacak dekontu için karta iade edilecek bir tutar yok.",
+        "refund_not_failed": "Yalnızca iadesi başarısız olan bir alacak dekontu yeniden denenebilir."
+      },
+      "dunning": {
+        "bad_delay": "Her yeniden deneme gecikmesi 1 ile 720 saat arasında olmalı.",
+        "too_many_retries": "En fazla 6 yeniden deneme gecikmesi tanımlanabilir."
+      },
+      "invoice": {
+        "not_found": "Fatura bulunamadı.",
+        "pdf_not_ready": "Fatura PDF'i henüz hazırlanmadı. Birazdan tekrar deneyin."
+      },
+      "invoice_link": {
+        "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
+        "draft_invoice": "Taslak bir fatura bağlantıyla paylaşılamaz.",
+        "not_found": "Fatura bağlantısı bulunamadı."
+      },
+      "payment": {
+        "amount_mismatch": "Ödeme, faturanın tutarı için değil.",
+        "invoice_not_payable": "Yalnızca açık veya tahsil edilemeyen bir fatura elle ödenebilir.",
+        "method_unavailable": "Bir ödeme yöntemi seçin.",
+        "bad_method": "Yöntem banka havalesi, nakit veya diğer olmalı.",
+        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
+        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
+        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin.",
+        "already_paid": "Fatura zaten ödenmiş.",
+        "not_payable": "Faturanın ödeme durumu şu an elle ödemeye izin vermiyor.",
+        "reference_reused": "Bu referans farklı bir tutarla zaten kaydedilmiş."
+      },
+      "payment_link": {
+        "bad_amount": "Tutar, küçük birimlerde pozitif bir sayı olmalıdır.",
+        "bad_currency": "Bu para birimi desteklenmiyor.",
+        "bad_description": "Açıklama zorunludur, en fazla 200 karakter.",
+        "bad_key": "Idempotency anahtarı çok uzun (en fazla 200 karakter).",
+        "bad_kind": "Tutar, para birimi, açıklama ve müşteri tek seferlik bağlantıya aittir; fatura bağlantısı bunları faturadan alır.",
+        "bad_page": "Sayfa boyutu 1 ile 200 arasında olmalıdır.",
+        "bad_status": "Durum active, paid, expired veya revoked olmalıdır.",
+        "consumed": "Bu bağlantı zaten kullanıldı.",
+        "customer_not_found": "Böyle bir müşteri yok.",
+        "idempotency_conflict": "Bu idempotency anahtarı başka bir ödeme bağlantısı için kullanıldı.",
+        "invoice_not_payable": "Ödenmiş veya iptal edilmiş faturaya ödeme bağlantısı gerekmez.",
+        "invoice_required": "Fatura türündeki ödeme bağlantısı için bir fatura gerekir.",
+        "not_found": "Böyle bir ödeme bağlantısı yok."
+      },
+      "portal_link": {
+        "customer_not_found": "Böyle bir müşteri yok.",
+        "customer_required": "Müşteri zorunludur."
+      },
+      "credits": {
+        "bad_amount": "Miktar, sıfırdan büyük tam sayıda kredi olmalıdır.",
+        "bad_customer": "Müşteri geçerli değil.",
+        "bad_expiry": "Son kullanma tarihi gelecekte olmalıdır.",
+        "bad_key": "Idempotency anahtarı çok uzun (en fazla 128 karakter).",
+        "bad_pack": "Paketin adı, kredisi ve sıfırdan büyük bir fiyatı olmalıdır.",
+        "bad_page_token": "Sayfa belirteci geçerli değil.",
+        "bad_reason": "Not çok uzun (en fazla 200 karakter).",
+        "bad_source": "Tür promosyon veya elle olmalıdır.",
+        "insufficient": "Müşterinin yeterli kredisi yok.",
+        "key_required": "Kredi harcamak için bir idempotency anahtarı gerekir.",
+        "key_reused": "Bu idempotency anahtarı başka bir istek için zaten kullanıldı.",
+        "pack_not_found": "Böyle bir kredi paketi yok.",
+        "unknown_currency": "Bu para birimi desteklenmiyor."
+      }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "Uygulama kısaltması yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter olmalı.",
+        "slug_taken": "Bu hesapta aynı kısaltmaya sahip bir uygulama zaten var."
+      },
+      "mail": {
+        "unknown_category": "Bu e-posta kategorisi yok."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın."
+      },
+      "webhook": {
+        "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
+        "too_many_endpoints": "Webhook uç noktası sınırına ulaşıldı. Önce birini silin."
+      },
+      "customer": {
+        "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil."
+      }
+    },
+    "common": {
+      "invalid_argument": "İstekteki bir şey geçerli değil.",
+      "not_found": "Bulunamadı.",
+      "already_exists": "Zaten var.",
+      "failed_precondition": "Bu işlem mevcut durumda yapılamaz.",
+      "permission_denied": "Bu işlem için yetkiniz yok.",
+      "unauthenticated": "Yeniden oturum açın: token eksik veya artık geçerli değil.",
+      "rate_limited": "Çok fazla istek. Biraz bekleyip tekrar deneyin.",
+      "unavailable": "Servis şu anda kullanılamıyor. Kısa süre sonra tekrar deneyin.",
+      "timeout": "İstek çok uzun sürdü. Tekrar deneyin.",
+      "conflict": "Siz çalışırken veri değişti. Sayfayı yenileyip tekrar deneyin.",
+      "not_implemented": "Bu henüz desteklenmiyor.",
+      "internal": "Bizim tarafta bir sorun oluştu. Tekrar deneyin; sürerse istek kimliğiyle günlüklere bakın."
+    },
+    "payments": {
+      "transfer": {
+        "not_a_transfer": "Bu fatura banka havalesiyle tahsil edilmedi. Bunun yerine Ödeme kaydet'i kullanın.",
+        "invoice_closed": "Fatura zaten ödenmiş veya iptal edilmiş.",
+        "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
+        "bad_currency": "Para birimi faturanınkinden farklı.",
+        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin, fazlasını Quotify dışında halledin.",
+        "reference_reused": "Bu banka referansı farklı bir tutarla zaten kaydedilmiş.",
+        "bad_reference": "Banka referansı eksik veya geçersiz.",
+        "bad_note": "Not çok uzun (en fazla 500 karakter).",
+        "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
+        "nothing_pending": "Reddedilecek bekleyen bir havale yok.",
+        "bad_outcome": "Sonuç reddedildi veya süresi doldu olmalı.",
+        "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin."
+      }
+    },
+    "einvoice": {
+      "account": {
+        "invalid": "E-fatura hesabı ayarları bu sağlayıcı için geçerli değil.",
+        "missing": "Bu kiracının bu ortam için e-fatura hesabı yok. Önce bir hesap ekleyin.",
+        "sandbox_mock_only": "Sandbox ortamı yalnızca sahte (mock) e-fatura sağlayıcısını kullanabilir."
+      },
+      "buyer": {
+        "incomplete": "Müşterinin vergi bilgileri eksik: e-fatura kesmeden önce vergi numarasını (Türkiye'de vergi dairesini de) ekleyin."
+      },
+      "cancel": {
+        "unsupported": "Bu sağlayıcı kesilmiş bir e-faturayı iptal edemez. Bunun yerine alacak dekontu (kredi notu) düzenleyin."
+      },
+      "document": {
+        "not_failed": "Yalnızca başarısız olan bir e-belge yeniden denenebilir.",
+        "not_found": "Bu e-belge yok.",
+        "not_issued": "Yalnızca kesilmiş bir e-belge iptal edilebilir."
+      },
+      "file": {
+        "not_ready": "Bu e-belgenin dosyası henüz hazır değil."
+      },
+      "provider": {
+        "rejected": "E-fatura sağlayıcısı belgeyi reddetti.",
+        "unavailable": "E-fatura sağlayıcısına şu an ulaşılamıyor. Yeniden denenecek."
+      },
+      "seller": {
+        "incomplete": "Satıcının şirket bilgileri eksik: e-fatura ayarlarına unvanı ve vergi numarasını ekleyin."
+      },
+      "setting": {
+        "invalid": "E-fatura tetikleyicisi kapalı, kesinleşince veya ödenince olmalıdır."
       }
     }
   }

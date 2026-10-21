@@ -155,4 +155,23 @@ func testAddresses(t *testing.T) {
 	if kept, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), Tier: plansv1.TenantTier_TENANT_TIER_STANDARD}); err != nil || kept.GetTenant().GetEInvoiceOn() != "paid" || kept.GetTenant().GetLegal().GetTaxId() != "9876543210" {
 		t.Errorf("an update without them changed them: %v, %v", kept, err)
 	}
+	// The bank details printed on invoices paid by transfer: validated, kept, left alone by other updates, cleared on request.
+	bank := &plansv1.BankTransferDetails{BankName: "Example Bank", AccountHolder: "Acme Ltd", Iban: "TR330006100519786457841326", Bic: "TCZBTR2A", ReferenceTemplate: "{invoice_number}",
+		Currencies: []string{"TRY"}, IsDefault: true}
+	got, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), BankTransfer: bank})
+	if err != nil || got.GetTenant().GetBankTransfer().GetIban() != bank.GetIban() || !got.GetTenant().GetBankTransfer().GetIsDefault() || got.GetTenant().GetBankTransfer().GetCurrencies()[0] != "TRY" {
+		t.Fatalf("bank details = %v, %v", got, err)
+	}
+	if _, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), BankTransfer: &plansv1.BankTransferDetails{BankName: "B", AccountHolder: "H", Iban: "TR000000"}}); status.Code(err) != codes.InvalidArgument {
+		t.Errorf("a bad IBAN: %v, want InvalidArgument", err)
+	}
+	if kept, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), Tier: plansv1.TenantTier_TENANT_TIER_STANDARD}); err != nil || kept.GetTenant().GetBankTransfer().GetBankName() != "Example Bank" {
+		t.Errorf("an update without bank details changed them: %v, %v", kept, err)
+	}
+	if _, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), BankTransfer: bank, ClearBankTransfer: true}); status.Code(err) != codes.InvalidArgument {
+		t.Errorf("set and clear together: %v, want InvalidArgument", err)
+	}
+	if cleared, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), ClearBankTransfer: true}); err != nil || cleared.GetTenant().GetBankTransfer() != nil {
+		t.Errorf("cleared = %v, %v", cleared, err)
+	}
 }

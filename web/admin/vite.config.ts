@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // In production nginx forwards /gw to the gateway (nginx/default.conf.template); in development Vite does the same.
-const gateway = (process.env.GATEWAY_URL ?? "http://localhost:8000").replace(/\/$/, "");
+const gateway = (process.env.GATEWAY_URL ?? "http://localhost:42800").replace(/\/$/, "");
 
 export default defineConfig({
   plugins: [vue(), tailwindcss()],

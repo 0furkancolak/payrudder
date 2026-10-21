@@ -200,6 +200,16 @@ func Errored(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentErrored{PaymentErrored: &commandsv1.PaymentErrored{Code: "timeout", Message: "psp timed out"}}}
 }
 
+// Pending is the reply to a charge the provider accepted and settles later (a bank transfer): not a failure, billing asks for the status.
+func Pending(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentErrored{PaymentErrored: &commandsv1.PaymentErrored{Code: "PENDING", Message: "awaiting the transfer"}}}
+}
+
+// StatusPending is a payment status reply saying the payment has not settled yet.
+func StatusPending(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{State: commandsv1.PaymentStatus_STATE_PENDING}}}
+}
+
 // PdfFailed is a permanent render failure.
 func PdfFailed(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PdfFailed{PdfFailed: &commandsv1.PdfFailed{Reason: "template error"}}}

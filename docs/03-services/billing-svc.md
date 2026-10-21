@@ -106,17 +106,34 @@ stateDiagram-v2
     PDF_REQUESTED --> PDF_FAILED: PdfFailed / StepExhausted
     PDF_FAILED --> PDF_REQUESTED: Retry
     PDF_RENDERED --> PAYMENT_REQUESTED: Continue [total > 0]
+    PDF_RENDERED --> AWAITING_PAYMENT: Continue [total > 0, customer pays]
     PDF_RENDERED --> NOTIFY_REQUESTED: Continue [total = 0]
-    PAYMENT_REQUESTED --> PAID: PaymentSucceeded
+    PAYMENT_REQUESTED --> PAID: PaymentSucceeded / Settled
     PAYMENT_REQUESTED --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left]
     PAYMENT_REQUESTED --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted]
+    PAYMENT_REQUESTED --> AWAITING_PAYMENT: PaymentDeclined [customer pays, no dunning]
     PAYMENT_REQUESTED --> PAYMENT_UNKNOWN: PaymentErrored / StepExhausted
-    PAYMENT_UNKNOWN --> PAID: PaymentSucceeded / StatusSucceeded
+    PAYMENT_UNKNOWN --> PAID: PaymentSucceeded / StatusSucceeded / OfflineSettlement / Settled
     PAYMENT_UNKNOWN --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left] / StatusDeclined [dunning attempts left]
     PAYMENT_UNKNOWN --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted] / StatusDeclined [dunning exhausted]
+    PAYMENT_UNKNOWN --> AWAITING_PAYMENT: PaymentDeclined [customer pays, no dunning] / StatusDeclined [customer pays, no dunning]
     PAYMENT_UNKNOWN --> PAYMENT_REQUESTED: StatusNotFound
+    PAYMENT_UNKNOWN --> PAYMENT_PENDING: StatusPending
     PAYMENT_UNKNOWN --> PAYMENT_UNKNOWN: Retry / StepExhausted
-    PAYMENT_DECLINED --> PAYMENT_REQUESTED: DunningDue
+    PAYMENT_PENDING --> PAYMENT_PENDING: StatusPending / PollDue / Retry / StepExhausted
+    PAYMENT_PENDING --> PAID: StatusSucceeded / OfflineSettlement
+    PAYMENT_PENDING --> PAYMENT_REQUESTED: StatusNotFound
+    PAYMENT_PENDING --> PAYMENT_DECLINED: StatusDeclined [dunning attempts left]
+    PAYMENT_PENDING --> UNCOLLECTIBLE: StatusDeclined [dunning exhausted]
+    PAYMENT_PENDING --> AWAITING_PAYMENT: StatusDeclined [customer pays, no dunning]
+    PAYMENT_DECLINED --> PAYMENT_REQUESTED: DunningDue / PayRequested
+    PAYMENT_DECLINED --> PAYMENT_UNKNOWN: Retry
+    PAYMENT_DECLINED --> PAID: OfflineSettlement / Settled
+    NOTIFY_REQUESTED --> PAID: OfflineSettlement
+    NOTIFY_FAILED --> PAID: OfflineSettlement
+    COMPLETED --> PAID: OfflineSettlement
+    AWAITING_PAYMENT --> PAYMENT_REQUESTED: PayRequested
+    AWAITING_PAYMENT --> PAID: Settled
     PAID --> COMPLETED: Continue [the provider mails the receipt]
     PAID --> NOTIFY_REQUESTED: Continue
     UNCOLLECTIBLE --> NOTIFY_REQUESTED: Continue
@@ -127,6 +144,8 @@ stateDiagram-v2
     PDF_REQUESTED --> VOIDED: Void
     PDF_FAILED --> VOIDED: Void
     PAYMENT_DECLINED --> VOIDED: Void
+    AWAITING_PAYMENT --> VOIDED: Void
+    PAYMENT_PENDING --> VOIDED: Void
     NOTIFY_REQUESTED --> REFUND_REQUESTED: Void [paid, total > 0]
     NOTIFY_REQUESTED --> VOIDED: Void [nothing to refund]
     NOTIFY_FAILED --> REFUND_REQUESTED: Void [paid, total > 0]
@@ -154,6 +173,10 @@ stateDiagram-v2
   (`FOR UPDATE SKIP LOCKED`) and re-issues the command with `attempt+1`, up to 3. After that it moves to `*_FAILED` / `PAYMENT_UNKNOWN`.
 - **PAYMENT_UNKNOWN.** Never re-charge blindly. Publish `payment.status` (query PSP by idempotency key) first.
   This is the classic "did my timed-out charge go through?" problem.
+- **A payment that settles later** (a bank transfer, phase 29) leaves the saga in `PAYMENT_PENDING`: no command is outstanding, so there is no step deadline and nothing to retry or dead-letter. The first time it is entered the
+  customer is mailed the bank details and the payment reference (`invoice_transfer.v1`); then the status is asked again every `QUOTIFY_TRANSFER_POLL`, and at once when payments-worker nudges the saga (`RetryInvoiceSaga`) after an
+  operator confirmed a receipt. The payment window is enforced by the status answer: past it the status is a decline, and the tenant's dunning delays decide whether a new window opens (a new charge, a new mail) or the invoice becomes uncollectible.
+  `RecordInvoicePayment` (`OfflineSettlement`) settles an invoice with money received outside any provider, from `PAYMENT_UNKNOWN`, `PAYMENT_PENDING`, `PAYMENT_DECLINED` or after the saga gave up; the payments are rows of `invoice_payments` (who, when, method, reference).
 - **Dunning** delays are days long, so they're scheduled in Postgres (`next_attempt_at`), not as RabbitMQ TTLs. A tenant may set its own delays (0 to 6 retries, 1–720 hours each; minutes in a sandbox tenant) with `PUT /v1/dunning-settings`; without a row the service-wide defaults apply, and an empty list gives up on the first decline.
   RabbitMQ TTL retries handle **seconds to minutes** of transient failure inside a worker.
 
@@ -233,7 +256,7 @@ Customers within a run are rated in pages of 500 streamed from aggregator. **Tar
 
 Code: `services/billing-svc` (`internal/{rating,saga,runs,replies,api}`), commands in `proto/quotify/commands/v1`, the RabbitMQ
 topology in `pkg/rabbitx` (exported to `deploy/rabbitmq/definitions.json`, checked by a test). Configuration:
-`QUOTIFY_SCHEDULER_INTERVAL` (1m), `QUOTIFY_SWEEP_INTERVAL` (30s), `QUOTIFY_STEP_TIMEOUT` (2m), `QUOTIFY_WATERMARK_DELAY` (30s).
+`QUOTIFY_SCHEDULER_INTERVAL` (1m), `QUOTIFY_SWEEP_INTERVAL` (30s), `QUOTIFY_STEP_TIMEOUT` (2m), `QUOTIFY_WATERMARK_DELAY` (30s), `QUOTIFY_TRANSFER_POLL` (6h, phase 29).
 Gateway routes: `GET /v1/invoices[/{id}]`, `POST /v1/sandbox/close-period`, and the operator routes under `/admin/v1`
 (`billing/close-period`, `tenants/{id}/billing-runs/{period}`, `invoices/{id}/retry|void`).
 
@@ -283,6 +306,10 @@ Invoice lines can be `DISCOUNT` (a coupon, negative) or `TAX`, and carry `servic
 - **Dunning settings:** `dunning_settings` (per tenant), read by the saga engine when it loads a saga.
 - **Hosted invoices:** `invoice_links` (token hash only); `HostedInvoiceService` has no tenant, the token is the credential, and answers one error for unknown, expired and revoked tokens.
 
+## As built: prepaid credits (Phase 35)
+
+Module `credits`. `credit_packs` (what a tenant sells), `credit_lots` (one per grant: `granted`, `remaining`, optional `expires_at`, `source` purchase/promo/manual, `source_ref` unique per payment) and the append-only `credit_ledger` (`grant`, `consume`, `expire`, signed `amount`, optional `idempotency_key`). A customer's credits change under `pg_advisory_xact_lock`; `ConsumeCredits` walks the spendable lots by expiry (never-expiring last), refuses with `billing.credits.insufficient` and takes nothing when they do not cover the amount, and returns the first result for a repeated key. The sweeper calls `ExpireDue` on the system pool. Details and limits: [phase 35](../phases/phase-35-credits.md).
+
 ## As built: e-documents (Phase 30)
 
 The `einvoices` module (`command/`, `query/`, `handler.go`) owns `einvoice_documents`. `saga.EnqueueEInvoice` creates a document and its `IssueEInvoice` command in the transaction of
@@ -290,4 +317,3 @@ The `einvoices` module (`command/`, `query/`, `handler.go`) owns `einvoice_docum
 the worker's `EInvoiceResult` (`einvoicecmd.ApplyResult`); the existing sweeper also calls `einvoicecmd.Commands.Sweep`, which sends a retry whose backoff (1 m, 5 m, 30 m, 2 h, 12 h) has passed and a command
 nobody answered in 10 minutes, and fails a document after its sixth automatic attempt. `RetryEInvoice` and `CancelEInvoice` are operator RPCs; `GetEInvoice`, `ListEInvoices` and `GetEInvoiceFileUrl`
 serve the tenant (RLS). Snapshots now freeze the seller and buyer parties and `e_invoice_on` with the draft. See [phase 30](../phases/phase-30-e-invoice.md).
-

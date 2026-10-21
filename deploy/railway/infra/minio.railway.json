@@ -1,0 +1,17 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "deploy/railway/images/minio/Dockerfile",
+    "watchPatterns": [
+      "/deploy/railway/images/minio/**"
+    ]
+  },
+  "deploy": {
+    "healthcheckPath": "/minio/health/live",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ALWAYS",
+    "numReplicas": 1,
+    "requiredMountPath": "/data"
+  }
+}

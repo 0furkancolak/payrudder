@@ -1,0 +1,18 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "deploy/railway/images/clickhouse/Dockerfile",
+    "watchPatterns": [
+      "/deploy/railway/images/clickhouse/**",
+      "/deploy/clickhouse/**"
+    ]
+  },
+  "deploy": {
+    "healthcheckPath": "/ping",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ALWAYS",
+    "numReplicas": 1,
+    "requiredMountPath": "/var/lib/clickhouse"
+  }
+}

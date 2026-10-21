@@ -43,3 +43,53 @@ func TestLoadErrors(t *testing.T) {
 		})
 	}
 }
+
+type httpConfig struct {
+	config.Base
+	HTTPAddr string `env:"QUOTIFY_HTTP_ADDR" envDefault:":8000"`
+}
+
+func TestPort(t *testing.T) {
+	with := func(kv ...string) map[string]string {
+		m := map[string]string{"QUOTIFY_SERVICE_NAME": "x"}
+		for i := 0; i < len(kv); i += 2 {
+			m[kv[i]] = kv[i+1]
+		}
+		return m
+	}
+
+	t.Run("a service without an HTTP API serves its operational endpoints on PORT", func(t *testing.T) {
+		cfg, err := config.LoadFrom[svcConfig](with("PORT", "4321"))
+		if err != nil || cfg.MetricsAddr != ":4321" || cfg.GRPCAddr != ":7000" {
+			t.Fatalf("got %+v, %v", cfg, err)
+		}
+	})
+	t.Run("a service with an HTTP API listens on PORT and keeps its metrics address", func(t *testing.T) {
+		cfg, err := config.LoadFrom[httpConfig](with("PORT", "4321"))
+		if err != nil || cfg.HTTPAddr != ":4321" || cfg.MetricsAddr != ":9100" {
+			t.Fatalf("got %+v, %v", cfg, err)
+		}
+	})
+	t.Run("an explicit address wins", func(t *testing.T) {
+		cfg, err := config.LoadFrom[httpConfig](with("PORT", "4321", "QUOTIFY_HTTP_ADDR", ":9999"))
+		if err != nil || cfg.HTTPAddr != ":9999" || cfg.MetricsAddr != ":9100" {
+			t.Fatalf("got %+v, %v", cfg, err)
+		}
+	})
+	t.Run("without PORT nothing changes", func(t *testing.T) {
+		cfg, err := config.LoadFrom[httpConfig](with())
+		if err != nil || cfg.HTTPAddr != ":8000" || cfg.MetricsAddr != ":9100" {
+			t.Fatalf("got %+v, %v", cfg, err)
+		}
+	})
+	t.Run("a bad PORT is an error", func(t *testing.T) {
+		if _, err := config.LoadFrom[svcConfig](with("PORT", "http")); err == nil || !strings.Contains(err.Error(), "PORT") {
+			t.Fatalf("got %v", err)
+		}
+	})
+	t.Run("railway is a known environment", func(t *testing.T) {
+		if _, err := config.LoadFrom[svcConfig](with("QUOTIFY_ENV", "railway")); err != nil {
+			t.Fatal(err)
+		}
+	})
+}

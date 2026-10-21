@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
@@ -38,6 +39,19 @@ type Handler struct {
 	Demo bool
 	// EInvoice executes IssueEInvoice commands (phase 30); nil makes them poison.
 	EInvoice workerx.Handler
+	// Transfers holds the pending rows, receipts and closures of providers whose payments an operator confirms by hand (a bank transfer).
+	Transfers store.Transfers
+	// TransferWindow is how long such a payment waits for its money when the tenant's account does not say (PAYMENTS_TRANSFER_WINDOW_DAYS).
+	TransferWindow time.Duration
+	// Now is the clock; nil is time.Now.
+	Now func() time.Time
+}
+
+func (h *Handler) now() time.Time {
+	if h.Now != nil {
+		return h.Now()
+	}
+	return time.Now()
 }
 
 // Err codes carried by PaymentErrored.
@@ -235,13 +249,21 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 	}
 	entry := store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoiceID, Provider: prov.Name(), Environment: run.env, Kind: "charge",
 		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), IdempotencyKey: ch.GetIdempotencyKey(), Source: "command"}
-	if redelivered && !caps.IdempotentCharges {
+	_, manual := prov.(payments.ManualCollector)
+	if redelivered && !caps.IdempotentCharges && !manual {
 		if reply, err := h.askBeforeCharging(ctx, prov, entry); reply != nil || err != nil {
 			return reply, err
 		}
 	}
 	res, err := prov.Charge(ctx, payments.ChargeRequest{IdempotencyKey: ch.GetIdempotencyKey(), InvoiceID: ch.GetInvoiceId(),
-		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), PaymentMethod: ch.GetPaymentMethod()})
+		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), PaymentMethod: ch.GetPaymentMethod(), InvoiceNumber: ch.GetInvoiceNumber()})
+	var pending *payments.PendingError
+	if manual && errors.As(err, &pending) {
+		// The customer has been told how to pay. The row marks when the payment window opened; its reference is the charge's key, so a dunning retry
+		// (another key) opens a window of its own.
+		entry.Status, entry.ProviderRef, entry.Detail, entry.OccurredAt = "pending", entry.IdempotencyKey, pending.Ref, h.now()
+		h.record(ctx, entry)
+	}
 	return h.chargeOutcome(ctx, entry, res, err)
 }
 
@@ -301,7 +323,8 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 		return reply, nil
 	}
 	if !capabilities(prov).Refunds {
-		return errored(false, CodeRejected, prov.Name()+" has no refund API"), nil
+		// The credit note then shows the refund as failed, with this reason: the money goes back outside Quotify (for a bank transfer, by a transfer back).
+		return errored(false, CodeRejected, prov.Name()+" has no refund API; refund the customer outside Quotify"), nil
 	}
 	if _, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, "refund", run.env, prov.Name(), rf.GetIdempotencyKey(), rf); err != nil {
 		return nil, err
@@ -334,6 +357,9 @@ func (h *Handler) queryStatus(ctx context.Context, run commandRun, q *commandsv1
 	}
 	if _, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, "status", run.env, prov.Name(), q.GetIdempotencyKey(), q); err != nil {
 		return nil, err
+	}
+	if mc, ok := prov.(payments.ManualCollector); ok {
+		return h.manualStatus(ctx, run, invoiceID, q.GetIdempotencyKey(), mc)
 	}
 	if !capabilities(prov).IdempotentCharges && h.Ledger.DB != nil {
 		// A provider that settles by notification: the ledger holds the outcome once its notification has been confirmed.

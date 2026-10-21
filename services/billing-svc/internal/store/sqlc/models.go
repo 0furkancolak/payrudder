@@ -46,6 +46,30 @@ type CreditBalance struct {
 	SourceCreditNoteID  *uuid.UUID
 }
 
+type CreditLedger struct {
+	TenantID       uuid.UUID
+	ID             uuid.UUID
+	CustomerID     uuid.UUID
+	LotID          uuid.UUID
+	Kind           string
+	Amount         int64
+	IdempotencyKey *string
+	Reason         string
+	CreatedAt      time.Time
+}
+
+type CreditLot struct {
+	TenantID   uuid.UUID
+	ID         uuid.UUID
+	CustomerID uuid.UUID
+	Granted    int64
+	Remaining  int64
+	Source     string
+	SourceRef  *string
+	ExpiresAt  *time.Time
+	CreatedAt  time.Time
+}
+
 type CreditNote struct {
 	TenantID          uuid.UUID
 	ID                uuid.UUID
@@ -71,6 +95,17 @@ type CreditNoteSeq struct {
 	TenantID  uuid.UUID
 	Year      int32
 	NextValue int64
+}
+
+type CreditPack struct {
+	TenantID   uuid.UUID
+	ID         uuid.UUID
+	Name       string
+	Credits    int64
+	PriceMinor int64
+	Currency   string
+	Active     bool
+	CreatedAt  time.Time
 }
 
 type DunningSetting struct {
@@ -152,20 +187,24 @@ type InvoiceLine struct {
 	ServiceTo      *time.Time
 }
 
-type InvoiceLink struct {
-	TenantID  uuid.UUID
-	ID        uuid.UUID
-	InvoiceID uuid.UUID
-	TokenHash []byte
-	CreatedAt time.Time
-	ExpiresAt time.Time
-	RevokedAt *time.Time
-}
-
 type InvoiceNumberSeq struct {
 	TenantID  uuid.UUID
 	Year      int32
 	NextValue int64
+}
+
+type InvoicePayment struct {
+	TenantID    uuid.UUID
+	ID          uuid.UUID
+	InvoiceID   uuid.UUID
+	Method      string
+	AmountMinor int64
+	Currency    string
+	ReceivedAt  time.Time
+	Reference   string
+	Note        string
+	RecordedBy  string
+	RecordedAt  time.Time
 }
 
 type InvoiceSaga struct {
@@ -192,6 +231,40 @@ type Outbox struct {
 	Headers      json.RawMessage
 	MessageID    uuid.UUID
 	IngestedAt   time.Time
+}
+
+type PaymentLink struct {
+	TenantID           uuid.UUID
+	ID                 uuid.UUID
+	InvoiceID          *uuid.UUID
+	TokenHash          []byte
+	CreatedAt          time.Time
+	ExpiresAt          time.Time
+	RevokedAt          *time.Time
+	Kind               string
+	ParentID           *uuid.UUID
+	SingleUse          bool
+	IdempotencyKey     *string
+	RequestHash        []byte
+	AmountMinor        *int64
+	Currency           *string
+	Description        *string
+	CustomerID         *uuid.UUID
+	CustomerExternalID *string
+	UseCount           int32
+	PaidCount          int32
+	LastPaidAt         *time.Time
+	ExpiredNotifiedAt  *time.Time
+}
+
+type PortalLink struct {
+	TenantID   uuid.UUID
+	ID         uuid.UUID
+	CustomerID uuid.UUID
+	TokenHash  []byte
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+	RevokedAt  *time.Time
 }
 
 type ReratingJob struct {

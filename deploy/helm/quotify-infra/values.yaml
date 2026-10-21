@@ -8,7 +8,7 @@ postgres:
   storage: 2Gi
   adminPassword: postgres_local
   external:
-    enabled: false           # NodePort 31432, for the chaos suite and psql from the host (kind maps it to 15432)
+    enabled: false           # NodePort 31432, for the chaos suite and psql from the host (kind maps it to 42434)
     nodePort: 31432
   # Role passwords: "<role>_local" unless listed here (mirror them in the quotify chart's postgres.passwords).
   passwords: {}

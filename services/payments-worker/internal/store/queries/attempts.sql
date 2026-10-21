@@ -17,3 +17,6 @@ FROM payment_attempts WHERE kind = 'charge' AND idempotency_key = @idempotency_k
 
 -- name: GetChargeProvider :one
 SELECT provider FROM payment_attempts WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'charge' ORDER BY created_at DESC LIMIT 1;
+
+-- name: CountLinkAttempts :one
+SELECT count(*) FROM payment_attempts WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'charge' AND idempotency_key LIKE 'link:%';

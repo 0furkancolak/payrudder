@@ -239,8 +239,15 @@ type Tenant struct {
 	InvoiceLogoAssetID *uuid.UUID
 	AppID              uuid.UUID
 	Address            json.RawMessage
+	BankTransfer       json.RawMessage
 	Legal              json.RawMessage
 	EInvoiceOn         string
+}
+
+type TenantMailSetting struct {
+	TenantID  uuid.UUID
+	Disabled  []string
+	UpdatedAt time.Time
 }
 
 type WebhookDelivery struct {

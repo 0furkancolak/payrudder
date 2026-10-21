@@ -298,6 +298,16 @@ func (s *Server) UpdateTenantSettings(ctx context.Context, req *plansv1.UpdateTe
 		}
 		params.EInvoiceOn = &v
 	}
+	if d := req.GetBankTransfer(); d != nil {
+		if req.GetClearBankTransfer() {
+			return nil, domain.Invalid("clear_bank_transfer", "cannot be combined with bank_transfer")
+		}
+		if err := domain.ValidateBankTransfer("bank_transfer", d); err != nil {
+			return nil, err
+		}
+		params.BankTransfer = convert.BankTransferJSON(d)
+	}
+	params.ClearBankTransfer = req.GetClearBankTransfer()
 	t, err := s.q().UpdateTenantSettings(ctx, params)
 	if err != nil {
 		return nil, convert.Err(err, "tenant")

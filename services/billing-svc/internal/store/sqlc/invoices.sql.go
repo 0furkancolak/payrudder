@@ -166,6 +166,22 @@ func (q *Queries) GetInvoiceAddresses(ctx context.Context, id uuid.UUID) (GetInv
 	return i, err
 }
 
+const getInvoiceBankTransfer = `-- name: GetInvoiceBankTransfer :one
+SELECT COALESCE(number, '')::text AS number, COALESCE(snapshot->'bank_transfer', 'null'::jsonb)::jsonb AS bank_transfer FROM invoices WHERE id = $1
+`
+
+type GetInvoiceBankTransferRow struct {
+	Number       string
+	BankTransfer json.RawMessage
+}
+
+func (q *Queries) GetInvoiceBankTransfer(ctx context.Context, id uuid.UUID) (GetInvoiceBankTransferRow, error) {
+	row := q.db.QueryRow(ctx, getInvoiceBankTransfer, id)
+	var i GetInvoiceBankTransferRow
+	err := row.Scan(&i.Number, &i.BankTransfer)
+	return i, err
+}
+
 const getInvoiceCustomerExternalID = `-- name: GetInvoiceCustomerExternalID :one
 SELECT COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id FROM invoices WHERE tenant_id = $1 AND id = $2
 `

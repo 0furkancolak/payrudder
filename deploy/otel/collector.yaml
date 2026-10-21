@@ -11,11 +11,12 @@ receivers:
 processors:
   memory_limiter:
     check_interval: 1s
-    limit_mib: 200
+    limit_mib: 100
+    spike_limit_mib: 20
   # decision_wait must exceed the longest trace we want whole: a saga trace spans several async hops.
   tail_sampling:
     decision_wait: 10s
-    num_traces: 50000
+    num_traces: 10000
     policies:
       - name: errors
         type: status_code

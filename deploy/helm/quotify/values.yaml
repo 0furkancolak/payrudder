@@ -35,7 +35,7 @@ clickhouse:
 
 s3:
   endpoint: http://minio:9000          # point this at an external S3 and set bootstrap.enabled=false: values only
-  publicEndpoint: http://localhost:9001   # what a client outside the cluster uses in presigned URLs
+  publicEndpoint: http://localhost:42901  # what a client outside the cluster uses in presigned URLs
   region: us-east-1
   forcePathStyle: true
   accessKey: quotify
@@ -72,7 +72,7 @@ defaults:
   replicas: 1
   resources:
     requests: { cpu: 25m, memory: 24Mi }
-    limits: { memory: 192Mi }
+    limits: { memory: 128Mi }
 
 # Services. kind: grpc (headless Service so that clients round-robin over every pod), http, or worker (no Service port).
 # db: roles to build DSNs for ("app" and "system" at runtime, "migrator" for the pre-install Job).

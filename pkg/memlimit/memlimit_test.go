@@ -1,6 +1,9 @@
 package memlimit
 
-import "testing"
+import (
+	"runtime/debug"
+	"testing"
+)
 
 func TestSoft(t *testing.T) {
 	for in, want := range map[string]int64{
@@ -22,5 +25,23 @@ func TestExplicitLimitWins(t *testing.T) {
 	t.Setenv("GOMEMLIMIT", "64MiB")
 	if Apply() != 0 {
 		t.Fatal("GOMEMLIMIT is set: nothing may be overridden")
+	}
+}
+
+func TestGCPercentDefaultsButExplicitGOGCWins(t *testing.T) {
+	t.Setenv("GOMEMLIMIT", "64MiB") // keeps Apply away from the cgroup files
+	t.Setenv("GOGC", "")
+	prev := debug.SetGCPercent(100)
+	t.Cleanup(func() { debug.SetGCPercent(prev) })
+
+	Apply()
+	if got := debug.SetGCPercent(100); got != GCPercent {
+		t.Fatalf("GOGC unset: GC percent = %d, want %d", got, GCPercent)
+	}
+
+	t.Setenv("GOGC", "200")
+	Apply()
+	if got := debug.SetGCPercent(100); got != 100 {
+		t.Fatalf("GOGC set: Apply changed the GC percent to %d", got)
 	}
 }

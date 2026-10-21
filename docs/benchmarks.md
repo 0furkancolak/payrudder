@@ -54,6 +54,21 @@ Artifact: [chaos_20k_local.json](benchmarks/chaos_20k_local.json). **Not yet don
 criteria of Phase 09) need the nightly workflow to run on a CI runner; `.github/workflows/nightly.yml` is in place and has not run. The fault counts of a
 20k-event run are small by construction (it lasts four minutes): the nightly requires at least 30 kills and 10 faults and fails otherwise.
 
+## Memory budgets
+
+The `e2e` job of `ci.yml` ends with `make mem-budget`: after the stack has served the e2e scenarios and the console test, the memory of every Quotify
+service (`docker stats`, the container's working set, which for these processes is the resident set; the highest of three samples) must be at or below its
+`budget_mib` in [`deploy/compose/memory-budgets.yaml`](../deploy/compose/memory-budgets.yaml). The job writes the table (measured, budget, suggested budget) to the
+run summary. This is a regression alarm, not a benchmark: the compose limit stays the hard ceiling, the budget sits below it.
+
+To update a budget:
+
+1. Run `make up`, `make e2e`, then `make mem-budget` (or read the table of the CI run's summary; CI numbers are the reference, a laptop differs).
+2. Set `budget_mib` to the "suggested budget" column (measured plus the larger of 40 % and 16 MiB, rounded up to 8 MiB) and `measured_mib` to the measurement.
+3. Say why in the pull request. A budget goes up only for a reason (a new feature that holds state); a failure with no such reason is a leak to find.
+
+A compose service built from this repository without an entry in the file fails `go test ./membudget/` in `tests` (the unit tests), so a new service cannot skip the check.
+
 ## Findings
 
 - **A first 20k run was discarded.** It showed 5xx and 5 s latencies (`i/o timeout` writing to Postgres). When it was repeated, the Docker VM's disk
