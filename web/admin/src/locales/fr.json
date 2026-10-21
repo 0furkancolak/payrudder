@@ -1301,7 +1301,8 @@
         "unknown_category": "Cette catégorie d'e-mail n'existe pas."
       },
       "subscription": {
-        "coupon_blocks_credit": "Cet abonnement a un coupon. Créditez plutôt la partie non utilisée avec un avoir sur la facture de l'abonnement."
+        "coupon_blocks_credit": "Cet abonnement a un coupon. Créditez plutôt la partie non utilisée avec un avoir sur la facture de l'abonnement.",
+        "provider_currency": "Ce prestataire de paiement ne peut pas encaisser dans cette devise. Choisissez un autre prestataire ou une autre devise."
       },
       "webhook": {
         "not_configured": "Les webhooks ne sont pas configurés sur ce déploiement (la clé des secrets est absente).",
@@ -1404,6 +1405,18 @@
       },
       "email": {
         "not_verified": "Confirmez votre adresse e-mail pour créer des clés d'API de production."
+      },
+      "invite": {
+        "already_member": "Cette personne est déjà membre du compte.",
+        "not_found": "Cette invitation n'existe plus.",
+        "quota": "Trop d'invitations. Annulez-en ou réessayez demain.",
+        "sign_in_required": "Cette adresse a déjà un compte. Connectez-vous pour accepter l'invitation.",
+        "throttled": "Cette invitation vient d'être envoyée. Attendez une minute avant de la renvoyer.",
+        "wrong_user": "Cette invitation a été envoyée à une autre adresse. Connectez-vous avec celle-ci."
+      },
+      "member": {
+        "last_owner": "Un compte doit garder au moins un propriétaire. Nommez d'abord un autre propriétaire.",
+        "not_found": "Cette personne n'est pas membre du compte."
       }
     }
   },
@@ -1554,7 +1567,7 @@
       "webhooks": "Webhooks",
       "failedDeliveries": "{n} livraisons échouées",
       "addEndpoint": "Ajouter un point de terminaison",
-      "endpoints": "{n} points de terminaison, tout va bien"
+      "endpoints": "{n} point de terminaison, tout va bien | {n} points de terminaison, tout va bien"
     },
     "keys": {
       "title": "Clés d'API",
@@ -1597,9 +1610,7 @@
       "appearance": "Apparence",
       "themeSystem": "Système",
       "themeLight": "Clair",
-      "themeDark": "Sombre",
-      "members": "Membres",
-      "membersNote": "Toutes les personnes ayant accès à cette organisation. Inviter des personnes n'est pas encore possible."
+      "themeDark": "Sombre"
     },
     "role": {
       "owner": "Propriétaire",
@@ -1638,6 +1649,55 @@
       "failTitle": "Ce lien ne fonctionne pas",
       "failBody": "Il a déjà été utilisé, a expiré ou a été remplacé par un plus récent. Connectez-vous et demandez un nouveau lien.",
       "toApp": "Aller à vos applications"
+    },
+    "members": {
+      "title": "Membres",
+      "manageNote": "Les propriétaires et les administrateurs invitent des personnes et gèrent les rôles. Un administrateur ne peut pas modifier les propriétaires.",
+      "readNote": "Vous voyez qui fait partie de ce compte. Seuls les propriétaires et les administrateurs peuvent le modifier.",
+      "you": "vous",
+      "roleOf": "Rôle de {name}",
+      "leave": "Quitter",
+      "remove": "Retirer",
+      "removeNamed": "Retirer {name}",
+      "inviteTitle": "Inviter quelqu'un",
+      "role": "Rôle",
+      "invite": "Envoyer l'invitation",
+      "invited": "Invitation envoyée à {email}.",
+      "pending": "Invitations en attente",
+      "expiresOn": "Valable jusqu'au {date}",
+      "expiredOn": "Expirée le {date}",
+      "expired": "Expirée",
+      "resend": "Renvoyer",
+      "resendNamed": "Renvoyer l'invitation à {email}",
+      "cancel": "Annuler",
+      "cancelNamed": "Annuler l'invitation à {email}",
+      "leaveTitle": "Quitter ce compte ?",
+      "leaveBody": "Vous perdez aussitôt l'accès à ses applications et à ses données. Un propriétaire peut vous réinviter.",
+      "removeTitle": "Retirer ce membre ?",
+      "removeBody": "{name} perd aussitôt l'accès aux applications et aux données de ce compte."
+    },
+    "account": {
+      "switch": "Compte",
+      "rename": "Nom du compte",
+      "save": "Enregistrer le nom",
+      "noneTitle": "Vous ne faites partie d'aucun compte",
+      "noneBody": "Vous avez quitté votre dernier compte ou en avez été retiré. Demandez à un propriétaire de vous réinviter, ou inscrivez-vous avec une autre adresse."
+    },
+    "invite": {
+      "title": "Vous êtes invité",
+      "intro": "Rejoignez {account} sur Quotify en tant que {role}.",
+      "checking": "Vérification de l'invitation…",
+      "noToken": "Cette page nécessite le lien de votre e-mail d'invitation. Ouvrez-le de nouveau.",
+      "invalid": "Cette invitation n'est plus valable : elle a été utilisée, annulée, remplacée ou a expiré. Demandez à la personne qui vous a invité de la renvoyer.",
+      "from": "Invité par {name}.",
+      "joinAs": "Vous êtes connecté en tant que {email}. Rejoignez avec ce compte.",
+      "join": "Rejoindre le compte",
+      "otherUser": "Cette invitation est pour {invited}, mais vous êtes connecté en tant que {current}. Déconnectez-vous puis ouvrez de nouveau le lien.",
+      "signInTitle": "Connectez-vous pour rejoindre",
+      "hasAccount": "{email} a déjà un compte. Connectez-vous pour rejoindre.",
+      "signInJoin": "Se connecter et rejoindre",
+      "createTitle": "Créez votre accès",
+      "createJoin": "Créer l'accès et rejoindre"
     }
   }
 }

@@ -3,7 +3,6 @@ package domain
 import (
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/0furkancolak/quotify/pkg/money"
 	"github.com/0furkancolak/quotify/pkg/payments"
@@ -39,7 +38,7 @@ func ValidateRules(rules []Rule, caps Capabilities) error {
 		}
 		if r.Currency != "" {
 			if _, ok := money.LookupCurrency(r.Currency); !ok {
-				v.Add(f+".currency", "unsupported currency; supported: "+strings.Join(money.SupportedCurrencies(), ", "))
+				v.Add(f+".currency", "unsupported currency: use an active ISO 4217 code such as USD, EUR or TRY")
 			}
 		}
 		c, ok := caps(r.Provider)

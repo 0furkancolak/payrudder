@@ -35,6 +35,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/safehttp"
 	"github.com/0furkancolak/quotify/pkg/secretbox"
 	"github.com/0furkancolak/quotify/pkg/tenant"
+	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/grpcapi"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity"

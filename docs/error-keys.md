@@ -95,6 +95,14 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.auth.invalid_credentials`
 - `identity.auth.rate_limited`
 - `identity.email.not_verified`
+- `identity.invite.already_member`
+- `identity.invite.not_found`
+- `identity.invite.quota`
+- `identity.invite.sign_in_required`
+- `identity.invite.throttled`
+- `identity.invite.wrong_user`
+- `identity.member.last_owner`
+- `identity.member.not_found`
 - `identity.session.invalid`
 - `identity.tenant.not_found`
 - `identity.token.invalid`
@@ -116,5 +124,6 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.customer.tax_invalid`
 - `plans.mail.unknown_category`
 - `plans.subscription.coupon_blocks_credit`
+- `plans.subscription.provider_currency`
 - `plans.webhook.not_configured`
 - `plans.webhook.too_many_endpoints`

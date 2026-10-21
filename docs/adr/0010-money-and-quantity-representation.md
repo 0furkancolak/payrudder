@@ -27,7 +27,7 @@ Each tenant picks its own currency when it is created. A tenant still bills in e
 | Limits and tier boundaries | Decimal strings in the API, stored as scaled units of the meter |
 | Rating | `quantity = units × 10^−scale` in `apd`, then line amount = quantity × price at full precision |
 | Rounding | Round **half-even** to an integer minor unit **once per line**. Invoice total = Σ rounded lines |
-| Currency | ISO 4217 code chosen by the tenant at creation from a supported list, **immutable**. The minor-unit exponent comes from a static table (`TRY`/`USD`/`EUR` 2, `JPY` 0, `KWD` 3). Stored on every invoice. No conversion |
+| Currency | ISO 4217 code chosen by the tenant at creation from the active ISO 4217 list (`pkg/money`, phase 40), **immutable**. The minor-unit exponent comes from a static table (`TRY`/`USD`/`EUR` 2, `JPY`/`KRW` 0, `KWD`/`BHD` 3). Stored on every invoice. No conversion |
 
 Floats are forbidden in the `money`, `quantity` and `rating` packages. A `forbidigo` lint rule bans `float32`/`float64` there.
 

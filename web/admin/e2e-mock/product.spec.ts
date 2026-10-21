@@ -132,7 +132,7 @@ test.describe("app dashboard", () => {
     const payments = page.getByRole("region", { name: "Recent payments" });
     await expect(payments.getByRole("row")).toHaveCount(6);
     await expect(payments.getByRole("row", { name: /Failed/ })).toContainText("$150.00");
-    await expect(payments.getByRole("row", { name: /Refunded/ })).toContainText("−$49.00");
+    await expect(payments.getByRole("row", { name: /Refunded/ })).toContainText("-$49.00");
     // Health.
     const health = page.getByRole("region", { name: "Health" });
     await expect(health).toContainText("2 failed deliveries");
@@ -350,5 +350,179 @@ test.describe("e-mail verification and password reset", () => {
     await page.goto("/verify#token=qv_old");
     await expect(page.getByRole("alert")).toContainText("This link does not work");
     await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  });
+});
+
+test.describe("members and invitations", () => {
+  test("an owner invites by e-mail, sees the open invitation, sends it again and cancels it", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/settings");
+    const panel = page.getByRole("region", { name: "Members" });
+    await expect(panel.getByTestId("member-grace@example.com")).toContainText("Grace Hopper");
+    await panel.getByLabel("E-mail").fill("ned@example.com");
+    await panel.getByLabel("Role", { exact: true }).selectOption("admin");
+    await shoot(page, "20-members");
+    await panel.getByRole("button", { name: "Send invitation" }).click();
+    await expect(panel.getByRole("status")).toContainText("Invitation sent to ned@example.com");
+    expect(gw.called("POST", "/app/v1/account/invitations")[0]?.body).toEqual({ email: "ned@example.com", role: "admin", locale: "en" });
+    const pending = panel.getByTestId("invite-ned@example.com");
+    await expect(pending).toBeVisible();
+    await expect(pending).toContainText("Administrator");
+    await pending.getByRole("button", { name: "Send the invitation to ned@example.com again" }).click();
+    await expect.poll(() => gw.called("POST", /\/app\/v1\/account\/invitations\/inv-1\/resend$/).length).toBe(1);
+    await pending.getByRole("button", { name: "Cancel the invitation to ned@example.com" }).click();
+    await expect(pending).toHaveCount(0);
+    expect(gw.called("DELETE", /\/app\/v1\/account\/invitations\/inv-1$/)).toHaveLength(1);
+  });
+
+  test("inviting a member says so; roles can be changed, but the last owner stays", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/settings");
+    const panel = page.getByRole("region", { name: "Members" });
+    await panel.getByLabel("E-mail").fill("grace@example.com");
+    await panel.getByRole("button", { name: "Send invitation" }).click();
+    await expect(panel.getByRole("alert")).toContainText("member of the account already");
+
+    await panel.getByLabel("Role of Linus Torvalds").selectOption("admin");
+    await expect.poll(() => gw.called("PATCH", /\/app\/v1\/account\/members\/55555555/).length).toBe(1);
+    expect(gw.called("PATCH", /\/app\/v1\/account\/members\/55555555/)[0]?.body).toEqual({ role: "admin" });
+    await expect(panel.getByLabel("Role of Linus Torvalds")).toHaveValue("admin");
+
+    // Ada is the only owner: she cannot leave.
+    await panel.getByRole("button", { name: "Leave", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Leave", exact: true }).click();
+    await expect(page.getByRole("dialog").getByRole("alert")).toContainText("must keep at least one owner");
+  });
+
+  test("an owner removes a member after confirming", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/settings");
+    const panel = page.getByRole("region", { name: "Members" });
+    await panel.getByRole("button", { name: "Remove Linus Torvalds" }).click();
+    await expect(page.getByRole("dialog")).toContainText("Linus Torvalds loses access");
+    await page.getByRole("dialog").getByRole("button", { name: "Remove", exact: true }).click();
+    await expect(panel.getByTestId("member-linus@example.com")).toHaveCount(0);
+    expect(gw.called("DELETE", /\/app\/v1\/account\/members\/55555555/)).toHaveLength(1);
+  });
+
+  test("a viewer reads the team and can leave, but sees no way to change anything", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { role: "viewer" });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/settings");
+    const panel = page.getByRole("region", { name: "Members" });
+    await expect(panel.getByTestId("member-grace@example.com")).toBeVisible();
+    await expect(panel.getByLabel("E-mail")).toHaveCount(0);
+    await expect(panel.getByRole("combobox")).toHaveCount(0);
+    await expect(panel.getByRole("button", { name: /^Remove / })).toHaveCount(0);
+    await expect(panel.getByRole("button", { name: "Leave", exact: true })).toBeVisible();
+    await expect(page.getByLabel("Account name")).toHaveCount(0);
+    expect(gw.called("GET", "/app/v1/account/invitations")).toHaveLength(0);
+  });
+
+  test("an administrator cannot hand out or touch ownership", async ({ page }) => {
+    await productGateway(new MockGateway(), { role: "admin" }).gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/settings");
+    const panel = page.getByRole("region", { name: "Members" });
+    await expect(panel.getByLabel("Role", { exact: true }).locator("option")).toHaveText(["Administrator", "Viewer"]);
+    // Ada's own row (listed as the owner) and her role cannot be changed here; Grace and Linus can.
+    await expect(panel.getByLabel("Role of Grace Hopper").locator("option")).toHaveText(["Administrator", "Viewer"]);
+    await expect(panel.getByTestId("member-ada@example.com").getByRole("combobox")).toHaveCount(0);
+    await expect(panel.getByRole("button", { name: "Remove Linus Torvalds" })).toBeVisible();
+  });
+
+  test("an owner renames the account", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/settings");
+    const name = page.getByLabel("Account name");
+    await expect(page.getByRole("button", { name: "Save name" })).toBeDisabled();
+    await name.fill("Ada Holdings");
+    await page.getByRole("button", { name: "Save name" }).click();
+    await expect(page.getByTestId("account-name")).toHaveText("Ada Holdings");
+    expect(gw.called("PATCH", "/app/v1/account")[0]?.body).toEqual({ name: "Ada Holdings" });
+  });
+
+  test("an invited newcomer chooses a password and is in; the token leaves the address bar", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await page.goto("/invite#token=qi_new");
+    await expect(page.getByRole("heading", { name: "You are invited" })).toBeVisible();
+    await expect(page.getByText("Join Ada Labs on Quotify as Viewer.")).toBeVisible();
+    await expect(page.getByText("Invited by Ada Lovelace.")).toBeVisible();
+    expect(page.url()).not.toContain("qi_new");
+    await expect(page.getByLabel("E-mail")).toHaveValue("ned@example.com");
+    await page.getByLabel("Your name").fill("Ned");
+    await page.getByLabel("Password", { exact: true }).fill("short");
+    await expect(page.getByRole("button", { name: "Create login and join" })).toBeDisabled();
+    await page.getByLabel("Password", { exact: true }).fill("a long enough password");
+    await shoot(page, "21-invite");
+    await page.getByRole("button", { name: "Create login and join" }).click();
+    await page.waitForURL("**/app");
+    expect(gw.called("POST", "/auth/invitations/accept")[0]?.body).toEqual({ token: "qi_new", password: "a long enough password", display_name: "Ned", locale: "en" });
+    expect(await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"))).toBe(SESSION);
+  });
+
+  test("an invited person who has an account signs in and joins", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await page.goto("/invite#token=qi_has");
+    await expect(page.getByText("ada@example.com already has an account")).toBeVisible();
+    await page.getByLabel("Password", { exact: true }).fill("right password!");
+    await page.getByRole("button", { name: "Sign in and join" }).click();
+    await page.waitForURL("**/app");
+    expect(gw.called("POST", "/auth/signin")).toHaveLength(1);
+    expect(gw.called("POST", "/app/v1/invitations/accept")[0]?.body).toEqual({ token: "qi_has" });
+  });
+
+  test("somebody already signed in with the invited address just joins; with another address they are told", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/invite#token=qi_has");
+    await page.getByRole("button", { name: "Join the account" }).click();
+    await page.waitForURL("**/app");
+    expect(gw.called("POST", "/app/v1/invitations/accept")).toHaveLength(1);
+    await page.goto("/invite#token=qi_other");
+    await expect(page.getByRole("status")).toContainText("This invitation is for grace@example.com, but you are signed in as ada@example.com");
+    await expect(page.getByRole("button", { name: "Join the account" })).toHaveCount(0);
+  });
+
+  test("an invitation that no longer works, or a page opened without one, says so", async ({ page }) => {
+    await productGateway(new MockGateway()).gw.install(page);
+    await page.goto("/invite#token=qi_old");
+    await expect(page.getByRole("alert")).toContainText("not valid any more");
+    await page.goto("/invite");
+    await expect(page.getByRole("alert")).toContainText("needs the link from your invitation e-mail");
+  });
+
+  test("with two accounts the person chooses which one to work in", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), {
+      memberships: [
+        { account_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", account_name: "Ada Labs", role: "owner" },
+        { account_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", account_name: "Grace Corp", role: "viewer" },
+      ],
+    });
+    await gw.install(page);
+    await signInAsAda(page);
+    const switcher = page.getByLabel("Account", { exact: true });
+    await expect(switcher).toHaveValue("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    await switcher.selectOption("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+    await expect.poll(() => gw.called("GET", "/app/v1/apps").some((c) => c.query.get("account_id") === "cccccccc-cccc-4ccc-8ccc-cccccccccccc")).toBe(true);
+    expect(gw.called("GET", "/app/v1/account").some((c) => c.query.get("account_id") === "cccccccc-cccc-4ccc-8ccc-cccccccccccc")).toBe(true);
+  });
+
+  test("a person who is in no account gets an explanation, not a wall of errors", async ({ page }) => {
+    await productGateway(new MockGateway(), { memberships: [] }).gw.install(page);
+    await signInAsAda(page);
+    await expect(page.getByTestId("no-account")).toContainText("You are not in any account");
   });
 });

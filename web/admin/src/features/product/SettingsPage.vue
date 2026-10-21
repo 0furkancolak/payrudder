@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { useNavigate } from "@tanstack/vue-router";
 import { LogOut } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { applyTheme, theme, type ThemeChoice } from "@/shared/lib/theme";
+import { setActiveAccount } from "@/shared/lib/session";
 import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
 import { SegmentedControl } from "@/shared/ui/segmented";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { useAccount, useMe, useSignOut } from "./api";
+import { useAccount, useMe, useRenameAccount, useSignOut } from "./api";
+import AccountSwitcher from "./AccountSwitcher.vue";
+import MembersPanel from "./MembersPanel.vue";
 
 const { t, locale } = useI18n();
 const errorText = useErrorText();
@@ -18,7 +23,17 @@ const me = useMe();
 const account = useAccount();
 const signOut = useSignOut();
 
-const members = computed(() => account.data.value?.members ?? []);
+const rename = useRenameAccount();
+const accountName = ref("");
+watch(() => account.data.value?.name, (n) => (accountName.value = n ?? ""), { immediate: true });
+const isOwner = computed(() => account.data.value?.role === "owner");
+const nameChanged = computed(() => accountName.value.trim() !== "" && accountName.value.trim() !== account.data.value?.name);
+
+/** Left the account: the choice is forgotten (the next account, if any, becomes the first) and the home page shows what is left. */
+async function onLeft() {
+  setActiveAccount(null);
+  await navigate({ to: "/app" });
+}
 const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(v)) : "");
 const themes = computed(() => [
   { value: "system", label: t("product.settings.themeSystem") },
@@ -52,6 +67,15 @@ async function leave() {
           <dt class="text-muted-foreground">{{ t("product.settings.created") }}</dt>
           <dd>{{ when(account.data.value?.create_time) }}</dd>
         </dl>
+        <AccountSwitcher />
+        <form v-if="isOwner" class="border-border/70 flex flex-wrap items-end gap-3 border-t pt-4" @submit.prevent="rename.mutate(accountName.trim())">
+          <div class="flex min-w-48 flex-1 flex-col gap-1.5">
+            <Label for="acct-name">{{ t("product.account.rename") }}</Label>
+            <Input id="acct-name" v-model="accountName" maxlength="200" required />
+          </div>
+          <Button type="submit" variant="outline" :disabled="rename.isPending.value || !nameChanged">{{ t("product.account.save") }}</Button>
+          <p v-if="rename.error.value" class="text-destructive w-full text-sm" role="alert">{{ errorText(rename.error.value) }}</p>
+        </form>
       </section>
 
       <section class="surface flex flex-col gap-4 p-6" :aria-label="t('product.settings.you')">
@@ -74,22 +98,6 @@ async function leave() {
       </section>
     </div>
 
-    <section class="surface flex flex-col gap-4 p-6" :aria-label="t('product.settings.members')">
-      <div>
-        <h2 class="text-lg font-semibold tracking-tight">{{ t("product.settings.members") }}</h2>
-        <p class="text-muted-foreground text-sm">{{ t("product.settings.membersNote") }}</p>
-      </div>
-      <Skeleton v-if="account.isPending.value" class="h-20 rounded-2xl" />
-      <ul v-else class="divide-border/70 divide-y">
-        <li v-for="m in members" :key="m.user_id" class="flex items-center gap-4 py-3">
-          <span class="bg-brand-soft text-brand-strong flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold" aria-hidden="true">{{ (m.display_name || m.email || "?").slice(0, 1).toUpperCase() }}</span>
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium">{{ m.display_name || m.email }}</p>
-            <p v-if="m.display_name" class="text-muted-foreground truncate text-xs">{{ m.email }}</p>
-          </div>
-          <StatusPill :tone="m.role === 'owner' ? 'info' : 'neutral'">{{ t(`product.role.${m.role}`) }}</StatusPill>
-        </li>
-      </ul>
-    </section>
+    <MembersPanel :account="account.data.value" :my-id="me.data.value?.user?.id ?? ''" :loading="account.isPending.value" @left="onLeft" />
   </section>
 </template>

@@ -1855,6 +1855,56 @@ paths:
         "204": { description: Password changed }
         "400": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /auth/invitations/lookup:
+    post:
+      operationId: lookupInvitation
+      tags: [Product]
+      summary: What a live invitation is for
+      description: >
+        Public: the token is the credential and travels in the body, never in the URL. Answers the account, the address and the role, and whether the address
+        already has an account (then the person signs in instead of choosing a password). A used, expired, revoked or unknown token is `400 identity.token.invalid`.
+        Rate limited per client address (20 a minute).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvitationLookup" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/invitations/accept:
+    post:
+      operationId: acceptInvitation
+      tags: [Product]
+      summary: Join an account as a new person
+      description: >
+        Creates the user (the address counts as verified: the token was mailed to it), makes them a member with the invited role and opens a session. An address
+        that has an account is `409 identity.invite.sign_in_required`: that person signs in and uses `/app/v1/invitations/accept`. Single use. Public; rate limited
+        per client address (20 a minute). The answer is `Cache-Control: no-store`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, minLength: 10, maxLength: 256, format: password }
+                display_name: { type: string, maxLength: 200 }
+                locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   /auth/signin:
     post:
       operationId: signIn
@@ -1908,6 +1958,163 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyAccount" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: appRenameAccount
+      tags: [Product]
+      summary: Rename the account (owners only)
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 200 }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/account/invitations:
+    get:
+      operationId: appListInvitations
+      tags: [Product]
+      summary: The open invitations of the account (owners and administrators)
+      description: An invitation whose seven days ran out is still listed, marked by its `expire_time`, until somebody revokes it. The token is never returned; it exists only in the mail.
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { invitations: { type: array, items: { $ref: "#/components/schemas/Invitation" } } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: appInviteMember
+      tags: [Product]
+      summary: Invite a person by e-mail
+      description: >
+        Mails a single-use link (valid seven days) to the address. Owners and administrators may invite; only an owner may invite an owner; the inviter's own
+        address must be verified (`403 identity.email.not_verified`). An address that is a member already is `409 identity.invite.already_member`. A second
+        invitation to an address with an open one refreshes it (new link, old one dead) at most once a minute (`429 identity.invite.throttled`); an account
+        has at most 50 open invitations and makes at most 30 a day (`429 identity.invite.quota`).
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [owner, admin, viewer] }
+                locale: { type: string, enum: [en, tr, de, fr, es, ar], description: The language of the mail }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Invitation" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /app/v1/account/invitations/{id}:
+    delete:
+      operationId: appRevokeInvitation
+      tags: [Product]
+      summary: Cancel an open invitation; its link stops working
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: account_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Revoked }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/account/invitations/{id}/resend:
+    post:
+      operationId: appResendInvitation
+      tags: [Product]
+      summary: Mail a new link for an open invitation (at most one a minute); the old link stops working
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: account_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Invitation" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /app/v1/account/members/{user_id}:
+    patch:
+      operationId: appUpdateMemberRole
+      tags: [Product]
+      summary: Change a member's role
+      description: >
+        Owners and administrators may; an administrator may not touch owners nor make one. The last owner of an account cannot be demoted
+        (`409 identity.member.last_owner`).
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: account_id, in: query, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [owner, admin, viewer] }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { role: { type: string, enum: [owner, admin, viewer] } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: appRemoveMember
+      tags: [Product]
+      summary: Remove a member, or leave the account (your own user id)
+      description: The last owner cannot be removed (`409 identity.member.last_owner`). Owners and administrators remove others (an administrator not an owner); anybody may leave.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: account_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /app/v1/invitations/accept:
+    post:
+      operationId: appAcceptInvitation
+      tags: [Product]
+      summary: Join the account an invitation was sent for, as the signed-in person
+      description: The invitation must have been sent to the person's own address (`403 identity.invite.wrong_user` otherwise). Accepting proves the address.
+      security: [{ sessionToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "200": { description: Joined, content: { application/json: { schema: { type: object, properties: { account_id: { type: string, format: uuid }, memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   /app/v1/apps:
     get:
       operationId: appListApps
@@ -1936,7 +2143,7 @@ paths:
               properties:
                 name: { type: string, maxLength: 200 }
                 slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
-                currency: { type: string, enum: [CHF, EUR, GBP, JPY, KWD, TRY, USD] }
+                currency: { type: string, pattern: "^[A-Z]{3}$", description: An active ISO 4217 code }
                 timezone: { type: string, examples: [Europe/Istanbul] }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
@@ -2044,7 +2251,7 @@ paths:
               required: [name, currency, timezone, grace_period]
               properties:
                 name: { type: string }
-                currency: { type: string, enum: [CHF, EUR, GBP, JPY, KWD, TRY, USD], description: Required, no default. Immutable. }
+                currency: { type: string, pattern: "^[A-Z]{3}$", description: "Required, no default. Immutable. An active ISO 4217 code (USD, EUR, TRY, JPY, KWD, ...); the minor-unit exponent comes from the currency (0 for JPY, 3 for KWD)." }
                 timezone: { type: string, examples: [Europe/Istanbul], description: Required IANA name, no default. Immutable. }
                 grace_period: { type: string, examples: ["86400s"], description: "Required, protobuf Duration JSON, 0s..604800s" }
                 tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
@@ -2071,7 +2278,7 @@ paths:
               properties:
                 name: { type: string }
                 slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
-                currency: { type: string, enum: [CHF, EUR, GBP, JPY, KWD, TRY, USD] }
+                currency: { type: string, pattern: "^[A-Z]{3}$", description: An active ISO 4217 code }
                 timezone: { type: string, examples: [Europe/Istanbul] }
                 grace_period: { type: string, examples: ["86400s"] }
                 tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
@@ -3524,6 +3731,25 @@ components:
         display_name: { type: string }
         create_time: { type: string, format: date-time }
         email_verified: { type: boolean, description: "True once the person opened a mailed link for this address. Until then live API keys cannot be created." }
+    Invitation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        role: { type: string, enum: [owner, admin, viewer] }
+        invited_by_email: { type: string }
+        invited_by_name: { type: string }
+        create_time: { type: string, format: date-time }
+        send_time: { type: string, format: date-time, description: When the mail last went out }
+        expire_time: { type: string, format: date-time }
+    InvitationLookup:
+      type: object
+      properties:
+        account_name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [owner, admin, viewer] }
+        has_account: { type: boolean }
+        invited_by_name: { type: string }
     Accepted:
       type: object
       properties:
