@@ -443,6 +443,8 @@ services:
       QUOTIFY_BILLING_ADDR: dns:///billing-svc:7005
       PAYMENTS_INTERNAL_TOKEN: ${QUOTIFY_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+    # The gateway reaches it by name in Docker; published so a service on the host (make dev) can too.
+    ports: ["42895:8095"]
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }

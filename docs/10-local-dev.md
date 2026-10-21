@@ -61,7 +61,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | billing-svc | 42705 | — | 42915 |
 | analytics-svc | 42706 | — | 42916 |
 | invoice-worker | — | — | 42917 |
-| payments-worker | — | — | 42918 |
+| payments-worker | — | 42895 (internal API, used by the gateway) | 42918 |
 | notifier | — | — | 42919 |
 | assets-svc | 42707 | — | 42921 |
 | mock-psp | — | 42890 | 9110 | (sandbox payment provider, also used for live tenants in the local demo)
