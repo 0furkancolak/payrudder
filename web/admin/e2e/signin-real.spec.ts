@@ -1,31 +1,23 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { mailedCode, operatorSession, signInAsOperator } from "./operator";
 
 // The sign-in methods against the REAL stack (make dev / make up): a code mailed through Mailpit, and "Continue with Google" through the in-repo stand-in
 // (pkg/oidctest, the `oidc` compose profile) when the gateway is set up for it. Real Google is NOT exercised here: there is no client registered for the repository.
 const gateway = process.env.QUOTIFY_GATEWAY_URL ?? "http://localhost:42800";
-const mailpit = process.env.MAILPIT_URL ?? "http://localhost:42825";
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-/** The newest sign-in code mailed to an address: the subject of the mail is "Your Quotify sign-in code: 123456" in English. */
-async function mailedCode(address: string, after = 0): Promise<string> {
-  for (let i = 0; i < 40; i++) {
-    const res = await fetch(`${mailpit}/api/v1/search?query=${encodeURIComponent(`to:${address}`)}`);
-    const list = ((await res.json()) as { messages?: { Subject: string; Created: string }[] }).messages ?? [];
-    const fresh = list.filter((m) => /sign-in code/i.test(m.Subject) && new Date(m.Created).getTime() > after);
-    const m = fresh[0];
-    const code = m ? /(\d{6})/.exec(m.Subject)?.[1] : undefined;
-    if (code) return code;
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error(`no sign-in code arrived for ${address}`);
-}
 
 async function post(path: string, body: unknown, headers: Record<string, string> = {}): Promise<{ status: number; body: Json }> {
   const res = await fetch(gateway + path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
   return { status: res.status, body: (await res.json().catch(() => ({}))) as Json };
 }
+
+/**
+ * A client address of its own for the calls a test makes directly: the gateway counts the public sign-in routes per client address (10 code tries a minute) and,
+ * on the compose stack, believes X-Forwarded-For from a private connection, so tests that call it in bursts do not share one bucket.
+ */
+const ownAddress = () => ({ "x-forwarded-for": `10.${Math.floor(Math.random() * 250) + 1}.${Math.floor(Math.random() * 250) + 1}.${Math.floor(Math.random() * 250) + 1}` });
 
 const fresh = () => `code-${randomUUID().slice(0, 8)}@example.com`;
 
@@ -46,6 +38,22 @@ test.describe("sign-in methods, real stack", () => {
     await expect(page.getByRole("link", { name: /operator/i })).toHaveCount(0);
   });
 
+  test("the operator is a person: a verified, listed address gets the console, nobody else does", async ({ page }) => {
+    const token = await operatorSession();
+    const me = await (await fetch(`${gateway}/auth/me`, { headers: { authorization: `Bearer ${token}` } })).json();
+    expect(me.operator).toBe(true);
+    expect(me.user.email_verified).toBe(true);
+    expect((await fetch(`${gateway}/admin/v1/tenants?page_size=1`, { headers: { authorization: `Bearer ${token}` } })).status).toBe(200);
+    // Headers and fields that claim it open nothing for a person who is not on the list.
+    const plain = await post("/auth/signup", { email: fresh(), password: "correct horse battery", account_name: "Plain" }, ownAddress());
+    expect(plain.status).toBe(202);
+    await signInAsOperator(page);
+    await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
+    await page.getByRole("link", { name: "My apps" }).click();
+    await page.waitForURL("**/app");
+    await expect(page.getByRole("link", { name: "Operator console" })).toBeVisible();
+  });
+
   test("an e-mailed code signs a new address in, creates its account and proves the address", async ({ page }) => {
     const address = fresh();
     const since = Date.now() - 1000;
@@ -58,7 +66,7 @@ test.describe("sign-in methods, real stack", () => {
     await page.waitForURL("**/app");
     // The code proved the mailbox: no "confirm your address" banner, and the API agrees.
     await expect(page.getByTestId("verify-banner")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: /Create your first app|Welcome/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Welcome/ })).toBeVisible();
     const token = await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"));
     const me = await (await fetch(`${gateway}/auth/me`, { headers: { authorization: `Bearer ${token}` } })).json();
     expect(me.user.email_verified).toBe(true);
@@ -71,18 +79,19 @@ test.describe("sign-in methods, real stack", () => {
   test("a code works once, five wrong tries burn it, and the answer is the same for any address", async () => {
     const address = fresh();
     const since = Date.now() - 1000;
-    expect((await post("/auth/otp/request", { email: address })).status).toBe(202);
+    const from = ownAddress();
+    expect((await post("/auth/otp/request", { email: address }, from)).status).toBe(202);
     const code = await mailedCode(address, since);
     const wrong = code === "000000" ? "000001" : "000000";
     for (let i = 0; i < 5; i++) {
-      const r = await post("/auth/otp/verify", { email: address, code: wrong });
+      const r = await post("/auth/otp/verify", { email: address, code: wrong }, from);
       expect(r.status).toBe(400);
       expect(r.body.error.key).toBe("identity.otp.invalid");
     }
     // Burned: even the right code no longer works.
-    expect((await post("/auth/otp/verify", { email: address, code })).status).toBe(400);
+    expect((await post("/auth/otp/verify", { email: address, code }, from)).status).toBe(400);
     // A different address, never asked for a code, gets the very same refusal.
-    const never = await post("/auth/otp/verify", { email: fresh(), code: "123456" });
+    const never = await post("/auth/otp/verify", { email: fresh(), code: "123456" }, from);
     expect(never.status).toBe(400);
     expect(never.body.error.key).toBe("identity.otp.invalid");
   });
@@ -90,13 +99,14 @@ test.describe("sign-in methods, real stack", () => {
   test("a right code signs in once", async () => {
     const address = fresh();
     const since = Date.now() - 1000;
-    await post("/auth/otp/request", { email: address });
+    const from = ownAddress();
+    await post("/auth/otp/request", { email: address }, from);
     const code = await mailedCode(address, since);
-    const first = await post("/auth/otp/verify", { email: address, code, account_name: "Code Co" });
+    const first = await post("/auth/otp/verify", { email: address, code, account_name: "Code Co" }, from);
     expect(first.status).toBe(200);
     expect(first.body.token).toMatch(/^qs_/);
     expect(first.body.user.email_verified).toBe(true);
-    expect((await post("/auth/otp/verify", { email: address, code })).status).toBe(400);
+    expect((await post("/auth/otp/verify", { email: address, code }, from)).status).toBe(400);
   });
 
   test("Continue with Google, through the stand-in provider, signs a person in without a password", async ({ page }) => {

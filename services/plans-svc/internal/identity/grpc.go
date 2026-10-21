@@ -152,20 +152,20 @@ func (h *Handler) RequestLoginCode(ctx context.Context, req *plansv1.RequestLogi
 	return &plansv1.RequestLoginCodeResponse{}, nil
 }
 
-func (h *Handler) VerifyLoginCode(ctx context.Context, req *plansv1.VerifyLoginCodeRequest) (*plansv1.SignInResponse, error) {
+func (h *Handler) VerifyLoginCode(ctx context.Context, req *plansv1.VerifyLoginCodeRequest) (*plansv1.VerifyLoginCodeResponse, error) {
 	o, err := h.cmd.VerifyLoginCode(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.SignInResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+	return &plansv1.VerifyLoginCodeResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
 }
 
-func (h *Handler) SignInWithIdentity(ctx context.Context, req *plansv1.SignInWithIdentityRequest) (*plansv1.SignInResponse, error) {
+func (h *Handler) SignInWithIdentity(ctx context.Context, req *plansv1.SignInWithIdentityRequest) (*plansv1.SignInWithIdentityResponse, error) {
 	o, err := h.cmd.SignInWithIdentity(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.SignInResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+	return &plansv1.SignInWithIdentityResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
 }
 
 func (h *Handler) RenameMyAccount(ctx context.Context, req *plansv1.RenameMyAccountRequest) (*plansv1.RenameMyAccountResponse, error) {

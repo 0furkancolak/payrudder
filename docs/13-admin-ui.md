@@ -106,7 +106,7 @@ In development the playground account form comes pre-filled: the Vite dev server
 ## Tests
 
 `web/admin/e2e/smoke.spec.ts` (Playwright, run by CI's end-to-end job against the Compose stack, `make web-e2e` locally) creates a sandbox account, closes a period and waits for
-a paid invoice, then drives the browser: sign in as the operator user (the dev seed's `user1@example.com`, which the dev stack lists in `QUOTIFY_OPERATOR_EMAILS`), open the tenant and the invoice, and check that the saga timeline has at least five transitions ending in
+a paid invoice, then drives the browser: open the console as the operator user (a session from the real sign-in routes: the dev seed's `user1@example.com` with its password, else a one-time code read from Mailpit; the dev stack lists that address in `QUOTIFY_OPERATOR_EMAILS`), open the tenant and the invoice, and check that the saga timeline has at least five transitions ending in
 `COMPLETED`; a signed-out visitor is sent to the sign-in page (which has no token form, and the machine token is no password), a person who is not an operator gets 403 from the API and is sent home by the page; a valid notification command put into `notification.send.dlq` appears in the dead-letter view
 and disappears when redriven (the notifier delivers it; the saga it names is already final, so its reply is ignored).
 

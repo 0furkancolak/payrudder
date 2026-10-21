@@ -80,10 +80,10 @@ type IdentityServiceClient interface {
 	RequestLoginCode(ctx context.Context, in *RequestLoginCodeRequest, opts ...grpc.CallOption) (*RequestLoginCodeResponse, error)
 	// VerifyLoginCode checks a code and opens a session. The code is single use, lives ten minutes and is burned after five wrong tries. An address without an
 	// account gets one (a user and an organisation): the code proved the mailbox. Every failure is the same error.
-	VerifyLoginCode(ctx context.Context, in *VerifyLoginCodeRequest, opts ...grpc.CallOption) (*SignInResponse, error)
+	VerifyLoginCode(ctx context.Context, in *VerifyLoginCodeRequest, opts ...grpc.CallOption) (*VerifyLoginCodeResponse, error)
 	// SignInWithIdentity opens a session for a person an identity provider has authenticated (the gateway verified the provider's ID token; this service only
 	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
-	SignInWithIdentity(ctx context.Context, in *SignInWithIdentityRequest, opts ...grpc.CallOption) (*SignInResponse, error)
+	SignInWithIdentity(ctx context.Context, in *SignInWithIdentityRequest, opts ...grpc.CallOption) (*SignInWithIdentityResponse, error)
 	GetMyAccount(ctx context.Context, in *GetMyAccountRequest, opts ...grpc.CallOption) (*GetMyAccountResponse, error)
 	// RenameMyAccount renames an account; only an owner may.
 	RenameMyAccount(ctx context.Context, in *RenameMyAccountRequest, opts ...grpc.CallOption) (*RenameMyAccountResponse, error)
@@ -216,9 +216,9 @@ func (c *identityServiceClient) RequestLoginCode(ctx context.Context, in *Reques
 	return out, nil
 }
 
-func (c *identityServiceClient) VerifyLoginCode(ctx context.Context, in *VerifyLoginCodeRequest, opts ...grpc.CallOption) (*SignInResponse, error) {
+func (c *identityServiceClient) VerifyLoginCode(ctx context.Context, in *VerifyLoginCodeRequest, opts ...grpc.CallOption) (*VerifyLoginCodeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SignInResponse)
+	out := new(VerifyLoginCodeResponse)
 	err := c.cc.Invoke(ctx, IdentityService_VerifyLoginCode_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -226,9 +226,9 @@ func (c *identityServiceClient) VerifyLoginCode(ctx context.Context, in *VerifyL
 	return out, nil
 }
 
-func (c *identityServiceClient) SignInWithIdentity(ctx context.Context, in *SignInWithIdentityRequest, opts ...grpc.CallOption) (*SignInResponse, error) {
+func (c *identityServiceClient) SignInWithIdentity(ctx context.Context, in *SignInWithIdentityRequest, opts ...grpc.CallOption) (*SignInWithIdentityResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SignInResponse)
+	out := new(SignInWithIdentityResponse)
 	err := c.cc.Invoke(ctx, IdentityService_SignInWithIdentity_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -446,10 +446,10 @@ type IdentityServiceServer interface {
 	RequestLoginCode(context.Context, *RequestLoginCodeRequest) (*RequestLoginCodeResponse, error)
 	// VerifyLoginCode checks a code and opens a session. The code is single use, lives ten minutes and is burned after five wrong tries. An address without an
 	// account gets one (a user and an organisation): the code proved the mailbox. Every failure is the same error.
-	VerifyLoginCode(context.Context, *VerifyLoginCodeRequest) (*SignInResponse, error)
+	VerifyLoginCode(context.Context, *VerifyLoginCodeRequest) (*VerifyLoginCodeResponse, error)
 	// SignInWithIdentity opens a session for a person an identity provider has authenticated (the gateway verified the provider's ID token; this service only
 	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
-	SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInResponse, error)
+	SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInWithIdentityResponse, error)
 	GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error)
 	// RenameMyAccount renames an account; only an owner may.
 	RenameMyAccount(context.Context, *RenameMyAccountRequest) (*RenameMyAccountResponse, error)
@@ -519,10 +519,10 @@ func (UnimplementedIdentityServiceServer) ResetPassword(context.Context, *ResetP
 func (UnimplementedIdentityServiceServer) RequestLoginCode(context.Context, *RequestLoginCodeRequest) (*RequestLoginCodeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RequestLoginCode not implemented")
 }
-func (UnimplementedIdentityServiceServer) VerifyLoginCode(context.Context, *VerifyLoginCodeRequest) (*SignInResponse, error) {
+func (UnimplementedIdentityServiceServer) VerifyLoginCode(context.Context, *VerifyLoginCodeRequest) (*VerifyLoginCodeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method VerifyLoginCode not implemented")
 }
-func (UnimplementedIdentityServiceServer) SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInResponse, error) {
+func (UnimplementedIdentityServiceServer) SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInWithIdentityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SignInWithIdentity not implemented")
 }
 func (UnimplementedIdentityServiceServer) GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error) {

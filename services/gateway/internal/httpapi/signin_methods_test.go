@@ -35,7 +35,7 @@ func (f *fakeIdentity) RequestLoginCode(_ context.Context, req *plansv1.RequestL
 	return &plansv1.RequestLoginCodeResponse{}, nil
 }
 
-func (f *fakeIdentity) VerifyLoginCode(_ context.Context, req *plansv1.VerifyLoginCodeRequest) (*plansv1.SignInResponse, error) {
+func (f *fakeIdentity) VerifyLoginCode(_ context.Context, req *plansv1.VerifyLoginCodeRequest) (*plansv1.VerifyLoginCodeResponse, error) {
 	f.mu.Lock()
 	f.codeVerifies = append(f.codeVerifies, req)
 	f.mu.Unlock()
@@ -43,14 +43,14 @@ func (f *fakeIdentity) VerifyLoginCode(_ context.Context, req *plansv1.VerifyLog
 		return nil, errkey.New(codes.InvalidArgument, "identity.otp.invalid", "wrong code")
 	}
 	verified := true
-	return &plansv1.SignInResponse{User: &plansv1.User{Id: opUser, Email: req.GetEmail(), EmailVerified: verified}, Token: tokOperator, ExpireTime: timestamppb.Now()}, nil
+	return &plansv1.VerifyLoginCodeResponse{User: &plansv1.User{Id: opUser, Email: req.GetEmail(), EmailVerified: verified}, Token: tokOperator, ExpireTime: timestamppb.Now()}, nil
 }
 
-func (f *fakeIdentity) SignInWithIdentity(_ context.Context, req *plansv1.SignInWithIdentityRequest) (*plansv1.SignInResponse, error) {
+func (f *fakeIdentity) SignInWithIdentity(_ context.Context, req *plansv1.SignInWithIdentityRequest) (*plansv1.SignInWithIdentityResponse, error) {
 	f.mu.Lock()
 	f.identities = append(f.identities, req)
 	f.mu.Unlock()
-	return &plansv1.SignInResponse{User: &plansv1.User{Id: adaUser, Email: req.GetEmail(), EmailVerified: true}, Token: tokAda, ExpireTime: timestamppb.New(time.Now().Add(time.Hour))}, nil
+	return &plansv1.SignInWithIdentityResponse{User: &plansv1.User{Id: adaUser, Email: req.GetEmail(), EmailVerified: true}, Token: tokAda, ExpireTime: timestamppb.New(time.Now().Add(time.Hour))}, nil
 }
 
 func withOperators(emails ...string) func(*Deps) {

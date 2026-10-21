@@ -33,10 +33,10 @@ service IdentityService {
   rpc RequestLoginCode(RequestLoginCodeRequest) returns (RequestLoginCodeResponse);
   // VerifyLoginCode checks a code and opens a session. The code is single use, lives ten minutes and is burned after five wrong tries. An address without an
   // account gets one (a user and an organisation): the code proved the mailbox. Every failure is the same error.
-  rpc VerifyLoginCode(VerifyLoginCodeRequest) returns (SignInResponse);
+  rpc VerifyLoginCode(VerifyLoginCodeRequest) returns (VerifyLoginCodeResponse);
   // SignInWithIdentity opens a session for a person an identity provider has authenticated (the gateway verified the provider's ID token; this service only
   // trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
-  rpc SignInWithIdentity(SignInWithIdentityRequest) returns (SignInResponse);
+  rpc SignInWithIdentity(SignInWithIdentityRequest) returns (SignInWithIdentityResponse);
 
   rpc GetMyAccount(GetMyAccountRequest) returns (GetMyAccountResponse);
   // RenameMyAccount renames an account; only an owner may.
@@ -135,6 +135,14 @@ message VerifyLoginCodeRequest {
   string locale = 5;
 }
 
+// VerifyLoginCodeResponse is a session, shaped like SignInResponse.
+message VerifyLoginCodeResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_time = 4;
+}
+
 message SignInWithIdentityRequest {
   // "google".
   string provider = 1;
@@ -145,6 +153,14 @@ message SignInWithIdentityRequest {
   bool email_verified = 4;
   string display_name = 5;
   string locale = 6;
+}
+
+// SignInWithIdentityResponse is a session, shaped like SignInResponse.
+message SignInWithIdentityResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_time = 4;
 }
 
 message SignOutRequest {

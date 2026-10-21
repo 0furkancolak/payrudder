@@ -135,7 +135,11 @@ func (s *Server) otpVerify(w http.ResponseWriter, r *http.Request) {
 	noStore(w)
 	resp, err := s.d.Identity.VerifyLoginCode(r.Context(), &plansv1.VerifyLoginCodeRequest{Email: body.Email, Code: body.Code, DisplayName: body.DisplayName,
 		AccountName: body.AccountName, Locale: localeOf(r, body.Locale)})
-	s.respondSignedIn(w, r, resp, err)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	s.respondSignedIn(w, r, &plansv1.SignInResponse{User: resp.GetUser(), Memberships: resp.GetMemberships(), Token: resp.GetToken(), ExpireTime: resp.GetExpireTime()}, nil)
 }
 
 // ---- Google ----

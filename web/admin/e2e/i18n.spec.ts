@@ -35,7 +35,7 @@ test.describe("languages", () => {
   test("the signed-in pages and the playground are translated too", async ({ page }) => {
     await page.goto("/signin");
     await pickLanguage(page, "fr");
-    await signInAsOperator(page, { email: "E-mail", password: "Mot de passe", submit: "Se connecter" });
+    await signInAsOperator(page);
     await expect(page.getByRole("heading", { name: "Locataires" })).toBeVisible();
     await page.getByRole("link", { name: "Bac à sable" }).click();
     await expect(page.getByRole("heading", { name: "Bac à sable" })).toBeVisible();

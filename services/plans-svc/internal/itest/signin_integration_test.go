@@ -44,7 +44,7 @@ func (e *env) requestCode(t *testing.T, email string) {
 	}
 }
 
-func (e *env) verifyCode(email, code string) (*plansv1.SignInResponse, error) {
+func (e *env) verifyCode(email, code string) (*plansv1.VerifyLoginCodeResponse, error) {
 	return e.ident.VerifyLoginCode(context.Background(), &plansv1.VerifyLoginCodeRequest{Email: email, Code: code, AccountName: "Code Co", DisplayName: "Coder"})
 }
 
