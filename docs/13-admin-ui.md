@@ -104,3 +104,7 @@ and disappears when redriven (the notifier delivers it; the saga it names is alr
 
 The console is not part of the Helm charts (reach it with `kubectl port-forward` of a locally built image, or run `npm run dev`); on Kubernetes the gateway's `/admin` routes are
 the same ones and can be blocked from outside the namespace by a NetworkPolicy.
+
+## The product app and the shared look (Phase 38)
+
+The same Vite app now has two audiences. **People** sign up and sign in at `/` and `/signup` and work under `/app` (organisation home, app dashboard with a sandbox/live switch, API keys shown once, settings); their session token (`qs_…`) is kept in `sessionStorage`. **The operator** keeps the token page, now at `/operator`, and everything under `/tenants`, `/playground` and `/dead-letters`. Both share one set of design tokens (`src/app/styles.css`), the dark icon rail and the card, badge, button and input primitives, with light and dark themes. A person reaches a tenant's customers, payment links, credits and webhooks through the same feature pages the operator uses, mounted under `/app/t/{tenant}`. Details, routes and the security stance: [phase 38](phases/phase-38-product-app.md).

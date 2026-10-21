@@ -69,7 +69,7 @@ export function baseTenant(gw: MockGateway, overrides: Record<string, unknown> =
 
 /** Signs in with the operator token and opens a page of the tenant. */
 export async function openTenantPage(page: Page, path: string): Promise<void> {
-  await page.goto("/");
+  await page.goto("/operator");
   await page.getByLabel("Operator token").fill(OPERATOR);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("**/tenants");

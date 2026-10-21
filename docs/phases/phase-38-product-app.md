@@ -4,7 +4,7 @@
 
 Until now the only console was the **operator's**: one shared token, every tenant. The people Quotify is for — a developer or a company that signs up, opens an account (an organisation), creates projects ("apps", each with a sandbox and a live environment) and wants to watch each app's payments and status — had no way in. This phase builds that product experience: **sign up, sign in, an organisation home with app cards, an app dashboard, API keys, account settings**. The operator console stays and takes the same look.
 
-It ships in two pull requests: the identity and gateway side first (this document, parts 1–4), the web app second (part 5).
+It shipped in two pull requests: identity and gateway first, the web app second.
 
 ## Scope
 
@@ -94,3 +94,19 @@ Money is **never summed across currencies**: every amount sits under its currenc
 - `services/gateway/internal/httpapi/product_test.go`: session required on every product route (API key, operator token, unknown, expired, signed-out), sessions cannot call operator routes, Bob cannot reach Ada's app / overview / keys / tenant, bodies cannot name the user, a session acts on its own tenants only (viewer read-only), per-address rate limits and the forwarded-for rule, the overview's numbers (folding, windows, per-currency totals, degradation).
 - Unit tests for the credential package (hash format, constant-time verify, malformed hashes, token shape).
 - Not verified: behaviour under real concurrency of hashing (the semaphore is simple and tested by use, not by a load run); nothing here was run on Kubernetes or Railway.
+
+## The web app (second pull request)
+
+Same Vite app (`web/admin`), new lazy-loaded route group; one bundle pipeline. The sign-in page, the dashboard and the settings are separate chunks (the dashboard is about 24 kB, 7 kB gzipped); no chart library: the donut and the sparkline are inline SVG (`shared/ui/donut`, `shared/ui/sparkline`).
+
+**Routes.** `/` and `/signin` (people), `/signup`, `/app` (organisation home), `/app/apps/{id}?env=sandbox` (dashboard), `/app/settings`, `/app/t/{tenant}/{customers|payment-links|credits|webhooks}` (the console's own pages reused), and `/operator` (the operator's token page, moved from `/`). A person with no session is sent to `/signin`; a 401 from the gateway while signed in clears the session and goes to `/signin?expired=1` with an explanation.
+
+**Reuse.** The deeper views are the existing feature pages mounted a second time under `/app/t/$id`. They speak the tenant API through `tenantApi(id)`, which sends the bearer token the tab holds (the operator's or the person's) and `X-Quotify-Tenant`; the gateway lets a session through for its own tenants only. Pages that call operator-only endpoints (invoices, payments ledger, packages, reports) are *not* offered to people; recent invoices and payments appear on the dashboard from the overview instead. A full invoice page against the tenant API is a follow-up.
+
+**Design system** (tokens in `src/app/styles.css`, used by the operator console too): cool light-grey surface, 20 to 24 px white cards with a soft shadow, a dark rounded icon-only rail (a bottom bar on a phone), pastel blue `#8bb8ef` (`--brand`) for charts and highlights and a deeper blue (`--primary`) for actions, soft status pills (paid, open, failed, processing, refunded, healthy, attention) that always carry a word and keep 4.5:1 text contrast, dark mode (system, or chosen with the toggle; stored in `localStorage` as a preference only), `prefers-reduced-motion` respected, visible focus rings. Six languages with key parity; amounts formatted from minor-unit strings without floats and always under their own currency.
+
+**Token storage.** The session token is kept in `sessionStorage` (this tab only, cleared at sign-out); never in `localStorage`, never in a URL.
+
+**Verification.** Playwright specs against a mocked gateway (`e2e-mock/product.spec.ts`): sign up with the exact request body, create the first app, wrong and right passwords, show/hide password, expired session, route guards, app card numbers, dashboard numbers per currency, sandbox switch, degraded section, API key shown once and copied and revoked, reused customers page carrying the session and tenant headers, settings and sign-out, dark mode, phone layout without sideways scroll. The existing mocked specs pass unchanged apart from the operator's new `/operator` entry. Screenshots at desktop and phone width, light and dark, were reviewed while building.
+
+**Not verified:** the app against a real gateway and plans-svc end to end (only the mocked contract, which is generated from the same OpenAPI file); Safari and Firefox; screen readers beyond the accessible names and roles the tests assert; Arabic layout was checked by logic (logical properties, `rtl:` flips), not by eye.

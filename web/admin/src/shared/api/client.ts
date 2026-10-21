@@ -1,5 +1,5 @@
 import createClient from "openapi-fetch";
-import { currentToken } from "@/shared/lib/session";
+import { currentToken, sessionLost } from "@/shared/lib/session";
 import type { components, paths } from "./schema";
 
 // Same origin: the console talks to the gateway through its own /gw path (nginx in the image, Vite in development), so the gateway
@@ -11,6 +11,11 @@ api.use({
     const token = currentToken();
     if (token) request.headers.set("Authorization", `Bearer ${token}`);
     return request;
+  },
+  // A 401 while a person is signed in means the session is over (expired, revoked): the app is told once and goes to the sign-in page.
+  onResponse({ response }) {
+    if (response.status === 401) sessionLost();
+    return response;
   },
 });
 
@@ -30,6 +35,10 @@ export function tenantApi(tenantId: string) {
         if (token) request.headers.set("Authorization", `Bearer ${token}`);
         request.headers.set("X-Quotify-Tenant", tenantId);
         return request;
+      },
+      onResponse({ response }) {
+        if (response.status === 401) sessionLost();
+        return response;
       },
     });
     asTenantClients.set(tenantId, client);

@@ -926,7 +926,7 @@ test.describe("reports", () => {
 test("the billing pages are translated", async ({ page }) => {
   const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/customers" ? { body: { customers: [] } } : undefined));
   await gw.install(page);
-  await page.goto("/");
+  await page.goto("/operator");
   await page.getByLabel("Language").selectOption("tr");
   await page.getByLabel("Operatör jetonu").fill(OPERATOR);
   await page.getByRole("button", { name: "Giriş yap" }).click();

@@ -3,20 +3,33 @@ import { authRoutes } from "@/features/auth/routes";
 import { requireOperator } from "@/features/auth";
 import { deadLetterRoutes } from "@/features/dead-letters/routes";
 import { playgroundRoutes } from "@/features/playground/routes";
+import { personRoutes, publicProductRoutes } from "@/features/product/routes";
 import { tenantRoutes } from "@/features/tenants/routes";
+import { queryClient } from "./query";
+import { onSessionLost } from "@/shared/lib/session";
 import RootLayout from "./layout/RootLayout.vue";
 
-// Code-based routes: every feature owns its routes and the app only composes them. Everything but the sign-in page sits under
-// one pathless route whose beforeLoad turns a visitor without an operator token away.
+// Code-based routes: every feature owns its routes and the app only composes them. Three groups:
+//  - public: sign in and sign up for people ("/"), and the operator's token page ("/operator");
+//  - the person's product under /app, behind a session;
+//  - the operator's console (/tenants, /playground, /dead-letters), behind the operator token.
 const root = createRootRoute({ component: RootLayout });
-const signedIn = createRoute({ getParentRoute: () => root, id: "signed-in", beforeLoad: requireOperator });
+const operator = createRoute({ getParentRoute: () => root, id: "signed-in", beforeLoad: requireOperator });
 
 const routeTree = root.addChildren([
+  ...publicProductRoutes(root),
   ...authRoutes(root),
-  signedIn.addChildren([...tenantRoutes(signedIn), ...playgroundRoutes(signedIn), ...deadLetterRoutes(signedIn)]),
+  personRoutes(root),
+  operator.addChildren([...tenantRoutes(operator), ...playgroundRoutes(operator), ...deadLetterRoutes(operator)]),
 ]);
 
 // The router is deliberately not registered with `declare module "@tanstack/vue-router"`: registering it makes every page's types depend on the
 // router's, and the router's on the pages (routes import pages, pages use Link and useNavigate), a cycle TypeScript cannot resolve. Route paths
 // stay plain strings, checked by the Playwright tests instead.
 export const router = createRouter({ routeTree, defaultPreload: "intent" });
+
+// The gateway refused the person's session (expired, revoked): everything cached belongs to nobody now, and the sign-in page says why.
+onSessionLost(() => {
+  queryClient.clear();
+  void router.navigate({ to: "/signin", search: { expired: "1" } as never });
+});

@@ -24,7 +24,7 @@ const error = computed(() => (login.error.value ? `${toApiError(login.error.valu
 </script>
 
 <template>
-  <div class="mx-auto mt-12 max-w-sm">
+  <div class="mx-auto w-full max-w-sm">
     <Card class="gap-5 p-6">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">{{ t("signIn.title") }}</h1>

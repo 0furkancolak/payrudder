@@ -6,7 +6,9 @@
   "app": {
     "title": "Console opérateur Quotify",
     "language": "Langue",
-    "demo": "Mode démo : données d'exemple, un faux prestataire de paiement, les mails vont au récepteur local. Rien ici n'est réel."
+    "demo": "Mode démo : données d'exemple, un faux prestataire de paiement, les mails vont au récepteur local. Rien ici n'est réel.",
+    "themeLight": "Passer au thème clair",
+    "themeDark": "Passer au thème sombre"
   },
   "nav": {
     "tenants": "Locataires",
@@ -16,7 +18,8 @@
   },
   "common": {
     "loading": "Chargement…",
-    "unknown": "?"
+    "unknown": "?",
+    "cancel": "Annuler"
   },
   "signIn": {
     "title": "Console opérateur",
@@ -1250,6 +1253,202 @@
       "tenant": {
         "not_found": "Cet environnement n'existe pas, ou il n'est pas le vôtre."
       }
+    }
+  },
+  "product": {
+    "menu": {
+      "open": "Menu du compte"
+    },
+    "nav": {
+      "home": "Accueil",
+      "settings": "Réglages"
+    },
+    "hero": {
+      "title": "Tous les paiements de toutes vos applications, au même endroit, au calme."
+    },
+    "status": {
+      "paid": "Payé",
+      "processing": "En cours",
+      "failed": "Échoué",
+      "refunded": "Remboursé"
+    },
+    "appStatus": {
+      "ok": "En bonne santé",
+      "attention": "À surveiller",
+      "degraded": "Partiellement indisponible",
+      "unknown": "Aucune donnée"
+    },
+    "unavailable": "Indisponible pour le moment.",
+    "degraded": "Certaines parties n'ont pas répondu ({sections}). Le reste est à jour.",
+    "sections": {
+      "payments": "paiements",
+      "invoices": "factures",
+      "customers": "clients",
+      "subscriptions": "abonnements",
+      "webhooks": "webhooks"
+    },
+    "kpi": {
+      "revenue": "Revenus",
+      "revenueDays": "Revenus, {days} derniers jours",
+      "payments": "Paiements",
+      "failedCount": "Échoués : {n}",
+      "openInvoices": "Factures ouvertes",
+      "outstanding": "{amount} en attente",
+      "paidInvoices": "Factures payées : {n}",
+      "customers": "Clients",
+      "mrr": "{amount} par mois",
+      "noMrr": "Pas encore de revenu récurrent"
+    },
+    "card": {
+      "revenue": "Revenus, {days} derniers jours",
+      "unavailable": "Pas encore de chiffres",
+      "failed": "Paiements échoués : {n}",
+      "environments": "Sandbox et production",
+      "open": "Ouvrir"
+    },
+    "auth": {
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "name": "Votre nom",
+      "organisation": "Organisation",
+      "passwordHint": "Au moins {min} caractères.",
+      "showPassword": "Afficher le mot de passe",
+      "hidePassword": "Masquer le mot de passe"
+    },
+    "signIn": {
+      "title": "Bon retour",
+      "intro": "Connectez-vous pour voir où en sont vos applications et leurs paiements.",
+      "submit": "Se connecter",
+      "cta": "Se connecter",
+      "noAccount": "Nouveau ici ?",
+      "operator": "Console opérateur",
+      "expired": "Votre session a pris fin. Reconnectez-vous pour continuer."
+    },
+    "signUp": {
+      "title": "Créez votre compte",
+      "intro": "Une organisation, autant d'applications que nécessaire, chacune avec un bac à sable pour essayer.",
+      "submit": "Créer le compte",
+      "cta": "Créer un compte",
+      "haveAccount": "Vous avez déjà un compte ?"
+    },
+    "home": {
+      "title": "Votre organisation",
+      "welcome": "Bienvenue, {name}",
+      "intro": "Vos applications et la façon dont leurs paiements se sont passés ces 30 derniers jours.",
+      "create": "Créer une application",
+      "emptyTitle": "Créez votre première application",
+      "emptyBody": "Une application est un produit que vous facturez. Elle vient avec un bac à sable pour tester et un environnement de production pour les vrais paiements, chacun avec ses propres clés d'API.",
+      "viewerEmpty": "Il n'y a pas encore d'application. Un propriétaire ou un administrateur peut en créer une."
+    },
+    "createApp": {
+      "title": "Créer une application",
+      "intro": "Elle reçoit un bac à sable et un environnement de production, chacun avec ses clients, ses offres et ses clés.",
+      "name": "Nom de l'application",
+      "currency": "Devise",
+      "timezone": "Fuseau horaire",
+      "immutable": "La devise et le fuseau horaire ne peuvent pas être modifiés ensuite : les périodes de facturation sont découpées dans ce fuseau.",
+      "submit": "Créer l'application"
+    },
+    "env": {
+      "label": "Environnement",
+      "live": "Production",
+      "sandbox": "Sandbox",
+      "sandboxNote": "Sandbox : données de test et faux prestataire de paiement. Rien ici n'est de l'argent réel."
+    },
+    "donut": {
+      "title": "Paiements par statut",
+      "label": "{n} paiements par statut",
+      "center": "paiements"
+    },
+    "currency": {
+      "title": "Revenus par devise",
+      "empty": "Pas encore de factures.",
+      "billed": "Facturé {amount}",
+      "collected": "Encaissé {amount}",
+      "outstanding": "En attente {amount}",
+      "collectedOf": "{collected} encaissés sur {billed}"
+    },
+    "payments": {
+      "title": "Paiements récents",
+      "empty": "Aucun paiement ces 30 derniers jours.",
+      "truncated": "1000 dernières écritures",
+      "when": "Quand",
+      "status": "Statut",
+      "provider": "Prestataire",
+      "amount": "Montant"
+    },
+    "invoices": {
+      "title": "Factures récentes",
+      "empty": "Pas encore de factures.",
+      "draft": "Brouillon"
+    },
+    "invoiceStatus": {
+      "draft": "Brouillon",
+      "open": "Ouverte",
+      "paid": "Payée",
+      "uncollectible": "Irrécouvrable",
+      "void": "Annulée"
+    },
+    "health": {
+      "title": "Santé",
+      "payments": "Service de paiement",
+      "up": "Joignable",
+      "down": "Injoignable",
+      "providers": "Prestataires de paiement",
+      "noProviders": "Aucun connecté",
+      "webhooks": "Webhooks",
+      "failedDeliveries": "{n} livraisons échouées",
+      "addEndpoint": "Ajouter un point de terminaison",
+      "endpoints": "{n} points de terminaison, tout va bien"
+    },
+    "keys": {
+      "title": "Clés d'API",
+      "intro": "Votre serveur utilise une clé pour parler à Quotify. Les clés sandbox ne touchent que des données de test.",
+      "newSandbox": "Clé sandbox",
+      "newLive": "Clé de production",
+      "created": "Créée le {date}",
+      "active": "Active",
+      "revoked": "Révoquée",
+      "revoke": "Révoquer",
+      "revokeNamed": "Révoquer la clé {key}",
+      "empty": "Pas encore de clé. Créez-en une pour commencer à envoyer l'usage.",
+      "revealTitle": "Copiez votre nouvelle clé maintenant",
+      "revealBody": "C'est la seule fois que la clé complète est affichée. Gardez-la en lieu sûr ; si elle est perdue, révoquez-la et créez-en une autre.",
+      "copy": "Copier",
+      "copied": "Copiée",
+      "copyFailed": "Votre navigateur n'a pas autorisé la copie. Sélectionnez la clé et copiez-la à la main.",
+      "saved": "Je l'ai enregistrée",
+      "revokeTitle": "Révoquer cette clé ?",
+      "revokeBody": "Tout ce qui l'utilise encore cesse de fonctionner immédiatement. Cette action est irréversible."
+    },
+    "links": {
+      "title": "Aller plus loin",
+      "intro": "Les pages de travail de l'environnement {env}.",
+      "customers": "Clients",
+      "paymentLinks": "Liens de paiement",
+      "credits": "Crédits",
+      "webhooks": "Webhooks"
+    },
+    "settings": {
+      "title": "Réglages",
+      "intro": "Votre organisation, votre profil et l'apparence de cette application.",
+      "account": "Organisation",
+      "organisation": "Nom",
+      "yourRole": "Votre rôle",
+      "created": "Créée",
+      "you": "Vous",
+      "sessionEnds": "Fin de la session",
+      "appearance": "Apparence",
+      "themeSystem": "Système",
+      "themeLight": "Clair",
+      "themeDark": "Sombre",
+      "members": "Membres",
+      "membersNote": "Toutes les personnes ayant accès à cette organisation. Inviter des personnes n'est pas encore possible."
+    },
+    "role": {
+      "owner": "Propriétaire",
+      "admin": "Administrateur",
+      "viewer": "Lecteur"
     }
   }
 }

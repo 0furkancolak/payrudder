@@ -58,7 +58,7 @@ async function shot(page: Page, name: string, fullPage = true): Promise<void> {
 }
 
 async function signIn(page: Page): Promise<void> {
-  await page.goto("/");
+  await page.goto("/operator");
   await page.getByLabel("Operator token").fill(operatorToken);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
@@ -121,7 +121,7 @@ test.describe.serial("operator console", () => {
   });
 
   test("a wrong token is refused and a signed-out visitor is sent to the sign-in page", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/operator");
     await page.getByLabel("Operator token").fill("not-the-token");
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByText(/UNAUTHENTICATED|operator token/i)).toBeVisible();

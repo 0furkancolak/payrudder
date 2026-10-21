@@ -6,7 +6,9 @@
   "app": {
     "title": "Consola de operador de Quotify",
     "language": "Idioma",
-    "demo": "Modo demo: datos de ejemplo, un proveedor de pago simulado y el correo va al receptor local. Nada de esto es real."
+    "demo": "Modo demo: datos de ejemplo, un proveedor de pago simulado y el correo va al receptor local. Nada de esto es real.",
+    "themeLight": "Cambiar al tema claro",
+    "themeDark": "Cambiar al tema oscuro"
   },
   "nav": {
     "tenants": "Inquilinos",
@@ -16,7 +18,8 @@
   },
   "common": {
     "loading": "Cargando…",
-    "unknown": "?"
+    "unknown": "?",
+    "cancel": "Cancelar"
   },
   "signIn": {
     "title": "Consola de operador",
@@ -1250,6 +1253,202 @@
       "tenant": {
         "not_found": "Este entorno no existe o no es suyo."
       }
+    }
+  },
+  "product": {
+    "menu": {
+      "open": "Menú de la cuenta"
+    },
+    "nav": {
+      "home": "Inicio",
+      "settings": "Ajustes"
+    },
+    "hero": {
+      "title": "Todos los pagos de todas sus aplicaciones, en un solo lugar tranquilo."
+    },
+    "status": {
+      "paid": "Pagado",
+      "processing": "En proceso",
+      "failed": "Fallido",
+      "refunded": "Reembolsado"
+    },
+    "appStatus": {
+      "ok": "Saludable",
+      "attention": "Requiere atención",
+      "degraded": "Parcialmente no disponible",
+      "unknown": "Sin datos"
+    },
+    "unavailable": "No disponible por ahora.",
+    "degraded": "Algunas partes no respondieron ({sections}). El resto está al día.",
+    "sections": {
+      "payments": "pagos",
+      "invoices": "facturas",
+      "customers": "clientes",
+      "subscriptions": "suscripciones",
+      "webhooks": "webhooks"
+    },
+    "kpi": {
+      "revenue": "Ingresos",
+      "revenueDays": "Ingresos, últimos {days} días",
+      "payments": "Pagos",
+      "failedCount": "Fallidos: {n}",
+      "openInvoices": "Facturas abiertas",
+      "outstanding": "{amount} pendientes",
+      "paidInvoices": "Facturas pagadas: {n}",
+      "customers": "Clientes",
+      "mrr": "{amount} al mes",
+      "noMrr": "Aún no hay ingresos recurrentes"
+    },
+    "card": {
+      "revenue": "Ingresos, últimos {days} días",
+      "unavailable": "Aún no hay cifras",
+      "failed": "Pagos fallidos: {n}",
+      "environments": "Sandbox y producción",
+      "open": "Abrir"
+    },
+    "auth": {
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "name": "Su nombre",
+      "organisation": "Organización",
+      "passwordHint": "Al menos {min} caracteres.",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña"
+    },
+    "signIn": {
+      "title": "Le damos la bienvenida",
+      "intro": "Inicie sesión para ver cómo van sus aplicaciones y sus pagos.",
+      "submit": "Iniciar sesión",
+      "cta": "Iniciar sesión",
+      "noAccount": "¿Es nuevo aquí?",
+      "operator": "Consola del operador",
+      "expired": "Su sesión ha terminado. Inicie sesión de nuevo para continuar."
+    },
+    "signUp": {
+      "title": "Cree su cuenta",
+      "intro": "Una organización, tantas aplicaciones como necesite, cada una con un sandbox para probar.",
+      "submit": "Crear cuenta",
+      "cta": "Crear una cuenta",
+      "haveAccount": "¿Ya tiene una cuenta?"
+    },
+    "home": {
+      "title": "Su organización",
+      "welcome": "Le damos la bienvenida, {name}",
+      "intro": "Sus aplicaciones y cómo les fue con los pagos en los últimos 30 días.",
+      "create": "Crear aplicación",
+      "emptyTitle": "Cree su primera aplicación",
+      "emptyBody": "Una aplicación es un producto que usted factura. Viene con un sandbox para probar y un entorno de producción para pagos reales, cada uno con sus propias claves de API.",
+      "viewerEmpty": "Aún no hay aplicaciones. Un propietario o administrador puede crear una."
+    },
+    "createApp": {
+      "title": "Crear una aplicación",
+      "intro": "Recibe un sandbox y un entorno de producción, cada uno con sus clientes, planes y claves.",
+      "name": "Nombre de la aplicación",
+      "currency": "Moneda",
+      "timezone": "Zona horaria",
+      "immutable": "La moneda y la zona horaria no se pueden cambiar después: los periodos de facturación se cortan en esa zona horaria.",
+      "submit": "Crear aplicación"
+    },
+    "env": {
+      "label": "Entorno",
+      "live": "Producción",
+      "sandbox": "Sandbox",
+      "sandboxNote": "Sandbox: datos de prueba y un proveedor de pagos simulado. Nada de esto es dinero real."
+    },
+    "donut": {
+      "title": "Pagos por estado",
+      "label": "{n} pagos por estado",
+      "center": "pagos"
+    },
+    "currency": {
+      "title": "Ingresos por moneda",
+      "empty": "Aún no hay facturas.",
+      "billed": "Facturado {amount}",
+      "collected": "Cobrado {amount}",
+      "outstanding": "Pendiente {amount}",
+      "collectedOf": "Cobrado {collected} de {billed}"
+    },
+    "payments": {
+      "title": "Pagos recientes",
+      "empty": "No hay pagos en los últimos 30 días.",
+      "truncated": "Últimos 1000 asientos",
+      "when": "Cuándo",
+      "status": "Estado",
+      "provider": "Proveedor",
+      "amount": "Importe"
+    },
+    "invoices": {
+      "title": "Facturas recientes",
+      "empty": "Aún no hay facturas.",
+      "draft": "Borrador"
+    },
+    "invoiceStatus": {
+      "draft": "Borrador",
+      "open": "Abierta",
+      "paid": "Pagada",
+      "uncollectible": "Incobrable",
+      "void": "Anulada"
+    },
+    "health": {
+      "title": "Estado de salud",
+      "payments": "Servicio de pagos",
+      "up": "Accesible",
+      "down": "No accesible",
+      "providers": "Proveedores de pago",
+      "noProviders": "Ninguno conectado",
+      "webhooks": "Webhooks",
+      "failedDeliveries": "{n} entregas fallidas",
+      "addEndpoint": "Añadir un endpoint",
+      "endpoints": "{n} endpoints, todo en orden"
+    },
+    "keys": {
+      "title": "Claves de API",
+      "intro": "Su servidor usa una clave para hablar con Quotify. Las claves de sandbox solo tocan datos de prueba.",
+      "newSandbox": "Clave de sandbox",
+      "newLive": "Clave de producción",
+      "created": "Creada el {date}",
+      "active": "Activa",
+      "revoked": "Revocada",
+      "revoke": "Revocar",
+      "revokeNamed": "Revocar la clave {key}",
+      "empty": "Aún no hay claves. Cree una para empezar a enviar uso.",
+      "revealTitle": "Copie su nueva clave ahora",
+      "revealBody": "Esta es la única vez que se muestra la clave completa. Guárdela en un lugar seguro; si se pierde, revóquela y cree otra.",
+      "copy": "Copiar",
+      "copied": "Copiada",
+      "copyFailed": "Su navegador no permitió copiar. Seleccione la clave y cópiela a mano.",
+      "saved": "La he guardado",
+      "revokeTitle": "¿Revocar esta clave?",
+      "revokeBody": "Todo lo que aún la use dejará de funcionar de inmediato. No se puede deshacer."
+    },
+    "links": {
+      "title": "Profundice",
+      "intro": "Las páginas de trabajo del entorno {env}.",
+      "customers": "Clientes",
+      "paymentLinks": "Enlaces de pago",
+      "credits": "Créditos",
+      "webhooks": "Webhooks"
+    },
+    "settings": {
+      "title": "Ajustes",
+      "intro": "Su organización, su perfil y el aspecto de esta aplicación.",
+      "account": "Organización",
+      "organisation": "Nombre",
+      "yourRole": "Su rol",
+      "created": "Creada",
+      "you": "Usted",
+      "sessionEnds": "La sesión termina",
+      "appearance": "Apariencia",
+      "themeSystem": "Sistema",
+      "themeLight": "Claro",
+      "themeDark": "Oscuro",
+      "members": "Miembros",
+      "membersNote": "Todas las personas con acceso a esta organización. Aún no es posible invitar a personas."
+    },
+    "role": {
+      "owner": "Propietario",
+      "admin": "Administrador",
+      "viewer": "Lector"
     }
   }
 }
