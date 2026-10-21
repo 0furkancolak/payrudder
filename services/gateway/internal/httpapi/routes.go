@@ -111,6 +111,9 @@ func (s *Server) reportingAndRoutingRoutes() []Route {
 		{"GET", "/v1/routing-rules", AccessTenant, ratelimit.ClassRead, s.getRoutingRules},
 		{"PUT", "/v1/routing-rules", AccessTenant, ratelimit.ClassWrite, s.setRoutingRules},
 		{"POST", "/v1/routing-rules/preview", AccessTenant, ratelimit.ClassRead, s.previewRouting},
+		// Mail switch
+		{"GET", "/v1/mail-settings", AccessTenant, ratelimit.ClassRead, s.getMailSettings},
+		{"PUT", "/v1/mail-settings", AccessTenant, ratelimit.ClassWrite, s.setMailSettings},
 	}
 }
 
@@ -573,6 +576,21 @@ func (s *Server) setRoutingRules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp, err := s.d.Plans.SetRoutingRules(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.GetMailSettings(r.Context(), &plansv1.GetMailSettingsRequest{})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) setMailSettings(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.SetMailSettingsRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Plans.SetMailSettings(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
 

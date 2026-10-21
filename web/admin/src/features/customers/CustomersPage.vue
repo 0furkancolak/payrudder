@@ -2,7 +2,7 @@
 import { useParams, useRouter } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -13,6 +13,7 @@ import CustomerLinksCard from "@/features/paymentlinks/CustomerLinksCard.vue";
 import { addressLine, useCreateCustomer, useCustomers, useSetCustomerAddress, type Address } from "./api";
 
 const { t } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const customers = useCustomers(tenantId);
@@ -87,7 +88,7 @@ function submit() {
       </fieldset>
       <Button type="submit" class="sm:col-span-2 lg:col-span-5" :disabled="create.isPending.value">{{ t("billing.customers.create") }}</Button>
     </form>
-    <p v-if="create.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(create.error.value).message }}</p>
+    <p v-if="create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(create.error.value) }}</p>
   </Card>
 
   <Card v-if="editing" class="mb-6" role="region" :aria-label="t('billing.customers.address.editing', { id: editing })">
@@ -104,14 +105,14 @@ function submit() {
         <Button type="button" variant="outline" @click="editing = ''">{{ t("billing.customers.address.cancel") }}</Button>
       </div>
     </form>
-    <p v-if="setAddress.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(setAddress.error.value).message }}</p>
+    <p v-if="setAddress.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setAddress.error.value) }}</p>
   </Card>
 
   <CustomerLinksCard v-if="portalFor" :tenant-id="tenantId" :customer="portalFor" @close="portalFor = ''" />
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.tabs.customers") }}</h2>
-    <p v-if="customers.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(customers.error.value).message }}</p>
+    <p v-if="customers.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(customers.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

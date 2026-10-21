@@ -4,6 +4,8 @@ QUOTIFY_PLANS_ADDR: "dns:///localhost:7001"
 SMTP_ADDR: "localhost:1025"
 MAIL_FROM: "Quotify <billing@quotify.local>"
 NOTIFIER_SENDING_STALE: "5m"
+# How long a tenant's mail switch (plans-svc) is remembered; a change reaches the notifier within it.
+NOTIFIER_MAIL_SWITCH_TTL: "15s"
 QUOTIFY_CONSUMER_GROUP: "notifier"
 QUOTIFY_DLQ_TOPIC: "usage.limit-exceeded.dlq.v1"
 QUOTIFY_CONSUMER_SESSION_TIMEOUT: "10s"

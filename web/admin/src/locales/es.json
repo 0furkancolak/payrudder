@@ -244,7 +244,10 @@
       "reports": "Informes",
       "pricing": "Cupones e impuestos",
       "webhooks": "Webhooks",
-      "paymentLinks": "Enlaces de pago"
+      "paymentLinks": "Enlaces de pago",
+      "mail": "Correo",
+      "apps": "Apps",
+      "address": "Dirección del vendedor"
     },
     "common": {
       "remove": "Quitar"
@@ -693,6 +696,153 @@
         }
       },
       "for": "Para"
+    },
+    "mail": {
+      "title": "Correo electrónico",
+      "hint": "Elija qué tipos de correo envía Quotify a los clientes de este inquilino. Un tipo desactivado se descarta, no se pone en cola: al activarlo de nuevo no se envía lo omitido.",
+      "categories": {
+        "invoice_issued": "Factura emitida",
+        "payment_receipts": "Recibos de pago",
+        "payment_failed": "Pago fallido",
+        "usage_alerts": "Alertas de uso",
+        "system": "Sistema"
+      },
+      "descriptions": {
+        "invoice_issued": "Avisa al cliente de que se emitió una factura nueva.",
+        "payment_receipts": "El recibo tras un pago correcto.",
+        "payment_failed": "Un pago fallido, un reintento y el aviso de que Quotify dejó de cobrar.",
+        "usage_alerts": "Un cliente superó un límite de uso de su plan.",
+        "system": "Cualquier otro mensaje que envía Quotify."
+      },
+      "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Quotify."
+    }
+  },
+  "apps": {
+    "new": "Nueva app",
+    "hint": "Una app es una de las aplicaciones de la cuenta, con su propio entorno de pruebas y en producción, claves, clientes y planes. La moneda, la zona horaria y el periodo de gracia se eligen aquí y no se pueden cambiar después.",
+    "formLabel": "nueva app",
+    "name": "Nombre de la app",
+    "slug": "Identificador",
+    "slugPlaceholder": "Identificador (opcional, p. ej. web-shop)",
+    "currency": "Moneda",
+    "currencyPlaceholder": "Moneda (no se puede cambiar)",
+    "timezone": "Zona horaria",
+    "timezonePlaceholder": "Zona horaria IANA, p. ej. Europe/Istanbul",
+    "grace": "Periodo de gracia (horas)",
+    "gracePlaceholder": "Periodo de gracia, horas (0 a 168)",
+    "create": "Crear app",
+    "badSlug": "El identificador solo puede tener minúsculas, dígitos y guiones sencillos, con un máximo de 60 caracteres.",
+    "title": "Apps de esta cuenta",
+    "immutable": "Renombrar y eliminar una app aún no está disponible en la API; la moneda, la zona horaria y el periodo de gracia de una app no se pueden cambiar.",
+    "environments": "Entornos",
+    "created": "Creada",
+    "actions": "Acciones",
+    "empty": "Esta cuenta aún no tiene apps.",
+    "keys": {
+      "open": "Claves de API",
+      "title": "Claves de API de {app}",
+      "hint": "Cree una clave para un entorno. Se muestra una sola vez; la API no puede listar las claves después, así que aquí aparecen las creadas en esta página hasta que salga de ella. Una clave creada en otro sitio se puede revocar por su id.",
+      "secretOnce": "Copie la clave ahora: solo se muestra una vez.",
+      "dismiss": "Ya la he copiado",
+      "createFor": "Crear una clave para {env}",
+      "create": "Crear clave",
+      "revoked": "Revocada",
+      "revoke": "Revocar",
+      "revokeForm": "revocar una clave",
+      "revokeId": "Id de la clave",
+      "revokeById": "Revocar por id",
+      "confirmRevoke": "¿Revocar esta clave de API? Las solicitudes que la usan dejan de funcionar de inmediato.",
+      "revokedDone": "Clave {id} revocada."
+    }
+  },
+  "address": {
+    "title": "Dirección del vendedor",
+    "hint": "La dirección legal y de facturación de este inquilino, impresa como vendedor en cada factura (PDF y página alojada). Se aplica a las facturas emitidas después de guardar.",
+    "formLabel": "dirección del vendedor",
+    "noCountry": "Sin país",
+    "otherCountry": "Otro país…",
+    "labels": {
+      "country": "País",
+      "countryCode": "Código de país (dos letras, p. ej. SE)",
+      "line1": "Línea de dirección 1",
+      "line2": "Línea de dirección 2",
+      "city": "Ciudad",
+      "region": "Región",
+      "state": "Estado",
+      "province": "Provincia",
+      "county": "Condado",
+      "prefecture": "Prefectura",
+      "postalCode": "Código postal",
+      "zip": "Código ZIP",
+      "postcode": "Código postal"
+    },
+    "problems": {
+      "tooLong": "Demasiado largo: máximo {max} caracteres.",
+      "oneLine": "Debe ser una sola línea de texto.",
+      "badCountry": "Dos letras (ISO 3166-1), p. ej. TR."
+    },
+    "postalHint": "No parece un código postal de ese país, por ejemplo {example}. Se acepta de todos modos.",
+    "save": "Guardar dirección",
+    "saved": "Dirección guardada.",
+    "preview": {
+      "title": "Vista previa de la factura",
+      "hint": "Así aparece el vendedor en una factura.",
+      "from": "De",
+      "empty": "Sin dirección: la factura solo muestra el nombre."
+    }
+  },
+  "errors": {
+    "billing": {
+      "credit_note": {
+        "bad_amount": "El importe del abono no es válido: debe ser mayor que cero y no superar lo que queda por abonar de la factura.",
+        "fully_credited": "Esta factura ya se ha abonado por completo.",
+        "not_paid": "Solo se puede abonar una factura pagada.",
+        "nothing_to_refund": "No hay nada que reembolsar a la tarjeta por esta nota de abono.",
+        "refund_not_failed": "Solo se puede reintentar una nota de abono cuyo reembolso ha fallado."
+      },
+      "dunning": {
+        "bad_delay": "Cada retraso de reintento debe estar entre 1 y 720 horas.",
+        "too_many_retries": "Se pueden definir como máximo 6 retrasos de reintento."
+      },
+      "invoice": {
+        "not_found": "No se encontró la factura.",
+        "pdf_not_ready": "El PDF de la factura aún no se ha generado. Inténtelo de nuevo en un momento."
+      },
+      "invoice_link": {
+        "bad_expiry": "El enlace debe caducar entre 1 y 365 días.",
+        "draft_invoice": "Una factura en borrador no se puede compartir por enlace.",
+        "not_found": "No se encontró el enlace de la factura."
+      }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "El identificador de la app solo puede tener minúsculas, dígitos y guiones sencillos, con un máximo de 60 caracteres.",
+        "slug_taken": "Esta cuenta ya tiene una app con ese identificador."
+      },
+      "mail": {
+        "unknown_category": "Esta categoría de correo no existe."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "Esta suscripción tiene un cupón. Abone la parte no utilizada con una nota de abono sobre la factura de la cuota."
+      },
+      "webhook": {
+        "not_configured": "Los webhooks no están configurados en este despliegue (falta la clave de secretos).",
+        "too_many_endpoints": "Se alcanzó el límite de endpoints de webhook. Elimine uno primero."
+      }
+    },
+    "common": {
+      "invalid_argument": "Algo de la solicitud no es válido.",
+      "not_found": "No se encontró.",
+      "already_exists": "Ya existe.",
+      "failed_precondition": "Esto no se puede hacer en el estado actual.",
+      "permission_denied": "No tiene permiso para hacerlo.",
+      "unauthenticated": "Inicie sesión de nuevo: falta el token o ya no es válido.",
+      "rate_limited": "Demasiadas solicitudes. Espere un momento e inténtelo de nuevo.",
+      "unavailable": "El servicio no está disponible ahora. Inténtelo de nuevo en breve.",
+      "timeout": "La solicitud tardó demasiado. Inténtelo de nuevo.",
+      "conflict": "Los datos cambiaron mientras trabajaba. Recargue e inténtelo de nuevo.",
+      "not_implemented": "Aún no es compatible.",
+      "internal": "Algo falló por nuestra parte. Inténtelo de nuevo; si sigue fallando, busque en los registros con el id de la solicitud."
     }
   }
 }
