@@ -43,6 +43,7 @@ func TestBilling(t *testing.T) {
 		{"StatusNotFoundRechargesWithTheSameIdempotencyKey", testStatusNotFound},
 		{"DunningEndsUncollectible", testDunning},
 		{"TenantDunningSettingsReplaceTheDefaults", testTenantDunningSettings},
+		{"AccountingSumsIncomeAndExpensesPerCurrency", testAccounting},
 		{"CreditPacks", testCreditPacks},
 		{"CreditsConsumeTheSoonestExpiryFirst", testCreditsConsumeTheSoonestExpiryFirst},
 		{"ConcurrentConsumesNeverOverspend", testConcurrentConsumesNeverOverspend},

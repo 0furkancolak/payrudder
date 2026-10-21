@@ -2,6 +2,19 @@
 
 Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in `error.key` of every API error; translate keys, not messages.
 
+- `billing.accounting.bad_app`
+- `billing.accounting.bad_category`
+- `billing.accounting.bad_date`
+- `billing.accounting.bad_expense`
+- `billing.accounting.bad_granularity`
+- `billing.accounting.bad_page_token`
+- `billing.accounting.bad_period`
+- `billing.accounting.bad_recurring`
+- `billing.accounting.expense_not_found`
+- `billing.accounting.expense_voided`
+- `billing.accounting.range_too_long`
+- `billing.accounting.reason_required`
+- `billing.accounting.unknown_currency`
 - `billing.credit_note.bad_amount`
 - `billing.credit_note.fully_credited`
 - `billing.credit_note.not_paid`
