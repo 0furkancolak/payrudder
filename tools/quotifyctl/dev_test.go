@@ -6,10 +6,10 @@ import (
 )
 
 func TestToHost(t *testing.T) {
-	published := map[string]string{"postgres:5432": "localhost:5432", "redpanda:9092": "localhost:19092", "plans-svc:7001": "localhost:7001", "minio:9000": "localhost:9001"}
+	published := map[string]string{"postgres:5432": "localhost:5432", "redpanda:9092": "localhost:42092", "plans-svc:7001": "localhost:7001", "minio:9000": "localhost:9001"}
 	for in, want := range map[string]string{
 		"postgres://plans_app:plans_app_local@postgres:5432/plans_db": "postgres://plans_app:plans_app_local@localhost:5432/plans_db",
-		"redpanda:9092":                               "localhost:19092",
+		"redpanda:9092":                               "localhost:42092",
 		"dns:///plans-svc:7001":                       "localhost:7001",
 		"http://minio:9000":                           "http://localhost:9001",
 		"amqp://quotify:quotify_local@rabbitmq:5672/": "amqp://quotify:quotify_local@rabbitmq:5672/", // not published: left as it is
@@ -28,7 +28,7 @@ func TestHostServices(t *testing.T) {
 		"redpanda": {Ports: []struct {
 			Target    int    `json:"target"`
 			Published string `json:"published"`
-		}{{19092, "19092"}}},
+		}{{42092, "42092"}}},
 		"postgres": {Ports: []struct {
 			Target    int    `json:"target"`
 			Published string `json:"published"`
@@ -53,7 +53,7 @@ func TestHostServices(t *testing.T) {
 	if gw.Env["QUOTIFY_PLANS_ADDR"] != "localhost:7001" || gw.Env["QUOTIFY_OTLP_ENDPOINT"] != "" || gw.Main != "./cmd/gateway" || gw.Dir != "services/gateway" {
 		t.Errorf("gateway = %+v", gw)
 	}
-	if gw.Env["QUOTIFY_KAFKA_BROKERS"] != "localhost:19092" {
+	if gw.Env["QUOTIFY_KAFKA_BROKERS"] != "localhost:42092" {
 		t.Errorf("kafka = %q; the host reaches Redpanda on its external listener", gw.Env["QUOTIFY_KAFKA_BROKERS"])
 	}
 	if got[0].Env["QUOTIFY_PG_APP_DSN"] != "postgres://u:p@localhost:5432/db" {

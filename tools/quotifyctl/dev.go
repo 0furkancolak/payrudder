@@ -61,8 +61,8 @@ func hostServices(c composeFile) []hostService {
 			}
 		}
 	}
-	// Redpanda has two listeners: containers use 9092, the host uses the one published as 19092.
-	if h, ok := published["redpanda:19092"]; ok {
+	// Redpanda has two listeners: containers use 9092, the host uses the external listener, whose container port is 42092 (the port it advertises as localhost:42092).
+	if h, ok := published["redpanda:42092"]; ok {
 		published["redpanda:9092"] = h
 	}
 	var out []hostService
