@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useEntitlements, useSubscriptionActions, useSubscriptions } from "./api";
 import ChangePanel from "./ChangePanel.vue";
 import ProviderRunPanel from "./ProviderRunPanel.vue";
-import { isOperator } from "@/shared/lib/session";
+import { operatorView } from "@/shared/lib/session";
 import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, te, locale } = useI18n();
@@ -64,7 +64,7 @@ const percent = (used?: string, limit?: string | null) => (limit && Number(limit
 const selected = computed<Subscription | undefined>(() => (subs.data.value?.subscriptions ?? []).find((s) => s.id === selectedId.value));
 const state = (s: Subscription) => enumWord(s.state, "SUBSCRIPTION_STATE_");
 /** Moving a subscription to another payment provider, and driving one a provider runs, go through the provider accounts: operator actions. */
-const operator = isOperator;
+const operator = computed(() => operatorView());
 const providerRuns = computed(() => selected.value?.owner === "provider");
 const newPlan = ref("");
 const target = ref("");

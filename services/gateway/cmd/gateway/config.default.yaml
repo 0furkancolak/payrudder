@@ -10,3 +10,10 @@ QUOTIFY_ASSETS_ADDR: "dns:///localhost:42707"
 QUOTIFY_REDIS_URL: "redis://localhost:42379/0"
 QUOTIFY_GATEWAY_REPLICAS: "1"
 QUOTIFY_ALLOWED_ENVIRONMENTS: "sandbox,live"
+# The console's public address: where the browser returns after "Continue with Google" and the default base of the Google redirect address (<it>/gw/auth/google/callback: the console forwards /gw/ to the gateway).
+QUOTIFY_APP_URL: "http://localhost:42301"
+# The OpenID provider behind "Continue with Google". Google's own; development stacks may point it at the in-repo mock (tools/mockoidc). The button shows only when
+# QUOTIFY_GOOGLE_CLIENT_ID and QUOTIFY_GOOGLE_CLIENT_SECRET (a secret: environment only) are both set.
+QUOTIFY_GOOGLE_ISSUER: "https://accounts.google.com"
+# Addresses (comma separated) of the people who are platform operators. Empty by default: nobody. A listed person must also have verified the address.
+QUOTIFY_OPERATOR_EMAILS: ""

@@ -4,7 +4,7 @@ import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
-import { playgroundDefaults } from "@/shared/lib/prefill";
+import { playgroundDefaults, prefillPlayground } from "@/shared/lib/prefill";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -12,7 +12,6 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PageHeader } from "@/shared/ui/page-header";
 import { Table, TableBody, TableCell, TableRow } from "@/shared/ui/table";
-import { prefilledOperatorToken } from "@/shared/lib/prefill";
 import { SCENARIOS, usePlayground, type Currency, type Scenario } from "./usePlayground";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 
@@ -21,7 +20,7 @@ const errorText = useErrorText();
 const play = usePlayground();
 
 // In a development stack the account form comes pre-filled (see shared/lib/prefill.ts).
-const prefill = prefilledOperatorToken() !== "";
+const prefill = prefillPlayground();
 const name = ref(prefill ? playgroundDefaults.name : "");
 const currency = ref<Currency | "">(prefill ? playgroundDefaults.currency : "");
 const timezone = ref(prefill ? playgroundDefaults.timezone : "");

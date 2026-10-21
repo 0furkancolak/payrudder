@@ -35,6 +35,7 @@ import (
 	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/quotify/services/gateway/internal/auth"
 	"github.com/0furkancolak/quotify/services/gateway/internal/httpapi"
+	"github.com/0furkancolak/quotify/services/gateway/internal/oidc"
 	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
 )
 
@@ -62,6 +63,19 @@ type Config struct {
 	PublicURL string `env:"QUOTIFY_PUBLIC_URL"`
 	// TrustForwardedFor counts the public sign-in limits by X-Forwarded-For, for requests that come from a private address (the console's nginx).
 	TrustForwardedFor bool `env:"QUOTIFY_TRUST_FORWARDED_FOR"`
+	// OperatorEmails lists the addresses of the platform operators (comma separated). A person who signs in with one of them and has verified it may use the
+	// operator console. Empty: nobody does; the machine token (QUOTIFY_OPERATOR_TOKEN) is still the credential of the API.
+	OperatorEmails []string `env:"QUOTIFY_OPERATOR_EMAILS" envSeparator:","`
+	// AppURL is the console's public address: the browser is sent back to it after "Continue with Google", and the Google redirect address defaults to
+	// <AppURL>/gw/auth/google/callback.
+	AppURL string `env:"QUOTIFY_APP_URL"`
+	// GoogleClientID and GoogleClientSecret register this deployment at Google. Both set: the Google button is shown. The secret is never in YAML or a log.
+	GoogleClientID     string `env:"QUOTIFY_GOOGLE_CLIENT_ID"`
+	GoogleClientSecret string `env:"QUOTIFY_GOOGLE_CLIENT_SECRET"`
+	// GoogleRedirectURL overrides <AppURL>/gw/auth/google/callback when the browser reaches the gateway at another address than the console.
+	GoogleRedirectURL string `env:"QUOTIFY_GOOGLE_REDIRECT_URL"`
+	// GoogleIssuer is the OpenID provider's address. Google's by default; development points it at the in-repo mock (tools/mockoidc).
+	GoogleIssuer string `env:"QUOTIFY_GOOGLE_ISSUER"`
 }
 
 func (c *Config) Validate() error {
@@ -71,6 +85,16 @@ func (c *Config) Validate() error {
 	}
 	if c.Replicas < 1 {
 		errs = append(errs, errors.New("QUOTIFY_GATEWAY_REPLICAS must be ≥ 1"))
+	}
+	if (c.GoogleClientID == "") != (c.GoogleClientSecret == "") {
+		errs = append(errs, errors.New("QUOTIFY_GOOGLE_CLIENT_ID and QUOTIFY_GOOGLE_CLIENT_SECRET must be set together"))
+	}
+	if c.GoogleClientID != "" {
+		for name, v := range map[string]string{"QUOTIFY_APP_URL": c.AppURL, "QUOTIFY_GOOGLE_ISSUER": c.GoogleIssuer} {
+			if u, err := url.Parse(v); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+				errs = append(errs, fmt.Errorf("%s must be an http(s) address when Google sign-in is set up", name))
+			}
+		}
 	}
 	return errors.Join(errs...)
 }
@@ -196,7 +220,17 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 			return nil, fmt.Errorf("QUOTIFY_PAYMENTS_URL: %w", err)
 		}
 	}
+	appURL := strings.TrimRight(cfg.AppURL, "/")
+	var google *oidc.Client
+	if cfg.GoogleClientID != "" {
+		redirect := cfg.GoogleRedirectURL
+		if redirect == "" {
+			redirect = appURL + "/gw/auth/google/callback"
+		}
+		google = oidc.New(oidc.Config{Issuer: cfg.GoogleIssuer, ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret, RedirectURL: redirect})
+	}
 	return httpapi.New(httpapi.Deps{
+		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), Google: google, AppURL: appURL,
 		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),
 		Billing: billingv1.NewBillingServiceClient(up.billing), Sandbox: billingv1.NewSandboxServiceClient(up.billing),

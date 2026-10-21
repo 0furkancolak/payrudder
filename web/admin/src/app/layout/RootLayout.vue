@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { Link, Outlet, useNavigate } from "@tanstack/vue-router";
-import { useQueryClient } from "@tanstack/vue-query";
-import { LogOut, Menu } from "@lucide/vue";
+import { Menu } from "@lucide/vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import VerifyBanner from "@/features/product/VerifyBanner.vue";
 import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
-import { isOperator, isPerson, setOperatorToken } from "@/shared/lib/session";
+import { isOperator, isPerson } from "@/shared/lib/session";
 import Breadcrumbs from "./Breadcrumbs.vue";
 import ContextSwitcher from "./ContextSwitcher.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
@@ -16,7 +15,7 @@ import PrivacyToggle from "./PrivacyToggle.vue";
 import Sidebar from "./Sidebar.vue";
 import ThemeToggle from "./ThemeToggle.vue";
 import UserMenu from "./UserMenu.vue";
-import { useShell } from "./useShell";
+import { OPERATOR_PATHS, useShell } from "./useShell";
 
 /**
  * The frame of every page. Signed out: a plain header with the brand, the language and the theme. Signed in: the sidebar (open by default on a wide
@@ -25,9 +24,9 @@ import { useShell } from "./useShell";
  */
 const { t } = useI18n();
 const navigate = useNavigate();
-const queries = useQueryClient();
 const brand = brandName();
-const signedIn = computed(() => isPerson.value || isOperator.value);
+// There is one kind of signed-in person; an operator is a person the server also lets into the operator console.
+const signedIn = computed(() => isPerson.value);
 const shell = useShell();
 const drawer = ref(false);
 const menuButton = ref<HTMLButtonElement | null>(null);
@@ -35,14 +34,12 @@ const menuButton = ref<HTMLButtonElement | null>(null);
 // A route change closes the drawer (the links also do; this covers the browser's back button).
 watch(shell.path, () => (drawer.value = false));
 
-const home = computed(() => (isPerson.value ? "/app" : isOperator.value ? "/tenants" : "/signin"));
+const home = computed(() => (isPerson.value ? "/app" : "/signin"));
 
-async function operatorSignOut() {
-  drawer.value = false;
-  setOperatorToken(null);
-  queries.clear();
-  await navigate({ to: "/operator" });
-}
+// The server's verdict (/auth/me) corrects what this tab believed: somebody who is not an operator, however they got to the console, is sent home.
+watch([isOperator, shell.path], () => {
+  if (isPerson.value && !isOperator.value && OPERATOR_PATHS.test(shell.path.value)) void navigate({ to: "/app" });
+});
 
 // Alt+P turns privacy mode on and off from anywhere (not while typing in a field).
 function onKey(e: KeyboardEvent) {
@@ -59,8 +56,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
     <a href="#main" class="bg-primary text-primary-foreground sr-only z-[60] rounded-xl px-4 py-2 focus:not-sr-only focus:fixed focus:start-4 focus:top-4">{{ t("shell.skip") }}</a>
 
     <template v-if="signedIn">
-      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" @sign-out="operatorSignOut" />
-      <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" @sign-out="operatorSignOut" />
+      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" />
+      <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" />
     </template>
 
     <!-- One wrapper and one <main> for both states: signing in must not remount the page that is signing in (its onSuccess would be lost). -->
@@ -85,16 +82,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
             <LanguageSwitcher />
             <ThemeToggle />
             <UserMenu v-if="isPerson" />
-            <button
-              v-if="isOperator"
-              type="button"
-              class="bg-card text-muted-foreground hover:text-foreground border-border/60 shadow-card inline-flex size-10 items-center justify-center rounded-xl border"
-              :aria-label="t('nav.signOut')"
-              :title="t('nav.signOut')"
-              @click="operatorSignOut"
-            >
-              <LogOut class="size-4" />
-            </button>
           </div>
           <ContextSwitcher
             v-if="isPerson && shell.context.value.level === 'app'"

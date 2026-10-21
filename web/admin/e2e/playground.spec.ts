@@ -1,14 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { pickCurrency } from "../e2e-mock/ui";
-
-const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
+import { signInAsOperator } from "./operator";
 
 test("the playground takes a visitor from an empty account to a paid invoice", async ({ page }) => {
   test.setTimeout(300_000);
-  await page.goto("/operator");
-  // A development stack pre-fills the operator token, so signing in needs no typing.
-  await expect(page.getByLabel("Operator token")).toHaveValue(operatorToken);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  // The operator is a person: the dev stack's first user signs in with a password and opens the console.
+  await signInAsOperator(page);
   await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
   await page.getByRole("link", { name: "Playground", exact: true }).click();
 
@@ -39,9 +36,7 @@ test("the playground takes a visitor from an empty account to a paid invoice", a
 
 test("a declined payment outcome leaves the invoice open with the payment declined", async ({ page }) => {
   test.setTimeout(300_000);
-  await page.goto("/operator");
-  await page.getByLabel("Operator token").fill(operatorToken);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signInAsOperator(page);
   await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
   await page.getByRole("link", { name: "Playground", exact: true }).click();
   const form = page.getByRole("form", { name: "new account" });

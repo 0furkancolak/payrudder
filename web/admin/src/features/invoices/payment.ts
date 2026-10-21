@@ -9,7 +9,7 @@ export type InvoicePayment = components["schemas"]["InvoicePayment"];
 export const PAYMENT_METHODS = ["bank_transfer", "cash", "other"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
-/** The operator label sent as X-Quotify-Actor: the auth feature knows only the shared operator token, so there is no name to send. */
+/** The operator label sent as X-Quotify-Actor: the console sends one fixed label (the gateway does not take the actor from the session yet). */
 export const ACTOR = "console";
 
 /** Invoices that can still be paid by hand. */

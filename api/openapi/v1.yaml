@@ -7,7 +7,9 @@ info:
 
     - Tenant routes authenticate with `Authorization: Bearer qk_{test|live}_<prefix>_<secret>`. `qk_test_` keys act on the
       account's sandbox tenant, `qk_live_` keys on its live tenant.
-    - `/admin/v1` routes require `Authorization: Bearer <operator token>`.
+    - `/admin/v1` routes require `Authorization: Bearer <operator token>` (the machine credential `QUOTIFY_OPERATOR_TOKEN`, for scripts, `quotifyctl` and tests;
+      it is never typed into a page) **or** the session token of a platform operator: a person who signed in and verified an address listed in
+      `QUOTIFY_OPERATOR_EMAILS`. The server decides this on every request.
     - Field names are snake_case. Enums are strings. Per the protobuf JSON mapping, int64 values (`*_minor`) are
       rendered as JSON strings and accepted as strings or numbers. Decimal quantities and prices are strings.
     - Errors always use the `Error` envelope. 429 responses carry `Retry-After` (seconds).
@@ -1798,6 +1800,111 @@ paths:
         "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/Accepted" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /auth/methods:
+    get:
+      operationId: authMethods
+      tags: [Product]
+      summary: Which sign-in methods this deployment offers
+      description: >
+        The page asks this to show only buttons that work. `password` and `otp` are always on; `google` is on when `QUOTIFY_GOOGLE_CLIENT_ID` and
+        `QUOTIFY_GOOGLE_CLIENT_SECRET` are set. Public.
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  password: { type: boolean }
+                  otp: { type: boolean }
+                  google: { type: boolean }
+  /auth/otp/request:
+    post:
+      operationId: requestLoginCode
+      tags: [Product]
+      summary: Mail a one-time sign-in code
+      description: >
+        Mails a six-digit code to the address. Always `202` for a well-formed address, whether or not it has an account and whether or not a code was sent
+        (at most one a minute and five an hour per address). The code lives 10 minutes, works once and is burned after 5 wrong tries. Public; rate limited per
+        client address (5 a minute). The answer is `Cache-Control: no-store`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+      responses:
+        "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/Accepted" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/otp/verify:
+    post:
+      operationId: verifyLoginCode
+      tags: [Product]
+      summary: Sign in with a one-time code
+      description: >
+        A wrong, expired, used, burned or never-sent code is `400 identity.otp.invalid`. The right code opens a session; the code proved the mailbox, so the
+        address counts as verified. An address without an account gets one (a user and an organisation named `account_name`, else the part of the address
+        before the `@`). Public; rate limited per client address (10 a minute).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email }
+                code: { type: string, pattern: "^[0-9]{6}$" }
+                display_name: { type: string, maxLength: 200, description: Used only when the code creates the account }
+                account_name: { type: string, maxLength: 200, description: Used only when the code creates the account }
+                locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/google/start:
+    get:
+      operationId: googleStart
+      tags: [Product]
+      summary: Start "Continue with Google"
+      description: >
+        Redirects the browser to Google's consent page (authorization-code flow with PKCE, state and nonce) and sets a short-lived signed HttpOnly cookie that
+        holds the login's secrets. `404 identity.oauth.not_configured` when Google is not set up. Public; rate limited per client address (20 a minute).
+      security: []
+      parameters:
+        - { name: locale, in: query, required: false, schema: { type: string, enum: [en, tr, de, fr, es, ar] }, description: The language of the mails to a person this login creates }
+      responses:
+        "302": { description: Redirect to Google }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/google/callback:
+    get:
+      operationId: googleCallback
+      tags: [Product]
+      summary: Where Google returns the browser
+      description: >
+        Checks the cookie and `state`, exchanges the code (with the PKCE verifier), verifies the ID token (signature against Google's keys, issuer, audience,
+        expiry, nonce) and requires `email_verified`. Then the user is found by Google's stable subject, else linked by the verified address, else created.
+        Always answers a redirect to the console: success is `/signin/complete#token=qs_...&expires=...` (a fragment, so no server or proxy sees the token);
+        a refusal is `/signin?oauth_error=` with one of `state`, `denied`, `token`, `email_unverified`, `unavailable`, `failed`. Public.
+      security: []
+      parameters:
+        - { name: code, in: query, required: false, schema: { type: string } }
+        - { name: state, in: query, required: false, schema: { type: string } }
+        - { name: error, in: query, required: false, schema: { type: string } }
+      responses:
+        "302": { description: Redirect to the console }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   /auth/verify:
     post:
       operationId: verifyEmail
@@ -1935,6 +2042,8 @@ paths:
       tags: [Product]
       summary: Sign in with e-mail and password
       description: >
+        One of the three ways to sign in (with a one-time code, `/auth/otp/*`, and Google, `/auth/google/*`). An account that has no password (it signs in
+        by code or by Google) answers like a wrong password.
         A wrong password, an unknown e-mail and a locked account all answer 401 `identity.auth.invalid_credentials`. Five wrong passwords lock the account for
         fifteen minutes. Public and rate limited per client address (10 a minute).
       security: []
@@ -3507,7 +3616,7 @@ paths:
 components:
   securitySchemes:
     apiKey: { type: http, scheme: bearer, description: "qk_{test|live}_<prefix>_<secret>" }
-    operatorToken: { type: http, scheme: bearer, description: Operator token (QUOTIFY_OPERATOR_TOKEN) }
+    operatorToken: { type: http, scheme: bearer, description: "Operator access: the machine token (QUOTIFY_OPERATOR_TOKEN, for the API, quotifyctl and tests) or the session token (qs_...) of a platform operator, a person with a verified address listed in QUOTIFY_OPERATOR_EMAILS. A session of anybody else is refused with 403 identity.operator.forbidden." }
     sessionToken: { type: http, scheme: bearer, description: "A person's session token (qs_..., from /auth/signin). It also works on /v1 routes together with X-Quotify-Tenant, for a tenant of one of the person's accounts (a viewer may only read)." }
   parameters:
     ExternalID: { name: external_id, in: path, required: true, schema: { type: string } }
@@ -3848,12 +3957,14 @@ components:
         memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
         token: { type: string, description: "qs_..., shown once; send as Authorization: Bearer" }
         expire_time: { type: string, format: date-time, description: 14 days from now; slides on use, never beyond 90 days from sign-in }
+        operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in QUOTIFY_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
     SessionInfo:
       type: object
       properties:
         user: { $ref: "#/components/schemas/AuthUser" }
         memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
         expire_time: { type: string, format: date-time }
+        operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in QUOTIFY_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
     MyAccount:
       type: object
       properties:

@@ -129,7 +129,8 @@ func BuiltServices(composePath string) ([]string, error) {
 	}
 	var c struct {
 		Services map[string]struct {
-			Build any `yaml:"build"`
+			Build  any               `yaml:"build"`
+			Labels map[string]string `yaml:"labels"`
 		} `yaml:"services"`
 	}
 	if err := yaml.Unmarshal(b, &c); err != nil {
@@ -137,7 +138,8 @@ func BuiltServices(composePath string) ([]string, error) {
 	}
 	var out []string
 	for name, s := range c.Services {
-		if s.Build != nil {
+		// A development stand-in (label quotify.dev-only, e.g. mockoidc, the fake Google) is never part of a deployed stack and has no budget.
+		if s.Build != nil && s.Labels["quotify.dev-only"] != "true" {
 			out = append(out, name)
 		}
 	}

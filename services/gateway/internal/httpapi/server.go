@@ -35,9 +35,11 @@ import (
 	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
 	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/gateway/internal/auth"
+	"github.com/0furkancolak/quotify/services/gateway/internal/oidc"
 	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
 )
 
@@ -84,6 +86,14 @@ type Deps struct {
 	TrustForwardedFor bool
 	// Demo makes the hosted pages offer the mock payment for every tenant (QUOTIFY_DEMO); a sandbox tenant always gets it.
 	Demo bool
+	// OperatorEmails lists the addresses of the people who are platform operators (QUOTIFY_OPERATOR_EMAILS), lower case. A session of a user with one of these
+	// addresses, proven by verification, may use the operator routes; OperatorToken stays as the machine credential of the API, quotifyctl and the tests.
+	OperatorEmails []string
+	// Google is the "Continue with Google" client; nil or unconfigured hides the button and answers 404 on its routes.
+	Google *oidc.Client
+	// AppURL is the console's public address (https://app.example.com), where the browser is sent after a provider login. The OAuth redirect address
+	// registered at Google is AppURL + /auth/google/callback unless the deployment says otherwise.
+	AppURL string
 }
 
 // Server is the HTTP handler.
@@ -99,6 +109,8 @@ type Server struct {
 	signIns, signUps hostedLimiter
 	// resets limits "forgot password" requests and tokenUses the routes that spend a mailed token (verify, reset, accept an invitation), per client address.
 	resets, tokenUses hostedLimiter
+	// otpRequests, otpVerifies and oauths limit the one-time code and provider sign-in routes, per client address.
+	otpRequests, otpVerifies, oauths hostedLimiter
 }
 
 // New builds the router.
@@ -168,8 +180,13 @@ func (s *Server) wrap(rt Route) http.Handler {
 			ctx = context.WithValue(ctx, sessionKey{}, sess)
 			span.SetAttributes(attribute.String("quotify.user_id", sess.UserID))
 		case AccessOperator:
-			if !s.operatorOK(r) {
-				writeError(w, r, status.Error(codes.Unauthenticated, "operator token required"))
+			ok, err := s.operatorAllowed(r)
+			if err != nil {
+				writeError(w, r, err)
+				return
+			}
+			if !ok {
+				writeError(w, r, status.Error(codes.Unauthenticated, "operator access required"))
 				return
 			}
 			ctx = tenant.WithOperator(ctx)
@@ -287,9 +304,34 @@ func principalOf(t *plansv1.Tenant) auth.Principal {
 	return auth.Principal{Tenant: tenant.Info{ID: id, Environment: env, Timezone: t.GetTimezone()}, Tier: tier}
 }
 
+// operatorOK reports whether the request carries the machine operator token (QUOTIFY_OPERATOR_TOKEN): the credential of the API, quotifyctl, the demo and the
+// tests. It is never typed into a page.
 func (s *Server) operatorOK(r *http.Request) bool {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	return ok && s.d.OperatorToken != "" && subtle.ConstantTimeCompare([]byte(token), []byte(s.d.OperatorToken)) == 1
+}
+
+// operatorAllowed is who may use the operator routes: the machine token, or the session of an operator user (see isOperator). The session is resolved on
+// every request, so signing out, a revoked session or a removed address takes effect at once; nothing the client sends decides it.
+// An unreachable plans-svc is an error (503), not a refusal, so a signed-in operator is not told to sign in again because of an outage.
+func (s *Server) operatorAllowed(r *http.Request) (bool, error) {
+	if s.operatorOK(r) {
+		return true, nil
+	}
+	if !strings.HasPrefix(bearerToken(r), sessionPrefix) {
+		return false, nil
+	}
+	sess, err := s.session(r)
+	switch {
+	case status.Code(err) == codes.Unavailable:
+		return false, err
+	case err != nil:
+		return false, nil
+	case !s.isOperator(sess.User):
+		// A valid session that is not an operator's: signed in, but not allowed (403), so the page does not mistake it for an expired session.
+		return false, errkey.New(codes.PermissionDenied, "identity.operator.forbidden", "this area is for platform operators")
+	}
+	return true, nil
 }
 
 func (s *Server) recoverMiddleware(next http.Handler) http.Handler {

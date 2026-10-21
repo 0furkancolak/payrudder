@@ -1772,6 +1772,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Which sign-in methods this deployment offers
+         * @description The page asks this to show only buttons that work. `password` and `otp` are always on; `google` is on when `QUOTIFY_GOOGLE_CLIENT_ID` and `QUOTIFY_GOOGLE_CLIENT_SECRET` are set. Public.
+         */
+        get: operations["authMethods"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/otp/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mail a one-time sign-in code
+         * @description Mails a six-digit code to the address. Always `202` for a well-formed address, whether or not it has an account and whether or not a code was sent (at most one a minute and five an hour per address). The code lives 10 minutes, works once and is burned after 5 wrong tries. Public; rate limited per client address (5 a minute). The answer is `Cache-Control: no-store`.
+         */
+        post: operations["requestLoginCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/otp/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with a one-time code
+         * @description A wrong, expired, used, burned or never-sent code is `400 identity.otp.invalid`. The right code opens a session; the code proved the mailbox, so the address counts as verified. An address without an account gets one (a user and an organisation named `account_name`, else the part of the address before the `@`). Public; rate limited per client address (10 a minute).
+         */
+        post: operations["verifyLoginCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/google/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start "Continue with Google"
+         * @description Redirects the browser to Google's consent page (authorization-code flow with PKCE, state and nonce) and sets a short-lived signed HttpOnly cookie that holds the login's secrets. `404 identity.oauth.not_configured` when Google is not set up. Public; rate limited per client address (20 a minute).
+         */
+        get: operations["googleStart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Where Google returns the browser
+         * @description Checks the cookie and `state`, exchanges the code (with the PKCE verifier), verifies the ID token (signature against Google's keys, issuer, audience, expiry, nonce) and requires `email_verified`. Then the user is found by Google's stable subject, else linked by the verified address, else created. Always answers a redirect to the console: success is `/signin/complete#token=qs_...&expires=...` (a fragment, so no server or proxy sees the token); a refusal is `/signin?oauth_error=` with one of `state`, `denied`, `token`, `email_unverified`, `unavailable`, `failed`. Public.
+         */
+        get: operations["googleCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/verify": {
         parameters: {
             query?: never;
@@ -1903,7 +2003,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with e-mail and password
-         * @description A wrong password, an unknown e-mail and a locked account all answer 401 `identity.auth.invalid_credentials`. Five wrong passwords lock the account for fifteen minutes. Public and rate limited per client address (10 a minute).
+         * @description One of the three ways to sign in (with a one-time code, `/auth/otp/*`, and Google, `/auth/google/*`). An account that has no password (it signs in by code or by Google) answers like a wrong password. A wrong password, an unknown e-mail and a locked account all answer 401 `identity.auth.invalid_credentials`. Five wrong passwords lock the account for fifteen minutes. Public and rate limited per client address (10 a minute).
          */
         post: operations["signIn"];
         delete?: never;
@@ -3618,12 +3718,16 @@ export interface components {
              * @description 14 days from now; slides on use
              */
             expire_time?: string;
+            /** @description The server's verdict: the person is a platform operator (verified address listed in QUOTIFY_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
+            operator?: boolean;
         };
         SessionInfo: {
             user?: components["schemas"]["AuthUser"];
             memberships?: components["schemas"]["Membership"][];
             /** Format: date-time */
             expire_time?: string;
+            /** @description The server's verdict: the person is a platform operator (verified address listed in QUOTIFY_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
+            operator?: boolean;
         };
         MyAccount: {
             /** Format: uuid */
@@ -8328,6 +8432,144 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    authMethods: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        password?: boolean;
+                        otp?: boolean;
+                        google?: boolean;
+                    };
+                };
+            };
+        };
+    };
+    requestLoginCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    /** @enum {string} */
+                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+                };
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Accepted"];
+                };
+            };
+            400: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    verifyLoginCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    code: string;
+                    /** @description Used only when the code creates the account */
+                    display_name?: string;
+                    /** @description Used only when the code creates the account */
+                    account_name?: string;
+                    /** @enum {string} */
+                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOpened"];
+                };
+            };
+            400: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    googleStart: {
+        parameters: {
+            query?: {
+                /** @description The language of the mails to a person this login creates */
+                locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to Google */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    googleCallback: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the console */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
             429: components["responses"]["Error"];
         };
     };

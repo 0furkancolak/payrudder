@@ -3,12 +3,14 @@
 package credential
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync"
 
@@ -138,3 +140,49 @@ func HashToken(token string) []byte {
 func WellFormedToken(s string) bool {
 	return strings.HasPrefix(s, TokenPrefix) && len(s) == len(TokenPrefix)+43
 }
+
+// CodeLen is the number of decimal places of a one-time sign-in code.
+const CodeLen = 6
+
+// NewCode returns a uniformly random six-place code (leading zeros kept) and a fresh salt. The code comes from the operating system's random source; the
+// modulo bias of a naive reduction is avoided by drawing an integer below 10^6 directly.
+func NewCode() (code string, salt []byte, err error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
+		return "", nil, fmt.Errorf("credential: code: %w", err)
+	}
+	salt = make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return "", nil, fmt.Errorf("credential: salt: %w", err)
+	}
+	return fmt.Sprintf("%0*d", CodeLen, n.Int64()), salt, nil
+}
+
+// WellFormedCode reports whether s is exactly six ASCII decimal characters.
+func WellFormedCode(s string) bool {
+	if len(s) != CodeLen {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// HashCode is what the database stores for a one-time code: HMAC-SHA256, keyed with the server's pepper, over the salt, the address and the code. A code has
+// only a million values, so a plain hash would fall to a leaked table in a moment; the pepper lives in the service's environment, not in the database, and the
+// address and salt keep one code's hash from being reused for another. Without a pepper (development) the salt is all there is.
+func HashCode(pepper, salt []byte, email, code string) []byte {
+	m := hmac.New(sha256.New, pepper)
+	m.Write(salt)
+	m.Write([]byte{0})
+	m.Write([]byte(email))
+	m.Write([]byte{0})
+	m.Write([]byte(code))
+	return m.Sum(nil)
+}
+
+// EqualHash compares two code hashes in constant time.
+func EqualHash(a, b []byte) bool { return subtle.ConstantTimeCompare(a, b) == 1 }

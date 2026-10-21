@@ -2,7 +2,13 @@ import type { Page, Route } from "@playwright/test";
 import { dashboardFixture } from "./dashboard";
 
 export const TENANT = "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e";
-export const OPERATOR = "test-operator-token-0123456789abcdef";
+/** The session token of the operator user the console tests sign in as (a person whose address the gateway lists in QUOTIFY_OPERATOR_EMAILS). */
+export const OPERATOR = "qs_" + "O".repeat(43);
+export const OPERATOR_EMAIL = "user1@example.com";
+export const OPERATOR_PASSWORD = "password123";
+
+/** The sign-in answer and the /auth/me answer of that operator user; `operator: true` is the server's verdict. */
+export const operatorUser = { id: "99999999-9999-4999-8999-999999999999", email: OPERATOR_EMAIL, display_name: "Operator One", email_verified: true, create_time: "2026-10-01T09:00:00Z" };
 
 export interface Call {
   method: string;
@@ -13,6 +19,23 @@ export interface Call {
 }
 
 type Handler = (call: Call) => { status?: number; body?: unknown } | undefined;
+
+/**
+ * The last resort of every mocked gateway: the operator user can sign in with a password and is recognised by /auth/me. A test that mocks its own people
+ * (product.ts) answers first, so this only ever fills in for the console tests that just need an operator.
+ */
+const operatorSignIn: Handler = (c) => {
+  if (c.method === "POST" && c.path === "/auth/signin" && c.body?.email === OPERATOR_EMAIL && c.body?.password === OPERATOR_PASSWORD) {
+    return { body: { user: operatorUser, memberships: [], token: OPERATOR, operator: true, expire_time: "2026-11-04T09:00:00Z" } };
+  }
+  if (c.method === "GET" && c.path === "/auth/me" && c.headers["authorization"] === `Bearer ${OPERATOR}`) {
+    return { body: { user: operatorUser, memberships: [], operator: true, expire_time: "2026-11-04T09:00:00Z" } };
+  }
+  // The operator is a person too, and the shell asks for their own organisation and apps (none here) whatever page they are on.
+  if (c.method === "GET" && c.path === "/app/v1/apps") return { body: { apps: [] } };
+  if (c.method === "GET" && c.path === "/app/v1/account") return { body: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Operator Co", role: "owner", members: [] } };
+  return undefined;
+};
 
 /**
  * A stand-in gateway: answers /gw requests from handlers the test provides (the first to return something wins), refuses what nobody
@@ -44,7 +67,7 @@ export class MockGateway {
       }
       const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body };
       this.calls.push(call);
-      for (const h of this.handlers) {
+      for (const h of [...this.handlers, operatorSignIn]) {
         const r = h(call);
         if (r) {
           await route.fulfill({ status: r.status ?? 200, contentType: "application/json", body: JSON.stringify(r.body ?? {}) });
@@ -69,11 +92,19 @@ export function baseTenant(gw: MockGateway, overrides: Record<string, unknown> =
   });
 }
 
-/** Signs in with the operator token and opens a page of the tenant. */
-export async function openTenantPage(page: Page, path: string): Promise<void> {
-  await page.goto("/operator");
-  await page.getByLabel("Operator token").fill(OPERATOR);
+/** Signs in as the operator user (e-mail and password, through the page) and opens the operator console's tenant list. */
+export async function signInAsOperator(page: Page): Promise<void> {
+  await page.goto("/signin");
+  await page.getByLabel("E-mail").fill(OPERATOR_EMAIL);
+  await page.getByLabel("Password", { exact: true }).fill(OPERATOR_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL("**/app");
+  await page.goto("/operator");
   await page.waitForURL("**/tenants");
+}
+
+/** Signs in as the operator user and opens a page of the tenant in the operator console. */
+export async function openTenantPage(page: Page, path: string): Promise<void> {
+  await signInAsOperator(page);
   await page.goto(`/tenants/${TENANT}${path}`);
 }

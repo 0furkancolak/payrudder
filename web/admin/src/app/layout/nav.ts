@@ -17,6 +17,7 @@ import {
   Receipt,
   Repeat,
   Settings,
+  ShieldCheck,
   Users,
   UsersRound,
   Wallet,
@@ -45,6 +46,8 @@ export interface ShellContext {
   appId?: string;
   /** The environment of a person's app page. */
   env?: "live" | "sandbox";
+  /** Whether the server says this person is a platform operator: the organisation level then has a door to the operator console. */
+  operator?: boolean;
 }
 
 export interface NavItem {
@@ -121,6 +124,8 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
             item("settings", "/app/settings", Settings, under("/app/settings")),
           ],
         },
+        // The operator console is a part of the same app for the people the server lets into it; nobody else sees the door.
+        ...(ctx.operator ? [{ key: "platform", items: [item("operator", "/operator", ShieldCheck, exact("/operator"))] }] : []),
       ];
     case "platform":
       return [
@@ -132,6 +137,7 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
             item("deadLetters", "/dead-letters", Inbox, under("/dead-letters")),
           ],
         },
+        { key: "account", items: [item("myApps", "/app", LayoutGrid, exact("/app"))] },
       ];
     case "app": {
       const tid = ctx.tenantId ?? "";
@@ -167,6 +173,7 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
         const items = PAGES.filter((p) => p.section === s).map((p) => item(p.key, `${base}/${p.path}`, p.icon, under(`${base}/${p.path}`)));
         if (items.length > 0) sections.push({ key: s, items });
       }
+      sections.push({ key: "account", items: [item("myApps", "/app", LayoutGrid, exact("/app"))] });
       return sections;
     }
   }

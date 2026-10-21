@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
-import { ChevronsLeft, ChevronsRight, LogOut } from "@lucide/vue";
+import { ChevronsLeft, ChevronsRight } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { isOperator } from "@/shared/lib/session";
 import { setSidebarCollapsed, sidebarCollapsed } from "@/shared/lib/prefs";
 import SidebarNav from "./SidebarNav.vue";
 import type { NavItem, NavSection } from "./nav";
@@ -12,7 +11,6 @@ import type { NavItem, NavSection } from "./nav";
  * the grey page, like the cards beside it. The same navigation fills the phone drawer (MobileDrawer).
  */
 defineProps<{ sections: NavSection[]; current: NavItem | undefined; brand: string; home: string }>();
-const emit = defineEmits<{ signOut: [] }>();
 const { t } = useI18n();
 </script>
 
@@ -35,16 +33,6 @@ const { t } = useI18n();
     </div>
 
     <div class="mt-3 flex flex-col gap-0.5 border-t pt-3">
-      <button
-        v-if="isOperator"
-        type="button"
-        :class="['text-muted-foreground hover:bg-muted hover:text-foreground flex min-h-10 items-center gap-3 rounded-2xl text-sm font-medium', sidebarCollapsed ? 'justify-center' : 'px-3.5']"
-        :title="sidebarCollapsed ? t('nav.signOut') : undefined"
-        @click="emit('signOut')"
-      >
-        <LogOut class="size-[1.15rem] shrink-0" aria-hidden="true" />
-        <span :class="sidebarCollapsed ? 'sr-only' : ''">{{ t("nav.signOut") }}</span>
-      </button>
       <button
         type="button"
         data-testid="sidebar-toggle"

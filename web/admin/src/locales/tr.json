@@ -21,12 +21,6 @@
     "unknown": "?",
     "cancel": "Vazgeç"
   },
-  "signIn": {
-    "title": "Operatör konsolu",
-    "intro": "Yalnızca ağ geçidi üzerinden okur ve işlem yapar. Jeton bu tarayıcı sekmesinde kalır (oturum depolaması).",
-    "tokenLabel": "Operatör jetonu",
-    "submit": "Giriş yap"
-  },
   "enums": {
     "environment": {
       "sandbox": "sandbox",
@@ -1417,6 +1411,18 @@
       "member": {
         "last_owner": "Bir hesabın en az bir sahibi olmalı. Önce başka birini sahip yapın.",
         "not_found": "Bu kişi hesabın üyesi değil."
+      },
+      "otp": {
+        "invalid": "Bu kod yanlış, süresi dolmuş ya da daha önce kullanılmış. Son e-postaya bakın ya da yeni bir kod isteyin."
+      },
+      "oauth": {
+        "conflict": "İki giriş çakıştı. Yeniden deneyin.",
+        "email_unverified": "Google bu hesap için bir e-posta adresi doğrulamadığından giriş için kullanılamaz.",
+        "invalid": "Bu giriş tamamlanamadı. Yeniden deneyin.",
+        "not_configured": "Google ile giriş burada kurulu değil."
+      },
+      "operator": {
+        "forbidden": "Bu alan platform operatörlerine ayrılmıştır."
       }
     },
     "gateway": {
@@ -1492,9 +1498,36 @@
       "submit": "Giriş yap",
       "cta": "Giriş yap",
       "noAccount": "Burada yeni misiniz?",
-      "operator": "Operatör konsolu",
       "expired": "Oturumunuz sona erdi. Devam etmek için yeniden giriş yapın.",
-      "forgot": "Parolanızı mı unuttunuz?"
+      "forgot": "Parolanızı mı unuttunuz?",
+      "methods": "Giriş yöntemi",
+      "tabPassword": "Parola",
+      "tabCode": "E-posta kodu",
+      "or": "ya da",
+      "google": "Google ile devam et",
+      "completing": "Giriş yapılıyor",
+      "completingIntro": "Google ile giriş tamamlanıyor. Bir saniye.",
+      "oauthError": {
+        "state": "Google ile giriş doğrulanamadı (çok uzun sürdü ya da sayfa iki kez açıldı). Yeniden deneyin.",
+        "denied": "Google ile girişi iptal ettiniz. Yeniden deneyebilir ya da başka bir yöntem kullanabilirsiniz.",
+        "token": "Google'ın yanıtı doğrulanamadı. Yeniden deneyin.",
+        "email_unverified": "Google bu hesap için bir e-posta adresi doğrulamadığından giriş için kullanılamaz.",
+        "unavailable": "Google ile giriş şu anda kullanılamıyor. Biraz sonra yeniden deneyin ya da başka bir yöntem kullanın.",
+        "failed": "Google ile giriş tamamlanamadı. Yeniden deneyin ya da başka bir yöntem kullanın."
+      },
+      "code": {
+        "label": "6 haneli kod",
+        "digit": "{total} haneden {n}. hane",
+        "intro": "Size 6 haneli bir kod e-postayla göndereceğiz. Parola gerekmez.",
+        "formLabel": "Tek kullanımlık kodla giriş",
+        "verifyLabel": "Tek kullanımlık kodu girin",
+        "send": "Bana kod gönder",
+        "sentTo": "{email} adresi e-posta alabiliyorsa 6 haneli bir kod yolda. Kod 10 dakika geçerlidir.",
+        "resent": "Yeni bir kod yolda.",
+        "resend": "Yeni kod gönder",
+        "resendIn": "{seconds} sn sonra yeni kod gönder",
+        "change": "Başka bir adres kullan"
+      }
     },
     "signUp": {
       "title": "Hesabınızı oluşturun",
@@ -1503,7 +1536,11 @@
       "cta": "Hesap oluşturun",
       "haveAccount": "Zaten hesabınız var mı?",
       "checkTitle": "Gelen kutunuza bakın",
-      "checkBody": "{email} adresine bir ileti gönderdik. Yeni bir adresse, onaylamak için içindeki bağlantıyı açın. Zaten bir hesabı varsa o hesapla oturum açın ya da parolasını sıfırlayın."
+      "checkBody": "{email} adresine bir ileti gönderdik. Yeni bir adresse, onaylamak için içindeki bağlantıyı açın. Zaten bir hesabı varsa o hesapla oturum açın ya da parolasını sıfırlayın.",
+      "code": {
+        "intro": "Hatırlanacak parola yok: size 6 haneli bir kod e-postalarız, kodu girdiğinizde hesabınızı oluştururuz.",
+        "organisation": "Kuruluş (isteğe bağlı)"
+      }
     },
     "home": {
       "title": "Kuruluşunuz",
@@ -1815,7 +1852,9 @@
       "mail": "E-posta",
       "address": "İş adresi",
       "einvoice": "E-fatura",
-      "appSettings": "Uygulama ayarları"
+      "appSettings": "Uygulama ayarları",
+      "operator": "Operatör konsolu",
+      "myApps": "Uygulamalarım"
     }
   },
   "privacy": {

@@ -12,6 +12,9 @@ export interface Crumb {
   search?: Record<string, string>;
 }
 
+/** The paths of the operator console. A person the server calls an operator reaches them; nobody else does (the server decides on every request). */
+export const OPERATOR_PATHS = /^\/(operator|tenants|playground|dead-letters)(\/|$)/;
+
 /** Finds the app and environment a tenant id belongs to among a person's apps. */
 export function appOfTenant(apps: App[] | undefined, tenantId: string): { app: App; env: Environment } | null {
   for (const app of apps ?? []) {
@@ -40,25 +43,27 @@ export function useShell() {
   });
   const appInPath = computed(() => /^\/app\/apps\/([^/]+)/.exec(path.value)?.[1] ?? "");
 
-  const operatorTenant = computed(() => (isOperator.value && path.value.startsWith("/tenants/") ? tenantInPath.value : ""));
+  // An operator is a person: the console's pages are theirs only while they are on them, and their own organisation is one click away.
+  const inOperatorArea = computed(() => isOperator.value && OPERATOR_PATHS.test(path.value));
+  const operatorTenant = computed(() => (inOperatorArea.value && path.value.startsWith("/tenants/") ? tenantInPath.value : ""));
   const tenant = useTenant(operatorTenant);
 
   const located = computed(() => (isPerson.value && path.value.startsWith("/app/t/") ? appOfTenant(apps.data.value?.apps, tenantInPath.value) : null));
 
   const context = computed<ShellContext>(() => {
-    if (isOperator.value) {
+    if (inOperatorArea.value) {
       return operatorTenant.value ? { level: "tenant", tenantId: operatorTenant.value } : { level: "platform" };
     }
     if (appInPath.value) {
       const app = apps.data.value?.apps?.find((a) => a.id === appInPath.value);
       const envSearch = search.value.env === "sandbox" ? "sandbox" : "live";
       const tenantId = app?.tenants?.find((x) => x.environment === (envSearch === "live" ? "ENVIRONMENT_LIVE" : "ENVIRONMENT_SANDBOX"))?.id;
-      return { level: "app", appId: appInPath.value, env: envSearch, ...(tenantId ? { tenantId } : {}) };
+      return { level: "app", appId: appInPath.value, env: envSearch, operator: isOperator.value, ...(tenantId ? { tenantId } : {}) };
     }
     if (path.value.startsWith("/app/t/")) {
       return { level: "app", tenantId: tenantInPath.value, ...(located.value ? { appId: located.value.app.id ?? "", env: located.value.env } : {}) };
     }
-    return { level: "org" };
+    return { level: "org", operator: isOperator.value };
   });
 
   const sections = computed<NavSection[]>(() => buildNav(context.value));

@@ -1,43 +1,41 @@
 import { expect, test } from "@playwright/test";
 import { pickLanguage } from "../e2e-mock/ui";
-
-const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
+import { signInAsOperator } from "./operator";
 
 test.describe("languages", () => {
   test("the language follows the browser, can be changed, and is remembered", async ({ page }) => {
-    await page.goto("/operator");
-    await expect(page.getByRole("heading", { name: "Operator console" })).toBeVisible();
+    await page.goto("/signin");
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
     await pickLanguage(page, "tr");
-    await expect(page.getByRole("heading", { name: "Operatör konsolu" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tekrar hoş geldiniz" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "tr");
     await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
 
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Operatör konsolu" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tekrar hoş geldiniz" })).toBeVisible();
   });
 
   test("Arabic reads right to left", async ({ page }) => {
-    await page.goto("/operator");
+    await page.goto("/signin");
     await pickLanguage(page, "ar");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-    await expect(page.getByRole("heading", { name: "وحدة تحكم المشغّل" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "أهلاً بعودتك" })).toBeVisible();
   });
 
   test("a visitor whose browser speaks German gets German", async ({ browser }) => {
     const context = await browser.newContext({ locale: "de-DE" });
     const page = await context.newPage();
-    await page.goto("/operator");
-    await expect(page.getByRole("heading", { name: "Operator-Konsole" })).toBeVisible();
+    await page.goto("/signin");
+    await expect(page.getByRole("heading", { name: "Willkommen zurück" })).toBeVisible();
     await context.close();
   });
 
   test("the signed-in pages and the playground are translated too", async ({ page }) => {
-    await page.goto("/operator");
+    await page.goto("/signin");
     await pickLanguage(page, "fr");
-    await page.getByLabel("Jeton opérateur").fill(operatorToken);
-    await page.getByRole("button", { name: "Se connecter" }).click();
+    await signInAsOperator(page);
     await expect(page.getByRole("heading", { name: "Locataires" })).toBeVisible();
     await page.getByRole("link", { name: "Bac à sable" }).click();
     await expect(page.getByRole("heading", { name: "Bac à sable" })).toBeVisible();

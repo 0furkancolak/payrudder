@@ -396,6 +396,397 @@ func (x *SignInResponse) GetExpireTime() *timestamppb.Timestamp {
 	return nil
 }
 
+type RequestLoginCodeRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Email string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	// The language of the mail: en, tr, de, fr, es or ar. An existing user's own language wins.
+	Locale        string `protobuf:"bytes,2,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestLoginCodeRequest) Reset() {
+	*x = RequestLoginCodeRequest{}
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestLoginCodeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestLoginCodeRequest) ProtoMessage() {}
+
+func (x *RequestLoginCodeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestLoginCodeRequest.ProtoReflect.Descriptor instead.
+func (*RequestLoginCodeRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RequestLoginCodeRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *RequestLoginCodeRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+type RequestLoginCodeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestLoginCodeResponse) Reset() {
+	*x = RequestLoginCodeResponse{}
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestLoginCodeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestLoginCodeResponse) ProtoMessage() {}
+
+func (x *RequestLoginCodeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestLoginCodeResponse.ProtoReflect.Descriptor instead.
+func (*RequestLoginCodeResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{7}
+}
+
+type VerifyLoginCodeRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Email string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	Code  string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	// Used only when the address has no account yet and the code creates one.
+	DisplayName   string `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	AccountName   string `protobuf:"bytes,4,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
+	Locale        string `protobuf:"bytes,5,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VerifyLoginCodeRequest) Reset() {
+	*x = VerifyLoginCodeRequest{}
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyLoginCodeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyLoginCodeRequest) ProtoMessage() {}
+
+func (x *VerifyLoginCodeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyLoginCodeRequest.ProtoReflect.Descriptor instead.
+func (*VerifyLoginCodeRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *VerifyLoginCodeRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *VerifyLoginCodeRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *VerifyLoginCodeRequest) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *VerifyLoginCodeRequest) GetAccountName() string {
+	if x != nil {
+		return x.AccountName
+	}
+	return ""
+}
+
+func (x *VerifyLoginCodeRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+// VerifyLoginCodeResponse is a session, shaped like SignInResponse.
+type VerifyLoginCodeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	Memberships   []*Membership          `protobuf:"bytes,2,rep,name=memberships,proto3" json:"memberships,omitempty"`
+	Token         string                 `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	ExpireTime    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VerifyLoginCodeResponse) Reset() {
+	*x = VerifyLoginCodeResponse{}
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyLoginCodeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyLoginCodeResponse) ProtoMessage() {}
+
+func (x *VerifyLoginCodeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyLoginCodeResponse.ProtoReflect.Descriptor instead.
+func (*VerifyLoginCodeResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *VerifyLoginCodeResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *VerifyLoginCodeResponse) GetMemberships() []*Membership {
+	if x != nil {
+		return x.Memberships
+	}
+	return nil
+}
+
+func (x *VerifyLoginCodeResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *VerifyLoginCodeResponse) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
+type SignInWithIdentityRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// "google".
+	Provider string `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	// The provider's stable id of the person (the ID token's "sub").
+	Subject string `protobuf:"bytes,2,opt,name=subject,proto3" json:"subject,omitempty"`
+	Email   string `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	// Must be true: an address the provider has not verified is never used to find or create a user.
+	EmailVerified bool   `protobuf:"varint,4,opt,name=email_verified,json=emailVerified,proto3" json:"email_verified,omitempty"`
+	DisplayName   string `protobuf:"bytes,5,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Locale        string `protobuf:"bytes,6,opt,name=locale,proto3" json:"locale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignInWithIdentityRequest) Reset() {
+	*x = SignInWithIdentityRequest{}
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignInWithIdentityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignInWithIdentityRequest) ProtoMessage() {}
+
+func (x *SignInWithIdentityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignInWithIdentityRequest.ProtoReflect.Descriptor instead.
+func (*SignInWithIdentityRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SignInWithIdentityRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *SignInWithIdentityRequest) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *SignInWithIdentityRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *SignInWithIdentityRequest) GetEmailVerified() bool {
+	if x != nil {
+		return x.EmailVerified
+	}
+	return false
+}
+
+func (x *SignInWithIdentityRequest) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *SignInWithIdentityRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+// SignInWithIdentityResponse is a session, shaped like SignInResponse.
+type SignInWithIdentityResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	Memberships   []*Membership          `protobuf:"bytes,2,rep,name=memberships,proto3" json:"memberships,omitempty"`
+	Token         string                 `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	ExpireTime    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignInWithIdentityResponse) Reset() {
+	*x = SignInWithIdentityResponse{}
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignInWithIdentityResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignInWithIdentityResponse) ProtoMessage() {}
+
+func (x *SignInWithIdentityResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignInWithIdentityResponse.ProtoReflect.Descriptor instead.
+func (*SignInWithIdentityResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *SignInWithIdentityResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *SignInWithIdentityResponse) GetMemberships() []*Membership {
+	if x != nil {
+		return x.Memberships
+	}
+	return nil
+}
+
+func (x *SignInWithIdentityResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *SignInWithIdentityResponse) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
 type SignOutRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
@@ -405,7 +796,7 @@ type SignOutRequest struct {
 
 func (x *SignOutRequest) Reset() {
 	*x = SignOutRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[6]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -417,7 +808,7 @@ func (x *SignOutRequest) String() string {
 func (*SignOutRequest) ProtoMessage() {}
 
 func (x *SignOutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[6]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -430,7 +821,7 @@ func (x *SignOutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignOutRequest.ProtoReflect.Descriptor instead.
 func (*SignOutRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{6}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SignOutRequest) GetToken() string {
@@ -448,7 +839,7 @@ type SignOutResponse struct {
 
 func (x *SignOutResponse) Reset() {
 	*x = SignOutResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[7]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -460,7 +851,7 @@ func (x *SignOutResponse) String() string {
 func (*SignOutResponse) ProtoMessage() {}
 
 func (x *SignOutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[7]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -473,7 +864,7 @@ func (x *SignOutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignOutResponse.ProtoReflect.Descriptor instead.
 func (*SignOutResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{7}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{13}
 }
 
 type GetSessionRequest struct {
@@ -485,7 +876,7 @@ type GetSessionRequest struct {
 
 func (x *GetSessionRequest) Reset() {
 	*x = GetSessionRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[8]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -497,7 +888,7 @@ func (x *GetSessionRequest) String() string {
 func (*GetSessionRequest) ProtoMessage() {}
 
 func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[8]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -510,7 +901,7 @@ func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSessionRequest.ProtoReflect.Descriptor instead.
 func (*GetSessionRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{8}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetSessionRequest) GetToken() string {
@@ -531,7 +922,7 @@ type GetSessionResponse struct {
 
 func (x *GetSessionResponse) Reset() {
 	*x = GetSessionResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[9]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -543,7 +934,7 @@ func (x *GetSessionResponse) String() string {
 func (*GetSessionResponse) ProtoMessage() {}
 
 func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[9]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -556,7 +947,7 @@ func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSessionResponse.ProtoReflect.Descriptor instead.
 func (*GetSessionResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{9}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetSessionResponse) GetUser() *User {
@@ -593,7 +984,7 @@ type AccountMember struct {
 
 func (x *AccountMember) Reset() {
 	*x = AccountMember{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[10]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -605,7 +996,7 @@ func (x *AccountMember) String() string {
 func (*AccountMember) ProtoMessage() {}
 
 func (x *AccountMember) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[10]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -618,7 +1009,7 @@ func (x *AccountMember) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountMember.ProtoReflect.Descriptor instead.
 func (*AccountMember) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{10}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AccountMember) GetUserId() string {
@@ -666,7 +1057,7 @@ type GetMyAccountRequest struct {
 
 func (x *GetMyAccountRequest) Reset() {
 	*x = GetMyAccountRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[11]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -678,7 +1069,7 @@ func (x *GetMyAccountRequest) String() string {
 func (*GetMyAccountRequest) ProtoMessage() {}
 
 func (x *GetMyAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[11]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -691,7 +1082,7 @@ func (x *GetMyAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyAccountRequest.ProtoReflect.Descriptor instead.
 func (*GetMyAccountRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{11}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetMyAccountRequest) GetUserId() string {
@@ -722,7 +1113,7 @@ type GetMyAccountResponse struct {
 
 func (x *GetMyAccountResponse) Reset() {
 	*x = GetMyAccountResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[12]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -734,7 +1125,7 @@ func (x *GetMyAccountResponse) String() string {
 func (*GetMyAccountResponse) ProtoMessage() {}
 
 func (x *GetMyAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[12]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -747,7 +1138,7 @@ func (x *GetMyAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyAccountResponse.ProtoReflect.Descriptor instead.
 func (*GetMyAccountResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{12}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetMyAccountResponse) GetId() string {
@@ -800,7 +1191,7 @@ type CreateMyAppRequest struct {
 
 func (x *CreateMyAppRequest) Reset() {
 	*x = CreateMyAppRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[13]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -812,7 +1203,7 @@ func (x *CreateMyAppRequest) String() string {
 func (*CreateMyAppRequest) ProtoMessage() {}
 
 func (x *CreateMyAppRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[13]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -825,7 +1216,7 @@ func (x *CreateMyAppRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMyAppRequest.ProtoReflect.Descriptor instead.
 func (*CreateMyAppRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{13}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CreateMyAppRequest) GetUserId() string {
@@ -879,7 +1270,7 @@ type CreateMyAppResponse struct {
 
 func (x *CreateMyAppResponse) Reset() {
 	*x = CreateMyAppResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[14]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -891,7 +1282,7 @@ func (x *CreateMyAppResponse) String() string {
 func (*CreateMyAppResponse) ProtoMessage() {}
 
 func (x *CreateMyAppResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[14]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -904,7 +1295,7 @@ func (x *CreateMyAppResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMyAppResponse.ProtoReflect.Descriptor instead.
 func (*CreateMyAppResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{14}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CreateMyAppResponse) GetApp() *App {
@@ -924,7 +1315,7 @@ type ListMyAppsRequest struct {
 
 func (x *ListMyAppsRequest) Reset() {
 	*x = ListMyAppsRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[15]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -936,7 +1327,7 @@ func (x *ListMyAppsRequest) String() string {
 func (*ListMyAppsRequest) ProtoMessage() {}
 
 func (x *ListMyAppsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[15]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -949,7 +1340,7 @@ func (x *ListMyAppsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyAppsRequest.ProtoReflect.Descriptor instead.
 func (*ListMyAppsRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{15}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListMyAppsRequest) GetUserId() string {
@@ -975,7 +1366,7 @@ type ListMyAppsResponse struct {
 
 func (x *ListMyAppsResponse) Reset() {
 	*x = ListMyAppsResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[16]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -987,7 +1378,7 @@ func (x *ListMyAppsResponse) String() string {
 func (*ListMyAppsResponse) ProtoMessage() {}
 
 func (x *ListMyAppsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[16]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1000,7 +1391,7 @@ func (x *ListMyAppsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyAppsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyAppsResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{16}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ListMyAppsResponse) GetApps() []*App {
@@ -1020,7 +1411,7 @@ type GetMyAppRequest struct {
 
 func (x *GetMyAppRequest) Reset() {
 	*x = GetMyAppRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[17]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1032,7 +1423,7 @@ func (x *GetMyAppRequest) String() string {
 func (*GetMyAppRequest) ProtoMessage() {}
 
 func (x *GetMyAppRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[17]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1045,7 +1436,7 @@ func (x *GetMyAppRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyAppRequest.ProtoReflect.Descriptor instead.
 func (*GetMyAppRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{17}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetMyAppRequest) GetUserId() string {
@@ -1072,7 +1463,7 @@ type GetMyAppResponse struct {
 
 func (x *GetMyAppResponse) Reset() {
 	*x = GetMyAppResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[18]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1084,7 +1475,7 @@ func (x *GetMyAppResponse) String() string {
 func (*GetMyAppResponse) ProtoMessage() {}
 
 func (x *GetMyAppResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[18]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1097,7 +1488,7 @@ func (x *GetMyAppResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyAppResponse.ProtoReflect.Descriptor instead.
 func (*GetMyAppResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{18}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetMyAppResponse) GetApp() *App {
@@ -1124,7 +1515,7 @@ type ResolveMyTenantRequest struct {
 
 func (x *ResolveMyTenantRequest) Reset() {
 	*x = ResolveMyTenantRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[19]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1136,7 +1527,7 @@ func (x *ResolveMyTenantRequest) String() string {
 func (*ResolveMyTenantRequest) ProtoMessage() {}
 
 func (x *ResolveMyTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[19]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1149,7 +1540,7 @@ func (x *ResolveMyTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveMyTenantRequest.ProtoReflect.Descriptor instead.
 func (*ResolveMyTenantRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{19}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ResolveMyTenantRequest) GetUserId() string {
@@ -1176,7 +1567,7 @@ type ResolveMyTenantResponse struct {
 
 func (x *ResolveMyTenantResponse) Reset() {
 	*x = ResolveMyTenantResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[20]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1188,7 +1579,7 @@ func (x *ResolveMyTenantResponse) String() string {
 func (*ResolveMyTenantResponse) ProtoMessage() {}
 
 func (x *ResolveMyTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[20]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1201,7 +1592,7 @@ func (x *ResolveMyTenantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveMyTenantResponse.ProtoReflect.Descriptor instead.
 func (*ResolveMyTenantResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{20}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ResolveMyTenantResponse) GetTenant() *Tenant {
@@ -1229,7 +1620,7 @@ type CreateMyApiKeyRequest struct {
 
 func (x *CreateMyApiKeyRequest) Reset() {
 	*x = CreateMyApiKeyRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[21]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1241,7 +1632,7 @@ func (x *CreateMyApiKeyRequest) String() string {
 func (*CreateMyApiKeyRequest) ProtoMessage() {}
 
 func (x *CreateMyApiKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[21]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1254,7 +1645,7 @@ func (x *CreateMyApiKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMyApiKeyRequest.ProtoReflect.Descriptor instead.
 func (*CreateMyApiKeyRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{21}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *CreateMyApiKeyRequest) GetUserId() string {
@@ -1289,7 +1680,7 @@ type CreateMyApiKeyResponse struct {
 
 func (x *CreateMyApiKeyResponse) Reset() {
 	*x = CreateMyApiKeyResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[22]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1301,7 +1692,7 @@ func (x *CreateMyApiKeyResponse) String() string {
 func (*CreateMyApiKeyResponse) ProtoMessage() {}
 
 func (x *CreateMyApiKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[22]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1314,7 +1705,7 @@ func (x *CreateMyApiKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMyApiKeyResponse.ProtoReflect.Descriptor instead.
 func (*CreateMyApiKeyResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{22}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CreateMyApiKeyResponse) GetApiKey() *ApiKey {
@@ -1341,7 +1732,7 @@ type ListMyApiKeysRequest struct {
 
 func (x *ListMyApiKeysRequest) Reset() {
 	*x = ListMyApiKeysRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[23]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1353,7 +1744,7 @@ func (x *ListMyApiKeysRequest) String() string {
 func (*ListMyApiKeysRequest) ProtoMessage() {}
 
 func (x *ListMyApiKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[23]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1366,7 +1757,7 @@ func (x *ListMyApiKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyApiKeysRequest.ProtoReflect.Descriptor instead.
 func (*ListMyApiKeysRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{23}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListMyApiKeysRequest) GetUserId() string {
@@ -1392,7 +1783,7 @@ type ListMyApiKeysResponse struct {
 
 func (x *ListMyApiKeysResponse) Reset() {
 	*x = ListMyApiKeysResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[24]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1404,7 +1795,7 @@ func (x *ListMyApiKeysResponse) String() string {
 func (*ListMyApiKeysResponse) ProtoMessage() {}
 
 func (x *ListMyApiKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[24]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1417,7 +1808,7 @@ func (x *ListMyApiKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyApiKeysResponse.ProtoReflect.Descriptor instead.
 func (*ListMyApiKeysResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{24}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListMyApiKeysResponse) GetApiKeys() []*ApiKey {
@@ -1438,7 +1829,7 @@ type RevokeMyApiKeyRequest struct {
 
 func (x *RevokeMyApiKeyRequest) Reset() {
 	*x = RevokeMyApiKeyRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[25]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1450,7 +1841,7 @@ func (x *RevokeMyApiKeyRequest) String() string {
 func (*RevokeMyApiKeyRequest) ProtoMessage() {}
 
 func (x *RevokeMyApiKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[25]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1463,7 +1854,7 @@ func (x *RevokeMyApiKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeMyApiKeyRequest.ProtoReflect.Descriptor instead.
 func (*RevokeMyApiKeyRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{25}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *RevokeMyApiKeyRequest) GetUserId() string {
@@ -1496,7 +1887,7 @@ type RevokeMyApiKeyResponse struct {
 
 func (x *RevokeMyApiKeyResponse) Reset() {
 	*x = RevokeMyApiKeyResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[26]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1508,7 +1899,7 @@ func (x *RevokeMyApiKeyResponse) String() string {
 func (*RevokeMyApiKeyResponse) ProtoMessage() {}
 
 func (x *RevokeMyApiKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[26]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1521,7 +1912,7 @@ func (x *RevokeMyApiKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeMyApiKeyResponse.ProtoReflect.Descriptor instead.
 func (*RevokeMyApiKeyResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{26}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *RevokeMyApiKeyResponse) GetApiKey() *ApiKey {
@@ -1540,7 +1931,7 @@ type VerifyEmailRequest struct {
 
 func (x *VerifyEmailRequest) Reset() {
 	*x = VerifyEmailRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[27]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1552,7 +1943,7 @@ func (x *VerifyEmailRequest) String() string {
 func (*VerifyEmailRequest) ProtoMessage() {}
 
 func (x *VerifyEmailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[27]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1565,7 +1956,7 @@ func (x *VerifyEmailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyEmailRequest.ProtoReflect.Descriptor instead.
 func (*VerifyEmailRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{27}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *VerifyEmailRequest) GetToken() string {
@@ -1584,7 +1975,7 @@ type VerifyEmailResponse struct {
 
 func (x *VerifyEmailResponse) Reset() {
 	*x = VerifyEmailResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[28]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1596,7 +1987,7 @@ func (x *VerifyEmailResponse) String() string {
 func (*VerifyEmailResponse) ProtoMessage() {}
 
 func (x *VerifyEmailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[28]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1609,7 +2000,7 @@ func (x *VerifyEmailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyEmailResponse.ProtoReflect.Descriptor instead.
 func (*VerifyEmailResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{28}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *VerifyEmailResponse) GetUser() *User {
@@ -1628,7 +2019,7 @@ type ResendVerificationRequest struct {
 
 func (x *ResendVerificationRequest) Reset() {
 	*x = ResendVerificationRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[29]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1640,7 +2031,7 @@ func (x *ResendVerificationRequest) String() string {
 func (*ResendVerificationRequest) ProtoMessage() {}
 
 func (x *ResendVerificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[29]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1653,7 +2044,7 @@ func (x *ResendVerificationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendVerificationRequest.ProtoReflect.Descriptor instead.
 func (*ResendVerificationRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{29}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ResendVerificationRequest) GetUserId() string {
@@ -1671,7 +2062,7 @@ type ResendVerificationResponse struct {
 
 func (x *ResendVerificationResponse) Reset() {
 	*x = ResendVerificationResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[30]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1683,7 +2074,7 @@ func (x *ResendVerificationResponse) String() string {
 func (*ResendVerificationResponse) ProtoMessage() {}
 
 func (x *ResendVerificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[30]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1696,7 +2087,7 @@ func (x *ResendVerificationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendVerificationResponse.ProtoReflect.Descriptor instead.
 func (*ResendVerificationResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{30}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{36}
 }
 
 type RequestPasswordResetRequest struct {
@@ -1709,7 +2100,7 @@ type RequestPasswordResetRequest struct {
 
 func (x *RequestPasswordResetRequest) Reset() {
 	*x = RequestPasswordResetRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[31]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1721,7 +2112,7 @@ func (x *RequestPasswordResetRequest) String() string {
 func (*RequestPasswordResetRequest) ProtoMessage() {}
 
 func (x *RequestPasswordResetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[31]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1734,7 +2125,7 @@ func (x *RequestPasswordResetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestPasswordResetRequest.ProtoReflect.Descriptor instead.
 func (*RequestPasswordResetRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{31}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *RequestPasswordResetRequest) GetEmail() string {
@@ -1759,7 +2150,7 @@ type RequestPasswordResetResponse struct {
 
 func (x *RequestPasswordResetResponse) Reset() {
 	*x = RequestPasswordResetResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[32]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1771,7 +2162,7 @@ func (x *RequestPasswordResetResponse) String() string {
 func (*RequestPasswordResetResponse) ProtoMessage() {}
 
 func (x *RequestPasswordResetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[32]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1784,7 +2175,7 @@ func (x *RequestPasswordResetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestPasswordResetResponse.ProtoReflect.Descriptor instead.
 func (*RequestPasswordResetResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{32}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{38}
 }
 
 type ResetPasswordRequest struct {
@@ -1797,7 +2188,7 @@ type ResetPasswordRequest struct {
 
 func (x *ResetPasswordRequest) Reset() {
 	*x = ResetPasswordRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[33]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1809,7 +2200,7 @@ func (x *ResetPasswordRequest) String() string {
 func (*ResetPasswordRequest) ProtoMessage() {}
 
 func (x *ResetPasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[33]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1822,7 +2213,7 @@ func (x *ResetPasswordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetPasswordRequest.ProtoReflect.Descriptor instead.
 func (*ResetPasswordRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{33}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ResetPasswordRequest) GetToken() string {
@@ -1847,7 +2238,7 @@ type ResetPasswordResponse struct {
 
 func (x *ResetPasswordResponse) Reset() {
 	*x = ResetPasswordResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[34]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1859,7 +2250,7 @@ func (x *ResetPasswordResponse) String() string {
 func (*ResetPasswordResponse) ProtoMessage() {}
 
 func (x *ResetPasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[34]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1872,7 +2263,7 @@ func (x *ResetPasswordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetPasswordResponse.ProtoReflect.Descriptor instead.
 func (*ResetPasswordResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{34}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{40}
 }
 
 type RenameMyAccountRequest struct {
@@ -1886,7 +2277,7 @@ type RenameMyAccountRequest struct {
 
 func (x *RenameMyAccountRequest) Reset() {
 	*x = RenameMyAccountRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[35]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1898,7 +2289,7 @@ func (x *RenameMyAccountRequest) String() string {
 func (*RenameMyAccountRequest) ProtoMessage() {}
 
 func (x *RenameMyAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[35]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1911,7 +2302,7 @@ func (x *RenameMyAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameMyAccountRequest.ProtoReflect.Descriptor instead.
 func (*RenameMyAccountRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{35}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *RenameMyAccountRequest) GetUserId() string {
@@ -1944,7 +2335,7 @@ type RenameMyAccountResponse struct {
 
 func (x *RenameMyAccountResponse) Reset() {
 	*x = RenameMyAccountResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[36]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1956,7 +2347,7 @@ func (x *RenameMyAccountResponse) String() string {
 func (*RenameMyAccountResponse) ProtoMessage() {}
 
 func (x *RenameMyAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[36]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1969,7 +2360,7 @@ func (x *RenameMyAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameMyAccountResponse.ProtoReflect.Descriptor instead.
 func (*RenameMyAccountResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{36}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *RenameMyAccountResponse) GetName() string {
@@ -1996,7 +2387,7 @@ type Invitation struct {
 
 func (x *Invitation) Reset() {
 	*x = Invitation{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[37]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2008,7 +2399,7 @@ func (x *Invitation) String() string {
 func (*Invitation) ProtoMessage() {}
 
 func (x *Invitation) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[37]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2021,7 +2412,7 @@ func (x *Invitation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Invitation.ProtoReflect.Descriptor instead.
 func (*Invitation) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{37}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *Invitation) GetId() string {
@@ -2094,7 +2485,7 @@ type InviteMemberRequest struct {
 
 func (x *InviteMemberRequest) Reset() {
 	*x = InviteMemberRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[38]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2106,7 +2497,7 @@ func (x *InviteMemberRequest) String() string {
 func (*InviteMemberRequest) ProtoMessage() {}
 
 func (x *InviteMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[38]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2119,7 +2510,7 @@ func (x *InviteMemberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteMemberRequest.ProtoReflect.Descriptor instead.
 func (*InviteMemberRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{38}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *InviteMemberRequest) GetUserId() string {
@@ -2166,7 +2557,7 @@ type InviteMemberResponse struct {
 
 func (x *InviteMemberResponse) Reset() {
 	*x = InviteMemberResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[39]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2178,7 +2569,7 @@ func (x *InviteMemberResponse) String() string {
 func (*InviteMemberResponse) ProtoMessage() {}
 
 func (x *InviteMemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[39]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2191,7 +2582,7 @@ func (x *InviteMemberResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteMemberResponse.ProtoReflect.Descriptor instead.
 func (*InviteMemberResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{39}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *InviteMemberResponse) GetInvitation() *Invitation {
@@ -2211,7 +2602,7 @@ type ListInvitationsRequest struct {
 
 func (x *ListInvitationsRequest) Reset() {
 	*x = ListInvitationsRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[40]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2223,7 +2614,7 @@ func (x *ListInvitationsRequest) String() string {
 func (*ListInvitationsRequest) ProtoMessage() {}
 
 func (x *ListInvitationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[40]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2236,7 +2627,7 @@ func (x *ListInvitationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitationsRequest.ProtoReflect.Descriptor instead.
 func (*ListInvitationsRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{40}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ListInvitationsRequest) GetUserId() string {
@@ -2262,7 +2653,7 @@ type ListInvitationsResponse struct {
 
 func (x *ListInvitationsResponse) Reset() {
 	*x = ListInvitationsResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[41]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2274,7 +2665,7 @@ func (x *ListInvitationsResponse) String() string {
 func (*ListInvitationsResponse) ProtoMessage() {}
 
 func (x *ListInvitationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[41]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2287,7 +2678,7 @@ func (x *ListInvitationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitationsResponse.ProtoReflect.Descriptor instead.
 func (*ListInvitationsResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{41}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ListInvitationsResponse) GetInvitations() []*Invitation {
@@ -2308,7 +2699,7 @@ type RevokeInvitationRequest struct {
 
 func (x *RevokeInvitationRequest) Reset() {
 	*x = RevokeInvitationRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[42]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2320,7 +2711,7 @@ func (x *RevokeInvitationRequest) String() string {
 func (*RevokeInvitationRequest) ProtoMessage() {}
 
 func (x *RevokeInvitationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[42]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2333,7 +2724,7 @@ func (x *RevokeInvitationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInvitationRequest.ProtoReflect.Descriptor instead.
 func (*RevokeInvitationRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{42}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *RevokeInvitationRequest) GetUserId() string {
@@ -2365,7 +2756,7 @@ type RevokeInvitationResponse struct {
 
 func (x *RevokeInvitationResponse) Reset() {
 	*x = RevokeInvitationResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[43]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2377,7 +2768,7 @@ func (x *RevokeInvitationResponse) String() string {
 func (*RevokeInvitationResponse) ProtoMessage() {}
 
 func (x *RevokeInvitationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[43]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2390,7 +2781,7 @@ func (x *RevokeInvitationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInvitationResponse.ProtoReflect.Descriptor instead.
 func (*RevokeInvitationResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{43}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{49}
 }
 
 type ResendInvitationRequest struct {
@@ -2404,7 +2795,7 @@ type ResendInvitationRequest struct {
 
 func (x *ResendInvitationRequest) Reset() {
 	*x = ResendInvitationRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[44]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2416,7 +2807,7 @@ func (x *ResendInvitationRequest) String() string {
 func (*ResendInvitationRequest) ProtoMessage() {}
 
 func (x *ResendInvitationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[44]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2429,7 +2820,7 @@ func (x *ResendInvitationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendInvitationRequest.ProtoReflect.Descriptor instead.
 func (*ResendInvitationRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{44}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *ResendInvitationRequest) GetUserId() string {
@@ -2462,7 +2853,7 @@ type ResendInvitationResponse struct {
 
 func (x *ResendInvitationResponse) Reset() {
 	*x = ResendInvitationResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[45]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2474,7 +2865,7 @@ func (x *ResendInvitationResponse) String() string {
 func (*ResendInvitationResponse) ProtoMessage() {}
 
 func (x *ResendInvitationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[45]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2487,7 +2878,7 @@ func (x *ResendInvitationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendInvitationResponse.ProtoReflect.Descriptor instead.
 func (*ResendInvitationResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{45}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *ResendInvitationResponse) GetInvitation() *Invitation {
@@ -2509,7 +2900,7 @@ type UpdateMemberRoleRequest struct {
 
 func (x *UpdateMemberRoleRequest) Reset() {
 	*x = UpdateMemberRoleRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[46]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2521,7 +2912,7 @@ func (x *UpdateMemberRoleRequest) String() string {
 func (*UpdateMemberRoleRequest) ProtoMessage() {}
 
 func (x *UpdateMemberRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[46]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2534,7 +2925,7 @@ func (x *UpdateMemberRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMemberRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMemberRoleRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{46}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *UpdateMemberRoleRequest) GetUserId() string {
@@ -2574,7 +2965,7 @@ type UpdateMemberRoleResponse struct {
 
 func (x *UpdateMemberRoleResponse) Reset() {
 	*x = UpdateMemberRoleResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[47]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2586,7 +2977,7 @@ func (x *UpdateMemberRoleResponse) String() string {
 func (*UpdateMemberRoleResponse) ProtoMessage() {}
 
 func (x *UpdateMemberRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[47]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2599,7 +2990,7 @@ func (x *UpdateMemberRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMemberRoleResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMemberRoleResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{47}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *UpdateMemberRoleResponse) GetRole() string {
@@ -2620,7 +3011,7 @@ type RemoveMemberRequest struct {
 
 func (x *RemoveMemberRequest) Reset() {
 	*x = RemoveMemberRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[48]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2632,7 +3023,7 @@ func (x *RemoveMemberRequest) String() string {
 func (*RemoveMemberRequest) ProtoMessage() {}
 
 func (x *RemoveMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[48]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2645,7 +3036,7 @@ func (x *RemoveMemberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMemberRequest.ProtoReflect.Descriptor instead.
 func (*RemoveMemberRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{48}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *RemoveMemberRequest) GetUserId() string {
@@ -2677,7 +3068,7 @@ type RemoveMemberResponse struct {
 
 func (x *RemoveMemberResponse) Reset() {
 	*x = RemoveMemberResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[49]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2689,7 +3080,7 @@ func (x *RemoveMemberResponse) String() string {
 func (*RemoveMemberResponse) ProtoMessage() {}
 
 func (x *RemoveMemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[49]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2702,7 +3093,7 @@ func (x *RemoveMemberResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMemberResponse.ProtoReflect.Descriptor instead.
 func (*RemoveMemberResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{49}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{55}
 }
 
 type LookupInvitationRequest struct {
@@ -2714,7 +3105,7 @@ type LookupInvitationRequest struct {
 
 func (x *LookupInvitationRequest) Reset() {
 	*x = LookupInvitationRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[50]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2726,7 +3117,7 @@ func (x *LookupInvitationRequest) String() string {
 func (*LookupInvitationRequest) ProtoMessage() {}
 
 func (x *LookupInvitationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[50]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2739,7 +3130,7 @@ func (x *LookupInvitationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LookupInvitationRequest.ProtoReflect.Descriptor instead.
 func (*LookupInvitationRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{50}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *LookupInvitationRequest) GetToken() string {
@@ -2763,7 +3154,7 @@ type LookupInvitationResponse struct {
 
 func (x *LookupInvitationResponse) Reset() {
 	*x = LookupInvitationResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[51]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2775,7 +3166,7 @@ func (x *LookupInvitationResponse) String() string {
 func (*LookupInvitationResponse) ProtoMessage() {}
 
 func (x *LookupInvitationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[51]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2788,7 +3179,7 @@ func (x *LookupInvitationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LookupInvitationResponse.ProtoReflect.Descriptor instead.
 func (*LookupInvitationResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{51}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *LookupInvitationResponse) GetAccountName() string {
@@ -2838,7 +3229,7 @@ type AcceptInvitationRequest struct {
 
 func (x *AcceptInvitationRequest) Reset() {
 	*x = AcceptInvitationRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[52]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2850,7 +3241,7 @@ func (x *AcceptInvitationRequest) String() string {
 func (*AcceptInvitationRequest) ProtoMessage() {}
 
 func (x *AcceptInvitationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[52]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2863,7 +3254,7 @@ func (x *AcceptInvitationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInvitationRequest.ProtoReflect.Descriptor instead.
 func (*AcceptInvitationRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{52}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *AcceptInvitationRequest) GetToken() string {
@@ -2906,7 +3297,7 @@ type AcceptInvitationResponse struct {
 
 func (x *AcceptInvitationResponse) Reset() {
 	*x = AcceptInvitationResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[53]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2918,7 +3309,7 @@ func (x *AcceptInvitationResponse) String() string {
 func (*AcceptInvitationResponse) ProtoMessage() {}
 
 func (x *AcceptInvitationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[53]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2931,7 +3322,7 @@ func (x *AcceptInvitationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInvitationResponse.ProtoReflect.Descriptor instead.
 func (*AcceptInvitationResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{53}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *AcceptInvitationResponse) GetUser() *User {
@@ -2972,7 +3363,7 @@ type AcceptInvitationAsUserRequest struct {
 
 func (x *AcceptInvitationAsUserRequest) Reset() {
 	*x = AcceptInvitationAsUserRequest{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[54]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2984,7 +3375,7 @@ func (x *AcceptInvitationAsUserRequest) String() string {
 func (*AcceptInvitationAsUserRequest) ProtoMessage() {}
 
 func (x *AcceptInvitationAsUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[54]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2997,7 +3388,7 @@ func (x *AcceptInvitationAsUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInvitationAsUserRequest.ProtoReflect.Descriptor instead.
 func (*AcceptInvitationAsUserRequest) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{54}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *AcceptInvitationAsUserRequest) GetUserId() string {
@@ -3024,7 +3415,7 @@ type AcceptInvitationAsUserResponse struct {
 
 func (x *AcceptInvitationAsUserResponse) Reset() {
 	*x = AcceptInvitationAsUserResponse{}
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[55]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3036,7 +3427,7 @@ func (x *AcceptInvitationAsUserResponse) String() string {
 func (*AcceptInvitationAsUserResponse) ProtoMessage() {}
 
 func (x *AcceptInvitationAsUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_quotify_plans_v1_identity_proto_msgTypes[55]
+	mi := &file_quotify_plans_v1_identity_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3049,7 +3440,7 @@ func (x *AcceptInvitationAsUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInvitationAsUserResponse.ProtoReflect.Descriptor instead.
 func (*AcceptInvitationAsUserResponse) Descriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{55}
+	return file_quotify_plans_v1_identity_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *AcceptInvitationAsUserResponse) GetMemberships() []*Membership {
@@ -3095,6 +3486,35 @@ const file_quotify_plans_v1_identity_proto_rawDesc = "" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"\xcf\x01\n" +
 	"\x0eSignInResponse\x12*\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.quotify.plans.v1.UserR\x04user\x12>\n" +
+	"\vmemberships\x18\x02 \x03(\v2\x1c.quotify.plans.v1.MembershipR\vmemberships\x12\x14\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\x12;\n" +
+	"\vexpire_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTime\"G\n" +
+	"\x17RequestLoginCodeRequest\x12\x14\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\x12\x16\n" +
+	"\x06locale\x18\x02 \x01(\tR\x06locale\"\x1a\n" +
+	"\x18RequestLoginCodeResponse\"\xa0\x01\n" +
+	"\x16VerifyLoginCodeRequest\x12\x14\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12!\n" +
+	"\faccount_name\x18\x04 \x01(\tR\vaccountName\x12\x16\n" +
+	"\x06locale\x18\x05 \x01(\tR\x06locale\"\xd8\x01\n" +
+	"\x17VerifyLoginCodeResponse\x12*\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.quotify.plans.v1.UserR\x04user\x12>\n" +
+	"\vmemberships\x18\x02 \x03(\v2\x1c.quotify.plans.v1.MembershipR\vmemberships\x12\x14\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\x12;\n" +
+	"\vexpire_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTime\"\xc9\x01\n" +
+	"\x19SignInWithIdentityRequest\x12\x1a\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x18\n" +
+	"\asubject\x18\x02 \x01(\tR\asubject\x12\x14\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12%\n" +
+	"\x0eemail_verified\x18\x04 \x01(\bR\remailVerified\x12!\n" +
+	"\fdisplay_name\x18\x05 \x01(\tR\vdisplayName\x12\x16\n" +
+	"\x06locale\x18\x06 \x01(\tR\x06locale\"\xdb\x01\n" +
+	"\x1aSignInWithIdentityResponse\x12*\n" +
 	"\x04user\x18\x01 \x01(\v2\x16.quotify.plans.v1.UserR\x04user\x12>\n" +
 	"\vmemberships\x18\x02 \x03(\v2\x1c.quotify.plans.v1.MembershipR\vmemberships\x12\x14\n" +
 	"\x05token\x18\x03 \x01(\tR\x05token\x12;\n" +
@@ -3281,7 +3701,7 @@ const file_quotify_plans_v1_identity_proto_rawDesc = "" +
 	"\x1eAcceptInvitationAsUserResponse\x12>\n" +
 	"\vmemberships\x18\x01 \x03(\v2\x1c.quotify.plans.v1.MembershipR\vmemberships\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x02 \x01(\tR\taccountId2\x97\x14\n" +
+	"account_id\x18\x02 \x01(\tR\taccountId2\xdb\x16\n" +
 	"\x0fIdentityService\x12K\n" +
 	"\x06SignUp\x12\x1f.quotify.plans.v1.SignUpRequest\x1a .quotify.plans.v1.SignUpResponse\x12K\n" +
 	"\x06SignIn\x12\x1f.quotify.plans.v1.SignInRequest\x1a .quotify.plans.v1.SignInResponse\x12N\n" +
@@ -3291,7 +3711,10 @@ const file_quotify_plans_v1_identity_proto_rawDesc = "" +
 	"\vVerifyEmail\x12$.quotify.plans.v1.VerifyEmailRequest\x1a%.quotify.plans.v1.VerifyEmailResponse\x12o\n" +
 	"\x12ResendVerification\x12+.quotify.plans.v1.ResendVerificationRequest\x1a,.quotify.plans.v1.ResendVerificationResponse\x12u\n" +
 	"\x14RequestPasswordReset\x12-.quotify.plans.v1.RequestPasswordResetRequest\x1a..quotify.plans.v1.RequestPasswordResetResponse\x12`\n" +
-	"\rResetPassword\x12&.quotify.plans.v1.ResetPasswordRequest\x1a'.quotify.plans.v1.ResetPasswordResponse\x12]\n" +
+	"\rResetPassword\x12&.quotify.plans.v1.ResetPasswordRequest\x1a'.quotify.plans.v1.ResetPasswordResponse\x12i\n" +
+	"\x10RequestLoginCode\x12).quotify.plans.v1.RequestLoginCodeRequest\x1a*.quotify.plans.v1.RequestLoginCodeResponse\x12f\n" +
+	"\x0fVerifyLoginCode\x12(.quotify.plans.v1.VerifyLoginCodeRequest\x1a).quotify.plans.v1.VerifyLoginCodeResponse\x12o\n" +
+	"\x12SignInWithIdentity\x12+.quotify.plans.v1.SignInWithIdentityRequest\x1a,.quotify.plans.v1.SignInWithIdentityResponse\x12]\n" +
 	"\fGetMyAccount\x12%.quotify.plans.v1.GetMyAccountRequest\x1a&.quotify.plans.v1.GetMyAccountResponse\x12f\n" +
 	"\x0fRenameMyAccount\x12(.quotify.plans.v1.RenameMyAccountRequest\x1a).quotify.plans.v1.RenameMyAccountResponse\x12]\n" +
 	"\fInviteMember\x12%.quotify.plans.v1.InviteMemberRequest\x1a&.quotify.plans.v1.InviteMemberResponse\x12f\n" +
@@ -3325,7 +3748,7 @@ func file_quotify_plans_v1_identity_proto_rawDescGZIP() []byte {
 	return file_quotify_plans_v1_identity_proto_rawDescData
 }
 
-var file_quotify_plans_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 56)
+var file_quotify_plans_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 62)
 var file_quotify_plans_v1_identity_proto_goTypes = []any{
 	(*User)(nil),                           // 0: quotify.plans.v1.User
 	(*Membership)(nil),                     // 1: quotify.plans.v1.Membership
@@ -3333,149 +3756,167 @@ var file_quotify_plans_v1_identity_proto_goTypes = []any{
 	(*SignUpResponse)(nil),                 // 3: quotify.plans.v1.SignUpResponse
 	(*SignInRequest)(nil),                  // 4: quotify.plans.v1.SignInRequest
 	(*SignInResponse)(nil),                 // 5: quotify.plans.v1.SignInResponse
-	(*SignOutRequest)(nil),                 // 6: quotify.plans.v1.SignOutRequest
-	(*SignOutResponse)(nil),                // 7: quotify.plans.v1.SignOutResponse
-	(*GetSessionRequest)(nil),              // 8: quotify.plans.v1.GetSessionRequest
-	(*GetSessionResponse)(nil),             // 9: quotify.plans.v1.GetSessionResponse
-	(*AccountMember)(nil),                  // 10: quotify.plans.v1.AccountMember
-	(*GetMyAccountRequest)(nil),            // 11: quotify.plans.v1.GetMyAccountRequest
-	(*GetMyAccountResponse)(nil),           // 12: quotify.plans.v1.GetMyAccountResponse
-	(*CreateMyAppRequest)(nil),             // 13: quotify.plans.v1.CreateMyAppRequest
-	(*CreateMyAppResponse)(nil),            // 14: quotify.plans.v1.CreateMyAppResponse
-	(*ListMyAppsRequest)(nil),              // 15: quotify.plans.v1.ListMyAppsRequest
-	(*ListMyAppsResponse)(nil),             // 16: quotify.plans.v1.ListMyAppsResponse
-	(*GetMyAppRequest)(nil),                // 17: quotify.plans.v1.GetMyAppRequest
-	(*GetMyAppResponse)(nil),               // 18: quotify.plans.v1.GetMyAppResponse
-	(*ResolveMyTenantRequest)(nil),         // 19: quotify.plans.v1.ResolveMyTenantRequest
-	(*ResolveMyTenantResponse)(nil),        // 20: quotify.plans.v1.ResolveMyTenantResponse
-	(*CreateMyApiKeyRequest)(nil),          // 21: quotify.plans.v1.CreateMyApiKeyRequest
-	(*CreateMyApiKeyResponse)(nil),         // 22: quotify.plans.v1.CreateMyApiKeyResponse
-	(*ListMyApiKeysRequest)(nil),           // 23: quotify.plans.v1.ListMyApiKeysRequest
-	(*ListMyApiKeysResponse)(nil),          // 24: quotify.plans.v1.ListMyApiKeysResponse
-	(*RevokeMyApiKeyRequest)(nil),          // 25: quotify.plans.v1.RevokeMyApiKeyRequest
-	(*RevokeMyApiKeyResponse)(nil),         // 26: quotify.plans.v1.RevokeMyApiKeyResponse
-	(*VerifyEmailRequest)(nil),             // 27: quotify.plans.v1.VerifyEmailRequest
-	(*VerifyEmailResponse)(nil),            // 28: quotify.plans.v1.VerifyEmailResponse
-	(*ResendVerificationRequest)(nil),      // 29: quotify.plans.v1.ResendVerificationRequest
-	(*ResendVerificationResponse)(nil),     // 30: quotify.plans.v1.ResendVerificationResponse
-	(*RequestPasswordResetRequest)(nil),    // 31: quotify.plans.v1.RequestPasswordResetRequest
-	(*RequestPasswordResetResponse)(nil),   // 32: quotify.plans.v1.RequestPasswordResetResponse
-	(*ResetPasswordRequest)(nil),           // 33: quotify.plans.v1.ResetPasswordRequest
-	(*ResetPasswordResponse)(nil),          // 34: quotify.plans.v1.ResetPasswordResponse
-	(*RenameMyAccountRequest)(nil),         // 35: quotify.plans.v1.RenameMyAccountRequest
-	(*RenameMyAccountResponse)(nil),        // 36: quotify.plans.v1.RenameMyAccountResponse
-	(*Invitation)(nil),                     // 37: quotify.plans.v1.Invitation
-	(*InviteMemberRequest)(nil),            // 38: quotify.plans.v1.InviteMemberRequest
-	(*InviteMemberResponse)(nil),           // 39: quotify.plans.v1.InviteMemberResponse
-	(*ListInvitationsRequest)(nil),         // 40: quotify.plans.v1.ListInvitationsRequest
-	(*ListInvitationsResponse)(nil),        // 41: quotify.plans.v1.ListInvitationsResponse
-	(*RevokeInvitationRequest)(nil),        // 42: quotify.plans.v1.RevokeInvitationRequest
-	(*RevokeInvitationResponse)(nil),       // 43: quotify.plans.v1.RevokeInvitationResponse
-	(*ResendInvitationRequest)(nil),        // 44: quotify.plans.v1.ResendInvitationRequest
-	(*ResendInvitationResponse)(nil),       // 45: quotify.plans.v1.ResendInvitationResponse
-	(*UpdateMemberRoleRequest)(nil),        // 46: quotify.plans.v1.UpdateMemberRoleRequest
-	(*UpdateMemberRoleResponse)(nil),       // 47: quotify.plans.v1.UpdateMemberRoleResponse
-	(*RemoveMemberRequest)(nil),            // 48: quotify.plans.v1.RemoveMemberRequest
-	(*RemoveMemberResponse)(nil),           // 49: quotify.plans.v1.RemoveMemberResponse
-	(*LookupInvitationRequest)(nil),        // 50: quotify.plans.v1.LookupInvitationRequest
-	(*LookupInvitationResponse)(nil),       // 51: quotify.plans.v1.LookupInvitationResponse
-	(*AcceptInvitationRequest)(nil),        // 52: quotify.plans.v1.AcceptInvitationRequest
-	(*AcceptInvitationResponse)(nil),       // 53: quotify.plans.v1.AcceptInvitationResponse
-	(*AcceptInvitationAsUserRequest)(nil),  // 54: quotify.plans.v1.AcceptInvitationAsUserRequest
-	(*AcceptInvitationAsUserResponse)(nil), // 55: quotify.plans.v1.AcceptInvitationAsUserResponse
-	(*timestamppb.Timestamp)(nil),          // 56: google.protobuf.Timestamp
-	(*App)(nil),                            // 57: quotify.plans.v1.App
-	(*Tenant)(nil),                         // 58: quotify.plans.v1.Tenant
-	(Environment)(0),                       // 59: quotify.plans.v1.Environment
-	(*ApiKey)(nil),                         // 60: quotify.plans.v1.ApiKey
+	(*RequestLoginCodeRequest)(nil),        // 6: quotify.plans.v1.RequestLoginCodeRequest
+	(*RequestLoginCodeResponse)(nil),       // 7: quotify.plans.v1.RequestLoginCodeResponse
+	(*VerifyLoginCodeRequest)(nil),         // 8: quotify.plans.v1.VerifyLoginCodeRequest
+	(*VerifyLoginCodeResponse)(nil),        // 9: quotify.plans.v1.VerifyLoginCodeResponse
+	(*SignInWithIdentityRequest)(nil),      // 10: quotify.plans.v1.SignInWithIdentityRequest
+	(*SignInWithIdentityResponse)(nil),     // 11: quotify.plans.v1.SignInWithIdentityResponse
+	(*SignOutRequest)(nil),                 // 12: quotify.plans.v1.SignOutRequest
+	(*SignOutResponse)(nil),                // 13: quotify.plans.v1.SignOutResponse
+	(*GetSessionRequest)(nil),              // 14: quotify.plans.v1.GetSessionRequest
+	(*GetSessionResponse)(nil),             // 15: quotify.plans.v1.GetSessionResponse
+	(*AccountMember)(nil),                  // 16: quotify.plans.v1.AccountMember
+	(*GetMyAccountRequest)(nil),            // 17: quotify.plans.v1.GetMyAccountRequest
+	(*GetMyAccountResponse)(nil),           // 18: quotify.plans.v1.GetMyAccountResponse
+	(*CreateMyAppRequest)(nil),             // 19: quotify.plans.v1.CreateMyAppRequest
+	(*CreateMyAppResponse)(nil),            // 20: quotify.plans.v1.CreateMyAppResponse
+	(*ListMyAppsRequest)(nil),              // 21: quotify.plans.v1.ListMyAppsRequest
+	(*ListMyAppsResponse)(nil),             // 22: quotify.plans.v1.ListMyAppsResponse
+	(*GetMyAppRequest)(nil),                // 23: quotify.plans.v1.GetMyAppRequest
+	(*GetMyAppResponse)(nil),               // 24: quotify.plans.v1.GetMyAppResponse
+	(*ResolveMyTenantRequest)(nil),         // 25: quotify.plans.v1.ResolveMyTenantRequest
+	(*ResolveMyTenantResponse)(nil),        // 26: quotify.plans.v1.ResolveMyTenantResponse
+	(*CreateMyApiKeyRequest)(nil),          // 27: quotify.plans.v1.CreateMyApiKeyRequest
+	(*CreateMyApiKeyResponse)(nil),         // 28: quotify.plans.v1.CreateMyApiKeyResponse
+	(*ListMyApiKeysRequest)(nil),           // 29: quotify.plans.v1.ListMyApiKeysRequest
+	(*ListMyApiKeysResponse)(nil),          // 30: quotify.plans.v1.ListMyApiKeysResponse
+	(*RevokeMyApiKeyRequest)(nil),          // 31: quotify.plans.v1.RevokeMyApiKeyRequest
+	(*RevokeMyApiKeyResponse)(nil),         // 32: quotify.plans.v1.RevokeMyApiKeyResponse
+	(*VerifyEmailRequest)(nil),             // 33: quotify.plans.v1.VerifyEmailRequest
+	(*VerifyEmailResponse)(nil),            // 34: quotify.plans.v1.VerifyEmailResponse
+	(*ResendVerificationRequest)(nil),      // 35: quotify.plans.v1.ResendVerificationRequest
+	(*ResendVerificationResponse)(nil),     // 36: quotify.plans.v1.ResendVerificationResponse
+	(*RequestPasswordResetRequest)(nil),    // 37: quotify.plans.v1.RequestPasswordResetRequest
+	(*RequestPasswordResetResponse)(nil),   // 38: quotify.plans.v1.RequestPasswordResetResponse
+	(*ResetPasswordRequest)(nil),           // 39: quotify.plans.v1.ResetPasswordRequest
+	(*ResetPasswordResponse)(nil),          // 40: quotify.plans.v1.ResetPasswordResponse
+	(*RenameMyAccountRequest)(nil),         // 41: quotify.plans.v1.RenameMyAccountRequest
+	(*RenameMyAccountResponse)(nil),        // 42: quotify.plans.v1.RenameMyAccountResponse
+	(*Invitation)(nil),                     // 43: quotify.plans.v1.Invitation
+	(*InviteMemberRequest)(nil),            // 44: quotify.plans.v1.InviteMemberRequest
+	(*InviteMemberResponse)(nil),           // 45: quotify.plans.v1.InviteMemberResponse
+	(*ListInvitationsRequest)(nil),         // 46: quotify.plans.v1.ListInvitationsRequest
+	(*ListInvitationsResponse)(nil),        // 47: quotify.plans.v1.ListInvitationsResponse
+	(*RevokeInvitationRequest)(nil),        // 48: quotify.plans.v1.RevokeInvitationRequest
+	(*RevokeInvitationResponse)(nil),       // 49: quotify.plans.v1.RevokeInvitationResponse
+	(*ResendInvitationRequest)(nil),        // 50: quotify.plans.v1.ResendInvitationRequest
+	(*ResendInvitationResponse)(nil),       // 51: quotify.plans.v1.ResendInvitationResponse
+	(*UpdateMemberRoleRequest)(nil),        // 52: quotify.plans.v1.UpdateMemberRoleRequest
+	(*UpdateMemberRoleResponse)(nil),       // 53: quotify.plans.v1.UpdateMemberRoleResponse
+	(*RemoveMemberRequest)(nil),            // 54: quotify.plans.v1.RemoveMemberRequest
+	(*RemoveMemberResponse)(nil),           // 55: quotify.plans.v1.RemoveMemberResponse
+	(*LookupInvitationRequest)(nil),        // 56: quotify.plans.v1.LookupInvitationRequest
+	(*LookupInvitationResponse)(nil),       // 57: quotify.plans.v1.LookupInvitationResponse
+	(*AcceptInvitationRequest)(nil),        // 58: quotify.plans.v1.AcceptInvitationRequest
+	(*AcceptInvitationResponse)(nil),       // 59: quotify.plans.v1.AcceptInvitationResponse
+	(*AcceptInvitationAsUserRequest)(nil),  // 60: quotify.plans.v1.AcceptInvitationAsUserRequest
+	(*AcceptInvitationAsUserResponse)(nil), // 61: quotify.plans.v1.AcceptInvitationAsUserResponse
+	(*timestamppb.Timestamp)(nil),          // 62: google.protobuf.Timestamp
+	(*App)(nil),                            // 63: quotify.plans.v1.App
+	(*Tenant)(nil),                         // 64: quotify.plans.v1.Tenant
+	(Environment)(0),                       // 65: quotify.plans.v1.Environment
+	(*ApiKey)(nil),                         // 66: quotify.plans.v1.ApiKey
 }
 var file_quotify_plans_v1_identity_proto_depIdxs = []int32{
-	56, // 0: quotify.plans.v1.User.create_time:type_name -> google.protobuf.Timestamp
+	62, // 0: quotify.plans.v1.User.create_time:type_name -> google.protobuf.Timestamp
 	0,  // 1: quotify.plans.v1.SignInResponse.user:type_name -> quotify.plans.v1.User
 	1,  // 2: quotify.plans.v1.SignInResponse.memberships:type_name -> quotify.plans.v1.Membership
-	56, // 3: quotify.plans.v1.SignInResponse.expire_time:type_name -> google.protobuf.Timestamp
-	0,  // 4: quotify.plans.v1.GetSessionResponse.user:type_name -> quotify.plans.v1.User
-	1,  // 5: quotify.plans.v1.GetSessionResponse.memberships:type_name -> quotify.plans.v1.Membership
-	56, // 6: quotify.plans.v1.GetSessionResponse.expire_time:type_name -> google.protobuf.Timestamp
-	56, // 7: quotify.plans.v1.AccountMember.create_time:type_name -> google.protobuf.Timestamp
-	10, // 8: quotify.plans.v1.GetMyAccountResponse.members:type_name -> quotify.plans.v1.AccountMember
-	56, // 9: quotify.plans.v1.GetMyAccountResponse.create_time:type_name -> google.protobuf.Timestamp
-	57, // 10: quotify.plans.v1.CreateMyAppResponse.app:type_name -> quotify.plans.v1.App
-	57, // 11: quotify.plans.v1.ListMyAppsResponse.apps:type_name -> quotify.plans.v1.App
-	57, // 12: quotify.plans.v1.GetMyAppResponse.app:type_name -> quotify.plans.v1.App
-	58, // 13: quotify.plans.v1.ResolveMyTenantResponse.tenant:type_name -> quotify.plans.v1.Tenant
-	59, // 14: quotify.plans.v1.CreateMyApiKeyRequest.environment:type_name -> quotify.plans.v1.Environment
-	60, // 15: quotify.plans.v1.CreateMyApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
-	60, // 16: quotify.plans.v1.ListMyApiKeysResponse.api_keys:type_name -> quotify.plans.v1.ApiKey
-	60, // 17: quotify.plans.v1.RevokeMyApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
-	0,  // 18: quotify.plans.v1.VerifyEmailResponse.user:type_name -> quotify.plans.v1.User
-	56, // 19: quotify.plans.v1.Invitation.create_time:type_name -> google.protobuf.Timestamp
-	56, // 20: quotify.plans.v1.Invitation.send_time:type_name -> google.protobuf.Timestamp
-	56, // 21: quotify.plans.v1.Invitation.expire_time:type_name -> google.protobuf.Timestamp
-	37, // 22: quotify.plans.v1.InviteMemberResponse.invitation:type_name -> quotify.plans.v1.Invitation
-	37, // 23: quotify.plans.v1.ListInvitationsResponse.invitations:type_name -> quotify.plans.v1.Invitation
-	37, // 24: quotify.plans.v1.ResendInvitationResponse.invitation:type_name -> quotify.plans.v1.Invitation
-	0,  // 25: quotify.plans.v1.AcceptInvitationResponse.user:type_name -> quotify.plans.v1.User
-	1,  // 26: quotify.plans.v1.AcceptInvitationResponse.memberships:type_name -> quotify.plans.v1.Membership
-	56, // 27: quotify.plans.v1.AcceptInvitationResponse.expire_time:type_name -> google.protobuf.Timestamp
-	1,  // 28: quotify.plans.v1.AcceptInvitationAsUserResponse.memberships:type_name -> quotify.plans.v1.Membership
-	2,  // 29: quotify.plans.v1.IdentityService.SignUp:input_type -> quotify.plans.v1.SignUpRequest
-	4,  // 30: quotify.plans.v1.IdentityService.SignIn:input_type -> quotify.plans.v1.SignInRequest
-	6,  // 31: quotify.plans.v1.IdentityService.SignOut:input_type -> quotify.plans.v1.SignOutRequest
-	8,  // 32: quotify.plans.v1.IdentityService.GetSession:input_type -> quotify.plans.v1.GetSessionRequest
-	27, // 33: quotify.plans.v1.IdentityService.VerifyEmail:input_type -> quotify.plans.v1.VerifyEmailRequest
-	29, // 34: quotify.plans.v1.IdentityService.ResendVerification:input_type -> quotify.plans.v1.ResendVerificationRequest
-	31, // 35: quotify.plans.v1.IdentityService.RequestPasswordReset:input_type -> quotify.plans.v1.RequestPasswordResetRequest
-	33, // 36: quotify.plans.v1.IdentityService.ResetPassword:input_type -> quotify.plans.v1.ResetPasswordRequest
-	11, // 37: quotify.plans.v1.IdentityService.GetMyAccount:input_type -> quotify.plans.v1.GetMyAccountRequest
-	35, // 38: quotify.plans.v1.IdentityService.RenameMyAccount:input_type -> quotify.plans.v1.RenameMyAccountRequest
-	38, // 39: quotify.plans.v1.IdentityService.InviteMember:input_type -> quotify.plans.v1.InviteMemberRequest
-	40, // 40: quotify.plans.v1.IdentityService.ListInvitations:input_type -> quotify.plans.v1.ListInvitationsRequest
-	42, // 41: quotify.plans.v1.IdentityService.RevokeInvitation:input_type -> quotify.plans.v1.RevokeInvitationRequest
-	44, // 42: quotify.plans.v1.IdentityService.ResendInvitation:input_type -> quotify.plans.v1.ResendInvitationRequest
-	46, // 43: quotify.plans.v1.IdentityService.UpdateMemberRole:input_type -> quotify.plans.v1.UpdateMemberRoleRequest
-	48, // 44: quotify.plans.v1.IdentityService.RemoveMember:input_type -> quotify.plans.v1.RemoveMemberRequest
-	50, // 45: quotify.plans.v1.IdentityService.LookupInvitation:input_type -> quotify.plans.v1.LookupInvitationRequest
-	52, // 46: quotify.plans.v1.IdentityService.AcceptInvitation:input_type -> quotify.plans.v1.AcceptInvitationRequest
-	54, // 47: quotify.plans.v1.IdentityService.AcceptInvitationAsUser:input_type -> quotify.plans.v1.AcceptInvitationAsUserRequest
-	13, // 48: quotify.plans.v1.IdentityService.CreateMyApp:input_type -> quotify.plans.v1.CreateMyAppRequest
-	15, // 49: quotify.plans.v1.IdentityService.ListMyApps:input_type -> quotify.plans.v1.ListMyAppsRequest
-	17, // 50: quotify.plans.v1.IdentityService.GetMyApp:input_type -> quotify.plans.v1.GetMyAppRequest
-	19, // 51: quotify.plans.v1.IdentityService.ResolveMyTenant:input_type -> quotify.plans.v1.ResolveMyTenantRequest
-	21, // 52: quotify.plans.v1.IdentityService.CreateMyApiKey:input_type -> quotify.plans.v1.CreateMyApiKeyRequest
-	23, // 53: quotify.plans.v1.IdentityService.ListMyApiKeys:input_type -> quotify.plans.v1.ListMyApiKeysRequest
-	25, // 54: quotify.plans.v1.IdentityService.RevokeMyApiKey:input_type -> quotify.plans.v1.RevokeMyApiKeyRequest
-	3,  // 55: quotify.plans.v1.IdentityService.SignUp:output_type -> quotify.plans.v1.SignUpResponse
-	5,  // 56: quotify.plans.v1.IdentityService.SignIn:output_type -> quotify.plans.v1.SignInResponse
-	7,  // 57: quotify.plans.v1.IdentityService.SignOut:output_type -> quotify.plans.v1.SignOutResponse
-	9,  // 58: quotify.plans.v1.IdentityService.GetSession:output_type -> quotify.plans.v1.GetSessionResponse
-	28, // 59: quotify.plans.v1.IdentityService.VerifyEmail:output_type -> quotify.plans.v1.VerifyEmailResponse
-	30, // 60: quotify.plans.v1.IdentityService.ResendVerification:output_type -> quotify.plans.v1.ResendVerificationResponse
-	32, // 61: quotify.plans.v1.IdentityService.RequestPasswordReset:output_type -> quotify.plans.v1.RequestPasswordResetResponse
-	34, // 62: quotify.plans.v1.IdentityService.ResetPassword:output_type -> quotify.plans.v1.ResetPasswordResponse
-	12, // 63: quotify.plans.v1.IdentityService.GetMyAccount:output_type -> quotify.plans.v1.GetMyAccountResponse
-	36, // 64: quotify.plans.v1.IdentityService.RenameMyAccount:output_type -> quotify.plans.v1.RenameMyAccountResponse
-	39, // 65: quotify.plans.v1.IdentityService.InviteMember:output_type -> quotify.plans.v1.InviteMemberResponse
-	41, // 66: quotify.plans.v1.IdentityService.ListInvitations:output_type -> quotify.plans.v1.ListInvitationsResponse
-	43, // 67: quotify.plans.v1.IdentityService.RevokeInvitation:output_type -> quotify.plans.v1.RevokeInvitationResponse
-	45, // 68: quotify.plans.v1.IdentityService.ResendInvitation:output_type -> quotify.plans.v1.ResendInvitationResponse
-	47, // 69: quotify.plans.v1.IdentityService.UpdateMemberRole:output_type -> quotify.plans.v1.UpdateMemberRoleResponse
-	49, // 70: quotify.plans.v1.IdentityService.RemoveMember:output_type -> quotify.plans.v1.RemoveMemberResponse
-	51, // 71: quotify.plans.v1.IdentityService.LookupInvitation:output_type -> quotify.plans.v1.LookupInvitationResponse
-	53, // 72: quotify.plans.v1.IdentityService.AcceptInvitation:output_type -> quotify.plans.v1.AcceptInvitationResponse
-	55, // 73: quotify.plans.v1.IdentityService.AcceptInvitationAsUser:output_type -> quotify.plans.v1.AcceptInvitationAsUserResponse
-	14, // 74: quotify.plans.v1.IdentityService.CreateMyApp:output_type -> quotify.plans.v1.CreateMyAppResponse
-	16, // 75: quotify.plans.v1.IdentityService.ListMyApps:output_type -> quotify.plans.v1.ListMyAppsResponse
-	18, // 76: quotify.plans.v1.IdentityService.GetMyApp:output_type -> quotify.plans.v1.GetMyAppResponse
-	20, // 77: quotify.plans.v1.IdentityService.ResolveMyTenant:output_type -> quotify.plans.v1.ResolveMyTenantResponse
-	22, // 78: quotify.plans.v1.IdentityService.CreateMyApiKey:output_type -> quotify.plans.v1.CreateMyApiKeyResponse
-	24, // 79: quotify.plans.v1.IdentityService.ListMyApiKeys:output_type -> quotify.plans.v1.ListMyApiKeysResponse
-	26, // 80: quotify.plans.v1.IdentityService.RevokeMyApiKey:output_type -> quotify.plans.v1.RevokeMyApiKeyResponse
-	55, // [55:81] is the sub-list for method output_type
-	29, // [29:55] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	62, // 3: quotify.plans.v1.SignInResponse.expire_time:type_name -> google.protobuf.Timestamp
+	0,  // 4: quotify.plans.v1.VerifyLoginCodeResponse.user:type_name -> quotify.plans.v1.User
+	1,  // 5: quotify.plans.v1.VerifyLoginCodeResponse.memberships:type_name -> quotify.plans.v1.Membership
+	62, // 6: quotify.plans.v1.VerifyLoginCodeResponse.expire_time:type_name -> google.protobuf.Timestamp
+	0,  // 7: quotify.plans.v1.SignInWithIdentityResponse.user:type_name -> quotify.plans.v1.User
+	1,  // 8: quotify.plans.v1.SignInWithIdentityResponse.memberships:type_name -> quotify.plans.v1.Membership
+	62, // 9: quotify.plans.v1.SignInWithIdentityResponse.expire_time:type_name -> google.protobuf.Timestamp
+	0,  // 10: quotify.plans.v1.GetSessionResponse.user:type_name -> quotify.plans.v1.User
+	1,  // 11: quotify.plans.v1.GetSessionResponse.memberships:type_name -> quotify.plans.v1.Membership
+	62, // 12: quotify.plans.v1.GetSessionResponse.expire_time:type_name -> google.protobuf.Timestamp
+	62, // 13: quotify.plans.v1.AccountMember.create_time:type_name -> google.protobuf.Timestamp
+	16, // 14: quotify.plans.v1.GetMyAccountResponse.members:type_name -> quotify.plans.v1.AccountMember
+	62, // 15: quotify.plans.v1.GetMyAccountResponse.create_time:type_name -> google.protobuf.Timestamp
+	63, // 16: quotify.plans.v1.CreateMyAppResponse.app:type_name -> quotify.plans.v1.App
+	63, // 17: quotify.plans.v1.ListMyAppsResponse.apps:type_name -> quotify.plans.v1.App
+	63, // 18: quotify.plans.v1.GetMyAppResponse.app:type_name -> quotify.plans.v1.App
+	64, // 19: quotify.plans.v1.ResolveMyTenantResponse.tenant:type_name -> quotify.plans.v1.Tenant
+	65, // 20: quotify.plans.v1.CreateMyApiKeyRequest.environment:type_name -> quotify.plans.v1.Environment
+	66, // 21: quotify.plans.v1.CreateMyApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
+	66, // 22: quotify.plans.v1.ListMyApiKeysResponse.api_keys:type_name -> quotify.plans.v1.ApiKey
+	66, // 23: quotify.plans.v1.RevokeMyApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
+	0,  // 24: quotify.plans.v1.VerifyEmailResponse.user:type_name -> quotify.plans.v1.User
+	62, // 25: quotify.plans.v1.Invitation.create_time:type_name -> google.protobuf.Timestamp
+	62, // 26: quotify.plans.v1.Invitation.send_time:type_name -> google.protobuf.Timestamp
+	62, // 27: quotify.plans.v1.Invitation.expire_time:type_name -> google.protobuf.Timestamp
+	43, // 28: quotify.plans.v1.InviteMemberResponse.invitation:type_name -> quotify.plans.v1.Invitation
+	43, // 29: quotify.plans.v1.ListInvitationsResponse.invitations:type_name -> quotify.plans.v1.Invitation
+	43, // 30: quotify.plans.v1.ResendInvitationResponse.invitation:type_name -> quotify.plans.v1.Invitation
+	0,  // 31: quotify.plans.v1.AcceptInvitationResponse.user:type_name -> quotify.plans.v1.User
+	1,  // 32: quotify.plans.v1.AcceptInvitationResponse.memberships:type_name -> quotify.plans.v1.Membership
+	62, // 33: quotify.plans.v1.AcceptInvitationResponse.expire_time:type_name -> google.protobuf.Timestamp
+	1,  // 34: quotify.plans.v1.AcceptInvitationAsUserResponse.memberships:type_name -> quotify.plans.v1.Membership
+	2,  // 35: quotify.plans.v1.IdentityService.SignUp:input_type -> quotify.plans.v1.SignUpRequest
+	4,  // 36: quotify.plans.v1.IdentityService.SignIn:input_type -> quotify.plans.v1.SignInRequest
+	12, // 37: quotify.plans.v1.IdentityService.SignOut:input_type -> quotify.plans.v1.SignOutRequest
+	14, // 38: quotify.plans.v1.IdentityService.GetSession:input_type -> quotify.plans.v1.GetSessionRequest
+	33, // 39: quotify.plans.v1.IdentityService.VerifyEmail:input_type -> quotify.plans.v1.VerifyEmailRequest
+	35, // 40: quotify.plans.v1.IdentityService.ResendVerification:input_type -> quotify.plans.v1.ResendVerificationRequest
+	37, // 41: quotify.plans.v1.IdentityService.RequestPasswordReset:input_type -> quotify.plans.v1.RequestPasswordResetRequest
+	39, // 42: quotify.plans.v1.IdentityService.ResetPassword:input_type -> quotify.plans.v1.ResetPasswordRequest
+	6,  // 43: quotify.plans.v1.IdentityService.RequestLoginCode:input_type -> quotify.plans.v1.RequestLoginCodeRequest
+	8,  // 44: quotify.plans.v1.IdentityService.VerifyLoginCode:input_type -> quotify.plans.v1.VerifyLoginCodeRequest
+	10, // 45: quotify.plans.v1.IdentityService.SignInWithIdentity:input_type -> quotify.plans.v1.SignInWithIdentityRequest
+	17, // 46: quotify.plans.v1.IdentityService.GetMyAccount:input_type -> quotify.plans.v1.GetMyAccountRequest
+	41, // 47: quotify.plans.v1.IdentityService.RenameMyAccount:input_type -> quotify.plans.v1.RenameMyAccountRequest
+	44, // 48: quotify.plans.v1.IdentityService.InviteMember:input_type -> quotify.plans.v1.InviteMemberRequest
+	46, // 49: quotify.plans.v1.IdentityService.ListInvitations:input_type -> quotify.plans.v1.ListInvitationsRequest
+	48, // 50: quotify.plans.v1.IdentityService.RevokeInvitation:input_type -> quotify.plans.v1.RevokeInvitationRequest
+	50, // 51: quotify.plans.v1.IdentityService.ResendInvitation:input_type -> quotify.plans.v1.ResendInvitationRequest
+	52, // 52: quotify.plans.v1.IdentityService.UpdateMemberRole:input_type -> quotify.plans.v1.UpdateMemberRoleRequest
+	54, // 53: quotify.plans.v1.IdentityService.RemoveMember:input_type -> quotify.plans.v1.RemoveMemberRequest
+	56, // 54: quotify.plans.v1.IdentityService.LookupInvitation:input_type -> quotify.plans.v1.LookupInvitationRequest
+	58, // 55: quotify.plans.v1.IdentityService.AcceptInvitation:input_type -> quotify.plans.v1.AcceptInvitationRequest
+	60, // 56: quotify.plans.v1.IdentityService.AcceptInvitationAsUser:input_type -> quotify.plans.v1.AcceptInvitationAsUserRequest
+	19, // 57: quotify.plans.v1.IdentityService.CreateMyApp:input_type -> quotify.plans.v1.CreateMyAppRequest
+	21, // 58: quotify.plans.v1.IdentityService.ListMyApps:input_type -> quotify.plans.v1.ListMyAppsRequest
+	23, // 59: quotify.plans.v1.IdentityService.GetMyApp:input_type -> quotify.plans.v1.GetMyAppRequest
+	25, // 60: quotify.plans.v1.IdentityService.ResolveMyTenant:input_type -> quotify.plans.v1.ResolveMyTenantRequest
+	27, // 61: quotify.plans.v1.IdentityService.CreateMyApiKey:input_type -> quotify.plans.v1.CreateMyApiKeyRequest
+	29, // 62: quotify.plans.v1.IdentityService.ListMyApiKeys:input_type -> quotify.plans.v1.ListMyApiKeysRequest
+	31, // 63: quotify.plans.v1.IdentityService.RevokeMyApiKey:input_type -> quotify.plans.v1.RevokeMyApiKeyRequest
+	3,  // 64: quotify.plans.v1.IdentityService.SignUp:output_type -> quotify.plans.v1.SignUpResponse
+	5,  // 65: quotify.plans.v1.IdentityService.SignIn:output_type -> quotify.plans.v1.SignInResponse
+	13, // 66: quotify.plans.v1.IdentityService.SignOut:output_type -> quotify.plans.v1.SignOutResponse
+	15, // 67: quotify.plans.v1.IdentityService.GetSession:output_type -> quotify.plans.v1.GetSessionResponse
+	34, // 68: quotify.plans.v1.IdentityService.VerifyEmail:output_type -> quotify.plans.v1.VerifyEmailResponse
+	36, // 69: quotify.plans.v1.IdentityService.ResendVerification:output_type -> quotify.plans.v1.ResendVerificationResponse
+	38, // 70: quotify.plans.v1.IdentityService.RequestPasswordReset:output_type -> quotify.plans.v1.RequestPasswordResetResponse
+	40, // 71: quotify.plans.v1.IdentityService.ResetPassword:output_type -> quotify.plans.v1.ResetPasswordResponse
+	7,  // 72: quotify.plans.v1.IdentityService.RequestLoginCode:output_type -> quotify.plans.v1.RequestLoginCodeResponse
+	9,  // 73: quotify.plans.v1.IdentityService.VerifyLoginCode:output_type -> quotify.plans.v1.VerifyLoginCodeResponse
+	11, // 74: quotify.plans.v1.IdentityService.SignInWithIdentity:output_type -> quotify.plans.v1.SignInWithIdentityResponse
+	18, // 75: quotify.plans.v1.IdentityService.GetMyAccount:output_type -> quotify.plans.v1.GetMyAccountResponse
+	42, // 76: quotify.plans.v1.IdentityService.RenameMyAccount:output_type -> quotify.plans.v1.RenameMyAccountResponse
+	45, // 77: quotify.plans.v1.IdentityService.InviteMember:output_type -> quotify.plans.v1.InviteMemberResponse
+	47, // 78: quotify.plans.v1.IdentityService.ListInvitations:output_type -> quotify.plans.v1.ListInvitationsResponse
+	49, // 79: quotify.plans.v1.IdentityService.RevokeInvitation:output_type -> quotify.plans.v1.RevokeInvitationResponse
+	51, // 80: quotify.plans.v1.IdentityService.ResendInvitation:output_type -> quotify.plans.v1.ResendInvitationResponse
+	53, // 81: quotify.plans.v1.IdentityService.UpdateMemberRole:output_type -> quotify.plans.v1.UpdateMemberRoleResponse
+	55, // 82: quotify.plans.v1.IdentityService.RemoveMember:output_type -> quotify.plans.v1.RemoveMemberResponse
+	57, // 83: quotify.plans.v1.IdentityService.LookupInvitation:output_type -> quotify.plans.v1.LookupInvitationResponse
+	59, // 84: quotify.plans.v1.IdentityService.AcceptInvitation:output_type -> quotify.plans.v1.AcceptInvitationResponse
+	61, // 85: quotify.plans.v1.IdentityService.AcceptInvitationAsUser:output_type -> quotify.plans.v1.AcceptInvitationAsUserResponse
+	20, // 86: quotify.plans.v1.IdentityService.CreateMyApp:output_type -> quotify.plans.v1.CreateMyAppResponse
+	22, // 87: quotify.plans.v1.IdentityService.ListMyApps:output_type -> quotify.plans.v1.ListMyAppsResponse
+	24, // 88: quotify.plans.v1.IdentityService.GetMyApp:output_type -> quotify.plans.v1.GetMyAppResponse
+	26, // 89: quotify.plans.v1.IdentityService.ResolveMyTenant:output_type -> quotify.plans.v1.ResolveMyTenantResponse
+	28, // 90: quotify.plans.v1.IdentityService.CreateMyApiKey:output_type -> quotify.plans.v1.CreateMyApiKeyResponse
+	30, // 91: quotify.plans.v1.IdentityService.ListMyApiKeys:output_type -> quotify.plans.v1.ListMyApiKeysResponse
+	32, // 92: quotify.plans.v1.IdentityService.RevokeMyApiKey:output_type -> quotify.plans.v1.RevokeMyApiKeyResponse
+	64, // [64:93] is the sub-list for method output_type
+	35, // [35:64] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_quotify_plans_v1_identity_proto_init() }
@@ -3490,7 +3931,7 @@ func file_quotify_plans_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_plans_v1_identity_proto_rawDesc), len(file_quotify_plans_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   56,
+			NumMessages:   62,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

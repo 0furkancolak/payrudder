@@ -6,7 +6,7 @@ offers the two actions an operator needs most, redriving dead letters and readin
 
 | View | What it shows |
 |---|---|
-| Sign-in | The operator token (`QUOTIFY_OPERATOR_TOKEN`), kept in the tab's session storage. It is checked by asking the gateway for the tenant list. |
+| Sign-in | None of its own. An operator is a **person** who signs in on the one sign-in page ([below](#sign-in-methods)) with an address listed in `QUOTIFY_OPERATOR_EMAILS` and has verified it; the console is then at `/operator`, a door in the side bar that only operators see. |
 | Tenants | Every tenant: environment, tier, currency, time zone. |
 | Tenant | A header and its tabs. **Overview**: its invoices (kind, period, total, status, saga state) and a lookup for replay and re-rating jobs by id. The other tabs are the billing pages below. |
 | Customers | List and create (customer id, name, e-mail, country, billing currency). |
@@ -25,18 +25,31 @@ offers the two actions an operator needs most, redriving dead letters and readin
 
 ![The dead-letter queues](img/admin-dead-letters.png)
 
-The local operator token is `local-operator-token-change-me-0123456789` (set by `QUOTIFY_OPERATOR_TOKEN`, which the Compose file defaults to that value). It is a development default: change it anywhere that is not your laptop.
+## Sign-in methods
+
+There are exactly three ways to sign in, all on `/signin` (and the same three on `/signup`), and nothing else: **e-mail and password**, **a one-time code** mailed to the address (passwordless; for an address without an account the code creates one), and **Google** ("Continue with Google", shown only when the deployment has set it up; `GET /auth/methods` tells the page which are on). The design, the threat model and the tests are in [phase 42](phases/phase-42-signin-methods.md).
+
+**Operators.** `QUOTIFY_OPERATOR_EMAILS` (a comma list on the gateway; empty by default, so nobody is an operator; the dev stack lists `user1@example.com`, the dev seed's first user) names the people who are platform operators. The gateway decides **on every request**, from the session: the user's address is on the list **and verified**. A client claim is never read (a header, a body field or the browser's own storage opens nothing), the flag is not stored on the user, and a session of anybody else is `403 identity.operator.forbidden`. The page learns the verdict from the sign-in answer and `/auth/me` (`operator: true|false`) and only uses it to show the side-bar door and the console's pages. `QUOTIFY_OPERATOR_TOKEN` is **no longer a sign-in**: it stays as the machine credential of the API, `quotifyctl`, the demo, the playground's server side and the tests, and no page asks for it or serves it.
+
+**Setting up Google** (real Google was not exercised by the tests, which use the in-repo stand-in; follow these steps once and try it):
+
+1. In the [Google Cloud console](https://console.cloud.google.com/) create or pick a project, then *APIs & Services → OAuth consent screen*: user type External (or Internal for a Workspace), app name, support e-mail, the scopes `openid`, `email` and `profile` (all non-sensitive, so no verification review is needed), and add yourself as a test user while the app is in *Testing*.
+2. *APIs & Services → Credentials → Create credentials → OAuth client ID*, application type **Web application**.
+3. **Authorized redirect URIs**: the console's public address plus `/gw/auth/google/callback`, exactly, scheme and port included. The console forwards `/gw/*` to the gateway, so the browser, the cookie and the callback all stay on one origin. Locally: `http://localhost:42301/gw/auth/google/callback` (Google accepts `http://localhost` for development). In production: `https://app.example.com/gw/auth/google/callback`. If the gateway is reached at another address, set `QUOTIFY_GOOGLE_REDIRECT_URL` to that callback URL and register that. *Authorized JavaScript origins* can stay empty: the flow is entirely server side.
+4. Copy the **client ID** and **client secret** into `QUOTIFY_GOOGLE_CLIENT_ID` and `QUOTIFY_GOOGLE_CLIENT_SECRET` on the gateway (the secret is an environment variable only: never YAML, never logged), set `QUOTIFY_APP_URL` to the console's public address, restart the gateway. The button appears; `GET /auth/methods` says `"google": true`.
+
+**Trying the flow without Google.** `docker compose -f deploy/compose/compose.yaml --profile oidc up -d mockoidc`, then start the gateway with `QUOTIFY_GOOGLE_CLIENT_ID=mock-client-id QUOTIFY_GOOGLE_CLIENT_SECRET=mock-client-secret QUOTIFY_GOOGLE_ISSUER=http://mockoidc:8099` (for `make dev`, issuer `http://localhost:42899`). "Continue with Google" then opens a page at <http://localhost:42899> where you type any address; it is a stand-in, never to be exposed.
 
 ## Playground
 
-`/playground` is a guided walk through the product for someone who has only the operator token: create a sandbox account (currency, time zone and grace period are required, nothing is
+`/playground` (an operator page) is a guided walk through the product: create a sandbox account (currency, time zone and grace period are required, nothing is
 preselected), create a meter, a plan with a base fee and a per-call price, a customer and a subscription, choose the mock payment outcome, send usage, close the period, and watch the
 invoice go through its saga (with a link to the full timeline). It calls the same public API a customer would, with the sandbox tenant's own `qk_test_` key, so it exercises the real system end
 to end; it never touches a live tenant. A declined payment leaves the invoice open in `PAYMENT_DECLINED` while dunning retries it. Playwright runs both the paid and the declined path.
 
 ## The billing tabs
 
-They show a tenant's data through the tenant API the tenant itself uses, with the operator's token plus `X-Quotify-Tenant: <tenant id>` ("act as", gateway `authenticate`): the
+They show a tenant's data through the tenant API the tenant itself uses, with the operator's session plus `X-Quotify-Tenant: <tenant id>` ("act as", gateway `authenticate`; the machine token acts the same way): the
 same endpoints, rate limits and validation, no operator-only copy. Provider accounts, the ledger, the reconciliation and provider moves are operator routes and go as the operator.
 The pages are the features `customers`, `packages`, `subscriptions`, `payments`, `providers`, `reports`, `webhooks`, `apps` and `seller-address`; the tenant layout (`features/tenants`) hosts them as child routes.
 Their tests (`e2e-mock/`, `npm run e2e:mock`) run the built console against a **mocked gateway** (every `/gw` request is answered by the test), so they need no stack and run in the console's CI
@@ -49,7 +62,7 @@ job; `e2e/` still drives the real stack.
   i18n, layout) and `src/shared` holds what several features need (the API client, the session token, money and label helpers). A feature imports another only through its `index.ts`
   (the tenant page shows `invoices`' table).
 - **TanStack Router** (`@tanstack/vue-router`, code-based routes). Every feature exports a function that creates its routes under a parent; the app mounts all but the sign-in page under one
-  pathless route whose `beforeLoad` redirects a visitor without an operator token. The router is not registered for global type inference: registering it makes pages and the route tree
+  pathless route whose `beforeLoad` redirects a visitor to the sign-in page and a person who is not an operator to their home (the server decides again on every request). The router is not registered for global type inference: registering it makes pages and the route tree
   depend on each other's types, a cycle TypeScript reports as an implicit `any`, so route paths are plain strings and the Playwright tests are what catches a wrong one.
 - **TanStack Query** (`@tanstack/vue-query`) for every read and write. `unwrap()` turns an `openapi-fetch` result into data or an `ApiError` (the gateway's code and message), which is what a query function
   must throw; queries are keyed per tenant and invoice, a refused token or a missing resource is not retried, and the playground's invoice list polls while the saga runs.
@@ -65,11 +78,11 @@ job; `e2e/` still drives the real stack.
   diff, and the ESLint config forbids `any`. The gateway does not serve the spec: the file in the repository is the source.
 - **Same origin.** The browser calls `/gw/...`; nginx in the image (Vite's dev server in development) forwards it to `GATEWAY_URL` with the `Authorization` header and resolves the
   gateway on every request, so a recreated gateway is found again. The gateway needs no CORS configuration.
-- **Operator routes added for it** (all behind the operator token, in the OpenAPI file): `GET /admin/v1/tenants`, `GET /admin/v1/tenants/{tenant_id}/invoices[/{invoice_id}[/pdf|/saga]]`,
+- **Operator routes added for it** (all behind operator access: the machine token or an operator's session, in the OpenAPI file): `GET /admin/v1/tenants`, `GET /admin/v1/tenants/{tenant_id}/invoices[/{invoice_id}[/pdf|/saga]]`,
   `GET /admin/v1/dead-letters`, `POST /admin/v1/dead-letters/redrive`. The tenant-scoped reads run the billing call in the tenant named in the path; the dead-letter
   and saga operations are `BillingAdminService` RPCs (billing-svc owns the saga log and the RabbitMQ topology).
 - **Scope kept small on purpose.** Read-only views plus the redrive. The Kafka dead-letter topics are `quotifyctl dlq --broker kafka`; starting a replay or a re-rating is the
-  admin API or `quotifyctl`, the console only looks jobs up. There is no authentication beyond the operator token, and nothing for tenants themselves.
+  admin API or `quotifyctl`, the console only looks jobs up. Who may open it is decided by the gateway from the session (see [Sign-in methods](#sign-in-methods)); people use the product app instead.
 
 ## UI kit
 
@@ -87,14 +100,14 @@ The console is one light theme (soft grey canvas, white cards, dark green action
 
 `make dev` runs the Go services on your machine (against the infrastructure containers that `make setup` started) and the Vite dev server on port 3001, both with reload; `make dev-docker` runs the services in Docker instead, and `make logs` (or `make logs S=gateway`) follows their logs.
 
-In development the operator token and the playground account form come pre-filled: the Vite dev server does it by default, the compose stack through
-`PREFILL_OPERATOR_TOKEN` (served as `/env.js`). Leave that variable empty anywhere that is not a throwaway local stack.
+In development the playground account form comes pre-filled: the Vite dev server does it by default, the compose stack through
+`PREFILL_PLAYGROUND=true` (served as `/env.js`). Leave it `false` anywhere that is not a throwaway local stack. No credential is ever served to the browser.
 
 ## Tests
 
 `web/admin/e2e/smoke.spec.ts` (Playwright, run by CI's end-to-end job against the Compose stack, `make web-e2e` locally) creates a sandbox account, closes a period and waits for
-a paid invoice, then drives the browser: sign in with the operator token, open the tenant and the invoice, and check that the saga timeline has at least five transitions ending in
-`COMPLETED`; a wrong token is refused and a signed-out visitor is sent to the sign-in page; a valid notification command put into `notification.send.dlq` appears in the dead-letter view
+a paid invoice, then drives the browser: open the console as the operator user (a session from the real sign-in routes: the dev seed's `user1@example.com` with its password, else a one-time code read from Mailpit; the dev stack lists that address in `QUOTIFY_OPERATOR_EMAILS`), open the tenant and the invoice, and check that the saga timeline has at least five transitions ending in
+`COMPLETED`; a signed-out visitor is sent to the sign-in page (which has no token form, and the machine token is no password), a person who is not an operator gets 403 from the API and is sent home by the page; a valid notification command put into `notification.send.dlq` appears in the dead-letter view
 and disappears when redriven (the notifier delivers it; the saga it names is already final, so its reply is ignored).
 
 `make web-check` runs install, ESLint, the type check (`vue-tsc`), the unit tests (Vitest: locale parity, error-key coverage, address rules and money formatting), the OpenAPI type check and the build.

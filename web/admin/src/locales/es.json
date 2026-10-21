@@ -21,12 +21,6 @@
     "unknown": "?",
     "cancel": "Cancelar"
   },
-  "signIn": {
-    "title": "Consola de operador",
-    "intro": "Lee y actúa solo a través de la pasarela. El token se queda en esta pestaña del navegador (almacenamiento de sesión).",
-    "tokenLabel": "Token de operador",
-    "submit": "Iniciar sesión"
-  },
   "enums": {
     "environment": {
       "sandbox": "sandbox",
@@ -1417,6 +1411,18 @@
       "member": {
         "last_owner": "Una cuenta debe conservar al menos un propietario. Nombra primero a otro propietario.",
         "not_found": "Esta persona no es miembro de la cuenta."
+      },
+      "otp": {
+        "invalid": "Este código es incorrecto, ha caducado o ya se usó. Revise el último correo o pida un código nuevo."
+      },
+      "oauth": {
+        "conflict": "Dos inicios de sesión coincidieron. Inténtelo de nuevo.",
+        "email_unverified": "Google no ha verificado ninguna dirección de correo de esta cuenta, así que no sirve para iniciar sesión.",
+        "invalid": "No se pudo completar este inicio de sesión. Inténtelo de nuevo.",
+        "not_configured": "El inicio de sesión con Google no está configurado aquí."
+      },
+      "operator": {
+        "forbidden": "Esta zona es para los operadores de la plataforma."
       }
     },
     "gateway": {
@@ -1492,9 +1498,36 @@
       "submit": "Iniciar sesión",
       "cta": "Iniciar sesión",
       "noAccount": "¿Es nuevo aquí?",
-      "operator": "Consola del operador",
       "expired": "Su sesión ha terminado. Inicie sesión de nuevo para continuar.",
-      "forgot": "¿Olvidaste tu contraseña?"
+      "forgot": "¿Olvidaste tu contraseña?",
+      "methods": "Método de acceso",
+      "tabPassword": "Contraseña",
+      "tabCode": "Código por correo",
+      "or": "o",
+      "google": "Continuar con Google",
+      "completing": "Iniciando sesión",
+      "completingIntro": "Terminando el inicio de sesión con Google. Un momento.",
+      "oauthError": {
+        "state": "No se pudo verificar el inicio de sesión con Google (tardó demasiado o la página se abrió dos veces). Inténtelo de nuevo.",
+        "denied": "Canceló el inicio de sesión con Google. Puede intentarlo de nuevo o usar otro método.",
+        "token": "No se pudo verificar la respuesta de Google. Inténtelo de nuevo.",
+        "email_unverified": "Google no ha verificado ninguna dirección de correo de esta cuenta, así que no sirve para iniciar sesión.",
+        "unavailable": "El inicio de sesión con Google no está disponible ahora. Inténtelo en un momento o use otro método.",
+        "failed": "No se pudo completar el inicio de sesión con Google. Inténtelo de nuevo o use otro método."
+      },
+      "code": {
+        "label": "Código de 6 dígitos",
+        "digit": "Dígito {n} de {total}",
+        "intro": "Le enviaremos por correo un código de 6 dígitos. No hace falta contraseña.",
+        "formLabel": "Iniciar sesión con un código de un solo uso",
+        "verifyLabel": "Introduzca el código de un solo uso",
+        "send": "Enviarme un código",
+        "sentTo": "Si {email} puede recibir correo, va en camino un código de 6 dígitos. Vale 10 minutos.",
+        "resent": "Va en camino un código nuevo.",
+        "resend": "Enviar un código nuevo",
+        "resendIn": "Enviar un código nuevo en {seconds} s",
+        "change": "Usar otra dirección"
+      }
     },
     "signUp": {
       "title": "Cree su cuenta",
@@ -1503,7 +1536,11 @@
       "cta": "Crear una cuenta",
       "haveAccount": "¿Ya tiene una cuenta?",
       "checkTitle": "Revisa tu bandeja de entrada",
-      "checkBody": "Hemos enviado un mensaje a {email}. Si es una dirección nueva, abre el enlace que contiene para confirmarla. Si ya tiene una cuenta, inicia sesión con ella o restablece su contraseña."
+      "checkBody": "Hemos enviado un mensaje a {email}. Si es una dirección nueva, abre el enlace que contiene para confirmarla. Si ya tiene una cuenta, inicia sesión con ella o restablece su contraseña.",
+      "code": {
+        "intro": "Sin contraseña que recordar: le enviamos por correo un código de 6 dígitos y creamos su cuenta cuando lo introduzca.",
+        "organisation": "Organización (opcional)"
+      }
     },
     "home": {
       "title": "Su organización",
@@ -1815,7 +1852,9 @@
       "mail": "Correo",
       "address": "Dirección del negocio",
       "einvoice": "Factura electrónica",
-      "appSettings": "Ajustes de la aplicación"
+      "appSettings": "Ajustes de la aplicación",
+      "operator": "Consola de operador",
+      "myApps": "Mis aplicaciones"
     }
   },
   "privacy": {

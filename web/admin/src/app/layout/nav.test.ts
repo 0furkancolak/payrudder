@@ -35,9 +35,19 @@ describe("buildNav", () => {
   });
 
   it("the operator sees the platform, and a tenant with the operator-only pages too", () => {
-    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "playground", "deadLetters"]);
+    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "playground", "deadLetters", "myApps"]);
     const tenant = keys(buildNav({ level: "tenant", tenantId: "T" }));
-    for (const k of ["dashboard", "customers", "invoices", "payments", "providers", "einvoice", "address", "mail", "apps"]) expect(tenant).toContain(k);
+    for (const k of ["dashboard", "customers", "invoices", "payments", "providers", "einvoice", "address", "mail", "apps", "myApps"]) expect(tenant).toContain(k);
+  });
+
+  it("only an operator has the door to the operator console, and the console leads back to the person's own apps", () => {
+    expect(keys(buildNav({ level: "org" }))).not.toContain("operator");
+    expect(keys(buildNav({ level: "org", operator: false }))).not.toContain("operator");
+    const door = buildNav({ level: "org", operator: true }).flatMap((s) => s.items).find((i) => i.key === "operator");
+    expect(door?.to).toBe("/operator");
+    expect(keys(buildNav({ level: "app", appId: "A", tenantId: "T" }))).not.toContain("operator");
+    const back = buildNav({ level: "platform" }).flatMap((s) => s.items).find((i) => i.key === "myApps");
+    expect(back?.to).toBe("/app");
   });
 });
 

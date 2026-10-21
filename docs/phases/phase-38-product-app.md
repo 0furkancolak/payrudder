@@ -21,7 +21,7 @@ It shipped in two pull requests: identity and gateway first, the web app second.
 - **E-mail verification and password reset** (built in [phase 39](phase-39-product-app-complete.md); this is what it said when it was left out). Both need a mail path for people (not for a tenant's customers): the notifier today sends a tenant's invoice mail through the tenant's mail switch (phase 26/33) and has no template or sender identity of its own for Quotify-to-person mail. Doing it properly means a sender configuration, templates in six languages and a token table; it is not cheap, so it is not here. Until then a forgotten password has no self-service path (an operator would have to replace `users.password_hash` by hand) and an address is not proven to belong to the person. Sign-up therefore tells a visitor that an address is taken (it cannot hide it without a mail to the owner) — the per-address limit and the lock are the answer to enumeration and guessing.
 - Inviting members, changing a role, removing a member, transferring ownership (built in phase 39; ownership moves by promoting the new owner and demoting the old one). The schema and the checks (roles) are there; only the API and screens are missing.
 - Deleting or renaming an app (no API for operators either).
-- Multi-factor authentication, OAuth/SSO sign-in.
+- Multi-factor authentication. (Sign-in with Google and a one-time e-mailed code were built in [phase 42](phase-42-signin-methods.md).)
 - Platform-wide dead letters in the app overview: the queues belong to the platform, not to one tenant, and showing them to a person would leak other tenants' health. They stay in the operator console.
 
 ## Design
@@ -61,7 +61,7 @@ users ──< user_sessions
 
 The gateway never takes a user, account or tenant id from a request body: the user comes from the resolved session, the account from `?account_id=` (checked against the session's memberships) or the first membership, the tenant from plans-svc's answer. **plans-svc checks again, in SQL**: every account-scoped query joins `account_members` on the user id (`GetAppForUser`, `GetTenantForUser`, `GetMembership`), so a request for another account's app, tenant or key finds no row, whatever the gateway sent. Other accounts' objects are *not found* (404), not *forbidden*, so ids cannot be probed. Roles: **owner** and **admin** create apps and keys and revoke keys; **viewer** reads. A viewer acting on a tenant through `/v1/*` may only use GET.
 
-A session reaches `/v1/*` only with `X-Quotify-Tenant`, and the tenant is resolved through the membership; operator routes (`/admin/v1/*`) compare against the operator token in constant time, which a session never equals, so **a session is never an operator**.
+A session reaches `/v1/*` only with `X-Quotify-Tenant`, and the tenant is resolved through the membership; operator routes (`/admin/v1/*`) compare against the operator token in constant time, which a session never equals, so **a session was never an operator** (phase 38 as built). Since [phase 42](phase-42-signin-methods.md) the session of a person whose verified address is in `QUOTIFY_OPERATOR_EMAILS` is accepted on the operator routes; every other session still is not, and answers 403.
 
 ### Threat model
 

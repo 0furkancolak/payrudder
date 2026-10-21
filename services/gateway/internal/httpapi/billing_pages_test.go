@@ -166,8 +166,8 @@ func TestOperatorOnlyBillingRoutesStayOutOfReachOfSessions(t *testing.T) {
 	} {
 		for _, tok := range []string{tokAda, tokViewer, tokBob} {
 			for _, tn := range []string{"", adaLive} {
-				if resp, _ := p.call(t, c.method, c.path, tok, tn, `{}`); resp.StatusCode != 401 {
-					t.Errorf("%s %s with a session (tenant %q): %d, want 401", c.method, c.path, tn, resp.StatusCode)
+				if resp, _ := p.call(t, c.method, c.path, tok, tn, `{}`); resp.StatusCode != 403 {
+					t.Errorf("%s %s with a session (tenant %q): %d, want 403 (a valid session that is not an operator's)", c.method, c.path, tn, resp.StatusCode)
 				}
 			}
 		}

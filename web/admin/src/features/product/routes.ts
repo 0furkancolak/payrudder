@@ -11,7 +11,8 @@ import { subscriptionRoutes } from "@/features/subscriptions/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
 import { dashSearch } from "@/features/dashboard/lib";
 import { lazyPage } from "@/shared/lib/lazy";
-import { isOperator, isPerson } from "@/shared/lib/session";
+import { isPerson } from "@/shared/lib/session";
+import { OAUTH_ERRORS } from "./lib";
 
 // The product's pages are loaded when first visited, so the public pages stay small. The deeper views reuse the console's own route factories.
 const lazy = lazyPage;
@@ -24,18 +25,23 @@ export function requirePerson(): void {
 /** beforeLoad for the sign-in and sign-up pages and for "/": somebody who is signed in goes to their home. */
 export function redirectHome(): void {
   if (isPerson.value) throw redirect({ to: "/app" });
-  if (isOperator.value) throw redirect({ to: "/tenants" });
 }
 
 /** The public pages: sign in, sign up, forgot and reset password, verify e-mail (and "/", which is the sign-in page for a visitor and a redirect for somebody signed in). */
 export function publicProductRoutes(root: AnyRoute) {
   const signIn = lazy(() => import("./SignInPage.vue"));
   const signUp = lazy(() => import("./SignUpPage.vue"));
-  const validateSignIn = (s: Record<string, unknown>) => (s.expired === "1" ? { expired: "1" } : {});
+  const validateSignIn = (s: Record<string, unknown>) => ({
+    ...(s.expired === "1" ? { expired: "1" } : {}),
+    // Why a login with Google ended without a session (set by the gateway's callback): one of a fixed few, anything else is ignored.
+    ...(typeof s.oauth_error === "string" && OAUTH_ERRORS.includes(s.oauth_error) ? { oauth_error: s.oauth_error } : {}),
+  });
   return [
     createRoute({ getParentRoute: () => root, path: "/", beforeLoad: redirectHome, component: signIn, validateSearch: validateSignIn }),
     createRoute({ getParentRoute: () => root, path: "/signin", beforeLoad: redirectHome, component: signIn, validateSearch: validateSignIn }),
     createRoute({ getParentRoute: () => root, path: "/signup", beforeLoad: redirectHome, component: signUp }),
+    // Where the gateway sends the browser after Google: the session token is in the URL fragment, read once and removed.
+    createRoute({ getParentRoute: () => root, path: "/signin/complete", component: lazy(() => import("./SignInCompletePage.vue")) }),
     createRoute({ getParentRoute: () => root, path: "/forgot", beforeLoad: redirectHome, component: lazy(() => import("./ForgotPage.vue")) }),
     // The pages the mails open work signed in or out: the token in the link is the credential, and a person may follow it from any browser.
     createRoute({ getParentRoute: () => root, path: "/reset", component: lazy(() => import("./ResetPage.vue")) }),

@@ -359,6 +359,8 @@ services:
       # Mail to people (e-mail verification, password reset, invitations) goes to Mailpit; its links open the console.
       SMTP_ADDR: mailpit:1025
       QUOTIFY_APP_URL: ${QUOTIFY_APP_URL:-http://localhost:42301}
+      # Keys the hash of one-time sign-in codes (a code has only a million values). Local stack only: generate your own with `openssl rand -hex 32`.
+      QUOTIFY_OTP_PEPPER: ${QUOTIFY_OTP_PEPPER:-local-otp-pepper-change-me-0123456789}
     ports: ["42701:7001", "42911:9101"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -669,7 +671,28 @@ services:
       minio: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 96m } } }
 
-  # The operator console (web/admin): reads and acts through the gateway only, with the operator token typed into the browser.
+  # A stand-in for Google (pkg/oidctest), only with `--profile oidc`: "Continue with Google" works without a Google client. Development only.
+  # To use it: QUOTIFY_GOOGLE_CLIENT_ID=mock-client-id QUOTIFY_GOOGLE_CLIENT_SECRET=mock-client-secret QUOTIFY_GOOGLE_ISSUER=http://mockoidc:8099
+  # (the gateway reaches it by name; the browser goes to http://localhost:42899).
+  mockoidc:
+    <<: *defaults
+    profiles: [oidc]
+    build:
+      context: ../..
+      dockerfile: pkg/oidctest/cmd/mockoidc/Dockerfile
+    image: quotify/mockoidc:dev
+    labels: { quotify.dev-only: "true" }   # never deployed: no Railway service, no memory budget (tests/railway, tests/membudget)
+    environment:
+      MOCKOIDC_ADDR: ":8099"
+      MOCKOIDC_ISSUER: http://mockoidc:8099
+      MOCKOIDC_BROWSER_URL: http://localhost:42899
+      MOCKOIDC_CLIENT_ID: mock-client-id
+      MOCKOIDC_CLIENT_SECRET: mock-client-secret
+      MOCKOIDC_REDIRECT_URI: ${QUOTIFY_APP_URL:-http://localhost:42301}/gw/auth/google/callback
+    ports: ["42899:8099"]
+    deploy: { resources: { limits: { memory: 32m } } }
+
+  # The console (web/admin): reads and acts through the gateway only. People sign in with e-mail and password, a one-time code or Google.
   admin-ui:
     <<: *defaults
     profiles: [app]
@@ -678,10 +701,10 @@ services:
     image: quotify/admin-ui:dev
     environment:
       GATEWAY_URL: http://gateway:8000
-      # Local stack only: the sign-in form and the playground come pre-filled. Never set this outside a development stack.
-      PREFILL_OPERATOR_TOKEN: ${QUOTIFY_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
       QUOTIFY_DEMO: ${QUOTIFY_DEMO:-false}
       BRAND_NAME: ${BRAND_NAME:-Quotify}
+      # Local stack only: the operator playground's account form comes pre-filled.
+      PREFILL_PLAYGROUND: "true"
     ports: ["42301:3001"]
     depends_on:
       gateway: { condition: service_started }
@@ -720,6 +743,15 @@ services:
       QUOTIFY_PAYMENTS_INTERNAL_TOKEN: ${QUOTIFY_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
       # The console's nginx fronts the gateway and passes the visitor's address; the sign-in limits count by it (docs/phases/phase-38-product-app.md).
       QUOTIFY_TRUST_FORWARDED_FOR: "true"
+      # The operator console is for people: whoever signs in with one of these addresses (and has verified it) is a platform operator. The dev seed's
+      # first user by default. The operator token above is the machine credential only (scripts, quotifyctl, tests); no page asks for it.
+      QUOTIFY_OPERATOR_EMAILS: ${QUOTIFY_OPERATOR_EMAILS:-user1@example.com}
+      # "Continue with Google": shown only when both are set. For a real client see docs/13-admin-ui.md; for the in-repo mock provider start the `oidc`
+      # profile and set the three values listed in docs/10-local-dev.md.
+      QUOTIFY_APP_URL: ${QUOTIFY_APP_URL:-http://localhost:42301}
+      QUOTIFY_GOOGLE_CLIENT_ID: ${QUOTIFY_GOOGLE_CLIENT_ID:-}
+      QUOTIFY_GOOGLE_CLIENT_SECRET: ${QUOTIFY_GOOGLE_CLIENT_SECRET:-}
+      QUOTIFY_GOOGLE_ISSUER: ${QUOTIFY_GOOGLE_ISSUER:-https://accounts.google.com}
       QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42800:8000", "42910:9100"]
     depends_on:

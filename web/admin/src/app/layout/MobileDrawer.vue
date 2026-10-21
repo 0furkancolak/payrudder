@@ -2,8 +2,6 @@
 import { X } from "@lucide/vue";
 import { DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from "reka-ui";
 import { useI18n } from "vue-i18n";
-import { isOperator } from "@/shared/lib/session";
-import { LogOut } from "@lucide/vue";
 import SidebarNav from "./SidebarNav.vue";
 import type { NavItem, NavSection } from "./nav";
 
@@ -13,7 +11,6 @@ import type { NavItem, NavSection } from "./nav";
  */
 defineProps<{ sections: NavSection[]; current: NavItem | undefined; brand: string }>();
 const open = defineModel<boolean>("open", { required: true });
-const emit = defineEmits<{ signOut: [] }>();
 const { t } = useI18n();
 </script>
 
@@ -38,14 +35,6 @@ const { t } = useI18n();
         <div class="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
           <SidebarNav :sections="sections" :current="current" :label="t('shell.navLabel')" @navigate="open = false" />
         </div>
-        <button
-          v-if="isOperator"
-          type="button"
-          class="text-muted-foreground hover:bg-muted hover:text-foreground mt-3 flex min-h-11 items-center gap-3 rounded-2xl border-t px-3.5 pt-3 text-sm font-medium"
-          @click="emit('signOut')"
-        >
-          <LogOut class="size-[1.15rem]" aria-hidden="true" />{{ t("nav.signOut") }}
-        </button>
       </DialogContent>
     </DialogPortal>
   </DialogRoot>

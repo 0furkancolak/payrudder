@@ -39,7 +39,8 @@ function isAdminCall(response: Response): boolean {
 const asTenantClients = new Map<string, ReturnType<typeof createClient<paths>>>();
 
 /**
- * A client that speaks the tenant API for one tenant while signed in as the operator: the operator token plus the tenant to act as. The console shows a
+ * A client that speaks the tenant API for one tenant: the session token plus the tenant to act as (an operator's session may act as any tenant, a person's
+ * only as the tenants of their own apps; the gateway decides). The console shows a
  * tenant's customers, packages and reports through the same endpoints the tenant itself uses.
  */
 export function tenantApi(tenantId: string) {

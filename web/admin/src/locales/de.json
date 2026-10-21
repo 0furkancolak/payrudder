@@ -21,12 +21,6 @@
     "unknown": "?",
     "cancel": "Abbrechen"
   },
-  "signIn": {
-    "title": "Operator-Konsole",
-    "intro": "Liest und handelt ausschließlich über das Gateway. Das Token bleibt in diesem Browser-Tab (Session Storage).",
-    "tokenLabel": "Operator-Token",
-    "submit": "Anmelden"
-  },
   "enums": {
     "environment": {
       "sandbox": "Sandbox",
@@ -1417,6 +1411,18 @@
       "member": {
         "last_owner": "Ein Konto braucht mindestens einen Inhaber. Machen Sie zuerst jemand anderen zum Inhaber.",
         "not_found": "Diese Person ist kein Mitglied des Kontos."
+      },
+      "otp": {
+        "invalid": "Dieser Code ist falsch, abgelaufen oder wurde schon verwendet. Prüfen Sie die neueste E-Mail oder fordern Sie einen neuen Code an."
+      },
+      "oauth": {
+        "conflict": "Zwei Anmeldungen haben sich überschnitten. Versuchen Sie es erneut.",
+        "email_unverified": "Google hat für dieses Konto keine E-Mail-Adresse bestätigt, daher ist die Anmeldung damit nicht möglich.",
+        "invalid": "Diese Anmeldung konnte nicht abgeschlossen werden. Versuchen Sie es erneut.",
+        "not_configured": "Die Anmeldung mit Google ist hier nicht eingerichtet."
+      },
+      "operator": {
+        "forbidden": "Dieser Bereich ist Plattformbetreibern vorbehalten."
       }
     },
     "gateway": {
@@ -1492,9 +1498,36 @@
       "submit": "Anmelden",
       "cta": "Anmelden",
       "noAccount": "Neu hier?",
-      "operator": "Betreiber-Konsole",
       "expired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
-      "forgot": "Passwort vergessen?"
+      "forgot": "Passwort vergessen?",
+      "methods": "Anmeldemethode",
+      "tabPassword": "Passwort",
+      "tabCode": "E-Mail-Code",
+      "or": "oder",
+      "google": "Weiter mit Google",
+      "completing": "Sie werden angemeldet",
+      "completingIntro": "Die Anmeldung mit Google wird abgeschlossen. Einen Moment.",
+      "oauthError": {
+        "state": "Die Anmeldung mit Google konnte nicht bestätigt werden (zu lange gedauert oder die Seite wurde zweimal geöffnet). Versuchen Sie es erneut.",
+        "denied": "Sie haben die Anmeldung mit Google abgebrochen. Versuchen Sie es erneut oder nutzen Sie eine andere Methode.",
+        "token": "Die Antwort von Google konnte nicht bestätigt werden. Versuchen Sie es erneut.",
+        "email_unverified": "Google hat für dieses Konto keine E-Mail-Adresse bestätigt, daher ist die Anmeldung damit nicht möglich.",
+        "unavailable": "Die Anmeldung mit Google ist gerade nicht verfügbar. Versuchen Sie es gleich noch einmal oder nutzen Sie eine andere Methode.",
+        "failed": "Die Anmeldung mit Google konnte nicht abgeschlossen werden. Versuchen Sie es erneut oder nutzen Sie eine andere Methode."
+      },
+      "code": {
+        "label": "6-stelliger Code",
+        "digit": "Ziffer {n} von {total}",
+        "intro": "Wir senden Ihnen einen 6-stelligen Code per E-Mail. Ein Passwort ist nicht nötig.",
+        "formLabel": "Mit einem Einmalcode anmelden",
+        "verifyLabel": "Den Einmalcode eingeben",
+        "send": "Code per E-Mail senden",
+        "sentTo": "Wenn {email} E-Mails empfangen kann, ist ein 6-stelliger Code unterwegs. Er gilt 10 Minuten.",
+        "resent": "Ein neuer Code ist unterwegs.",
+        "resend": "Neuen Code senden",
+        "resendIn": "Neuen Code in {seconds} s senden",
+        "change": "Andere Adresse verwenden"
+      }
     },
     "signUp": {
       "title": "Konto erstellen",
@@ -1503,7 +1536,11 @@
       "cta": "Konto erstellen",
       "haveAccount": "Sie haben bereits ein Konto?",
       "checkTitle": "Prüfen Sie Ihr Postfach",
-      "checkBody": "Wir haben eine Nachricht an {email} gesendet. Ist die Adresse neu, bestätigen Sie sie über den Link darin. Hat sie schon ein Konto, melden Sie sich damit an oder setzen Sie das Passwort zurück."
+      "checkBody": "Wir haben eine Nachricht an {email} gesendet. Ist die Adresse neu, bestätigen Sie sie über den Link darin. Hat sie schon ein Konto, melden Sie sich damit an oder setzen Sie das Passwort zurück.",
+      "code": {
+        "intro": "Kein Passwort merken: Wir senden Ihnen einen 6-stelligen Code per E-Mail und legen Ihr Konto an, sobald Sie ihn eingeben.",
+        "organisation": "Organisation (optional)"
+      }
     },
     "home": {
       "title": "Ihre Organisation",
@@ -1815,7 +1852,9 @@
       "mail": "E-Mail",
       "address": "Geschäftsadresse",
       "einvoice": "E-Rechnung",
-      "appSettings": "App-Einstellungen"
+      "appSettings": "App-Einstellungen",
+      "operator": "Betreiberkonsole",
+      "myApps": "Meine Apps"
     }
   },
   "privacy": {

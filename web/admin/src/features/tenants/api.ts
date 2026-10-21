@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, api, unwrap, type Tenant } from "@/shared/api/client";
-import { isPerson } from "@/shared/lib/session";
+import { operatorView } from "@/shared/lib/session";
 
 export const tenantKeys = {
   list: ["tenants"] as const,
@@ -30,8 +30,8 @@ async function personTenant(id: string): Promise<Tenant> {
 
 export function useTenant(id: MaybeRefOrGetter<string>) {
   return useQuery({
-    queryKey: computed(() => [...tenantKeys.detail(toValue(id)), isPerson.value ? "person" : "operator"]),
-    queryFn: () => (isPerson.value ? personTenant(toValue(id)) : unwrap(api.GET("/admin/v1/tenants/{id}", { params: { path: { id: toValue(id) } } }))),
+    queryKey: computed(() => [...tenantKeys.detail(toValue(id)), operatorView() ? "operator" : "person"]),
+    queryFn: () => (operatorView() ? unwrap(api.GET("/admin/v1/tenants/{id}", { params: { path: { id: toValue(id) } } })) : personTenant(toValue(id))),
     enabled: computed(() => toValue(id) !== ""),
   });
 }

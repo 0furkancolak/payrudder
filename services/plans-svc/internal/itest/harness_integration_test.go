@@ -84,6 +84,9 @@ func (r *recordingMail) lastToken(kind usermail.Kind, address string) string {
 
 const testAppURL = "http://app.test"
 
+// testPepper keys the hash of one-time sign-in codes in these tests.
+const testPepper = "test-pepper-not-a-secret"
+
 type env struct {
 	mail    *recordingMail
 	db      testkit.ServiceDB
@@ -151,7 +154,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	adminSrv := admin.New(system, ev, allowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	mail := &recordingMail{}
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, mail, testAppURL, log), identityqry.New(system)))
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, mail, testAppURL, log).WithPepper(testPepper), identityqry.New(system)))
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)

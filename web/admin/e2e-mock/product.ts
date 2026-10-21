@@ -123,18 +123,23 @@ export interface ProductState {
   /** The tokens the mocked mails carry. */
   verifyToken: string;
   resetToken: string;
+  /** Phase 42: whether the server calls Ada a platform operator, which sign-in methods it offers, and the one-time code the mocked mail carries. */
+  operator: boolean;
+  methods: { password: boolean; otp: boolean; google: boolean };
+  code: string;
 }
 
 /** A stand-in for the product API with a person signed in as Ada. `state` is the test's to change while it runs. */
 export function productGateway(gw: MockGateway, state: Partial<ProductState> = {}): { gw: MockGateway; state: ProductState } {
   const s: ProductState = { apps: [app], keys: [...keys], overview: overview("live"), dashboard: null, sessionOk: true, verified: true, verifyToken: "qv_good", resetToken: "qr_good",
-    role: "owner", members: team(), invitations: [], accountName: "Ada Labs", memberships, ...state };
+    role: "owner", members: team(), invitations: [], accountName: "Ada Labs", memberships, operator: false,
+    methods: { password: true, otp: true, google: false }, code: "123456", ...state };
   const who = () => ({ ...user, email_verified: s.verified });
   const badLink = { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "identity.token.invalid", message: "bad link" } } };
   gw.on((c) => {
     if (c.path === "/auth/signin" && c.method === "POST") {
       return c.body?.password === "right password!" || c.body?.password === "a long enough password"
-        ? { body: { user: who(), memberships: s.memberships, token: SESSION, expire_time: "2026-11-04T09:00:00Z" } }
+        ? { body: { user: who(), memberships: s.memberships, token: SESSION, operator: s.operator, expire_time: "2026-11-04T09:00:00Z" } }
         : { status: 401, body: { error: { code: "UNAUTHENTICATED", key: "identity.auth.invalid_credentials", message: "wrong" } } };
     }
     // Sign-up opens no session: 202 whatever the address. The page then signs in with the same password.
@@ -153,10 +158,18 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
       return { status: 204, body: {} };
     }
     if (c.path === "/auth/signout") return { status: 200, body: {} };
+    if (c.path === "/auth/methods" && c.method === "GET") return { body: s.methods };
+    // The same answer for every address; the right code (s.code) signs in, anything else is the one refusal.
+    if (c.path === "/auth/otp/request" && c.method === "POST") return { status: 202, body: { status: "accepted" } };
+    if (c.path === "/auth/otp/verify" && c.method === "POST") {
+      return c.body?.code === s.code
+        ? { body: { user: who(), memberships: s.memberships, token: SESSION, operator: s.operator, expire_time: "2026-11-04T09:00:00Z" } }
+        : { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "identity.otp.invalid", message: "wrong code" } } };
+    }
     if (c.path.startsWith("/app/v1") || c.path === "/auth/me") {
       if (!s.sessionOk) return { status: 401, body: { error: { code: "UNAUTHENTICATED", key: "identity.session.invalid", message: "sign in again" } } };
     }
-    if (c.path === "/auth/me") return { body: { user: who(), memberships: s.memberships, expire_time: "2026-11-04T09:00:00Z" } };
+    if (c.path === "/auth/me") return { body: { user: who(), memberships: s.memberships, operator: s.operator, expire_time: "2026-11-04T09:00:00Z" } };
     if (c.path === "/app/v1/account" && c.method === "GET") {
       const id = c.query.get("account_id") ?? ACCOUNT;
       return { body: { id, name: id === ACCOUNT ? s.accountName : (s.memberships.find((m) => m.account_id === id)?.account_name ?? ""), role: s.role, create_time: "2026-10-01T09:00:00Z", members: s.members } };

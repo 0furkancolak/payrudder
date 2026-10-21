@@ -30,6 +30,7 @@ done
 [[ $SOURCE == github || $SOURCE == local ]] || { echo "--source must be github or local" >&2; exit 2; }
 [[ $SOURCE == local || -n $REPO || $DRY_RUN == 1 ]] || { echo "--repo owner/name is required with --source github" >&2; exit 2; }
 REPO=${REPO:-owner/quotify}
+# OPERATOR_EMAILS (environment, comma separated): the people who are platform operators once they sign in and verify the address; empty: nobody.
 
 # --- helpers ---------------------------------------------------------------------------------------------------------------------------------
 run() {
@@ -152,13 +153,14 @@ fi
 note "Secrets shared by services"
 secret gateway QUOTIFY_OPERATOR_TOKEN hex32
 secret payments-worker QUOTIFY_SECRETS_KEY b64
+secret plans-svc QUOTIFY_OTP_PEPPER hex32
 secret payments-worker PAYMENTS_INTERNAL_TOKEN hex32
 
 note "plans-svc"
 go_service plans-svc services/plans-svc 9100
 pg_vars plans-svc plans app system migrator
 vars plans-svc 'QUOTIFY_REDIS_URL=${{Redis.REDIS_URL}}' "QUOTIFY_KAFKA_BROKERS=$KAFKA" 'QUOTIFY_SECRETS_KEY=${{payments-worker.QUOTIFY_SECRETS_KEY}}' \
-  QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox,live
+  QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox,live 'QUOTIFY_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}'
 
 note "ingest-svc"
 go_service ingest-svc services/ingest-svc 9100
@@ -221,7 +223,7 @@ vars gateway "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "QUOTIFY_INGEST_AD
   "QUOTIFY_BILLING_ADDR=$(grpc_addr billing-svc 7005)" "QUOTIFY_ASSETS_ADDR=$(grpc_addr assets-svc 7007)" ${GW_ANALYTICS[@]+"${GW_ANALYTICS[@]}"} \
   'QUOTIFY_REDIS_URL=${{Redis.REDIS_URL}}' QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox,live \
   QUOTIFY_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'QUOTIFY_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}' \
-  'QUOTIFY_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}'
+  'QUOTIFY_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'QUOTIFY_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "QUOTIFY_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}"
 
 note "admin-ui"
 vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "QUOTIFY_DEMO=$DEMO" BRAND_NAME=Quotify

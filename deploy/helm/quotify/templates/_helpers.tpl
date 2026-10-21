@@ -57,6 +57,13 @@ see the schema owner's password while the Job still loads the service's complete
     {{- $_ := set $out "CLICKHOUSE_PASSWORD" $root.Values.clickhouse.password -}}
   {{- else if eq . "operatorToken" -}}
     {{- $_ := set $out "QUOTIFY_OPERATOR_TOKEN" $root.Values.operatorToken -}}
+  {{- else if eq . "otpPepper" -}}
+    {{- $_ := set $out "QUOTIFY_OTP_PEPPER" $root.Values.auth.otpPepper -}}
+  {{- else if eq . "google" -}}
+    {{- if and $root.Values.auth.google.clientId $root.Values.auth.google.clientSecret -}}
+      {{- $_ := set $out "QUOTIFY_GOOGLE_CLIENT_ID" $root.Values.auth.google.clientId -}}
+      {{- $_ := set $out "QUOTIFY_GOOGLE_CLIENT_SECRET" $root.Values.auth.google.clientSecret -}}
+    {{- end -}}
   {{- else if eq . "paymentsToken" -}}
     {{- $_ := set $out "QUOTIFY_PAYMENTS_INTERNAL_TOKEN" $root.Values.payments.internalToken -}}
   {{- else if eq . "secretsKey" -}}

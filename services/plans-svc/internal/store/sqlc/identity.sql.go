@@ -27,6 +27,28 @@ func (q *Queries) AcceptInvite(ctx context.Context, id uuid.UUID) (int64, error)
 	return result.RowsAffected(), nil
 }
 
+const clearPassword = `-- name: ClearPassword :exec
+UPDATE users SET password_hash = '', failed_logins = 0, locked_until = NULL WHERE id = $1
+`
+
+// A password cleared: the account signs in by code or provider until the person sets a new one through "forgot password".
+func (q *Queries) ClearPassword(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, clearPassword, id)
+	return err
+}
+
+const consumeLoginCode = `-- name: ConsumeLoginCode :one
+UPDATE login_codes SET used_at = now() WHERE id = $1 AND used_at IS NULL AND expires_at > now() RETURNING id
+`
+
+// Spending a code is one atomic UPDATE: of two requests with the same right code exactly one gets a row.
+func (q *Queries) ConsumeLoginCode(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, consumeLoginCode, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const consumeUserToken = `-- name: ConsumeUserToken :one
 UPDATE user_tokens SET used_at = now()
 WHERE token_hash = $1 AND kind = $2 AND used_at IS NULL AND expires_at > now()
@@ -79,6 +101,22 @@ func (q *Queries) CountOwners(ctx context.Context, accountID uuid.UUID) (int64, 
 	return count, err
 }
 
+const countRecentLoginCodes = `-- name: CountRecentLoginCodes :one
+SELECT count(*) FROM login_codes WHERE email = $1 AND created_at > now() - $2::interval
+`
+
+type CountRecentLoginCodesParams struct {
+	Email  string
+	Within pgtype.Interval
+}
+
+func (q *Queries) CountRecentLoginCodes(ctx context.Context, arg CountRecentLoginCodesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countRecentLoginCodes, arg.Email, arg.Within)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteMember = `-- name: DeleteMember :execrows
 DELETE FROM account_members WHERE account_id = $1 AND user_id = $2
 `
@@ -94,6 +132,15 @@ func (q *Queries) DeleteMember(ctx context.Context, arg DeleteMemberParams) (int
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const deleteStaleLoginCodes = `-- name: DeleteStaleLoginCodes :exec
+DELETE FROM login_codes WHERE email = $1 AND created_at < now() - interval '1 day'
+`
+
+func (q *Queries) DeleteStaleLoginCodes(ctx context.Context, email string) error {
+	_, err := q.db.Exec(ctx, deleteStaleLoginCodes, email)
+	return err
 }
 
 const deleteStaleSessions = `-- name: DeleteStaleSessions :exec
@@ -163,6 +210,23 @@ func (q *Queries) GetAppForUser(ctx context.Context, arg GetAppForUserParams) (G
 		&i.Role,
 	)
 	return i, err
+}
+
+const getIdentityUser = `-- name: GetIdentityUser :one
+SELECT user_id FROM user_identities WHERE provider = $1 AND subject = $2
+`
+
+type GetIdentityUserParams struct {
+	Provider string
+	Subject  string
+}
+
+// Sign-in with an identity provider (phase 42).
+func (q *Queries) GetIdentityUser(ctx context.Context, arg GetIdentityUserParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getIdentityUser, arg.Provider, arg.Subject)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
 }
 
 const getInviteByToken = `-- name: GetInviteByToken :one
@@ -471,6 +535,29 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	return i, err
 }
 
+const insertIdentity = `-- name: InsertIdentity :exec
+INSERT INTO user_identities (id, user_id, provider, subject, email) VALUES ($1, $2, $3, $4, $5)
+`
+
+type InsertIdentityParams struct {
+	ID       uuid.UUID
+	UserID   uuid.UUID
+	Provider string
+	Subject  string
+	Email    string
+}
+
+func (q *Queries) InsertIdentity(ctx context.Context, arg InsertIdentityParams) error {
+	_, err := q.db.Exec(ctx, insertIdentity,
+		arg.ID,
+		arg.UserID,
+		arg.Provider,
+		arg.Subject,
+		arg.Email,
+	)
+	return err
+}
+
 const insertInvite = `-- name: InsertInvite :one
 INSERT INTO account_invites (id, account_id, email, role, invited_by, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, account_id, email, role, invited_by, token_hash, created_at, sent_at, expires_at, accepted_at, revoked_at
 `
@@ -510,6 +597,30 @@ func (q *Queries) InsertInvite(ctx context.Context, arg InsertInviteParams) (Acc
 		&i.RevokedAt,
 	)
 	return i, err
+}
+
+const insertLoginCode = `-- name: InsertLoginCode :exec
+INSERT INTO login_codes (id, email, salt, code_hash, expires_at) VALUES ($1, $2, $3, $4, now() + $5::interval)
+`
+
+type InsertLoginCodeParams struct {
+	ID       uuid.UUID
+	Email    string
+	Salt     []byte
+	CodeHash []byte
+	Ttl      pgtype.Interval
+}
+
+// Sign-in by one-time code (phase 42). A row holds a keyed hash of the code, never the code.
+func (q *Queries) InsertLoginCode(ctx context.Context, arg InsertLoginCodeParams) error {
+	_, err := q.db.Exec(ctx, insertLoginCode,
+		arg.ID,
+		arg.Email,
+		arg.Salt,
+		arg.CodeHash,
+		arg.Ttl,
+	)
+	return err
 }
 
 const insertMember = `-- name: InsertMember :exec
@@ -659,6 +770,16 @@ func (q *Queries) InsertVerifiedUser(ctx context.Context, arg InsertVerifiedUser
 	return i, err
 }
 
+const invalidateLoginCodes = `-- name: InvalidateLoginCodes :exec
+UPDATE login_codes SET used_at = now() WHERE email = $1 AND used_at IS NULL
+`
+
+// A new code replaces the older ones: they stop working.
+func (q *Queries) InvalidateLoginCodes(ctx context.Context, email string) error {
+	_, err := q.db.Exec(ctx, invalidateLoginCodes, email)
+	return err
+}
+
 const invalidateUserTokens = `-- name: InvalidateUserTokens :exec
 UPDATE user_tokens SET used_at = now() WHERE user_id = $1 AND kind = $2 AND used_at IS NULL
 `
@@ -672,6 +793,18 @@ type InvalidateUserTokensParams struct {
 func (q *Queries) InvalidateUserTokens(ctx context.Context, arg InvalidateUserTokensParams) error {
 	_, err := q.db.Exec(ctx, invalidateUserTokens, arg.UserID, arg.Kind)
 	return err
+}
+
+const lastLoginCodeAt = `-- name: LastLoginCodeAt :one
+SELECT created_at FROM login_codes WHERE email = $1 ORDER BY created_at DESC LIMIT 1
+`
+
+// The newest code sent to an address, for the "at most one a minute" rule.
+func (q *Queries) LastLoginCodeAt(ctx context.Context, email string) (time.Time, error) {
+	row := q.db.QueryRow(ctx, lastLoginCodeAt, email)
+	var created_at time.Time
+	err := row.Scan(&created_at)
+	return created_at, err
 }
 
 const lastUserTokenAt = `-- name: LastUserTokenAt :one
@@ -1046,6 +1179,20 @@ func (q *Queries) RevokeUserSessions(ctx context.Context, userID uuid.UUID) erro
 	return err
 }
 
+const setDisplayNameIfEmpty = `-- name: SetDisplayNameIfEmpty :exec
+UPDATE users SET display_name = $1 WHERE id = $2 AND display_name = ''
+`
+
+type SetDisplayNameIfEmptyParams struct {
+	DisplayName string
+	ID          uuid.UUID
+}
+
+func (q *Queries) SetDisplayNameIfEmpty(ctx context.Context, arg SetDisplayNameIfEmptyParams) error {
+	_, err := q.db.Exec(ctx, setDisplayNameIfEmpty, arg.DisplayName, arg.ID)
+	return err
+}
+
 const setMemberRole = `-- name: SetMemberRole :execrows
 UPDATE account_members SET role = $1 WHERE account_id = $2 AND user_id = $3
 `
@@ -1107,6 +1254,20 @@ func (q *Queries) SlideSession(ctx context.Context, arg SlideSessionParams) erro
 	return err
 }
 
+const touchIdentity = `-- name: TouchIdentity :exec
+UPDATE user_identities SET last_login_at = now() WHERE provider = $1 AND subject = $2
+`
+
+type TouchIdentityParams struct {
+	Provider string
+	Subject  string
+}
+
+func (q *Queries) TouchIdentity(ctx context.Context, arg TouchIdentityParams) error {
+	_, err := q.db.Exec(ctx, touchIdentity, arg.Provider, arg.Subject)
+	return err
+}
+
 const touchTakenNotice = `-- name: TouchTakenNotice :one
 UPDATE users SET taken_notice_at = now()
 WHERE id = $1 AND (taken_notice_at IS NULL OR taken_notice_at < now() - interval '1 hour')
@@ -1119,4 +1280,37 @@ func (q *Queries) TouchTakenNotice(ctx context.Context, id uuid.UUID) (uuid.UUID
 	var id_2 uuid.UUID
 	err := row.Scan(&id_2)
 	return id_2, err
+}
+
+const tryLoginCode = `-- name: TryLoginCode :one
+UPDATE login_codes SET attempts = attempts + 1
+WHERE id = (SELECT c.id FROM login_codes c WHERE c.email = $1 AND c.used_at IS NULL AND c.expires_at > now() AND c.attempts < $2::int ORDER BY c.created_at DESC LIMIT 1)
+  AND used_at IS NULL AND expires_at > now() AND attempts < $2::int
+RETURNING id, salt, code_hash, attempts
+`
+
+type TryLoginCodeParams struct {
+	Email       string
+	MaxAttempts int32
+}
+
+type TryLoginCodeRow struct {
+	ID       uuid.UUID
+	Salt     []byte
+	CodeHash []byte
+	Attempts int32
+}
+
+// One try at the newest live code of an address: the attempt is counted in the same statement that returns the hash, so parallel guesses cannot exceed the
+// limit (the outer conditions are re-checked after a concurrent update). A code at its limit, used or expired returns no row.
+func (q *Queries) TryLoginCode(ctx context.Context, arg TryLoginCodeParams) (TryLoginCodeRow, error) {
+	row := q.db.QueryRow(ctx, tryLoginCode, arg.Email, arg.MaxAttempts)
+	var i TryLoginCodeRow
+	err := row.Scan(
+		&i.ID,
+		&i.Salt,
+		&i.CodeHash,
+		&i.Attempts,
+	)
+	return i, err
 }

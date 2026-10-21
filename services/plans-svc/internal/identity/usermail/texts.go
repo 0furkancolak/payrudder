@@ -37,6 +37,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "If it was not you, you do not need to do anything.",
 		},
+		KindCode: {
+			Subject: "Your Quotify sign-in code: {code}",
+			Lines:   []string{"Use this code to sign in to Quotify: {code}", "The code works once and expires in 10 minutes. Never share it with anyone."},
+			Button:  "",
+			Ignore:  "If you did not ask for this code, ignore this message: nobody can sign in without it.",
+		},
 	},
 	"tr": {
 		KindVerify: {
@@ -62,6 +68,12 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Biri bu e-posta adresiyle bir Quotify hesabı oluşturmaya çalıştı, ancak bu adresin zaten bir hesabı var.", "Siz denediyseniz oturum açın; parolanızı unuttuysanız sıfırlayın. Hiçbir şey değişmedi."},
 			Button:  "",
 			Ignore:  "Siz denemediyseniz yapmanız gereken bir şey yok.",
+		},
+		KindCode: {
+			Subject: "Quotify giriş kodunuz: {code}",
+			Lines:   []string{"Quotify'a giriş yapmak için bu kodu kullanın: {code}", "Kod yalnızca bir kez çalışır ve 10 dakika sonra geçersiz olur. Kimseyle paylaşmayın."},
+			Button:  "",
+			Ignore:  "Bu kodu siz istemediyseniz iletiyi yok sayın: kod olmadan kimse giriş yapamaz.",
 		},
 	},
 	"de": {
@@ -89,6 +101,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Wenn Sie es nicht waren, müssen Sie nichts tun.",
 		},
+		KindCode: {
+			Subject: "Ihr Quotify-Anmeldecode: {code}",
+			Lines:   []string{"Mit diesem Code melden Sie sich bei Quotify an: {code}", "Der Code funktioniert einmal und läuft nach 10 Minuten ab. Geben Sie ihn niemandem weiter."},
+			Button:  "",
+			Ignore:  "Wenn Sie diesen Code nicht angefordert haben, ignorieren Sie diese Nachricht: Ohne ihn kann sich niemand anmelden.",
+		},
 	},
 	"fr": {
 		KindVerify: {
@@ -114,6 +132,12 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Quelqu'un a essayé de créer un compte Quotify avec cette adresse e-mail, qui en a déjà un.", "Si c'était vous, connectez-vous, ou réinitialisez votre mot de passe si vous l'avez oublié. Rien n'a changé."},
 			Button:  "",
 			Ignore:  "Si ce n'était pas vous, vous n'avez rien à faire.",
+		},
+		KindCode: {
+			Subject: "Votre code de connexion Quotify : {code}",
+			Lines:   []string{"Utilisez ce code pour vous connecter à Quotify : {code}", "Le code ne fonctionne qu'une fois et expire au bout de 10 minutes. Ne le communiquez à personne."},
+			Button:  "",
+			Ignore:  "Si vous n'avez pas demandé ce code, ignorez ce message : personne ne peut se connecter sans lui.",
 		},
 	},
 	"es": {
@@ -141,6 +165,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Si no fuiste tú, no tienes que hacer nada.",
 		},
+		KindCode: {
+			Subject: "Su código de acceso a Quotify: {code}",
+			Lines:   []string{"Use este código para iniciar sesión en Quotify: {code}", "El código funciona una sola vez y caduca a los 10 minutos. No lo comparta con nadie."},
+			Button:  "",
+			Ignore:  "Si no solicitó este código, ignore este mensaje: nadie puede iniciar sesión sin él.",
+		},
 	},
 	"ar": {
 		KindVerify: {
@@ -166,6 +196,12 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"حاول أحدهم إنشاء حساب في Quotify بعنوان البريد هذا، وهو يملك حسابًا بالفعل.", "إذا كنت أنت، فسجّل الدخول أو أعد تعيين كلمة مرورك إن نسيتها. لم يتغيّر شيء."},
 			Button:  "",
 			Ignore:  "إذا لم تكن أنت فلا حاجة لأي إجراء.",
+		},
+		KindCode: {
+			Subject: "رمز دخولك إلى Quotify: {code}",
+			Lines:   []string{"استخدم هذا الرمز لتسجيل الدخول إلى Quotify: {code}", "يعمل الرمز مرة واحدة فقط وتنتهي صلاحيته بعد 10 دقائق. لا تشاركه مع أحد."},
+			Button:  "",
+			Ignore:  "إذا لم تطلب هذا الرمز فتجاهل هذه الرسالة: لا يستطيع أحد تسجيل الدخول بدونه.",
 		},
 	},
 }

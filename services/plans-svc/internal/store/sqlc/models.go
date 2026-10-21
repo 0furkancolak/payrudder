@@ -90,6 +90,17 @@ type Customer struct {
 	EInvoiceRegistered bool
 }
 
+type LoginCode struct {
+	ID        uuid.UUID
+	Email     string
+	Salt      []byte
+	CodeHash  []byte
+	Attempts  int32
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+}
+
 type Meter struct {
 	TenantID      uuid.UUID
 	Code          string
@@ -283,6 +294,16 @@ type User struct {
 	EmailVerifiedAt *time.Time
 	Locale          string
 	TakenNoticeAt   *time.Time
+}
+
+type UserIdentity struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Provider    string
+	Subject     string
+	Email       string
+	CreatedAt   time.Time
+	LastLoginAt time.Time
 }
 
 type UserSession struct {

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signInAsOperator } from "./operator";
 
 // The operator console against the REAL stack: every tab of a tenant that has money data opens without console errors, failed calls or sideways scroll,
 // at desktop and phone width. TENANT=<id> picks the tenant (default: the newest one in the list). SHOTS=<dir> saves screenshots.
@@ -16,9 +17,7 @@ async function tenantId(): Promise<string> {
 }
 
 async function signIn(page: Page): Promise<void> {
-  await page.goto("/operator");
-  await page.getByLabel("Operator token").fill(operatorToken);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signInAsOperator(page);
   await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
 }
 

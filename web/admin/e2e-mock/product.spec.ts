@@ -84,13 +84,17 @@ test.describe("sign up and sign in", () => {
     await expect(page.getByRole("status")).toContainText("Your session has ended");
   });
 
-  test("somebody who is not signed in is sent away from the app, and the operator keeps their own door", async ({ page }) => {
+  test("somebody who is not signed in is sent away from the app and from the operator console, to the one sign-in page", async ({ page }) => {
     await productGateway(new MockGateway()).gw.install(page);
     await page.goto("/app");
     await page.waitForURL("**/signin");
     await page.goto("/tenants");
-    await page.waitForURL("**/operator");
-    await expect(page.getByLabel("Operator token")).toBeVisible();
+    await page.waitForURL("**/signin");
+    await page.goto("/operator");
+    await page.waitForURL("**/signin");
+    // There is no token form anywhere: the operator signs in like everybody else.
+    await expect(page.getByLabel(/operator token/i)).toHaveCount(0);
+    await expect(page.getByText(/operator console/i)).toHaveCount(0);
   });
 });
 

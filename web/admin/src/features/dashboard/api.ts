@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap } from "@/shared/api/client";
-import { isPerson } from "@/shared/lib/session";
+import { isOperator } from "@/shared/lib/session";
 import { toParams, type DashQuery } from "./lib";
 
 /** Where a dashboard is read from: an environment of one of the person's apps, or (for the operator) any tenant. */
@@ -34,7 +34,7 @@ export function useDashboard(source: MaybeRefOrGetter<DashSource | null>, query:
       if (!s) throw new Error("no source");
       return fetchDashboard(s, toValue(query));
     },
-    enabled: computed(() => toValue(source) !== null && (toValue(source)?.kind === "tenant" ? !isPerson.value : true)),
+    enabled: computed(() => toValue(source) !== null && (toValue(source)?.kind === "tenant" ? isOperator.value : true)),
     placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   });

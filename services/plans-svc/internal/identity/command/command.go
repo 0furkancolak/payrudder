@@ -64,6 +64,15 @@ type Commands struct {
 	mail  usermail.Sender
 	// appURL is where the console lives (no trailing slash); mailed links point into it.
 	appURL string
+	// pepper keys the hash of one-time sign-in codes (WithPepper); empty in development.
+	pepper []byte
+}
+
+// WithPepper sets the server secret that keys the hash of one-time sign-in codes. It is read from the service's environment, never from the database, so a
+// leaked table of code hashes cannot be searched offline (a code has only a million values).
+func (c *Commands) WithPepper(p string) *Commands {
+	c.pepper = []byte(p)
+	return c
 }
 
 // New returns the identity commands on the system pool. mail sends the verification, reset, invitation and warning mails; appURL is the console's base URL.
@@ -206,6 +215,10 @@ func (c *Commands) SignIn(ctx context.Context, req *plansv1.SignInRequest) (Open
 	if err != nil {
 		return Opened{}, convert.Err(err, "user")
 	}
+	if user.PasswordHash == "" {
+		// An account that signs in by code or by a provider has no password (yet): the answer and the time are those of a wrong password.
+		return Opened{}, c.burn(ctx, password)
+	}
 	if user.LockedUntil != nil && user.LockedUntil.After(c.now()) {
 		// Locked: do the work of a verify anyway, so the time does not tell, and do not count the attempt (an attacker could extend the lock forever).
 		return Opened{}, c.burn(ctx, password)
@@ -226,35 +239,40 @@ func (c *Commands) SignIn(ctx context.Context, req *plansv1.SignInRequest) (Open
 		}
 		return Opened{}, invalidCredentials()
 	}
-	token, tokenHash, err := credential.NewToken()
-	if err != nil {
-		return Opened{}, status.Error(codes.Internal, "token generation failed")
-	}
 	var out Opened
 	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		q := sqlc.New(tx)
-		if err := q.RecordSuccessfulLogin(ctx, user.ID); err != nil {
-			return err
-		}
-		if err := q.DeleteStaleSessions(ctx, user.ID); err != nil {
-			return err
-		}
-		now := c.now()
-		expires := query.SlideTo(now, now)
-		if _, err := q.InsertSession(ctx, sqlc.InsertSessionParams{ID: idgen.NewUUIDv7(), UserID: user.ID, TokenHash: tokenHash, ExpiresAt: expires}); err != nil {
-			return err
-		}
-		ms, err := query.Memberships(ctx, q, user.ID)
-		if err != nil {
-			return err
-		}
-		out = Opened{User: query.User(user), Memberships: ms, Token: token, ExpireTime: expires}
-		return nil
+		var err error
+		out, err = c.openSession(ctx, sqlc.New(tx), user)
+		return err
 	})
 	if err != nil {
 		return Opened{}, convert.Err(err, "session")
 	}
 	return out, nil
+}
+
+// openSession records a successful sign-in of user (whatever the method) and opens a session for it, inside the caller's transaction.
+func (c *Commands) openSession(ctx context.Context, q *sqlc.Queries, user sqlc.User) (Opened, error) {
+	token, tokenHash, err := credential.NewToken()
+	if err != nil {
+		return Opened{}, status.Error(codes.Internal, "token generation failed")
+	}
+	if err := q.RecordSuccessfulLogin(ctx, user.ID); err != nil {
+		return Opened{}, err
+	}
+	if err := q.DeleteStaleSessions(ctx, user.ID); err != nil {
+		return Opened{}, err
+	}
+	now := c.now()
+	expires := query.SlideTo(now, now)
+	if _, err := q.InsertSession(ctx, sqlc.InsertSessionParams{ID: idgen.NewUUIDv7(), UserID: user.ID, TokenHash: tokenHash, ExpiresAt: expires}); err != nil {
+		return Opened{}, err
+	}
+	ms, err := query.Memberships(ctx, q, user.ID)
+	if err != nil {
+		return Opened{}, err
+	}
+	return Opened{User: query.User(user), Memberships: ms, Token: token, ExpireTime: expires}, nil
 }
 
 // burn spends the time of a password check and returns the sign-in failure.

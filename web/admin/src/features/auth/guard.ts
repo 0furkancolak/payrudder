@@ -1,7 +1,12 @@
 import { redirect } from "@tanstack/vue-router";
-import { isOperator } from "@/shared/lib/session";
+import { isOperator, isPerson } from "@/shared/lib/session";
 
-/** beforeLoad for every route that needs an operator: a visitor without an operator token is sent to the operator's sign-in page. */
+/**
+ * beforeLoad for every route of the operator console. There is no operator sign-in of its own: an operator is a person who signed in the usual way and
+ * whom the server recognises, so a visitor is sent to the sign-in page and a person who is not an operator back to their home. (The server decides on
+ * every request; this only keeps the page from showing a console that would answer 403.)
+ */
 export function requireOperator(): void {
-  if (!isOperator.value) throw redirect({ to: "/operator" });
+  if (!isPerson.value) throw redirect({ to: "/signin" });
+  if (!isOperator.value) throw redirect({ to: "/app" });
 }

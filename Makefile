@@ -244,7 +244,7 @@ dev-docker: ## The services in Docker too, with the console on http://localhost:
 	$(MAKE) up-infra
 	COMPOSE_PARALLEL_LIMIT=1 $(COMPOSE) --profile obs --profile app up -d --build --wait --scale admin-ui=0
 	@echo "Stack is up. Logs: make logs  (one service: make logs S=gateway). Stop: make down."
-	@echo "Console: http://localhost:42301, operator token and playground form are pre-filled."
+	@echo "Console: http://localhost:42301, sign in as user1@example.com / password123 (the dev seed; also the operator)."
 	cd web/admin && ([ -d node_modules ] || npm ci --no-audit --no-fund) && exec npm run dev
 
 .PHONY: mem-report

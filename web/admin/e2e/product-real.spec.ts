@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { verifyAddress } from "./operator";
 import { pickLanguage } from "../e2e-mock/ui";
 
 // The product app against the REAL stack (make dev / make up): nothing is mocked. It signs a fresh person up, seeds real money data in the app's sandbox
@@ -54,13 +55,19 @@ async function must(method: string, path: string, token: string, body: unknown, 
 
 async function signUp(): Promise<{ email: string; token: string }> {
   const email = `ui-${randomUUID().slice(0, 8)}@example.com`;
+  const since = Date.now() - 2000;
   const res = await fetch(gateway + "/auth/signup", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email, password, display_name: "Real Browser", account_name: "Browser Labs" }),
   });
-  expect(res.status).toBe(201);
-  return { email, token: ((await res.json()) as Json).token };
+  // Sign-up answers 202 and opens no session (phase 39): the person signs in with the password just chosen.
+  expect(res.status).toBe(202);
+  // A live API key needs a proven address (phase 39): follow the mailed link like the person would.
+  await verifyAddress(email, since);
+  const signin = await fetch(gateway + "/auth/signin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+  expect(signin.status).toBe(200);
+  return { email, token: ((await signin.json()) as Json).token };
 }
 
 async function signInUi(page: Page, email: string, pw = password): Promise<void> {
@@ -273,12 +280,13 @@ test.describe("product app, real stack", () => {
     // The API says the same: not found, never forbidden.
     expect((await api("GET", `/app/v1/apps/${appId}`, other.token)).status).toBe(404);
     expect((await api("GET", "/v1/customers", other.token, undefined, { "x-quotify-tenant": sandbox })).status).toBe(404);
-    expect((await api("GET", "/admin/v1/tenants", other.token)).status).toBe(401);
+    // A person who is not on the operator list is signed in but not an operator: 403, not 401.
+    expect((await api("GET", "/admin/v1/tenants", other.token)).status).toBe(403);
 
-    // Operator pages with a person's session: the console wants the operator's token, not the session.
+    // The operator console with a person's session: the page sends a non-operator home.
     await page.goto("/tenants");
-    await page.waitForURL("**/operator");
-    await expect(page.getByLabel("Operator token")).toBeVisible();
+    await page.waitForURL("**/app");
+    await expect(page.getByRole("link", { name: "Operator console" })).toHaveCount(0);
 
     // The session is revoked behind the page's back: the next request ends in the sign-in page with a reason.
     await api("POST", "/auth/signout", other.token);
