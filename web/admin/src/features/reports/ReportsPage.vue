@@ -2,7 +2,7 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { Badge } from "@/shared/ui/badge";
@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useDunningReport, useRevenueReport, useSubscriptionReport } from "./api";
 
 const { t, te, locale } = useI18n();
+const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tabs = ["revenue", "subscriptions", "dunning"] as const;
@@ -53,7 +54,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       </label>
     </div>
     <p class="text-muted-foreground px-3 text-xs">{{ t("billing.reports.revenueHint") }}</p>
-    <p v-if="revenue.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(revenue.error.value).message }}</p>
+    <p v-if="revenue.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(revenue.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -98,7 +99,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       </label>
     </div>
     <p class="text-muted-foreground px-3 text-xs">{{ t("billing.reports.subscriptionsHint") }}</p>
-    <p v-if="subs.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(subs.error.value).message }}</p>
+    <p v-if="subs.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(subs.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -135,7 +136,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
   <Card v-else class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.reports.dunning") }}</h2>
     <p class="text-muted-foreground px-3 text-xs">{{ t("billing.reports.dunningHint") }}</p>
-    <p v-if="dunning.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(dunning.error.value).message }}</p>
+    <p v-if="dunning.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(dunning.error.value) }}</p>
     <ul class="flex flex-wrap gap-2 px-3">
       <li v-for="(s, i) in dunning.data.value?.summary ?? []" :key="i">
         <Badge variant="secondary">{{ label(t, te, "dunningState", s.state) }} · {{ s.provider || "—" }} · {{ s.currency }}: {{ s.invoices }} · {{ money(s.total_minor, s.currency) }}</Badge>

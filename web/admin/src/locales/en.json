@@ -243,7 +243,9 @@
       "reports": "Reports",
       "pricing": "Coupons & tax",
       "webhooks": "Webhooks",
-      "mail": "Mail"
+      "mail": "Mail",
+      "apps": "Apps",
+      "address": "Seller address"
     },
     "common": {
       "remove": "Remove"
@@ -637,6 +639,134 @@
         "delivered": "Delivered",
         "failed": "Failed"
       }
+    }
+  },
+  "apps": {
+    "new": "New app",
+    "hint": "An app is one of the account's applications, with its own sandbox and live environment, keys, customers and plans. Currency, time zone and grace period are chosen here and cannot be changed later.",
+    "formLabel": "new app",
+    "name": "App name",
+    "slug": "Slug",
+    "slugPlaceholder": "Slug (optional, e.g. web-shop)",
+    "currency": "Currency",
+    "currencyPlaceholder": "Currency (cannot change later)",
+    "timezone": "Time zone",
+    "timezonePlaceholder": "IANA time zone, e.g. Europe/Istanbul",
+    "grace": "Grace period (hours)",
+    "gracePlaceholder": "Grace period, hours (0 to 168)",
+    "create": "Create app",
+    "badSlug": "The slug may only have lower-case letters, digits and single dashes, at most 60 characters.",
+    "title": "Apps of this account",
+    "immutable": "Renaming and deleting an app is not available in the API yet; an app's currency, time zone and grace period cannot be changed.",
+    "environments": "Environments",
+    "created": "Created",
+    "actions": "Actions",
+    "empty": "This account has no apps yet.",
+    "keys": {
+      "open": "API keys",
+      "title": "API keys of {app}",
+      "hint": "Create a key for one environment. The key is shown once; the API cannot list keys later, so keys made on this page are listed here until you leave it. A key from elsewhere can be revoked by its id.",
+      "secretOnce": "Copy the key now: it is shown only once.",
+      "dismiss": "I have copied it",
+      "createFor": "Create a key for {env}",
+      "create": "Create key",
+      "revoked": "Revoked",
+      "revoke": "Revoke",
+      "revokeForm": "revoke a key",
+      "revokeId": "Key id",
+      "revokeById": "Revoke by id",
+      "confirmRevoke": "Revoke this API key? Requests using it stop working immediately.",
+      "revokedDone": "Key {id} revoked."
+    }
+  },
+  "address": {
+    "title": "Seller address",
+    "hint": "The legal and billing address of this tenant, printed as the seller on every invoice (PDF and hosted page). It applies to invoices made after you save.",
+    "formLabel": "seller address",
+    "noCountry": "No country",
+    "otherCountry": "Another country…",
+    "labels": {
+      "country": "Country",
+      "countryCode": "Country code (two letters, e.g. SE)",
+      "line1": "Address line 1",
+      "line2": "Address line 2",
+      "city": "City",
+      "region": "Region",
+      "state": "State",
+      "province": "Province",
+      "county": "County",
+      "prefecture": "Prefecture",
+      "postalCode": "Postal code",
+      "zip": "ZIP code",
+      "postcode": "Postcode"
+    },
+    "problems": {
+      "tooLong": "Too long: at most {max} characters.",
+      "oneLine": "Must be one line of text.",
+      "badCountry": "Two letters (ISO 3166-1), e.g. TR."
+    },
+    "postalHint": "This does not look like a postal code of that country, for example {example}. It is accepted anyway.",
+    "save": "Save address",
+    "saved": "Address saved.",
+    "preview": {
+      "title": "Invoice preview",
+      "hint": "How the seller appears on an invoice.",
+      "from": "From",
+      "empty": "No address: the invoice shows only the name."
+    }
+  },
+  "errors": {
+    "billing": {
+      "credit_note": {
+        "bad_amount": "The credit amount is not valid: it must be more than zero and no more than what is left to credit on the invoice.",
+        "fully_credited": "This invoice has already been credited in full.",
+        "not_paid": "Only a paid invoice can be credited.",
+        "nothing_to_refund": "There is nothing to refund to the card for this credit note.",
+        "refund_not_failed": "Only a credit note whose refund failed can be retried."
+      },
+      "dunning": {
+        "bad_delay": "Each retry delay must be between 1 and 720 hours.",
+        "too_many_retries": "At most 6 retry delays can be set."
+      },
+      "invoice": {
+        "not_found": "The invoice was not found.",
+        "pdf_not_ready": "The invoice PDF has not been rendered yet. Try again in a moment."
+      },
+      "invoice_link": {
+        "bad_expiry": "The link must expire in 1 to 365 days.",
+        "draft_invoice": "A draft invoice cannot be shared by link.",
+        "not_found": "The invoice link was not found."
+      }
+    },
+    "plans": {
+      "app": {
+        "bad_slug": "The app slug may only have lower-case letters, digits and single dashes, and at most 60 characters.",
+        "slug_taken": "This account already has an app with that slug."
+      },
+      "mail": {
+        "unknown_category": "This mail category does not exist."
+      },
+      "subscription": {
+        "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead."
+      },
+      "webhook": {
+        "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
+        "too_many_endpoints": "The limit of webhook endpoints is reached. Delete one first."
+      }
+    },
+    "common": {
+      "invalid_argument": "Something in the request is not valid.",
+      "not_found": "It was not found.",
+      "already_exists": "It already exists.",
+      "failed_precondition": "This cannot be done in the current state.",
+      "permission_denied": "You are not allowed to do this.",
+      "unauthenticated": "Sign in again: the token is missing or no longer valid.",
+      "rate_limited": "Too many requests. Wait a moment and try again.",
+      "unavailable": "The service is not available right now. Try again shortly.",
+      "timeout": "The request took too long. Try again.",
+      "conflict": "The data changed while you were working on it. Reload and try again.",
+      "not_implemented": "This is not supported yet.",
+      "internal": "Something went wrong on our side. Try again, and if it keeps failing look at the logs with the request id."
     }
   }
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -12,6 +12,7 @@ import { useCreateCreditNote, useCreditNotes, useRetryCreditNoteRefund } from ".
 /** Credit notes of a tenant, or of one invoice; with `issuable` a paid invoice can be credited here. */
 const props = defineProps<{ tenantId: string; invoiceId?: string; currency?: string; issuable?: boolean }>();
 const { t, locale } = useI18n();
+const errorText = useErrorText();
 const notes = useCreditNotes(
   () => props.tenantId,
   () => props.invoiceId ?? "",
@@ -65,9 +66,9 @@ function issue() {
       <Button type="submit" :disabled="create.isPending.value">{{ t("billing.creditNotes.create") }}</Button>
     </form>
     <p v-if="formError" class="text-destructive px-3 text-sm" role="alert">{{ formError }}</p>
-    <p v-if="create.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(create.error.value).message }}</p>
-    <p v-if="retry.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(retry.error.value).message }}</p>
-    <p v-if="notes.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(notes.error.value).message }}</p>
+    <p v-if="create.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(create.error.value) }}</p>
+    <p v-if="retry.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(retry.error.value) }}</p>
+    <p v-if="notes.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(notes.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

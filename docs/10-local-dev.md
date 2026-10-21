@@ -47,6 +47,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | otel-collector | 42317 (OTLP gRPC), 42318 (OTLP HTTP) |
 | prometheus | 42990 |
 | tempo | 42200 |
+| loki | internal only (Grafana queries it; Vector ships logs to it) |
 | grafana | 42300 (anonymous admin locally, dashboards provisioned) |
 
 ### Quotify services (`profile: app`)
