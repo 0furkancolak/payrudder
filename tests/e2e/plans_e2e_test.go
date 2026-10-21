@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	gateway       = envOr("QUOTIFY_GATEWAY_URL", "http://localhost:8000")
+	gateway       = envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800")
 	operatorToken = envOr("QUOTIFY_OPERATOR_TOKEN", "local-operator-token-change-me-0123456789")
 	httpc         = &http.Client{Timeout: 10 * time.Second}
 )

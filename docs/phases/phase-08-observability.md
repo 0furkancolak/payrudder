@@ -73,5 +73,5 @@ Phases 00–07 (all instrumented components exist).
 - **Exporters** run in the `obs` profile: `postgres-exporter`, `redis-exporter`; ClickHouse serves `:9363` natively, RabbitMQ `:15692`
   and Redpanda `:9644/public_metrics`.
 - **Manual check for `ConsumerLagHigh`:** `docker stop quotify-aggregator-1`, send events, and after about 6 minutes the alert is
-  firing at <http://localhost:9090/alerts> (`for: 5m`). `docker start` clears it.
+  firing at <http://localhost:42990/alerts> (`for: 5m`). `docker start` clears it.
 - Deferred: Loki and the "trace from log" derived field (optional in the scope), the README trace screenshot.

@@ -332,7 +332,8 @@
       "paymentLinks": "Ödeme bağlantıları",
       "mail": "E-posta",
       "apps": "Uygulamalar",
-      "address": "Satıcı adresi"
+      "address": "Satıcı adresi",
+      "credits": "Krediler"
     },
     "common": {
       "remove": "Kaldır"
@@ -825,6 +826,65 @@
         "system": "Quotify'ın gönderdiği diğer tüm iletiler."
       },
       "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Quotify'ın e-postalarını yönetir."
+    },
+    "credits": {
+      "packs": {
+        "new": "Yeni kredi paketi",
+        "hint": "Paket, bir fiyata satılan belirli sayıda kredidir. Müşteri bir ödeme bağlantısıyla satın alır; krediler ödeme onaylanınca eklenir.",
+        "formLabel": "Yeni kredi paketi",
+        "name": "Paket adı",
+        "credits": "Kredi",
+        "price": "Fiyat",
+        "currency": "Para birimi",
+        "create": "Paketi ekle",
+        "title": "Kredi paketleri",
+        "none": "Henüz kredi paketi yok.",
+        "state": "Durum",
+        "onSale": "Satışta",
+        "withdrawn": "Satıştan kaldırıldı",
+        "withdraw": "Satıştan kaldır",
+        "restore": "Yeniden satışa koy"
+      },
+      "customer": {
+        "title": "Bir müşterinin kredileri",
+        "pick": "Müşteri seçin",
+        "balance": "kullanılabilir kredi",
+        "nextExpiry": "Bir kısmı {when} tarihinde sona erer"
+      },
+      "lots": {
+        "source": "Kaynak",
+        "remaining": "Kalan",
+        "granted": "Verilen",
+        "expires": "Sona erer",
+        "never": "Asla"
+      },
+      "source": {
+        "promo": "Promosyon",
+        "manual": "Elle",
+        "purchase": "Satın alma"
+      },
+      "grant": {
+        "formLabel": "Kredi ekle",
+        "credits": "Eklenecek kredi",
+        "source": "Tür",
+        "expiry": "Son kullanma tarihi",
+        "expiryHint": "Hiç sona ermeyen krediler için boş bırakın",
+        "reason": "Not (isteğe bağlı)",
+        "submit": "Kredi ekle"
+      },
+      "ledger": {
+        "title": "Kredi geçmişi",
+        "none": "Henüz kredi hareketi yok.",
+        "time": "Zaman",
+        "kind": "Tür",
+        "amount": "Kredi",
+        "reason": "Not"
+      },
+      "kind": {
+        "grant": "Eklendi",
+        "consume": "Harcandı",
+        "expire": "Süresi doldu"
+      }
     }
   },
   "apps": {
@@ -953,6 +1013,21 @@
       "portal_link": {
         "customer_not_found": "Böyle bir müşteri yok.",
         "customer_required": "Müşteri zorunludur."
+      },
+      "credits": {
+        "bad_amount": "Miktar, sıfırdan büyük tam sayıda kredi olmalıdır.",
+        "bad_customer": "Müşteri geçerli değil.",
+        "bad_expiry": "Son kullanma tarihi gelecekte olmalıdır.",
+        "bad_key": "Idempotency anahtarı çok uzun (en fazla 128 karakter).",
+        "bad_pack": "Paketin adı, kredisi ve sıfırdan büyük bir fiyatı olmalıdır.",
+        "bad_page_token": "Sayfa belirteci geçerli değil.",
+        "bad_reason": "Not çok uzun (en fazla 200 karakter).",
+        "bad_source": "Tür promosyon veya elle olmalıdır.",
+        "insufficient": "Müşterinin yeterli kredisi yok.",
+        "key_required": "Kredi harcamak için bir idempotency anahtarı gerekir.",
+        "key_reused": "Bu idempotency anahtarı başka bir istek için zaten kullanıldı.",
+        "pack_not_found": "Böyle bir kredi paketi yok.",
+        "unknown_currency": "Bu para birimi desteklenmiyor."
       }
     },
     "plans": {

@@ -332,7 +332,8 @@
       "paymentLinks": "Enlaces de pago",
       "mail": "Correo",
       "apps": "Apps",
-      "address": "Dirección del vendedor"
+      "address": "Dirección del vendedor",
+      "credits": "Créditos"
     },
     "common": {
       "remove": "Quitar"
@@ -825,6 +826,65 @@
         "system": "Cualquier otro mensaje que envía Quotify."
       },
       "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Quotify."
+    },
+    "credits": {
+      "packs": {
+        "new": "Nuevo paquete de créditos",
+        "hint": "Un paquete es un número de créditos que se vende a un precio. El cliente lo compra con un enlace de pago; los créditos se añaden cuando se confirma el pago.",
+        "formLabel": "Nuevo paquete de créditos",
+        "name": "Nombre del paquete",
+        "credits": "Créditos",
+        "price": "Precio",
+        "currency": "Moneda",
+        "create": "Añadir paquete",
+        "title": "Paquetes de créditos",
+        "none": "Aún no hay paquetes de créditos.",
+        "state": "Estado",
+        "onSale": "A la venta",
+        "withdrawn": "Retirado",
+        "withdraw": "Retirar de la venta",
+        "restore": "Volver a poner a la venta"
+      },
+      "customer": {
+        "title": "Créditos de un cliente",
+        "pick": "Elegir un cliente",
+        "balance": "créditos disponibles",
+        "nextExpiry": "Una parte caduca el {when}"
+      },
+      "lots": {
+        "source": "Origen",
+        "remaining": "Restante",
+        "granted": "Concedido",
+        "expires": "Caduca",
+        "never": "Nunca"
+      },
+      "source": {
+        "promo": "Promoción",
+        "manual": "Manual",
+        "purchase": "Compra"
+      },
+      "grant": {
+        "formLabel": "Añadir créditos",
+        "credits": "Créditos a añadir",
+        "source": "Tipo",
+        "expiry": "Fecha de caducidad",
+        "expiryHint": "Déjelo vacío para créditos que no caducan",
+        "reason": "Nota (opcional)",
+        "submit": "Añadir créditos"
+      },
+      "ledger": {
+        "title": "Historial de créditos",
+        "none": "Aún no hay movimientos de créditos.",
+        "time": "Fecha",
+        "kind": "Tipo",
+        "amount": "Créditos",
+        "reason": "Nota"
+      },
+      "kind": {
+        "grant": "Añadido",
+        "consume": "Gastado",
+        "expire": "Caducado"
+      }
     }
   },
   "apps": {
@@ -953,6 +1013,21 @@
       "portal_link": {
         "customer_not_found": "No existe ese cliente.",
         "customer_required": "El cliente es obligatorio."
+      },
+      "credits": {
+        "bad_amount": "El importe debe ser un número entero de créditos mayor que cero.",
+        "bad_customer": "El cliente no es válido.",
+        "bad_expiry": "La fecha de caducidad debe estar en el futuro.",
+        "bad_key": "La clave de idempotencia es demasiado larga (como máximo 128 caracteres).",
+        "bad_pack": "Un paquete necesita un nombre, créditos y un precio mayor que cero.",
+        "bad_page_token": "El token de página no es válido.",
+        "bad_reason": "La nota es demasiado larga (como máximo 200 caracteres).",
+        "bad_source": "El tipo debe ser promoción o manual.",
+        "insufficient": "El cliente no tiene suficientes créditos.",
+        "key_required": "Se necesita una clave de idempotencia para gastar créditos.",
+        "key_reused": "Esta clave de idempotencia ya se usó para otra solicitud.",
+        "pack_not_found": "No existe ese paquete de créditos.",
+        "unknown_currency": "Esta moneda no es compatible."
       }
     },
     "plans": {

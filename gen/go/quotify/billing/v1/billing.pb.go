@@ -6459,6 +6459,1046 @@ func (x *SettleInvoicePaymentResponse) GetSettled() bool {
 	return false
 }
 
+type CreditPack struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name    string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Credits int64                  `protobuf:"varint,3,opt,name=credits,proto3" json:"credits,omitempty"`
+	// Price in minor units of the currency.
+	PriceMinor    int64                  `protobuf:"varint,4,opt,name=price_minor,json=priceMinor,proto3" json:"price_minor,omitempty"`
+	Currency      string                 `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
+	Active        bool                   `protobuf:"varint,6,opt,name=active,proto3" json:"active,omitempty"`
+	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreditPack) Reset() {
+	*x = CreditPack{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[93]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreditPack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreditPack) ProtoMessage() {}
+
+func (x *CreditPack) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[93]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreditPack.ProtoReflect.Descriptor instead.
+func (*CreditPack) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{93}
+}
+
+func (x *CreditPack) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CreditPack) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreditPack) GetCredits() int64 {
+	if x != nil {
+		return x.Credits
+	}
+	return 0
+}
+
+func (x *CreditPack) GetPriceMinor() int64 {
+	if x != nil {
+		return x.PriceMinor
+	}
+	return 0
+}
+
+func (x *CreditPack) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *CreditPack) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *CreditPack) GetCreateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+type ListCreditPacksRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ActiveOnly    bool                   `protobuf:"varint,1,opt,name=active_only,json=activeOnly,proto3" json:"active_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCreditPacksRequest) Reset() {
+	*x = ListCreditPacksRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[94]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCreditPacksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCreditPacksRequest) ProtoMessage() {}
+
+func (x *ListCreditPacksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[94]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCreditPacksRequest.ProtoReflect.Descriptor instead.
+func (*ListCreditPacksRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{94}
+}
+
+func (x *ListCreditPacksRequest) GetActiveOnly() bool {
+	if x != nil {
+		return x.ActiveOnly
+	}
+	return false
+}
+
+type ListCreditPacksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Packs         []*CreditPack          `protobuf:"bytes,1,rep,name=packs,proto3" json:"packs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCreditPacksResponse) Reset() {
+	*x = ListCreditPacksResponse{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[95]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCreditPacksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCreditPacksResponse) ProtoMessage() {}
+
+func (x *ListCreditPacksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[95]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCreditPacksResponse.ProtoReflect.Descriptor instead.
+func (*ListCreditPacksResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{95}
+}
+
+func (x *ListCreditPacksResponse) GetPacks() []*CreditPack {
+	if x != nil {
+		return x.Packs
+	}
+	return nil
+}
+
+type CreateCreditPackRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Credits       int64                  `protobuf:"varint,2,opt,name=credits,proto3" json:"credits,omitempty"`
+	PriceMinor    int64                  `protobuf:"varint,3,opt,name=price_minor,json=priceMinor,proto3" json:"price_minor,omitempty"`
+	Currency      string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateCreditPackRequest) Reset() {
+	*x = CreateCreditPackRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[96]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateCreditPackRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateCreditPackRequest) ProtoMessage() {}
+
+func (x *CreateCreditPackRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[96]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateCreditPackRequest.ProtoReflect.Descriptor instead.
+func (*CreateCreditPackRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{96}
+}
+
+func (x *CreateCreditPackRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateCreditPackRequest) GetCredits() int64 {
+	if x != nil {
+		return x.Credits
+	}
+	return 0
+}
+
+func (x *CreateCreditPackRequest) GetPriceMinor() int64 {
+	if x != nil {
+		return x.PriceMinor
+	}
+	return 0
+}
+
+func (x *CreateCreditPackRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+type CreateCreditPackResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pack          *CreditPack            `protobuf:"bytes,1,opt,name=pack,proto3" json:"pack,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateCreditPackResponse) Reset() {
+	*x = CreateCreditPackResponse{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[97]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateCreditPackResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateCreditPackResponse) ProtoMessage() {}
+
+func (x *CreateCreditPackResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[97]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateCreditPackResponse.ProtoReflect.Descriptor instead.
+func (*CreateCreditPackResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{97}
+}
+
+func (x *CreateCreditPackResponse) GetPack() *CreditPack {
+	if x != nil {
+		return x.Pack
+	}
+	return nil
+}
+
+type SetCreditPackActiveRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Active        bool                   `protobuf:"varint,2,opt,name=active,proto3" json:"active,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCreditPackActiveRequest) Reset() {
+	*x = SetCreditPackActiveRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[98]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCreditPackActiveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCreditPackActiveRequest) ProtoMessage() {}
+
+func (x *SetCreditPackActiveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[98]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCreditPackActiveRequest.ProtoReflect.Descriptor instead.
+func (*SetCreditPackActiveRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{98}
+}
+
+func (x *SetCreditPackActiveRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SetCreditPackActiveRequest) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+type SetCreditPackActiveResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCreditPackActiveResponse) Reset() {
+	*x = SetCreditPackActiveResponse{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[99]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCreditPackActiveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCreditPackActiveResponse) ProtoMessage() {}
+
+func (x *SetCreditPackActiveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[99]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCreditPackActiveResponse.ProtoReflect.Descriptor instead.
+func (*SetCreditPackActiveResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{99}
+}
+
+type CreditLot struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Granted   int64                  `protobuf:"varint,2,opt,name=granted,proto3" json:"granted,omitempty"`
+	Remaining int64                  `protobuf:"varint,3,opt,name=remaining,proto3" json:"remaining,omitempty"`
+	// purchase, promo or manual.
+	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
+	// Unset when the credits never expire.
+	ExpireTime    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreditLot) Reset() {
+	*x = CreditLot{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[100]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreditLot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreditLot) ProtoMessage() {}
+
+func (x *CreditLot) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[100]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreditLot.ProtoReflect.Descriptor instead.
+func (*CreditLot) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{100}
+}
+
+func (x *CreditLot) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CreditLot) GetGranted() int64 {
+	if x != nil {
+		return x.Granted
+	}
+	return 0
+}
+
+func (x *CreditLot) GetRemaining() int64 {
+	if x != nil {
+		return x.Remaining
+	}
+	return 0
+}
+
+func (x *CreditLot) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *CreditLot) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
+func (x *CreditLot) GetCreateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+type GetCreditBalanceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CustomerId    string                 `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCreditBalanceRequest) Reset() {
+	*x = GetCreditBalanceRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[101]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCreditBalanceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCreditBalanceRequest) ProtoMessage() {}
+
+func (x *GetCreditBalanceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[101]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCreditBalanceRequest.ProtoReflect.Descriptor instead.
+func (*GetCreditBalanceRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{101}
+}
+
+func (x *GetCreditBalanceRequest) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
+type GetCreditBalanceResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Balance int64                  `protobuf:"varint,1,opt,name=balance,proto3" json:"balance,omitempty"`
+	// Unset when none of the credits expires.
+	NextExpireTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=next_expire_time,json=nextExpireTime,proto3" json:"next_expire_time,omitempty"`
+	// The lots that make up the balance, the ones that expire first at the top.
+	Lots          []*CreditLot `protobuf:"bytes,3,rep,name=lots,proto3" json:"lots,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCreditBalanceResponse) Reset() {
+	*x = GetCreditBalanceResponse{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[102]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCreditBalanceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCreditBalanceResponse) ProtoMessage() {}
+
+func (x *GetCreditBalanceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[102]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCreditBalanceResponse.ProtoReflect.Descriptor instead.
+func (*GetCreditBalanceResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{102}
+}
+
+func (x *GetCreditBalanceResponse) GetBalance() int64 {
+	if x != nil {
+		return x.Balance
+	}
+	return 0
+}
+
+func (x *GetCreditBalanceResponse) GetNextExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextExpireTime
+	}
+	return nil
+}
+
+func (x *GetCreditBalanceResponse) GetLots() []*CreditLot {
+	if x != nil {
+		return x.Lots
+	}
+	return nil
+}
+
+type GrantCreditsRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CustomerId string                 `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Credits    int64                  `protobuf:"varint,2,opt,name=credits,proto3" json:"credits,omitempty"`
+	// promo or manual; purchases are granted by Quotify when a pack is paid.
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	// Unset: the credits never expire.
+	ExpireTime     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	Reason         string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,6,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GrantCreditsRequest) Reset() {
+	*x = GrantCreditsRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[103]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GrantCreditsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GrantCreditsRequest) ProtoMessage() {}
+
+func (x *GrantCreditsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[103]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GrantCreditsRequest.ProtoReflect.Descriptor instead.
+func (*GrantCreditsRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{103}
+}
+
+func (x *GrantCreditsRequest) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
+func (x *GrantCreditsRequest) GetCredits() int64 {
+	if x != nil {
+		return x.Credits
+	}
+	return 0
+}
+
+func (x *GrantCreditsRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *GrantCreditsRequest) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
+func (x *GrantCreditsRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *GrantCreditsRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type GrantCreditsResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Balance int64                  `protobuf:"varint,1,opt,name=balance,proto3" json:"balance,omitempty"`
+	// True when the key had been used: nothing was added again.
+	Replayed      bool `protobuf:"varint,2,opt,name=replayed,proto3" json:"replayed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GrantCreditsResponse) Reset() {
+	*x = GrantCreditsResponse{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[104]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GrantCreditsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GrantCreditsResponse) ProtoMessage() {}
+
+func (x *GrantCreditsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[104]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GrantCreditsResponse.ProtoReflect.Descriptor instead.
+func (*GrantCreditsResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{104}
+}
+
+func (x *GrantCreditsResponse) GetBalance() int64 {
+	if x != nil {
+		return x.Balance
+	}
+	return 0
+}
+
+func (x *GrantCreditsResponse) GetReplayed() bool {
+	if x != nil {
+		return x.Replayed
+	}
+	return false
+}
+
+type ConsumeCreditsRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CustomerId string                 `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Credits    int64                  `protobuf:"varint,2,opt,name=credits,proto3" json:"credits,omitempty"`
+	Reason     string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Required: a retried call must not charge twice.
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ConsumeCreditsRequest) Reset() {
+	*x = ConsumeCreditsRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[105]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConsumeCreditsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsumeCreditsRequest) ProtoMessage() {}
+
+func (x *ConsumeCreditsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[105]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsumeCreditsRequest.ProtoReflect.Descriptor instead.
+func (*ConsumeCreditsRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{105}
+}
+
+func (x *ConsumeCreditsRequest) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
+func (x *ConsumeCreditsRequest) GetCredits() int64 {
+	if x != nil {
+		return x.Credits
+	}
+	return 0
+}
+
+func (x *ConsumeCreditsRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ConsumeCreditsRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type ConsumeCreditsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Balance       int64                  `protobuf:"varint,1,opt,name=balance,proto3" json:"balance,omitempty"`
+	Replayed      bool                   `protobuf:"varint,2,opt,name=replayed,proto3" json:"replayed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConsumeCreditsResponse) Reset() {
+	*x = ConsumeCreditsResponse{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[106]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConsumeCreditsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsumeCreditsResponse) ProtoMessage() {}
+
+func (x *ConsumeCreditsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[106]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsumeCreditsResponse.ProtoReflect.Descriptor instead.
+func (*ConsumeCreditsResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{106}
+}
+
+func (x *ConsumeCreditsResponse) GetBalance() int64 {
+	if x != nil {
+		return x.Balance
+	}
+	return 0
+}
+
+func (x *ConsumeCreditsResponse) GetReplayed() bool {
+	if x != nil {
+		return x.Replayed
+	}
+	return false
+}
+
+type CreditLedgerEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	LotId string                 `protobuf:"bytes,2,opt,name=lot_id,json=lotId,proto3" json:"lot_id,omitempty"`
+	// grant, consume or expire.
+	Kind string `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	// Positive for a grant, negative for consume and expire.
+	Amount         int64                  `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	Reason         string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,6,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	CreateTime     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CreditLedgerEntry) Reset() {
+	*x = CreditLedgerEntry{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[107]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreditLedgerEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreditLedgerEntry) ProtoMessage() {}
+
+func (x *CreditLedgerEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[107]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreditLedgerEntry.ProtoReflect.Descriptor instead.
+func (*CreditLedgerEntry) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{107}
+}
+
+func (x *CreditLedgerEntry) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CreditLedgerEntry) GetLotId() string {
+	if x != nil {
+		return x.LotId
+	}
+	return ""
+}
+
+func (x *CreditLedgerEntry) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *CreditLedgerEntry) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *CreditLedgerEntry) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *CreditLedgerEntry) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *CreditLedgerEntry) GetCreateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+type ListCreditLedgerRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CustomerId string                 `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	// 1..200; 0 means 50.
+	PageSize      int32  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCreditLedgerRequest) Reset() {
+	*x = ListCreditLedgerRequest{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[108]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCreditLedgerRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCreditLedgerRequest) ProtoMessage() {}
+
+func (x *ListCreditLedgerRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[108]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCreditLedgerRequest.ProtoReflect.Descriptor instead.
+func (*ListCreditLedgerRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{108}
+}
+
+func (x *ListCreditLedgerRequest) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
+func (x *ListCreditLedgerRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListCreditLedgerRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type ListCreditLedgerResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entries       []*CreditLedgerEntry   `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCreditLedgerResponse) Reset() {
+	*x = ListCreditLedgerResponse{}
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[109]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCreditLedgerResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCreditLedgerResponse) ProtoMessage() {}
+
+func (x *ListCreditLedgerResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_billing_v1_billing_proto_msgTypes[109]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCreditLedgerResponse.ProtoReflect.Descriptor instead.
+func (*ListCreditLedgerResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_billing_v1_billing_proto_rawDescGZIP(), []int{109}
+}
+
+func (x *ListCreditLedgerResponse) GetEntries() []*CreditLedgerEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *ListCreditLedgerResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
 var File_quotify_billing_v1_billing_proto protoreflect.FileDescriptor
 
 const file_quotify_billing_v1_billing_proto_rawDesc = "" +
@@ -7004,7 +8044,90 @@ const file_quotify_billing_v1_billing_proto_rawDesc = "" +
 	"\famount_minor\x18\x04 \x01(\x03R\vamountMinor\x12\x1a\n" +
 	"\bcurrency\x18\x05 \x01(\tR\bcurrency\"8\n" +
 	"\x1cSettleInvoicePaymentResponse\x12\x18\n" +
-	"\asettled\x18\x01 \x01(\bR\asettled*\xc5\x01\n" +
+	"\asettled\x18\x01 \x01(\bR\asettled\"\xdc\x01\n" +
+	"\n" +
+	"CreditPack\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
+	"\acredits\x18\x03 \x01(\x03R\acredits\x12\x1f\n" +
+	"\vprice_minor\x18\x04 \x01(\x03R\n" +
+	"priceMinor\x12\x1a\n" +
+	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x12\x16\n" +
+	"\x06active\x18\x06 \x01(\bR\x06active\x12;\n" +
+	"\vcreate_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"createTime\"9\n" +
+	"\x16ListCreditPacksRequest\x12\x1f\n" +
+	"\vactive_only\x18\x01 \x01(\bR\n" +
+	"activeOnly\"O\n" +
+	"\x17ListCreditPacksResponse\x124\n" +
+	"\x05packs\x18\x01 \x03(\v2\x1e.quotify.billing.v1.CreditPackR\x05packs\"\x84\x01\n" +
+	"\x17CreateCreditPackRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\acredits\x18\x02 \x01(\x03R\acredits\x12\x1f\n" +
+	"\vprice_minor\x18\x03 \x01(\x03R\n" +
+	"priceMinor\x12\x1a\n" +
+	"\bcurrency\x18\x04 \x01(\tR\bcurrency\"N\n" +
+	"\x18CreateCreditPackResponse\x122\n" +
+	"\x04pack\x18\x01 \x01(\v2\x1e.quotify.billing.v1.CreditPackR\x04pack\"D\n" +
+	"\x1aSetCreditPackActiveRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06active\x18\x02 \x01(\bR\x06active\"\x1d\n" +
+	"\x1bSetCreditPackActiveResponse\"\xe5\x01\n" +
+	"\tCreditLot\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\agranted\x18\x02 \x01(\x03R\agranted\x12\x1c\n" +
+	"\tremaining\x18\x03 \x01(\x03R\tremaining\x12\x16\n" +
+	"\x06source\x18\x04 \x01(\tR\x06source\x12;\n" +
+	"\vexpire_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTime\x12;\n" +
+	"\vcreate_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"createTime\":\n" +
+	"\x17GetCreditBalanceRequest\x12\x1f\n" +
+	"\vcustomer_id\x18\x01 \x01(\tR\n" +
+	"customerId\"\xad\x01\n" +
+	"\x18GetCreditBalanceResponse\x12\x18\n" +
+	"\abalance\x18\x01 \x01(\x03R\abalance\x12D\n" +
+	"\x10next_expire_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x0enextExpireTime\x121\n" +
+	"\x04lots\x18\x03 \x03(\v2\x1d.quotify.billing.v1.CreditLotR\x04lots\"\xe6\x01\n" +
+	"\x13GrantCreditsRequest\x12\x1f\n" +
+	"\vcustomer_id\x18\x01 \x01(\tR\n" +
+	"customerId\x12\x18\n" +
+	"\acredits\x18\x02 \x01(\x03R\acredits\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\x12;\n" +
+	"\vexpire_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTime\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x12'\n" +
+	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\"L\n" +
+	"\x14GrantCreditsResponse\x12\x18\n" +
+	"\abalance\x18\x01 \x01(\x03R\abalance\x12\x1a\n" +
+	"\breplayed\x18\x02 \x01(\bR\breplayed\"\x93\x01\n" +
+	"\x15ConsumeCreditsRequest\x12\x1f\n" +
+	"\vcustomer_id\x18\x01 \x01(\tR\n" +
+	"customerId\x12\x18\n" +
+	"\acredits\x18\x02 \x01(\x03R\acredits\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"N\n" +
+	"\x16ConsumeCreditsResponse\x12\x18\n" +
+	"\abalance\x18\x01 \x01(\x03R\abalance\x12\x1a\n" +
+	"\breplayed\x18\x02 \x01(\bR\breplayed\"\xe4\x01\n" +
+	"\x11CreditLedgerEntry\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
+	"\x06lot_id\x18\x02 \x01(\tR\x05lotId\x12\x12\n" +
+	"\x04kind\x18\x03 \x01(\tR\x04kind\x12\x16\n" +
+	"\x06amount\x18\x04 \x01(\x03R\x06amount\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x12'\n" +
+	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\x12;\n" +
+	"\vcreate_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"createTime\"v\n" +
+	"\x17ListCreditLedgerRequest\x12\x1f\n" +
+	"\vcustomer_id\x18\x01 \x01(\tR\n" +
+	"customerId\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x03 \x01(\tR\tpageToken\"\x83\x01\n" +
+	"\x18ListCreditLedgerResponse\x12?\n" +
+	"\aentries\x18\x01 \x03(\v2%.quotify.billing.v1.CreditLedgerEntryR\aentries\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken*\xc5\x01\n" +
 	"\tRunStatus\x12\x1a\n" +
 	"\x16RUN_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14RUN_STATUS_SCHEDULED\x10\x01\x12 \n" +
@@ -7026,7 +8149,7 @@ const file_quotify_billing_v1_billing_proto_rawDesc = "" +
 	"\x18REFUND_STATE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16REFUND_STATE_REQUESTED\x10\x01\x12\x19\n" +
 	"\x15REFUND_STATE_REFUNDED\x10\x02\x12\x17\n" +
-	"\x13REFUND_STATE_FAILED\x10\x032\xd8\x0f\n" +
+	"\x13REFUND_STATE_FAILED\x10\x032\xd5\x15\n" +
 	"\x0eBillingService\x12[\n" +
 	"\n" +
 	"GetInvoice\x12%.quotify.billing.v1.GetInvoiceRequest\x1a&.quotify.billing.v1.GetInvoiceResponse\x12a\n" +
@@ -7046,7 +8169,14 @@ const file_quotify_billing_v1_billing_proto_rawDesc = "" +
 	"\x11RevokePortalLinks\x12,.quotify.billing.v1.RevokePortalLinksRequest\x1a-.quotify.billing.v1.RevokePortalLinksResponse\x12y\n" +
 	"\x14SettleInvoicePayment\x12/.quotify.billing.v1.SettleInvoicePaymentRequest\x1a0.quotify.billing.v1.SettleInvoicePaymentResponse\x12s\n" +
 	"\x12GetDunningSettings\x12-.quotify.billing.v1.GetDunningSettingsRequest\x1a..quotify.billing.v1.GetDunningSettingsResponse\x12s\n" +
-	"\x12SetDunningSettings\x12-.quotify.billing.v1.SetDunningSettingsRequest\x1a..quotify.billing.v1.SetDunningSettingsResponse2\xb9\x05\n" +
+	"\x12SetDunningSettings\x12-.quotify.billing.v1.SetDunningSettingsRequest\x1a..quotify.billing.v1.SetDunningSettingsResponse\x12j\n" +
+	"\x0fListCreditPacks\x12*.quotify.billing.v1.ListCreditPacksRequest\x1a+.quotify.billing.v1.ListCreditPacksResponse\x12m\n" +
+	"\x10CreateCreditPack\x12+.quotify.billing.v1.CreateCreditPackRequest\x1a,.quotify.billing.v1.CreateCreditPackResponse\x12v\n" +
+	"\x13SetCreditPackActive\x12..quotify.billing.v1.SetCreditPackActiveRequest\x1a/.quotify.billing.v1.SetCreditPackActiveResponse\x12m\n" +
+	"\x10GetCreditBalance\x12+.quotify.billing.v1.GetCreditBalanceRequest\x1a,.quotify.billing.v1.GetCreditBalanceResponse\x12a\n" +
+	"\fGrantCredits\x12'.quotify.billing.v1.GrantCreditsRequest\x1a(.quotify.billing.v1.GrantCreditsResponse\x12g\n" +
+	"\x0eConsumeCredits\x12).quotify.billing.v1.ConsumeCreditsRequest\x1a*.quotify.billing.v1.ConsumeCreditsResponse\x12m\n" +
+	"\x10ListCreditLedger\x12+.quotify.billing.v1.ListCreditLedgerRequest\x1a,.quotify.billing.v1.ListCreditLedgerResponse2\xb9\x05\n" +
 	"\x14HostedInvoiceService\x12m\n" +
 	"\x10GetHostedInvoice\x12+.quotify.billing.v1.GetHostedInvoiceRequest\x1a,.quotify.billing.v1.GetHostedInvoiceResponse\x12\x7f\n" +
 	"\x16GetHostedInvoicePdfUrl\x121.quotify.billing.v1.GetHostedInvoicePdfUrlRequest\x1a2.quotify.billing.v1.GetHostedInvoicePdfUrlResponse\x12m\n" +
@@ -7085,7 +8215,7 @@ func file_quotify_billing_v1_billing_proto_rawDescGZIP() []byte {
 }
 
 var file_quotify_billing_v1_billing_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_quotify_billing_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 93)
+var file_quotify_billing_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 110)
 var file_quotify_billing_v1_billing_proto_goTypes = []any{
 	(RunStatus)(0),                         // 0: quotify.billing.v1.RunStatus
 	(ReratingStatus)(0),                    // 1: quotify.billing.v1.ReratingStatus
@@ -7184,154 +8314,195 @@ var file_quotify_billing_v1_billing_proto_goTypes = []any{
 	(*RevokePortalLinksResponse)(nil),      // 94: quotify.billing.v1.RevokePortalLinksResponse
 	(*SettleInvoicePaymentRequest)(nil),    // 95: quotify.billing.v1.SettleInvoicePaymentRequest
 	(*SettleInvoicePaymentResponse)(nil),   // 96: quotify.billing.v1.SettleInvoicePaymentResponse
-	(*timestamppb.Timestamp)(nil),          // 97: google.protobuf.Timestamp
+	(*CreditPack)(nil),                     // 97: quotify.billing.v1.CreditPack
+	(*ListCreditPacksRequest)(nil),         // 98: quotify.billing.v1.ListCreditPacksRequest
+	(*ListCreditPacksResponse)(nil),        // 99: quotify.billing.v1.ListCreditPacksResponse
+	(*CreateCreditPackRequest)(nil),        // 100: quotify.billing.v1.CreateCreditPackRequest
+	(*CreateCreditPackResponse)(nil),       // 101: quotify.billing.v1.CreateCreditPackResponse
+	(*SetCreditPackActiveRequest)(nil),     // 102: quotify.billing.v1.SetCreditPackActiveRequest
+	(*SetCreditPackActiveResponse)(nil),    // 103: quotify.billing.v1.SetCreditPackActiveResponse
+	(*CreditLot)(nil),                      // 104: quotify.billing.v1.CreditLot
+	(*GetCreditBalanceRequest)(nil),        // 105: quotify.billing.v1.GetCreditBalanceRequest
+	(*GetCreditBalanceResponse)(nil),       // 106: quotify.billing.v1.GetCreditBalanceResponse
+	(*GrantCreditsRequest)(nil),            // 107: quotify.billing.v1.GrantCreditsRequest
+	(*GrantCreditsResponse)(nil),           // 108: quotify.billing.v1.GrantCreditsResponse
+	(*ConsumeCreditsRequest)(nil),          // 109: quotify.billing.v1.ConsumeCreditsRequest
+	(*ConsumeCreditsResponse)(nil),         // 110: quotify.billing.v1.ConsumeCreditsResponse
+	(*CreditLedgerEntry)(nil),              // 111: quotify.billing.v1.CreditLedgerEntry
+	(*ListCreditLedgerRequest)(nil),        // 112: quotify.billing.v1.ListCreditLedgerRequest
+	(*ListCreditLedgerResponse)(nil),       // 113: quotify.billing.v1.ListCreditLedgerResponse
+	(*timestamppb.Timestamp)(nil),          // 114: google.protobuf.Timestamp
 }
 var file_quotify_billing_v1_billing_proto_depIdxs = []int32{
 	0,   // 0: quotify.billing.v1.BillingRun.status:type_name -> quotify.billing.v1.RunStatus
-	97,  // 1: quotify.billing.v1.BillingRun.cutoff_time:type_name -> google.protobuf.Timestamp
-	97,  // 2: quotify.billing.v1.BillingRun.start_time:type_name -> google.protobuf.Timestamp
-	97,  // 3: quotify.billing.v1.BillingRun.complete_time:type_name -> google.protobuf.Timestamp
-	97,  // 4: quotify.billing.v1.InvoiceLine.service_from:type_name -> google.protobuf.Timestamp
-	97,  // 5: quotify.billing.v1.InvoiceLine.service_to:type_name -> google.protobuf.Timestamp
-	97,  // 6: quotify.billing.v1.Invoice.create_time:type_name -> google.protobuf.Timestamp
-	97,  // 7: quotify.billing.v1.Invoice.finalize_time:type_name -> google.protobuf.Timestamp
+	114, // 1: quotify.billing.v1.BillingRun.cutoff_time:type_name -> google.protobuf.Timestamp
+	114, // 2: quotify.billing.v1.BillingRun.start_time:type_name -> google.protobuf.Timestamp
+	114, // 3: quotify.billing.v1.BillingRun.complete_time:type_name -> google.protobuf.Timestamp
+	114, // 4: quotify.billing.v1.InvoiceLine.service_from:type_name -> google.protobuf.Timestamp
+	114, // 5: quotify.billing.v1.InvoiceLine.service_to:type_name -> google.protobuf.Timestamp
+	114, // 6: quotify.billing.v1.Invoice.create_time:type_name -> google.protobuf.Timestamp
+	114, // 7: quotify.billing.v1.Invoice.finalize_time:type_name -> google.protobuf.Timestamp
 	5,   // 8: quotify.billing.v1.Invoice.lines:type_name -> quotify.billing.v1.InvoiceLine
 	7,   // 9: quotify.billing.v1.Invoice.payments:type_name -> quotify.billing.v1.InvoicePayment
-	97,  // 10: quotify.billing.v1.InvoicePayment.received_at:type_name -> google.protobuf.Timestamp
-	97,  // 11: quotify.billing.v1.InvoicePayment.recorded_at:type_name -> google.protobuf.Timestamp
-	97,  // 12: quotify.billing.v1.RecordInvoicePaymentRequest.received_at:type_name -> google.protobuf.Timestamp
+	114, // 10: quotify.billing.v1.InvoicePayment.received_at:type_name -> google.protobuf.Timestamp
+	114, // 11: quotify.billing.v1.InvoicePayment.recorded_at:type_name -> google.protobuf.Timestamp
+	114, // 12: quotify.billing.v1.RecordInvoicePaymentRequest.received_at:type_name -> google.protobuf.Timestamp
 	7,   // 13: quotify.billing.v1.RecordInvoicePaymentResponse.payment:type_name -> quotify.billing.v1.InvoicePayment
 	6,   // 14: quotify.billing.v1.GetInvoiceResponse.invoice:type_name -> quotify.billing.v1.Invoice
 	6,   // 15: quotify.billing.v1.ListInvoicesResponse.invoices:type_name -> quotify.billing.v1.Invoice
-	97,  // 16: quotify.billing.v1.GetInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
+	114, // 16: quotify.billing.v1.GetInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
 	4,   // 17: quotify.billing.v1.ClosePeriodNowResponse.run:type_name -> quotify.billing.v1.BillingRun
 	4,   // 18: quotify.billing.v1.ClosePeriodResponse.run:type_name -> quotify.billing.v1.BillingRun
 	4,   // 19: quotify.billing.v1.GetBillingRunResponse.run:type_name -> quotify.billing.v1.BillingRun
 	22,  // 20: quotify.billing.v1.RetryInvoiceSagaResponse.saga:type_name -> quotify.billing.v1.InvoiceSaga
 	22,  // 21: quotify.billing.v1.VoidInvoiceResponse.saga:type_name -> quotify.billing.v1.InvoiceSaga
 	1,   // 22: quotify.billing.v1.ReratingJob.status:type_name -> quotify.billing.v1.ReratingStatus
-	97,  // 23: quotify.billing.v1.ReratingJob.create_time:type_name -> google.protobuf.Timestamp
-	97,  // 24: quotify.billing.v1.ReratingJob.complete_time:type_name -> google.protobuf.Timestamp
+	114, // 23: quotify.billing.v1.ReratingJob.create_time:type_name -> google.protobuf.Timestamp
+	114, // 24: quotify.billing.v1.ReratingJob.complete_time:type_name -> google.protobuf.Timestamp
 	27,  // 25: quotify.billing.v1.StartReratingResponse.job:type_name -> quotify.billing.v1.ReratingJob
 	27,  // 26: quotify.billing.v1.GetReratingJobResponse.job:type_name -> quotify.billing.v1.ReratingJob
-	97,  // 27: quotify.billing.v1.SagaEvent.at:type_name -> google.protobuf.Timestamp
+	114, // 27: quotify.billing.v1.SagaEvent.at:type_name -> google.protobuf.Timestamp
 	22,  // 28: quotify.billing.v1.GetInvoiceSagaResponse.saga:type_name -> quotify.billing.v1.InvoiceSaga
 	32,  // 29: quotify.billing.v1.GetInvoiceSagaResponse.events:type_name -> quotify.billing.v1.SagaEvent
 	35,  // 30: quotify.billing.v1.ListDeadLettersResponse.queues:type_name -> quotify.billing.v1.DeadLetterQueue
 	36,  // 31: quotify.billing.v1.ListDeadLettersResponse.messages:type_name -> quotify.billing.v1.DeadLetter
 	42,  // 32: quotify.billing.v1.GetRevenueReportResponse.rows:type_name -> quotify.billing.v1.RevenueRow
-	97,  // 33: quotify.billing.v1.DunningInvoice.next_attempt_time:type_name -> google.protobuf.Timestamp
+	114, // 33: quotify.billing.v1.DunningInvoice.next_attempt_time:type_name -> google.protobuf.Timestamp
 	45,  // 34: quotify.billing.v1.GetDunningReportResponse.invoices:type_name -> quotify.billing.v1.DunningInvoice
 	46,  // 35: quotify.billing.v1.GetDunningReportResponse.summary:type_name -> quotify.billing.v1.DunningSummary
-	97,  // 36: quotify.billing.v1.CreditNote.create_time:type_name -> google.protobuf.Timestamp
+	114, // 36: quotify.billing.v1.CreditNote.create_time:type_name -> google.protobuf.Timestamp
 	2,   // 37: quotify.billing.v1.CreditNote.disposition:type_name -> quotify.billing.v1.CreditNoteDisposition
 	3,   // 38: quotify.billing.v1.CreditNote.refund_state:type_name -> quotify.billing.v1.RefundState
 	48,  // 39: quotify.billing.v1.RetryCreditNoteRefundResponse.credit_note:type_name -> quotify.billing.v1.CreditNote
 	48,  // 40: quotify.billing.v1.CreateCreditNoteResponse.credit_note:type_name -> quotify.billing.v1.CreditNote
 	48,  // 41: quotify.billing.v1.GetCreditNoteResponse.credit_note:type_name -> quotify.billing.v1.CreditNote
 	48,  // 42: quotify.billing.v1.ListCreditNotesResponse.credit_notes:type_name -> quotify.billing.v1.CreditNote
-	97,  // 43: quotify.billing.v1.DunningSettings.update_time:type_name -> google.protobuf.Timestamp
+	114, // 43: quotify.billing.v1.DunningSettings.update_time:type_name -> google.protobuf.Timestamp
 	57,  // 44: quotify.billing.v1.GetDunningSettingsResponse.settings:type_name -> quotify.billing.v1.DunningSettings
 	57,  // 45: quotify.billing.v1.SetDunningSettingsResponse.settings:type_name -> quotify.billing.v1.DunningSettings
-	97,  // 46: quotify.billing.v1.CreateInvoiceLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
+	114, // 46: quotify.billing.v1.CreateInvoiceLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
 	6,   // 47: quotify.billing.v1.GetHostedInvoiceResponse.invoice:type_name -> quotify.billing.v1.Invoice
-	97,  // 48: quotify.billing.v1.GetHostedInvoiceResponse.expire_time:type_name -> google.protobuf.Timestamp
+	114, // 48: quotify.billing.v1.GetHostedInvoiceResponse.expire_time:type_name -> google.protobuf.Timestamp
 	70,  // 49: quotify.billing.v1.GetHostedInvoiceResponse.payment:type_name -> quotify.billing.v1.HostedPaymentContext
 	69,  // 50: quotify.billing.v1.GetHostedInvoiceResponse.adhoc:type_name -> quotify.billing.v1.HostedAdhoc
 	68,  // 51: quotify.billing.v1.GetHostedInvoiceResponse.payment_instructions:type_name -> quotify.billing.v1.BankTransferInstructions
-	97,  // 52: quotify.billing.v1.GetHostedInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
+	114, // 52: quotify.billing.v1.GetHostedInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
 	70,  // 53: quotify.billing.v1.RequestHostedPaymentResponse.payment:type_name -> quotify.billing.v1.HostedPaymentContext
-	97,  // 54: quotify.billing.v1.PortalInvoice.issue_time:type_name -> google.protobuf.Timestamp
-	97,  // 55: quotify.billing.v1.GetPortalResponse.expire_time:type_name -> google.protobuf.Timestamp
+	114, // 54: quotify.billing.v1.PortalInvoice.issue_time:type_name -> google.protobuf.Timestamp
+	114, // 55: quotify.billing.v1.GetPortalResponse.expire_time:type_name -> google.protobuf.Timestamp
 	80,  // 56: quotify.billing.v1.GetPortalResponse.invoices:type_name -> quotify.billing.v1.PortalInvoice
-	97,  // 57: quotify.billing.v1.PaymentLink.create_time:type_name -> google.protobuf.Timestamp
-	97,  // 58: quotify.billing.v1.PaymentLink.expire_time:type_name -> google.protobuf.Timestamp
-	97,  // 59: quotify.billing.v1.PaymentLink.revoke_time:type_name -> google.protobuf.Timestamp
-	97,  // 60: quotify.billing.v1.PaymentLink.last_paid_time:type_name -> google.protobuf.Timestamp
+	114, // 57: quotify.billing.v1.PaymentLink.create_time:type_name -> google.protobuf.Timestamp
+	114, // 58: quotify.billing.v1.PaymentLink.expire_time:type_name -> google.protobuf.Timestamp
+	114, // 59: quotify.billing.v1.PaymentLink.revoke_time:type_name -> google.protobuf.Timestamp
+	114, // 60: quotify.billing.v1.PaymentLink.last_paid_time:type_name -> google.protobuf.Timestamp
 	82,  // 61: quotify.billing.v1.CreatePaymentLinkResponse.link:type_name -> quotify.billing.v1.PaymentLink
 	82,  // 62: quotify.billing.v1.GetPaymentLinkResponse.link:type_name -> quotify.billing.v1.PaymentLink
 	82,  // 63: quotify.billing.v1.ListPaymentLinksResponse.links:type_name -> quotify.billing.v1.PaymentLink
 	82,  // 64: quotify.billing.v1.RevokePaymentLinkResponse.link:type_name -> quotify.billing.v1.PaymentLink
-	97,  // 65: quotify.billing.v1.CreatePortalLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
-	10,  // 66: quotify.billing.v1.BillingService.GetInvoice:input_type -> quotify.billing.v1.GetInvoiceRequest
-	12,  // 67: quotify.billing.v1.BillingService.ListInvoices:input_type -> quotify.billing.v1.ListInvoicesRequest
-	14,  // 68: quotify.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> quotify.billing.v1.GetInvoicePdfUrlRequest
-	41,  // 69: quotify.billing.v1.BillingService.GetRevenueReport:input_type -> quotify.billing.v1.GetRevenueReportRequest
-	44,  // 70: quotify.billing.v1.BillingService.GetDunningReport:input_type -> quotify.billing.v1.GetDunningReportRequest
-	53,  // 71: quotify.billing.v1.BillingService.GetCreditNote:input_type -> quotify.billing.v1.GetCreditNoteRequest
-	55,  // 72: quotify.billing.v1.BillingService.ListCreditNotes:input_type -> quotify.billing.v1.ListCreditNotesRequest
-	62,  // 73: quotify.billing.v1.BillingService.CreateInvoiceLink:input_type -> quotify.billing.v1.CreateInvoiceLinkRequest
-	64,  // 74: quotify.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> quotify.billing.v1.RevokeInvoiceLinksRequest
-	83,  // 75: quotify.billing.v1.BillingService.CreatePaymentLink:input_type -> quotify.billing.v1.CreatePaymentLinkRequest
-	85,  // 76: quotify.billing.v1.BillingService.GetPaymentLink:input_type -> quotify.billing.v1.GetPaymentLinkRequest
-	87,  // 77: quotify.billing.v1.BillingService.ListPaymentLinks:input_type -> quotify.billing.v1.ListPaymentLinksRequest
-	89,  // 78: quotify.billing.v1.BillingService.RevokePaymentLink:input_type -> quotify.billing.v1.RevokePaymentLinkRequest
-	91,  // 79: quotify.billing.v1.BillingService.CreatePortalLink:input_type -> quotify.billing.v1.CreatePortalLinkRequest
-	93,  // 80: quotify.billing.v1.BillingService.RevokePortalLinks:input_type -> quotify.billing.v1.RevokePortalLinksRequest
-	95,  // 81: quotify.billing.v1.BillingService.SettleInvoicePayment:input_type -> quotify.billing.v1.SettleInvoicePaymentRequest
-	58,  // 82: quotify.billing.v1.BillingService.GetDunningSettings:input_type -> quotify.billing.v1.GetDunningSettingsRequest
-	60,  // 83: quotify.billing.v1.BillingService.SetDunningSettings:input_type -> quotify.billing.v1.SetDunningSettingsRequest
-	66,  // 84: quotify.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> quotify.billing.v1.GetHostedInvoiceRequest
-	71,  // 85: quotify.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> quotify.billing.v1.GetHostedInvoicePdfUrlRequest
-	73,  // 86: quotify.billing.v1.HostedInvoiceService.GetHostedLogoUrl:input_type -> quotify.billing.v1.GetHostedLogoUrlRequest
-	75,  // 87: quotify.billing.v1.HostedInvoiceService.StartLinkPayment:input_type -> quotify.billing.v1.StartLinkPaymentRequest
-	77,  // 88: quotify.billing.v1.HostedInvoiceService.RequestHostedPayment:input_type -> quotify.billing.v1.RequestHostedPaymentRequest
-	79,  // 89: quotify.billing.v1.HostedInvoiceService.GetPortal:input_type -> quotify.billing.v1.GetPortalRequest
-	16,  // 90: quotify.billing.v1.SandboxService.ClosePeriodNow:input_type -> quotify.billing.v1.ClosePeriodNowRequest
-	18,  // 91: quotify.billing.v1.BillingAdminService.ClosePeriod:input_type -> quotify.billing.v1.ClosePeriodRequest
-	20,  // 92: quotify.billing.v1.BillingAdminService.GetBillingRun:input_type -> quotify.billing.v1.GetBillingRunRequest
-	23,  // 93: quotify.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> quotify.billing.v1.RetryInvoiceSagaRequest
-	25,  // 94: quotify.billing.v1.BillingAdminService.VoidInvoice:input_type -> quotify.billing.v1.VoidInvoiceRequest
-	8,   // 95: quotify.billing.v1.BillingAdminService.RecordInvoicePayment:input_type -> quotify.billing.v1.RecordInvoicePaymentRequest
-	49,  // 96: quotify.billing.v1.BillingAdminService.CreateCreditNote:input_type -> quotify.billing.v1.CreateCreditNoteRequest
-	50,  // 97: quotify.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> quotify.billing.v1.RetryCreditNoteRefundRequest
-	28,  // 98: quotify.billing.v1.BillingAdminService.StartRerating:input_type -> quotify.billing.v1.StartReratingRequest
-	30,  // 99: quotify.billing.v1.BillingAdminService.GetReratingJob:input_type -> quotify.billing.v1.GetReratingJobRequest
-	33,  // 100: quotify.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> quotify.billing.v1.GetInvoiceSagaRequest
-	37,  // 101: quotify.billing.v1.BillingAdminService.ListDeadLetters:input_type -> quotify.billing.v1.ListDeadLettersRequest
-	39,  // 102: quotify.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> quotify.billing.v1.RedriveDeadLettersRequest
-	11,  // 103: quotify.billing.v1.BillingService.GetInvoice:output_type -> quotify.billing.v1.GetInvoiceResponse
-	13,  // 104: quotify.billing.v1.BillingService.ListInvoices:output_type -> quotify.billing.v1.ListInvoicesResponse
-	15,  // 105: quotify.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> quotify.billing.v1.GetInvoicePdfUrlResponse
-	43,  // 106: quotify.billing.v1.BillingService.GetRevenueReport:output_type -> quotify.billing.v1.GetRevenueReportResponse
-	47,  // 107: quotify.billing.v1.BillingService.GetDunningReport:output_type -> quotify.billing.v1.GetDunningReportResponse
-	54,  // 108: quotify.billing.v1.BillingService.GetCreditNote:output_type -> quotify.billing.v1.GetCreditNoteResponse
-	56,  // 109: quotify.billing.v1.BillingService.ListCreditNotes:output_type -> quotify.billing.v1.ListCreditNotesResponse
-	63,  // 110: quotify.billing.v1.BillingService.CreateInvoiceLink:output_type -> quotify.billing.v1.CreateInvoiceLinkResponse
-	65,  // 111: quotify.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> quotify.billing.v1.RevokeInvoiceLinksResponse
-	84,  // 112: quotify.billing.v1.BillingService.CreatePaymentLink:output_type -> quotify.billing.v1.CreatePaymentLinkResponse
-	86,  // 113: quotify.billing.v1.BillingService.GetPaymentLink:output_type -> quotify.billing.v1.GetPaymentLinkResponse
-	88,  // 114: quotify.billing.v1.BillingService.ListPaymentLinks:output_type -> quotify.billing.v1.ListPaymentLinksResponse
-	90,  // 115: quotify.billing.v1.BillingService.RevokePaymentLink:output_type -> quotify.billing.v1.RevokePaymentLinkResponse
-	92,  // 116: quotify.billing.v1.BillingService.CreatePortalLink:output_type -> quotify.billing.v1.CreatePortalLinkResponse
-	94,  // 117: quotify.billing.v1.BillingService.RevokePortalLinks:output_type -> quotify.billing.v1.RevokePortalLinksResponse
-	96,  // 118: quotify.billing.v1.BillingService.SettleInvoicePayment:output_type -> quotify.billing.v1.SettleInvoicePaymentResponse
-	59,  // 119: quotify.billing.v1.BillingService.GetDunningSettings:output_type -> quotify.billing.v1.GetDunningSettingsResponse
-	61,  // 120: quotify.billing.v1.BillingService.SetDunningSettings:output_type -> quotify.billing.v1.SetDunningSettingsResponse
-	67,  // 121: quotify.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> quotify.billing.v1.GetHostedInvoiceResponse
-	72,  // 122: quotify.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> quotify.billing.v1.GetHostedInvoicePdfUrlResponse
-	74,  // 123: quotify.billing.v1.HostedInvoiceService.GetHostedLogoUrl:output_type -> quotify.billing.v1.GetHostedLogoUrlResponse
-	76,  // 124: quotify.billing.v1.HostedInvoiceService.StartLinkPayment:output_type -> quotify.billing.v1.StartLinkPaymentResponse
-	78,  // 125: quotify.billing.v1.HostedInvoiceService.RequestHostedPayment:output_type -> quotify.billing.v1.RequestHostedPaymentResponse
-	81,  // 126: quotify.billing.v1.HostedInvoiceService.GetPortal:output_type -> quotify.billing.v1.GetPortalResponse
-	17,  // 127: quotify.billing.v1.SandboxService.ClosePeriodNow:output_type -> quotify.billing.v1.ClosePeriodNowResponse
-	19,  // 128: quotify.billing.v1.BillingAdminService.ClosePeriod:output_type -> quotify.billing.v1.ClosePeriodResponse
-	21,  // 129: quotify.billing.v1.BillingAdminService.GetBillingRun:output_type -> quotify.billing.v1.GetBillingRunResponse
-	24,  // 130: quotify.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> quotify.billing.v1.RetryInvoiceSagaResponse
-	26,  // 131: quotify.billing.v1.BillingAdminService.VoidInvoice:output_type -> quotify.billing.v1.VoidInvoiceResponse
-	9,   // 132: quotify.billing.v1.BillingAdminService.RecordInvoicePayment:output_type -> quotify.billing.v1.RecordInvoicePaymentResponse
-	52,  // 133: quotify.billing.v1.BillingAdminService.CreateCreditNote:output_type -> quotify.billing.v1.CreateCreditNoteResponse
-	51,  // 134: quotify.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> quotify.billing.v1.RetryCreditNoteRefundResponse
-	29,  // 135: quotify.billing.v1.BillingAdminService.StartRerating:output_type -> quotify.billing.v1.StartReratingResponse
-	31,  // 136: quotify.billing.v1.BillingAdminService.GetReratingJob:output_type -> quotify.billing.v1.GetReratingJobResponse
-	34,  // 137: quotify.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> quotify.billing.v1.GetInvoiceSagaResponse
-	38,  // 138: quotify.billing.v1.BillingAdminService.ListDeadLetters:output_type -> quotify.billing.v1.ListDeadLettersResponse
-	40,  // 139: quotify.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> quotify.billing.v1.RedriveDeadLettersResponse
-	103, // [103:140] is the sub-list for method output_type
-	66,  // [66:103] is the sub-list for method input_type
-	66,  // [66:66] is the sub-list for extension type_name
-	66,  // [66:66] is the sub-list for extension extendee
-	0,   // [0:66] is the sub-list for field type_name
+	114, // 65: quotify.billing.v1.CreatePortalLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
+	114, // 66: quotify.billing.v1.CreditPack.create_time:type_name -> google.protobuf.Timestamp
+	97,  // 67: quotify.billing.v1.ListCreditPacksResponse.packs:type_name -> quotify.billing.v1.CreditPack
+	97,  // 68: quotify.billing.v1.CreateCreditPackResponse.pack:type_name -> quotify.billing.v1.CreditPack
+	114, // 69: quotify.billing.v1.CreditLot.expire_time:type_name -> google.protobuf.Timestamp
+	114, // 70: quotify.billing.v1.CreditLot.create_time:type_name -> google.protobuf.Timestamp
+	114, // 71: quotify.billing.v1.GetCreditBalanceResponse.next_expire_time:type_name -> google.protobuf.Timestamp
+	104, // 72: quotify.billing.v1.GetCreditBalanceResponse.lots:type_name -> quotify.billing.v1.CreditLot
+	114, // 73: quotify.billing.v1.GrantCreditsRequest.expire_time:type_name -> google.protobuf.Timestamp
+	114, // 74: quotify.billing.v1.CreditLedgerEntry.create_time:type_name -> google.protobuf.Timestamp
+	111, // 75: quotify.billing.v1.ListCreditLedgerResponse.entries:type_name -> quotify.billing.v1.CreditLedgerEntry
+	10,  // 76: quotify.billing.v1.BillingService.GetInvoice:input_type -> quotify.billing.v1.GetInvoiceRequest
+	12,  // 77: quotify.billing.v1.BillingService.ListInvoices:input_type -> quotify.billing.v1.ListInvoicesRequest
+	14,  // 78: quotify.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> quotify.billing.v1.GetInvoicePdfUrlRequest
+	41,  // 79: quotify.billing.v1.BillingService.GetRevenueReport:input_type -> quotify.billing.v1.GetRevenueReportRequest
+	44,  // 80: quotify.billing.v1.BillingService.GetDunningReport:input_type -> quotify.billing.v1.GetDunningReportRequest
+	53,  // 81: quotify.billing.v1.BillingService.GetCreditNote:input_type -> quotify.billing.v1.GetCreditNoteRequest
+	55,  // 82: quotify.billing.v1.BillingService.ListCreditNotes:input_type -> quotify.billing.v1.ListCreditNotesRequest
+	62,  // 83: quotify.billing.v1.BillingService.CreateInvoiceLink:input_type -> quotify.billing.v1.CreateInvoiceLinkRequest
+	64,  // 84: quotify.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> quotify.billing.v1.RevokeInvoiceLinksRequest
+	83,  // 85: quotify.billing.v1.BillingService.CreatePaymentLink:input_type -> quotify.billing.v1.CreatePaymentLinkRequest
+	85,  // 86: quotify.billing.v1.BillingService.GetPaymentLink:input_type -> quotify.billing.v1.GetPaymentLinkRequest
+	87,  // 87: quotify.billing.v1.BillingService.ListPaymentLinks:input_type -> quotify.billing.v1.ListPaymentLinksRequest
+	89,  // 88: quotify.billing.v1.BillingService.RevokePaymentLink:input_type -> quotify.billing.v1.RevokePaymentLinkRequest
+	91,  // 89: quotify.billing.v1.BillingService.CreatePortalLink:input_type -> quotify.billing.v1.CreatePortalLinkRequest
+	93,  // 90: quotify.billing.v1.BillingService.RevokePortalLinks:input_type -> quotify.billing.v1.RevokePortalLinksRequest
+	95,  // 91: quotify.billing.v1.BillingService.SettleInvoicePayment:input_type -> quotify.billing.v1.SettleInvoicePaymentRequest
+	58,  // 92: quotify.billing.v1.BillingService.GetDunningSettings:input_type -> quotify.billing.v1.GetDunningSettingsRequest
+	60,  // 93: quotify.billing.v1.BillingService.SetDunningSettings:input_type -> quotify.billing.v1.SetDunningSettingsRequest
+	98,  // 94: quotify.billing.v1.BillingService.ListCreditPacks:input_type -> quotify.billing.v1.ListCreditPacksRequest
+	100, // 95: quotify.billing.v1.BillingService.CreateCreditPack:input_type -> quotify.billing.v1.CreateCreditPackRequest
+	102, // 96: quotify.billing.v1.BillingService.SetCreditPackActive:input_type -> quotify.billing.v1.SetCreditPackActiveRequest
+	105, // 97: quotify.billing.v1.BillingService.GetCreditBalance:input_type -> quotify.billing.v1.GetCreditBalanceRequest
+	107, // 98: quotify.billing.v1.BillingService.GrantCredits:input_type -> quotify.billing.v1.GrantCreditsRequest
+	109, // 99: quotify.billing.v1.BillingService.ConsumeCredits:input_type -> quotify.billing.v1.ConsumeCreditsRequest
+	112, // 100: quotify.billing.v1.BillingService.ListCreditLedger:input_type -> quotify.billing.v1.ListCreditLedgerRequest
+	66,  // 101: quotify.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> quotify.billing.v1.GetHostedInvoiceRequest
+	71,  // 102: quotify.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> quotify.billing.v1.GetHostedInvoicePdfUrlRequest
+	73,  // 103: quotify.billing.v1.HostedInvoiceService.GetHostedLogoUrl:input_type -> quotify.billing.v1.GetHostedLogoUrlRequest
+	75,  // 104: quotify.billing.v1.HostedInvoiceService.StartLinkPayment:input_type -> quotify.billing.v1.StartLinkPaymentRequest
+	77,  // 105: quotify.billing.v1.HostedInvoiceService.RequestHostedPayment:input_type -> quotify.billing.v1.RequestHostedPaymentRequest
+	79,  // 106: quotify.billing.v1.HostedInvoiceService.GetPortal:input_type -> quotify.billing.v1.GetPortalRequest
+	16,  // 107: quotify.billing.v1.SandboxService.ClosePeriodNow:input_type -> quotify.billing.v1.ClosePeriodNowRequest
+	18,  // 108: quotify.billing.v1.BillingAdminService.ClosePeriod:input_type -> quotify.billing.v1.ClosePeriodRequest
+	20,  // 109: quotify.billing.v1.BillingAdminService.GetBillingRun:input_type -> quotify.billing.v1.GetBillingRunRequest
+	23,  // 110: quotify.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> quotify.billing.v1.RetryInvoiceSagaRequest
+	25,  // 111: quotify.billing.v1.BillingAdminService.VoidInvoice:input_type -> quotify.billing.v1.VoidInvoiceRequest
+	8,   // 112: quotify.billing.v1.BillingAdminService.RecordInvoicePayment:input_type -> quotify.billing.v1.RecordInvoicePaymentRequest
+	49,  // 113: quotify.billing.v1.BillingAdminService.CreateCreditNote:input_type -> quotify.billing.v1.CreateCreditNoteRequest
+	50,  // 114: quotify.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> quotify.billing.v1.RetryCreditNoteRefundRequest
+	28,  // 115: quotify.billing.v1.BillingAdminService.StartRerating:input_type -> quotify.billing.v1.StartReratingRequest
+	30,  // 116: quotify.billing.v1.BillingAdminService.GetReratingJob:input_type -> quotify.billing.v1.GetReratingJobRequest
+	33,  // 117: quotify.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> quotify.billing.v1.GetInvoiceSagaRequest
+	37,  // 118: quotify.billing.v1.BillingAdminService.ListDeadLetters:input_type -> quotify.billing.v1.ListDeadLettersRequest
+	39,  // 119: quotify.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> quotify.billing.v1.RedriveDeadLettersRequest
+	11,  // 120: quotify.billing.v1.BillingService.GetInvoice:output_type -> quotify.billing.v1.GetInvoiceResponse
+	13,  // 121: quotify.billing.v1.BillingService.ListInvoices:output_type -> quotify.billing.v1.ListInvoicesResponse
+	15,  // 122: quotify.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> quotify.billing.v1.GetInvoicePdfUrlResponse
+	43,  // 123: quotify.billing.v1.BillingService.GetRevenueReport:output_type -> quotify.billing.v1.GetRevenueReportResponse
+	47,  // 124: quotify.billing.v1.BillingService.GetDunningReport:output_type -> quotify.billing.v1.GetDunningReportResponse
+	54,  // 125: quotify.billing.v1.BillingService.GetCreditNote:output_type -> quotify.billing.v1.GetCreditNoteResponse
+	56,  // 126: quotify.billing.v1.BillingService.ListCreditNotes:output_type -> quotify.billing.v1.ListCreditNotesResponse
+	63,  // 127: quotify.billing.v1.BillingService.CreateInvoiceLink:output_type -> quotify.billing.v1.CreateInvoiceLinkResponse
+	65,  // 128: quotify.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> quotify.billing.v1.RevokeInvoiceLinksResponse
+	84,  // 129: quotify.billing.v1.BillingService.CreatePaymentLink:output_type -> quotify.billing.v1.CreatePaymentLinkResponse
+	86,  // 130: quotify.billing.v1.BillingService.GetPaymentLink:output_type -> quotify.billing.v1.GetPaymentLinkResponse
+	88,  // 131: quotify.billing.v1.BillingService.ListPaymentLinks:output_type -> quotify.billing.v1.ListPaymentLinksResponse
+	90,  // 132: quotify.billing.v1.BillingService.RevokePaymentLink:output_type -> quotify.billing.v1.RevokePaymentLinkResponse
+	92,  // 133: quotify.billing.v1.BillingService.CreatePortalLink:output_type -> quotify.billing.v1.CreatePortalLinkResponse
+	94,  // 134: quotify.billing.v1.BillingService.RevokePortalLinks:output_type -> quotify.billing.v1.RevokePortalLinksResponse
+	96,  // 135: quotify.billing.v1.BillingService.SettleInvoicePayment:output_type -> quotify.billing.v1.SettleInvoicePaymentResponse
+	59,  // 136: quotify.billing.v1.BillingService.GetDunningSettings:output_type -> quotify.billing.v1.GetDunningSettingsResponse
+	61,  // 137: quotify.billing.v1.BillingService.SetDunningSettings:output_type -> quotify.billing.v1.SetDunningSettingsResponse
+	99,  // 138: quotify.billing.v1.BillingService.ListCreditPacks:output_type -> quotify.billing.v1.ListCreditPacksResponse
+	101, // 139: quotify.billing.v1.BillingService.CreateCreditPack:output_type -> quotify.billing.v1.CreateCreditPackResponse
+	103, // 140: quotify.billing.v1.BillingService.SetCreditPackActive:output_type -> quotify.billing.v1.SetCreditPackActiveResponse
+	106, // 141: quotify.billing.v1.BillingService.GetCreditBalance:output_type -> quotify.billing.v1.GetCreditBalanceResponse
+	108, // 142: quotify.billing.v1.BillingService.GrantCredits:output_type -> quotify.billing.v1.GrantCreditsResponse
+	110, // 143: quotify.billing.v1.BillingService.ConsumeCredits:output_type -> quotify.billing.v1.ConsumeCreditsResponse
+	113, // 144: quotify.billing.v1.BillingService.ListCreditLedger:output_type -> quotify.billing.v1.ListCreditLedgerResponse
+	67,  // 145: quotify.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> quotify.billing.v1.GetHostedInvoiceResponse
+	72,  // 146: quotify.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> quotify.billing.v1.GetHostedInvoicePdfUrlResponse
+	74,  // 147: quotify.billing.v1.HostedInvoiceService.GetHostedLogoUrl:output_type -> quotify.billing.v1.GetHostedLogoUrlResponse
+	76,  // 148: quotify.billing.v1.HostedInvoiceService.StartLinkPayment:output_type -> quotify.billing.v1.StartLinkPaymentResponse
+	78,  // 149: quotify.billing.v1.HostedInvoiceService.RequestHostedPayment:output_type -> quotify.billing.v1.RequestHostedPaymentResponse
+	81,  // 150: quotify.billing.v1.HostedInvoiceService.GetPortal:output_type -> quotify.billing.v1.GetPortalResponse
+	17,  // 151: quotify.billing.v1.SandboxService.ClosePeriodNow:output_type -> quotify.billing.v1.ClosePeriodNowResponse
+	19,  // 152: quotify.billing.v1.BillingAdminService.ClosePeriod:output_type -> quotify.billing.v1.ClosePeriodResponse
+	21,  // 153: quotify.billing.v1.BillingAdminService.GetBillingRun:output_type -> quotify.billing.v1.GetBillingRunResponse
+	24,  // 154: quotify.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> quotify.billing.v1.RetryInvoiceSagaResponse
+	26,  // 155: quotify.billing.v1.BillingAdminService.VoidInvoice:output_type -> quotify.billing.v1.VoidInvoiceResponse
+	9,   // 156: quotify.billing.v1.BillingAdminService.RecordInvoicePayment:output_type -> quotify.billing.v1.RecordInvoicePaymentResponse
+	52,  // 157: quotify.billing.v1.BillingAdminService.CreateCreditNote:output_type -> quotify.billing.v1.CreateCreditNoteResponse
+	51,  // 158: quotify.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> quotify.billing.v1.RetryCreditNoteRefundResponse
+	29,  // 159: quotify.billing.v1.BillingAdminService.StartRerating:output_type -> quotify.billing.v1.StartReratingResponse
+	31,  // 160: quotify.billing.v1.BillingAdminService.GetReratingJob:output_type -> quotify.billing.v1.GetReratingJobResponse
+	34,  // 161: quotify.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> quotify.billing.v1.GetInvoiceSagaResponse
+	38,  // 162: quotify.billing.v1.BillingAdminService.ListDeadLetters:output_type -> quotify.billing.v1.ListDeadLettersResponse
+	40,  // 163: quotify.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> quotify.billing.v1.RedriveDeadLettersResponse
+	120, // [120:164] is the sub-list for method output_type
+	76,  // [76:120] is the sub-list for method input_type
+	76,  // [76:76] is the sub-list for extension type_name
+	76,  // [76:76] is the sub-list for extension extendee
+	0,   // [0:76] is the sub-list for field type_name
 }
 
 func init() { file_quotify_billing_v1_billing_proto_init() }
@@ -7346,7 +8517,7 @@ func file_quotify_billing_v1_billing_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_billing_v1_billing_proto_rawDesc), len(file_quotify_billing_v1_billing_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   93,
+			NumMessages:   110,
 			NumExtensions: 0,
 			NumServices:   4,
 		},

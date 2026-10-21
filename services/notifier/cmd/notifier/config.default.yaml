@@ -1,7 +1,7 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
 QUOTIFY_MIGRATE_ON_START: "false"
-QUOTIFY_PLANS_ADDR: "dns:///localhost:7001"
-SMTP_ADDR: "localhost:1025"
+QUOTIFY_PLANS_ADDR: "dns:///localhost:42701"
+SMTP_ADDR: "localhost:42025"
 MAIL_FROM: "Quotify <billing@quotify.local>"
 NOTIFIER_SENDING_STALE: "5m"
 # How long a tenant's mail switch (plans-svc) is remembered; a change reaches the notifier within it.

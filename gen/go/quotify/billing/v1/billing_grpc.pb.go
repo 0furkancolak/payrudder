@@ -37,6 +37,13 @@ const (
 	BillingService_SettleInvoicePayment_FullMethodName = "/quotify.billing.v1.BillingService/SettleInvoicePayment"
 	BillingService_GetDunningSettings_FullMethodName   = "/quotify.billing.v1.BillingService/GetDunningSettings"
 	BillingService_SetDunningSettings_FullMethodName   = "/quotify.billing.v1.BillingService/SetDunningSettings"
+	BillingService_ListCreditPacks_FullMethodName      = "/quotify.billing.v1.BillingService/ListCreditPacks"
+	BillingService_CreateCreditPack_FullMethodName     = "/quotify.billing.v1.BillingService/CreateCreditPack"
+	BillingService_SetCreditPackActive_FullMethodName  = "/quotify.billing.v1.BillingService/SetCreditPackActive"
+	BillingService_GetCreditBalance_FullMethodName     = "/quotify.billing.v1.BillingService/GetCreditBalance"
+	BillingService_GrantCredits_FullMethodName         = "/quotify.billing.v1.BillingService/GrantCredits"
+	BillingService_ConsumeCredits_FullMethodName       = "/quotify.billing.v1.BillingService/ConsumeCredits"
+	BillingService_ListCreditLedger_FullMethodName     = "/quotify.billing.v1.BillingService/ListCreditLedger"
 )
 
 // BillingServiceClient is the client API for BillingService service.
@@ -74,6 +81,21 @@ type BillingServiceClient interface {
 	GetDunningSettings(ctx context.Context, in *GetDunningSettingsRequest, opts ...grpc.CallOption) (*GetDunningSettingsResponse, error)
 	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
 	SetDunningSettings(ctx context.Context, in *SetDunningSettingsRequest, opts ...grpc.CallOption) (*SetDunningSettingsResponse, error)
+	// ListCreditPacks lists the credit packs the tenant sells.
+	ListCreditPacks(ctx context.Context, in *ListCreditPacksRequest, opts ...grpc.CallOption) (*ListCreditPacksResponse, error)
+	// CreateCreditPack adds a pack: a number of credits for a price in one currency.
+	CreateCreditPack(ctx context.Context, in *CreateCreditPackRequest, opts ...grpc.CallOption) (*CreateCreditPackResponse, error)
+	// SetCreditPackActive withdraws a pack from sale or puts it back. Credits already sold are not touched.
+	SetCreditPackActive(ctx context.Context, in *SetCreditPackActiveRequest, opts ...grpc.CallOption) (*SetCreditPackActiveResponse, error)
+	// GetCreditBalance returns what a customer can spend now and when some of it runs out.
+	GetCreditBalance(ctx context.Context, in *GetCreditBalanceRequest, opts ...grpc.CallOption) (*GetCreditBalanceResponse, error)
+	// GrantCredits adds credits to a customer (a promotion, a goodwill gesture, a manual sale). With the same idempotency key a repeat does nothing.
+	GrantCredits(ctx context.Context, in *GrantCreditsRequest, opts ...grpc.CallOption) (*GrantCreditsResponse, error)
+	// ConsumeCredits takes credits from a customer, the ones that expire first. FAILED_PRECONDITION (billing.credits.insufficient) when the balance is too small;
+	// nothing is taken then. With the same idempotency key a repeat returns the first result.
+	ConsumeCredits(ctx context.Context, in *ConsumeCreditsRequest, opts ...grpc.CallOption) (*ConsumeCreditsResponse, error)
+	// ListCreditLedger lists a customer's credit changes, newest first.
+	ListCreditLedger(ctx context.Context, in *ListCreditLedgerRequest, opts ...grpc.CallOption) (*ListCreditLedgerResponse, error)
 }
 
 type billingServiceClient struct {
@@ -264,6 +286,76 @@ func (c *billingServiceClient) SetDunningSettings(ctx context.Context, in *SetDu
 	return out, nil
 }
 
+func (c *billingServiceClient) ListCreditPacks(ctx context.Context, in *ListCreditPacksRequest, opts ...grpc.CallOption) (*ListCreditPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCreditPacksResponse)
+	err := c.cc.Invoke(ctx, BillingService_ListCreditPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) CreateCreditPack(ctx context.Context, in *CreateCreditPackRequest, opts ...grpc.CallOption) (*CreateCreditPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateCreditPackResponse)
+	err := c.cc.Invoke(ctx, BillingService_CreateCreditPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) SetCreditPackActive(ctx context.Context, in *SetCreditPackActiveRequest, opts ...grpc.CallOption) (*SetCreditPackActiveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetCreditPackActiveResponse)
+	err := c.cc.Invoke(ctx, BillingService_SetCreditPackActive_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) GetCreditBalance(ctx context.Context, in *GetCreditBalanceRequest, opts ...grpc.CallOption) (*GetCreditBalanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCreditBalanceResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetCreditBalance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) GrantCredits(ctx context.Context, in *GrantCreditsRequest, opts ...grpc.CallOption) (*GrantCreditsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GrantCreditsResponse)
+	err := c.cc.Invoke(ctx, BillingService_GrantCredits_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ConsumeCredits(ctx context.Context, in *ConsumeCreditsRequest, opts ...grpc.CallOption) (*ConsumeCreditsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConsumeCreditsResponse)
+	err := c.cc.Invoke(ctx, BillingService_ConsumeCredits_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ListCreditLedger(ctx context.Context, in *ListCreditLedgerRequest, opts ...grpc.CallOption) (*ListCreditLedgerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCreditLedgerResponse)
+	err := c.cc.Invoke(ctx, BillingService_ListCreditLedger_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BillingServiceServer is the server API for BillingService service.
 // All implementations must embed UnimplementedBillingServiceServer
 // for forward compatibility.
@@ -299,6 +391,21 @@ type BillingServiceServer interface {
 	GetDunningSettings(context.Context, *GetDunningSettingsRequest) (*GetDunningSettingsResponse, error)
 	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
 	SetDunningSettings(context.Context, *SetDunningSettingsRequest) (*SetDunningSettingsResponse, error)
+	// ListCreditPacks lists the credit packs the tenant sells.
+	ListCreditPacks(context.Context, *ListCreditPacksRequest) (*ListCreditPacksResponse, error)
+	// CreateCreditPack adds a pack: a number of credits for a price in one currency.
+	CreateCreditPack(context.Context, *CreateCreditPackRequest) (*CreateCreditPackResponse, error)
+	// SetCreditPackActive withdraws a pack from sale or puts it back. Credits already sold are not touched.
+	SetCreditPackActive(context.Context, *SetCreditPackActiveRequest) (*SetCreditPackActiveResponse, error)
+	// GetCreditBalance returns what a customer can spend now and when some of it runs out.
+	GetCreditBalance(context.Context, *GetCreditBalanceRequest) (*GetCreditBalanceResponse, error)
+	// GrantCredits adds credits to a customer (a promotion, a goodwill gesture, a manual sale). With the same idempotency key a repeat does nothing.
+	GrantCredits(context.Context, *GrantCreditsRequest) (*GrantCreditsResponse, error)
+	// ConsumeCredits takes credits from a customer, the ones that expire first. FAILED_PRECONDITION (billing.credits.insufficient) when the balance is too small;
+	// nothing is taken then. With the same idempotency key a repeat returns the first result.
+	ConsumeCredits(context.Context, *ConsumeCreditsRequest) (*ConsumeCreditsResponse, error)
+	// ListCreditLedger lists a customer's credit changes, newest first.
+	ListCreditLedger(context.Context, *ListCreditLedgerRequest) (*ListCreditLedgerResponse, error)
 	mustEmbedUnimplementedBillingServiceServer()
 }
 
@@ -362,6 +469,27 @@ func (UnimplementedBillingServiceServer) GetDunningSettings(context.Context, *Ge
 }
 func (UnimplementedBillingServiceServer) SetDunningSettings(context.Context, *SetDunningSettingsRequest) (*SetDunningSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetDunningSettings not implemented")
+}
+func (UnimplementedBillingServiceServer) ListCreditPacks(context.Context, *ListCreditPacksRequest) (*ListCreditPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCreditPacks not implemented")
+}
+func (UnimplementedBillingServiceServer) CreateCreditPack(context.Context, *CreateCreditPackRequest) (*CreateCreditPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateCreditPack not implemented")
+}
+func (UnimplementedBillingServiceServer) SetCreditPackActive(context.Context, *SetCreditPackActiveRequest) (*SetCreditPackActiveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCreditPackActive not implemented")
+}
+func (UnimplementedBillingServiceServer) GetCreditBalance(context.Context, *GetCreditBalanceRequest) (*GetCreditBalanceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCreditBalance not implemented")
+}
+func (UnimplementedBillingServiceServer) GrantCredits(context.Context, *GrantCreditsRequest) (*GrantCreditsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GrantCredits not implemented")
+}
+func (UnimplementedBillingServiceServer) ConsumeCredits(context.Context, *ConsumeCreditsRequest) (*ConsumeCreditsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConsumeCredits not implemented")
+}
+func (UnimplementedBillingServiceServer) ListCreditLedger(context.Context, *ListCreditLedgerRequest) (*ListCreditLedgerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCreditLedger not implemented")
 }
 func (UnimplementedBillingServiceServer) mustEmbedUnimplementedBillingServiceServer() {}
 func (UnimplementedBillingServiceServer) testEmbeddedByValue()                        {}
@@ -708,6 +836,132 @@ func _BillingService_SetDunningSettings_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_ListCreditPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCreditPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ListCreditPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ListCreditPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ListCreditPacks(ctx, req.(*ListCreditPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_CreateCreditPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCreditPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).CreateCreditPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_CreateCreditPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).CreateCreditPack(ctx, req.(*CreateCreditPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_SetCreditPackActive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCreditPackActiveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).SetCreditPackActive(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_SetCreditPackActive_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).SetCreditPackActive(ctx, req.(*SetCreditPackActiveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_GetCreditBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCreditBalanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetCreditBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetCreditBalance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetCreditBalance(ctx, req.(*GetCreditBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_GrantCredits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GrantCreditsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GrantCredits(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GrantCredits_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GrantCredits(ctx, req.(*GrantCreditsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ConsumeCredits_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConsumeCreditsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ConsumeCredits(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ConsumeCredits_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ConsumeCredits(ctx, req.(*ConsumeCreditsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ListCreditLedger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCreditLedgerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ListCreditLedger(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ListCreditLedger_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ListCreditLedger(ctx, req.(*ListCreditLedgerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BillingService_ServiceDesc is the grpc.ServiceDesc for BillingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -786,6 +1040,34 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetDunningSettings",
 			Handler:    _BillingService_SetDunningSettings_Handler,
+		},
+		{
+			MethodName: "ListCreditPacks",
+			Handler:    _BillingService_ListCreditPacks_Handler,
+		},
+		{
+			MethodName: "CreateCreditPack",
+			Handler:    _BillingService_CreateCreditPack_Handler,
+		},
+		{
+			MethodName: "SetCreditPackActive",
+			Handler:    _BillingService_SetCreditPackActive_Handler,
+		},
+		{
+			MethodName: "GetCreditBalance",
+			Handler:    _BillingService_GetCreditBalance_Handler,
+		},
+		{
+			MethodName: "GrantCredits",
+			Handler:    _BillingService_GrantCredits_Handler,
+		},
+		{
+			MethodName: "ConsumeCredits",
+			Handler:    _BillingService_ConsumeCredits_Handler,
+		},
+		{
+			MethodName: "ListCreditLedger",
+			Handler:    _BillingService_ListCreditLedger_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

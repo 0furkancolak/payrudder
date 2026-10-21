@@ -332,7 +332,8 @@
       "paymentLinks": "Payment links",
       "mail": "Mail",
       "apps": "Apps",
-      "address": "Seller address"
+      "address": "Seller address",
+      "credits": "Credits"
     },
     "common": {
       "remove": "Remove"
@@ -825,6 +826,65 @@
         "system": "Every other message Quotify sends."
       },
       "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Quotify's mail."
+    },
+    "credits": {
+      "packs": {
+        "new": "New credit pack",
+        "hint": "A pack is a number of credits sold for a price. A customer buys it with a payment link; the credits are added when the payment is confirmed.",
+        "formLabel": "New credit pack",
+        "name": "Pack name",
+        "credits": "Credits",
+        "price": "Price",
+        "currency": "Currency",
+        "create": "Add pack",
+        "title": "Credit packs",
+        "none": "No credit packs yet.",
+        "state": "Status",
+        "onSale": "On sale",
+        "withdrawn": "Withdrawn",
+        "withdraw": "Withdraw",
+        "restore": "Put back on sale"
+      },
+      "customer": {
+        "title": "A customer's credits",
+        "pick": "Choose a customer",
+        "balance": "credits available",
+        "nextExpiry": "Some expire {when}"
+      },
+      "lots": {
+        "source": "Source",
+        "remaining": "Left",
+        "granted": "Granted",
+        "expires": "Expires",
+        "never": "Never"
+      },
+      "source": {
+        "promo": "Promotion",
+        "manual": "Manual",
+        "purchase": "Purchase"
+      },
+      "grant": {
+        "formLabel": "Add credits",
+        "credits": "Credits to add",
+        "source": "Reason type",
+        "expiry": "Expiry date",
+        "expiryHint": "Leave empty for credits that never expire",
+        "reason": "Note (optional)",
+        "submit": "Add credits"
+      },
+      "ledger": {
+        "title": "Credit history",
+        "none": "No credit changes yet.",
+        "time": "Time",
+        "kind": "Type",
+        "amount": "Credits",
+        "reason": "Note"
+      },
+      "kind": {
+        "grant": "Added",
+        "consume": "Spent",
+        "expire": "Expired"
+      }
     }
   },
   "apps": {
@@ -953,6 +1013,21 @@
       "portal_link": {
         "customer_not_found": "There is no such customer.",
         "customer_required": "A customer is required."
+      },
+      "credits": {
+        "bad_amount": "The amount must be a whole number of credits above zero.",
+        "bad_customer": "The customer is not valid.",
+        "bad_expiry": "The expiry date must lie in the future.",
+        "bad_key": "The idempotency key is too long (at most 128 characters).",
+        "bad_pack": "A pack needs a name and credits and a price above zero.",
+        "bad_page_token": "The page token is not valid.",
+        "bad_reason": "The note is too long (at most 200 characters).",
+        "bad_source": "The type must be promotion or manual.",
+        "insufficient": "The customer has too few credits.",
+        "key_required": "An idempotency key is required to spend credits.",
+        "key_reused": "This idempotency key was already used for a different request.",
+        "pack_not_found": "There is no such credit pack.",
+        "unknown_currency": "This currency is not supported."
       }
     },
     "plans": {

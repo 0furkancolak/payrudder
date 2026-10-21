@@ -93,7 +93,7 @@ the event id is derived from the occurrence, so a repeat is harmless. If no endp
 once the PDF is rendered. No sign-in: the token is 256 random bits and only its SHA-256 is stored. `DELETE /v1/invoices/{id}/links` revokes every link of the invoice. An unknown, expired or revoked token answers the same 404 page.
 
 The page is rendered by the gateway with escaped HTML, in English, Turkish, German, French, Spanish or Arabic (`?lang=` or the browser's language), and sends `Cache-Control: no-store`, `X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer` and a CSP that allows nothing to load from elsewhere. It is limited to 60 requests a minute per address
-(the connection's; a proxy in front of the gateway must be the address the limiter sees). The link starts with `QUOTIFY_PUBLIC_URL` when the gateway has one (compose: `http://localhost:8000`; Helm: `global.publicURL`), else it is relative.
+(the connection's; a proxy in front of the gateway must be the address the limiter sees). The link starts with `QUOTIFY_PUBLIC_URL` when the gateway has one (compose: `http://localhost:42800`; Helm: `global.publicURL`), else it is relative.
 
 ## Payment links and the customer payment page (phase 34)
 

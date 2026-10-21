@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	mockPSPURL = envOr("MOCKPSP_URL", "http://localhost:8090")
-	mailpitURL = envOr("MAILPIT_URL", "http://localhost:8025")
+	mockPSPURL = envOr("MOCKPSP_URL", "http://localhost:42890")
+	mailpitURL = envOr("MAILPIT_URL", "http://localhost:42825")
 )
 
 func getJSON(t *testing.T, u string, out any) {

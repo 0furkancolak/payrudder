@@ -15,7 +15,7 @@ import (
 	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
 )
 
-var kafkaBrokers = envOr("QUOTIFY_KAFKA_BROKERS", "localhost:19092")
+var kafkaBrokers = envOr("QUOTIFY_KAFKA_BROKERS", "localhost:42092")
 
 func event(key, meter string, quantity any, at time.Time) map[string]any {
 	e := map[string]any{

@@ -305,3 +305,7 @@ Invoice lines can be `DISCOUNT` (a coupon, negative) or `TAX`, and carry `servic
 - **Tenant events:** `tenant_event_outbox` is written in the transaction of the change (`saga.TenantEvent`) and drained to plans-svc's `RecordTenantEvent` every five seconds (`FlushTenantEvents`).
 - **Dunning settings:** `dunning_settings` (per tenant), read by the saga engine when it loads a saga.
 - **Hosted invoices:** `invoice_links` (token hash only); `HostedInvoiceService` has no tenant, the token is the credential, and answers one error for unknown, expired and revoked tokens.
+
+## As built: prepaid credits (Phase 35)
+
+Module `credits`. `credit_packs` (what a tenant sells), `credit_lots` (one per grant: `granted`, `remaining`, optional `expires_at`, `source` purchase/promo/manual, `source_ref` unique per payment) and the append-only `credit_ledger` (`grant`, `consume`, `expire`, signed `amount`, optional `idempotency_key`). A customer's credits change under `pg_advisory_xact_lock`; `ConsumeCredits` walks the spendable lots by expiry (never-expiring last), refuses with `billing.credits.insufficient` and takes nothing when they do not cover the amount, and returns the first result for a repeated key. The sweeper calls `ExpireDue` on the system pool. Details and limits: [phase 35](../phases/phase-35-credits.md).

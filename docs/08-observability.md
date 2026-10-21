@@ -7,7 +7,7 @@ Logs: `log/slog` JSON to stdout, with `trace_id`/`span_id` injected → **Vector
 ## Logs and the service map
 
 Everything is in the compose `obs` profile (`make up` starts it) and opens in Grafana at
-`localhost:3000`, which lands on **Quotify / Services**.
+`localhost:42300`, which lands on **Quotify / Services**.
 
 - **Vector** (`deploy/vector/vector.yaml`) tails every container of the compose project and labels each line with
   `service` (compose service) and `level` (slog level, lower-cased; `unknown` for infrastructure that does not log

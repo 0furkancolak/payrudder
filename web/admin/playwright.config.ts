@@ -10,7 +10,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    baseURL: process.env.ADMIN_URL ?? "http://localhost:3001",
+    baseURL: process.env.ADMIN_URL ?? "http://localhost:42301",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
