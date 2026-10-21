@@ -13,6 +13,7 @@ import (
 )
 
 // Migrate applies every pending goose migration in fsys (SQL files at its root) using the migrator DSN.
+// Migrations merged in a different order than they were deployed (two branches adding one each) are applied too, not refused.
 // A Postgres session lock serialises concurrent runners, so several replicas may call it at startup.
 func Migrate(ctx context.Context, migratorDSN string, fsys fs.FS, log *slog.Logger) error {
 	db, err := sql.Open("pgx", migratorDSN)
@@ -25,7 +26,7 @@ func Migrate(ctx context.Context, migratorDSN string, fsys fs.FS, log *slog.Logg
 	if err != nil {
 		return fmt.Errorf("pgxx: migration locker: %w", err)
 	}
-	p, err := goose.NewProvider(goose.DialectPostgres, db, fsys, goose.WithSessionLocker(locker))
+	p, err := goose.NewProvider(goose.DialectPostgres, db, fsys, goose.WithSessionLocker(locker), goose.WithAllowOutofOrder(true))
 	if err != nil {
 		return fmt.Errorf("pgxx: migration provider: %w", err)
 	}
