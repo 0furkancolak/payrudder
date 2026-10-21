@@ -15,7 +15,7 @@ const { t } = useI18n();
 function row(it: NavItem): string {
   const active = props.current?.to === it.to && props.current?.key === it.key;
   return cn(
-    "group relative flex items-center gap-3 rounded-2xl text-sm font-medium transition-colors min-h-11 md:min-h-10",
+    "group relative flex items-center gap-3 rounded-2xl text-sm font-medium transition-colors min-h-11 md:min-h-9",
     props.collapsed ? "justify-center px-0" : "px-3.5",
     active ? "bg-brand-soft text-brand-strong" : "text-muted-foreground hover:bg-muted hover:text-foreground",
   );
@@ -23,7 +23,7 @@ function row(it: NavItem): string {
 </script>
 
 <template>
-  <nav :aria-label="label" class="flex flex-col gap-5" data-testid="sidebar-nav">
+  <nav :aria-label="label" class="flex flex-col gap-4" data-testid="sidebar-nav">
     <section v-for="s in sections" :key="s.key" :aria-labelledby="`nav-${s.key}`">
       <h2 :id="`nav-${s.key}`" :class="collapsed ? 'sr-only' : 'text-muted-foreground mb-1.5 px-3.5 text-[0.7rem] font-semibold tracking-wider uppercase'">{{ t(`shell.sections.${s.key}`) }}</h2>
       <ul class="flex flex-col gap-0.5">

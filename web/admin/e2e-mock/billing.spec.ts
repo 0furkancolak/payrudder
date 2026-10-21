@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, OPERATOR, openTenantPage, TENANT } from "./gateway";
+import { pickCurrency, pickLanguage } from "./ui";
 
 const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
 
@@ -31,7 +32,7 @@ test.describe("customers", () => {
     await form.getByLabel("Name", { exact: true }).fill("Hans");
     await form.getByLabel("E-mail").fill("hans@example.com");
     await form.getByLabel("Country", { exact: true }).fill("de");
-    await form.getByLabel("Billing currency").selectOption("EUR");
+    await pickCurrency(form.getByLabel("Billing currency"), "EUR");
     await form.getByRole("button", { name: "Create customer" }).click();
     await expect(page.getByRole("cell", { name: "cus_de", exact: true })).toBeVisible();
     expect(gw.called("POST", "/v1/customers")[0]?.body).toEqual({
@@ -131,11 +132,11 @@ test.describe("packages", () => {
     await form.getByLabel("Name", { exact: true }).fill("Team");
     await form.getByLabel("Fixed fee per month (TRY)").fill("12,50");
     await form.getByRole("button", { name: "Add a fee in another currency" }).click();
-    await form.getByLabel("Currency of the extra fee").selectOption("USD");
+    await pickCurrency(form.getByLabel("Currency of the extra fee"), "USD");
     await form.getByLabel("Billing interval of the extra fee").selectOption("month");
     await form.getByLabel("Fixed fee 1").fill("3");
     await form.getByRole("button", { name: "Add a fee in another currency" }).click();
-    await form.getByLabel("Currency of the extra fee").nth(1).selectOption("TRY");
+    await pickCurrency(form.getByLabel("Currency of the extra fee").nth(1), "TRY");
     await form.getByLabel("Fixed fee 2").fill("120");
     await form.getByRole("button", { name: "Publish version" }).click();
     await expect.poll(() => gw.called("POST", "/v1/plans/team/versions").length).toBe(1);
@@ -521,7 +522,7 @@ test.describe("pricing", () => {
     await form.getByLabel("Code").fill("MINUS5");
     await form.getByLabel("Kind").selectOption("amount");
     await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("4.99");
-    await form.getByLabel("Currency").selectOption("USD");
+    await pickCurrency(form.getByLabel("Currency"), "USD");
     await form.getByLabel("Duration").selectOption("COUPON_DURATION_FOREVER");
     await form.getByRole("button", { name: "Create coupon" }).click();
     await expect.poll(() => gw.called("POST", "/v1/coupons").length).toBe(2);
@@ -771,7 +772,7 @@ test.describe("providers", () => {
     await openTenantPage(page, "/providers");
     await expect(page.getByLabel("Country of rule 1")).toHaveValue("TR");
     await page.getByRole("button", { name: "Add a rule" }).click();
-    await page.getByLabel("Currency of rule 2").selectOption("USD");
+    await pickCurrency(page.getByLabel("Currency of rule 2"), "USD");
     await page.getByLabel("Provider of rule 2").selectOption("paddle");
     await page.getByRole("button", { name: "Save rules" }).click();
     await expect(page.getByText("Rules saved.")).toBeVisible();
@@ -783,7 +784,7 @@ test.describe("providers", () => {
     });
     const preview = page.getByRole("form", { name: "Where would a customer go?" });
     await preview.getByLabel("Country").fill("de");
-    await preview.getByLabel("Currency").selectOption("USD");
+    await pickCurrency(preview.getByLabel("Currency"), "USD");
     await preview.getByRole("button", { name: "Preview" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Goes to paddle (rule 2)." })).toBeVisible();
     expect(gw.called("POST", "/v1/routing-rules/preview")[0]?.body).toEqual({ country: "DE", currency: "USD" });
@@ -927,7 +928,7 @@ test("the billing pages are translated", async ({ page }) => {
   const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/customers" ? { body: { customers: [] } } : undefined));
   await gw.install(page);
   await page.goto("/operator");
-  await page.getByLabel("Language").selectOption("tr");
+  await pickLanguage(page, "tr");
   await page.getByLabel("Operatör jetonu").fill(OPERATOR);
   await page.getByRole("button", { name: "Giriş yap" }).click();
   await page.waitForURL("**/tenants");

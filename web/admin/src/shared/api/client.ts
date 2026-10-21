@@ -22,10 +22,19 @@ api.use({
   },
   // A 401 while a person is signed in means the session is over (expired, revoked): the app is told once and goes to the sign-in page.
   onResponse({ response }) {
-    if (response.status === 401) sessionLost();
+    if (response.status === 401 && !isAdminCall(response)) sessionLost();
     return response;
   },
 });
+
+/** The admin API answers 401 to anybody who is not the operator, a signed-in person included: that says nothing about the person's session. */
+function isAdminCall(response: Response): boolean {
+  try {
+    return new URL(response.url).pathname.startsWith("/gw/admin/");
+  } catch {
+    return false;
+  }
+}
 
 const asTenantClients = new Map<string, ReturnType<typeof createClient<paths>>>();
 
@@ -45,7 +54,7 @@ export function tenantApi(tenantId: string) {
         return request;
       },
       onResponse({ response }) {
-        if (response.status === 401) sessionLost();
+        if (response.status === 401 && !isAdminCall(response)) sessionLost();
         return response;
       },
     });

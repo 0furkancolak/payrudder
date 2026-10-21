@@ -61,55 +61,52 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
     <template v-if="signedIn">
       <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" @sign-out="operatorSignOut" />
       <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" @sign-out="operatorSignOut" />
-
-      <div :class="['transition-[padding] duration-200', sidebarCollapsed ? 'lg:ps-[6.5rem]' : 'lg:ps-[17.5rem]']">
-        <header class="bg-background/85 sticky top-0 z-20 backdrop-blur" data-testid="topbar">
-          <div class="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-8 md:py-4">
-            <button
-              ref="menuButton"
-              type="button"
-              data-testid="menu-button"
-              class="bg-card text-foreground border-border/60 shadow-card inline-flex size-10 shrink-0 items-center justify-center rounded-xl border lg:hidden"
-              :aria-label="t('shell.openMenu')"
-              aria-haspopup="dialog"
-              :aria-expanded="drawer"
-              @click="drawer = true"
-            >
-              <Menu class="size-5" aria-hidden="true" />
-            </button>
-            <Breadcrumbs :crumbs="shell.crumbs.value" class="min-w-0 flex-1" />
-            <div class="flex shrink-0 items-center gap-2">
-              <PrivacyToggle />
-              <LanguageSwitcher />
-              <ThemeToggle />
-              <UserMenu v-if="isPerson" />
-              <button
-                v-if="isOperator"
-                type="button"
-                class="bg-card text-muted-foreground hover:text-foreground border-border/60 shadow-card inline-flex size-10 items-center justify-center rounded-xl border"
-                :aria-label="t('nav.signOut')"
-                :title="t('nav.signOut')"
-                @click="operatorSignOut"
-              >
-                <LogOut class="size-4" />
-              </button>
-            </div>
-            <ContextSwitcher
-              v-if="isPerson && shell.context.value.level === 'app'"
-              class="order-last w-full sm:order-none sm:w-auto"
-              :context="shell.context.value"
-              :apps="shell.apps.data.value?.apps ?? []"
-              :app-name="shell.appName.value"
-              :path="shell.path.value"
-            />
-          </div>
-        </header>
-        <main id="main" tabindex="-1" class="mx-auto max-w-[1320px] min-w-0 px-4 pt-2 pb-16 outline-none md:px-8 md:pt-4"><VerifyBanner v-if="isPerson" /><Outlet /></main>
-      </div>
     </template>
 
-    <template v-else>
-      <header class="mx-auto flex max-w-[1240px] items-center justify-between gap-3 px-4 pt-4 md:px-8 md:pt-6">
+    <!-- One wrapper and one <main> for both states: signing in must not remount the page that is signing in (its onSuccess would be lost). -->
+    <div :class="signedIn ? ['transition-[padding] duration-200', sidebarCollapsed ? 'lg:ps-[6.5rem]' : 'lg:ps-[17.5rem]'] : ''">
+      <header v-if="signedIn" class="bg-background/85 sticky top-0 z-20 backdrop-blur" data-testid="topbar">
+        <div class="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-8 md:py-4">
+          <button
+            ref="menuButton"
+            type="button"
+            data-testid="menu-button"
+            class="bg-card text-foreground border-border/60 shadow-card inline-flex size-10 shrink-0 items-center justify-center rounded-xl border lg:hidden"
+            :aria-label="t('shell.openMenu')"
+            aria-haspopup="dialog"
+            :aria-expanded="drawer"
+            @click="drawer = true"
+          >
+            <Menu class="size-5" aria-hidden="true" />
+          </button>
+          <Breadcrumbs :crumbs="shell.crumbs.value" class="min-w-0 flex-1" />
+          <div class="flex shrink-0 items-center gap-2">
+            <PrivacyToggle />
+            <LanguageSwitcher />
+            <ThemeToggle />
+            <UserMenu v-if="isPerson" />
+            <button
+              v-if="isOperator"
+              type="button"
+              class="bg-card text-muted-foreground hover:text-foreground border-border/60 shadow-card inline-flex size-10 items-center justify-center rounded-xl border"
+              :aria-label="t('nav.signOut')"
+              :title="t('nav.signOut')"
+              @click="operatorSignOut"
+            >
+              <LogOut class="size-4" />
+            </button>
+          </div>
+          <ContextSwitcher
+            v-if="isPerson && shell.context.value.level === 'app'"
+            class="order-last w-full sm:order-none sm:w-auto"
+            :context="shell.context.value"
+            :apps="shell.apps.data.value?.apps ?? []"
+            :app-name="shell.appName.value"
+            :path="shell.path.value"
+          />
+        </div>
+      </header>
+      <header v-else class="mx-auto flex max-w-[1240px] items-center justify-between gap-3 px-4 pt-4 md:px-8 md:pt-6">
         <Link to="/signin" class="flex items-center gap-2.5 text-lg font-semibold tracking-tight">
           <span class="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-xl text-base font-bold" aria-hidden="true">{{ brand.slice(0, 1) }}</span>
           <span>{{ brand }}</span>
@@ -119,7 +116,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
           <ThemeToggle />
         </div>
       </header>
-      <main id="main" class="mx-auto flex max-w-[1240px] flex-col items-center px-4 pt-8 pb-12 md:px-8 md:pt-14"><Outlet /></main>
-    </template>
+      <main
+        id="main"
+        tabindex="-1"
+        :class="['mx-auto min-w-0 outline-none md:px-8', signedIn ? 'max-w-[1320px] px-4 pt-2 pb-16 md:pt-4' : 'flex max-w-[1240px] flex-col items-center px-4 pt-8 pb-12 md:pt-14']"
+      >
+        <VerifyBanner v-if="isPerson" />
+        <Outlet />
+      </main>
+    </div>
   </div>
 </template>

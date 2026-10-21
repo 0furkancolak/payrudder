@@ -5,6 +5,7 @@ import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
+import { tenantBase } from "@/shared/lib/session";
 import { Badge } from "@/shared/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useTenantInvoices } from "./api";
@@ -32,7 +33,7 @@ const invoices = useTenantInvoices(() => props.tenantId);
     <TableBody>
       <TableRow v-for="inv in invoices.data.value?.invoices ?? []" :key="inv.id">
         <TableCell>
-          <Link to="/tenants/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: inv.id ?? '' }" class="font-medium hover:underline">{{ inv.number || t("tenant.draft") }}</Link>
+          <Link :to="`${tenantBase()}/${tenantId}/invoices/${inv.id ?? ''}`" class="font-medium hover:underline">{{ inv.number || t("tenant.draft") }}</Link>
         </TableCell>
         <TableCell>{{ label(t, te, "invoiceKind", inv.kind) }}</TableCell>
         <TableCell>{{ inv.period_id }}</TableCell>

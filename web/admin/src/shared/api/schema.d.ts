@@ -2420,6 +2420,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tenant's most recent payment ledger rows (charges, refunds) across providers, newest first
+         * @description The same rows as the operator's ledger of this tenant, for the tenant itself (an API key, or a person's session acting as a tenant of their account).
+         */
+        get: operations["listPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{tenant_id}/ledger": {
         parameters: {
             query?: never;
@@ -9278,6 +9298,50 @@ export interface operations {
                 content?: never;
             };
             404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listPayments: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entries?: {
+                            id?: number;
+                            /** Format: uuid */
+                            invoice_id?: string;
+                            provider?: string;
+                            environment?: string;
+                            /** @enum {string} */
+                            kind?: "charge" | "refund" | "dispute" | "payout";
+                            /** @enum {string} */
+                            status?: "succeeded" | "declined" | "failed" | "pending";
+                            amount_minor?: number;
+                            currency?: string;
+                            provider_ref?: string;
+                            /** @enum {string} */
+                            source?: "command" | "webhook" | "reconciliation" | "manual";
+                            detail?: string;
+                            /** Format: date-time */
+                            occurred_at?: string;
+                        }[];
+                    };
+                };
+            };
+            429: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
     };

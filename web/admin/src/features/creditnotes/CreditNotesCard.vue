@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
+import { isOperator } from "@/shared/lib/session";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -93,10 +94,10 @@ function issue() {
             {{ where(n) }}
             <template v-if="n.refund_state === 'REFUND_STATE_FAILED'">
               <span v-if="n.refund_error" class="text-muted-foreground block text-xs">{{ n.refund_error }}</span>
-              <Button size="sm" variant="outline" :disabled="retry.isPending.value" @click="retry.mutate(n.id ?? '')">{{ t("billing.creditNotes.retryRefund") }}</Button>
+              <Button v-if="isOperator" size="sm" variant="outline" :disabled="retry.isPending.value" @click="retry.mutate(n.id ?? '')">{{ t("billing.creditNotes.retryRefund") }}</Button>
             </template>
           </TableCell>
-          <TableCell><EInvoiceStatus :tenant-id="tenantId" :credit-note-id="n.id ?? ''" /></TableCell>
+          <TableCell><EInvoiceStatus v-if="isOperator" :tenant-id="tenantId" :credit-note-id="n.id ?? ''" /></TableCell>
           <TableCell>{{ date(n.create_time) }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ formatMinor(n.total_minor, n.currency, locale) }}</TableCell>
         </TableRow>

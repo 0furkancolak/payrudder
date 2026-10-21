@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
 import { APP, LIVE, SESSION, overview, productGateway, signInAsAda, user } from "./product";
+import { pickCurrency } from "./ui";
 
 // The end-user product: sign up and in, the organisation home, an app's dashboard, API keys. The gateway is mocked; SHOTS=<dir> also writes screenshots
 // of the pages (desktop and phone, light and dark) so the look can be reviewed.
@@ -38,7 +39,7 @@ test.describe("sign up and sign in", () => {
     await page.getByRole("button", { name: "Create app" }).first().click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("App name").fill("Docs bot");
-    await dialog.getByLabel("Currency").selectOption("EUR");
+    await pickCurrency(dialog.getByLabel("Currency"), "EUR");
     await shoot(page, "04-create-app");
     await dialog.getByRole("button", { name: "Create app" }).click();
     await page.waitForURL(/\/app\/apps\//);
@@ -168,7 +169,7 @@ test.describe("app dashboard", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
-    await page.goto(`/app/apps/${APP}`);
+    await page.goto(`/app/apps/${APP}/keys`);
     const keys = page.getByRole("region", { name: "API keys" });
     await expect(keys).toContainText("qk_live_abcd1234_••••••••");
     await expect(keys).not.toContainText("SECRET");
@@ -216,8 +217,11 @@ test.describe("settings and chrome", () => {
     await signInAsAda(page);
     await page.getByRole("link", { name: "Settings" }).click();
     await expect(page.getByTestId("account-name")).toHaveText("Ada Labs");
-    await expect(page.getByRole("region", { name: "Members" })).toContainText(user.email);
     await shoot(page, "09-settings");
+    await page.getByRole("link", { name: "Members" }).click();
+    await page.waitForURL("**/app/members");
+    await expect(page.getByRole("region", { name: "Members" })).toContainText(user.email);
+    await page.getByRole("link", { name: "Settings" }).click();
     await page.getByRole("button", { name: "Sign out" }).click();
     await page.waitForURL("**/signin");
     expect(gw.called("POST", "/auth/signout")).toHaveLength(1);
@@ -251,7 +255,7 @@ test.describe("settings and chrome", () => {
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("the rail becomes a bar, nothing scrolls sideways, and the dashboard reads in one column", async ({ page }) => {
+  test("the sidebar is a drawer, nothing scrolls sideways, and the dashboard reads in one column", async ({ page }) => {
     await productGateway(new MockGateway()).gw.install(page);
     await page.goto("/");
     await shoot(page, "11-signin-phone");
@@ -262,9 +266,20 @@ test.describe("on a phone", () => {
     await shoot(page, "13-dashboard-phone");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
-    const rail = page.getByRole("navigation", { name: "Quotify" });
-    const box = await rail.boundingBox();
-    expect(box && box.y > 700).toBe(true);
+    // The sidebar is not on the page; the menu button opens it as a dialog and Escape puts focus back on the button.
+    await expect(page.getByTestId("sidebar")).toBeHidden();
+    const menu = page.getByRole("button", { name: "Open the menu" });
+    await menu.click();
+    const drawer = page.getByRole("dialog");
+    await expect(drawer.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+    await shoot(page, "14-drawer-phone");
+    await page.keyboard.press("Escape");
+    await expect(drawer).toHaveCount(0);
+    await expect(menu).toBeFocused();
+    await menu.click();
+    await page.getByRole("dialog").getByRole("link", { name: "Customers" }).click();
+    await page.waitForURL(`**/app/t/${LIVE}/customers`);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 });
 
@@ -330,17 +345,17 @@ test.describe("e-mail verification and password reset", () => {
     await expect(banner).toContainText("Link sent");
     expect(gw.called("POST", "/auth/resend-verification")).toHaveLength(1);
 
-    await page.goto(`/app/apps/${APP}`);
+    await page.goto(`/app/apps/${APP}/keys`);
     await expect(page.getByRole("button", { name: "Live key" })).toBeDisabled();
     await expect(page.getByTestId("live-needs-verified")).toBeVisible();
     await expect(page.getByRole("button", { name: "Sandbox key" })).toBeEnabled();
 
     // The link of the mail, followed in this browser.
     await page.goto("/verify#token=qv_good");
-    await expect(page.getByRole("status")).toContainText("E-mail address confirmed");
+    await expect(page.getByRole("status").filter({ hasText: "E-mail address confirmed" })).toBeVisible();
     expect(page.url()).not.toContain("qv_good");
     expect(gw.called("POST", "/auth/verify")[0]?.body).toEqual({ token: "qv_good" });
-    await page.goto(`/app/apps/${APP}`);
+    await page.goto(`/app/apps/${APP}/keys`);
     await expect(page.getByTestId("verify-banner")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Live key" })).toBeEnabled();
   });
@@ -358,7 +373,7 @@ test.describe("members and invitations", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
-    await page.goto("/app/settings");
+    await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
     await expect(panel.getByTestId("member-grace@example.com")).toContainText("Grace Hopper");
     await panel.getByLabel("E-mail").fill("ned@example.com");
@@ -381,7 +396,7 @@ test.describe("members and invitations", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
-    await page.goto("/app/settings");
+    await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
     await panel.getByLabel("E-mail").fill("grace@example.com");
     await panel.getByRole("button", { name: "Send invitation" }).click();
@@ -402,7 +417,7 @@ test.describe("members and invitations", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
-    await page.goto("/app/settings");
+    await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
     await panel.getByRole("button", { name: "Remove Linus Torvalds" }).click();
     await expect(page.getByRole("dialog")).toContainText("Linus Torvalds loses access");
@@ -415,7 +430,7 @@ test.describe("members and invitations", () => {
     const { gw } = productGateway(new MockGateway(), { role: "viewer" });
     await gw.install(page);
     await signInAsAda(page);
-    await page.goto("/app/settings");
+    await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
     await expect(panel.getByTestId("member-grace@example.com")).toBeVisible();
     await expect(panel.getByLabel("E-mail")).toHaveCount(0);
@@ -429,7 +444,7 @@ test.describe("members and invitations", () => {
   test("an administrator cannot hand out or touch ownership", async ({ page }) => {
     await productGateway(new MockGateway(), { role: "admin" }).gw.install(page);
     await signInAsAda(page);
-    await page.goto("/app/settings");
+    await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
     await expect(panel.getByLabel("Role", { exact: true }).locator("option")).toHaveText(["Administrator", "Viewer"]);
     // Ada's own row (listed as the owner) and her role cannot be changed here; Grace and Linus can.

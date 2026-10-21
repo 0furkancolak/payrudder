@@ -1698,6 +1698,23 @@
       "signInJoin": "Sign in and join",
       "createTitle": "Create your login",
       "createJoin": "Create login and join"
+    },
+    "membersPage": {
+      "intro": "Who belongs to this organisation, their roles, and the invitations that are still open."
+    },
+    "apiKeysPage": {
+      "intro": "Keys your server uses to call Quotify for this app. A key belongs to one environment; its secret is shown once."
+    },
+    "appSettings": {
+      "intro": "What this app was created with. The currency and the time zone decide how every invoice is worked out, so they are fixed once the app exists.",
+      "general": "General",
+      "slug": "Address name",
+      "id": "App id",
+      "currency": "Default currency",
+      "timezone": "Time zone",
+      "grace": "Grace period",
+      "tenant": "Environment id",
+      "moreCurrencies": "An app can sell in many currencies: add a price in another currency to a package, under"
     }
   },
   "shell": {

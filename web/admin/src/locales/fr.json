@@ -1698,6 +1698,23 @@
       "signInJoin": "Se connecter et rejoindre",
       "createTitle": "Créez votre accès",
       "createJoin": "Créer l'accès et rejoindre"
+    },
+    "membersPage": {
+      "intro": "Qui fait partie de cette organisation, avec quels rôles, et les invitations encore ouvertes."
+    },
+    "apiKeysPage": {
+      "intro": "Les clés que votre serveur utilise pour appeler Quotify pour cette application. Une clé appartient à un environnement ; son secret n'est affiché qu'une fois."
+    },
+    "appSettings": {
+      "intro": "Ce avec quoi cette application a été créée. La devise et le fuseau horaire déterminent le calcul de chaque facture ; ils sont donc fixés une fois l'application créée.",
+      "general": "Général",
+      "slug": "Nom d'adresse",
+      "id": "Identifiant de l'application",
+      "currency": "Devise par défaut",
+      "timezone": "Fuseau horaire",
+      "grace": "Délai de grâce",
+      "tenant": "Identifiant de l'environnement",
+      "moreCurrencies": "Une application peut vendre dans plusieurs devises : ajoutez un prix dans une autre devise à un forfait, sous"
     }
   },
   "shell": {

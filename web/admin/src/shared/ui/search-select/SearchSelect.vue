@@ -169,7 +169,6 @@ function onInput(e: Event) {
       :id="listId"
       ref="list"
       role="listbox"
-      :aria-label="ariaLabel"
       class="border-border/70 bg-popover text-popover-foreground shadow-pop absolute inset-x-0 top-full z-50 mt-1.5 max-h-64 overflow-y-auto overscroll-contain rounded-2xl border p-1.5"
     >
       <li

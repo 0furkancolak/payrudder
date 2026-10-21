@@ -22,6 +22,7 @@ All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `
 | `POST /v1/subscriptions` · `DELETE /v1/subscriptions/{id}?end_time=` | `CreateSubscription`, `CancelSubscription` | `write` |
 | `GET /v1/customers/{external_id}/usage?period=2026-11` | `aggregator.v1.UsageQueryService/GetCustomerUsage` | `read` |
 | `GET /v1/invoices` · `GET /v1/invoices/{id}` · `GET /v1/invoices/{id}/pdf` | `billing.v1.BillingService/*` | `read` |
+| `GET /v1/payments` | payments-worker `GET /admin/tenants/{the caller's tenant}/ledger` (HTTP) | `read` |
 | `GET /v1/analytics/usage?…` | `analytics.v1.AnalyticsService/QueryUsage` | `analytics` |
 | `POST /v1/assets` (`multipart/form-data`, ≤ 20 files, streamed) | `assets.v1.AssetsService/UploadAsset` (one client stream per file) | `write` (per file) |
 | `POST /v1/assets/uploads` · `POST /v1/assets/uploads/{session}/files/{asset}/complete` · `…/parts` · `DELETE /v1/assets/uploads/{session}` | `CreateUploadSession`, `CompleteFile`, `PresignParts`, `AbortUpload` (direct multipart to S3) | `write` |

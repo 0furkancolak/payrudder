@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
+import { pickCurrency } from "./ui";
 
 const point = (bucket: string, net: string, exp: string) => ({ bucket, gross_income_minor: net, tax_minor: "0", refunds_minor: "0", net_income_minor: net, expenses_minor: exp, profit_minor: String(Number(net) - Number(exp)) });
 
@@ -160,7 +161,7 @@ test.describe("accounting", () => {
     await dialog.getByLabel("Vendor").fill("Linear");
     await dialog.getByLabel("Category").selectOption("software");
     await dialog.getByLabel("Amount").fill("12,50");
-    await dialog.getByLabel("Currency").selectOption("EUR");
+    await pickCurrency(dialog.getByLabel("Currency"), "EUR");
     await dialog.getByLabel("Date").fill("2026-10-05");
     await dialog.getByLabel("Repeats").selectOption("monthly");
     await dialog.getByLabel("Last day (optional)").fill("2027-03-05");

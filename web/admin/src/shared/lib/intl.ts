@@ -104,6 +104,22 @@ export function zoneList(): ZoneInfo[] {
   return zoneCache;
 }
 
+/**
+ * The names people search for that differ from the ones engines list (Chromium still lists "Asia/Katmandu" and "Asia/Calcutta"). The zone chosen is the
+ * engine's own name, which every IANA database (including the backend's) accepts; these words only help the search find it.
+ */
+export const ZONE_ALIASES: Record<string, string> = {
+  "Asia/Katmandu": "Kathmandu",
+  "Asia/Calcutta": "Kolkata",
+  "Asia/Saigon": "Ho Chi Minh City Vietnam",
+  "Asia/Rangoon": "Yangon Myanmar Burma",
+  "Europe/Kiev": "Kyiv Ukraine",
+  "America/Buenos_Aires": "Argentina",
+  "Atlantic/Faeroe": "Faroe",
+  "Pacific/Truk": "Chuuk",
+  "Europe/Istanbul": "Turkey Türkiye",
+};
+
 /** The browser's own zone, or UTC. */
 export function ownZone(): string {
   try {

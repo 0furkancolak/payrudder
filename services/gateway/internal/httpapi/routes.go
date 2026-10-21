@@ -157,6 +157,8 @@ func (s *Server) billingReadRoutes() []Route {
 		{"GET", "/v1/e-invoices", AccessTenant, ratelimit.ClassRead, s.listEInvoices},
 		{"GET", "/v1/e-invoices/{id}", AccessTenant, ratelimit.ClassRead, s.getEInvoice},
 		{"GET", "/v1/e-invoices/{id}/files/{kind}", AccessTenant, ratelimit.ClassRead, s.getEInvoiceFile},
+		// Payments: the tenant's own ledger
+		{"GET", "/v1/payments", AccessTenant, ratelimit.ClassRead, s.tenantPayments},
 		// Sandbox
 		{"POST", "/v1/sandbox/close-period", AccessSandbox, ratelimit.ClassWrite, s.sandboxClosePeriod},
 		{"POST", "/v1/sandbox/customers/{external_id}/payment-scenario", AccessSandbox, ratelimit.ClassWrite, s.setPaymentScenario},

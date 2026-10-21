@@ -1,6 +1,6 @@
 import { createRoute, type AnyRoute } from "@tanstack/vue-router";
-import AccountingPage from "./AccountingPage.vue";
+import { lazyPage } from "@/shared/lib/lazy";
 
 export function accountingRoutes(tenant: AnyRoute) {
-  return [createRoute({ getParentRoute: () => tenant, path: "accounting", component: AccountingPage })];
+  return [createRoute({ getParentRoute: () => tenant, path: "accounting", component: lazyPage(() => import("./AccountingPage.vue")) })];
 }

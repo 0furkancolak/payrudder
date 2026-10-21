@@ -1,19 +1,21 @@
-import { createRoute, redirect, type AnyRoute, type RouteComponent } from "@tanstack/vue-router";
-import { defineAsyncComponent } from "vue";
+import { createRoute, redirect, type AnyRoute } from "@tanstack/vue-router";
 import { accountingRoutes } from "@/features/accounting/routes";
 import { creditRoutes } from "@/features/credits/routes";
 import { customerRoutes } from "@/features/customers/routes";
+import { invoiceRoutes } from "@/features/invoices/routes";
 import { mailRoutes } from "@/features/mail/routes";
 import { packageRoutes } from "@/features/packages/routes";
 import { paymentLinkRoutes } from "@/features/paymentlinks/routes";
+import { paymentRoutes } from "@/features/payments/routes";
 import { pricingRoutes } from "@/features/pricing/routes";
 import { reportRoutes } from "@/features/reports/routes";
 import { subscriptionRoutes } from "@/features/subscriptions/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
+import { lazyPage } from "@/shared/lib/lazy";
 import { isOperator, isPerson } from "@/shared/lib/session";
 
 // The product's pages are loaded when first visited, so the public pages stay small. The deeper views reuse the console's own route factories.
-const lazy = (load: () => Promise<{ default: object }>): RouteComponent => defineAsyncComponent(load as never) as unknown as RouteComponent;
+const lazy = lazyPage;
 
 /** beforeLoad for the pages that need a signed-in person. */
 export function requirePerson(): void {
@@ -56,11 +58,13 @@ export function personRoutes(parent: AnyRoute) {
   const envSearch = (s: Record<string, unknown>) => (s.env === "sandbox" ? { env: "sandbox" } : {});
   const keys = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/keys", component: lazy(() => import("./ApiKeysPage.vue")), validateSearch: envSearch });
   const appSettings = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/settings", component: lazy(() => import("./AppSettingsPage.vue")), validateSearch: envSearch });
+  const members = createRoute({ getParentRoute: () => signedIn, path: "/app/members", component: lazy(() => import("./MembersPage.vue")) });
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazy(() => import("./SettingsPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazy(() => import("./ProductTenantLayout.vue")) });
   return signedIn.addChildren([
     home,
     dashboard,
+    members,
     keys,
     appSettings,
     settings,
@@ -71,6 +75,8 @@ export function personRoutes(parent: AnyRoute) {
       ...creditRoutes(tenant),
       ...packageRoutes(tenant),
       ...pricingRoutes(tenant),
+      ...invoiceRoutes(tenant),
+      ...paymentRoutes(tenant),
       ...paymentLinkRoutes(tenant),
       ...accountingRoutes(tenant),
       ...reportRoutes(tenant),

@@ -104,7 +104,7 @@ const countText = (c?: { count?: number; more?: boolean }) => (c ? `${c.count ??
       </div>
 
       <!-- Donut, revenue per currency, health -->
-      <div class="grid gap-5 lg:grid-cols-3">
+      <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         <section class="surface flex flex-col gap-4 p-6" :aria-label="t('product.donut.title')">
           <h2 class="text-lg font-semibold tracking-tight">{{ t("product.donut.title") }}</h2>
           <p v-if="!data.payments" class="text-muted-foreground py-8 text-center text-sm">{{ t("product.unavailable") }}</p>
@@ -148,8 +148,8 @@ const countText = (c?: { count?: number; more?: boolean }) => (c ? `${c.count ??
       </div>
 
       <!-- Payments, invoices -->
-      <div class="grid gap-5 lg:grid-cols-3">
-        <PaymentsCard class="lg:col-span-2" :payments="data.payments" />
+      <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <PaymentsCard class="xl:col-span-2" :payments="data.payments" />
         <section class="surface flex flex-col gap-3 p-6" :aria-label="t('product.invoices.title')">
           <h2 class="text-lg font-semibold tracking-tight">{{ t("product.invoices.title") }}</h2>
           <p v-if="!data.invoices" class="text-muted-foreground py-8 text-center text-sm">{{ t("product.unavailable") }}</p>

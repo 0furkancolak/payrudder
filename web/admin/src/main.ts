@@ -9,5 +9,6 @@ import "./app/styles.css";
 
 applyTheme();
 startPrefs();
-applyLocale(detectLocale());
-createApp(App).use(i18n).use(VueQueryPlugin, { queryClient }).mount("#app");
+const app = createApp(App).use(i18n).use(VueQueryPlugin, { queryClient });
+// Mount once the language in use is loaded, so nothing flashes in English first.
+void applyLocale(detectLocale()).then(() => app.mount("#app"));

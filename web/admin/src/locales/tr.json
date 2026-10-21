@@ -1698,6 +1698,23 @@
       "signInJoin": "Oturum aç ve katıl",
       "createTitle": "Girişinizi oluşturun",
       "createJoin": "Girişi oluştur ve katıl"
+    },
+    "membersPage": {
+      "intro": "Bu kuruluşa kimlerin ait olduğu, rolleri ve henüz açık olan davetler."
+    },
+    "apiKeysPage": {
+      "intro": "Sunucunuzun bu uygulama için Quotify'ı çağırırken kullandığı anahtarlar. Bir anahtar tek bir ortama aittir; gizli kısmı bir kez gösterilir."
+    },
+    "appSettings": {
+      "intro": "Bu uygulamanın oluşturulurken seçilenleri. Para birimi ve saat dilimi her faturanın nasıl hesaplanacağını belirler; bu yüzden uygulama oluşturulduktan sonra değişmez.",
+      "general": "Genel",
+      "slug": "Adres adı",
+      "id": "Uygulama kimliği",
+      "currency": "Varsayılan para birimi",
+      "timezone": "Saat dilimi",
+      "grace": "Ek süre",
+      "tenant": "Ortam kimliği",
+      "moreCurrencies": "Bir uygulama birçok para biriminde satış yapabilir: bir pakete başka para biriminde fiyat ekleyin, şurada:"
     }
   },
   "shell": {

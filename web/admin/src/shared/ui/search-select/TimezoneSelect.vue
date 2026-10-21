@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { zoneList } from "@/shared/lib/intl";
+import { ZONE_ALIASES, zoneList } from "@/shared/lib/intl";
 import SearchSelect from "./SearchSelect.vue";
 
 /** Every IANA time zone the browser knows, with its offset from UTC right now; typing "istanbul", "+03" or "tokyo" finds it. */
@@ -9,7 +9,7 @@ defineProps<{ id?: string; ariaLabel?: string; disabled?: boolean; class?: strin
 const model = defineModel<string>({ required: true });
 const { t } = useI18n();
 
-const options = computed(() => zoneList().map((z) => ({ value: z.id, label: z.id.replace(/_/g, " "), short: z.id, hint: z.offset, keywords: z.id.replace(/[_/]/g, " ") })));
+const options = computed(() => zoneList().map((z) => ({ value: z.id, label: z.id.replace(/_/g, " "), short: z.id, hint: z.offset, keywords: `${z.id.replace(/[_/]/g, " ")} ${ZONE_ALIASES[z.id] ?? ""}` })));
 </script>
 
 <template>

@@ -1698,6 +1698,23 @@
       "signInJoin": "Anmelden und beitreten",
       "createTitle": "Zugang einrichten",
       "createJoin": "Zugang einrichten und beitreten"
+    },
+    "membersPage": {
+      "intro": "Wer zu dieser Organisation gehört, mit welchen Rollen, und welche Einladungen noch offen sind."
+    },
+    "apiKeysPage": {
+      "intro": "Schlüssel, mit denen Ihr Server Quotify für diese App aufruft. Ein Schlüssel gehört zu einer Umgebung; sein Geheimnis wird einmal angezeigt."
+    },
+    "appSettings": {
+      "intro": "Womit diese App angelegt wurde. Währung und Zeitzone bestimmen, wie jede Rechnung berechnet wird, und sind deshalb nach dem Anlegen fest.",
+      "general": "Allgemein",
+      "slug": "Adressname",
+      "id": "App-ID",
+      "currency": "Standardwährung",
+      "timezone": "Zeitzone",
+      "grace": "Nachfrist",
+      "tenant": "Umgebungs-ID",
+      "moreCurrencies": "Eine App kann in vielen Währungen verkaufen: Fügen Sie einem Paket einen Preis in einer anderen Währung hinzu, unter"
     }
   },
   "shell": {

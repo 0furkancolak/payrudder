@@ -70,7 +70,7 @@ const exact = (to: string) => (path: string) => path === to;
  * The pages a person has under /app/t/{tenant}/... (route file: features/product/routes.ts). A page is in the sidebar only when its route exists, so
  * nothing in the navigation leads to a "not found". Add a key here in the same change that adds the route.
  */
-export const PERSON_PAGES = ["customers", "subscriptions", "credits", "packages", "pricing", "paymentLinks", "accounting", "reports", "webhooks", "mail"] as const;
+export const PERSON_PAGES = ["customers", "subscriptions", "credits", "packages", "pricing", "invoices", "payments", "paymentLinks", "accounting", "reports", "webhooks", "mail", "members"] as const;
 
 export type PersonPage = (typeof PERSON_PAGES)[number];
 
@@ -89,7 +89,8 @@ const PAGES: Page[] = [
   { key: "credits", icon: Gift, path: "credits", section: "customers", person: true },
   { key: "packages", icon: Package, path: "packages", section: "billing", person: true },
   { key: "pricing", icon: Percent, path: "pricing", section: "billing", person: true },
-  { key: "payments", icon: Wallet, path: "payments", section: "billing", person: false },
+  { key: "invoices", icon: FileText, path: "invoices", section: "billing", person: true },
+  { key: "payments", icon: Wallet, path: "payments", section: "billing", person: true },
   { key: "paymentLinks", icon: Link2, path: "payment-links", section: "billing", person: true },
   { key: "accounting", icon: Receipt, path: "accounting", section: "billing", person: true },
   { key: "reports", icon: BarChart3, path: "reports", section: "billing", person: true },
@@ -160,7 +161,7 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
     case "tenant": {
       const base = `/tenants/${ctx.tenantId ?? ""}`;
       const sections: NavSection[] = [
-        { key: "overview", items: [item("dashboard", base, LayoutDashboard, (p) => p === base || p.startsWith(`${base}/invoices/`))] },
+        { key: "overview", items: [item("dashboard", base, LayoutDashboard, exact(base))] },
       ];
       for (const s of SECTION_ORDER) {
         const items = PAGES.filter((p) => p.section === s).map((p) => item(p.key, `${base}/${p.path}`, p.icon, under(`${base}/${p.path}`)));

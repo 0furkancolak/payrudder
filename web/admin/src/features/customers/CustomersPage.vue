@@ -3,6 +3,7 @@ import { useParams, useRouter } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
+import { maskEmail } from "@/shared/lib/money";
 import { tenantBase } from "@/shared/lib/session";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -156,7 +157,7 @@ function submit() {
         <TableRow v-for="c in customers.data.value?.customers ?? []" :key="c.id">
           <TableCell class="font-medium">{{ c.external_id }}</TableCell>
           <TableCell>{{ c.name }}</TableCell>
-          <TableCell>{{ c.email }}</TableCell>
+          <TableCell>{{ maskEmail(c.email) }}</TableCell>
           <TableCell>{{ c.country || "—" }}</TableCell>
           <TableCell>{{ c.billing_currency || "—" }}</TableCell>
           <TableCell class="max-w-64 whitespace-normal">

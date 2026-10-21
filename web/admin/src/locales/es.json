@@ -1698,6 +1698,23 @@
       "signInJoin": "Iniciar sesión y unirme",
       "createTitle": "Crea tu acceso",
       "createJoin": "Crear el acceso y unirme"
+    },
+    "membersPage": {
+      "intro": "Quién pertenece a esta organización, con qué roles, y las invitaciones que siguen abiertas."
+    },
+    "apiKeysPage": {
+      "intro": "Las claves que su servidor usa para llamar a Quotify en esta aplicación. Una clave pertenece a un entorno; su secreto se muestra una sola vez."
+    },
+    "appSettings": {
+      "intro": "Con qué se creó esta aplicación. La moneda y la zona horaria deciden cómo se calcula cada factura, por eso quedan fijas una vez creada la aplicación.",
+      "general": "General",
+      "slug": "Nombre de dirección",
+      "id": "ID de la aplicación",
+      "currency": "Moneda predeterminada",
+      "timezone": "Zona horaria",
+      "grace": "Periodo de gracia",
+      "tenant": "ID del entorno",
+      "moreCurrencies": "Una aplicación puede vender en varias monedas: añada un precio en otra moneda a un paquete, en"
     }
   },
   "shell": {

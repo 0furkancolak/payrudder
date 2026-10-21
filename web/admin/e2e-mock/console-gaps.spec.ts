@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
+import { pickCurrency, pickZone } from "./ui";
 
 const ACCOUNT = "0192f0b4-0000-7000-8000-000000000001";
 const SANDBOX = "0192f0b4-0000-7000-8000-0000000000a1";
@@ -48,8 +49,8 @@ test.describe("apps", () => {
     await expect(page.getByRole("alert")).toContainText("lower-case letters");
     await expect(form.getByRole("button", { name: "Create app" })).toBeDisabled();
     await form.getByLabel("Slug").fill("web-shop");
-    await form.getByLabel("Currency").selectOption("EUR");
-    await form.getByLabel("Time zone").fill("Europe/Berlin");
+    await pickCurrency(form.getByLabel("Currency"), "EUR");
+    await pickZone(form.getByLabel("Time zone"), "Europe/Berlin");
     await form.getByLabel("Grace period (hours)").fill("48");
     await form.getByRole("button", { name: "Create app" }).click();
     await expect(page.getByRole("row", { name: /Web shop/ })).toContainText("web-shop");
