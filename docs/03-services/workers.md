@@ -156,5 +156,9 @@ with the provider before anything is recorded), and, behind `X-Internal-Token`, 
 (`QUOTIFY_PAYMENTS_URL`, `QUOTIFY_PAYMENTS_INTERNAL_TOKEN`). A live tenant's commands go to its default provider account, else to `PAYMENTS_LIVE_PROVIDER`;
 sandbox commands always go to mock-psp. See [phase 14](../phases/phase-14-provider-contract-iyzico.md).
 
+Phase 29 adds `banktransfer`: its charge calls nothing and answers `PaymentErrored{PENDING}`, the status query reads the ledger (`PENDING`, `SUCCEEDED` when the confirmed receipts add up to the charge, `DECLINED` after the payment
+window or a rejection), and the operator endpoints `GET /admin/tenants/{tenant}/invoices/{invoice}/transfer`, `POST …/transfer/receipts` (idempotent per bank reference) and `POST …/transfer/reject` confirm or give up on a transfer.
+`PAYMENTS_TRANSFER_WINDOW_DAYS` (14) is the window when the tenant's account sets none. See [phase 29](../phases/phase-29-bank-transfer.md).
+
 Phase 15 adds Paddle: `POST /webhooks/{provider}/{tenant}/{environment}` (a notification destination per account, verified by signature), the tenant's provider subscriptions
 and hosted checkouts under `/admin/tenants/{tenant}/`, and `QUOTIFY_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See [phase 15](../phases/phase-15-paddle.md).

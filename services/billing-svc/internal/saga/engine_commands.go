@@ -29,6 +29,9 @@ func (e *Engine) invoiceSnapshot(s *saga, lines []sqlc.ListInvoiceLinesForSnapsh
 		IssuedAt: timestamppb.New(s.FinalizedAt), TotalMinor: s.TotalMinor, LogoObjectKey: s.Snap.LogoObjectKey,
 		SellerAddressLines: s.Snap.SellerAddress, CustomerAddressLines: s.Snap.CustomerAddress,
 	}
+	if in := s.Snap.Instructions(s.Number, s.InvoiceID); in != nil {
+		snap.PaymentInstructions = &commandsv1.PaymentInstructions{BankName: in.BankName, AccountHolder: in.AccountHolder, Iban: in.IBAN, Bic: in.BIC, Reference: in.Reference}
+	}
 	var sub int64
 	for _, l := range lines {
 		ls := &commandsv1.InvoiceLineSnapshot{LineNo: l.LineNo, Kind: l.Kind, Description: l.Description, AmountMinor: l.AmountMinor}
@@ -60,6 +63,8 @@ type SweepResult struct {
 	Reissued  int
 	Exhausted int
 	Dunned    int
+	// Polled counts the pending payments (bank transfers) whose status was asked for again.
+	Polled int
 }
 
 // Sweep handles one batch of sagas whose command went unanswered (re-issue up to MaxStepAttempts, then StepExhausted)
@@ -70,8 +75,39 @@ func (e *Engine) Sweep(ctx context.Context, pool *pgxpool.Pool, limit int) (Swee
 	if err := e.sweepDeadlines(ctx, pool, now, limit, &res); err != nil {
 		return res, err
 	}
-	err := e.sweepDunning(ctx, pool, now, limit, &res)
+	if err := e.sweepDunning(ctx, pool, now, limit, &res); err != nil {
+		return res, err
+	}
+	err := e.sweepPolls(ctx, pool, now, limit, &res)
 	return res, err
+}
+
+// sweepPolls asks again for the status of the payments that are awaited (a bank transfer whose money has not been confirmed yet) when their poll is due.
+// The answer is in the ledger, so a poll costs one query; the payment window runs out in the answer, not here.
+func (e *Engine) sweepPolls(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
+	due, err := sqlc.New(pool).ListSagasDueForPoll(ctx, sqlc.ListSagasDueForPollParams{Now: now, RowLimit: i32(limit)})
+	if err != nil {
+		return err
+	}
+	for _, d := range due {
+		err := pgxx.InTx(ctx, pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+			s, err := e.lockDue(ctx, tx, d.TenantID, func(q *sqlc.Queries) (uuid.UUID, error) {
+				return q.LockSagaDueForPoll(ctx, sqlc.LockSagaDueForPollParams{TenantID: d.TenantID, ID: d.ID, Now: now})
+			})
+			if err != nil || s == nil {
+				return err
+			}
+			out, err := e.handleLoaded(ctx, tx, s, EvPollDue, "poll", nil)
+			if out.Applied {
+				res.Polled++
+			}
+			return err
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *Engine) sweepDeadlines(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
@@ -156,7 +192,7 @@ func (e *Engine) reissue(ctx context.Context, tx pgx.Tx, s *saga, now time.Time)
 		eff = EffRender
 	case PaymentRequested:
 		eff = EffCharge
-	case PaymentUnknown:
+	case PaymentUnknown, PaymentPending:
 		eff = EffQueryStatus
 	case NotifyRequested:
 		eff = EffNotify
@@ -222,6 +258,8 @@ func ReplyEvent(r *commandsv1.ReplyEnvelope) (Event, string, bool) {
 			return EvStatusSucceeded, "reply:PaymentStatus(succeeded)", true
 		case commandsv1.PaymentStatus_STATE_DECLINED:
 			return EvStatusDeclined, "reply:PaymentStatus(declined)", true
+		case commandsv1.PaymentStatus_STATE_PENDING:
+			return EvStatusPending, "reply:PaymentStatus(pending)", true
 		case commandsv1.PaymentStatus_STATE_NOT_FOUND:
 			return EvStatusNotFound, "reply:PaymentStatus(not_found)", true
 		}

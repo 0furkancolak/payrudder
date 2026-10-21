@@ -13,8 +13,8 @@ import (
 )
 
 const appendLedger = `-- name: AppendLedger :execrows
-INSERT INTO payment_ledger (tenant_id, invoice_id, provider, environment, kind, status, amount_minor, currency, provider_ref, idempotency_key, source, detail)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+INSERT INTO payment_ledger (tenant_id, invoice_id, provider, environment, kind, status, amount_minor, currency, provider_ref, idempotency_key, source, detail, occurred_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13::timestamptz, now()))
 ON CONFLICT DO NOTHING
 `
 
@@ -31,6 +31,7 @@ type AppendLedgerParams struct {
 	IdempotencyKey *string
 	Source         string
 	Detail         *string
+	OccurredAt     *time.Time
 }
 
 func (q *Queries) AppendLedger(ctx context.Context, arg AppendLedgerParams) (int64, error) {
@@ -47,6 +48,7 @@ func (q *Queries) AppendLedger(ctx context.Context, arg AppendLedgerParams) (int
 		arg.IdempotencyKey,
 		arg.Source,
 		arg.Detail,
+		arg.OccurredAt,
 	)
 	if err != nil {
 		return 0, err

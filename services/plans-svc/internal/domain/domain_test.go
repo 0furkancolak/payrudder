@@ -161,6 +161,25 @@ func TestValidatePlanVersionTiers(t *testing.T) {
 	}
 }
 
+func TestValidateBankTransfer(t *testing.T) {
+	ok := &plansv1.BankTransferDetails{BankName: "Example Bank", AccountHolder: "Acme Ltd", Iban: "TR330006100519786457841326", Bic: "TCZBTR2A", ReferenceTemplate: "{invoice_number}",
+		Currencies: []string{"TRY"}}
+	if err := ValidateBankTransfer("bank_transfer", ok); err != nil {
+		t.Fatal(err)
+	}
+	bad := &plansv1.BankTransferDetails{BankName: " ", AccountHolder: "a\nb", Iban: "tr33 0006 1005 1978 6457 8413 26", Bic: "ABC", ReferenceTemplate: "{nope}", Currencies: []string{"try"}}
+	got := fields(t, ValidateBankTransfer("bank_transfer", bad))
+	for _, f := range []string{"bank_transfer.bank_name", "bank_transfer.account_holder", "bank_transfer.iban", "bank_transfer.bic", "bank_transfer.reference_template", "bank_transfer.currencies"} {
+		if !contains(got, f) {
+			t.Errorf("missing violation for %s: %v", f, got)
+		}
+	}
+	wrongDigits := &plansv1.BankTransferDetails{BankName: "B", AccountHolder: "H", Iban: "TR340006100519786457841326"}
+	if !contains(fields(t, ValidateBankTransfer("bank_transfer", wrongDigits)), "bank_transfer.iban") {
+		t.Error("an IBAN with wrong check digits must be refused")
+	}
+}
+
 func TestValidateAddress(t *testing.T) {
 	ok := &plansv1.Address{Line1: "Atatürk Cd. 1", City: "İstanbul", PostalCode: "34000", Country: "TR"}
 	if err := ValidateAddress("address", ok); err != nil {

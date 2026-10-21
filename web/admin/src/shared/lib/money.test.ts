@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { formatMinor, parseMajor } from "./money";
+import { formatMinor, minorToMajor, parseMajor } from "./money";
+
+describe("minorToMajor", () => {
+  it("is the plain decimal a person would type", () => {
+    expect(minorToMajor("1250", "USD")).toBe("12.50");
+    expect(minorToMajor("5", "USD")).toBe("0.05");
+    expect(minorToMajor("0", "USD")).toBe("0.00");
+    expect(minorToMajor(900, "JPY")).toBe("900");
+    expect(minorToMajor("1234", "KWD")).toBe("1.234");
+    expect(minorToMajor("9007199254740993", "USD")).toBe("90071992547409.93");
+  });
+  it("round-trips through parseMajor", () => {
+    for (const m of ["1", "99", "100", "123456"]) expect(parseMajor(minorToMajor(m, "TRY"), "TRY")).toBe(m);
+  });
+  it("gives nothing for what is not a non-negative integer", () => {
+    expect(minorToMajor("-5", "USD")).toBe("");
+    expect(minorToMajor("1.5", "USD")).toBe("");
+    expect(minorToMajor(undefined, "USD")).toBe("");
+  });
+});
 
 describe("formatMinor", () => {
   it("uses the currency's minor-unit exponent", () => {

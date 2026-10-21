@@ -18,6 +18,7 @@ import (
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/invoices"
 	invoicequery "github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/payments"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/reports"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/rerating"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
@@ -40,6 +41,7 @@ type (
 	sagaHandler       = sagas.Handler
 	reratingHandler   = rerating.Handler
 	deadLetterHandler = deadletters.Handler
+	paymentHandler    = payments.Handler
 )
 
 // unimplemented answers UNIMPLEMENTED for the methods no module serves. It is embedded one level deeper than the module handlers so
@@ -64,6 +66,7 @@ type Server struct {
 	*sagaHandler
 	*reratingHandler
 	*deadLetterHandler
+	*paymentHandler
 }
 
 // New returns the API. app is the billing_app pool, system the billing_system pool.
@@ -79,6 +82,7 @@ func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server
 		sagaHandler:       sagas.New(system, eng),
 		reratingHandler:   rerating.New(mgr),
 		deadLetterHandler: deadletters.New(),
+		paymentHandler:    payments.New(system, eng),
 	}
 }
 

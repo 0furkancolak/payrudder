@@ -9,7 +9,7 @@ import (
 )
 
 func TestCatalogue(t *testing.T) {
-	if got := providers.Names(); !slices.Equal(got, []string{"iyzico", "paddle"}) {
+	if got := providers.Names(); !slices.Equal(got, []string{"banktransfer", "iyzico", "paddle"}) {
 		t.Fatalf("Names = %v", got)
 	}
 	iy, ok := providers.Lookup("iyzico")
@@ -30,5 +30,12 @@ func TestWhoMailsReceipts(t *testing.T) {
 	pd, _ := providers.Lookup("paddle")
 	if iy.SendsOwnReceipts || !pd.SendsOwnReceipts {
 		t.Fatalf("iyzico %v, paddle %v: Paddle is the merchant of record and mails its own receipts, iyzico does not", iy.SendsOwnReceipts, pd.SendsOwnReceipts)
+	}
+}
+
+func TestBankTransferCapabilities(t *testing.T) {
+	bt, ok := providers.Lookup("banktransfer")
+	if !ok || bt.Owner() != payments.OwnerQuotify || bt.Refunds || bt.HostedCheckout || bt.IdempotentCharges || bt.SendsOwnReceipts || !bt.CanCharge("TRY") {
+		t.Errorf("banktransfer = %+v: Quotify owns renewal and dunning, there is no refund API, no hosted checkout, and the status query reads the ledger", bt)
 	}
 }

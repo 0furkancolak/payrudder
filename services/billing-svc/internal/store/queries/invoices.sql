@@ -47,6 +47,9 @@ FROM invoices WHERE id = @id;
 SELECT COALESCE(snapshot->'seller_address', '[]'::jsonb)::jsonb AS seller_address, COALESCE(snapshot->'customer_address', '[]'::jsonb)::jsonb AS customer_address
 FROM invoices WHERE id = @id;
 
+-- name: GetInvoiceBankTransfer :one
+SELECT COALESCE(number, '')::text AS number, COALESCE(snapshot->'bank_transfer', 'null'::jsonb)::jsonb AS bank_transfer FROM invoices WHERE id = @id;
+
 -- name: GetInvoiceCustomerExternalID :one
 SELECT COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id FROM invoices WHERE tenant_id = @tenant_id AND id = @id;
 

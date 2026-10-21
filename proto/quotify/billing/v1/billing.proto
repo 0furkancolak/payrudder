@@ -63,6 +63,10 @@ service BillingAdminService {
   rpc RetryInvoiceSaga(RetryInvoiceSagaRequest) returns (RetryInvoiceSagaResponse);
   // VoidInvoice voids an invoice, refunding it first if it was paid.
   rpc VoidInvoice(VoidInvoiceRequest) returns (VoidInvoiceResponse);
+  // RecordInvoicePayment records money received outside a payment provider (a bank transfer, cash, other) against an open or uncollectible invoice. Partial
+  // payments are recorded; the invoice is paid when they add up to the total. More than is outstanding is refused. Idempotent per (invoice, method, reference)
+  // when a reference is given.
+  rpc RecordInvoicePayment(RecordInvoicePaymentRequest) returns (RecordInvoicePaymentResponse);
   // CreateCreditNote corrects a paid invoice without editing it: a numbered credit note whose amount is added to the customer's credit balance, which pays their
   // next invoice in that currency. The notes of an invoice never add up to more than the invoice.
   rpc CreateCreditNote(CreateCreditNoteRequest) returns (CreateCreditNoteResponse);
@@ -139,6 +143,50 @@ message Invoice {
   google.protobuf.Timestamp create_time = 14;
   google.protobuf.Timestamp finalize_time = 15;
   repeated InvoiceLine lines = 16;
+  // Payments recorded by hand (RecordInvoicePayment), oldest first. Only GetInvoice fills it.
+  repeated InvoicePayment payments = 17;
+}
+
+// InvoicePayment is money received outside a payment provider and recorded by an operator.
+message InvoicePayment {
+  string id = 1;
+  string invoice_id = 2;
+  // bank_transfer, cash or other.
+  string method = 3;
+  int64 amount_minor = 4;
+  string currency = 5;
+  google.protobuf.Timestamp received_at = 6;
+  // The bank's or the receipt's reference, empty when none was given.
+  string reference = 7;
+  string note = 8;
+  // Who recorded it and when.
+  string recorded_by = 9;
+  google.protobuf.Timestamp recorded_at = 10;
+}
+
+message RecordInvoicePaymentRequest {
+  string tenant_id = 1;
+  string invoice_id = 2;
+  // bank_transfer, cash or other.
+  string method = 3;
+  int64 amount_minor = 4;
+  // Empty: now. Not in the future.
+  google.protobuf.Timestamp received_at = 5;
+  string reference = 6;
+  string note = 7;
+  // Who records it (the gateway passes X-Quotify-Actor; empty is "operator").
+  string actor = 8;
+}
+
+message RecordInvoicePaymentResponse {
+  InvoicePayment payment = 1;
+  // True when this call changed nothing: the same (invoice, method, reference) was recorded before.
+  bool duplicate = 2;
+  // The sum of the payments recorded by hand, and what is left to pay.
+  int64 paid_minor = 3;
+  int64 outstanding_minor = 4;
+  // True when the invoice is paid (by this payment or before).
+  bool settled = 5;
 }
 
 message GetInvoiceRequest {
@@ -379,7 +427,7 @@ message DunningInvoice {
   string provider = 5;
   string currency = 6;
   int64 total_minor = 7;
-  // The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), UNCOLLECTIBLE (given up).
+  // The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), PAYMENT_PENDING (waiting for a bank transfer), UNCOLLECTIBLE (given up).
   string state = 8;
   // Retries done so far (0 = only the first charge).
   int32 dunning_attempt = 9;
@@ -519,6 +567,17 @@ message GetHostedInvoiceResponse {
   int32 currency_exponent = 6;
   repeated string seller_address_lines = 7;
   repeated string customer_address_lines = 8;
+  // Where to send the money, for an invoice paid by bank transfer; unset otherwise.
+  BankTransferInstructions payment_instructions = 9;
+}
+
+// BankTransferInstructions are the tenant's bank details and the reference the customer puts on the transfer.
+message BankTransferInstructions {
+  string bank_name = 1;
+  string account_holder = 2;
+  string iban = 3;
+  string bic = 4;
+  string reference = 5;
 }
 
 message GetHostedInvoicePdfUrlRequest { string token = 1; }

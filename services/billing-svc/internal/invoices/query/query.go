@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/quotify/pkg/pgxx"
+	paymentquery "github.com/0furkancolak/quotify/services/billing-svc/internal/payments/query"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
@@ -25,10 +26,11 @@ type PDFSigner interface {
 // PDFLinkTTL is how long a presigned PDF link works.
 const PDFLinkTTL = 5 * time.Minute
 
-// Invoice is an invoice with its lines.
+// Invoice is an invoice with its lines and the payments an operator recorded for it.
 type Invoice struct {
-	Row   sqlc.GetInvoiceRow
-	Lines []sqlc.ListInvoiceLinesRow
+	Row      sqlc.GetInvoiceRow
+	Lines    []sqlc.ListInvoiceLinesRow
+	Payments []sqlc.ListInvoicePaymentsRow
 }
 
 // Load reads an invoice with its lines in tx (tenant-scoped, or the system's with the invoice id already known).
@@ -43,7 +45,11 @@ func Load(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Invoice, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Invoice{Row: row, Lines: lines}, nil
+	payments, err := paymentquery.ForInvoice(ctx, tx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &Invoice{Row: row, Lines: lines, Payments: payments}, nil
 }
 
 // Get reads one invoice of a tenant.

@@ -8,7 +8,7 @@ import (
 func TestRenderAllTemplates(t *testing.T) {
 	data := map[string]string{"customer_name": "Ada", "amount": "11.16", "currency": "USD", "invoice_number": "INV-2026-000001",
 		"period": "2026-10", "tenant_name": "Acme", "meter_code": "api_calls", "used": "80", "limit": "100", "threshold_pct": "80"}
-	if len(Names()) != 3 {
+	if len(Names()) != 4 {
 		t.Fatalf("templates = %v", Names())
 	}
 	for _, n := range Names() {
@@ -30,6 +30,31 @@ func TestRenderAllTemplates(t *testing.T) {
 	}
 	if _, err := Render("nope.v1", data, false); err == nil {
 		t.Fatal("unknown template must fail")
+	}
+}
+
+func TestTransferMailCarriesTheBankDetails(t *testing.T) {
+	data := map[string]string{"customer_name": "Ada", "amount": "1,500.00", "currency": "TRY", "invoice_number": "INV-2026-000007", "period": "2026-10", "tenant_name": "Acme",
+		"bank_name": "Example Bank", "account_holder": "Acme Ltd", "iban": "TR330006100519786457841326", "bic": "TCZBTR2A", "reference": "INV-2026-000007"}
+	r, err := Render("invoice_transfer.v1", data, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"TR330006100519786457841326", "Example Bank", "Acme Ltd", "TCZBTR2A", "Payment reference", "INV-2026-000007", "1,500.00 TRY"} {
+		if !strings.Contains(r.HTML, want) {
+			t.Errorf("the mail lacks %q: %s", want, r.HTML)
+		}
+	}
+	if r.Subject != "Invoice INV-2026-000007: how to pay by bank transfer" {
+		t.Errorf("subject %q", r.Subject)
+	}
+	failed, _ := Render("payment_failed.v1", data, false)
+	if !strings.Contains(failed.HTML, "TR330006100519786457841326") {
+		t.Error("a failed payment tells the customer where they can still pay by transfer")
+	}
+	card, _ := Render("payment_failed.v1", map[string]string{"customer_name": "Ada"}, false)
+	if strings.Contains(card.HTML, "bank transfer") {
+		t.Error("a customer who did not pay by transfer is not told about one")
 	}
 }
 

@@ -258,6 +258,40 @@ func (q *Queries) ListSagasDueForDunning(ctx context.Context, arg ListSagasDueFo
 	return items, nil
 }
 
+const listSagasDueForPoll = `-- name: ListSagasDueForPoll :many
+SELECT tenant_id, id FROM invoice_sagas WHERE state = 'PAYMENT_PENDING' AND next_attempt_at <= $1::timestamptz ORDER BY next_attempt_at LIMIT $2
+`
+
+type ListSagasDueForPollParams struct {
+	Now      time.Time
+	RowLimit int32
+}
+
+type ListSagasDueForPollRow struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+func (q *Queries) ListSagasDueForPoll(ctx context.Context, arg ListSagasDueForPollParams) ([]ListSagasDueForPollRow, error) {
+	rows, err := q.db.Query(ctx, listSagasDueForPoll, arg.Now, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSagasDueForPollRow{}
+	for rows.Next() {
+		var i ListSagasDueForPollRow
+		if err := rows.Scan(&i.TenantID, &i.ID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSagasPastDeadline = `-- name: ListSagasPastDeadline :many
 SELECT tenant_id, id FROM invoice_sagas WHERE step_deadline IS NOT NULL AND step_deadline < $1::timestamptz ORDER BY step_deadline LIMIT $2
 `
@@ -306,6 +340,25 @@ type LockSagaDueForDunningParams struct {
 
 func (q *Queries) LockSagaDueForDunning(ctx context.Context, arg LockSagaDueForDunningParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, lockSagaDueForDunning, arg.TenantID, arg.ID, arg.Now)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const lockSagaDueForPoll = `-- name: LockSagaDueForPoll :one
+SELECT id FROM invoice_sagas
+WHERE tenant_id = $1 AND id = $2 AND state = 'PAYMENT_PENDING' AND next_attempt_at <= $3::timestamptz
+FOR UPDATE SKIP LOCKED
+`
+
+type LockSagaDueForPollParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+	Now      time.Time
+}
+
+func (q *Queries) LockSagaDueForPoll(ctx context.Context, arg LockSagaDueForPollParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, lockSagaDueForPoll, arg.TenantID, arg.ID, arg.Now)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err

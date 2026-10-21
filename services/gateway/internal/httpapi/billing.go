@@ -107,6 +107,38 @@ func (s *Server) adminVoidInvoice(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp.GetSaga(), err)
 }
 
+// actorHeader names who an operator action is recorded for. The operator token is shared, so the console sends the signed-in operator here.
+const actorHeader = "X-Quotify-Actor"
+
+// actorOf is the actor of a request: the X-Quotify-Actor header cut to 120 characters, or "operator".
+func actorOf(r *http.Request) string {
+	a := strings.TrimSpace(r.Header.Get(actorHeader))
+	if a == "" {
+		return "operator"
+	}
+	if runes := []rune(a); len(runes) > 120 {
+		a = string(runes[:120])
+	}
+	return a
+}
+
+// adminRecordInvoicePayment is POST /admin/v1/invoices/{id}/payments: money received outside a provider. 201 when it was recorded, 200 when the same
+// (invoice, method, reference) had been.
+func (s *Server) adminRecordInvoicePayment(w http.ResponseWriter, r *http.Request) {
+	req := &billingv1.RecordInvoicePaymentRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.InvoiceId, req.Actor = r.PathValue("id"), actorOf(r)
+	resp, err := s.d.BillingAdmin.RecordInvoicePayment(r.Context(), req)
+	code := http.StatusCreated
+	if err == nil && resp.GetDuplicate() {
+		code = http.StatusOK
+	}
+	respond(w, r, code, resp, err)
+}
+
 // adminStartRerating is POST /admin/v1/tenants/{tenant_id}/billing-runs/{period}/rerating. 201 when the job was created, 200
 // when the same (tenant, period, plan version) had one already.
 func (s *Server) adminStartRerating(w http.ResponseWriter, r *http.Request) {

@@ -17,6 +17,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/command"
 	invoices "github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
+	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
@@ -55,6 +56,8 @@ type Invoice struct {
 	SellerAddressLines   []string
 	CustomerAddressLines []string
 	PDFAvailable         bool
+	// PaymentInstructions say where to send the money, for an open invoice paid by bank transfer.
+	PaymentInstructions *saga.BankInstructions
 }
 
 // Get returns the invoice behind a token. pdfs may be nil (then no PDF is available).
@@ -87,6 +90,16 @@ func Get(ctx context.Context, system *pgxpool.Pool, pdfs invoices.PDFSigner, tok
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	out.PDFAvailable = out.Invoice.Row.PdfObjectKey != "" && pdfs != nil
+	if out.Invoice.Row.Status == "open" {
+		bt, err := sqlc.New(system).GetInvoiceBankTransfer(ctx, link.InvoiceID)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "internal error")
+		}
+		var details *saga.BankTransfer
+		if json.Unmarshal(bt.BankTransfer, &details) == nil && details != nil {
+			out.PaymentInstructions = saga.Snapshot{BankTransfer: details}.Instructions(bt.Number, link.InvoiceID)
+		}
+	}
 	return out, nil
 }
 

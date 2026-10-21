@@ -80,8 +80,29 @@ func Tenant(t sqlc.Tenant) *plansv1.Tenant {
 		Id: t.ID.String(), AccountId: t.AccountID.String(), Environment: domain.EnvironmentFromDB(t.Environment),
 		Name: t.Name, Tier: domain.TierFromDB(t.Tier), Currency: t.Currency, Timezone: t.Timezone,
 		GracePeriod: durationpb.New(Duration(t.GracePeriod)), CreateTime: ts(t.CreatedAt),
-		InvoiceLogoAssetId: logoID(t.InvoiceLogoAssetID), AppId: t.AppID.String(), Address: AddressFromJSON(t.Address),
+		InvoiceLogoAssetId: logoID(t.InvoiceLogoAssetID), AppId: t.AppID.String(), Address: AddressFromJSON(t.Address), BankTransfer: BankTransferFromJSON(t.BankTransfer),
 	}
+}
+
+// BankTransferJSON is the stored form of the bank transfer details: a JSON object without the empty parts.
+func BankTransferJSON(d *plansv1.BankTransferDetails) []byte {
+	if d == nil {
+		return []byte("{}")
+	}
+	b, err := addressJSON.Marshal(d)
+	if err != nil {
+		return []byte("{}")
+	}
+	return b
+}
+
+// BankTransferFromJSON reads stored bank transfer details; nil when there are none.
+func BankTransferFromJSON(raw []byte) *plansv1.BankTransferDetails {
+	var d plansv1.BankTransferDetails
+	if len(raw) == 0 || protojson.Unmarshal(raw, &d) != nil || proto.Equal(&d, &plansv1.BankTransferDetails{}) {
+		return nil
+	}
+	return &d
 }
 
 // App with its tenants (sandbox first).

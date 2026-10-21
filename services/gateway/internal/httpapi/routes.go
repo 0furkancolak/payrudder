@@ -172,6 +172,9 @@ func (s *Server) operatorProviderRoutes() []Route {
 		{"PUT", "/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}", AccessOperator, "", s.providerAccount},
 		{"DELETE", "/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}", AccessOperator, "", s.providerAccount},
 		{"GET", "/admin/v1/tenants/{tenant_id}/ledger", AccessOperator, "", s.paymentLedger},
+		{"GET", "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer", AccessOperator, "", s.invoiceTransfer},
+		{"POST", "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer/receipts", AccessOperator, "", s.invoiceTransfer},
+		{"POST", "/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer/reject", AccessOperator, "", s.invoiceTransfer},
 		{"GET", "/admin/v1/tenants/{tenant_id}/reconciliation", AccessOperator, "", s.paymentReconciliation},
 		{"POST", "/webhooks/{provider}", AccessPublic, "", s.providerWebhook},
 		{"POST", "/webhooks/{provider}/{tenant_id}/{environment}", AccessPublic, "", s.tenantWebhook},
@@ -213,6 +216,7 @@ func (s *Server) operatorAdminRoutes() []Route {
 		{"GET", "/admin/v1/tenants/{tenant_id}/rerating-jobs/{job_id}", AccessOperator, "", s.adminGetRerating},
 		{"POST", "/admin/v1/invoices/{id}/retry", AccessOperator, "", s.adminRetryInvoice},
 		{"POST", "/admin/v1/invoices/{id}/void", AccessOperator, "", s.adminVoidInvoice},
+		{"POST", "/admin/v1/invoices/{id}/payments", AccessOperator, "", s.adminRecordInvoicePayment},
 		{"POST", "/admin/v1/invoices/{id}/credit-notes", AccessOperator, "", s.adminCreateCreditNote},
 		{"POST", "/admin/v1/credit-notes/{id}/retry-refund", AccessOperator, "", s.adminRetryCreditNoteRefund},
 	}
