@@ -1,7 +1,16 @@
-import { createRoute, type AnyRoute } from "@tanstack/vue-router";
-import SignInPage from "./SignInPage.vue";
+import { createRoute, redirect, type AnyRoute } from "@tanstack/vue-router";
+import { requireOperator } from "./guard";
 
-/** The operator's token page. People sign in at "/" (features/product); the operator's console keeps its own door. */
+/** /operator is the door of the operator console, shown in the shell only to operators: it opens the tenant list. */
 export function authRoutes(parent: AnyRoute) {
-  return [createRoute({ getParentRoute: () => parent, path: "/operator", component: SignInPage })];
+  return [
+    createRoute({
+      getParentRoute: () => parent,
+      path: "/operator",
+      beforeLoad: () => {
+        requireOperator();
+        throw redirect({ to: "/tenants" });
+      },
+    }),
+  ];
 }

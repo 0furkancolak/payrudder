@@ -14,18 +14,14 @@
     "tenants": "Tenants",
     "playground": "Playground",
     "deadLetters": "Dead letters",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "operator": "Operator console",
+    "myApps": "My apps"
   },
   "common": {
     "loading": "Loading…",
     "unknown": "?",
     "cancel": "Cancel"
-  },
-  "signIn": {
-    "title": "Operator console",
-    "intro": "Reads and acts through the gateway only. The token stays in this browser tab (session storage).",
-    "tokenLabel": "Operator token",
-    "submit": "Sign in"
   },
   "enums": {
     "environment": {
@@ -1417,6 +1413,18 @@
       "member": {
         "last_owner": "An account must keep at least one owner. Make someone else an owner first.",
         "not_found": "This person is not a member of the account."
+      },
+      "otp": {
+        "invalid": "That code is wrong, has expired or was already used. Check the latest e-mail or ask for a new code."
+      },
+      "oauth": {
+        "conflict": "Two sign-ins collided. Try again.",
+        "email_unverified": "Google has not verified an e-mail address for this account, so it cannot be used to sign in.",
+        "invalid": "This sign-in could not be completed. Try again.",
+        "not_configured": "Sign-in with Google is not set up here."
+      },
+      "operator": {
+        "forbidden": "This area is for platform operators."
       }
     }
   },
@@ -1486,9 +1494,36 @@
       "submit": "Sign in",
       "cta": "Sign in",
       "noAccount": "New here?",
-      "operator": "Operator console",
       "expired": "Your session has ended. Sign in again to continue.",
-      "forgot": "Forgot your password?"
+      "forgot": "Forgot your password?",
+      "methods": "Sign-in method",
+      "tabPassword": "Password",
+      "tabCode": "Email code",
+      "or": "or",
+      "google": "Continue with Google",
+      "completing": "Signing you in",
+      "completingIntro": "Finishing the sign-in with Google. One moment.",
+      "oauthError": {
+        "state": "The sign-in with Google could not be verified (it took too long, or the page was opened twice). Try again.",
+        "denied": "You cancelled the sign-in with Google. You can try again or use another method.",
+        "token": "Google's answer could not be verified. Try again.",
+        "email_unverified": "Google has not verified an e-mail address for this account, so it cannot be used to sign in.",
+        "unavailable": "Sign-in with Google is not available right now. Try again in a moment or use another method.",
+        "failed": "The sign-in with Google could not be completed. Try again or use another method."
+      },
+      "code": {
+        "label": "6-digit code",
+        "digit": "Digit {n} of {total}",
+        "intro": "We will e-mail you a 6-digit code. No password needed.",
+        "formLabel": "Sign in with a one-time code",
+        "verifyLabel": "Enter the one-time code",
+        "send": "Email me a code",
+        "sentTo": "If {email} can receive mail, a 6-digit code is on its way. It works for 10 minutes.",
+        "resent": "A new code is on its way.",
+        "resend": "Send a new code",
+        "resendIn": "Send a new code in {seconds} s",
+        "change": "Use a different address"
+      }
     },
     "signUp": {
       "title": "Create your account",
@@ -1497,7 +1532,11 @@
       "cta": "Create an account",
       "haveAccount": "Already have an account?",
       "checkTitle": "Check your inbox",
-      "checkBody": "We sent a message to {email}. If it is a new address, open the link in it to confirm it. If it already has an account, sign in with that account or reset its password."
+      "checkBody": "We sent a message to {email}. If it is a new address, open the link in it to confirm it. If it already has an account, sign in with that account or reset its password.",
+      "code": {
+        "intro": "No password to remember: we e-mail you a 6-digit code and create your account when you enter it.",
+        "organisation": "Organisation (optional)"
+      }
     },
     "home": {
       "title": "Your organisation",

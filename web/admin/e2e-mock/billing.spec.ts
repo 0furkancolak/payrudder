@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { baseTenant, MockGateway, OPERATOR, openTenantPage, TENANT } from "./gateway";
+import { baseTenant, MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, openTenantPage, TENANT } from "./gateway";
 
 const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
 
-test("the console speaks the tenant API as the operator, naming the tenant", async ({ page }) => {
+test("the console speaks the tenant API as the operator user (a session), naming the tenant", async ({ page }) => {
   const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/customers" && c.method === "GET" ? { body: { customers: [customer("cus_1")] } } : undefined));
   await gw.install(page);
   await openTenantPage(page, "/customers");
@@ -926,10 +926,13 @@ test.describe("reports", () => {
 test("the billing pages are translated", async ({ page }) => {
   const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/customers" ? { body: { customers: [] } } : undefined));
   await gw.install(page);
-  await page.goto("/operator");
+  await page.goto("/signin");
   await page.getByLabel("Language").selectOption("tr");
-  await page.getByLabel("Operatör jetonu").fill(OPERATOR);
+  await page.getByLabel("E-posta").fill(OPERATOR_EMAIL);
+  await page.getByLabel("Parola", { exact: true }).fill(OPERATOR_PASSWORD);
   await page.getByRole("button", { name: "Giriş yap" }).click();
+  await page.waitForURL("**/app");
+  await page.goto("/operator");
   await page.waitForURL("**/tenants");
   await page.goto(`/tenants/${TENANT}/customers`);
   await expect(page.getByRole("link", { name: "Müşteriler" })).toBeVisible();

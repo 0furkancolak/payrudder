@@ -85,7 +85,8 @@ each service its health check, restart policy and watch paths. Until then it sti
    | `RABBITMQ_PASSWORD` | `rabbitmq` | `openssl rand -hex 24` |
    | `MINIO_ROOT_PASSWORD` | `minio` | `openssl rand -hex 24` |
    | `CLICKHOUSE_PASSWORD` | `clickhouse` | `openssl rand -hex 24` |
-   | `QUOTIFY_OPERATOR_TOKEN` | `gateway` | `openssl rand -hex 32` (at least 32 characters) |
+   | `QUOTIFY_OPERATOR_TOKEN` | `gateway` | `openssl rand -hex 32` (at least 32 characters; the API's machine credential) |
+   | `QUOTIFY_OTP_PEPPER` | `plans-svc` | `openssl rand -hex 32` (keys the hash of one-time sign-in codes) |
    | `PAYMENTS_INTERNAL_TOKEN` | `payments-worker` | `openssl rand -hex 32` |
    | `QUOTIFY_SECRETS_KEY` | `payments-worker` | `openssl rand -base64 32` (exactly 32 bytes; seals tenants' provider credentials and webhook secrets) |
 
@@ -120,7 +121,10 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 |---|---|---|
 | `QUOTIFY_SERVICE_NAME` | `gateway` | |
 | `PORT` | `8000` | the HTTP API; the public domain's port |
-| `QUOTIFY_OPERATOR_TOKEN` | generated | at least 32 characters; the console's sign-in |
+| `QUOTIFY_OPERATOR_TOKEN` | generated | at least 32 characters; the machine credential of the operator API (scripts, `quotifyctl`); never typed into the console |
+| `QUOTIFY_OPERATOR_EMAILS` | e.g. `you@example.com` | comma separated; people who sign in with one of these and have verified it are platform operators (empty: nobody) |
+| `QUOTIFY_APP_URL` | `https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}` | where the browser returns after Google; also set on `plans-svc` for the links in mails |
+| `QUOTIFY_GOOGLE_CLIENT_ID`, `QUOTIFY_GOOGLE_CLIENT_SECRET` | from Google | optional: both set shows "Continue with Google" ([how](../../docs/13-admin-ui.md#sign-in-methods)); register `<console domain>/gw/auth/google/callback` as the redirect URI |
 | `QUOTIFY_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |
 | `QUOTIFY_INGEST_ADDR` | `dns:///ingest-svc.railway.internal:7002` | |
 | `QUOTIFY_AGGREGATOR_ADDR` | `dns:///aggregator.railway.internal:7003` | |
@@ -307,7 +311,7 @@ Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account
 | `QUOTIFY_DEMO` | `false` | shows the demo banner when `true` |
 | `BRAND_NAME` | `Quotify` | |
 
-`PREFILL_OPERATOR_TOKEN` stays empty: it pre-fills the sign-in form for everyone who opens the page, so it is for local stacks only.
+`PREFILL_PLAYGROUND` stays `false`: it pre-fills the operator playground's form, so it is for local stacks only. No credential is ever served to the browser.
 
 ### Backing services
 
@@ -344,7 +348,7 @@ then scale: Railway has no pre-deploy hook that can run a distroless image's `QU
 
 ## First tenant
 
-The operator token is `railway variable list --service gateway --kv | grep QUOTIFY_OPERATOR_TOKEN`. From a checkout:
+The operator token (for the API and `quotifyctl`; the console never asks for it) is `railway variable list --service gateway --kv | grep QUOTIFY_OPERATOR_TOKEN`. From a checkout:
 
 ```bash
 cd tools/quotifyctl
@@ -353,7 +357,7 @@ go run . seed --gateway https://<gateway domain> --operator-token "$TOKEN" --cur
 
 It creates an account with a sandbox and a live tenant, an API key for each (printed once) and a sample catalogue. Without `quotifyctl`, the call is
 `POST /admin/v1/accounts` with `Authorization: Bearer <operator token>` ([api/openapi/v1.yaml](../../api/openapi/v1.yaml)). Open the console at the
-`admin-ui` domain and sign in with the operator token.
+`admin-ui` domain, sign up (or sign in with an e-mailed code) with an address you listed in `QUOTIFY_OPERATOR_EMAILS` (set it with `OPERATOR_EMAILS=you@example.com deploy/railway/bootstrap.sh ...`), and open the operator console from the side bar.
 
 ## Demo mode
 

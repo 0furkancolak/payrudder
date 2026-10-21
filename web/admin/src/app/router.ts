@@ -10,9 +10,9 @@ import { onSessionLost } from "@/shared/lib/session";
 import RootLayout from "./layout/RootLayout.vue";
 
 // Code-based routes: every feature owns its routes and the app only composes them. Three groups:
-//  - public: sign in and sign up for people ("/"), and the operator's token page ("/operator");
+//  - public: sign in (password, e-mailed code, Google) and sign up for people ("/"); there is no sign-in of the operator's own;
 //  - the person's product under /app, behind a session;
-//  - the operator's console (/tenants, /playground, /dead-letters), behind the operator token.
+//  - the operator's console (/operator, /tenants, /playground, /dead-letters), behind the session of a person the server recognises as an operator.
 const root = createRootRoute({ component: RootLayout });
 const operator = createRoute({ getParentRoute: () => root, id: "signed-in", beforeLoad: requireOperator });
 

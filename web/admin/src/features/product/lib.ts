@@ -57,3 +57,6 @@ export function timezoneChoices(): string[] {
   const common = ["UTC", "Europe/Istanbul", "Europe/London", "Europe/Berlin", "Europe/Paris", "Europe/Madrid", "America/New_York", "America/Chicago", "America/Los_Angeles", "Asia/Dubai", "Asia/Tokyo", "Asia/Singapore", "Australia/Sydney"];
   return [own, ...common.filter((z) => z !== own)];
 }
+
+/** The reasons /signin?oauth_error= can carry (the gateway's Google callback sends one of them); anything else in the address is ignored. */
+export const OAUTH_ERRORS = ["state", "denied", "token", "email_unverified", "unavailable", "failed"];

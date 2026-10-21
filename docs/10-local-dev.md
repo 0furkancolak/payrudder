@@ -38,6 +38,16 @@ How it works and why it is safe to run again: it uses the public API only (a ses
 
 To start over, wipe the databases and seed again: `make clean` (removes the volumes), then `make setup` and `make dev`.
 
+## Signing in locally (three methods, and the operator)
+
+The sign-in page at <http://localhost:42301/signin> offers the three methods of [phase 41](phases/phase-41-signin-methods.md):
+
+- **Password.** `user1@example.com` / `password123` after `make dev` (the dev seed).
+- **An e-mailed code.** Choose the *Email code* tab, type any address (a new one gets an account when the code is entered), and open Mailpit at <http://localhost:42825>: the mail has the six digits. A code lives 10 minutes, works once, and is burned after five wrong tries; a new one can be asked for after a minute. `QUOTIFY_OTP_PEPPER` (the compose file gives plans-svc a local default) keys the hash of the code.
+- **Google.** The button is hidden until `QUOTIFY_GOOGLE_CLIENT_ID` and `QUOTIFY_GOOGLE_CLIENT_SECRET` are set on the gateway. To try it without Google: `docker compose -f deploy/compose/compose.yaml --profile oidc up -d mockoidc`, then run the gateway with `QUOTIFY_GOOGLE_CLIENT_ID=mock-client-id QUOTIFY_GOOGLE_CLIENT_SECRET=mock-client-secret QUOTIFY_GOOGLE_ISSUER=http://localhost:42899` (`make dev` reads the compose file's environment, so export them before it; in compose itself the issuer is `http://mockoidc:8099`). The stand-in at <http://localhost:42899> asks for any address. A real Google client: [docs/13-admin-ui.md](13-admin-ui.md#sign-in-methods).
+
+**The operator console** has no sign-in of its own and no token form. `QUOTIFY_OPERATOR_EMAILS` on the gateway lists the people who are operators; the compose file defaults it to `user1@example.com`, so after signing in as the dev user the side bar shows the operator console (`/operator`: tenants, playground, dead letters). Change the list with `QUOTIFY_OPERATOR_EMAILS=you@example.com make dev` (the address must be verified: a code sign-in verifies it). `QUOTIFY_OPERATOR_TOKEN` (default `local-operator-token-change-me-0123456789`) is the **machine** credential only: `quotifyctl`, `make seed` / `demo`, the end-to-end tests and the mock services use it against the API; it cannot be entered in the UI.
+
 
 Prerequisites: Docker (≥ 8 GB RAM for the full stack), Go 1.27+, `make`, `buf`, `sqlc`, `golangci-lint`, `k6` (optional),
 `kind` + `helm` (Phase 10). `make tools` builds the Go-based tools pinned in `tools/go.mod` into `./bin`

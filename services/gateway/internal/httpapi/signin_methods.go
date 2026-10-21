@@ -12,10 +12,11 @@ import (
 	"strings"
 	"time"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 )
 
 // The three ways to sign in (phase 41): e-mail and password (signin.go's signIn), a one-time code mailed to the address, and Google. The operator console has
@@ -190,6 +191,7 @@ func (s *Server) openState(value string) (loginState, bool) {
 func (s *Server) secureCookies() bool { return strings.HasPrefix(s.d.AppURL, "https://") }
 
 func (s *Server) setLoginCookie(w http.ResponseWriter, value string, maxAge int) {
+	//nolint:gosec // Secure follows the console's scheme: development runs on plain http, every deployment on https
 	http.SetCookie(w, &http.Cookie{Name: googleCookie, Value: value, Path: "/", MaxAge: maxAge, HttpOnly: true, Secure: s.secureCookies(),
 		// Lax: Google returns the browser with a top-level GET, which Lax sends; a request from another site's page or form does not carry it.
 		SameSite: http.SameSiteLaxMode})

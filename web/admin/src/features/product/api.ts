@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { api, unwrap } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
 import type { Currency } from "@/shared/lib/currencies";
-import { personToken, setActiveAccount, setPersonToken } from "@/shared/lib/session";
+import { personToken, setActiveAccount, setOperatorFlag, setPersonToken } from "@/shared/lib/session";
 
 // The product API (/auth, /app/v1): what a signed-in person sees in their accounts. Types come from the OpenAPI file.
 
@@ -38,7 +38,7 @@ export function useSignIn() {
     mutationFn: (body: { email: string; password: string }) => unwrap(api.POST("/auth/signin", { body })),
     onSuccess: (s) => {
       queries.clear();
-      setPersonToken(s.token ?? null);
+      setPersonToken(s.token ?? null, s.operator === true);
     },
   });
 }
@@ -57,7 +57,7 @@ export function useSignUp() {
       try {
         const s = await unwrap(api.POST("/auth/signin", { body: { email: body.email, password: body.password } }));
         queries.clear();
-        setPersonToken(s.token ?? null);
+        setPersonToken(s.token ?? null, s.operator === true);
         return { signedIn: true };
       } catch {
         return { signedIn: false };
@@ -111,7 +111,47 @@ export function useSignOut() {
 const enabled = computed(() => personToken.value !== null);
 
 export function useMe() {
-  return useQuery({ queryKey: productKeys.me, queryFn: () => unwrap(api.GET("/auth/me")), enabled });
+  return useQuery({
+    queryKey: productKeys.me,
+    queryFn: async () => {
+      const me = await unwrap(api.GET("/auth/me"));
+      // The server's verdict on whether this person is a platform operator decides whether the shell shows the operator console.
+      setOperatorFlag(me.operator === true);
+      return me;
+    },
+    enabled,
+  });
+}
+
+/** Which sign-in methods this deployment offers (the Google button shows only when it is set up). Password and one-time codes are always on. */
+export function useAuthMethods() {
+  return useQuery({
+    queryKey: ["auth", "methods"] as const,
+    queryFn: () => unwrap(api.GET("/auth/methods")),
+    staleTime: 5 * 60_000,
+    // The page works while this loads or fails: the password form is always there.
+    retry: false,
+  });
+}
+
+/** Asks for a one-time code by mail. The answer is the same whether the address has an account or not. */
+export function useRequestCode() {
+  const { locale } = useI18n();
+  return useMutation({ mutationFn: (email: string) => unwrap(api.POST("/auth/otp/request", { body: { email, locale: locale.value as "en" } })) });
+}
+
+/** Signs in (or signs up, for an address without an account) with the code that was mailed; keeps the session token of this tab. */
+export function useVerifyCode() {
+  const queries = useQueryClient();
+  const { locale } = useI18n();
+  return useMutation({
+    mutationFn: (v: { email: string; code: string; display_name?: string; account_name?: string }) =>
+      unwrap(api.POST("/auth/otp/verify", { body: { ...v, locale: locale.value as "en" } })),
+    onSuccess: (s) => {
+      queries.clear();
+      setPersonToken(s.token ?? null, s.operator === true);
+    },
+  });
 }
 
 export function useAccount() {
@@ -257,7 +297,7 @@ export function useAcceptInvitation() {
       unwrap(api.POST("/auth/invitations/accept", { body: { token: v.token, password: v.password, display_name: v.displayName, locale: locale.value as "en" } })),
     onSuccess: (s) => {
       queries.clear();
-      setPersonToken(s.token ?? null);
+      setPersonToken(s.token ?? null, s.operator === true);
     },
   });
 }

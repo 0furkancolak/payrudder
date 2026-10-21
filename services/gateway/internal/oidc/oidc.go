@@ -115,7 +115,7 @@ func (c *Client) do(req *http.Request, into any) error {
 		if errors.As(err, &ue) {
 			err = ue.Err
 		}
-		return fmt.Errorf("oidc: request failed: %v", err)
+		return fmt.Errorf("oidc: request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBody))
@@ -136,7 +136,7 @@ func (c *Client) discover(ctx context.Context) (*discovery, error) {
 	}
 	var d discovery
 	if err := c.get(ctx, c.cfg.Issuer+"/.well-known/openid-configuration", &d); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrDiscovery, err)
+		return nil, fmt.Errorf("%w: %w", ErrDiscovery, err)
 	}
 	// The document must name the issuer it was fetched for: a different one means the address is not the provider's.
 	if strings.TrimRight(d.Issuer, "/") != c.cfg.Issuer || d.AuthorizationEndpoint == "" || d.TokenEndpoint == "" || d.JWKSURI == "" {
@@ -176,7 +176,7 @@ func (c *Client) Begin(ctx context.Context) (Request, error) {
 	}
 	u, err := url.Parse(d.AuthorizationEndpoint)
 	if err != nil {
-		return Request{}, fmt.Errorf("%w: %v", ErrDiscovery, err)
+		return Request{}, fmt.Errorf("%w: %w", ErrDiscovery, err)
 	}
 	u.RawQuery = q.Encode()
 	return Request{State: state, Nonce: nonce, Verifier: verifier, URL: u.String()}, nil
@@ -381,7 +381,7 @@ func (c *Client) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
 	c.keysTried = now
 	var set jwks
 	if err := c.get(ctx, d.JWKSURI, &set); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrDiscovery, err)
+		return nil, fmt.Errorf("%w: %w", ErrDiscovery, err)
 	}
 	keys := map[string]*rsa.PublicKey{}
 	for _, k := range set.Keys {

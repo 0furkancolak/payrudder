@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"math/big"
 	"net/http"
 	"net/url"
 	"strings"
@@ -123,7 +124,7 @@ func (p *Provider) jwks(w http.ResponseWriter) {
 	pub := p.key.PublicKey
 	writeJSON(w, map[string]any{"keys": []map[string]any{{
 		"kty": "RSA", "use": "sig", "alg": "RS256", "kid": "oidctest-1",
-		"n": b64(pub.N.Bytes()), "e": b64([]byte{byte(pub.E >> 16), byte(pub.E >> 8), byte(pub.E)}),
+		"n": b64(pub.N.Bytes()), "e": b64(big.NewInt(int64(pub.E)).Bytes()),
 	}}})
 }
 
@@ -195,6 +196,7 @@ func (p *Provider) back(w http.ResponseWriter, r *http.Request, to string, q url
 		return
 	}
 	u.RawQuery = q.Encode()
+	//nolint:gosec // the target was checked against the registered redirect addresses by the callers
 	http.Redirect(w, r, u.String(), http.StatusFound)
 }
 

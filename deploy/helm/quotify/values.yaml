@@ -49,7 +49,17 @@ s3:
 smtp:
   addr: mailpit:1025
 
-operatorToken: local-operator-token-change-me-0123456789
+operatorToken: local-operator-token-change-me-0123456789   # the machine credential of the operator API (scripts, quotifyctl, tests); no page asks for it
+
+# How people sign in (phase 41): e-mail and password always, a one-time code mailed to the address, and Google when set up.
+auth:
+  appURL: http://localhost:42301   # the console's public address: mailed links and the return from Google point into it
+  operatorEmails: ""               # comma separated: people who sign in with one of these (verified) addresses are platform operators
+  otpPepper: local-otp-pepper-change-me-0123456789   # keys the hash of one-time codes (a secret: set your own, or use secrets.existingSecrets)
+  google:
+    clientId: ""                   # both set: the "Continue with Google" button appears (docs/13-admin-ui.md says how to create the client)
+    clientSecret: ""
+    redirectURL: ""                # empty: <appURL>/gw/auth/google/callback
 
 secrets:
   # Use your own Secrets instead of the ones rendered from the values above. The Secret named here must hold, per service,
@@ -85,10 +95,13 @@ services:
     nodePort: 30080          # the only service reachable from outside; null for ClusterIP (put an Ingress in front)
     metricsPort: 9100
     replicas: 1
-    uses: [operatorToken, paymentsToken]
+    uses: [operatorToken, paymentsToken, google]
     hpa: { enabled: false, max: 4, cpu: 70 }
     env:
       QUOTIFY_HTTP_ADDR: ":8000"
+      QUOTIFY_APP_URL: "{{ .Values.auth.appURL }}"
+      QUOTIFY_OPERATOR_EMAILS: "{{ .Values.auth.operatorEmails }}"
+      QUOTIFY_GOOGLE_REDIRECT_URL: "{{ .Values.auth.google.redirectURL }}"
       QUOTIFY_PAYMENTS_URL: http://payments-worker:8095
       QUOTIFY_PUBLIC_URL: "{{ .Values.global.publicURL }}"
       QUOTIFY_REDIS_URL: "{{ .Values.global.redisURL }}"
@@ -106,10 +119,11 @@ services:
     metricsPort: 9101
     migrate: true
     db: { role: plans, name: plans_db, app: true, system: true }
-    uses: [secretsKey]   # seals the signing secrets of tenants' webhook endpoints
+    uses: [secretsKey, otpPepper]   # seals the signing secrets of tenants' webhook endpoints; keys the hash of one-time sign-in codes
     allowFrom: [gateway, ingest-svc, aggregator, limits-svc, billing-svc, notifier, payments-worker]
     env:
       QUOTIFY_GRPC_ADDR: ":7001"
+      QUOTIFY_APP_URL: "{{ .Values.auth.appURL }}"
       QUOTIFY_REDIS_URL: "{{ .Values.global.redisURL }}"
       QUOTIFY_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
       QUOTIFY_ALLOWED_ENVIRONMENTS: "{{ .Values.global.allowedEnvironments }}"

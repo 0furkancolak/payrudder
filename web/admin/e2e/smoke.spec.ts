@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { operatorEmail, signInAsOperator } from "./operator";
 
 const gateway = process.env.QUOTIFY_GATEWAY_URL ?? "http://localhost:42800";
 const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
@@ -58,9 +59,7 @@ async function shot(page: Page, name: string, fullPage = true): Promise<void> {
 }
 
 async function signIn(page: Page): Promise<void> {
-  await page.goto("/operator");
-  await page.getByLabel("Operator token").fill(operatorToken);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signInAsOperator(page);
   await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
 }
 
@@ -106,7 +105,7 @@ test.describe.serial("operator console", () => {
     sagaId = (saga.body.saga as Json).id as string;
   });
 
-  test("an operator token opens an invoice and its saga timeline shows at least five transitions", async ({ page }) => {
+  test("an operator user opens an invoice and its saga timeline shows at least five transitions", async ({ page }) => {
     await signIn(page);
     await shot(page, "admin-tenants", false); // the list of a long-running dev stack is long: the first screen is enough
     await page.getByRole("row", { name: new RegExp(tenantId) }).getByRole("link").click();
@@ -120,13 +119,40 @@ test.describe.serial("operator console", () => {
     await expect(page.getByRole("button", { name: "Open PDF" })).toBeEnabled();
   });
 
-  test("a wrong token is refused and a signed-out visitor is sent to the sign-in page", async ({ page }) => {
+  test("a signed-out visitor is sent to the sign-in page, which has no token form, and the machine token is no password", async ({ page }) => {
     await page.goto("/operator");
-    await page.getByLabel("Operator token").fill("not-the-token");
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByText(/UNAUTHENTICATED|operator token/i)).toBeVisible();
+    await page.waitForURL("**/signin");
     await page.goto("/tenants");
-    await expect(page.getByLabel("Operator token")).toBeVisible();
+    await page.waitForURL("**/signin");
+    await expect(page.getByLabel(/operator token/i)).toHaveCount(0);
+    // The API's machine credential is not a sign-in either: typed as a password it is just a wrong one.
+    await page.getByLabel("E-mail").fill(operatorEmail);
+    await page.getByLabel("Password", { exact: true }).fill(operatorToken);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByRole("alert")).toContainText("Wrong e-mail or password");
+  });
+
+  test("a person who is not an operator cannot open the operator console, in the page or in the API", async ({ page }) => {
+    const email = `plain-${Date.now()}@example.com`;
+    const signup = await fetch(`${gateway}/auth/signup`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password: "correct horse battery", account_name: "Plain Co" }),
+    });
+    expect(signup.status).toBe(202);
+    const signin = await call("POST", "/auth/signin", "", { email, password: "correct horse battery" });
+    expect(signin.status).toBe(200);
+    const session = signin.body.token as string;
+    expect(signin.body.operator).toBe(false);
+    const refused = await call("GET", "/admin/v1/tenants", session);
+    expect(refused.status).toBe(403);
+    await page.goto("/signin");
+    await page.getByLabel("E-mail").fill(email);
+    await page.getByLabel("Password", { exact: true }).fill("correct horse battery");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL("**/app");
+    await expect(page.getByRole("link", { name: "Operator console" })).toHaveCount(0);
+    await page.goto("/tenants");
+    await page.waitForURL("**/app");
   });
 
   test("redriving a dead letter takes it out of the dead-letter view", async ({ page }) => {

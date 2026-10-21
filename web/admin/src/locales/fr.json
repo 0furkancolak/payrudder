@@ -14,18 +14,14 @@
     "tenants": "Locataires",
     "playground": "Bac à sable",
     "deadLetters": "Lettres mortes",
-    "signOut": "Se déconnecter"
+    "signOut": "Se déconnecter",
+    "operator": "Console opérateur",
+    "myApps": "Mes applications"
   },
   "common": {
     "loading": "Chargement…",
     "unknown": "?",
     "cancel": "Annuler"
-  },
-  "signIn": {
-    "title": "Console opérateur",
-    "intro": "Lit et agit uniquement via la passerelle. Le jeton reste dans cet onglet du navigateur (stockage de session).",
-    "tokenLabel": "Jeton opérateur",
-    "submit": "Se connecter"
   },
   "enums": {
     "environment": {
@@ -1417,6 +1413,18 @@
       "member": {
         "last_owner": "Un compte doit garder au moins un propriétaire. Nommez d'abord un autre propriétaire.",
         "not_found": "Cette personne n'est pas membre du compte."
+      },
+      "otp": {
+        "invalid": "Ce code est incorrect, expiré ou déjà utilisé. Vérifiez le dernier e-mail ou demandez un nouveau code."
+      },
+      "oauth": {
+        "conflict": "Deux connexions se sont croisées. Réessayez.",
+        "email_unverified": "Google n'a pas vérifié d'adresse e-mail pour ce compte : il ne peut pas servir à se connecter.",
+        "invalid": "Cette connexion n'a pas pu être terminée. Réessayez.",
+        "not_configured": "La connexion avec Google n'est pas configurée ici."
+      },
+      "operator": {
+        "forbidden": "Cette zone est réservée aux opérateurs de la plateforme."
       }
     }
   },
@@ -1486,9 +1494,36 @@
       "submit": "Se connecter",
       "cta": "Se connecter",
       "noAccount": "Nouveau ici ?",
-      "operator": "Console opérateur",
       "expired": "Votre session a pris fin. Reconnectez-vous pour continuer.",
-      "forgot": "Mot de passe oublié ?"
+      "forgot": "Mot de passe oublié ?",
+      "methods": "Méthode de connexion",
+      "tabPassword": "Mot de passe",
+      "tabCode": "Code par e-mail",
+      "or": "ou",
+      "google": "Continuer avec Google",
+      "completing": "Connexion en cours",
+      "completingIntro": "Finalisation de la connexion avec Google. Un instant.",
+      "oauthError": {
+        "state": "La connexion avec Google n'a pas pu être vérifiée (trop longue, ou page ouverte deux fois). Réessayez.",
+        "denied": "Vous avez annulé la connexion avec Google. Réessayez ou utilisez une autre méthode.",
+        "token": "La réponse de Google n'a pas pu être vérifiée. Réessayez.",
+        "email_unverified": "Google n'a pas vérifié d'adresse e-mail pour ce compte : il ne peut pas servir à se connecter.",
+        "unavailable": "La connexion avec Google n'est pas disponible pour le moment. Réessayez dans un instant ou utilisez une autre méthode.",
+        "failed": "La connexion avec Google n'a pas pu être terminée. Réessayez ou utilisez une autre méthode."
+      },
+      "code": {
+        "label": "Code à 6 chiffres",
+        "digit": "Chiffre {n} sur {total}",
+        "intro": "Nous vous enverrons un code à 6 chiffres par e-mail. Aucun mot de passe nécessaire.",
+        "formLabel": "Se connecter avec un code à usage unique",
+        "verifyLabel": "Saisir le code à usage unique",
+        "send": "Envoyez-moi un code",
+        "sentTo": "Si {email} peut recevoir des e-mails, un code à 6 chiffres est en route. Il est valable 10 minutes.",
+        "resent": "Un nouveau code est en route.",
+        "resend": "Envoyer un nouveau code",
+        "resendIn": "Envoyer un nouveau code dans {seconds} s",
+        "change": "Utiliser une autre adresse"
+      }
     },
     "signUp": {
       "title": "Créez votre compte",
@@ -1497,7 +1532,11 @@
       "cta": "Créer un compte",
       "haveAccount": "Vous avez déjà un compte ?",
       "checkTitle": "Consultez votre boîte de réception",
-      "checkBody": "Nous avons envoyé un message à {email}. S'il s'agit d'une nouvelle adresse, ouvrez le lien qu'il contient pour la confirmer. Si elle a déjà un compte, connectez-vous avec celui-ci ou réinitialisez son mot de passe."
+      "checkBody": "Nous avons envoyé un message à {email}. S'il s'agit d'une nouvelle adresse, ouvrez le lien qu'il contient pour la confirmer. Si elle a déjà un compte, connectez-vous avec celui-ci ou réinitialisez son mot de passe.",
+      "code": {
+        "intro": "Pas de mot de passe à retenir : nous vous envoyons un code à 6 chiffres par e-mail et créons votre compte dès que vous le saisissez.",
+        "organisation": "Organisation (facultatif)"
+      }
     },
     "home": {
       "title": "Votre organisation",
