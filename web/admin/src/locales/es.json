@@ -1382,7 +1382,7 @@
         "quota": "Una cuenta puede tener como máximo 20 aplicaciones."
       },
       "auth": {
-        "invalid_credentials": "Correo o contraseña incorrectos, o demasiados intentos. Inténtelo de nuevo en unos minutos.",
+        "invalid_credentials": "Correo o contraseña incorrectos, o demasiados intentos. Tras cinco contraseñas erróneas, el acceso con esa dirección se pausa 15 minutos, incluso con la contraseña correcta.",
         "rate_limited": "Demasiados intentos desde esta dirección. Inténtelo de nuevo en un minuto."
       },
       "session": {
@@ -1423,6 +1423,12 @@
       },
       "operator": {
         "forbidden": "Esta zona es para los operadores de la plataforma."
+      }
+    },
+    "gateway": {
+      "dashboard": {
+        "bad_period": "Ese periodo no es válido. Elija 7, 30 o 90 días, este año, o dos días con el primero no posterior al último.",
+        "range_too_long": "Un periodo dura como máximo dos años."
       }
     }
   },
@@ -1539,7 +1545,7 @@
     "home": {
       "title": "Su organización",
       "welcome": "Le damos la bienvenida, {name}",
-      "intro": "Sus aplicaciones y cómo les fue con los pagos en los últimos 30 días.",
+      "intro": "Sus aplicaciones y cómo les va.",
       "create": "Crear aplicación",
       "emptyTitle": "Cree su primera aplicación",
       "emptyBody": "Una aplicación es un producto que usted factura. Viene con un sandbox para probar y un entorno de producción para pagos reales, cada uno con sus propias claves de API.",
@@ -1863,5 +1869,138 @@
     "timezone": "Zona horaria",
     "timezonePlaceholder": "Buscar una zona horaria",
     "noMatch": "Sin coincidencias"
+  },
+  "dash": {
+    "retry": "Reintentar",
+    "stale": "No se pudieron actualizar las cifras; lo que ve es de la última vez que se pudo.",
+    "degraded": "{sections} no respondió. El resto de la página está al día.",
+    "sections": {
+      "revenue": "Ingresos",
+      "invoices": "Facturas",
+      "subscriptions": "Suscripciones",
+      "customers": "Clientes",
+      "payments": "Pagos",
+      "renewals": "Cobros próximos",
+      "usage": "Uso",
+      "webhooks": "Webhooks",
+      "activity": "Actividad"
+    },
+    "period": {
+      "label": "Periodo",
+      "7d": "7 días",
+      "30d": "30 días",
+      "90d": "90 días",
+      "ytd": "Este año",
+      "custom": "Personalizado",
+      "from": "Primer día",
+      "to": "Último día",
+      "compare": "Comparar con el periodo anterior",
+      "badRange": "El primer día es posterior al último."
+    },
+    "currency": {
+      "label": "Moneda",
+      "own": "propia"
+    },
+    "kpi": {
+      "net": "Ingresos netos",
+      "netSub": "Bruto {gross} · reembolsos {refunds}",
+      "mrr": "MRR",
+      "mrrSub": "ARR {arr} · {n} suscriptores",
+      "arpu": "ARPU",
+      "arpuSub": "ingresos netos por suscriptor",
+      "customers": "Clientes nuevos",
+      "customersSub": "{total} en total · todas las monedas",
+      "churn": "Bajas",
+      "churnSub": "{n} terminadas · {mrr} de MRR perdido",
+      "failedRate": "Pagos fallidos",
+      "failedSub": "{failed} fallidos de {attempts} intentos",
+      "refunds": "Reembolsos",
+      "refundsSub": "Impuesto cobrado {tax}",
+      "open": "Facturas abiertas",
+      "openSub": "{n} abierta | {n} abiertas"
+    },
+    "delta": {
+      "new": "nuevo",
+      "before": "Antes: {value}",
+      "srUp": "Sube {percent} respecto al periodo anterior",
+      "srDown": "Baja {percent} respecto al periodo anterior",
+      "srFlat": "Sin cambios respecto al periodo anterior",
+      "srNew": "Nuevo respecto al periodo anterior"
+    },
+    "chart": {
+      "title": "Ingresos netos",
+      "note": "Tras reembolsos e impuestos: la cifra de la página de contabilidad",
+      "current": "Este periodo",
+      "previous": "Periodo anterior",
+      "total": "Total",
+      "before": "antes",
+      "empty": "Sin ingresos en este periodo.",
+      "summary": "Ingresos netos del {from} al {to}: {total}"
+    },
+    "payments": {
+      "title": "Pagos",
+      "attempts": "intentos",
+      "label": "{n} intentos de pago",
+      "note": "Se cuenta por intento: una tarjeta rechazada que se reintenta cuenta cada vez, y los reembolsos se cuentan aparte.",
+      "truncated": "Solo se leen los 1000 pagos más recientes; los más antiguos de este periodo no se cuentan."
+    },
+    "top": {
+      "customers": "Mejores clientes",
+      "customersEmpty": "Nadie ha pagado en este periodo.",
+      "packages": "Mejores paquetes",
+      "packagesEmpty": "Aún no hay suscripciones en {currency}.",
+      "perMonth": "{amount} / mes",
+      "subs": "{n} suscriptor | {n} suscriptores"
+    },
+    "aging": {
+      "title": "Facturas abiertas por antigüedad",
+      "empty": "No hay facturas abiertas.",
+      "0-7": "0 a 7 días",
+      "8-30": "8 a 30 días",
+      "31-60": "31 a 60 días",
+      "61+": "Más de 60 días",
+      "count": "{n} factura | {n} facturas"
+    },
+    "usage": {
+      "title": "Uso frente a límites",
+      "intro": "{n} clientes con suscripción, {period}",
+      "over": "{n} por encima del límite",
+      "near": "{n} cerca del límite",
+      "ok": "dentro de los límites",
+      "empty": "Ninguno de los clientes revisados tiene un límite."
+    },
+    "renewals": {
+      "title": "Cobros próximos",
+      "empty": "No hay cobros en {currency} en los próximos 30 días.",
+      "truncated": "Solo se revisan las 200 suscripciones más recientes.",
+      "note": "La fecha es el día en que vence la cuota o la factura del mes."
+    },
+    "activity": {
+      "title": "Actividad reciente",
+      "empty": "Todavía no ha pasado nada.",
+      "invoice": "Factura {label}",
+      "payment": "Pago",
+      "refund": "Reembolso",
+      "subscription": "Suscripción a {plan}",
+      "state": {
+        "active": "Activa",
+        "trialing": "Prueba",
+        "past_due": "Vencida",
+        "paused": "En pausa",
+        "cancelled": "Cancelada"
+      }
+    },
+    "empty": {
+      "title": "Aún no hay nada que mostrar",
+      "body": "Cuando se añada su primer cliente y pague, los ingresos, las suscripciones y los pagos aparecerán aquí, un bloque por moneda."
+    },
+    "org": {
+      "title": "Todas las aplicaciones",
+      "intro": "Cada aplicación de la organización en el mismo periodo. Los importes de monedas distintas nunca se suman.",
+      "byApp": "Ingresos netos por aplicación",
+      "apps": "{n} aplicación | {n} aplicaciones",
+      "none": "Ninguna aplicación tiene ingresos en este periodo.",
+      "open": "Abrir la aplicación"
+    }
   }
 }

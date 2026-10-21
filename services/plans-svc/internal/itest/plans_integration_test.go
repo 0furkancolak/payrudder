@@ -53,6 +53,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("MailSettings", testMailSettings)
 	t.Run("CurrencyFeesAndCustomerBilling", testCurrencyFeesAndCustomerBilling)
 	t.Run("ManyCurrenciesAndZones", testManyCurrenciesAndZones)
+	t.Run("DashboardFacts", testDashboardFacts)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
 }

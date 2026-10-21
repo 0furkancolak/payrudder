@@ -17,3 +17,7 @@ func New(qry *query.Queries) *Handler { return &Handler{qry: qry} }
 func (h *Handler) GetSubscriptionReport(ctx context.Context, req *plansv1.GetSubscriptionReportRequest) (*plansv1.GetSubscriptionReportResponse, error) {
 	return h.qry.Subscriptions(ctx, req)
 }
+
+func (h *Handler) GetCustomerStats(ctx context.Context, req *plansv1.GetCustomerStatsRequest) (*plansv1.GetCustomerStatsResponse, error) {
+	return h.qry.Customers(ctx, req)
+}

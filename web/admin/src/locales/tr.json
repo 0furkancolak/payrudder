@@ -1382,7 +1382,7 @@
         "quota": "Bir hesapta en fazla 20 uygulama olabilir."
       },
       "auth": {
-        "invalid_credentials": "E-posta ya da parola yanlış veya çok fazla deneme yapıldı. Birkaç dakika sonra yeniden deneyin.",
+        "invalid_credentials": "E-posta ya da parola yanlış veya çok fazla deneme yapıldı. Beş yanlış paroladan sonra o adres için giriş, doğru parolayla bile 15 dakika durdurulur.",
         "rate_limited": "Bu adresten çok fazla deneme yapıldı. Bir dakika sonra yeniden deneyin."
       },
       "session": {
@@ -1423,6 +1423,12 @@
       },
       "operator": {
         "forbidden": "Bu alan platform operatörlerine ayrılmıştır."
+      }
+    },
+    "gateway": {
+      "dashboard": {
+        "bad_period": "Bu dönem geçerli değil. 7, 30 ya da 90 gün, bu yıl veya ilki sonuncudan sonra olmayan iki gün seçin.",
+        "range_too_long": "Bir dönem en fazla iki yıl olabilir."
       }
     }
   },
@@ -1539,7 +1545,7 @@
     "home": {
       "title": "Kuruluşunuz",
       "welcome": "Hoş geldiniz, {name}",
-      "intro": "Uygulamalarınız ve son 30 günde ödemelerinin durumu.",
+      "intro": "Uygulamalarınız ve nasıl gittikleri.",
       "create": "Uygulama oluştur",
       "emptyTitle": "İlk uygulamanızı oluşturun",
       "emptyBody": "Uygulama, faturalandırdığınız bir üründür. Denemek için bir sandbox ve gerçek ödemeler için bir canlı ortamla gelir; ikisinin de kendi API anahtarları vardır.",
@@ -1863,5 +1869,138 @@
     "timezone": "Saat dilimi",
     "timezonePlaceholder": "Saat dilimi ara",
     "noMatch": "Eşleşen yok"
+  },
+  "dash": {
+    "retry": "Tekrar dene",
+    "stale": "Rakamlar yenilenemedi; gördükleriniz en son yenilenebildiği andan.",
+    "degraded": "{sections} yanıt vermedi. Sayfanın geri kalanı güncel.",
+    "sections": {
+      "revenue": "Gelir",
+      "invoices": "Faturalar",
+      "subscriptions": "Abonelikler",
+      "customers": "Müşteriler",
+      "payments": "Ödemeler",
+      "renewals": "Yaklaşan tahsilatlar",
+      "usage": "Kullanım",
+      "webhooks": "Webhook'lar",
+      "activity": "Etkinlik"
+    },
+    "period": {
+      "label": "Dönem",
+      "7d": "7 gün",
+      "30d": "30 gün",
+      "90d": "90 gün",
+      "ytd": "Bu yıl",
+      "custom": "Özel",
+      "from": "İlk gün",
+      "to": "Son gün",
+      "compare": "Önceki dönemle karşılaştır",
+      "badRange": "İlk gün son günden sonra."
+    },
+    "currency": {
+      "label": "Para birimi",
+      "own": "kendi"
+    },
+    "kpi": {
+      "net": "Net gelir",
+      "netSub": "Brüt {gross} · iadeler {refunds}",
+      "mrr": "MRR",
+      "mrrSub": "ARR {arr} · {n} abone",
+      "arpu": "ARPU",
+      "arpuSub": "abone başına net gelir",
+      "customers": "Yeni müşteriler",
+      "customersSub": "toplam {total} · tüm para birimleri",
+      "churn": "Kayıp oranı",
+      "churnSub": "{n} sona erdi · {mrr} MRR kaybı",
+      "failedRate": "Başarısız ödemeler",
+      "failedSub": "{attempts} denemenin {failed} tanesi başarısız",
+      "refunds": "İadeler",
+      "refundsSub": "Tahsil edilen vergi {tax}",
+      "open": "Açık faturalar",
+      "openSub": "{n} açık | {n} açık"
+    },
+    "delta": {
+      "new": "yeni",
+      "before": "Önceki: {value}",
+      "srUp": "Önceki döneme göre %{percent} arttı",
+      "srDown": "Önceki döneme göre %{percent} azaldı",
+      "srFlat": "Önceki döneme göre değişmedi",
+      "srNew": "Önceki döneme göre yeni"
+    },
+    "chart": {
+      "title": "Net gelir",
+      "note": "İadeler ve vergiden sonra: muhasebe sayfasındaki rakam",
+      "current": "Bu dönem",
+      "previous": "Önceki dönem",
+      "total": "Toplam",
+      "before": "önceki",
+      "empty": "Bu dönemde gelir yok.",
+      "summary": "{from} ile {to} arasındaki net gelir: {total}"
+    },
+    "payments": {
+      "title": "Ödemeler",
+      "attempts": "deneme",
+      "label": "{n} ödeme denemesi",
+      "note": "Deneme başına sayılır: yeniden denenen reddedilmiş bir kart her seferinde sayılır, iadeler ayrı sayılır.",
+      "truncated": "Yalnızca en yeni 1000 ödeme okunur; bu dönemdeki daha eskiler sayılmaz."
+    },
+    "top": {
+      "customers": "En çok ödeyen müşteriler",
+      "customersEmpty": "Bu dönemde kimse ödeme yapmadı.",
+      "packages": "En çok kazandıran paketler",
+      "packagesEmpty": "Henüz {currency} cinsinden abonelik yok.",
+      "perMonth": "{amount} / ay",
+      "subs": "{n} abone | {n} abone"
+    },
+    "aging": {
+      "title": "Açık faturalar, yaşa göre",
+      "empty": "Açık fatura yok.",
+      "0-7": "0-7 gün",
+      "8-30": "8-30 gün",
+      "31-60": "31-60 gün",
+      "61+": "60 günden fazla",
+      "count": "{n} fatura | {n} fatura"
+    },
+    "usage": {
+      "title": "Kullanım ve limitler",
+      "intro": "Abonelik sahibi {n} müşteri, {period}",
+      "over": "{n} limiti aştı",
+      "near": "{n} limite yakın",
+      "ok": "limitler içinde",
+      "empty": "Bakılan müşterilerin hiçbirinde limit yok."
+    },
+    "renewals": {
+      "title": "Yaklaşan tahsilatlar",
+      "empty": "Önümüzdeki 30 günde {currency} cinsinden tahsilat yok.",
+      "truncated": "Yalnızca en yeni 200 aboneliğe bakılır.",
+      "note": "Tarih, ücretin ya da ayın faturasının vadesinin geldiği gündür."
+    },
+    "activity": {
+      "title": "Son etkinlik",
+      "empty": "Henüz bir şey olmadı.",
+      "invoice": "Fatura {label}",
+      "payment": "Ödeme",
+      "refund": "İade",
+      "subscription": "{plan} aboneliği",
+      "state": {
+        "active": "Etkin",
+        "trialing": "Deneme",
+        "past_due": "Gecikmiş",
+        "paused": "Duraklatıldı",
+        "cancelled": "İptal edildi"
+      }
+    },
+    "empty": {
+      "title": "Henüz gösterecek bir şey yok",
+      "body": "İlk müşteriniz eklenip ödeme yaptığında gelir, abonelikler ve ödemeler burada, her para birimi için ayrı bir blokta görünür."
+    },
+    "org": {
+      "title": "Tüm uygulamalar",
+      "intro": "Kuruluşun her uygulaması aynı dönem için. Farklı para birimlerindeki tutarlar asla toplanmaz.",
+      "byApp": "Uygulamaya göre net gelir",
+      "apps": "{n} uygulama | {n} uygulama",
+      "none": "Bu dönemde hiçbir uygulamanın geliri yok.",
+      "open": "Uygulamayı aç"
+    }
   }
 }

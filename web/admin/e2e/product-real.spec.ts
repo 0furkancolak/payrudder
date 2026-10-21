@@ -145,22 +145,22 @@ test.describe("product app, real stack", () => {
 
     await page.goto(`/app/apps/${appId}?env=sandbox`);
     await expect(page.getByRole("heading", { name: "Seed Shop" })).toBeVisible();
-    // Paid: two TRY invoices (198.00) and one EUR invoice (25.00); never summed across currencies.
+    // One currency at a time, never added up: the tenant's own (TRY) first. Net of the 30.00 refund: 198.00 - 30.00, the figure of the accounting page.
     const main = page.getByRole("main");
-    await expect(main).toContainText("TRY 198.00");
-    await expect(main).toContainText("€25.00");
-    await expect(main).toContainText("TRY 99.00 outstanding");
-    await expect(main.getByText("Billed TRY 297.00")).toBeVisible();
-    await expect(main.getByText("Collected TRY 198.00")).toBeVisible();
-    await expect(main.getByText("Billed €25.00")).toBeVisible();
-    await expect(main.getByText("TRY 30.00").first()).toBeVisible(); // the refund row
-    await expect(main.getByText("1 endpoint, all fine")).toBeVisible();
-    await expect(main.getByText("Customers").first()).toBeVisible();
+    await expect(page.getByTestId("currency-tab-TRY")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("kpi-revenue-value")).toHaveText(/^TRY\s168\.00$/);
+    await expect(page.getByTestId("kpi-refunds-value")).toHaveText(/^TRY\s30\.00$/);
+    await expect(page.getByTestId("kpi-open-value")).toHaveText(/^TRY\s99\.00$/);
+    await expect(page.getByTestId("kpi-mrr-value")).toHaveText(/^TRY\s297\.00$/);
+    await page.getByTestId("currency-tab-EUR").click();
+    await expect(page.getByTestId("kpi-revenue-value")).toHaveText("€25.00");
+    await expect(page.getByTestId("kpi-mrr-value")).toHaveText("€25.00");
+    await expect(main.getByTestId("health")).toContainText("endpoint");
     await shoot(page, "r2-dashboard-sandbox");
 
     await page.goto(`/app/apps/${appId}?env=live`);
     await expect(page.getByRole("heading", { name: "Seed Shop" })).toBeVisible();
-    await expect(page.getByRole("main")).toContainText("TRY 0.00");
+    await expect(page.getByTestId("dash-empty")).toBeVisible(); // nothing in live yet: the empty state, not a page of zeros
     await expect(page.getByRole("main")).not.toContainText("TRY 198.00"); // the live tenant is another tenant
     await shoot(page, "r3-dashboard-live");
     expect(problems.filter((p) => !/favicon/.test(p))).toEqual([]);

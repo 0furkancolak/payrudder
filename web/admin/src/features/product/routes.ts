@@ -9,6 +9,7 @@ import { pricingRoutes } from "@/features/pricing/routes";
 import { reportRoutes } from "@/features/reports/routes";
 import { subscriptionRoutes } from "@/features/subscriptions/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
+import { dashSearch } from "@/features/dashboard/lib";
 import { lazyPage } from "@/shared/lib/lazy";
 import { isPerson } from "@/shared/lib/session";
 import { OAUTH_ERRORS } from "./lib";
@@ -52,12 +53,12 @@ export function publicProductRoutes(root: AnyRoute) {
 /** Everything under /app: a person's organisation, an app's dashboard, the account settings and the deeper views of an environment. */
 export function personRoutes(parent: AnyRoute) {
   const signedIn = createRoute({ getParentRoute: () => parent, id: "person", beforeLoad: requirePerson });
-  const home = createRoute({ getParentRoute: () => signedIn, path: "/app", component: lazy(() => import("./OrgHome.vue")) });
+  const home = createRoute({ getParentRoute: () => signedIn, path: "/app", component: lazy(() => import("./OrgHome.vue")), validateSearch: dashSearch });
   const dashboard = createRoute({
     getParentRoute: () => signedIn,
     path: "/app/apps/$appId",
     component: lazy(() => import("./AppDashboard.vue")),
-    validateSearch: (s: Record<string, unknown>) => (s.env === "sandbox" ? { env: "sandbox" } : {}),
+    validateSearch: dashSearch,
   });
   const envSearch = (s: Record<string, unknown>) => (s.env === "sandbox" ? { env: "sandbox" } : {});
   const keys = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/keys", component: lazy(() => import("./ApiKeysPage.vue")), validateSearch: envSearch });

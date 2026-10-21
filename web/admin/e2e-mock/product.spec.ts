@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
-import { APP, INVOICE_1, LIVE, SESSION, billingGateway, overview, productGateway, signInAsAda, user } from "./product";
+import { dashboardFixture } from "./dashboard";
+import { APP, INVOICE_1, LIVE, SESSION, billingGateway, productGateway, signInAsAda, user } from "./product";
 import { pickCurrency } from "./ui";
 
 // The end-user product: sign up and in, the organisation home, an app's dashboard, API keys. The gateway is mocked; SHOTS=<dir> also writes screenshots
@@ -113,59 +114,45 @@ test.describe("organisation home", () => {
 });
 
 test.describe("app dashboard", () => {
-  test("shows the numbers of the live environment, per currency, with statuses as words", async ({ page }) => {
+  test("shows the numbers of the live environment, one currency at a time, with the change since the period before", async ({ page }) => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}`);
     await expect(page.getByRole("heading", { name: "Web shop" })).toBeVisible();
-    await expect(page.getByTestId("kpi-revenue")).toHaveText("$12,840.50");
-    await expect(page.getByTestId("kpi-payments")).toHaveText("146");
-    await expect(page.getByTestId("kpi-open")).toHaveText("12");
-    await expect(page.getByTestId("kpi-customers")).toHaveText("214");
-    // The donut is a picture of numbers that are also listed.
-    await expect(page.getByRole("img", { name: "146 payments by status" })).toBeVisible();
-    const donut = page.getByRole("region", { name: "Payments by status" });
-    await expect(donut).toContainText("Paid");
-    await expect(donut).toContainText("128");
-    await expect(donut).toContainText("Failed");
-    // Currencies are never added together: each has its own bar.
-    const currencies = page.getByRole("region", { name: "Revenue by currency" });
-    await expect(currencies).toContainText("TRY");
-    await expect(currencies).toContainText("USD");
-    // The payments table.
-    const payments = page.getByRole("region", { name: "Recent payments" });
-    await expect(payments.getByRole("row")).toHaveCount(6);
-    await expect(payments.getByRole("row", { name: /Failed/ })).toContainText("$150.00");
-    await expect(payments.getByRole("row", { name: /Refunded/ })).toContainText("-$49.00");
-    // Health.
-    const health = page.getByRole("region", { name: "Health" });
-    await expect(health).toContainText("2 failed deliveries");
-    await expect(health).toContainText("iyzico");
-    await expect(gw.called("GET", `/app/v1/apps/${APP}/overview`)[0]?.query.get("environment")).toBe("live");
+    // The tenant's own currency first; every figure is in it.
+    await expect(page.getByTestId("currency-tab-TRY")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("kpi-revenue-value")).toContainText("TRY");
+    await expect(page.getByTestId("kpi-revenue-delta")).toContainText("%");
+    await expect(page.getByTestId("kpi-customers-value")).toHaveText("18");
+    await expect(page.getByRole("img", { name: /payment attempts/ })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Health" })).toContainText("1 failed deliveries");
+    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`)[0]?.query.get("environment")).toBe("live");
+    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`)[0]?.query.get("period")).toBe("30d");
     await shoot(page, "06-dashboard");
   });
 
-  test("the switcher shows the sandbox, which says it is not real money", async ({ page }) => {
+  test("the environment switch of the header shows the sandbox, which says it is not real money", async ({ page }) => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}`);
     await expect(page.getByRole("note")).toHaveCount(0);
-    await page.getByRole("radio", { name: "Sandbox" }).check({ force: true });
+    await page.getByTestId("env-switch").getByRole("radio", { name: "Sandbox" }).check({ force: true });
     await expect(page.getByRole("note")).toContainText("Nothing here is real money");
     await expect(page).toHaveURL(/env=sandbox/);
-    await expect.poll(() => gw.called("GET", `/app/v1/apps/${APP}/overview`).some((c) => c.query.get("environment") === "sandbox")).toBe(true);
+    await expect.poll(() => gw.called("GET", `/app/v1/apps/${APP}/dashboard`).some((c) => c.query.get("environment") === "sandbox")).toBe(true);
   });
 
   test("a section that did not answer is named and the rest stays", async ({ page }) => {
-    const down = overview("live", { status: "degraded", unavailable: ["payments"], payments: null });
-    await productGateway(new MockGateway(), { overview: down }).gw.install(page);
+    const body: Record<string, unknown> = { ...dashboardFixture({}), status: "degraded", unavailable: ["payments"] };
+    for (const c of body.currencies as { payments: unknown; prev_payments: unknown }[]) c.payments = c.prev_payments = null;
+    await productGateway(new MockGateway(), { dashboard: body }).gw.install(page);
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}`);
-    await expect(page.getByRole("status").filter({ hasText: "did not answer" })).toContainText("payments");
-    await expect(page.getByTestId("kpi-open")).toHaveText("12");
-    await expect(page.getByRole("region", { name: "Recent payments" })).toContainText("Not available right now");
+    await expect(page.getByTestId("dash-degraded")).toContainText("Payments did not answer");
+    await expect(page.getByTestId("kpi-revenue-value")).toContainText("TRY");
+    await expect(page.getByTestId("payments-card")).toContainText("Not available right now");
   });
 
   test("an API key is shown once, can be copied, and a revoked one is struck out", async ({ page, context }) => {

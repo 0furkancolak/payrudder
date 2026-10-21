@@ -52,6 +52,7 @@ const (
 	BillingService_VoidExpense_FullMethodName          = "/quotify.billing.v1.BillingService/VoidExpense"
 	BillingService_ListExpenses_FullMethodName         = "/quotify.billing.v1.BillingService/ListExpenses"
 	BillingService_GetAccountingSummary_FullMethodName = "/quotify.billing.v1.BillingService/GetAccountingSummary"
+	BillingService_GetDashboardStats_FullMethodName    = "/quotify.billing.v1.BillingService/GetDashboardStats"
 	BillingService_GetCreditSettings_FullMethodName    = "/quotify.billing.v1.BillingService/GetCreditSettings"
 	BillingService_SetCreditSettings_FullMethodName    = "/quotify.billing.v1.BillingService/SetCreditSettings"
 )
@@ -122,6 +123,8 @@ type BillingServiceClient interface {
 	ListExpenses(ctx context.Context, in *ListExpensesRequest, opts ...grpc.CallOption) (*ListExpensesResponse, error)
 	// GetAccountingSummary adds up income (from paid invoices, tax and refunds) and expenses over a period, one block per currency. Currencies are never converted or added together.
 	GetAccountingSummary(ctx context.Context, in *GetAccountingSummaryRequest, opts ...grpc.CallOption) (*GetAccountingSummaryResponse, error)
+	// GetDashboardStats reads what a dashboard needs that the accounting summary does not carry: the customers who paid most in a period and how old the open invoices are, one block per currency.
+	GetDashboardStats(ctx context.Context, in *GetDashboardStatsRequest, opts ...grpc.CallOption) (*GetDashboardStatsResponse, error)
 	// GetCreditSettings returns the balance below which a customer's consume announces credits.low (0: off).
 	GetCreditSettings(ctx context.Context, in *GetCreditSettingsRequest, opts ...grpc.CallOption) (*GetCreditSettingsResponse, error)
 	// SetCreditSettings sets that balance.
@@ -466,6 +469,16 @@ func (c *billingServiceClient) GetAccountingSummary(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *billingServiceClient) GetDashboardStats(ctx context.Context, in *GetDashboardStatsRequest, opts ...grpc.CallOption) (*GetDashboardStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDashboardStatsResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetDashboardStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *billingServiceClient) GetCreditSettings(ctx context.Context, in *GetCreditSettingsRequest, opts ...grpc.CallOption) (*GetCreditSettingsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetCreditSettingsResponse)
@@ -552,6 +565,8 @@ type BillingServiceServer interface {
 	ListExpenses(context.Context, *ListExpensesRequest) (*ListExpensesResponse, error)
 	// GetAccountingSummary adds up income (from paid invoices, tax and refunds) and expenses over a period, one block per currency. Currencies are never converted or added together.
 	GetAccountingSummary(context.Context, *GetAccountingSummaryRequest) (*GetAccountingSummaryResponse, error)
+	// GetDashboardStats reads what a dashboard needs that the accounting summary does not carry: the customers who paid most in a period and how old the open invoices are, one block per currency.
+	GetDashboardStats(context.Context, *GetDashboardStatsRequest) (*GetDashboardStatsResponse, error)
 	// GetCreditSettings returns the balance below which a customer's consume announces credits.low (0: off).
 	GetCreditSettings(context.Context, *GetCreditSettingsRequest) (*GetCreditSettingsResponse, error)
 	// SetCreditSettings sets that balance.
@@ -664,6 +679,9 @@ func (UnimplementedBillingServiceServer) ListExpenses(context.Context, *ListExpe
 }
 func (UnimplementedBillingServiceServer) GetAccountingSummary(context.Context, *GetAccountingSummaryRequest) (*GetAccountingSummaryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccountingSummary not implemented")
+}
+func (UnimplementedBillingServiceServer) GetDashboardStats(context.Context, *GetDashboardStatsRequest) (*GetDashboardStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDashboardStats not implemented")
 }
 func (UnimplementedBillingServiceServer) GetCreditSettings(context.Context, *GetCreditSettingsRequest) (*GetCreditSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCreditSettings not implemented")
@@ -1286,6 +1304,24 @@ func _BillingService_GetAccountingSummary_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_GetDashboardStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDashboardStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetDashboardStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetDashboardStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetDashboardStats(ctx, req.(*GetDashboardStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BillingService_GetCreditSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetCreditSettingsRequest)
 	if err := dec(in); err != nil {
@@ -1460,6 +1496,10 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAccountingSummary",
 			Handler:    _BillingService_GetAccountingSummary_Handler,
+		},
+		{
+			MethodName: "GetDashboardStats",
+			Handler:    _BillingService_GetDashboardStats_Handler,
 		},
 		{
 			MethodName: "GetCreditSettings",

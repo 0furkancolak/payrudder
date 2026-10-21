@@ -1382,7 +1382,7 @@
         "quota": "Un compte peut avoir 20 applications au plus."
       },
       "auth": {
-        "invalid_credentials": "E-mail ou mot de passe incorrect, ou trop de tentatives. Réessayez dans quelques minutes.",
+        "invalid_credentials": "E-mail ou mot de passe incorrect, ou trop de tentatives. Après cinq mots de passe erronés, la connexion avec cette adresse est suspendue 15 minutes, même avec le bon mot de passe.",
         "rate_limited": "Trop de tentatives depuis cette adresse. Réessayez dans une minute."
       },
       "session": {
@@ -1423,6 +1423,12 @@
       },
       "operator": {
         "forbidden": "Cette zone est réservée aux opérateurs de la plateforme."
+      }
+    },
+    "gateway": {
+      "dashboard": {
+        "bad_period": "Cette période n'est pas valide. Choisissez 7, 30 ou 90 jours, cette année, ou deux jours dont le premier n'est pas après le dernier.",
+        "range_too_long": "Une période dure au plus deux ans."
       }
     }
   },
@@ -1539,7 +1545,7 @@
     "home": {
       "title": "Votre organisation",
       "welcome": "Bienvenue, {name}",
-      "intro": "Vos applications et la façon dont leurs paiements se sont passés ces 30 derniers jours.",
+      "intro": "Vos applications et leur situation.",
       "create": "Créer une application",
       "emptyTitle": "Créez votre première application",
       "emptyBody": "Une application est un produit que vous facturez. Elle vient avec un bac à sable pour tester et un environnement de production pour les vrais paiements, chacun avec ses propres clés d'API.",
@@ -1863,5 +1869,138 @@
     "timezone": "Fuseau horaire",
     "timezonePlaceholder": "Rechercher un fuseau horaire",
     "noMatch": "Aucun résultat"
+  },
+  "dash": {
+    "retry": "Réessayer",
+    "stale": "Les chiffres n'ont pas pu être actualisés ; vous voyez ceux de la dernière fois.",
+    "degraded": "{sections} n'a pas répondu. Le reste de la page est à jour.",
+    "sections": {
+      "revenue": "Revenus",
+      "invoices": "Factures",
+      "subscriptions": "Abonnements",
+      "customers": "Clients",
+      "payments": "Paiements",
+      "renewals": "Prélèvements à venir",
+      "usage": "Utilisation",
+      "webhooks": "Webhooks",
+      "activity": "Activité"
+    },
+    "period": {
+      "label": "Période",
+      "7d": "7 jours",
+      "30d": "30 jours",
+      "90d": "90 jours",
+      "ytd": "Cette année",
+      "custom": "Personnalisée",
+      "from": "Premier jour",
+      "to": "Dernier jour",
+      "compare": "Comparer à la période précédente",
+      "badRange": "Le premier jour est après le dernier."
+    },
+    "currency": {
+      "label": "Devise",
+      "own": "propre"
+    },
+    "kpi": {
+      "net": "Revenu net",
+      "netSub": "Brut {gross} · remboursements {refunds}",
+      "mrr": "MRR",
+      "mrrSub": "ARR {arr} · {n} abonnés",
+      "arpu": "ARPU",
+      "arpuSub": "revenu net par abonné",
+      "customers": "Nouveaux clients",
+      "customersSub": "{total} au total · toutes devises",
+      "churn": "Attrition",
+      "churnSub": "{n} terminés · {mrr} de MRR perdu",
+      "failedRate": "Paiements échoués",
+      "failedSub": "{failed} échecs sur {attempts} tentatives",
+      "refunds": "Remboursements",
+      "refundsSub": "Taxe collectée {tax}",
+      "open": "Factures ouvertes",
+      "openSub": "{n} ouverte | {n} ouvertes"
+    },
+    "delta": {
+      "new": "nouveau",
+      "before": "Avant : {value}",
+      "srUp": "En hausse de {percent} par rapport à la période précédente",
+      "srDown": "En baisse de {percent} par rapport à la période précédente",
+      "srFlat": "Inchangé par rapport à la période précédente",
+      "srNew": "Nouveau par rapport à la période précédente"
+    },
+    "chart": {
+      "title": "Revenu net",
+      "note": "Après remboursements et taxe : le chiffre de la page comptabilité",
+      "current": "Cette période",
+      "previous": "Période précédente",
+      "total": "Total",
+      "before": "avant",
+      "empty": "Aucun revenu sur cette période.",
+      "summary": "Revenu net du {from} au {to} : {total}"
+    },
+    "payments": {
+      "title": "Paiements",
+      "attempts": "tentatives",
+      "label": "{n} tentatives de paiement",
+      "note": "Compté par tentative : une carte refusée qui est retentée compte à chaque fois, et les remboursements sont comptés à part.",
+      "truncated": "Seuls les 1000 paiements les plus récents sont lus ; les plus anciens de cette période ne sont pas comptés."
+    },
+    "top": {
+      "customers": "Meilleurs clients",
+      "customersEmpty": "Personne n'a payé sur cette période.",
+      "packages": "Meilleurs forfaits",
+      "packagesEmpty": "Pas encore d'abonnement en {currency}.",
+      "perMonth": "{amount} / mois",
+      "subs": "{n} abonné | {n} abonnés"
+    },
+    "aging": {
+      "title": "Factures ouvertes par ancienneté",
+      "empty": "Aucune facture ouverte.",
+      "0-7": "0 à 7 jours",
+      "8-30": "8 à 30 jours",
+      "31-60": "31 à 60 jours",
+      "61+": "Plus de 60 jours",
+      "count": "{n} facture | {n} factures"
+    },
+    "usage": {
+      "title": "Utilisation et limites",
+      "intro": "{n} clients avec un abonnement, {period}",
+      "over": "{n} au-dessus de la limite",
+      "near": "{n} près de la limite",
+      "ok": "dans les limites",
+      "empty": "Aucun des clients examinés n'a de limite."
+    },
+    "renewals": {
+      "title": "Prélèvements à venir",
+      "empty": "Aucun prélèvement en {currency} dans les 30 prochains jours.",
+      "truncated": "Seuls les 200 abonnements les plus récents sont examinés.",
+      "note": "La date est celle à laquelle l'abonnement ou la facture du mois arrive à échéance."
+    },
+    "activity": {
+      "title": "Activité récente",
+      "empty": "Rien ne s'est encore passé.",
+      "invoice": "Facture {label}",
+      "payment": "Paiement",
+      "refund": "Remboursement",
+      "subscription": "Abonnement {plan}",
+      "state": {
+        "active": "Actif",
+        "trialing": "Essai",
+        "past_due": "En retard",
+        "paused": "En pause",
+        "cancelled": "Résilié"
+      }
+    },
+    "empty": {
+      "title": "Rien à afficher pour l'instant",
+      "body": "Dès que votre premier client est ajouté et paie, les revenus, abonnements et paiements apparaissent ici, un bloc par devise."
+    },
+    "org": {
+      "title": "Toutes les applications",
+      "intro": "Chaque application de l'organisation sur la même période. Les montants de devises différentes ne sont jamais additionnés.",
+      "byApp": "Revenu net par application",
+      "apps": "{n} application | {n} applications",
+      "none": "Aucune application n'a de revenu sur cette période.",
+      "open": "Ouvrir l'application"
+    }
   }
 }

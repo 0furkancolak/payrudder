@@ -88,3 +88,18 @@ export function minorToMajor(minor: string | number | undefined, currency: strin
   const whole = padded.slice(0, padded.length - digits).replace(/^0+(?=\d)/, "");
   return digits > 0 ? `${whole}.${padded.slice(padded.length - digits)}` : whole;
 }
+
+/**
+ * A short form of an amount for a chart's axis ("$1.2K", "¥3.4M"): the amount in major units through Intl's compact notation. For labels only; the exact
+ * amounts are always shown with formatMinor. Masked like it in privacy mode.
+ */
+export function formatCompact(minor: number, currency: string | undefined, locale: string): string {
+  let out: string;
+  try {
+    const digits = minorDigits(currency ?? "USD", locale);
+    out = new Intl.NumberFormat(locale, { style: "currency", currency: currency ?? "USD", notation: "compact", maximumFractionDigits: 1 }).format(minor / 10 ** digits);
+  } catch {
+    out = String(minor);
+  }
+  return privacyMode.value ? maskDigits(out) : out;
+}

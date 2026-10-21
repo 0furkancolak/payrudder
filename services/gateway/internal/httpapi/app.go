@@ -34,6 +34,7 @@ func (s *Server) appRoutes() []Route {
 		{"POST", "/app/v1/apps", AccessSession, ratelimit.ClassWrite, s.appCreate},
 		{"GET", "/app/v1/apps/{id}", AccessSession, ratelimit.ClassRead, s.appGet},
 		{"GET", "/app/v1/apps/{id}/overview", AccessSession, ratelimit.ClassRead, s.appOverview},
+		{"GET", "/app/v1/apps/{id}/dashboard", AccessSession, ratelimit.ClassRead, s.appDashboard},
 		{"GET", "/app/v1/apps/{id}/api-keys", AccessSession, ratelimit.ClassRead, s.appKeys},
 		{"POST", "/app/v1/apps/{id}/api-keys", AccessSession, ratelimit.ClassWrite, s.appKeyCreate},
 		{"DELETE", "/app/v1/apps/{id}/api-keys/{key_id}", AccessSession, ratelimit.ClassWrite, s.appKeyRevoke},

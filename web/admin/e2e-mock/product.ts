@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { dashboardFixture } from "./dashboard";
 import type { MockGateway } from "./gateway";
 
 export const SESSION = "qs_" + "A".repeat(43);
@@ -108,6 +109,8 @@ export interface ProductState {
   apps: unknown[];
   keys: typeof keys;
   overview: Record<string, unknown>;
+  /** What the dashboard answers: a fixed body, or a function of the query (period, compare, environment). Default: the multi-currency fixture. */
+  dashboard: Record<string, unknown> | ((q: Record<string, string>) => { status?: number; body: unknown }) | null;
   sessionOk: boolean;
   /** Whether Ada's address is verified; a verification link flips it. */
   verified: boolean;
@@ -128,7 +131,7 @@ export interface ProductState {
 
 /** A stand-in for the product API with a person signed in as Ada. `state` is the test's to change while it runs. */
 export function productGateway(gw: MockGateway, state: Partial<ProductState> = {}): { gw: MockGateway; state: ProductState } {
-  const s: ProductState = { apps: [app], keys: [...keys], overview: overview("live"), sessionOk: true, verified: true, verifyToken: "qv_good", resetToken: "qr_good",
+  const s: ProductState = { apps: [app], keys: [...keys], overview: overview("live"), dashboard: null, sessionOk: true, verified: true, verifyToken: "qv_good", resetToken: "qr_good",
     role: "owner", members: team(), invitations: [], accountName: "Ada Labs", memberships, operator: false,
     methods: { password: true, otp: true, google: false }, code: "123456", ...state };
   const who = () => ({ ...user, email_verified: s.verified });
@@ -228,6 +231,11 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
       return { status: 201, body: created };
     }
     if (c.path === `/app/v1/apps/${APP}` && c.method === "GET") return { body: { app, role: "owner" } };
+    if (c.path === `/app/v1/apps/${APP}/dashboard`) {
+      const q = Object.fromEntries(c.query.entries());
+      if (typeof s.dashboard === "function") return s.dashboard(q);
+      return { body: s.dashboard ?? dashboardFixture(q) };
+    }
     if (c.path.endsWith("/overview")) return { body: c.query.get("environment") === "sandbox" ? overview("sandbox") : s.overview };
     if (c.path === `/app/v1/apps/${APP}/api-keys` && c.method === "GET") return { body: { api_keys: s.keys } };
     if (c.path === `/app/v1/apps/${APP}/api-keys` && c.method === "POST") {

@@ -147,6 +147,171 @@ func (q *Queries) AccountingRefunds(ctx context.Context, arg AccountingRefundsPa
 	return items, nil
 }
 
+const dashboardOpenAging = `-- name: DashboardOpenAging :many
+SELECT currency::text AS currency, bucket::text AS bucket, count(*)::bigint AS invoices, COALESCE(sum(total_minor), 0)::bigint AS amount_minor
+FROM (
+  SELECT x.currency, x.total_minor,
+         CASE WHEN x.age <= 7 THEN '0-7' WHEN x.age <= 30 THEN '8-30' WHEN x.age <= 60 THEN '31-60' ELSE '61+' END AS bucket
+  FROM (
+    SELECT currency, total_minor, GREATEST(0, (now() AT TIME ZONE 'UTC')::date - (COALESCE(finalized_at, created_at) AT TIME ZONE 'UTC')::date) AS age
+    FROM invoices WHERE tenant_id = $1 AND status = 'open'
+  ) x
+) y
+GROUP BY currency, bucket
+ORDER BY currency, bucket
+`
+
+type DashboardOpenAgingRow struct {
+	Currency    string
+	Bucket      string
+	Invoices    int64
+	AmountMinor int64
+}
+
+// Dashboard: the open invoices by how long they have been open (UTC days since they were finalized), per currency.
+func (q *Queries) DashboardOpenAging(ctx context.Context, tenantID uuid.UUID) ([]DashboardOpenAgingRow, error) {
+	rows, err := q.db.Query(ctx, dashboardOpenAging, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DashboardOpenAgingRow{}
+	for rows.Next() {
+		var i DashboardOpenAgingRow
+		if err := rows.Scan(
+			&i.Currency,
+			&i.Bucket,
+			&i.Invoices,
+			&i.AmountMinor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dashboardRecentInvoices = `-- name: DashboardRecentInvoices :many
+SELECT id, COALESCE(number, '')::text AS number, COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id, status::text AS status, currency::text AS currency,
+       total_minor, created_at
+FROM invoices WHERE tenant_id = $1
+ORDER BY id DESC
+LIMIT 8
+`
+
+type DashboardRecentInvoicesRow struct {
+	ID                 uuid.UUID
+	Number             string
+	CustomerExternalID string
+	Status             string
+	Currency           string
+	TotalMinor         int64
+	CreatedAt          time.Time
+}
+
+// Dashboard: the newest invoices, for the activity feed (the primary key is (tenant, id) and ids are time ordered, so this reads the tail of the index).
+func (q *Queries) DashboardRecentInvoices(ctx context.Context, tenantID uuid.UUID) ([]DashboardRecentInvoicesRow, error) {
+	rows, err := q.db.Query(ctx, dashboardRecentInvoices, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DashboardRecentInvoicesRow{}
+	for rows.Next() {
+		var i DashboardRecentInvoicesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Number,
+			&i.CustomerExternalID,
+			&i.Status,
+			&i.Currency,
+			&i.TotalMinor,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dashboardTopCustomers = `-- name: DashboardTopCustomers :many
+SELECT currency::text AS currency, customer_id, customer_external_id::text AS customer_external_id, customer_name::text AS customer_name, income_minor, invoices
+FROM (
+  SELECT i.currency AS currency, i.customer_id,
+         COALESCE(max(i.snapshot->>'customer_external_id'), '') AS customer_external_id,
+         COALESCE(max(i.snapshot->>'customer_name'), '') AS customer_name,
+         COALESCE(sum(i.total_minor), 0)::bigint AS income_minor,
+         count(*)::bigint AS invoices,
+         row_number() OVER (PARTITION BY i.currency ORDER BY sum(i.total_minor) DESC, i.customer_id) AS rn
+  FROM (
+    SELECT DISTINCT ON (s.invoice_id) s.invoice_id
+    FROM saga_events e JOIN invoice_sagas s ON s.tenant_id = e.tenant_id AND s.id = e.saga_id
+    WHERE e.tenant_id = $1 AND e.to_state = 'PAID' AND e.at >= $2::timestamptz AND e.at < $3::timestamptz
+    ORDER BY s.invoice_id, e.at
+  ) p
+  JOIN invoices i ON i.tenant_id = $1 AND i.id = p.invoice_id
+  GROUP BY i.currency, i.customer_id
+) t
+WHERE rn <= $4::int
+ORDER BY currency, rn
+`
+
+type DashboardTopCustomersParams struct {
+	TenantID uuid.UUID
+	FromAt   time.Time
+	ToAt     time.Time
+	TopN     int32
+}
+
+type DashboardTopCustomersRow struct {
+	Currency           string
+	CustomerID         uuid.UUID
+	CustomerExternalID string
+	CustomerName       string
+	IncomeMinor        int64
+	Invoices           int64
+}
+
+// Dashboard: the customers whose invoices were paid in the window came to most, per currency (the same "paid" moment as the income above), at most @top_n of each.
+func (q *Queries) DashboardTopCustomers(ctx context.Context, arg DashboardTopCustomersParams) ([]DashboardTopCustomersRow, error) {
+	rows, err := q.db.Query(ctx, dashboardTopCustomers,
+		arg.TenantID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.TopN,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DashboardTopCustomersRow{}
+	for rows.Next() {
+		var i DashboardTopCustomersRow
+		if err := rows.Scan(
+			&i.Currency,
+			&i.CustomerID,
+			&i.CustomerExternalID,
+			&i.CustomerName,
+			&i.IncomeMinor,
+			&i.Invoices,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const expensesInWindow = `-- name: ExpensesInWindow :many
 SELECT id, category, amount_minor, currency, incurred_on, recurring, recurring_until
 FROM expenses

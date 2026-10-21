@@ -103,6 +103,8 @@ type Server struct {
 	hosted  hostedLimiter
 	// hostedPays limits the POSTs that start a payment on a public page.
 	hostedPays hostedLimiter
+	// dash remembers a dashboard for a few seconds: the same page is asked for again and again while it is open.
+	dash dashCache
 	// signIns and signUps limit the public sign-in and sign-up routes, per client address.
 	signIns, signUps hostedLimiter
 	// resets limits "forgot password" requests and tokenUses the routes that spend a mailed token (verify, reset, accept an invitation), per client address.

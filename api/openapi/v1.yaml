@@ -2314,6 +2314,31 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/dashboard:
+    get:
+      operationId: appDashboard
+      tags: [Product]
+      summary: "The dashboard of one environment of an app: a period, compared with the one before, per currency"
+      description: >
+        The overview's facts over a period (7, 30 or 90 days, the year so far, or a custom range of at most two years) with the equal period before it to compare
+        with, one block per currency: money is never added, converted or compared across currencies. Revenue, refunds, tax, expenses and the series are billing's
+        accounting summary (an invoice counts on the day its payment settled, so this agrees with the accounting page); payments are the payment ledger's attempts
+        (a declined card that is retried is several failed attempts; refunds are counted apart); subscriptions, MRR, new and churned are the subscription report
+        of the month the period ends in and the month before it; new customers are counted over the period and the one before. The series is daily up to 92
+        days, monthly beyond. A section whose service did not answer is left out and named in `unavailable`. Answers are remembered for 15 seconds.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: environment, in: query, schema: { type: string, enum: [live, sandbox], default: live } }
+        - { name: period, in: query, schema: { type: string, enum: [7d, 30d, 90d, ytd, custom], default: 30d } }
+        - { name: from, in: query, description: First day of a custom period (YYYY-MM-DD, the tenant's days), schema: { type: string, format: date } }
+        - { name: to, in: query, description: Last day of a custom period; not after today, schema: { type: string, format: date } }
+        - { name: compare, in: query, description: "0 leaves out the comparison with the period before", schema: { type: string, enum: ["0", "1"], default: "1" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Dashboard" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/api-keys:
     get:
       operationId: appListApiKeys
@@ -3274,6 +3299,27 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: object, properties: { redriven: { type: integer } } } } } }
         "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/dashboard:
+    get:
+      operationId: adminTenantDashboard
+      summary: The dashboard of any tenant, for the operator
+      description: >
+        The overview's facts over a period (7, 30 or 90 days, the year so far, or a custom range of at most two years) with the equal period before it to compare
+        with, one block per currency: money is never added, converted or compared across currencies. Revenue, refunds, tax, expenses and the series are billing's
+        accounting summary (an invoice counts on the day its payment settled, so this agrees with the accounting page); payments are the payment ledger's attempts
+        (a declined card that is retried is several failed attempts; refunds are counted apart); subscriptions, MRR, new and churned are the subscription report
+        of the month the period ends in and the month before it; new customers are counted over the period and the one before. The series is daily up to 92
+        days, monthly beyond. A section whose service did not answer is left out and named in `unavailable`. Answers are remembered for 15 seconds.
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: period, in: query, schema: { type: string, enum: [7d, 30d, 90d, ytd, custom], default: 30d } }
+        - { name: from, in: query, description: First day of a custom period (YYYY-MM-DD, the tenant's days), schema: { type: string, format: date } }
+        - { name: to, in: query, description: Last day of a custom period; not after today, schema: { type: string, format: date } }
+        - { name: compare, in: query, description: "0 leaves out the comparison with the period before", schema: { type: string, enum: ["0", "1"], default: "1" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Dashboard" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{id}:
     get:
       operationId: getTenant
@@ -3941,6 +3987,194 @@ components:
       properties:
         count: { type: integer }
         more: { type: boolean, description: The count stopped at its cap; there are more }
+    DashboardRevenue:
+      type: object
+      description: Minor units of the block's currency.
+      properties:
+        gross_minor: { type: integer, format: int64 }
+        tax_minor: { type: integer, format: int64 }
+        refunds_minor: { type: integer, format: int64 }
+        net_minor: { type: integer, format: int64, description: gross - tax - refunds }
+        expenses_minor: { type: integer, format: int64 }
+        profit_minor: { type: integer, format: int64 }
+        paid_invoices: { type: integer, format: int64 }
+    DashboardPayments:
+      type: object
+      properties:
+        paid: { type: integer }
+        failed: { type: integer, description: Failed attempts; a declined card that dunning retries counts each time }
+        processing: { type: integer }
+        refunds: { type: integer }
+        paid_minor: { type: integer, format: int64 }
+        failed_minor: { type: integer, format: int64 }
+        refunded_minor: { type: integer, format: int64 }
+        failed_rate_bp: { type: integer, nullable: true, description: failed / (paid + failed) in basis points; null when nothing settled }
+    DashboardSubscriptions:
+      type: object
+      properties:
+        month: { type: string, description: The month of the report (YYYY-MM) }
+        active: { type: integer, format: int64 }
+        trialing: { type: integer, format: int64 }
+        paused: { type: integer, format: int64 }
+        past_due: { type: integer, format: int64 }
+        mrr_minor: { type: integer, format: int64 }
+        arr_minor: { type: integer, format: int64, description: mrr x 12 }
+        new: { type: integer, format: int64 }
+        new_mrr_minor: { type: integer, format: int64 }
+        churned: { type: integer, format: int64 }
+        churned_mrr_minor: { type: integer, format: int64 }
+        churn_rate_bp: { type: integer, nullable: true }
+    DashboardCurrency:
+      type: object
+      description: Everything the dashboard knows in one currency. Nothing in it is in another currency.
+      properties:
+        currency: { type: string }
+        revenue: { $ref: "#/components/schemas/DashboardRevenue" }
+        prev_revenue: { allOf: [{ $ref: "#/components/schemas/DashboardRevenue" }], nullable: true }
+        series:
+          type: array
+          description: Net income per bucket (day, or the first day of a month), with the bucket of the previous period at the same position
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              net_minor: { type: integer, format: int64 }
+              prev_date: { type: string, format: date }
+              prev_net_minor: { type: integer, format: int64, nullable: true }
+        payments: { allOf: [{ $ref: "#/components/schemas/DashboardPayments" }], nullable: true }
+        prev_payments: { allOf: [{ $ref: "#/components/schemas/DashboardPayments" }], nullable: true }
+        subscriptions: { allOf: [{ $ref: "#/components/schemas/DashboardSubscriptions" }], nullable: true }
+        prev_subscriptions: { allOf: [{ $ref: "#/components/schemas/DashboardSubscriptions" }], nullable: true }
+        arpu_minor: { type: integer, format: int64, nullable: true, description: Net revenue per active subscriber }
+        prev_arpu_minor: { type: integer, format: int64, nullable: true }
+        top_customers:
+          type: array
+          items:
+            type: object
+            properties:
+              customer_id: { type: string }
+              customer_external_id: { type: string }
+              name: { type: string }
+              income_minor: { type: integer, format: int64 }
+              invoices: { type: integer, format: int64 }
+        top_packages:
+          type: array
+          items:
+            type: object
+            properties:
+              plan_code: { type: string }
+              active: { type: integer, format: int64 }
+              mrr_minor: { type: integer, format: int64 }
+        aging:
+          type: array
+          description: Open invoices by days open, in the order 0-7, 8-30, 31-60, 61+
+          items:
+            type: object
+            properties:
+              bucket: { type: string, enum: ["0-7", "8-30", "31-60", "61+"] }
+              count: { type: integer, format: int64 }
+              amount_minor: { type: integer, format: int64 }
+        open_count: { type: integer, format: int64 }
+        open_minor: { type: integer, format: int64 }
+        renewals:
+          type: array
+          description: The next charges of this currency in the coming 30 days, soonest first (at most six)
+          items:
+            type: object
+            properties:
+              subscription_id: { type: string }
+              customer_external_id: { type: string }
+              plan_code: { type: string }
+              interval: { type: string }
+              renews_at: { type: string, format: date-time }
+              state: { type: string }
+    Dashboard:
+      type: object
+      properties:
+        app_id: { type: string }
+        environment: { type: string, enum: [live, sandbox] }
+        tenant_id: { type: string, format: uuid }
+        timezone: { type: string }
+        default_currency: { type: string }
+        range:
+          type: object
+          properties:
+            period: { type: string }
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+            days: { type: integer }
+            granularity: { type: string, enum: [day, month] }
+            compare: { type: boolean }
+            prev_from: { type: string, format: date }
+            prev_to: { type: string, format: date }
+        generated_at: { type: string, format: date-time }
+        status: { type: string, enum: [ok, attention, degraded] }
+        unavailable: { type: array, items: { type: string } }
+        payments_truncated: { type: boolean, description: The period reaches past the newest 1000 ledger rows the gateway reads, so payment counts may be low }
+        payments_prev_covered: { type: boolean, description: False when the ledger window does not reach back over the previous period, so it has no payment comparison }
+        renewals_truncated: { type: boolean }
+        currencies: { type: array, description: "The tenant's own currency first, then by net revenue", items: { $ref: "#/components/schemas/DashboardCurrency" } }
+        customers:
+          type: object
+          nullable: true
+          properties:
+            total: { type: integer, format: int64 }
+            new: { type: integer, format: int64 }
+            prev_new: { type: integer, format: int64 }
+        usage:
+          type: object
+          nullable: true
+          description: Usage against the limits of up to ten customers who have a subscription
+          properties:
+            period_id: { type: string }
+            sampled: { type: integer }
+            meters:
+              type: array
+              items:
+                type: object
+                properties:
+                  meter_code: { type: string }
+                  customers: { type: integer }
+                  over: { type: integer }
+                  near: { type: integer, description: At or above 80 % of the limit }
+                  top:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        customer_external_id: { type: string }
+                        used: { type: string }
+                        limit: { type: string }
+                        percent: { type: number, description: For display only; the exact decimals are the entitlements endpoint's }
+        activity:
+          type: array
+          description: The newest invoices, payments and subscriptions, newest first (at most twelve)
+          items:
+            type: object
+            properties:
+              kind: { type: string, enum: [invoice, payment, subscription] }
+              at: { type: string, format: date-time }
+              ref: { type: string }
+              label: { type: string }
+              customer: { type: string }
+              status: { type: string }
+              amount_minor: { type: integer, format: int64 }
+              currency: { type: string }
+        health:
+          type: object
+          properties:
+            payments_reachable: { type: boolean }
+            webhook_endpoints: { type: integer }
+            webhook_failed: { type: integer }
+            webhook_failed_more: { type: boolean }
+            providers:
+              type: array
+              items:
+                type: object
+                properties:
+                  provider: { type: string }
+                  environment: { type: string }
+                  is_default: { type: boolean }
     AppOverview:
       type: object
       properties:

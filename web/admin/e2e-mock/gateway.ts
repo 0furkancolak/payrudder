@@ -1,4 +1,5 @@
 import type { Page, Route } from "@playwright/test";
+import { dashboardFixture } from "./dashboard";
 
 export const TENANT = "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e";
 /** The session token of the operator user the console tests sign in as (a person whose address the gateway lists in QUOTIFY_OPERATOR_EMAILS). */
@@ -84,6 +85,7 @@ export function baseTenant(gw: MockGateway, overrides: Record<string, unknown> =
     if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}`) {
       return { body: { id: TENANT, name: "Acme", environment: "ENVIRONMENT_LIVE", tier: "TENANT_TIER_STANDARD", currency: "TRY", timezone: "Europe/Istanbul", grace_period: "24h", ...overrides } };
     }
+    if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/dashboard`) return { body: dashboardFixture(Object.fromEntries(c.query.entries())) };
     if (c.method === "GET" && c.path === "/admin/v1/tenants") return { body: { tenants: [] } };
     if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/invoices`) return { body: { invoices: [] } };
     return undefined;

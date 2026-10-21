@@ -111,31 +111,31 @@ test.describe("privacy mode", () => {
 
   test("one switch masks every amount, survives navigation and reload, and turns off again", async ({ page }) => {
     await open(page, `/app/apps/${APP}`);
-    const revenue = page.getByTestId("kpi-revenue");
-    await expect(revenue).toContainText("12,840.50");
+    const revenue = page.getByTestId("kpi-revenue-value");
+    await expect(revenue).toContainText(/TRY\s[\d,]+\.\d\d/);
     await page.getByTestId("privacy-toggle").click();
     await expect(page.getByTestId("privacy-toggle")).toHaveAttribute("aria-pressed", "true");
-    await expect(revenue).toHaveText("$••••");
+    await expect(revenue).toHaveText(/^TRY\s••••$/);
     // Nothing of the amounts is left anywhere on the page (the text itself is masked, not hidden by a style).
     const text = await page.locator("main").innerText();
-    expect(text).not.toContain("12,840");
-    expect(text).not.toContain("4.90");
+    expect(text).not.toMatch(/TRY\s[\d,]+\.\d\d/);
+    expect(text).not.toMatch(/€[\d,]+\.\d\d/);
     await shoot(page, "33-privacy");
     // It survives navigation, reload and a new page of the app.
     await page.getByTestId("sidebar").getByRole("link", { name: "Customers" }).click();
     await page.getByTestId("sidebar").getByRole("link", { name: "Dashboard" }).click();
-    await expect(page.getByTestId("kpi-revenue")).toHaveText("$••••");
+    await expect(page.getByTestId("kpi-revenue-value")).toHaveText(/^TRY\s••••$/);
     await page.reload();
-    await expect(page.getByTestId("kpi-revenue")).toHaveText("$••••");
+    await expect(page.getByTestId("kpi-revenue-value")).toHaveText(/^TRY\s••••$/);
     await expect(page.locator("html")).toHaveAttribute("data-privacy", "");
     expect(await page.evaluate(() => window.localStorage.getItem("quotify.privacy"))).toBe("1");
     // Alt+P is the shortcut.
     await page.keyboard.press("Alt+KeyP");
-    await expect(page.getByTestId("kpi-revenue")).toContainText("12,840.50");
+    await expect(page.getByTestId("kpi-revenue-value")).toContainText(/TRY\s[\d,]+\.\d\d/);
     await page.keyboard.press("Alt+KeyP");
-    await expect(page.getByTestId("kpi-revenue")).toHaveText("$••••");
+    await expect(page.getByTestId("kpi-revenue-value")).toHaveText(/^TRY\s••••$/);
     await page.getByTestId("privacy-toggle").click();
-    await expect(page.getByTestId("kpi-revenue")).toContainText("12,840.50");
+    await expect(page.getByTestId("kpi-revenue-value")).toContainText(/TRY\s[\d,]+\.\d\d/);
     expect(await page.evaluate(() => window.localStorage.getItem("quotify.privacy"))).toBeNull();
   });
 

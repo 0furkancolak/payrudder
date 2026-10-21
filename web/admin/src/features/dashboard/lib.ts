@@ -1,0 +1,179 @@
+import type { components } from "@/shared/api/schema";
+
+/** The dashboard as the gateway answers it (see `Dashboard` in the OpenAPI file). */
+export type Dashboard = components["schemas"]["Dashboard"];
+export type DashCurrency = components["schemas"]["DashboardCurrency"];
+
+export const PERIODS = ["7d", "30d", "90d", "ytd", "custom"] as const;
+export type Period = (typeof PERIODS)[number];
+
+/** What the page asks for: kept in the address, so a link shares the view and the back button works. */
+export interface DashQuery {
+  period: Period;
+  /** Custom period only: days, YYYY-MM-DD. */
+  from?: string;
+  to?: string;
+  compare: boolean;
+  /** The currency tab; empty means the first block. */
+  cur?: string;
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Reads the address' search into a query; anything that is not understood falls back to the default (30 days, compared, first currency). */
+export function parseQuery(search: Record<string, unknown>): DashQuery {
+  const period = PERIODS.includes(search.period as Period) ? (search.period as Period) : "30d";
+  const q: DashQuery = { period, compare: !["off", "0", 0, false].includes(search.compare as never) };
+  if (period === "custom" && typeof search.from === "string" && typeof search.to === "string" && DAY.test(search.from) && DAY.test(search.to)) {
+    q.from = search.from;
+    q.to = search.to;
+  } else if (period === "custom") {
+    q.period = "30d";
+  }
+  if (typeof search.cur === "string" && /^[A-Z]{3}$/.test(search.cur)) q.cur = search.cur;
+  return q;
+}
+
+/** The query as the search of an address, leaving out what is the default so a plain dashboard has a plain address. */
+export function toSearch(q: DashQuery): Record<string, string> {
+  const s: Record<string, string> = {};
+  if (q.period !== "30d") s.period = q.period;
+  if (q.period === "custom" && q.from && q.to) {
+    s.from = q.from;
+    s.to = q.to;
+  }
+  if (!q.compare) s.compare = "off";
+  if (q.cur) s.cur = q.cur;
+  return s;
+}
+
+/** The query as the gateway's parameters. */
+export function toParams(q: DashQuery): { period: Period; from?: string; to?: string; compare: "0" | "1" } {
+  return { period: q.period, ...(q.period === "custom" && q.from && q.to ? { from: q.from, to: q.to } : {}), compare: q.compare ? "1" : "0" };
+}
+
+export interface Delta {
+  /** Percent change, one decimal; null when there is nothing to compare (the earlier figure was zero or missing). */
+  percent: number | null;
+  direction: "up" | "down" | "flat" | "new" | "none";
+}
+
+/**
+ * The change from the earlier figure to the later one. An earlier figure of zero has no percentage: a figure that appears out of nothing is "new", and two
+ * zeros are "flat". Works on whole numbers (minor units, counts), as a float only for the percentage that is shown.
+ */
+export function delta(now: number | null | undefined, before: number | null | undefined): Delta {
+  if (now === null || now === undefined || before === null || before === undefined) return { percent: null, direction: "none" };
+  if (before === 0) return now === 0 ? { percent: 0, direction: "flat" } : { percent: null, direction: "new" };
+  const percent = Math.round(((now - before) / Math.abs(before)) * 1000) / 10;
+  return { percent, direction: percent > 0 ? "up" : percent < 0 ? "down" : "flat" };
+}
+
+/** Basis points as a percentage with one decimal ("12.5"), or null. */
+export function bpPercent(bp: number | null | undefined): number | null {
+  return bp === null || bp === undefined ? null : Math.round(bp) / 100;
+}
+
+/** The currency blocks in the order the tabs show them, and the one chosen: the query's if it exists, else the first. */
+export function chosenCurrency(blocks: readonly DashCurrency[], cur: string | undefined): DashCurrency | undefined {
+  return blocks.find((b) => b.currency === cur) ?? blocks[0];
+}
+
+/** Whether a block has anything to show: money, payments, subscriptions, invoices open or customers who paid. */
+export function hasActivity(b: DashCurrency): boolean {
+  return (
+    (b.revenue?.gross_minor ?? 0) !== 0 ||
+    (b.revenue?.expenses_minor ?? 0) !== 0 ||
+    (b.payments?.paid ?? 0) + (b.payments?.failed ?? 0) + (b.payments?.processing ?? 0) + (b.payments?.refunds ?? 0) > 0 ||
+    (b.subscriptions?.active ?? 0) + (b.subscriptions?.trialing ?? 0) + (b.subscriptions?.past_due ?? 0) > 0 ||
+    (b.open_count ?? 0) > 0
+  );
+}
+
+// ---- the revenue chart (inline SVG: no chart library)
+
+export interface ChartPoint {
+  date: string;
+  value: number;
+  prevDate?: string;
+  prev?: number;
+}
+
+export interface Geometry {
+  width: number;
+  height: number;
+  max: number;
+  /** The path of the filled area under the line, and of the line itself, in the SVG's own units. */
+  area: string;
+  line: string;
+  prevLine: string;
+  /** x of the point i. */
+  x: (i: number) => number;
+  y: (v: number) => number;
+}
+
+/** A "nice" top of the axis at or above the largest value (1, 2, 2.5 or 5 times a power of ten), so the gridlines fall on round numbers. */
+export function niceMax(v: number): number {
+  if (v <= 0) return 1;
+  const exp = Math.floor(Math.log10(v));
+  const base = 10 ** exp;
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * base >= v) return m * base;
+  return 10 * base;
+}
+
+/**
+ * Works out where the line and the area of a series go in a width x height box with a small padding. One point is drawn as a flat line across the box
+ * (there is no slope to show) and an empty series as a flat line at the bottom. Values are drawn as they are: the max is taken over both series.
+ */
+export function geometry(points: readonly ChartPoint[], width: number, height: number, pad = { l: 4, r: 4, t: 8, b: 4 }): Geometry {
+  const n = points.length;
+  const max = niceMax(Math.max(0, ...points.map((p) => p.value), ...points.map((p) => p.prev ?? 0)));
+  const innerW = width - pad.l - pad.r;
+  const innerH = height - pad.t - pad.b;
+  const x = (i: number) => (n <= 1 ? pad.l + innerW / 2 : pad.l + (i / (n - 1)) * innerW);
+  const y = (v: number) => pad.t + innerH - (v / max) * innerH;
+  const trace = (vals: (number | undefined)[]) => {
+    const pts = vals.map((v, i) => (v === undefined ? null : ([x(i), y(v)] as const)));
+    let d = "";
+    pts.forEach((p, i) => {
+      if (p) d += `${d === "" || pts[i - 1] === null ? "M" : "L"}${round(p[0])} ${round(p[1])} `;
+    });
+    return d.trim();
+  };
+  const line = n === 0 ? "" : n === 1 ? `M${pad.l} ${round(y(points[0]!.value))} L${width - pad.r} ${round(y(points[0]!.value))}` : trace(points.map((p) => p.value));
+  const prevLine = points.some((p) => p.prev !== undefined) ? trace(points.map((p) => p.prev)) : "";
+  const baseline = pad.t + innerH;
+  const area = n < 2 ? "" : `${line} L${round(x(n - 1))} ${baseline} L${round(x(0))} ${baseline} Z`;
+  return { width, height, max, area, line, prevLine, x, y };
+}
+
+const round = (n: number) => Math.round(n * 10) / 10;
+
+/** The index of the point nearest to an x position in the SVG's units (for the hover). */
+export function nearestIndex(g: Geometry, n: number, px: number): number {
+  if (n <= 1) return 0;
+  let best = 0;
+  let bestD = Infinity;
+  for (let i = 0; i < n; i++) {
+    const d = Math.abs(g.x(i) - px);
+    if (d < bestD) {
+      best = i;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/** How a bar of a list is sized: the share of the largest, at least a sliver when there is anything. */
+export function share(value: number, max: number): number {
+  if (max <= 0 || value <= 0) return 0;
+  return Math.max(2, Math.min(100, Math.round((value / max) * 100)));
+}
+
+/**
+ * The search of a dashboard address: the environment of an app (sandbox only; live is the default) and the query. Used by the routes, so that a link keeps the
+ * view and a value that is not understood is dropped instead of breaking the page.
+ */
+export function dashSearch(s: Record<string, unknown>): Record<string, string> {
+  return { ...(s.env === "sandbox" ? { env: "sandbox" } : {}), ...toSearch(parseQuery(s)) };
+}
