@@ -15,7 +15,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -84,8 +83,8 @@ func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken
 
 // specOf is what one use of a factory link asks for: the link's own amount, currency and (for a pack) credits, and the promotion code the payer typed, or else the
 // one the link carries. The price never comes from the payer.
-func specOf(r sqlc.FindActiveInvoiceLinkRow, typed string) runs.LinkInvoiceSpec {
-	spec := runs.LinkInvoiceSpec{AmountMinor: *r.AmountMinor, Currency: *r.Currency, PromotionCode: strings.TrimSpace(typed)}
+func specOf(r sqlc.FindActiveInvoiceLinkRow, typed string) LinkInvoiceSpec {
+	spec := LinkInvoiceSpec{AmountMinor: *r.AmountMinor, Currency: *r.Currency, PromotionCode: strings.TrimSpace(typed)}
 	if spec.PromotionCode == "" {
 		spec.PromotionCode = deref(r.PromotionCode)
 	}
@@ -102,18 +101,18 @@ func specOf(r sqlc.FindActiveInvoiceLinkRow, typed string) runs.LinkInvoiceSpec 
 }
 
 // QuoteLinkPromotion says what a promotion code would take off the purchase a factory link offers, claiming nothing. The page shows it before the payer continues.
-func QuoteLinkPromotion(ctx context.Context, d Deps, token, promotionCode string) (runs.PromotionQuote, error) {
+func QuoteLinkPromotion(ctx context.Context, d Deps, token, promotionCode string) (PromotionQuote, error) {
 	link, err := query.ResolveLink(ctx, d.System, token)
 	if err != nil {
-		return runs.PromotionQuote{}, err
+		return PromotionQuote{}, err
 	}
 	r := link.Row
 	if !factory(r.Kind) || r.AmountMinor == nil || r.Currency == nil {
-		return runs.PromotionQuote{}, query.NoLink()
+		return PromotionQuote{}, query.NoLink()
 	}
 	q, err := d.Dir.QuotePromotion(ctx, r.TenantID, specOf(r, promotionCode))
 	if err != nil {
-		return runs.PromotionQuote{}, internal(err)
+		return PromotionQuote{}, internal(err)
 	}
 	return q, nil
 }

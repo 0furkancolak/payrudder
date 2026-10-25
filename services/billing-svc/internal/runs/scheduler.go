@@ -23,12 +23,6 @@ func (m *Manager) Tick(ctx context.Context) error {
 	if err := m.discover(ctx); err != nil {
 		m.log.WarnContext(ctx, "scheduler: discovery failed", "error", err)
 	}
-	if err := m.ExpireLinks(ctx); err != nil {
-		m.log.WarnContext(ctx, "scheduler: payment links not expired", "error", err)
-	}
-	if err := m.ReversePromotions(ctx); err != nil {
-		m.log.WarnContext(ctx, "scheduler: promotion reversals not delivered", "error", err)
-	}
 	for _, ch := range m.cfg.Chores {
 		if err := ch.Run(ctx); err != nil {
 			m.log.WarnContext(ctx, "scheduler: "+ch.Name, "error", err)
