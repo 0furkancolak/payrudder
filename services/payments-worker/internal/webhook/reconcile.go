@@ -3,7 +3,9 @@ package webhook
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"sort"
 
 	"github.com/google/uuid"
@@ -172,7 +174,7 @@ func (s *Server) paidInvoices(ctx context.Context, t uuid.UUID, period string) (
 
 // compare checks every paid invoice against the successful charges the ledger holds for it.
 func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge, byHand func(id string) bool) {
-	for _, id := range sortedKeys(paid) {
+	for _, id := range slices.Sorted(maps.Keys(paid)) {
 		inv := paid[id]
 		if inv.GetTotalMinor() == 0 {
 			continue // nothing is charged for an invoice of nothing
@@ -230,15 +232,6 @@ func (s *Server) unpaidCharges(ctx context.Context, rec *Reconciliation, t uuid.
 			BilledMinor: inv.GetTotalMinor(), LedgerMinor: c.AmountMinor, Detail: "invoice status " + inv.GetStatus()})
 	}
 	return nil
-}
-
-func sortedKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 type ledgerCharge struct {

@@ -12,6 +12,7 @@ import (
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/strx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store/sqlc"
 )
 
@@ -66,7 +67,7 @@ func (n Notifications) Claim(ctx context.Context, key string, commandID *uuid.UU
 	}
 	switch {
 	case row.Status == "SENT":
-		return AlreadySent, deref(row.SmtpMessageID), tx.Commit(ctx)
+		return AlreadySent, strx.Deref(row.SmtpMessageID), tx.Commit(ctx)
 	case time.Since(row.ClaimedAt) > n.stale():
 		if err := q.RenewClaim(ctx, key); err != nil {
 			return 0, "", err
@@ -75,13 +76,6 @@ func (n Notifications) Claim(ctx context.Context, key string, commandID *uuid.UU
 	default:
 		return InFlight, "", tx.Commit(ctx)
 	}
-}
-
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }
 
 // MarkSent records the SMTP message id.
@@ -103,7 +97,7 @@ func (n Notifications) Lookup(ctx context.Context, commandID uuid.UUID) (*comman
 	if err != nil {
 		return nil, false, err
 	}
-	id := deref(msgID)
+	id := strx.Deref(msgID)
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_NotificationSent{NotificationSent: &commandsv1.NotificationSent{MessageId: id}}}, true, nil
 }
 
