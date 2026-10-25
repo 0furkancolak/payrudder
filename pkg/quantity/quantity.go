@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
+
+	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 // MaxScale is the largest meter precision.
@@ -76,15 +79,7 @@ func digits(s string) bool {
 // FormatUnits renders units as a decimal with exactly scale fractional digits ("1250", 3 → "1.250").
 func FormatUnits(units int64, scale int) string {
 	if scale <= 0 || scale > MaxScale {
-		return fmt.Sprintf("%d", units)
+		return strconv.FormatInt(units, 10)
 	}
-	neg := units < 0
-	if neg {
-		units = -units
-	}
-	s := fmt.Sprintf("%d.%0*d", units/pow10[scale], scale, units%pow10[scale])
-	if neg {
-		return "-" + s
-	}
-	return s
+	return money.FormatMinor(units, scale)
 }

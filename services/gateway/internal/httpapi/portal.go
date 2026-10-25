@@ -11,6 +11,7 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 // The customer portal: GET /c/{token}. Read-only, for one customer of one tenant. billing-svc resolves the token to the tenant and the customer and returns only
@@ -83,7 +84,7 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		exp := int(inv.GetCurrencyExponent())
-		row := portalInvoiceRow{Number: inv.GetNumber(), State: state, StateLabel: v.L["st_"+state], Total: formatMinor(inv.GetTotalMinor(), exp), Currency: inv.GetCurrency(),
+		row := portalInvoiceRow{Number: inv.GetNumber(), State: state, StateLabel: v.L["st_"+state], Total: money.FormatMinorGrouped(inv.GetTotalMinor(), exp), Currency: inv.GetCurrency(),
 			Payable: inv.GetPayable(), Href: "/c/" + token + "/invoices/" + inv.GetId() + q}
 		if t := inv.GetIssueTime(); t != nil {
 			row.Date = t.AsTime().UTC().Format("2006-01-02")
@@ -104,22 +105,22 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 			continue // a row of an invoice that is not this customer's is never shown
 		}
 		p := portalPaymentRow{Date: row.OccurredAt.UTC().Format("2006-01-02"), Kind: v.L["kind_"+row.Kind], Number: k.number, Status: v.L[statusKey[row.Status]],
-			Provider: row.Provider, Currency: row.Currency, Amount: formatMinor(row.amount(), k.exponent), Negative: row.Kind == "refund"}
+			Provider: row.Provider, Currency: row.Currency, Amount: money.FormatMinorGrouped(row.amount(), k.exponent), Negative: row.Kind == "refund"}
 		if p.Negative {
 			p.Amount = "-" + p.Amount
 		}
 		v.Payments = append(v.Payments, p)
 	}
-	v.Balance, v.CanBuy, v.Buy = formatMinor(resp.GetCreditBalance(), 0), resp.GetCanBuyCredits(), "/c/"+token+"/credits/buy"+q
+	v.Balance, v.CanBuy, v.Buy = money.FormatMinorGrouped(resp.GetCreditBalance(), 0), resp.GetCanBuyCredits(), "/c/"+token+"/credits/buy"+q
 	for _, l := range resp.GetCreditLots() {
-		row := portalLotRow{Granted: formatMinor(l.GetGranted(), 0), Remaining: formatMinor(l.GetRemaining(), 0)}
+		row := portalLotRow{Granted: money.FormatMinorGrouped(l.GetGranted(), 0), Remaining: money.FormatMinorGrouped(l.GetRemaining(), 0)}
 		if t := l.GetExpireTime(); t != nil {
 			row.Expires = t.AsTime().UTC().Format("2006-01-02")
 		}
 		v.Lots = append(v.Lots, row)
 	}
 	for _, p := range resp.GetCreditPacks() {
-		v.Packs = append(v.Packs, portalPackRow{ID: p.GetId(), Name: p.GetName(), Credits: formatMinor(p.GetCredits(), 0), Price: formatMinor(p.GetPriceMinor(), int(p.GetCurrencyExponent())),
+		v.Packs = append(v.Packs, portalPackRow{ID: p.GetId(), Name: p.GetName(), Credits: money.FormatMinorGrouped(p.GetCredits(), 0), Price: money.FormatMinorGrouped(p.GetPriceMinor(), int(p.GetCurrencyExponent())),
 			Currency: p.GetCurrency(), Valid: validText(v.L, p.GetValidityDays())})
 	}
 	v.ShowCredits = len(v.Lots) > 0 || len(v.Packs) > 0 || resp.GetCreditBalance() > 0

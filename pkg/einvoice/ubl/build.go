@@ -8,9 +8,11 @@ package ubl
 import (
 	"math/big"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 //nolint:gosec // XML namespace URIs, not credentials
@@ -93,7 +95,7 @@ type builder struct {
 	w    writer
 }
 
-func (b *builder) money(v int64) string { return formatMinor(v, b.doc.Exponent) }
+func (b *builder) money(v int64) string { return money.FormatMinor(v, b.doc.Exponent) }
 
 func (b *builder) amount(tag string, v int64) { b.w.el(tag, b.money(v), "currencyID", b.doc.Currency) }
 
@@ -434,7 +436,7 @@ func (b *builder) lines() {
 		qty, price, _, exact := linePrice(l, exp)
 		desc := l.Description
 		if !exact {
-			qty, price = "1", formatMinor(l.AmountMinor, exp)
+			qty, price = "1", money.FormatMinor(l.AmountMinor, exp)
 			if l.Quantity != "" {
 				desc = strings.TrimSpace(desc + " (" + l.Quantity + " " + l.UnitLabel + ")")
 			}
@@ -499,21 +501,10 @@ func linePrice(l einvoice.Line, exp int) (qty, price string, priceExp int, exact
 		num.Mul(num, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(k)), nil))
 		q, r := new(big.Int).QuoRem(num, units, new(big.Int))
 		if r.Sign() == 0 {
-			return l.Quantity, formatBig(q, exp+k), exp + k, true
+			return l.Quantity, money.FormatBig(q, exp+k), exp + k, true
 		}
 	}
 	return "", "", 0, false
-}
-
-func formatBig(v *big.Int, exp int) string {
-	s := v.String()
-	if exp > 0 {
-		for len(s) <= exp {
-			s = "0" + s
-		}
-		s = s[:len(s)-exp] + "." + s[len(s)-exp:]
-	}
-	return s
 }
 
 var unitCodes = map[string]string{
@@ -533,4 +524,4 @@ func unitCode(label string, quantified bool) string {
 	return "C62"
 }
 
-func itoa(n int) string { return formatMinor(int64(n), 0) }
+func itoa(n int) string { return strconv.Itoa(n) }
