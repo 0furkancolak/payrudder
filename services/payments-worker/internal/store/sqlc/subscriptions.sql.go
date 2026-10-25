@@ -66,13 +66,13 @@ FROM provider_subscriptions WHERE tenant_id = $1 ORDER BY updated_at DESC LIMIT 
 `
 
 type ListProviderSubscriptionsRow struct {
-	Provider              string
-	Environment           string
-	ProviderRef           string
+	Provider                string
+	Environment             string
+	ProviderRef             string
 	PayrudderSubscriptionID *uuid.UUID
-	Status                string
-	NextBilledAt          *time.Time
-	UpdatedAt             time.Time
+	Status                  string
+	NextBilledAt            *time.Time
+	UpdatedAt               time.Time
 }
 
 func (q *Queries) ListProviderSubscriptions(ctx context.Context, tenantID uuid.UUID) ([]ListProviderSubscriptionsRow, error) {
@@ -113,14 +113,14 @@ WHERE provider_subscriptions.updated_at <= EXCLUDED.updated_at
 `
 
 type UpsertProviderSubscriptionParams struct {
-	TenantID              uuid.UUID
-	Provider              string
-	Environment           string
-	ProviderRef           string
+	TenantID                uuid.UUID
+	Provider                string
+	Environment             string
+	ProviderRef             string
 	PayrudderSubscriptionID *uuid.UUID
-	Status                string
-	NextBilledAt          *time.Time
-	UpdatedAt             time.Time
+	Status                  string
+	NextBilledAt            *time.Time
+	UpdatedAt               time.Time
 }
 
 func (q *Queries) UpsertProviderSubscription(ctx context.Context, arg UpsertProviderSubscriptionParams) error {

@@ -13,10 +13,10 @@ func TestRewrite(t *testing.T) {
 		`PAYRUDDER_GRPC_ADDR`:           `ACMEBILLING_GRPC_ADDR`,
 		`Payrudder-Signature`:           `Acme Billing-Signature`,
 		`requirePayrudderOwned(x)`:      `requireAcmebillingOwned(x)`,
-		`quotify_subscription_id`:     `acmebilling_subscription_id`,
+		`payrudder_subscription_id`:     `acmebilling_subscription_id`,
 		`Payrudder's copy`:              `Acme Billing's copy`,
 		`image: payrudder/gateway:dev`:  `image: acmebilling/gateway:dev`,
-		`nothing to change here`:      `nothing to change here`,
+		`nothing to change here`:        `nothing to change here`,
 		`services/payrudderctl/main.go`: `services/acmebillingctl/main.go`,
 	} {
 		if got := s.rewrite(in); got != want {

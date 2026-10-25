@@ -10,9 +10,11 @@ import (
 	_ "embed" // base.default.yaml
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -99,7 +101,10 @@ func LoadFrom[T any](environ map[string]string, defaults ...[]byte) (T, error) {
 	if environ == nil {
 		environ = processEnv()
 	}
-	environ = AliasPrefix(environ)
+	environ, legacy := UpgradeLegacy(environ)
+	if len(legacy) > 0 {
+		slog.Warn("deprecated environment variables: rename the QUOTIFY_ prefix to PAYRUDDER_ (the old names stop working in a later release)", "names", legacy)
+	}
 	for k, v := range environ {
 		merged[k] = v
 	}
@@ -149,33 +154,46 @@ func applyPort[T any](merged, environ map[string]string) error {
 }
 
 const (
-	legacyPrefix = "PAYRUDDER_"
-	brandPrefix  = "PAYRUDDER_"
+	prefix = "PAYRUDDER_"
+	// legacyPrefix is the deprecated spelling of every setting, from before the product was renamed (ADR 0022). It still works and logs a warning.
+	legacyPrefix = "QUOTIFY_"
 )
 
-// AliasPrefix returns environ with every PAYRUDDER_X setting also under its internal name PAYRUDDER_X. PAYRUDDER_X wins when both are set, and PAYRUDDER_X keeps
-// working alone (ADR 0021). The input map is not changed.
-func AliasPrefix(environ map[string]string) map[string]string {
+// UpgradeLegacy returns environ with every deprecated QUOTIFY_X setting also under PAYRUDDER_X, unless PAYRUDDER_X is set: the new name wins when both are
+// present. It also returns the deprecated names it found, sorted. The input map is not changed.
+func UpgradeLegacy(environ map[string]string) (map[string]string, []string) {
 	out := make(map[string]string, len(environ))
 	for k, v := range environ {
 		out[k] = v
 	}
+	var legacy []string
 	for k, v := range environ {
-		if rest, ok := strings.CutPrefix(k, brandPrefix); ok {
-			out[legacyPrefix+rest] = v
+		rest, ok := strings.CutPrefix(k, legacyPrefix)
+		if !ok {
+			continue
+		}
+		legacy = append(legacy, k)
+		if _, set := environ[prefix+rest]; !set {
+			out[prefix+rest] = v
 		}
 	}
-	return out
+	sort.Strings(legacy)
+	return out, legacy
 }
 
-// Getenv reads a setting by its internal PAYRUDDER_ name and honours the PAYRUDDER_ spelling first. For tools that read the environment without Load.
+// Getenv reads a setting by its PAYRUDDER_ name and falls back to the deprecated QUOTIFY_ spelling, with a warning. For tools that read the environment
+// without Load.
 func Getenv(name string) string {
-	if rest, ok := strings.CutPrefix(name, legacyPrefix); ok {
-		if v := os.Getenv(brandPrefix + rest); v != "" {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	if rest, ok := strings.CutPrefix(name, prefix); ok {
+		if v := os.Getenv(legacyPrefix + rest); v != "" {
+			slog.Warn("deprecated environment variable: use the new name", "deprecated", legacyPrefix+rest, "use", name)
 			return v
 		}
 	}
-	return os.Getenv(name)
+	return ""
 }
 
 func processEnv() map[string]string {

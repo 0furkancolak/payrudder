@@ -15,13 +15,13 @@ type Subscriptions struct{ DB *pgxpool.Pool }
 
 // ProviderSubscription is a subscription at a provider.
 type ProviderSubscription struct {
-	Provider              string     `json:"provider"`
-	Environment           string     `json:"environment"`
-	ProviderRef           string     `json:"provider_ref"`
+	Provider                string     `json:"provider"`
+	Environment             string     `json:"environment"`
+	ProviderRef             string     `json:"provider_ref"`
 	PayrudderSubscriptionID *string    `json:"quotify_subscription_id,omitempty"`
-	Status                string     `json:"status"`
-	NextBilledAt          *time.Time `json:"next_billed_at,omitempty"`
-	UpdatedAt             time.Time  `json:"updated_at"`
+	Status                  string     `json:"status"`
+	NextBilledAt            *time.Time `json:"next_billed_at,omitempty"`
+	UpdatedAt               time.Time  `json:"updated_at"`
 }
 
 // Upsert records what the provider says about a subscription. Events can arrive out of order, so an older event never overwrites a

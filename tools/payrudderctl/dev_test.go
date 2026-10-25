@@ -9,9 +9,9 @@ func TestToHost(t *testing.T) {
 	published := map[string]string{"postgres:5432": "localhost:5432", "redpanda:9092": "localhost:42092", "plans-svc:7001": "localhost:7001", "minio:9000": "localhost:9001"}
 	for in, want := range map[string]string{
 		"postgres://plans_app:plans_app_local@postgres:5432/plans_db": "postgres://plans_app:plans_app_local@localhost:5432/plans_db",
-		"redpanda:9092":                               "localhost:42092",
-		"dns:///plans-svc:7001":                       "localhost:7001",
-		"http://minio:9000":                           "http://localhost:9001",
+		"redpanda:9092":         "localhost:42092",
+		"dns:///plans-svc:7001": "localhost:7001",
+		"http://minio:9000":     "http://localhost:9001",
 		"amqp://payrudder:payrudder_local@rabbitmq:5672/": "amqp://payrudder:payrudder_local@rabbitmq:5672/", // not published: left as it is
 		":7001":    ":7001",
 		"1m,3m,7m": "1m,3m,7m",

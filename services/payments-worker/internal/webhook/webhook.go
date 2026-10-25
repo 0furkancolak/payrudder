@@ -661,9 +661,9 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Provider              string `json:"provider"`
-		PriceRef              string `json:"price_ref"`
-		Quantity              int    `json:"quantity"`
+		Provider                string `json:"provider"`
+		PriceRef                string `json:"price_ref"`
+		Quantity                int    `json:"quantity"`
 		PayrudderSubscriptionID string `json:"quotify_subscription_id"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&in); err != nil || in.Provider == "" || in.PriceRef == "" {

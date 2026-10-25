@@ -55,8 +55,8 @@ func (c Capabilities) Owner() Owner {
 type Owner string
 
 const (
-	OwnerPayrudder  Owner = "quotify"
-	OwnerProvider Owner = "provider"
+	OwnerPayrudder Owner = "quotify"
+	OwnerProvider  Owner = "provider"
 )
 
 // Provider is a PaymentProvider that declares what it does.
@@ -168,7 +168,7 @@ type SubscriptionEvent struct {
 	PayrudderSubscriptionID string
 	// PayrudderMigrationID is the provider migration this subscription completes, if it says.
 	PayrudderMigrationID string
-	NextBilledAt       *time.Time
+	NextBilledAt         *time.Time
 	// PriceRefs are the provider's ids of the prices the subscription is billed for, when the notification says.
 	PriceRefs []string
 }

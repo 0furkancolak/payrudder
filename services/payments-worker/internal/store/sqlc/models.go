@@ -115,13 +115,13 @@ type ProviderObject struct {
 }
 
 type ProviderSubscription struct {
-	TenantID              uuid.UUID
-	Provider              string
-	Environment           string
-	ProviderRef           string
+	TenantID                uuid.UUID
+	Provider                string
+	Environment             string
+	ProviderRef             string
 	PayrudderSubscriptionID *uuid.UUID
-	Status                string
-	NextBilledAt          *time.Time
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+	Status                  string
+	NextBilledAt            *time.Time
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }

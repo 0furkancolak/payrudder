@@ -9,12 +9,8 @@ import (
 	"sync/atomic"
 )
 
-// defaultName is what people read. wireSlug is what partner systems parse (webhook headers, user agents, the signature header): it stays "payrudder" while the
-// name is the default, because the rename to Payrudder is surface-only (ADR 0021) and a header change would break every integration.
-const (
-	defaultName = "Payrudder"
-	wireSlug    = "payrudder"
-)
+// defaultName is the product name as people read it.
+const defaultName = "Payrudder"
 
 var name atomic.Pointer[string]
 
@@ -39,9 +35,6 @@ var notSlug = regexp.MustCompile(`[^a-z0-9]+`)
 
 // Slug is the name in lower case with dashes: "acme-billing". It names things partners type or parse.
 func Slug() string {
-	if Name() == defaultName {
-		return wireSlug
-	}
 	return strings.Trim(notSlug.ReplaceAllString(strings.ToLower(Name()), "-"), "-")
 }
 

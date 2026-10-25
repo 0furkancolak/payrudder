@@ -24,12 +24,12 @@ type PriceSpec struct {
 // CatalogueRequest asks a provider to hold a plan's product and the given prices. The caller sends only prices that are not there yet.
 type CatalogueRequest struct {
 	// ProductRef is the provider's product for the plan, or empty to create it.
-	ProductRef      string
-	ProductName     string
-	Description     string
-	TaxCategory     string
+	ProductRef        string
+	ProductName       string
+	Description       string
+	TaxCategory       string
 	PayrudderPlanCode string
-	Prices          []PriceSpec
+	Prices            []PriceSpec
 }
 
 // CatalogueResult is what the provider now holds.
@@ -51,12 +51,12 @@ type Catalogue interface {
 type CustomerSpec struct {
 	// PayrudderCustomerID ties the provider's customer to ours.
 	PayrudderCustomerID string
-	Email             string
-	Name              string
-	Country           string
-	PostalCode        string
-	City              string
-	Address           string
+	Email               string
+	Name                string
+	Country             string
+	PostalCode          string
+	City                string
+	Address             string
 	// TaxID and Business make the customer a business with a tax identifier.
 	TaxID    string
 	Business string

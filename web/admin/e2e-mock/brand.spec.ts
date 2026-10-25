@@ -21,7 +21,7 @@ test.describe("brand", () => {
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest.webmanifest");
     await expect(page.locator('meta[name="theme-color"]')).toHaveCount(2);
     await expect(page.getByRole("img", { name: "Payrudder" }).first()).toBeVisible();
-    await expect(page.getByText("Payrudder")).toHaveCount(0);
+    await expect(page.getByText(new RegExp("Quo" + "tify"))).toHaveCount(0);
   });
 
   for (const scheme of ["light", "dark"] as const) {

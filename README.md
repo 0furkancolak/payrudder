@@ -2,7 +2,7 @@
 
 > Multi-tenant usage metering and billing in Go: Kafka, RabbitMQ, gRPC, Postgres Row Level Security, ClickHouse, Kubernetes.
 
-Payrudder (the code, module path and `PAYRUDDER_*` variables keep the original name `payrudder`; see [ADR 0021](docs/adr/0021-payrudder-surface-rename.md) and the brand rules in [payrudder-brand/DESIGN.md](payrudder-brand/DESIGN.md)) lets a SaaS company (a *tenant*) send usage events, "customer X used 1,500 AI tokens", "customer Y made one API call",
+Payrudder (see [ADR 0022](docs/adr/0022-payrudder-rename.md) and the brand rules in [payrudder-brand/DESIGN.md](payrudder-brand/DESIGN.md)) lets a SaaS company (a *tenant*) send usage events, "customer X used 1,500 AI tokens", "customer Y made one API call",
 and turns them into correct, auditable invoices. It is in the same family as Orb, Lago and Stripe's usage-based billing.
 It is also a worked example of getting distributed-systems guarantees right and *proving* them: every claim below has a test
 that kills things.
