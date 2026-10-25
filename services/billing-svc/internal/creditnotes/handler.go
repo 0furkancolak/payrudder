@@ -11,8 +11,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -20,12 +20,12 @@ import (
 type Handler struct {
 	app    *pgxpool.Pool
 	system *pgxpool.Pool
-	runs   *runs.Manager
+	notes  *command.Commands
 }
 
 // New returns the handler over the billing_app and billing_system pools.
-func New(app, system *pgxpool.Pool, mgr *runs.Manager) *Handler {
-	return &Handler{app: app, system: system, runs: mgr}
+func New(app, system *pgxpool.Pool, notes *command.Commands) *Handler {
+	return &Handler{app: app, system: system, notes: notes}
 }
 
 // CreateCreditNote implements billingv1.BillingAdminServiceServer.
@@ -41,7 +41,7 @@ func (h *Handler) CreateCreditNote(ctx context.Context, req *billingv1.CreateCre
 	if err != nil {
 		return nil, err
 	}
-	cn, err := command.Create(ctx, h.runs, tid, iid, req.GetAmountMinor(), req.GetReason(), req.GetRefundToCard())
+	cn, err := h.notes.Create(ctx, tid, iid, req.GetAmountMinor(), req.GetReason(), req.GetRefundToCard())
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (h *Handler) RetryCreditNoteRefund(ctx context.Context, req *billingv1.Retr
 	if err != nil {
 		return nil, err
 	}
-	cn, err := command.RetryRefund(ctx, h.runs, tid, id)
+	cn, err := h.notes.RetryRefund(ctx, tid, id)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +105,12 @@ func (h *Handler) ListCreditNotes(ctx context.Context, req *billingv1.ListCredit
 }
 
 var refundStates = map[string]billingv1.RefundState{
-	runs.RefundRequested: billingv1.RefundState_REFUND_STATE_REQUESTED,
-	runs.RefundRefunded:  billingv1.RefundState_REFUND_STATE_REFUNDED,
-	runs.RefundFailed:    billingv1.RefundState_REFUND_STATE_FAILED,
+	model.RefundRequested: billingv1.RefundState_REFUND_STATE_REQUESTED,
+	model.RefundRefunded:  billingv1.RefundState_REFUND_STATE_REFUNDED,
+	model.RefundFailed:    billingv1.RefundState_REFUND_STATE_FAILED,
 }
 
-func creditNoteProto(c *runs.CreditNote, customerExternalID string) *billingv1.CreditNote {
+func creditNoteProto(c *model.CreditNote, customerExternalID string) *billingv1.CreditNote {
 	out := &billingv1.CreditNote{
 		Id: c.ID.String(), Number: c.Number, InvoiceId: c.InvoiceID.String(), InvoiceNumber: c.InvoiceNumber, CustomerId: c.CustomerID.String(),
 		CustomerExternalId: customerExternalID, Currency: c.Currency, TotalMinor: c.TotalMinor, Reason: c.Reason, CreateTime: timestamppb.New(c.CreatedAt),
@@ -123,7 +123,7 @@ func creditNoteProto(c *runs.CreditNote, customerExternalID string) *billingv1.C
 }
 
 func creditNoteRowProto(r sqlc.GetCreditNoteRow) *billingv1.CreditNote {
-	return creditNoteProto(&runs.CreditNote{
+	return creditNoteProto(&model.CreditNote{
 		ID: r.ID, CustomerID: r.CustomerID, InvoiceID: r.InvoiceID, Number: r.Number, InvoiceNumber: r.InvoiceNumber, Currency: r.Currency, TotalMinor: r.TotalMinor,
 		Reason: r.Reason, CreatedAt: r.CreatedAt, Refund: r.Refund, RefundState: r.RefundState, RefundError: r.RefundError,
 	}, r.CustomerExternalID)

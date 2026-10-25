@@ -16,7 +16,6 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
 type fakePDFs struct{}
@@ -27,7 +26,7 @@ func (fakePDFs) PresignGet(_ context.Context, key string, _ time.Duration) (stri
 
 func testHostedInvoiceLinks(t *testing.T) {
 	e := newEnv(t, envOpts{})
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng).WithPDFs(fakePDFs{})
+	svc := e.api().WithPDFs(fakePDFs{})
 	mine := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
 	stranger := tenant.NewContext(context.Background(), tenant.Info{ID: uuid.New()})
 	code := func(err error) codes.Code { return status.Code(err) }

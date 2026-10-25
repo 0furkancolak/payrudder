@@ -12,7 +12,6 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 )
 
@@ -271,7 +270,7 @@ func testInvoiceSagaTimeline(t *testing.T) {
 	if err := shared.system.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&invoiceID); err != nil {
 		t.Fatal(err)
 	}
-	srv := api.New(shared.app, shared.system, e.mgr, e.eng)
+	srv := e.api()
 	resp, err := srv.GetInvoiceSaga(opCtx(), &billingv1.GetInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: invoiceID.String()})
 	if err != nil {
 		t.Fatal(err)

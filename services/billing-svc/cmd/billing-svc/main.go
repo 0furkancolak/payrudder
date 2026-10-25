@@ -35,6 +35,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
+	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	creditcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
@@ -140,7 +141,8 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	mgr, err := newRunManager(cfg, log, systemPool, eng, be, usageEndOffsets(kadm.NewClient(producer)))
+	notes := creditnotecmd.New(creditnotecmd.Config{Pool: systemPool, Engine: eng, Log: log})
+	mgr, err := newRunManager(cfg, log, systemPool, eng, be, usageEndOffsets(kadm.NewClient(producer)), []runs.Chore{{Name: "credit note refunds not swept", Run: notes.SweepRefunds}})
 	if err != nil {
 		return err
 	}
@@ -158,7 +160,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	hh.AddCheck("kafka", producer.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return pub.Ping() })
 
-	srv, grpcHealth, err := newGRPCServer(cfg, log, appPool, systemPool, mgr, eng)
+	srv, grpcHealth, err := newGRPCServer(cfg, log, api.Deps{App: appPool, System: systemPool, Runs: mgr, Engine: eng, CreditNotes: notes})
 	if err != nil {
 		return err
 	}
@@ -216,13 +218,13 @@ func (b *backends) close() {
 }
 
 // newRunManager builds the billing-run manager from the backend clients and the usage topic's end offsets.
-func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, endOffsets func(context.Context) (map[int32]int64, error)) (*runs.Manager, error) {
+func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, endOffsets func(context.Context) (map[int32]int64, error), chores []runs.Chore) (*runs.Manager, error) {
 	return runs.NewManager(runs.Config{
 		Pool: systemPool, Engine: eng,
 		Plans: plansv1.NewPlansServiceClient(be.plans), Events: plansv1.NewWebhookServiceClient(be.plans), Affiliates: plansv1.NewAffiliateServiceClient(be.plans), Admin: plansv1.NewAdminServiceClient(be.plans),
 		Ingest: ingestv1.NewIngestServiceClient(be.ingest), Aggregator: aggregatorv1.NewUsageQueryServiceClient(be.aggregator),
 		EndOffsets:     endOffsets,
-		WatermarkDelay: cfg.WatermarkDelay, Log: log,
+		WatermarkDelay: cfg.WatermarkDelay, Log: log, Chores: chores,
 	})
 }
 
@@ -243,9 +245,9 @@ func usageEndOffsets(adm *kadm.Client) func(context.Context) (map[int32]int64, e
 }
 
 // newGRPCServer builds the gRPC server with every billing service registered; the PDF store is optional.
-func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, mgr *runs.Manager, eng *sagacommand.Engine) (*grpc.Server, *grpchealth.Server, error) {
+func newGRPCServer(cfg *Config, log *slog.Logger, deps api.Deps) (*grpc.Server, *grpchealth.Server, error) {
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
-	svc := api.New(appPool, systemPool, mgr, eng).WithDeadLetters(&dlq.Admin{URL: cfg.RabbitMQURL}).WithDemo(cfg.Demo)
+	svc := api.New(deps).WithDeadLetters(&dlq.Admin{URL: cfg.RabbitMQURL}).WithDemo(cfg.Demo)
 	if cfg.S3AccessKey != "" {
 		store, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, PublicEndpoint: cfg.S3PublicEndpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
 			AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
@@ -258,7 +260,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 	billingv1.RegisterSandboxServiceServer(srv, svc)
 	billingv1.RegisterHostedInvoiceServiceServer(srv, svc)
 	billingv1.RegisterBillingAdminServiceServer(srv, svc)
-	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(billingreset.New(systemPool).Reset))
+	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(billingreset.New(deps.System).Reset))
 	return srv, grpcHealth, nil
 }
 
