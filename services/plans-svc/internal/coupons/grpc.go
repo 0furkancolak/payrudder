@@ -57,3 +57,47 @@ func (h *Handler) RemoveCoupon(ctx context.Context, req *plansv1.RemoveCouponReq
 	}
 	return &plansv1.RemoveCouponResponse{Subscription: s}, nil
 }
+
+func (h *Handler) CreatePromotionCodes(ctx context.Context, req *plansv1.CreatePromotionCodesRequest) (*plansv1.CreatePromotionCodesResponse, error) {
+	cs, err := h.cmd.CreatePromotionCodes(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.CreatePromotionCodesResponse{Codes: cs}, nil
+}
+
+func (h *Handler) ListPromotionCodes(ctx context.Context, req *plansv1.ListPromotionCodesRequest) (*plansv1.ListPromotionCodesResponse, error) {
+	return h.qry.ListPromotionCodes(ctx, req)
+}
+
+func (h *Handler) DeactivatePromotionCode(ctx context.Context, req *plansv1.DeactivatePromotionCodeRequest) (*plansv1.DeactivatePromotionCodeResponse, error) {
+	c, err := h.cmd.DeactivatePromotionCode(ctx, req.GetCode())
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.DeactivatePromotionCodeResponse{Code: c}, nil
+}
+
+func (h *Handler) ListCouponRedemptions(ctx context.Context, req *plansv1.ListCouponRedemptionsRequest) (*plansv1.ListCouponRedemptionsResponse, error) {
+	return h.qry.ListRedemptions(ctx, req)
+}
+
+func (h *Handler) RedeemPromotion(ctx context.Context, req *plansv1.RedeemPromotionRequest) (*plansv1.RedeemPromotionResponse, error) {
+	return h.cmd.RedeemPromotion(ctx, req)
+}
+
+func (h *Handler) ReversePromotion(ctx context.Context, req *plansv1.ReversePromotionRequest) (*plansv1.ReversePromotionResponse, error) {
+	ok, err := h.cmd.ReversePromotion(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.ReversePromotionResponse{Reversed: ok}, nil
+}
+
+func (h *Handler) GrantCustomerCoupon(ctx context.Context, req *plansv1.GrantCustomerCouponRequest) (*plansv1.GrantCustomerCouponResponse, error) {
+	ok, err := h.cmd.GrantCustomerCoupon(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.GrantCustomerCouponResponse{Granted: ok}, nil
+}

@@ -1286,6 +1286,20 @@
         "unknown_currency": "La devise n'est pas prise en charge."
       }
     },
+    "coupon": {
+      "not_found": "Ce code n'existe pas. Vérifiez-le et réessayez.",
+      "inactive": "Ce code n'est plus actif.",
+      "expired": "Ce code a expiré.",
+      "exhausted": "Ce code a été entièrement utilisé.",
+      "not_applicable": "Ce code ne s'applique pas à cet achat.",
+      "currency_mismatch": "Ce code ne s'applique pas dans la devise de cet achat.",
+      "already_used": "Vous avez déjà utilisé ce code.",
+      "first_purchase_only": "Ce code est réservé à un premier achat.",
+      "below_minimum": "Le montant de l'achat est inférieur au minimum requis pour ce code.",
+      "customer_required": "Ce code nécessite un client identifié ; il ne peut pas servir pour un paiement invité.",
+      "already_applied": "Cet achat utilise déjà un coupon. Un seul coupon par achat.",
+      "code_taken": "Un code promotionnel avec ce texte existe déjà (les majuscules et minuscules ne comptent pas)."
+    },
     "plans": {
       "app": {
         "bad_slug": "Le code de l'app ne peut contenir que des minuscules, des chiffres et des tirets simples, et au plus 60 caractères.",

@@ -922,6 +922,120 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/coupons/{code}/promotion-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make promotion codes for a coupon
+         * @description Name the codes (2-40 letters, digits, - or _; the same in any case) or ask for count random ones (1-1000, prefix + 8 characters without 0, O, 1, I, L). Every code gets the template's limit, expiry and restrictions.
+         */
+        post: operations["createPromotionCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/promotion-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Promotion codes, newest first */
+        get: operations["listPromotionCodes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/promotion-codes/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop new redemptions of one code (the coupon and its other codes keep working) */
+        delete: operations["deactivatePromotionCode"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/coupon-redemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Uses of coupons, newest first
+         * @description One row per use: the coupon and the code, the customer, what it was used on (the subscription, or the invoice of the purchase) and what it took off. A void or a full refund marks the row reversed.
+         */
+        get: operations["listCouponRedemptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/promotions/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What a code would take off a purchase (claims nothing)
+         * @description For a checkout page of your own. The answer is the discount or the bonus credits, or an error with a coupon.* key: coupon.expired, coupon.exhausted, coupon.not_applicable, coupon.currency_mismatch, coupon.already_used and the others in the error key list.
+         */
+        post: operations["quotePromotion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Give a customer a coupon that their next eligible checkout uses without a code
+         * @description One grant per (customer, source, source_ref); repeating it grants nothing more.
+         */
+        post: operations["grantCustomerCoupon"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subscriptions/{id}/scheduled-change": {
         parameters: {
             query?: never;
@@ -4757,23 +4871,130 @@ export interface components {
             /** @description 2–40 letters, digits, - or _ */
             code?: string;
             name?: string;
-            /** @description 1000 is 10 %. Use this or amount_minor */
+            /** Format: uuid */
+            readonly id?: string;
+            /** @description 1000 is 10 %. Use one of percent_bps, amount_minor and bonus_percent_bps */
             percent_bps?: number;
-            /** @description Minor units of currency; applies only to subscriptions in that currency */
+            /** @description Minor units of currency; applies only in that currency */
             amount_minor?: string;
             currency?: string;
-            /** @enum {string} */
+            /** @description Extra credits on a credit purchase, in the same lot: 1000 is 10 % more. Credit purchases only */
+            bonus_percent_bps?: number;
+            /** @description Where the coupon works; empty means all three (a bonus coupon: credit purchases) */
+            applies_to?: ("COUPON_TARGET_SUBSCRIPTION" | "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT")[];
+            /**
+             * @description How long a subscription keeps the coupon; required when it applies to subscriptions
+             * @enum {string}
+             */
             duration?: "COUPON_DURATION_ONCE" | "COUPON_DURATION_REPEATING" | "COUPON_DURATION_FOREVER";
             /** @description For a repeating coupon, how many fees */
             duration_periods?: number;
-            /** @description 0 or absent = unlimited */
+            /** @description 0 or absent = unlimited. Counts the uses through all the coupon's codes */
             max_redemptions?: number;
+            /** @description The uses that count against the limit */
             readonly redeemed?: number;
             /** Format: date-time */
             expire_time?: string;
             readonly active?: boolean;
             /** Format: date-time */
             readonly create_time?: string;
+            readonly promotion_code_count?: number;
+            /** @description Do not make the promotion code with the coupon's own text that a new coupon gets */
+            without_default_code?: boolean;
+        };
+        /** @description What a customer types. Many codes point to one coupon, each with its own limit, expiry and restrictions. */
+        PromotionCode: {
+            /** Format: uuid */
+            readonly id?: string;
+            /** Format: uuid */
+            readonly coupon_id?: string;
+            readonly coupon_code?: string;
+            readonly code?: string;
+            readonly active?: boolean;
+            /** @description 0 or absent = unlimited */
+            max_redemptions?: number;
+            readonly redeemed?: number;
+            /** Format: date-time */
+            expire_time?: string;
+            /** @description Only a customer who has paid for nothing yet */
+            first_purchase_only?: boolean;
+            one_per_customer?: boolean;
+            /** @description A purchase under this amount cannot use the code; needs min_amount_currency */
+            min_amount_minor?: string;
+            min_amount_currency?: string;
+            /** @description Plan codes; empty means any */
+            allowed_plans?: string[];
+            /** @description Credit pack ids; empty means any */
+            allowed_packs?: string[];
+            /** @description Empty means any */
+            allowed_currencies?: string[];
+            /** @description A void or full refund gives the use back to the count. Off by default */
+            restore_on_reversal?: boolean;
+            /** Format: date-time */
+            readonly create_time?: string;
+        };
+        CreatePromotionCodes: {
+            template?: components["schemas"]["PromotionCode"];
+            /** @description Name the codes, or ask for count */
+            codes?: string[];
+            count?: number;
+            /** @description For random codes; at most 20 characters */
+            prefix?: string;
+        };
+        CouponRedemption: {
+            /** Format: uuid */
+            id?: string;
+            coupon_code?: string;
+            /** @description Empty when an operator applied the coupon or it came from a grant */
+            promotion_code?: string;
+            customer_external_id?: string;
+            /** @enum {string} */
+            target?: "COUPON_TARGET_SUBSCRIPTION" | "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
+            /**
+             * Format: uuid
+             * @description The subscription, or the invoice
+             */
+            target_id?: string;
+            /** Format: uuid */
+            invoice_id?: string;
+            /** @description What it took off; a subscription's grows with each fee */
+            discount_minor?: string;
+            bonus_credits?: string;
+            currency?: string;
+            /** Format: date-time */
+            create_time?: string;
+            /**
+             * Format: date-time
+             * @description Set when a void or a full refund reversed it
+             */
+            reverse_time?: string;
+        };
+        PromotionQuoteRequest: {
+            code: string;
+            /** @description Needed by codes that are first-purchase-only or one per customer */
+            customer_external_id?: string;
+            /** @enum {string} */
+            target: "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
+            /** @description The price before the discount */
+            amount_minor: string;
+            currency: string;
+            /** @description The credit pack id, for codes restricted to some packs */
+            item?: string;
+            /** @description The credits sold, for a bonus coupon */
+            credits?: string;
+            /** @description The customer has paid for something before */
+            prior_purchases?: boolean;
+        };
+        PromotionQuote: {
+            applied?: boolean;
+            coupon_code?: string;
+            coupon_name?: string;
+            promotion_code?: string;
+            discount_minor?: string;
+            bonus_credits?: string;
+            /** @description The price after the discount */
+            total_minor?: string;
+            currency?: string;
         };
         ChangeRequest: {
             /** @description Empty keeps the plan (to change the interval only) */
@@ -6645,6 +6866,186 @@ export interface operations {
                     "application/json": components["schemas"]["Coupon"];
                 };
             };
+            404: components["responses"]["Error"];
+        };
+    };
+    createPromotionCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePromotionCodes"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        codes?: components["schemas"]["PromotionCode"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    listPromotionCodes: {
+        parameters: {
+            query?: {
+                /** @description Only the codes of this coupon */
+                coupon?: string;
+                state?: "active" | "inactive";
+                /** @description Part of the code */
+                search?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        codes?: components["schemas"]["PromotionCode"][];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    deactivatePromotionCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionCode"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listCouponRedemptions: {
+        parameters: {
+            query?: {
+                coupon?: string;
+                promotion_code?: string;
+                customer_external_id?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        redemptions?: components["schemas"]["CouponRedemption"][];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    quotePromotion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionQuote"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    grantCustomerCoupon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    coupon_code: string;
+                    /** @description Who gives it, e.g. operator or affiliate */
+                    source: string;
+                    source_ref: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        granted?: boolean;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

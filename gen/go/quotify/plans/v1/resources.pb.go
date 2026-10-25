@@ -334,6 +334,62 @@ func (SubscriptionInterval) EnumDescriptor() ([]byte, []int) {
 	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{5}
 }
 
+// CouponTarget is what a coupon is used on.
+type CouponTarget int32
+
+const (
+	CouponTarget_COUPON_TARGET_UNSPECIFIED CouponTarget = 0
+	// The fixed fee of a subscription.
+	CouponTarget_COUPON_TARGET_SUBSCRIPTION CouponTarget = 1
+	// The price of a credit pack purchase (a discount) or its credits (a bonus).
+	CouponTarget_COUPON_TARGET_CREDIT_PURCHASE CouponTarget = 2
+	// A payment link, a hosted checkout or an invoice raised by hand.
+	CouponTarget_COUPON_TARGET_PAYMENT CouponTarget = 3
+)
+
+// Enum value maps for CouponTarget.
+var (
+	CouponTarget_name = map[int32]string{
+		0: "COUPON_TARGET_UNSPECIFIED",
+		1: "COUPON_TARGET_SUBSCRIPTION",
+		2: "COUPON_TARGET_CREDIT_PURCHASE",
+		3: "COUPON_TARGET_PAYMENT",
+	}
+	CouponTarget_value = map[string]int32{
+		"COUPON_TARGET_UNSPECIFIED":     0,
+		"COUPON_TARGET_SUBSCRIPTION":    1,
+		"COUPON_TARGET_CREDIT_PURCHASE": 2,
+		"COUPON_TARGET_PAYMENT":         3,
+	}
+)
+
+func (x CouponTarget) Enum() *CouponTarget {
+	p := new(CouponTarget)
+	*p = x
+	return p
+}
+
+func (x CouponTarget) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CouponTarget) Descriptor() protoreflect.EnumDescriptor {
+	return file_quotify_plans_v1_resources_proto_enumTypes[6].Descriptor()
+}
+
+func (CouponTarget) Type() protoreflect.EnumType {
+	return &file_quotify_plans_v1_resources_proto_enumTypes[6]
+}
+
+func (x CouponTarget) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CouponTarget.Descriptor instead.
+func (CouponTarget) EnumDescriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{6}
+}
+
 type CouponDuration int32
 
 const (
@@ -373,11 +429,11 @@ func (x CouponDuration) String() string {
 }
 
 func (CouponDuration) Descriptor() protoreflect.EnumDescriptor {
-	return file_quotify_plans_v1_resources_proto_enumTypes[6].Descriptor()
+	return file_quotify_plans_v1_resources_proto_enumTypes[7].Descriptor()
 }
 
 func (CouponDuration) Type() protoreflect.EnumType {
-	return &file_quotify_plans_v1_resources_proto_enumTypes[6]
+	return &file_quotify_plans_v1_resources_proto_enumTypes[7]
 }
 
 func (x CouponDuration) Number() protoreflect.EnumNumber {
@@ -386,7 +442,7 @@ func (x CouponDuration) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CouponDuration.Descriptor instead.
 func (CouponDuration) EnumDescriptor() ([]byte, []int) {
-	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{6}
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{7}
 }
 
 type ApiKey_Status int32
@@ -422,11 +478,11 @@ func (x ApiKey_Status) String() string {
 }
 
 func (ApiKey_Status) Descriptor() protoreflect.EnumDescriptor {
-	return file_quotify_plans_v1_resources_proto_enumTypes[7].Descriptor()
+	return file_quotify_plans_v1_resources_proto_enumTypes[8].Descriptor()
 }
 
 func (ApiKey_Status) Type() protoreflect.EnumType {
-	return &file_quotify_plans_v1_resources_proto_enumTypes[7]
+	return &file_quotify_plans_v1_resources_proto_enumTypes[8]
 }
 
 func (x ApiKey_Status) Number() protoreflect.EnumNumber {
@@ -2388,27 +2444,37 @@ func (x *ScheduledChange) GetEffectiveTime() *timestamppb.Timestamp {
 	return nil
 }
 
-// Coupon takes a percentage or an amount off the fixed fee of a subscription Quotify renews.
+// Coupon is the definition of a discount: a percentage or an amount off, or bonus credits on a credit purchase. It takes something off the fixed fee of a
+// subscription Quotify renews, off a credit purchase, or off a payment link or invoice, as applies_to says. Customers type a PromotionCode, not the coupon.
 type Coupon struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Code  string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
 	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// 1..10000 (1000 = 10 %); zero for an amount coupon.
+	// 1..10000 (1000 = 10 %); zero for an amount or a bonus coupon.
 	PercentBps int32 `protobuf:"varint,3,opt,name=percent_bps,json=percentBps,proto3" json:"percent_bps,omitempty"`
-	// Minor units of currency; zero for a percentage coupon. An amount coupon applies only to subscriptions in its currency.
+	// Minor units of currency; zero for another kind. An amount coupon applies only in its currency.
 	AmountMinor int64          `protobuf:"varint,4,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
 	Currency    string         `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
 	Duration    CouponDuration `protobuf:"varint,6,opt,name=duration,proto3,enum=quotify.plans.v1.CouponDuration" json:"duration,omitempty"`
 	// For REPEATING: how many periods.
 	DurationPeriods int32 `protobuf:"varint,7,opt,name=duration_periods,json=durationPeriods,proto3" json:"duration_periods,omitempty"`
-	// 0 = unlimited.
-	MaxRedemptions int32                  `protobuf:"varint,8,opt,name=max_redemptions,json=maxRedemptions,proto3" json:"max_redemptions,omitempty"`
-	Redeemed       int32                  `protobuf:"varint,9,opt,name=redeemed,proto3" json:"redeemed,omitempty"`
-	ExpireTime     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
-	Active         bool                   `protobuf:"varint,11,opt,name=active,proto3" json:"active,omitempty"`
-	CreateTime     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 0 = unlimited. Counts the redemptions of the coupon through all its promotion codes.
+	MaxRedemptions int32 `protobuf:"varint,8,opt,name=max_redemptions,json=maxRedemptions,proto3" json:"max_redemptions,omitempty"`
+	// The redemptions that count against the limit (the redemption ledger).
+	Redeemed   int32                  `protobuf:"varint,9,opt,name=redeemed,proto3" json:"redeemed,omitempty"`
+	ExpireTime *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	Active     bool                   `protobuf:"varint,11,opt,name=active,proto3" json:"active,omitempty"`
+	CreateTime *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	Id         string                 `protobuf:"bytes,13,opt,name=id,proto3" json:"id,omitempty"`
+	// Extra credits on a credit purchase, as a share of the credits bought: 1000 = 10 % more, in the same lot. Zero for another kind. Only for CREDIT_PURCHASE.
+	BonusPercentBps int32 `protobuf:"varint,14,opt,name=bonus_percent_bps,json=bonusPercentBps,proto3" json:"bonus_percent_bps,omitempty"`
+	// Where the coupon works. Empty on create means subscription, credit purchase and payment; a bonus coupon is for CREDIT_PURCHASE only.
+	AppliesTo          []CouponTarget `protobuf:"varint,15,rep,packed,name=applies_to,json=appliesTo,proto3,enum=quotify.plans.v1.CouponTarget" json:"applies_to,omitempty"`
+	PromotionCodeCount int32          `protobuf:"varint,16,opt,name=promotion_code_count,json=promotionCodeCount,proto3" json:"promotion_code_count,omitempty"`
+	// Create only: do not make the promotion code with the coupon's own text that a new coupon gets by default.
+	WithoutDefaultCode bool `protobuf:"varint,17,opt,name=without_default_code,json=withoutDefaultCode,proto3" json:"without_default_code,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Coupon) Reset() {
@@ -2521,6 +2587,357 @@ func (x *Coupon) GetActive() bool {
 func (x *Coupon) GetCreateTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *Coupon) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Coupon) GetBonusPercentBps() int32 {
+	if x != nil {
+		return x.BonusPercentBps
+	}
+	return 0
+}
+
+func (x *Coupon) GetAppliesTo() []CouponTarget {
+	if x != nil {
+		return x.AppliesTo
+	}
+	return nil
+}
+
+func (x *Coupon) GetPromotionCodeCount() int32 {
+	if x != nil {
+		return x.PromotionCodeCount
+	}
+	return 0
+}
+
+func (x *Coupon) GetWithoutDefaultCode() bool {
+	if x != nil {
+		return x.WithoutDefaultCode
+	}
+	return false
+}
+
+// PromotionCode is what a customer types. Many codes can point to one coupon, each with its own limit, expiry and restrictions.
+type PromotionCode struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	CouponCode string                 `protobuf:"bytes,2,opt,name=coupon_code,json=couponCode,proto3" json:"coupon_code,omitempty"`
+	Code       string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+	Active     bool                   `protobuf:"varint,4,opt,name=active,proto3" json:"active,omitempty"`
+	// 0 = unlimited.
+	MaxRedemptions int32                  `protobuf:"varint,5,opt,name=max_redemptions,json=maxRedemptions,proto3" json:"max_redemptions,omitempty"`
+	Redeemed       int32                  `protobuf:"varint,6,opt,name=redeemed,proto3" json:"redeemed,omitempty"`
+	ExpireTime     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	// Only a customer who has bought nothing yet.
+	FirstPurchaseOnly bool `protobuf:"varint,8,opt,name=first_purchase_only,json=firstPurchaseOnly,proto3" json:"first_purchase_only,omitempty"`
+	// Each customer once.
+	OnePerCustomer bool `protobuf:"varint,9,opt,name=one_per_customer,json=onePerCustomer,proto3" json:"one_per_customer,omitempty"`
+	// A purchase under this amount (in min_amount_currency) cannot use the code.
+	MinAmountMinor    int64  `protobuf:"varint,10,opt,name=min_amount_minor,json=minAmountMinor,proto3" json:"min_amount_minor,omitempty"`
+	MinAmountCurrency string `protobuf:"bytes,11,opt,name=min_amount_currency,json=minAmountCurrency,proto3" json:"min_amount_currency,omitempty"`
+	// Empty means any.
+	AllowedPlans      []string `protobuf:"bytes,12,rep,name=allowed_plans,json=allowedPlans,proto3" json:"allowed_plans,omitempty"`
+	AllowedPacks      []string `protobuf:"bytes,13,rep,name=allowed_packs,json=allowedPacks,proto3" json:"allowed_packs,omitempty"`
+	AllowedCurrencies []string `protobuf:"bytes,14,rep,name=allowed_currencies,json=allowedCurrencies,proto3" json:"allowed_currencies,omitempty"`
+	// A void or full refund gives the redemption back to the count. Off by default.
+	RestoreOnReversal bool                   `protobuf:"varint,15,opt,name=restore_on_reversal,json=restoreOnReversal,proto3" json:"restore_on_reversal,omitempty"`
+	CreateTime        *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CouponId          string                 `protobuf:"bytes,17,opt,name=coupon_id,json=couponId,proto3" json:"coupon_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *PromotionCode) Reset() {
+	*x = PromotionCode{}
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PromotionCode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PromotionCode) ProtoMessage() {}
+
+func (x *PromotionCode) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PromotionCode.ProtoReflect.Descriptor instead.
+func (*PromotionCode) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *PromotionCode) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PromotionCode) GetCouponCode() string {
+	if x != nil {
+		return x.CouponCode
+	}
+	return ""
+}
+
+func (x *PromotionCode) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *PromotionCode) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *PromotionCode) GetMaxRedemptions() int32 {
+	if x != nil {
+		return x.MaxRedemptions
+	}
+	return 0
+}
+
+func (x *PromotionCode) GetRedeemed() int32 {
+	if x != nil {
+		return x.Redeemed
+	}
+	return 0
+}
+
+func (x *PromotionCode) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
+func (x *PromotionCode) GetFirstPurchaseOnly() bool {
+	if x != nil {
+		return x.FirstPurchaseOnly
+	}
+	return false
+}
+
+func (x *PromotionCode) GetOnePerCustomer() bool {
+	if x != nil {
+		return x.OnePerCustomer
+	}
+	return false
+}
+
+func (x *PromotionCode) GetMinAmountMinor() int64 {
+	if x != nil {
+		return x.MinAmountMinor
+	}
+	return 0
+}
+
+func (x *PromotionCode) GetMinAmountCurrency() string {
+	if x != nil {
+		return x.MinAmountCurrency
+	}
+	return ""
+}
+
+func (x *PromotionCode) GetAllowedPlans() []string {
+	if x != nil {
+		return x.AllowedPlans
+	}
+	return nil
+}
+
+func (x *PromotionCode) GetAllowedPacks() []string {
+	if x != nil {
+		return x.AllowedPacks
+	}
+	return nil
+}
+
+func (x *PromotionCode) GetAllowedCurrencies() []string {
+	if x != nil {
+		return x.AllowedCurrencies
+	}
+	return nil
+}
+
+func (x *PromotionCode) GetRestoreOnReversal() bool {
+	if x != nil {
+		return x.RestoreOnReversal
+	}
+	return false
+}
+
+func (x *PromotionCode) GetCreateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *PromotionCode) GetCouponId() string {
+	if x != nil {
+		return x.CouponId
+	}
+	return ""
+}
+
+// CouponRedemption is one use of a coupon.
+type CouponRedemption struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	CouponCode string                 `protobuf:"bytes,2,opt,name=coupon_code,json=couponCode,proto3" json:"coupon_code,omitempty"`
+	// Empty when the coupon was applied by an operator or came from a grant.
+	PromotionCode      string       `protobuf:"bytes,3,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
+	CustomerExternalId string       `protobuf:"bytes,4,opt,name=customer_external_id,json=customerExternalId,proto3" json:"customer_external_id,omitempty"`
+	Target             CouponTarget `protobuf:"varint,5,opt,name=target,proto3,enum=quotify.plans.v1.CouponTarget" json:"target,omitempty"`
+	// The subscription, or the invoice of the purchase or payment. Rows of migrated coupons that no subscription holds have a made-up one.
+	TargetId  string `protobuf:"bytes,6,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	InvoiceId string `protobuf:"bytes,7,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
+	// What it took off (a subscription's grows with each fee it is taken off), and the credits it added.
+	DiscountMinor int64                  `protobuf:"varint,8,opt,name=discount_minor,json=discountMinor,proto3" json:"discount_minor,omitempty"`
+	BonusCredits  int64                  `protobuf:"varint,9,opt,name=bonus_credits,json=bonusCredits,proto3" json:"bonus_credits,omitempty"`
+	Currency      string                 `protobuf:"bytes,10,opt,name=currency,proto3" json:"currency,omitempty"`
+	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// Set when a void or a full refund reversed it.
+	ReverseTime   *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=reverse_time,json=reverseTime,proto3" json:"reverse_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CouponRedemption) Reset() {
+	*x = CouponRedemption{}
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CouponRedemption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CouponRedemption) ProtoMessage() {}
+
+func (x *CouponRedemption) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_resources_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CouponRedemption.ProtoReflect.Descriptor instead.
+func (*CouponRedemption) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_resources_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *CouponRedemption) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CouponRedemption) GetCouponCode() string {
+	if x != nil {
+		return x.CouponCode
+	}
+	return ""
+}
+
+func (x *CouponRedemption) GetPromotionCode() string {
+	if x != nil {
+		return x.PromotionCode
+	}
+	return ""
+}
+
+func (x *CouponRedemption) GetCustomerExternalId() string {
+	if x != nil {
+		return x.CustomerExternalId
+	}
+	return ""
+}
+
+func (x *CouponRedemption) GetTarget() CouponTarget {
+	if x != nil {
+		return x.Target
+	}
+	return CouponTarget_COUPON_TARGET_UNSPECIFIED
+}
+
+func (x *CouponRedemption) GetTargetId() string {
+	if x != nil {
+		return x.TargetId
+	}
+	return ""
+}
+
+func (x *CouponRedemption) GetInvoiceId() string {
+	if x != nil {
+		return x.InvoiceId
+	}
+	return ""
+}
+
+func (x *CouponRedemption) GetDiscountMinor() int64 {
+	if x != nil {
+		return x.DiscountMinor
+	}
+	return 0
+}
+
+func (x *CouponRedemption) GetBonusCredits() int64 {
+	if x != nil {
+		return x.BonusCredits
+	}
+	return 0
+}
+
+func (x *CouponRedemption) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *CouponRedemption) GetCreateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *CouponRedemption) GetReverseTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReverseTime
 	}
 	return nil
 }
@@ -2725,7 +3142,7 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\tplan_code\x18\x01 \x01(\tR\bplanCode\x12!\n" +
 	"\fplan_version\x18\x02 \x01(\x05R\vplanVersion\x12B\n" +
 	"\binterval\x18\x03 \x01(\x0e2&.quotify.plans.v1.SubscriptionIntervalR\binterval\x12A\n" +
-	"\x0eeffective_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveTime\"\xd0\x03\n" +
+	"\x0eeffective_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveTime\"\xaf\x05\n" +
 	"\x06Coupon\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1f\n" +
@@ -2742,7 +3159,52 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"expireTime\x12\x16\n" +
 	"\x06active\x18\v \x01(\bR\x06active\x12;\n" +
 	"\vcreate_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime*Y\n" +
+	"createTime\x12\x0e\n" +
+	"\x02id\x18\r \x01(\tR\x02id\x12*\n" +
+	"\x11bonus_percent_bps\x18\x0e \x01(\x05R\x0fbonusPercentBps\x12=\n" +
+	"\n" +
+	"applies_to\x18\x0f \x03(\x0e2\x1e.quotify.plans.v1.CouponTargetR\tappliesTo\x120\n" +
+	"\x14promotion_code_count\x18\x10 \x01(\x05R\x12promotionCodeCount\x120\n" +
+	"\x14without_default_code\x18\x11 \x01(\bR\x12withoutDefaultCode\"\xa5\x05\n" +
+	"\rPromotionCode\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vcoupon_code\x18\x02 \x01(\tR\n" +
+	"couponCode\x12\x12\n" +
+	"\x04code\x18\x03 \x01(\tR\x04code\x12\x16\n" +
+	"\x06active\x18\x04 \x01(\bR\x06active\x12'\n" +
+	"\x0fmax_redemptions\x18\x05 \x01(\x05R\x0emaxRedemptions\x12\x1a\n" +
+	"\bredeemed\x18\x06 \x01(\x05R\bredeemed\x12;\n" +
+	"\vexpire_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTime\x12.\n" +
+	"\x13first_purchase_only\x18\b \x01(\bR\x11firstPurchaseOnly\x12(\n" +
+	"\x10one_per_customer\x18\t \x01(\bR\x0eonePerCustomer\x12(\n" +
+	"\x10min_amount_minor\x18\n" +
+	" \x01(\x03R\x0eminAmountMinor\x12.\n" +
+	"\x13min_amount_currency\x18\v \x01(\tR\x11minAmountCurrency\x12#\n" +
+	"\rallowed_plans\x18\f \x03(\tR\fallowedPlans\x12#\n" +
+	"\rallowed_packs\x18\r \x03(\tR\fallowedPacks\x12-\n" +
+	"\x12allowed_currencies\x18\x0e \x03(\tR\x11allowedCurrencies\x12.\n" +
+	"\x13restore_on_reversal\x18\x0f \x01(\bR\x11restoreOnReversal\x12;\n" +
+	"\vcreate_time\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"createTime\x12\x1b\n" +
+	"\tcoupon_id\x18\x11 \x01(\tR\bcouponId\"\xf4\x03\n" +
+	"\x10CouponRedemption\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vcoupon_code\x18\x02 \x01(\tR\n" +
+	"couponCode\x12%\n" +
+	"\x0epromotion_code\x18\x03 \x01(\tR\rpromotionCode\x120\n" +
+	"\x14customer_external_id\x18\x04 \x01(\tR\x12customerExternalId\x126\n" +
+	"\x06target\x18\x05 \x01(\x0e2\x1e.quotify.plans.v1.CouponTargetR\x06target\x12\x1b\n" +
+	"\ttarget_id\x18\x06 \x01(\tR\btargetId\x12\x1d\n" +
+	"\n" +
+	"invoice_id\x18\a \x01(\tR\tinvoiceId\x12%\n" +
+	"\x0ediscount_minor\x18\b \x01(\x03R\rdiscountMinor\x12#\n" +
+	"\rbonus_credits\x18\t \x01(\x03R\fbonusCredits\x12\x1a\n" +
+	"\bcurrency\x18\n" +
+	" \x01(\tR\bcurrency\x12;\n" +
+	"\vcreate_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"createTime\x12=\n" +
+	"\freverse_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vreverseTime*Y\n" +
 	"\vEnvironment\x12\x1b\n" +
 	"\x17ENVIRONMENT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ENVIRONMENT_SANDBOX\x10\x01\x12\x14\n" +
@@ -2772,7 +3234,12 @@ const file_quotify_plans_v1_resources_proto_rawDesc = "" +
 	"\x14SubscriptionInterval\x12%\n" +
 	"!SUBSCRIPTION_INTERVAL_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bSUBSCRIPTION_INTERVAL_MONTH\x10\x01\x12\x1e\n" +
-	"\x1aSUBSCRIPTION_INTERVAL_YEAR\x10\x02*\x87\x01\n" +
+	"\x1aSUBSCRIPTION_INTERVAL_YEAR\x10\x02*\x8b\x01\n" +
+	"\fCouponTarget\x12\x1d\n" +
+	"\x19COUPON_TARGET_UNSPECIFIED\x10\x00\x12\x1e\n" +
+	"\x1aCOUPON_TARGET_SUBSCRIPTION\x10\x01\x12!\n" +
+	"\x1dCOUPON_TARGET_CREDIT_PURCHASE\x10\x02\x12\x19\n" +
+	"\x15COUPON_TARGET_PAYMENT\x10\x03*\x87\x01\n" +
 	"\x0eCouponDuration\x12\x1f\n" +
 	"\x1bCOUPON_DURATION_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14COUPON_DURATION_ONCE\x10\x01\x12\x1d\n" +
@@ -2792,8 +3259,8 @@ func file_quotify_plans_v1_resources_proto_rawDescGZIP() []byte {
 	return file_quotify_plans_v1_resources_proto_rawDescData
 }
 
-var file_quotify_plans_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_quotify_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_quotify_plans_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
+var file_quotify_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_quotify_plans_v1_resources_proto_goTypes = []any{
 	(Environment)(0),              // 0: quotify.plans.v1.Environment
 	(TenantTier)(0),               // 1: quotify.plans.v1.TenantTier
@@ -2801,89 +3268,98 @@ var file_quotify_plans_v1_resources_proto_goTypes = []any{
 	(FeeTiming)(0),                // 3: quotify.plans.v1.FeeTiming
 	(SubscriptionState)(0),        // 4: quotify.plans.v1.SubscriptionState
 	(SubscriptionInterval)(0),     // 5: quotify.plans.v1.SubscriptionInterval
-	(CouponDuration)(0),           // 6: quotify.plans.v1.CouponDuration
-	(ApiKey_Status)(0),            // 7: quotify.plans.v1.ApiKey.Status
-	(*Address)(nil),               // 8: quotify.plans.v1.Address
-	(*BankTransferDetails)(nil),   // 9: quotify.plans.v1.BankTransferDetails
-	(*LegalInfo)(nil),             // 10: quotify.plans.v1.LegalInfo
-	(*Account)(nil),               // 11: quotify.plans.v1.Account
-	(*App)(nil),                   // 12: quotify.plans.v1.App
-	(*Tenant)(nil),                // 13: quotify.plans.v1.Tenant
-	(*ApiKey)(nil),                // 14: quotify.plans.v1.ApiKey
-	(*Customer)(nil),              // 15: quotify.plans.v1.Customer
-	(*FilterValues)(nil),          // 16: quotify.plans.v1.FilterValues
-	(*Meter)(nil),                 // 17: quotify.plans.v1.Meter
-	(*Plan)(nil),                  // 18: quotify.plans.v1.Plan
-	(*PriceTier)(nil),             // 19: quotify.plans.v1.PriceTier
-	(*PerUnitPrice)(nil),          // 20: quotify.plans.v1.PerUnitPrice
-	(*TieredGraduatedPrice)(nil),  // 21: quotify.plans.v1.TieredGraduatedPrice
-	(*PackagePrice)(nil),          // 22: quotify.plans.v1.PackagePrice
-	(*Price)(nil),                 // 23: quotify.plans.v1.Price
-	(*Entitlement)(nil),           // 24: quotify.plans.v1.Entitlement
-	(*PlanVersion)(nil),           // 25: quotify.plans.v1.PlanVersion
-	(*CurrencyPrices)(nil),        // 26: quotify.plans.v1.CurrencyPrices
-	(*CurrencyFee)(nil),           // 27: quotify.plans.v1.CurrencyFee
-	(*Subscription)(nil),          // 28: quotify.plans.v1.Subscription
-	(*ScheduledChange)(nil),       // 29: quotify.plans.v1.ScheduledChange
-	(*Coupon)(nil),                // 30: quotify.plans.v1.Coupon
-	nil,                           // 31: quotify.plans.v1.Meter.FilterEntry
-	(*timestamppb.Timestamp)(nil), // 32: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 33: google.protobuf.Duration
+	(CouponTarget)(0),             // 6: quotify.plans.v1.CouponTarget
+	(CouponDuration)(0),           // 7: quotify.plans.v1.CouponDuration
+	(ApiKey_Status)(0),            // 8: quotify.plans.v1.ApiKey.Status
+	(*Address)(nil),               // 9: quotify.plans.v1.Address
+	(*BankTransferDetails)(nil),   // 10: quotify.plans.v1.BankTransferDetails
+	(*LegalInfo)(nil),             // 11: quotify.plans.v1.LegalInfo
+	(*Account)(nil),               // 12: quotify.plans.v1.Account
+	(*App)(nil),                   // 13: quotify.plans.v1.App
+	(*Tenant)(nil),                // 14: quotify.plans.v1.Tenant
+	(*ApiKey)(nil),                // 15: quotify.plans.v1.ApiKey
+	(*Customer)(nil),              // 16: quotify.plans.v1.Customer
+	(*FilterValues)(nil),          // 17: quotify.plans.v1.FilterValues
+	(*Meter)(nil),                 // 18: quotify.plans.v1.Meter
+	(*Plan)(nil),                  // 19: quotify.plans.v1.Plan
+	(*PriceTier)(nil),             // 20: quotify.plans.v1.PriceTier
+	(*PerUnitPrice)(nil),          // 21: quotify.plans.v1.PerUnitPrice
+	(*TieredGraduatedPrice)(nil),  // 22: quotify.plans.v1.TieredGraduatedPrice
+	(*PackagePrice)(nil),          // 23: quotify.plans.v1.PackagePrice
+	(*Price)(nil),                 // 24: quotify.plans.v1.Price
+	(*Entitlement)(nil),           // 25: quotify.plans.v1.Entitlement
+	(*PlanVersion)(nil),           // 26: quotify.plans.v1.PlanVersion
+	(*CurrencyPrices)(nil),        // 27: quotify.plans.v1.CurrencyPrices
+	(*CurrencyFee)(nil),           // 28: quotify.plans.v1.CurrencyFee
+	(*Subscription)(nil),          // 29: quotify.plans.v1.Subscription
+	(*ScheduledChange)(nil),       // 30: quotify.plans.v1.ScheduledChange
+	(*Coupon)(nil),                // 31: quotify.plans.v1.Coupon
+	(*PromotionCode)(nil),         // 32: quotify.plans.v1.PromotionCode
+	(*CouponRedemption)(nil),      // 33: quotify.plans.v1.CouponRedemption
+	nil,                           // 34: quotify.plans.v1.Meter.FilterEntry
+	(*timestamppb.Timestamp)(nil), // 35: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 36: google.protobuf.Duration
 }
 var file_quotify_plans_v1_resources_proto_depIdxs = []int32{
-	13, // 0: quotify.plans.v1.Account.tenants:type_name -> quotify.plans.v1.Tenant
-	32, // 1: quotify.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
-	12, // 2: quotify.plans.v1.Account.apps:type_name -> quotify.plans.v1.App
-	13, // 3: quotify.plans.v1.App.tenants:type_name -> quotify.plans.v1.Tenant
-	32, // 4: quotify.plans.v1.App.create_time:type_name -> google.protobuf.Timestamp
+	14, // 0: quotify.plans.v1.Account.tenants:type_name -> quotify.plans.v1.Tenant
+	35, // 1: quotify.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
+	13, // 2: quotify.plans.v1.Account.apps:type_name -> quotify.plans.v1.App
+	14, // 3: quotify.plans.v1.App.tenants:type_name -> quotify.plans.v1.Tenant
+	35, // 4: quotify.plans.v1.App.create_time:type_name -> google.protobuf.Timestamp
 	0,  // 5: quotify.plans.v1.Tenant.environment:type_name -> quotify.plans.v1.Environment
 	1,  // 6: quotify.plans.v1.Tenant.tier:type_name -> quotify.plans.v1.TenantTier
-	33, // 7: quotify.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
-	32, // 8: quotify.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
-	8,  // 9: quotify.plans.v1.Tenant.address:type_name -> quotify.plans.v1.Address
-	9,  // 10: quotify.plans.v1.Tenant.bank_transfer:type_name -> quotify.plans.v1.BankTransferDetails
-	10, // 11: quotify.plans.v1.Tenant.legal:type_name -> quotify.plans.v1.LegalInfo
+	36, // 7: quotify.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
+	35, // 8: quotify.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
+	9,  // 9: quotify.plans.v1.Tenant.address:type_name -> quotify.plans.v1.Address
+	10, // 10: quotify.plans.v1.Tenant.bank_transfer:type_name -> quotify.plans.v1.BankTransferDetails
+	11, // 11: quotify.plans.v1.Tenant.legal:type_name -> quotify.plans.v1.LegalInfo
 	0,  // 12: quotify.plans.v1.ApiKey.environment:type_name -> quotify.plans.v1.Environment
-	7,  // 13: quotify.plans.v1.ApiKey.status:type_name -> quotify.plans.v1.ApiKey.Status
-	32, // 14: quotify.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
-	32, // 15: quotify.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
-	32, // 16: quotify.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
-	8,  // 17: quotify.plans.v1.Customer.address:type_name -> quotify.plans.v1.Address
+	8,  // 13: quotify.plans.v1.ApiKey.status:type_name -> quotify.plans.v1.ApiKey.Status
+	35, // 14: quotify.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
+	35, // 15: quotify.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
+	35, // 16: quotify.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
+	9,  // 17: quotify.plans.v1.Customer.address:type_name -> quotify.plans.v1.Address
 	2,  // 18: quotify.plans.v1.Meter.aggregation:type_name -> quotify.plans.v1.Aggregation
-	31, // 19: quotify.plans.v1.Meter.filter:type_name -> quotify.plans.v1.Meter.FilterEntry
-	32, // 20: quotify.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
-	32, // 21: quotify.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
-	19, // 22: quotify.plans.v1.TieredGraduatedPrice.tiers:type_name -> quotify.plans.v1.PriceTier
-	20, // 23: quotify.plans.v1.Price.per_unit:type_name -> quotify.plans.v1.PerUnitPrice
-	21, // 24: quotify.plans.v1.Price.tiered:type_name -> quotify.plans.v1.TieredGraduatedPrice
-	22, // 25: quotify.plans.v1.Price.package:type_name -> quotify.plans.v1.PackagePrice
-	23, // 26: quotify.plans.v1.PlanVersion.prices:type_name -> quotify.plans.v1.Price
-	24, // 27: quotify.plans.v1.PlanVersion.entitlements:type_name -> quotify.plans.v1.Entitlement
-	32, // 28: quotify.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
-	27, // 29: quotify.plans.v1.PlanVersion.fees:type_name -> quotify.plans.v1.CurrencyFee
-	26, // 30: quotify.plans.v1.PlanVersion.currency_prices:type_name -> quotify.plans.v1.CurrencyPrices
-	23, // 31: quotify.plans.v1.CurrencyPrices.prices:type_name -> quotify.plans.v1.Price
+	34, // 19: quotify.plans.v1.Meter.filter:type_name -> quotify.plans.v1.Meter.FilterEntry
+	35, // 20: quotify.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
+	35, // 21: quotify.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
+	20, // 22: quotify.plans.v1.TieredGraduatedPrice.tiers:type_name -> quotify.plans.v1.PriceTier
+	21, // 23: quotify.plans.v1.Price.per_unit:type_name -> quotify.plans.v1.PerUnitPrice
+	22, // 24: quotify.plans.v1.Price.tiered:type_name -> quotify.plans.v1.TieredGraduatedPrice
+	23, // 25: quotify.plans.v1.Price.package:type_name -> quotify.plans.v1.PackagePrice
+	24, // 26: quotify.plans.v1.PlanVersion.prices:type_name -> quotify.plans.v1.Price
+	25, // 27: quotify.plans.v1.PlanVersion.entitlements:type_name -> quotify.plans.v1.Entitlement
+	35, // 28: quotify.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
+	28, // 29: quotify.plans.v1.PlanVersion.fees:type_name -> quotify.plans.v1.CurrencyFee
+	27, // 30: quotify.plans.v1.PlanVersion.currency_prices:type_name -> quotify.plans.v1.CurrencyPrices
+	24, // 31: quotify.plans.v1.CurrencyPrices.prices:type_name -> quotify.plans.v1.Price
 	5,  // 32: quotify.plans.v1.CurrencyFee.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	32, // 33: quotify.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
-	32, // 34: quotify.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
-	32, // 35: quotify.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
+	35, // 33: quotify.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
+	35, // 34: quotify.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
+	35, // 35: quotify.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
 	4,  // 36: quotify.plans.v1.Subscription.state:type_name -> quotify.plans.v1.SubscriptionState
 	5,  // 37: quotify.plans.v1.Subscription.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	32, // 38: quotify.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
-	32, // 39: quotify.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
+	35, // 38: quotify.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
+	35, // 39: quotify.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
 	3,  // 40: quotify.plans.v1.Subscription.fee_timing:type_name -> quotify.plans.v1.FeeTiming
-	29, // 41: quotify.plans.v1.Subscription.scheduled_change:type_name -> quotify.plans.v1.ScheduledChange
+	30, // 41: quotify.plans.v1.Subscription.scheduled_change:type_name -> quotify.plans.v1.ScheduledChange
 	5,  // 42: quotify.plans.v1.ScheduledChange.interval:type_name -> quotify.plans.v1.SubscriptionInterval
-	32, // 43: quotify.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
-	6,  // 44: quotify.plans.v1.Coupon.duration:type_name -> quotify.plans.v1.CouponDuration
-	32, // 45: quotify.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
-	32, // 46: quotify.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
-	16, // 47: quotify.plans.v1.Meter.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
-	48, // [48:48] is the sub-list for method output_type
-	48, // [48:48] is the sub-list for method input_type
-	48, // [48:48] is the sub-list for extension type_name
-	48, // [48:48] is the sub-list for extension extendee
-	0,  // [0:48] is the sub-list for field type_name
+	35, // 43: quotify.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
+	7,  // 44: quotify.plans.v1.Coupon.duration:type_name -> quotify.plans.v1.CouponDuration
+	35, // 45: quotify.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
+	35, // 46: quotify.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
+	6,  // 47: quotify.plans.v1.Coupon.applies_to:type_name -> quotify.plans.v1.CouponTarget
+	35, // 48: quotify.plans.v1.PromotionCode.expire_time:type_name -> google.protobuf.Timestamp
+	35, // 49: quotify.plans.v1.PromotionCode.create_time:type_name -> google.protobuf.Timestamp
+	6,  // 50: quotify.plans.v1.CouponRedemption.target:type_name -> quotify.plans.v1.CouponTarget
+	35, // 51: quotify.plans.v1.CouponRedemption.create_time:type_name -> google.protobuf.Timestamp
+	35, // 52: quotify.plans.v1.CouponRedemption.reverse_time:type_name -> google.protobuf.Timestamp
+	17, // 53: quotify.plans.v1.Meter.FilterEntry.value:type_name -> quotify.plans.v1.FilterValues
+	54, // [54:54] is the sub-list for method output_type
+	54, // [54:54] is the sub-list for method input_type
+	54, // [54:54] is the sub-list for extension type_name
+	54, // [54:54] is the sub-list for extension extendee
+	0,  // [0:54] is the sub-list for field type_name
 }
 
 func init() { file_quotify_plans_v1_resources_proto_init() }
@@ -2901,8 +3377,8 @@ func file_quotify_plans_v1_resources_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_plans_v1_resources_proto_rawDesc), len(file_quotify_plans_v1_resources_proto_rawDesc)),
-			NumEnums:      8,
-			NumMessages:   24,
+			NumEnums:      9,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

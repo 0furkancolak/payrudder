@@ -318,24 +318,92 @@ enum SubscriptionInterval {
 }
 
 
-// Coupon takes a percentage or an amount off the fixed fee of a subscription Quotify renews.
+// Coupon is the definition of a discount: a percentage or an amount off, or bonus credits on a credit purchase. It takes something off the fixed fee of a
+// subscription Quotify renews, off a credit purchase, or off a payment link or invoice, as applies_to says. Customers type a PromotionCode, not the coupon.
 message Coupon {
   string code = 1;
   string name = 2;
-  // 1..10000 (1000 = 10 %); zero for an amount coupon.
+  // 1..10000 (1000 = 10 %); zero for an amount or a bonus coupon.
   int32 percent_bps = 3;
-  // Minor units of currency; zero for a percentage coupon. An amount coupon applies only to subscriptions in its currency.
+  // Minor units of currency; zero for another kind. An amount coupon applies only in its currency.
   int64 amount_minor = 4;
   string currency = 5;
   CouponDuration duration = 6;
   // For REPEATING: how many periods.
   int32 duration_periods = 7;
-  // 0 = unlimited.
+  // 0 = unlimited. Counts the redemptions of the coupon through all its promotion codes.
   int32 max_redemptions = 8;
+  // The redemptions that count against the limit (the redemption ledger).
   int32 redeemed = 9;
   google.protobuf.Timestamp expire_time = 10;
   bool active = 11;
   google.protobuf.Timestamp create_time = 12;
+  string id = 13;
+  // Extra credits on a credit purchase, as a share of the credits bought: 1000 = 10 % more, in the same lot. Zero for another kind. Only for CREDIT_PURCHASE.
+  int32 bonus_percent_bps = 14;
+  // Where the coupon works. Empty on create means subscription, credit purchase and payment; a bonus coupon is for CREDIT_PURCHASE only.
+  repeated CouponTarget applies_to = 15;
+  int32 promotion_code_count = 16;
+  // Create only: do not make the promotion code with the coupon's own text that a new coupon gets by default.
+  bool without_default_code = 17;
+}
+
+// CouponTarget is what a coupon is used on.
+enum CouponTarget {
+  COUPON_TARGET_UNSPECIFIED = 0;
+  // The fixed fee of a subscription.
+  COUPON_TARGET_SUBSCRIPTION = 1;
+  // The price of a credit pack purchase (a discount) or its credits (a bonus).
+  COUPON_TARGET_CREDIT_PURCHASE = 2;
+  // A payment link, a hosted checkout or an invoice raised by hand.
+  COUPON_TARGET_PAYMENT = 3;
+}
+
+// PromotionCode is what a customer types. Many codes can point to one coupon, each with its own limit, expiry and restrictions.
+message PromotionCode {
+  string id = 1;
+  string coupon_code = 2;
+  string code = 3;
+  bool active = 4;
+  // 0 = unlimited.
+  int32 max_redemptions = 5;
+  int32 redeemed = 6;
+  google.protobuf.Timestamp expire_time = 7;
+  // Only a customer who has bought nothing yet.
+  bool first_purchase_only = 8;
+  // Each customer once.
+  bool one_per_customer = 9;
+  // A purchase under this amount (in min_amount_currency) cannot use the code.
+  int64 min_amount_minor = 10;
+  string min_amount_currency = 11;
+  // Empty means any.
+  repeated string allowed_plans = 12;
+  repeated string allowed_packs = 13;
+  repeated string allowed_currencies = 14;
+  // A void or full refund gives the redemption back to the count. Off by default.
+  bool restore_on_reversal = 15;
+  google.protobuf.Timestamp create_time = 16;
+  string coupon_id = 17;
+}
+
+// CouponRedemption is one use of a coupon.
+message CouponRedemption {
+  string id = 1;
+  string coupon_code = 2;
+  // Empty when the coupon was applied by an operator or came from a grant.
+  string promotion_code = 3;
+  string customer_external_id = 4;
+  CouponTarget target = 5;
+  // The subscription, or the invoice of the purchase or payment. Rows of migrated coupons that no subscription holds have a made-up one.
+  string target_id = 6;
+  string invoice_id = 7;
+  // What it took off (a subscription's grows with each fee it is taken off), and the credits it added.
+  int64 discount_minor = 8;
+  int64 bonus_credits = 9;
+  string currency = 10;
+  google.protobuf.Timestamp create_time = 11;
+  // Set when a void or a full refund reversed it.
+  google.protobuf.Timestamp reverse_time = 12;
 }
 
 enum CouponDuration {

@@ -70,6 +70,9 @@ func (c *Commands) Advance(ctx context.Context, req *plansv1.AdvanceSubscription
 		if discount, _, err := couponsqry.Discount(ctx, q, id, row.Currency, fee); err != nil {
 			return err
 		} else if discount > 0 {
+			if err := q.AddRedemptionDiscount(ctx, sqlc.AddRedemptionDiscountParams{SubscriptionID: id, Discount: discount}); err != nil {
+				return err
+			}
 			return q.CountCouponPeriod(ctx, id)
 		}
 		return nil

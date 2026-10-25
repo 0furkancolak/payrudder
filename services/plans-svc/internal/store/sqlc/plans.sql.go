@@ -139,18 +139,6 @@ func (q *Queries) CurrentTenant(ctx context.Context) (CurrentTenantRow, error) {
 	return i, err
 }
 
-const deactivateCoupon = `-- name: DeactivateCoupon :execrows
-UPDATE coupons SET active = false WHERE tenant_id = app_tenant_id() AND code = $1
-`
-
-func (q *Queries) DeactivateCoupon(ctx context.Context, code string) (int64, error) {
-	result, err := q.db.Exec(ctx, deactivateCoupon, code)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const deleteRoutingRules = `-- name: DeleteRoutingRules :exec
 DELETE FROM routing_rules WHERE tenant_id = app_tenant_id()
 `
@@ -244,46 +232,6 @@ func (q *Queries) GetChangedFromID(ctx context.Context, id uuid.UUID) (*uuid.UUI
 	var changed_from_id *uuid.UUID
 	err := row.Scan(&changed_from_id)
 	return changed_from_id, err
-}
-
-const getCoupon = `-- name: GetCoupon :one
-SELECT code, name, percent_bps, amount_minor, currency, duration, duration_periods, max_redemptions, redeemed, expires_at, active, created_at
-FROM coupons WHERE tenant_id = app_tenant_id() AND code = $1
-`
-
-type GetCouponRow struct {
-	Code            string
-	Name            string
-	PercentBps      *int32
-	AmountMinor     *int64
-	Currency        *string
-	Duration        string
-	DurationPeriods *int32
-	MaxRedemptions  *int32
-	Redeemed        int32
-	ExpiresAt       *time.Time
-	Active          bool
-	CreatedAt       time.Time
-}
-
-func (q *Queries) GetCoupon(ctx context.Context, code string) (GetCouponRow, error) {
-	row := q.db.QueryRow(ctx, getCoupon, code)
-	var i GetCouponRow
-	err := row.Scan(
-		&i.Code,
-		&i.Name,
-		&i.PercentBps,
-		&i.AmountMinor,
-		&i.Currency,
-		&i.Duration,
-		&i.DurationPeriods,
-		&i.MaxRedemptions,
-		&i.Redeemed,
-		&i.ExpiresAt,
-		&i.Active,
-		&i.CreatedAt,
-	)
-	return i, err
 }
 
 const getCustomerByExternalID = `-- name: GetCustomerByExternalID :one
@@ -704,69 +652,6 @@ func (q *Queries) GetSubscriptionIDByProviderRef(ctx context.Context, arg GetSub
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
-}
-
-const insertCoupon = `-- name: InsertCoupon :one
-INSERT INTO coupons (tenant_id, code, name, percent_bps, amount_minor, currency, duration, duration_periods, max_redemptions, expires_at)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING code, name, percent_bps, amount_minor, currency, duration, duration_periods, max_redemptions, redeemed, expires_at, active, created_at
-`
-
-type InsertCouponParams struct {
-	Code            string
-	Name            string
-	PercentBps      *int32
-	AmountMinor     *int64
-	Currency        *string
-	Duration        string
-	DurationPeriods *int32
-	MaxRedemptions  *int32
-	ExpiresAt       *time.Time
-}
-
-type InsertCouponRow struct {
-	Code            string
-	Name            string
-	PercentBps      *int32
-	AmountMinor     *int64
-	Currency        *string
-	Duration        string
-	DurationPeriods *int32
-	MaxRedemptions  *int32
-	Redeemed        int32
-	ExpiresAt       *time.Time
-	Active          bool
-	CreatedAt       time.Time
-}
-
-func (q *Queries) InsertCoupon(ctx context.Context, arg InsertCouponParams) (InsertCouponRow, error) {
-	row := q.db.QueryRow(ctx, insertCoupon,
-		arg.Code,
-		arg.Name,
-		arg.PercentBps,
-		arg.AmountMinor,
-		arg.Currency,
-		arg.Duration,
-		arg.DurationPeriods,
-		arg.MaxRedemptions,
-		arg.ExpiresAt,
-	)
-	var i InsertCouponRow
-	err := row.Scan(
-		&i.Code,
-		&i.Name,
-		&i.PercentBps,
-		&i.AmountMinor,
-		&i.Currency,
-		&i.Duration,
-		&i.DurationPeriods,
-		&i.MaxRedemptions,
-		&i.Redeemed,
-		&i.ExpiresAt,
-		&i.Active,
-		&i.CreatedAt,
-	)
-	return i, err
 }
 
 const insertMeter = `-- name: InsertMeter :one
@@ -1195,20 +1080,6 @@ func (q *Queries) InsertSubscriptionChange(ctx context.Context, arg InsertSubscr
 	return i, err
 }
 
-const insertSubscriptionCoupon = `-- name: InsertSubscriptionCoupon :exec
-INSERT INTO subscription_coupons (tenant_id, subscription_id, coupon_code) VALUES (app_tenant_id(), $1, $2)
-`
-
-type InsertSubscriptionCouponParams struct {
-	SubscriptionID uuid.UUID
-	CouponCode     string
-}
-
-func (q *Queries) InsertSubscriptionCoupon(ctx context.Context, arg InsertSubscriptionCouponParams) error {
-	_, err := q.db.Exec(ctx, insertSubscriptionCoupon, arg.SubscriptionID, arg.CouponCode)
-	return err
-}
-
 const insertTaxRate = `-- name: InsertTaxRate :exec
 INSERT INTO tax_rates (tenant_id, country, name, rate_bps) VALUES (app_tenant_id(), $1, $2, $3)
 `
@@ -1292,59 +1163,6 @@ func (q *Queries) ListCouponCodesFor(ctx context.Context, ids []uuid.UUID) ([]Li
 	for rows.Next() {
 		var i ListCouponCodesForRow
 		if err := rows.Scan(&i.SubscriptionID, &i.CouponCode); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listCoupons = `-- name: ListCoupons :many
-SELECT code, name, percent_bps, amount_minor, currency, duration, duration_periods, max_redemptions, redeemed, expires_at, active, created_at
-FROM coupons WHERE tenant_id = app_tenant_id() ORDER BY created_at DESC, code
-`
-
-type ListCouponsRow struct {
-	Code            string
-	Name            string
-	PercentBps      *int32
-	AmountMinor     *int64
-	Currency        *string
-	Duration        string
-	DurationPeriods *int32
-	MaxRedemptions  *int32
-	Redeemed        int32
-	ExpiresAt       *time.Time
-	Active          bool
-	CreatedAt       time.Time
-}
-
-func (q *Queries) ListCoupons(ctx context.Context) ([]ListCouponsRow, error) {
-	rows, err := q.db.Query(ctx, listCoupons)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListCouponsRow{}
-	for rows.Next() {
-		var i ListCouponsRow
-		if err := rows.Scan(
-			&i.Code,
-			&i.Name,
-			&i.PercentBps,
-			&i.AmountMinor,
-			&i.Currency,
-			&i.Duration,
-			&i.DurationPeriods,
-			&i.MaxRedemptions,
-			&i.Redeemed,
-			&i.ExpiresAt,
-			&i.Active,
-			&i.CreatedAt,
-		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2056,26 +1874,6 @@ SELECT pg_notify('outbox_new', '')
 func (q *Queries) NotifyOutbox(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, notifyOutbox)
 	return err
-}
-
-const redeemCoupon = `-- name: RedeemCoupon :execrows
-UPDATE coupons SET redeemed = redeemed + 1
-WHERE tenant_id = app_tenant_id() AND code = $1 AND active
-  AND (max_redemptions IS NULL OR redeemed < max_redemptions) AND (expires_at IS NULL OR expires_at > $2::timestamptz)
-`
-
-type RedeemCouponParams struct {
-	Code string
-	Now  time.Time
-}
-
-// Counts a redemption if the coupon can still be redeemed. One statement, so two redemptions cannot both take the last one.
-func (q *Queries) RedeemCoupon(ctx context.Context, arg RedeemCouponParams) (int64, error) {
-	result, err := q.db.Exec(ctx, redeemCoupon, arg.Code, arg.Now)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
 }
 
 const releaseProviderLink = `-- name: ReleaseProviderLink :execrows

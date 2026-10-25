@@ -1286,6 +1286,20 @@
         "unknown_currency": "La moneda no es compatible."
       }
     },
+    "coupon": {
+      "not_found": "Este código no existe. Compruébelo e inténtelo de nuevo.",
+      "inactive": "Este código ya no está activo.",
+      "expired": "Este código ha caducado.",
+      "exhausted": "Este código se ha agotado.",
+      "not_applicable": "Este código no es válido para esta compra.",
+      "currency_mismatch": "Este código no es válido en la moneda de esta compra.",
+      "already_used": "Ya ha utilizado este código.",
+      "first_purchase_only": "Este código es solo para una primera compra.",
+      "below_minimum": "El importe de la compra es inferior al mínimo de este código.",
+      "customer_required": "Este código necesita un cliente conocido, por lo que no sirve en un pago de invitado.",
+      "already_applied": "Esta compra ya usa un cupón. Solo se permite un cupón por compra.",
+      "code_taken": "Ya existe un código promocional con este texto (no se distingue entre mayúsculas y minúsculas)."
+    },
     "plans": {
       "app": {
         "bad_slug": "El identificador de la app solo puede tener minúsculas, dígitos y guiones sencillos, con un máximo de 60 caracteres.",
