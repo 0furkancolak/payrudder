@@ -48,7 +48,7 @@ function changeBody(v: ChangeInput) {
 }
 
 /** Every action on a subscription: each refreshes the list. */
-export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<string>) {
+export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   const refresh = () => queries.invalidateQueries({ queryKey: subscriptionKeys.list(toValue(tenantId)) });
   const client = () => tenantApi(toValue(tenantId));
@@ -78,18 +78,24 @@ export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, envir
       mutationFn: (v: { id: string; plan_code: string }) => unwrap(client().POST("/v1/subscriptions/{id}/change-plan", { ...path(v.id), body: { plan_code: v.plan_code } })),
       onSuccess: refresh,
     }),
-    /** Moves a subscription to another payment provider (an operator action: it goes through the provider accounts, not the tenant API). */
-    migrate: useMutation({
-      mutationFn: (v: { subscription_id: string; to_provider: string; price_ref?: string }) =>
-        unwrap(
-          api.POST("/admin/v1/tenants/{tenant_id}/provider-migrations", {
-            params: { path: { tenant_id: toValue(tenantId) }, query: { environment: toValue(environment) as Environment } },
-            body: { ...v, to_provider: v.to_provider as "iyzico" | "paddle" },
-          }),
-        ),
-      onSuccess: refresh,
-    }),
   };
+}
+
+export type SubscriptionActions = ReturnType<typeof useSubscriptionActions>;
+
+/** Moves a subscription to another payment provider (an operator action: it goes through the provider accounts, not the tenant API). */
+export function useMigrateSubscription(tenantId: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<Environment>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { subscription_id: string; to_provider: string; price_ref?: string }) =>
+      unwrap(
+        api.POST("/admin/v1/tenants/{tenant_id}/provider-migrations", {
+          params: { path: { tenant_id: toValue(tenantId) }, query: { environment: toValue(environment) } },
+          body: { ...v, to_provider: v.to_provider as "iyzico" | "paddle" },
+        }),
+      ),
+    onSuccess: () => queries.invalidateQueries({ queryKey: subscriptionKeys.list(toValue(tenantId)) }),
+  });
 }
 
 /** A customer's usage against the limits of its package, this period: the numbers the product shows next to a subscription. */
