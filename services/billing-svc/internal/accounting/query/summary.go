@@ -20,6 +20,27 @@ type IncomeRow struct {
 	Invoices int64
 	Gross    int64
 	Tax      int64
+	// Discount is what coupons took off those invoices (contra-revenue); Gross is already net of it.
+	Discount int64
+}
+
+// CouponRow is the paid invoices of one currency that used one coupon.
+type CouponRow struct {
+	Currency   string
+	CouponCode string
+	Invoices   int64
+	// Sales is what those invoices came to before the coupon (their positive lines except tax), Discount what the coupon took off.
+	Sales    int64
+	Discount int64
+}
+
+// CouponTotal is one coupon's line in the report: gross sales, discounts, and net.
+type CouponTotal struct {
+	CouponCode string
+	Invoices   int64
+	Gross      int64
+	Discount   int64
+	Net        int64
 }
 
 // RefundRow is the refunds and credit notes of one currency in one bucket.
@@ -33,6 +54,7 @@ type RefundRow struct {
 type Point struct {
 	Bucket                                     time.Time
 	Gross, Tax, Refunds, Net, Expenses, Profit int64
+	Discounts                                  int64
 }
 
 // CategoryTotal is what was spent in one category.
@@ -50,6 +72,38 @@ type CurrencySummary struct {
 	PaidInvoices                               int64
 	ByCategory                                 []CategoryTotal
 	Series                                     []Point
+	// Discounts is what coupons took off the paid invoices (contra-revenue, a positive number); Sales is revenue before it: gross - tax + discounts. Net income
+	// is unchanged by them: gross is already after the discount.
+	Discounts, Sales int64
+	// Coupons is the report per coupon, most discount first.
+	Coupons []CouponTotal
+}
+
+// AddCoupons puts the per-coupon rows into the summary of their currency (a currency the summary does not have is left out: nothing was paid in it that period).
+func AddCoupons(cs []CurrencySummary, rows []CouponRow) {
+	for _, r := range rows {
+		for i := range cs {
+			if cs[i].Currency == r.Currency {
+				cs[i].Coupons = append(cs[i].Coupons, CouponTotal{CouponCode: r.CouponCode, Invoices: r.Invoices, Gross: r.Sales, Discount: r.Discount, Net: r.Sales - r.Discount})
+			}
+		}
+	}
+	for i := range cs {
+		slices.SortFunc(cs[i].Coupons, func(a, b CouponTotal) int {
+			switch {
+			case a.Discount != b.Discount:
+				if a.Discount > b.Discount {
+					return -1
+				}
+				return 1
+			case a.CouponCode < b.CouponCode:
+				return -1
+			case a.CouponCode > b.CouponCode:
+				return 1
+			}
+			return 0
+		})
+	}
 }
 
 // Buckets returns the first day of every bucket from `from` to `to`, both inside.
@@ -109,8 +163,10 @@ func Build(from, to time.Time, gran string, income []IncomeRow, refunds []Refund
 		if p := point(c, r.Bucket); p != nil {
 			p.Gross += r.Gross
 			p.Tax += r.Tax
+			p.Discounts += r.Discount
 			c.Gross += r.Gross
 			c.Tax += r.Tax
+			c.Discounts += r.Discount
 			c.PaidInvoices += r.Invoices
 		}
 	}
@@ -147,6 +203,7 @@ func Build(from, to time.Time, gran string, income []IncomeRow, refunds []Refund
 		}
 		c.Net = c.Gross - c.Tax - c.Refunds
 		c.Profit = c.Net - c.Expenses
+		c.Sales = c.Gross - c.Tax + c.Discounts
 		for k, v := range cat[cur] {
 			c.ByCategory = append(c.ByCategory, CategoryTotal{Category: k, Amount: v})
 		}

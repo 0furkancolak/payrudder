@@ -238,6 +238,25 @@ func testPromotionCodesOnPaymentLinks(t *testing.T) {
 		if paid := l.waitState(child, "paid"); paid.GetInvoice().GetTotalMinor() != 9000 {
 			t.Errorf("paid invoice = %v", paid.GetInvoice())
 		}
+		// Accounting: the discount is contra-revenue. Gross income is the 9000 paid, sales before the coupon 10000, and the report names the coupon.
+		day := l.clk.Now().UTC().Format(time.DateOnly)
+		to := l.clk.Now().UTC().AddDate(0, 0, 1).Format(time.DateOnly)
+		sum, err := l.svc.GetAccountingSummary(l.mine, &billingv1.GetAccountingSummaryRequest{FromDate: day, ToDate: to, Granularity: "month"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var usd *billingv1.AccountingCurrency
+		for _, c := range sum.GetCurrencies() {
+			if c.GetCurrency() == "USD" {
+				usd = c
+			}
+		}
+		if usd == nil || usd.GetGrossIncomeMinor() != 9000 || usd.GetDiscountsMinor() != 1000 || usd.GetSalesMinor() != 10000 || usd.GetNetIncomeMinor() != 9000 || len(usd.GetCoupons()) != 1 {
+			t.Fatalf("summary = %v", sum)
+		}
+		if k := usd.GetCoupons()[0]; k.GetCouponCode() != "C-SAVE10" || k.GetInvoices() != 1 || k.GetGrossMinor() != 10000 || k.GetDiscountMinor() != 1000 || k.GetNetMinor() != 9000 {
+			t.Errorf("coupon report = %v", k)
+		}
 	})
 
 	t.Run("a refused code makes no invoice and uses no redemption", func(t *testing.T) {

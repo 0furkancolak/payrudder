@@ -66,10 +66,10 @@ RETURNING id;
 
 -- name: InsertInvoiceLine :exec
 INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, meter_code, origin_period_id, quantity, quantity_scale, unit_label, unit_price,
-                           amount_minor, description, service_from, service_to)
+                           amount_minor, description, service_from, service_to, coupon_code)
 VALUES (@tenant_id, @invoice_id, @line_no, @kind, sqlc.narg('meter_code'), sqlc.narg('origin_period_id'), sqlc.narg('quantity')::text::numeric,
         sqlc.narg('quantity_scale'), sqlc.narg('unit_label'), sqlc.narg('unit_price')::text::numeric, @amount_minor, @description,
-        sqlc.narg('service_from'), sqlc.narg('service_to'));
+        sqlc.narg('service_from'), sqlc.narg('service_to'), sqlc.narg('coupon_code'));
 
 -- name: SetInvoiceTotals :exec
 UPDATE invoices SET subtotal_minor = @subtotal_minor, total_minor = @total_minor WHERE tenant_id = @tenant_id AND id = @id;

@@ -3,8 +3,8 @@ import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -15,7 +15,6 @@ import { useInvoices } from "./billingApi";
 /** The environment's invoices: number, customer, period, total (in its own currency), status. A row opens the invoice. Reads /v1/invoices only. */
 const { t, locale } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const status = ref("");
@@ -42,7 +41,7 @@ const day = (v?: string) => fmt.date(v, "day");
       </div>
     </div>
 
-    <p v-if="invoices.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(invoices.error.value) }}</p>
+    <ErrorText :error="invoices.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
     <Skeleton v-if="invoices.isPending.value" class="h-40 rounded-2xl" />
     <p v-else-if="rows.length === 0 && !invoices.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t("product.billing.invoices.empty") }}</p>
     <div v-else class="relative -mx-2 overflow-x-auto px-2">

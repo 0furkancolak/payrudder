@@ -2,14 +2,13 @@
 import { useMutation } from "@tanstack/vue-query";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { lookupJob } from "./api";
 
 const props = defineProps<{ tenantId: string }>();
 const { t } = useI18n();
-const errorText = useErrorText();
 const jobId = ref("");
 
 const look = useMutation({
@@ -23,6 +22,6 @@ const look = useMutation({
     <Button type="submit" :disabled="jobId.trim() === ''">{{ t("tenant.jobs.replay") }}</Button>
     <Button type="button" variant="outline" :disabled="jobId.trim() === ''" @click="look.mutate('rerating')">{{ t("tenant.jobs.rerating") }}</Button>
   </form>
-  <p v-if="look.error.value" class="text-destructive text-sm" role="alert">{{ errorText(look.error.value) }}</p>
+  <ErrorText :error="look.error.value" />
   <pre v-if="look.data.value" class="bg-muted mono overflow-x-auto rounded-2xl p-4 text-xs">{{ JSON.stringify(look.data.value, null, 2) }}</pre>
 </template>

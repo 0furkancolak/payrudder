@@ -4,7 +4,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Currency } from "@/shared/lib/currencies";
 import { ownZone } from "@/shared/lib/intl";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
@@ -13,7 +13,6 @@ import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 import { useCreateApp } from "./api";
 
 const { t } = useI18n();
-const errorText = useErrorText();
 const navigate = useNavigate();
 const open = defineModel<boolean>("open", { required: true });
 const create = useCreateApp();
@@ -68,7 +67,7 @@ function submit() {
           </div>
         </div>
         <p class="text-muted-foreground text-xs">{{ t("product.createApp.immutable") }}</p>
-        <p v-if="create.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(create.error.value) }}</p>
+        <ErrorText :error="create.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
       </form>
       <DialogFooter>
         <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>

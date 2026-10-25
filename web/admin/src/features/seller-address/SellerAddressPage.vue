@@ -4,7 +4,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useTenant } from "@/features/tenants";
 import { addressLines, ADDRESS_MAX, cleanAddress, COMMON_COUNTRIES, countryProfile, postalCodeLooksOff, validateAddress, type Address, type AddressPart } from "@/shared/lib/address";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -12,7 +12,6 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { useSetSellerAddress } from "./api";
 
 const { t, locale } = useI18n();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
@@ -121,8 +120,8 @@ function submit() {
           <span v-if="saved" class="text-success text-sm" role="status">{{ t("address.saved") }}</span>
         </div>
       </form>
-      <p v-if="save.error.value" class="text-destructive text-sm" role="alert">{{ errorText(save.error.value) }}</p>
-      <p v-if="tenant.error.value" class="text-destructive text-sm" role="alert">{{ errorText(tenant.error.value) }}</p>
+      <ErrorText :error="save.error.value" />
+      <ErrorText :error="tenant.error.value" />
     </Card>
 
     <Card role="region" :aria-label="t('address.preview.title')">

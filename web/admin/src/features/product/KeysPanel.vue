@@ -5,8 +5,9 @@ import { useI18n } from "vue-i18n";
 import { envOf, keyMask } from "@/shared/lib/environment";
 import { useFormat } from "@/shared/lib/format";
 import { copyText } from "@/shared/lib/clipboard";
-import { useErrorText } from "@/shared/lib/errors";
+import { firstError } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { useApiKeys, useCreateApiKey, useMe, useRevokeApiKey, type ApiKey, type Environment } from "./api";
@@ -18,7 +19,6 @@ import { useApiKeys, useCreateApiKey, useMe, useRevokeApiKey, type ApiKey, type 
 const props = defineProps<{ appId: string; canManage: boolean }>();
 const { t } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const keys = useApiKeys(() => props.appId);
 const create = useCreateApiKey(() => props.appId);
 const revoke = useRevokeApiKey(() => props.appId);
@@ -73,9 +73,7 @@ function doRevoke() {
     </div>
 
     <p v-if="canManage && unverified" class="text-muted-foreground text-xs" data-testid="live-needs-verified">{{ t("product.keys.needsVerified") }}</p>
-    <p v-if="create.error.value || revoke.error.value || keys.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">
-      {{ errorText(create.error.value ?? revoke.error.value ?? keys.error.value) }}
-    </p>
+    <ErrorText :error="firstError(create, revoke, keys)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
 
     <ul v-if="list.length > 0" class="divide-border/70 divide-y" :aria-label="t('product.keys.title')">
       <li v-for="k in list" :key="k.id" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">

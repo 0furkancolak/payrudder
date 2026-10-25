@@ -2,7 +2,7 @@
 import { Link } from "@tanstack/vue-router";
 import { useI18n } from "vue-i18n";
 import { enumWord, label } from "@/shared/lib/labels";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { PageHeader } from "@/shared/ui/page-header";
@@ -10,14 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useTenants } from "./api";
 
 const { t, te } = useI18n();
-const errorText = useErrorText();
 const tenants = useTenants();
 </script>
 
 <template>
   <PageHeader :title="t('tenants.title')" />
   <p v-if="tenants.isPending.value" class="text-muted-foreground">{{ t("common.loading") }}</p>
-  <p v-if="tenants.error.value" class="text-destructive mb-3" role="alert">{{ errorText(tenants.error.value) }}</p>
+  <ErrorText :error="tenants.error.value" class="mb-3" />
   <Card class="p-3">
     <Table>
       <TableHeader>

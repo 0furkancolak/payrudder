@@ -4,8 +4,9 @@ import { LogOut } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { useErrorText } from "@/shared/lib/errors";
+import { firstError } from "@/shared/lib/errors";
 import { applyTheme, theme, type ThemeChoice } from "@/shared/lib/theme";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -17,7 +18,6 @@ import AccountSwitcher from "./AccountSwitcher.vue";
 
 const { t } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const navigate = useNavigate();
 const me = useMe();
 const account = useAccount();
@@ -48,7 +48,7 @@ async function leave() {
       <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ t("product.settings.title") }}</h1>
       <p class="text-muted-foreground mt-1 text-sm">{{ t("product.settings.intro") }}</p>
     </header>
-    <p v-if="account.error.value || me.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(account.error.value ?? me.error.value) }}</p>
+    <ErrorText :error="firstError(account, me)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
 
     <div class="grid gap-5 lg:grid-cols-2">
       <section class="surface flex flex-col gap-4 p-6" :aria-label="t('product.settings.account')">
@@ -69,7 +69,7 @@ async function leave() {
             <Input id="acct-name" v-model="accountName" maxlength="200" required />
           </div>
           <Button type="submit" variant="outline" :disabled="rename.isPending.value || !nameChanged">{{ t("product.account.save") }}</Button>
-          <p v-if="rename.error.value" class="text-destructive w-full text-sm" role="alert">{{ errorText(rename.error.value) }}</p>
+          <ErrorText :error="rename.error.value" class="w-full" />
         </form>
       </section>
 

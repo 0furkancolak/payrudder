@@ -214,6 +214,7 @@ type InvoiceLine struct {
 	Description    string
 	ServiceFrom    *time.Time
 	ServiceTo      *time.Time
+	CouponCode     *string
 }
 
 type InvoiceNumberSeq struct {

@@ -136,7 +136,7 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 			return uuid.Nil, err
 		}
 		if promo != nil && promo.GetDiscountMinor() > 0 {
-			lines = append(lines, rating.Line{Kind: rating.KindDiscount, AmountMinor: -promo.GetDiscountMinor(), Description: discountText(promo)})
+			lines = append(lines, rating.Line{Kind: rating.KindDiscount, AmountMinor: -promo.GetDiscountMinor(), Description: discountText(promo), CouponCode: promo.GetCouponCode()})
 			total = promo.GetTotalMinor()
 		}
 	}

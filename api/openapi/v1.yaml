@@ -725,7 +725,7 @@ paths:
       summary: The accounting series as CSV
       description: >
         The query of the summary. One row per currency and day (or month), then a `total` row per currency; amounts are minor units. The `provider_fees_minor` of a total row is
-        `not_recorded` when no `payment_fees` expense exists.
+        `not_recorded` when no `payment_fees` expense exists. `discounts_minor` is what coupons took off (contra-revenue) and `sales_before_discounts_minor` is gross - tax + discounts.
       parameters:
         - { name: from, in: query, required: true, schema: { type: string, format: date } }
         - { name: to, in: query, required: true, schema: { type: string, format: date } }
@@ -733,6 +733,21 @@ paths:
         - { name: granularity, in: query, schema: { type: string, enum: [day, month] } }
       responses:
         "200": { description: OK, content: { text/csv: { schema: { type: string } } } }
+  /v1/accounting/coupons.csv:
+    get:
+      operationId: exportAccountingCouponsCsv
+      summary: Gross sales, discounts and net per coupon as CSV
+      description: >
+        The query of the summary. One row per currency and coupon over the invoices paid in the period: their number, what they came to before the coupon (positive lines, tax excluded),
+        what the coupon took off, and the net. Currencies are never added together.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: app_id, in: query, schema: { type: string, format: uuid } }
+        - { name: granularity, in: query, schema: { type: string, enum: [day, month] } }
+      responses:
+        "200": { description: OK, content: { text/csv: { schema: { type: string } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /v1/credits/settings:
     get:
       operationId: getCreditSettings
@@ -4853,6 +4868,7 @@ components:
         net_income_minor: { type: string }
         expenses_minor: { type: string }
         profit_minor: { type: string }
+        discounts_minor: { type: string, description: "What coupons took off the invoices paid in this bucket" }
     AccountingCurrency:
       type: object
       description: One currency of the period. Every amount is int64 minor units as a string.
@@ -4871,6 +4887,17 @@ components:
           type: array
           items: { type: object, properties: { category: { $ref: "#/components/schemas/ExpenseCategory" }, amount_minor: { type: string } } }
         series: { type: array, items: { $ref: "#/components/schemas/AccountingPoint" } }
+        discounts_minor: { type: string, description: "What coupons took off the paid invoices (contra-revenue, a positive number). gross_income_minor is already after it" }
+        sales_minor: { type: string, description: "Revenue before discounts: gross - tax + discounts" }
+        coupons: { type: array, items: { $ref: "#/components/schemas/AccountingCoupon" }, description: "Gross, discounts and net per coupon, most discount first" }
+    AccountingCoupon:
+      type: object
+      properties:
+        coupon_code: { type: string }
+        invoices: { type: string }
+        gross_minor: { type: string, description: "What those invoices came to before the coupon: positive lines, tax excluded" }
+        discount_minor: { type: string }
+        net_minor: { type: string, description: "gross - discount" }
     AccountingSummary:
       type: object
       properties:

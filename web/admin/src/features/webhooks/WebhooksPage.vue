@@ -3,7 +3,8 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { useErrorText } from "@/shared/lib/errors";
+import { firstError } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -13,7 +14,6 @@ import { EVENT_TYPES, useWebhookActions, useWebhookDeliveries, useWebhookEndpoin
 
 const { t } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const endpoints = useWebhookEndpoints(tenantId);
@@ -31,10 +31,7 @@ const secret = computed(() => ((act.create.data.value ?? act.rotate.data.value) 
 const when = (v?: string) => fmt.date(v, "shortSeconds", "—");
 const stateVariant = (s?: string) => (s === "WEBHOOK_DELIVERY_STATE_DELIVERED" ? "success" : s === "WEBHOOK_DELIVERY_STATE_FAILED" ? "destructive" : "secondary");
 const stateWord = (s?: string) => t(`billing.webhooks.state.${(s ?? "").replace("WEBHOOK_DELIVERY_STATE_", "").toLowerCase()}`);
-const failure = computed(() => {
-  for (const m of Object.values(act)) if (m.error.value) return errorText(m.error.value);
-  return "";
-});
+const failure = computed(() => firstError(...Object.values(act)));
 
 function create() {
   act.create.mutate({ url: url.value.trim(), description: description.value.trim(), event_types: [...types.value] }, { onSuccess: () => (url.value = description.value = "") });
@@ -69,8 +66,8 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       <p class="text-sm font-medium">{{ t("billing.webhooks.secretOnce") }}</p>
       <p class="mono break-all text-sm" data-testid="webhook-secret">{{ secret }}</p>
     </div>
-    <p v-if="failure" class="text-destructive text-sm" role="alert">{{ failure }}</p>
-    <p v-if="endpoints.error.value" class="text-destructive text-sm" role="alert">{{ errorText(endpoints.error.value) }}</p>
+    <ErrorText :error="failure" />
+    <ErrorText :error="endpoints.error.value" />
   </Card>
 
   <Card class="mb-6 p-3">
