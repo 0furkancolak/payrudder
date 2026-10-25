@@ -64,7 +64,8 @@ chaos: ## Correctness suite with chaos monkey: make chaos N=100000 (2 replicas b
 
 # k6 runs on the compose network and writes its metrics to Prometheus (Grafana dashboard "Payrudder / k6").
 K6_IMAGE := grafana/k6:2.3.0
-S ?= ingest_steady
+# S names the scenario of `make load` and the service of `make logs`: each gets its own default, so one does not leak into the other.
+load: S ?= ingest_steady
 .PHONY: load
 load: ## k6 scenario against the running stack: make load S=ingest_steady (also: ingest_spike noisy_neighbor entitlement_reads month_close); K6_ENV="-e DURATION=2m -e EVENTS_PER_SEC=500"
 	@mkdir -p tests/load/results && chmod 777 tests/load/results
@@ -78,9 +79,9 @@ bench-idempotency: ## Partitioned vs unpartitioned idempotency table (needs the 
 	cd tests && go test -count=1 -tags bench -run TestIdempotencyRetention -v -timeout 40m ./bench/
 
 # --- Kubernetes (kind + Helm) ------------------------------------------------------------------
-KIND_CONFIG ?= deploy/kind/cluster.yaml
 # KIND_PROFILE: kind (3 workers, 2 replicas) or kind-min (one node, one replica)
 KIND_PROFILE ?= kind
+KIND_CONFIG ?= deploy/kind/cluster$(if $(filter kind-min,$(KIND_PROFILE)),-min).yaml
 HELM_NS ?= payrudder
 KUBECTL := kubectl --context kind-payrudder
 SERVICE_IMAGES := plans-svc ingest-svc aggregator limits-svc billing-svc analytics-svc assets-svc gateway invoice-worker payments-worker notifier mockpsp
@@ -90,7 +91,7 @@ $(BIN)/helm $(BIN)/kubeconform $(BIN)/kind: tools/go.mod tools/go.sum
 
 .PHONY: rollout-test
 rollout-test: ## helm upgrade to a new image tag under k6 load: no failed request (needs kind-images and helm-install first)
-	KIND_PROFILE=$(KIND_PROFILE) HELM_NS=$(HELM_NS) deploy/kind/rollout-test.sh
+	KIND_PROFILE=$(KIND_PROFILE) HELM_NS=$(HELM_NS) SERVICE_IMAGES="$(SERVICE_IMAGES)" deploy/kind/rollout-test.sh
 
 .PHONY: demo-k8s
 demo-k8s: ## The sandbox flow on kind: close a period, every pm_sandbox_* payment scenario plays out, PDFs in MinIO, receipts in Mailpit
@@ -270,9 +271,9 @@ logs: ## Follow service logs: make logs, or make logs S=gateway
 
 .PHONY: down
 down: ## Stop every profile (keeps volumes)
-	$(COMPOSE) --profile obs --profile app --profile chaos --profile init down
+	$(COMPOSE) --profile obs --profile app --profile chaos --profile init --profile oidc down
 
 .PHONY: clean
 clean: ## Stop everything and delete volumes and ./bin
-	$(COMPOSE) --profile obs --profile app --profile chaos --profile init down -v
+	$(COMPOSE) --profile obs --profile app --profile chaos --profile init --profile oidc down -v
 	rm -rf $(BIN)
