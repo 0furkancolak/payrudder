@@ -19,7 +19,9 @@
   "common": {
     "loading": "Loading…",
     "unknown": "?",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "copied": "Copied",
+    "copyFailed": "Your browser did not allow copying. Select the text and copy it by hand."
   },
   "enums": {
     "environment": {
@@ -1598,7 +1600,8 @@
       "account": {
         "bad_settings": "These provider settings are not valid. Check the credentials and the required fields.",
         "not_found": "This account has no such payment provider set up.",
-        "sync_failed": "The provider account was changed, but the bank details could not be passed on to the invoices. Send the request again."
+        "sync_failed": "The provider account was changed, but the bank details could not be passed on to the invoices. Send the request again.",
+        "livemode_mismatch": "This provider account points at the provider's other mode: a live environment needs the provider's live endpoint and live keys, a sandbox environment its test endpoint."
       },
       "billing": {
         "not_configured": "Billing is not set up on this deployment.",

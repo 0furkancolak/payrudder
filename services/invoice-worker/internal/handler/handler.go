@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/invoice-worker/internal/render"
@@ -63,6 +63,15 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 		return nil, fmt.Errorf("%w: not a render command", workerx.ErrPoison)
 	}
 	inv := r.GetInvoice()
+	// A command that does not say which environment it is for, or whose invoice number is of the other series, is never rendered: the watermark and the bucket
+	// tag follow the environment, so guessing one could print a real invoice as a sandbox one or the reverse. Dead-lettered, not retried.
+	environment, err := env.FromProto(cmd.GetEnvironment())
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", workerx.ErrPoison, err)
+	}
+	if !env.NumberMatches(environment, inv.GetNumber()) {
+		return nil, fmt.Errorf("%w: invoice number %q is not in the %s series: %w", workerx.ErrPoison, inv.GetNumber(), environment, env.ErrMismatch)
+	}
 	key := ObjectKey(cmd.GetTenantId(), inv)
 
 	// Attempts of the same step (billing re-issues a silent command with a fresh command id) can arrive together: the
@@ -77,7 +86,7 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 		return nil, err // storage unavailable: retry
 	}
 
-	sandbox := cmd.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX
+	sandbox := environment.IsSandbox()
 	var logo []byte
 	// The logo is only read from the command tenant's own prefix.
 	if k := inv.GetLogoObjectKey(); k != "" && h.Logos != nil && strings.HasPrefix(k, cmd.GetTenantId()+"/assets/") {
@@ -98,14 +107,10 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 	}
 	sum := sha256.Sum256(pdf)
 	hash := hex.EncodeToString(sum[:])
-	env := "live"
-	if sandbox {
-		env = "sandbox"
-	}
 	if err := h.Store.Put(ctx, key, pdf, blob.PutOptions{
 		ContentType: "application/pdf", Metadata: map[string]string{"sha256": hash},
 		// The bucket's lifecycle rule expires objects tagged environment=sandbox after 30 days.
-		Tags: map[string]string{"environment": env},
+		Tags: map[string]string{"environment": environment.String()},
 	}); err != nil {
 		return nil, err
 	}

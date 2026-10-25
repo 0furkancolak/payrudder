@@ -343,14 +343,12 @@ func overviewStatus(o *overviewResponse) string {
 
 func (s *Server) appOverview(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
-	envName := r.URL.Query().Get("environment")
-	if envName == "" {
-		envName = "live"
-	}
-	if envName != "live" && envName != "sandbox" {
-		writeError(w, r, invalid("environment", "sandbox or live"))
+	want, err := environmentParam(r)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
+	envName := want.String()
 	app, err := s.d.Identity.GetMyApp(r.Context(), &plansv1.GetMyAppRequest{UserId: sess.UserID, AppId: r.PathValue("id")})
 	if err != nil {
 		writeError(w, r, err)
@@ -358,7 +356,7 @@ func (s *Server) appOverview(w http.ResponseWriter, r *http.Request) {
 	}
 	var t *plansv1.Tenant
 	for _, c := range app.GetApp().GetTenants() {
-		if (envName == "live") == (c.GetEnvironment() == plansv1.Environment_ENVIRONMENT_LIVE) {
+		if c.GetEnvironment() == want.Proto() {
 			t = c
 		}
 	}

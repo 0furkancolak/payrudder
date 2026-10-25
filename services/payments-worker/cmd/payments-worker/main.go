@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -25,6 +26,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/einvoice/mock"
 	"github.com/0furkancolak/payrudder/pkg/einvoice/nilvera"
 	einvoicewebhook "github.com/0furkancolak/payrudder/pkg/einvoice/webhook"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/logx"
@@ -62,7 +64,10 @@ type Config struct {
 	// LiveProvider selects the provider for live tenants: "mockpsp" (the local demo) or empty (not configured: live
 	// charges reply PROVIDER_NOT_CONFIGURED). Sandbox tenants always use mock-psp.
 	LiveProvider string `env:"PAYMENTS_LIVE_PROVIDER"`
-	Prefetch     int    `env:"PAYRUDDER_PREFETCH"`
+	// AllowMockLive must be true to run with PAYMENTS_LIVE_PROVIDER=mockpsp: live tenants then pay through the mock. It is for a local stack and CI, where no real
+	// provider exists. Without it the worker refuses to start with the mock as the live provider, and refuses at run time any live command routed to the mock.
+	AllowMockLive bool `env:"PAYMENTS_ALLOW_MOCK_LIVE"`
+	Prefetch      int  `env:"PAYRUDDER_PREFETCH"`
 	// SecretsKey (base64, 32 bytes) seals the credentials of tenants' provider accounts. Without it provider accounts, and with them
 	// provider webhooks, are disabled.
 	SecretsKey string `env:"PAYRUDDER_SECRETS_KEY"`
@@ -101,10 +106,23 @@ func (c *Config) Validate() error {
 	if c.TransferWindowDays < 1 || c.TransferWindowDays > banktransfer.MaxPaymentWindowDays {
 		errs = append(errs, fmt.Errorf("PAYMENTS_TRANSFER_WINDOW_DAYS must be 1 to %d", banktransfer.MaxPaymentWindowDays))
 	}
-	if c.LiveProvider != "" && c.LiveProvider != "mockpsp" {
-		errs = append(errs, fmt.Errorf("PAYMENTS_LIVE_PROVIDER %q is not supported (v1 ships only mockpsp)", c.LiveProvider))
-	}
+	errs = append(errs, checkLiveProvider(c.LiveProvider, c.AllowMockLive, c.Demo))
 	return errors.Join(errs...)
+}
+
+// checkLiveProvider is the startup rule for PAYMENTS_LIVE_PROVIDER. Live never reaches the mock (ADR 0023): the mock as the live provider needs an explicit
+// "this is not production" (PAYMENTS_ALLOW_MOCK_LIVE), or the demo, which is the mock everywhere. Any other value is not a provider this release ships.
+func checkLiveProvider(provider string, allowMock, demo bool) error {
+	switch provider {
+	case "":
+		return nil
+	case "mockpsp":
+		if !allowMock && !demo {
+			return errors.New("PAYMENTS_LIVE_PROVIDER=mockpsp would charge live tenants through the mock: set PAYMENTS_ALLOW_MOCK_LIVE=true on a local or CI stack only, or leave it empty so live tenants use their own provider accounts")
+		}
+		return nil
+	}
+	return fmt.Errorf("PAYMENTS_LIVE_PROVIDER %q is not supported (v1 ships only mockpsp, and live tenants use their own provider accounts)", provider)
 }
 
 func main() {
@@ -169,6 +187,12 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	defer pool.Close()
 
 	h := newHandler(cfg, pool, log)
+	dir, closeDir, err := tenantDirectory(cfg)
+	if err != nil {
+		return err
+	}
+	defer closeDir()
+	h.Tenants = dir
 	registry := payments.NewRegistry()
 	iyzico.Register(registry)
 	paddle.Register(registry)
@@ -195,10 +219,30 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	return serve(ctx, cfg, log, hh, w, httpHandler)
 }
 
+// tenantDirectory is how the worker learns the environment of a command's tenant, to refuse a command that disagrees (ADR 0023). It asks plans-svc and keeps
+// the answers (a tenant's environment never changes). Without QUOTIFY_PLANS_ADDR it is nil and commands are checked for having an environment only.
+func tenantDirectory(cfg *Config) (*env.Directory, func(), error) {
+	if cfg.PlansAddr == "" {
+		return nil, func() {}, nil
+	}
+	conn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	if err != nil {
+		return nil, nil, fmt.Errorf("plans-svc client: %w", err)
+	}
+	admin := plansv1.NewAdminServiceClient(conn)
+	return env.NewDirectory(func(ctx context.Context, id uuid.UUID) (env.Env, error) {
+		r, err := admin.GetTenant(tenant.OutgoingContext(tenant.WithOperator(ctx)), &plansv1.GetTenantRequest{TenantId: id.String()})
+		if err != nil {
+			return "", err
+		}
+		return env.FromProto(r.GetTenant().GetEnvironment())
+	}, 0), func() { _ = conn.Close() }, nil
+}
+
 // newHandler builds the command handler: sandbox tenants always use mock-psp, live tenants only when configured.
 func newHandler(cfg *Config, pool *pgxpool.Pool, log *slog.Logger) *handler.Handler {
 	mock := payments.NewMockPSP(cfg.MockPSPURL, cfg.PSPTimeout)
-	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log, Demo: cfg.Demo,
+	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log, Demo: cfg.Demo, AllowMockLive: cfg.AllowMockLive,
 		Transfers: store.Transfers{DB: pool}, TransferWindow: time.Duration(cfg.TransferWindowDays) * 24 * time.Hour}
 	if cfg.LiveProvider == "mockpsp" {
 		h.Live = mock
@@ -322,6 +366,7 @@ func wireEInvoice(cfg *Config, pool *pgxpool.Pool, h *handler.Handler, registry 
 	} else {
 		log.Warn("S3_ACCESS_KEY is not set: e-invoices are issued without stored UBL/PDF files")
 	}
+	ew.Tenants = h.Tenants
 	h.EInvoice = ew
 	return nil
 }

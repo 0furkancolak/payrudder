@@ -14,6 +14,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/brand"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -234,7 +235,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 		Currency: inv.GetCurrency(), Subtotal: formatMinor(inv.GetSubtotalMinor(), exp), Total: formatMinor(inv.GetTotalMinor(), exp), HasPDF: resp.GetPdfAvailable(),
 		PDF: sc.page() + "/pdf", Pay: sc.page() + "/pay" + q, Back: sc.back(), State: stateOf(resp),
 	}
-	v.Test = resp.GetEnvironment() == "sandbox"
+	v.Test = resp.GetEnvironment() == env.Sandbox.String()
 	if v.Back != "" {
 		v.Back += q
 	}
@@ -277,7 +278,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 
 // methodViews lists the ways to pay: in a sandbox or demo the mock, else what payments-worker offers for the invoice.
 func (s *Server) methodViews(ctx context.Context, l map[string]string, resp *billingv1.GetHostedInvoiceResponse) []methodView {
-	if resp.GetEnvironment() == "sandbox" || s.d.Demo {
+	if resp.GetEnvironment() == env.Sandbox.String() || s.d.Demo {
 		return []methodView{{ID: "mock", Label: l["pay_mock"]}}
 	}
 	p := resp.GetPayment()
@@ -350,7 +351,7 @@ func (s *Server) adhocPageWith(w http.ResponseWriter, r *http.Request, sc scope,
 	v := &adhocView{pageBase: newBase(lang), Seller: orDefault(a.GetSellerName(), resp.GetSellerName()), Description: a.GetDescription(),
 		Amount: formatMinor(a.GetAmountMinor(), int(a.GetCurrencyExponent())), Currency: a.GetCurrency(), Consumed: a.GetConsumed(), Start: sc.page() + "/start" + langSuffix(r),
 		PromoAction: sc.page() + "/promo" + langSuffix(r), Code: in.Code}
-	v.Test = orDefault(a.GetEnvironment(), resp.GetEnvironment()) == "sandbox"
+	v.Test = orDefault(a.GetEnvironment(), resp.GetEnvironment()) == env.Sandbox.String()
 	if k := a.GetPack(); k != nil {
 		v.Pack = &packView{Name: k.GetName(), Credits: formatMinor(k.GetCredits(), 0), Valid: validText(v.L, k.GetValidityDays()), Quantity: k.GetQuantity()}
 	}
@@ -601,7 +602,7 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 	v := &receiptView{pageBase: newBase(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(), Number: inv.GetNumber(),
 		SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines(), Currency: inv.GetCurrency(), Total: formatMinor(inv.GetTotalMinor(), exp),
 		Back: sc.page() + langSuffix(r)}
-	v.Test = resp.GetEnvironment() == "sandbox"
+	v.Test = resp.GetEnvironment() == env.Sandbox.String()
 	if resp.GetLogoAvailable() {
 		v.Logo = sc.logo()
 	}
@@ -702,7 +703,7 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 	}
 	v := &instructionsView{pageBase: newBase(lang), Number: p.GetNumber(), Total: formatMinor(p.GetAmountMinor(), exponentOf(p.GetCurrency())),
 		Currency: p.GetCurrency(), Reference: out.Reference, Back: back}
-	v.Test = p.GetEnvironment() == "sandbox"
+	v.Test = p.GetEnvironment() == env.Sandbox.String()
 	for _, ln := range out.Lines {
 		v.Lines = append(v.Lines, struct{ Label, Value string }{ln.Label, ln.Value})
 	}

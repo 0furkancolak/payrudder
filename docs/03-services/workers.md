@@ -86,7 +86,9 @@ type PaymentProvider interface {
 | Command `environment` | Provider | Configurable? |
 |---|---|---|
 | `SANDBOX` | `mockpsp` (sandbox endpoint) | **No.** Hard-coded, so a sandbox tenant can never reach a real provider, whatever the config says |
-| `LIVE` | `PAYMENTS_LIVE_PROVIDER` | Yes. v1 ships only `mockpsp`, used for live tenants in the local demo. Real adapters are a non-goal. The interface is where one plugs in. If unset, live charges reply `PaymentErrored{retryable=false, code=PROVIDER_NOT_CONFIGURED}` |
+| `LIVE` | `PAYMENTS_LIVE_PROVIDER` | Yes. v1 ships only `mockpsp`, used for live tenants in the local demo. Real adapters are a non-goal. The interface is where one plugs in. If unset, live charges reply `PaymentErrored{retryable=false, code=PROVIDER_NOT_CONFIGURED}`. **Live never reaches the mock** (phase 45): the worker refuses to start with `PAYMENTS_LIVE_PROVIDER=mockpsp` unless `PAYMENTS_ALLOW_MOCK_LIVE=true` (compose and the default Helm values say it, a sandbox install does not) or `QUOTIFY_DEMO`, and at run time a live command routed to the mock is answered `PROVIDER_NOT_CONFIGURED` |
+
+A command is checked before it is routed (phase 45): one with no `environment`, or whose `environment` differs from its tenant's (asked of plans-svc and kept, `QUOTIFY_PLANS_ADDR`), is poison and goes to the dead-letter queue; it is never read as live. invoice-worker refuses a command whose invoice number is in the other series (`SBX-` is sandbox). A provider account has a mode of its own at the provider (iyzico and Paddle have a test host): a live-environment account that points at a test host, or a sandbox-environment account at a live host, is refused when stored (`payments.account.livemode_mismatch`) and never used.
 
 | | |
 |---|---|
@@ -163,7 +165,7 @@ window or a rejection), and the operator endpoints `GET /admin/tenants/{tenant}/
 Phase 15 adds Paddle: `POST /webhooks/{provider}/{tenant}/{environment}` (a notification destination per account, verified by signature), the tenant's provider subscriptions
 and hosted checkouts under `/admin/tenants/{tenant}/`, and `PAYRUDDER_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See [phase 15](../phases/phase-15-paddle.md).
 
-Phase 45 adds `GET /admin/tenants/{tenant}/go-live` (internal token): `{"ready": bool, "providers": [...]}`, true when the tenant has a live-mode account whose sealed settings still open and still build an adapter. The gateway asks it for the go-live checklist; plans-svc never reads provider data. See [ADR 0022](../adr/0022-live-and-sandbox-guards.md).
+Phase 45 adds `GET /admin/tenants/{tenant}/go-live` (internal token): `{"ready": bool, "providers": [...]}`, true when the tenant has a live-mode account whose sealed settings still open and still build an adapter. The gateway asks it for the go-live checklist; plans-svc never reads provider data. See [ADR 0023](../adr/0023-live-and-sandbox-guards.md).
 
 ## As built: e-invoices in payments-worker (Phase 30)
 

@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
@@ -31,7 +32,7 @@ func Get(ctx context.Context, app *pgxpool.Pool, ti tenant.Info) (*Settings, err
 		row, err := sqlc.New(tx).GetDunningSettings(ctx, ti.ID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			out.DefaultsInUse = true
-			out.RetryHours = defaultRetryHours(ti.Environment == "sandbox")
+			out.RetryHours = defaultRetryHours(ti.Environment == env.Sandbox.String())
 			return nil
 		}
 		if err != nil {

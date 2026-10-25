@@ -19,7 +19,9 @@
   "common": {
     "loading": "Cargando…",
     "unknown": "?",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "copied": "Copiado",
+    "copyFailed": "Tu navegador no permitió copiar. Selecciona el texto y cópialo a mano."
   },
   "enums": {
     "environment": {
@@ -1598,7 +1600,8 @@
       "account": {
         "bad_settings": "Estos ajustes del proveedor no son válidos. Revisa las credenciales y los campos obligatorios.",
         "not_found": "Esta cuenta no tiene configurado ese proveedor de pago.",
-        "sync_failed": "La cuenta del proveedor se modificó, pero los datos bancarios no pudieron pasarse a las facturas. Envía la solicitud de nuevo."
+        "sync_failed": "La cuenta del proveedor se modificó, pero los datos bancarios no pudieron pasarse a las facturas. Envía la solicitud de nuevo.",
+        "livemode_mismatch": "Esta cuenta de proveedor apunta al otro modo del proveedor: un entorno live necesita el endpoint y las claves live del proveedor, un entorno sandbox su endpoint de prueba."
       },
       "billing": {
         "not_configured": "La facturación no está configurada en este despliegue.",

@@ -235,6 +235,8 @@ services:
       S3_BUCKET: "{{ .Values.s3.invoicesBucket }}"
       MOCKPSP_URL: http://mockpsp:8090
       PAYMENTS_LIVE_PROVIDER: "{{ .Values.payments.liveProvider }}"
+      # The worker refuses to start with the mock as the live provider unless the install says it is not production; liveProvider: mockpsp is that statement.
+      PAYMENTS_ALLOW_MOCK_LIVE: '{{ if eq .Values.payments.liveProvider "mockpsp" }}true{{ else }}false{{ end }}'
       PAYMENTS_HTTP_ADDR: ":8095"
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_BILLING_ADDR: dns:///billing-svc:7005

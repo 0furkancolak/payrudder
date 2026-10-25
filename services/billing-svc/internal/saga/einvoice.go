@@ -14,6 +14,7 @@ import (
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -82,15 +83,17 @@ func PublishEInvoiceCommand(ctx context.Context, tx pgx.Tx, now time.Time, tenan
 		return err
 	}
 	id := EInvoiceCommandID(docID, cmd.GetAction(), attempt)
-	env := &commandsv1.CommandEnvelope{
+	// The environment is stamped from the tenant's snapshot and is never defaulted: a document whose snapshot names none is not sent anywhere.
+	parsed, err := env.Parse(environment)
+	if err != nil {
+		return fmt.Errorf("e-invoice command for document %s: %w", docID, err)
+	}
+	envelope := &commandsv1.CommandEnvelope{
 		CommandId: id.String(), SagaId: docID.String(), TenantId: tenantID.String(), Attempt: int32(attempt), //nolint:gosec // small
-		IssuedAt: timestamppb.New(now), Environment: plansv1.Environment_ENVIRONMENT_LIVE,
+		IssuedAt: timestamppb.New(now), Environment: parsed.Proto(),
 		Command: &commandsv1.CommandEnvelope_IssueEInvoice{IssueEInvoice: cmd},
 	}
-	if environment == "sandbox" {
-		env.Environment = plansv1.Environment_ENVIRONMENT_SANDBOX
-	}
-	body, err := proto.Marshal(env)
+	body, err := proto.Marshal(envelope)
 	if err != nil {
 		return err
 	}

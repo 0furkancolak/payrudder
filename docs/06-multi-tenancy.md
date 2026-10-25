@@ -13,6 +13,18 @@
 | ClickHouse | Mandatory `tenant_id` predicate in the query builder | analytics-svc |
 | Resources | Per-tenant rate limits (GCRA), batch caps, outbox back-pressure, per-tenant lag metrics | gateway, ingest-svc |
 
+## Environment guards (phase 45)
+
+The tenant is the unit of isolation; the environment (sandbox or live) is asserted at every edge, never defaulted ([ADR 0023](adr/0023-live-and-sandbox-guards.md)):
+
+| Edge | Guard |
+|---|---|
+| gateway | the environment is the key's tenant's: the prefix is checked against it on every request, and nothing the caller sends (header, query) names it |
+| billing-svc | every saga command is stamped from the invoice's frozen snapshot and checked against the tenant (plans-svc); a snapshot with no environment sends nothing; CHECK `invoice_number_series` and a trigger on credit notes keep the `SBX-` series apart |
+| payments-worker | a command with no environment, or another than its tenant's, is dead-lettered; sandbox is served by mock-psp and nothing else, live never by the mock; provider accounts have a checked mode |
+| invoice-worker | refuses a command whose invoice number is in the other series |
+| `pkg/env` | the one place that parses, compares and requires an environment (`env.Parse`, `env.Same`, `env.Directory`) |
+
 ## API keys
 
 - Format: `qk_{live|test}_{prefix8}_{secret}`, where `secret` is 32 random bytes in base62 (≈ 190 bits).
@@ -24,7 +36,7 @@
 - `test` keys resolve to the account's **sandbox tenant** and `live` keys to its live tenant. A sandbox is a separate `tenant_id`,
   so sandbox and live data are isolated by the same RLS and partitioning as any two tenants ([ADR 0011](adr/0011-sandbox-environment.md)).
   plans-svc rejects creating a `live` key for a sandbox tenant and vice versa, and a trigger in the database refuses it too. The gateway checks the prefix against the tenant's environment on every request: a `qk_test_` key whose tenant is live (or the reverse) is a hard `401`.
-- A key has a **scope** (`full`, `ingest` = only `POST /v1/events`, `read` = only `GET`), a `last_used_at` and, when it was rotated, an `expires_at`: the old key keeps working for the overlap window (default 24 hours, at most 7 days) and then stops, with no cache eviction needed ([ADR 0022](adr/0022-live-and-sandbox-guards.md)).
+- A key has a **scope** (`full`, `ingest` = only `POST /v1/events`, `read` = only `GET`), a `last_used_at` and, when it was rotated, an `expires_at`: the old key keeps working for the overlap window (default 24 hours, at most 7 days) and then stops, with no cache eviction needed ([ADR 0023](adr/0023-live-and-sandbox-guards.md)).
 - A **live** tenant is created `inactive`: no keys, no webhook endpoints, no invoices, until its go-live checklist is complete and the owner activates it. An operator can suspend an active tenant; its keys stop at once (`403 gateway.auth.tenant_not_active`).
 
 ## Row Level Security

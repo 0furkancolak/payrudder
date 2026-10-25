@@ -18,6 +18,7 @@ import (
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
@@ -344,11 +345,14 @@ func (m *Manager) loadRateRun(ctx context.Context, run *Run) (*rateRun, error) {
 	return rr, nil
 }
 
+// environmentOf is the environment frozen into an invoice's snapshot. A tenant that names none yields "", which no snapshot is allowed to hold (a CHECK in
+// billing_db and the checks of every command refuse it): it is never read as live.
 func environmentOf(t *plansv1.Tenant) string {
-	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
-		return "sandbox"
+	e, err := env.FromProto(t.GetEnvironment())
+	if err != nil {
+		return ""
 	}
-	return "live"
+	return e.String()
 }
 
 // logoKeyOf is the object key of the tenant's invoice logo, an assets-svc object under {tenant}/assets/{asset id}.

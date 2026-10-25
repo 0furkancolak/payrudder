@@ -8,6 +8,7 @@ import (
 	"time"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/blob"
 )
 
@@ -34,7 +35,7 @@ func (*headStore) Put(context.Context, string, []byte, blob.PutOptions) error { 
 func TestSameObjectKeyRunsOneAtATime(t *testing.T) {
 	st := &headStore{}
 	h := &Handler{Store: st}
-	cmd := &commandsv1.CommandEnvelope{TenantId: "t", Command: &commandsv1.CommandEnvelope_RenderInvoicePdf{
+	cmd := &commandsv1.CommandEnvelope{TenantId: "t", Environment: plansv1.Environment_ENVIRONMENT_SANDBOX, Command: &commandsv1.CommandEnvelope_RenderInvoicePdf{
 		RenderInvoicePdf: &commandsv1.RenderInvoicePdf{Invoice: &commandsv1.InvoiceSnapshot{InvoiceId: "i", Version: 1}}}}
 	var wg sync.WaitGroup
 	for i := 0; i < 60; i++ {

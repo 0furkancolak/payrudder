@@ -37,10 +37,14 @@ func (c *countingStore) Put(ctx context.Context, key string, body []byte, o blob
 }
 
 func command(tenantID, invoiceID string, env plansv1.Environment, commandID uuid.UUID) []byte {
+	number := "INV-2026-000001"
+	if env == plansv1.Environment_ENVIRONMENT_SANDBOX {
+		number = "SBX-2026-000001" // a sandbox invoice is in the sandbox series; the worker refuses a command whose number is in the other one
+	}
 	b, _ := proto.Marshal(&commandsv1.CommandEnvelope{
 		CommandId: commandID.String(), SagaId: uuid.NewString(), TenantId: tenantID, Environment: env,
 		Command: &commandsv1.CommandEnvelope_RenderInvoicePdf{RenderInvoicePdf: &commandsv1.RenderInvoicePdf{Invoice: &commandsv1.InvoiceSnapshot{
-			InvoiceId: invoiceID, Version: 1, Number: "INV-2026-000001", PeriodId: "2026-10", Currency: "USD", CurrencyExponent: 2,
+			InvoiceId: invoiceID, Version: 1, Number: number, PeriodId: "2026-10", Currency: "USD", CurrencyExponent: 2,
 			TenantName: "Acme", CustomerName: "Ada", CustomerEmail: "ada@example.com", IssuedAt: timestamppb.New(time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)),
 			Lines:         []*commandsv1.InvoiceLineSnapshot{{LineNo: 1, Kind: "BASE_FEE", Description: "Base fee", AmountMinor: 1000}},
 			SubtotalMinor: 1000, TotalMinor: 1000}}}})
