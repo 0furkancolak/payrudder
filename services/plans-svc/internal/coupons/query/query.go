@@ -9,10 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/subscription"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/model"
@@ -166,7 +166,7 @@ func page(size int32, token string) (limit, offset int32, err error) {
 	if token != "" {
 		n, perr := strconv.ParseInt(token, 10, 32)
 		if perr != nil || n < 0 {
-			return 0, 0, status.Error(codes.InvalidArgument, "page_token is not one this API gave")
+			return 0, 0, errkey.New(codes.InvalidArgument, "plans.coupon.bad_page_token", "page_token is not one this API gave")
 		}
 		offset = int32(n)
 	}
@@ -200,7 +200,7 @@ func (r *Queries) ListPromotionCodes(ctx context.Context, req *plansv1.ListPromo
 		a := req.GetState() == "active"
 		p.Active = &a
 	default:
-		return nil, status.Error(codes.InvalidArgument, "state is active, inactive or empty")
+		return nil, errkey.New(codes.InvalidArgument, "plans.coupon.bad_state", "state is active, inactive or empty")
 	}
 	out := &plansv1.ListPromotionCodesResponse{}
 	var total int64

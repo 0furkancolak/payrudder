@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/subscription"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	changescmd "github.com/0furkancolak/quotify/services/plans-svc/internal/changes/command"
@@ -90,7 +90,7 @@ func (c *Commands) syncProvider(ctx context.Context, q *sqlc.Queries, tenantID u
 	}
 	row := sqlc.GetSubscriptionRow(cur)
 	if row.ProviderRef != nil && (*row.ProviderRef != req.GetProviderRef() || convert.Str(row.Provider) != req.GetProvider()) {
-		return nil, status.Errorf(codes.FailedPrecondition, "subscription is already linked to %s %s", convert.Str(row.Provider), *row.ProviderRef)
+		return nil, errkey.Newf(codes.FailedPrecondition, "plans.subscription.already_linked", "subscription is already linked to %s %s", convert.Str(row.Provider), *row.ProviderRef)
 	}
 	n, err := q.LinkProviderSubscription(ctx, sqlc.LinkProviderSubscriptionParams{
 		ID: id, Provider: new(req.GetProvider()), ProviderRef: new(req.GetProviderRef()), Owner: req.GetOwner(), OccurredAt: a.occurred,

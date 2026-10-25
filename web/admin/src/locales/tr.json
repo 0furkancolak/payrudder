@@ -1376,7 +1376,16 @@
       "subscription": {
         "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın.",
         "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin.",
-        "period_overlap": "Bu müşterinin o dönemle çakışan bir aboneliği zaten var."
+        "period_overlap": "Bu müşterinin o dönemle çakışan bir aboneliği zaten var.",
+        "already_linked": "Bu abonelik zaten bir ödeme sağlayıcısına bağlı.",
+        "bad_period": "Bu aboneliğin faturalama dönemi hesaplanamıyor.",
+        "billed_in_arrears": "Bu abonelik dönem sonunda faturalanıyor: peşin ücret ödenmedi.",
+        "changed_concurrently": "Abonelik aynı anda değişti. Sayfayı yenileyip yeniden deneyin.",
+        "ended": "Abonelik zaten sona erdi.",
+        "ending_or_ended": "Abonelik zaten sona erdi ya da sona ermesi planlandı.",
+        "no_scheduled_cancel": "Geri çekilecek planlanmış bir iptal yok.",
+        "run_by_provider": "Bu abonelik bir ödeme sağlayıcısı tarafından yürütülüyor. Değişikliği orada yapın.",
+        "transition_not_allowed": "Bu işlem aboneliğin mevcut durumunda yapılamaz."
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
@@ -1384,7 +1393,8 @@
         "tenant_not_active": "Bu ortam etkin olmadığı için webhook uç noktası ekleyemez. Önce canlıya geçiş listesini tamamlayın."
       },
       "customer": {
-        "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil."
+        "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil.",
+        "quota_reached": "Bu hesabın planının müşteri sınırına ulaşıldı."
       },
       "common": {
         "not_found": "Bulunamadı.",
@@ -1396,7 +1406,8 @@
         "settings_immutable": "Bir hesabın para birimi, saat dilimi ve ortamı değiştirilemez.",
         "bad_status": "Durum active veya suspended olmalıdır.",
         "bad_transition": "Bu durum değişikliği bu ortam için mümkün değil.",
-        "reason_required": "Bir ortamı listesi tamamlanmadan etkinleştirmek için gerekçe gerekir."
+        "reason_required": "Bir ortamı listesi tamamlanmadan etkinleştirmek için gerekçe gerekir.",
+        "unknown": "Bu hesap tanınmıyor."
       },
       "request": {
         "invalid": "{field} geçerli değil: {detail}"
@@ -1404,6 +1415,43 @@
       "api_key": {
         "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
         "tenant_not_active": "Bu ortam etkin olmadığı için API anahtarı alamaz. Önce canlıya geçiş listesini tamamlayın."
+      },
+      "change": {
+        "bad_proration": "Bu plan değişikliğinin ücreti bu dönem için hesaplanamıyor.",
+        "billed_in_arrears": "Bu abonelik dönem sonunda faturalanıyor. Planını, ayı zamana göre bölen ChangePlan ile değiştirin.",
+        "fee_not_invoiced": "Mevcut dönemin ücreti henüz faturalanmadı. Birazdan yeniden deneyin.",
+        "invalid": "Bu değişiklik bu abonelik için geçerli değil.",
+        "none_scheduled": "Bu abonelik için planlanmış bir değişiklik yok.",
+        "state_not_changeable": "Mevcut durumdaki bir abonelik plan değiştiremez.",
+        "subscription_ended": "Sona ermiş ya da sona ermekte olan bir abonelik plan değiştiremez.",
+        "use_change_subscription": "Ücreti peşin faturalanan bir abonelik ChangeSubscription ile değiştirilir."
+      },
+      "coupon": {
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
+        "bad_state": "Durum active, inactive ya da boş olmalı.",
+        "codes_exhausted": "Yeterince kullanılmamış kod bulunamadı. Daha uzun bir önek deneyin.",
+        "fee_not_in_advance": "Kupon, peşin faturalanan bir ücretten indirim yapar. Bu aboneliğin ücreti başka şekilde faturalanıyor.",
+        "none_on_subscription": "Bu aboneliğin kuponu yok.",
+        "subscription_ended": "Sona ermiş bir aboneliğe kupon uygulanamaz."
+      },
+      "fee": {
+        "invalid_period": "Bu aboneliğin faturalama dönemi hesaplanamıyor.",
+        "not_period_start": "Bu bir faturalama döneminin başlangıcı değil."
+      },
+      "meter": {
+        "changed_concurrently": "Aynı anda başka bir sayaç sürümü oluşturuldu. Yeniden deneyin.",
+        "quota_reached": "Bu hesabın planının sayaç sınırına ulaşıldı."
+      },
+      "migration": {
+        "aborted": "Geçiş iptal edildi.",
+        "already_completed": "Geçiş zaten tamamlandı.",
+        "cannot_abort": "Geçiş tamamlandı ve iptal edilemez.",
+        "state_not_movable": "Mevcut durumdaki bir abonelik başka bir sağlayıcıya taşınamaz.",
+        "subscription_ended": "Abonelik sona erdi ya da sona eriyor, bu yüzden taşınamaz."
+      },
+      "plan": {
+        "no_fixed_fee": "Bu plan sürümünün bu para biriminde bu aralık için sabit ücreti yok.",
+        "no_metered_price": "Bu plan sürümünün ölçümlü fiyatları var ama bu para biriminde yok."
       }
     },
     "common": {
@@ -1555,7 +1603,8 @@
         "not_active": "Bu API anahtarı iptal edilmiş.",
         "invalid": "API anahtarı geçerli değil.",
         "missing": "API anahtarınızı Authorization başlığında Bearer belirteci olarak gönderin.",
-        "sandbox_only": "Bu uç nokta yalnızca sandbox anahtarları (qk_test_) içindir."
+        "sandbox_only": "Bu uç nokta yalnızca sandbox anahtarları (qk_test_) içindir.",
+        "prefix_unavailable": "Benzersiz bir anahtar öneki ayrılamadı. Yeniden deneyin."
       },
       "app": {
         "not_found": "Bu uygulama yok ya da size ait değil.",
