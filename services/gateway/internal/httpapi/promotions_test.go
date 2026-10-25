@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // QuoteLinkPromotion of the fake billing-svc: SAVE10 takes 10 % off 250.00, BONUS adds credits to the pack, anything else is refused with its key.

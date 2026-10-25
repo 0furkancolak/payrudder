@@ -1,11 +1,11 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
-QUOTIFY_MIGRATE_ON_START: "false"
-QUOTIFY_PLANS_ADDR: "dns:///localhost:42701"
+PAYRUDDER_MIGRATE_ON_START: "false"
+PAYRUDDER_PLANS_ADDR: "dns:///localhost:42701"
 SMTP_ADDR: "localhost:42025"
-MAIL_FROM: "Payrudder <billing@quotify.local>"
+MAIL_FROM: "Payrudder <billing@payrudder.local>"
 NOTIFIER_SENDING_STALE: "5m"
 # How long a tenant's mail switch (plans-svc) is remembered; a change reaches the notifier within it.
 NOTIFIER_MAIL_SWITCH_TTL: "15s"
-QUOTIFY_CONSUMER_GROUP: "notifier"
-QUOTIFY_DLQ_TOPIC: "usage.limit-exceeded.dlq.v1"
-QUOTIFY_CONSUMER_SESSION_TIMEOUT: "10s"
+PAYRUDDER_CONSUMER_GROUP: "notifier"
+PAYRUDDER_DLQ_TOPIC: "usage.limit-exceeded.dlq.v1"
+PAYRUDDER_CONSUMER_SESSION_TIMEOUT: "10s"

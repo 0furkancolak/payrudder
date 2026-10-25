@@ -1,4 +1,4 @@
-# Memory budgets of the Quotify services, checked in CI (the e2e job) and by `make mem-budget`.
+# Memory budgets of the Payrudder services, checked in CI (the e2e job) and by `make mem-budget`.
 #
 # After the smoke run (the stack is up and `make e2e` and the console's browser test have run), every service's memory as `docker stats` reports it
 # (the container's working set, in practice its resident set) must be at or below budget_mib. A service that grows past its budget fails the build.

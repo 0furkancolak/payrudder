@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
 )
 
 // FeeSegment is the part of a billing period one plan version was in force for a customer.

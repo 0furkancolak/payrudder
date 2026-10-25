@@ -3,8 +3,8 @@ package httpapi
 import (
 	"net/http"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // Members and invitations (phase 39). Like the rest of /app/v1 the caller is the session's user and the account is ?account_id= (default: the first one),

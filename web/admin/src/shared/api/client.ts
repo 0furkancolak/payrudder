@@ -60,7 +60,7 @@ export function tenantApi(tenantId: string) {
       ...endSessionOn401,
       onRequest({ request }) {
         withToken(request);
-        request.headers.set("X-Quotify-Tenant", tenantId);
+        request.headers.set("X-Payrudder-Tenant", tenantId);
         return request;
       },
     });

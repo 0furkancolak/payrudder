@@ -21,12 +21,12 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // The product API: sessions, the person's own accounts and apps, and a session acting on a tenant. The fake identity service knows two accounts
@@ -499,7 +499,7 @@ func (p *product) call(t *testing.T, method, path, token, tenantID, body string)
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	if tenantID != "" {
-		req.Header.Set("X-Quotify-Tenant", tenantID)
+		req.Header.Set("X-Payrudder-Tenant", tenantID)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

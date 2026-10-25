@@ -13,12 +13,12 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/protobuf/proto"
 
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/engine"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/query"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/query"
 )
 
 func TestLimits(t *testing.T) {

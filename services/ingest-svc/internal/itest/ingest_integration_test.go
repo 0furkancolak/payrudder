@@ -17,12 +17,12 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/outbox"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/ingest"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/maintenance"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/ingest"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/maintenance"
 )
 
 // TestIngestSvc runs every scenario against one shared Postgres and Redpanda.
@@ -324,7 +324,7 @@ func testRecordContent(t *testing.T) {
 	r := recs[0]
 	h := kafkax.HeaderMap(r.Headers)
 	wantTP := "00-" + sc.TraceID().String() + "-" + sc.SpanID().String() + "-01"
-	if h["traceparent"] != wantTP || h["ce-type"] != "quotify.events.v1.UsageEvent" || h["tenant-id"] != tc.id.String() ||
+	if h["traceparent"] != wantTP || h["ce-type"] != "payrudder.events.v1.UsageEvent" || h["tenant-id"] != tc.id.String() ||
 		h["content-type"] != "application/x-protobuf" || h["ce-id"] != resp.Results[0].EventId {
 		t.Fatalf("headers = %v (want traceparent %s)", h, wantTP)
 	}

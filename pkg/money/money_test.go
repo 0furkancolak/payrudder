@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 func TestCurrencies(t *testing.T) {

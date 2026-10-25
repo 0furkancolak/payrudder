@@ -17,10 +17,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/quotify/pkg/brand"
-	"github.com/0furkancolak/quotify/pkg/secretbox"
-	"github.com/0furkancolak/quotify/pkg/webhooksig"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/brand"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/webhooksig"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Backoff is the wait before attempt 2, 3, ...; a delivery that fails after the last one is failed (7 attempts in about 32 hours).

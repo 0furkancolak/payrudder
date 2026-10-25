@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/safehttp"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/safehttp"
 )
 
 // Name is the registry name.
@@ -318,7 +318,7 @@ func (p *Provider) Cancel(ctx context.Context, ref einvoice.Ref, _ string) error
 	if ref.Type != einvoice.TypeEArsiv {
 		return einvoice.ErrUnsupported
 	}
-	// The cancel call takes no body, so the reason stays with Quotify.
+	// The cancel call takes no body, so the reason stays with Payrudder.
 	_, err := p.do(ctx, http.MethodPut, "earchive/Invoices/"+url.PathEscape(ref.UUID)+"/Cancel", nil, "", nil)
 	return err
 }

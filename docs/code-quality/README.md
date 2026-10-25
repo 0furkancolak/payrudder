@@ -1,6 +1,6 @@
 # Kod kalitesi raporu
 
-Tarih: 2026-10-21 · Kapsam: tüm quotify reposu (`services/*`, `pkg/`, `web/admin`, `tests/`, `tools/`, `deploy/`, build dosyaları) · Commit: `7e9178d`
+Tarih: 2026-10-21 · Kapsam: tüm payrudder reposu (`services/*`, `pkg/`, `web/admin`, `tests/`, `tools/`, `deploy/`, build dosyaları) · Commit: `7e9178d`
 
 Rapor beş başlıkta toplanıyor:
 

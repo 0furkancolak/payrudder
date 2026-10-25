@@ -9,17 +9,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	couponsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	plansqry "github.com/0furkancolak/quotify/services/plans-svc/internal/plans/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
 // Queries reads fees.
@@ -49,7 +49,7 @@ func PeriodStartingAt(sub sqlc.GetSubscriptionRow, start time.Time, loc *time.Lo
 	return subscription.PeriodEnd(sub.BillingAnchor, iv, n, loc)
 }
 
-// Due is billing-svc's work list for fees in advance: every advance-billed, Quotify-renewed subscription whose next period
+// Due is billing-svc's work list for fees in advance: every advance-billed, Payrudder-renewed subscription whose next period
 // has started, with that period and its fee. A page is at most 500; resume with after.
 func (r *Queries) Due(ctx context.Context, req *plansv1.ListSubscriptionsFeeDueRequest) ([]*plansv1.FeeDue, error) {
 	if req.GetNow() == nil || req.GetNow().CheckValid() != nil {

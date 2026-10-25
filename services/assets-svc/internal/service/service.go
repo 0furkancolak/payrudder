@@ -20,13 +20,13 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/store/sqlc"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store/sqlc"
 )
 
 // Blob is the object storage the service needs (*blob.Store).
@@ -116,7 +116,7 @@ func failure(c codes.Code, reason, msg string) error {
 	}
 	// The application code comes first: clients that read the first ErrorInfo keep getting it.
 	st := status.New(c, msg)
-	if d, err := st.WithDetails(&errdetails.ErrorInfo{Reason: reason, Domain: "quotify.assets"},
+	if d, err := st.WithDetails(&errdetails.ErrorInfo{Reason: reason, Domain: "payrudder.assets"},
 		&errdetails.ErrorInfo{Domain: errkey.Domain, Metadata: map[string]string{errkey.MetaKey: key}}); err == nil {
 		st = d
 	}

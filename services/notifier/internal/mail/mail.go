@@ -1,7 +1,7 @@
 // Package mail is the notifier's name for the shared SMTP sender (pkg/mailx).
 package mail
 
-import "github.com/0furkancolak/quotify/pkg/mailx"
+import "github.com/0furkancolak/payrudder/pkg/mailx"
 
 type (
 	// Message is one email.

@@ -16,5 +16,5 @@ use (
 	./services/plans-svc
 	./tests
 	./tools/mockpsp
-	./tools/quotifyctl
+	./tools/payrudderctl
 )

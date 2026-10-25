@@ -1,22 +1,22 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
-QUOTIFY_HTTP_ADDR: ":8000"
-QUOTIFY_PLANS_ADDR: "dns:///localhost:42701"
-QUOTIFY_INGEST_ADDR: "dns:///localhost:42702"
-QUOTIFY_AGGREGATOR_ADDR: "dns:///localhost:42703"
-QUOTIFY_LIMITS_ADDR: "dns:///localhost:42704"
-QUOTIFY_BILLING_ADDR: "dns:///localhost:42705"
-QUOTIFY_ANALYTICS_ADDR: "dns:///localhost:42706"
-QUOTIFY_ASSETS_ADDR: "dns:///localhost:42707"
-QUOTIFY_REDIS_URL: "redis://localhost:42379/0"
-QUOTIFY_GATEWAY_REPLICAS: "1"
-QUOTIFY_ALLOWED_ENVIRONMENTS: "sandbox,live"
+PAYRUDDER_HTTP_ADDR: ":8000"
+PAYRUDDER_PLANS_ADDR: "dns:///localhost:42701"
+PAYRUDDER_INGEST_ADDR: "dns:///localhost:42702"
+PAYRUDDER_AGGREGATOR_ADDR: "dns:///localhost:42703"
+PAYRUDDER_LIMITS_ADDR: "dns:///localhost:42704"
+PAYRUDDER_BILLING_ADDR: "dns:///localhost:42705"
+PAYRUDDER_ANALYTICS_ADDR: "dns:///localhost:42706"
+PAYRUDDER_ASSETS_ADDR: "dns:///localhost:42707"
+PAYRUDDER_REDIS_URL: "redis://localhost:42379/0"
+PAYRUDDER_GATEWAY_REPLICAS: "1"
+PAYRUDDER_ALLOWED_ENVIRONMENTS: "sandbox,live"
 # The console's public address: where the browser returns after "Continue with Google" and the default base of the Google redirect address (<it>/gw/auth/google/callback: the console forwards /gw/ to the gateway).
-QUOTIFY_APP_URL: "http://localhost:42301"
+PAYRUDDER_APP_URL: "http://localhost:42301"
 # The OpenID provider behind "Continue with Google". Google's own; development stacks may point it at the in-repo mock (tools/mockoidc). The button shows only when
-# QUOTIFY_GOOGLE_CLIENT_ID and QUOTIFY_GOOGLE_CLIENT_SECRET (a secret: environment only) are both set.
-QUOTIFY_GOOGLE_ISSUER: "https://accounts.google.com"
+# PAYRUDDER_GOOGLE_CLIENT_ID and PAYRUDDER_GOOGLE_CLIENT_SECRET (a secret: environment only) are both set.
+PAYRUDDER_GOOGLE_ISSUER: "https://accounts.google.com"
 # Addresses (comma separated) of the people who are platform operators. Empty by default: nobody. A listed person must also have verified the address.
-QUOTIFY_OPERATOR_EMAILS: ""
+PAYRUDDER_OPERATOR_EMAILS: ""
 # Networks (CIDRs, comma separated) of proxies whose X-Forwarded-For is believed even from a public address. Empty by default: only a private or loopback peer,
-# and only with QUOTIFY_TRUST_FORWARDED_FOR. For Cloudflare use QUOTIFY_TRUSTED_PROXY_SECRET (environment only) instead: Worker egress addresses are not stable.
-QUOTIFY_TRUSTED_PROXIES: ""
+# and only with PAYRUDDER_TRUST_FORWARDED_FOR. For Cloudflare use PAYRUDDER_TRUSTED_PROXY_SECRET (environment only) instead: Worker egress addresses are not stable.
+PAYRUDDER_TRUSTED_PROXIES: ""

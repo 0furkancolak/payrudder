@@ -1,1 +1,1 @@
-window.__QUOTIFY__ = {};
+window.__PAYRUDDER__ = {};

@@ -7,10 +7,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/dunning/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/dunning/query"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dunning/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dunning/query"
 )
 
 // Handler implements the dunning-settings methods of billingv1.BillingServiceServer.

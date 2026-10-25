@@ -14,7 +14,7 @@ An operator runs the billing platform from the console: customers, packages, sub
 
 ## Decisions made while building
 
-- **The console uses the tenant API as the tenant.** The operator token plus `X-Quotify-Tenant` is accepted on tenant routes (the operator token alone is still refused there, a tenant's key cannot name another
+- **The console uses the tenant API as the tenant.** The operator token plus `X-Payrudder-Tenant` is accepted on tenant routes (the operator token alone is still refused there, a tenant's key cannot name another
   tenant). The billing pages therefore call the same endpoints, with the same validation and limits, as an integrator; there are no operator copies to keep in step. Provider accounts, the ledger,
   reconciliation and provider moves are operator routes and go as the operator.
 - **Amounts are typed in major units and sent in minor units**, converted as text (`parseMajor`): an amount with more decimals than the currency has is refused before anything is sent.

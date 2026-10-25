@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // The hosted pages (payment links and the customer portal, phase 34) ask these endpoints which ways a live invoice can be paid and to start one.

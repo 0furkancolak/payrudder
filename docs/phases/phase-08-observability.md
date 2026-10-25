@@ -17,7 +17,7 @@ collector tail sampling, log/trace correlation.
 
 - [x] Propagation audit test: e2e test asserts one trace ID from gateway to aggregator span and from billing to worker reply (Tempo API query)
 - [x] Batch consumer spans with links to producer contexts. 1% per-record child spans
-- [x] Messaging span attributes per OTel semconv (`messaging.*`), `quotify.tenant_id` on all spans
+- [x] Messaging span attributes per OTel semconv (`messaging.*`), `payrudder.tenant_id` on all spans
 - [x] Saga transition spans and attributes
 - [x] Implement missing metrics. `consumer_lag_seconds{tenant}` from `ingested_at`
 - [x] Redpanda, RabbitMQ, Postgres, Redis, ClickHouse exporters/scrape configs
@@ -52,8 +52,8 @@ Phases 00–07 (all instrumented components exist).
 ## Notes (as built)
 
 - **Spans.** `pkg/kafkax/trace.go` (`StartBatch`, `StartProduce`, debug marking), `pkg/rabbitx` (consumer span per delivery, trace
-  injection on publish), `pkg/outbox` (publish spans; headers carry `traceparent`), `pkg/tenant` (sets `quotify.tenant_id`
-  on the server span). The gateway forwards `X-Quotify-Debug: 1` as gRPC metadata for sandbox keys and the operator token;
+  injection on publish), `pkg/outbox` (publish spans; headers carry `traceparent`), `pkg/tenant` (sets `payrudder.tenant_id`
+  on the server span). The gateway forwards `X-Payrudder-Debug: 1` as gRPC metadata for sandbox keys and the operator token;
   ingest copies it into the outbox headers.
 - **Lag.** `consumer_lag_records{group,partition}` comes from the consumer's own high-water marks;
   `consumer_lag_seconds{group,partition,tenant}` is `now - ingested_at` of the last applied record, taken through
@@ -64,14 +64,14 @@ Phases 00–07 (all instrumented components exist).
   `ingest_outbox_depth`, `ingest_outbox_oldest_age_seconds`.
 - **`dlq_messages{broker,queue_or_topic}`** is a Prometheus recording rule over RabbitMQ's per-queue metrics
   (`rabbitmq_detailed_queue_messages_ready` for `*.dlq`, from the `/metrics/detailed` scrape job) and Redpanda's `max_offset` for `*.dlq.*` topics (records ever dead-lettered: Redpanda exposes no start offset), not
-  application code: the brokers already know their depth. The Kafka count is `max_offset` minus the `quotifyctl-redrive` group's committed
-  offset, so redriving with `quotifyctl dlq redrive --broker kafka` (Phase 09) clears the alert.
-- **Alerts** live in `deploy/prometheus/rules/quotify.yaml` and are tested with `make test-rules` (`promtool`, in CI) with a firing and a
+  application code: the brokers already know their depth. The Kafka count is `max_offset` minus the `payrudderctl-redrive` group's committed
+  offset, so redriving with `payrudderctl dlq redrive --broker kafka` (Phase 09) clears the alert.
+- **Alerts** live in `deploy/prometheus/rules/payrudder.yaml` and are tested with `make test-rules` (`promtool`, in CI) with a firing and a
   quiet case each. `ServiceDown` was added to the list. `BillingRunStuck` fires on the `billing_runs{status="WAITING_WATERMARK"}`
   gauge staying above zero for an hour.
 - **Dashboards** (`deploy/grafana/dashboards/*.json`) are provisioned; the tenant dashboard takes a `tenant` variable.
 - **Exporters** run in the `obs` profile: `postgres-exporter`, `redis-exporter`; ClickHouse serves `:9363` natively, RabbitMQ `:15692`
   and Redpanda `:9644/public_metrics`.
-- **Manual check for `ConsumerLagHigh`:** `docker stop quotify-aggregator-1`, send events, and after about 6 minutes the alert is
+- **Manual check for `ConsumerLagHigh`:** `docker stop payrudder-aggregator-1`, send events, and after about 6 minutes the alert is
   firing at <http://localhost:42990/alerts> (`for: 5m`). `docker start` clears it.
 - Deferred: Loki and the "trace from log" derived field (optional in the scope), the README trace screenshot.

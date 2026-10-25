@@ -9,7 +9,7 @@ generation, then polish the repo into a portfolio piece with a scripted demo.
 
 **In:** aggregator `ReplayService` (per-tenant generations, replay consumer group, verification diff, promotion with dual-write catch-up),
 billing-svc `StartRerating` (delta → correction invoice or credit balance, credit applied on the next invoice),
-`quotifyctl replay|rerate`, demo script, README overhaul, architecture diagram export, final docs pass.
+`payrudderctl replay|rerate`, demo script, README overhaul, architecture diagram export, final docs pass.
 
 **Out of scope:** automated replay triggers, replays narrower than one tenant (e.g. one customer).
 
@@ -23,7 +23,7 @@ billing-svc `StartRerating` (delta → correction invoice or credit balance, cre
 - [x] `StartRerating`: require COMPLETED run, pin generation, rate with the new plan version, compute delta vs already billed
 - [x] `CORRECTION` invoice through the normal saga. `credit_balances` + `CREDIT` line on the next regular invoice
 - [x] Idempotency: unique `(tenant, period, plan_version)` on `rerating_jobs`
-- [x] `quotifyctl replay start|status|promote`, `quotifyctl rerate`
+- [x] `payrudderctl replay start|status|promote`, `payrudderctl rerate`
 - [x] `make demo`: seed → traffic → close → change price → re-rate → show correction invoice + email + Grafana links
 - [x] README: pitch, architecture diagram, "correctness in 60 seconds", benchmark summary, how to run (the demo is the captured output of `make demo`, not a GIF)
 - [x] Docs consistency pass (every doc matches the code). Mark the roadmap status. (Done for the pieces this phase touched and for the stale statements found by grep: `make load`, `make demo`, the status lines; there is no tool that proves every sentence true.)
@@ -62,8 +62,8 @@ Phase 03 (generation-aware schema), Phase 05 (rating, saga), Phase 09 (ledger to
   while live traffic flows for it and for a bystander, and compares the promoted generation with a ledger of every event.
 - **Re-rating** is `services/billing-svc/internal/runs/rerate.go` (jobs, corrections, credits) and `applyCredits` in `rate.go`; see
   [billing-svc.md](../03-services/billing-svc.md#re-rating). Migration `00002_rerating.sql` adds the job counters, the per-job uniqueness and `credit_applications`.
-- **Operator surface**: admin routes in the gateway and OpenAPI, `quotifyctl replay start|status|promote|discard`, `quotifyctl rerate`, and
+- **Operator surface**: admin routes in the gateway and OpenAPI, `payrudderctl replay start|status|promote|discard`, `payrudderctl rerate`, and
   `e2e/replay_e2e_test.go` against the Compose stack (start, 409 on a second open replay, verification with no differences, promote, keep counting, discard).
-- **`make demo`** is `quotifyctl demo`: 2 minutes 24 seconds on the laptop of [benchmarks.md](../benchmarks.md), with billing-svc's sandbox dunning and scheduler
+- **`make demo`** is `payrudderctl demo`: 2 minutes 24 seconds on the laptop of [benchmarks.md](../benchmarks.md), with billing-svc's sandbox dunning and scheduler
   put on seconds by the target.
 - Not done: replaying a *list* of tenants in one call, narrower-than-tenant replays (out of scope), and a recorded GIF/asciicast.

@@ -32,7 +32,7 @@ export interface ChangeInput {
   plan_code: string;
   /** Empty keeps the interval. */
   interval: "" | "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
-  /** Empty lets Quotify decide by the direction of the change. */
+  /** Empty lets Payrudder decide by the direction of the change. */
   timing: "" | "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
   proration: "" | "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
 }
@@ -101,7 +101,7 @@ export function useEntitlements(tenantId: MaybeRefOrGetter<string>, customer: Ma
   });
 }
 
-/** What an operator can do to a subscription a provider runs, through the provider's API. Quotify's copy follows the provider's notification. */
+/** What an operator can do to a subscription a provider runs, through the provider's API. Payrudder's copy follows the provider's notification. */
 export function useProviderRunActions(tenantId: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   const refresh = () => queries.invalidateQueries({ queryKey: subscriptionKeys.list(toValue(tenantId)) });

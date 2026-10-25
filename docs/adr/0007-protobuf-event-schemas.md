@@ -11,7 +11,7 @@ compatibility checks.
 
 ## Decision
 
-- All Kafka payloads and RabbitMQ commands/replies are **protobuf (proto3)** in `proto/quotify/{events,commands}/v1`.
+- All Kafka payloads and RabbitMQ commands/replies are **protobuf (proto3)** in `proto/payrudder/{events,commands}/v1`.
 - `buf` v2 manages lint, codegen (`protoc-gen-go`, `protoc-gen-go-grpc`) and **`buf breaking` against `main`** in CI (`WIRE_JSON` rules).
 - Evolution rules (summary, full list in [07-correctness.md §9](../07-correctness.md#9-schema-evolution-of-events)): additive only within a
   major version; removed fields are `reserved`; no renames; semantic changes → new package `v2` and new topic `*.v2`.
@@ -31,4 +31,4 @@ compatibility checks.
 
 - One IDL for sync and async contracts, with generated Go types everywhere.
 - Breaking changes fail CI before merge.
-- Debugging needs a decoder (`quotifyctl decode`, Redpanda Console with proto descriptors) since payloads aren't human-readable.
+- Debugging needs a decoder (`payrudderctl decode`, Redpanda Console with proto descriptors) since payloads aren't human-readable.

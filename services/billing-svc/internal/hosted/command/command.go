@@ -21,16 +21,16 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/money"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	sagacommand "github.com/0furkancolak/quotify/services/billing-svc/internal/sagas/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Lifetimes of links, in days.
@@ -80,7 +80,7 @@ type Deps struct {
 	System *pgxpool.Pool
 	Engine *saga.Engine
 	Dir    Directory
-	// Demo allows the mock payment for live tenants too (QUOTIFY_DEMO).
+	// Demo allows the mock payment for live tenants too (PAYRUDDER_DEMO).
 	Demo bool
 	Now  func() time.Time
 }

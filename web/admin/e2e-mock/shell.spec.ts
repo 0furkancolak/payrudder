@@ -87,12 +87,12 @@ test.describe("sidebar on a desktop", () => {
     // Labels are still there for assistive technology and as tooltips.
     await expect(sidebar.getByRole("link", { name: "Settings" })).toHaveAttribute("title", "Settings");
     await shoot(page, "32-sidebar-collapsed");
-    expect(await page.evaluate(() => window.localStorage.getItem("quotify.sidebar.collapsed"))).toBe("1");
+    expect(await page.evaluate(() => window.localStorage.getItem("payrudder.sidebar.collapsed"))).toBe("1");
     await page.reload();
     await expect(page.getByTestId("sidebar")).toHaveAttribute("data-collapsed", "true");
     await page.getByTestId("sidebar-toggle").click();
     await expect(page.getByTestId("sidebar")).toHaveAttribute("data-collapsed", "false");
-    expect(await page.evaluate(() => window.localStorage.getItem("quotify.sidebar.collapsed"))).toBeNull();
+    expect(await page.evaluate(() => window.localStorage.getItem("payrudder.sidebar.collapsed"))).toBeNull();
   });
 
   test("a browser that blocks storage still gets an open sidebar", async ({ page, context }) => {
@@ -128,7 +128,7 @@ test.describe("privacy mode", () => {
     await page.reload();
     await expect(page.getByTestId("kpi-revenue-value")).toHaveText(/^TRY\s••••$/);
     await expect(page.locator("html")).toHaveAttribute("data-privacy", "");
-    expect(await page.evaluate(() => window.localStorage.getItem("quotify.privacy"))).toBe("1");
+    expect(await page.evaluate(() => window.localStorage.getItem("payrudder.privacy"))).toBe("1");
     // Alt+P is the shortcut.
     await page.keyboard.press("Alt+KeyP");
     await expect(page.getByTestId("kpi-revenue-value")).toContainText(/TRY\s[\d,]+\.\d\d/);
@@ -136,7 +136,7 @@ test.describe("privacy mode", () => {
     await expect(page.getByTestId("kpi-revenue-value")).toHaveText(/^TRY\s••••$/);
     await page.getByTestId("privacy-toggle").click();
     await expect(page.getByTestId("kpi-revenue-value")).toContainText(/TRY\s[\d,]+\.\d\d/);
-    expect(await page.evaluate(() => window.localStorage.getItem("quotify.privacy"))).toBeNull();
+    expect(await page.evaluate(() => window.localStorage.getItem("payrudder.privacy"))).toBeNull();
   });
 
   test("customer e-mail addresses are masked too", async ({ page }) => {

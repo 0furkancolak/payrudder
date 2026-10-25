@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // listInvoices is GET /v1/invoices?customer=&period=&status=&page_size=&page_token=. customer is the external id.
@@ -108,9 +108,9 @@ func (s *Server) adminVoidInvoice(w http.ResponseWriter, r *http.Request) {
 }
 
 // actorHeader names who an operator action is recorded for. The operator token is shared, so the console sends the signed-in operator here.
-const actorHeader = "X-Quotify-Actor"
+const actorHeader = "X-Payrudder-Actor"
 
-// actorOf is the actor of a request: the X-Quotify-Actor header cut to 120 characters, or "operator".
+// actorOf is the actor of a request: the X-Payrudder-Actor header cut to 120 characters, or "operator".
 func actorOf(r *http.Request) string {
 	a := strings.TrimSpace(r.Header.Get(actorHeader))
 	if a == "" {

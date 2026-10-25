@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // withPayments points the gateway at a fake payments-worker whose go-live answer is ready(); it counts how often it was asked.

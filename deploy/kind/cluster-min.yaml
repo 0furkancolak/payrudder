@@ -1,7 +1,7 @@
 # One node, for a laptop whose Docker VM has 2-3 GiB: same host port mappings as cluster.yaml.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-name: quotify
+name: payrudder
 nodes:
   - role: control-plane
     extraPortMappings:

@@ -6,7 +6,7 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/0furkancolak/quotify/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
 )
 
 func TestParseUnits(t *testing.T) {

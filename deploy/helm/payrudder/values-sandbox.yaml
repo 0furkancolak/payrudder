@@ -1,0 +1,12 @@
+# Sandbox-only deployment (ADR 0011): namespace payrudder-sandbox. Creating a live account is rejected, no pod has a payment
+# provider other than mock-psp (PAYMENTS_LIVE_PROVIDER is empty, sandbox commands always go to mock-psp), and receipts go to Mailpit.
+global:
+  environment: kind
+  allowedEnvironments: sandbox
+payments:
+  liveProvider: ""
+smtp:
+  addr: mailpit:1025
+services:
+  mockpsp:
+    nodePort: 30090

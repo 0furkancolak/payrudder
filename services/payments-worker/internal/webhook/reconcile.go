@@ -11,10 +11,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // BillingAPI is what reconciliation asks of billing-svc, as the tenant: its invoices.
@@ -105,7 +105,7 @@ func (s *Server) reconcile(w http.ResponseWriter, r *http.Request) {
 			fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 			return
 		}
-		planFail(w, err)
+		s.billingFail(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, rec)

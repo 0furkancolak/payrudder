@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 func ts(y int, m time.Month, d int) *timestamppb.Timestamp {
@@ -191,13 +191,13 @@ func testProviderOwnedSubscriptionBillsOnlyUsageThroughItsProvider(t *testing.T)
 
 	e.driveRun("2026-10")
 
-	// Paddle bills the fixed fee on its own renewal; the Quotify invoice carries the usage only.
+	// Paddle bills the fixed fee on its own renewal; the Payrudder invoice carries the usage only.
 	got := e.lines("2026-10", "cus_a")
 	if len(got) != 1 || got[0].Kind != "USAGE" || got[0].Amount != 100 {
 		t.Fatalf("provider-owned lines = %+v; want the usage only", got)
 	}
 	if l := e.lines("2026-10", "cus_b"); len(l) != 1 || l[0].Kind != "BASE_FEE" || l[0].Amount != 1000 {
-		t.Errorf("a Quotify-owned customer still pays its fixed fee: %+v", l)
+		t.Errorf("a Payrudder-owned customer still pays its fixed fee: %+v", l)
 	}
 	eventually(t, 30*time.Second, "the charge command for the provider-owned invoice", func() bool {
 		for _, c := range stub.Commands() {

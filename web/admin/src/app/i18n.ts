@@ -28,7 +28,7 @@ export const languages = {
 export type Locale = keyof typeof languages;
 export const locales = Object.keys(languages) as Locale[];
 
-const KEY = "quotify.locale";
+const KEY = "payrudder.locale";
 
 export function isLocale(value: string | null | undefined): value is Locale {
   return value != null && (locales as string[]).includes(value);

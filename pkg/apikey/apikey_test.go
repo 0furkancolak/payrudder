@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/apikey"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
 )
 
 func TestGenerateParseRoundTrip(t *testing.T) {

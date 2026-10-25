@@ -13,7 +13,7 @@ Turns closed usage into invoices and drives each invoice through its lifecycle:
 ## gRPC API (sketch)
 
 ```proto
-package quotify.billing.v1;
+package payrudder.billing.v1;
 
 service BillingService {
   rpc GetInvoice(GetInvoiceRequest) returns (Invoice);
@@ -174,7 +174,7 @@ stateDiagram-v2
 - **PAYMENT_UNKNOWN.** Never re-charge blindly. Publish `payment.status` (query PSP by idempotency key) first.
   This is the classic "did my timed-out charge go through?" problem.
 - **A payment that settles later** (a bank transfer, phase 29) leaves the saga in `PAYMENT_PENDING`: no command is outstanding, so there is no step deadline and nothing to retry or dead-letter. The first time it is entered the
-  customer is mailed the bank details and the payment reference (`invoice_transfer.v1`); then the status is asked again every `QUOTIFY_TRANSFER_POLL`, and at once when payments-worker nudges the saga (`RetryInvoiceSaga`) after an
+  customer is mailed the bank details and the payment reference (`invoice_transfer.v1`); then the status is asked again every `PAYRUDDER_TRANSFER_POLL`, and at once when payments-worker nudges the saga (`RetryInvoiceSaga`) after an
   operator confirmed a receipt. The payment window is enforced by the status answer: past it the status is a decline, and the tenant's dunning delays decide whether a new window opens (a new charge, a new mail) or the invoice becomes uncollectible.
   `RecordInvoicePayment` (`OfflineSettlement`) settles an invoice with money received outside any provider, from `PAYMENT_UNKNOWN`, `PAYMENT_PENDING`, `PAYMENT_DECLINED` or after the saga gave up; the payments are rows of `invoice_payments` (who, when, method, reference).
 - **Dunning** delays are days long, so they're scheduled in Postgres (`next_attempt_at`), not as RabbitMQ TTLs. A tenant may set its own delays (0 to 6 retries, 1–720 hours each; minutes in a sandbox tenant) with `PUT /v1/dunning-settings`; without a row the service-wide defaults apply, and an empty list gives up on the first decline.
@@ -221,7 +221,7 @@ Usage is never re-counted. Only prices change. Full rationale: [07-correctness.m
 - Idempotency is layered: the job is unique per `(tenant, period, plan version)`; a correction is unique per `(tenant, customer, job)` and a credit per
   `(tenant, customer, job)`, so a job interrupted by a crash is finished by the scheduler (`ResumeRerating`) without duplicating anything.
 - Operator API: `POST /admin/v1/tenants/{tenant_id}/billing-runs/{period}/rerating` (201 on creation, 200 on a repeat), `GET .../rerating-jobs/{job_id}`;
-  `quotifyctl rerate`.
+  `payrudderctl rerate`.
 
 ## Owned data (`billing_db`)
 
@@ -254,9 +254,9 @@ Customers within a run are rated in pages of 500 streamed from aggregator. **Tar
 
 ## As built (Phase 05)
 
-Code: `services/billing-svc` (`internal/{rating,saga,runs,replies,api}`), commands in `proto/quotify/commands/v1`, the RabbitMQ
+Code: `services/billing-svc` (`internal/{rating,saga,runs,replies,api}`), commands in `proto/payrudder/commands/v1`, the RabbitMQ
 topology in `pkg/rabbitx` (exported to `deploy/rabbitmq/definitions.json`, checked by a test). Configuration:
-`QUOTIFY_SCHEDULER_INTERVAL` (1m), `QUOTIFY_SWEEP_INTERVAL` (30s), `QUOTIFY_STEP_TIMEOUT` (2m), `QUOTIFY_WATERMARK_DELAY` (30s), `QUOTIFY_TRANSFER_POLL` (6h, phase 29).
+`PAYRUDDER_SCHEDULER_INTERVAL` (1m), `PAYRUDDER_SWEEP_INTERVAL` (30s), `PAYRUDDER_STEP_TIMEOUT` (2m), `PAYRUDDER_WATERMARK_DELAY` (30s), `PAYRUDDER_TRANSFER_POLL` (6h, phase 29).
 Gateway routes: `GET /v1/invoices[/{id}]`, `POST /v1/sandbox/close-period`, and the operator routes under `/admin/v1`
 (`billing/close-period`, `tenants/{id}/billing-runs/{period}`, `invoices/{id}/retry|void`).
 

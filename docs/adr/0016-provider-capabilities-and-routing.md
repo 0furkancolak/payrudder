@@ -4,8 +4,8 @@ Status: accepted for point 4 (built in phase 13); the rest is proposed.
 
 ## Context
 
-Quotify has one `PaymentProvider` interface and a mock. Real providers differ in what they own: iyzico leaves recurring schedules, dunning and invoice documents to the merchant;
-Paddle, as merchant of record, owns renewal, dunning and tax. A lowest-common-denominator interface would either hide Paddle's strengths or make Quotify do work twice.
+Payrudder has one `PaymentProvider` interface and a mock. Real providers differ in what they own: iyzico leaves recurring schedules, dunning and invoice documents to the merchant;
+Paddle, as merchant of record, owns renewal, dunning and tax. A lowest-common-denominator interface would either hide Paddle's strengths or make Payrudder do work twice.
 
 ## Decision
 

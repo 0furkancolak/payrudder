@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/mailcategory"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/mailcategory"
 )
 
 // fakeSettings answers GetMailSettings with the categories in off switched off, and counts the calls.

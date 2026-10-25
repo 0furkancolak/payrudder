@@ -9,8 +9,8 @@
 | Item | Convention |
 |---|---|
 | Kafka topic name | `<domain>.<entity-or-fact>.v<major>` (e.g. `usage.events.v1`). DLQ: `<domain>.<name>.dlq.v<major>` |
-| Payload | Protobuf binary, messages in `proto/quotify/events/v1` ([ADR 0007](adr/0007-protobuf-event-schemas.md)) |
-| Required Kafka headers | `content-type: application/x-protobuf`, `ce-type: quotify.events.v1.UsageEvent` (fully-qualified message name), `ce-id` (event id), `tenant-id`, `traceparent`, `tracestate` (W3C) |
+| Payload | Protobuf binary, messages in `proto/payrudder/events/v1` ([ADR 0007](adr/0007-protobuf-event-schemas.md)) |
+| Required Kafka headers | `content-type: application/x-protobuf`, `ce-type: payrudder.events.v1.UsageEvent` (fully-qualified message name), `ce-id` (event id), `tenant-id`, `traceparent`, `tracestate` (W3C) |
 | Producer settings | `acks=all`, idempotent producer, `linger.ms=5`, `zstd` compression, `max.in.flight=5` (safe with idempotence) |
 | Consumer settings | `isolation.level=read_committed`, `auto.commit=false`, cooperative-sticky rebalancing |
 | Local cluster | Redpanda single node, RF 1. Values below are the "production-like" defaults used in kind/Helm |
@@ -22,7 +22,7 @@
 | Topic | Key | Value | Partitions | Retention / cleanup | Producers | Consumers (group) |
 |---|---|---|---|---|---|---|
 | `usage.events.v1` | `tenant_id` | `UsageEvent` | 12 | `delete`, **400 days** (local: 30 d). Needed for replay | ingest-svc (outbox relay) | aggregator (`aggregator`), limits-svc (`limits`), analytics-svc (`analytics`), replay jobs (`aggregator-replay-{job}`) |
-| `usage.events.dlq.v1` | `tenant_id` | original bytes | 3 | `delete`, 30 days | aggregator, analytics-svc, limits-svc | operator tooling (`quotifyctl dlq`) |
+| `usage.events.dlq.v1` | `tenant_id` | original bytes | 3 | `delete`, 30 days | aggregator, analytics-svc, limits-svc | operator tooling (`payrudderctl dlq`) |
 | `usage.limit-exceeded.v1` | `tenant_id` | `LimitExceeded` | 6 | `delete`, 90 days | limits-svc | analytics-svc (`analytics`), notifier (`notifier`) |
 | `usage.limit-exceeded.dlq.v1` | `tenant_id` | original bytes | 1 | `delete`, 30 days | analytics-svc, notifier | operator |
 | `plans.entitlements.v1` | `{tenant_id}/{customer_id}/{meter_code}` | `EntitlementState` or tombstone | 6 | **`compact`**, `min.compaction.lag.ms=1h`, `delete.retention.ms=1d` | plans-svc (outbox) | limits-svc (per-pod group, reads from earliest) |
@@ -42,7 +42,7 @@
 
 ```proto
 syntax = "proto3";
-package quotify.events.v1;
+package payrudder.events.v1;
 
 message UsageEvent {
   string event_id = 1;                         // ULID, assigned by ingest-svc
@@ -140,7 +140,7 @@ flowchart LR
 | `payment.status` | `billing.commands` (`payment.status`) | payments-worker | same |
 | `notification.send` | `billing.commands` (`notification.send`) | notifier | same |
 | `{queue}.retry.5s` / `.30s` / `.2m` (×5 queues) | `billing.commands.retry` (`{queue}.retry.{tier}`) | none | `x-message-ttl` = 5000 / 30000 / 120000, `x-dead-letter-exchange=billing.commands`, `x-dead-letter-routing-key={queue}` |
-| `{queue}.dlq` (×5) | `billing.commands.dlx` (`{queue}`) | operator (`quotifyctl dlq`) | quorum, no TTL |
+| `{queue}.dlq` (×5) | `billing.commands.dlx` (`{queue}`) | operator (`payrudderctl dlq`) | quorum, no TTL |
 | `billing-svc.replies` | `billing.replies` (`reply`) | billing-svc | quorum, `x-dead-letter-exchange=billing.replies.dlx`, `x-delivery-limit=5` |
 | `billing-svc.replies.dlq` | `billing.replies.dlx` | operator | quorum |
 
@@ -174,7 +174,7 @@ Kafka has no per-message ack, so a poison record would block its partition forev
    Then advance the offset (in aggregator: in the same DB transaction as the rest of the batch).
 3. Error is *infrastructure* (DB down) → do **not** DLQ. Stop consuming that partition (pause) and back off.
    Lag grows, and alerts fire. DLQ-ing because a dependency is down would silently drop valid data.
-4. **Redrive:** `quotifyctl dlq redrive --topic usage.events.dlq.v1 --consumer aggregator --since …`
+4. **Redrive:** `payrudderctl dlq redrive --topic usage.events.dlq.v1 --consumer aggregator --since …`
    republishes to `usage.events.v1` with header `x-redrive-target=aggregator`. Other consumer groups skip records
    whose redrive target isn't them. The target dedups by `event_id` anyway, and the original `ingested_at` is kept,
    so late classification is unchanged.

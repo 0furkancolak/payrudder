@@ -1,8 +1,8 @@
 {
-  "uid": "quotify-tenant",
-  "title": "Quotify / Tenant drill-down",
+  "uid": "payrudder-tenant",
+  "title": "Payrudder / Tenant drill-down",
   "tags": [
-    "quotify"
+    "payrudder"
   ],
   "schemaVersion": 39,
   "version": 1,

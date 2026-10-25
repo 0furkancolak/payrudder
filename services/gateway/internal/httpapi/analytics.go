@@ -7,8 +7,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // getAnalyticsUsage is GET /v1/analytics/usage: a usage series of one meter. The answer is an estimate (precision

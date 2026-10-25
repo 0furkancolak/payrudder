@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // Tenant is what limits-svc needs of a tenant.

@@ -73,7 +73,7 @@ func NewLimiter(rdb redis.Scripter, replicas int, log *slog.Logger) (*Limiter, e
 	if replicas < 1 {
 		replicas = 1
 	}
-	m := otel.Meter("github.com/0furkancolak/quotify/services/gateway/ratelimit")
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/gateway/ratelimit")
 	fb, err := m.Int64Counter("gateway_ratelimit_fallback", metric.WithDescription("Rate-limit decisions taken locally because Redis failed"))
 	if err != nil {
 		return nil, err

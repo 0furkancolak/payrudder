@@ -1,8 +1,8 @@
 {
   "users": [
     {
-      "name": "quotify",
-      "password": "quotify_local",
+      "name": "payrudder",
+      "password": "payrudder_local",
       "tags": [
         "administrator"
       ]
@@ -15,7 +15,7 @@
   ],
   "permissions": [
     {
-      "user": "quotify",
+      "user": "payrudder",
       "vhost": "/",
       "configure": ".*",
       "write": ".*",

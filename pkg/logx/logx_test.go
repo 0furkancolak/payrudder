@@ -9,7 +9,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/0furkancolak/quotify/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/logx"
 )
 
 func decode(t *testing.T, buf *bytes.Buffer) map[string]any {

@@ -3,7 +3,7 @@ package webhook
 import (
 	"net/http"
 
-	"github.com/0furkancolak/quotify/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/env"
 )
 
 // goLive answers the one go-live question that payments-worker owns (phase 45): does the tenant have a payment provider connected in live mode that works?

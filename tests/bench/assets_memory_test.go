@@ -21,8 +21,8 @@ import (
 )
 
 var (
-	gateway  = envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800")
-	operator = envOr("QUOTIFY_OPERATOR_TOKEN", "local-operator-token-change-me-0123456789")
+	gateway  = envOr("PAYRUDDER_GATEWAY_URL", "http://localhost:42800")
+	operator = envOr("PAYRUDDER_OPERATOR_TOKEN", "local-operator-token-change-me-0123456789")
 )
 
 func api(t *testing.T, method, path, token string, body any, out any) int {
@@ -175,13 +175,13 @@ func TestFormUploadGatewayMemory(t *testing.T) {
 		do()
 	}
 	time.Sleep(2 * time.Second)
-	base := memMiB("quotify-gateway-1")
-	s := startSampler("quotify-gateway-1", "quotify-assets-svc-1")
+	base := memMiB("payrudder-gateway-1")
+	s := startSampler("payrudder-gateway-1", "payrudder-assets-svc-1")
 	for i := 0; i < 15; i++ {
 		do()
 	}
 	seqPeak := s.finish()
-	s = startSampler("quotify-gateway-1", "quotify-assets-svc-1")
+	s = startSampler("payrudder-gateway-1", "payrudder-assets-svc-1")
 	var wg sync.WaitGroup
 	for w := 0; w < 4; w++ {
 		wg.Add(1)
@@ -195,8 +195,8 @@ func TestFormUploadGatewayMemory(t *testing.T) {
 	wg.Wait()
 	conPeak := s.finish()
 	t.Logf("gateway RSS before: %.1f MiB; peak over 15 sequential 20x1MiB requests: %.1f MiB (growth %.1f); peak over 4x8 concurrent: %.1f MiB (growth %.1f); assets-svc peaks %.1f / %.1f MiB",
-		base, seqPeak["quotify-gateway-1"], seqPeak["quotify-gateway-1"]-base, conPeak["quotify-gateway-1"], conPeak["quotify-gateway-1"]-base,
-		seqPeak["quotify-assets-svc-1"], conPeak["quotify-assets-svc-1"])
+		base, seqPeak["payrudder-gateway-1"], seqPeak["payrudder-gateway-1"]-base, conPeak["payrudder-gateway-1"], conPeak["payrudder-gateway-1"]-base,
+		seqPeak["payrudder-assets-svc-1"], conPeak["payrudder-assets-svc-1"])
 }
 
 // TestDirectUploadMemory: 1 GiB straight to object storage with 8 parallel parts (target: assets-svc memory <= 64 MiB).
@@ -241,8 +241,8 @@ func TestDirectUploadMemory(t *testing.T) {
 			urls = append(urls, p.URL)
 		}
 	}
-	base := memMiB("quotify-assets-svc-1")
-	s := startSampler("quotify-assets-svc-1", "quotify-gateway-1")
+	base := memMiB("payrudder-assets-svc-1")
+	s := startSampler("payrudder-assets-svc-1", "payrudder-gateway-1")
 	start := time.Now()
 	etags := make([]any, parts)
 	var next atomic.Int64
@@ -280,5 +280,5 @@ func TestDirectUploadMemory(t *testing.T) {
 		t.Fatalf("complete: %d %v", c, done)
 	}
 	t.Logf("1 GiB in %d parts of %d MiB, 8 in parallel, %s (%.0f MiB/s); assets-svc memory before %.1f MiB, peak %.1f MiB; gateway peak %.1f MiB",
-		parts, partSize>>20, took.Round(time.Millisecond), 1024/took.Seconds(), base, peaks["quotify-assets-svc-1"], peaks["quotify-gateway-1"])
+		parts, partSize>>20, took.Round(time.Millisecond), 1024/took.Seconds(), base, peaks["payrudder-assets-svc-1"], peaks["payrudder-gateway-1"])
 }

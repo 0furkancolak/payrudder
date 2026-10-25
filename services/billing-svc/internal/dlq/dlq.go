@@ -11,7 +11,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 )
 
 // ErrUnknownQueue is returned for a queue that has no dead-letter queue.
@@ -157,7 +157,7 @@ func (a *Admin) Redrive(_ context.Context, queue string, limit int) (int, error)
 		}
 		hdr := amqp.Table{"x-redriven-at": time.Now().UTC().Format(time.RFC3339)}
 		for k, v := range d.Headers { // keep the trace context and the ids, drop the death records
-			if k == "traceparent" || k == "tracestate" || strings.HasPrefix(k, "x-quotify") {
+			if k == "traceparent" || k == "tracestate" || strings.HasPrefix(k, "x-payrudder") {
 				hdr[k] = v
 			}
 		}

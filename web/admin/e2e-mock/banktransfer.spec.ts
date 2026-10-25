@@ -201,7 +201,7 @@ test.describe("invoice money", () => {
 
     await expect.poll(() => gw.called("POST", `${base}/transfer/receipts`).length).toBe(1);
     const call = gw.called("POST", `${base}/transfer/receipts`)[0];
-    expect(call?.headers["x-quotify-actor"]).toBe("console");
+    expect(call?.headers["x-payrudder-actor"]).toBe("console");
     expect(call?.body).toMatchObject({ amount_minor: 4000, currency: "USD", bank_reference: "BANK-77", note: "half of it" });
     expect(typeof call?.body?.amount_minor).toBe("number");
     expect(Date.parse(String(call?.body?.received_at))).toBeLessThanOrEqual(Date.now());
@@ -251,7 +251,7 @@ test.describe("invoice money", () => {
 
     await expect.poll(() => gw.called("POST", "/admin/v1/invoices/inv1/payments").length).toBe(1);
     const call = gw.called("POST", "/admin/v1/invoices/inv1/payments")[0];
-    expect(call?.headers["x-quotify-actor"]).toBe("console");
+    expect(call?.headers["x-payrudder-actor"]).toBe("console");
     expect(call?.body).toMatchObject({ tenant_id: TENANT, method: "cash", amount_minor: "2550", reference: "RCPT-9", note: "paid at the desk" });
     expect(typeof call?.body?.amount_minor).toBe("string");
     await expect(page.getByText("Partly paid: $25.50 received, $74.50 still outstanding.")).toBeVisible();
@@ -319,7 +319,7 @@ test.describe("invoice money", () => {
     await dialog.getByRole("button", { name: "Reject" }).click();
     await expect.poll(() => gw.called("POST", `${base}/transfer/reject`).length).toBe(1);
     const call = gw.called("POST", `${base}/transfer/reject`)[0];
-    expect(call?.headers["x-quotify-actor"]).toBe("console");
+    expect(call?.headers["x-payrudder-actor"]).toBe("console");
     expect(call?.body).toEqual({ outcome: "rejected", reason: "customer's bank returned it" });
   });
 

@@ -17,7 +17,7 @@ AMQP sink, `pkg/rabbitx` (connection, topology, confirms), reply consumer, `bill
 
 ## Tasks
 
-- [x] `proto/quotify/commands/v1` (envelopes + payloads), `proto/quotify/billing/v1`, `InvoiceFact` event
+- [x] `proto/payrudder/commands/v1` (envelopes + payloads), `proto/payrudder/billing/v1`, `InvoiceFact` event
 - [x] Migrations per [05-data-model.md](../05-data-model.md#billing_db)
 - [x] `rating` package: PER_UNIT, TIERED_GRADUATED, PACKAGE, FLAT. `apd` decimals, scaled-unit → decimal conversion, currency exponent table. Half-even line rounding. Incremental late pricing
 - [x] Property tests for rating (monotonicity, non-negative increments)

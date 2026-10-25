@@ -1,8 +1,8 @@
 {
-  "uid": "quotify-logs",
-  "title": "Quotify / Logs",
+  "uid": "payrudder-logs",
+  "title": "Payrudder / Logs",
   "tags": [
-    "quotify"
+    "payrudder"
   ],
   "schemaVersion": 39,
   "version": 1,

@@ -1,4 +1,4 @@
-// Package idgen generates the identifiers used across Quotify:
+// Package idgen generates the identifiers used across Payrudder:
 // UUIDv7 for rows (time-ordered, index friendly), ULIDs for event IDs, and UUIDv5 for deterministic IDs
 // (command IDs, limit-event IDs) that must be identical on every retry.
 package idgen
@@ -13,7 +13,7 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-// Namespace is the UUIDv5 namespace for all Quotify deterministic IDs.
+// Namespace is the UUIDv5 namespace for all Payrudder deterministic IDs.
 var Namespace = uuid.MustParse("6f1b2a3c-0d4e-5f60-8a7b-9c0d1e2f3a4b")
 
 // NewUUIDv7 returns a new time-ordered UUID.

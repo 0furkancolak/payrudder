@@ -5,10 +5,10 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/einvoice/mock"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/mock"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // The operator API over a tenant's e-invoice integrator account (docs/phases/phase-30-e-invoice.md). The credentials are sealed on the way in and never come back.
@@ -35,7 +35,7 @@ func pathEnvironment(w http.ResponseWriter, r *http.Request) (string, bool) {
 
 func (s *Server) einvoiceReady(w http.ResponseWriter) bool {
 	if s.EInvoiceAccounts.DB == nil || s.EInvoiceRegistry == nil {
-		keyFail(w, http.StatusServiceUnavailable, "UNAVAILABLE", errkey.Key("common.unavailable"), "e-invoice accounts are not configured on this deployment (QUOTIFY_SECRETS_KEY)")
+		keyFail(w, http.StatusServiceUnavailable, "UNAVAILABLE", errkey.Key("common.unavailable"), "e-invoice accounts are not configured on this deployment (PAYRUDDER_SECRETS_KEY)")
 		return false
 	}
 	return true

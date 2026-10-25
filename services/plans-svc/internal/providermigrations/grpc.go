@@ -4,9 +4,9 @@ package providermigrations
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/providermigrations/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/providermigrations/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/providermigrations/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/providermigrations/query"
 )
 
 // Handler serves the provider migration methods of PlansService.

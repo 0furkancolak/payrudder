@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
 
-/** The categories of Quotify's outgoing e-mail, in the order the API lists them. */
+/** The categories of Payrudder's outgoing e-mail, in the order the API lists them. */
 export const MAIL_CATEGORIES = ["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system"] as const;
 export type MailCategory = (typeof MAIL_CATEGORIES)[number];
 

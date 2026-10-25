@@ -20,12 +20,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/meters"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/tenants"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/tenants"
 )
 
 //go:embed apply_batch.lua
@@ -89,7 +89,7 @@ func NewApplier(cfg Config) (*Applier, error) {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	m := otel.Meter("github.com/0furkancolak/quotify/services/limits-svc")
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/limits-svc")
 	a := &Applier{cfg: cfg, log: cfg.Log, script: redis.NewScript(applyBatchLua), cps: newCheckpoints(), parts: map[int32]*partState{}}
 	var err error
 	if a.applied, err = m.Int64Counter("limits_events_applied", metric.WithDescription("Usage events added to a counter")); err != nil {

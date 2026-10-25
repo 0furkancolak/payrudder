@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
 )
 
 // Error codes carried in the ErrorInfo reason of a gRPC status and in per-file results.

@@ -10,22 +10,22 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/payments/providers"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	changescmd "github.com/0furkancolak/quotify/services/plans-svc/internal/changes/command"
-	changesqry "github.com/0furkancolak/quotify/services/plans-svc/internal/changes/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/quotify/services/plans-svc/internal/entitlements/command"
-	provmigqry "github.com/0furkancolak/quotify/services/plans-svc/internal/providermigrations/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/payments/providers"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
+	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
+	provmigqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/providermigrations/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 )
 
 // Commands changes provider migrations.
@@ -56,7 +56,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 			return sqlc.InsertSubscriptionRow{}, err
 		}
 	}
-	// What the successor pays, and when. A Quotify-run subscription whose fee is already paid in advance goes on with the period it paid for (no credit, the
+	// What the successor pays, and when. A Payrudder-run subscription whose fee is already paid in advance goes on with the period it paid for (no credit, the
 	// same renewal, its coupon); a yearly one that a provider ran comes back billed in advance from the cutover, as a year cannot be waited out in arrears.
 	timing, anchor, feeDue, creditUnused := "arrears", old.BillingAnchor, (*time.Time)(nil), old.Owner == "quotify"
 	if owner == "quotify" {
@@ -107,7 +107,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 	return nr, webhooks.EmitSubscription(ctx, q, now, webhooks.SubscriptionMovedToProvider, subsqry.Message(moved, now), map[string]any{"previous_subscription_id": old.ID.String(), "to_provider": toProvider})
 }
 
-// Start begins moving a subscription to another provider: at once when Quotify runs it there, else when the customer has subscribed there.
+// Start begins moving a subscription to another provider: at once when Payrudder runs it there, else when the customer has subscribed there.
 func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigrationRequest) (*plansv1.ProviderMigration, error) {
 	id, err := subsqry.ParseID(req.GetSubscriptionId())
 	if err != nil {
@@ -159,7 +159,7 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 			out = provmigqry.Message(mig)
 			return nil
 		}
-		// Quotify runs it at the target: take over now, or at the end of the paid period the old provider has been paid for.
+		// Payrudder runs it at the target: take over now, or at the end of the paid period the old provider has been paid for.
 		when := now
 		if cutoverAt != nil {
 			when = *cutoverAt

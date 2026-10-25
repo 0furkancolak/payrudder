@@ -105,8 +105,8 @@ jobs:
         run: timeout 1500 make up
         env:
           # Sandbox dunning on seconds and a quick sweeper, so the payment scenarios finish within the job.
-          QUOTIFY_DUNNING_SANDBOX: 5s,5s,5s
-          QUOTIFY_SWEEP_INTERVAL: 2s
+          PAYRUDDER_DUNNING_SANDBOX: 5s,5s,5s
+          PAYRUDDER_SWEEP_INTERVAL: 2s
       - run: make e2e
       - uses: actions/setup-node@v5
         with:
@@ -190,7 +190,7 @@ jobs:
       - run: make kind-up
       - run: make kind-images
       - run: make helm-install
-      - run: kubectl --context kind-quotify -n quotify get pods -o wide
+      - run: kubectl --context kind-payrudder -n payrudder get pods -o wide
       - run: make netpol-test
       - run: make e2e-kind
       - name: Zero-downtime rollout under k6 load
@@ -200,9 +200,9 @@ jobs:
           ROLLOUT_MAX_FAIL_RATE: "0.03"
       - if: failure()
         run: |
-          kubectl --context kind-quotify -n quotify get pods -o wide || true
-          kubectl --context kind-quotify -n quotify get events --sort-by=.lastTimestamp | tail -60 || true
-          for p in $(kubectl --context kind-quotify -n quotify get pods -o name); do echo "=== $p"; kubectl --context kind-quotify -n quotify logs $p --tail=40 --all-containers || true; done
+          kubectl --context kind-payrudder -n payrudder get pods -o wide || true
+          kubectl --context kind-payrudder -n payrudder get events --sort-by=.lastTimestamp | tail -60 || true
+          for p in $(kubectl --context kind-payrudder -n payrudder get pods -o name); do echo "=== $p"; kubectl --context kind-payrudder -n payrudder logs $p --tail=40 --all-containers || true; done
 
   chaos:
     name: correctness (100k events)

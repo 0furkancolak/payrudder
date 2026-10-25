@@ -14,18 +14,18 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/safehttp"
-	"github.com/0furkancolak/quotify/pkg/secretbox"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
-	endpointsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/webhookendpoints/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/safehttp"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
+	endpointsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhookendpoints/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 )
 
 const (
@@ -79,7 +79,7 @@ func newSecret() (string, error) {
 
 func (c *Commands) requireBox() error {
 	if c.box == nil {
-		return errkey.New(codes.FailedPrecondition, "plans.webhook.not_configured", "webhooks are not configured on this deployment (QUOTIFY_SECRETS_KEY)")
+		return errkey.New(codes.FailedPrecondition, "plans.webhook.not_configured", "webhooks are not configured on this deployment (PAYRUDDER_SECRETS_KEY)")
 	}
 	return nil
 }

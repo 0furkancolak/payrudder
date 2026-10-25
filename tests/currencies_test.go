@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 // The console offers the currencies in web/admin/src/shared/lib/currencies.ts; the backend accepts the ones in pkg/money. A currency the console

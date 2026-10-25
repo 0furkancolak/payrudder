@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/0furkancolak/quotify/services/aggregator/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
 
 // Verification is the difference between the live generation and the rebuilt one, over the job's periods.

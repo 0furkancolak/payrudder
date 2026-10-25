@@ -75,4 +75,4 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/0furkancolak/quotify
+        - github.com/0furkancolak/payrudder

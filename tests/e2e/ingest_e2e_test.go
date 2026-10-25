@@ -12,10 +12,10 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/protobuf/proto"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 )
 
-var kafkaBrokers = envOr("QUOTIFY_KAFKA_BROKERS", "localhost:42092")
+var kafkaBrokers = envOr("PAYRUDDER_KAFKA_BROKERS", "localhost:42092")
 
 func event(key, meter string, quantity any, at time.Time) map[string]any {
 	e := map[string]any{
@@ -116,7 +116,7 @@ func TestEventsFlow(t *testing.T) {
 		for _, hd := range r.Headers {
 			h[hd.Key] = string(hd.Value)
 		}
-		if h["ce-type"] != "quotify.events.v1.UsageEvent" || h["tenant-id"] != a.live || h["ce-id"] != e.EventId || !strings.HasPrefix(h["traceparent"], "00-") {
+		if h["ce-type"] != "payrudder.events.v1.UsageEvent" || h["tenant-id"] != a.live || h["ce-id"] != e.EventId || !strings.HasPrefix(h["traceparent"], "00-") {
 			t.Errorf("headers = %v", h)
 		}
 	}

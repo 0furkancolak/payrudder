@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { operatorEmail, signInAsOperator } from "./operator";
 
-const gateway = process.env.QUOTIFY_GATEWAY_URL ?? "http://localhost:42800";
-const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
+const gateway = process.env.PAYRUDDER_GATEWAY_URL ?? "http://localhost:42800";
+const operatorToken = process.env.PAYRUDDER_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
 const rabbit = process.env.RABBITMQ_URL ?? "http://localhost:42673";
-const rabbitAuth = "Basic " + Buffer.from(process.env.RABBITMQ_CREDENTIALS ?? "quotify:quotify_local").toString("base64");
+const rabbitAuth = "Basic " + Buffer.from(process.env.RABBITMQ_CREDENTIALS ?? "payrudder:payrudder_local").toString("base64");
 
 type Json = Record<string, unknown>;
 

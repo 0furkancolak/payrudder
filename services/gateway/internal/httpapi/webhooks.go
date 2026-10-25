@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 func (s *Server) createWebhookEndpoint(w http.ResponseWriter, r *http.Request) {

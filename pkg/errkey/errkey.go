@@ -12,7 +12,7 @@ import (
 )
 
 // Domain is the ErrorInfo domain every key travels under.
-const Domain = "quotify"
+const Domain = "payrudder"
 
 // MetaKey is the ErrorInfo metadata entry that holds the key.
 const MetaKey = "key"

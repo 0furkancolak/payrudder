@@ -125,7 +125,7 @@
     },
     "jobs": {
       "title": "Tâches de rejeu et de retarification",
-      "hint": "Retrouvez une tâche par son id (on les lance avec quotifyctl ou l'API d'administration).",
+      "hint": "Retrouvez une tâche par son id (on les lance avec payrudderctl ou l'API d'administration).",
       "idLabel": "Id de la tâche",
       "replay": "Tâche de rejeu",
       "rerating": "Tâche de retarification"
@@ -699,7 +699,7 @@
     },
     "webhooks": {
       "title": "Webhooks",
-      "hint": "Payrudder envoie un POST JSON signé à ces points de terminaison HTTPS quand il se passe quelque chose dans le compte : une facture est payée, un avoir est émis, un abonnement change. Vérifiez l'en-tête Quotify-Signature avec le secret du point de terminaison ; les livraisons échouées sont retentées pendant environ un jour et demi.",
+      "hint": "Payrudder envoie un POST JSON signé à ces points de terminaison HTTPS quand il se passe quelque chose dans le compte : une facture est payée, un avoir est émis, un abonnement change. Vérifiez l'en-tête Payrudder-Signature avec le secret du point de terminaison ; les livraisons échouées sont retentées pendant environ un jour et demi.",
       "formLabel": "nouveau point de terminaison webhook",
       "url": "URL du point de terminaison",
       "description": "Description",
@@ -1495,7 +1495,8 @@
         "sync_failed": "Le compte du prestataire a été modifié, mais les coordonnées bancaires n'ont pas pu être transmises aux factures. Renvoyez la requête."
       },
       "billing": {
-        "not_configured": "La facturation n'est pas configurée sur ce déploiement."
+        "not_configured": "La facturation n'est pas configurée sur ce déploiement.",
+        "failed": "Le service de facturation n'a pas pu terminer cette opération. Réessayez dans un instant."
       },
       "plans": {
         "not_configured": "Les plans ne sont pas configurés sur ce déploiement.",

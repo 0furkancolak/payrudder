@@ -1,9 +1,9 @@
 import { computed, readonly, ref } from "vue";
 import { safeGet, safeSet } from "./storage";
 
-const PERSON_KEY = "quotify.sessionToken";
-const OPERATOR_KEY = "quotify.operator";
-const ACCOUNT_KEY = "quotify.account";
+const PERSON_KEY = "payrudder.sessionToken";
+const OPERATOR_KEY = "payrudder.operator";
+const ACCOUNT_KEY = "payrudder.account";
 
 // Storage can be blocked; the token then lives for the life of the page only.
 const read = (key: string) => safeGet("session", key);

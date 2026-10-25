@@ -10,17 +10,19 @@ import (
 	_ "embed" // base.default.yaml
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
 	"gopkg.in/yaml.v3"
 
-	"github.com/0furkancolak/quotify/pkg/brand"
-	"github.com/0furkancolak/quotify/pkg/memlimit"
+	"github.com/0furkancolak/payrudder/pkg/brand"
+	"github.com/0furkancolak/payrudder/pkg/memlimit"
 )
 
 //go:embed base.default.yaml
@@ -37,21 +39,21 @@ const (
 	EnvRailway Environment = "railway"
 )
 
-// Base holds settings shared by every Quotify process.
+// Base holds settings shared by every Payrudder process.
 type Base struct {
-	Env          Environment `env:"QUOTIFY_ENV"`
-	ServiceName  string      `env:"QUOTIFY_SERVICE_NAME,required"`
-	Version      string      `env:"QUOTIFY_VERSION"`
-	LogLevel     string      `env:"QUOTIFY_LOG_LEVEL"`
-	MetricsAddr  string      `env:"QUOTIFY_METRICS_ADDR"`
-	OTLPEndpoint string      `env:"QUOTIFY_OTLP_ENDPOINT"` // empty disables trace export
-	// MigrateOnly makes a service that migrates on start (QUOTIFY_MIGRATE_ON_START) exit once the migrations are applied.
+	Env          Environment `env:"PAYRUDDER_ENV"`
+	ServiceName  string      `env:"PAYRUDDER_SERVICE_NAME,required"`
+	Version      string      `env:"PAYRUDDER_VERSION"`
+	LogLevel     string      `env:"PAYRUDDER_LOG_LEVEL"`
+	MetricsAddr  string      `env:"PAYRUDDER_METRICS_ADDR"`
+	OTLPEndpoint string      `env:"PAYRUDDER_OTLP_ENDPOINT"` // empty disables trace export
+	// MigrateOnly makes a service that migrates on start (PAYRUDDER_MIGRATE_ON_START) exit once the migrations are applied.
 	// Kubernetes runs it as a pre-install/pre-upgrade Job with the service's own image.
-	MigrateOnly bool `env:"QUOTIFY_MIGRATE_ONLY"`
+	MigrateOnly bool `env:"PAYRUDDER_MIGRATE_ONLY"`
 	// BrandName is the product name people see (hosted pages, webhook headers, the console). See pkg/brand.
 	BrandName string `env:"BRAND_NAME"`
 	// Demo turns on demo mode: only the mock provider is used, mail goes to the local catcher and the console says so. Never next to real provider accounts.
-	Demo bool `env:"QUOTIFY_DEMO"`
+	Demo bool `env:"PAYRUDDER_DEMO"`
 }
 
 // Validate checks the shared settings.
@@ -60,12 +62,12 @@ func (b Base) Validate() error {
 	switch b.Env {
 	case EnvLocal, EnvCI, EnvKind, EnvRailway:
 	default:
-		errs = append(errs, fmt.Errorf("QUOTIFY_ENV: unknown environment %q", b.Env))
+		errs = append(errs, fmt.Errorf("PAYRUDDER_ENV: unknown environment %q", b.Env))
 	}
 	switch b.LogLevel {
 	case "debug", "info", "warn", "error":
 	default:
-		errs = append(errs, fmt.Errorf("QUOTIFY_LOG_LEVEL: unknown level %q", b.LogLevel))
+		errs = append(errs, fmt.Errorf("PAYRUDDER_LOG_LEVEL: unknown level %q", b.LogLevel))
 	}
 	return errors.Join(errs...)
 }
@@ -99,7 +101,10 @@ func LoadFrom[T any](environ map[string]string, defaults ...[]byte) (T, error) {
 	if environ == nil {
 		environ = processEnv()
 	}
-	environ = AliasPrefix(environ)
+	environ, legacy := UpgradeLegacy(environ)
+	if len(legacy) > 0 {
+		slog.Warn("deprecated environment variables: rename the QUOTIFY_ prefix to PAYRUDDER_ (the old names stop working in a later release)", "names", legacy)
+	}
 	for k, v := range environ {
 		merged[k] = v
 	}
@@ -121,7 +126,7 @@ func LoadFrom[T any](environ map[string]string, defaults ...[]byte) (T, error) {
 }
 
 // portTargets are the settings PORT can fill, in order of preference: the address of a service's public HTTP API, else its operational address.
-var portTargets = []string{"QUOTIFY_HTTP_ADDR", "MOCKPSP_HTTP_ADDR", "QUOTIFY_METRICS_ADDR"}
+var portTargets = []string{"PAYRUDDER_HTTP_ADDR", "MOCKPSP_HTTP_ADDR", "PAYRUDDER_METRICS_ADDR"}
 
 // applyPort honours the PORT variable that platforms such as Railway inject: the platform's health check and public domain reach a process only on that
 // port. PORT fills the first of portTargets that T has, unless the environment sets that variable itself, so the YAML and environment contract is unchanged
@@ -149,33 +154,46 @@ func applyPort[T any](merged, environ map[string]string) error {
 }
 
 const (
+	prefix = "PAYRUDDER_"
+	// legacyPrefix is the deprecated spelling of every setting, from before the product was renamed (ADR 0022). It still works and logs a warning.
 	legacyPrefix = "QUOTIFY_"
-	brandPrefix  = "PAYRUDDER_"
 )
 
-// AliasPrefix returns environ with every PAYRUDDER_X setting also under its internal name QUOTIFY_X. PAYRUDDER_X wins when both are set, and QUOTIFY_X keeps
-// working alone (ADR 0021). The input map is not changed.
-func AliasPrefix(environ map[string]string) map[string]string {
+// UpgradeLegacy returns environ with every deprecated QUOTIFY_X setting also under PAYRUDDER_X, unless PAYRUDDER_X is set: the new name wins when both are
+// present. It also returns the deprecated names it found, sorted. The input map is not changed.
+func UpgradeLegacy(environ map[string]string) (map[string]string, []string) {
 	out := make(map[string]string, len(environ))
 	for k, v := range environ {
 		out[k] = v
 	}
+	var legacy []string
 	for k, v := range environ {
-		if rest, ok := strings.CutPrefix(k, brandPrefix); ok {
-			out[legacyPrefix+rest] = v
+		rest, ok := strings.CutPrefix(k, legacyPrefix)
+		if !ok {
+			continue
+		}
+		legacy = append(legacy, k)
+		if _, set := environ[prefix+rest]; !set {
+			out[prefix+rest] = v
 		}
 	}
-	return out
+	sort.Strings(legacy)
+	return out, legacy
 }
 
-// Getenv reads a setting by its internal QUOTIFY_ name and honours the PAYRUDDER_ spelling first. For tools that read the environment without Load.
+// Getenv reads a setting by its PAYRUDDER_ name and falls back to the deprecated QUOTIFY_ spelling, with a warning. For tools that read the environment
+// without Load.
 func Getenv(name string) string {
-	if rest, ok := strings.CutPrefix(name, legacyPrefix); ok {
-		if v := os.Getenv(brandPrefix + rest); v != "" {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	if rest, ok := strings.CutPrefix(name, prefix); ok {
+		if v := os.Getenv(legacyPrefix + rest); v != "" {
+			slog.Warn("deprecated environment variable: use the new name", "deprecated", legacyPrefix+rest, "use", name)
 			return v
 		}
 	}
-	return os.Getenv(name)
+	return ""
 }
 
 func processEnv() map[string]string {
