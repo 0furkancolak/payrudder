@@ -1,0 +1,36 @@
+// The operator console as a Worker with static assets (docs/adr/0021-console-on-cloudflare-workers.md, docs/runbooks/console-first-deploy.md).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "payrudder-console",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-25",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // A deep link such as /app/apps/1/keys answers with index.html; the router takes over in the browser.
+    "not_found_handling": "single-page-application",
+    // Only these reach the Worker; every other path is a file (or the SPA fallback) served by the platform without running code.
+    // /gw/* is the path the console calls the API under; the others are gateway routes that customers open directly (invoice links, health).
+    "run_worker_first": ["/gw/*", "/env.js", "/v1/*", "/auth/*", "/r/*", "/healthz"]
+  },
+  "vars": {
+    // Where the gateway answers. Override per environment below; never put a secret here.
+    "API_ORIGIN": "http://localhost:42800",
+    "BRAND_NAME": "Payrudder",
+    "CONSOLE_DEMO": "false"
+  },
+  "observability": { "enabled": true },
+  "env": {
+    "staging": {
+      "name": "payrudder-console-staging",
+      // Placeholder: replace with your host. Without "routes" the Worker is reachable on its workers.dev address.
+      "routes": [{ "pattern": "console-staging.example.com", "custom_domain": true }],
+      "vars": { "API_ORIGIN": "https://api-staging.example.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
+    },
+    "production": {
+      "name": "payrudder-console",
+      "routes": [{ "pattern": "console.example.com", "custom_domain": true }],
+      "vars": { "API_ORIGIN": "https://api.example.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
+    }
+  }
+}

@@ -34,7 +34,7 @@ Service names are the compose names, lower-case, because they become DNS names. 
   on the private network. The gateway also answers `GET /healthz` on its public port (liveness only; `/metrics` stays on its private port 9100).
   `bootstrap.sh` sets `PORT` explicitly on every service (the tables below) so the addresses other services use are fixed.
 - **IPv6.** Railway's private network is IPv6 (newer environments are dual-stack). Go's `:port` listeners are dual-stack, so every Quotify listener works
-  as it is. nginx (`admin-ui`) now listens on `[::]` too, RabbitMQ and ClickHouse are configured for `::`, Redpanda listens on `REDPANDA_BIND`
+  as it is. The console (`admin-ui`, `vite preview`) listens on `::` too, RabbitMQ and ClickHouse are configured for `::`, Redpanda listens on `REDPANDA_BIND`
   (default `0.0.0.0`; set it to `::` if your environment is IPv6-only).
 - **`QUOTIFY_ENV=railway`**, a new accepted value (it only labels traces and keeps gRPC reflection off).
 - **Dockerfiles.** Railway rejects BuildKit cache mounts without its own `id`, so the services build from `go.Dockerfile`, which is the per-service
@@ -388,7 +388,7 @@ The helm `values-small.yaml` also drops the mock provider; here `mockpsp` stays 
 
 Railway bills for resources used, not for limits, so the figures that matter are resident memory. The compose limits are the ceiling each service was
 designed to stay under: gateway, plans, ingest, limits, analytics, invoice-worker 128 MiB; aggregator, billing 192 MiB; assets, payments-worker,
-notifier, mockpsp 96 MiB; about 1.5 GiB for the 12 Go processes at the limit, usually well under that. The console (nginx) is a few MiB. Backing services
+notifier, mockpsp 96 MiB; about 1.5 GiB for the 12 Go processes at the limit, usually well under that. The console (`vite preview` on Node) is about 100 MiB. Backing services
 are heavier: Redpanda 512 MiB by design (`REDPANDA_MEMORY`), RabbitMQ up to 256 MiB of broker memory, ClickHouse up to 1 GiB, MinIO about 100 to 400 MiB,
 Postgres and Redis whatever their plugins use. Plan for roughly 3 GiB for the small profile and 4 GiB for the full one, plus volumes, and check the
 plan's per-service and per-project limits. These are estimates from the compose and helm limits, not Railway measurements. Nothing is Railway-sized
@@ -405,7 +405,7 @@ Verified (static checks, `make railway-check`, run in CI as part of `make test`)
 
 Run locally with Docker (not on Railway):
 
-- `go.Dockerfile` builds a service image; the console's nginx template starts with an injected `PORT` and answers on IPv4 and IPv6;
+- `go.Dockerfile` builds a service image; the console (`vite preview`) starts with an injected `PORT` and answers on IPv4 and IPv6;
 - `init-postgres` creates the roles and databases, is idempotent, rotates passwords, and the roles cannot cross databases or create in `public`;
 - the RabbitMQ image renders the password into the definitions, loads the queues, rejects the local password, and listens on `::` (AMQP and health);
 - the Redpanda image starts with its admin health endpoint, and `init-redpanda` creates the seven topics.

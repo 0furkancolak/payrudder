@@ -81,7 +81,7 @@ type Deps struct {
 	PaymentsToken string
 	// PublicURL is the address customers reach the gateway at (https://api.example.com), for the links it hands out. Empty gives relative links.
 	PublicURL string
-	// TrustForwardedFor makes the sign-in limits count by the address a proxy in front passes in X-Forwarded-For (the console's nginx does), but only for
+	// TrustForwardedFor makes the sign-in limits count by the address a proxy in front passes in X-Forwarded-For (the console's proxy does), but only for
 	// a request that really arrived from a private or loopback address, so a client cannot choose its own bucket by sending the header.
 	TrustForwardedFor bool
 	// Demo makes the hosted pages offer the mock payment for every tenant (QUOTIFY_DEMO); a sandbox tenant always gets it.

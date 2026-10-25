@@ -234,7 +234,7 @@ func TestRequiredSettingsAreDocumentedAndSet(t *testing.T) {
 	dry := dryRun(t, repo, "full")
 	for _, name := range composeApps(t, repo) {
 		if name == "admin-ui" {
-			continue // nginx, no Go config
+			continue // the console, no Go config
 		}
 		t.Run(name, func(t *testing.T) {
 			sec := section(readme, name)

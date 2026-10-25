@@ -9,7 +9,7 @@
 #
 # How to change a budget: docs/benchmarks.md#memory-budgets.
 services:
-  admin-ui: { budget_mib: 24, measured_mib: 5.0 }
+  admin-ui: { budget_mib: 200, measured_mib: 110.0 } # vite preview (Node); measured_mib is an estimate until the next CI run
   aggregator: { budget_mib: 40, measured_mib: 16.2 }
   analytics-svc: { budget_mib: 32, measured_mib: 12.5 }
   assets-svc: { budget_mib: 56, measured_mib: 13.7 }
