@@ -274,6 +274,10 @@ func Discount(ctx context.Context, q *sqlc.Queries, subID uuid.UUID, currency st
 		}
 		return 0, "", err
 	}
+	return subscription.CouponDiscount(fee, termsOf(c), currency, c.PeriodsApplied), c.CouponCode, nil
+}
+
+func termsOf(c sqlc.GetSubscriptionCouponRow) subscription.CouponTerms {
 	terms := subscription.CouponTerms{Duration: c.Duration}
 	if c.PercentBps != nil {
 		terms.PercentBPS = *c.PercentBps
@@ -287,5 +291,29 @@ func Discount(ctx context.Context, q *sqlc.Queries, subID uuid.UUID, currency st
 	if c.DurationPeriods != nil {
 		terms.DurationPeriods = *c.DurationPeriods
 	}
-	return subscription.CouponDiscount(fee, terms, currency, c.PeriodsApplied), c.CouponCode, nil
+	return terms
+}
+
+// InForce returns what the subscription's coupon took off the fee of the period that is in force, which is already invoiced and so already counted in the
+// coupon's periods (Discount is for the next one). known is false when the counter cannot say whether the period was discounted: a coupon that has used all
+// its periods may have been used up by this one or earlier.
+func InForce(ctx context.Context, q *sqlc.Queries, subID uuid.UUID, currency string) (discount func(fee int64) int64, known bool, err error) {
+	none := func(int64) int64 { return 0 }
+	c, err := q.GetSubscriptionCoupon(ctx, subID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return none, true, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	terms := termsOf(c)
+	// A probe fee: whether the coupon still has periods to give does not depend on the amount.
+	live := subscription.CouponDiscount(1_000_000, terms, currency, c.PeriodsApplied) > 0
+	switch {
+	case c.PeriodsApplied == 0:
+		return none, true, nil // the period in force was invoiced before the coupon had been used
+	case !live:
+		return nil, false, nil
+	}
+	return func(fee int64) int64 { return subscription.CouponDiscount(fee, terms, currency, c.PeriodsApplied-1) }, true, nil
 }

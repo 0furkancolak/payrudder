@@ -138,4 +138,53 @@ func TestRabbitX(t *testing.T) {
 		}
 		t.Fatal("exhausted message never reached the dlq")
 	})
+
+	t.Run("ShutdownWaitsForInFlightHandlers", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		started, release := make(chan struct{}), make(chan struct{})
+		var handlerCtxErr atomic.Value
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			_ = rabbitx.Consume(ctx, url, rabbitx.QueueInvoiceRender, 4, func(hctx context.Context, d amqp.Delivery) rabbitx.Outcome {
+				close(started)
+				<-release
+				handlerCtxErr.Store(struct{ error }{hctx.Err()})
+				return rabbitx.Ack
+			}, log)
+		}()
+		publish(rabbitx.QueueInvoiceRender, "in-flight")
+		<-started
+		cancel()
+		select {
+		case <-done:
+			t.Fatal("Consume returned while a handler was still running")
+		case <-time.After(500 * time.Millisecond):
+		}
+		close(release)
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Fatal("Consume did not return after the handler finished")
+		}
+		if err := handlerCtxErr.Load().(struct{ error }).error; err != nil {
+			t.Errorf("the handler's context was cancelled by the shutdown: %v", err)
+		}
+		// The ack reached the broker: nothing is left to redeliver.
+		conn, err := amqp.Dial(url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+		ch, _ := conn.Channel()
+		time.Sleep(500 * time.Millisecond)
+		q, err := ch.QueueDeclarePassive(rabbitx.QueueInvoiceRender, true, false, false, false, amqp.Table{"x-queue-type": "quorum", "x-dead-letter-exchange": rabbitx.ExchangeDLX, "x-dead-letter-routing-key": rabbitx.QueueInvoiceRender + ".dlq", "x-delivery-limit": int64(rabbitx.DeliveryLimit)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q.Messages != 0 {
+			t.Errorf("%d messages left on the queue: the in-flight message was not acked", q.Messages)
+		}
+	})
 }

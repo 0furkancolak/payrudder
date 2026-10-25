@@ -19,7 +19,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
     </div>
     <p v-if="!props.payments" class="text-muted-foreground py-8 text-center text-sm">{{ t("product.unavailable") }}</p>
     <p v-else-if="props.payments.recent?.length === 0" class="text-muted-foreground py-8 text-center text-sm">{{ t("product.payments.empty") }}</p>
-    <div v-else class="-mx-2 overflow-x-auto px-2">
+    <div v-else class="relative -mx-2 overflow-x-auto px-2">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-muted-foreground text-start text-xs">

@@ -692,7 +692,8 @@ services:
     ports: ["42899:8099"]
     deploy: { resources: { limits: { memory: 32m } } }
 
-  # The console (web/admin): reads and acts through the gateway only. People sign in with e-mail and password, a one-time code or Google.
+  # The console (web/admin) as `vite preview`, for the end-to-end tests and a one-command look (production runs it on Cloudflare Workers, docs/adr/0021-console-on-cloudflare-workers.md;
+  # day-to-day development uses `npm run dev`, make dev). It reads and acts through the gateway only. People sign in with e-mail and password, a one-time code or Google.
   admin-ui:
     <<: *defaults
     profiles: [app]
@@ -713,7 +714,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 12
-    deploy: { resources: { limits: { memory: 64m } } }
+    deploy: { resources: { limits: { memory: 256m } } }
 
   gateway:
     <<: *defaults
@@ -741,8 +742,11 @@ services:
       QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
       QUOTIFY_PAYMENTS_URL: http://payments-worker:8095
       QUOTIFY_PAYMENTS_INTERNAL_TOKEN: ${QUOTIFY_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
-      # The console's nginx fronts the gateway and passes the visitor's address; the sign-in limits count by it (docs/phases/phase-38-product-app.md).
+      # A proxy in front of the gateway (the console's Worker in production, `vite preview` here) passes the visitor's address; the sign-in limits count by it (docs/phases/phase-38-product-app.md).
       QUOTIFY_TRUST_FORWARDED_FOR: "true"
+      # Optional: believe X-Forwarded-For from a public proxy that sends this value as X-Edge-Auth (the console Worker's EDGE_AUTH_SECRET), or from these CIDRs. Both empty here.
+      QUOTIFY_TRUSTED_PROXY_SECRET: ${QUOTIFY_TRUSTED_PROXY_SECRET:-}
+      QUOTIFY_TRUSTED_PROXIES: ${QUOTIFY_TRUSTED_PROXIES:-}
       # The operator console is for people: whoever signs in with one of these addresses (and has verified it) is a platform operator. The dev seed's
       # first user by default. The operator token above is the machine credential only (scripts, quotifyctl, tests); no page asks for it.
       QUOTIFY_OPERATOR_EMAILS: ${QUOTIFY_OPERATOR_EMAILS:-user1@example.com}

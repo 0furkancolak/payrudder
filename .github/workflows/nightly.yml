@@ -73,11 +73,17 @@ jobs:
           go-version-file: go.work
           cache-dependency-path: "**/go.sum"
       - run: timeout 1500 make up
-      - name: Scenarios at CI-runner scale
-        run: |
-          make load S=ingest_steady K6_ENV="-e DURATION=3m -e EVENTS_PER_SEC=2000"
-          make load S=entitlement_reads K6_ENV="-e DURATION=2m -e RATE=1000"
-          make load S=noisy_neighbor
+      # The design targets (p99 < 50 ms ingest, < 10 ms entitlement) are for the benchmark VM (docs/benchmarks.md). A shared 2-vCPU runner running the
+      # whole stack next to k6 measured p99 164 ms (ingest, 2k events/s, 2026-10-25) and 210 ms (entitlement, 2026-10-24) with a median of a few ms, so
+      # these steps use CI-scale budgets (P99_MS) that still catch an order-of-magnitude regression. Each scenario runs even if an earlier one failed.
+      - name: ingest_steady
+        run: make load S=ingest_steady K6_ENV="-e DURATION=3m -e EVENTS_PER_SEC=2000 -e P99_MS=300"
+      - name: entitlement_reads
+        if: ${{ !cancelled() }}
+        run: make load S=entitlement_reads K6_ENV="-e DURATION=2m -e RATE=1000 -e P99_MS=400"
+      - name: noisy_neighbor
+        if: ${{ !cancelled() }}
+        run: make load S=noisy_neighbor
       - uses: actions/upload-artifact@v4
         if: always()
         with:

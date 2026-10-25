@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"os/signal"
@@ -61,8 +62,13 @@ type Config struct {
 	AllowedEnvs   []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// PublicURL is the address customers reach the gateway at, for the invoice links it hands out (https://api.example.com). Empty: relative links.
 	PublicURL string `env:"QUOTIFY_PUBLIC_URL"`
-	// TrustForwardedFor counts the public sign-in limits by X-Forwarded-For, for requests that come from a private address (the console's nginx).
+	// TrustForwardedFor counts the public sign-in limits by X-Forwarded-For, for requests that come from a private address (the console's Worker or proxy).
 	TrustForwardedFor bool `env:"QUOTIFY_TRUST_FORWARDED_FOR"`
+	// TrustedProxies (CIDRs, comma separated) are networks whose X-Forwarded-For is believed even from a public address. Empty by default.
+	TrustedProxies []string `env:"QUOTIFY_TRUSTED_PROXIES" envSeparator:","`
+	// TrustedProxySecret is the shared secret an edge proxy (the console's Worker) sends as X-Edge-Auth to have its X-Forwarded-For believed. A secret:
+	// environment only. Prefer it for Cloudflare, whose Worker egress addresses are not stable.
+	TrustedProxySecret string `env:"QUOTIFY_TRUSTED_PROXY_SECRET"`
 	// OperatorEmails lists the addresses of the platform operators (comma separated). A person who signs in with one of them and has verified it may use the
 	// operator console. Empty: nobody does; the machine token (QUOTIFY_OPERATOR_TOKEN) is still the credential of the API.
 	OperatorEmails []string `env:"QUOTIFY_OPERATOR_EMAILS" envSeparator:","`
@@ -96,7 +102,34 @@ func (c *Config) Validate() error {
 			}
 		}
 	}
+	if _, err := parseProxies(c.TrustedProxies); err != nil {
+		errs = append(errs, err)
+	}
+	if c.TrustedProxySecret != "" && len(c.TrustedProxySecret) < 32 {
+		errs = append(errs, errors.New("QUOTIFY_TRUSTED_PROXY_SECRET must be at least 32 characters"))
+	}
 	return errors.Join(errs...)
+}
+
+// parseProxies reads QUOTIFY_TRUSTED_PROXIES: CIDRs, or single addresses (taken as /32 or /128).
+func parseProxies(list []string) ([]netip.Prefix, error) {
+	var out []netip.Prefix
+	for _, raw := range list {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		p, err := netip.ParsePrefix(raw)
+		if err != nil {
+			a, aerr := netip.ParseAddr(raw)
+			if aerr != nil {
+				return nil, fmt.Errorf("QUOTIFY_TRUSTED_PROXIES: %q is not a CIDR or an address", raw)
+			}
+			p = netip.PrefixFrom(a, a.BitLen())
+		}
+		out = append(out, p.Masked())
+	}
+	return out, nil
 }
 
 func main() {
@@ -220,6 +253,10 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 			return nil, fmt.Errorf("QUOTIFY_PAYMENTS_URL: %w", err)
 		}
 	}
+	proxies, err := parseProxies(cfg.TrustedProxies)
+	if err != nil {
+		return nil, err
+	}
 	appURL := strings.TrimRight(cfg.AppURL, "/")
 	var google *oidc.Client
 	if cfg.GoogleClientID != "" {
@@ -239,6 +276,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
 		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken, Demo: cfg.Demo,
 		Identity: plansv1.NewIdentityServiceClient(up.plans), TrustForwardedFor: cfg.TrustForwardedFor,
+		TrustedProxies: proxies, TrustedProxySecret: cfg.TrustedProxySecret,
 	}), nil
 }
 

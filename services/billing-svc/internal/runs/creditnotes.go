@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -81,6 +82,14 @@ func (m *Manager) CreateCreditNote(ctx context.Context, tenantID, invoiceID uuid
 	var out *CreditNote
 	err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := m.q.WithTx(tx)
+		// The saga first (the order a void takes them in): a void that has begun refunds the whole invoice, so no note can start next to it.
+		switch state, err := q.LockSagaStateByInvoice(ctx, sqlc.LockSagaStateByInvoiceParams{TenantID: tenantID, InvoiceID: invoiceID}); {
+		case errors.Is(err, pgx.ErrNoRows):
+		case err != nil:
+			return err
+		case slices.Contains([]saga.State{saga.RefundRequested, saga.RefundFailed, saga.Refunded, saga.Voided}, saga.State(state)):
+			return fmt.Errorf("%w (the invoice is being voided)", ErrNotPaid)
+		}
 		inv, err := q.LockInvoiceForCreditNote(ctx, sqlc.LockInvoiceForCreditNoteParams{TenantID: tenantID, ID: invoiceID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrInvoiceNotFound

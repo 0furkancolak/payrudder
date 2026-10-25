@@ -633,6 +633,26 @@ test.describe("billing pages of the app", () => {
     expect(gw.calls.filter((c) => c.method !== "GET" && c.path.startsWith("/v1/"))).toEqual([]);
   });
 
+  // Every page of the product at phone width: nothing scrolls sideways. The list is the menu of an environment plus the pages that are not in it, so
+  // a page added to the navigation is covered without touching this test.
+  test("no page of the app scrolls sideways at 375 px", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await open(page);
+    await page.goto(`/app/t/${LIVE}/customers`);
+    await page.getByRole("button", { name: "Open the menu" }).click();
+    const hrefs = await page.getByRole("dialog").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""));
+    const routes = new Set<string>(["/app", `/app/apps/${APP}`, "/app/settings", "/app/members", `/app/apps/${APP}/keys`, `/app/apps/${APP}/settings`, `/app/t/${LIVE}/invoices/${INVOICE_1}`]);
+    for (const h of hrefs) if (h.startsWith("/app")) routes.add(h);
+    expect(routes.size, "the navigation must list the environment's pages").toBeGreaterThan(12);
+    for (const r of routes) {
+      await page.goto(r);
+      await page.getByRole("main").waitFor();
+      await page.waitForLoadState("networkidle");
+      const o = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
+      expect(o.sw, `horizontal overflow on ${r}`).toBeLessThanOrEqual(o.cw);
+    }
+  });
+
   test("no tab of an environment calls an operator route, and the tabs are all there", async ({ page }) => {
     const gw = await open(page);
     await page.goto(`/app/t/${LIVE}/customers`);

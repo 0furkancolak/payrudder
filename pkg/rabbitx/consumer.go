@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -48,8 +49,41 @@ func Attempt(d amqp.Delivery) int {
 	return 0
 }
 
+// RequeueBaseDelay is how long a Requeue waits before the message goes back to the queue; every redelivery doubles it (the broker's x-delivery-count). The
+// quorum queue dead-letters a message after DeliveryLimit redeliveries, so an immediate requeue would spend them in milliseconds on an outage of a second.
+var RequeueBaseDelay = time.Second
+
+// ShutdownGrace is how long a handler that is still running when the consumer is stopped may take to finish and be acked.
+var ShutdownGrace = 30 * time.Second
+
+// requeueDelay is the wait before d goes back to the queue: 1, 2, 4 and then 8 times RequeueBaseDelay.
+func requeueDelay(d amqp.Delivery) time.Duration {
+	var n int64
+	switch v := d.Headers["x-delivery-count"].(type) {
+	case int64:
+		n = v
+	case int32:
+		n = int64(v)
+	case int:
+		n = int64(v)
+	}
+	return RequeueBaseDelay << min(max(n, 0), 3)
+}
+
+// requeue puts d back on the queue after its delay, or at once when stop (the consumer's context) ends.
+func requeue(stop context.Context, d amqp.Delivery) {
+	t := time.NewTimer(requeueDelay(d))
+	defer t.Stop()
+	select {
+	case <-t.C:
+	case <-stop.Done():
+	}
+	_ = d.Nack(false, true)
+}
+
 // Consume reads queue until ctx is done, reconnecting on connection loss. Deliveries are handled one at a time per
-// goroutine, up to prefetch in flight, and acked only after the handler returns.
+// goroutine, up to prefetch in flight, and acked only after the handler returns. When ctx is done the handlers still running
+// are waited for (up to ShutdownGrace) and their acks sent before Consume returns; their context is not cancelled by ctx.
 func Consume(ctx context.Context, url, queue string, prefetch int, h Handler, log *slog.Logger) error {
 	if log == nil {
 		log = slog.Default()
@@ -77,6 +111,23 @@ func consumeOnce(ctx context.Context, url, queue string, prefetch int, h Handler
 		return err
 	}
 	defer conn.Close()
+	// Handlers outlive ctx: it only stops new deliveries from being taken. They are waited for before the connection closes (this defer runs first), so
+	// their acks and retry publishes still reach the broker; a handler that overstays the grace is cancelled.
+	hctx, hcancel := context.WithCancel(context.WithoutCancel(ctx))
+	defer hcancel()
+	var inflight sync.WaitGroup
+	defer inflight.Wait()
+	go func() {
+		select {
+		case <-ctx.Done():
+			select {
+			case <-time.After(ShutdownGrace):
+				hcancel()
+			case <-hctx.Done():
+			}
+		case <-hctx.Done():
+		}
+	}()
 	ch, err := conn.Channel()
 	if err != nil {
 		return err
@@ -95,18 +146,25 @@ func consumeOnce(ctx context.Context, url, queue string, prefetch int, h Handler
 		case <-ctx.Done():
 			return nil
 		case e := <-closed:
+			hcancel() // the acks of the running handlers have nowhere to go
 			if e == nil {
 				return errors.New("connection closed")
 			}
 			return e
 		case d, ok := <-deliveries:
 			if !ok {
+				if ctx.Err() != nil {
+					return nil
+				}
+				hcancel()
 				return errors.New("delivery channel closed")
 			}
 			sem <- struct{}{}
+			inflight.Add(1)
 			go func() {
+				defer inflight.Done()
 				defer func() { <-sem }()
-				settle(ctx, d, queue, h, retryPub, log)
+				settle(hctx, ctx, d, queue, h, retryPub, log)
 			}()
 		}
 	}
@@ -126,7 +184,8 @@ func consumerSpan(ctx context.Context, d amqp.Delivery, queue string) (context.C
 		))
 }
 
-func settle(ctx context.Context, d amqp.Delivery, queue string, h Handler, retryPub *Publisher, log *slog.Logger) {
+// settle runs h on d and answers the broker. ctx is the handler's; stop is the consumer's, which only cuts a requeue wait short.
+func settle(ctx, stop context.Context, d amqp.Delivery, queue string, h Handler, retryPub *Publisher, log *slog.Logger) {
 	ctx, span := consumerSpan(ctx, d, queue)
 	defer span.End()
 	defer func() {
@@ -134,7 +193,7 @@ func settle(ctx context.Context, d amqp.Delivery, queue string, h Handler, retry
 			// Requeue rather than dead-letter: the quorum queue's delivery limit (5) dead-letters a command that keeps
 			// crashing its handler, which is how a crash loop ends.
 			log.Error("handler panic, requeueing the delivery", "queue", queue, "panic", r)
-			_ = d.Nack(false, true)
+			requeue(stop, d)
 		}
 	}()
 	outcome := h(ctx, d)
@@ -143,7 +202,7 @@ func settle(ctx context.Context, d amqp.Delivery, queue string, h Handler, retry
 	case Ack:
 		_ = d.Ack(false)
 	case Requeue:
-		_ = d.Nack(false, true)
+		requeue(stop, d)
 	case Reject:
 		_ = d.Nack(false, false)
 	case Retry:

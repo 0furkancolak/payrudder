@@ -195,7 +195,7 @@ func testPlanChangesAreInvoicedOrCredited(t *testing.T) {
 	}
 	pass()
 
-	if l := e.feeInvoiceLines("cus_a"); len(l) != 2 || l[0].Kind != "BASE_FEE" || l[0].Amount != 4800 || l[1].Kind != "CREDIT" || l[1].Amount != -1600 ||
+	if l := e.feeInvoiceLines("cus_a"); len(l) != 2 || l[0].Kind != "BASE_FEE" || l[0].Amount != 4800 || l[1].Kind != "DISCOUNT" || l[1].Amount != -1600 ||
 		l[0].Description != "Base fee (monthly) — pro — 2026-11-03 to 2026-12-03" || l[1].Description != "Unused time on basic — 2026-11-03 to 2026-12-03" {
 		t.Errorf("upgrade invoice lines = %+v", l)
 	}

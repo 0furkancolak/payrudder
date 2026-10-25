@@ -20,3 +20,6 @@ VALUES (@tenant_id, @id, @invoice_id, @method, @amount_minor, @currency, @receiv
 -- name: ListInvoicePayments :many
 SELECT id, invoice_id, method, amount_minor, currency, received_at, reference, note, recorded_by, recorded_at
 FROM invoice_payments WHERE invoice_id = @invoice_id ORDER BY received_at, recorded_at, id;
+
+-- name: LockSagaStateByInvoice :one
+SELECT state FROM invoice_sagas WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id FOR UPDATE;

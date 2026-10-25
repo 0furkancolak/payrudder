@@ -13,6 +13,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"runtime/debug"
@@ -81,9 +82,14 @@ type Deps struct {
 	PaymentsToken string
 	// PublicURL is the address customers reach the gateway at (https://api.example.com), for the links it hands out. Empty gives relative links.
 	PublicURL string
-	// TrustForwardedFor makes the sign-in limits count by the address a proxy in front passes in X-Forwarded-For (the console's nginx does), but only for
+	// TrustForwardedFor makes the sign-in limits count by the address a proxy in front passes in X-Forwarded-For (the console's proxy does), but only for
 	// a request that really arrived from a private or loopback address, so a client cannot choose its own bucket by sending the header.
 	TrustForwardedFor bool
+	// TrustedProxies are networks (QUOTIFY_TRUSTED_PROXIES) whose connections are believed about the client address, even when public.
+	TrustedProxies []netip.Prefix
+	// TrustedProxySecret (QUOTIFY_TRUSTED_PROXY_SECRET) is the shared secret an edge proxy sends in X-Edge-Auth; a request carrying it is believed about the
+	// client address wherever it comes from. Empty: the header is ignored.
+	TrustedProxySecret string
 	// Demo makes the hosted pages offer the mock payment for every tenant (QUOTIFY_DEMO); a sandbox tenant always gets it.
 	Demo bool
 	// OperatorEmails lists the addresses of the people who are platform operators (QUOTIFY_OPERATOR_EMAILS), lower case. A session of a user with one of these

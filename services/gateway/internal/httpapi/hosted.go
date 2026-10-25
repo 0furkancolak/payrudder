@@ -98,7 +98,7 @@ func clientIP(r *http.Request) string {
 }
 
 func (s *Server) hostedAllowed(w http.ResponseWriter, r *http.Request) bool {
-	if s.hosted.allow(clientIP(r), time.Now()) {
+	if s.hosted.allow(s.clientAddr(r), time.Now()) {
 		return true
 	}
 	w.Header().Set("Retry-After", "60")
@@ -108,7 +108,7 @@ func (s *Server) hostedAllowed(w http.ResponseWriter, r *http.Request) bool {
 
 // hostedPayAllowed is hostedAllowed for the POSTs that start a payment: they also count against the stricter limit.
 func (s *Server) hostedPayAllowed(w http.ResponseWriter, r *http.Request) bool {
-	if s.hosted.allow(clientIP(r), time.Now()) && s.hostedPays.allowN(clientIP(r), time.Now(), hostedPaysPerMinute) {
+	if s.hosted.allow(s.clientAddr(r), time.Now()) && s.hostedPays.allowN(s.clientAddr(r), time.Now(), hostedPaysPerMinute) {
 		return true
 	}
 	w.Header().Set("Retry-After", "60")

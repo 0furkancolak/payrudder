@@ -289,7 +289,7 @@ advance-billed subscriptions (`FeeSegment.Waived`), so usage alone is invoiced i
 ## As built: plan changes in billing (Phase 20)
 
 `BillFees` first asks plans-svc to `ApplyScheduledChanges` (so a downgrade's new plan has its first fee due in the same pass), then turns the **adjustments** plan changes left into money, then
-invoices the fees due. An adjustment with `charge > credit` becomes a `FEE` invoice (`fee_key` = `adj|{adjustment id}`) with a `BASE_FEE` line for the new plan and a `CREDIT` line "Unused time on {old plan}";
+invoices the fees due. An adjustment with `charge > credit` becomes a `FEE` invoice (`fee_key` = `adj|{adjustment id}`) with a `BASE_FEE` line for the new plan and a `DISCOUNT` line "Unused time on {old plan}";
 `charge < credit` becomes a `credit_balances` row (`source_adjustment_id`, unique) in the subscription's currency; equal moves nothing. Then the adjustment is marked billed, so a crash in between
 repeats harmlessly. A credit balance is applied to the next invoice **in its currency** (`credit_balances.currency`, set for old rows from the customer's invoices) up to what the invoice costs, as re-rating credits already were.
 
