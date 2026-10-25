@@ -5,72 +5,19 @@ import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { COUNTRY_HINTS } from "@/shared/lib/currencies";
-import { formatMinor, parseMajor } from "@/shared/lib/money";
-import { Badge } from "@/shared/ui/badge";
 import { useCanWrite } from "@/shared/lib/access";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
-import { NativeSelect } from "@/shared/ui/native-select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { parsePercent, useCouponActions, useCoupons, useDunningSettings, useSetDunningSettings, useSetTaxRates, useTaxRates, type NewCoupon, type Rate } from "./api";
-import { CurrencySelect } from "@/shared/ui/search-select";
+import { parsePercent, useDunningSettings, useSetDunningSettings, useSetTaxRates, useTaxRates, type Rate } from "./api";
+import CouponsCard from "./CouponsCard.vue";
+import RedemptionsCard from "./RedemptionsCard.vue";
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
 const canWrite = useCanWrite();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
-
-// --- coupons
-const coupons = useCoupons(tenantId);
-const actions = useCouponActions(tenantId);
-const code = ref("");
-const name = ref("");
-const kind = ref<"percent" | "amount">("percent");
-const value = ref("");
-const currency = ref("USD");
-const duration = ref<NewCoupon["duration"]>("COUPON_DURATION_ONCE");
-const periods = ref("3");
-const max = ref("");
-const couponError = ref("");
-
-function createCoupon() {
-  couponError.value = "";
-  const body: NewCoupon = { code: code.value.trim(), name: name.value.trim(), duration: duration.value };
-  if (kind.value === "percent") {
-    const bps = parsePercent(value.value);
-    if (bps === null || bps === 0) {
-      couponError.value = t("billing.pricing.coupons.badPercent");
-      return;
-    }
-    body.percent_bps = bps;
-  } else {
-    const minor = parseMajor(value.value, currency.value);
-    if (minor === null || minor === "0") {
-      couponError.value = t("billing.pricing.coupons.badAmount", { currency: currency.value });
-      return;
-    }
-    body.amount_minor = minor;
-    body.currency = currency.value;
-  }
-  if (duration.value === "COUPON_DURATION_REPEATING") body.duration_periods = Number(periods.value);
-  if (max.value !== "") body.max_redemptions = Number(max.value);
-  actions.create.mutate(body, {
-    onSuccess: () => {
-      code.value = name.value = value.value = max.value = "";
-    },
-  });
-}
-
-const describe = (c: { percent_bps?: number; amount_minor?: string; currency?: string }) =>
-  c.percent_bps ? `${(c.percent_bps / 100).toLocaleString(locale.value)} %` : formatMinor(c.amount_minor, c.currency, locale.value);
-const durationText = (c: { duration?: string; duration_periods?: number }) =>
-  c.duration === "COUPON_DURATION_REPEATING"
-    ? t("billing.pricing.coupons.repeatingFor", { n: c.duration_periods ?? 0 })
-    : c.duration === "COUPON_DURATION_FOREVER"
-      ? t("billing.pricing.coupons.forever")
-      : t("billing.pricing.coupons.once");
 
 // --- tax
 const stored = useTaxRates(tenantId);
@@ -118,62 +65,10 @@ function saveDunning() {
 </script>
 
 <template>
-  <!-- A viewer reads the coupons, the retry schedule and the tax rates; the controls that change them are switched off (the server refuses them anyway). -->
+  <!-- A viewer reads the promotions, the retry schedule and the tax rates; the controls that change them are switched off (the server refuses them anyway). -->
   <fieldset :disabled="!canWrite" class="m-0 min-w-0 border-0 p-0">
-    <Card class="mb-6">
-      <h2 class="text-lg font-semibold">{{ t("billing.pricing.coupons.title") }}</h2>
-      <p class="text-muted-foreground text-sm">{{ t("billing.pricing.coupons.hint") }}</p>
-      <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="form" :aria-label="t('billing.pricing.coupons.formLabel')" @submit.prevent="createCoupon">
-        <Input v-model="code" :aria-label="t('billing.pricing.coupons.code')" :placeholder="t('billing.pricing.coupons.code')" pattern="[A-Za-z0-9_\-]{2,40}" required />
-        <Input v-model="name" :aria-label="t('billing.pricing.coupons.name')" :placeholder="t('billing.pricing.coupons.name')" />
-        <NativeSelect v-model="kind" :aria-label="t('billing.pricing.coupons.kind')">
-          <option value="percent">{{ t("billing.pricing.coupons.percent") }}</option>
-          <option value="amount">{{ t("billing.pricing.coupons.amount") }}</option>
-        </NativeSelect>
-        <div class="grid grid-cols-[1fr_auto] gap-2">
-          <Input v-model="value" inputmode="decimal" :aria-label="t('billing.pricing.coupons.value')" :placeholder="t('billing.pricing.coupons.value')" required />
-          <CurrencySelect v-if="kind === 'amount'" v-model="currency" :aria-label="t('billing.pricing.coupons.currency')" />
-        </div>
-        <NativeSelect v-model="duration" :aria-label="t('billing.pricing.coupons.duration')">
-          <option value="COUPON_DURATION_ONCE">{{ t("billing.pricing.coupons.once") }}</option>
-          <option value="COUPON_DURATION_REPEATING">{{ t("billing.pricing.coupons.repeating") }}</option>
-          <option value="COUPON_DURATION_FOREVER">{{ t("billing.pricing.coupons.forever") }}</option>
-        </NativeSelect>
-        <Input v-if="duration === 'COUPON_DURATION_REPEATING'" v-model="periods" type="number" min="1" :aria-label="t('billing.pricing.coupons.periods')" :placeholder="t('billing.pricing.coupons.periods')" />
-        <Input v-model="max" type="number" min="1" :aria-label="t('billing.pricing.coupons.max')" :placeholder="t('billing.pricing.coupons.max')" />
-        <Button type="submit" :disabled="actions.create.isPending.value">{{ t("billing.pricing.coupons.create") }}</Button>
-      </form>
-      <p v-if="couponError" class="text-destructive text-sm" role="alert">{{ couponError }}</p>
-      <p v-if="actions.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.create.error.value) }}</p>
-      <p v-if="actions.deactivate.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.deactivate.error.value) }}</p>
-      <Table>
-        <TableHeader>
-          <TableRow class="hover:bg-transparent">
-            <TableHead>{{ t("billing.pricing.coupons.code") }}</TableHead>
-            <TableHead>{{ t("billing.pricing.coupons.value") }}</TableHead>
-            <TableHead>{{ t("billing.pricing.coupons.duration") }}</TableHead>
-            <TableHead class="text-end">{{ t("billing.pricing.coupons.redeemed") }}</TableHead>
-            <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="c in coupons.data.value?.coupons ?? []" :key="c.code">
-            <TableCell class="mono font-medium">{{ c.code }} <span class="text-muted-foreground text-xs">{{ c.name }}</span></TableCell>
-            <TableCell class="tabular-nums">{{ describe(c) }}</TableCell>
-            <TableCell>{{ durationText(c) }}</TableCell>
-            <TableCell class="text-end tabular-nums">{{ c.redeemed }}<template v-if="c.max_redemptions"> / {{ c.max_redemptions }}</template></TableCell>
-            <TableCell><Badge :variant="c.active ? 'success' : 'secondary'">{{ c.active ? t("billing.pricing.coupons.active") : t("billing.pricing.coupons.inactive") }}</Badge></TableCell>
-            <TableCell class="text-end">
-              <Button v-if="c.active" size="sm" variant="ghost" @click="actions.deactivate.mutate(c.code ?? '')">{{ t("billing.pricing.coupons.deactivate") }}</Button>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-      <p v-if="!coupons.isPending.value && (coupons.data.value?.coupons ?? []).length === 0 && !coupons.error.value" class="text-muted-foreground text-center text-sm">
-        {{ t("billing.pricing.coupons.empty") }}
-      </p>
-    </Card>
+    <CouponsCard :tenant-id="tenantId" />
+    <RedemptionsCard :tenant-id="tenantId" />
 
     <Card class="mb-6">
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.dunning.title") }}</h2>

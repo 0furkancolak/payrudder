@@ -76,6 +76,7 @@ function submitPack() {
 const linkPack = ref<{ id: string; name: string } | null>(null);
 const linkCustomer = ref("");
 const linkQuantity = ref("1");
+const linkPromotion = ref("");
 const linkKey = ref(crypto.randomUUID());
 const createLink = useCreatePurchaseLink(tenantId);
 const quantityValid = computed(() => Number.isInteger(Number(linkQuantity.value)) && Number(linkQuantity.value) >= 1 && Number(linkQuantity.value) <= 1000);
@@ -86,10 +87,11 @@ function openLink(p: { id?: string; name?: string }) {
   createLink.reset();
   linkPack.value = { id: p.id ?? "", name: p.name ?? "" };
   linkKey.value = crypto.randomUUID();
+  linkPromotion.value = "";
 }
 function submitLink() {
   if (!linkPack.value || !linkCustomer.value || !quantityValid.value) return;
-  createLink.mutate({ packId: linkPack.value.id, customer: linkCustomer.value, quantity: Number(linkQuantity.value), key: linkKey.value });
+  createLink.mutate({ packId: linkPack.value.id, customer: linkCustomer.value, quantity: Number(linkQuantity.value), key: linkKey.value, promotion: linkPromotion.value });
 }
 async function copyLink() {
   try {
@@ -207,6 +209,7 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
         <option v-for="c in customers.data.value?.customers ?? []" :key="c.id" :value="c.external_id">{{ c.name }} ({{ c.external_id }})</option>
       </NativeSelect>
       <Input v-model="linkQuantity" inputmode="numeric" :aria-label="t('billing.credits.purchase.quantity')" :placeholder="t('billing.credits.purchase.quantity')" />
+      <Input v-model="linkPromotion" maxlength="40" :aria-label="t('billing.credits.purchase.promotionCode')" :placeholder="t('billing.credits.purchase.promotionCode')" :title="t('billing.paymentLinks.promotionHint')" />
       <Button type="submit" :disabled="createLink.isPending.value || !linkCustomer || !quantityValid">{{ t("billing.credits.purchase.create") }}</Button>
       <Button type="button" variant="outline" @click="linkPack = null">{{ t("billing.credits.purchase.close") }}</Button>
     </form>

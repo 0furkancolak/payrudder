@@ -72,18 +72,18 @@ export function useVoidExpense(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** Downloads the CSV of the period. The file needs the operator's token, so it is fetched and saved from a blob, not linked. */
-export async function downloadCsv(tenantId: string, from: string, to: string, app: string, granularity: string): Promise<void> {
+/** Downloads a CSV of the period (`accounting/export.csv`, or `accounting/coupons.csv` for the report per coupon). The file needs the operator's token, so it is fetched and saved from a blob, not linked. */
+export async function downloadCsv(tenantId: string, from: string, to: string, app: string, granularity: string, report: "export" | "coupons" = "export"): Promise<void> {
   const query = new URLSearchParams({ from, to, granularity });
   if (app) query.set("app_id", app);
-  const res = await fetch(`/gw/v1/accounting/export.csv?${query.toString()}`, {
+  const res = await fetch(`/gw/v1/accounting/${report}.csv?${query.toString()}`, {
     headers: { Authorization: `Bearer ${currentToken() ?? ""}`, "X-Quotify-Tenant": tenantId },
   });
   if (!res.ok) throw toApiError(await res.json().catch(() => ({})));
   const url = URL.createObjectURL(await res.blob());
   const a = document.createElement("a");
   a.href = url;
-  a.download = `accounting-${from}-${to}.csv`;
+  a.download = `${report === "coupons" ? "coupons" : "accounting"}-${from}-${to}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

@@ -674,6 +674,96 @@
         "saved": "Reintentos guardados.",
         "none": "Sin reintentos: un cobro rechazado se abandona de inmediato.",
         "bad": "Cada espera es un número entero de 1 a 720."
+      },
+      "promotions": {
+        "title": "Promociones",
+        "hint": "Un cupón dice qué se descuenta. El cliente escribe un código promocional: muchos códigos pueden apuntar a un cupón, cada uno con su límite, caducidad y reglas.",
+        "kinds": {
+          "percent": "Porcentaje de descuento",
+          "amount": "Importe de descuento",
+          "bonus": "Créditos extra"
+        },
+        "valueBonus": "Créditos adicionales, % (10 o 12,5)",
+        "bonusValue": "{pct} más de créditos",
+        "bonusNote": "Los créditos extra se añaden al mismo lote que los del paquete y caducan con ellos. Solo para compras de créditos.",
+        "badBonus": "No es un porcentaje de créditos adicionales: de 0,01 a 1000 con como máximo dos decimales.",
+        "appliesTo": "Vale para",
+        "targets": {
+          "subscription": "Cuota de suscripción",
+          "credit_purchase": "Compra de créditos",
+          "payment": "Enlace de pago o factura",
+          "legacy": "Antes del registro"
+        },
+        "noTarget": "Elija dónde vale el cupón.",
+        "withoutDefaultCode": "No crear una promoción con el nombre del cupón",
+        "codeCount": "Códigos",
+        "manageCodes": "Códigos",
+        "hideCodes": "Cerrar",
+        "codes": {
+          "title": "Códigos promocionales de {coupon}",
+          "hint": "Ponga nombre a los códigos o genere aleatorios. Cada código recibe el límite, la caducidad y las reglas de abajo.",
+          "formLabel": "nuevos códigos promocionales",
+          "mode": "Cómo",
+          "modeNamed": "Los nombro yo",
+          "modeRandom": "Generar códigos aleatorios",
+          "names": "Códigos, uno por línea",
+          "namesPlaceholder": "VERANO26",
+          "count": "Cuántos (1 a 1000)",
+          "prefix": "Prefijo (opcional)",
+          "maxPerCode": "Usos por código (vacío: sin límite)",
+          "expires": "Caduca el (opcional)",
+          "minAmount": "Importe mínimo (opcional)",
+          "minCurrency": "Moneda del mínimo",
+          "allowedCurrencies": "Solo en estas monedas (USD, EUR)",
+          "allowedPlans": "Solo en estos planes (códigos de plan)",
+          "allowedPacks": "Solo en estos paquetes de créditos (ids)",
+          "firstPurchase": "Solo la primera compra",
+          "onePerCustomer": "Una vez por cliente",
+          "restore": "Devolver el uso si la compra se anula o se reembolsa",
+          "create": "Crear códigos",
+          "created": "{n} códigos creados",
+          "createdList": "Los códigos creados",
+          "copyAll": "Copiar todos",
+          "copied": "Copiado",
+          "download": "Descargar CSV",
+          "search": "Buscar códigos",
+          "stateAll": "Cualquier estado",
+          "total": "{n} códigos",
+          "used": "Usado",
+          "expiresCol": "Caduca",
+          "rules": "Reglas",
+          "none": "Aún no hay códigos.",
+          "rule": {
+            "firstPurchase": "Primera compra",
+            "onePerCustomer": "Una vez por cliente",
+            "min": "Desde {amount}",
+            "plans": "Planes: {list}",
+            "packs": "{n} paquetes",
+            "restore": "Devuelve el uso"
+          },
+          "errors": {
+            "names": "Indique al menos un código y como máximo 1000: de 2 a 40 letras, dígitos, - o _.",
+            "count": "La cantidad debe ser de 1 a 1000 y el prefijo de hasta 20 letras, dígitos, - o _.",
+            "max": "Los usos por código deben ser un número entero desde 1.",
+            "expires": "La caducidad debe ser un día futuro.",
+            "minAmount": "No es un importe en esa moneda: solo dígitos, con como máximo los decimales de la moneda.",
+            "currencies": "Las monedas son códigos de tres letras como USD, separados por comas."
+          }
+        },
+        "redemptions": {
+          "title": "Canjes",
+          "hint": "Cada uso de un cupón. Una anulación o un reembolso total lo revierte; el contador solo se devuelve en los códigos que lo indican.",
+          "coupon": "Cupón",
+          "allCoupons": "Todos los cupones",
+          "total": "{n} canjes",
+          "customer": "Cliente",
+          "usedOn": "Usado en",
+          "discount": "Descuento",
+          "bonus": "Créditos extra",
+          "reversed": "Revertido",
+          "counted": "Contado",
+          "none": "Aún no se ha canjeado nada."
+        }
       }
     },
     "creditNotes": {
@@ -806,7 +896,9 @@
           "refund": "Reembolso"
         }
       },
-      "for": "Para"
+      "for": "Para",
+      "promotionCode": "Código promocional (opcional)",
+      "promotionHint": "Quien paga obtiene el descuento de este código sin escribirlo y puede escribir otro. Se comprueba ahora con este importe."
     },
     "mail": {
       "title": "Correo electrónico",
@@ -903,7 +995,8 @@
         "shownOnce": "Copie el enlace ahora: se muestra una sola vez y no se puede volver a leer.",
         "url": "Enlace de compra",
         "copy": "Copiar",
-        "close": "Cerrar"
+        "close": "Cerrar",
+        "promotionCode": "Código promocional (opcional)"
       },
       "settings": {
         "title": "Alerta de saldo bajo",
@@ -947,7 +1040,10 @@
         "feesNotRecorded": "No registradas",
         "feesHint": "Payrudder no registra la comisión del proveedor de pagos. Añádala como gasto en la categoría Comisiones de pago.",
         "expenses": "Gastos",
-        "profit": "Beneficio"
+        "profit": "Beneficio",
+        "discounts": "Descuentos concedidos",
+        "discountsHint": "Lo que los cupones descontaron de las facturas pagadas. Los ingresos ya son después de ellos.",
+        "sales": "Ventas antes de descuentos"
       },
       "donut": {
         "title": "Gastos por categoría",
@@ -1006,6 +1102,16 @@
         "hint": "Un gasto anulado no se borra. Sale de todos los totales y conserva su motivo.",
         "reason": "Motivo",
         "submit": "Anular gasto"
+      },
+      "coupons": {
+        "title": "Cupones",
+        "hint": "Las facturas pagadas en el periodo que usaron un cupón: lo que sumaban antes, lo que descontó el cupón y el neto.",
+        "export": "Descargar informe de cupones",
+        "coupon": "Cupón",
+        "invoices": "Facturas",
+        "gross": "Bruto",
+        "discount": "Descuento",
+        "net": "Neto"
       }
     }
   },

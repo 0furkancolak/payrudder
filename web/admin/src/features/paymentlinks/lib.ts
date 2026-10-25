@@ -9,6 +9,8 @@ export interface LinkForm {
   currency: string;
   description: string;
   customer: string;
+  /** A promotion code the payer gets without typing it (optional, ad hoc links). */
+  promotion: string;
   singleUse: boolean;
   days: string;
   key: string;
@@ -31,7 +33,7 @@ export function toRequest(f: LinkForm): { body: Record<string, unknown> } | { er
   const minor = parseMajor(f.amount, f.currency);
   if (minor === null || minor === "0") return { error: "amount" };
   if (!f.description.trim()) return { error: "description" };
-  return { body: { ...common, amount_minor: minor, currency: f.currency, description: f.description.trim(), ...(f.customer.trim() ? { customer_external_id: f.customer.trim() } : {}) } };
+  return { body: { ...common, amount_minor: minor, currency: f.currency, description: f.description.trim(), ...(f.customer.trim() ? { customer_external_id: f.customer.trim() } : {}), ...(f.promotion.trim() ? { promotion_code: f.promotion.trim() } : {}) } };
 }
 
 /** A link the gateway returned relative ("/i/abc") becomes absolute against the console's origin. */
