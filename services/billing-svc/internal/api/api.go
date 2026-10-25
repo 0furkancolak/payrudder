@@ -98,7 +98,7 @@ func New(d Deps) *Server {
 	return &Server{
 		invoiceHandler:    invoices.New(app),
 		creditNoteHandler: creditnotes.New(app, system, d.CreditNotes),
-		dunningHandler:    dunning.New(app),
+		dunningHandler:    dunning.New(app, eng),
 		creditsHandler:    credits.New(app),
 		accountingHandler: accounting.New(app),
 		reportHandler:     reports.New(app),

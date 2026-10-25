@@ -15,11 +15,14 @@ import (
 
 // Handler implements the dunning-settings methods of billingv1.BillingServiceServer.
 type Handler struct {
-	app *pgxpool.Pool
+	app      *pgxpool.Pool
+	defaults query.Defaults
 }
 
 // New returns the handler over the billing_app pool.
-func New(app *pgxpool.Pool) *Handler { return &Handler{app: app} }
+func New(app *pgxpool.Pool, defaults query.Defaults) *Handler {
+	return &Handler{app: app, defaults: defaults}
+}
 
 // GetDunningSettings implements billingv1.BillingServiceServer.
 func (h *Handler) GetDunningSettings(ctx context.Context, _ *billingv1.GetDunningSettingsRequest) (*billingv1.GetDunningSettingsResponse, error) {
@@ -27,7 +30,7 @@ func (h *Handler) GetDunningSettings(ctx context.Context, _ *billingv1.GetDunnin
 	if err != nil {
 		return nil, err
 	}
-	s, err := query.Get(ctx, h.app, ti)
+	s, err := query.Get(ctx, h.app, h.defaults, ti)
 	if err != nil {
 		return nil, err
 	}

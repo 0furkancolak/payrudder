@@ -4,6 +4,7 @@ package command
 
 import (
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -90,6 +91,14 @@ func NewEngine(cfg Config) (*Engine, error) {
 		return nil, err
 	}
 	return e, nil
+}
+
+// DunningDefaults are the delays before payment retry 1..n of a tenant that set none: the configured ones for its environment, not the built-in ones.
+func (e *Engine) DunningDefaults(sandbox bool) []time.Duration {
+	if sandbox {
+		return slices.Clone(e.cfg.DunningSandbox)
+	}
+	return slices.Clone(e.cfg.DunningLive)
 }
 
 // Now exposes the engine's clock (a test clock in tests).

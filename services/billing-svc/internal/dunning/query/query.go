@@ -14,7 +14,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -25,14 +24,20 @@ type Settings struct {
 	DefaultsInUse bool
 }
 
+// Defaults gives the delays the service uses for a tenant that set none (sagas/command's engine, with the configuration it runs on).
+type Defaults interface {
+	DunningDefaults(sandbox bool) []time.Duration
+}
+
 // Get returns the tenant's dunning settings, or the service-wide defaults when it has none.
-func Get(ctx context.Context, app *pgxpool.Pool, ti tenant.Info) (*Settings, error) {
+func Get(ctx context.Context, app *pgxpool.Pool, defaults Defaults, ti tenant.Info) (*Settings, error) {
 	out := &Settings{}
+	sandbox := ti.Environment == env.Sandbox.String()
 	err := pgxx.InTenantTx(ctx, app, ti.ID, func(tx pgx.Tx) error {
 		row, err := sqlc.New(tx).GetDunningSettings(ctx, ti.ID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			out.DefaultsInUse = true
-			out.RetryHours = defaultRetryHours(ti.Environment == env.Sandbox.String())
+			out.RetryHours = retryHours(defaults.DunningDefaults(sandbox), sandbox)
 			return nil
 		}
 		if err != nil {
@@ -47,15 +52,15 @@ func Get(ctx context.Context, app *pgxpool.Pool, ti tenant.Info) (*Settings, err
 	return out, nil
 }
 
-// defaultRetryHours shows the service-wide delays the way a tenant would set them: hours, or minutes in a sandbox tenant.
-func defaultRetryHours(sandbox bool) []int32 {
-	d, unit := sagacommand.DefaultDunningLive, time.Hour
+// retryHours shows delays the way a tenant would set them: hours, or minutes in a sandbox tenant.
+func retryHours(delays []time.Duration, sandbox bool) []int32 {
+	unit := time.Hour
 	if sandbox {
-		d, unit = sagacommand.DefaultDunningSandbox, time.Minute
+		unit = time.Minute
 	}
-	out := make([]int32, len(d))
-	for i, v := range d {
-		out[i] = int32(v / unit) //nolint:gosec // the defaults are small
+	out := make([]int32, len(delays))
+	for i, v := range delays {
+		out[i] = int32(v / unit) //nolint:gosec // a delay is a few days at most
 	}
 	return out
 }
