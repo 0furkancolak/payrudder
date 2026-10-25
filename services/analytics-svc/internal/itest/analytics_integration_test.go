@@ -26,9 +26,9 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/api"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/chmigrate"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/consumer"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/migrations"
 )
 
@@ -37,7 +37,7 @@ type world struct {
 	conn     driver.Conn
 	brokers  string
 	producer *kgo.Client
-	svc      *api.Server
+	svc      *grpcapi.Server
 }
 
 func start(t *testing.T) *world {
@@ -82,7 +82,7 @@ func start(t *testing.T) *world {
 	done := make(chan struct{})
 	go func() { _ = r.Run(rctx); close(done) }()
 	t.Cleanup(func() { cancel(); <-done })
-	w.svc = api.New(w.conn)
+	w.svc = grpcapi.New(w.conn)
 	return w
 }
 
