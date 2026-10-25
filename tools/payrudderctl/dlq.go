@@ -39,7 +39,7 @@ func dlq(args []string) error {
 	}
 	switch *broker {
 	case "kafka":
-		return dlqKafka(sub, strings.Split(*kafkaBrokers, ","), *topic, *limit, *yes)
+		return dlqKafka(sub, strings.Split(*kafkaBrokers, ","), *topic, *limit)
 	case "rabbitmq":
 	default:
 		return fmt.Errorf("--broker %s is not supported: rabbitmq or kafka", *broker)
@@ -105,7 +105,6 @@ func dlqList(ch *amqp.Channel) error {
 			return fmt.Errorf("inspect %s.dlq: %w (is the topology declared?)", q, err)
 		}
 		fmt.Fprintf(os.Stdout, "%-28s %d\n", q+".dlq", st.Messages)
-		// A failed passive declare closes the channel; reopen is not needed because we return on error.
 	}
 	return nil
 }
