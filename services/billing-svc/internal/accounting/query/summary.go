@@ -1,7 +1,9 @@
 package query
 
 import (
+	"cmp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/model"
@@ -90,18 +92,7 @@ func AddCoupons(cs []CurrencySummary, rows []CouponRow) {
 	}
 	for i := range cs {
 		slices.SortFunc(cs[i].Coupons, func(a, b CouponTotal) int {
-			switch {
-			case a.Discount != b.Discount:
-				if a.Discount > b.Discount {
-					return -1
-				}
-				return 1
-			case a.CouponCode < b.CouponCode:
-				return -1
-			case a.CouponCode > b.CouponCode:
-				return 1
-			}
-			return 0
+			return cmp.Or(cmp.Compare(b.Discount, a.Discount), strings.Compare(a.CouponCode, b.CouponCode)) // the most given away first
 		})
 	}
 }
@@ -208,29 +199,10 @@ func Build(from, to time.Time, gran string, income []IncomeRow, refunds []Refund
 			c.ByCategory = append(c.ByCategory, CategoryTotal{Category: k, Amount: v})
 		}
 		slices.SortFunc(c.ByCategory, func(a, b CategoryTotal) int {
-			switch {
-			case a.Amount != b.Amount:
-				if a.Amount > b.Amount {
-					return -1
-				}
-				return 1
-			case a.Category < b.Category:
-				return -1
-			case a.Category > b.Category:
-				return 1
-			}
-			return 0
+			return cmp.Or(cmp.Compare(b.Amount, a.Amount), strings.Compare(a.Category, b.Category)) // the biggest first
 		})
 		out = append(out, *c)
 	}
-	slices.SortFunc(out, func(a, b CurrencySummary) int {
-		switch {
-		case a.Currency < b.Currency:
-			return -1
-		case a.Currency > b.Currency:
-			return 1
-		}
-		return 0
-	})
+	slices.SortFunc(out, func(a, b CurrencySummary) int { return strings.Compare(a.Currency, b.Currency) })
 	return out
 }

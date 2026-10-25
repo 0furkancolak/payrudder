@@ -6,21 +6,27 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Handler implements the re-rating methods of billingv1.BillingAdminServiceServer.
 type Handler struct {
-	runs *runs.Manager
+	cmd *command.Commands
+	q   *sqlc.Queries
 }
 
 // New returns the handler.
-func New(mgr *runs.Manager) *Handler { return &Handler{runs: mgr} }
+func New(cmd *command.Commands, system *pgxpool.Pool) *Handler {
+	return &Handler{cmd: cmd, q: sqlc.New(system)}
+}
 
 // StartRerating implements billingv1.BillingAdminServiceServer.
 func (h *Handler) StartRerating(ctx context.Context, req *billingv1.StartReratingRequest) (*billingv1.StartReratingResponse, error) {
@@ -35,7 +41,7 @@ func (h *Handler) StartRerating(ctx context.Context, req *billingv1.StartReratin
 	if err != nil {
 		return nil, err
 	}
-	job, created, err := command.Start(ctx, h.runs, tid, req.GetPeriodId(), pv)
+	job, created, err := h.cmd.Start(ctx, tid, req.GetPeriodId(), pv)
 	if err != nil {
 		return nil, err
 	}
@@ -55,21 +61,21 @@ func (h *Handler) GetReratingJob(ctx context.Context, req *billingv1.GetRerating
 	if err != nil {
 		return nil, err
 	}
-	job, err := query.Get(ctx, h.runs, tid, id)
+	job, err := query.Get(ctx, h.q, tid, id)
 	if err != nil {
 		return nil, err
 	}
 	return &billingv1.GetReratingJobResponse{Job: reratingProto(job)}, nil
 }
 
-func reratingProto(j *runs.ReratingJob) *billingv1.ReratingJob {
+func reratingProto(j *model.Job) *billingv1.ReratingJob {
 	st := billingv1.ReratingStatus_RERATING_STATUS_UNSPECIFIED
 	switch j.Status {
-	case runs.ReratingRunning:
+	case model.Running:
 		st = billingv1.ReratingStatus_RERATING_STATUS_RUNNING
-	case runs.ReratingCompleted:
+	case model.Completed:
 		st = billingv1.ReratingStatus_RERATING_STATUS_COMPLETED
-	case runs.ReratingFailed:
+	case model.Failed:
 		st = billingv1.ReratingStatus_RERATING_STATUS_FAILED
 	}
 	out := &billingv1.ReratingJob{

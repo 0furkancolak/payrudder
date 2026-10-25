@@ -4,6 +4,7 @@ package command
 
 import (
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,8 +17,9 @@ import (
 // MaxStepAttempts is how often the sweeper issues the command of one step before giving up.
 const MaxStepAttempts = 3
 
-// MaxDunning is the number of payment retries after the first declined charge.
-const MaxDunning = 3
+// DefaultDunningAttempts is the number of payment retries after the first declined charge for a tenant that set no delays of its own (it may set up to six): the
+// number of delays PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX hold.
+const DefaultDunningAttempts = 3
 
 // InvoicesTopic is the Kafka topic of InvoiceFact events.
 const InvoicesTopic = "billing.invoices.v1"
@@ -90,6 +92,14 @@ func NewEngine(cfg Config) (*Engine, error) {
 		return nil, err
 	}
 	return e, nil
+}
+
+// DunningDefaults are the delays before payment retry 1..n of a tenant that set none: the configured ones for its environment, not the built-in ones.
+func (e *Engine) DunningDefaults(sandbox bool) []time.Duration {
+	if sandbox {
+		return slices.Clone(e.cfg.DunningSandbox)
+	}
+	return slices.Clone(e.cfg.DunningLive)
 }
 
 // Now exposes the engine's clock (a test clock in tests).

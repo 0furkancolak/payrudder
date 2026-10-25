@@ -14,14 +14,9 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
 	"github.com/0furkancolak/payrudder/pkg/einvoice/mock"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
-)
-
-// Environments an account can be for.
-const (
-	Sandbox = "sandbox"
-	Live    = "live"
 )
 
 // Modes an integrator account can run in.
@@ -57,14 +52,14 @@ type Put struct {
 // are never echoed back.
 func PutAccount(ctx context.Context, d Deps, tenant uuid.UUID, environment string, in Put) (store.EInvoiceAccountInfo, error) {
 	switch {
-	case environment == Sandbox && in.Provider != mock.Name:
+	case environment == env.Sandbox.String() && in.Provider != mock.Name:
 		return store.EInvoiceAccountInfo{}, refuse.New(http.StatusBadRequest, "einvoice.account.sandbox_mock_only", "a sandbox account can only use the mock provider")
-	case environment == Live && in.Provider == mock.Name && !d.AllowMockLive:
+	case environment == env.Live.String() && in.Provider == mock.Name && !d.AllowMockLive:
 		return store.EInvoiceAccountInfo{}, refuse.New(http.StatusBadRequest, "einvoice.account.invalid", "the mock provider is not allowed in the live environment")
 	}
 	if in.Mode == "" {
 		in.Mode = ModeProduction
-		if environment == Sandbox {
+		if environment == env.Sandbox.String() {
 			in.Mode = ModeTest
 		}
 	}

@@ -396,29 +396,6 @@ func (q *Queries) GetPaymentLinkRow(ctx context.Context, arg GetPaymentLinkRowPa
 	return i, err
 }
 
-const insertInvoiceLink = `-- name: InsertInvoiceLink :exec
-INSERT INTO payment_links (tenant_id, id, kind, invoice_id, token_hash, expires_at) VALUES ($1, $2, 'invoice', $3, $4, $5)
-`
-
-type InsertInvoiceLinkParams struct {
-	TenantID  uuid.UUID
-	ID        uuid.UUID
-	InvoiceID *uuid.UUID
-	TokenHash []byte
-	ExpiresAt time.Time
-}
-
-func (q *Queries) InsertInvoiceLink(ctx context.Context, arg InsertInvoiceLinkParams) error {
-	_, err := q.db.Exec(ctx, insertInvoiceLink,
-		arg.TenantID,
-		arg.ID,
-		arg.InvoiceID,
-		arg.TokenHash,
-		arg.ExpiresAt,
-	)
-	return err
-}
-
 const insertPaymentLink = `-- name: InsertPaymentLink :exec
 
 INSERT INTO payment_links (tenant_id, id, kind, parent_id, invoice_id, token_hash, expires_at, single_use, idempotency_key, request_hash, amount_minor, currency,

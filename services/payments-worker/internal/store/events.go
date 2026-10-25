@@ -47,9 +47,9 @@ type Attempt struct {
 
 // ChargeByKey finds the most recent charge attempt made under an idempotency key (the provider's conversation id).
 func (a Attempts) ChargeByKey(ctx context.Context, key string) (Attempt, bool, error) {
-	r, err := sqlc.New(a.DB).GetChargeAttemptByKey(ctx, key)
-	if err != nil {
-		return Attempt{}, false, notFound(err)
+	r, ok, err := found(sqlc.New(a.DB).GetChargeAttemptByKey(ctx, key))
+	if !ok {
+		return Attempt{}, false, err
 	}
 	return Attempt{TenantID: r.TenantID, InvoiceID: r.InvoiceID, Environment: r.Environment, Provider: r.Provider, AmountMinor: r.AmountMinor, Currency: r.Currency}, true, nil
 }

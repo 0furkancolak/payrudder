@@ -10,17 +10,16 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
+	einvoicemodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/model"
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
-
-var errNotFound = errkey.New(codes.NotFound, "einvoice.document.not_found", "e-document not found")
 
 // Get reads one e-document of a tenant.
 func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.GetEInvoiceDocumentRow, error) {
@@ -31,10 +30,10 @@ func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.G
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return out, errNotFound
+		return out, einvoicemodel.ErrNotFound
 	}
 	if err != nil {
-		return out, status.Error(codes.Internal, "internal error")
+		return out, apierr.Internal(ctx, err)
 	}
 	return out, nil
 }
@@ -97,7 +96,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 		return err
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	out := &Page{}
 	if len(rows) > 0 {
@@ -126,10 +125,10 @@ func FileURL(ctx context.Context, app *pgxpool.Pool, signer invoicequery.PDFSign
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", time.Time{}, errNotFound
+		return "", time.Time{}, einvoicemodel.ErrNotFound
 	}
 	if err != nil {
-		return "", time.Time{}, status.Error(codes.Internal, "internal error")
+		return "", time.Time{}, apierr.Internal(ctx, err)
 	}
 	key := keys.XmlKey
 	if kind == "pdf" {

@@ -12,13 +12,11 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
-	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices"
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -29,22 +27,16 @@ type Handler struct {
 	q query.Deps
 }
 
-// New returns the handler over the billing_app and billing_system pools. mgr makes the invoices of ad-hoc links and looks up customers and sellers; eng drives
+// New returns the handler over the billing_app and billing_system pools. backend makes the invoices of ad-hoc links and looks up customers and sellers; eng drives
 // their sagas.
-func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *sagacommand.Engine) *Handler {
-	h := &Handler{d: command.Deps{App: app, System: system, Engine: eng}, q: query.Deps{App: app, System: system}}
-	if mgr != nil {
-		h.d.Dir = mgr
-		h.q.Seller = func(ctx context.Context, tenantID uuid.UUID) (query.Seller, error) {
-			s, err := mgr.Seller(ctx, tenantID)
+func New(app, system *pgxpool.Pool, backend *command.Backend, eng *sagacommand.Engine) *Handler {
+	return &Handler{
+		d: command.Deps{App: app, System: system, Engine: eng, Dir: backend},
+		q: query.Deps{App: app, System: system, Seller: func(ctx context.Context, tenantID uuid.UUID) (query.Seller, error) {
+			s, err := backend.Seller(ctx, tenantID)
 			return query.Seller{Name: s.Name, LogoKey: s.LogoKey, Environment: s.Environment}, err
-		}
-	} else {
-		h.q.Seller = func(context.Context, uuid.UUID) (query.Seller, error) {
-			return query.Seller{}, errkey.New(codes.Unavailable, "billing.hosted.seller_unavailable", "seller lookup unavailable")
-		}
+		}},
 	}
-	return h
 }
 
 // WithPDFs enables the PDF and logo links of the hosted pages.
@@ -317,10 +309,7 @@ func (h *Handler) GetPortal(ctx context.Context, req *billingv1.GetPortalRequest
 		resp.CreditLots = append(resp.CreditLots, lot)
 	}
 	for _, p := range page.CreditPacks {
-		exp := int32(2)
-		if c, ok := money.LookupCurrency(p.Currency); ok {
-			exp = int32(c.Exponent) //nolint:gosec // 0..3
-		}
+		exp := query.CurrencyExponent(p.Currency)
 		pack := &billingv1.PortalCreditPack{Id: p.ID.String(), Name: p.Name, Credits: p.Credits, PriceMinor: p.PriceMinor, Currency: p.Currency, CurrencyExponent: exp}
 		if p.ValidityDays != nil {
 			pack.ValidityDays = *p.ValidityDays

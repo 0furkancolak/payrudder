@@ -6,6 +6,7 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 )
 
 // mailData is what every mail about an invoice carries.
@@ -27,7 +28,7 @@ func instructionData(s *saga, data map[string]string) {
 // notification is the mail about the outcome of an invoice: the receipt of a paid one, the failure of an uncollectible one.
 func (e *Engine) notification(s *saga) *commandsv1.SendNotification {
 	tmpl := "invoice_paid.v1"
-	if s.InvoiceStatus == "uncollectible" {
+	if s.InvoiceStatus == invmodel.StatusUncollectible {
 		tmpl = "payment_failed.v1"
 	}
 	data := mailData(s)

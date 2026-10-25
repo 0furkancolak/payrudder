@@ -17,7 +17,6 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 
 	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
-	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -35,14 +34,14 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
-	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
+	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
 	creditcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	billingreset "github.com/0furkancolak/payrudder/services/billing-svc/internal/sandboxreset"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
 
@@ -84,8 +83,8 @@ type Config struct {
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	errs = append(errs, c.CheckMigration())
-	if len(c.DunningLive) != sagacommand.MaxDunning || len(c.DunningSandbox) != sagacommand.MaxDunning {
-		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", sagacommand.MaxDunning))
+	if len(c.DunningLive) != sagacommand.DefaultDunningAttempts || len(c.DunningSandbox) != sagacommand.DefaultDunningAttempts {
+		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", sagacommand.DefaultDunningAttempts))
 	}
 	if c.TransferPoll < time.Minute {
 		errs = append(errs, errors.New("PAYRUDDER_TRANSFER_POLL must be at least 1m"))
@@ -141,8 +140,11 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	notes := creditnotecmd.New(creditnotecmd.Config{Pool: systemPool, Engine: eng, Log: log})
-	mgr, err := newRunManager(cfg, log, systemPool, eng, be, usageEndOffsets(kadm.NewClient(producer)), []runs.Chore{{Name: "credit note refunds not swept", Run: notes.SweepRefunds}})
+	mods, err := newModules(cfg, log, systemPool, eng, be)
+	if err != nil {
+		return err
+	}
+	mgr, err := newRunManager(cfg, log, systemPool, eng, be, mods, usageEndOffsets(kadm.NewClient(producer)))
 	if err != nil {
 		return err
 	}
@@ -160,7 +162,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	hh.AddCheck("kafka", producer.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return pub.Ping() })
 
-	srv, grpcHealth, err := newGRPCServer(cfg, log, api.Deps{App: appPool, System: systemPool, Runs: mgr, Engine: eng, CreditNotes: notes})
+	srv, grpcHealth, err := newGRPCServer(cfg, log, api.Deps{App: appPool, System: systemPool, Runs: mgr, Engine: eng, CreditNotes: mods.creditNotes, Rerating: mods.rerating, Inputs: mods.inputs, Hosted: mods.hosted})
 	if err != nil {
 		return err
 	}
@@ -168,7 +170,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	w := &workers{cfg: cfg, log: log, pool: systemPool, eng: eng, mgr: mgr, relay: relay, replies: rc,
+	w := &workers{cfg: cfg, log: log, pool: systemPool, eng: eng, mgr: mgr, events: mods.tenantEvents, relay: relay, replies: rc,
 		health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis}
 	return w.run(ctx)
 }
@@ -218,13 +220,20 @@ func (b *backends) close() {
 }
 
 // newRunManager builds the billing-run manager from the backend clients and the usage topic's end offsets.
-func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, endOffsets func(context.Context) (map[int32]int64, error), chores []runs.Chore) (*runs.Manager, error) {
-	return runs.NewManager(runs.Config{
+func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, mods *modules, endOffsets func(context.Context) (map[int32]int64, error)) (*runcmd.Manager, error) {
+	return runcmd.NewManager(runcmd.Config{
 		Pool: systemPool, Engine: eng,
-		Plans: plansv1.NewPlansServiceClient(be.plans), Events: plansv1.NewWebhookServiceClient(be.plans), Affiliates: plansv1.NewAffiliateServiceClient(be.plans), Admin: plansv1.NewAdminServiceClient(be.plans),
-		Ingest: ingestv1.NewIngestServiceClient(be.ingest), Aggregator: aggregatorv1.NewUsageQueryServiceClient(be.aggregator),
+		Inputs: mods.inputs, Invoices: mods.invoices,
+		Ingest:         ingestv1.NewIngestServiceClient(be.ingest),
 		EndOffsets:     endOffsets,
-		WatermarkDelay: cfg.WatermarkDelay, Log: log, Chores: chores,
+		WatermarkDelay: cfg.WatermarkDelay, Log: log,
+		Chores: []runcmd.Chore{
+			{Name: "fee billing failed", Run: mods.fees.Bill},
+			{Name: "credit note refunds not swept", Run: mods.creditNotes.SweepRefunds},
+			{Name: "payment links not expired", Run: mods.hosted.ExpireLinks},
+			{Name: "promotion reversals not delivered", Run: mods.hosted.ReversePromotions},
+			{Name: "re-rating resume failed", Run: mods.rerating.Resume},
+		},
 	})
 }
 
@@ -270,7 +279,8 @@ type workers struct {
 	log        *slog.Logger
 	pool       *pgxpool.Pool
 	eng        *sagacommand.Engine
-	mgr        *runs.Manager
+	mgr        *runcmd.Manager
+	events     *tenantevents.Relay
 	relay      *outbox.Relay
 	replies    *replies.Consumer
 	health     *health.Handler
@@ -294,7 +304,7 @@ func (w *workers) run(ctx context.Context) error {
 // startLoops starts the scheduler, the tenant-event flusher and the saga sweeper.
 func (w *workers) startLoops(ctx context.Context, g *app.Group) {
 	g.Go(func() error { loop(ctx, w.cfg.SchedulerInterval, "scheduler", w.log, w.mgr.Tick); return nil })
-	g.Go(func() error { loop(ctx, 5*time.Second, "tenant-events", w.log, w.mgr.FlushTenantEvents); return nil })
+	g.Go(func() error { loop(ctx, 5*time.Second, "tenant-events", w.log, w.events.Flush); return nil })
 	g.Go(func() error { loop(ctx, w.cfg.SweepInterval, "sweeper", w.log, w.sweep); return nil })
 }
 

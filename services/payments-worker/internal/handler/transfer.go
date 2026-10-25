@@ -27,12 +27,9 @@ func DeclineCode(detail string) string {
 	return strings.TrimSpace(code)
 }
 
-func pendingReply() *commandsv1.ReplyEnvelope {
-	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{State: commandsv1.PaymentStatus_STATE_PENDING}}}
-}
-
-func notFoundReply() *commandsv1.ReplyEnvelope {
-	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{State: commandsv1.PaymentStatus_STATE_NOT_FOUND}}}
+// statusReply is the answer to a status query: the state, and the decline code of a declined one.
+func statusReply(state commandsv1.PaymentStatus_State, declineCode string) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{State: state, DeclineCode: declineCode}}}
 }
 
 // window is how long this account lets a transfer wait.
@@ -59,7 +56,7 @@ func (h *Handler) manualStatus(ctx context.Context, run commandRun, invoice uuid
 		return nil, err
 	}
 	if !ok {
-		return notFoundReply(), nil
+		return statusReply(commandsv1.PaymentStatus_STATE_NOT_FOUND, ""), nil
 	}
 	name := mc.Name()
 	got, err := h.Transfers.Received(ctx, run.tenant, invoice, name)
@@ -67,31 +64,26 @@ func (h *Handler) manualStatus(ctx context.Context, run commandRun, invoice uuid
 		return nil, err
 	}
 	if charge.AmountMinor > 0 && got.Minor >= charge.AmountMinor {
-		return statusFromLedger(store.Fact{Status: "succeeded", ProviderRef: got.LastRef}), nil
+		return statusFromLedger(store.Fact{Status: store.StatusSucceeded, ProviderRef: got.LastRef}), nil
 	}
 	if c, found, err := h.Transfers.Closure(ctx, name, key); err != nil {
 		return nil, err
 	} else if found {
-		return declinedStatus(DeclineCode(c.Detail)), nil
+		return statusReply(commandsv1.PaymentStatus_STATE_DECLINED, DeclineCode(c.Detail)), nil
 	}
 	p, found, err := h.Transfers.Pending(ctx, name, key)
 	if err != nil {
 		return nil, err
 	}
 	if !found {
-		return notFoundReply(), nil
+		return statusReply(commandsv1.PaymentStatus_STATE_NOT_FOUND, ""), nil
 	}
 	if h.now().Sub(p.Since) <= h.window(mc) {
-		return pendingReply(), nil
+		return statusReply(commandsv1.PaymentStatus_STATE_PENDING, ""), nil
 	}
 	if _, err := h.Transfers.Close(ctx, store.ClosureEntry{TenantID: run.tenant, InvoiceID: invoice, Provider: name, Environment: run.env, AmountMinor: charge.AmountMinor,
-		Currency: charge.Currency, IdempotencyKey: key, Source: "command", Detail: TransferExpired + ": no transfer within the payment window"}); err != nil {
+		Currency: charge.Currency, IdempotencyKey: key, Source: store.SourceCommand, Detail: TransferExpired + ": no transfer within the payment window"}); err != nil {
 		return nil, err
 	}
-	return declinedStatus(TransferExpired), nil
-}
-
-func declinedStatus(code string) *commandsv1.ReplyEnvelope {
-	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{
-		State: commandsv1.PaymentStatus_STATE_DECLINED, DeclineCode: code}}}
+	return statusReply(commandsv1.PaymentStatus_STATE_DECLINED, TransferExpired), nil
 }

@@ -43,6 +43,7 @@ func TestBilling(t *testing.T) {
 		{"StatusNotFoundRechargesWithTheSameIdempotencyKey", testStatusNotFound},
 		{"DunningEndsUncollectible", testDunning},
 		{"TenantDunningSettingsReplaceTheDefaults", testTenantDunningSettings},
+		{"DunningDefaultsAreTheConfiguredOnes", testDunningDefaultsAreTheConfiguredOnes},
 		{"AccountingSumsIncomeAndExpensesPerCurrency", testAccounting},
 		{"DashboardStatsTopCustomersAndAging", testDashboardStats},
 		{"CreditPacks", testCreditPacks},
@@ -58,6 +59,7 @@ func TestBilling(t *testing.T) {
 		{"CreditPacksAreBoughtFromThePortal", testCreditPacksAreBoughtFromThePortal},
 		{"CreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold", testCreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold},
 		{"ClosePeriodTwiceMakesOneRunAndOneInvoicePerCustomer", testClosePeriodTwice},
+		{"ClosePeriodRefusesABadAndAnOpenPeriod", testClosePeriodRefusals},
 		{"InvoiceNumbersAreGapFreeUnderConcurrency", testGapFree},
 		{"SandboxClosePeriodNowAndLiveIsRefused", testSandbox},
 		{"VoidingAPaidInvoiceRefundsIt", testVoidRefund},
@@ -610,7 +612,7 @@ func testGapFree(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			errs <- e.mgr.Finalize(context.Background(), e.tid, id)
+			errs <- e.inv.Finalize(context.Background(), e.tid, id)
 		}()
 	}
 	wg.Wait()
@@ -725,7 +727,7 @@ func testRandomRepliesNeverDoubleCharge(t *testing.T) {
 			VALUES ($1,$2,$3,'2026-10','REGULAR',$4,'USD',500,500,'draft',$5)`, e.tid, invID, uuid.New(), uuid.New(), snap); err != nil {
 			t.Fatal(err)
 		}
-		if err := e.mgr.Finalize(context.Background(), e.tid, invID); err != nil {
+		if err := e.inv.Finalize(context.Background(), e.tid, invID); err != nil {
 			t.Fatal(err)
 		}
 		sagaID := uuid.NewSHA1(uuid.MustParse("c0a1d7f2-3e57-5b6e-8d13-9a4f0b7c2e41"), []byte("saga|"+invID.String()))

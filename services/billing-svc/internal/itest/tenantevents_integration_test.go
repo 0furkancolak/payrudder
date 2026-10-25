@@ -62,14 +62,14 @@ func testTenantEvents(t *testing.T) {
 
 	// plans-svc being down leaves everything in place; once it is back each event is handed over once and removed.
 	e.events.failWith(status.Error(codes.Unavailable, "plans-svc is down"))
-	if err := e.mgr.FlushTenantEvents(context.Background()); err == nil {
+	if err := e.relay.Flush(context.Background()); err == nil {
 		t.Fatal("a failed hand-over must be reported")
 	}
 	if len(e.events.recorded(e.tid)) != 0 {
 		t.Fatal("nothing should be recorded while plans-svc is down")
 	}
 	e.events.failWith(nil)
-	if err := e.mgr.FlushTenantEvents(context.Background()); err != nil {
+	if err := e.relay.Flush(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	got := e.events.recorded(e.tid)

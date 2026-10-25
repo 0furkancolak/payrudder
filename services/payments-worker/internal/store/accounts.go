@@ -117,12 +117,12 @@ func (a Accounts) List(ctx context.Context, tenant uuid.UUID) ([]AccountInfo, er
 
 // Settings opens an account's settings. updated lets callers cache what they built from it.
 func (a Accounts) Settings(ctx context.Context, tenant uuid.UUID, provider, env string) (settings []byte, updated time.Time, err error) {
-	row, err := sqlc.New(a.DB).GetProviderAccountSettings(ctx, sqlc.GetProviderAccountSettingsParams{TenantID: tenant, Provider: provider, Environment: env})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, time.Time{}, ErrNoAccount
-	}
+	row, ok, err := found(sqlc.New(a.DB).GetProviderAccountSettings(ctx, sqlc.GetProviderAccountSettingsParams{TenantID: tenant, Provider: provider, Environment: env}))
 	if err != nil {
 		return nil, time.Time{}, err
+	}
+	if !ok {
+		return nil, time.Time{}, ErrNoAccount
 	}
 	settings, err = a.Box.Open(row.SettingsEnc, aad(tenant, provider, env))
 	return settings, row.UpdatedAt, err

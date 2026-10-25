@@ -142,14 +142,18 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	iyzico.Register(registry)
 	paddle.Register(registry)
 	einvoices := newEInvoiceRegistry(cfg)
-	if err := wireEInvoice(cfg, pool, h, einvoices, log); err != nil {
+	box, err := newBox(cfg.SecretsKey)
+	if err != nil {
+		return err
+	}
+	if err := wireEInvoice(cfg, pool, box, h, einvoices, log); err != nil {
 		return err
 	}
 	banktransfer.Register(registry)
 	var httpHandler http.Handler
-	if cfg.SecretsKey != "" {
+	if box != nil {
 		var closeConns func()
-		if httpHandler, closeConns, err = webhookHandler(*cfg, pool, h, registry, einvoices, log); err != nil {
+		if httpHandler, closeConns, err = webhookHandler(*cfg, pool, box, h, registry, einvoices, log); err != nil {
 			return err
 		}
 		defer closeConns()
@@ -162,6 +166,19 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
 	return serve(ctx, cfg, log, hh, w, httpHandler)
+}
+
+// newBox opens the box that seals the stored provider and e-invoice credentials. Without a key (PAYRUDDER_SECRETS_KEY) the features that need it are off,
+// and the box is nil.
+func newBox(secretsKey string) (*secretbox.Box, error) {
+	if secretsKey == "" {
+		return nil, nil
+	}
+	key, err := secretbox.ParseKey(secretsKey)
+	if err != nil {
+		return nil, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err)
+	}
+	return secretbox.New(key)
 }
 
 // tenantDirectory is how the worker learns the environment of a command's tenant, to refuse a command that disagrees (ADR 0023). It asks plans-svc and keeps
@@ -181,7 +198,14 @@ func tenantDirectory(cfg *Config) (*env.Directory, func(), error) {
 			return "", err
 		}
 		return env.FromProto(r.GetTenant().GetEnvironment())
-	}, 0), func() { _ = conn.Close() }, nil
+	}, 0), func() { closeConn(conn) }, nil
+}
+
+// closeConn closes a gRPC client connection at shutdown; there is nothing to do about a failure but to say so.
+func closeConn(c *grpc.ClientConn) {
+	if err := c.Close(); err != nil {
+		slog.Warn("closing a gRPC connection", "err", err)
+	}
 }
 
 // newHandler builds the command handler: sandbox tenants always use mock-psp, live tenants only when configured.
@@ -212,18 +236,13 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 }
 
 // webhookHandler builds the provider-account, webhook and operator server. The returned func closes its gRPC connections.
-func webhookHandler(cfg Config, pool *pgxpool.Pool, h *handler.Handler, registry *payments.Registry, einvoices *einvoice.Registry, log *slog.Logger) (http.Handler, func(), error) {
-	key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
-	box, err := secretbox.New(key)
-	if err != nil {
-		return nil, nil, err
-	}
+func webhookHandler(cfg Config, pool *pgxpool.Pool, box *secretbox.Box, h *handler.Handler, registry *payments.Registry, einvoices *einvoice.Registry, log *slog.Logger) (http.Handler, func(), error) {
 	accounts := store.Accounts{DB: pool, Box: box}
 	h.Resolver = &handler.Resolver{Registry: registry, Accounts: accounts}
 	var conns []*grpc.ClientConn
 	closeConns := func() {
 		for _, c := range conns {
-			_ = c.Close()
+			closeConn(c)
 		}
 	}
 	dial := func(addr, what string) (*grpc.ClientConn, error) {
@@ -289,14 +308,9 @@ func newEInvoiceRegistry(cfg *Config) *einvoice.Registry {
 
 // wireEInvoice gives the command handler its e-invoice side. Sandbox documents need only the database (the mock); live ones also need the sealed accounts
 // (PAYRUDDER_SECRETS_KEY); files need object storage.
-func wireEInvoice(cfg *Config, pool *pgxpool.Pool, h *handler.Handler, registry *einvoice.Registry, log *slog.Logger) error {
+func wireEInvoice(cfg *Config, pool *pgxpool.Pool, box *secretbox.Box, h *handler.Handler, registry *einvoice.Registry, log *slog.Logger) error {
 	ew := &einvoiceworker.Handler{Registry: registry, Issuances: store.EInvoiceIssuances{DB: pool}, Log: log, Demo: cfg.Demo}
-	if cfg.SecretsKey != "" {
-		key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
-		box, err := secretbox.New(key)
-		if err != nil {
-			return err
-		}
+	if box != nil {
 		ew.Accounts = store.EInvoiceAccounts{DB: pool, Box: box}
 	}
 	if cfg.S3AccessKey != "" {

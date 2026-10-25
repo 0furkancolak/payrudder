@@ -9,18 +9,18 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
+	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
+	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 )
 
 // Handler implements the billing-run methods of billingv1.SandboxServiceServer and billingv1.BillingAdminServiceServer.
 type Handler struct {
-	runs *runs.Manager
+	runs *runcmd.Manager
 }
 
 // New returns the handler.
-func New(mgr *runs.Manager) *Handler { return &Handler{runs: mgr} }
+func New(mgr *runcmd.Manager) *Handler { return &Handler{runs: mgr} }
 
 // ClosePeriodNow implements billingv1.SandboxServiceServer.
 func (h *Handler) ClosePeriodNow(ctx context.Context, req *billingv1.ClosePeriodNowRequest) (*billingv1.ClosePeriodNowResponse, error) {
@@ -28,11 +28,11 @@ func (h *Handler) ClosePeriodNow(ctx context.Context, req *billingv1.ClosePeriod
 	if err != nil {
 		return nil, err
 	}
-	run, err := command.ClosePeriodNow(ctx, h.runs, ti, req.GetPeriodId())
+	run, err := h.runs.ClosePeriodNow(ctx, ti, req.GetPeriodId())
 	if err != nil {
 		return nil, err
 	}
-	return &billingv1.ClosePeriodNowResponse{Run: runProto(run, run.InvoiceCount)}, nil
+	return &billingv1.ClosePeriodNowResponse{Run: runProto(run)}, nil
 }
 
 // ClosePeriod implements billingv1.BillingAdminServiceServer.
@@ -44,11 +44,11 @@ func (h *Handler) ClosePeriod(ctx context.Context, req *billingv1.ClosePeriodReq
 	if err != nil {
 		return nil, err
 	}
-	run, err := command.ClosePeriod(ctx, h.runs, tid, req.GetPeriodId())
+	run, err := h.runs.ClosePeriod(ctx, tid, req.GetPeriodId())
 	if err != nil {
 		return nil, err
 	}
-	return &billingv1.ClosePeriodResponse{Run: runProto(run, run.InvoiceCount)}, nil
+	return &billingv1.ClosePeriodResponse{Run: runProto(run)}, nil
 }
 
 // GetBillingRun implements billingv1.BillingAdminServiceServer.
@@ -64,26 +64,26 @@ func (h *Handler) GetBillingRun(ctx context.Context, req *billingv1.GetBillingRu
 	if err != nil {
 		return nil, err
 	}
-	return &billingv1.GetBillingRunResponse{Run: runProto(run, run.InvoiceCount)}, nil
+	return &billingv1.GetBillingRunResponse{Run: runProto(run)}, nil
 }
 
-func runProto(r *runs.Run, invoices int) *billingv1.BillingRun {
+func runProto(r *runmodel.Run) *billingv1.BillingRun {
 	out := &billingv1.BillingRun{
-		TenantId: r.TenantID.String(), PeriodId: r.PeriodID, CutoffTime: timestamppb.New(r.CutoffAt), InvoiceCount: int32(invoices), //nolint:gosec // small
+		TenantId: r.TenantID.String(), PeriodId: r.PeriodID, CutoffTime: timestamppb.New(r.CutoffAt), InvoiceCount: int32(r.InvoiceCount), //nolint:gosec // small
 		LastError: r.LastError,
 	}
 	switch r.Status {
-	case runs.Scheduled:
+	case runmodel.Scheduled:
 		out.Status = billingv1.RunStatus_RUN_STATUS_SCHEDULED
-	case runs.WaitingWatermark:
+	case runmodel.WaitingWatermark:
 		out.Status = billingv1.RunStatus_RUN_STATUS_WAITING_WATERMARK
-	case runs.Rating:
+	case runmodel.Rating:
 		out.Status = billingv1.RunStatus_RUN_STATUS_RATING
-	case runs.Invoicing:
+	case runmodel.Invoicing:
 		out.Status = billingv1.RunStatus_RUN_STATUS_INVOICING
-	case runs.Completed:
+	case runmodel.Completed:
 		out.Status = billingv1.RunStatus_RUN_STATUS_COMPLETED
-	case runs.Failed:
+	case runmodel.Failed:
 		out.Status = billingv1.RunStatus_RUN_STATUS_FAILED
 	}
 	if r.Generation != nil {

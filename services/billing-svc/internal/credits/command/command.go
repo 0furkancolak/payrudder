@@ -16,11 +16,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
@@ -40,23 +42,10 @@ const (
 	SourcePurchase = "purchase"
 )
 
-// Pack is a credit pack as stored.
-type Pack struct {
-	ID         uuid.UUID
-	Name       string
-	Credits    int64
-	PriceMinor int64
-	Currency   string
-	Active     bool
-	CreatedAt  time.Time
-	// ValidityDays is how long the credits bought from the pack last; nil means they never expire.
-	ValidityDays *int32
-}
-
 // CreatePack adds a pack to the tenant's catalogue.
 //
 // validityDays is how many days the credits of a purchase last (1..3650); 0 means they never expire.
-func CreatePack(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, name string, credits, priceMinor int64, currency string, validityDays int32) (*Pack, error) {
+func CreatePack(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, name string, credits, priceMinor int64, currency string, validityDays int32) (*model.Pack, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || len(name) > maxNameLen {
 		return nil, errkey.New(codes.InvalidArgument, "billing.credits.bad_pack", "a pack needs a name of 1 to 80 characters")
@@ -70,7 +59,7 @@ func CreatePack(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, name
 	if validityDays < 0 || validityDays > MaxValidityDays {
 		return nil, errkey.New(codes.InvalidArgument, "billing.credits.bad_validity", "validity_days must be 1 to 3650, or 0 for credits that never expire")
 	}
-	p := &Pack{ID: uuid.New(), Name: name, Credits: credits, PriceMinor: priceMinor, Currency: currency, Active: true}
+	p := &model.Pack{ID: uuid.New(), Name: name, Credits: credits, PriceMinor: priceMinor, Currency: currency, Active: true}
 	var validity *int32
 	if validityDays > 0 {
 		validity = &validityDays
@@ -82,7 +71,7 @@ func CreatePack(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, name
 		return err
 	})
 	if err != nil {
-		return nil, internal(err)
+		return nil, apierr.Internal(ctx, err)
 	}
 	return p, nil
 }
@@ -96,7 +85,7 @@ func SetPackActive(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUI
 		return err
 	})
 	if err != nil {
-		return internal(err)
+		return apierr.Internal(ctx, err)
 	}
 	if n == 0 {
 		return errkey.New(codes.NotFound, "billing.credits.pack_not_found", "no such credit pack")
@@ -140,16 +129,19 @@ func Grant(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UUI
 				return balanceInto(ctx, q, tenantID, customerID, out)
 			}
 		}
-		if err := grantLot(ctx, q, tenantID, customerID, credits, source, nil, expires, reason, key); err != nil {
+		if _, err := grantLot(ctx, q, tenantID, customerID, credits, source, nil, expires, reason, key); err != nil {
 			return err
 		}
 		return balanceInto(ctx, q, tenantID, customerID, out)
 	})
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrap(ctx, err)
 	}
 	return out, nil
 }
+
+// purchaseReason is what the ledger says about credits that came with a paid pack.
+const purchaseReason = "credit pack purchase"
 
 // GrantPurchase adds the credits of a paid pack inside the caller's transaction. ref identifies the payment (its invoice): a payment grants once, however
 // often the confirmation arrives. expires is nil for credits that never expire. It reports whether credits were added.
@@ -158,17 +150,10 @@ func GrantPurchase(ctx context.Context, tx pgx.Tx, tenantID, customerID uuid.UUI
 	if err := q.LockCustomerCredits(ctx, sqlc.LockCustomerCreditsParams{TenantID: tenantID, CustomerID: customerID}); err != nil {
 		return false, err
 	}
-	lot, err := q.InsertLot(ctx, sqlc.InsertLotParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, Granted: credits, Source: SourcePurchase, SourceRef: &ref, ExpiresAt: expires})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil // this payment was granted before
-	}
-	if err != nil {
-		return false, err
-	}
 	if reason == "" {
-		reason = "credit pack purchase"
+		reason = purchaseReason
 	}
-	return true, q.InsertLedger(ctx, sqlc.InsertLedgerParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, LotID: lot, Kind: "grant", Amount: credits, Reason: reason})
+	return grantLot(ctx, q, tenantID, customerID, credits, SourcePurchase, &ref, expires, reason, "")
 }
 
 // Purchase is a paid credit-pack invoice, as the saga tells it when the invoice reaches PAID.
@@ -202,7 +187,7 @@ func PurchasePaid(ctx context.Context, tx pgx.Tx, p Purchase) error {
 		t := p.Now.AddDate(0, 0, int(p.ValidityDays))
 		expires = &t
 	}
-	reason := "credit pack purchase"
+	reason := purchaseReason
 	if p.PackName != "" {
 		reason += ": " + p.PackName
 		if p.Quantity > 1 {
@@ -232,12 +217,17 @@ func PurchasePaid(ctx context.Context, tx pgx.Tx, p Purchase) error {
 	return tenantevents.Write(ctx, tx, p.TenantID, tenantevents.CreditsPurchased, p.InvoiceID.String(), p.Now, data)
 }
 
-func grantLot(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UUID, credits int64, source string, ref *string, expires *time.Time, reason, key string) error {
+// grantLot opens a lot of credits and writes its grant to the ledger. It reports false, and writes nothing, when a lot with the same source reference exists
+// already: a payment is granted once.
+func grantLot(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UUID, credits int64, source string, ref *string, expires *time.Time, reason, key string) (bool, error) {
 	lot, err := q.InsertLot(ctx, sqlc.InsertLotParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, Granted: credits, Source: source, SourceRef: ref, ExpiresAt: expires})
-	if err != nil {
-		return err
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
 	}
-	return q.InsertLedger(ctx, sqlc.InsertLedgerParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, LotID: lot, Kind: "grant", Amount: credits, IdempotencyKey: keyPtr(key), Reason: reason})
+	if err != nil {
+		return false, err
+	}
+	return true, q.InsertLedger(ctx, sqlc.InsertLedgerParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, LotID: lot, Kind: "grant", Amount: credits, IdempotencyKey: store.NilIfEmpty(key), Reason: reason})
 }
 
 // Consume takes credits from the lots that expire first. It fails with billing.credits.insufficient and takes nothing when the balance is too small. The key is
@@ -306,7 +296,7 @@ func Consume(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.U
 		return announceLow(ctx, tx, tenantID, customerID, externalID, key, out.Balance, credits)
 	})
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrap(ctx, err)
 	}
 	return out, nil
 }
@@ -337,7 +327,7 @@ func SetLowThreshold(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID,
 		return sqlc.New(tx).UpsertCreditSettings(ctx, sqlc.UpsertCreditSettingsParams{TenantID: tenantID, LowThreshold: threshold})
 	})
 	if err != nil {
-		return internal(err)
+		return apierr.Internal(ctx, err)
 	}
 	return nil
 }
@@ -387,19 +377,10 @@ func checkAmount(credits int64, reason, key string) error {
 	return nil
 }
 
-func keyPtr(k string) *string {
-	if k == "" {
-		return nil
-	}
-	return &k
-}
-
 // wrap passes errors that carry a key through and hides the rest.
-func wrap(err error) error {
+func wrap(ctx context.Context, err error) error {
 	if errkey.Of(err) != "" {
 		return err
 	}
-	return internal(err)
+	return apierr.Internal(ctx, err)
 }
-
-func internal(error) error { return status.Error(codes.Internal, "internal error") }

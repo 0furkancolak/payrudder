@@ -19,6 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 )
 
 func wantKey(t *testing.T, err error, code codes.Code, key string) {
@@ -97,7 +98,7 @@ func testCreditsConsumeTheSoonestExpiryFirst(t *testing.T) {
 	}
 	_, err = command.Grant(ctx, shared.app, tid, cid, 7, "promo", &soon, "launch", "g-promo")
 	wantKey(t, err, codes.AlreadyExists, "billing.credits.key_reused")
-	_, err = command.Grant(ctx, shared.app, tid, cid, 5, "promo", ptr(time.Now().Add(-time.Minute)), "", "")
+	_, err = command.Grant(ctx, shared.app, tid, cid, 5, "promo", store.Ptr(time.Now().Add(-time.Minute)), "", "")
 	wantKey(t, err, codes.InvalidArgument, "billing.credits.bad_expiry")
 	_, err = command.Grant(ctx, shared.app, tid, cid, 5, "purchase", nil, "", "")
 	wantKey(t, err, codes.InvalidArgument, "billing.credits.bad_source")
@@ -242,5 +243,3 @@ func testAPaidPackGrantsOnce(t *testing.T) {
 		t.Fatalf("balance = %d, want 2000", got)
 	}
 }
-
-func ptr[T any](v T) *T { return &v }

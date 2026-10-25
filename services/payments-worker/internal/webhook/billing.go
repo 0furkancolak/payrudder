@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // BillingAPI is what payments-worker asks of billing-svc, as the tenant: its invoices (for the reconciliation) and the settling of a payment made on a hosted page.
@@ -22,14 +23,14 @@ type BillingClient struct {
 }
 
 func (b BillingClient) ListInvoices(ctx context.Context, id uuid.UUID, req *billingv1.ListInvoicesRequest) (*billingv1.ListInvoicesResponse, error) {
-	return b.Client.ListInvoices(as(ctx, id), req)
+	return b.Client.ListInvoices(tenant.OutgoingFor(ctx, id), req)
 }
 
 func (b BillingClient) GetInvoice(ctx context.Context, id uuid.UUID, invoice string) (*billingv1.Invoice, error) {
-	r, err := b.Client.GetInvoice(as(ctx, id), &billingv1.GetInvoiceRequest{InvoiceId: invoice})
+	r, err := b.Client.GetInvoice(tenant.OutgoingFor(ctx, id), &billingv1.GetInvoiceRequest{InvoiceId: invoice})
 	return r.GetInvoice(), err
 }
 
 func (b BillingClient) SettleInvoicePayment(ctx context.Context, id uuid.UUID, req *billingv1.SettleInvoicePaymentRequest) (*billingv1.SettleInvoicePaymentResponse, error) {
-	return b.Client.SettleInvoicePayment(as(ctx, id), req)
+	return b.Client.SettleInvoicePayment(tenant.OutgoingFor(ctx, id), req)
 }

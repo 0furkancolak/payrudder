@@ -162,7 +162,7 @@ func Reject(ctx context.Context, d Deps, in Close) (query.State, error) {
 	}
 	detail := code + ": " + strings.TrimSpace(in.Reason) + " (by " + actor(in.Actor) + ")"
 	if _, err := d.Transfers.Close(ctx, store.ClosureEntry{TenantID: in.Tenant, InvoiceID: in.Invoice, Provider: banktransfer.Name, Environment: st.Charge.Environment,
-		AmountMinor: st.Charge.AmountMinor, Currency: st.Charge.Currency, IdempotencyKey: st.Charge.IdempotencyKey, Source: "manual", Detail: detail}); err != nil {
+		AmountMinor: st.Charge.AmountMinor, Currency: st.Charge.Currency, IdempotencyKey: st.Charge.IdempotencyKey, Source: store.SourceManual, Detail: detail}); err != nil {
 		return query.State{}, err
 	}
 	d.nudge(ctx, in.Tenant, in.Invoice)

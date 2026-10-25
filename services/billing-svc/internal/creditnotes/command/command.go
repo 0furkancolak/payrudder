@@ -12,9 +12,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/model"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -65,7 +65,7 @@ func (c *Commands) Create(ctx context.Context, tenantID, invoiceID uuid.UUID, am
 	case errors.Is(err, model.ErrBadAmount):
 		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_amount", err.Error())
 	case err != nil:
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	return cn, nil
 }
@@ -79,7 +79,7 @@ func (c *Commands) RetryRefund(ctx context.Context, tenantID, creditNoteID uuid.
 	case errors.Is(err, model.ErrRefundNotFailed):
 		return nil, errkey.New(codes.FailedPrecondition, "billing.credit_note.refund_not_failed", err.Error())
 	case err != nil:
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	return cn, nil
 }

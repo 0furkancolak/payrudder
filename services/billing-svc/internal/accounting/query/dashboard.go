@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -89,7 +91,7 @@ func Dashboard(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, fromD
 		return nil
 	})
 	if err != nil {
-		return nil, nil, internal()
+		return nil, nil, apierr.Internal(ctx, err)
 	}
 	out := make([]DashboardCurrency, 0, len(byCur))
 	for _, c := range byCur {
@@ -98,14 +100,6 @@ func Dashboard(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, fromD
 		})
 		out = append(out, *c)
 	}
-	slices.SortFunc(out, func(a, b DashboardCurrency) int {
-		switch {
-		case a.Currency < b.Currency:
-			return -1
-		case a.Currency > b.Currency:
-			return 1
-		}
-		return 0
-	})
+	slices.SortFunc(out, func(a, b DashboardCurrency) int { return strings.Compare(a.Currency, b.Currency) })
 	return out, recent, nil
 }

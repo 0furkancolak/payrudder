@@ -80,6 +80,10 @@ func failed(key, msg string, retryable bool) *commandsv1.ReplyEnvelope {
 		State: "failed", Retryable: retryable, ErrorKey: key, ErrorMessage: strx.Truncate(msg, 400)}}}
 }
 
+func cancelledReply() *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_EInvoiceResult{EInvoiceResult: &commandsv1.EInvoiceResult{State: "cancelled"}}}
+}
+
 func issued(i store.Issuance) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_EInvoiceResult{EInvoiceResult: &commandsv1.EInvoiceResult{
 		State: "issued", LegalNumber: i.LegalNumber, ExternalId: i.ExternalID, DocumentType: i.DocumentType, Provider: i.Provider, XmlObjectKey: i.XMLKey, PdfObjectKey: i.PDFKey}}}
@@ -155,7 +159,7 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 	if err != nil {
 		return nil, err
 	}
-	if found && (prior.Status == "issued" || prior.Status == "cancelled") {
+	if found && (prior.Status == store.IssuanceIssued || prior.Status == store.IssuanceCancelled) {
 		return issued(prior), nil // answered before; the integrator is not asked again
 	}
 
@@ -168,18 +172,9 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 		ApplySandboxDefaults(&d)
 	}
 	if d.Kind == pkg.KindCreditNote {
-		origID, err := uuid.Parse(cmp.Or(c.GetOriginalDocumentId(), uuid.Nil.String()))
-		if err != nil {
-			return nil, fmt.Errorf("%w: original document id: %w", workerx.ErrPoison, err)
+		if reply, err := h.referenceOriginal(ctx, c, tenantID, &d); reply != nil || err != nil {
+			return reply, err
 		}
-		orig, ok, err := h.Issuances.Get(ctx, origID, tenantID)
-		if err != nil {
-			return nil, err
-		}
-		if !ok || orig.Status != "issued" || orig.LegalNumber == "" {
-			return failed(KeyUnavailable, "the invoice this credit note corrects has not been issued yet", true), nil
-		}
-		d.Reference.Number = orig.LegalNumber
 	}
 	if reply, err := h.decideType(ctx, prov, &d); reply != nil || err != nil {
 		return reply, err
@@ -187,26 +182,12 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 	if !prov.Capabilities().Supports(d.Type) {
 		return failed(KeyAccountInvalid, fmt.Sprintf("%s cannot send %s documents", name, d.Type), false), nil
 	}
-	if prov.Capabilities().Name != mock.Name && sandbox {
-		return failed(KeyAccountInvalid, "a sandbox document can only reach the mock provider", false), nil
-	}
 	if d.Type == pkg.TypeEArsiv && d.Buyer.TaxID == "" {
 		d.Buyer.TaxID = consumerTaxID
 	}
 	body, err := ubl.Build(d)
 	if err != nil {
-		var inv *ubl.InvalidError
-		if errors.As(err, &inv) {
-			key := KeyRejected
-			switch {
-			case strings.HasPrefix(inv.Field, "seller"):
-				key = KeySellerData
-			case strings.HasPrefix(inv.Field, "buyer"):
-				key = KeyBuyerData
-			}
-			return failed(key, inv.Field+": "+inv.Msg, false), nil
-		}
-		return failed(KeyRejected, err.Error(), false), nil
+		return invalidDocument(err), nil
 	}
 
 	if _, err := h.Issuances.Begin(ctx, docID, tenantID, env, name, string(d.Kind), string(d.Type)); err != nil {
@@ -220,14 +201,7 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 		return classify(err), nil
 	}
 	ref := pkg.Ref{ExternalID: res.ExternalID, UUID: d.UUID, Type: d.Type}
-	if res.State == pkg.StatePending || res.LegalNumber == "" {
-		// Accepted but not confirmed (or confirmed without a number): ask once. If it is still not issued billing-svc asks again after its backoff, and the
-		// repeat of Issue under the same UUID finds the same document.
-		st, serr := prov.Status(ctx, ref)
-		if serr == nil && st.State == pkg.StateIssued && st.LegalNumber != "" {
-			res.State, res.LegalNumber = pkg.StateIssued, st.LegalNumber
-		}
-	}
+	res = confirmed(ctx, prov, ref, res)
 	switch {
 	case res.State == pkg.StateRejected:
 		return failed(KeyRejected, "the integrator rejected the document", false), nil
@@ -240,6 +214,51 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 		return nil, err // the integrator has it; the repeat finds it by UUID and records the same number
 	}
 	return issued(store.Issuance{LegalNumber: res.LegalNumber, ExternalID: res.ExternalID, DocumentType: string(d.Type), Provider: name, XMLKey: xmlKey, PDFKey: pdfKey}), nil
+}
+
+// referenceOriginal gives a credit note the legal number of the invoice it corrects. A non-nil reply is the answer when the invoice has not been issued yet.
+func (h *Handler) referenceOriginal(ctx context.Context, c *commandsv1.IssueEInvoice, tenantID uuid.UUID, d *pkg.Document) (*commandsv1.ReplyEnvelope, error) {
+	origID, err := uuid.Parse(cmp.Or(c.GetOriginalDocumentId(), uuid.Nil.String()))
+	if err != nil {
+		return nil, fmt.Errorf("%w: original document id: %w", workerx.ErrPoison, err)
+	}
+	orig, ok, err := h.Issuances.Get(ctx, origID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok || orig.Status != store.IssuanceIssued || orig.LegalNumber == "" {
+		return failed(KeyUnavailable, "the invoice this credit note corrects has not been issued yet", true), nil
+	}
+	d.Reference.Number = orig.LegalNumber
+	return nil, nil
+}
+
+// invalidDocument answers a document the UBL builder refused: the key says whose data is incomplete.
+func invalidDocument(err error) *commandsv1.ReplyEnvelope {
+	var inv *ubl.InvalidError
+	if !errors.As(err, &inv) {
+		return failed(KeyRejected, err.Error(), false)
+	}
+	key := KeyRejected
+	switch {
+	case strings.HasPrefix(inv.Field, "seller"):
+		key = KeySellerData
+	case strings.HasPrefix(inv.Field, "buyer"):
+		key = KeyBuyerData
+	}
+	return failed(key, inv.Field+": "+inv.Msg, false)
+}
+
+// confirmed asks the integrator once about a document it accepted but has not confirmed (or confirmed without a number). If it is still not issued
+// billing-svc asks again after its backoff, and the repeat of Issue under the same UUID finds the same document.
+func confirmed(ctx context.Context, prov pkg.Provider, ref pkg.Ref, res pkg.IssueResult) pkg.IssueResult {
+	if res.State == pkg.StatePending || res.LegalNumber == "" {
+		st, err := prov.Status(ctx, ref)
+		if err == nil && st.State == pkg.StateIssued && st.LegalNumber != "" {
+			res.State, res.LegalNumber = pkg.StateIssued, st.LegalNumber
+		}
+	}
+	return res
 }
 
 // decideType picks the legal channel and, when the adapter can tell and the buyer is not known as registered, asks the integrator.
@@ -311,10 +330,10 @@ func (h *Handler) cancel(ctx context.Context, c *commandsv1.IssueEInvoice, docID
 		return nil, err
 	}
 	switch {
-	case !found || rec.Status == "started":
+	case !found || rec.Status == store.IssuanceStarted:
 		return failed(KeyCancel, "the document has not been issued", false), nil
-	case rec.Status == "cancelled":
-		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_EInvoiceResult{EInvoiceResult: &commandsv1.EInvoiceResult{State: "cancelled"}}}, nil
+	case rec.Status == store.IssuanceCancelled:
+		return cancelledReply(), nil
 	}
 	prov, name, reply, err := h.provider(ctx, tenantID, env)
 	if reply != nil || err != nil {
@@ -343,5 +362,5 @@ func (h *Handler) cancel(ctx context.Context, c *commandsv1.IssueEInvoice, docID
 	if err := h.Issuances.Cancel(ctx, docID, tenantID); err != nil {
 		return nil, err
 	}
-	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_EInvoiceResult{EInvoiceResult: &commandsv1.EInvoiceResult{State: "cancelled"}}}, nil
+	return cancelledReply(), nil
 }

@@ -178,7 +178,7 @@ func testPlanChangeTaxIsOnWhatIsLeftAfterTheUnusedTime(t *testing.T) {
 	e.customer("cus_a").Country = "DE"
 	e.setTax(&plansv1.TaxRate{Country: "DE", Name: "VAT", RateBps: 2000})
 	e.adjustment("cus_a", e.pv(), 800, 1000)
-	if err := e.mgr.BillFees(context.Background()); err != nil {
+	if err := e.fees.Bill(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	l := e.feeInvoiceLines("cus_a")

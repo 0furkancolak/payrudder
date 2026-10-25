@@ -8,11 +8,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -29,7 +29,7 @@ func GetLink(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sq
 		return row, errkey.New(codes.NotFound, "billing.payment_link.not_found", "no such payment link")
 	}
 	if err != nil {
-		return row, status.Error(codes.Internal, "internal error")
+		return row, apierr.Internal(ctx, err)
 	}
 	return row, nil
 }
@@ -44,7 +44,7 @@ type ListParams struct {
 	PageToken          string
 }
 
-// Page is a page of payment links; NextPageToken is empty on the last one.
+// LinkPage is a page of payment links; NextPageToken is empty on the last one.
 type LinkPage struct {
 	Links         []sqlc.ListPaymentLinksRow
 	NextPageToken string
@@ -90,7 +90,7 @@ func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Lis
 		return err
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	out := &LinkPage{}
 	var more bool

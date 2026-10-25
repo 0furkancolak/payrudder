@@ -14,9 +14,11 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -48,11 +50,9 @@ func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken
 	if err != nil {
 		return "", errkey.New(codes.NotFound, "billing.credits.pack_not_found", "no such credit pack")
 	}
-	if quantity == 0 {
-		quantity = 1
-	}
-	if quantity < 1 || quantity > MaxQuantity {
-		return "", errkey.New(codes.InvalidArgument, "billing.credits.bad_quantity", "quantity must be 1 to 1000")
+	quantity, err = packQuantity(quantity)
+	if err != nil {
+		return "", err
 	}
 	var open *sqlc.FindActiveInvoiceLinkRow
 	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
@@ -65,13 +65,13 @@ func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken
 		return err
 	})
 	if err != nil {
-		return "", internal(err)
+		return "", apierr.Wrap(ctx, err)
 	}
 	if open != nil {
 		return startLink(ctx, d, *open, promotionCode)
 	}
 	days := int32(ChildDays)
-	if left := int32(scope.ExpiresAt.Sub(d.now()).Hours() / 24); left >= 1 && left < days { //nolint:gosec // at most 365
+	if left := int32(time.Until(scope.ExpiresAt).Hours() / 24); left >= 1 && left < days { //nolint:gosec // at most 365
 		days = left
 	}
 	created, err := CreateLink(ctx, d, scope.TenantID, CreateInput{Kind: KindCreditPack, PackID: pid, Quantity: quantity, CustomerExternalID: scope.Portal.ExternalID,
@@ -84,10 +84,10 @@ func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken
 
 // specOf is what one use of a factory link asks for: the link's own amount, currency and (for a pack) credits, and the promotion code the payer typed, or else the
 // one the link carries. The price never comes from the payer.
-func specOf(r sqlc.FindActiveInvoiceLinkRow, typed string) runs.LinkInvoiceSpec {
-	spec := runs.LinkInvoiceSpec{AmountMinor: *r.AmountMinor, Currency: *r.Currency, PromotionCode: strings.TrimSpace(typed)}
+func specOf(r sqlc.FindActiveInvoiceLinkRow, typed string) LinkInvoiceSpec {
+	spec := LinkInvoiceSpec{AmountMinor: *r.AmountMinor, Currency: *r.Currency, PromotionCode: strings.TrimSpace(typed)}
 	if spec.PromotionCode == "" {
-		spec.PromotionCode = deref(r.PromotionCode)
+		spec.PromotionCode = store.Deref(r.PromotionCode)
 	}
 	if r.Description != nil {
 		spec.Description = *r.Description
@@ -102,18 +102,18 @@ func specOf(r sqlc.FindActiveInvoiceLinkRow, typed string) runs.LinkInvoiceSpec 
 }
 
 // QuoteLinkPromotion says what a promotion code would take off the purchase a factory link offers, claiming nothing. The page shows it before the payer continues.
-func QuoteLinkPromotion(ctx context.Context, d Deps, token, promotionCode string) (runs.PromotionQuote, error) {
+func QuoteLinkPromotion(ctx context.Context, d Deps, token, promotionCode string) (PromotionQuote, error) {
 	link, err := query.ResolveLink(ctx, d.System, token)
 	if err != nil {
-		return runs.PromotionQuote{}, err
+		return PromotionQuote{}, err
 	}
 	r := link.Row
 	if !factory(r.Kind) || r.AmountMinor == nil || r.Currency == nil {
-		return runs.PromotionQuote{}, query.NoLink()
+		return PromotionQuote{}, query.ErrNoLink
 	}
 	q, err := d.Dir.QuotePromotion(ctx, r.TenantID, specOf(r, promotionCode))
 	if err != nil {
-		return runs.PromotionQuote{}, internal(err)
+		return PromotionQuote{}, apierr.Wrap(ctx, err)
 	}
 	return q, nil
 }
@@ -122,9 +122,9 @@ func QuoteLinkPromotion(ctx context.Context, d Deps, token, promotionCode string
 func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow, promotionCode string) (string, error) {
 	var err error
 	if !factory(r.Kind) || r.AmountMinor == nil || r.Currency == nil {
-		return "", query.NoLink()
+		return "", query.ErrNoLink
 	}
-	child, err := NewToken()
+	child, err := newToken(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -159,7 +159,7 @@ func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow, pro
 				return err
 			}
 		}
-		expires := d.now().Add(ChildDays * 24 * time.Hour)
+		expires := time.Now().Add(ChildDays * 24 * time.Hour)
 		if r.ExpiresAt.Before(expires) {
 			expires = r.ExpiresAt
 		}
@@ -168,7 +168,7 @@ func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow, pro
 			TokenHash: query.TokenHash(child), ExpiresAt: expires, CustomerExternalID: r.CustomerExternalID})
 	})
 	if err != nil {
-		return "", internal(err)
+		return "", apierr.Wrap(ctx, err)
 	}
 	return child, nil
 }
@@ -194,7 +194,7 @@ func RequestPayment(ctx context.Context, d Deps, qd query.Deps, req PaymentReque
 		return nil, err
 	}
 	if page.Kind != "invoice" {
-		return nil, query.NoLink()
+		return nil, query.ErrNoLink
 	}
 	if !page.Payable {
 		if page.State == "processing" && req.Method == "mock" {
@@ -230,7 +230,7 @@ func RequestPayment(ctx context.Context, d Deps, qd query.Deps, req PaymentReque
 		return nil
 	})
 	if err != nil {
-		return nil, internal(err)
+		return nil, apierr.Wrap(ctx, err)
 	}
 	return &Paid{Started: true, Page: page}, nil
 }
@@ -255,7 +255,7 @@ func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in Se
 		if err != nil {
 			return err
 		}
-		if inv.Status == "paid" || inv.Status == "void" {
+		if inv.Status == invmodel.StatusPaid || inv.Status == invmodel.StatusVoid {
 			return nil
 		}
 		if inv.TotalMinor != in.AmountMinor || inv.Currency != in.Currency {
@@ -273,7 +273,7 @@ func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in Se
 		return false, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
-		return false, internal(err)
+		return false, apierr.Wrap(ctx, err)
 	}
 	return applied, nil
 }

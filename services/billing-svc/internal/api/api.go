@@ -11,6 +11,7 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns"
+	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes"
 	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits"
@@ -20,12 +21,14 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted"
+	hostedcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices"
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/payments"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/reports"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	reratingcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 )
@@ -80,28 +83,31 @@ type Server struct {
 // Deps are the modules the API serves and the pools they read and write through.
 type Deps struct {
 	App, System *pgxpool.Pool // billing_app (RLS), billing_system
-	Runs        *runs.Manager
+	Runs        *runcmd.Manager
 	Engine      *sagacommand.Engine
 	CreditNotes *creditnotecmd.Commands
+	Rerating    *reratingcmd.Commands
+	Inputs      *inputs.Inputs
+	Hosted      *hostedcmd.Backend
 }
 
 // New returns the API.
 func New(d Deps) *Server {
 	app, system, mgr, eng := d.App, d.System, d.Runs, d.Engine
-	einv := &einvoicecmd.Commands{Pool: system, Parties: mgr}
+	einv := &einvoicecmd.Commands{Pool: system, Parties: d.Inputs}
 	return &Server{
 		invoiceHandler:    invoices.New(app),
 		creditNoteHandler: creditnotes.New(app, system, d.CreditNotes),
-		dunningHandler:    dunning.New(app),
+		dunningHandler:    dunning.New(app, eng),
 		creditsHandler:    credits.New(app),
 		accountingHandler: accounting.New(app),
 		reportHandler:     reports.New(app),
-		hostedHandler:     hosted.New(app, system, mgr, eng),
+		hostedHandler:     hosted.New(app, system, d.Hosted, eng),
 		runHandler:        billingruns.New(mgr),
 		sagaHandler:       sagas.New(system, eng),
-		reratingHandler:   rerating.New(mgr),
+		reratingHandler:   rerating.New(d.Rerating, system),
 		deadLetterHandler: deadletters.New(),
-		einvoiceHandler:   einvoices.New(app, system, einv),
+		einvoiceHandler:   einvoices.New(app, einv),
 		paymentHandler:    payments.New(system, eng),
 	}
 }

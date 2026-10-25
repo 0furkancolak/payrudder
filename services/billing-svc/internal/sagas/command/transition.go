@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/0furkancolak/payrudder/pkg/env"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -116,11 +117,11 @@ func (e *Engine) mirrorInvoiceStatus(ctx context.Context, tx pgx.Tx, s *saga, fr
 	status := ""
 	switch {
 	case next == model.Paid, from == model.PdfRendered && next == model.NotifyRequested:
-		status = "paid"
+		status = invmodel.StatusPaid
 	case next == model.Uncollectible:
-		status = "uncollectible"
+		status = invmodel.StatusUncollectible
 	case next == model.Voided:
-		status = "void"
+		status = invmodel.StatusVoid
 	}
 	if status == "" {
 		return nil
