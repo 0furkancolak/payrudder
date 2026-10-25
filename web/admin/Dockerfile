@@ -1,17 +1,13 @@
-# The operator console. Build context: web/admin.
-FROM node:24-alpine AS deps
+# The console for the end-to-end tests and the Railway demo: the built app served by `vite preview`, which also forwards /gw to the gateway
+# (GATEWAY_URL) and answers /env.js. Production runs on Cloudflare Workers instead (wrangler.jsonc, docs/adr/0021-console-on-cloudflare-workers.md).
+# Build context: web/admin.
+FROM node:24-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
-
-FROM node:24-alpine AS build
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
-
-FROM nginx:1.29-alpine
-ENV PORT=3001 NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 GATEWAY_URL=http://gateway:8000 PREFILL_PLAYGROUND=false BRAND_NAME=Payrudder QUOTIFY_DEMO=false
-COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
-COPY --from=build /app/dist /usr/share/nginx/html
+ENV PORT=3001 GATEWAY_URL=http://gateway:8000 PREFILL_PLAYGROUND=false BRAND_NAME=Payrudder QUOTIFY_DEMO=false
 EXPOSE 3001
+# "::" listens on IPv4 and IPv6 (Railway's private network is IPv6).
+CMD ["sh", "-c", "exec npx vite preview --host :: --port ${PORT} --strictPort"]

@@ -166,7 +166,11 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 		ApplySandboxDefaults(&d)
 	}
 	if d.Kind == pkg.KindCreditNote {
-		orig, ok, err := h.Issuances.Get(ctx, uuid.MustParse(orDefault(c.GetOriginalDocumentId(), uuid.Nil.String())), tenantID)
+		origID, err := uuid.Parse(orDefault(c.GetOriginalDocumentId(), uuid.Nil.String()))
+		if err != nil {
+			return nil, fmt.Errorf("%w: original document id: %w", workerx.ErrPoison, err)
+		}
+		orig, ok, err := h.Issuances.Get(ctx, origID, tenantID)
 		if err != nil {
 			return nil, err
 		}

@@ -60,7 +60,7 @@ const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSty
 
       <section class="surface flex flex-col gap-3 p-6" :aria-label="t('product.billing.invoice.lines')">
         <h2 class="text-lg font-semibold tracking-tight">{{ t("product.billing.invoice.lines") }}</h2>
-        <div class="-mx-2 overflow-x-auto px-2">
+        <div class="relative -mx-2 overflow-x-auto px-2">
           <table class="w-full text-sm">
             <thead>
               <tr class="text-muted-foreground text-xs">

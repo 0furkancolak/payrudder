@@ -461,6 +461,9 @@ func TestCorrectness(t *testing.T) {
 	sentAt := time.Now()
 	// The faults run until the workload is in; then everything is healed so the stack can drain.
 	if monkey != nil {
+		// A fast stack finishes the workload before the schedule has injected the required chaos: keep the faults coming (faster) while the
+		// backlog drains, up to QUOTIFY_CHAOS_TOPUP_MINUTES, so the requirement is about the chaos and not about the runner's speed.
+		monkey.Meet(envInt("QUOTIFY_CHAOS_MIN_KILLS", 0), envInt("QUOTIFY_CHAOS_MIN_FAULTS", 0), time.Duration(envInt("QUOTIFY_CHAOS_TOPUP_MINUTES", 8))*time.Minute)
 		rep.Chaos = monkey.Stop()
 		for _, e := range rep.Chaos.Errors {
 			t.Logf("chaos: %s", e)
@@ -543,7 +546,7 @@ func TestCorrectness(t *testing.T) {
 		}
 		return c
 	}
-	drainBy := time.Now().Add(15 * time.Minute)
+	drainBy := time.Now().Add(time.Duration(envInt("QUOTIFY_CHAOS_DRAIN_MINUTES", 40)) * time.Minute)
 	for (counted() < expected || outboxRows() > 0) && time.Now().Before(drainBy) {
 		time.Sleep(500 * time.Millisecond)
 	}

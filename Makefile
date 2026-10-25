@@ -67,7 +67,7 @@ K6_IMAGE := grafana/k6:2.3.0
 S ?= ingest_steady
 .PHONY: load
 load: ## k6 scenario against the running stack: make load S=ingest_steady (also: ingest_spike noisy_neighbor entitlement_reads month_close); K6_ENV="-e DURATION=2m -e EVENTS_PER_SEC=500"
-	@mkdir -p tests/load/results
+	@mkdir -p tests/load/results && chmod 777 tests/load/results
 	docker run --rm --network quotify_default -v "$(CURDIR)/tests/load:/load" -e GATEWAY_URL=http://gateway:8000 \
 		-e QUOTIFY_OPERATOR_TOKEN=$(OPERATOR_TOKEN) -e K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write \
 		-e K6_PROMETHEUS_RW_TREND_STATS="p(95),p(99),avg,max" $(K6_ENV) $(K6_IMAGE) run -o experimental-prometheus-rw \
@@ -115,6 +115,19 @@ helm-sync: ## Refresh the copies of shared files inside the infra chart (helm ca
 .PHONY: web-check
 web-check: ## The operator console: install, lint, type check, build, and the OpenAPI types are up to date
 	cd web/admin && npm ci --no-audit --no-fund && npm run lint && npm run typecheck && npm test && npm run gen && git diff --exit-code src/shared/api/schema.d.ts && npm run build
+
+.PHONY: web-e2e-mock
+web-e2e-mock: ## The product pages against a mocked gateway (Playwright; no stack needed)
+	cd web/admin && npx playwright install chromium && npm run e2e:mock
+
+.PHONY: ci-local
+ci-local: ## The gate before every merge: what CI's static, unit, integration and web jobs run (needs Docker for the integration tests and the alert rules)
+	$(MAKE) lint
+	$(MAKE) gen
+	git diff --exit-code
+	test -z "$$(git status --porcelain)"
+	$(MAKE) test test-rules test-integration
+	$(MAKE) web-check web-e2e-mock
 
 .PHONY: web-e2e
 web-e2e: ## Playwright smoke test of the console against the running stack (make up first)
