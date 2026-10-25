@@ -2,6 +2,7 @@ import { createRoute, type AnyRoute } from "@tanstack/vue-router";
 import { dashSearch } from "@/features/dashboard/lib";
 import { lazyPage } from "@/shared/lib/lazy";
 import { accountingRoutes } from "@/features/accounting/routes";
+import { affiliateRoutes } from "@/features/affiliates/routes";
 import { appRoutes } from "@/features/apps";
 import { creditRoutes } from "@/features/credits/routes";
 import { customerRoutes } from "@/features/customers/routes";
@@ -28,6 +29,6 @@ export function tenantRoutes(parent: AnyRoute) {
   const overview = createRoute({ getParentRoute: () => tenant, path: "/", component: lazyPage(() => import("./TenantOverview.vue")), validateSearch: dashSearch });
   return [
     list,
-    tenant.addChildren([overview, ...invoiceRoutes(tenant), ...customerRoutes(tenant), ...packageRoutes(tenant), ...subscriptionRoutes(tenant), ...pricingRoutes(tenant), ...paymentRoutes(tenant), ...creditRoutes(tenant), ...accountingRoutes(tenant), ...providerRoutes(tenant), ...reportRoutes(tenant), ...paymentLinkRoutes(tenant), ...webhookRoutes(tenant), ...appRoutes(tenant), ...sellerAddressRoutes(tenant), ...mailRoutes(tenant), ...einvoiceRoutes(tenant)]),
+    tenant.addChildren([overview, ...invoiceRoutes(tenant), ...customerRoutes(tenant), ...packageRoutes(tenant), ...subscriptionRoutes(tenant), ...pricingRoutes(tenant), ...paymentRoutes(tenant), ...creditRoutes(tenant), ...accountingRoutes(tenant), ...affiliateRoutes(tenant), ...providerRoutes(tenant), ...reportRoutes(tenant), ...paymentLinkRoutes(tenant), ...webhookRoutes(tenant), ...appRoutes(tenant), ...sellerAddressRoutes(tenant), ...mailRoutes(tenant), ...einvoiceRoutes(tenant)]),
   ];
 }

@@ -1117,6 +1117,299 @@
       }
     }
   },
+  "affiliates": {
+    "intro": "Run a partner program: partners get a link and a code, the customers they bring are remembered, and they earn a commission on what those customers pay. You pay them out yourself.",
+    "tabsLabel": "Affiliate program sections",
+    "tabs": {
+      "overview": "Overview",
+      "program": "Program",
+      "partners": "Affiliates",
+      "commissions": "Commissions",
+      "payouts": "Payouts",
+      "journal": "Journal"
+    },
+    "payoutMethod": "Payout method",
+    "payoutDetails": "Payout details",
+    "payoutDetailsHint": "Free text for you: the IBAN, the account holder or whatever you need when you pay this partner by hand.",
+    "methods": {
+      "manual": "Manual",
+      "bank_transfer": "Bank transfer"
+    },
+    "common": {
+      "status": "Status",
+      "cancel": "Cancel",
+      "close": "Close",
+      "save": "Save",
+      "yes": "Yes",
+      "no": "No",
+      "prev": "Previous",
+      "next": "Next",
+      "total": "{count} in total"
+    },
+    "status": {
+      "program": {
+        "draft": "Draft",
+        "active": "Active",
+        "paused": "Paused"
+      },
+      "affiliate": {
+        "pending": "Pending",
+        "active": "Active",
+        "suspended": "Suspended"
+      },
+      "commission": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "paid": "Paid",
+        "reversed": "Reversed"
+      },
+      "payout": {
+        "open": "Open",
+        "paid": "Paid",
+        "cancelled": "Cancelled"
+      }
+    },
+    "overview": {
+      "noProgram": "There is no partner program yet. Set one up to start earning referrals.",
+      "setUp": "Set up the program",
+      "inactive": "The links are off and no commission is earned until the program is active.",
+      "funnel": "Funnel",
+      "steps": {
+        "clicks": "Link clicks",
+        "referrals": "Referred customers",
+        "paying": "Paying customers",
+        "commission": "Commission earned"
+      },
+      "rate": "{pct} of the step before",
+      "noCommission": "No commission in this period.",
+      "reversed": "{amount} taken back",
+      "periodNote": "Counted over the period you picked. Commissions are shown per currency and never added together.",
+      "balances": "What partners have",
+      "balancesHint": "All partners together, per currency. Currencies are never added together or converted.",
+      "noBalances": "No commission has been earned yet.",
+      "pending": "Pending",
+      "pendingHint": "Waiting out the refund window before it can be paid",
+      "available": "Available for payout",
+      "paid": "Paid",
+      "takenBack": "Taken back"
+    },
+    "program": {
+      "title": "Program settings",
+      "hint": "The rules every partner earns under.",
+      "notSet": "There is no program yet. The values below are a sensible start; save to create it.",
+      "appliesFromNow": "A change applies to commissions earned from then on, never to those already earned.",
+      "status": "Program status",
+      "statusHint": "Draft and paused turn the links off and earn nothing.",
+      "kind": "Commission",
+      "kinds": {
+        "percent_bps": "Percentage of the net amount",
+        "fixed": "Fixed amount per invoice"
+      },
+      "percent": "Percentage",
+      "percentHint": "Of the net, pre-tax amount of a paid invoice. Up to two decimals, for example 12.5.",
+      "fixed": "Amount per invoice",
+      "fixedHint": "Earned only on invoices in the currency below.",
+      "currency": "Currency",
+      "currencyHint": "For a fixed amount and for the minimum payout.",
+      "term": "How long a customer earns",
+      "terms": {
+        "first_invoices": "The first invoices",
+        "months": "A number of months",
+        "lifetime": "For their whole lifetime"
+      },
+      "termInvoices": "Number of invoices",
+      "termMonths": "Number of months",
+      "window": "Attribution window (days)",
+      "windowHint": "How long after following a link a customer still counts as the partner's.",
+      "hold": "Hold (days)",
+      "holdHint": "How long a commission waits, the refund window, before it can be paid out.",
+      "minPayout": "Minimum payout ({currency})",
+      "minPayoutHint": "A partner below this amount is skipped when you create payouts. Leave empty for none.",
+      "coupon": "Coupon for referred customers",
+      "noCoupon": "No coupon",
+      "couponHint": "A referred customer gets it on their next checkout. Coupons are made under Pricing.",
+      "clickCap": "Daily click cap per partner",
+      "clickCapHint": "Clicks above this per day are not counted.",
+      "landing": "Landing page",
+      "landingHint": "Where the partner link sends a visitor. Empty shows a plain page.",
+      "autoApprove": "Approve applications automatically",
+      "autoApproveHint": "A partner who applies is active at once. Otherwise the application waits for you under Affiliates.",
+      "save": "Save program",
+      "saved": "Program saved.",
+      "errors": {
+        "value": "Enter a commission above zero: a percentage up to 100 with at most two decimals, or an amount in {currency}.",
+        "term": "Enter the number of invoices or months, a whole number from 1 to 1200.",
+        "window": "The attribution window is a whole number of days from 1 to 365.",
+        "hold": "The hold is a whole number of days from 0 to 180.",
+        "minPayout": "Enter the minimum payout as an amount in {currency}, or leave it empty.",
+        "clickCap": "The click cap is a whole number from 1 to 100000.",
+        "landing": "The landing page must be a web address starting with http:// or https://."
+      }
+    },
+    "partners": {
+      "waiting": "Waiting for your approval: {count}",
+      "showWaiting": "Show them",
+      "allStatuses": "All statuses",
+      "search": "Search by code, e-mail or name",
+      "add": "Add affiliate",
+      "empty": "No affiliates match.",
+      "code": "Code",
+      "partner": "Partner",
+      "applied": "Applied through the form",
+      "clicks": "Clicks",
+      "referrals": "Referrals",
+      "signedIn": "Signed in",
+      "balance": "Balance",
+      "available": "{amount} available",
+      "paidAmount": "{amount} paid",
+      "approve": "Approve",
+      "suspend": "Suspend",
+      "reinstate": "Reinstate",
+      "edit": "Edit",
+      "linkAndCode": "Link and code",
+      "referralsOf": "Referrals"
+    },
+    "add": {
+      "title": "Add an affiliate",
+      "hint": "The partner is active at once unless you leave them pending.",
+      "email": "E-mail",
+      "name": "Name",
+      "code": "Code (optional)",
+      "codeHint": "3 to 32 letters, numbers, - or _. It must be unique on the whole platform because the public link carries no app. Leave empty for a random one.",
+      "pending": "Leave pending until I approve",
+      "submit": "Add affiliate",
+      "done": "Affiliate {code} added."
+    },
+    "edit": {
+      "title": "Edit {code}",
+      "done": "Affiliate saved."
+    },
+    "link": {
+      "title": "Link and code of {code}",
+      "hint": "Send the partner their link. A customer who types the partner's promotion code at a checkout is attributed to them too.",
+      "referralLink": "Referral link",
+      "copy": "Copy link",
+      "noLink": "The link of {code} is https://your-gateway/r/{code}.",
+      "promotionCode": "Promotion code",
+      "promotionHint": "An existing promotion code from Pricing. Redeeming it counts as following the link.",
+      "submit": "Link code",
+      "done": "Code {code} linked."
+    },
+    "referrals": {
+      "title": "Customers of {code}",
+      "hint": "The e-mail addresses are masked.",
+      "empty": "This partner has not brought a customer yet.",
+      "customer": "Customer",
+      "email": "E-mail",
+      "source": "Source",
+      "time": "Attributed",
+      "sources": {
+        "link": "Link",
+        "code": "Code",
+        "api": "API"
+      }
+    },
+    "commissions": {
+      "title": "Commissions",
+      "intro": "One commission per paid invoice of a customer a partner brought, on the net, pre-tax amount. It waits out the hold, is then approved, and is paid by a payout.",
+      "allPartners": "All partners",
+      "allStatuses": "All statuses",
+      "allKinds": "Commissions and reversals",
+      "kind": "Kind",
+      "kinds": {
+        "commission": "Commission",
+        "reversal": "Reversal"
+      },
+      "partner": "Partner",
+      "empty": "No commissions match.",
+      "earned": "Earned",
+      "invoice": "Invoice",
+      "base": "Net amount",
+      "amount": "Commission",
+      "reversedOf": "{amount} taken back",
+      "payout": "Payout",
+      "openPayout": "Open the payout",
+      "reverse": "Reverse"
+    },
+    "reverse": {
+      "title": "Reverse a commission",
+      "hint": "Take back a commission for a chargeback, or by hand.",
+      "auto": "Refunds, voids and credit notes reverse commissions on their own. Use this only for what Payrudder cannot see.",
+      "left": "Still to take back",
+      "reason": "Reason",
+      "reasons": {
+        "chargeback": "Chargeback",
+        "manual": "Manual"
+      },
+      "amount": "Amount ({currency})",
+      "amountHint": "Leave empty to take back everything that is left.",
+      "reference": "Reference (optional)",
+      "referenceRequiredLabel": "Reference (required)",
+      "referenceHint": "Names this reversal. The same invoice, reason and reference takes back only once.",
+      "note": "Note",
+      "paidNote": "A commission that was already paid is netted from the partner's next payout.",
+      "badAmount": "Enter an amount above zero in {currency}, not more than what is left.",
+      "referenceRequired": "A manual reversal needs a reference.",
+      "submit": "Reverse commission",
+      "done": "{amount} taken back.",
+      "nothing": "Nothing more to take back: this reversal was already done."
+    },
+    "payouts": {
+      "title": "Payouts",
+      "intro": "A payout is the approved commissions of one partner in one currency. Payrudder moves no money: pay by hand or bank transfer, then mark the payout paid.",
+      "create": "Create payouts",
+      "result": "Payouts created",
+      "created": "Payouts created: {count}",
+      "skipped": "Left out: {count}",
+      "reasons": {
+        "below_minimum": "below the minimum payout",
+        "not_positive": "not above zero"
+      },
+      "nothing": "Nothing to pay out right now.",
+      "allStatuses": "All statuses",
+      "empty": "No payouts yet.",
+      "created_at": "Created",
+      "total": "Total",
+      "count": "Commissions",
+      "reference": "Reference",
+      "fake": "Fake (sandbox)",
+      "fakeNote": "This is a sandbox payout. Nothing was or will be paid.",
+      "commissions": "Commissions",
+      "commissionsOf": "Commissions of the payout of {code}",
+      "markPaid": "Mark paid",
+      "cancel": "Cancel"
+    },
+    "pay": {
+      "title": "Mark payout as paid",
+      "summary": "{amount} to {code}",
+      "noMoney": "Payrudder moves no money. Pay the partner yourself, by hand or bank transfer, then confirm here to post it to your books.",
+      "fakeWarning": "This is a sandbox payout: nothing is really paid, and its postings are marked fake.",
+      "reference": "Reference (optional)",
+      "referenceHint": "For example the bank transfer reference.",
+      "submit": "Mark paid",
+      "done": "Payout marked as paid."
+    },
+    "journal": {
+      "title": "Journal",
+      "intro": "What paid payouts posted to your books: the commission expense against the payable, and the payable against cash.",
+      "download": "Download CSV",
+      "balanced": "Balanced",
+      "unbalanced": "Not balanced",
+      "debits": "Debits",
+      "credits": "Credits",
+      "empty": "Nothing posted yet. Paying a payout posts to the journal.",
+      "time": "Posted",
+      "account": "Account",
+      "debit": "Debit",
+      "credit": "Credit",
+      "memo": "Memo",
+      "accounts": {
+        "commission_expense": "Commission expense",
+        "commissions_payable": "Commissions payable",
+        "cash": "Cash"
+      }
+    }
+  },
   "einvoice": {
     "title": "E-invoice",
     "confirmCancel": "Cancel this legal e-document? This cannot be undone.",
@@ -2392,6 +2685,7 @@
       "overview": "Overview",
       "customers": "Customers",
       "billing": "Billing",
+      "growth": "Growth",
       "developers": "Developers",
       "settings": "Settings"
     },
@@ -2422,7 +2716,8 @@
       "einvoice": "E-invoice",
       "appSettings": "App settings",
       "operator": "Operator console",
-      "myApps": "My apps"
+      "myApps": "My apps",
+      "affiliates": "Affiliates"
     }
   },
   "privacy": {
