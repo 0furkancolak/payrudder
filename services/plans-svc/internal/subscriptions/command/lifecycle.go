@@ -18,7 +18,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
+	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
+	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
 
 // Cancelled is the outcome of Cancel: the subscription and the unused fee credited to the customer.
@@ -111,15 +112,15 @@ func requireCancellable(row sqlc.GetSubscriptionRow, end time.Time, creditUnused
 
 // emitCancellation tells the tenant's webhooks that the subscription ended, or will end, at end.
 func (c *Commands) emitCancellation(ctx context.Context, q *sqlc.Queries, sub *plansv1.Subscription, end time.Time, credited int64) error {
-	typ := webhooks.SubscriptionCancelled
+	typ := webhooksmodel.SubscriptionCancelled
 	if end.After(c.now()) {
-		typ = webhooks.SubscriptionCancelScheduled
+		typ = webhooksmodel.SubscriptionCancelScheduled
 	}
 	extra := map[string]any(nil)
 	if credited > 0 {
 		extra = map[string]any{"credited_minor": strconv.FormatInt(credited, 10)}
 	}
-	return webhooks.EmitSubscription(ctx, q, c.now(), typ, sub, extra)
+	return webhookscmd.EmitSubscription(ctx, q, c.now(), typ, sub, extra)
 }
 
 // move applies event to the subscription's effective state and stores the result.
@@ -155,9 +156,9 @@ func (c *Commands) move(ctx context.Context, id uuid.UUID, ev subscription.Event
 		out = subsqry.Message(r, c.now())
 		switch ev {
 		case subscription.Pause:
-			return webhooks.EmitSubscription(ctx, q, c.now(), webhooks.SubscriptionPaused, out, nil)
+			return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionPaused, out, nil)
 		case subscription.Resume:
-			return webhooks.EmitSubscription(ctx, q, c.now(), webhooks.SubscriptionResumed, out, nil)
+			return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionResumed, out, nil)
 		}
 		return nil
 	})
@@ -233,9 +234,9 @@ func (c *Commands) ScheduleCancellation(ctx context.Context, req *plansv1.Schedu
 		}
 		out = subsqry.Message(r, now)
 		if req.GetCancel() {
-			return webhooks.EmitSubscription(ctx, q, c.now(), webhooks.SubscriptionCancelScheduled, out, nil)
+			return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionCancelScheduled, out, nil)
 		}
-		return webhooks.EmitSubscription(ctx, q, c.now(), webhooks.SubscriptionCancelWithdrawn, out, nil)
+		return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionCancelWithdrawn, out, nil)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")

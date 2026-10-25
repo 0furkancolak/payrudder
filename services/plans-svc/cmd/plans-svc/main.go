@@ -45,7 +45,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
+	webhooksworker "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/worker"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
 )
 
@@ -298,7 +298,7 @@ func (w *workers) run(ctx context.Context) error {
 		g.Go(func() error { return w.relay.Run(gctx) })
 	}
 	if w.box != nil {
-		disp := &webhooks.Dispatcher{Pool: w.pool, Box: w.box, Client: safehttp.NewClient(10*time.Second, w.cfg.WebhookAllowPrivate), Log: w.log}
+		disp := &webhooksworker.Dispatcher{Pool: w.pool, Box: w.box, Client: safehttp.NewClient(10*time.Second, w.cfg.WebhookAllowPrivate), Log: w.log}
 		g.Go(func() error { return disp.Run(gctx) })
 	}
 	if w.sandbox != nil {

@@ -24,7 +24,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subscriptionscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
 	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
+	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
+	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
 
 // Commands changes provider migrations.
@@ -81,7 +82,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 	if err != nil {
 		return nr, err
 	}
-	return nr, webhooks.EmitSubscription(ctx, q, now, webhooks.SubscriptionMovedToProvider, subsqry.Message(moved, now), map[string]any{"previous_subscription_id": old.ID.String(), "to_provider": toProvider})
+	return nr, webhookscmd.EmitSubscription(ctx, q, now, webhooksmodel.SubscriptionMovedToProvider, subsqry.Message(moved, now), map[string]any{"previous_subscription_id": old.ID.String(), "to_provider": toProvider})
 }
 
 // Start begins moving a subscription to another provider: at once when Payrudder runs it there, else when the customer has subscribed there.
