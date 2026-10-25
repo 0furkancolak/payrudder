@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { Link, useParams } from "@tanstack/vue-router";
 import { ArrowLeft, FileText } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { findTenant } from "@/shared/lib/environment";
+import { NativeSelect } from "@/shared/ui/native-select";
 import { useFormat } from "@/shared/lib/format";
+import { SCENARIOS } from "./golive";
+import { useApps } from "./api";
 import { ManualPaymentsCard } from "@/features/invoices";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
@@ -11,7 +15,7 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { useInvoice, useOpenInvoicePdf } from "./billingApi";
+import { useInvoice, useOpenInvoicePdf, useSimulateInvoice } from "./billingApi";
 
 /**
  * One invoice: its total and status, who it is for, its lines and the payments recorded for it by hand, and a link to the PDF (a presigned link, valid five
@@ -26,6 +30,13 @@ const invoice = useInvoice(tenantId, invoiceId);
 const pdf = useOpenInvoicePdf(tenantId, invoiceId);
 const inv = computed(() => invoice.data.value);
 const day = (v?: string) => fmt.date(v, "day");
+
+// Sandbox only: run the payment of this invoice again as one of the scenarios (the customer keeps the scenario as their payment method).
+const apps = useApps();
+const sandbox = computed(() => findTenant(apps.data.value?.apps, tenantId.value)?.env === "sandbox");
+const simulate = useSimulateInvoice(tenantId, invoiceId);
+const scenario = ref("declined");
+const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open" || inv.value?.status === "uncollectible"));
 </script>
 
 <template>
@@ -58,6 +69,23 @@ const day = (v?: string) => fmt.date(v, "day");
           <ErrorText :error="pdf.error.value" />
         </div>
       </div>
+
+      <section v-if="canSimulate" class="surface flex flex-col gap-3 p-6" :aria-label="t('product.sandbox.simulateTitle')" data-testid="simulate">
+        <div>
+          <h3 class="text-lg font-semibold tracking-tight">{{ t("product.sandbox.simulateTitle") }}</h3>
+          <p class="text-muted-foreground text-sm">{{ t("product.sandbox.simulateBody") }}</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <NativeSelect v-model="scenario" class="w-72" :aria-label="t('product.sandbox.scenariosTitle')" data-testid="simulate-scenario">
+            <option v-for="s in SCENARIOS" :key="s.scenario" :value="s.scenario">{{ s.scenario }}</option>
+          </NativeSelect>
+          <Button :disabled="simulate.isPending.value" data-testid="simulate-run" @click="simulate.mutate(scenario)">{{ t("product.sandbox.simulate") }}</Button>
+        </div>
+        <p v-if="simulate.data.value" class="text-sm" role="status" data-testid="simulate-result">
+          {{ simulate.data.value.retried ? t("product.sandbox.simulated", { scenario: simulate.data.value.scenario ?? scenario }) : t("product.sandbox.simulateNotRetried", { why: simulate.data.value.retry_error ?? "" }) }}
+        </p>
+        <ErrorText :error="simulate.error.value" />
+      </section>
 
       <section class="surface flex flex-col gap-3 p-6" :aria-label="t('product.billing.invoice.lines')">
         <h2 class="text-lg font-semibold tracking-tight">{{ t("product.billing.invoice.lines") }}</h2>

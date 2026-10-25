@@ -7,14 +7,12 @@ package webhook
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,8 +20,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -32,8 +28,18 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/payments"
-	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts"
+	accountscommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts/command"
+	accountsquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts/query"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoiceaccounts"
+	einvoicecommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoiceaccounts/command"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/httpx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/ledger"
+	ledgercommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/ledger/command"
+	ledgerquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/ledger/query"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation"
+	reconciliationquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
@@ -61,7 +67,7 @@ type Server struct {
 	// provider migrations.
 	Plans PlansAPI
 	// Reset deletes a sandbox tenant's attempts, ledger and receipts (POST /admin/tenants/{tenant}/sandbox-reset); nil answers 503.
-	Reset ResetFunc
+	Reset ledgercommand.ResetFunc
 	// Modules are the operator endpoints of other modules (the bank transfers), served next to these.
 	Modules []RouteRegistrar
 }
@@ -87,8 +93,6 @@ type RouteRegistrar interface {
 	Register(mux *http.ServeMux, guard func(http.HandlerFunc) http.HandlerFunc)
 }
 
-const maxBody = 64 << 10
-
 var (
 	meter       = otel.Meter("github.com/0furkancolak/payrudder/services/payments-worker/webhook")
 	events      = counter("provider_events", "Provider notifications handled, by provider and result")
@@ -103,75 +107,44 @@ func counter(name, desc string) metric.Int64Counter {
 	return c
 }
 
-// Handler returns the HTTP handler.
+// Handler returns the HTTP handler: the provider notifications, and the operator endpoints of the modules.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /webhooks/{provider}", s.notification)
 	mux.HandleFunc("POST /webhooks/{provider}/{tenant}/{environment}", s.tenantNotification)
-	mux.HandleFunc("GET /admin/tenants/{tenant}/provider-subscriptions", s.admin(s.listSubscriptions))
-	mux.HandleFunc("POST /admin/tenants/{tenant}/checkouts", s.admin(s.checkout))
-	mux.HandleFunc("GET /admin/tenants/{tenant}/reconciliation", s.admin(s.reconcile))
-	mux.HandleFunc("POST /admin/tenants/{tenant}/migrations", s.admin(s.migrate))
-	mux.HandleFunc("POST /admin/tenants/{tenant}/migrations/{migration}/abort", s.admin(s.abortMigration))
-	mux.HandleFunc("GET /admin/tenants/{tenant}/provider-accounts", s.admin(s.listAccounts))
-	mux.HandleFunc("PUT /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.putAccount))
-	mux.HandleFunc("DELETE /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.deleteAccount))
-	mux.HandleFunc("GET /admin/tenants/{tenant}/go-live", s.admin(s.goLive))
-	mux.HandleFunc("POST /admin/tenants/{tenant}/sandbox-reset", s.admin(s.sandboxReset))
-	mux.HandleFunc("GET /admin/tenants/{tenant}/ledger", s.admin(s.ledger))
-	mux.HandleFunc("GET /admin/tenants/{tenant}/invoice-methods", s.admin(s.invoiceMethods))
-	mux.HandleFunc("POST /admin/tenants/{tenant}/invoice-payments", s.admin(s.invoicePayment))
-	mux.HandleFunc("POST /admin/tenants/{tenant}/ledger/lookup", s.admin(s.ledgerLookup))
-	s.apiRoutes(mux)
-	s.einvoiceRoutes(mux)
-	for _, m := range s.Modules {
-		m.Register(mux, s.admin)
+	guard := httpx.Guard(s.Token)
+	for _, m := range s.modules() {
+		m.Register(mux, guard)
 	}
 	return mux
 }
 
-func (s *Server) admin(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if s.Token == "" || subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Internal-Token")), []byte(s.Token)) != 1 {
-			fail(w, http.StatusUnauthorized, errkey.Key("common.unauthenticated"), "unauthorized")
-			return
-		}
-		next(w, r)
+// modules are the operator endpoints, one module each, and the modules the caller added.
+func (s *Server) modules() []RouteRegistrar {
+	mods := []RouteRegistrar{
+		&accounts.Handler{Log: s.Log,
+			Command: accountscommand.Deps{Registry: s.Registry, Accounts: s.Accounts, Plans: s.Plans, Log: s.Log},
+			Query:   accountsquery.Deps{Registry: s.Registry, Accounts: s.Accounts, Log: s.Log}},
+		&einvoiceaccounts.Handler{Log: s.Log, Deps: einvoicecommand.Deps{Accounts: s.EInvoiceAccounts, Registry: s.EInvoiceRegistry, AllowMockLive: s.AllowMockLive}},
+		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger}, Command: ledgercommand.Deps{Reset: s.Reset}},
+		&reconciliation.Handler{Log: s.Log, Query: reconciliationquery.Deps{Ledger: s.Ledger, Billing: s.Billing}},
+		routes{s},
 	}
+	return append(mods, s.Modules...)
 }
 
-func writeJSON(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
-}
+// routes are the endpoints that have not moved into a module yet.
+type routes struct{ s *Server }
 
-// fail answers with the keyed error envelope, the one the gateway writes ({"error": {"code", "key", "message"}}), so the console can translate the key.
-// The code name follows the HTTP status; key is listed in docs/error-keys.md.
-func fail(w http.ResponseWriter, code int, key, msg string) {
-	keyFail(w, code, codeName(code), key, msg)
-}
-
-// codeName is the API error code that goes with an HTTP status.
-func codeName(httpStatus int) string {
-	switch httpStatus {
-	case http.StatusBadRequest:
-		return "INVALID_ARGUMENT"
-	case http.StatusUnauthorized:
-		return "UNAUTHENTICATED"
-	case http.StatusNotFound:
-		return "NOT_FOUND"
-	case http.StatusConflict:
-		return "FAILED_PRECONDITION"
-	case http.StatusRequestEntityTooLarge:
-		return "REQUEST_TOO_LARGE"
-	case http.StatusNotImplemented:
-		return "UNIMPLEMENTED"
-	case http.StatusBadGateway, http.StatusServiceUnavailable:
-		return "UNAVAILABLE"
-	default:
-		return "INTERNAL"
-	}
+func (r routes) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http.HandlerFunc) {
+	s := r.s
+	mux.HandleFunc("GET /admin/tenants/{tenant}/provider-subscriptions", guard(s.listSubscriptions))
+	mux.HandleFunc("POST /admin/tenants/{tenant}/checkouts", guard(s.checkout))
+	mux.HandleFunc("POST /admin/tenants/{tenant}/migrations", guard(s.migrate))
+	mux.HandleFunc("POST /admin/tenants/{tenant}/migrations/{migration}/abort", guard(s.abortMigration))
+	mux.HandleFunc("GET /admin/tenants/{tenant}/invoice-methods", guard(s.invoiceMethods))
+	mux.HandleFunc("POST /admin/tenants/{tenant}/invoice-payments", guard(s.invoicePayment))
+	s.apiRoutes(mux, guard)
 }
 
 func (s *Server) result(ctx context.Context, provider, result string) {
@@ -189,7 +162,7 @@ func (s *Server) tenantNotification(w http.ResponseWriter, r *http.Request) {
 	t, err := uuid.Parse(r.PathValue("tenant"))
 	mode, perr := env.Parse(r.PathValue("environment"))
 	if err != nil || perr != nil {
-		fail(w, http.StatusNotFound, "payments.webhook.not_found", "no such webhook")
+		httpx.Fail(w, http.StatusNotFound, "payments.webhook.not_found", "no such webhook")
 		return
 	}
 	s.receive(w, r, r.PathValue("provider"), t, mode.String())
@@ -200,29 +173,29 @@ func (s *Server) receive(w http.ResponseWriter, r *http.Request, name string, te
 	ctx := r.Context()
 	parse, ok := s.Registry.Parser(name)
 	if !ok {
-		fail(w, http.StatusNotFound, "payments.provider.unknown", "unknown provider")
+		httpx.Fail(w, http.StatusNotFound, "payments.provider.unknown", "unknown provider")
 		return
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, httpx.MaxBody))
 	if err != nil {
-		fail(w, http.StatusRequestEntityTooLarge, "payments.request.too_large", "body too large")
+		httpx.Fail(w, http.StatusRequestEntityTooLarge, "payments.request.too_large", "body too large")
 		return
 	}
 	ref, err := parse(body, r.Header)
 	if err != nil {
 		s.result(ctx, name, "malformed")
-		fail(w, http.StatusBadRequest, "payments.webhook.malformed", err.Error())
+		httpx.Fail(w, http.StatusBadRequest, "payments.webhook.malformed", err.Error())
 		return
 	}
 	fresh, err := s.Events.Receive(ctx, name, ref.EventID, inboxBody(body))
 	if err != nil {
 		s.Log.ErrorContext(ctx, "webhook inbox write failed", "provider", name, "err", err)
-		fail(w, http.StatusInternalServerError, "payments.webhook.not_recorded", "try again")
+		httpx.Fail(w, http.StatusInternalServerError, "payments.webhook.not_recorded", "try again")
 		return
 	}
 	if !fresh {
 		s.result(ctx, name, "duplicate")
-		writeJSON(w, http.StatusOK, map[string]string{"status": "duplicate"})
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "duplicate"})
 		return
 	}
 	d := &delivery{s: s, w: w, r: r, name: name, eventID: ref.EventID, tenant: tenantID, env: env}
@@ -265,13 +238,13 @@ func (d *delivery) retry(tenant uuid.UUID, err error) {
 		d.s.Log.ErrorContext(ctx, "webhook inbox cleanup failed", "provider", d.name, "event", d.eventID, "err", err)
 	}
 	d.s.result(ctx, d.name, "retry")
-	fail(d.w, http.StatusServiceUnavailable, "payments.webhook.try_again", "try again")
+	httpx.Fail(d.w, http.StatusServiceUnavailable, "payments.webhook.try_again", "try again")
 }
 
 func (d *delivery) ignore(tenant uuid.UUID, why string) {
 	d.finish(tenant, "ignored", why)
 	d.s.result(d.r.Context(), d.name, "ignored")
-	writeJSON(d.w, http.StatusOK, map[string]string{"status": "ignored"})
+	httpx.WriteJSON(d.w, http.StatusOK, map[string]string{"status": "ignored"})
 }
 
 func (d *delivery) process(body []byte, key string) {
@@ -285,7 +258,7 @@ func (d *delivery) process(body []byte, key string) {
 	}
 	d.finish(d.tenant, "processed", "")
 	d.s.result(ctx, d.name, "processed")
-	writeJSON(d.w, http.StatusOK, map[string]string{"status": "processed"})
+	httpx.WriteJSON(d.w, http.StatusOK, map[string]string{"status": "processed"})
 }
 
 // findCharge decides whose account confirms a notification whose URL names no tenant: the tenant and environment of the charge
@@ -323,7 +296,7 @@ func (d *delivery) confirm(body []byte) (payments.Notification, bool) {
 		d.s.Log.WarnContext(ctx, "webhook failed verification", "provider", d.name, "tenant", d.tenant, "err", err)
 		_ = d.s.Events.Forget(ctx, d.name, d.eventID)
 		d.s.result(ctx, d.name, "unverified")
-		fail(d.w, http.StatusUnauthorized, "payments.webhook.unverified", "verification failed")
+		httpx.Fail(d.w, http.StatusUnauthorized, "payments.webhook.unverified", "verification failed")
 		return payments.Notification{}, false
 	}
 	if err != nil {
@@ -515,158 +488,26 @@ func (s *Server) releaseSource(ctx context.Context, tenant uuid.UUID, env string
 	return m.CancelSubscription(ctx, done.GetSourceProviderRef(), false)
 }
 
-func (s *Server) tenant(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	t, err := uuid.Parse(r.PathValue("tenant"))
-	if err != nil {
-		fail(w, http.StatusBadRequest, "payments.request.bad_tenant", "tenant must be a UUID")
-		return uuid.Nil, false
-	}
-	return t, true
-}
-
-func environment(w http.ResponseWriter, r *http.Request) (string, bool) {
-	mode, err := env.Parse(r.URL.Query().Get("environment"))
-	if err != nil {
-		fail(w, http.StatusBadRequest, "payments.request.bad_environment", "environment must be sandbox or live")
-		return "", false
-	}
-	return mode.String(), true
-}
-
-func (s *Server) listAccounts(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenant(w, r)
-	if !ok {
-		return
-	}
-	list, err := s.Accounts.List(r.Context(), t)
-	if err != nil {
-		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"accounts": list})
-}
-
-// putAccount stores (or replaces) an account. The settings are validated by building the adapter, and are never echoed back.
-func (s *Server) putAccount(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenant(w, r)
-	if !ok {
-		return
-	}
-	mode, ok := environment(w, r)
-	if !ok {
-		return
-	}
-	provider := r.PathValue("provider")
-	settings, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
-	if err != nil {
-		fail(w, http.StatusRequestEntityTooLarge, "payments.request.too_large", "body too large")
-		return
-	}
-	built, err := s.Registry.Build(provider, settings)
-	if err != nil {
-		if errors.Is(err, payments.ErrUnknownProvider) {
-			fail(w, http.StatusNotFound, "payments.provider.unknown", "unknown provider; known: "+join(s.Registry.Names()))
-			return
-		}
-		fail(w, http.StatusBadRequest, "payments.account.bad_settings", err.Error())
-		return
-	}
-	// A provider connection has a mode of its own (live or test at the provider), and it must be the environment's.
-	if err := payments.CheckLivemode(built, mode); err != nil {
-		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", errkey.Key("payments.account.livemode_mismatch"), err.Error())
-		return
-	}
-	makeDefault, _ := strconv.ParseBool(r.URL.Query().Get("default"))
-	if err := s.Accounts.Put(r.Context(), t, provider, mode, settings, makeDefault); err != nil {
-		s.Log.ErrorContext(r.Context(), "provider account write failed", "err", err)
-		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
-		return
-	}
-	if mode == env.Live.String() && (provider == banktransfer.Name || makeDefault) {
-		if err := s.syncBankTransfer(r.Context(), t); err != nil {
-			s.Log.ErrorContext(r.Context(), "bank details not passed on to plans-svc", "err", err)
-			fail(w, http.StatusBadGateway, "payments.account.sync_failed", "the account is stored, but plans-svc could not be told the bank details for the invoices; send the request again")
-			return
-		}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"provider": provider, "environment": mode, "default": makeDefault})
-}
-
-func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenant(w, r)
-	if !ok {
-		return
-	}
-	mode, ok := environment(w, r)
-	if !ok {
-		return
-	}
-	deleted, err := s.Accounts.Delete(r.Context(), t, r.PathValue("provider"), mode)
-	switch {
-	case err != nil:
-		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
-	case !deleted:
-		fail(w, http.StatusNotFound, "payments.account.not_found", "no such account")
-	case mode == env.Live.String() && r.PathValue("provider") == banktransfer.Name && s.syncBankTransfer(r.Context(), t) != nil:
-		fail(w, http.StatusBadGateway, "payments.account.sync_failed", "the account is removed, but plans-svc could not be told; its bank details stay on new invoices until the request is sent again")
-	default:
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
-func (s *Server) ledger(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenant(w, r)
-	if !ok {
-		return
-	}
-	limit := 100
-	if v := r.URL.Query().Get("limit"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 || n > 1000 {
-			fail(w, http.StatusBadRequest, "payments.ledger.bad_limit", "limit must be 1..1000")
-			return
-		}
-		limit = n
-	}
-	rows, err := s.Ledger.List(r.Context(), t, limit)
-	if err != nil {
-		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"entries": rows})
-}
-
-func join(names []string) string {
-	out := ""
-	for i, n := range names {
-		if i > 0 {
-			out += ", "
-		}
-		out += n
-	}
-	return out
-}
-
 func (s *Server) listSubscriptions(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenant(w, r)
+	t, ok := httpx.Tenant(w, r)
 	if !ok {
 		return
 	}
 	list, err := s.Subscriptions.List(r.Context(), t)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
+		httpx.Fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"subscriptions": list})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"subscriptions": list})
 }
 
 // checkout asks a provider with a hosted checkout for a page where a customer subscribes.
 func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenant(w, r)
+	t, ok := httpx.Tenant(w, r)
 	if !ok {
 		return
 	}
-	env, ok := environment(w, r)
+	env, ok := httpx.Environment(w, r)
 	if !ok {
 		return
 	}
@@ -676,27 +517,27 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 		Quantity                int    `json:"quantity"`
 		PayrudderSubscriptionID string `json:"quotify_subscription_id"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&in); err != nil || in.Provider == "" || in.PriceRef == "" {
-		fail(w, http.StatusBadRequest, "payments.checkout.fields_required", "provider and price_ref are required")
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, httpx.MaxBody)).Decode(&in); err != nil || in.Provider == "" || in.PriceRef == "" {
+		httpx.Fail(w, http.StatusBadRequest, "payments.checkout.fields_required", "provider and price_ref are required")
 		return
 	}
 	prov, err := s.Resolver.Named(r.Context(), t, in.Provider, env)
 	if err != nil {
-		fail(w, http.StatusNotFound, "payments.account.not_found", "no such provider account")
+		httpx.Fail(w, http.StatusNotFound, "payments.account.not_found", "no such provider account")
 		return
 	}
 	cp, ok := prov.(payments.CheckoutProvider)
 	if !ok {
-		fail(w, http.StatusConflict, "payments.checkout.unsupported", in.Provider+" has no hosted checkout")
+		httpx.Fail(w, http.StatusConflict, "payments.checkout.unsupported", in.Provider+" has no hosted checkout")
 		return
 	}
 	co, err := cp.CreateCheckout(r.Context(), payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: in.Quantity, PayrudderSubscriptionID: in.PayrudderSubscriptionID})
 	if err != nil {
 		s.Log.WarnContext(r.Context(), "checkout failed", "provider", in.Provider, "err", err)
-		fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
+		httpx.Fail(w, http.StatusBadGateway, "payments.provider.failed", httpx.ProviderTrouble)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]string{"url": co.URL, "ref": co.Ref})
+	httpx.WriteJSON(w, http.StatusCreated, map[string]string{"url": co.URL, "ref": co.Ref})
 }
 
 // migrate moves a subscription to another payment provider (docs/14-billing-platform.md#provider-migration).
@@ -707,21 +548,21 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 // was paid for. The old provider is told to stop renewing first: a failure after that leaves a subscription that ends without a successor (an operator
 // retries), never two that both bill.
 func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenant(w, r)
+	t, ok := httpx.Tenant(w, r)
 	if !ok {
 		return
 	}
-	env, ok := environment(w, r)
+	env, ok := httpx.Environment(w, r)
 	if !ok {
 		return
 	}
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
+		httpx.Fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return
 	}
 	var in migrationInput
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&in); err != nil || in.SubscriptionID == "" || in.ToProvider == "" {
-		fail(w, http.StatusBadRequest, "payments.migration.fields_required", "subscription_id and to_provider are required")
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, httpx.MaxBody)).Decode(&in); err != nil || in.SubscriptionID == "" || in.ToProvider == "" {
+		httpx.Fail(w, http.StatusBadRequest, "payments.migration.fields_required", "subscription_id and to_provider are required")
 		return
 	}
 	ctx := r.Context()
@@ -732,7 +573,7 @@ func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
 	}
 	target, err := s.Resolver.Named(ctx, t, in.ToProvider, env)
 	if err != nil {
-		fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+in.ToProvider+" for this tenant")
+		httpx.Fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+in.ToProvider+" for this tenant")
 		return
 	}
 	if target.Capabilities().Owner() == payments.OwnerProvider {
@@ -753,7 +594,7 @@ func (s *Server) migrateViaCheckout(w http.ResponseWriter, r *http.Request, t uu
 	ctx := r.Context()
 	cp, ok := target.(payments.CheckoutProvider)
 	if !ok || in.PriceRef == "" {
-		fail(w, http.StatusBadRequest, "payments.migration.price_ref_required", in.ToProvider+" runs subscriptions itself: price_ref (its catalogue price) is required")
+		httpx.Fail(w, http.StatusBadRequest, "payments.migration.price_ref_required", in.ToProvider+" runs subscriptions itself: price_ref (its catalogue price) is required")
 		return
 	}
 	mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider})
@@ -768,10 +609,10 @@ func (s *Server) migrateViaCheckout(w http.ResponseWriter, r *http.Request, t uu
 			s.Log.ErrorContext(ctx, "could not abort a migration after a failed checkout", "migration", mig.GetId(), "err", aerr)
 		}
 		s.Log.WarnContext(ctx, "migration checkout failed", "provider", in.ToProvider, "err", err)
-		fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
+		httpx.Fail(w, http.StatusBadGateway, "payments.provider.failed", httpx.ProviderTrouble)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "started", "checkout_url": co.URL})
+	httpx.WriteJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "started", "checkout_url": co.URL})
 }
 
 // migrateToPayrudder moves a subscription to a provider Payrudder runs. From a provider-run subscription, it waits for the end of the period
@@ -790,7 +631,7 @@ func (s *Server) migrateToPayrudder(w http.ResponseWriter, r *http.Request, t uu
 		s.planFail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "completed", "new_subscription": mig.GetNewSubscriptionId(),
+	httpx.WriteJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "completed", "new_subscription": mig.GetNewSubscriptionId(),
 		"cutover": mig.GetCutoverTime().AsTime()})
 }
 
@@ -800,74 +641,48 @@ func (s *Server) stopRenewals(w http.ResponseWriter, r *http.Request, t uuid.UUI
 	ctx := r.Context()
 	next, found, err := s.Subscriptions.NextBilledAt(ctx, t, sub.GetProvider(), env, sub.GetProviderRef())
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
+		httpx.Fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return nil, false
 	}
 	if !found {
-		fail(w, http.StatusConflict, "payments.subscription.period_end_unknown", "the end of the paid period at "+sub.GetProvider()+" is not known yet (no notification has told us)")
+		httpx.Fail(w, http.StatusConflict, "payments.subscription.period_end_unknown", "the end of the paid period at "+sub.GetProvider()+" is not known yet (no notification has told us)")
 		return nil, false
 	}
 	old, err := s.Resolver.Named(ctx, t, sub.GetProvider(), env)
 	if err != nil {
-		fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+sub.GetProvider()+" for this tenant")
+		httpx.Fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+sub.GetProvider()+" for this tenant")
 		return nil, false
 	}
 	m, ok := old.(payments.SubscriptionManager)
 	if !ok {
-		fail(w, http.StatusConflict, "payments.subscription.cannot_cancel", sub.GetProvider()+" cannot cancel a subscription through Payrudder")
+		httpx.Fail(w, http.StatusConflict, "payments.subscription.cannot_cancel", sub.GetProvider()+" cannot cancel a subscription through Payrudder")
 		return nil, false
 	}
 	if err := m.CancelSubscription(ctx, sub.GetProviderRef(), true); err != nil {
 		s.Log.WarnContext(ctx, "provider cancel failed", "provider", sub.GetProvider(), "err", err)
-		fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
+		httpx.Fail(w, http.StatusBadGateway, "payments.provider.failed", httpx.ProviderTrouble)
 		return nil, false
 	}
 	return timestamppb.New(next), true
 }
 
 func (s *Server) abortMigration(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenant(w, r)
+	t, ok := httpx.Tenant(w, r)
 	if !ok {
 		return
 	}
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
+		httpx.Fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return
 	}
 	if err := s.Plans.AbortProviderMigration(r.Context(), t, r.PathValue("migration")); err != nil {
 		s.planFail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"state": "aborted"})
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"state": "aborted"})
 }
 
 // planFail relays a plans-svc refusal.
 func (s *Server) planFail(w http.ResponseWriter, r *http.Request, err error) {
-	s.relay(w, r, "plans-svc", errkey.Key("payments.plans.failed"), err)
-}
-
-// billingFail relays a billing-svc refusal.
-func (s *Server) billingFail(w http.ResponseWriter, r *http.Request, err error) {
-	s.relay(w, r, "billing-svc", errkey.Key("payments.billing.failed"), err)
-}
-
-// relay answers for a refusal of another service. A refusal about the request (not found, invalid, wrong state) keeps its status, its key (the code's
-// common.* default when it has none) and its message, which was written for the caller. Anything else is the other service's trouble: the cause goes to
-// the log and the caller gets a bad gateway with a fixed message and failKey.
-func (s *Server) relay(w http.ResponseWriter, r *http.Request, svc, failKey string, err error) {
-	key := errkey.Of(err)
-	if key == "" {
-		key = errkey.Default(status.Code(err))
-	}
-	switch status.Code(err) {
-	case codes.NotFound:
-		fail(w, http.StatusNotFound, key, status.Convert(err).Message())
-	case codes.InvalidArgument:
-		fail(w, http.StatusBadRequest, key, status.Convert(err).Message())
-	case codes.FailedPrecondition, codes.AlreadyExists, codes.Aborted:
-		fail(w, http.StatusConflict, key, status.Convert(err).Message())
-	default:
-		s.Log.WarnContext(r.Context(), svc+" request failed", "err", err)
-		fail(w, http.StatusBadGateway, failKey, svc+" could not complete the request")
-	}
+	httpx.Relay(s.Log, w, r, "plans-svc", errkey.Key("payments.plans.failed"), err)
 }

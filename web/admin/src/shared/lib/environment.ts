@@ -1,3 +1,5 @@
+import { safeGet, safeSet } from "./storage";
+
 /** The two environments of an app. Each has its own tenant, keys, data and providers. */
 export type Environment = "live" | "sandbox";
 
@@ -31,6 +33,58 @@ interface HasTenants {
 export function tenantOf(app: HasTenants | undefined, env: Environment): string {
   const want = envEnum(env);
   return app?.tenants?.find((t) => t.environment === want)?.id ?? "";
+}
+
+// --- which environment the console opens an app in (phase 45 F)
+
+/** The status of an app's live tenant as the console tells it: "none" when the app has no live tenant (a sandbox-only deployment). */
+export type LiveState = "none" | "inactive" | "active" | "suspended";
+
+interface HasStatus {
+  tenants?: { id?: string; environment?: string; status?: string }[];
+}
+
+export function liveState(app: HasStatus | undefined): LiveState {
+  const live = app?.tenants?.find((t) => t.environment === "ENVIRONMENT_LIVE");
+  if (!live) return "none";
+  switch (live.status) {
+    case "TENANT_STATUS_ACTIVE":
+      return "active";
+    case "TENANT_STATUS_SUSPENDED":
+      return "suspended";
+    default:
+      return "inactive";
+  }
+}
+
+const LAST_ENV_KEY = "payrudder.env.";
+
+/** Remembers the environment the person last worked in for an app (per browser; a blocked storage just forgets). */
+export function rememberEnv(appId: string, env: Environment): void {
+  if (appId) safeSet("local", LAST_ENV_KEY + appId, env);
+}
+
+export function lastEnv(appId: string): Environment | null {
+  const v = safeGet("local", LAST_ENV_KEY + appId);
+  return isEnvironment(v) ? v : null;
+}
+
+/**
+ * The environment an app opens in when the address does not say: the one the person used last, if the app still has it; otherwise live when it is active,
+ * else sandbox. The same input always gives the same answer, so a page never flips on its own.
+ */
+export function defaultEnv(app: (HasTenants & HasStatus & { id?: string }) | undefined): Environment {
+  if (!app) return "live";
+  const last = app.id ? lastEnv(app.id) : null;
+  if (last && tenantOf(app, last) !== "") return last;
+  if (liveState(app) === "active") return "live";
+  return tenantOf(app, "sandbox") !== "" ? "sandbox" : "live";
+}
+
+/** The environment the organisation's home opens in: live when any app is active there, else sandbox when any app has one. */
+export function defaultOrgEnv(apps: readonly (HasTenants & HasStatus)[] | undefined): Environment {
+  if ((apps ?? []).some((a) => liveState(a) === "active")) return "live";
+  return (apps ?? []).some((a) => tenantOf(a, "sandbox") !== "") ? "sandbox" : "live";
 }
 
 /** Finds a tenant by id among a person's apps, with the app it belongs to. */

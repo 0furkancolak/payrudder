@@ -2442,7 +2442,8 @@
       "label": "Umgebung",
       "live": "Live",
       "sandbox": "Sandbox",
-      "sandboxNote": "Sandbox: Testdaten und ein Schein-Zahlungsanbieter. Hier ist nichts echtes Geld."
+      "sandboxNote": "Sandbox: Testdaten und ein Schein-Zahlungsanbieter. Hier ist nichts echtes Geld.",
+      "banner": "Sandbox: Testdaten und ein vorgetäuschter Zahlungsanbieter. Hier ist nichts echtes Geld."
     },
     "donut": {
       "title": "Zahlungen nach Status",
@@ -2509,7 +2510,29 @@
       "saved": "Ich habe ihn gespeichert",
       "revokeTitle": "Diesen Schlüssel widerrufen?",
       "revokeBody": "Alles, was ihn noch verwendet, funktioniert sofort nicht mehr. Das lässt sich nicht rückgängig machen.",
-      "needsVerified": "Bestätigen Sie Ihre E-Mail-Adresse, um Live-Schlüssel zu erstellen."
+      "needsVerified": "Bestätigen Sie Ihre E-Mail-Adresse, um Live-Schlüssel zu erstellen.",
+      "scope": "Umfang eines neuen Schlüssels",
+      "scopes": {
+        "full": "Voller Zugriff",
+        "ingest": "Nur Nutzung senden",
+        "read": "Nur lesen"
+      },
+      "scopeHelp": {
+        "full": "Die gesamte API.",
+        "ingest": "Kann nur Nutzungsereignisse senden. Sicher für einen Dienst, der Nutzung meldet.",
+        "read": "Kann nur lesen. Sicher für Dashboards und Berichte."
+      },
+      "liveInactive": "Live-Schlüssel gibt es, sobald die Live-Umgebung aktiv ist.",
+      "rotate": "Rotieren",
+      "rotateNamed": "Schlüssel {key} rotieren",
+      "rotateTitle": "Diesen Schlüssel rotieren?",
+      "rotateBody": "Ein neuer Schlüssel mit demselben Zugriff wird erzeugt und einmal angezeigt. Der alte funktioniert noch für die unten gewählte Zeit, damit Sie ohne Lücke wechseln können.",
+      "overlap": "Alten Schlüssel weiter gültig lassen für",
+      "overlapNow": "Sofort beenden",
+      "overlapHours": "{n} Stunden",
+      "lastUsed": "zuletzt benutzt {date}",
+      "neverUsed": "nie benutzt",
+      "ends": "Funktioniert nicht mehr ab {date}"
     },
     "links": {
       "title": "Tiefer einsteigen",
@@ -2681,6 +2704,128 @@
       "grace": "Nachfrist",
       "tenant": "Umgebungs-ID",
       "moreCurrencies": "Eine App kann in vielen Währungen verkaufen: Fügen Sie einem Paket einen Preis in einer anderen Währung hinzu, unter"
+    },
+    "goLive": {
+      "title": "Live schalten",
+      "pageIntro": "Die Live-Umgebung startet ausgeschaltet: keine Live-Schlüssel, keine Live-Webhooks, keine echten Abbuchungen. Arbeiten Sie die Liste ab und schalten Sie sie dann ein.",
+      "intro": "Ihre Live-Umgebung ist noch nicht aktiv. Erledigen Sie diese Schritte, um sie einzuschalten.",
+      "liveNow": "Ihre Live-Umgebung ist aktiv.",
+      "suspended": "Ihre Live-Umgebung ist gesperrt. Wenden Sie sich an den Support, um sie wieder freizugeben.",
+      "stateActive": "Aktiv",
+      "stateSuspended": "Gesperrt",
+      "count": "{done} von {total} erledigt",
+      "noLive": "Diese Installation hat keine Live-Umgebung.",
+      "done": "erledigt",
+      "todo": "noch nicht erledigt",
+      "items": {
+        "email_verified": "E-Mail-Adresse des Inhabers bestätigen",
+        "legal_profile": "Rechtliches Profil vervollständigen (Name, Land, Steuernummer)",
+        "payment_provider": "Zahlungsanbieter im Live-Modus verbinden",
+        "plan_published": "Mindestens einen Tarif in Live veröffentlichen",
+        "terms_accepted": "Nutzungsbedingungen akzeptieren"
+      },
+      "help": {
+        "email_verified": "Öffnen Sie den Link in unserer Nachricht oder fordern Sie über das Banner einen neuen an.",
+        "legal_profile": "Name, Land und Steuernummer des Verkäufers stehen auf jeder Live-Rechnung.",
+        "payment_provider": "Ein für echte Zahlungen verbundener Anbieter, dessen Systemprüfung bestanden ist.",
+        "plan_published": "Kopieren Sie unten Ihre Sandbox-Tarife nach Live oder legen Sie in Live einen an.",
+        "terms_accepted": "Wird vom Inhaber zusammen mit der Aktivierung unten akzeptiert."
+      },
+      "askTeam": "Das richtet das Payrudder-Team vorerst gemeinsam mit Ihnen ein. Wenden Sie sich an den Support.",
+      "open": "Öffnen",
+      "nothingYet": "Live zeigt keine Zahlen, bis es aktiv ist.",
+      "continue": "Einrichtung fortsetzen",
+      "acceptTerms": "Ich akzeptiere die Nutzungsbedingungen für die Live-Umgebung dieser App.",
+      "ownerOnly": "Nur der Inhaber des Kontos kann Live einschalten.",
+      "activate": "Live einschalten",
+      "notReady": "Erledigen Sie zuerst die anderen Schritte.",
+      "inactiveNote": "Live hat keine Daten, bis es aktiv ist. Ihre Sandbox funktioniert in der Zwischenzeit weiter.",
+      "toSandbox": "Sandbox öffnen"
+    },
+    "promote": {
+      "title": "Sandbox-Konfiguration nach Live kopieren",
+      "intro": "Zähler, Tarife und Preise, Steuersätze, Gutscheine, E-Mail-Einstellungen und Webhook-Endpunkte. Niemals Kunden, Nutzung, Rechnungen oder Zahlungen. Es wird nur hinzugefügt: Was in Live schon existiert und abweicht, bleibt unangetastet.",
+      "preview": "Änderungen ansehen",
+      "adminOnly": "Das können nur Inhaber und Administratoren.",
+      "previewed": "Vorschau, nichts geschrieben",
+      "applied": "Angewendet",
+      "created": "{n} hinzuzufügen",
+      "unchanged": "{n} bereits gleich",
+      "conflicts": "{n} im Konflikt",
+      "skipped": "{n} übersprungen",
+      "failed": "{n} fehlgeschlagen",
+      "nothing": "Nichts zu kopieren: Live hat bereits alles, was die Sandbox hat.",
+      "family": {
+        "meters": "Zähler",
+        "plans": "Tarife",
+        "taxes": "Steuersätze",
+        "coupons": "Gutscheine",
+        "mail": "E-Mail",
+        "webhooks": "Webhooks"
+      },
+      "action": {
+        "create": "Hinzufügen",
+        "unchanged": "Gleich",
+        "conflict": "Konflikt",
+        "skipped": "Übersprungen"
+      },
+      "conflictNote": "Ein Konflikt ist ein Objekt, das in Live mit anderen Einstellungen existiert. Es bleibt, wie es ist; ändern Sie es in Live von Hand, wenn beide übereinstimmen sollen.",
+      "apply": "{n} zu Live hinzufügen",
+      "applyNote": "Wendet genau die gezeigten Änderungen an. Hat sich die Konfiguration inzwischen geändert, werden Sie um eine neue Vorschau gebeten.",
+      "secretOnce": "Für jeden Webhook-Endpunkt unten wurde ein neues Signaturgeheimnis erzeugt. Es wird nur jetzt angezeigt; das Geheimnis der Sandbox wurde nicht kopiert.",
+      "secretLabel": "Signaturgeheimnis"
+    },
+    "sandbox": {
+      "intro": "Werkzeuge für die Testumgebung: von vorn beginnen und sehen, wie sich jede Zahlungsart verhält.",
+      "resetTitle": "Sandbox zurücksetzen",
+      "resetBody": "Löscht Kunden, Abonnements, Nutzung, Rechnungen und Zahlungen der Sandbox. Tarife, Preise, Zähler, Steuersätze, Gutscheine, Webhook-Endpunkte, E-Mail-Einstellungen und API-Schlüssel bleiben. Live wird nie berührt.",
+      "reset": "Sandbox zurücksetzen",
+      "state": {
+        "queued": "Wartet",
+        "running": "Läuft",
+        "done": "Fertig",
+        "failed": "Fehlgeschlagen"
+      },
+      "started": "Angefordert am {date}",
+      "byRetention": "Automatisch gestartet nach langer Nichtnutzung.",
+      "step": {
+        "plans": "Kunden und Tarife",
+        "ingest": "Nutzungserfassung",
+        "aggregator": "Nutzungssummen",
+        "analytics": "Analysen",
+        "billing": "Rechnungen",
+        "payments": "Zahlungen"
+      },
+      "deleted": "{n} Zeilen entfernt",
+      "skipped": "Übersprungen: nicht Teil dieser Installation",
+      "failedNote": "Ein neuer Versuch kostet nichts: Jeder Schritt lässt sich wiederholen.",
+      "neverReset": "Diese Sandbox wurde noch nie zurückgesetzt.",
+      "confirmTitle": "Sandbox zurücksetzen?",
+      "confirmBody": "Alle Testkunden, Abonnements, Rechnungen und Zahlungen werden gelöscht. Das lässt sich nicht rückgängig machen. Ihre Konfiguration bleibt.",
+      "scenariosTitle": "Zahlungsszenarien",
+      "scenariosBody": "Geben Sie einem Sandbox-Kunden eine dieser Zahlungsmethoden, und seine Rechnungen verhalten sich wie beschrieben. Ein echter Anbieter wird nie aufgerufen.",
+      "scenario": {
+        "success": "Die Abbuchung gelingt und die Rechnung ist bezahlt.",
+        "declined": "Jeder Versuch wird abgelehnt. Nach den Wiederholungen ist die Rechnung uneinbringlich.",
+        "insufficient_funds_once": "Der erste Versuch wird abgelehnt, die Wiederholung gelingt.",
+        "error_then_success": "Der Anbieter antwortet zweimal mit einem Serverfehler und gelingt dann.",
+        "timeout_committed": "Der Anbieter nimmt die Zahlung an, antwortet aber nicht rechtzeitig. Eine Statusabfrage findet sie.",
+        "timeout_not_committed": "Der Anbieter antwortet nicht und hat die Zahlung nicht angenommen. Es wird erneut abgebucht."
+      },
+      "outcome": {
+        "paid": "Bezahlt",
+        "uncollectible": "Uneinbringlich",
+        "paid_after_retry": "Nach Wiederholung bezahlt",
+        "paid_after_status_query": "Nach Statusabfrage bezahlt",
+        "paid_after_recharge": "Nach erneuter Abbuchung bezahlt"
+      },
+      "default": "Standard",
+      "simulateNote": "Zum Ausprobieren öffnen Sie eine Sandbox-Rechnung und wählen Zahlung simulieren.",
+      "simulateTitle": "Zahlung simulieren",
+      "simulateBody": "Führt die Zahlung dieser Rechnung erneut als eines der Szenarien aus. Der Kunde behält das Szenario als Zahlungsmethode.",
+      "simulate": "Simulieren",
+      "simulated": "Zahlung erneut als {scenario} ausgeführt.",
+      "simulateNotRetried": "Das Szenario ist gesetzt, die Zahlung konnte aber jetzt nicht erneut laufen ({why})."
     }
   },
   "shell": {
@@ -2734,7 +2879,9 @@
       "appSettings": "App-Einstellungen",
       "operator": "Betreiberkonsole",
       "myApps": "Meine Apps",
-      "affiliates": "Partner"
+      "affiliates": "Partner",
+      "goLive": "Live schalten",
+      "sandbox": "Sandbox-Werkzeuge"
     }
   },
   "privacy": {

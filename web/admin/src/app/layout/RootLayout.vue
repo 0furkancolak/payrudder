@@ -8,8 +8,11 @@ import { BrandLogo } from "@/shared/ui/brand-logo";
 import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
 import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
+import { rememberEnv } from "@/shared/lib/environment";
 import Breadcrumbs from "./Breadcrumbs.vue";
 import ContextSwitcher from "./ContextSwitcher.vue";
+import EnvBanner from "./EnvBanner.vue";
+import OrgEnvSwitch from "./OrgEnvSwitch.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
 import MobileDrawer from "./MobileDrawer.vue";
 import PrivacyToggle from "./PrivacyToggle.vue";
@@ -33,6 +36,23 @@ const drawer = ref(false);
 
 // A route change closes the drawer (the links also do; this covers the browser's back button).
 watch(shell.path, () => (drawer.value = false));
+
+/** The environment of the page, once known: an app's pages (any of them) or the organisation's home. */
+const pageEnv = computed(() => {
+  const c = shell.context.value;
+  return isPerson.value && (c.level === "app" || (c.level === "org" && shell.path.value === "/app")) ? c.env : undefined;
+});
+const sandboxPage = computed(() => pageEnv.value === "sandbox");
+const orgHome = computed(() => isPerson.value && shell.context.value.level === "org" && shell.path.value === "/app");
+
+// The app opens next time where the person was: every app page that knows its environment remembers it.
+watch(
+  () => [shell.context.value.appId, shell.context.value.env] as const,
+  ([appId, env]) => {
+    if (appId && env && isPerson.value) rememberEnv(appId, env);
+  },
+  { immediate: true },
+);
 
 const home = computed(() => (isPerson.value ? "/app" : "/signin"));
 
@@ -82,6 +102,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
             <ThemeToggle />
             <UserMenu v-if="isPerson" />
           </div>
+          <OrgEnvSwitch v-if="orgHome && pageEnv" class="order-last w-full sm:order-none sm:w-auto" :env="pageEnv" />
           <ContextSwitcher
             v-if="isPerson && shell.context.value.level === 'app'"
             class="order-last w-full sm:order-none sm:w-auto"
@@ -101,6 +122,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
           <ThemeToggle />
         </div>
       </header>
+      <EnvBanner :show="sandboxPage" />
       <main
         id="main"
         tabindex="-1"

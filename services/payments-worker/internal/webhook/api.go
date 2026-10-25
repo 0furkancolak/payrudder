@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,24 +14,26 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/httpx"
 )
 
 // The operator API over what a provider can do beyond charging: its catalogue, customers, subscriptions, discounts and documents. Each
 // endpoint works only when the tenant has an account at the provider and the provider's adapter implements the interface it needs.
 
-func (s *Server) apiRoutes(mux *http.ServeMux) {
+func (s *Server) apiRoutes(mux *http.ServeMux, guard func(http.HandlerFunc) http.HandlerFunc) {
 	const base = "/admin/tenants/{tenant}/providers/{provider}"
-	mux.HandleFunc("POST "+base+"/catalogue/sync", s.admin(s.syncCatalogue))
-	mux.HandleFunc("GET "+base+"/catalogue", s.admin(s.listCatalogue))
-	mux.HandleFunc("POST "+base+"/customers/{external_id}", s.admin(s.ensureCustomer))
-	mux.HandleFunc("POST "+base+"/customers/{external_id}/portal", s.admin(s.portalLink))
-	mux.HandleFunc("POST "+base+"/subscriptions/{id}/change-preview", s.admin(s.previewChange))
-	mux.HandleFunc("POST "+base+"/subscriptions/{id}/change", s.admin(s.applyChange))
-	mux.HandleFunc("POST "+base+"/subscriptions/{id}/pause", s.admin(s.pause))
-	mux.HandleFunc("POST "+base+"/subscriptions/{id}/resume", s.admin(s.resume))
-	mux.HandleFunc("POST "+base+"/subscriptions/{id}/payment-method-link", s.admin(s.paymentMethodLink))
-	mux.HandleFunc("POST "+base+"/discounts", s.admin(s.createDiscount))
-	mux.HandleFunc("GET "+base+"/transactions/{ref}/invoice", s.admin(s.invoiceLink))
+	mux.HandleFunc("POST "+base+"/catalogue/sync", guard(s.syncCatalogue))
+	mux.HandleFunc("GET "+base+"/catalogue", guard(s.listCatalogue))
+	mux.HandleFunc("POST "+base+"/customers/{external_id}", guard(s.ensureCustomer))
+	mux.HandleFunc("POST "+base+"/customers/{external_id}/portal", guard(s.portalLink))
+	mux.HandleFunc("POST "+base+"/subscriptions/{id}/change-preview", guard(s.previewChange))
+	mux.HandleFunc("POST "+base+"/subscriptions/{id}/change", guard(s.applyChange))
+	mux.HandleFunc("POST "+base+"/subscriptions/{id}/pause", guard(s.pause))
+	mux.HandleFunc("POST "+base+"/subscriptions/{id}/resume", guard(s.resume))
+	mux.HandleFunc("POST "+base+"/subscriptions/{id}/payment-method-link", guard(s.paymentMethodLink))
+	mux.HandleFunc("POST "+base+"/discounts", guard(s.createDiscount))
+	mux.HandleFunc("GET "+base+"/transactions/{ref}/invoice", guard(s.invoiceLink))
 }
 
 // target is the tenant, environment and provider an API call is about.
@@ -44,66 +45,26 @@ type target struct {
 }
 
 func (s *Server) target(w http.ResponseWriter, r *http.Request) (target, bool) {
-	t, ok := s.tenant(w, r)
+	t, ok := httpx.Tenant(w, r)
 	if !ok {
 		return target{}, false
 	}
-	env, ok := environment(w, r)
+	env, ok := httpx.Environment(w, r)
 	if !ok {
 		return target{}, false
 	}
 	name := r.PathValue("provider")
 	prov, err := s.Resolver.Named(r.Context(), t, name, env)
 	if err != nil {
-		fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+name+" for this tenant")
+		httpx.Fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+name+" for this tenant")
 		return target{}, false
 	}
 	return target{tenant: t, env: env, provider: name, prov: prov}, true
 }
 
-// unsupported answers for a provider whose adapter lacks the interface an endpoint needs.
-func unsupported(w http.ResponseWriter, provider, what string) {
-	fail(w, http.StatusNotImplemented, "payments.provider.not_supported", provider+" does not support "+what)
-}
-
-// providerTrouble is what a caller is told when a provider call failed; the cause is in the log.
-const providerTrouble = "the payment provider could not complete the request"
-
-// providerFail relays an error from a provider: a request it refused is the caller's to fix, anything else is a bad gateway.
-func (s *Server) providerFail(w http.ResponseWriter, r *http.Request, what string, err error) {
-	s.Log.WarnContext(r.Context(), what+" failed", "err", err)
-	if errors.Is(err, payments.ErrUnsupported) {
-		fail(w, http.StatusConflict, "payments.provider.not_supported", err.Error())
-		return
-	}
-	fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
-}
-
-func decodeBody(w http.ResponseWriter, r *http.Request, v any) bool {
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(v); err != nil {
-		fail(w, http.StatusBadRequest, "payments.request.bad_body", "the body must be JSON: "+err.Error())
-		return false
-	}
-	return true
-}
-
 // priceKey is Payrudder's name for one price of a plan version.
 func priceKey(planVersionID, interval, currency string) string {
 	return planVersionID + "|" + interval + "|" + strings.ToUpper(currency)
-}
-
-func intervalName(i plansv1.SubscriptionInterval) string {
-	if i == plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR {
-		return "year"
-	}
-	return "month"
-}
-
-func intervalFromName(name string) plansv1.SubscriptionInterval {
-	if name == "year" {
-		return plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR
-	}
-	return plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
 }
 
 // catalogueTarget finds the plan version and interval a provider's price ids stand for, if Payrudder created them.
@@ -115,7 +76,7 @@ func (s *Server) catalogueTarget(ctx context.Context, tenant uuid.UUID, provider
 		}
 		parts := strings.Split(key, "|")
 		if len(parts) == 3 {
-			return parts[0], intervalFromName(parts[1]), true
+			return parts[0], subscription.Interval(parts[1]).Proto(), true
 		}
 	}
 	return "", plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED, false
@@ -130,19 +91,19 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 	}
 	cat, ok := tg.prov.(payments.Catalogue)
 	if !ok {
-		unsupported(w, tg.provider, "a catalogue")
+		httpx.Unsupported(w, tg.provider, "a catalogue")
 		return
 	}
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
+		httpx.Fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return
 	}
 	var in catalogueInput
-	if !decodeBody(w, r, &in) {
+	if !httpx.DecodeBody(w, r, &in) {
 		return
 	}
 	if in.PlanCode == "" {
-		fail(w, http.StatusBadRequest, "payments.plan.code_required", "plan_code is required")
+		httpx.Fail(w, http.StatusBadRequest, "payments.plan.code_required", "plan_code is required")
 		return
 	}
 	ctx := r.Context()
@@ -158,13 +119,13 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 	}
 	specs, existing, err := s.missingPrices(ctx, tg, in, pv, tenantCurrency)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
+		httpx.Fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	productKey := "plan:" + in.PlanCode
 	productRef, _, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "product", productKey)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
+		httpx.Fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	res := payments.CatalogueResult{ProductRef: productRef, Prices: map[string]string{}, Skipped: map[string]string{}}
@@ -174,10 +135,10 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 	}
 	s.rememberCatalogue(ctx, tg, productKey, productRef, res)
 	if syncErr != nil {
-		s.providerFail(w, r, "catalogue sync", syncErr)
+		httpx.ProviderFail(s.Log, w, r, "catalogue sync", syncErr)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"plan_version_id": pv.GetId(), "product_ref": res.ProductRef, "created": res.Prices, "existing": existing, "skipped": res.Skipped})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"plan_version_id": pv.GetId(), "product_ref": res.ProductRef, "created": res.Prices, "existing": existing, "skipped": res.Skipped})
 }
 
 type catalogueInput struct {
@@ -202,7 +163,7 @@ func (s *Server) missingPrices(ctx context.Context, tg target, in catalogueInput
 	}
 	fees := []fee{{"month", tenantCurrency, pv.GetBaseFeeMinor()}}
 	for _, f := range pv.GetFees() {
-		fees = append(fees, fee{intervalName(f.GetInterval()), f.GetCurrency(), f.GetBaseFeeMinor()})
+		fees = append(fees, fee{subscription.IntervalFromProto(f.GetInterval()).Word(), f.GetCurrency(), f.GetBaseFeeMinor()})
 	}
 	existing := map[string]string{}
 	var specs []payments.PriceSpec
@@ -249,10 +210,10 @@ func (s *Server) listCatalogue(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := s.Objects.List(r.Context(), tg.tenant, tg.provider, tg.env, "product", "price", "discount")
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
+		httpx.Fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"objects": list})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"objects": list})
 }
 
 // ensureCustomer makes sure the customer exists at the provider (and has an address for its country), and remembers the provider's ids.
@@ -263,19 +224,19 @@ func (s *Server) ensureCustomer(w http.ResponseWriter, r *http.Request) {
 	}
 	api, ok := tg.prov.(payments.CustomerAPI)
 	if !ok {
-		unsupported(w, tg.provider, "customers")
+		httpx.Unsupported(w, tg.provider, "customers")
 		return
 	}
 	refs, status, err := s.customerRefs(r.Context(), tg, api, r.PathValue("external_id"))
 	if err != nil {
 		if status == 0 {
-			s.providerFail(w, r, "ensure customer", err)
+			httpx.ProviderFail(s.Log, w, r, "ensure customer", err)
 		} else {
-			fail(w, status, "payments.customer.not_ready", err.Error())
+			httpx.Fail(w, status, "payments.customer.not_ready", err.Error())
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"customer_ref": refs.CustomerRef, "address_ref": refs.AddressRef, "business_ref": refs.BusinessRef})
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"customer_ref": refs.CustomerRef, "address_ref": refs.AddressRef, "business_ref": refs.BusinessRef})
 }
 
 // customerRefs finds or creates the customer at the provider. A zero status means the provider failed.
@@ -309,24 +270,24 @@ func (s *Server) portalLink(w http.ResponseWriter, r *http.Request) {
 	}
 	api, ok := tg.prov.(payments.CustomerAPI)
 	if !ok {
-		unsupported(w, tg.provider, "a customer portal")
+		httpx.Unsupported(w, tg.provider, "a customer portal")
 		return
 	}
 	refs, status, err := s.customerRefs(r.Context(), tg, api, r.PathValue("external_id"))
 	if err != nil {
 		if status == 0 {
-			s.providerFail(w, r, "ensure customer", err)
+			httpx.ProviderFail(s.Log, w, r, "ensure customer", err)
 		} else {
-			fail(w, status, "payments.customer.not_ready", err.Error())
+			httpx.Fail(w, status, "payments.customer.not_ready", err.Error())
 		}
 		return
 	}
 	url, err := api.PortalLink(r.Context(), refs.CustomerRef, nil)
 	if err != nil {
-		s.providerFail(w, r, "portal link", err)
+		httpx.ProviderFail(s.Log, w, r, "portal link", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"url": url})
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
 // changeRequest is the body of a change: the same words as the tenant API's change request.
@@ -343,7 +304,7 @@ func enumWord(v, prefix string) string { return strings.TrimPrefix(strings.ToLow
 // providerSubscription loads a subscription Payrudder mirrors and checks the provider runs it.
 func (s *Server) providerSubscription(w http.ResponseWriter, r *http.Request, tg target) (*plansv1.Subscription, bool) {
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
+		httpx.Fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return nil, false
 	}
 	sub, err := s.Plans.GetSubscription(r.Context(), tg.tenant, r.PathValue("id"))
@@ -352,7 +313,7 @@ func (s *Server) providerSubscription(w http.ResponseWriter, r *http.Request, tg
 		return nil, false
 	}
 	if sub.GetOwner() != "provider" || sub.GetProvider() != tg.provider || sub.GetProviderRef() == "" {
-		fail(w, http.StatusConflict, "payments.subscription.wrong_provider", "this subscription is not run by "+tg.provider)
+		httpx.Fail(w, http.StatusConflict, "payments.subscription.wrong_provider", "this subscription is not run by "+tg.provider)
 		return nil, false
 	}
 	return sub, true
@@ -381,12 +342,12 @@ func (s *Server) planChange(ctx context.Context, tg target, sub *plansv1.Subscri
 	if pvID == sub.GetPlanVersionId() && iv == sub.GetInterval() {
 		return payments.ProviderChange{}, "", 0, http.StatusBadRequest, errors.New("the subscription is already on this plan version and interval")
 	}
-	ref, found, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "price", priceKey(pvID, intervalName(iv), sub.GetCurrency()))
+	ref, found, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "price", priceKey(pvID, subscription.IntervalFromProto(iv).Word(), sub.GetCurrency()))
 	if err != nil {
 		return payments.ProviderChange{}, "", 0, http.StatusInternalServerError, errors.New("internal error")
 	}
 	if !found {
-		return payments.ProviderChange{}, "", 0, http.StatusConflict, fmt.Errorf("%s has no %sly price in %s for this plan version; sync the catalogue first", tg.provider, intervalName(iv), sub.GetCurrency())
+		return payments.ProviderChange{}, "", 0, http.StatusConflict, fmt.Errorf("%s has no %sly price in %s for this plan version; sync the catalogue first", tg.provider, subscription.IntervalFromProto(iv).Word(), sub.GetCurrency())
 	}
 	timing := enumWord(in.Timing, "change_timing_")
 	if timing == "" {
@@ -402,11 +363,11 @@ func (s *Server) previewChange(w http.ResponseWriter, r *http.Request) {
 	}
 	api, ok := tg.prov.(payments.SubscriptionAPI)
 	if !ok {
-		unsupported(w, tg.provider, "driving subscriptions")
+		httpx.Unsupported(w, tg.provider, "driving subscriptions")
 		return
 	}
 	var in changeRequest
-	if !decodeBody(w, r, &in) {
+	if !httpx.DecodeBody(w, r, &in) {
 		return
 	}
 	sub, ok := s.providerSubscription(w, r, tg)
@@ -415,12 +376,12 @@ func (s *Server) previewChange(w http.ResponseWriter, r *http.Request) {
 	}
 	ch, _, iv, code, err := s.planChange(r.Context(), tg, sub, in)
 	if err != nil {
-		fail(w, code, "payments.subscription.change_refused", err.Error())
+		httpx.Fail(w, code, "payments.subscription.change_refused", err.Error())
 		return
 	}
 	p, err := api.PreviewChange(r.Context(), sub.GetProviderRef(), ch)
 	if err != nil {
-		s.providerFail(w, r, "preview change", err)
+		httpx.ProviderFail(s.Log, w, r, "preview change", err)
 		return
 	}
 	out := map[string]any{
@@ -431,7 +392,7 @@ func (s *Server) previewChange(w http.ResponseWriter, r *http.Request) {
 	if p.NextBilledAt != nil {
 		out["next_renewal_time"] = p.NextBilledAt.UTC().Format(time.RFC3339)
 	}
-	writeJSON(w, http.StatusOK, out)
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
 // previewTiming is the tenant API's word for the timing a preview was asked about: the one the request named, not always "immediately".
@@ -458,11 +419,11 @@ func (s *Server) applyChange(w http.ResponseWriter, r *http.Request) {
 	}
 	api, ok := tg.prov.(payments.SubscriptionAPI)
 	if !ok {
-		unsupported(w, tg.provider, "driving subscriptions")
+		httpx.Unsupported(w, tg.provider, "driving subscriptions")
 		return
 	}
 	var in changeRequest
-	if !decodeBody(w, r, &in) {
+	if !httpx.DecodeBody(w, r, &in) {
 		return
 	}
 	sub, ok := s.providerSubscription(w, r, tg)
@@ -472,21 +433,21 @@ func (s *Server) applyChange(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	ch, pvID, iv, code, err := s.planChange(ctx, tg, sub, in)
 	if err != nil {
-		fail(w, code, "payments.subscription.change_refused", err.Error())
+		httpx.Fail(w, code, "payments.subscription.change_refused", err.Error())
 		return
 	}
 	if err := api.ApplyChange(ctx, sub.GetProviderRef(), ch); err != nil {
-		s.providerFail(w, r, "apply change", err)
+		httpx.ProviderFail(s.Log, w, r, "apply change", err)
 		return
 	}
 	err = s.Plans.SyncProviderSubscription(ctx, tg.tenant, &plansv1.SyncProviderSubscriptionRequest{
 		SubscriptionId: sub.GetId(), Provider: tg.provider, ProviderRef: sub.GetProviderRef(), Owner: "provider", OccurredAt: timestamppb.Now(), PlanVersionId: pvID, Interval: iv})
 	if err != nil {
 		s.Log.ErrorContext(ctx, "the provider changed a subscription but plans-svc did not follow", "subscription", sub.GetId(), "err", err)
-		writeJSON(w, http.StatusAccepted, map[string]any{"changed_at_provider": true, "message": "the provider applied the change; Payrudder will follow when the provider's notification arrives"})
+		httpx.WriteJSON(w, http.StatusAccepted, map[string]any{"changed_at_provider": true, "message": "the provider applied the change; Payrudder will follow when the provider's notification arrives"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"changed_at_provider": true, "followed": true})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"changed_at_provider": true, "followed": true})
 }
 
 func (s *Server) pause(w http.ResponseWriter, r *http.Request) {
@@ -496,14 +457,14 @@ func (s *Server) pause(w http.ResponseWriter, r *http.Request) {
 	}
 	api, ok := tg.prov.(payments.SubscriptionAPI)
 	if !ok {
-		unsupported(w, tg.provider, "driving subscriptions")
+		httpx.Unsupported(w, tg.provider, "driving subscriptions")
 		return
 	}
 	var in struct {
 		AtPeriodEnd bool       `json:"at_period_end"`
 		ResumeAt    *time.Time `json:"resume_at"`
 	}
-	if r.ContentLength != 0 && !decodeBody(w, r, &in) {
+	if r.ContentLength != 0 && !httpx.DecodeBody(w, r, &in) {
 		return
 	}
 	sub, ok := s.providerSubscription(w, r, tg)
@@ -511,10 +472,10 @@ func (s *Server) pause(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := api.Pause(r.Context(), sub.GetProviderRef(), in.AtPeriodEnd, in.ResumeAt); err != nil {
-		s.providerFail(w, r, "pause", err)
+		httpx.ProviderFail(s.Log, w, r, "pause", err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]any{"requested": true, "note": "Payrudder's copy follows when the provider's notification arrives"})
+	httpx.WriteJSON(w, http.StatusAccepted, map[string]any{"requested": true, "note": "Payrudder's copy follows when the provider's notification arrives"})
 }
 
 func (s *Server) resume(w http.ResponseWriter, r *http.Request) {
@@ -524,7 +485,7 @@ func (s *Server) resume(w http.ResponseWriter, r *http.Request) {
 	}
 	api, ok := tg.prov.(payments.SubscriptionAPI)
 	if !ok {
-		unsupported(w, tg.provider, "driving subscriptions")
+		httpx.Unsupported(w, tg.provider, "driving subscriptions")
 		return
 	}
 	sub, ok := s.providerSubscription(w, r, tg)
@@ -532,10 +493,10 @@ func (s *Server) resume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := api.Resume(r.Context(), sub.GetProviderRef()); err != nil {
-		s.providerFail(w, r, "resume", err)
+		httpx.ProviderFail(s.Log, w, r, "resume", err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]any{"requested": true, "note": "Payrudder's copy follows when the provider's notification arrives"})
+	httpx.WriteJSON(w, http.StatusAccepted, map[string]any{"requested": true, "note": "Payrudder's copy follows when the provider's notification arrives"})
 }
 
 func (s *Server) paymentMethodLink(w http.ResponseWriter, r *http.Request) {
@@ -545,7 +506,7 @@ func (s *Server) paymentMethodLink(w http.ResponseWriter, r *http.Request) {
 	}
 	api, ok := tg.prov.(payments.SubscriptionAPI)
 	if !ok {
-		unsupported(w, tg.provider, "driving subscriptions")
+		httpx.Unsupported(w, tg.provider, "driving subscriptions")
 		return
 	}
 	sub, ok := s.providerSubscription(w, r, tg)
@@ -554,10 +515,10 @@ func (s *Server) paymentMethodLink(w http.ResponseWriter, r *http.Request) {
 	}
 	url, err := api.PaymentMethodLink(r.Context(), sub.GetProviderRef())
 	if err != nil {
-		s.providerFail(w, r, "payment method link", err)
+		httpx.ProviderFail(s.Log, w, r, "payment method link", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"url": url})
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
 func (s *Server) createDiscount(w http.ResponseWriter, r *http.Request) {
@@ -567,16 +528,16 @@ func (s *Server) createDiscount(w http.ResponseWriter, r *http.Request) {
 	}
 	api, ok := tg.prov.(payments.DiscountAPI)
 	if !ok {
-		unsupported(w, tg.provider, "discounts")
+		httpx.Unsupported(w, tg.provider, "discounts")
 		return
 	}
 	var in payments.DiscountSpec
-	if !decodeBody(w, r, &in) {
+	if !httpx.DecodeBody(w, r, &in) {
 		return
 	}
 	refs, err := api.CreateDiscount(r.Context(), in)
 	if err != nil {
-		s.providerFail(w, r, "create discount", err)
+		httpx.ProviderFail(s.Log, w, r, "create discount", err)
 		return
 	}
 	key := refs.Code
@@ -586,7 +547,7 @@ func (s *Server) createDiscount(w http.ResponseWriter, r *http.Request) {
 	if err := s.Objects.Put(r.Context(), tg.tenant, tg.provider, tg.env, "discount", key, refs.DiscountRef); err != nil {
 		s.Log.ErrorContext(r.Context(), "could not remember a discount created at the provider", "provider", tg.provider, "ref", refs.DiscountRef, "err", err)
 	}
-	writeJSON(w, http.StatusCreated, map[string]string{"discount_ref": refs.DiscountRef, "code": refs.Code})
+	httpx.WriteJSON(w, http.StatusCreated, map[string]string{"discount_ref": refs.DiscountRef, "code": refs.Code})
 }
 
 func (s *Server) invoiceLink(w http.ResponseWriter, r *http.Request) {
@@ -596,13 +557,13 @@ func (s *Server) invoiceLink(w http.ResponseWriter, r *http.Request) {
 	}
 	api, ok := tg.prov.(payments.DocumentLinker)
 	if !ok {
-		unsupported(w, tg.provider, "invoice documents")
+		httpx.Unsupported(w, tg.provider, "invoice documents")
 		return
 	}
 	url, err := api.InvoiceURL(r.Context(), r.PathValue("ref"))
 	if err != nil {
-		s.providerFail(w, r, "invoice link", err)
+		httpx.ProviderFail(s.Log, w, r, "invoice link", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"url": url})
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }

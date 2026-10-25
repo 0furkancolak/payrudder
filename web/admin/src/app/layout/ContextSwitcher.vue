@@ -68,6 +68,6 @@ function pickEnv(value: string) {
         <DropdownMenuItem class="rounded-xl" @select="navigate({ to: '/app' })"><Plus class="size-4" />{{ t("shell.allApps") }}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-    <SegmentedControl :model-value="env" :options="options" :label="t('product.env.label')" data-testid="env-switch" @update:model-value="pickEnv" />
+    <SegmentedControl v-if="context.env" :model-value="env" :options="options" :label="t('product.env.label')" data-testid="env-switch" @update:model-value="pickEnv" />
   </div>
 </template>

@@ -13,13 +13,13 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/protobuf/proto"
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/usage"
 )
 
@@ -78,16 +78,12 @@ func New(cfg Config) (*Runner, error) {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
-	m := otel.Meter("github.com/0furkancolak/payrudder/services/analytics-svc")
+	b := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/analytics-svc")
 	r := &Runner{cfg: cfg, log: cfg.Log}
-	var err error
-	if r.rows, err = m.Int64Counter("analytics_rows_inserted", metric.WithDescription("Rows inserted into ClickHouse, by table")); err != nil {
-		return nil, err
-	}
-	if r.dead, err = m.Int64Counter("analytics_dead_letters", metric.WithDescription("Records sent to a DLQ, by topic and reason")); err != nil {
-		return nil, err
-	}
-	if r.retries, err = m.Int64Counter("analytics_insert_retries", metric.WithDescription("Failed ClickHouse inserts that were retried")); err != nil {
+	r.rows = b.Counter("analytics_rows_inserted", "Rows inserted into ClickHouse, by table")
+	r.dead = b.Counter("analytics_dead_letters", "Records sent to a DLQ, by topic and reason")
+	r.retries = b.Counter("analytics_insert_retries", "Failed ClickHouse inserts that were retried")
+	if err := b.Err(); err != nil {
 		return nil, err
 	}
 	return r, nil

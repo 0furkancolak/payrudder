@@ -175,7 +175,8 @@ export function share(value: number, max: number): number {
  * view and a value that is not understood is dropped instead of breaking the page.
  */
 export function dashSearch(s: Record<string, unknown>): Record<string, string> {
-  return { ...(s.env === "sandbox" ? { env: "sandbox" } : {}), ...toSearch(parseQuery(s)) };
+  // Both environments are written out: with none in the address the console chooses by itself (the last one used), and a chosen one must stay chosen.
+  return { ...(s.env === "sandbox" || s.env === "live" ? { env: s.env } : {}), ...toSearch(parseQuery(s)) };
 }
 
 /** What the KPI cards need besides the figures themselves: the rates as percentages, the earlier ones, and every change against the period before. */
