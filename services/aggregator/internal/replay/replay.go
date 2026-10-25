@@ -28,7 +28,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -73,7 +72,6 @@ type Config struct {
 	Scan time.Duration
 	// BatchSize is the records per apply transaction (default 1000).
 	BatchSize int
-	Now       func() time.Time
 }
 
 // Manager runs replay jobs.
@@ -84,8 +82,21 @@ type Manager struct {
 	failures map[uuid.UUID]int
 }
 
-// maxFailures is how many times in a row a job may be interrupted before it is marked failed (and its generation discarded).
-const maxFailures = 10
+const (
+	// maxFailures is how many times in a row a job may be interrupted before it is marked failed (and its generation discarded).
+	maxFailures = 10
+	// defaultLateness is the lateness ingest accepts (ingest-svc domain.MaxLateness): the replay reads that far before the first period.
+	defaultLateness = 35 * 24 * time.Hour
+	// readConcurrency is how many partitions of a job are read at once.
+	readConcurrency = 4
+	// fetchMaxWait is how long a broker may hold a fetch; pollTimeout is how long one poll waits for records.
+	fetchMaxWait = 500 * time.Millisecond
+	pollTimeout  = 3 * time.Second
+	// wantedEvery is how many batches are applied between checks that the job was not discarded.
+	wantedEvery = 20
+	// idlePolls is how many empty polls in a row make the reader look at the end of the log.
+	idlePolls = 2
+)
 
 // New returns a Manager.
 func New(cfg Config) *Manager {
@@ -93,16 +104,13 @@ func New(cfg Config) *Manager {
 		cfg.Log = slog.Default()
 	}
 	if cfg.Lateness == 0 {
-		cfg.Lateness = 35 * 24 * time.Hour
+		cfg.Lateness = defaultLateness
 	}
 	if cfg.Scan == 0 {
 		cfg.Scan = 2 * time.Second
 	}
 	if cfg.BatchSize == 0 {
 		cfg.BatchSize = 1000
-	}
-	if cfg.Now == nil {
-		cfg.Now = time.Now
 	}
 	return &Manager{cfg: cfg, running: map[uuid.UUID]bool{}, failures: map[uuid.UUID]int{}}
 }
@@ -174,13 +182,12 @@ func offsetsOf(b []byte) (map[int32]int64, error) {
 	return out, nil
 }
 
-func offsetsJSON(m map[int32]int64) []byte {
+func offsetsJSON(m map[int32]int64) ([]byte, error) {
 	raw := make(map[string]int64, len(m))
 	for p, o := range m {
 		raw[fmt.Sprint(p)] = o
 	}
-	b, _ := json.Marshal(raw)
-	return b
+	return json.Marshal(raw)
 }
 
 // Get loads a job.
@@ -212,8 +219,7 @@ func (m *Manager) Start(ctx context.Context, tenantID uuid.UUID, from, to, reaso
 	}
 	nj := newJob{id: uuid.New(), tenantID: tenantID, from: from, to: to, reason: reason, start: startOffsets, end: endOffsets}
 	err = pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error { return insertJob(ctx, sqlc.New(tx), nj) })
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "one_open_replay" {
+	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation && pgxx.ConstraintName(err) == "one_open_replay" {
 		return nil, ErrOpen
 	}
 	if err != nil {
@@ -288,9 +294,17 @@ func insertJob(ctx context.Context, q *sqlc.Queries, nj newJob) error {
 	if err := q.InsertBuildingGeneration(ctx, sqlc.InsertBuildingGenerationParams{TenantID: nj.tenantID, Generation: target}); err != nil {
 		return err
 	}
+	startOffsets, err := offsetsJSON(nj.start)
+	if err != nil {
+		return err
+	}
+	endOffsets, err := offsetsJSON(nj.end)
+	if err != nil {
+		return err
+	}
 	return q.InsertReplayJob(ctx, sqlc.InsertReplayJobParams{
 		ID: nj.id, TenantID: nj.tenantID, FromPeriodID: nj.from, ToPeriodID: nj.to, TargetGeneration: target, SourceGeneration: &source,
-		StartOffsets: offsetsJSON(nj.start), EndOffsets: offsetsJSON(nj.end), Reason: nj.reason,
+		StartOffsets: startOffsets, EndOffsets: endOffsets, Reason: nj.reason,
 	})
 }
 
@@ -358,14 +372,13 @@ func (m *Manager) afterRun(ctx context.Context, j *Job, err error) {
 	m.cfg.Log.WarnContext(ctx, "replay: job interrupted; it will be retried", "job", j.ID, "tenant", j.TenantID, "attempt", n, "error", err)
 	if n >= maxFailures {
 		q := sqlc.New(m.cfg.Pool)
-		_ = q.FailReplayJob(ctx, sqlc.FailReplayJobParams{TenantID: j.TenantID, ID: j.ID, LastError: err.Error()})
-		_ = q.DiscardOpenGeneration(ctx, sqlc.DiscardOpenGenerationParams{TenantID: j.TenantID, Generation: j.TargetGeneration})
+		if ferr := q.FailReplayJob(ctx, sqlc.FailReplayJobParams{TenantID: j.TenantID, ID: j.ID, LastError: err.Error()}); ferr != nil {
+			m.cfg.Log.WarnContext(ctx, "replay: could not mark the job failed; it will be retried", "job", j.ID, "tenant", j.TenantID, "error", ferr)
+		}
+		if derr := q.DiscardOpenGeneration(ctx, sqlc.DiscardOpenGenerationParams{TenantID: j.TenantID, Generation: j.TargetGeneration}); derr != nil {
+			m.cfg.Log.WarnContext(ctx, "replay: could not discard the generation of a failed job", "job", j.ID, "tenant", j.TenantID, "error", derr)
+		}
 	}
-}
-
-// RunOnce advances one job as far as it goes in this call (tests, and a replica taking over).
-func (m *Manager) RunOnce(ctx context.Context, tenantID, jobID uuid.UUID) error {
-	return m.runJob(ctx, tenantID, jobID)
 }
 
 func lockKey(id uuid.UUID) int64 {
@@ -388,7 +401,11 @@ func (m *Manager) runJob(ctx context.Context, tenantID, jobID uuid.UUID) error {
 	if err != nil || !got {
 		return err
 	}
-	defer func() { _ = lock.ReplayUnlock(context.WithoutCancel(ctx), lockKey(jobID)) }()
+	defer func() {
+		if err := lock.ReplayUnlock(context.WithoutCancel(ctx), lockKey(jobID)); err != nil {
+			m.cfg.Log.WarnContext(ctx, "replay: could not release the job lock", "job", jobID, "error", err)
+		}
+	}()
 
 	for {
 		job, err := m.Get(ctx, tenantID, jobID)
@@ -427,7 +444,10 @@ func (m *Manager) catchUpAndVerify(ctx context.Context, job *Job) error {
 	if err != nil {
 		return err
 	}
-	b, _ := json.Marshal(ver)
+	b, err := json.Marshal(ver)
+	if err != nil {
+		return err
+	}
 	if err := sqlc.New(m.cfg.Pool).MarkReplayReady(ctx, sqlc.MarkReplayReadyParams{TenantID: job.TenantID, ID: job.ID, Verification: b}); err != nil {
 		return err
 	}
@@ -459,7 +479,7 @@ func (m *Manager) readTo(ctx context.Context, job *Job, limits map[int32]int64) 
 		return err
 	}
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(4)
+	g.SetLimit(readConcurrency)
 	for _, p := range parts {
 		start, ok := pos[p]
 		if !ok {
@@ -475,7 +495,7 @@ func (m *Manager) readTo(ctx context.Context, job *Job, limits map[int32]int64) 
 
 func (m *Manager) readPartition(ctx context.Context, job *Job, h *apply.Handler, p int32, from, limit int64) error {
 	cl, err := kgo.NewClient(kgo.SeedBrokers(m.cfg.Brokers...), kgo.ConsumePartitions(map[string]map[int32]kgo.Offset{m.cfg.Topic: {p: kgo.NewOffset().At(from)}}),
-		kgo.FetchMaxWait(500*time.Millisecond))
+		kgo.FetchMaxWait(fetchMaxWait))
 	if err != nil {
 		return err
 	}
@@ -483,24 +503,10 @@ func (m *Manager) readPartition(ctx context.Context, job *Job, h *apply.Handler,
 	adm := kadm.NewClient(cl)
 	next, idle, batches := from, 0, 0
 	for next < limit {
-		pctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-		fetches := cl.PollRecords(pctx, m.cfg.BatchSize)
-		cancel()
-		if ctx.Err() != nil {
-			return ctx.Err()
+		recs, past, err := m.poll(ctx, cl, p, limit)
+		if err != nil {
+			return err
 		}
-		var recs []*kgo.Record
-		past := false
-		fetches.EachRecord(func(r *kgo.Record) {
-			if r.Partition != p {
-				return
-			}
-			if r.Offset >= limit {
-				past = true
-				return
-			}
-			recs = append(recs, r)
-		})
 		if len(recs) > 0 {
 			idle = 0
 			if err := h.Apply(ctx, p, recs); err != nil {
@@ -508,7 +514,7 @@ func (m *Manager) readPartition(ctx context.Context, job *Job, h *apply.Handler,
 			}
 			next = recs[len(recs)-1].Offset + 1
 			batches++
-			if batches%20 == 0 { // a discarded job stops reading
+			if batches%wantedEvery == 0 { // a discarded job stops reading
 				if err := m.stillWanted(ctx, job); err != nil {
 					return err
 				}
@@ -519,13 +525,10 @@ func (m *Manager) readPartition(ctx context.Context, job *Job, h *apply.Handler,
 			return nil
 		}
 		// Nothing arrived: either the log ends before limit (the limit was a high-water mark that is not a record) or the broker is slow.
-		if idle++; idle >= 2 {
-			ends, err := adm.ListEndOffsets(ctx, m.cfg.Topic)
-			if err != nil {
+		if idle++; idle >= idlePolls {
+			ended, err := m.logEndedBefore(ctx, adm, p, next)
+			if err != nil || ended {
 				return err
-			}
-			if o, ok := ends.Lookup(m.cfg.Topic, p); ok && o.Offset <= next {
-				return nil
 			}
 			if err := m.stillWanted(ctx, job); err != nil {
 				return err
@@ -533,6 +536,37 @@ func (m *Manager) readPartition(ctx context.Context, job *Job, h *apply.Handler,
 		}
 	}
 	return nil
+}
+
+// poll fetches the next records of partition p below limit; past is set when it saw a record at or beyond limit.
+func (m *Manager) poll(ctx context.Context, cl *kgo.Client, p int32, limit int64) (recs []*kgo.Record, past bool, err error) {
+	pctx, cancel := context.WithTimeout(ctx, pollTimeout)
+	fetches := cl.PollRecords(pctx, m.cfg.BatchSize)
+	cancel()
+	if ctx.Err() != nil {
+		return nil, false, ctx.Err()
+	}
+	fetches.EachRecord(func(r *kgo.Record) {
+		if r.Partition != p {
+			return
+		}
+		if r.Offset >= limit {
+			past = true
+			return
+		}
+		recs = append(recs, r)
+	})
+	return recs, past, nil
+}
+
+// logEndedBefore reports whether partition p has no record at or after next.
+func (m *Manager) logEndedBefore(ctx context.Context, adm *kadm.Client, p int32, next int64) (bool, error) {
+	ends, err := adm.ListEndOffsets(ctx, m.cfg.Topic)
+	if err != nil {
+		return false, err
+	}
+	o, ok := ends.Lookup(m.cfg.Topic, p)
+	return ok && o.Offset <= next, nil
 }
 
 func (m *Manager) stillWanted(ctx context.Context, job *Job) error {
@@ -576,7 +610,11 @@ func (m *Manager) beginCatchUp(ctx context.Context, job *Job) error {
 		if n != 1 {
 			return errGone
 		}
-		return q.MarkReplayCatchingUp(ctx, sqlc.MarkReplayCatchingUpParams{TenantID: job.TenantID, ID: job.ID, DualWriteFrom: offsetsJSON(dual)})
+		dualJSON, err := offsetsJSON(dual)
+		if err != nil {
+			return err
+		}
+		return q.MarkReplayCatchingUp(ctx, sqlc.MarkReplayCatchingUpParams{TenantID: job.TenantID, ID: job.ID, DualWriteFrom: dualJSON})
 	})
 }
 
