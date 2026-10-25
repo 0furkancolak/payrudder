@@ -17,3 +17,6 @@ QUOTIFY_APP_URL: "http://localhost:42301"
 QUOTIFY_GOOGLE_ISSUER: "https://accounts.google.com"
 # Addresses (comma separated) of the people who are platform operators. Empty by default: nobody. A listed person must also have verified the address.
 QUOTIFY_OPERATOR_EMAILS: ""
+# Networks (CIDRs, comma separated) of proxies whose X-Forwarded-For is believed even from a public address. Empty by default: only a private or loopback peer,
+# and only with QUOTIFY_TRUST_FORWARDED_FOR. For Cloudflare use QUOTIFY_TRUSTED_PROXY_SECRET (environment only) instead: Worker egress addresses are not stable.
+QUOTIFY_TRUSTED_PROXIES: ""

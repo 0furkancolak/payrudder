@@ -64,6 +64,10 @@ see the schema owner's password while the Job still loads the service's complete
       {{- $_ := set $out "QUOTIFY_GOOGLE_CLIENT_ID" $root.Values.auth.google.clientId -}}
       {{- $_ := set $out "QUOTIFY_GOOGLE_CLIENT_SECRET" $root.Values.auth.google.clientSecret -}}
     {{- end -}}
+  {{- else if eq . "trustedProxySecret" -}}
+    {{- if $root.Values.auth.trustedProxySecret -}}
+      {{- $_ := set $out "QUOTIFY_TRUSTED_PROXY_SECRET" $root.Values.auth.trustedProxySecret -}}
+    {{- end -}}
   {{- else if eq . "paymentsToken" -}}
     {{- $_ := set $out "QUOTIFY_PAYMENTS_INTERNAL_TOKEN" $root.Values.payments.internalToken -}}
   {{- else if eq . "secretsKey" -}}

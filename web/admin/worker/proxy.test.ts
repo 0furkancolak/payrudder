@@ -51,6 +51,16 @@ describe("headers", () => {
   it("sends no X-Forwarded-For when Cloudflare gave no address (a visitor's own value is never believed)", () => {
     expect(upstreamHeaders(new Headers({ "x-forwarded-for": "6.6.6.6" })).has("x-forwarded-for")).toBe(false);
   });
+  it("adds X-Edge-Auth from the secret and drops one the visitor sent", () => {
+    const h = new Headers({ "x-edge-auth": "forged", "x-forwarded-for": "6.6.6.6", "cf-connecting-ip": "203.0.113.9" });
+    const out = upstreamHeaders(h, "s3cret");
+    expect(out.get("x-edge-auth")).toBe("s3cret");
+    expect(out.get("x-forwarded-for")).toBe("203.0.113.9");
+  });
+  it("never forwards a visitor's X-Edge-Auth when no secret is configured", () => {
+    expect(upstreamHeaders(new Headers({ "x-edge-auth": "forged" })).has("x-edge-auth")).toBe(false);
+    expect(upstreamHeaders(new Headers({ "x-edge-auth": "forged" }), "").has("x-edge-auth")).toBe(false);
+  });
   it("keeps every Set-Cookie of the response and defaults to no-store", () => {
     const up = new Headers();
     up.append("set-cookie", "a=1; Path=/; HttpOnly");
@@ -112,7 +122,22 @@ describe("handle", () => {
     expect(await r.text()).toBe('{"email":"a@b.c"}');
     expect(r.headers.get("x-forwarded-for")).toBe("198.51.100.4");
     expect(r.headers.get("cookie")).toBe("x=1");
+    expect(r.headers.has("x-edge-auth")).toBe(false);
     expect(r.redirect).toBe("manual");
+  });
+
+  it("sends X-Edge-Auth from EDGE_AUTH_SECRET, replacing a forged one, with the visitor's address in X-Forwarded-For", async () => {
+    const seen: Request[] = [];
+    vi.stubGlobal("fetch", async (r: Request) => {
+      seen.push(r);
+      return new Response("{}");
+    });
+    await handle(
+      new Request("https://c.example/gw/auth/me", { headers: { "x-edge-auth": "forged", "x-forwarded-for": "6.6.6.6", "cf-connecting-ip": "198.51.100.4" } }),
+      envOf({ EDGE_AUTH_SECRET: "s3cret" }),
+    );
+    expect(seen[0]!.headers.get("x-edge-auth")).toBe("s3cret");
+    expect(seen[0]!.headers.get("x-forwarded-for")).toBe("198.51.100.4");
   });
 
   it("fails loudly when API_ORIGIN is missing", async () => {

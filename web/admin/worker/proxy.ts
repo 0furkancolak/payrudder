@@ -30,6 +30,8 @@ export interface Env {
   BRAND_NAME?: string;
   /** "true" shows the demo banner. */
   CONSOLE_DEMO?: string;
+  /** Shared secret (a Worker secret: `wrangler secret put EDGE_AUTH_SECRET`) sent to the gateway as X-Edge-Auth. The gateway, holding the same value as QUOTIFY_TRUSTED_PROXY_SECRET, then believes X-Forwarded-For. */
+  EDGE_AUTH_SECRET?: string;
 }
 
 function under(path: string, prefix: string): boolean {
@@ -49,8 +51,9 @@ export function upstreamUrl(apiOrigin: string, url: URL): URL {
   return target;
 }
 
-/** The headers sent to the gateway: the visitor's own (cookies, Authorization) without hop-by-hop ones, and X-Forwarded-For overwritten with the visitor's address. */
-export function upstreamHeaders(incoming: Headers): Headers {
+/** The headers sent to the gateway: the visitor's own (cookies, Authorization) without hop-by-hop ones, X-Forwarded-For overwritten with the visitor's address
+ * and, when a secret is configured, X-Edge-Auth set to it (a visitor-supplied X-Edge-Auth is always dropped first). */
+export function upstreamHeaders(incoming: Headers, edgeAuthSecret?: string): Headers {
   const out = new Headers(incoming);
   // Names listed in Connection are hop-by-hop too.
   for (const name of (incoming.get("connection") ?? "").split(",")) if (name.trim()) out.delete(name.trim());
@@ -58,6 +61,8 @@ export function upstreamHeaders(incoming: Headers): Headers {
   // Overwritten, never appended: this Worker is the edge, so the visitor cannot choose their own rate-limit bucket.
   out.delete("x-forwarded-for");
   out.delete("x-real-ip");
+  out.delete("x-edge-auth");
+  if (edgeAuthSecret) out.set("x-edge-auth", edgeAuthSecret);
   const ip = incoming.get("cf-connecting-ip");
   if (ip) out.set("x-forwarded-for", ip);
   out.set("x-forwarded-proto", "https");
@@ -92,7 +97,7 @@ export async function handle(request: Request, env: Env): Promise<Response> {
   const upstream = await fetch(
     new Request(upstreamUrl(env.API_ORIGIN, url), {
       method: request.method,
-      headers: upstreamHeaders(request.headers),
+      headers: upstreamHeaders(request.headers, env.EDGE_AUTH_SECRET),
       body: hasBody ? request.body : undefined,
       redirect: "manual", // Redirects (Google sign-in) belong to the browser.
       duplex: "half", // Streaming a body needs it in the fetch standard (Node); workerd accepts and ignores it.
