@@ -3,6 +3,7 @@ import { Link, useParams } from "@tanstack/vue-router";
 import { ArrowLeft, FileText } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { ManualPaymentsCard } from "@/features/invoices";
 import { useErrorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
@@ -17,6 +18,7 @@ import { useInvoice, useOpenInvoicePdf } from "./billingApi";
  * minutes). It reads /v1/invoices/{id} and /pdf; the saga timeline, the transfer controls and the credit-note actions are operator tools and are not here.
  */
 const { t, te, locale } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -24,7 +26,7 @@ const invoiceId = computed(() => String(params.value.invoiceId ?? ""));
 const invoice = useInvoice(tenantId, invoiceId);
 const pdf = useOpenInvoicePdf(tenantId, invoiceId);
 const inv = computed(() => invoice.data.value);
-const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "");
+const day = (v?: string) => fmt.date(v, "day");
 </script>
 
 <template>

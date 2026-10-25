@@ -2,6 +2,7 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
 import { Button } from "@/shared/ui/button";
@@ -13,6 +14,7 @@ import { useInvoices } from "./billingApi";
 
 /** The environment's invoices: number, customer, period, total (in its own currency), status. A row opens the invoice. Reads /v1/invoices only. */
 const { t, locale } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -21,7 +23,7 @@ const invoices = useInvoices(tenantId, status);
 
 const rows = computed(() => (invoices.data.value?.pages ?? []).flatMap((p) => p.invoices ?? []));
 const statuses = ["draft", "open", "paid", "uncollectible", "void"] as const;
-const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "");
+const day = (v?: string) => fmt.date(v, "day");
 </script>
 
 <template>

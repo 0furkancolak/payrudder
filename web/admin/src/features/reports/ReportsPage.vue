@@ -2,9 +2,9 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
-import { formatMinor } from "@/shared/lib/money";
 import { tenantBase } from "@/shared/lib/session";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -14,7 +14,8 @@ import { Input } from "@/shared/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDunningReport, useRevenueReport, useSubscriptionReport } from "./api";
 
-const { t, te, locale } = useI18n();
+const { t, te } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -27,7 +28,7 @@ const to = ref("");
 const split = ref<string[]>(["period"]);
 const revenue = useRevenueReport(tenantId, from, to, split);
 const toggle = (g: string) => (split.value = split.value.includes(g) ? split.value.filter((x) => x !== g) : [...split.value, g]);
-const money = (v: string | number | undefined, currency?: string) => formatMinor(v === undefined ? "0" : String(v), currency, locale.value);
+const money = (v: string | number | undefined, currency?: string) => fmt.amount(v, currency);
 
 // Subscriptions
 const month = ref("");
@@ -37,7 +38,7 @@ const toggleSub = (g: string) => (subSplit.value = subSplit.value.includes(g) ? 
 
 // Dunning
 const dunning = useDunningReport(tenantId);
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "short", timeStyle: "short" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "short", "—");
 </script>
 
 <template>

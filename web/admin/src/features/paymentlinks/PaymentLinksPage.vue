@@ -2,9 +2,10 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { toApiError } from "@/shared/api/client";
 import { formatMinor } from "@/shared/lib/money";
-import { useTenantCurrency } from "@/shared/lib/tenant-currency";
+import { useTenantCurrency } from "@/features/tenants/currency";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -16,6 +17,7 @@ import { absoluteUrl, newKey, statusVariant, toRequest, type LinkForm } from "./
 import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, locale } = useI18n();
+const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 
@@ -92,7 +94,7 @@ function filter() {
   pageToken.value = "";
   history.value = [];
 }
-const when = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "short", timeStyle: "short" }).format(new Date(v)) : "—");
+const when = (v?: string | null) => fmt.date(v, "short", "—");
 const what = (l: { kind?: string; amount_minor?: string; currency?: string; invoice_id?: string }) =>
   l.kind !== "invoice" ? formatMinor(l.amount_minor, l.currency, locale.value) : (l.invoice_id ?? "");
 </script>

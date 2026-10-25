@@ -7,7 +7,7 @@ import VerifyBanner from "@/features/product/VerifyBanner.vue";
 import { BrandLogo } from "@/shared/ui/brand-logo";
 import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
-import { isOperator, isPerson } from "@/shared/lib/session";
+import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
 import Breadcrumbs from "./Breadcrumbs.vue";
 import ContextSwitcher from "./ContextSwitcher.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
@@ -16,7 +16,7 @@ import PrivacyToggle from "./PrivacyToggle.vue";
 import Sidebar from "./Sidebar.vue";
 import ThemeToggle from "./ThemeToggle.vue";
 import UserMenu from "./UserMenu.vue";
-import { OPERATOR_PATHS, useShell } from "./useShell";
+import { useShell } from "./useShell";
 
 /**
  * The frame of every page. Signed out: a plain header with the brand, the language and the theme. Signed in: the sidebar (open by default on a wide
@@ -30,7 +30,6 @@ const brand = brandName();
 const signedIn = computed(() => isPerson.value);
 const shell = useShell();
 const drawer = ref(false);
-const menuButton = ref<HTMLButtonElement | null>(null);
 
 // A route change closes the drawer (the links also do; this covers the browser's back button).
 watch(shell.path, () => (drawer.value = false));
@@ -66,7 +65,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
       <header v-if="signedIn" class="bg-background/85 sticky top-0 z-20 backdrop-blur" data-testid="topbar">
         <div class="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-8 md:py-4">
           <button
-            ref="menuButton"
             type="button"
             data-testid="menu-button"
             class="bg-card text-foreground border-border/60 shadow-card inline-flex size-10 shrink-0 items-center justify-center rounded-xl border lg:hidden"

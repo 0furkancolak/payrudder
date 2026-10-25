@@ -1,9 +1,10 @@
 import { useRouterState } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { useApps, useAccount, type App, type Environment } from "@/features/product/api";
+import { useApps, useAccount, type App } from "@/features/product/api";
 import { useTenant } from "@/features/tenants/api";
-import { isOperator, isPerson } from "@/shared/lib/session";
+import { envEnum, findTenant, type Environment } from "@/shared/lib/environment";
+import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
 import { activeItem, buildNav, type NavSection, type ShellContext } from "./nav";
 
 export interface Crumb {
@@ -12,16 +13,10 @@ export interface Crumb {
   search?: Record<string, string>;
 }
 
-/** The paths of the operator console. A person the server calls an operator reaches them; nobody else does (the server decides on every request). */
-export const OPERATOR_PATHS = /^\/(operator|tenants|playground|dead-letters)(\/|$)/;
-
 /** Finds the app and environment a tenant id belongs to among a person's apps. */
 export function appOfTenant(apps: App[] | undefined, tenantId: string): { app: App; env: Environment } | null {
-  for (const app of apps ?? []) {
-    const hit = app.tenants?.find((t) => t.id === tenantId);
-    if (hit) return { app, env: hit.environment === "ENVIRONMENT_LIVE" ? "live" : "sandbox" };
-  }
-  return null;
+  const hit = findTenant(apps, tenantId);
+  return hit ? { app: hit.app, env: hit.env } : null;
 }
 
 /**
@@ -57,7 +52,7 @@ export function useShell() {
     if (appInPath.value) {
       const app = apps.data.value?.apps?.find((a) => a.id === appInPath.value);
       const envSearch = search.value.env === "sandbox" ? "sandbox" : "live";
-      const tenantId = app?.tenants?.find((x) => x.environment === (envSearch === "live" ? "ENVIRONMENT_LIVE" : "ENVIRONMENT_SANDBOX"))?.id;
+      const tenantId = app?.tenants?.find((x) => x.environment === envEnum(envSearch))?.id;
       return { level: "app", appId: appInPath.value, env: envSearch, operator: isOperator.value, ...(tenantId ? { tenantId } : {}) };
     }
     if (path.value.startsWith("/app/t/")) {
@@ -97,5 +92,5 @@ export function useShell() {
     return list;
   });
 
-  return { path, search, context, sections, current, crumbs, apps, appName, orgName, located, tenant };
+  return { path, context, sections, current, crumbs, apps, appName, orgName, located, tenant };
 }

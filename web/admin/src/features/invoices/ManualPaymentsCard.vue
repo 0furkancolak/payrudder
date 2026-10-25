@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { Card } from "@/shared/ui/card";
@@ -9,7 +10,8 @@ import type { InvoicePayment } from "./payment";
 /** The payments an operator recorded by hand against the invoice (cash, a transfer, other), oldest first. */
 defineProps<{ payments: InvoicePayment[]; currency: string }>();
 const { t, te, locale } = useI18n();
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(v)) : "—");
+const fmt = useFormat();
+const when = (v?: string) => fmt.date(v, "dateTime", "—");
 </script>
 
 <template>

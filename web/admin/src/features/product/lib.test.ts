@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppOverview } from "./api";
-import { countOf, isEnvironment, revenueByCurrency, seriesOf, tenantOf, totalPayments } from "./lib";
+import { countOf, revenueByCurrency, seriesOf } from "./lib";
 
 const payments: NonNullable<AppOverview["payments"]> = {
   truncated: false,
@@ -40,14 +40,5 @@ describe("overview helpers", () => {
   it("counts payments by status", () => {
     expect(countOf(payments, "failed")).toBe(2);
     expect(countOf(payments, "nope")).toBe(0);
-    expect(totalPayments(payments)).toBe(8);
-  });
-
-  it("finds the tenant of an environment", () => {
-    const app = { tenants: [{ id: "t-live", environment: "ENVIRONMENT_LIVE" }, { id: "t-sbx", environment: "ENVIRONMENT_SANDBOX" }] };
-    expect(tenantOf(app, "live")).toBe("t-live");
-    expect(tenantOf(app, "sandbox")).toBe("t-sbx");
-    expect(tenantOf(undefined, "live")).toBe("");
-    expect(isEnvironment("live") && isEnvironment("sandbox") && !isEnvironment("prod")).toBe(true);
   });
 });

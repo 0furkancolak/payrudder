@@ -72,7 +72,7 @@ func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Lis
 	if p.InvoiceID != "" {
 		id, err := uuid.Parse(p.InvoiceID)
 		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "invoice_id must be a UUID")
+			return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
 		}
 		invoice = &id
 	}
@@ -83,7 +83,7 @@ func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Lis
 		t, err1 := time.Parse(time.RFC3339Nano, at)
 		u, err2 := uuid.Parse(id)
 		if !ok || err1 != nil || err2 != nil {
-			return nil, status.Error(codes.InvalidArgument, "page_token is not one this API gave")
+			return nil, errkey.New(codes.InvalidArgument, "billing.invoice_link.bad_page_token", "page_token is not one this API gave")
 		}
 		afterAt, afterID = t, u
 	}

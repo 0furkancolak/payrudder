@@ -19,7 +19,7 @@ const maxReasonLen = 500
 // Create writes a credit note for a paid invoice, optionally refunding it to the card.
 func Create(ctx context.Context, mgr *runs.Manager, tenantID, invoiceID uuid.UUID, amountMinor int64, reason string, refundToCard bool) (*runs.CreditNote, error) {
 	if len(reason) > maxReasonLen {
-		return nil, status.Error(codes.InvalidArgument, "reason is at most 500 characters")
+		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.reason_too_long", "reason is at most 500 characters")
 	}
 	cn, err := mgr.CreateCreditNote(ctx, tenantID, invoiceID, amountMinor, strings.TrimSpace(reason), refundToCard)
 	switch {
@@ -44,7 +44,7 @@ func RetryRefund(ctx context.Context, mgr *runs.Manager, tenantID, creditNoteID 
 	cn, err := mgr.RetryRefund(ctx, tenantID, creditNoteID)
 	switch {
 	case errors.Is(err, runs.ErrInvoiceNotFound):
-		return nil, status.Error(codes.NotFound, "credit note not found")
+		return nil, errkey.New(codes.NotFound, "billing.credit_note.not_found", "credit note not found")
 	case errors.Is(err, runs.ErrRefundNotFailed):
 		return nil, errkey.New(codes.FailedPrecondition, "billing.credit_note.refund_not_failed", err.Error())
 	case err != nil:

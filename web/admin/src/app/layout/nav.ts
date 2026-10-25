@@ -24,6 +24,7 @@ import {
   Webhook,
 } from "@lucide/vue";
 import type { Component } from "vue";
+import type { Environment } from "@/shared/lib/environment";
 
 /**
  * The navigation of the signed-in console, as data. It depends on where the person is:
@@ -45,7 +46,7 @@ export interface ShellContext {
   /** The app of a person's tenant page, once known. */
   appId?: string;
   /** The environment of a person's app page. */
-  env?: "live" | "sandbox";
+  env?: Environment;
   /** Whether the server says this person is a platform operator: the organisation level then has a door to the operator console. */
   operator?: boolean;
 }
@@ -74,8 +75,6 @@ const exact = (to: string) => (path: string) => path === to;
  * nothing in the navigation leads to a "not found". Add a key here in the same change that adds the route.
  */
 export const PERSON_PAGES = ["customers", "subscriptions", "credits", "packages", "pricing", "invoices", "payments", "paymentLinks", "accounting", "reports", "webhooks", "mail", "members"] as const;
-
-export type PersonPage = (typeof PERSON_PAGES)[number];
 
 /** The pages of a tenant: key, icon, path under the tenant, the section it sits in, and whether a person has it or only the operator. */
 interface Page {

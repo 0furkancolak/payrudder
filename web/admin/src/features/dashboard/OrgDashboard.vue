@@ -3,9 +3,10 @@ import { useQueries } from "@tanstack/vue-query";
 import { Link } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { todayYmd } from "@/shared/lib/dates";
+import { useFormat } from "@/shared/lib/format";
 import { type App } from "@/features/product/api";
-import { tenantOf } from "@/features/product/lib";
-import { formatMinor } from "@/shared/lib/money";
+import { tenantOf } from "@/shared/lib/environment";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { SegmentedControl } from "@/shared/ui/segmented";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
@@ -16,15 +17,17 @@ import KpiCard from "./KpiCard.vue";
 import { bpPercent, delta, type DashCurrency, type DashQuery, type Dashboard } from "./lib";
 import PeriodBar from "./PeriodBar.vue";
 import RevenueChart from "./RevenueChart.vue";
+import type { Environment } from "@/shared/lib/environment";
 
 /**
  * The organisation's dashboard: every app over the same period, put together per currency. Several apps selling in the same currency are added up (that is the
  * same unit); different currencies never are, hence the tabs. Each app is read with the dashboard endpoint, at most twelve of them, so the page is as accurate
  * as the app dashboards and agrees with them. An app that does not answer is named and left out.
  */
-const props = defineProps<{ apps: App[]; query: DashQuery; env: "live" | "sandbox" }>();
-const emit = defineEmits<{ "update:query": [DashQuery]; "update:env": ["live" | "sandbox"] }>();
-const { t, locale } = useI18n();
+const props = defineProps<{ apps: App[]; query: DashQuery; env: Environment }>();
+const emit = defineEmits<{ "update:query": [DashQuery]; "update:env": [Environment] }>();
+const { t } = useI18n();
+const fmt = useFormat();
 
 const MAX_APPS = 12;
 const shown = computed(() => props.apps.filter((a) => tenantOf(a, props.env) !== "").slice(0, MAX_APPS));
@@ -46,7 +49,7 @@ const rows = computed<Row[]>(() => shown.value.map((app, i) => ({ app, data: res
 const loading = computed(() => shown.value.length > 0 && results.value.some((r) => r.isPending && !r.data));
 const down = computed(() => rows.value.filter((r) => r.failed || (r.data?.unavailable ?? []).includes("revenue")));
 const compare = computed(() => props.query.compare);
-const today = new Date().toLocaleDateString("en-CA");
+const today = todayYmd();
 
 const currencies = computed(() => {
   const by = new Map<string, number>();
@@ -103,9 +106,9 @@ const byApp = computed(() =>
     .sort((a, b) => b.value - a.value),
 );
 
-const money = (minor: number | null | undefined) => formatMinor(minor ?? 0, cur.value, locale.value);
-const count = (n: number) => new Intl.NumberFormat(locale.value).format(n);
-const pct = (v: number | null) => (v === null ? "—" : `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 1 }).format(v)}%`);
+const money = (minor: number | null | undefined) => fmt.amount(minor, cur.value);
+const count = fmt.count;
+const pct = fmt.percent;
 const dNet = computed(() => (compare.value ? delta(net.value, prevNet.value) : null));
 const dMrr = computed(() => (compare.value ? delta(mrr.value, prevMrr.value) : null));
 const dRate = computed(() => (compare.value && rate.value !== null && prevRate.value !== null ? delta(bpPercent(rate.value), bpPercent(prevRate.value)) : null));

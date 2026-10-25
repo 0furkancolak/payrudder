@@ -680,7 +680,7 @@ func (s *Server) buildDashboard(ctx context.Context, appID, envName string, t *p
 		rows, err := s.recentLedger(ctx, t.GetId())
 		if err != nil {
 			paymentsUp = false
-			return status.Error(codes.Unavailable, "payments")
+			return errkey.New(codes.Unavailable, "gateway.dashboard.payments_unavailable", "payments")
 		}
 		ledger = rows
 		var accts struct {
@@ -702,7 +702,7 @@ func (s *Server) buildDashboard(ctx context.Context, appID, envName string, t *p
 	var usagePeriod string
 	section("usage", func() error {
 		if s.d.Limits == nil {
-			return status.Error(codes.Unavailable, "limits")
+			return errkey.New(codes.Unavailable, "gateway.dashboard.limits_unavailable", "limits")
 		}
 		// Which customers to look at comes from the subscriptions; the limits are read for at most ten of them.
 		list, err := s.d.Plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{PageSize: 50})
@@ -745,7 +745,7 @@ func (s *Server) buildDashboard(ctx context.Context, appID, envName string, t *p
 		_ = eg.Wait()
 		usageSampled = len(picks)
 		if len(picks) > 0 && failed == len(picks) {
-			return status.Error(codes.Unavailable, "limits")
+			return errkey.New(codes.Unavailable, "gateway.dashboard.limits_unavailable", "limits")
 		}
 		return nil
 	})
