@@ -25,6 +25,15 @@ func Internal() *Error {
 	return New(http.StatusInternalServerError, errkey.Key("common.internal"), "internal error")
 }
 
+// ProviderTrouble is what a caller is told when a provider call failed; the cause is in the log.
+const ProviderTrouble = "the payment provider could not complete the request"
+
+// ProviderFailed is the answer to a provider call that failed in a way the caller cannot act on: a bad gateway with ProviderTrouble. The caller of
+// ProviderFailed logs the cause.
+func ProviderFailed() *Error {
+	return New(http.StatusBadGateway, "payments.provider.failed", ProviderTrouble)
+}
+
 // Plans wraps a refusal or failure of plans-svc; the answer relays it (httpx.Relay).
 type Plans struct{ Err error }
 
