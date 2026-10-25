@@ -241,3 +241,13 @@
   :root:not([data-theme="light"]) .logo-on-light { display: none; }
   :root:not([data-theme="light"]) .logo-on-dark { display: inline-block; }
 }
+
+/* The colours of the charts. Payment statuses (the dashboard donut and the sign-in preview; "paid" is the brand colour itself) and accounting's income and
+   expense bars. The same in both themes, like the inline values they replace. */
+:root {
+  --chart-processing: oklch(0.82 0.12 85);
+  --chart-failed: oklch(0.7 0.16 25);
+  --chart-refunded: oklch(0.72 0.05 260);
+  --chart-income: #059669;
+  --chart-expense: #dc2626;
+}
