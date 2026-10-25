@@ -1203,7 +1203,11 @@
         "not_paid": "Seule une facture payée peut être créditée.",
         "nothing_to_refund": "Il n'y a rien à rembourser sur la carte pour cet avoir.",
         "refund_not_failed": "Seul un avoir dont le remboursement a échoué peut être relancé.",
-        "bad_id": "L'identifiant de l'avoir n'est pas valide."
+        "bad_id": "L'identifiant de l'avoir n'est pas valide.",
+        "bad_page_size": "La taille de page doit être comprise entre 1 et 200.",
+        "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste.",
+        "not_found": "Cet avoir est introuvable.",
+        "reason_too_long": "Le motif ne peut pas dépasser 500 caractères."
       },
       "dunning": {
         "bad_delay": "Chaque délai de nouvelle tentative doit être compris entre 1 et 720 heures.",
@@ -1212,12 +1216,17 @@
       "invoice": {
         "not_found": "La facture est introuvable.",
         "pdf_not_ready": "Le PDF de la facture n'est pas encore généré. Réessayez dans un instant.",
-        "bad_id": "L'identifiant de la facture n'est pas valide."
+        "bad_id": "L'identifiant de la facture n'est pas valide.",
+        "bad_customer_id": "L'identifiant du client n'est pas valide.",
+        "bad_page_size": "La taille de page doit être comprise entre 1 et 500.",
+        "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste.",
+        "pdf_sign_failed": "Le lien de téléchargement du PDF n'a pas pu être créé. Réessayez dans un instant."
       },
       "invoice_link": {
         "bad_expiry": "Le lien doit expirer dans 1 à 365 jours.",
         "draft_invoice": "Une facture brouillon ne peut pas être partagée par lien.",
-        "not_found": "Le lien de la facture est introuvable."
+        "not_found": "Le lien de la facture est introuvable.",
+        "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste."
       },
       "payment": {
         "amount_mismatch": "Le paiement ne correspond pas au montant de la facture.",
@@ -1290,14 +1299,56 @@
         "unknown_currency": "La devise n'est pas prise en charge."
       },
       "einvoice": {
-        "bad_id": "L'identifiant de la facture électronique ou du compte n'est pas valide."
+        "bad_id": "L'identifiant de la facture électronique ou du compte n'est pas valide.",
+        "bad_file_kind": "Le type de fichier doit être xml ou pdf.",
+        "bad_page_size": "La taille de page doit être comprise entre 1 et 200.",
+        "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste.",
+        "bad_status": "Le statut doit être pending, issued, failed ou cancelled."
       },
       "tenant": {
         "bad_id": "L'identifiant du compte n'est pas valide."
       },
       "rerating": {
         "bad_job_id": "L'identifiant de la tâche de retarification n'est pas valide.",
-        "bad_plan_version_id": "L'identifiant de la version du plan n'est pas valide."
+        "bad_plan_version_id": "L'identifiant de la version du plan n'est pas valide.",
+        "not_found": "Cette tâche de retarification est introuvable.",
+        "run_not_completed": "Le cycle de facturation de cette période n'est pas encore terminé.",
+        "unavailable": "La retarification n'a pas pu démarrer pour le moment. Réessayez.",
+        "unknown_plan_version": "Cette version du plan n'existe pas."
+      },
+      "dead_letter": {
+        "broker_unavailable": "Le courtier de messages est inaccessible pour le moment. Réessayez.",
+        "invalid": "Cette demande de file d'échecs n'est pas valide.",
+        "not_configured": "Les opérations sur la file d'échecs ne sont pas configurées sur ce déploiement."
+      },
+      "hosted": {
+        "customer_unavailable": "Le client n'a pas pu être consulté pour le moment. Réessayez dans un instant.",
+        "seller_unavailable": "Les informations du vendeur n'ont pas pu être consultées pour le moment. Réessayez dans un instant.",
+        "tenant_unavailable": "Le compte n'a pas pu être consulté pour le moment. Réessayez dans un instant."
+      },
+      "report": {
+        "bad_group_by": "Le regroupement ne peut citer que la période, le prestataire et le pays.",
+        "bad_limit": "La limite doit être comprise entre 1 et 500.",
+        "bad_period": "La première et la dernière période doivent ressembler à 2026-10.",
+        "period_order": "La première période ne peut pas être postérieure à la dernière."
+      },
+      "request": {
+        "bad_id": "Un identifiant de la requête n'est pas valide."
+      },
+      "run": {
+        "bad_period": "La période doit ressembler à 2026-11.",
+        "not_closable": "Cette période ne peut pas être clôturée maintenant.",
+        "not_found": "Il n'y a pas de cycle de facturation pour cette période.",
+        "period_open": "Cette période n'est pas encore clôturée : elle ne peut pas être facturée.",
+        "retry_later": "Le cycle de facturation n'a pas pu avancer pour le moment. Il sera retenté.",
+        "sandbox_only": "La clôture immédiate d'une période n'est disponible que pour les comptes sandbox."
+      },
+      "saga": {
+        "event_not_possible": "Cela n'est pas possible dans l'état de paiement actuel de la facture.",
+        "not_found": "Cette facture n'a pas encore de processus de paiement : elle n'est pas finalisée."
+      },
+      "storage": {
+        "not_configured": "Le stockage de fichiers n'est pas configuré sur ce déploiement."
       }
     },
     "coupon": {
@@ -1501,7 +1552,10 @@
         "already_rotating": "Cette clé a déjà été remplacée et va bientôt expirer. Révoquez-la ou attendez sa fin.",
         "bad_overlap": "Le chevauchement doit être compris entre 0 heure et 7 jours.",
         "bad_scope": "La portée doit être full, ingest ou read.",
-        "not_active": "Cette clé API est révoquée."
+        "not_active": "Cette clé API est révoquée.",
+        "invalid": "La clé d'API n'est pas valide.",
+        "missing": "Envoyez votre clé d'API comme jeton Bearer dans l'en-tête Authorization.",
+        "sandbox_only": "Ce point d'accès est réservé aux clés sandbox (qk_test_)."
       },
       "app": {
         "not_found": "Cette application n'existe pas, ou elle n'est pas la vôtre.",
@@ -1509,15 +1563,20 @@
       },
       "auth": {
         "invalid_credentials": "E-mail ou mot de passe incorrect, ou trop de tentatives. Après cinq mots de passe erronés, la connexion avec cette adresse est suspendue 15 minutes, même avec le bon mot de passe.",
-        "rate_limited": "Trop de tentatives depuis cette adresse. Réessayez dans une minute."
+        "rate_limited": "Trop de tentatives depuis cette adresse. Réessayez dans une minute.",
+        "unavailable": "La vérification d'authentification n'est pas disponible pour le moment. Réessayez dans un instant."
       },
       "session": {
-        "invalid": "Votre session a pris fin. Reconnectez-vous."
+        "invalid": "Votre session a pris fin. Reconnectez-vous.",
+        "act_as_required": "Une session connectée doit indiquer pour quel compte elle agit.",
+        "unavailable": "La connexion est temporairement indisponible. Réessayez dans un instant."
       },
       "tenant": {
         "not_found": "Cet environnement n'existe pas, ou il n'est pas le vôtre.",
         "bad_metadata": "Le compte indiqué dans la requête n'est pas valide.",
-        "metadata_missing": "La requête n'indique pas pour quel compte elle est faite."
+        "metadata_missing": "La requête n'indique pas pour quel compte elle est faite.",
+        "bad_act_as": "Le compte visé doit être un identifiant de compte valide.",
+        "lookup_unavailable": "Le compte n'a pas pu être consulté pour le moment. Réessayez dans un instant."
       },
       "token": {
         "invalid": "Ce lien est invalide, a expiré ou a déjà été utilisé. Demandez-en un nouveau."
@@ -1550,7 +1609,8 @@
         "not_configured": "La connexion avec Google n'est pas configurée ici."
       },
       "operator": {
-        "forbidden": "Cette zone est réservée aux opérateurs de la plateforme."
+        "forbidden": "Cette zone est réservée aux opérateurs de la plateforme.",
+        "required": "Cet espace est réservé aux opérateurs de la plateforme. Connectez-vous en tant qu'opérateur."
       },
       "go_live": {
         "incomplete": "La liste de mise en production n'est pas encore complète.",
@@ -1562,15 +1622,34 @@
     "gateway": {
       "dashboard": {
         "bad_period": "Cette période n'est pas valide. Choisissez 7, 30 ou 90 jours, cette année, ou deux jours dont le premier n'est pas après le dernier.",
-        "range_too_long": "Une période dure au plus deux ans."
+        "range_too_long": "Une période dure au plus deux ans.",
+        "limits_unavailable": "Les limites d'usage ne sont pas disponibles pour le moment : cette vue ne peut pas être construite. Réessayez dans un instant.",
+        "payments_unavailable": "Les paiements ne sont pas disponibles pour le moment : cette vue ne peut pas être construite. Réessayez dans un instant."
       },
       "request": {
         "invalid": "{field} n'est pas valide : {detail}",
-        "too_large": "La requête est trop volumineuse."
+        "too_large": "La requête est trop volumineuse.",
+        "bad_tenant_id": "L'identifiant du compte n'est pas valide.",
+        "malformed_json": "Le corps de la requête n'est pas un JSON valide.",
+        "unreadable_body": "Le corps de la requête n'a pas pu être lu."
       },
       "auth": {
         "scope_denied": "La portée de cette clé API n'autorise pas cette requête. Utilisez une clé de portée plus large.",
         "tenant_not_active": "Cet environnement est suspendu ou pas encore actif. Terminez la liste de mise en production ou contactez le support."
+      },
+      "assets": {
+        "bad_invoice_logo": "Le logo de facture doit être un téléversement terminé de type logo de facture."
+      },
+      "payments": {
+        "ledger_unreachable": "Le grand livre des paiements est inaccessible pour le moment. Réessayez dans un instant.",
+        "not_configured": "Les prestataires de paiement ne sont pas configurés sur ce déploiement.",
+        "unreachable": "Le service de paiement est inaccessible pour le moment. Réessayez dans un instant."
+      },
+      "rate_limit": {
+        "exceeded": "Trop de requêtes de ce type. Patientez un instant puis réessayez."
+      },
+      "route": {
+        "not_found": "Cette adresse n'existe pas dans l'API."
       }
     },
     "env": {

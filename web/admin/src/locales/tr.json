@@ -1203,7 +1203,11 @@
         "not_paid": "Yalnızca ödenmiş bir fatura için alacak dekontu düzenlenebilir.",
         "nothing_to_refund": "Bu alacak dekontu için karta iade edilecek bir tutar yok.",
         "refund_not_failed": "Yalnızca iadesi başarısız olan bir alacak dekontu yeniden denenebilir.",
-        "bad_id": "Alacak dekontu kimliği geçerli bir kimlik değil."
+        "bad_id": "Alacak dekontu kimliği geçerli bir kimlik değil.",
+        "bad_page_size": "Sayfa boyutu 1 ile 200 arasında olmalı.",
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
+        "not_found": "Bu alacak dekontu bulunamadı.",
+        "reason_too_long": "Gerekçe en fazla 500 karakter olabilir."
       },
       "dunning": {
         "bad_delay": "Her yeniden deneme gecikmesi 1 ile 720 saat arasında olmalı.",
@@ -1212,12 +1216,17 @@
       "invoice": {
         "not_found": "Fatura bulunamadı.",
         "pdf_not_ready": "Fatura PDF'i henüz hazırlanmadı. Birazdan tekrar deneyin.",
-        "bad_id": "Fatura kimliği geçerli bir kimlik değil."
+        "bad_id": "Fatura kimliği geçerli bir kimlik değil.",
+        "bad_customer_id": "Müşteri kimliği geçerli bir kimlik değil.",
+        "bad_page_size": "Sayfa boyutu 1 ile 500 arasında olmalı.",
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
+        "pdf_sign_failed": "PDF indirme bağlantısı oluşturulamadı. Biraz sonra yeniden deneyin."
       },
       "invoice_link": {
         "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
         "draft_invoice": "Taslak bir fatura bağlantıyla paylaşılamaz.",
-        "not_found": "Fatura bağlantısı bulunamadı."
+        "not_found": "Fatura bağlantısı bulunamadı.",
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın."
       },
       "payment": {
         "amount_mismatch": "Ödeme, faturanın tutarı için değil.",
@@ -1290,14 +1299,56 @@
         "unknown_currency": "Para birimi desteklenmiyor."
       },
       "einvoice": {
-        "bad_id": "E-fatura veya hesap kimliği geçerli bir kimlik değil."
+        "bad_id": "E-fatura veya hesap kimliği geçerli bir kimlik değil.",
+        "bad_file_kind": "Dosya türü xml ya da pdf olmalı.",
+        "bad_page_size": "Sayfa boyutu 1 ile 200 arasında olmalı.",
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
+        "bad_status": "Durum pending, issued, failed ya da cancelled olmalı."
       },
       "tenant": {
         "bad_id": "Hesap kimliği geçerli bir kimlik değil."
       },
       "rerating": {
         "bad_job_id": "Yeniden fiyatlama işi kimliği geçerli bir kimlik değil.",
-        "bad_plan_version_id": "Plan sürümü kimliği geçerli bir kimlik değil."
+        "bad_plan_version_id": "Plan sürümü kimliği geçerli bir kimlik değil.",
+        "not_found": "Bu yeniden fiyatlama işi bulunamadı.",
+        "run_not_completed": "O dönemin faturalama çalışması henüz tamamlanmadı.",
+        "unavailable": "Yeniden fiyatlama şu anda başlatılamadı. Yeniden deneyin.",
+        "unknown_plan_version": "Bu plan sürümü yok."
+      },
+      "dead_letter": {
+        "broker_unavailable": "Mesaj aracısına şu anda ulaşılamıyor. Yeniden deneyin.",
+        "invalid": "Bu ölü mektup isteği geçerli değil.",
+        "not_configured": "Bu kurulumda ölü mektup işlemleri yapılandırılmamış."
+      },
+      "hosted": {
+        "customer_unavailable": "Müşteri şu anda sorgulanamadı. Biraz sonra yeniden deneyin.",
+        "seller_unavailable": "Satıcı bilgileri şu anda sorgulanamadı. Biraz sonra yeniden deneyin.",
+        "tenant_unavailable": "Hesap şu anda sorgulanamadı. Biraz sonra yeniden deneyin."
+      },
+      "report": {
+        "bad_group_by": "Gruplama yalnızca dönem, sağlayıcı ve ülkeyi içerebilir.",
+        "bad_limit": "Sınır 1 ile 500 arasında olmalı.",
+        "bad_period": "İlk ve son dönem 2026-10 biçiminde olmalı.",
+        "period_order": "İlk dönem son dönemden sonra olamaz."
+      },
+      "request": {
+        "bad_id": "İstekteki bir kimlik geçerli bir kimlik değil."
+      },
+      "run": {
+        "bad_period": "Dönem 2026-11 biçiminde olmalı.",
+        "not_closable": "Bu dönem şu anda kapatılamaz.",
+        "not_found": "O dönem için faturalama çalışması yok.",
+        "period_open": "O dönem henüz kapanmadı, bu yüzden faturalanamaz.",
+        "retry_later": "Faturalama çalışması şu anda ilerleyemedi. Yeniden denenecek.",
+        "sandbox_only": "Bir dönemi hemen kapatmak yalnızca sandbox hesaplarında mümkün."
+      },
+      "saga": {
+        "event_not_possible": "Fatura mevcut ödeme durumundayken bu yapılamaz.",
+        "not_found": "Bu faturanın henüz bir ödeme süreci yok: kesinleştirilmemiş."
+      },
+      "storage": {
+        "not_configured": "Bu kurulumda dosya depolama yapılandırılmamış."
       }
     },
     "coupon": {
@@ -1501,7 +1552,10 @@
         "already_rotating": "Bu anahtar zaten yenilendi ve yakında sona erecek. İptal edin ya da bitmesini bekleyin.",
         "bad_overlap": "Geçiş süresi 0 saat ile 7 gün arasında olmalıdır.",
         "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
-        "not_active": "Bu API anahtarı iptal edilmiş."
+        "not_active": "Bu API anahtarı iptal edilmiş.",
+        "invalid": "API anahtarı geçerli değil.",
+        "missing": "API anahtarınızı Authorization başlığında Bearer belirteci olarak gönderin.",
+        "sandbox_only": "Bu uç nokta yalnızca sandbox anahtarları (qk_test_) içindir."
       },
       "app": {
         "not_found": "Bu uygulama yok ya da size ait değil.",
@@ -1509,15 +1563,20 @@
       },
       "auth": {
         "invalid_credentials": "E-posta ya da parola yanlış veya çok fazla deneme yapıldı. Beş yanlış paroladan sonra o adres için giriş, doğru parolayla bile 15 dakika durdurulur.",
-        "rate_limited": "Bu adresten çok fazla deneme yapıldı. Bir dakika sonra yeniden deneyin."
+        "rate_limited": "Bu adresten çok fazla deneme yapıldı. Bir dakika sonra yeniden deneyin.",
+        "unavailable": "Kimlik doğrulama şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
       },
       "session": {
-        "invalid": "Oturumunuz sona erdi. Yeniden giriş yapın."
+        "invalid": "Oturumunuz sona erdi. Yeniden giriş yapın.",
+        "act_as_required": "Oturum açılmış bir oturum hangi hesap adına işlem yaptığını belirtmeli.",
+        "unavailable": "Oturum açma geçici olarak kullanılamıyor. Biraz sonra yeniden deneyin."
       },
       "tenant": {
         "not_found": "Bu ortam yok ya da size ait değil.",
         "bad_metadata": "İstekteki hesap geçerli değil.",
-        "metadata_missing": "İstek hangi hesap için olduğunu belirtmiyor."
+        "metadata_missing": "İstek hangi hesap için olduğunu belirtmiyor.",
+        "bad_act_as": "İşlem yapılacak hesap geçerli bir hesap kimliği olmalı.",
+        "lookup_unavailable": "Hesap şu anda sorgulanamadı. Biraz sonra yeniden deneyin."
       },
       "token": {
         "invalid": "Bu bağlantı geçersiz, süresi dolmuş ya da daha önce kullanılmış. Yenisini isteyin."
@@ -1550,7 +1609,8 @@
         "not_configured": "Google ile giriş burada kurulu değil."
       },
       "operator": {
-        "forbidden": "Bu alan platform operatörlerine ayrılmıştır."
+        "forbidden": "Bu alan platform operatörlerine ayrılmıştır.",
+        "required": "Bu alan platform operatörleri içindir. Operatör olarak oturum açın."
       },
       "go_live": {
         "incomplete": "Canlıya geçiş listesi henüz tamamlanmadı.",
@@ -1562,15 +1622,34 @@
     "gateway": {
       "dashboard": {
         "bad_period": "Bu dönem geçerli değil. 7, 30 ya da 90 gün, bu yıl veya ilki sonuncudan sonra olmayan iki gün seçin.",
-        "range_too_long": "Bir dönem en fazla iki yıl olabilir."
+        "range_too_long": "Bir dönem en fazla iki yıl olabilir.",
+        "limits_unavailable": "Kullanım limitleri şu anda kullanılamıyor, bu yüzden bu görünüm oluşturulamıyor. Biraz sonra yeniden deneyin.",
+        "payments_unavailable": "Ödemeler şu anda kullanılamıyor, bu yüzden bu görünüm oluşturulamıyor. Biraz sonra yeniden deneyin."
       },
       "request": {
         "invalid": "{field} geçerli değil: {detail}",
-        "too_large": "İstek çok büyük."
+        "too_large": "İstek çok büyük.",
+        "bad_tenant_id": "Hesap kimliği geçerli bir kimlik değil.",
+        "malformed_json": "İstek gövdesi geçerli bir JSON değil.",
+        "unreadable_body": "İstek gövdesi okunamadı."
       },
       "auth": {
         "scope_denied": "Bu API anahtarının kapsamı bu isteğe izin vermiyor. Daha geniş kapsamlı bir anahtar kullanın.",
         "tenant_not_active": "Bu ortam askıya alınmış ya da henüz etkin değil. Canlıya geçiş listesini tamamlayın veya destekle iletişime geçin."
+      },
+      "assets": {
+        "bad_invoice_logo": "Fatura logosu, fatura logosu türünde tamamlanmış bir yükleme olmalı."
+      },
+      "payments": {
+        "ledger_unreachable": "Ödeme defterine şu anda ulaşılamıyor. Biraz sonra yeniden deneyin.",
+        "not_configured": "Bu kurulumda ödeme sağlayıcıları yapılandırılmamış.",
+        "unreachable": "Ödeme servisine şu anda ulaşılamıyor. Biraz sonra yeniden deneyin."
+      },
+      "rate_limit": {
+        "exceeded": "Bu türden çok fazla istek var. Biraz bekleyip yeniden deneyin."
+      },
+      "route": {
+        "not_found": "API'de böyle bir adres yok."
       }
     },
     "env": {

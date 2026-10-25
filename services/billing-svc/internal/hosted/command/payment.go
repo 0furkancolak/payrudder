@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
@@ -270,7 +269,7 @@ func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in Se
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, status.Error(codes.NotFound, "invoice not found")
+		return false, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
 		return false, internal(err)

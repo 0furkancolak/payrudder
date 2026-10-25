@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
@@ -42,7 +41,7 @@ func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Handle
 		}
 	} else {
 		h.q.Seller = func(context.Context, uuid.UUID) (query.Seller, error) {
-			return query.Seller{}, status.Error(codes.Unavailable, "seller lookup unavailable")
+			return query.Seller{}, errkey.New(codes.Unavailable, "billing.hosted.seller_unavailable", "seller lookup unavailable")
 		}
 	}
 	return h
@@ -63,7 +62,7 @@ func (h *Handler) WithDemo(demo bool) *Handler {
 func parseUUID(field, v string) (uuid.UUID, error) {
 	id, err := uuid.Parse(v)
 	if err != nil {
-		return uuid.Nil, status.Error(codes.InvalidArgument, field+" must be a UUID")
+		return uuid.Nil, errkey.New(codes.InvalidArgument, "billing.request.bad_id", field+" must be a UUID")
 	}
 	return id, nil
 }

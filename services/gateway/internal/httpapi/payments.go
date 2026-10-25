@@ -6,8 +6,9 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/0furkancolak/quotify/pkg/errkey"
+
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // payments-worker serves provider webhooks and the provider-account and ledger endpoints over plain HTTP. The gateway forwards to it:
@@ -17,7 +18,7 @@ import (
 func (s *Server) paymentsProxy(path func(*http.Request) string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.d.PaymentsURL == nil {
-			writeError(w, r, status.Error(codes.Unavailable, "payment providers are not configured on this deployment"))
+			writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.not_configured", "payment providers are not configured on this deployment"))
 			return
 		}
 		proxy := &httputil.ReverseProxy{
@@ -33,7 +34,7 @@ func (s *Server) paymentsProxy(path func(*http.Request) string) http.HandlerFunc
 				pr.Out.Header.Set("X-Request-Id", requestID(pr.In.Context()))
 			},
 			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-				writeError(w, r, status.Error(codes.Unavailable, "payments-worker is not reachable"))
+				writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.unreachable", "payments-worker is not reachable"))
 			},
 		}
 		proxy.ServeHTTP(w, r)

@@ -13,6 +13,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
 )
@@ -166,7 +167,7 @@ func (s *Server) listCustomerPayments(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.ledgerLookup(r.Context(), ti.ID.String(), ids)
 	if err != nil {
 		s.d.Log.WarnContext(r.Context(), "ledger lookup failed", "error", err)
-		writeError(w, r, status.Error(codes.Unavailable, "the payment ledger is not reachable"))
+		writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.ledger_unreachable", "the payment ledger is not reachable"))
 		return
 	}
 	sort.SliceStable(rows, func(i, j int) bool { return rows[i].OccurredAt.After(rows[j].OccurredAt) })
