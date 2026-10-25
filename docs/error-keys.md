@@ -113,6 +113,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.invoice.bad_page_size`
 - `billing.invoice.bad_page_token`
 - `billing.invoice.not_found`
+- `billing.invoice.pdf_failed`
 - `billing.invoice.pdf_not_ready`
 - `billing.invoice.pdf_sign_failed`
 - `billing.invoice_link.bad_expiry`
@@ -295,6 +296,11 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.account.not_found`
 - `payments.account.sync_failed`
 - `payments.billing.not_configured`
+- `payments.charge.currency_not_supported`
+- `payments.charge.pending`
+- `payments.charge.provider_not_configured`
+- `payments.charge.rejected`
+- `payments.charge.timeout`
 - `payments.checkout.currency_unsupported`
 - `payments.checkout.fields_required`
 - `payments.checkout.unsupported`

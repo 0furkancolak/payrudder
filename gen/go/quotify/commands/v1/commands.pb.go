@@ -1660,8 +1660,10 @@ func (x *PdfRendered) GetSizeBytes() int64 {
 }
 
 type PdfFailed struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Reason        string                 `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Reason string                 `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Error key (docs/error-keys.md) for a client to translate; reason is for logs.
+	ErrorKey      string `protobuf:"bytes,2,opt,name=error_key,json=errorKey,proto3" json:"error_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1699,6 +1701,13 @@ func (*PdfFailed) Descriptor() ([]byte, []int) {
 func (x *PdfFailed) GetReason() string {
 	if x != nil {
 		return x.Reason
+	}
+	return ""
+}
+
+func (x *PdfFailed) GetErrorKey() string {
+	if x != nil {
+		return x.ErrorKey
 	}
 	return ""
 }
@@ -1792,10 +1801,12 @@ func (x *PaymentDeclined) GetDeclineCode() string {
 }
 
 type PaymentErrored struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Retryable     bool                   `protobuf:"varint,1,opt,name=retryable,proto3" json:"retryable,omitempty"`
-	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Retryable bool                   `protobuf:"varint,1,opt,name=retryable,proto3" json:"retryable,omitempty"`
+	Code      string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	Message   string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	// Error key (docs/error-keys.md) for a client to translate; code and message are for logs.
+	ErrorKey      string `protobuf:"bytes,4,opt,name=error_key,json=errorKey,proto3" json:"error_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1847,6 +1858,13 @@ func (x *PaymentErrored) GetCode() string {
 func (x *PaymentErrored) GetMessage() string {
 	if x != nil {
 		return x.Message
+	}
+	return ""
+}
+
+func (x *PaymentErrored) GetErrorKey() string {
+	if x != nil {
+		return x.ErrorKey
 	}
 	return ""
 }
@@ -2167,17 +2185,19 @@ const file_quotify_commands_v1_commands_proto_rawDesc = "" +
 	"object_key\x18\x01 \x01(\tR\tobjectKey\x12\x16\n" +
 	"\x06sha256\x18\x02 \x01(\tR\x06sha256\x12\x1d\n" +
 	"\n" +
-	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\"#\n" +
+	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\"@\n" +
 	"\tPdfFailed\x12\x16\n" +
-	"\x06reason\x18\x01 \x01(\tR\x06reason\"6\n" +
+	"\x06reason\x18\x01 \x01(\tR\x06reason\x12\x1b\n" +
+	"\terror_key\x18\x02 \x01(\tR\berrorKey\"6\n" +
 	"\x10PaymentSucceeded\x12\"\n" +
 	"\rpsp_charge_id\x18\x01 \x01(\tR\vpspChargeId\"4\n" +
 	"\x0fPaymentDeclined\x12!\n" +
-	"\fdecline_code\x18\x01 \x01(\tR\vdeclineCode\"\\\n" +
+	"\fdecline_code\x18\x01 \x01(\tR\vdeclineCode\"y\n" +
 	"\x0ePaymentErrored\x12\x1c\n" +
 	"\tretryable\x18\x01 \x01(\bR\tretryable\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"5\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1b\n" +
+	"\terror_key\x18\x04 \x01(\tR\berrorKey\"5\n" +
 	"\x0fPaymentRefunded\x12\"\n" +
 	"\rpsp_refund_id\x18\x01 \x01(\tR\vpspRefundId\"\x87\x02\n" +
 	"\rPaymentStatus\x12>\n" +

@@ -203,6 +203,8 @@ message PdfRendered {
 
 message PdfFailed {
   string reason = 1;
+  // Error key (docs/error-keys.md) for a client to translate; reason is for logs.
+  string error_key = 2;
 }
 
 message PaymentSucceeded {
@@ -217,6 +219,8 @@ message PaymentErrored {
   bool retryable = 1;
   string code = 2;
   string message = 3;
+  // Error key (docs/error-keys.md) for a client to translate; code and message are for logs.
+  string error_key = 4;
 }
 
 message PaymentRefunded {
