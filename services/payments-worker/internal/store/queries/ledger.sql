@@ -8,7 +8,7 @@ SELECT id, invoice_id, provider, environment, kind, status, amount_minor, curren
 FROM payment_ledger WHERE tenant_id = @tenant_id ORDER BY id DESC LIMIT @row_limit::bigint;
 
 -- name: CountLedgerOutcomes :one
-SELECT count(DISTINCT status) FROM payment_ledger WHERE provider = @provider AND kind = @kind AND provider_ref = @provider_ref AND status <> 'pending';
+SELECT count(DISTINCT status) FROM payment_ledger WHERE tenant_id = @tenant_id AND provider = @provider AND kind = @kind AND provider_ref = @provider_ref AND status <> 'pending';
 
 -- name: GetChargeFact :one
 SELECT status, provider_ref, detail FROM payment_ledger

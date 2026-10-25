@@ -92,10 +92,10 @@ func (l Ledger) List(ctx context.Context, tenant uuid.UUID, limit int) ([]Row, e
 	return out, nil
 }
 
-// Outcomes counts the distinct statuses recorded for one provider reference. More than one means the command's answer and the
+// Outcomes counts the distinct statuses one tenant has recorded for one provider reference. More than one means the command's answer and the
 // provider's confirmation disagree.
-func (l Ledger) Outcomes(ctx context.Context, provider, kind, ref string) (int, error) {
-	n, err := sqlc.New(l.DB).CountLedgerOutcomes(ctx, sqlc.CountLedgerOutcomesParams{Provider: provider, Kind: kind, ProviderRef: &ref})
+func (l Ledger) Outcomes(ctx context.Context, tenant uuid.UUID, provider, kind, ref string) (int, error) {
+	n, err := sqlc.New(l.DB).CountLedgerOutcomes(ctx, sqlc.CountLedgerOutcomesParams{TenantID: tenant, Provider: provider, Kind: kind, ProviderRef: &ref})
 	return int(n), err
 }
 

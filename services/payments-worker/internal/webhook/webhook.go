@@ -334,7 +334,7 @@ func (d *delivery) recordCharge(conf payments.Notification) error {
 		return err
 	}
 	if conf.ProviderRef != "" {
-		if n, err := d.s.Ledger.Outcomes(ctx, d.name, entry.Kind, conf.ProviderRef); err == nil && n > 1 {
+		if n, err := d.s.Ledger.Outcomes(ctx, entry.TenantID, d.name, entry.Kind, conf.ProviderRef); err == nil && n > 1 {
 			discrepancy.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", d.name)))
 			d.s.Log.ErrorContext(ctx, "payment outcomes disagree", "provider", d.name, "ref", conf.ProviderRef, "tenant", d.tenant, "invoice", d.at.InvoiceID)
 		}

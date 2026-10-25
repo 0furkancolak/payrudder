@@ -340,9 +340,9 @@ func (s *Service) write(ctx context.Context, ti tenant.Info, todo []*pending, re
 			return fmt.Errorf("clock: %w", err)
 		}
 		bucket := domain.BucketOf(now)
-		prev := bucket.AddDate(0, -1, 0)
+		earlier := []time.Time{bucket.AddDate(0, -1, 0), bucket.AddDate(0, -2, 0)} // MaxLateness spans up to three months
 
-		accepted, err := s.dedup(ctx, q, ti.ID, bucket, prev, todo, results)
+		accepted, err := s.dedup(ctx, q, ti.ID, bucket, earlier, todo, results)
 		if err != nil {
 			return err
 		}
@@ -387,7 +387,7 @@ func (s *Service) write(ctx context.Context, ti tenant.Info, todo []*pending, re
 }
 
 // dedup claims the idempotency keys and returns the events that are new. Duplicates and reuses are written to results.
-func (s *Service) dedup(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, bucket, prev time.Time, todo []*pending, results []*ingestv1.EventResult) ([]*pending, error) {
+func (s *Service) dedup(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, bucket time.Time, earlier []time.Time, todo []*pending, results []*ingestv1.EventResult) ([]*pending, error) {
 	var keyed []*pending
 	var accepted []*pending
 	for _, p := range todo {
@@ -403,7 +403,7 @@ func (s *Service) dedup(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID
 	// Sorted so that concurrent batches claim keys in the same order and cannot deadlock on each other.
 	sort.Slice(keyed, func(i, j int) bool { return keyed[i].key < keyed[j].key })
 
-	fresh, err := skipPreviousBucket(ctx, q, tenantID, prev, keyed, results)
+	fresh, err := skipEarlierBuckets(ctx, q, tenantID, earlier, keyed, results)
 	if err != nil {
 		return nil, err
 	}
@@ -429,16 +429,16 @@ func (s *Service) dedup(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID
 	return accepted, nil
 }
 
-// skipPreviousBucket writes the result of every event whose key the previous month's bucket already holds, which ON
+// skipEarlierBuckets writes the result of every event whose key one of the two previous months' buckets already holds, which ON
 // CONFLICT does not cover, and returns the others.
-func skipPreviousBucket(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, prev time.Time, keyed []*pending, results []*ingestv1.EventResult) ([]*pending, error) {
+func skipEarlierBuckets(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, earlier []time.Time, keyed []*pending, results []*ingestv1.EventResult) ([]*pending, error) {
 	keys := make([]string, len(keyed))
 	for i, p := range keyed {
 		keys[i] = p.key
 	}
-	rows, err := q.FindIdempotencyKeys(ctx, sqlc.FindIdempotencyKeysParams{TenantID: tenantID, Keys: keys, Buckets: []time.Time{prev}})
+	rows, err := q.FindIdempotencyKeys(ctx, sqlc.FindIdempotencyKeysParams{TenantID: tenantID, Keys: keys, Buckets: earlier})
 	if err != nil {
-		return nil, fmt.Errorf("find previous bucket: %w", err)
+		return nil, fmt.Errorf("find earlier buckets: %w", err)
 	}
 	known := make(map[string]sqlc.FindIdempotencyKeysRow, len(rows))
 	for _, r := range rows {

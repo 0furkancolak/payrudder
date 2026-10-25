@@ -342,3 +342,52 @@ func testReplayDiscard(t *testing.T) {
 		t.Fatalf("a new replay after a discard: %v", err)
 	}
 }
+
+// A replay of one period must not lose the history of the periods outside its range: the live consumer dual-writes every
+// period into the catching-up generation, so promoting it has to carry the rest of the tenant's history over.
+func testReplayPromoteKeepsPeriodsOutsideTheRange(t *testing.T) {
+	r := newRun(t, runOpts{})
+	r.start(r.group)
+	mgr := newReplayManager(r)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = mgr.Run(ctx) }()
+	tn, cust := uuid.New(), uuid.New()
+	oct := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	var evs []*eventsv1.UsageEvent
+	for i := 0; i < 100; i++ {
+		evs = append(evs, ev(fmt.Sprintf("OR%08d", i), tn, cust, "sum_m", 2, 0, "2026-10", oct), ev(fmt.Sprintf("NV%08d", i), tn, cust, "sum_m", 3, 0, "2026-11", nov))
+	}
+	r.produce(evs...)
+	r.drain(30 * time.Second)
+
+	job, err := mgr.Start(context.Background(), tn, "2026-11", "2026-11", "only november")
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitJob(t, mgr, tn, job.ID, replay.Ready, time.Minute)
+	// October events arrive while the new generation catches up: they are written to both generations.
+	var live []*eventsv1.UsageEvent
+	for i := 0; i < 10; i++ {
+		live = append(live, ev(fmt.Sprintf("OL%08d", i), tn, cust, "sum_m", 5, 0, "2026-10", oct))
+	}
+	r.produce(live...)
+	r.drain(30 * time.Second)
+	if _, err := mgr.Promote(context.Background(), tn, job.ID); err != nil {
+		t.Fatal(err)
+	}
+	key := func(p string) rowKey { return rowKey{tenant: tn, customer: cust, meter: "sum_m", period: p} }
+	got := rowsOfGeneration(t, 2, tn)
+	if g := got[key("2026-10")]; g.qty != "250" || g.count != 110 {
+		t.Fatalf("2026-10 in the promoted generation = %+v, want qty 250 over 110 events (the whole history)", g)
+	}
+	if g := got[key("2026-11")]; g.qty != "300" || g.count != 100 {
+		t.Fatalf("2026-11 in the promoted generation = %+v, want qty 300 over 100 events", g)
+	}
+	// A redelivered October event is still recognised in the promoted generation.
+	r.produce(evs[0])
+	r.drain(30 * time.Second)
+	if g := rowsOfGeneration(t, 2, tn)[key("2026-10")]; g.count != 110 {
+		t.Fatalf("a redelivered old event was counted again: %+v", g)
+	}
+}

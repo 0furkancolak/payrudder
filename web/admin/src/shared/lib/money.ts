@@ -1,3 +1,4 @@
+import { CURRENCY_EXPONENTS, type Currency } from "./currencies";
 import { privacyMode } from "./prefs";
 
 /** What privacy mode shows in place of the figures of an amount. A fixed width, so the mask does not tell the size of the amount. */
@@ -34,12 +35,13 @@ function formatAmount(minor: string | number | undefined, currency: string | und
   const raw = String(minor);
   if (!currency || !/^-?\d+$/.test(raw)) return raw;
   let formatter: Intl.NumberFormat;
+  let digits: number;
   try {
-    formatter = new Intl.NumberFormat(locale, { style: "currency", currency });
+    digits = minorDigits(currency);
+    formatter = new Intl.NumberFormat(locale, { style: "currency", currency, minimumFractionDigits: digits, maximumFractionDigits: digits });
   } catch {
     return `${currency} ${raw}`;
   }
-  const digits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
   const negative = raw.startsWith("-");
   const abs = negative ? raw.slice(1) : raw;
   const padded = abs.padStart(digits + 1, "0");
@@ -51,13 +53,13 @@ function formatAmount(minor: string | number | undefined, currency: string | und
   return /^(ar|he|fa|ur)\b/.test(locale) ? `⁦${out}⁩` : out;
 }
 
-/** How many digits an amount in a currency has after the point (2 for dollars, 0 for yen, 3 for dinar). */
-export function minorDigits(currency: string, locale = "en"): number {
-  try {
-    return new Intl.NumberFormat(locale, { style: "currency", currency }).resolvedOptions().maximumFractionDigits ?? 2;
-  } catch {
-    return 2;
-  }
+/**
+ * How many digits an amount in a currency has after the point (2 for dollars, 0 for yen, 3 for dinar). From the backend's table (CURRENCY_EXPONENTS,
+ * pkg/money), never from Intl: ICU's fraction digits differ for HUF, IQD and others, and a wrong one is a 100x or 1000x error.
+ * A code the table does not know (the backend would refuse it) counts as 2.
+ */
+export function minorDigits(currency: string): number {
+  return CURRENCY_EXPONENTS[currency as Currency] ?? 2;
 }
 
 /**
@@ -96,7 +98,7 @@ export function minorToMajor(minor: string | number | undefined, currency: strin
 export function formatCompact(minor: number, currency: string | undefined, locale: string): string {
   let out: string;
   try {
-    const digits = minorDigits(currency ?? "USD", locale);
+    const digits = minorDigits(currency ?? "USD");
     out = new Intl.NumberFormat(locale, { style: "currency", currency: currency ?? "USD", notation: "compact", maximumFractionDigits: 1 }).format(minor / 10 ** digits);
   } catch {
     out = String(minor);

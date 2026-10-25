@@ -5,7 +5,7 @@
 
 ## Context
 
-ingest-svc deduplicates events by `(tenant, idempotency_key)` inside a window of at least one and less than two months. The table must
+ingest-svc deduplicates events by `(tenant, idempotency_key)` inside a window of at least two and less than three months. The table must
 stay bounded: old keys have to go. Two ways were considered in Phase 02 ([data model](../05-data-model.md#idempotency_keys)):
 monthly range partitions that are dropped when they expire (what the migration does), or one plain table pruned by a
 batched `DELETE` job. The data model note promised a benchmark of both.
@@ -33,7 +33,7 @@ An earlier run (before the size query was fixed) showed the same ordering: retir
 Keep monthly partitions and `maintain_idempotency_partitions()`. Dropping a partition is metadata-only, leaves no bloat and
 takes no row locks, so retention costs nothing on the hot path; the plain-table variant pays for every expired key twice (a
 delete now, a vacuum later) and slows inserts while it runs. The price of partitioning is the composite primary key
-(`created_at` has to be part of it), which the write path already accounts for by checking the current and the previous month.
+(`created_at` has to be part of it), which the write path already accounts for by checking the current and the two previous months (35 days of allowed lateness can span three calendar months).
 
 ## Consequences
 

@@ -10,8 +10,8 @@ LANGUAGE sql STABLE PARALLEL SAFE
 AS $$ SELECT NULLIF(current_setting('app.tenant_id', true), '')::uuid $$;
 
 -- created_at is the start (UTC) of the month the key was first seen, not now(): Postgres requires the partition key
--- in the primary key, so uniqueness is "per key per month". The write path also checks the previous month's bucket,
--- which gives a dedup window of at least one and less than two months (> the 35-day max lateness).
+-- in the primary key, so uniqueness is "per key per month". The write path also checks the two previous months' buckets,
+-- which gives a dedup window of at least two and less than three months (> the 35-day max lateness).
 CREATE TABLE idempotency_keys (
   tenant_id        uuid        NOT NULL,
   idempotency_key  text        NOT NULL CHECK (length(idempotency_key) BETWEEN 1 AND 128),

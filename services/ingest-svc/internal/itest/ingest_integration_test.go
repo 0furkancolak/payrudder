@@ -34,6 +34,7 @@ func TestIngestSvc(t *testing.T) {
 	t.Run("SandboxWithoutKeyIsNotDeduplicated", testSandboxAutoKey)
 	t.Run("KeysAreScopedPerTenant", testKeysPerTenant)
 	t.Run("DedupAcrossMonthBoundary", testMonthBoundary)
+	t.Run("DedupCoversMaxLateness", testDedupCoversMaxLateness)
 	t.Run("PublishedRecordContentAndHeaders", testRecordContent)
 	t.Run("WatermarkTracksOldestUnpublished", testWatermark)
 	t.Run("BackPressure", testBackPressure)
@@ -222,6 +223,30 @@ func testKeysPerTenant(t *testing.T) {
 	status1(t, rb, ingestv1.EventResult_STATUS_ACCEPTED, "")
 	if ra.EventId == rb.EventId {
 		t.Fatal("tenants must not share dedup state")
+	}
+}
+
+// An event may be sent up to 35 days after its event_time, so a repeat of a key first seen at the end of January has to be
+// recognised until early March: two months after the bucket it was recorded in.
+func testDedupCoversMaxLateness(t *testing.T) {
+	clk := newClock(time.Date(2026, 1, 31, 23, 59, 0, 0, time.UTC))
+	svc := newService(t, testOpts{clock: clk})
+	if _, _, err := maintenance.Once(context.Background(), shared.system, clk.Now()); err != nil {
+		t.Fatal(err)
+	}
+	tc := newTenant("live")
+	at := time.Date(2026, 1, 30, 12, 0, 0, 0, time.UTC)
+	first := ingestOne(t, svc, tc, event("late-repeat", "7", at))
+	status1(t, first, ingestv1.EventResult_STATUS_ACCEPTED, "")
+
+	clk.Set(time.Date(2026, 3, 1, 0, 1, 0, 0, time.UTC)) // the event is 30 days old: still acceptable, so still deduplicated
+	again := ingestOne(t, svc, tc, event("late-repeat", "7", at))
+	status1(t, again, ingestv1.EventResult_STATUS_DUPLICATE, "")
+	if again.EventId != first.EventId {
+		t.Fatalf("duplicate id %q != %q", again.EventId, first.EventId)
+	}
+	if got := outboxRows(t, tc.id); got != 1 {
+		t.Fatalf("outbox rows = %d, want 1", got)
 	}
 }
 

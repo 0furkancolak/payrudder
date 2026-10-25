@@ -113,3 +113,29 @@ FULL OUTER JOIN (SELECT y.billed_period_id, y.customer_id, y.meter_code, y.origi
       WHERE y.tenant_id = @tenant_id AND y.generation = @target AND y.origin_period_id BETWEEN @from_period::text AND @to_period::text) b
   USING (billed_period_id, customer_id, meter_code, origin_period_id)
 ORDER BY 1, 2, 3, 4;
+
+-- name: ClearGenerationUsageOutside :exec
+-- A replay rebuilds only [from, to]; the live consumer dual-writes every period, so the target holds a partial tail of the others.
+DELETE FROM usage_aggregates WHERE tenant_id = @tenant_id AND generation = @generation AND (period_id < @from_period::text OR period_id > @to_period::text);
+
+-- name: CopyGenerationUsageOutside :exec
+INSERT INTO usage_aggregates (tenant_id, period_id, customer_id, meter_code, generation, quantity, quantity_scale, event_count, updated_at)
+SELECT s.tenant_id, s.period_id, s.customer_id, s.meter_code, @target::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+FROM usage_aggregates s WHERE s.tenant_id = @tenant_id AND s.generation = @source AND (s.period_id < @from_period::text OR s.period_id > @to_period::text);
+
+-- name: ClearGenerationLateUsageOutside :exec
+DELETE FROM late_usage WHERE tenant_id = @tenant_id AND generation = @generation AND (origin_period_id < @from_period::text OR origin_period_id > @to_period::text);
+
+-- name: CopyGenerationLateUsageOutside :exec
+INSERT INTO late_usage (tenant_id, billed_period_id, customer_id, meter_code, origin_period_id, generation, quantity, quantity_scale, event_count, updated_at)
+SELECT s.tenant_id, s.billed_period_id, s.customer_id, s.meter_code, s.origin_period_id, @target::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+FROM late_usage s WHERE s.tenant_id = @tenant_id AND s.generation = @source AND (s.origin_period_id < @from_period::text OR s.origin_period_id > @to_period::text);
+
+-- name: ClearGenerationProcessedEventsOutside :exec
+DELETE FROM processed_events WHERE tenant_id = @tenant_id AND generation = @generation AND (period_id < @from_period::text OR period_id > @to_period::text);
+
+-- name: CopyGenerationProcessedEventsOutside :exec
+-- The inbox of the periods outside the replay, so a redelivered old event is still recognised after the promotion.
+INSERT INTO processed_events (tenant_id, event_id, generation, period_id)
+SELECT s.tenant_id, s.event_id, @target::int, s.period_id
+FROM processed_events s WHERE s.tenant_id = @tenant_id AND s.generation = @source AND (s.period_id < @from_period::text OR s.period_id > @to_period::text);
