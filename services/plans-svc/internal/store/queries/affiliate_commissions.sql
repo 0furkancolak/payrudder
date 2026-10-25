@@ -54,7 +54,7 @@ UPDATE affiliate_commissions SET status = 'approved', approved_at = @now::timest
 WHERE status = 'pending' AND kind = 'commission' AND approve_after <= @now::timestamptz;
 
 -- name: ListAffiliateCommissions :many
-SELECT c.id, c.affiliate_id, a.code AS affiliate_code, cu.external_id AS customer_external_id, c.kind, c.invoice_id, c.invoice_number, c.currency, c.invoice_total_minor,
+SELECT c.id, c.affiliate_id, a.code AS affiliate_code, cu.external_id AS customer_external_id, cu.email AS customer_email, c.kind, c.invoice_id, c.invoice_number, c.currency, c.invoice_total_minor,
   c.net_minor, c.amount_minor, c.reversed_minor, c.status, c.parent_id, c.earned_at, c.approve_after, c.approved_at, c.paid_at, c.payout_id, count(*) OVER()::bigint AS _count
 FROM affiliate_commissions c
 JOIN affiliates a ON a.tenant_id = c.tenant_id AND a.id = c.affiliate_id

@@ -494,6 +494,9 @@ func newProduct(t *testing.T, ledger func() []map[string]any, tweak func(*Deps))
 	plansv1.RegisterAdminServiceServer(gs, &fakePlans{})
 	billingv1.RegisterBillingServiceServer(gs, p.billing)
 	limitsv1.RegisterLimitsServiceServer(gs, productLimits{})
+	fp := &fakePortal{}
+	plansv1.RegisterAffiliatePortalServiceServer(gs, fp)
+	lastPortal = fp
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = gs.Serve(lis) }()
 	t.Cleanup(gs.Stop)
@@ -505,7 +508,7 @@ func newProduct(t *testing.T, ledger func() []map[string]any, tweak func(*Deps))
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	deps := Deps{Identity: plansv1.NewIdentityServiceClient(cc), Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc),
-		Webhooks: plansv1.NewWebhookServiceClient(cc), Billing: billingv1.NewBillingServiceClient(cc), Limits: limitsv1.NewLimitsServiceClient(cc), Auth: fakeAuth{}, Limiter: p.limiter,
+		Webhooks: plansv1.NewWebhookServiceClient(cc), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(cc), Billing: billingv1.NewBillingServiceClient(cc), Limits: limitsv1.NewLimitsServiceClient(cc), Auth: fakeAuth{}, Limiter: p.limiter,
 		OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	if ledger != nil {
 		pw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
