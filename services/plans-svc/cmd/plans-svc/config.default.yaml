@@ -12,3 +12,5 @@ SMTP_ADDR: "localhost:42025"
 MAIL_FROM: "Payrudder <no-reply@payrudder.local>"
 # The console's public address: mailed links open <PAYRUDDER_APP_URL>/verify, /reset and /invite.
 PAYRUDDER_APP_URL: "http://localhost:42301"
+# How often the job that ends the hold of affiliate commissions (pending to approved) looks. The holds are days long; an hour is plenty.
+PAYRUDDER_AFFILIATE_APPROVE_EVERY: "1h"

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -409,8 +410,18 @@ func reopenCredits(ctx context.Context, tx pgx.Tx, s *saga) error {
 func (e *Engine) announce(ctx context.Context, tx pgx.Tx, s *saga, next State, cause string, now time.Time) error {
 	if typ := map[State]string{Paid: EventInvoicePaid, Voided: EventInvoiceVoided, Uncollectible: EventInvoiceUncollectible}[next]; typ != "" {
 		// Reaching the state again after a retry is the same occurrence: the key is the invoice.
-		if err := TenantEvent(ctx, tx, s.TenantID, typ, s.InvoiceID.String(), now,
-			InvoiceData(s.InvoiceID, s.CustomerID, s.Snap.CustomerExternalID, s.Number, s.PeriodID, s.Currency, s.TotalMinor, s.InvoiceStatus)); err != nil {
+		data := InvoiceData(s.InvoiceID, s.CustomerID, s.Snap.CustomerExternalID, s.Number, s.PeriodID, s.Currency, s.TotalMinor, s.InvoiceStatus)
+		// The environment of the invoice and, for a paid one, how much of the total was tax: plans-svc reads the partner commission off the net amount
+		// and refuses an event that disagrees with the environment of its tenant.
+		data["environment"] = s.Snap.Environment
+		if next == Paid {
+			tax, err := sqlc.New(tx).SumInvoiceTax(ctx, sqlc.SumInvoiceTaxParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+			if err != nil {
+				return err
+			}
+			data["tax_minor"], data["net_minor"] = strconv.FormatInt(tax, 10), strconv.FormatInt(max(s.TotalMinor-tax, 0), 10)
+		}
+		if err := TenantEvent(ctx, tx, s.TenantID, typ, s.InvoiceID.String(), now, data); err != nil {
 			return err
 		}
 	}

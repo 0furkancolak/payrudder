@@ -1982,7 +1982,13 @@
         "coupon_not_found": "The coupon for referred customers does not exist.",
         "not_set": "This environment has no partner program yet."
       },
-      "promotion_code_not_found": "No such promotion code."
+      "promotion_code_not_found": "No such promotion code.",
+      "bad_id": "That is not a valid id.",
+      "bad_kind": "The kind must be commission or reversal.",
+      "bad_period": "Write the dates as YYYY-MM-DD, with the end after the start and at most a year apart.",
+      "commission": {
+        "not_found": "This invoice earned no commission."
+      }
     }
   },
   "product": {

@@ -28,6 +28,10 @@ const (
 	AffiliateService_LinkAffiliatePromotionCode_FullMethodName = "/payrudder.plans.v1.AffiliateService/LinkAffiliatePromotionCode"
 	AffiliateService_AttributeCustomer_FullMethodName          = "/payrudder.plans.v1.AffiliateService/AttributeCustomer"
 	AffiliateService_ListAffiliateReferrals_FullMethodName     = "/payrudder.plans.v1.AffiliateService/ListAffiliateReferrals"
+	AffiliateService_ListAffiliateCommissions_FullMethodName   = "/payrudder.plans.v1.AffiliateService/ListAffiliateCommissions"
+	AffiliateService_ReverseAffiliateCommission_FullMethodName = "/payrudder.plans.v1.AffiliateService/ReverseAffiliateCommission"
+	AffiliateService_GetAffiliateBalances_FullMethodName       = "/payrudder.plans.v1.AffiliateService/GetAffiliateBalances"
+	AffiliateService_GetAffiliateFunnel_FullMethodName         = "/payrudder.plans.v1.AffiliateService/GetAffiliateFunnel"
 )
 
 // AffiliateServiceClient is the client API for AffiliateService service.
@@ -52,6 +56,15 @@ type AffiliateServiceClient interface {
 	// Idempotent; a refusal is a normal answer (attributed=false and a reason), not an error.
 	AttributeCustomer(ctx context.Context, in *AttributeCustomerRequest, opts ...grpc.CallOption) (*AttributeCustomerResponse, error)
 	ListAffiliateReferrals(ctx context.Context, in *ListAffiliateReferralsRequest, opts ...grpc.CallOption) (*ListAffiliateReferralsResponse, error)
+	// ListAffiliateCommissions lists commissions and the reversal rows that net against them, newest first.
+	ListAffiliateCommissions(ctx context.Context, in *ListAffiliateCommissionsRequest, opts ...grpc.CallOption) (*ListAffiliateCommissionsResponse, error)
+	// ReverseAffiliateCommission takes a commission back for a chargeback, or by hand. Refunds, voids and credit notes are reversed on their own.
+	// Idempotent per (invoice, reason, reference).
+	ReverseAffiliateCommission(ctx context.Context, in *ReverseAffiliateCommissionRequest, opts ...grpc.CallOption) (*ReverseAffiliateCommissionResponse, error)
+	// GetAffiliateBalances is what each affiliate has per currency: pending, available for a payout, paid out and taken back.
+	GetAffiliateBalances(ctx context.Context, in *GetAffiliateBalancesRequest, opts ...grpc.CallOption) (*GetAffiliateBalancesResponse, error)
+	// GetAffiliateFunnel counts clicks, referred customers, paying customers and commissions over a period.
+	GetAffiliateFunnel(ctx context.Context, in *GetAffiliateFunnelRequest, opts ...grpc.CallOption) (*GetAffiliateFunnelResponse, error)
 }
 
 type affiliateServiceClient struct {
@@ -152,6 +165,46 @@ func (c *affiliateServiceClient) ListAffiliateReferrals(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *affiliateServiceClient) ListAffiliateCommissions(ctx context.Context, in *ListAffiliateCommissionsRequest, opts ...grpc.CallOption) (*ListAffiliateCommissionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAffiliateCommissionsResponse)
+	err := c.cc.Invoke(ctx, AffiliateService_ListAffiliateCommissions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *affiliateServiceClient) ReverseAffiliateCommission(ctx context.Context, in *ReverseAffiliateCommissionRequest, opts ...grpc.CallOption) (*ReverseAffiliateCommissionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReverseAffiliateCommissionResponse)
+	err := c.cc.Invoke(ctx, AffiliateService_ReverseAffiliateCommission_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *affiliateServiceClient) GetAffiliateBalances(ctx context.Context, in *GetAffiliateBalancesRequest, opts ...grpc.CallOption) (*GetAffiliateBalancesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAffiliateBalancesResponse)
+	err := c.cc.Invoke(ctx, AffiliateService_GetAffiliateBalances_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *affiliateServiceClient) GetAffiliateFunnel(ctx context.Context, in *GetAffiliateFunnelRequest, opts ...grpc.CallOption) (*GetAffiliateFunnelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAffiliateFunnelResponse)
+	err := c.cc.Invoke(ctx, AffiliateService_GetAffiliateFunnel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AffiliateServiceServer is the server API for AffiliateService service.
 // All implementations must embed UnimplementedAffiliateServiceServer
 // for forward compatibility.
@@ -174,6 +227,15 @@ type AffiliateServiceServer interface {
 	// Idempotent; a refusal is a normal answer (attributed=false and a reason), not an error.
 	AttributeCustomer(context.Context, *AttributeCustomerRequest) (*AttributeCustomerResponse, error)
 	ListAffiliateReferrals(context.Context, *ListAffiliateReferralsRequest) (*ListAffiliateReferralsResponse, error)
+	// ListAffiliateCommissions lists commissions and the reversal rows that net against them, newest first.
+	ListAffiliateCommissions(context.Context, *ListAffiliateCommissionsRequest) (*ListAffiliateCommissionsResponse, error)
+	// ReverseAffiliateCommission takes a commission back for a chargeback, or by hand. Refunds, voids and credit notes are reversed on their own.
+	// Idempotent per (invoice, reason, reference).
+	ReverseAffiliateCommission(context.Context, *ReverseAffiliateCommissionRequest) (*ReverseAffiliateCommissionResponse, error)
+	// GetAffiliateBalances is what each affiliate has per currency: pending, available for a payout, paid out and taken back.
+	GetAffiliateBalances(context.Context, *GetAffiliateBalancesRequest) (*GetAffiliateBalancesResponse, error)
+	// GetAffiliateFunnel counts clicks, referred customers, paying customers and commissions over a period.
+	GetAffiliateFunnel(context.Context, *GetAffiliateFunnelRequest) (*GetAffiliateFunnelResponse, error)
 	mustEmbedUnimplementedAffiliateServiceServer()
 }
 
@@ -210,6 +272,18 @@ func (UnimplementedAffiliateServiceServer) AttributeCustomer(context.Context, *A
 }
 func (UnimplementedAffiliateServiceServer) ListAffiliateReferrals(context.Context, *ListAffiliateReferralsRequest) (*ListAffiliateReferralsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAffiliateReferrals not implemented")
+}
+func (UnimplementedAffiliateServiceServer) ListAffiliateCommissions(context.Context, *ListAffiliateCommissionsRequest) (*ListAffiliateCommissionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAffiliateCommissions not implemented")
+}
+func (UnimplementedAffiliateServiceServer) ReverseAffiliateCommission(context.Context, *ReverseAffiliateCommissionRequest) (*ReverseAffiliateCommissionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReverseAffiliateCommission not implemented")
+}
+func (UnimplementedAffiliateServiceServer) GetAffiliateBalances(context.Context, *GetAffiliateBalancesRequest) (*GetAffiliateBalancesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAffiliateBalances not implemented")
+}
+func (UnimplementedAffiliateServiceServer) GetAffiliateFunnel(context.Context, *GetAffiliateFunnelRequest) (*GetAffiliateFunnelResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAffiliateFunnel not implemented")
 }
 func (UnimplementedAffiliateServiceServer) mustEmbedUnimplementedAffiliateServiceServer() {}
 func (UnimplementedAffiliateServiceServer) testEmbeddedByValue()                          {}
@@ -394,6 +468,78 @@ func _AffiliateService_ListAffiliateReferrals_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AffiliateService_ListAffiliateCommissions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAffiliateCommissionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AffiliateServiceServer).ListAffiliateCommissions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AffiliateService_ListAffiliateCommissions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AffiliateServiceServer).ListAffiliateCommissions(ctx, req.(*ListAffiliateCommissionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AffiliateService_ReverseAffiliateCommission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReverseAffiliateCommissionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AffiliateServiceServer).ReverseAffiliateCommission(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AffiliateService_ReverseAffiliateCommission_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AffiliateServiceServer).ReverseAffiliateCommission(ctx, req.(*ReverseAffiliateCommissionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AffiliateService_GetAffiliateBalances_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAffiliateBalancesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AffiliateServiceServer).GetAffiliateBalances(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AffiliateService_GetAffiliateBalances_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AffiliateServiceServer).GetAffiliateBalances(ctx, req.(*GetAffiliateBalancesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AffiliateService_GetAffiliateFunnel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAffiliateFunnelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AffiliateServiceServer).GetAffiliateFunnel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AffiliateService_GetAffiliateFunnel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AffiliateServiceServer).GetAffiliateFunnel(ctx, req.(*GetAffiliateFunnelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AffiliateService_ServiceDesc is the grpc.ServiceDesc for AffiliateService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -436,6 +582,22 @@ var AffiliateService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAffiliateReferrals",
 			Handler:    _AffiliateService_ListAffiliateReferrals_Handler,
+		},
+		{
+			MethodName: "ListAffiliateCommissions",
+			Handler:    _AffiliateService_ListAffiliateCommissions_Handler,
+		},
+		{
+			MethodName: "ReverseAffiliateCommission",
+			Handler:    _AffiliateService_ReverseAffiliateCommission_Handler,
+		},
+		{
+			MethodName: "GetAffiliateBalances",
+			Handler:    _AffiliateService_GetAffiliateBalances_Handler,
+		},
+		{
+			MethodName: "GetAffiliateFunnel",
+			Handler:    _AffiliateService_GetAffiliateFunnel_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

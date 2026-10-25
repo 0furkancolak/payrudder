@@ -4,6 +4,7 @@ package affiliates
 
 import (
 	"context"
+	"time"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
@@ -78,6 +79,22 @@ func (h *Handler) AttributeCustomer(ctx context.Context, req *plansv1.AttributeC
 
 func (h *Handler) ListAffiliateReferrals(ctx context.Context, req *plansv1.ListAffiliateReferralsRequest) (*plansv1.ListAffiliateReferralsResponse, error) {
 	return h.qry.Referrals(ctx, req)
+}
+
+func (h *Handler) ListAffiliateCommissions(ctx context.Context, req *plansv1.ListAffiliateCommissionsRequest) (*plansv1.ListAffiliateCommissionsResponse, error) {
+	return h.qry.Commissions(ctx, req)
+}
+
+func (h *Handler) ReverseAffiliateCommission(ctx context.Context, req *plansv1.ReverseAffiliateCommissionRequest) (*plansv1.ReverseAffiliateCommissionResponse, error) {
+	return h.cmd.ReverseCommission(ctx, req)
+}
+
+func (h *Handler) GetAffiliateBalances(ctx context.Context, req *plansv1.GetAffiliateBalancesRequest) (*plansv1.GetAffiliateBalancesResponse, error) {
+	return h.qry.Balances(ctx, req.GetAffiliateId())
+}
+
+func (h *Handler) GetAffiliateFunnel(ctx context.Context, req *plansv1.GetAffiliateFunnelRequest) (*plansv1.GetAffiliateFunnelResponse, error) {
+	return h.qry.Funnel(ctx, req, time.Now())
 }
 
 // PublicHandler serves plansv1.AffiliatePublicService.

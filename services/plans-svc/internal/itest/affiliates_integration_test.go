@@ -490,8 +490,19 @@ func seedAffiliates(t *testing.T, e *env, tenantID, suffix string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	must(e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_ref_" + suffix, Name: "Kim", Email: "kim@buyers.test"}))
+	kim, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_ref_" + suffix, Name: "Kim", Email: "kim@buyers.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	must(e.aff.AttributeCustomer(ctx, &plansv1.AttributeCustomerRequest{CustomerExternalId: "cus_ref_" + suffix, Code: partner.GetAffiliate().GetCode(), Source: "link"}))
+	// A paid invoice of the customer earns a commission, and a credit note against it is recorded as a reversal.
+	invoice := uuid.NewString()
+	for _, ev := range []struct{ typ, data string }{
+		{"invoice.paid", `{"invoice_id":"` + invoice + `","customer_id":"` + kim.GetCustomer().GetId() + `","currency":"TRY","total_minor":"10000","tax_minor":"0","net_minor":"10000"}`},
+		{"credit_note.created", `{"credit_note_id":"cn_seed_` + suffix + `","invoice_id":"` + invoice + `","total_minor":"2500"}`},
+	} {
+		must(e.hooks.RecordTenantEvent(ctx, &plansv1.RecordTenantEventRequest{EventId: uuid.NewString(), Type: ev.typ, DataJson: ev.data}))
+	}
 	must(e.pub.TrackAffiliateClick(context.Background(), &plansv1.TrackAffiliateClickRequest{Code: partner.GetAffiliate().GetCode()}))
 }
 

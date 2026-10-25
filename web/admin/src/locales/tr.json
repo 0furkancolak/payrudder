@@ -1982,7 +1982,13 @@
         "coupon_not_found": "Yönlendirilen müşteriler için seçilen kupon mevcut değil.",
         "not_set": "Bu ortamda henüz bir ortaklık programı yok."
       },
-      "promotion_code_not_found": "Böyle bir promosyon kodu yok."
+      "promotion_code_not_found": "Böyle bir promosyon kodu yok.",
+      "bad_id": "Bu geçerli bir kimlik değil.",
+      "bad_kind": "Tür commission veya reversal olmalıdır.",
+      "bad_period": "Tarihleri YYYY-AA-GG biçiminde yazın; bitiş başlangıçtan sonra olmalı ve en fazla bir yıl arayla olmalıdır.",
+      "commission": {
+        "not_found": "Bu fatura için komisyon doğmamış."
+      }
     }
   },
   "product": {
