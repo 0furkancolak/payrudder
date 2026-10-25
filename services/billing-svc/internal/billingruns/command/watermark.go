@@ -1,4 +1,4 @@
-package runs
+package command
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
-	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -22,7 +22,7 @@ import (
 //  3. the aggregator has consumed up to those offsets.
 //
 // It reports false while any step is not yet true.
-func (m *Manager) watermark(ctx context.Context, run *runmodel.Run) (bool, error) {
+func (m *Manager) watermark(ctx context.Context, run *model.Run) (bool, error) {
 	if run.Offsets == nil {
 		w, err := m.cfg.Ingest.GetOutboxWatermark(ctx, &ingestv1.GetOutboxWatermarkRequest{})
 		if err != nil {

@@ -1,4 +1,4 @@
-package runs
+package command
 
 import (
 	"context"

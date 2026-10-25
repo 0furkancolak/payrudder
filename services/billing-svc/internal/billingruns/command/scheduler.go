@@ -1,4 +1,4 @@
-package runs
+package command
 
 import (
 	"context"
@@ -6,14 +6,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
-	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -50,7 +48,7 @@ func (m *Manager) discover(ctx context.Context) error {
 		}
 		created := t.GetCreateTime().AsTime()
 		cur := time.Date(now.In(loc).Year(), now.In(loc).Month(), 1, 0, 0, 0, 0, loc)
-		for back := 1; back <= m.cfg.Lookback; back++ {
+		for back := 1; back <= lookback; back++ {
 			start := cur.AddDate(0, -back, 0)
 			pid := period.PeriodOf(start, loc)
 			_, end, err := period.Bounds(pid, loc)
@@ -69,9 +67,9 @@ func (m *Manager) discover(ctx context.Context) error {
 	})
 }
 
-// ClosePeriod schedules the close of a period now (operator). It is idempotent per (tenant, period). A live period
-// can only be closed after its cutoff.
-func (m *Manager) ClosePeriod(ctx context.Context, tenantID uuid.UUID, periodID string) (*runmodel.Run, error) {
+// closePeriod schedules the close of a period now (operator). It is idempotent per (tenant, period). A live period
+// can only be closed after its cutoff. The refusals are model.ErrBadPeriod and *model.PeriodOpenError; a failure of plans-svc is its own error.
+func (m *Manager) closePeriod(ctx context.Context, tenantID uuid.UUID, periodID string) (*model.Run, error) {
 	resp, err := m.in.Admin.GetTenant(inputs.OperatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
 	if err != nil {
 		return nil, err
@@ -83,21 +81,21 @@ func (m *Manager) ClosePeriod(ctx context.Context, tenantID uuid.UUID, periodID 
 	}
 	cutoff, err := period.Cutoff(periodID, loc, t.GetGracePeriod().AsDuration())
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.run.bad_period", "period_id must look like 2026-11")
+		return nil, model.ErrBadPeriod
 	}
 	if existing, err := m.GetRun(ctx, tenantID, periodID); err == nil {
 		return existing, nil
 	}
 	if m.cfg.Now().Before(cutoff) {
-		return nil, errkey.Newf(codes.FailedPrecondition, "billing.run.period_open", "period %s closes at %s", periodID, cutoff.UTC().Format(time.RFC3339))
+		return nil, &model.PeriodOpenError{Period: periodID, Cutoff: cutoff}
 	}
 	return m.EnsureRun(ctx, tenantID, periodID, cutoff, false)
 }
 
-// ClosePeriodNow is the sandbox flow: the aggregator lowers the period's cutoff to now + 5 s, and the normal run takes
+// closePeriodNow is the sandbox flow: the aggregator lowers the period's cutoff to now + 5 s, and the normal run takes
 // over (the watermark check starts WatermarkDelay after the new cutoff). The caller has checked that the tenant is a
 // sandbox tenant.
-func (m *Manager) ClosePeriodNow(ctx context.Context, ti tenant.Info, periodID string) (*runmodel.Run, error) {
+func (m *Manager) closePeriodNow(ctx context.Context, ti tenant.Info, periodID string) (*model.Run, error) {
 	tenantID := ti.ID
 	resp, err := m.in.Aggregator.ClosePeriodEarly(tenant.OutgoingContext(tenant.NewContext(ctx, ti)), &aggregatorv1.ClosePeriodEarlyRequest{PeriodId: periodID})
 	if err != nil {

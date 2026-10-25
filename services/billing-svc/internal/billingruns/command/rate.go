@@ -1,4 +1,4 @@
-package runs
+package command
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/period"
-	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
@@ -23,7 +23,7 @@ import (
 
 // rateRun is what rating one billing run needs about the tenant and the period.
 type rateRun struct {
-	run       *runmodel.Run
+	run       *model.Run
 	tctx      context.Context
 	tenant    *plansv1.Tenant
 	loc       *time.Location
@@ -40,7 +40,7 @@ type rateRun struct {
 
 // rate gathers the period's usage, late usage and subscriptions and creates a draft invoice per customer. It is
 // idempotent: drafts that exist are kept (the partial unique index one_regular_invoice), so a retried run converges.
-func (m *Manager) rate(ctx context.Context, run *runmodel.Run) error {
+func (m *Manager) rate(ctx context.Context, run *model.Run) error {
 	rr, err := m.loadRateRun(ctx, run)
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func (m *Manager) rate(ctx context.Context, run *runmodel.Run) error {
 }
 
 // loadRateRun reads the tenant, the period's bounds and the meters.
-func (m *Manager) loadRateRun(ctx context.Context, run *runmodel.Run) (*rateRun, error) {
+func (m *Manager) loadRateRun(ctx context.Context, run *model.Run) (*rateRun, error) {
 	rr := &rateRun{run: run, tctx: inputs.TenantCtx(ctx, run.TenantID), plans: map[string]rating.PlanVersion{}}
 	var err error
 	if rr.tenant, err = m.in.Tenant(ctx, run.TenantID); err != nil {

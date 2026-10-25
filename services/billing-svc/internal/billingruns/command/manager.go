@@ -1,7 +1,4 @@
-// Package runs drives billing runs: the scheduler that finds due (tenant, period) pairs, the watermark protocol that
-// proves every on-time event is aggregated, rating into draft invoices, finalization with gap-free numbers, and the
-// completion check (docs/03-services/billing-svc.md#period-close-billing-run).
-package runs
+package command
 
 import (
 	"context"
@@ -20,7 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
-	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	runquery "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/query"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
@@ -40,6 +37,9 @@ type Chore struct {
 	Run  func(ctx context.Context) error
 }
 
+// lookback is how many closed periods the scheduler considers per tenant.
+const lookback = 3
+
 // Config configures a Manager.
 type Config struct {
 	Pool     *pgxpool.Pool // billing_system
@@ -57,8 +57,6 @@ type Config struct {
 	Chores []Chore
 	// PageSize is how many customers are rated per transaction (default 500).
 	PageSize int
-	// Lookback is how many closed periods the scheduler considers per tenant (default 3).
-	Lookback int
 	Log      *slog.Logger
 }
 
@@ -86,9 +84,6 @@ func NewManager(cfg Config) (*Manager, error) {
 	}
 	if cfg.PageSize <= 0 {
 		cfg.PageSize = 500
-	}
-	if cfg.Lookback <= 0 {
-		cfg.Lookback = 3
 	}
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
@@ -122,13 +117,13 @@ func NewManager(cfg Config) (*Manager, error) {
 func (m *Manager) Now() time.Time { return m.cfg.Now() }
 
 // GetRun returns the run or pgx.ErrNoRows.
-func (m *Manager) GetRun(ctx context.Context, tenantID uuid.UUID, periodID string) (*runmodel.Run, error) {
+func (m *Manager) GetRun(ctx context.Context, tenantID uuid.UUID, periodID string) (*model.Run, error) {
 	return runquery.Load(ctx, m.q, tenantID, periodID)
 }
 
 // EnsureRun creates the run if it is missing. With lowerCutoff an existing, unfinished run's cutoff is lowered to
 // cutoff (the sandbox early close). It is idempotent per (tenant, period): calling it twice yields one run.
-func (m *Manager) EnsureRun(ctx context.Context, tenantID uuid.UUID, periodID string, cutoff time.Time, lowerCutoff bool) (*runmodel.Run, error) {
+func (m *Manager) EnsureRun(ctx context.Context, tenantID uuid.UUID, periodID string, cutoff time.Time, lowerCutoff bool) (*model.Run, error) {
 	if err := m.q.InsertBillingRun(ctx, sqlc.InsertBillingRunParams{TenantID: tenantID, PeriodID: periodID, CutoffAt: cutoff}); err != nil {
 		return nil, err
 	}
@@ -140,7 +135,7 @@ func (m *Manager) EnsureRun(ctx context.Context, tenantID uuid.UUID, periodID st
 	return m.GetRun(ctx, tenantID, periodID)
 }
 
-func (m *Manager) setStatus(ctx context.Context, run *runmodel.Run, status, lastErr string) error {
+func (m *Manager) setStatus(ctx context.Context, run *model.Run, status, lastErr string) error {
 	return m.q.SetRunStatus(ctx, sqlc.SetRunStatusParams{Status: status, LastError: lastErr, TenantID: run.TenantID, PeriodID: run.PeriodID})
 }
 
@@ -169,11 +164,11 @@ func (m *Manager) withLock(ctx context.Context, tenantID uuid.UUID, periodID str
 }
 
 // Drive moves one run as far as it can go now. Waiting is not an error: the scheduler calls Drive again.
-func (m *Manager) Drive(ctx context.Context, tenantID uuid.UUID, periodID string) (*runmodel.Run, error) {
+func (m *Manager) Drive(ctx context.Context, tenantID uuid.UUID, periodID string) (*model.Run, error) {
 	ctx, span := otel.Tracer("github.com/0furkancolak/payrudder/services/billing-svc/runs").Start(ctx, "billing.run",
 		trace.WithAttributes(attribute.String("payrudder.tenant_id", tenantID.String()), attribute.String("billing.period", periodID)))
 	defer span.End()
-	var out *runmodel.Run
+	var out *model.Run
 	_, err := m.withLock(ctx, tenantID, periodID, func(ctx context.Context) error {
 		for {
 			run, err := m.GetRun(ctx, tenantID, periodID)
@@ -201,41 +196,41 @@ func (m *Manager) Drive(ctx context.Context, tenantID uuid.UUID, periodID string
 }
 
 // step performs the next stage of a run and reports whether the status changed (so Drive should look again).
-func (m *Manager) step(ctx context.Context, run *runmodel.Run) (bool, error) {
+func (m *Manager) step(ctx context.Context, run *model.Run) (bool, error) {
 	now := m.cfg.Now()
 	switch run.Status {
-	case runmodel.Completed, runmodel.Failed:
+	case model.Completed, model.Failed:
 		return false, nil
-	case runmodel.Scheduled:
+	case model.Scheduled:
 		if now.Before(run.CutoffAt.Add(m.cfg.WatermarkDelay)) {
 			return false, nil
 		}
-		return true, m.setStatus(ctx, run, runmodel.WaitingWatermark, "")
-	case runmodel.WaitingWatermark:
+		return true, m.setStatus(ctx, run, model.WaitingWatermark, "")
+	case model.WaitingWatermark:
 		ok, err := m.watermark(ctx, run)
 		if err != nil || !ok {
 			return false, err
 		}
 		m.watermarkSecs.Record(ctx, max(0, now.Sub(run.CutoffAt).Seconds()))
-		return true, m.setStatus(ctx, run, runmodel.Rating, "")
-	case runmodel.Rating:
+		return true, m.setStatus(ctx, run, model.Rating, "")
+	case model.Rating:
 		start := time.Now()
 		if err := m.rate(ctx, run); err != nil {
 			m.log.ErrorContext(ctx, "rating failed", "tenant", run.TenantID, "period", run.PeriodID, "error", err)
 			if inputs.IsTransient(err) {
 				return false, err
 			}
-			return false, m.setStatus(ctx, run, runmodel.Failed, err.Error())
+			return false, m.setStatus(ctx, run, model.Failed, err.Error())
 		}
 		m.runStageSecs.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attribute.String("stage", "rating")))
-		return true, m.setStatus(ctx, run, runmodel.Invoicing, "")
-	case runmodel.Invoicing:
+		return true, m.setStatus(ctx, run, model.Invoicing, "")
+	case model.Invoicing:
 		done, err := m.invoice(ctx, run)
 		if err != nil || !done {
 			return false, err
 		}
 		m.runsDone.Add(ctx, 1)
-		return true, m.setStatus(ctx, run, runmodel.Completed, "")
+		return true, m.setStatus(ctx, run, model.Completed, "")
 	}
 	return false, fmt.Errorf("unknown run status %q", run.Status)
 }

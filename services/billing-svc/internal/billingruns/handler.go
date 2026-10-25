@@ -9,19 +9,18 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
+	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
 	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 )
 
 // Handler implements the billing-run methods of billingv1.SandboxServiceServer and billingv1.BillingAdminServiceServer.
 type Handler struct {
-	runs *runs.Manager
+	runs *runcmd.Manager
 }
 
 // New returns the handler.
-func New(mgr *runs.Manager) *Handler { return &Handler{runs: mgr} }
+func New(mgr *runcmd.Manager) *Handler { return &Handler{runs: mgr} }
 
 // ClosePeriodNow implements billingv1.SandboxServiceServer.
 func (h *Handler) ClosePeriodNow(ctx context.Context, req *billingv1.ClosePeriodNowRequest) (*billingv1.ClosePeriodNowResponse, error) {
@@ -29,7 +28,7 @@ func (h *Handler) ClosePeriodNow(ctx context.Context, req *billingv1.ClosePeriod
 	if err != nil {
 		return nil, err
 	}
-	run, err := command.ClosePeriodNow(ctx, h.runs, ti, req.GetPeriodId())
+	run, err := h.runs.ClosePeriodNow(ctx, ti, req.GetPeriodId())
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +44,7 @@ func (h *Handler) ClosePeriod(ctx context.Context, req *billingv1.ClosePeriodReq
 	if err != nil {
 		return nil, err
 	}
-	run, err := command.ClosePeriod(ctx, h.runs, tid, req.GetPeriodId())
+	run, err := h.runs.ClosePeriod(ctx, tid, req.GetPeriodId())
 	if err != nil {
 		return nil, err
 	}
