@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { formatUtcDay } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
 import { barHeights, type SeriesPoint } from "./chart";
 
@@ -12,8 +13,7 @@ const H = 100;
 const slot = 10;
 const bars = computed(() => barHeights(props.points));
 const width = computed(() => Math.max(1, bars.value.length) * slot);
-const label = (bucket: string) =>
-  new Intl.DateTimeFormat(locale.value, props.granularity === "month" ? { month: "short", year: "numeric", timeZone: "UTC" } : { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${bucket}T00:00:00Z`));
+const label = (bucket: string) => formatUtcDay(bucket, locale.value, props.granularity === "month" ? "month" : "day");
 const title = (i: number) => {
   const p = props.points[i];
   return `${label(p?.bucket ?? "")}: ${t("billing.accounting.bars.income")} ${formatMinor(p?.net_income_minor, props.currency, locale.value)}, ${t("billing.accounting.bars.expense")} ${formatMinor(p?.expenses_minor, props.currency, locale.value)}`;

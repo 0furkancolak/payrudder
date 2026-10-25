@@ -2,6 +2,8 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { keyMask } from "@/shared/lib/environment";
+import { useFormat } from "@/shared/lib/format";
 import { useTenant } from "@/features/tenants";
 import { type Currency } from "@/shared/lib/currencies";
 import { useErrorText } from "@/shared/lib/errors";
@@ -14,7 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { environmentWord, isValidSlug, useApps, useCreateApiKey, useCreateApp, useRevokeApiKey, type CreatedKey } from "./api";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 
-const { t, te, locale } = useI18n();
+const { t, te } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -27,7 +30,7 @@ const createKey = useCreateApiKey();
 const revokeKey = useRevokeApiKey();
 
 const list = computed(() => apps.data.value?.apps ?? []);
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "day", "—");
 
 // --- a new app
 const name = ref("");
@@ -149,7 +152,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
       </div>
       <ul v-if="sessionOf(e.id).length" class="grid gap-1 text-sm">
         <li v-for="k in sessionOf(e.id)" :key="k.id" class="flex flex-wrap items-center gap-2">
-          <span class="mono text-xs">qk_{{ k.environment === "live" ? "live" : "test" }}_{{ k.prefix }}…</span>
+          <span class="mono text-xs">{{ keyMask(k.environment, k.prefix) }}…</span>
           <span class="mono text-muted-foreground text-xs">{{ k.id }}</span>
           <Badge v-if="k.revoked" variant="destructive">{{ t("apps.keys.revoked") }}</Badge>
           <Button v-else size="sm" variant="destructive" class="ms-auto" :disabled="revokeKey.isPending.value" @click="revoke(k.id)">{{ t("apps.keys.revoke") }}</Button>

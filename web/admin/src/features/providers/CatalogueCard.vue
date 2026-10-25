@@ -10,6 +10,7 @@ import { Card } from "@/shared/ui/card";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCatalogue, useSyncCatalogue } from "./api";
+import type { Environment } from "@/shared/lib/environment";
 
 const props = defineProps<{ tenantId: string }>();
 const { t } = useI18n();
@@ -17,7 +18,7 @@ const errorText = useErrorText();
 const tenantId = computed(() => props.tenantId);
 const packages = usePackages(tenantId);
 const provider = ref("");
-const environment = ref<"sandbox" | "live">("live");
+const environment = ref<Environment>("live");
 const plan = ref("");
 const catalogue = useCatalogue(tenantId, provider, environment);
 const sync = useSyncCatalogue(tenantId, provider, environment);

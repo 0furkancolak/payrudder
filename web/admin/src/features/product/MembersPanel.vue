@@ -2,6 +2,7 @@
 import { Mail, Send, UserMinus } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
@@ -19,7 +20,8 @@ import { useChangeRole, useInvitations, useInviteMember, useRemoveMember, useRes
  */
 const props = defineProps<{ account: MyAccount | undefined; myId: string; loading: boolean }>();
 const emit = defineEmits<{ left: [] }>();
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 
 const myRole = computed(() => (props.account?.role ?? "viewer") as Role);
@@ -38,7 +40,7 @@ const remove = useRemoveMember();
 /** An administrator may not touch owners; an owner may touch anybody. */
 const mayHandle = (role: string | undefined) => canManage.value && (role !== "owner" || isOwner.value);
 const nameOf = (m: { display_name?: string; email?: string }) => m.display_name || m.email || "";
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "");
+const when = (v?: string) => fmt.date(v, "day");
 const expired = (v?: string) => (v ? new Date(v).getTime() < Date.now() : false);
 
 const email = ref("");

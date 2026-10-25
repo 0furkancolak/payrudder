@@ -12,6 +12,7 @@ import { useAccount, useApps, useMe } from "./api";
 import AccountSwitcher from "./AccountSwitcher.vue";
 import AppCard from "./AppCard.vue";
 import CreateAppDialog from "./CreateAppDialog.vue";
+import type { Environment } from "@/shared/lib/environment";
 
 const { t } = useI18n();
 const errorText = useErrorText();
@@ -22,10 +23,10 @@ const creating = ref(false);
 const search = useSearch({ strict: false });
 const navigate = useNavigate();
 const query = computed(() => parseQuery(search.value as Record<string, unknown>));
-const env = computed<"live" | "sandbox">(() => ((search.value as { env?: string }).env === "sandbox" ? "sandbox" : "live"));
+const env = computed<Environment>(() => ((search.value as { env?: string }).env === "sandbox" ? "sandbox" : "live"));
 
 /** The dashboard keeps its period, currency and environment in the address, like an app's dashboard does. */
-function go(q: DashQuery, e: "live" | "sandbox") {
+function go(q: DashQuery, e: Environment) {
   void navigate({ to: "/app", search: { ...(e === "sandbox" ? { env: "sandbox" } : {}), ...toSearch(q) } as never, replace: true });
 }
 

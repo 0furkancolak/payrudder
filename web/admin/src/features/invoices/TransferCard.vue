@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
-import { formatMinor } from "@/shared/lib/money";
 import type { BadgeVariants } from "@/shared/ui/badge";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -13,12 +13,13 @@ import type { InvoiceTransfer } from "./payment";
 /** What the bank transfer of an invoice is waiting for (reference, bank details, what has arrived) and, while pending, how to give up on it. */
 const props = defineProps<{ transfer: InvoiceTransfer }>();
 const emit = defineEmits<{ confirm: []; reject: [outcome: "rejected" | "expired"] }>();
-const { t, te, locale } = useI18n();
+const { t, te } = useI18n();
+const fmt = useFormat();
 
 const state = computed(() => props.transfer.state ?? "none");
 const tone = computed<NonNullable<BadgeVariants["variant"]>>(() => (state.value === "paid" ? "success" : state.value === "pending" ? "outline" : "destructive"));
-const money = (v: number | undefined) => formatMinor(v ?? 0, props.transfer.currency, locale.value);
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(v)) : "—");
+const money = (v: number | undefined) => fmt.amount(v, props.transfer.currency);
+const when = (v?: string) => fmt.date(v, "dateTime", "—");
 const bank = computed(() => props.transfer.instructions);
 </script>
 

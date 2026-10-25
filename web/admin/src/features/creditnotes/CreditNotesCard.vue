@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { Button } from "@/shared/ui/button";
@@ -13,6 +14,7 @@ import { useCreateCreditNote, useCreditNotes, useRetryCreditNoteRefund } from ".
 /** Credit notes of a tenant, or of one invoice; with `issuable` a paid invoice can be credited here. */
 const props = defineProps<{ tenantId: string; invoiceId?: string; currency?: string; issuable?: boolean }>();
 const { t, locale } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const notes = useCreditNotes(
   () => props.tenantId,
@@ -24,7 +26,7 @@ const toCard = ref(false);
 const amount = ref("");
 const reason = ref("");
 const formError = ref("");
-const date = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
+const date = (v?: string) => fmt.date(v, "day", "—");
 const list = computed(() => notes.data.value?.credit_notes ?? []);
 /** Where a note's amount went. */
 function where(n: { disposition?: string; refund_state?: string }) {

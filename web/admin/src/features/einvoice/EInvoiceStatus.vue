@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { toApiError } from "@/shared/api/client";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -9,14 +10,15 @@ import { docActions, docVariant, errorKeyPath } from "./status";
 
 /** The legal e-document of an invoice or of a credit note: its state, legal number, and what an operator can do with it. Nothing is drawn when there is none. */
 const props = defineProps<{ tenantId: string; invoiceId?: string; creditNoteId?: string; boxed?: boolean }>();
-const { t, te, locale } = useI18n();
+const { t, te } = useI18n();
+const fmt = useFormat();
 const docs = useEInvoiceDocuments(
   () => props.tenantId,
   () => ({ invoiceId: props.invoiceId, creditNoteId: props.creditNoteId }),
 );
 const actions = useEInvoiceActions(() => props.tenantId);
 const list = computed(() => docs.data.value ?? []);
-const when = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(v)) : "");
+const when = (v?: string | null) => fmt.date(v, "dateTime");
 /** The translated error of an error key, the server's English text when the console has none. */
 function errorText(d: { last_error_key?: string; last_error?: string }) {
   const path = errorKeyPath(d.last_error_key);

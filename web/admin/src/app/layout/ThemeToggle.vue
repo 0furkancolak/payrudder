@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { Moon, Sun } from "@lucide/vue";
-import { ref } from "vue";
+import { usePreferredDark } from "@vueuse/core";
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { applyTheme, isDark } from "@/shared/lib/theme";
+import { applyTheme, isDarkFor, theme } from "@/shared/lib/theme";
 
 const { t } = useI18n();
-const dark = ref(isDark());
+// Derived from the choice (which the settings page also changes) and from the system preference (which can change while the page is open), never copied.
+const systemDark = usePreferredDark();
+const dark = computed(() => isDarkFor(theme.value, systemDark.value));
 
 function toggle() {
   applyTheme(dark.value ? "light" : "dark");
-  dark.value = !dark.value;
 }
 </script>
 

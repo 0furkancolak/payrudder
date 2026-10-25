@@ -40,12 +40,7 @@ export function outstandingAfter(totalMinor: string | undefined, payments: { amo
   return (left < 0n ? 0n : left).toString();
 }
 
-const two = (n: number) => String(n).padStart(2, "0");
-
-/** A date as the value of an <input type="datetime-local"> in the browser's time zone ("2026-10-20T14:05"). */
-export function toLocalInput(d: Date): string {
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`;
-}
+export { toLocalInput } from "@/shared/lib/dates";
 
 /** The RFC 3339 instant for what the operator picked, or null when it is not a date or lies after `now` (the server refuses both). */
 export function receivedAtToIso(local: string, now: Date): string | null {

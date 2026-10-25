@@ -3,9 +3,10 @@ import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap } from "@/shared/api/client";
 import { isOperator } from "@/shared/lib/session";
 import { toParams, type DashQuery } from "./lib";
+import type { Environment } from "@/shared/lib/environment";
 
 /** Where a dashboard is read from: an environment of one of the person's apps, or (for the operator) any tenant. */
-export type DashSource = { kind: "app"; appId: string; env: "live" | "sandbox" } | { kind: "tenant"; tenantId: string };
+export type DashSource = { kind: "app"; appId: string; env: Environment } | { kind: "tenant"; tenantId: string };
 
 export const dashKeys = {
   of: (src: DashSource, q: DashQuery) => ["dashboard", src, { period: q.period, from: q.from, to: q.to, compare: q.compare }] as const,

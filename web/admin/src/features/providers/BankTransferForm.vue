@@ -6,12 +6,13 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { buildBankSettings, emptyBankForm, type BankErrors, type BankField, type BankSettings } from "./banktransfer";
+import type { Environment } from "@/shared/lib/environment";
 
 /**
  * The structured form for the "banktransfer" provider account. It owns its fields; the page asks for the settings with build(), which checks them
  * (the IBAN by its check digits) and returns null, showing what is wrong, when they cannot be sent.
  */
-defineProps<{ environment: "sandbox" | "live" }>();
+defineProps<{ environment: Environment }>();
 const { t } = useI18n();
 const form = reactive(emptyBankForm());
 const errors = ref<BankErrors>({});
