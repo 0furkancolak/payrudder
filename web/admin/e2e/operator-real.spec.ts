@@ -3,8 +3,8 @@ import { signInAsOperator } from "./operator";
 
 // The operator console against the REAL stack: every tab of a tenant that has money data opens without console errors, failed calls or sideways scroll,
 // at desktop and phone width. TENANT=<id> picks the tenant (default: the newest one in the list). SHOTS=<dir> saves screenshots.
-const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
-const gateway = process.env.QUOTIFY_GATEWAY_URL ?? "http://localhost:42800";
+const operatorToken = process.env.PAYRUDDER_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
+const gateway = process.env.PAYRUDDER_GATEWAY_URL ?? "http://localhost:42800";
 const shots = process.env.SHOTS;
 
 const tabs = ["", "invoices", "apps", "customers", "subscriptions", "packages", "pricing", "payments", "reports", "credits", "payment-links", "accounting", "providers", "e-invoice", "mail", "address", "webhooks"];

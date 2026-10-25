@@ -25,11 +25,11 @@ hosted checkout and card registration at iyzico (the customer's payment method t
   `not_found_codes` in the account settings lists the codes once the sandbox has shown them. Until then an unknown outcome needs an operator.
 - **A notification is never believed.** Its body names a charge (iyzico's `paymentConversationId` is our idempotency key); the provider is then asked
   what the charge is, and only that answer reaches the ledger. The webhook signature scheme of API payments is not settled by the documentation, so
-  Quotify does not depend on it.
+  Payrudder does not depend on it.
 - **The ledger is append-only and deduplicated on the fact** (provider, kind, reference, status): the command's answer and the notification are one row.
   A confirmation that disagrees with the recorded outcome is a second row, an error log and a `payment_discrepancies` count.
 - **A ledger write never fails a command.** The provider has already been called; calling it again for a bookkeeping error could charge twice.
-- **Credentials are sealed** with AES-256-GCM, bound to tenant, provider and environment; the key is `QUOTIFY_SECRETS_KEY`. Without it provider accounts and
+- **Credentials are sealed** with AES-256-GCM, bound to tenant, provider and environment; the key is `PAYRUDDER_SECRETS_KEY`. Without it provider accounts and
   webhooks are off. Settings are validated by building the adapter and are never returned.
 - **Live charges go to the tenant's default account**, else to `PAYMENTS_LIVE_PROVIDER`. Refunds and status queries follow the provider of the invoice's original charge.
 - **iyzico facts taken from its documentation, to be confirmed in its sandbox** (the sandbox test is skipped, not passed, without credentials): `/payment/detail`

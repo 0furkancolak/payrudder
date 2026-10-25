@@ -52,9 +52,9 @@ func StartPostgres(t testing.TB) Postgres {
 	t.Helper()
 	ctx := startCtx(t)
 	c, err := postgres.Run(ctx, PostgresImage,
-		postgres.WithDatabase("quotify"),
-		postgres.WithUsername("quotify"),
-		postgres.WithPassword("quotify"),
+		postgres.WithDatabase("payrudder"),
+		postgres.WithUsername("payrudder"),
+		postgres.WithPassword("payrudder"),
 		postgres.BasicWaitStrategies(),
 	)
 	testcontainers.CleanupContainer(t, c)
@@ -233,7 +233,7 @@ func StartClickHouse(t testing.TB) ClickHouse {
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        ClickHouseImage,
 			ExposedPorts: []string{"9000/tcp", "8123/tcp"},
-			Env: map[string]string{"CLICKHOUSE_DB": "quotify", "CLICKHOUSE_USER": "quotify", "CLICKHOUSE_PASSWORD": "quotify_test", //nolint:gosec // test container
+			Env: map[string]string{"CLICKHOUSE_DB": "payrudder", "CLICKHOUSE_USER": "payrudder", "CLICKHOUSE_PASSWORD": "payrudder_test", //nolint:gosec // test container
 				"CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT": "1"},
 			WaitingFor: wait.ForHTTP("/ping").WithPort("8123/tcp").WithStartupTimeout(startTimeout),
 		},
@@ -251,5 +251,5 @@ func StartClickHouse(t testing.TB) ClickHouse {
 	if err != nil {
 		t.Fatalf("testkit: clickhouse port: %v", err)
 	}
-	return ClickHouse{Addr: host + ":" + port.Port(), Database: "quotify", User: "quotify", Password: "quotify_test", ContainerID: c.GetContainerID()} //nolint:gosec // test container
+	return ClickHouse{Addr: host + ":" + port.Port(), Database: "payrudder", User: "payrudder", Password: "payrudder_test", ContainerID: c.GetContainerID()} //nolint:gosec // test container
 }

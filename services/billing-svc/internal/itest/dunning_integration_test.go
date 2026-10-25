@@ -10,11 +10,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/stubworker"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/stubworker"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
 func testTenantDunningSettings(t *testing.T) {

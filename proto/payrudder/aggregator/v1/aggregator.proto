@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package payrudder.aggregator.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// UsageQueryService reads the aggregates maintained by the aggregator and runs the few period operations billing needs.
+// The tenant comes from gRPC metadata (set by the gateway or by billing-svc), never from a request body.
+service UsageQueryService {
+  // GetCustomerUsage returns the on-time usage of one customer in one period, per meter.
+  rpc GetCustomerUsage(GetCustomerUsageRequest) returns (GetCustomerUsageResponse);
+  // GetUsageBatch reads up to 1000 keys in one REPEATABLE READ snapshot and returns the consumer offsets of that
+  // snapshot, for limits reconciliation.
+  rpc GetUsageBatch(GetUsageBatchRequest) returns (GetUsageBatchResponse);
+  // StreamPeriodUsage streams every on-time aggregate of the tenant in a period.
+  rpc StreamPeriodUsage(StreamPeriodUsageRequest) returns (stream StreamPeriodUsageResponse);
+  // StreamLateUsage streams the late usage that is billed in a period.
+  rpc StreamLateUsage(StreamLateUsageRequest) returns (stream StreamLateUsageResponse);
+  // GetIngestWatermark says whether the aggregator has consumed every partition up to the required offsets.
+  rpc GetIngestWatermark(GetIngestWatermarkRequest) returns (GetIngestWatermarkResponse);
+  // FreezePeriod marks a period as rated. Events for it that arrive afterwards are routed to late usage. Idempotent.
+  rpc FreezePeriod(FreezePeriodRequest) returns (FreezePeriodResponse);
+  // ClosePeriodEarly lowers the cutoff of a period to now + 5 s. Sandbox tenants only (FAILED_PRECONDITION otherwise).
+  rpc ClosePeriodEarly(ClosePeriodEarlyRequest) returns (ClosePeriodEarlyResponse);
+}
+
+// UsageAggregate is the on-time usage of one customer and meter in one period.
+message UsageAggregate {
+  string customer_id = 1;
+  string meter_code = 2;
+  string period_id = 3;
+  // Exact decimal with quantity_scale fractional digits.
+  string quantity = 4;
+  uint32 quantity_scale = 5;
+  int64 event_count = 6;
+  // Generation the row belongs to (billing pins it for the whole run).
+  int32 generation = 7;
+}
+
+// LateUsage is usage that arrived after its period's cutoff, billed in the period of its ingestion.
+message LateUsage {
+  string customer_id = 1;
+  string meter_code = 2;
+  string origin_period_id = 3;
+  string billed_period_id = 4;
+  string quantity = 5;
+  uint32 quantity_scale = 6;
+  int64 event_count = 7;
+  int32 generation = 8;
+}
+
+message UsageKey {
+  string customer_id = 1;
+  string meter_code = 2;
+  string period_id = 3;
+}
+
+message GetCustomerUsageRequest {
+  string customer_id = 1;
+  string period_id = 2;
+  // 0 reads the tenant's active generation; billing runs pin the generation they started with.
+  int32 generation = 3;
+}
+
+message GetCustomerUsageResponse {
+  // One entry per meter with usage; meters without usage are absent.
+  repeated UsageAggregate usage = 1;
+}
+
+message GetUsageBatchRequest {
+  // 1..1000 keys.
+  repeated UsageKey keys = 1;
+  int32 generation = 2;
+}
+
+message GetUsageBatchResponse {
+  // Same order as the request. A key without usage yields a zero entry.
+  repeated UsageAggregate usage = 1;
+  // partition -> next offset the aggregator will read, as of the snapshot.
+  map<int32, int64> consumer_offsets = 2;
+}
+
+message StreamPeriodUsageRequest {
+  string period_id = 1;
+  int32 generation = 2;
+}
+
+message StreamLateUsageRequest {
+  string billed_period_id = 1;
+  int32 generation = 2;
+}
+
+message StreamPeriodUsageResponse {
+  UsageAggregate usage = 1;
+}
+
+message StreamLateUsageResponse {
+  LateUsage late_usage = 1;
+}
+
+message GetIngestWatermarkRequest {
+  // partition -> end offset snapshot taken by billing-svc.
+  map<int32, int64> required_offsets = 1;
+}
+
+message GetIngestWatermarkResponse {
+  // True when every required partition has next_offset >= required.
+  bool caught_up = 1;
+  map<int32, int64> committed_offsets = 2;
+}
+
+message FreezePeriodRequest {
+  string period_id = 1;
+}
+
+message FreezePeriodResponse {
+  google.protobuf.Timestamp frozen_at = 1;
+}
+
+message ClosePeriodEarlyRequest {
+  string period_id = 1;
+}
+
+message ClosePeriodEarlyResponse {
+  google.protobuf.Timestamp cutoff_at = 1;
+}

@@ -40,7 +40,7 @@ Payment goes through the saga and the ledger that already exist; the page only s
 - **Revoking an ad-hoc link voids its unpaid invoices** (nobody can pay them any more); a paid one is untouched. Expiry emits `payment_link.expired` (a scheduler pass) and voids likewise.
 - **The saga learns to wait.** New state `AWAITING_PAYMENT` after `PDF_RENDERED` for an invoice whose snapshot says `collection: "link"` (every ad-hoc invoice). It has no deadline. New events: `PayRequested` (mock pay or "pay now": `AWAITING_PAYMENT`, `PAYMENT_DECLINED`, `UNCOLLECTIBLE` to `PAYMENT_REQUESTED` with a charge) and `Settled` (the provider confirmed a hosted payment: `AWAITING_PAYMENT`, `PAYMENT_REQUESTED`, `PAYMENT_UNKNOWN`, `PAYMENT_DECLINED`, `UNCOLLECTIBLE` to `PAID`). A late reply after `PAID` is ignored by the table, so a dunning charge and a hosted payment racing never mark it twice; a second real payment is a discrepancy for the operator (`SettleInvoicePayment` answers `settled=false`; payments-worker counts it).
 - **Webhook and ledger drive state.** A hosted checkout writes a `pending` ledger row and an attempt with key `link:{invoice}:{n}`; the provider's confirmed notification writes the `succeeded` / `declined` row and, for a `link:` key, payments-worker calls `BillingService.SettleInvoicePayment` (amount and currency must equal the invoice). The browser's return only shows the state.
-- **Mock pay** (sandbox tenant or `QUOTIFY_DEMO`): billing sets the snapshot's payment method to `pm_sandbox_success` and fires `PayRequested`; the charge command runs through payments-worker's mock provider like any other. A live tenant never gets a mock method.
+- **Mock pay** (sandbox tenant or `PAYRUDDER_DEMO`): billing sets the snapshot's payment method to `pm_sandbox_success` and fires `PayRequested`; the charge command runs through payments-worker's mock provider like any other. A live tenant never gets a mock method.
 - **Payment methods come from the provider catalogue.** Sandbox and demo: `mock` only (ADR 0011). Live: payments-worker builds the adapters of the tenant's accounts and offers `checkout` for the routed (else default) provider when it implements `payments.InvoiceCheckoutProvider` and can charge the currency, and one `instructions` method for every account whose adapter implements `payments.InstructionsProvider` (what a bank-transfer provider will implement). No list of provider names in the page.
 - **Receipt state** on the page: `paid` (invoice paid), `void`, `processing` (saga charging, or the latest ledger row is `pending`), `failed` (the latest row is `declined`, or the saga is in dunning), else `open`. The page refreshes itself with `<meta http-equiv="refresh">` while `processing`.
 - **The portal is scoped twice.** The token resolves to `(tenant, customer)`; every query then runs in that tenant's RLS transaction with the customer in the predicate; an invoice id from the URL must belong to both or the answer is the not-found page. Payment rows come from payments-worker's ledger by that customer's invoice ids; nothing else leaves the tenant.
@@ -51,7 +51,7 @@ Payment goes through the saga and the ledger that already exist; the page only s
 
 ### billing-svc
 
-`proto/quotify/billing/v1/billing.proto` (additive): `CreatePaymentLink`, `GetPaymentLink`, `ListPaymentLinks`, `RevokePaymentLink`, `CreatePortalLink`, `RevokePortalLinks`, `SettleInvoicePayment` on `BillingService`; `StartLinkPayment`, `RequestHostedPayment`, `GetPortal`, `GetHostedLogoUrl` and the extended `GetHostedInvoice` / `GetHostedInvoicePdfUrl` on `HostedInvoiceService`.
+`proto/payrudder/billing/v1/billing.proto` (additive): `CreatePaymentLink`, `GetPaymentLink`, `ListPaymentLinks`, `RevokePaymentLink`, `CreatePortalLink`, `RevokePortalLinks`, `SettleInvoicePayment` on `BillingService`; `StartLinkPayment`, `RequestHostedPayment`, `GetPortal`, `GetHostedLogoUrl` and the extended `GetHostedInvoice` / `GetHostedInvoicePdfUrl` on `HostedInvoiceService`.
 
 ### payments-worker (HTTP, `X-Internal-Token`)
 
@@ -61,7 +61,7 @@ Payment goes through the saga and the ledger that already exist; the page only s
 
 ### pkg/payments
 
-`InvoiceCheckoutProvider.CreateInvoiceCheckout(CheckoutInvoiceRequest) (Checkout, error)` (Paddle: a transaction with a non-catalogue item and `custom_data.quotify_key`; iyzico: checkout form initialise), `InstructionsProvider.PaymentInstructions(InstructionsRequest) (Instructions, error)`.
+`InvoiceCheckoutProvider.CreateInvoiceCheckout(CheckoutInvoiceRequest) (Checkout, error)` (Paddle: a transaction with a non-catalogue item and `custom_data.payrudder_key`; iyzico: checkout form initialise), `InstructionsProvider.PaymentInstructions(InstructionsRequest) (Instructions, error)`.
 
 ### Gateway
 

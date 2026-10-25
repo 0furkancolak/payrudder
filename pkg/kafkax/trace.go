@@ -11,12 +11,12 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/0furkancolak/quotify/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 )
 
 // DebugHeader marks a record whose trace was asked for explicitly (sandbox tenants and operators may send
-// `x-quotify-debug: 1`): every consumer gives it its own span, instead of the usual 1 % sample.
-const DebugHeader = "x-quotify-debug"
+// `x-payrudder-debug: 1`): every consumer gives it its own span, instead of the usual 1 % sample.
+const DebugHeader = "x-payrudder-debug"
 
 // RecordSampleRate is the share of records that get a span of their own, child of the producer's span.
 const RecordSampleRate = 0.01
@@ -24,7 +24,7 @@ const RecordSampleRate = 0.01
 // maxLinks bounds the span links of one batch span.
 const maxLinks = 128
 
-const tracerName = "github.com/0furkancolak/quotify/pkg/kafkax"
+const tracerName = "github.com/0furkancolak/payrudder/pkg/kafkax"
 
 // ProducerContext extracts the trace context a producer stored in the record's headers.
 func ProducerContext(rec *kgo.Record) trace.SpanContext {
@@ -84,9 +84,9 @@ func StartBatch(ctx context.Context, topic, group string, partition int32, recs 
 		if sc := ProducerContext(r); sc.IsValid() && (isDebug(r) || rand.Float64() < RecordSampleRate) { //nolint:gosec // sampling, not security
 			pctx := trace.ContextWithRemoteSpanContext(context.Background(), sc)
 			attrs := append([]attribute.KeyValue(nil), base...)
-			attrs = append(attrs, attribute.Int64("messaging.kafka.offset", r.Offset), attribute.String("quotify.record_key", string(r.Key)))
+			attrs = append(attrs, attribute.Int64("messaging.kafka.offset", r.Offset), attribute.String("payrudder.record_key", string(r.Key)))
 			if t := TenantOf(r); t != "" {
-				attrs = append(attrs, attribute.String("quotify.tenant_id", t))
+				attrs = append(attrs, attribute.String("payrudder.tenant_id", t))
 			}
 			_, span := tracer.Start(pctx, topic+" process", trace.WithSpanKind(trace.SpanKindConsumer), trace.WithAttributes(attrs...),
 				trace.WithLinks(trace.Link{SpanContext: bspan.SpanContext()}))
@@ -116,10 +116,10 @@ func StartProduce(rec *kgo.Record) (context.Context, trace.Span) {
 		attribute.String("messaging.system", "kafka"),
 		attribute.String("messaging.destination.name", rec.Topic),
 		attribute.String("messaging.operation.type", "publish"),
-		attribute.String("quotify.record_key", string(rec.Key)),
+		attribute.String("payrudder.record_key", string(rec.Key)),
 	}
 	if t := TenantOf(rec); t != "" {
-		attrs = append(attrs, attribute.String("quotify.tenant_id", t))
+		attrs = append(attrs, attribute.String("payrudder.tenant_id", t))
 	}
 	return otel.Tracer(tracerName).Start(parent, rec.Topic+" publish", trace.WithSpanKind(trace.SpanKindProducer), trace.WithAttributes(attrs...))
 }

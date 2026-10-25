@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	"github.com/0furkancolak/quotify/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
 )
 
 // panicHealth panics in Check to exercise the recovery interceptor.

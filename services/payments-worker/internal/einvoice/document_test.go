@@ -8,10 +8,10 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	pkg "github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/workerx"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	pkg "github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/workerx"
 )
 
 func command() *commandsv1.IssueEInvoice {

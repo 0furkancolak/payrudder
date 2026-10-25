@@ -11,7 +11,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/protobuf/proto"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 )
 
 // consumeLimitEvents reads usage.limit-exceeded.v1 for a tenant until want events arrived and 3 s passed without more.

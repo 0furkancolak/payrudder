@@ -3,7 +3,7 @@ import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, tenantApi, unwrap } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
 
-// The billing pages of the product app speak the tenant API (/v1/*) as the person's tenant: the session token plus X-Quotify-Tenant. Nothing here uses an
+// The billing pages of the product app speak the tenant API (/v1/*) as the person's tenant: the session token plus X-Payrudder-Tenant. Nothing here uses an
 // /admin route. Types come from the OpenAPI file.
 
 type S = components["schemas"];

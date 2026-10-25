@@ -6,10 +6,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
-// Objects remembers what Quotify created at a provider: the provider's id for each of Quotify's names.
+// Objects remembers what Payrudder created at a provider: the provider's id for each of Payrudder's names.
 type Objects struct{ DB *pgxpool.Pool }
 
 // Object is one such mapping.
@@ -33,7 +33,7 @@ func (o Objects) Put(ctx context.Context, tenant uuid.UUID, provider, env, kind,
 	})
 }
 
-// ByRef returns Quotify's key for a provider id.
+// ByRef returns Payrudder's key for a provider id.
 func (o Objects) ByRef(ctx context.Context, tenant uuid.UUID, provider, env, kind, ref string) (string, bool, error) {
 	return found(sqlc.New(o.DB).GetProviderObjectKey(ctx, sqlc.GetProviderObjectKeyParams{
 		TenantID: tenant, Provider: provider, Environment: env, Kind: kind, Ref: ref,

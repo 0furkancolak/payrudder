@@ -14,14 +14,14 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	"github.com/0furkancolak/quotify/pkg/workerx"
-	"github.com/0furkancolak/quotify/services/invoice-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/invoice-worker/internal/handler"
 )
 
 //go:embed config.default.yaml
@@ -29,7 +29,7 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	RabbitMQURL    string `env:"QUOTIFY_RABBITMQ_URL,required"`
+	RabbitMQURL    string `env:"PAYRUDDER_RABBITMQ_URL,required"`
 	S3Endpoint     string `env:"S3_ENDPOINT"`
 	S3Region       string `env:"S3_REGION"`
 	S3Bucket       string `env:"S3_BUCKET"`
@@ -37,7 +37,7 @@ type Config struct {
 	S3AccessKey    string `env:"S3_ACCESS_KEY,required"`
 	S3SecretKey    string `env:"S3_SECRET_KEY,required"`
 	S3ForcePath    bool   `env:"S3_FORCE_PATH_STYLE"`
-	Prefetch       int    `env:"QUOTIFY_PREFETCH"`
+	Prefetch       int    `env:"PAYRUDDER_PREFETCH"`
 	EnsureBucket   bool   `env:"S3_ENSURE_BUCKET"`
 }
 

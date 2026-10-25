@@ -11,14 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/golive/query"
-	idquery "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
+	idquery "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Commands changes the life of a live tenant.

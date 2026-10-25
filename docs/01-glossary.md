@@ -4,12 +4,12 @@ Terms are used with exactly these meanings across all docs and code. Code identi
 
 | Term | Definition |
 |---|---|
-| **Account** (`account_id`) | A SaaS company using Quotify. Owns exactly two tenants: a sandbox and a live one. |
+| **Account** (`account_id`) | A SaaS company using Payrudder. Owns exactly two tenants: a sandbox and a live one. |
 | **Tenant** (`tenant_id`) | One environment of an account (`sandbox` or `live`). The unit of isolation, rate limiting and Kafka partitioning. Has an immutable currency and time zone. UUIDv7. |
 | **Sandbox** | The account's test tenant: mock payments driven by scenario tokens, early period close, `SBX-` invoice numbers, emails only to the sandbox SMTP sink ([ADR 0011](adr/0011-sandbox-environment.md)). |
 | **Payment scenario token** | `pm_sandbox_*` value set as a sandbox customer's payment method. Forces a specific payment outcome. |
 | **API key** | Secret credential that authenticates a tenant at the gateway. `qk_live_…` → live tenant, `qk_test_…` → sandbox tenant. Stored only as a SHA-256 hash. |
-| **Customer** (`customer_id`, `external_id`) | A tenant's end customer, the entity that gets invoiced. Tenants refer to customers by their own `external_id`. Quotify assigns an internal UUIDv7 `customer_id`. |
+| **Customer** (`customer_id`, `external_id`) | A tenant's end customer, the entity that gets invoiced. Tenants refer to customers by their own `external_id`. Payrudder assigns an internal UUIDv7 `customer_id`. |
 | **Meter** (`meter_code`) | Definition of what is measured and how it aggregates: `code` (e.g. `ai_tokens`), `aggregation` (`SUM`/`COUNT`/`MAX`), `value_property` (which event field holds the quantity), optional `filter`, `quantity_scale` (0–6 decimal places) and `unit_label`. **Immutable** once created. Changes create a new meter version. |
 | **Usage event** (`UsageEvent`) | An immutable fact sent by a tenant: "customer C, meter M, quantity Q, at time T". Q may be fractional, up to the meter's scale. |
 | **Scaled units** (`quantity_units`) | `quantity × 10^quantity_scale` as an integer. How quantities are stored, summed and counted internally ([ADR 0010](adr/0010-money-and-quantity-representation.md)). |

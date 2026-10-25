@@ -18,7 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/quotify/tools/mockpsp/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/tools/mockpsp/internal/store/sqlc"
 )
 
 // Config holds the environment-wide failure knobs (used by chaos and load tests). Scenario tokens take precedence.

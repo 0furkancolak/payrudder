@@ -4,7 +4,7 @@ import { mailedCode, operatorSession, signInAsOperator } from "./operator";
 
 // The sign-in methods against the REAL stack (make dev / make up): a code mailed through Mailpit, and "Continue with Google" through the in-repo stand-in
 // (pkg/oidctest, the `oidc` compose profile) when the gateway is set up for it. Real Google is NOT exercised here: there is no client registered for the repository.
-const gateway = process.env.QUOTIFY_GATEWAY_URL ?? "http://localhost:42800";
+const gateway = process.env.PAYRUDDER_GATEWAY_URL ?? "http://localhost:42800";
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -67,7 +67,7 @@ test.describe("sign-in methods, real stack", () => {
     // The code proved the mailbox: no "confirm your address" banner, and the API agrees.
     await expect(page.getByTestId("verify-banner")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /^Welcome/ })).toBeVisible();
-    const token = await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"));
+    const token = await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"));
     const me = await (await fetch(`${gateway}/auth/me`, { headers: { authorization: `Bearer ${token}` } })).json();
     expect(me.user.email_verified).toBe(true);
     expect(me.operator).toBe(false);
@@ -120,7 +120,7 @@ test.describe("sign-in methods, real stack", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     await page.waitForURL("**/app");
     expect(page.url()).not.toContain("qs_");
-    const token = await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"));
+    const token = await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"));
     expect(token).toMatch(/^qs_/);
     const me = await (await fetch(`${gateway}/auth/me`, { headers: { authorization: `Bearer ${token}` } })).json();
     expect(me.user.email).toBe(address);
@@ -132,7 +132,7 @@ test.describe("sign-in methods, real stack", () => {
     await page.getByLabel("E-mail").fill(address);
     await page.getByRole("button", { name: "Continue" }).click();
     await page.waitForURL("**/app");
-    const again = await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"));
+    const again = await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"));
     const me2 = await (await fetch(`${gateway}/auth/me`, { headers: { authorization: `Bearer ${again}` } })).json();
     expect(me2.user.id).toBe(me.user.id);
     // No password was ever set for it.
@@ -149,6 +149,6 @@ test.describe("sign-in methods, real stack", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     await page.waitForURL(/\/signin\?oauth_error=email_unverified/);
     await expect(page.getByTestId("oauth-error")).toContainText("has not verified an e-mail address");
-    expect(await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"))).toBeNull();
+    expect(await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"))).toBeNull();
   });
 });

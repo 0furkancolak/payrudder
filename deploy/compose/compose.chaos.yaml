@@ -33,40 +33,40 @@ services:
     <<: *via-toxiproxy
     build:
       args: { GO_TAGS: chaos }
-    image: quotify/ingest-svc:chaos
+    image: payrudder/ingest-svc:chaos
     ports: !reset []
     deploy: { replicas: 2, resources: { limits: { memory: 128m } } }
     environment:
       RELAY_CRASH_AFTER_PRODUCE: "${RELAY_CRASH_AFTER_PRODUCE:-0.1}"
-      QUOTIFY_PG_APP_DSN: postgres://ingest_app:ingest_app_local@toxiproxy:15432/ingest_db
-      QUOTIFY_PG_SYSTEM_DSN: postgres://ingest_system:ingest_system_local@toxiproxy:15432/ingest_db
-      QUOTIFY_KAFKA_BROKERS: toxiproxy:19093
+      PAYRUDDER_PG_APP_DSN: postgres://ingest_app:ingest_app_local@toxiproxy:15432/ingest_db
+      PAYRUDDER_PG_SYSTEM_DSN: postgres://ingest_system:ingest_system_local@toxiproxy:15432/ingest_db
+      PAYRUDDER_KAFKA_BROKERS: toxiproxy:19093
   aggregator:
     <<: *via-toxiproxy
     build:
       args: { GO_TAGS: chaos }
-    image: quotify/aggregator:chaos
+    image: payrudder/aggregator:chaos
     ports: !reset []
     deploy: { replicas: 2, resources: { limits: { memory: 192m } } }
     environment:
       AGG_CRASH_AFTER_COMMIT: "${AGG_CRASH_AFTER_COMMIT:-0.1}"
       # A killed member holds its partitions until the session expires; keep that short so a crash loop still progresses.
-      QUOTIFY_CONSUMER_SESSION_TIMEOUT: "6s"
-      QUOTIFY_PG_APP_DSN: postgres://aggregator_app:aggregator_app_local@toxiproxy:15432/aggregator_db
-      QUOTIFY_PG_SYSTEM_DSN: postgres://aggregator_system:aggregator_system_local@toxiproxy:15432/aggregator_db
-      QUOTIFY_KAFKA_BROKERS: toxiproxy:19093
+      PAYRUDDER_CONSUMER_SESSION_TIMEOUT: "6s"
+      PAYRUDDER_PG_APP_DSN: postgres://aggregator_app:aggregator_app_local@toxiproxy:15432/aggregator_db
+      PAYRUDDER_PG_SYSTEM_DSN: postgres://aggregator_system:aggregator_system_local@toxiproxy:15432/aggregator_db
+      PAYRUDDER_KAFKA_BROKERS: toxiproxy:19093
   limits-svc:
     <<: *via-toxiproxy
     build:
       args: { GO_TAGS: chaos }
-    image: quotify/limits-svc:chaos
+    image: payrudder/limits-svc:chaos
     ports: !reset []
     deploy: { replicas: 2, resources: { limits: { memory: 128m } } }
     environment:
       LIMITS_CRASH_AFTER_LUA: "${LIMITS_CRASH_AFTER_LUA:-0}"
-      QUOTIFY_REDIS_URL: redis://toxiproxy:16379/0
-      QUOTIFY_KAFKA_BROKERS: toxiproxy:19093
-      QUOTIFY_RECONCILE_INTERVAL: "${QUOTIFY_RECONCILE_INTERVAL:-1m}"
+      PAYRUDDER_REDIS_URL: redis://toxiproxy:16379/0
+      PAYRUDDER_KAFKA_BROKERS: toxiproxy:19093
+      PAYRUDDER_RECONCILE_INTERVAL: "${PAYRUDDER_RECONCILE_INTERVAL:-1m}"
   # A little provider latency so a month close takes long enough for the suite to restart RabbitMQ in the middle of it.
   mockpsp:
     environment:
@@ -74,6 +74,6 @@ services:
   billing-svc:
     build:
       args: { GO_TAGS: chaos }
-    image: quotify/billing-svc:chaos
+    image: payrudder/billing-svc:chaos
     environment:
       BILLING_RELAY_CRASH_AFTER_PUBLISH: "${BILLING_RELAY_CRASH_AFTER_PUBLISH:-0}"

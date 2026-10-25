@@ -4,9 +4,9 @@ package customers
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/customers/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/customers/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/customers/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/customers/query"
 )
 
 // Handler serves the customer methods of PlansService.

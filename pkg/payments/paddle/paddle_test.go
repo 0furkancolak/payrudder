@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 type fake struct {
@@ -63,7 +63,7 @@ func TestChargeIsPendingAndCarriesTheKey(t *testing.T) {
 	unit := price["unit_price"].(map[string]any)
 	cd := price["custom_data"].(map[string]any)
 	if price["product_id"] != "pro_usage" || unit["amount"] != "1116" || unit["currency_code"] != "USD" || price["tax_mode"] != "account_setting" ||
-		cd["quotify_key"] != "inv:charge:0" || item["quantity"].(float64) != 1 {
+		cd["payrudder_key"] != "inv:charge:0" || item["quantity"].(float64) != 1 {
 		t.Errorf("item = %v", item)
 	}
 }
@@ -129,7 +129,7 @@ func TestRefundAndCheckoutAndStatus(t *testing.T) {
 	f.reply = func() (int, string) {
 		return 201, `{"data":{"id":"txn_02","checkout":{"url":"https://pay.example/checkout?txn=txn_02"}}}`
 	}
-	co, err := c.CreateCheckout(context.Background(), payments.CheckoutRequest{PriceRef: "pri_01", Quantity: 2, QuotifySubscriptionID: "sub-q-1"})
+	co, err := c.CreateCheckout(context.Background(), payments.CheckoutRequest{PriceRef: "pri_01", Quantity: 2, PayrudderSubscriptionID: "sub-q-1"})
 	if err != nil || co.URL != "https://pay.example/checkout?txn=txn_02" || co.Ref != "txn_02" {
 		t.Fatalf("CreateCheckout = %+v, %v", co, err)
 	}
@@ -208,7 +208,7 @@ func TestNotifications(t *testing.T) {
 
 	t.Run("a completed transaction is a settled charge, found by the key on its price", func(t *testing.T) {
 		n := confirm(t, c, `{"event_id":"evt_1","event_type":"transaction.completed","data":{"id":"txn_01","status":"completed","currency_code":"USD",
-			"custom_data":null,"subscription_id":"sub_01","items":[{"price":{"custom_data":{"quotify_key":"inv:charge:0"}},"quantity":1}],
+			"custom_data":null,"subscription_id":"sub_01","items":[{"price":{"custom_data":{"payrudder_key":"inv:charge:0"}},"quantity":1}],
 			"details":{"totals":{"grand_total":"1116","total":"1000"}}}}`)
 		if n.Kind != payments.KindCharge || n.State != payments.StateSucceeded || n.ProviderRef != "txn_01" || n.Ref.IdempotencyKey != "inv:charge:0" ||
 			n.AmountMinor != 1116 || n.Currency != "USD" || n.Ref.EventID != "evt_1" {
@@ -224,7 +224,7 @@ func TestNotifications(t *testing.T) {
 	})
 	t.Run("a failed payment is a decline with Paddle's reason", func(t *testing.T) {
 		n := confirm(t, c, `{"event_id":"evt_3","event_type":"transaction.payment_failed","data":{"id":"txn_03","currency_code":"USD",
-			"items":[{"price":{"custom_data":{"quotify_key":"k"}}}],"details":{"totals":{"grand_total":"500"}},
+			"items":[{"price":{"custom_data":{"payrudder_key":"k"}}}],"details":{"totals":{"grand_total":"500"}},
 			"payments":[{"status":"error","error_code":"declined"},{"status":"error","error_code":"insufficient_funds"}]}}`)
 		if n.State != payments.StateDeclined || n.DeclineCode != "insufficient_funds" || n.Ref.IdempotencyKey != "k" {
 			t.Fatalf("notification = %+v", n)
@@ -234,7 +234,7 @@ func TestNotifications(t *testing.T) {
 		n := confirm(t, c, `{"event_id":"evt_4","event_type":"subscription.created","data":{"id":"sub_01","status":"active",
 			"custom_data":{"quotify_subscription_id":"q-1"},"next_billed_at":"2027-02-01T00:00:00Z"}}`)
 		if n.Kind != payments.KindSubscription || n.Subscription == nil || n.Subscription.ProviderRef != "sub_01" || n.Subscription.Status != "active" ||
-			n.Subscription.QuotifySubscriptionID != "q-1" || n.Subscription.NextBilledAt == nil || n.Subscription.NextBilledAt.Year() != 2027 {
+			n.Subscription.PayrudderSubscriptionID != "q-1" || n.Subscription.NextBilledAt == nil || n.Subscription.NextBilledAt.Year() != 2027 {
 			t.Fatalf("notification = %+v", n)
 		}
 	})
@@ -288,14 +288,14 @@ func TestCancelSubscriptionAndMigrationData(t *testing.T) {
 	var _ payments.SubscriptionManager = c
 
 	f.reply = func() (int, string) { return 201, `{"data":{"id":"txn_m","checkout":{"url":"https://pay.example/m"}}}` }
-	if _, err := c.CreateCheckout(context.Background(), payments.CheckoutRequest{PriceRef: "pri_01", QuotifyMigrationID: "mig-1"}); err != nil {
+	if _, err := c.CreateCheckout(context.Background(), payments.CheckoutRequest{PriceRef: "pri_01", PayrudderMigrationID: "mig-1"}); err != nil {
 		t.Fatal(err)
 	}
 	if f.body["custom_data"].(map[string]any)["quotify_migration_id"] != "mig-1" {
 		t.Errorf("checkout custom data = %v", f.body["custom_data"])
 	}
 	n := confirm(t, c, `{"event_id":"evt_m","event_type":"subscription.created","data":{"id":"sub_new","status":"active","custom_data":{"quotify_migration_id":"mig-1"}}}`)
-	if n.Subscription == nil || n.Subscription.QuotifyMigrationID != "mig-1" {
+	if n.Subscription == nil || n.Subscription.PayrudderMigrationID != "mig-1" {
 		t.Errorf("notification = %+v", n)
 	}
 }

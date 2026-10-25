@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 )
 
 func snapshot() *commandsv1.InvoiceSnapshot {

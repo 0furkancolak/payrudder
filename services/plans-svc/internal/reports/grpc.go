@@ -4,8 +4,8 @@ package reports
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/reports/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/reports/query"
 )
 
 // Handler serves the report methods of PlansService.

@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // creditRoutes is the table for credit packs and a customer's credits.
@@ -50,7 +50,7 @@ func (s *Server) setCreditPackActive(active bool) http.HandlerFunc {
 	}
 }
 
-// customerID resolves the external id in the path to Quotify's id, or writes the error.
+// customerID resolves the external id in the path to Payrudder's id, or writes the error.
 func (s *Server) customerID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	cust, err := s.d.Plans.ResolveCustomer(r.Context(), &plansv1.ResolveCustomerRequest{ExternalId: r.PathValue("external_id")})
 	if err != nil {

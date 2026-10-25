@@ -77,7 +77,7 @@ export async function downloadCsv(tenantId: string, from: string, to: string, ap
   const query = new URLSearchParams({ from, to, granularity });
   if (app) query.set("app_id", app);
   const res = await fetch(`/gw/v1/accounting/export.csv?${query.toString()}`, {
-    headers: { Authorization: `Bearer ${currentToken() ?? ""}`, "X-Quotify-Tenant": tenantId },
+    headers: { Authorization: `Bearer ${currentToken() ?? ""}`, "X-Payrudder-Tenant": tenantId },
   });
   if (!res.ok) throw toApiError(await res.json().catch(() => ({})));
   const url = URL.createObjectURL(await res.blob());

@@ -13,11 +13,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/tools/mockpsp/internal/psp"
-	"github.com/0furkancolak/quotify/tools/mockpsp/migrations"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/tools/mockpsp/internal/psp"
+	"github.com/0furkancolak/payrudder/tools/mockpsp/migrations"
 )
 
 //go:embed config.default.yaml
@@ -26,9 +26,9 @@ var defaults []byte
 type Config struct {
 	config.Base
 	HTTPAddr       string        `env:"MOCKPSP_HTTP_ADDR"`
-	PGAppDSN       string        `env:"QUOTIFY_PG_APP_DSN,required"`
-	PGMigratorDSN  string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
+	PGAppDSN       string        `env:"PAYRUDDER_PG_APP_DSN,required"`
+	PGMigratorDSN  string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
+	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
 	DeclineRate    float64       `env:"MOCKPSP_DECLINE_RATE"`
 	ErrorRate      float64       `env:"MOCKPSP_ERROR_RATE"`
 	TimeoutRate    float64       `env:"MOCKPSP_TIMEOUT_RATE"`
@@ -39,7 +39,7 @@ type Config struct {
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("QUOTIFY_PG_MIGRATOR_DSN is required with QUOTIFY_MIGRATE_ON_START"))
+		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
 	}
 	for name, v := range map[string]float64{"MOCKPSP_DECLINE_RATE": c.DeclineRate, "MOCKPSP_ERROR_RATE": c.ErrorRate, "MOCKPSP_TIMEOUT_RATE": c.TimeoutRate} {
 		if v < 0 || v > 1 {
@@ -75,7 +75,7 @@ func run() error {
 		}
 	}
 	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
 		return nil
 	}
 	pool, err := pgxx.NewPool(ctx, cfg.PGAppDSN)

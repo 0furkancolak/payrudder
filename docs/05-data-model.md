@@ -45,7 +45,7 @@ Details: [06-multi-tenancy.md](06-multi-tenancy.md#row-level-security).
 -- Every database defines app_tenant_id() = NULLIF(current_setting('app.tenant_id', true), '')::uuid; policies use it.
 -- plans_app reads its own tenant row only through SECURITY DEFINER current_tenant(). Implemented: services/plans-svc/migrations.
 
-CREATE TABLE accounts (                               -- the customer of Quotify; owns one sandbox + one live tenant
+CREATE TABLE accounts (                               -- the customer of Payrudder; owns one sandbox + one live tenant
   id          uuid PRIMARY KEY,
   name        text NOT NULL,
   created_at  timestamptz NOT NULL DEFAULT now()

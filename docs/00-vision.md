@@ -12,17 +12,17 @@ infrastructure and AI products. Building the metering behind it is deceptively h
 - A single large customer can **starve** every other tenant.
 
 A billing system can't be "mostly right". One double-counted event is a support ticket.
-One lost event is lost revenue. Quotify's purpose is to make these failure modes explicit
+One lost event is lost revenue. Payrudder's purpose is to make these failure modes explicit
 and handle each one with a named, tested mechanism.
 
 ## Users
 
 | Persona | Who | Needs |
 |---|---|---|
-| **Tenant developer** | Engineer at a SaaS company integrating Quotify | Simple ingest API, idempotency guarantees, clear errors, entitlement checks |
+| **Tenant developer** | Engineer at a SaaS company integrating Payrudder | Simple ingest API, idempotency guarantees, clear errors, entitlement checks |
 | **Tenant finance/ops** | Billing owner at the SaaS company | Correct invoices, explainable line items, re-rating after a price change |
-| **End customer** | The tenant's customer (never talks to Quotify directly) | An invoice that matches what they used |
-| **Quotify operator** | Whoever runs the platform (here: the author) | Observability, per-tenant isolation, replay tooling, safe deploys |
+| **End customer** | The tenant's customer (never talks to Payrudder directly) | An invoice that matches what they used |
+| **Payrudder operator** | Whoever runs the platform (here: the author) | Observability, per-tenant isolation, replay tooling, safe deploys |
 
 ## Goals
 

@@ -50,7 +50,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
     <p class="text-muted-foreground text-sm">{{ t("billing.webhooks.hint") }}</p>
     <form class="grid gap-3" role="form" :aria-label="t('billing.webhooks.formLabel')" @submit.prevent="create">
       <div class="grid gap-3 sm:grid-cols-2">
-        <Input v-model="url" type="url" required :aria-label="t('billing.webhooks.url')" placeholder="https://example.com/quotify-webhook" />
+        <Input v-model="url" type="url" required :aria-label="t('billing.webhooks.url')" placeholder="https://example.com/payrudder-webhook" />
         <Input v-model="description" maxlength="200" :aria-label="t('billing.webhooks.description')" :placeholder="t('billing.webhooks.description')" />
       </div>
       <fieldset class="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">

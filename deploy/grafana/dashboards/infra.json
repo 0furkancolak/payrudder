@@ -1,8 +1,8 @@
 {
-  "uid": "quotify-infra",
-  "title": "Quotify / Infra",
+  "uid": "payrudder-infra",
+  "title": "Payrudder / Infra",
   "tags": [
-    "quotify"
+    "payrudder"
   ],
   "schemaVersion": 39,
   "version": 1,

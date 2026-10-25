@@ -17,17 +17,17 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/credential"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/usermail"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/admin"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/credential"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Sign-in throttling: five wrong passwords lock the account for fifteen minutes. The lock is per user; the gateway also limits sign-in attempts per address.

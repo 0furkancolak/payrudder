@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
 )
 
 // Name is the registry name.

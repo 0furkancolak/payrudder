@@ -1,4 +1,4 @@
-// Package query reads the tenant's mail switch: which categories of Quotify's outgoing e-mail are on.
+// Package query reads the tenant's mail switch: which categories of Payrudder's outgoing e-mail are on.
 package query
 
 import (
@@ -8,11 +8,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/mailcategory"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/mailcategory"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Queries reads the mail settings.

@@ -1,6 +1,6 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
 MOCKPSP_HTTP_ADDR: ":8090"
-QUOTIFY_MIGRATE_ON_START: "false"
+PAYRUDDER_MIGRATE_ON_START: "false"
 MOCKPSP_DECLINE_RATE: "0"
 MOCKPSP_ERROR_RATE: "0"
 MOCKPSP_TIMEOUT_RATE: "0"

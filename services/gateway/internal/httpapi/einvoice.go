@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"strconv"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // E-invoice routes (docs/phases/phase-30-e-invoice.md): the tenant reads its e-documents with its API key; the operator reads the same through

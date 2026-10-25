@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
 )
 
 func key(b byte) []byte { return bytes.Repeat([]byte{b}, 32) }

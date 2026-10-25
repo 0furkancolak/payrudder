@@ -74,7 +74,7 @@
             "count": 20849,
             "rate": 74.44459335342448
         },
-        "quotify_5xx": {
+        "payrudder_5xx": {
             "rate": 0,
             "count": 0,
             "thresholds": {
@@ -99,7 +99,7 @@
             "p(99)": 18.38459536,
             "max": 95.154856
         },
-        "quotify_429": {
+        "payrudder_429": {
             "count": 14198,
             "rate": 50.69616463292824
         },

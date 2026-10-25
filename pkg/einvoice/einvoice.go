@@ -1,4 +1,4 @@
-// Package einvoice turns a Quotify invoice or credit note into a legal e-document and hands it to an integrator.
+// Package einvoice turns a Payrudder invoice or credit note into a legal e-document and hands it to an integrator.
 //
 // The model here is provider-neutral and free of protobuf: the worker maps the invoice snapshot of a command to a Document, the UBL builder
 // (package ubl) renders it, and a Provider delivers it. Money is minor units throughout; rates are basis points (2000 is 20 %).
@@ -91,7 +91,7 @@ type Line struct {
 
 // Reference is the document a credit note corrects.
 type Reference struct {
-	// Number is the legal number the original was issued under (Quotify's number when it has none).
+	// Number is the legal number the original was issued under (Payrudder's number when it has none).
 	Number    string
 	IssueDate time.Time
 }
@@ -102,7 +102,7 @@ type Document struct {
 	Type DocumentType
 	// UUID is the document's identity at the integrator and the UBL cbc:UUID; it is the idempotency key of the issue.
 	UUID string
-	// Number is Quotify's own number (INV-2026-000123 / CN-2026-000007). The legal number is assigned at issue.
+	// Number is Payrudder's own number (INV-2026-000123 / CN-2026-000007). The legal number is assigned at issue.
 	Number    string
 	IssueDate time.Time
 	// Currency is ISO 4217; Exponent its minor-unit exponent.
@@ -143,7 +143,7 @@ type IssueRequest struct {
 // Ref identifies an issued document at the integrator.
 type Ref struct {
 	ExternalID string
-	// UUID is the document UUID Quotify sent.
+	// UUID is the document UUID Payrudder sent.
 	UUID string
 	Type DocumentType
 }
@@ -173,11 +173,11 @@ type Capabilities struct {
 	Countries []string
 	// Types are the document types it can send.
 	Types []DocumentType
-	// NeedsBuyerCheck: whether the buyer is an e-fatura user must be asked of the integrator (Party.EInvoiceRegistered is unknown to Quotify).
+	// NeedsBuyerCheck: whether the buyer is an e-fatura user must be asked of the integrator (Party.EInvoiceRegistered is unknown to Payrudder).
 	NeedsBuyerCheck bool
 	// CanCancel: the adapter can cancel an issued document (where the type allows).
 	CanCancel bool
-	// ReturnsPDF: the integrator renders a legal PDF; otherwise Quotify's own invoice PDF is the only copy.
+	// ReturnsPDF: the integrator renders a legal PDF; otherwise Payrudder's own invoice PDF is the only copy.
 	ReturnsPDF bool
 }
 

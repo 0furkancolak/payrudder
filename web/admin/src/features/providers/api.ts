@@ -86,7 +86,7 @@ export function useProviderSubscriptions(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** What Quotify has created at a provider: products, prices and discounts. Only providers with a catalogue answer. */
+/** What Payrudder has created at a provider: products, prices and discounts. Only providers with a catalogue answer. */
 export function useCatalogue(tenantId: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<Environment>) {
   return useQuery({
     queryKey: computed(() => ["tenants", toValue(tenantId), "catalogue", toValue(provider), toValue(environment)] as const),

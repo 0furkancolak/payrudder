@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // The fixed fee a trial, an advance-fee subscription or a provider already waived on the invoice is not billed by a re-rating either.

@@ -18,7 +18,7 @@
         <level>warning</level>
     </logger>
     <!-- ClickHouse's own diagnostic tables are written and merged in the background all the time (trace_log alone grew to
-         ~90 MiB with no query running). Quotify never reads them; query_log stays for debugging. -->
+         ~90 MiB with no query running). Payrudder never reads them; query_log stays for debugging. -->
     <!-- The defaults (20/8) assume a 16-thread pool; ClickHouse refuses to start when they exceed background_pool_size x concurrency ratio (here 2 x 2). -->
     <merge_tree>
         <number_of_free_entries_in_pool_to_execute_mutation>2</number_of_free_entries_in_pool_to_execute_mutation>

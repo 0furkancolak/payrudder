@@ -119,7 +119,7 @@ type ProviderSubscription struct {
 	Provider              string
 	Environment           string
 	ProviderRef           string
-	QuotifySubscriptionID *uuid.UUID
+	PayrudderSubscriptionID *uuid.UUID
 	Status                string
 	NextBilledAt          *time.Time
 	CreatedAt             time.Time

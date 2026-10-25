@@ -2,7 +2,7 @@
 
 ## Goal
 
-A tenant can sell subscriptions through Paddle, the merchant of record: Paddle collects, renews and retries the fixed fee and works out tax, and Quotify bills
+A tenant can sell subscriptions through Paddle, the merchant of record: Paddle collects, renews and retries the fixed fee and works out tax, and Payrudder bills
 the usage on top through the customer's Paddle subscription. See [14-billing-platform.md](../14-billing-platform.md).
 
 ## Scope
@@ -16,7 +16,7 @@ billing and in the charge command, gateway routes, compose.
 
 ## Decisions made while building
 
-- **Paddle owns the fixed fee, Quotify bills the usage.** A provider-owned subscription's invoice has no `BASE_FEE` line; the usage total is charged as a one-time,
+- **Paddle owns the fixed fee, Payrudder bills the usage.** A provider-owned subscription's invoice has no `BASE_FEE` line; the usage total is charged as a one-time,
   non-catalogue charge on the customer's Paddle subscription (`POST /subscriptions/{id}/charge`, `effective_from: immediately`). Paddle's renewals appear in the ledger
   from their notifications, without an invoice.
 - **A charge Paddle accepts is not a payment.** `Charge` returns `payments.PendingError`; the worker replies `PaymentErrored{PENDING}` (not retryable) and billing asks for the

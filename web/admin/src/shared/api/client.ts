@@ -51,7 +51,7 @@ export function tenantApi(tenantId: string) {
       onRequest({ request }) {
         const token = currentToken();
         if (token) request.headers.set("Authorization", `Bearer ${token}`);
-        request.headers.set("X-Quotify-Tenant", tenantId);
+        request.headers.set("X-Payrudder-Tenant", tenantId);
         return request;
       },
       onResponse({ response }) {

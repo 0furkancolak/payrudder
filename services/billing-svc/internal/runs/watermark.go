@@ -8,9 +8,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // watermark proves that every on-time event of the run's period is in usage_aggregates (docs/07-correctness.md §4):

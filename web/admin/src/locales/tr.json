@@ -125,7 +125,7 @@
     },
     "jobs": {
       "title": "Yeniden oynatma ve yeniden fiyatlama işleri",
-      "hint": "Bir işi kimliğiyle sorgulayın (işleri quotifyctl veya yönetici API'si ile başlatın).",
+      "hint": "Bir işi kimliğiyle sorgulayın (işleri payrudderctl veya yönetici API'si ile başlatın).",
       "idLabel": "İş kimliği",
       "replay": "Yeniden oynatma işi",
       "rerating": "Yeniden fiyatlama işi"
@@ -699,7 +699,7 @@
     },
     "webhooks": {
       "title": "Webhooklar",
-      "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Payrudder bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Quotify-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
+      "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Payrudder bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Payrudder-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
       "formLabel": "yeni webhook uç noktası",
       "url": "Uç nokta URL'si",
       "description": "Açıklama",

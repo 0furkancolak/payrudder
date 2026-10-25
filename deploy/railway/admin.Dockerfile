@@ -7,5 +7,5 @@ RUN npm ci --no-audit --no-fund
 COPY web/admin .
 RUN npm run build
 # Railway sets PORT; the service variable GATEWAY_URL overrides the default, which is the gateway's private address.
-ENV PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 PREFILL_PLAYGROUND=false BRAND_NAME=Payrudder QUOTIFY_DEMO=false
+ENV PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 PREFILL_PLAYGROUND=false BRAND_NAME=Payrudder PAYRUDDER_DEMO=false
 CMD ["sh", "-c", "exec npx vite preview --host :: --port ${PORT} --strictPort"]

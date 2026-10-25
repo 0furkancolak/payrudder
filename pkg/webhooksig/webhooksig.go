@@ -1,6 +1,6 @@
-// Package webhooksig signs and verifies Quotify's outbound webhooks. A delivery carries
+// Package webhooksig signs and verifies Payrudder's outbound webhooks. A delivery carries
 //
-//	Quotify-Signature: t=1700000000,v1=<hex>[,v1=<hex>]
+//	Payrudder-Signature: t=1700000000,v1=<hex>[,v1=<hex>]
 //
 // where each v1 is HMAC-SHA256 over "<t>.<body>" with one of the endpoint's valid secrets (two while a rotated secret is still accepted). A receiver
 // recomputes it with its secret, compares in constant time and rejects a timestamp too far from its clock.
@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/brand"
+	"github.com/0furkancolak/payrudder/pkg/brand"
 )
 
-// Header is the name of the signature header: "Quotify-Signature", or the renamed product's.
+// Header is the name of the signature header: "Payrudder-Signature", or the renamed product's.
 func Header() string { return brand.Header("Signature") }
 
 // DefaultTolerance is how far a signed timestamp may be from the receiver's clock.

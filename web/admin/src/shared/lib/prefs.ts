@@ -6,8 +6,8 @@ import { safeGet, safeSet } from "./storage";
  * write is guarded, because storage can be blocked (a private window, a policy): the choice then lasts for the life of the page and nothing breaks.
  * Changes made in another tab arrive through the `storage` event, so two tabs of the console agree.
  */
-const SIDEBAR_KEY = "quotify.sidebar.collapsed";
-const PRIVACY_KEY = "quotify.privacy";
+const SIDEBAR_KEY = "payrudder.sidebar.collapsed";
+const PRIVACY_KEY = "payrudder.privacy";
 
 const readFlag = (key: string): boolean => safeGet("local", key) === "1";
 const writeFlag = (key: string, on: boolean): void => void safeSet("local", key, on ? "1" : null);

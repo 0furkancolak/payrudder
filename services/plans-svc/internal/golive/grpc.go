@@ -5,9 +5,9 @@ package golive
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/golive/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/golive/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
 )
 
 // Handler serves the go-live calls of IdentityService.

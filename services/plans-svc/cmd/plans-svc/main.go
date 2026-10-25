@@ -22,31 +22,31 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/mailx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/outbox"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/safehttp"
-	"github.com/0furkancolak/quotify/pkg/secretbox"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/golive"
-	golivecmd "github.com/0furkancolak/quotify/services/plans-svc/internal/golive/command"
-	goliveqry "github.com/0furkancolak/quotify/services/plans-svc/internal/golive/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/grpcapi"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity"
-	identitycmd "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/command"
-	identityqry "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/usermail"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
-	"github.com/0furkancolak/quotify/services/plans-svc/migrations"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/safehttp"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/admin"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
+	golivecmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/command"
+	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/grpcapi"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity"
+	identitycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
+	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
+	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
 )
 
 //go:embed config.default.yaml
@@ -54,48 +54,48 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	GRPCAddr       string `env:"QUOTIFY_GRPC_ADDR"`
-	PGAppDSN       string `env:"QUOTIFY_PG_APP_DSN,required"`
-	PGSystemDSN    string `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool   `env:"QUOTIFY_MIGRATE_ON_START"`
-	RedisURL       string `env:"QUOTIFY_REDIS_URL"`
+	GRPCAddr       string `env:"PAYRUDDER_GRPC_ADDR"`
+	PGAppDSN       string `env:"PAYRUDDER_PG_APP_DSN,required"`
+	PGSystemDSN    string `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
+	PGMigratorDSN  string `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
+	MigrateOnStart bool   `env:"PAYRUDDER_MIGRATE_ON_START"`
+	RedisURL       string `env:"PAYRUDDER_REDIS_URL"`
 	// KafkaBrokers enables the outbox relay to plans.entitlements.v1. Without it, rows wait in the outbox.
-	KafkaBrokers   []string `env:"QUOTIFY_KAFKA_BROKERS" envSeparator:","`
-	RelayWorkers   int      `env:"QUOTIFY_RELAY_WORKERS"`
-	RelayBatchSize int      `env:"QUOTIFY_RELAY_BATCH_SIZE"`
-	AllowedEnvs    []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:","`
+	KafkaBrokers   []string `env:"PAYRUDDER_KAFKA_BROKERS" envSeparator:","`
+	RelayWorkers   int      `env:"PAYRUDDER_RELAY_WORKERS"`
+	RelayBatchSize int      `env:"PAYRUDDER_RELAY_BATCH_SIZE"`
+	AllowedEnvs    []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// SecretsKey (32 bytes, base64) seals the webhook signing secrets. Without it tenants cannot register webhook endpoints.
-	SecretsKey string `env:"QUOTIFY_SECRETS_KEY"`
+	SecretsKey string `env:"PAYRUDDER_SECRETS_KEY"`
 	// WebhookAllowPrivate lets webhook endpoints be http:// and on private addresses. For development and tests; never in production.
-	WebhookAllowPrivate bool `env:"QUOTIFY_WEBHOOK_ALLOW_PRIVATE"`
-	// SMTPAddr and MailFrom are the platform's own mail path: the mail Quotify writes to people (verification, password reset, invitations). A tenant's
+	WebhookAllowPrivate bool `env:"PAYRUDDER_WEBHOOK_ALLOW_PRIVATE"`
+	// SMTPAddr and MailFrom are the platform's own mail path: the mail Payrudder writes to people (verification, password reset, invitations). A tenant's
 	// mail to its customers goes through the notifier and the tenant's mail switch instead.
 	SMTPAddr string `env:"SMTP_ADDR"`
 	MailFrom string `env:"MAIL_FROM"`
 	// AppURL is the console's public address; the links in those mails point into it.
-	AppURL string `env:"QUOTIFY_APP_URL"`
+	AppURL string `env:"PAYRUDDER_APP_URL"`
 	// OTPPepper keys the hash of one-time sign-in codes (a secret, never in YAML). Without it the hash is salted but unkeyed: fine for development, set it in production.
-	OTPPepper string `env:"QUOTIFY_OTP_PEPPER"`
+	OTPPepper string `env:"PAYRUDDER_OTP_PEPPER"`
 }
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("QUOTIFY_PG_MIGRATOR_DSN is required with QUOTIFY_MIGRATE_ON_START"))
+		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
 	}
 	for _, e := range c.AllowedEnvs {
 		if e != tenant.EnvSandbox && e != tenant.EnvLive {
-			errs = append(errs, fmt.Errorf("QUOTIFY_ALLOWED_ENVIRONMENTS: unknown environment %q", e))
+			errs = append(errs, fmt.Errorf("PAYRUDDER_ALLOWED_ENVIRONMENTS: unknown environment %q", e))
 		}
 	}
 	if c.SecretsKey != "" {
 		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
-			errs = append(errs, fmt.Errorf("QUOTIFY_SECRETS_KEY: %w", err))
+			errs = append(errs, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err))
 		}
 	}
 	if !slices.Contains(c.AllowedEnvs, tenant.EnvSandbox) {
-		errs = append(errs, errors.New("QUOTIFY_ALLOWED_ENVIRONMENTS must include sandbox"))
+		errs = append(errs, errors.New("PAYRUDDER_ALLOWED_ENVIRONMENTS must include sandbox"))
 	}
 	return errors.Join(errs...)
 }
@@ -144,7 +144,7 @@ func run() error {
 	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
 }
 
-// migrate applies the migrations when asked to; done reports that the process should exit afterwards (QUOTIFY_MIGRATE_ONLY).
+// migrate applies the migrations when asked to; done reports that the process should exit afterwards (PAYRUDDER_MIGRATE_ONLY).
 func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
 	if cfg.MigrateOnStart {
 		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
@@ -152,7 +152,7 @@ func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err
 		}
 	}
 	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
 		return true, nil
 	}
 	return false, nil
@@ -208,26 +208,26 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	return w.run(ctx)
 }
 
-// newEvictor connects to Redis for gateway API-key cache eviction; without QUOTIFY_REDIS_URL it returns a nil evictor.
+// newEvictor connects to Redis for gateway API-key cache eviction; without PAYRUDDER_REDIS_URL it returns a nil evictor.
 // The returned func releases the connection.
 func newEvictor(cfg *Config, log *slog.Logger) (admin.CacheEvictor, func(), error) {
 	if cfg.RedisURL == "" {
-		log.Warn("QUOTIFY_REDIS_URL unset: revoked keys stay valid in the gateway cache until its TTL")
+		log.Warn("PAYRUDDER_REDIS_URL unset: revoked keys stay valid in the gateway cache until its TTL")
 		return nil, func() {}, nil
 	}
 	opts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
-		return nil, nil, fmt.Errorf("QUOTIFY_REDIS_URL: %w", err)
+		return nil, nil, fmt.Errorf("PAYRUDDER_REDIS_URL: %w", err)
 	}
 	rc := redis.NewClient(opts)
 	return redisEvictor{c: rc}, func() { _ = rc.Close() }, nil
 }
 
-// newRelay builds the outbox relay and registers its Kafka readiness check; without QUOTIFY_KAFKA_BROKERS it returns a nil relay.
+// newRelay builds the outbox relay and registers its Kafka readiness check; without PAYRUDDER_KAFKA_BROKERS it returns a nil relay.
 // The returned func closes the Kafka producer.
 func newRelay(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, hh *health.Handler) (*outbox.Relay, func(), error) {
 	if len(cfg.KafkaBrokers) == 0 {
-		log.Warn("QUOTIFY_KAFKA_BROKERS unset: entitlement changes stay in the outbox and limits-svc will not see them")
+		log.Warn("PAYRUDDER_KAFKA_BROKERS unset: entitlement changes stay in the outbox and limits-svc will not see them")
 		return nil, func() {}, nil
 	}
 	producer, err := kafkax.NewProducer(cfg.KafkaBrokers)
@@ -244,10 +244,10 @@ func newRelay(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, hh *healt
 	return relay, producer.Close, nil
 }
 
-// newSecretBox opens the box that seals webhook signing secrets; without QUOTIFY_SECRETS_KEY it returns nil.
+// newSecretBox opens the box that seals webhook signing secrets; without PAYRUDDER_SECRETS_KEY it returns nil.
 func newSecretBox(cfg *Config, log *slog.Logger) (*secretbox.Box, error) {
 	if cfg.SecretsKey == "" {
-		log.Warn("QUOTIFY_SECRETS_KEY is not set: tenants cannot register webhook endpoints")
+		log.Warn("PAYRUDDER_SECRETS_KEY is not set: tenants cannot register webhook endpoints")
 		return nil, nil
 	}
 	key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated

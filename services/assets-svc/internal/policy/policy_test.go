@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
 )
 
 func TestPartSizeRule(t *testing.T) {

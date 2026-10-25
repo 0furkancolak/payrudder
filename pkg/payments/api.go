@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-// The optional interfaces below are what a provider can do beyond charging. A provider implements the ones its API has; Quotify's operator
+// The optional interfaces below are what a provider can do beyond charging. A provider implements the ones its API has; Payrudder's operator
 // API offers an operation only when the provider's adapter implements the interface (otherwise ErrUnsupported). They are provider-neutral:
 // the Paddle adapter maps them onto Paddle's products, prices, customers, subscriptions and discounts, and another provider could map them on its own.
 
 // PriceSpec is one recurring price of a plan version.
 type PriceSpec struct {
-	// Key identifies the price in Quotify, e.g. "{plan version id}|year|EUR". The provider stores it with the price.
+	// Key identifies the price in Payrudder, e.g. "{plan version id}|year|EUR". The provider stores it with the price.
 	Key         string
 	Currency    string
 	AmountMinor int64
@@ -28,7 +28,7 @@ type CatalogueRequest struct {
 	ProductName     string
 	Description     string
 	TaxCategory     string
-	QuotifyPlanCode string
+	PayrudderPlanCode string
 	Prices          []PriceSpec
 }
 
@@ -41,7 +41,7 @@ type CatalogueResult struct {
 	Skipped map[string]string
 }
 
-// Catalogue is a provider that holds products and prices for what Quotify sells.
+// Catalogue is a provider that holds products and prices for what Payrudder sells.
 type Catalogue interface {
 	Provider
 	SyncCatalogue(ctx context.Context, r CatalogueRequest) (CatalogueResult, error)
@@ -49,8 +49,8 @@ type Catalogue interface {
 
 // CustomerSpec is a customer as a provider needs to know them.
 type CustomerSpec struct {
-	// QuotifyCustomerID ties the provider's customer to ours.
-	QuotifyCustomerID string
+	// PayrudderCustomerID ties the provider's customer to ours.
+	PayrudderCustomerID string
 	Email             string
 	Name              string
 	Country           string
@@ -102,7 +102,7 @@ type ChangePreview struct {
 	NextAmountMinor int64
 }
 
-// SubscriptionAPI is a provider that lets Quotify drive a subscription the provider runs.
+// SubscriptionAPI is a provider that lets Payrudder drive a subscription the provider runs.
 type SubscriptionAPI interface {
 	Provider
 	PreviewChange(ctx context.Context, ref string, c ProviderChange) (ChangePreview, error)

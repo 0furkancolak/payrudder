@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
 // Subscriptions is the table of subscriptions a provider runs.
@@ -18,7 +18,7 @@ type ProviderSubscription struct {
 	Provider              string     `json:"provider"`
 	Environment           string     `json:"environment"`
 	ProviderRef           string     `json:"provider_ref"`
-	QuotifySubscriptionID *string    `json:"quotify_subscription_id,omitempty"`
+	PayrudderSubscriptionID *string    `json:"quotify_subscription_id,omitempty"`
 	Status                string     `json:"status"`
 	NextBilledAt          *time.Time `json:"next_billed_at,omitempty"`
 	UpdatedAt             time.Time  `json:"updated_at"`
@@ -26,9 +26,9 @@ type ProviderSubscription struct {
 
 // Upsert records what the provider says about a subscription. Events can arrive out of order, so an older event never overwrites a
 // newer one: occurred is the provider's timestamp of the event, and the row keeps the latest.
-func (s Subscriptions) Upsert(ctx context.Context, tenant uuid.UUID, provider, env, ref string, quotifyID *uuid.UUID, status string, next *time.Time, occurred time.Time) error {
+func (s Subscriptions) Upsert(ctx context.Context, tenant uuid.UUID, provider, env, ref string, payrudderID *uuid.UUID, status string, next *time.Time, occurred time.Time) error {
 	return sqlc.New(s.DB).UpsertProviderSubscription(ctx, sqlc.UpsertProviderSubscriptionParams{
-		TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref, QuotifySubscriptionID: quotifyID,
+		TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref, PayrudderSubscriptionID: payrudderID,
 		Status: status, NextBilledAt: next, UpdatedAt: occurred,
 	})
 }
@@ -45,17 +45,17 @@ func (s Subscriptions) List(ctx context.Context, tenant uuid.UUID) ([]ProviderSu
 			Provider: r.Provider, Environment: r.Environment, ProviderRef: r.ProviderRef,
 			Status: r.Status, NextBilledAt: r.NextBilledAt, UpdatedAt: r.UpdatedAt,
 		}
-		if r.QuotifySubscriptionID != nil {
-			id := r.QuotifySubscriptionID.String()
-			out[i].QuotifySubscriptionID = &id
+		if r.PayrudderSubscriptionID != nil {
+			id := r.PayrudderSubscriptionID.String()
+			out[i].PayrudderSubscriptionID = &id
 		}
 	}
 	return out, nil
 }
 
-// QuotifyID returns our subscription id remembered for a provider subscription.
-func (s Subscriptions) QuotifyID(ctx context.Context, tenant uuid.UUID, provider, env, ref string) (uuid.UUID, bool, error) {
-	id, ok, err := found(sqlc.New(s.DB).GetProviderSubscriptionQuotifyID(ctx, sqlc.GetProviderSubscriptionQuotifyIDParams{
+// PayrudderID returns our subscription id remembered for a provider subscription.
+func (s Subscriptions) PayrudderID(ctx context.Context, tenant uuid.UUID, provider, env, ref string) (uuid.UUID, bool, error) {
+	id, ok, err := found(sqlc.New(s.DB).GetProviderSubscriptionPayrudderID(ctx, sqlc.GetProviderSubscriptionPayrudderIDParams{
 		TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref,
 	}))
 	if !ok || id == nil {

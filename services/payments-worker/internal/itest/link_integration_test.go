@@ -19,16 +19,16 @@ import (
 
 	"github.com/google/uuid"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/paddle"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/secretbox"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/quotify/services/payments-worker/migrations"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
+	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // PreviewRouting makes recPlans a webhook.PlansAPI: it sends everyone to the provider in routeTo.
@@ -160,7 +160,7 @@ func TestHostedPaymentsThroughTheWorker(t *testing.T) {
 	}
 	txEvent := func(id, typ, txn, key string) string {
 		return `{"event_id":"` + id + `","event_type":"` + typ + `","occurred_at":"` + time.Now().UTC().Format(time.RFC3339) + `","data":{"id":"` + txn +
-			`","status":"completed","currency_code":"USD","custom_data":{"quotify_key":"` + key + `"},"details":{"totals":{"grand_total":"12345"}}}}`
+			`","status":"completed","currency_code":"USD","custom_data":{"payrudder_key":"` + key + `"},"details":{"totals":{"grand_total":"12345"}}}}`
 	}
 	base := "/admin/tenants/" + tenant.String()
 	invoice := uuid.New()

@@ -7,7 +7,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 
 | Doc | What it answers |
 |---|---|
-| [00-vision.md](00-vision.md) | Why Quotify exists, who uses it, goals, non-goals, success criteria |
+| [00-vision.md](00-vision.md) | Why Payrudder exists, who uses it, goals, non-goals, success criteria |
 | [01-glossary.md](01-glossary.md) | Shared vocabulary: tenant, customer, meter, event, period, invoice… |
 | [02-architecture.md](02-architecture.md) | System diagram, service map, main data flows |
 | [04-messaging.md](04-messaging.md) | Every Kafka topic and RabbitMQ exchange/queue |
@@ -18,8 +18,8 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [09-testing-strategy.md](09-testing-strategy.md) | Unit → chaos; the 1M-event correctness test |
 | [10-local-dev.md](10-local-dev.md) | Docker Compose stack, ports, make targets |
 | [11-repo-layout.md](11-repo-layout.md) | Planned monorepo structure |
-| [12-kubernetes.md](12-kubernetes.md) | Running Quotify on kind with Helm: charts, profiles, hooks, network policies, what is not covered |
-| [deploy/railway/README.md](../deploy/railway/README.md) | Running Quotify on Railway: services, images, variables, bootstrap script, what is not verified ([phase 31](phases/phase-31-railway.md)) |
+| [12-kubernetes.md](12-kubernetes.md) | Running Payrudder on kind with Helm: charts, profiles, hooks, network policies, what is not covered |
+| [deploy/railway/README.md](../deploy/railway/README.md) | Running Payrudder on Railway: services, images, variables, bootstrap script, what is not verified ([phase 31](phases/phase-31-railway.md)) |
 | [13-admin-ui.md](13-admin-ui.md) | The operator console: views, the typed API client, tests |
 | [17-platform-direction.md](17-platform-direction.md) | Rename-able product, apps and addresses, isolation modes, licence, demo, dev and edge: the requirements and the phases that build them |
 | [16-webhooks.md](16-webhooks.md) | Signed outbound events, endpoint management, delivery and retries, the hosted invoice page |

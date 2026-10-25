@@ -10,10 +10,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
 
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
 // ErrNoAccount: the tenant has no account at that provider in that environment.

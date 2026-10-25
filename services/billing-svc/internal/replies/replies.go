@@ -16,13 +16,13 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/protobuf/proto"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	einvoicecmd "github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Consumer applies replies to sagas.
@@ -41,7 +41,7 @@ func New(pool *pgxpool.Pool, eng *saga.Engine, url string, log *slog.Logger) (*C
 	if log == nil {
 		log = slog.Default()
 	}
-	m := otel.Meter("github.com/0furkancolak/quotify/services/billing-svc/replies")
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/billing-svc/replies")
 	c := &Consumer{Pool: pool, Engine: eng, URL: url, Log: log}
 	var err error
 	if c.received, err = m.Int64Counter("billing_replies_received", metric.WithDescription("Worker replies handled, by kind and whether they changed a saga")); err != nil {

@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/payments"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 // The operator API over what a provider can do beyond charging: its catalogue, customers, subscriptions, discounts and documents. Each
@@ -84,7 +84,7 @@ func decodeBody(w http.ResponseWriter, r *http.Request, v any) bool {
 	return true
 }
 
-// priceKey is Quotify's name for one price of a plan version.
+// priceKey is Payrudder's name for one price of a plan version.
 func priceKey(planVersionID, interval, currency string) string {
 	return planVersionID + "|" + interval + "|" + strings.ToUpper(currency)
 }
@@ -103,7 +103,7 @@ func intervalFromName(name string) plansv1.SubscriptionInterval {
 	return plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
 }
 
-// catalogueTarget finds the plan version and interval a provider's price ids stand for, if Quotify created them.
+// catalogueTarget finds the plan version and interval a provider's price ids stand for, if Payrudder created them.
 func (s *Server) catalogueTarget(ctx context.Context, tenant uuid.UUID, provider, env string, refs []string) (string, plansv1.SubscriptionInterval, bool) {
 	for _, ref := range refs {
 		key, ok, err := s.Objects.ByRef(ctx, tenant, provider, env, "price", ref)
@@ -167,7 +167,7 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 	res := payments.CatalogueResult{ProductRef: productRef, Prices: map[string]string{}, Skipped: map[string]string{}}
 	var syncErr error
 	if len(specs) > 0 {
-		res, syncErr = cat.SyncCatalogue(ctx, payments.CatalogueRequest{ProductRef: productRef, ProductName: in.productName(), TaxCategory: in.TaxCategory, QuotifyPlanCode: in.PlanCode, Prices: specs})
+		res, syncErr = cat.SyncCatalogue(ctx, payments.CatalogueRequest{ProductRef: productRef, ProductName: in.productName(), TaxCategory: in.TaxCategory, PayrudderPlanCode: in.PlanCode, Prices: specs})
 	}
 	s.rememberCatalogue(ctx, tg, productKey, productRef, res)
 	if syncErr != nil {
@@ -284,7 +284,7 @@ func (s *Server) customerRefs(ctx context.Context, tg target, api payments.Custo
 	if err != nil {
 		return payments.CustomerRefs{}, http.StatusNotFound, errors.New("no such customer")
 	}
-	refs, err := api.EnsureCustomer(ctx, payments.CustomerSpec{QuotifyCustomerID: c.GetId(), Email: c.GetEmail(), Name: c.GetName(), Country: c.GetCountry()})
+	refs, err := api.EnsureCustomer(ctx, payments.CustomerSpec{PayrudderCustomerID: c.GetId(), Email: c.GetEmail(), Name: c.GetName(), Country: c.GetCountry()})
 	if err != nil {
 		return refs, 0, err
 	}
@@ -337,7 +337,7 @@ type changeRequest struct {
 
 func enumWord(v, prefix string) string { return strings.TrimPrefix(strings.ToLower(v), prefix) }
 
-// providerSubscription loads a subscription Quotify mirrors and checks the provider runs it.
+// providerSubscription loads a subscription Payrudder mirrors and checks the provider runs it.
 func (s *Server) providerSubscription(w http.ResponseWriter, r *http.Request, tg target) (*plansv1.Subscription, bool) {
 	if s.Plans == nil {
 		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
@@ -438,7 +438,7 @@ func orCurrency(a, b string) string {
 	return b
 }
 
-// applyChange changes the subscription at the provider and then lets Quotify's copy follow at once. If the provider took the change and plans-svc
+// applyChange changes the subscription at the provider and then lets Payrudder's copy follow at once. If the provider took the change and plans-svc
 // could not follow, the provider's notification will make it follow, which the answer says.
 func (s *Server) applyChange(w http.ResponseWriter, r *http.Request) {
 	tg, ok := s.target(w, r)

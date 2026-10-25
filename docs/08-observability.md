@@ -7,7 +7,7 @@ Logs: `log/slog` JSON to stdout, with `trace_id`/`span_id` injected → **Vector
 ## Logs and the service map
 
 Everything is in the compose `obs` profile (`make up` starts it) and opens in Grafana at
-`localhost:42300`, which lands on **Quotify / Services**.
+`localhost:42300`, which lands on **Payrudder / Services**.
 
 - **Vector** (`deploy/vector/vector.yaml`) tails every container of the compose project and labels each line with
   `service` (compose service) and `level` (slog level, lower-cased; `unknown` for infrastructure that does not log
@@ -48,15 +48,15 @@ produce span and the consumer span join the request trace even though they run s
 
 - Messaging spans follow OTel semantic conventions: `usage.events.v1 publish`, `usage.events.v1 process`,
   `messaging.system=kafka|rabbitmq`, `messaging.destination.name`, `messaging.kafka.partition`, `messaging.kafka.offset`.
-- Every span carries `quotify.tenant_id`. Spans for events carry `quotify.event_id` (on per-record spans only).
-- Saga spans: `saga.transition` with `quotify.saga_id`, `quotify.saga.from`, `quotify.saga.to`.
+- Every span carries `payrudder.tenant_id`. Spans for events carry `payrudder.event_id` (on per-record spans only).
+- Saga spans: `saga.transition` with `payrudder.saga_id`, `payrudder.saga.from`, `payrudder.saga.to`.
 
 ### Sampling
 
 Parent-based. Root sampling: 100% locally, 10% in kind, **always** for errors and for requests with header
-`x-quotify-debug: 1` (sandbox tenants and operators only; the gateway ignores it otherwise). Tail sampling in the
+`x-payrudder-debug: 1` (sandbox tenants and operators only; the gateway ignores it otherwise). Tail sampling in the
 collector (`deploy/otel/collector.yaml`) keeps traces with errors, duration > 1 s or a debug mark, plus
-`QUOTIFY_TRACE_SAMPLE_PERCENT` (default 100) of the rest.
+`PAYRUDDER_TRACE_SAMPLE_PERCENT` (default 100) of the rest.
 
 Batch consumers (aggregator, limits, analytics) process many producers' records in one span, so the batch span
 (`<topic> process`) carries **links** to up to 128 producer contexts. Records that are debug-marked, and 1 % of the

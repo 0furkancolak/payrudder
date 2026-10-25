@@ -14,13 +14,13 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/apply"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/settings"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/store/sqlc"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
 
 // MaxBatchKeys is the size limit of GetUsageBatch.

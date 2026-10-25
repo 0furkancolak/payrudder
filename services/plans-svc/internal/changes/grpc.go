@@ -4,9 +4,9 @@ package changes
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/changes/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/changes/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
 )
 
 // Handler serves the change and adjustment methods of PlansService.

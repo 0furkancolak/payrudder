@@ -2,7 +2,7 @@
 
 > Multi-tenant usage metering and billing in Go: Kafka, RabbitMQ, gRPC, Postgres Row Level Security, ClickHouse, Kubernetes.
 
-Payrudder (the code, module path and `QUOTIFY_*` variables keep the original name `quotify`; see [ADR 0021](docs/adr/0021-payrudder-surface-rename.md) and the brand rules in [payrudder-brand/DESIGN.md](payrudder-brand/DESIGN.md)) lets a SaaS company (a *tenant*) send usage events, "customer X used 1,500 AI tokens", "customer Y made one API call",
+Payrudder (the code, module path and `PAYRUDDER_*` variables keep the original name `payrudder`; see [ADR 0021](docs/adr/0021-payrudder-surface-rename.md) and the brand rules in [payrudder-brand/DESIGN.md](payrudder-brand/DESIGN.md)) lets a SaaS company (a *tenant*) send usage events, "customer X used 1,500 AI tokens", "customer Y made one API call",
 and turns them into correct, auditable invoices. It is in the same family as Orb, Lago and Stripe's usage-based billing.
 It is also a worked example of getting distributed-systems guarantees right and *proving* them: every claim below has a test
 that kills things.
@@ -135,9 +135,9 @@ Mailpit has 18 messages, for example:
   - [SANDBOX] Receipt for invoice SBX-2026-000007
 
   Mailpit (receipts)   http://localhost:42825
-  Grafana (dashboards) http://localhost:42300   Quotify / Billing, Pipeline lag, Correctness
+  Grafana (dashboards) http://localhost:42300   Payrudder / Billing, Pipeline lag, Correctness
   Traces (Tempo)       http://localhost:42300/explore   (data source Tempo)
-  MinIO (PDFs)         http://localhost:42902   (user quotify, password quotify_local)
+  MinIO (PDFs)         http://localhost:42902   (user payrudder, password payrudder_local)
   Redpanda Console     http://localhost:8085
 ```
 
@@ -172,11 +172,11 @@ a **playground** that walks through the whole sandbox flow in the browser (accou
 | Path | |
 |---|---|
 | `services/` | gateway, plans-svc, ingest-svc, aggregator, limits-svc, billing-svc, analytics-svc, assets-svc, invoice-worker, payments-worker, notifier |
-| `tools/` | `quotifyctl` (seed, demo, replay, rerate, DLQ redrive), `mockpsp` |
+| `tools/` | `payrudderctl` (seed, demo, replay, rerate, DLQ redrive), `mockpsp` |
 | `pkg/` | the shared kit: Kafka and RabbitMQ toolkits, outbox, tenancy, Postgres helpers, OpenTelemetry setup, test containers |
 | `proto/`, `gen/go/` | Protobuf contracts (`buf breaking` in CI); generated code is committed |
 | `web/admin/` | the operator console (Vue 3, TypeScript, feature-based; Playwright) |
-| `deploy/` | Compose, Helm charts (`quotify`, `quotify-infra`), kind, Prometheus rules, Grafana dashboards, OpenTelemetry collector |
+| `deploy/` | Compose, Helm charts (`payrudder`, `payrudder-infra`), kind, Prometheus rules, Grafana dashboards, OpenTelemetry collector |
 | `tests/` | e2e, the chaos and correctness suite, k6 scenarios, benchmarks, Helm render tests |
 | `docs/` | design, 14 ADRs, the phase plan, [benchmarks](docs/benchmarks.md) |
 

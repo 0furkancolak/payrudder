@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // ErrorBody is the single error envelope of the public API:

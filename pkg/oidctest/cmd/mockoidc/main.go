@@ -2,7 +2,7 @@
 // account or the internet. It is for development only (it signs in anyone who types an address).
 //
 //	MOCKOIDC_ADDR           listen address (default :8099)
-//	MOCKOIDC_ISSUER         the address the gateway reaches it at, e.g. http://mockoidc:8099 (also QUOTIFY_GOOGLE_ISSUER of the gateway)
+//	MOCKOIDC_ISSUER         the address the gateway reaches it at, e.g. http://mockoidc:8099 (also PAYRUDDER_GOOGLE_ISSUER of the gateway)
 //	MOCKOIDC_BROWSER_URL    the address the person's browser reaches it at, e.g. http://localhost:42899
 //	MOCKOIDC_CLIENT_ID      the client id the gateway is configured with
 //	MOCKOIDC_CLIENT_SECRET  the client secret the gateway is configured with
@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/oidctest"
+	"github.com/0furkancolak/payrudder/pkg/oidctest"
 )
 
 func env(name, def string) string {

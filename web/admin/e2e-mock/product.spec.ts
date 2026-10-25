@@ -195,7 +195,7 @@ test.describe("app dashboard", () => {
     await expect(page.getByRole("cell", { name: "Acme Ltd" })).toBeVisible();
     const call = gw.called("GET", "/v1/customers")[0];
     expect(call?.headers.authorization).toBe(`Bearer ${SESSION}`);
-    expect(call?.headers["x-quotify-tenant"]).toBe(LIVE);
+    expect(call?.headers["x-payrudder-tenant"]).toBe(LIVE);
     await expect(page.getByRole("link", { name: /Web shop/ }).first()).toBeVisible();
     await shoot(page, "08-customers");
   });
@@ -216,7 +216,7 @@ test.describe("settings and chrome", () => {
     await page.getByRole("button", { name: "Sign out" }).click();
     await page.waitForURL("**/signin");
     expect(gw.called("POST", "/auth/signout")).toHaveLength(1);
-    expect(await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"))).toBeNull();
+    expect(await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"))).toBeNull();
     await page.goto("/app");
     await page.waitForURL("**/signin");
   });
@@ -237,7 +237,7 @@ test.describe("settings and chrome", () => {
   test("the session token lives in this tab only", async ({ page }) => {
     await productGateway(new MockGateway()).gw.install(page);
     await signInAsAda(page);
-    const stored = await page.evaluate(() => ({ session: window.sessionStorage.getItem("quotify.sessionToken"), local: Object.keys(window.localStorage) }));
+    const stored = await page.evaluate(() => ({ session: window.sessionStorage.getItem("payrudder.sessionToken"), local: Object.keys(window.localStorage) }));
     expect(stored.session).toBe(SESSION);
     expect(stored.local.filter((k) => /token|session/i.test(k))).toEqual([]);
   });
@@ -287,7 +287,7 @@ test.describe("e-mail verification and password reset", () => {
     await expect(page.getByRole("status")).toContainText("Check your inbox");
     await expect(page.getByRole("status")).toContainText("ada@example.com");
     expect(page.url()).toContain("/signup");
-    expect(await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"))).toBeNull();
+    expect(await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"))).toBeNull();
   });
 
   test("forgot password: the same answer for any address, then the reset page sets a new password", async ({ page }) => {
@@ -474,7 +474,7 @@ test.describe("members and invitations", () => {
     await page.getByRole("button", { name: "Create login and join" }).click();
     await page.waitForURL("**/app");
     expect(gw.called("POST", "/auth/invitations/accept")[0]?.body).toEqual({ token: "qi_new", password: "a long enough password", display_name: "Ned", locale: "en" });
-    expect(await page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"))).toBe(SESSION);
+    expect(await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"))).toBe(SESSION);
   });
 
   test("an invited person who has an account signs in and joins", async ({ page }) => {
@@ -581,7 +581,7 @@ test.describe("billing pages of the app", () => {
 
     for (const c of gw.calls.filter((x) => x.path.startsWith("/v1/"))) {
       expect(c.headers.authorization, c.path).toBe(`Bearer ${SESSION}`);
-      expect(c.headers["x-quotify-tenant"], c.path).toBe(LIVE);
+      expect(c.headers["x-payrudder-tenant"], c.path).toBe(LIVE);
     }
     expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
   });
@@ -600,7 +600,7 @@ test.describe("billing pages of the app", () => {
     await shoot(page, "32-payments");
     await rows.nth(0).getByRole("link", { name: "View invoice" }).click();
     await page.waitForURL(`**/app/t/${LIVE}/invoices/${INVOICE_1}`);
-    expect(gw.called("GET", "/v1/payments")[0]?.headers["x-quotify-tenant"]).toBe(LIVE);
+    expect(gw.called("GET", "/v1/payments")[0]?.headers["x-payrudder-tenant"]).toBe(LIVE);
     expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
   });
 

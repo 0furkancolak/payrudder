@@ -48,7 +48,7 @@ func render(t *testing.T, chart string, args ...string) []obj {
 	if _, err := os.Stat(helm); err != nil {
 		t.Skipf("%s not built (make tools)", helm)
 	}
-	full := append([]string{"template", "x", filepath.Join(root, "deploy", "helm", chart), "--namespace", "quotify"}, args...)
+	full := append([]string{"template", "x", filepath.Join(root, "deploy", "helm", chart), "--namespace", "payrudder"}, args...)
 	cmd := exec.Command(helm, full...)
 	var out, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &stderr
@@ -118,11 +118,11 @@ func find(docs []obj, kind, name string) obj {
 }
 
 func TestSandboxProfileHasNoLiveProvider(t *testing.T) {
-	docs := render(t, "quotify", "-f", values(t, "quotify", "values-sandbox.yaml"))
+	docs := render(t, "payrudder", "-f", values(t, "payrudder", "values-sandbox.yaml"))
 	sawEnvs, sawPayments := 0, 0
 	for _, c := range containers(docs) {
 		env := envOf(c)
-		if v, ok := env["QUOTIFY_ALLOWED_ENVIRONMENTS"]; ok {
+		if v, ok := env["PAYRUDDER_ALLOWED_ENVIRONMENTS"]; ok {
 			sawEnvs++
 			if v != "sandbox" {
 				t.Errorf("%v allows environments %q, want only sandbox", c["name"], v)
@@ -141,13 +141,13 @@ func TestSandboxProfileHasNoLiveProvider(t *testing.T) {
 		}
 	}
 	if sawEnvs < 2 || sawPayments < 1 {
-		t.Fatalf("saw QUOTIFY_ALLOWED_ENVIRONMENTS %d times and PAYMENTS_LIVE_PROVIDER %d times: the profile is not being checked", sawEnvs, sawPayments)
+		t.Fatalf("saw PAYRUDDER_ALLOWED_ENVIRONMENTS %d times and PAYMENTS_LIVE_PROVIDER %d times: the profile is not being checked", sawEnvs, sawPayments)
 	}
 	if find(docs, "Deployment", "mockpsp") == nil {
 		t.Error("the sandbox profile needs mock-psp")
 	}
 	// A default install, for contrast, does have mock-psp as the live provider.
-	for _, c := range containers(render(t, "quotify")) {
+	for _, c := range containers(render(t, "payrudder")) {
 		if v, ok := envOf(c)["PAYMENTS_LIVE_PROVIDER"]; ok && v != "mockpsp" {
 			t.Errorf("default install: PAYMENTS_LIVE_PROVIDER=%q, want mockpsp", v)
 		}
@@ -155,13 +155,13 @@ func TestSandboxProfileHasNoLiveProvider(t *testing.T) {
 }
 
 func TestExternalS3RendersNoMinIO(t *testing.T) {
-	infra := render(t, "quotify-infra", "--set", "minio.enabled=false")
+	infra := render(t, "payrudder-infra", "--set", "minio.enabled=false")
 	for _, d := range infra {
 		if strings.Contains(d.name(), "minio") {
 			t.Errorf("minio.enabled=false still renders %s/%s", d.kind(), d.name())
 		}
 	}
-	app := render(t, "quotify", "--set", "s3.endpoint=https://s3.eu-west-1.amazonaws.com", "--set", "s3.bootstrap.enabled=false", "--set", "s3.forcePathStyle=false")
+	app := render(t, "payrudder", "--set", "s3.endpoint=https://s3.eu-west-1.amazonaws.com", "--set", "s3.bootstrap.enabled=false", "--set", "s3.forcePathStyle=false")
 	for _, d := range app {
 		if strings.Contains(d.name(), "minio") || strings.Contains(d.name(), "s3-bootstrap") {
 			t.Errorf("external S3 renders %s/%s", d.kind(), d.name())
@@ -180,13 +180,13 @@ func TestExternalS3RendersNoMinIO(t *testing.T) {
 		t.Fatal("no container has S3_ENDPOINT")
 	}
 	// And the default install of the infra chart does contain it.
-	if find(render(t, "quotify-infra"), "StatefulSet", "minio") == nil {
+	if find(render(t, "payrudder-infra"), "StatefulSet", "minio") == nil {
 		t.Error("the default infra install has no MinIO")
 	}
 }
 
 func TestNetworkPolicies(t *testing.T) {
-	docs := render(t, "quotify")
+	docs := render(t, "payrudder")
 	if find(docs, "NetworkPolicy", "default-deny-ingress") == nil {
 		t.Fatal("no default-deny ingress policy")
 	}
@@ -227,7 +227,7 @@ func TestNetworkPolicies(t *testing.T) {
 }
 
 func TestMigrationsAreHooksAndTheirRoleStaysOutOfThePods(t *testing.T) {
-	docs := render(t, "quotify")
+	docs := render(t, "payrudder")
 	migrating := 0
 	for _, d := range docs {
 		if d.kind() != "Job" || !strings.HasSuffix(d.name(), "-migrate") {
@@ -239,7 +239,7 @@ func TestMigrationsAreHooksAndTheirRoleStaysOutOfThePods(t *testing.T) {
 		}
 		c := containers([]obj{d})[0]
 		env := envOf(c)
-		if env["QUOTIFY_MIGRATE_ONLY"] != "true" || env["QUOTIFY_MIGRATE_ON_START"] != "true" {
+		if env["PAYRUDDER_MIGRATE_ONLY"] != "true" || env["PAYRUDDER_MIGRATE_ON_START"] != "true" {
 			t.Errorf("%s does not run the migrations and exit: %v", d.name(), env)
 		}
 	}
@@ -248,13 +248,13 @@ func TestMigrationsAreHooksAndTheirRoleStaysOutOfThePods(t *testing.T) {
 	}
 	for _, d := range docs {
 		if d.kind() == "Secret" && strings.HasSuffix(d.name(), "-env") {
-			if _, ok := d.get("stringData").(map[string]any)["QUOTIFY_PG_MIGRATOR_DSN"]; ok {
+			if _, ok := d.get("stringData").(map[string]any)["PAYRUDDER_PG_MIGRATOR_DSN"]; ok {
 				t.Errorf("runtime secret %s holds the migrator DSN", d.name())
 			}
 		}
 		if d.kind() == "Deployment" {
 			for _, c := range containers([]obj{d}) {
-				if v := envOf(c)["QUOTIFY_MIGRATE_ON_START"]; v != "false" {
+				if v := envOf(c)["PAYRUDDER_MIGRATE_ON_START"]; v != "false" {
 					t.Errorf("Deployment %s migrates on start (%q): that is the Job's work", d.name(), v)
 				}
 			}
@@ -264,7 +264,7 @@ func TestMigrationsAreHooksAndTheirRoleStaysOutOfThePods(t *testing.T) {
 
 func TestEveryWorkloadHasProbesResourcesAndNonRoot(t *testing.T) {
 	for _, profile := range []string{"values.yaml", "values-kind.yaml", "values-sandbox.yaml"} {
-		for _, d := range render(t, "quotify", "-f", values(t, "quotify", profile)) {
+		for _, d := range render(t, "payrudder", "-f", values(t, "payrudder", profile)) {
 			if d.kind() != "Deployment" {
 				continue
 			}
@@ -280,7 +280,7 @@ func TestEveryWorkloadHasProbesResourcesAndNonRoot(t *testing.T) {
 		}
 	}
 	// Replicated services have a PodDisruptionBudget.
-	docs := render(t, "quotify", "-f", values(t, "quotify", "values-kind.yaml"))
+	docs := render(t, "payrudder", "-f", values(t, "payrudder", "values-kind.yaml"))
 	for _, name := range []string{"gateway", "ingest-svc", "aggregator", "limits-svc"} {
 		if find(docs, "PodDisruptionBudget", name) == nil {
 			t.Errorf("no PodDisruptionBudget for %s", name)
@@ -297,9 +297,9 @@ func TestEveryWorkloadHasProbesResourcesAndNonRoot(t *testing.T) {
 func TestInfraFilesMatchTheirSources(t *testing.T) {
 	root := repoRoot(t)
 	for copyOf, src := range map[string]string{
-		"deploy/helm/quotify-infra/files/topics.sh":        "deploy/compose/redpanda/topics.sh",
-		"deploy/helm/quotify-infra/files/definitions.json": "deploy/rabbitmq/definitions.json",
-		"deploy/helm/quotify-infra/files/low-memory.xml":   "deploy/clickhouse/low-memory.xml",
+		"deploy/helm/payrudder-infra/files/topics.sh":        "deploy/compose/redpanda/topics.sh",
+		"deploy/helm/payrudder-infra/files/definitions.json": "deploy/rabbitmq/definitions.json",
+		"deploy/helm/payrudder-infra/files/low-memory.xml":   "deploy/clickhouse/low-memory.xml",
 	} {
 		a, err1 := os.ReadFile(filepath.Join(root, copyOf))
 		b, err2 := os.ReadFile(filepath.Join(root, src))
@@ -313,10 +313,10 @@ func TestInfraFilesMatchTheirSources(t *testing.T) {
 }
 
 func TestRolePasswordsAreOverridable(t *testing.T) {
-	docs := render(t, "quotify", "--set", "postgres.passwords.plans_app=s3cr3t/with space")
+	docs := render(t, "payrudder", "--set", "postgres.passwords.plans_app=s3cr3t/with space")
 	for _, d := range docs {
 		if d.kind() == "Secret" && d.name() == "x-plans-svc-env" {
-			dsn := fmt.Sprint(d.get("stringData").(map[string]any)["QUOTIFY_PG_APP_DSN"])
+			dsn := fmt.Sprint(d.get("stringData").(map[string]any)["PAYRUDDER_PG_APP_DSN"])
 			if !strings.Contains(dsn, "plans_app:s3cr3t%2Fwith+space@") {
 				t.Fatalf("DSN = %s: the password is not URL-escaped", dsn)
 			}
@@ -328,7 +328,7 @@ func TestRolePasswordsAreOverridable(t *testing.T) {
 
 // Provider webhooks and the operator endpoints for provider accounts reach payments-worker through the gateway only, and the two share a secret.
 func TestPaymentProvidersAreWiredThroughTheGateway(t *testing.T) {
-	docs := render(t, "quotify")
+	docs := render(t, "payrudder")
 	svc := find(docs, "Service", "payments-worker")
 	if svc == nil {
 		t.Fatal("payments-worker has no Service: the gateway cannot forward provider webhooks to it")
@@ -371,23 +371,23 @@ func TestPaymentProvidersAreWiredThroughTheGateway(t *testing.T) {
 		return m
 	}
 	worker, gateway := secret("payments-worker"), secret("gateway")
-	for _, k := range []string{"QUOTIFY_SECRETS_KEY", "PAYMENTS_INTERNAL_TOKEN"} {
+	for _, k := range []string{"PAYRUDDER_SECRETS_KEY", "PAYMENTS_INTERNAL_TOKEN"} {
 		if worker[k] == nil || worker[k] == "" {
 			t.Errorf("payments-worker's secret has no %s", k)
 		}
 	}
-	if gateway["QUOTIFY_PAYMENTS_INTERNAL_TOKEN"] == nil || gateway["QUOTIFY_PAYMENTS_INTERNAL_TOKEN"] != worker["PAYMENTS_INTERNAL_TOKEN"] {
-		t.Errorf("the gateway's token %v differs from payments-worker's %v", gateway["QUOTIFY_PAYMENTS_INTERNAL_TOKEN"], worker["PAYMENTS_INTERNAL_TOKEN"])
+	if gateway["PAYRUDDER_PAYMENTS_INTERNAL_TOKEN"] == nil || gateway["PAYRUDDER_PAYMENTS_INTERNAL_TOKEN"] != worker["PAYMENTS_INTERNAL_TOKEN"] {
+		t.Errorf("the gateway's token %v differs from payments-worker's %v", gateway["PAYRUDDER_PAYMENTS_INTERNAL_TOKEN"], worker["PAYMENTS_INTERNAL_TOKEN"])
 	}
 	// The sealing key and the internal token are never plain environment of a container.
 	for _, c := range containers(docs) {
 		for k := range envOf(c) {
-			if k == "QUOTIFY_SECRETS_KEY" || k == "PAYMENTS_INTERNAL_TOKEN" || k == "QUOTIFY_PAYMENTS_INTERNAL_TOKEN" {
+			if k == "PAYRUDDER_SECRETS_KEY" || k == "PAYMENTS_INTERNAL_TOKEN" || k == "PAYRUDDER_PAYMENTS_INTERNAL_TOKEN" {
 				t.Errorf("%s is a plain environment variable of a container; it belongs in the Secret", k)
 			}
 		}
 	}
-	if got := envOf(findContainer(t, docs, "gateway"))["QUOTIFY_PAYMENTS_URL"]; got != "http://payments-worker:8095" {
+	if got := envOf(findContainer(t, docs, "gateway"))["PAYRUDDER_PAYMENTS_URL"]; got != "http://payments-worker:8095" {
 		t.Errorf("gateway forwards to %q", got)
 	}
 }

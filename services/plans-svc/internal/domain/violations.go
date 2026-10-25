@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // Violations collects field-level validation errors. The gateway renders them as error.details.

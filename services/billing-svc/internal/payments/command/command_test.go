@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 func TestValidate(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/0furkancolak/quotify/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 )
 
 func sampledContext(t *testing.T) (context.Context, trace.SpanContext) {

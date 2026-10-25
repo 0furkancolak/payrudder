@@ -16,17 +16,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/money"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/model"
-	couponsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/model"
+	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 )
 
 var (

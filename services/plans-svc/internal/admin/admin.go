@@ -20,16 +20,16 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/apikey"
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // CacheEvictor removes a key from the gateway's API-key cache (Redis gw:apikey:{prefix}).
@@ -46,7 +46,7 @@ type Server struct {
 	allowedEnvs []string
 }
 
-// New returns an AdminService on the system pool. allowedEnvs is QUOTIFY_ALLOWED_ENVIRONMENTS ("sandbox", "live").
+// New returns an AdminService on the system pool. allowedEnvs is PAYRUDDER_ALLOWED_ENVIRONMENTS ("sandbox", "live").
 func New(systemPool *pgxpool.Pool, evict CacheEvictor, allowedEnvs []string, log *slog.Logger) *Server {
 	return &Server{pool: systemPool, evict: evict, log: log, allowedEnvs: allowedEnvs}
 }

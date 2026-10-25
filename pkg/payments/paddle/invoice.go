@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 // CreateInvoiceCheckout starts a hosted checkout for one invoice: a transaction with a non-catalogue item for the invoice total, tagged with the key
-// of the charge (custom_data.quotify_key), which ConfirmNotification reads back from transaction.completed.
+// of the charge (custom_data.payrudder_key), which ConfirmNotification reads back from transaction.completed.
 // UNVERIFIED: that Paddle accepts a non-catalogue price object in exactly this shape; the reference describes it, no sandbox has run it.
 func (c *Client) CreateInvoiceCheckout(ctx context.Context, r payments.CheckoutInvoiceRequest) (payments.Checkout, error) {
 	if r.IdempotencyKey == "" || r.AmountMinor <= 0 || r.Currency == "" {
@@ -34,7 +34,7 @@ func (c *Client) CreateInvoiceCheckout(ctx context.Context, r payments.CheckoutI
 			},
 		}},
 		"collection_mode": "automatic",
-		"custom_data":     map[string]string{"quotify_key": r.IdempotencyKey, "quotify_invoice_id": r.InvoiceID},
+		"custom_data":     map[string]string{"payrudder_key": r.IdempotencyKey, "payrudder_invoice_id": r.InvoiceID},
 	}
 	var out struct {
 		Data struct {

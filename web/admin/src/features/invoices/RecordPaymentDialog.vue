@@ -18,7 +18,7 @@ import { offlineSettlement, PAYMENT_METHODS, receivedAtToIso, toLocalInput, tran
 
 /**
  * "Record payment" for an invoice. When the invoice was charged by bank transfer (`transfer`) this is "Confirm bank transfer" and goes to the transfer
- * endpoint (the bank reference is then required); otherwise it records a payment received outside Quotify.
+ * endpoint (the bank reference is then required); otherwise it records a payment received outside Payrudder.
  */
 const props = defineProps<{ tenantId: string; invoiceId: string; currency: string; outstandingMinor: string; transfer: boolean }>();
 const open = defineModel<boolean>("open", { required: true });

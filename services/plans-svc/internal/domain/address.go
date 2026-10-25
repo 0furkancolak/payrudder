@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // ValidateAddress checks an address as it is entered: each part at most 120 characters (the postal code 20), no control characters, a country that is an

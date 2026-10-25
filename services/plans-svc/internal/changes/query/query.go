@@ -10,17 +10,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	couponsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	plansqry "github.com/0furkancolak/quotify/services/plans-svc/internal/plans/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
 var (
@@ -170,7 +170,7 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 
 // requireChangeable refuses a subscription that cannot change and returns its effective state.
 func requireChangeable(row sqlc.GetSubscriptionRow, now time.Time) (subscription.State, error) {
-	if err := domain.RequireQuotifyOwned(row.Owner, row.Provider); err != nil {
+	if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 		return "", err
 	}
 	if row.FeeTiming != "advance" {

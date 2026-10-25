@@ -13,8 +13,8 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	"github.com/0furkancolak/quotify/pkg/testkit"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 )
 
 func TestRabbitX(t *testing.T) {

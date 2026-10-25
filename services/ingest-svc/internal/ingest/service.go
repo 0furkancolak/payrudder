@@ -28,25 +28,25 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/outbox"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/lookup"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/store/sqlc"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/lookup"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
 )
 
 // Topic is where accepted events go.
 const Topic = "usage.events.v1"
 
 // ceType is the fully-qualified protobuf message name, carried in the ce-type header.
-const ceType = "quotify.events.v1.UsageEvent"
+const ceType = "payrudder.events.v1.UsageEvent"
 
 // Lookups resolves meters and customers (cached in production).
 type Lookups interface {
@@ -107,13 +107,13 @@ func New(o Options) (*Service, error) {
 	if o.Propagator == nil {
 		o.Propagator = otel.GetTextMapPropagator()
 	}
-	ctr, err := otel.Meter("github.com/0furkancolak/quotify/services/ingest-svc").Int64Counter("ingest_events",
+	ctr, err := otel.Meter("github.com/0furkancolak/payrudder/services/ingest-svc").Int64Counter("ingest_events",
 		metric.WithDescription("Ingested events by outcome"))
 	if err != nil {
 		return nil, err
 	}
 	s := &Service{o: o, log: o.Log, locs: map[string]*time.Location{}, events: ctr}
-	m := otel.Meter("github.com/0furkancolak/quotify/services/ingest-svc")
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/ingest-svc")
 	depthG, err := m.Int64ObservableGauge("ingest_outbox_depth", metric.WithDescription("Estimated rows waiting in the outbox"))
 	if err != nil {
 		return nil, err

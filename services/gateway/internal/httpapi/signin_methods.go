@@ -15,12 +15,12 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // The three ways to sign in (phase 42): e-mail and password (signin.go's signIn), a one-time code mailed to the address, and Google. The operator console has
-// no sign-in of its own any more: an operator is a person who signs in one of these ways with a verified address that QUOTIFY_OPERATOR_EMAILS lists.
+// no sign-in of its own any more: an operator is a person who signs in one of these ways with a verified address that PAYRUDDER_OPERATOR_EMAILS lists.
 
 // Per-minute limits per client address on the new public routes. The per-address limits of the code (one a minute, five an hour, five tries) are plans-svc's.
 const (
@@ -36,7 +36,7 @@ func (s *Server) methods(w http.ResponseWriter, r *http.Request) {
 }
 
 // isOperator reports whether a user is a platform operator. The decision is made here, on the server, from two things the client cannot influence: the address
-// is on the configured list (QUOTIFY_OPERATOR_EMAILS) and the person has proven they own it. Nothing about it is stored on the user or sent by the client.
+// is on the configured list (PAYRUDDER_OPERATOR_EMAILS) and the person has proven they own it. Nothing about it is stored on the user or sent by the client.
 func (s *Server) isOperator(u *plansv1.User) bool {
 	if u == nil || !u.GetEmailVerified() || u.GetEmail() == "" {
 		return false

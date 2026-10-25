@@ -13,13 +13,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	idquery "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	idquery "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // The items of the checklist, in the order the console shows them.
@@ -39,7 +39,7 @@ type Queries struct {
 // New returns the go-live queries.
 func New(systemPool *pgxpool.Pool) *Queries { return &Queries{pool: systemPool} }
 
-// NoLive is the answer for an app whose deployment serves no live environment (QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox).
+// NoLive is the answer for an app whose deployment serves no live environment (PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox).
 func NoLive() error {
 	return errkey.New(codes.FailedPrecondition, "identity.go_live.no_live", "this deployment has no live environment")
 }

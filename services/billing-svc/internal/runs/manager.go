@@ -20,12 +20,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Status of a billing run.
@@ -128,7 +128,7 @@ func NewManager(cfg Config) (*Manager, error) {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
-	m := otel.Meter("github.com/0furkancolak/quotify/services/billing-svc/runs")
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/billing-svc/runs")
 	mg := &Manager{cfg: cfg, q: sqlc.New(cfg.Pool), log: cfg.Log}
 	var err error
 	if mg.runsDone, err = m.Int64Counter("billing_runs_completed", metric.WithDescription("Billing runs that reached COMPLETED")); err != nil {
@@ -254,8 +254,8 @@ func (m *Manager) withLock(ctx context.Context, tenantID uuid.UUID, periodID str
 
 // Drive moves one run as far as it can go now. Waiting is not an error: the scheduler calls Drive again.
 func (m *Manager) Drive(ctx context.Context, tenantID uuid.UUID, periodID string) (*Run, error) {
-	ctx, span := otel.Tracer("github.com/0furkancolak/quotify/services/billing-svc/runs").Start(ctx, "billing.run",
-		trace.WithAttributes(attribute.String("quotify.tenant_id", tenantID.String()), attribute.String("billing.period", periodID)))
+	ctx, span := otel.Tracer("github.com/0furkancolak/payrudder/services/billing-svc/runs").Start(ctx, "billing.run",
+		trace.WithAttributes(attribute.String("payrudder.tenant_id", tenantID.String()), attribute.String("billing.period", periodID)))
 	defer span.End()
 	var out *Run
 	_, err := m.withLock(ctx, tenantID, periodID, func(ctx context.Context) error {

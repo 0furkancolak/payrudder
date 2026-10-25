@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/config"
 )
 
 func TestParseProxies(t *testing.T) {

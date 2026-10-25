@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 func set(category string, enabled bool) *plansv1.MailCategorySetting {

@@ -23,7 +23,7 @@ Later parts of the phase (the layered guard in the workers, promoting configurat
 
 ## Consequences
 
-- Every place that created a live tenant and then a key for it (the e2e, load, chaos and bench setups, `quotifyctl seed`) now activates the tenant first through `PUT /admin/v1/tenants/{id}/status` with a reason, the way support does. The dev seed (`quotifyctl dev-seed`) never needs it: it works in the sandbox only.
+- Every place that created a live tenant and then a key for it (the e2e, load, chaos and bench setups, `payrudderctl seed`) now activates the tenant first through `PUT /admin/v1/tenants/{id}/status` with a reason, the way support does. The dev seed (`payrudderctl dev-seed`) never needs it: it works in the sandbox only.
 - Tenants that exist when migration `00045` runs keep working: they become `active`.
 - billing-svc treats a tenant status it was not sent (plans-svc not yet upgraded) as active, so the two can be rolled out in either order.
 - The API key cache (60 seconds) bounds how long a suspension takes if the eviction fails; the eviction itself is immediate.

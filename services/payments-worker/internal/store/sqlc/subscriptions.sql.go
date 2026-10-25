@@ -36,20 +36,20 @@ func (q *Queries) GetProviderSubscriptionNextBilledAt(ctx context.Context, arg G
 	return next_billed_at, err
 }
 
-const getProviderSubscriptionQuotifyID = `-- name: GetProviderSubscriptionQuotifyID :one
+const getProviderSubscriptionPayrudderID = `-- name: GetProviderSubscriptionPayrudderID :one
 SELECT quotify_subscription_id FROM provider_subscriptions
 WHERE tenant_id = $1 AND provider = $2 AND environment = $3 AND provider_ref = $4
 `
 
-type GetProviderSubscriptionQuotifyIDParams struct {
+type GetProviderSubscriptionPayrudderIDParams struct {
 	TenantID    uuid.UUID
 	Provider    string
 	Environment string
 	ProviderRef string
 }
 
-func (q *Queries) GetProviderSubscriptionQuotifyID(ctx context.Context, arg GetProviderSubscriptionQuotifyIDParams) (*uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, getProviderSubscriptionQuotifyID,
+func (q *Queries) GetProviderSubscriptionPayrudderID(ctx context.Context, arg GetProviderSubscriptionPayrudderIDParams) (*uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getProviderSubscriptionPayrudderID,
 		arg.TenantID,
 		arg.Provider,
 		arg.Environment,
@@ -69,7 +69,7 @@ type ListProviderSubscriptionsRow struct {
 	Provider              string
 	Environment           string
 	ProviderRef           string
-	QuotifySubscriptionID *uuid.UUID
+	PayrudderSubscriptionID *uuid.UUID
 	Status                string
 	NextBilledAt          *time.Time
 	UpdatedAt             time.Time
@@ -88,7 +88,7 @@ func (q *Queries) ListProviderSubscriptions(ctx context.Context, tenantID uuid.U
 			&i.Provider,
 			&i.Environment,
 			&i.ProviderRef,
-			&i.QuotifySubscriptionID,
+			&i.PayrudderSubscriptionID,
 			&i.Status,
 			&i.NextBilledAt,
 			&i.UpdatedAt,
@@ -117,7 +117,7 @@ type UpsertProviderSubscriptionParams struct {
 	Provider              string
 	Environment           string
 	ProviderRef           string
-	QuotifySubscriptionID *uuid.UUID
+	PayrudderSubscriptionID *uuid.UUID
 	Status                string
 	NextBilledAt          *time.Time
 	UpdatedAt             time.Time
@@ -129,7 +129,7 @@ func (q *Queries) UpsertProviderSubscription(ctx context.Context, arg UpsertProv
 		arg.Provider,
 		arg.Environment,
 		arg.ProviderRef,
-		arg.QuotifySubscriptionID,
+		arg.PayrudderSubscriptionID,
 		arg.Status,
 		arg.NextBilledAt,
 		arg.UpdatedAt,

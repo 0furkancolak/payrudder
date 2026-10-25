@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 func TestRoundTripThroughMetadata(t *testing.T) {

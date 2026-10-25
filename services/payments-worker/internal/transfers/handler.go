@@ -17,15 +17,15 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/transfers/command"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/transfers/query"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/command"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/query"
 )
 
-// ActorHeader names who an operator action is recorded for (the gateway passes the caller's X-Quotify-Actor).
-const ActorHeader = "X-Quotify-Actor"
+// ActorHeader names who an operator action is recorded for (the gateway passes the caller's X-Payrudder-Actor).
+const ActorHeader = "X-Payrudder-Actor"
 
 const maxBody = 16 << 10
 

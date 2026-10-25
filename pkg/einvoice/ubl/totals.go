@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
 )
 
 // InvalidError says which field of a document cannot be turned into UBL.

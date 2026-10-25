@@ -4,11 +4,11 @@ package deadletters
 import (
 	"context"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/deadletters/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/deadletters/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/deadletters/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/deadletters/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
 )
 
 // Handler implements the dead-letter methods of billingv1.BillingAdminServiceServer. Without an admin they answer UNIMPLEMENTED.

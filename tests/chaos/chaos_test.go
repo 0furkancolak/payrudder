@@ -46,19 +46,19 @@ func envInt(k string, def int) int {
 }
 
 var (
-	pgPort        = envOr("QUOTIFY_PG_HOST_PORT", "42432")
-	gateway       = envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800")
-	operatorToken = envOr("QUOTIFY_OPERATOR_TOKEN", "local-operator-token-change-me-0123456789")
-	kafkaBrokers  = envOr("QUOTIFY_KAFKA_BROKERS", "localhost:42092")
-	aggregatorDSN = envOr("QUOTIFY_AGGREGATOR_DSN", fmt.Sprintf("postgres://aggregator_system:aggregator_system_local@localhost:%s/aggregator_db", pgPort))
-	ingestDSN     = envOr("QUOTIFY_INGEST_DSN", fmt.Sprintf("postgres://ingest_system:ingest_system_local@localhost:%s/ingest_db", pgPort))
-	clickhouseURL = envOr("QUOTIFY_CLICKHOUSE_URL", "http://localhost:42123")
-	toxiproxyURL  = envOr("QUOTIFY_TOXIPROXY_URL", "http://localhost:42474")
-	prometheusURL = envOr("QUOTIFY_PROMETHEUS_URL", "")
+	pgPort        = envOr("PAYRUDDER_PG_HOST_PORT", "42432")
+	gateway       = envOr("PAYRUDDER_GATEWAY_URL", "http://localhost:42800")
+	operatorToken = envOr("PAYRUDDER_OPERATOR_TOKEN", "local-operator-token-change-me-0123456789")
+	kafkaBrokers  = envOr("PAYRUDDER_KAFKA_BROKERS", "localhost:42092")
+	aggregatorDSN = envOr("PAYRUDDER_AGGREGATOR_DSN", fmt.Sprintf("postgres://aggregator_system:aggregator_system_local@localhost:%s/aggregator_db", pgPort))
+	ingestDSN     = envOr("PAYRUDDER_INGEST_DSN", fmt.Sprintf("postgres://ingest_system:ingest_system_local@localhost:%s/ingest_db", pgPort))
+	clickhouseURL = envOr("PAYRUDDER_CLICKHOUSE_URL", "http://localhost:42123")
+	toxiproxyURL  = envOr("PAYRUDDER_TOXIPROXY_URL", "http://localhost:42474")
+	prometheusURL = envOr("PAYRUDDER_PROMETHEUS_URL", "")
 	httpc         = &http.Client{Timeout: 30 * time.Second}
 
-	numTenants   = envInt("QUOTIFY_CHAOS_TENANTS", 10)
-	numCustomers = envInt("QUOTIFY_CHAOS_CUSTOMERS", 20)
+	numTenants   = envInt("PAYRUDDER_CHAOS_TENANTS", 10)
+	numCustomers = envInt("PAYRUDDER_CHAOS_CUSTOMERS", 20)
 )
 
 // meterSpec is one meter every tenant gets: a mix of SUM, COUNT and MAX at different scales.
@@ -250,7 +250,7 @@ func generate(seed uint64, n int, fx []*tenantFx, runTag string) []genEvent {
 
 type result struct{ Status, EventID, ErrorCode string }
 
-// pace spreads the workload over time when QUOTIFY_CHAOS_RATE (events per second, all senders together) is set, so a small
+// pace spreads the workload over time when PAYRUDDER_CHAOS_RATE (events per second, all senders together) is set, so a small
 // run lasts long enough for the monkey to inject real faults.
 var pace = struct {
 	sync.Mutex
@@ -258,7 +258,7 @@ var pace = struct {
 }{}
 
 func throttle(events int) {
-	rate := envInt("QUOTIFY_CHAOS_RATE", 0)
+	rate := envInt("PAYRUDDER_CHAOS_RATE", 0)
 	if rate <= 0 {
 		return
 	}
@@ -360,8 +360,8 @@ func (r *report) assert(id, name string, mismatches []string, skip string) {
 }
 
 func TestCorrectness(t *testing.T) {
-	n, _ := strconv.Atoi(envOr("QUOTIFY_CHAOS_EVENTS", "100000"))
-	seed, _ := strconv.ParseUint(envOr("QUOTIFY_CHAOS_SEED", "42"), 10, 64)
+	n, _ := strconv.Atoi(envOr("PAYRUDDER_CHAOS_EVENTS", "100000"))
+	seed, _ := strconv.ParseUint(envOr("PAYRUDDER_CHAOS_SEED", "42"), 10, 64)
 	started := time.Now()
 	a := api{t}
 	fx, custID := setup(t)
@@ -451,7 +451,7 @@ func TestCorrectness(t *testing.T) {
 		wg.Wait()
 	}
 	var monkey *Monkey
-	if envOr("QUOTIFY_CHAOS_MONKEY", "0") == "1" {
+	if envOr("PAYRUDDER_CHAOS_MONKEY", "0") == "1" {
 		expected := time.Duration(max(2*time.Minute, time.Duration(n/400)*time.Second))
 		monkey = StartMonkey(context.Background(), seed, expected)
 	}
@@ -464,8 +464,8 @@ func TestCorrectness(t *testing.T) {
 	// The faults run until the workload is in; then everything is healed so the stack can drain.
 	if monkey != nil {
 		// A fast stack finishes the workload before the schedule has injected the required chaos: keep the faults coming (faster) while the
-		// backlog drains, up to QUOTIFY_CHAOS_TOPUP_MINUTES, so the requirement is about the chaos and not about the runner's speed.
-		monkey.Meet(envInt("QUOTIFY_CHAOS_MIN_KILLS", 0), envInt("QUOTIFY_CHAOS_MIN_FAULTS", 0), time.Duration(envInt("QUOTIFY_CHAOS_TOPUP_MINUTES", 8))*time.Minute)
+		// backlog drains, up to PAYRUDDER_CHAOS_TOPUP_MINUTES, so the requirement is about the chaos and not about the runner's speed.
+		monkey.Meet(envInt("PAYRUDDER_CHAOS_MIN_KILLS", 0), envInt("PAYRUDDER_CHAOS_MIN_FAULTS", 0), time.Duration(envInt("PAYRUDDER_CHAOS_TOPUP_MINUTES", 8))*time.Minute)
 		rep.Chaos = monkey.Stop()
 		for _, e := range rep.Chaos.Errors {
 			t.Logf("chaos: %s", e)
@@ -548,7 +548,7 @@ func TestCorrectness(t *testing.T) {
 		}
 		return c
 	}
-	drainBy := time.Now().Add(time.Duration(envInt("QUOTIFY_CHAOS_DRAIN_MINUTES", 40)) * time.Minute)
+	drainBy := time.Now().Add(time.Duration(envInt("PAYRUDDER_CHAOS_DRAIN_MINUTES", 40)) * time.Minute)
 	for (counted() < expected || outboxRows() > 0) && time.Now().Before(drainBy) {
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -655,16 +655,16 @@ func TestCorrectness(t *testing.T) {
 	if v, ok := promValue(`sum(aggregator_duplicates_skipped_total)`); ok {
 		rep.AggregatorDuplicatesSkipped = &v
 	}
-	if min := envInt("QUOTIFY_CHAOS_MIN_KILLS", 0); rep.Chaos.Kills < min {
+	if min := envInt("PAYRUDDER_CHAOS_MIN_KILLS", 0); rep.Chaos.Kills < min {
 		rep.Mismatches = append(rep.Mismatches, fmt.Sprintf("chaos: %d container kills injected, at least %d required", rep.Chaos.Kills, min))
 	}
-	if min := envInt("QUOTIFY_CHAOS_MIN_FAULTS", 0); rep.Chaos.Faults < min {
+	if min := envInt("PAYRUDDER_CHAOS_MIN_FAULTS", 0); rep.Chaos.Faults < min {
 		rep.Mismatches = append(rep.Mismatches, fmt.Sprintf("chaos: %d network faults injected, at least %d required", rep.Chaos.Faults, min))
 	}
 
 	rep.Seconds = time.Since(started).Seconds()
 	b, _ := json.MarshalIndent(rep, "", "  ")
-	_ = os.WriteFile(envOr("QUOTIFY_CHAOS_REPORT", "chaos-report.json"), b, 0o644)
+	_ = os.WriteFile(envOr("PAYRUDDER_CHAOS_REPORT", "chaos-report.json"), b, 0o644)
 	t.Logf("%s", b)
 	if len(rep.Mismatches) > 0 {
 		for i, m := range rep.Mismatches {
@@ -711,7 +711,7 @@ func checkLimits(t *testing.T, fx []*tenantFx, onTime map[string]*cell, period s
 		keyOf[tn.id] = tn.key
 	}
 	a := api{t}
-	deadline := time.Now().Add(time.Duration(envInt("QUOTIFY_CHAOS_LIMITS_WAIT_SECONDS", 240)) * time.Second)
+	deadline := time.Now().Add(time.Duration(envInt("PAYRUDDER_CHAOS_LIMITS_WAIT_SECONDS", 240)) * time.Second)
 	var bad []string
 	for {
 		bad = bad[:0]
@@ -787,7 +787,7 @@ func promValue(q string) (float64, bool) {
 
 func checkFrozenViolations() ([]string, string) {
 	if prometheusURL == "" {
-		return nil, "QUOTIFY_PROMETHEUS_URL not set"
+		return nil, "PAYRUDDER_PROMETHEUS_URL not set"
 	}
 	v, ok := promValue(`sum(aggregator_frozen_period_violations_total) or vector(0)`)
 	if !ok {
@@ -804,8 +804,8 @@ func checkClickHouse(tenants []string, want int64) ([]string, string) {
 	q := fmt.Sprintf("SELECT count() FROM usage_events FINAL WHERE toString(tenant_id) IN ('%s')", strings.Join(tenants, "','"))
 	var got int64 = -1
 	for deadline := time.Now().Add(2 * time.Minute); time.Now().Before(deadline); time.Sleep(3 * time.Second) {
-		req, _ := http.NewRequest("POST", clickhouseURL+"/?database=quotify", strings.NewReader(q))
-		req.SetBasicAuth("quotify", "quotify_local")
+		req, _ := http.NewRequest("POST", clickhouseURL+"/?database=payrudder", strings.NewReader(q))
+		req.SetBasicAuth("payrudder", "payrudder_local")
 		resp, err := httpc.Do(req)
 		if err != nil {
 			continue

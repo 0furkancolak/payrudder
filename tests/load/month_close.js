@@ -1,6 +1,6 @@
 // month_close: CUSTOMERS (target 10000) customers x METERS (5) meters with usage, then a sandbox close-period; the run is
 // timed until every invoice saga is COMPLETED (mock-psp latency excluded: MOCKPSP_LATENCY_MS defaults to 0 locally).
-// Target: run COMPLETED < 5 min. Needs a sandbox tenant (QUOTIFY_ALLOWED_ENVIRONMENTS includes sandbox).
+// Target: run COMPLETED < 5 min. Needs a sandbox tenant (PAYRUDDER_ALLOWED_ENVIRONMENTS includes sandbox).
 import http from 'k6/http';
 import { sleep, fail } from 'k6';
 import { Gauge } from 'k6/metrics';

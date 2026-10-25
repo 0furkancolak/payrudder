@@ -4,8 +4,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
 )
 
 // ValidateBankTransfer checks the bank details printed on a tenant's invoices: the texts are one line, the IBAN has valid check digits and is already normalised

@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // A yearly subscription whose fee is invoiced in advance keeps paying in advance after a provider migration: the successor is not "arrears", which would
@@ -51,7 +51,7 @@ func testProviderMigrationKeepsTheFeeTiming(t *testing.T) {
 		return n
 	}
 
-	t.Run("Quotify to Quotify continues the paid year", func(t *testing.T) {
+	t.Run("Payrudder to Payrudder continues the paid year", func(t *testing.T) {
 		if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_pm_a", Name: "a", Email: "a@example.com", Country: "TR", BillingCurrency: "TRY"}); err != nil {
 			t.Fatal(err)
 		}
@@ -89,7 +89,7 @@ func testProviderMigrationKeepsTheFeeTiming(t *testing.T) {
 		}
 	})
 
-	t.Run("a provider's yearly subscription comes back to Quotify billed in advance", func(t *testing.T) {
+	t.Run("a provider's yearly subscription comes back to Payrudder billed in advance", func(t *testing.T) {
 		if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_pm_b", Name: "b", Email: "b@example.com", Country: "US", BillingCurrency: "USD"}); err != nil {
 			t.Fatal(err)
 		}

@@ -10,7 +10,7 @@ test("the console speaks the tenant API as the operator user (a session), naming
   await openTenantPage(page, "/customers");
   await expect(page.getByRole("cell", { name: "cus_1", exact: true })).toBeVisible();
   const call = gw.called("GET", "/v1/customers")[0];
-  expect(call?.headers["x-quotify-tenant"]).toBe(TENANT);
+  expect(call?.headers["x-payrudder-tenant"]).toBe(TENANT);
   expect(call?.headers["authorization"]).toBe(`Bearer ${OPERATOR}`);
 });
 
@@ -193,7 +193,7 @@ test.describe("subscriptions", () => {
     plan_version: 1,
     state: "SUBSCRIPTION_STATE_ACTIVE",
     currency: "TRY",
-    owner: "quotify",
+    owner: "payrudder",
     start_time: "2026-10-01T00:00:00Z",
     ...extra,
   });
@@ -239,7 +239,7 @@ test.describe("subscriptions", () => {
     await expect(calls.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "75");
     await expect(usage.getByRole("row", { name: /gb_hours/ })).toContainText("over the limit");
     await expect(usage.getByRole("row", { name: /seats/ })).toContainText("unlimited");
-    expect(gw.called("GET", "/v1/customers/cus_1/entitlements")[0]?.headers["x-quotify-tenant"]).toBe(TENANT);
+    expect(gw.called("GET", "/v1/customers/cus_1/entitlements")[0]?.headers["x-payrudder-tenant"]).toBe(TENANT);
   });
 
   test("a subscription is created for a customer and a package, with an optional trial and provider", async ({ page }) => {
@@ -424,7 +424,7 @@ test.describe("subscriptions", () => {
     const call = gw.called("POST", `/admin/v1/tenants/${TENANT}/provider-migrations`)[0];
     expect(call?.query.get("environment")).toBe("live");
     expect(call?.body).toEqual({ subscription_id: "s1", to_provider: "paddle", price_ref: "pri_01" });
-    expect(call?.headers["x-quotify-tenant"]).toBeUndefined();
+    expect(call?.headers["x-payrudder-tenant"]).toBeUndefined();
   });
 
   test("ending a prepaid subscription can credit the unused part", async ({ page }) => {

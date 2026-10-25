@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/testkit"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 )
 
 // The contract every S3-compatible backend must meet; it runs against MinIO with path-style addressing, the way Compose

@@ -3,8 +3,8 @@
 package einvoice
 
 import (
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/einvoice"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
 )
 
 // Placeholders a sandbox document may use for data the sandbox tenant never entered, so the mock can accept it. Live documents never get them, except the

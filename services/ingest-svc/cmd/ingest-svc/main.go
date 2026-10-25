@@ -19,22 +19,22 @@ import (
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/outbox"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/ingest"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/lookup"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/maintenance"
-	"github.com/0furkancolak/quotify/services/ingest-svc/migrations"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/ingest"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/lookup"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/maintenance"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/migrations"
 )
 
 //go:embed config.default.yaml
@@ -42,29 +42,29 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	GRPCAddr        string   `env:"QUOTIFY_GRPC_ADDR"`
-	PGAppDSN        string   `env:"QUOTIFY_PG_APP_DSN,required"`
-	PGSystemDSN     string   `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN   string   `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart  bool     `env:"QUOTIFY_MIGRATE_ON_START"`
-	PlansAddr       string   `env:"QUOTIFY_PLANS_ADDR"`
-	KafkaBrokers    []string `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	RelayWorkers    int      `env:"QUOTIFY_RELAY_WORKERS"`
-	RelayBatchSize  int      `env:"QUOTIFY_RELAY_BATCH_SIZE"`
-	MaxOutboxDepth  int64    `env:"QUOTIFY_MAX_OUTBOX_DEPTH"`
-	PartitionPeriod string   `env:"QUOTIFY_PARTITION_MAINTENANCE_INTERVAL"`
+	GRPCAddr        string   `env:"PAYRUDDER_GRPC_ADDR"`
+	PGAppDSN        string   `env:"PAYRUDDER_PG_APP_DSN,required"`
+	PGSystemDSN     string   `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
+	PGMigratorDSN   string   `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
+	MigrateOnStart  bool     `env:"PAYRUDDER_MIGRATE_ON_START"`
+	PlansAddr       string   `env:"PAYRUDDER_PLANS_ADDR"`
+	KafkaBrokers    []string `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
+	RelayWorkers    int      `env:"PAYRUDDER_RELAY_WORKERS"`
+	RelayBatchSize  int      `env:"PAYRUDDER_RELAY_BATCH_SIZE"`
+	MaxOutboxDepth  int64    `env:"PAYRUDDER_MAX_OUTBOX_DEPTH"`
+	PartitionPeriod string   `env:"PAYRUDDER_PARTITION_MAINTENANCE_INTERVAL"`
 }
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("QUOTIFY_PG_MIGRATOR_DSN is required with QUOTIFY_MIGRATE_ON_START"))
+		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
 	}
 	if c.RelayWorkers < 1 || c.RelayBatchSize < 1 {
-		errs = append(errs, errors.New("QUOTIFY_RELAY_WORKERS and QUOTIFY_RELAY_BATCH_SIZE must be ≥ 1"))
+		errs = append(errs, errors.New("PAYRUDDER_RELAY_WORKERS and PAYRUDDER_RELAY_BATCH_SIZE must be ≥ 1"))
 	}
 	if _, err := time.ParseDuration(c.PartitionPeriod); err != nil {
-		errs = append(errs, fmt.Errorf("QUOTIFY_PARTITION_MAINTENANCE_INTERVAL: %w", err))
+		errs = append(errs, fmt.Errorf("PAYRUDDER_PARTITION_MAINTENANCE_INTERVAL: %w", err))
 	}
 	return errors.Join(errs...)
 }
@@ -109,7 +109,7 @@ func run() error {
 		}
 	}
 	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
 		return nil
 	}
 	appPool, err := pgxx.NewPool(ctx, cfg.PGAppDSN)

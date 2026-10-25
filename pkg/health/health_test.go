@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/health"
 )
 
 func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
