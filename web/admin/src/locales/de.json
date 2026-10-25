@@ -1410,6 +1410,105 @@
       }
     }
   },
+  "partner": {
+    "title": "Partnerportal",
+    "intro": "Die Verkäufer, deren Programm Sie als Partner angehören: Ihre Links, was Sie verdient haben und was Ihnen ausgezahlt wurde.",
+    "verifyHint": "Bestätigen Sie Ihre E-Mail-Adresse, um die Partnereinträge zu sehen, die Verkäufer für sie angelegt haben.",
+    "verifyResend": "E-Mail erneut senden",
+    "verifySent": "E-Mail gesendet",
+    "empty": {
+      "title": "Sie sind noch Partner keines Verkäufers",
+      "body": "Bitten Sie einen Verkäufer, Sie mit dieser E-Mail-Adresse als Partner anzulegen, oder öffnen Sie den Bewerbungslink, den Sie von einem Verkäufer erhalten haben. Einträge für Ihre bestätigte E-Mail-Adresse erscheinen hier von selbst."
+    },
+    "code": "Code",
+    "environment": {
+      "sandbox": "Sandbox",
+      "live": "Live"
+    },
+    "status": {
+      "pending": "Wartet auf Freigabe",
+      "active": "Aktiv",
+      "suspended": "Gesperrt"
+    },
+    "link": "Ihr Empfehlungslink",
+    "copyLink": "Link kopieren",
+    "open": "Öffnen",
+    "back": "Zurück zum Partnerportal",
+    "banner": {
+      "pending": "Ihre Bewerbung wartet auf die Freigabe des Verkäufers. Ihr Link verdient, sobald Sie freigegeben sind; was Sie unten sehen, gehört schon Ihnen.",
+      "suspended": "Der Verkäufer hat Sie gesperrt. Neue Kunden werden Ihnen nicht zugerechnet und es wird nichts Neues verdient. Bereits Freigegebenes bleibt Ihres; fragen Sie den Verkäufer.",
+      "sandbox": "Dies ist eine Sandbox: Der Verkäufer testet. Alles hier ist Spielgeld und es wird nichts wirklich gezahlt."
+    },
+    "terms": {
+      "title": "Die Bedingungen des Verkäufers",
+      "percent": "Sie verdienen {pct} % des Nettobetrags vor Steuern jeder Rechnung, die ein von Ihnen geworbener Kunde bezahlt.",
+      "fixed": "Sie verdienen {amount} für jede Rechnung, die ein von Ihnen geworbener Kunde bezahlt.",
+      "firstInvoices": "Verdient auf die ersten {n} Rechnungen jedes Kunden.",
+      "months": "Verdient in den ersten {n} Monaten jedes Kunden.",
+      "lifetime": "Verdient, solange der Kunde weiter zahlt.",
+      "window": "Ein Kunde zählt {days} Tage nach dem Klick auf Ihren Link als Ihr Kunde.",
+      "hold": "Eine Provision wartet {days} Tage, die Rückgabefrist, bevor sie ausgezahlt werden kann.",
+      "minPayout": "Der Verkäufer zahlt ab {amount} aus.",
+      "noMinimum": "Der Verkäufer legt keine Mindestauszahlung fest."
+    },
+    "stats": {
+      "clicks": "Link-Klicks",
+      "referrals": "Von Ihnen geworbene Kunden",
+      "paying": "Zahlende Kunden"
+    },
+    "earned": {
+      "title": "In diesem Zeitraum verdient",
+      "none": "In diesem Zeitraum nichts verdient.",
+      "takenBack": "{amount} zurückgenommen",
+      "note": "Je Währung, nie addiert. Die Zahlen gelten für den gewählten Zeitraum; die Guthaben unten für jetzt."
+    },
+    "balances": {
+      "title": "Ihr Guthaben",
+      "none": "Sie haben noch nichts verdient.",
+      "pending": "Ausstehend",
+      "pendingHint": "Wartet die Rückgabefrist ab, bevor sie ausgezahlt werden kann",
+      "available": "Auszahlbar",
+      "paid": "An Sie ausgezahlt",
+      "takenBack": "Zurückgenommen"
+    },
+    "tabsLabel": "Partnerbereiche",
+    "tabs": {
+      "referrals": "Empfehlungen",
+      "commissions": "Provisionen",
+      "payouts": "Auszahlungen",
+      "settings": "Einstellungen"
+    },
+    "referrals": {
+      "hint": "Die E-Mail-Adressen Ihrer Kunden sind maskiert. Alles Weitere über sie behält der Verkäufer.",
+      "empty": "Sie haben noch keinen Kunden geworben.",
+      "customer": "Kunde",
+      "source": "Quelle",
+      "time": "Zugeordnet"
+    },
+    "commissions": {
+      "hint": "Eine Erstattung nimmt eine Provision anteilig zurück. Eine bereits ausgezahlte wird mit Ihrer nächsten Auszahlung durch eine negative Zeile verrechnet.",
+      "empty": "Noch keine Provisionen.",
+      "payableFrom": "Auszahlbar ab {date}"
+    },
+    "payouts": {
+      "empty": "Ihnen wurde noch nichts ausgezahlt.",
+      "paidOn": "Bezahlt am"
+    },
+    "settings": {
+      "name": "Ihr Name",
+      "detailsHint": "Was der Verkäufer braucht, um Sie zu bezahlen, zum Beispiel Ihre IBAN und der Kontoinhaber.",
+      "saved": "Gespeichert."
+    },
+    "apply": {
+      "title": "Partner werden",
+      "missing": "Diese Seite braucht den Link zum Programm eines Verkäufers. Öffnen Sie den Bewerbungslink, den Sie vom Verkäufer erhalten haben.",
+      "submit": "Bewerben",
+      "pendingTitle": "Bewerbung gesendet",
+      "pendingBody": "Der Verkäufer muss sie freigeben. Ihren Link und Ihre Zahlen sehen Sie schon jetzt.",
+      "activeTitle": "Sie sind Partner",
+      "activeBody": "Der Verkäufer gibt Bewerbungen automatisch frei. Ihr Link ist bereit."
+    }
+  },
   "einvoice": {
     "title": "E-Rechnung",
     "confirmCancel": "Dieses rechtsgültige E-Dokument stornieren? Das lässt sich nicht rückgängig machen.",
@@ -2881,7 +2980,8 @@
       "myApps": "Meine Apps",
       "affiliates": "Partner",
       "goLive": "Live schalten",
-      "sandbox": "Sandbox-Werkzeuge"
+      "sandbox": "Sandbox-Werkzeuge",
+      "partner": "Partnerportal"
     }
   },
   "privacy": {

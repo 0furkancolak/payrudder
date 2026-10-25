@@ -51,6 +51,8 @@ export interface ShellContext {
   env?: Environment;
   /** Whether the server says this person is a platform operator: the organisation level then has a door to the operator console. */
   operator?: boolean;
+  /** Whether the person is a partner of a seller (a membership with the role affiliate): the organisation level then has the partner portal. */
+  partner?: boolean;
 }
 
 export interface NavItem {
@@ -123,6 +125,7 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
           items: [
             item("overview", "/app", LayoutGrid, exact("/app")),
             ...(has.has("members") ? [item("members", "/app/members", UsersRound, under("/app/members"))] : []),
+            ...(ctx.partner ? [item("partner", "/app/partner", Handshake, under("/app/partner"))] : []),
             item("settings", "/app/settings", Settings, under("/app/settings")),
           ],
         },

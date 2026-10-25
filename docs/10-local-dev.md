@@ -15,7 +15,7 @@ The sections below describe the compose stack in full.
 
 ## Default dev seed
 
-`make dev` fills a **local** stack once with sample data, so that every screen of the product app has something to show. It runs in the background after the gateway and plans-svc answer (`payrudderctl dev` starts it; the first run on an empty database takes a few minutes because it closes a sandbox period with the real workers), prints `dev-seed:` lines, and **never fails or blocks `make dev`**: if it cannot finish (a service is still compiling, Mailpit is down) it logs a `WARNING` and tries again up to three times; then `make dev-seed` runs it by hand. `SEED=0 make dev` (or `payrudderctl dev --no-seed`) skips it.
+The seed works in the sandbox only: a new app also has a live environment (inactive, without keys), and the seed never sends data to it, never makes a key and never switches anything on (`tools/payrudderctl/devseed_live_test.go` runs the whole seed against a recording gateway and fails if it does). `make dev` fills a **local** stack once with sample data, so that every screen of the product app has something to show. It runs in the background after the gateway and plans-svc answer (`payrudderctl dev` starts it; the first run on an empty database takes a few minutes because it closes a sandbox period with the real workers), prints `dev-seed:` lines, and **never fails or blocks `make dev`**: if it cannot finish (a service is still compiling, Mailpit is down) it logs a `WARNING` and tries again up to three times; then `make dev-seed` runs it by hand. `SEED=0 make dev` (or `payrudderctl dev --no-seed`) skips it.
 
 | Who | E-mail | Password | Account | Apps (sandbox tenant is filled) |
 |---|---|---|---|---|

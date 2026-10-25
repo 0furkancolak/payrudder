@@ -13,13 +13,18 @@ import { webhookRoutes } from "@/features/webhooks/routes";
 import { dashSearch } from "@/features/dashboard/lib";
 import { lazyPage } from "@/shared/lib/lazy";
 import { isPerson } from "@/shared/lib/session";
+import { partnerRoutes } from "@/features/partner/routes";
+import { returnTo, safeNext } from "./lib";
 import { OAUTH_ERRORS } from "./lib";
 
 // The product's pages are loaded when first visited, so the public pages stay small. The deeper views reuse the console's own route factories.
 
 /** beforeLoad for the pages that need a signed-in person. */
-export function requirePerson(): void {
-  if (!isPerson.value) throw redirect({ to: "/signin" });
+export function requirePerson(ctx?: { location?: { href?: string } }): void {
+  if (isPerson.value) return;
+  // The page asked for comes back after signing in (only a path of this console, see safeNext).
+  const next = returnTo(ctx?.location?.href);
+  throw redirect({ to: "/signin", ...(next ? { search: { next } } : {}) } as never);
 }
 
 /** beforeLoad for the sign-in and sign-up pages and for "/": somebody who is signed in goes to their home. */
@@ -33,6 +38,8 @@ export function publicProductRoutes(root: AnyRoute) {
   const signUp = lazyPage(() => import("./SignUpPage.vue"));
   const validateSignIn = (s: Record<string, unknown>) => ({
     ...(s.expired === "1" ? { expired: "1" } : {}),
+    // Where to go after signing in, when the person was sent here from a page of the console.
+    ...(safeNext(s.next) ? { next: safeNext(s.next) } : {}),
     // Why a login with Google ended without a session (set by the gateway's callback): one of a fixed few, anything else is ignored.
     ...(typeof s.oauth_error === "string" && OAUTH_ERRORS.includes(s.oauth_error) ? { oauth_error: s.oauth_error } : {}),
   });
@@ -52,7 +59,7 @@ export function publicProductRoutes(root: AnyRoute) {
 
 /** Everything under /app: a person's organisation, an app's dashboard, the account settings and the deeper views of an environment. */
 export function personRoutes(parent: AnyRoute) {
-  const signedIn = createRoute({ getParentRoute: () => parent, id: "person", beforeLoad: requirePerson });
+  const signedIn = createRoute({ getParentRoute: () => parent, id: "person", beforeLoad: (ctx) => requirePerson(ctx) });
   const home = createRoute({ getParentRoute: () => signedIn, path: "/app", component: lazyPage(() => import("./OrgHome.vue")), validateSearch: dashSearch });
   const dashboard = createRoute({
     getParentRoute: () => signedIn,
@@ -82,6 +89,7 @@ export function personRoutes(parent: AnyRoute) {
     sandbox,
     members,
     settings,
+    ...partnerRoutes(signedIn),
     // One line per page, and the same page in PERSON_PAGES (app/layout/nav.ts), which is what puts it in the sidebar.
     tenant.addChildren([
       ...customerRoutes(tenant),
