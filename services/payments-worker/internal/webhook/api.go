@@ -55,7 +55,7 @@ func (s *Server) target(w http.ResponseWriter, r *http.Request) (target, bool) {
 	name := r.PathValue("provider")
 	prov, err := s.Resolver.Named(r.Context(), t, name, env)
 	if err != nil {
-		fail(w, http.StatusNotFound, "no account at "+name+" for this tenant")
+		fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+name+" for this tenant")
 		return target{}, false
 	}
 	return target{tenant: t, env: env, provider: name, prov: prov}, true
@@ -63,22 +63,22 @@ func (s *Server) target(w http.ResponseWriter, r *http.Request) (target, bool) {
 
 // unsupported answers for a provider whose adapter lacks the interface an endpoint needs.
 func unsupported(w http.ResponseWriter, provider, what string) {
-	fail(w, http.StatusNotImplemented, provider+" does not support "+what)
+	fail(w, http.StatusNotImplemented, "payments.provider.not_supported", provider+" does not support "+what)
 }
 
 // providerFail relays an error from a provider: a request it refused is the caller's to fix, anything else is a bad gateway.
 func (s *Server) providerFail(w http.ResponseWriter, r *http.Request, what string, err error) {
 	s.Log.WarnContext(r.Context(), what+" failed", "err", err)
 	if errors.Is(err, payments.ErrUnsupported) {
-		fail(w, http.StatusConflict, err.Error())
+		fail(w, http.StatusConflict, "payments.provider.not_supported", err.Error())
 		return
 	}
-	fail(w, http.StatusBadGateway, err.Error())
+	fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
 }
 
 func decodeBody(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(v); err != nil {
-		fail(w, http.StatusBadRequest, "the body must be JSON: "+err.Error())
+		fail(w, http.StatusBadRequest, "payments.request.bad_body", "the body must be JSON: "+err.Error())
 		return false
 	}
 	return true
@@ -131,7 +131,7 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
+		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return
 	}
 	var in catalogueInput
@@ -139,7 +139,7 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.PlanCode == "" {
-		fail(w, http.StatusBadRequest, "plan_code is required")
+		fail(w, http.StatusBadRequest, "payments.plan.code_required", "plan_code is required")
 		return
 	}
 	ctx := r.Context()
@@ -155,13 +155,13 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 	}
 	specs, existing, err := s.missingPrices(ctx, tg, in, pv, tenantCurrency)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	productKey := "plan:" + in.PlanCode
 	productRef, _, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "product", productKey)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	res := payments.CatalogueResult{ProductRef: productRef, Prices: map[string]string{}, Skipped: map[string]string{}}
@@ -246,7 +246,7 @@ func (s *Server) listCatalogue(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := s.Objects.List(r.Context(), tg.tenant, tg.provider, tg.env, "product", "price", "discount")
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"objects": list})
@@ -268,7 +268,7 @@ func (s *Server) ensureCustomer(w http.ResponseWriter, r *http.Request) {
 		if status == 0 {
 			s.providerFail(w, r, "ensure customer", err)
 		} else {
-			fail(w, status, err.Error())
+			fail(w, status, "payments.customer.not_ready", err.Error())
 		}
 		return
 	}
@@ -314,7 +314,7 @@ func (s *Server) portalLink(w http.ResponseWriter, r *http.Request) {
 		if status == 0 {
 			s.providerFail(w, r, "ensure customer", err)
 		} else {
-			fail(w, status, err.Error())
+			fail(w, status, "payments.customer.not_ready", err.Error())
 		}
 		return
 	}
@@ -340,7 +340,7 @@ func enumWord(v, prefix string) string { return strings.TrimPrefix(strings.ToLow
 // providerSubscription loads a subscription Quotify mirrors and checks the provider runs it.
 func (s *Server) providerSubscription(w http.ResponseWriter, r *http.Request, tg target) (*plansv1.Subscription, bool) {
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
+		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return nil, false
 	}
 	sub, err := s.Plans.GetSubscription(r.Context(), tg.tenant, r.PathValue("id"))
@@ -349,7 +349,7 @@ func (s *Server) providerSubscription(w http.ResponseWriter, r *http.Request, tg
 		return nil, false
 	}
 	if sub.GetOwner() != "provider" || sub.GetProvider() != tg.provider || sub.GetProviderRef() == "" {
-		fail(w, http.StatusConflict, "this subscription is not run by "+tg.provider)
+		fail(w, http.StatusConflict, "payments.subscription.wrong_provider", "this subscription is not run by "+tg.provider)
 		return nil, false
 	}
 	return sub, true
@@ -412,7 +412,7 @@ func (s *Server) previewChange(w http.ResponseWriter, r *http.Request) {
 	}
 	ch, _, iv, code, err := s.planChange(r.Context(), tg, sub, in)
 	if err != nil {
-		fail(w, code, err.Error())
+		fail(w, code, "payments.subscription.change_refused", err.Error())
 		return
 	}
 	p, err := api.PreviewChange(r.Context(), sub.GetProviderRef(), ch)
@@ -461,7 +461,7 @@ func (s *Server) applyChange(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	ch, pvID, iv, code, err := s.planChange(ctx, tg, sub, in)
 	if err != nil {
-		fail(w, code, err.Error())
+		fail(w, code, "payments.subscription.change_refused", err.Error())
 		return
 	}
 	if err := api.ApplyChange(ctx, sub.GetProviderRef(), ch); err != nil {

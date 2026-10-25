@@ -7,10 +7,42 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const expireApiKey = `-- name: ExpireApiKey :one
+UPDATE api_keys SET expires_at = LEAST(COALESCE(expires_at, $1::timestamptz), $1::timestamptz)
+WHERE id = $2 AND status = 'active'
+RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, scope, last_used_at, expires_at
+`
+
+type ExpireApiKeyParams struct {
+	ExpiresAt time.Time
+	ID        uuid.UUID
+}
+
+// The old key of a rotation keeps working until expires_at (never extended: a key that ends sooner stays at the sooner time).
+func (q *Queries) ExpireApiKey(ctx context.Context, arg ExpireApiKeyParams) (ApiKey, error) {
+	row := q.db.QueryRow(ctx, expireApiKey, arg.ExpiresAt, arg.ID)
+	var i ApiKey
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Prefix,
+		&i.KeyHash,
+		&i.Env,
+		&i.Status,
+		&i.CreatedAt,
+		&i.RevokedAt,
+		&i.Scope,
+		&i.LastUsedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
 
 const getAccount = `-- name: GetAccount :one
 SELECT id, name, created_at FROM accounts WHERE id = $1
@@ -24,7 +56,7 @@ func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error)
 }
 
 const getApiKey = `-- name: GetApiKey :one
-SELECT id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at FROM api_keys WHERE id = $1
+SELECT id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, scope, last_used_at, expires_at FROM api_keys WHERE id = $1
 `
 
 func (q *Queries) GetApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error) {
@@ -39,12 +71,15 @@ func (q *Queries) GetApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error) {
 		&i.Status,
 		&i.CreatedAt,
 		&i.RevokedAt,
+		&i.Scope,
+		&i.LastUsedAt,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
 
 const getTenant = `-- name: GetTenant :one
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on FROM tenants WHERE id = $1
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by FROM tenants WHERE id = $1
 `
 
 func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
@@ -66,6 +101,10 @@ func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
 		&i.BankTransfer,
 		&i.Legal,
 		&i.EInvoiceOn,
+		&i.Status,
+		&i.ActivatedAt,
+		&i.TermsAcceptedAt,
+		&i.TermsAcceptedBy,
 	)
 	return i, err
 }
@@ -89,9 +128,9 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 }
 
 const insertApiKey = `-- name: InsertApiKey :one
-INSERT INTO api_keys (id, tenant_id, prefix, key_hash, env, status)
-VALUES ($1, $2, $3, $4, $5, 'active')
-RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at
+INSERT INTO api_keys (id, tenant_id, prefix, key_hash, env, status, scope)
+VALUES ($1, $2, $3, $4, $5, 'active', $6)
+RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, scope, last_used_at, expires_at
 `
 
 type InsertApiKeyParams struct {
@@ -100,6 +139,7 @@ type InsertApiKeyParams struct {
 	Prefix   string
 	KeyHash  []byte
 	Env      string
+	Scope    string
 }
 
 func (q *Queries) InsertApiKey(ctx context.Context, arg InsertApiKeyParams) (ApiKey, error) {
@@ -109,6 +149,7 @@ func (q *Queries) InsertApiKey(ctx context.Context, arg InsertApiKeyParams) (Api
 		arg.Prefix,
 		arg.KeyHash,
 		arg.Env,
+		arg.Scope,
 	)
 	var i ApiKey
 	err := row.Scan(
@@ -120,6 +161,9 @@ func (q *Queries) InsertApiKey(ctx context.Context, arg InsertApiKeyParams) (Api
 		&i.Status,
 		&i.CreatedAt,
 		&i.RevokedAt,
+		&i.Scope,
+		&i.LastUsedAt,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
@@ -154,9 +198,9 @@ func (q *Queries) InsertApp(ctx context.Context, arg InsertAppParams) (App, erro
 }
 
 const insertTenant = `-- name: InsertTenant :one
-INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on
+INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period, status, activated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $10::text = 'active' THEN now() END)
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by
 `
 
 type InsertTenantParams struct {
@@ -169,6 +213,7 @@ type InsertTenantParams struct {
 	Currency    string
 	Timezone    string
 	GracePeriod pgtype.Interval
+	Status      string
 }
 
 func (q *Queries) InsertTenant(ctx context.Context, arg InsertTenantParams) (Tenant, error) {
@@ -182,6 +227,7 @@ func (q *Queries) InsertTenant(ctx context.Context, arg InsertTenantParams) (Ten
 		arg.Currency,
 		arg.Timezone,
 		arg.GracePeriod,
+		arg.Status,
 	)
 	var i Tenant
 	err := row.Scan(
@@ -200,6 +246,10 @@ func (q *Queries) InsertTenant(ctx context.Context, arg InsertTenantParams) (Ten
 		&i.BankTransfer,
 		&i.Legal,
 		&i.EInvoiceOn,
+		&i.Status,
+		&i.ActivatedAt,
+		&i.TermsAcceptedAt,
+		&i.TermsAcceptedBy,
 	)
 	return i, err
 }
@@ -235,7 +285,7 @@ func (q *Queries) ListAccountApps(ctx context.Context, accountID uuid.UUID) ([]A
 }
 
 const listAccountTenants = `-- name: ListAccountTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on FROM tenants WHERE account_id = $1 ORDER BY environment DESC
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by FROM tenants WHERE account_id = $1 ORDER BY environment DESC
 `
 
 func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) ([]Tenant, error) {
@@ -263,6 +313,10 @@ func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) (
 			&i.BankTransfer,
 			&i.Legal,
 			&i.EInvoiceOn,
+			&i.Status,
+			&i.ActivatedAt,
+			&i.TermsAcceptedAt,
+			&i.TermsAcceptedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -274,8 +328,32 @@ func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) (
 	return items, nil
 }
 
+const listTenantApiKeyPrefixes = `-- name: ListTenantApiKeyPrefixes :many
+SELECT prefix FROM api_keys WHERE tenant_id = $1
+`
+
+func (q *Queries) ListTenantApiKeyPrefixes(ctx context.Context, tenantID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listTenantApiKeyPrefixes, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var prefix string
+		if err := rows.Scan(&prefix); err != nil {
+			return nil, err
+		}
+		items = append(items, prefix)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTenants = `-- name: ListTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on FROM tenants WHERE id > $1::uuid ORDER BY id LIMIT $2::int
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by FROM tenants WHERE id > $1::uuid ORDER BY id LIMIT $2::int
 `
 
 type ListTenantsParams struct {
@@ -308,6 +386,10 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 			&i.BankTransfer,
 			&i.Legal,
 			&i.EInvoiceOn,
+			&i.Status,
+			&i.ActivatedAt,
+			&i.TermsAcceptedAt,
+			&i.TermsAcceptedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -320,20 +402,23 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 }
 
 const resolveApiKey = `-- name: ResolveApiKey :one
-SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, t.environment, t.tier, t.timezone
+SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.scope, k.expires_at, t.environment, t.status AS tenant_status, t.tier, t.timezone
 FROM api_keys k JOIN tenants t ON t.id = k.tenant_id
 WHERE k.prefix = $1
 `
 
 type ResolveApiKeyRow struct {
-	ID          uuid.UUID
-	TenantID    uuid.UUID
-	KeyHash     []byte
-	Status      string
-	Env         string
-	Environment string
-	Tier        string
-	Timezone    string
+	ID           uuid.UUID
+	TenantID     uuid.UUID
+	KeyHash      []byte
+	Status       string
+	Env          string
+	Scope        string
+	ExpiresAt    *time.Time
+	Environment  string
+	TenantStatus string
+	Tier         string
+	Timezone     string
 }
 
 func (q *Queries) ResolveApiKey(ctx context.Context, prefix string) (ResolveApiKeyRow, error) {
@@ -345,7 +430,10 @@ func (q *Queries) ResolveApiKey(ctx context.Context, prefix string) (ResolveApiK
 		&i.KeyHash,
 		&i.Status,
 		&i.Env,
+		&i.Scope,
+		&i.ExpiresAt,
 		&i.Environment,
+		&i.TenantStatus,
 		&i.Tier,
 		&i.Timezone,
 	)
@@ -355,7 +443,7 @@ func (q *Queries) ResolveApiKey(ctx context.Context, prefix string) (ResolveApiK
 const revokeApiKey = `-- name: RevokeApiKey :one
 UPDATE api_keys SET status = 'revoked', revoked_at = COALESCE(revoked_at, now())
 WHERE id = $1
-RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at
+RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, scope, last_used_at, expires_at
 `
 
 func (q *Queries) RevokeApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error) {
@@ -370,8 +458,59 @@ func (q *Queries) RevokeApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error
 		&i.Status,
 		&i.CreatedAt,
 		&i.RevokedAt,
+		&i.Scope,
+		&i.LastUsedAt,
+		&i.ExpiresAt,
 	)
 	return i, err
+}
+
+const setTenantStatus = `-- name: SetTenantStatus :one
+UPDATE tenants SET status = $1::text, activated_at = CASE WHEN $1::text = 'active' THEN COALESCE(activated_at, now()) ELSE activated_at END
+WHERE id = $2
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by
+`
+
+type SetTenantStatusParams struct {
+	Status string
+	ID     uuid.UUID
+}
+
+func (q *Queries) SetTenantStatus(ctx context.Context, arg SetTenantStatusParams) (Tenant, error) {
+	row := q.db.QueryRow(ctx, setTenantStatus, arg.Status, arg.ID)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Environment,
+		&i.Name,
+		&i.Tier,
+		&i.Currency,
+		&i.Timezone,
+		&i.GracePeriod,
+		&i.CreatedAt,
+		&i.InvoiceLogoAssetID,
+		&i.AppID,
+		&i.Address,
+		&i.BankTransfer,
+		&i.Legal,
+		&i.EInvoiceOn,
+		&i.Status,
+		&i.ActivatedAt,
+		&i.TermsAcceptedAt,
+		&i.TermsAcceptedBy,
+	)
+	return i, err
+}
+
+const touchApiKey = `-- name: TouchApiKey :exec
+UPDATE api_keys SET last_used_at = now() WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')
+`
+
+// A use is written at most every few minutes (the gateway throttles), and never moves the time back.
+func (q *Queries) TouchApiKey(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, touchApiKey, id)
+	return err
 }
 
 const updateTenantSettings = `-- name: UpdateTenantSettings :one
@@ -384,7 +523,7 @@ SET grace_period = COALESCE($1::interval, grace_period),
     bank_transfer = CASE WHEN $6::bool THEN '{}'::jsonb ELSE COALESCE($7::jsonb, bank_transfer) END,
     invoice_logo_asset_id = CASE WHEN $8::bool THEN NULL ELSE COALESCE($9::uuid, invoice_logo_asset_id) END
 WHERE id = $10
-RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by
 `
 
 type UpdateTenantSettingsParams struct {
@@ -430,6 +569,10 @@ func (q *Queries) UpdateTenantSettings(ctx context.Context, arg UpdateTenantSett
 		&i.BankTransfer,
 		&i.Legal,
 		&i.EInvoiceOn,
+		&i.Status,
+		&i.ActivatedAt,
+		&i.TermsAcceptedAt,
+		&i.TermsAcceptedBy,
 	)
 	return i, err
 }

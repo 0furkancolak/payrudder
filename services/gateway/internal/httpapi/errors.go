@@ -64,13 +64,13 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	var tooLarge errTooLarge
 	if errors.As(err, &tooLarge) {
 		writeJSONValue(w, http.StatusRequestEntityTooLarge, ErrorBody{Error: ErrorInfo{
-			Code: "REQUEST_TOO_LARGE", Message: tooLarge.Error(), RequestID: requestID(r.Context())}})
+			Code: "REQUEST_TOO_LARGE", Key: errkey.Key("gateway.request.too_large"), Message: tooLarge.Error(), RequestID: requestID(r.Context())}})
 		return
 	}
 	var tooMany errTooManyEvents
 	if errors.As(err, &tooMany) {
 		writeJSONValue(w, http.StatusRequestEntityTooLarge, ErrorBody{Error: ErrorInfo{
-			Code: "REQUEST_TOO_LARGE", Message: tooMany.Error(), RequestID: requestID(r.Context())}})
+			Code: "REQUEST_TOO_LARGE", Key: errkey.Key("gateway.request.too_large"), Message: tooMany.Error(), RequestID: requestID(r.Context())}})
 		return
 	}
 	st := status.Convert(err)
@@ -117,9 +117,10 @@ func writeJSONValue(w http.ResponseWriter, code int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// invalid builds an InvalidArgument status with one field violation.
+// invalid builds an InvalidArgument status with one field violation and the key gateway.request.invalid (the console puts the field and the
+// description into the translated text).
 func invalid(field, description string) error {
-	st := status.New(codes.InvalidArgument, field+": "+description)
+	st := status.Convert(errkey.New(codes.InvalidArgument, "gateway.request.invalid", field+": "+description))
 	if d, err := st.WithDetails(&errdetails.BadRequest{FieldViolations: []*errdetails.BadRequest_FieldViolation{
 		{Field: field, Description: description}}}); err == nil {
 		st = d

@@ -174,6 +174,55 @@ func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 		}
 	})
 
+	t.Run("go-live: a working account connected in live mode, and nothing else, makes a tenant ready", func(t *testing.T) {
+		ready := func(tn uuid.UUID) bool {
+			t.Helper()
+			code, body := do("GET", "/admin/tenants/"+tn.String()+"/go-live", "internal", "")
+			if code != 200 {
+				t.Fatalf("go-live: %d %s", code, body)
+			}
+			var out struct {
+				Ready     bool     `json:"ready"`
+				Providers []string `json:"providers"`
+			}
+			if err := json.Unmarshal([]byte(body), &out); err != nil {
+				t.Fatal(err)
+			}
+			if out.Ready != (len(out.Providers) > 0) {
+				t.Fatalf("ready %v with providers %v", out.Ready, out.Providers)
+			}
+			return out.Ready
+		}
+		if code, _ := do("GET", "/admin/tenants/"+tenant.String()+"/go-live", "", ""); code != 401 {
+			t.Errorf("without the internal token: %d", code)
+		}
+		if !ready(tenant) {
+			t.Error("a tenant with a working live account is not ready")
+		}
+		if ready(uuid.New()) {
+			t.Error("a tenant with no account is ready")
+		}
+		sandboxOnly := uuid.New()
+		if code, body := do("PUT", "/admin/tenants/"+sandboxOnly.String()+"/provider-accounts/iyzico?environment=sandbox", "internal", settings); code != 200 {
+			t.Fatalf("sandbox account: %d %s", code, body)
+		}
+		if ready(sandboxOnly) {
+			t.Error("a sandbox-mode account made a tenant ready for live")
+		}
+		// A live record that no longer opens (here: sealed for another tenant) is not a working provider.
+		var raw []byte
+		if err := pool.QueryRow(ctx, `SELECT settings_enc FROM provider_accounts WHERE tenant_id = $1 AND environment = 'live'`, tenant).Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		broken := uuid.New()
+		if _, err := pool.Exec(ctx, `INSERT INTO provider_accounts (tenant_id, provider, environment, settings_enc) VALUES ($1,'iyzico','live',$2)`, broken, raw); err != nil {
+			t.Fatal(err)
+		}
+		if ready(broken) {
+			t.Error("a live account whose settings do not open made a tenant ready")
+		}
+	})
+
 	invoice, command := uuid.New(), uuid.New()
 	key := invoice.String() + ":charge:0"
 

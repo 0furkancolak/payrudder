@@ -1202,7 +1202,8 @@
         "fully_credited": "Diese Rechnung wurde bereits vollständig gutgeschrieben.",
         "not_paid": "Nur eine bezahlte Rechnung kann gutgeschrieben werden.",
         "nothing_to_refund": "Für diese Gutschrift gibt es nichts auf die Karte zurückzuerstatten.",
-        "refund_not_failed": "Nur eine Gutschrift mit fehlgeschlagener Rückerstattung kann erneut versucht werden."
+        "refund_not_failed": "Nur eine Gutschrift mit fehlgeschlagener Rückerstattung kann erneut versucht werden.",
+        "bad_id": "Die Gutschrifts-ID ist keine gültige ID."
       },
       "dunning": {
         "bad_delay": "Jede Wiederholungsverzögerung muss zwischen 1 und 720 Stunden liegen.",
@@ -1210,7 +1211,8 @@
       },
       "invoice": {
         "not_found": "Die Rechnung wurde nicht gefunden.",
-        "pdf_not_ready": "Das PDF der Rechnung wurde noch nicht erstellt. Versuchen Sie es gleich noch einmal."
+        "pdf_not_ready": "Das PDF der Rechnung wurde noch nicht erstellt. Versuchen Sie es gleich noch einmal.",
+        "bad_id": "Die Rechnungs-ID ist keine gültige ID."
       },
       "invoice_link": {
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
@@ -1286,6 +1288,16 @@
         "range_too_long": "Der Zeitraum ist zu lang: höchstens fünf Jahre, eine Tagesreihe höchstens 366 Tage.",
         "reason_required": "Geben Sie zum Stornieren einer Ausgabe eine Begründung von höchstens 200 Zeichen an.",
         "unknown_currency": "Die Währung wird nicht unterstützt."
+      },
+      "einvoice": {
+        "bad_id": "Die ID der E-Rechnung oder des Kontos ist keine gültige ID."
+      },
+      "tenant": {
+        "bad_id": "Die Konto-ID ist keine gültige ID."
+      },
+      "rerating": {
+        "bad_job_id": "Die ID des Neubewertungsauftrags ist keine gültige ID.",
+        "bad_plan_version_id": "Die ID der Planversion ist keine gültige ID."
       }
     },
     "coupon": {
@@ -1312,14 +1324,35 @@
       },
       "subscription": {
         "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut.",
-        "provider_currency": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen. Wählen Sie einen anderen Anbieter oder eine andere Währung."
+        "provider_currency": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen. Wählen Sie einen anderen Anbieter oder eine andere Währung.",
+        "period_overlap": "Dieser Kunde hat bereits ein Abonnement, das sich mit diesem Zeitraum überschneidet."
       },
       "webhook": {
         "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
-        "too_many_endpoints": "Die Höchstzahl an Webhook-Endpunkten ist erreicht. Löschen Sie zuerst einen."
+        "too_many_endpoints": "Die Höchstzahl an Webhook-Endpunkten ist erreicht. Löschen Sie zuerst einen.",
+        "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine Webhook-Endpunkte haben. Schließen Sie zuerst die Go-live-Checkliste ab."
       },
       "customer": {
         "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig."
+      },
+      "common": {
+        "not_found": "Der Eintrag wurde nicht gefunden.",
+        "already_exists": "Der Eintrag existiert bereits.",
+        "broken_reference": "Das verweist auf etwas, das nicht existiert.",
+        "forbidden": "Dazu fehlt Ihnen die Berechtigung."
+      },
+      "tenant": {
+        "settings_immutable": "Währung, Zeitzone und Umgebung eines Kontos lassen sich nicht ändern.",
+        "bad_status": "Der Status muss active oder suspended sein.",
+        "bad_transition": "Diese Statusänderung ist für diese Umgebung nicht möglich.",
+        "reason_required": "Für die Aktivierung ohne Checkliste ist eine Begründung nötig."
+      },
+      "request": {
+        "invalid": "{field} ist ungültig: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "Der Bereich muss full, ingest oder read sein.",
+        "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine API-Schlüssel haben. Schließen Sie zuerst die Go-live-Checkliste ab."
       }
     },
     "common": {
@@ -1334,7 +1367,8 @@
       "timeout": "Die Anfrage hat zu lange gedauert. Versuchen Sie es erneut.",
       "conflict": "Die Daten haben sich während Ihrer Arbeit geändert. Laden Sie neu und versuchen Sie es erneut.",
       "not_implemented": "Das wird noch nicht unterstützt.",
-      "internal": "Auf unserer Seite ist etwas schiefgelaufen. Versuchen Sie es erneut; bleibt es dabei, suchen Sie mit der Anfrage-ID in den Logs."
+      "internal": "Auf unserer Seite ist etwas schiefgelaufen. Versuchen Sie es erneut; bleibt es dabei, suchen Sie mit der Anfrage-ID in den Logs.",
+      "canceled": "Die Anfrage wurde abgebrochen."
     },
     "payments": {
       "transfer": {
@@ -1349,7 +1383,79 @@
         "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
         "nothing_pending": "Es gibt keine ausstehende Überweisung, die abgelehnt werden könnte.",
         "bad_outcome": "Das Ergebnis muss abgelehnt oder abgelaufen sein.",
-        "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal."
+        "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal.",
+        "bad_body": "Der Anfragetext konnte nicht gelesen werden: Senden Sie gültiges JSON, das nicht zu groß ist.",
+        "bad_invoice_id": "Die Rechnungs-ID ist keine gültige ID.",
+        "bad_tenant": "Die Konto-ID ist keine gültige ID.",
+        "invoice_not_found": "Diese Rechnung wurde nicht gefunden."
+      },
+      "account": {
+        "bad_settings": "Diese Anbietereinstellungen sind ungültig. Prüfen Sie die Zugangsdaten und die Pflichtfelder.",
+        "not_found": "Für dieses Konto ist dieser Zahlungsanbieter nicht eingerichtet.",
+        "sync_failed": "Das Anbieterkonto wurde geändert, die Bankdaten konnten aber nicht an die Rechnungen weitergegeben werden. Senden Sie die Anfrage erneut."
+      },
+      "billing": {
+        "not_configured": "Die Abrechnung ist in dieser Installation nicht eingerichtet."
+      },
+      "plans": {
+        "not_configured": "Pläne sind in dieser Installation nicht eingerichtet.",
+        "failed": "Der Pläne-Dienst konnte dies nicht abschließen. Versuchen Sie es gleich erneut."
+      },
+      "checkout": {
+        "currency_unsupported": "Dieser Anbieter kann in dieser Währung keine Checkout-Zahlung annehmen.",
+        "fields_required": "Anbieter und Preisreferenz sind erforderlich.",
+        "unsupported": "Dieser Anbieter hat keine gehostete Checkout-Seite."
+      },
+      "customer": {
+        "not_ready": "Der Kunde konnte beim Anbieter nicht vorbereitet werden."
+      },
+      "invoice": {
+        "amount_required": "Betrag und Währung sind erforderlich.",
+        "bad_id": "Die Rechnungs-ID ist keine gültige ID.",
+        "bad_ids": "Die Rechnungs-IDs sind keine gültigen IDs.",
+        "no_instructions": "Dieser Anbieter hat für diese Währung keine Zahlungsanweisungen.",
+        "not_live": "Nur Live-Rechnungen werden über einen Anbieter bezahlt.",
+        "payment_in_progress": "Für diese Rechnung wird gerade eine Zahlung gestartet. Versuchen Sie es gleich erneut.",
+        "return_url_required": "Für eine Checkout-Zahlung ist eine Rücksprungadresse erforderlich.",
+        "unknown_method": "Diese Zahlungsmethode ist nicht bekannt."
+      },
+      "ledger": {
+        "bad_limit": "Das Limit muss zwischen 1 und 1000 liegen.",
+        "too_many_invoices": "Es wurden zu viele Rechnungen auf einmal angefragt."
+      },
+      "migration": {
+        "fields_required": "Abonnement und Zielanbieter sind erforderlich.",
+        "price_ref_required": "Dieser Anbieter führt Abonnements selbst aus: Die Preisreferenz seines Katalogs ist erforderlich."
+      },
+      "plan": {
+        "code_required": "Der Plancode ist erforderlich."
+      },
+      "provider": {
+        "failed": "Der Zahlungsanbieter konnte dies nicht abschließen. Versuchen Sie es gleich erneut.",
+        "not_supported": "Dieser Zahlungsanbieter unterstützt das nicht.",
+        "unknown": "Dieser Zahlungsanbieter ist nicht bekannt."
+      },
+      "reconcile": {
+        "bad_period": "Der Zeitraum muss wie 2026-10 aussehen."
+      },
+      "request": {
+        "bad_body": "Der Anfragetext muss gültiges JSON sein.",
+        "bad_environment": "Die Umgebung muss sandbox oder live sein.",
+        "bad_tenant": "Die Konto-ID ist keine gültige ID.",
+        "too_large": "Die Anfrage ist zu groß."
+      },
+      "subscription": {
+        "cannot_cancel": "Dieser Anbieter kann ein Abonnement von hier aus nicht kündigen.",
+        "change_refused": "Diese Abonnementänderung ist nicht möglich.",
+        "period_end_unknown": "Das Ende des bezahlten Zeitraums beim Anbieter ist noch nicht bekannt: Es ist noch keine Benachrichtigung eingegangen.",
+        "wrong_provider": "Dieses Abonnement wird nicht von diesem Anbieter geführt."
+      },
+      "webhook": {
+        "malformed": "Die Benachrichtigung konnte nicht gelesen werden.",
+        "not_found": "Diese Benachrichtigungsadresse gibt es nicht.",
+        "not_recorded": "Die Benachrichtigung konnte nicht gespeichert werden. Senden Sie sie erneut.",
+        "try_again": "Die Benachrichtigung konnte noch nicht bestätigt werden. Senden Sie sie erneut.",
+        "unverified": "Es konnte nicht bestätigt werden, dass die Benachrichtigung vom Anbieter stammt."
       }
     },
     "einvoice": {
@@ -1391,7 +1497,11 @@
       "api_key": {
         "bad_environment": "Diese App hat keine solche Umgebung.",
         "not_found": "Dieser API-Schlüssel existiert nicht.",
-        "quota": "Eine Umgebung kann höchstens 10 aktive API-Schlüssel haben. Widerrufen Sie zuerst einen."
+        "quota": "Eine Umgebung kann höchstens 10 aktive API-Schlüssel haben. Widerrufen Sie zuerst einen.",
+        "already_rotating": "Dieser Schlüssel wurde bereits ersetzt und läuft bald ab. Widerrufen Sie ihn oder warten Sie, bis er endet.",
+        "bad_overlap": "Die Überlappung muss zwischen 0 Stunden und 7 Tagen liegen.",
+        "bad_scope": "Der Bereich muss full, ingest oder read sein.",
+        "not_active": "Dieser API-Schlüssel wurde widerrufen."
       },
       "app": {
         "not_found": "Diese App existiert nicht oder gehört Ihnen nicht.",
@@ -1405,7 +1515,9 @@
         "invalid": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
       },
       "tenant": {
-        "not_found": "Diese Umgebung existiert nicht oder gehört Ihnen nicht."
+        "not_found": "Diese Umgebung existiert nicht oder gehört Ihnen nicht.",
+        "bad_metadata": "Das Konto in der Anfrage ist ungültig.",
+        "metadata_missing": "Die Anfrage gibt nicht an, für welches Konto sie gilt."
       },
       "token": {
         "invalid": "Dieser Link ist ungültig, abgelaufen oder wurde schon benutzt. Fordern Sie einen neuen an."
@@ -1439,12 +1551,126 @@
       },
       "operator": {
         "forbidden": "Dieser Bereich ist Plattformbetreibern vorbehalten."
+      },
+      "go_live": {
+        "incomplete": "Die Go-live-Checkliste ist noch nicht vollständig.",
+        "no_live": "Diese Installation hat keine Live-Umgebung.",
+        "owner_only": "Nur ein Inhaber des Kontos kann die Live-Umgebung aktivieren.",
+        "suspended": "Die Live-Umgebung ist gesperrt. Wenden Sie sich an den Support."
       }
     },
     "gateway": {
       "dashboard": {
         "bad_period": "Dieser Zeitraum ist ungültig. Wählen Sie 7, 30 oder 90 Tage, dieses Jahr oder zwei Tage, deren erster nicht nach dem letzten liegt.",
         "range_too_long": "Ein Zeitraum darf höchstens zwei Jahre lang sein."
+      },
+      "request": {
+        "invalid": "{field} ist ungültig: {detail}",
+        "too_large": "Die Anfrage ist zu groß."
+      },
+      "auth": {
+        "scope_denied": "Der Bereich dieses API-Schlüssels erlaubt diese Anfrage nicht. Verwenden Sie einen Schlüssel mit größerem Bereich.",
+        "tenant_not_active": "Diese Umgebung ist gesperrt oder noch nicht aktiv. Schließen Sie die Go-live-Checkliste ab oder wenden Sie sich an den Support."
+      }
+    },
+    "env": {
+      "request": {
+        "missing": "Diese Anfrage nennt keine Umgebung und wurde deshalb abgelehnt.",
+        "mismatch": "Diese Anfrage gehört zu einer anderen Umgebung als der, an die sie gesendet wurde, und wurde deshalb abgelehnt."
+      }
+    },
+    "aggregator": {
+      "customer": {
+        "bad_id": "Die Kunden-ID ist keine gültige ID."
+      },
+      "period": {
+        "bad_id": "Der Zeitraum muss wie 2026-11 aussehen.",
+        "cannot_compute": "Die Einstellungen dieses Zeitraums lassen sich nicht berechnen. Prüfen Sie den Zeitraum und die Zeitzone des Kontos.",
+        "frozen": "Dieser Zeitraum ist eingefroren oder schließt ohnehin innerhalb von fünf Sekunden und kann daher nicht vorzeitig geschlossen werden.",
+        "not_sandbox": "Zeiträume lassen sich nur in einem Sandbox-Konto vorzeitig schließen."
+      },
+      "usage": {
+        "bad_batch_size": "Fragen Sie jeweils zwischen 1 und der maximalen Anzahl an Nutzungsschlüsseln ab."
+      },
+      "meter": {
+        "not_found": "Dieser Zähler wurde nicht gefunden."
+      },
+      "replay": {
+        "bad_job_id": "Die ID des Wiederholungsauftrags ist keine gültige ID.",
+        "bad_state": "Der Wiederholungsauftrag befindet sich nicht in einem Zustand, in dem das möglich ist.",
+        "bad_tenant_id": "Die Konto-ID ist keine gültige ID.",
+        "invalid": "Diese Wiederholungsanfrage ist ungültig.",
+        "not_found": "Dieser Wiederholungsauftrag wurde nicht gefunden."
+      },
+      "store": {
+        "unavailable": "Nutzungsdaten sind gerade nicht verfügbar. Versuchen Sie es gleich erneut."
+      }
+    },
+    "analytics": {
+      "customer": {
+        "bad_id": "Die Kunden-ID ist keine gültige ID."
+      },
+      "tenant": {
+        "bad_id": "Die Konto-ID ist keine gültige ID.",
+        "unknown": "Dieses Konto ist den Analysen nicht bekannt."
+      },
+      "granularity": {
+        "unknown": "Diese Granularität wird nicht unterstützt. Verwenden Sie Stunde oder Tag."
+      },
+      "query": {
+        "exact_too_long": "Exakte Abfragen decken höchstens einen Tag ab. Verwenden Sie für längere Zeiträume die geschätzte Reihe.",
+        "invalid": "Diese Abfrage ist ungültig. Prüfen Sie Zähler, Zeitraum und Filter."
+      },
+      "range": {
+        "daily_too_long": "Eine Tagesreihe deckt höchstens 400 Tage ab.",
+        "hourly_too_long": "Eine Stundenreihe deckt höchstens 31 Tage ab.",
+        "required": "Anfang und Ende des Zeitraums sind beide erforderlich."
+      },
+      "store": {
+        "unavailable": "Analysen sind gerade nicht verfügbar. Versuchen Sie es gleich erneut."
+      }
+    },
+    "limits": {
+      "customer": {
+        "bad_id": "Die Kunden-ID ist keine gültige ID."
+      },
+      "meter": {
+        "code_required": "Der Zählercode ist erforderlich.",
+        "not_found": "Dieser Zähler wurde nicht gefunden.",
+        "unavailable": "Der Zähler konnte gerade nicht abgefragt werden. Versuchen Sie es gleich erneut."
+      },
+      "period": {
+        "bad_id": "Der Zeitraum muss wie 2026-11 aussehen."
+      },
+      "counter": {
+        "unavailable": "Nutzungszähler sind gerade nicht verfügbar. Versuchen Sie es gleich erneut."
+      },
+      "reconcile": {
+        "not_configured": "Der Abgleich ist in dieser Installation nicht eingerichtet.",
+        "unavailable": "Der Abgleich konnte gerade nicht laufen. Versuchen Sie es gleich erneut."
+      }
+    },
+    "ingest": {
+      "backlog": {
+        "full": "Die Aufnahme ist gerade überlastet. Nichts wurde angenommen; versuchen Sie es später erneut."
+      },
+      "batch": {
+        "bad_size": "Eine Anfrage muss zwischen 1 und 500 Ereignisse enthalten."
+      },
+      "db": {
+        "conflict": "Die Daten haben sich gleichzeitig geändert. Nichts wurde angenommen; ein erneuter Versuch ist sicher.",
+        "slow": "Die Datenbank war zu langsam. Nichts wurde angenommen; ein erneuter Versuch ist sicher.",
+        "timeout": "Die Aufnahme ist abgelaufen. Nichts wurde angenommen; ein erneuter Versuch ist sicher.",
+        "unavailable": "Die Datenbank ist nicht verfügbar. Nichts wurde angenommen; ein erneuter Versuch ist sicher."
+      },
+      "outbox": {
+        "unavailable": "Die Aufnahme kann Ereignisse gerade nicht weitergeben. Versuchen Sie es gleich erneut."
+      },
+      "plans": {
+        "unavailable": "Der Pläne-Dienst ist nicht verfügbar, daher lassen sich Ereignisse nicht prüfen. Versuchen Sie es gleich erneut."
+      },
+      "tenant": {
+        "bad_timezone": "Die Zeitzone dieses Kontos ist nicht verwendbar. Prüfen Sie sie in den Kontoeinstellungen."
       }
     }
   },

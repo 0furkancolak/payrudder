@@ -182,7 +182,7 @@ func (d Deps) checkOpen(ctx context.Context, tenant, invoice uuid.UUID) error {
 	case err != nil:
 		return errkey.New(codes.Unavailable, "payments.transfer.unavailable", "billing-svc could not be asked about the invoice; try again")
 	case !found:
-		return status.Error(codes.NotFound, "no such invoice")
+		return errkey.New(codes.NotFound, "payments.transfer.invoice_not_found", "no such invoice")
 	case st == "open":
 		return nil
 	case st == "uncollectible":

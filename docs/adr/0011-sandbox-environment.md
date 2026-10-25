@@ -45,6 +45,10 @@ risk of real charges.
 | Env-wide failure rates only (`MOCKPSP_*_RATE`) | Random, so tenants can't reproduce a path on demand. Kept for chaos tests |
 | Test clocks (simulated time per tenant) | More general, but every time-dependent component would need a per-tenant clock. Early close covers the main need with one recorded cutoff |
 
+## Addendum (phase 45)
+
+The decision above stands. [ADR 0022](0022-live-and-sandbox-guards.md) adds what sits around it: a live tenant starts `inactive` and is activated by a go-live checklist, API keys carry a scope and a rotation overlap, and the environment is asserted at every edge (`pkg/env`).
+
 ## Consequences
 
 - Sandbox shares infrastructure with live, so a sandbox load spike consumes shared capacity. It's mitigated by the tenant tier

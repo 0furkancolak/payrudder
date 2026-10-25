@@ -1202,7 +1202,8 @@
         "fully_credited": "This invoice has already been credited in full.",
         "not_paid": "Only a paid invoice can be credited.",
         "nothing_to_refund": "There is nothing to refund to the card for this credit note.",
-        "refund_not_failed": "Only a credit note whose refund failed can be retried."
+        "refund_not_failed": "Only a credit note whose refund failed can be retried.",
+        "bad_id": "The credit note id is not a valid id."
       },
       "dunning": {
         "bad_delay": "Each retry delay must be between 1 and 720 hours.",
@@ -1210,7 +1211,8 @@
       },
       "invoice": {
         "not_found": "The invoice was not found.",
-        "pdf_not_ready": "The invoice PDF has not been rendered yet. Try again in a moment."
+        "pdf_not_ready": "The invoice PDF has not been rendered yet. Try again in a moment.",
+        "bad_id": "The invoice id is not a valid id."
       },
       "invoice_link": {
         "bad_expiry": "The link must expire in 1 to 365 days.",
@@ -1286,6 +1288,16 @@
         "range_too_long": "The period is too long: five years at most, and a daily series up to 366 days.",
         "reason_required": "Give a reason of up to 200 characters to void an expense.",
         "unknown_currency": "The currency is not supported."
+      },
+      "einvoice": {
+        "bad_id": "The e-invoice or account id is not a valid id."
+      },
+      "tenant": {
+        "bad_id": "The account id is not a valid id."
+      },
+      "rerating": {
+        "bad_job_id": "The re-rating job id is not a valid id.",
+        "bad_plan_version_id": "The plan version id is not a valid id."
       }
     },
     "coupon": {
@@ -1312,14 +1324,35 @@
       },
       "subscription": {
         "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead.",
-        "provider_currency": "This payment provider cannot charge in this currency. Choose another provider or currency."
+        "provider_currency": "This payment provider cannot charge in this currency. Choose another provider or currency.",
+        "period_overlap": "This customer already has a subscription that overlaps that period."
       },
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
-        "too_many_endpoints": "The limit of webhook endpoints is reached. Delete one first."
+        "too_many_endpoints": "The limit of webhook endpoints is reached. Delete one first.",
+        "tenant_not_active": "This environment is not active, so it cannot have webhook endpoints. Finish the go-live checklist first."
       },
       "customer": {
         "tax_invalid": "The customer's tax id or tax office is not valid."
+      },
+      "common": {
+        "not_found": "It was not found.",
+        "already_exists": "It already exists.",
+        "broken_reference": "This refers to something that does not exist.",
+        "forbidden": "You are not allowed to do this."
+      },
+      "tenant": {
+        "settings_immutable": "The currency, time zone and environment of an account cannot be changed.",
+        "bad_status": "The status must be active or suspended.",
+        "bad_transition": "This change of status is not possible for this environment.",
+        "reason_required": "Activating an environment without its checklist needs a reason."
+      },
+      "request": {
+        "invalid": "{field} is not valid: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "The scope must be full, ingest or read.",
+        "tenant_not_active": "This environment is not active, so it cannot have API keys. Finish the go-live checklist first."
       }
     },
     "common": {
@@ -1334,7 +1367,8 @@
       "timeout": "The request took too long. Try again.",
       "conflict": "The data changed while you were working on it. Reload and try again.",
       "not_implemented": "This is not supported yet.",
-      "internal": "Something went wrong on our side. Try again, and if it keeps failing look at the logs with the request id."
+      "internal": "Something went wrong on our side. Try again, and if it keeps failing look at the logs with the request id.",
+      "canceled": "The request was cancelled."
     },
     "payments": {
       "transfer": {
@@ -1349,7 +1383,79 @@
         "bad_date": "The received date is not valid or lies in the future.",
         "nothing_pending": "There is no pending transfer to reject.",
         "bad_outcome": "The outcome must be rejected or expired.",
-        "unavailable": "The payments service is not available right now. Try again in a moment."
+        "unavailable": "The payments service is not available right now. Try again in a moment.",
+        "bad_body": "The request body could not be read: send valid JSON that is not too large.",
+        "bad_invoice_id": "The invoice id is not a valid id.",
+        "bad_tenant": "The account id is not a valid id.",
+        "invoice_not_found": "This invoice was not found."
+      },
+      "account": {
+        "bad_settings": "These provider settings are not valid. Check the credentials and the required fields.",
+        "not_found": "This account has no such payment provider set up.",
+        "sync_failed": "The provider account was changed, but the bank details could not be passed on to the invoices. Send the request again."
+      },
+      "billing": {
+        "not_configured": "Billing is not set up on this deployment."
+      },
+      "plans": {
+        "not_configured": "Plans are not set up on this deployment.",
+        "failed": "The plans service could not complete this. Try again shortly."
+      },
+      "checkout": {
+        "currency_unsupported": "This provider cannot take a checkout payment in this currency.",
+        "fields_required": "The provider and the price reference are required.",
+        "unsupported": "This provider has no hosted checkout."
+      },
+      "customer": {
+        "not_ready": "The customer could not be prepared at the provider."
+      },
+      "invoice": {
+        "amount_required": "The amount and the currency are required.",
+        "bad_id": "The invoice id is not a valid id.",
+        "bad_ids": "The invoice ids are not valid ids.",
+        "no_instructions": "This provider has no payment instructions for this currency.",
+        "not_live": "Only live invoices are paid through a provider.",
+        "payment_in_progress": "A payment for this invoice is being started. Try again in a moment.",
+        "return_url_required": "A return address is required for a checkout payment.",
+        "unknown_method": "This payment method is not known."
+      },
+      "ledger": {
+        "bad_limit": "The limit must be between 1 and 1000.",
+        "too_many_invoices": "Too many invoices were asked for at once."
+      },
+      "migration": {
+        "fields_required": "The subscription and the target provider are required.",
+        "price_ref_required": "This provider runs subscriptions itself: the price reference of its catalogue is required."
+      },
+      "plan": {
+        "code_required": "The plan code is required."
+      },
+      "provider": {
+        "failed": "The payment provider could not complete this. Try again shortly.",
+        "not_supported": "This payment provider does not support this.",
+        "unknown": "This payment provider is not known."
+      },
+      "reconcile": {
+        "bad_period": "The period must look like 2026-10."
+      },
+      "request": {
+        "bad_body": "The request body must be valid JSON.",
+        "bad_environment": "The environment must be sandbox or live.",
+        "bad_tenant": "The account id is not a valid id.",
+        "too_large": "The request is too large."
+      },
+      "subscription": {
+        "cannot_cancel": "This provider cannot cancel a subscription from here.",
+        "change_refused": "This subscription change cannot be made.",
+        "period_end_unknown": "The end of the paid period at the provider is not known yet: no notification has told us.",
+        "wrong_provider": "This subscription is not run by this provider."
+      },
+      "webhook": {
+        "malformed": "The notification could not be read.",
+        "not_found": "There is no such notification address.",
+        "not_recorded": "The notification could not be recorded. Send it again.",
+        "try_again": "The notification could not be confirmed yet. Send it again.",
+        "unverified": "The notification could not be verified as coming from the provider."
       }
     },
     "einvoice": {
@@ -1391,7 +1497,11 @@
       "api_key": {
         "bad_environment": "This app has no such environment.",
         "not_found": "This API key does not exist.",
-        "quota": "An environment can have at most 10 active API keys. Revoke one first."
+        "quota": "An environment can have at most 10 active API keys. Revoke one first.",
+        "already_rotating": "This key was already rotated and ends soon. Revoke it, or wait for it to end.",
+        "bad_overlap": "The overlap must be between 0 hours and 7 days.",
+        "bad_scope": "The scope must be full, ingest or read.",
+        "not_active": "This API key is revoked."
       },
       "app": {
         "not_found": "This app does not exist, or it is not yours.",
@@ -1405,7 +1515,9 @@
         "invalid": "Your session has ended. Sign in again."
       },
       "tenant": {
-        "not_found": "This environment does not exist, or it is not yours."
+        "not_found": "This environment does not exist, or it is not yours.",
+        "bad_metadata": "The account in the request is not valid.",
+        "metadata_missing": "The request does not say which account it is for."
       },
       "token": {
         "invalid": "This link is invalid, has expired or was already used. Ask for a new one."
@@ -1439,12 +1551,126 @@
       },
       "operator": {
         "forbidden": "This area is for platform operators."
+      },
+      "go_live": {
+        "incomplete": "The go-live checklist is not complete yet.",
+        "no_live": "This deployment has no live environment.",
+        "owner_only": "Only an owner of the account can activate the live environment.",
+        "suspended": "The live environment is suspended. Contact support."
       }
     },
     "gateway": {
       "dashboard": {
         "bad_period": "That period is not valid. Choose 7, 30 or 90 days, this year, or two days with the first not after the last.",
         "range_too_long": "A period can be at most two years."
+      },
+      "request": {
+        "invalid": "{field} is not valid: {detail}",
+        "too_large": "The request is too large."
+      },
+      "auth": {
+        "scope_denied": "This API key's scope does not allow this request. Use a key with a wider scope.",
+        "tenant_not_active": "This environment is suspended or not active yet. Finish the go-live checklist, or contact support."
+      }
+    },
+    "env": {
+      "request": {
+        "missing": "This request does not say which environment it is for, so it was refused.",
+        "mismatch": "This request is for a different environment than the one it was sent to, so it was refused."
+      }
+    },
+    "aggregator": {
+      "customer": {
+        "bad_id": "The customer id is not a valid id."
+      },
+      "period": {
+        "bad_id": "The period must look like 2026-11.",
+        "cannot_compute": "The settings of this period cannot be worked out. Check the period and the account's time zone.",
+        "frozen": "This period is frozen or already closes within five seconds, so it cannot be closed early.",
+        "not_sandbox": "Periods can only be closed early in a sandbox account."
+      },
+      "usage": {
+        "bad_batch_size": "Ask for between 1 and the maximum number of usage keys at a time."
+      },
+      "meter": {
+        "not_found": "This meter was not found."
+      },
+      "replay": {
+        "bad_job_id": "The replay job id is not a valid id.",
+        "bad_state": "The replay job is not in a state where this can be done.",
+        "bad_tenant_id": "The account id is not a valid id.",
+        "invalid": "This replay request is not valid.",
+        "not_found": "This replay job was not found."
+      },
+      "store": {
+        "unavailable": "Usage data is not available right now. Try again shortly."
+      }
+    },
+    "analytics": {
+      "customer": {
+        "bad_id": "The customer id is not a valid id."
+      },
+      "tenant": {
+        "bad_id": "The account id is not a valid id.",
+        "unknown": "This account is not known to analytics."
+      },
+      "granularity": {
+        "unknown": "This granularity is not supported. Use hour or day."
+      },
+      "query": {
+        "exact_too_long": "Exact queries cover at most one day. Use the estimated series for longer ranges.",
+        "invalid": "This query is not valid. Check the meter, the period and the filters."
+      },
+      "range": {
+        "daily_too_long": "A daily series covers at most 400 days.",
+        "hourly_too_long": "An hourly series covers at most 31 days.",
+        "required": "Both the start and the end of the range are required."
+      },
+      "store": {
+        "unavailable": "Analytics is not available right now. Try again shortly."
+      }
+    },
+    "limits": {
+      "customer": {
+        "bad_id": "The customer id is not a valid id."
+      },
+      "meter": {
+        "code_required": "The meter code is required.",
+        "not_found": "This meter was not found.",
+        "unavailable": "The meter could not be looked up right now. Try again shortly."
+      },
+      "period": {
+        "bad_id": "The period must look like 2026-11."
+      },
+      "counter": {
+        "unavailable": "Usage counters are not available right now. Try again shortly."
+      },
+      "reconcile": {
+        "not_configured": "Reconciliation is not set up on this deployment.",
+        "unavailable": "Reconciliation could not run right now. Try again shortly."
+      }
+    },
+    "ingest": {
+      "backlog": {
+        "full": "Ingestion is backed up right now. Nothing was accepted; retry later."
+      },
+      "batch": {
+        "bad_size": "A request must carry between 1 and 500 events."
+      },
+      "db": {
+        "conflict": "The data changed at the same moment. Nothing was accepted; retrying is safe.",
+        "slow": "The database was too slow. Nothing was accepted; retrying is safe.",
+        "timeout": "Ingestion timed out. Nothing was accepted; retrying is safe.",
+        "unavailable": "The database is not available. Nothing was accepted; retrying is safe."
+      },
+      "outbox": {
+        "unavailable": "Ingestion cannot hand events on right now. Try again shortly."
+      },
+      "plans": {
+        "unavailable": "The plans service is not available, so events cannot be checked. Try again shortly."
+      },
+      "tenant": {
+        "bad_timezone": "The time zone of this account cannot be used. Check it in the account settings."
       }
     }
   },

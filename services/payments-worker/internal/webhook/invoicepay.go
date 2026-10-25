@@ -68,12 +68,12 @@ func (s *Server) invoiceMethods(w http.ResponseWriter, r *http.Request) {
 	currency := strings.ToUpper(q.Get("currency"))
 	accounts, err := s.Accounts.List(ctx, t)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	routed, err := s.routedProvider(ctx, t, q.Get("provider"), strings.ToUpper(q.Get("country")), currency)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	for _, a := range accounts {
@@ -140,44 +140,44 @@ func (s *Server) invoicePayment(w http.ResponseWriter, r *http.Request) {
 	in.Currency = strings.ToUpper(in.Currency)
 	switch {
 	case err != nil:
-		fail(w, http.StatusBadRequest, "invoice_id must be a UUID")
+		fail(w, http.StatusBadRequest, "payments.invoice.bad_id", "invoice_id must be a UUID")
 	case in.AmountMinor <= 0 || in.Currency == "":
-		fail(w, http.StatusBadRequest, "amount_minor and currency are required")
+		fail(w, http.StatusBadRequest, "payments.invoice.amount_required", "amount_minor and currency are required")
 	case in.Environment != "live":
-		fail(w, http.StatusConflict, "only live invoices are paid through a provider")
+		fail(w, http.StatusConflict, "payments.invoice.not_live", "only live invoices are paid through a provider")
 	case in.Method == methodCheckout:
 		s.startCheckout(w, r, t, invoice, in)
 	case strings.HasPrefix(in.Method, methodInstructions):
 		s.startInstructions(w, r, t, invoice, strings.TrimPrefix(in.Method, methodInstructions), in)
 	default:
-		fail(w, http.StatusBadRequest, "unknown method "+in.Method)
+		fail(w, http.StatusBadRequest, "payments.invoice.unknown_method", "unknown method "+in.Method)
 	}
 }
 
 func (s *Server) startCheckout(w http.ResponseWriter, r *http.Request, t, invoice uuid.UUID, in invoicePaymentInput) {
 	ctx := r.Context()
 	if in.ReturnURL == "" {
-		fail(w, http.StatusBadRequest, "return_url is required for a checkout")
+		fail(w, http.StatusBadRequest, "payments.invoice.return_url_required", "return_url is required for a checkout")
 		return
 	}
 	name, err := s.routedProvider(ctx, t, in.Provider, strings.ToUpper(in.Country), in.Currency)
 	if err != nil || name == "" {
-		fail(w, http.StatusConflict, "the tenant has no provider account for this payment")
+		fail(w, http.StatusConflict, "payments.account.not_found", "the tenant has no provider account for this payment")
 		return
 	}
 	prov, err := s.Resolver.Named(ctx, t, name, "live")
 	if err != nil {
-		fail(w, http.StatusConflict, "no account at "+name+" for this tenant")
+		fail(w, http.StatusConflict, "payments.account.not_found", "no account at "+name+" for this tenant")
 		return
 	}
 	cp, ok := prov.(payments.InvoiceCheckoutProvider)
 	if !ok || !prov.Capabilities().CanCharge(in.Currency) {
-		fail(w, http.StatusConflict, name+" cannot take a checkout payment in "+in.Currency)
+		fail(w, http.StatusConflict, "payments.checkout.currency_unsupported", name+" cannot take a checkout payment in "+in.Currency)
 		return
 	}
 	// A checkout that is still open is handed out again.
 	if open, found, err := s.Ledger.OpenCheckoutOf(ctx, t, invoice, name, time.Now().Add(-checkoutReuse)); err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	} else if found {
 		writeJSON(w, http.StatusOK, map[string]any{"kind": "redirect", "url": open.URL, "reused": true})
@@ -185,7 +185,7 @@ func (s *Server) startCheckout(w http.ResponseWriter, r *http.Request, t, invoic
 	}
 	n, err := s.Attempts.CountLinkAttempts(ctx, t, invoice)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	key := fmt.Sprintf("%s%s:%d", LinkKeyPrefix, invoice, n+1)
@@ -193,11 +193,11 @@ func (s *Server) startCheckout(w http.ResponseWriter, r *http.Request, t, invoic
 	redelivered, err := s.Attempts.Start(ctx, uuid.NewSHA1(linkNS, []byte(key)), t, invoice, "charge", "live", name, key,
 		attemptRequest{AmountMinor: in.AmountMinor, Currency: in.Currency, Method: methodCheckout, SagaID: in.SagaID})
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	if redelivered {
-		fail(w, http.StatusConflict, "a payment for this invoice is being started; try again in a moment")
+		fail(w, http.StatusConflict, "payments.invoice.payment_in_progress", "a payment for this invoice is being started; try again in a moment")
 		return
 	}
 	co, err := cp.CreateInvoiceCheckout(ctx, payments.CheckoutInvoiceRequest{IdempotencyKey: key, InvoiceID: invoice.String(), Number: in.Number,
@@ -218,19 +218,19 @@ func (s *Server) startInstructions(w http.ResponseWriter, r *http.Request, t, in
 	ctx := r.Context()
 	prov, err := s.Resolver.Named(ctx, t, name, "live")
 	if err != nil {
-		fail(w, http.StatusConflict, "no account at "+name+" for this tenant")
+		fail(w, http.StatusConflict, "payments.account.not_found", "no account at "+name+" for this tenant")
 		return
 	}
 	ip, ok := prov.(payments.InstructionsProvider)
 	if !ok || !prov.Capabilities().CanCharge(in.Currency) {
-		fail(w, http.StatusConflict, name+" has no payment instructions for "+in.Currency)
+		fail(w, http.StatusConflict, "payments.invoice.no_instructions", name+" has no payment instructions for "+in.Currency)
 		return
 	}
 	// One attempt per invoice and provider: the page can be shown again and again and the customer always gets the same reference.
 	key := fmt.Sprintf("%s%s:i:%s", LinkKeyPrefix, invoice, name)
 	if _, err := s.Attempts.Start(ctx, uuid.NewSHA1(linkNS, []byte(key)), t, invoice, "charge", "live", name, key,
 		attemptRequest{AmountMinor: in.AmountMinor, Currency: in.Currency, Method: in.Method, SagaID: in.SagaID}); err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	ins, err := ip.PaymentInstructions(ctx, payments.InstructionsRequest{IdempotencyKey: key, InvoiceID: invoice.String(), Number: in.Number, AmountMinor: in.AmountMinor, Currency: in.Currency})
@@ -264,21 +264,21 @@ func (s *Server) ledgerLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(in.InvoiceIDs) > maxLookup {
-		fail(w, http.StatusBadRequest, fmt.Sprintf("at most %d invoice ids", maxLookup))
+		fail(w, http.StatusBadRequest, "payments.ledger.too_many_invoices", fmt.Sprintf("at most %d invoice ids", maxLookup))
 		return
 	}
 	ids := make([]uuid.UUID, 0, len(in.InvoiceIDs))
 	for _, v := range in.InvoiceIDs {
 		id, err := uuid.Parse(v)
 		if err != nil {
-			fail(w, http.StatusBadRequest, "invoice_ids must be UUIDs")
+			fail(w, http.StatusBadRequest, "payments.invoice.bad_ids", "invoice_ids must be UUIDs")
 			return
 		}
 		ids = append(ids, id)
 	}
 	rows, err := s.Ledger.LookupInvoices(r.Context(), t, ids)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"rows": rows})

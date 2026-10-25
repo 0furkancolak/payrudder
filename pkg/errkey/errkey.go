@@ -74,6 +74,8 @@ func Default(c codes.Code) string {
 		return "common.conflict"
 	case codes.Unimplemented:
 		return "common.not_implemented"
+	case codes.Canceled:
+		return "common.canceled"
 	default:
 		return "common.internal"
 	}

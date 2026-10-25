@@ -28,6 +28,8 @@ const (
 	AdminService_CreateApiKey_FullMethodName         = "/quotify.plans.v1.AdminService/CreateApiKey"
 	AdminService_RevokeApiKey_FullMethodName         = "/quotify.plans.v1.AdminService/RevokeApiKey"
 	AdminService_ResolveApiKey_FullMethodName        = "/quotify.plans.v1.AdminService/ResolveApiKey"
+	AdminService_TouchApiKey_FullMethodName          = "/quotify.plans.v1.AdminService/TouchApiKey"
+	AdminService_SetTenantStatus_FullMethodName      = "/quotify.plans.v1.AdminService/SetTenantStatus"
 )
 
 // AdminServiceClient is the client API for AdminService service.
@@ -53,6 +55,11 @@ type AdminServiceClient interface {
 	RevokeApiKey(ctx context.Context, in *RevokeApiKeyRequest, opts ...grpc.CallOption) (*RevokeApiKeyResponse, error)
 	// ResolveApiKey returns what the gateway needs to authenticate a key with this prefix.
 	ResolveApiKey(ctx context.Context, in *ResolveApiKeyRequest, opts ...grpc.CallOption) (*ResolveApiKeyResponse, error)
+	// TouchApiKey records that a key was used just now (the gateway calls it at most every few minutes per key and replica).
+	TouchApiKey(ctx context.Context, in *TouchApiKeyRequest, opts ...grpc.CallOption) (*TouchApiKeyResponse, error)
+	// SetTenantStatus is the operator's hand on a tenant's life: suspend an active tenant (its keys stop working at once), reinstate a suspended one, or
+	// activate an inactive live tenant without the go-live checklist (a support decision that needs a reason and is logged).
+	SetTenantStatus(ctx context.Context, in *SetTenantStatusRequest, opts ...grpc.CallOption) (*SetTenantStatusResponse, error)
 }
 
 type adminServiceClient struct {
@@ -153,6 +160,26 @@ func (c *adminServiceClient) ResolveApiKey(ctx context.Context, in *ResolveApiKe
 	return out, nil
 }
 
+func (c *adminServiceClient) TouchApiKey(ctx context.Context, in *TouchApiKeyRequest, opts ...grpc.CallOption) (*TouchApiKeyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TouchApiKeyResponse)
+	err := c.cc.Invoke(ctx, AdminService_TouchApiKey_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) SetTenantStatus(ctx context.Context, in *SetTenantStatusRequest, opts ...grpc.CallOption) (*SetTenantStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetTenantStatusResponse)
+	err := c.cc.Invoke(ctx, AdminService_SetTenantStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServiceServer is the server API for AdminService service.
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility.
@@ -176,6 +203,11 @@ type AdminServiceServer interface {
 	RevokeApiKey(context.Context, *RevokeApiKeyRequest) (*RevokeApiKeyResponse, error)
 	// ResolveApiKey returns what the gateway needs to authenticate a key with this prefix.
 	ResolveApiKey(context.Context, *ResolveApiKeyRequest) (*ResolveApiKeyResponse, error)
+	// TouchApiKey records that a key was used just now (the gateway calls it at most every few minutes per key and replica).
+	TouchApiKey(context.Context, *TouchApiKeyRequest) (*TouchApiKeyResponse, error)
+	// SetTenantStatus is the operator's hand on a tenant's life: suspend an active tenant (its keys stop working at once), reinstate a suspended one, or
+	// activate an inactive live tenant without the go-live checklist (a support decision that needs a reason and is logged).
+	SetTenantStatus(context.Context, *SetTenantStatusRequest) (*SetTenantStatusResponse, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -212,6 +244,12 @@ func (UnimplementedAdminServiceServer) RevokeApiKey(context.Context, *RevokeApiK
 }
 func (UnimplementedAdminServiceServer) ResolveApiKey(context.Context, *ResolveApiKeyRequest) (*ResolveApiKeyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveApiKey not implemented")
+}
+func (UnimplementedAdminServiceServer) TouchApiKey(context.Context, *TouchApiKeyRequest) (*TouchApiKeyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TouchApiKey not implemented")
+}
+func (UnimplementedAdminServiceServer) SetTenantStatus(context.Context, *SetTenantStatusRequest) (*SetTenantStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetTenantStatus not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 func (UnimplementedAdminServiceServer) testEmbeddedByValue()                      {}
@@ -396,6 +434,42 @@ func _AdminService_ResolveApiKey_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_TouchApiKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TouchApiKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).TouchApiKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_TouchApiKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).TouchApiKey(ctx, req.(*TouchApiKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_SetTenantStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetTenantStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).SetTenantStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_SetTenantStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).SetTenantStatus(ctx, req.(*SetTenantStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -438,6 +512,14 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveApiKey",
 			Handler:    _AdminService_ResolveApiKey_Handler,
+		},
+		{
+			MethodName: "TouchApiKey",
+			Handler:    _AdminService_TouchApiKey_Handler,
+		},
+		{
+			MethodName: "SetTenantStatus",
+			Handler:    _AdminService_SetTenantStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
