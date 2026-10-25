@@ -24,7 +24,7 @@ import (
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -83,7 +83,7 @@ type Admin interface {
 // Config configures a Manager.
 type Config struct {
 	Pool   *pgxpool.Pool // billing_system
-	Engine *saga.Engine
+	Engine *sagacommand.Engine
 	Plans  Plans
 	Events Events // optional: without it tenant events stay in tenant_event_outbox
 	// Affiliates is optional: without it a payer's referral cookie is not passed on.

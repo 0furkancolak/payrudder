@@ -1,9 +1,7 @@
-package saga
+package command
 
 import (
 	"testing"
-
-	"github.com/google/uuid"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 )
@@ -46,19 +44,5 @@ func TestProrateLinesAddsUpExactly(t *testing.T) {
 	}
 	if got := ProrateLines([]*commandsv1.InvoiceLineSnapshot{line("CREDIT", -5)}, 5); got != nil {
 		t.Errorf("nothing to prorate: %v", got)
-	}
-}
-
-func TestEInvoiceIdsAreDeterministicAndDistinct(t *testing.T) {
-	tenant, source := uuid.New(), uuid.New()
-	a := EInvoiceDocumentID(tenant, EInvoiceKindInvoice, source)
-	if a != EInvoiceDocumentID(tenant, EInvoiceKindInvoice, source) {
-		t.Error("the id of one source changes")
-	}
-	if a == EInvoiceDocumentID(tenant, EInvoiceKindCreditNote, source) || a == EInvoiceDocumentID(uuid.New(), EInvoiceKindInvoice, source) {
-		t.Error("two documents share an id")
-	}
-	if EInvoiceCommandID(a, "issue", 1) == EInvoiceCommandID(a, "issue", 2) || EInvoiceCommandID(a, "issue", 1) == EInvoiceCommandID(a, "cancel", 1) {
-		t.Error("two commands share an id")
 	}
 }

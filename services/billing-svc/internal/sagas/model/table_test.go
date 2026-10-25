@@ -1,4 +1,4 @@
-package saga
+package model
 
 import (
 	"os"
@@ -134,7 +134,7 @@ func TestPendingPaymentTransitions(t *testing.T) {
 
 // The diagram in docs/03-services/billing-svc.md between the markers is generated from the table.
 func TestDocsDiagramIsInSync(t *testing.T) {
-	raw, err := os.ReadFile("../../../../docs/03-services/billing-svc.md")
+	raw, err := os.ReadFile("../../../../../docs/03-services/billing-svc.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,12 +148,12 @@ func TestDocsDiagramIsInSync(t *testing.T) {
 	if got := doc[start:end]; got != want {
 		if os.Getenv("UPDATE_DOCS") != "" {
 			out := doc[:start] + want + doc[end:]
-			if err := os.WriteFile("../../../../docs/03-services/billing-svc.md", []byte(out), 0o644); err != nil {
+			if err := os.WriteFile("../../../../../docs/03-services/billing-svc.md", []byte(out), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			return
 		}
-		t.Fatalf("the saga diagram in the docs is stale; run UPDATE_DOCS=1 go test ./internal/saga")
+		t.Fatalf("the saga diagram in the docs is stale; run UPDATE_DOCS=1 go test ./internal/sagas/model")
 	}
 }
 

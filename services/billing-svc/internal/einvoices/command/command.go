@@ -15,7 +15,8 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	einvoicemodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/model"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -35,7 +36,7 @@ func NextAttempt(now time.Time, streak int) (time.Time, bool) {
 
 // Parties gives the current seller and buyer of an invoice's customer (runs.Manager implements it).
 type Parties interface {
-	Parties(ctx context.Context, tenantID uuid.UUID, customerExternalID string) (seller, buyer *saga.Party, err error)
+	Parties(ctx context.Context, tenantID uuid.UUID, customerExternalID string) (seller, buyer *sagamodel.Party, err error)
 }
 
 // Commands changes e-documents over the billing_system pool.
@@ -79,7 +80,7 @@ func ApplyResult(ctx context.Context, tx pgx.Tx, now time.Time, tenantID, docID 
 		return q.SetEInvoiceCancelled(ctx, sqlc.SetEInvoiceCancelledParams{Now: now, TenantID: tenantID, ID: docID})
 	}
 	// failed
-	if doc.Status == saga.EInvoiceIssued {
+	if doc.Status == einvoicemodel.Issued {
 		return q.SetEInvoiceCancelFailed(ctx, sqlc.SetEInvoiceCancelFailedParams{ErrorKey: key, Error: msg, Now: now, TenantID: tenantID, ID: docID})
 	}
 	if res.GetRetryable() {
@@ -112,10 +113,10 @@ func dispatch(ctx context.Context, tx pgx.Tx, now time.Time, tenantID, docID uui
 	if err != nil {
 		return err
 	}
-	if doc.Status == saga.EInvoiceIssued { // a cancel in doubt
+	if doc.Status == einvoicemodel.Issued { // a cancel in doubt
 		cmd = commandsv1.IssueEInvoice{Action: "cancel", DocumentId: docID.String(), Kind: doc.Kind, ExternalId: doc.ExternalID, Provider: doc.Provider, Reason: cancelReason}
 	}
-	return saga.PublishEInvoiceCommand(ctx, tx, now, tenantID, doc.Environment, &cmd, int(attempt))
+	return Publish(ctx, tx, now, tenantID, doc.Environment, &cmd, int(attempt))
 }
 
 // Sweep sends the commands that are due: a retry whose backoff has passed, a command nobody answered, a cancel nobody answered. A document that has used
@@ -141,7 +142,7 @@ func (c *Commands) Sweep(ctx context.Context, limit int) (int, error) {
 				return err
 			}
 			n++
-			if doc.Status == saga.EInvoicePending && int(doc.Streak) > len(Backoff) {
+			if doc.Status == einvoicemodel.Pending && int(doc.Streak) > len(Backoff) {
 				return q.SetEInvoiceFailed(ctx, sqlc.SetEInvoiceFailedParams{ErrorKey: "einvoice.provider.unavailable",
 					Error: "no answer from the e-invoice provider after the automatic attempts", Now: now, TenantID: d.TenantID, ID: d.ID})
 			}
@@ -157,7 +158,7 @@ func (c *Commands) Sweep(ctx context.Context, limit int) (int, error) {
 // Retry sends a failed document again with the seller's and buyer's data read afresh (the usual reason for a failure is a missing tax id). Lines, amounts,
 // number and date stay as they were; the document keeps its UUID, so the integrator can never hold two for one invoice.
 func (c *Commands) Retry(ctx context.Context, tenantID, docID uuid.UUID) error {
-	var refreshed [2]*saga.Party
+	var refreshed [2]*sagamodel.Party
 	if c.Parties != nil {
 		ext, err := sqlc.New(c.Pool).GetEInvoiceExternalCustomer(ctx, sqlc.GetEInvoiceExternalCustomerParams{TenantID: tenantID, ID: docID})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -181,7 +182,7 @@ func (c *Commands) Retry(ctx context.Context, tenantID, docID uuid.UUID) error {
 		if err != nil {
 			return err
 		}
-		if doc.Status != saga.EInvoiceFailed {
+		if doc.Status != einvoicemodel.Failed {
 			return errkey.New(codes.FailedPrecondition, "einvoice.document.not_failed", "only a failed e-document is retried")
 		}
 		var cmd commandsv1.IssueEInvoice
@@ -199,7 +200,7 @@ func (c *Commands) Retry(ctx context.Context, tenantID, docID uuid.UUID) error {
 		if err := q.ResetEInvoiceForRetry(ctx, sqlc.ResetEInvoiceForRetryParams{Request: raw, Now: now, TenantID: tenantID, ID: docID}); err != nil {
 			return err
 		}
-		doc.Request, doc.Status = raw, saga.EInvoicePending
+		doc.Request, doc.Status = raw, einvoicemodel.Pending
 		return dispatch(ctx, tx, now, tenantID, docID, doc, "")
 	})
 }
@@ -215,7 +216,7 @@ func (c *Commands) Cancel(ctx context.Context, tenantID, docID uuid.UUID, reason
 		if err != nil {
 			return err
 		}
-		if doc.Status != saga.EInvoiceIssued {
+		if doc.Status != einvoicemodel.Issued {
 			return errkey.New(codes.FailedPrecondition, "einvoice.document.not_issued", "only an issued e-document can be cancelled")
 		}
 		now := c.now()

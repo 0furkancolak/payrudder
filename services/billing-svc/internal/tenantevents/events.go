@@ -1,14 +1,13 @@
-package saga
+package tenantevents
 
 import (
-	"context"
 	"strconv"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Event types billing-svc announces to the tenant's webhook endpoints (plans-svc has the full list).
@@ -27,16 +26,36 @@ const (
 	EventPaymentLinkExpired     = "payment_link.expired"
 )
 
-// TenantEvent writes an event for the tenant's endpoints in tx. key says which occurrence it is (an invoice id, a credit note id and an outcome): the same
-// (tenant, type, key) is one event however often it is written.
-func TenantEvent(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, key string, at time.Time, data map[string]any) error {
-	return tenantevents.Write(ctx, tx, tenantID, typ, key, at, data)
-}
-
 // InvoiceData is the data of an invoice event; amounts are strings like in the REST API.
 func InvoiceData(invoiceID, customerID uuid.UUID, customerExternalID, number, period, currency string, total int64, status string) map[string]any {
 	return map[string]any{
 		"invoice_id": invoiceID.String(), "number": number, "customer_id": customerID.String(), "customer_external_id": customerExternalID,
 		"period_id": period, "currency": currency, "total_minor": strconv.FormatInt(total, 10), "status": status,
 	}
+}
+
+// PaymentLinkPaidData is the data of payment_link.paid; amounts are strings like in the REST API.
+func PaymentLinkPaidData(l sqlc.MarkPaymentLinksPaidRow, invoiceID uuid.UUID, number, currency string, total int64) map[string]any {
+	return map[string]any{
+		"link_id": l.ID.String(), "kind": l.Kind, "invoice_id": invoiceID.String(), "invoice_number": number, "customer_external_id": store.Deref(l.CustomerExternalID),
+		"currency": currency, "total_minor": strconv.FormatInt(total, 10), "paid_count": l.PaidCount,
+	}
+}
+
+// PaymentLinkExpiredData is the data of payment_link.expired.
+func PaymentLinkExpiredData(l sqlc.LockLinkToExpireRow) map[string]any {
+	d := map[string]any{"link_id": l.ID.String(), "kind": l.Kind, "expires_at": l.ExpiresAt.UTC().Format(time.RFC3339)}
+	if l.InvoiceID != nil {
+		d["invoice_id"] = l.InvoiceID.String()
+	}
+	if l.AmountMinor != nil {
+		d["amount_minor"] = strconv.FormatInt(*l.AmountMinor, 10)
+	}
+	if l.Currency != nil {
+		d["currency"] = *l.Currency
+	}
+	if l.CustomerExternalID != nil {
+		d["customer_external_id"] = *l.CustomerExternalID
+	}
+	return d
 }
