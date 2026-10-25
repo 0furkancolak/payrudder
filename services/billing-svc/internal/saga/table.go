@@ -118,7 +118,9 @@ const (
 
 // Ctx is what guards look at.
 type Ctx struct {
-	TotalMinor     int64
+	TotalMinor int64
+	// CreditedMinor is what the credit notes of the invoice already gave back; a void refunds the rest.
+	CreditedMinor  int64
 	Paid           bool // the invoice was paid (status = paid)
 	DunningAttempt int
 	MaxDunning     int
@@ -145,11 +147,11 @@ func (g Guard) holds(c Ctx) bool {
 	case DunningSpent:
 		return !c.Link && c.DunningAttempt >= c.MaxDunning
 	case PaidWithMoney:
-		return c.Paid && c.TotalMinor > 0
+		return c.Paid && c.TotalMinor-c.CreditedMinor > 0
 	case ProviderMails:
 		return c.ProviderMails
 	case NothingToRefund:
-		return !c.Paid || c.TotalMinor <= 0
+		return !c.Paid || c.TotalMinor-c.CreditedMinor <= 0
 	}
 	return false
 }

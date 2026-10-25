@@ -139,7 +139,19 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 	if errors.Is(err, subscription.ErrBadChange) {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	return pc, err
+	if err != nil {
+		return pc, err
+	}
+	// The credit and the charge are shares of the list fees; a coupon makes what was paid, and what the new plan costs, something else. Like ending a
+	// subscription with a credit, a prorated change of one with a coupon is left to a credit note.
+	if pc.Quote.Timing != subscription.AtPeriodEnd && (pc.Quote.CreditMinor != 0 || pc.Quote.ChargeMinor != 0) {
+		if _, err := q.GetSubscriptionCoupon(ctx, row.ID); err == nil {
+			return nil, ErrCouponOnCredit
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+	}
+	return pc, nil
 }
 
 // requireChangeable refuses a subscription that cannot change and returns its effective state.
