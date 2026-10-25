@@ -38,25 +38,28 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	GRPCAddr       string        `env:"PAYRUDDER_GRPC_ADDR"`
-	PGAppDSN       string        `env:"PAYRUDDER_PG_APP_DSN,required"`
-	PGSystemDSN    string        `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
-	S3Endpoint     string        `env:"S3_ENDPOINT"`
-	S3Public       string        `env:"S3_PUBLIC_ENDPOINT"`
-	S3Region       string        `env:"S3_REGION"`
-	S3Bucket       string        `env:"S3_BUCKET"`
-	S3AccessKey    string        `env:"S3_ACCESS_KEY,required"`
-	S3SecretKey    string        `env:"S3_SECRET_KEY,required"`
-	S3ForcePath    bool          `env:"S3_FORCE_PATH_STYLE"`
-	GeneralTypes   []string      `env:"ASSETS_GENERAL_TYPES" envSeparator:","`
-	QuotaFreeMiB   int64         `env:"ASSETS_QUOTA_FREE_MIB"`
-	QuotaStdMiB    int64         `env:"ASSETS_QUOTA_STANDARD_MIB"`
-	QuotaEntMiB    int64         `env:"ASSETS_QUOTA_ENTERPRISE_MIB"`
-	SweepEvery     time.Duration `env:"ASSETS_SWEEP_INTERVAL"`
-	VerifyEvery    time.Duration `env:"ASSETS_VERIFY_INTERVAL"`
-	OrphansEvery   time.Duration `env:"ASSETS_ORPHANS_INTERVAL"`
+	pgxx.Settings
+	GRPCAddr     string        `env:"PAYRUDDER_GRPC_ADDR"`
+	S3Endpoint   string        `env:"S3_ENDPOINT"`
+	S3Public     string        `env:"S3_PUBLIC_ENDPOINT"`
+	S3Region     string        `env:"S3_REGION"`
+	S3Bucket     string        `env:"S3_BUCKET"`
+	S3AccessKey  string        `env:"S3_ACCESS_KEY,required"`
+	S3SecretKey  string        `env:"S3_SECRET_KEY,required"`
+	S3ForcePath  bool          `env:"S3_FORCE_PATH_STYLE"`
+	GeneralTypes []string      `env:"ASSETS_GENERAL_TYPES" envSeparator:","`
+	QuotaFreeMiB int64         `env:"ASSETS_QUOTA_FREE_MIB"`
+	QuotaStdMiB  int64         `env:"ASSETS_QUOTA_STANDARD_MIB"`
+	QuotaEntMiB  int64         `env:"ASSETS_QUOTA_ENTERPRISE_MIB"`
+	SweepEvery   time.Duration `env:"ASSETS_SWEEP_INTERVAL"`
+	VerifyEvery  time.Duration `env:"ASSETS_VERIFY_INTERVAL"`
+	OrphansEvery time.Duration `env:"ASSETS_ORPHANS_INTERVAL"`
+}
+
+// Validate checks the settings at load time like the other services: migrating needs the migrator DSN. (assets-svc used to find that out
+// only after it had started.)
+func (c *Config) Validate() error {
+	return errors.Join(c.Base.Validate(), c.CheckMigration())
 }
 
 func main() {
@@ -92,17 +95,8 @@ func run() error {
 		_ = providers.Shutdown(c)
 	}()
 
-	if cfg.MigrateOnStart {
-		if cfg.PGMigratorDSN == "" {
-			return errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START")
-		}
-		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return err
-		}
-	}
-	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
-		return nil
+	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
+		return err
 	}
 	appPool, err := pgxx.NewPool(ctx, cfg.PGAppDSN)
 	if err != nil {
