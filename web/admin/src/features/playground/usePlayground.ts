@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, ref } from "vue";
 import { api, asTenant, unwrap, type Invoice } from "@/shared/api/client";
+import { graceDuration } from "@/shared/lib/duration";
 import { POLL } from "@/shared/api/limits";
 
 import type { Currency } from "@/shared/lib/currencies";
@@ -33,7 +34,7 @@ export function usePlayground() {
     mutationFn: async (input: { name: string; currency: Currency; timezone: string; graceHours: number }) => {
       const account = await unwrap(
         api.POST("/admin/v1/accounts", {
-          body: { name: input.name, currency: input.currency, timezone: input.timezone, grace_period: `${input.graceHours * 3600}s` },
+          body: { name: input.name, currency: input.currency, timezone: input.timezone, grace_period: graceDuration(input.graceHours) },
         }),
       );
       note({ key: "playground.log.account" });
