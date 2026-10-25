@@ -170,10 +170,7 @@ func (r *recPlans) AbortProviderMigration(_ context.Context, _ uuid.UUID, id str
 
 func TestPaddleThroughTheWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "payments")
-	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
+	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
 	pool, err := pgxx.NewPool(context.Background(), db.System)
 	if err != nil {
 		t.Fatal(err)
@@ -421,10 +418,7 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 // A charge that names its provider goes to that account even when another is the tenant's default.
 func TestChargeNamesItsProvider(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "payments")
-	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
+	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
 	pool, err := pgxx.NewPool(context.Background(), db.System)
 	if err != nil {
 		t.Fatal(err)
@@ -468,10 +462,7 @@ func TestChargeNamesItsProvider(t *testing.T) {
 
 func TestProviderMigrationThroughTheWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "payments")
-	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
+	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
 	pool, err := pgxx.NewPool(context.Background(), db.System)
 	if err != nil {
 		t.Fatal(err)

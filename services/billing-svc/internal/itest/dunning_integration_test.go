@@ -14,6 +14,7 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
@@ -48,7 +49,7 @@ func testTenantDunningSettings(t *testing.T) {
 	e.addUsage("2026-10", "cus_a", "gb_hours", "1.000", 3)
 	e.driveRun("2026-10")
 	// Both customers' first charges must have been answered: a saga still waiting when the clock jumps would be re-sent by the sweep.
-	eventually(t, 20*time.Second, "first declines", func() bool {
+	testkit.Eventually(t, 20*time.Second, "first declines", func() bool {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "PAYMENT_DECLINED" && s["cus_b"] == "PAYMENT_DECLINED"
 	})
@@ -56,7 +57,7 @@ func testTenantDunningSettings(t *testing.T) {
 	if res, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil || res.Dunned != 2 {
 		t.Fatalf("dunning pass: %+v, %v; want 2 retries", res, err)
 	}
-	eventually(t, 30*time.Second, "uncollectible after the only retry", func() bool {
+	testkit.Eventually(t, 30*time.Second, "uncollectible after the only retry", func() bool {
 		var status string
 		err := shared.system.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&status)
 		return err == nil && status == "uncollectible"

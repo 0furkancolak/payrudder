@@ -88,10 +88,7 @@ const bankSettings = `{"bank_name":"Example Bank","account_holder":"Acme Ltd","i
 // A tenant pays by bank transfer: the charge only announces it, the status waits, an operator confirms what arrived, and the saga's status query finds the payment.
 func TestBankTransferThroughTheWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "payments")
-	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
+	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
 	pool, err := pgxx.NewPool(context.Background(), db.System)
 	if err != nil {
 		t.Fatal(err)
@@ -326,10 +323,7 @@ func TestBankTransferThroughTheWorker(t *testing.T) {
 // transfer still pays the invoice.
 func TestBankTransferExpiryRejectionAndLatePayment(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "payments")
-	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
+	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
 	pool, err := pgxx.NewPool(context.Background(), db.System)
 	if err != nil {
 		t.Fatal(err)

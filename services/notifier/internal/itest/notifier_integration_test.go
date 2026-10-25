@@ -92,10 +92,7 @@ func (f fakeAdmin) GetTenant(_ context.Context, in *plansv1.GetTenantRequest, _ 
 
 func TestNotifier(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "notifier")
-	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
+	db := testkit.MigratedDB(t, pg, "notifier", migrations.FS)
 	pool, err := pgxx.NewPool(context.Background(), db.System)
 	if err != nil {
 		t.Fatal(err)
@@ -273,21 +270,9 @@ func TestNotifier(t *testing.T) {
 			t.Fatalf("dead letters = %v", dead)
 		}
 		// The offset advanced past all three records.
-		eventually(t, 10*time.Second, "offset saved", func() bool {
+		testkit.Eventually(t, 10*time.Second, "offset saved", func() bool {
 			m, _ := offsets.Load(context.Background(), topic, []int32{0})
 			return m[0] == 3
 		})
 	})
-}
-
-func eventually(t *testing.T, timeout time.Duration, what string, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	t.Fatalf("timed out waiting for %s", what)
 }

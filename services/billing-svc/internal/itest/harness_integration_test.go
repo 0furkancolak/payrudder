@@ -8,8 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -57,10 +55,7 @@ func infra(t *testing.T) {
 	t.Helper()
 	sharedOnce.Do(func() {
 		shared.pg = testkit.StartPostgres(top)
-		shared.db = testkit.CreateServiceDB(top, shared.pg, "billing")
-		if err := pgxx.Migrate(context.Background(), shared.db.Migrator, migrations.FS, nil); err != nil {
-			t.Fatalf("migrate: %v", err)
-		}
+		shared.db = testkit.MigratedDB(top, shared.pg, "billing", migrations.FS)
 		shared.amqp = testkit.StartRabbitMQ(top)
 		var err error
 		if shared.system, err = pgxx.NewPool(context.Background(), shared.db.System); err != nil {
@@ -70,13 +65,6 @@ func infra(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-}
-
-func logger() *slog.Logger {
-	if os.Getenv("ITEST_VERBOSE") != "" {
-		return slog.New(slog.NewTextHandler(os.Stderr, nil))
-	}
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 // clock is a test clock shared by the run manager and the saga engine.
@@ -389,7 +377,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 	if o.stepTimeout == 0 {
 		o.stepTimeout = time.Hour
 	}
-	e.eng, err = saga.NewEngine(saga.Config{Now: clk.Now, StepTimeout: o.stepTimeout, Log: logger()})
+	e.eng, err = saga.NewEngine(saga.Config{Now: clk.Now, StepTimeout: o.stepTimeout, Log: testkit.Logger()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,7 +390,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 	e.mgr, err = runs.NewManager(runs.Config{
 		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Ingest: f, Aggregator: f, Events: e.events,
 		EndOffsets: func(context.Context) (map[int32]int64, error) { return map[int32]int64{0: 10, 1: 20}, nil },
-		Now:        clk.Now, WatermarkDelay: o.watermarkGap, PageSize: 2, Log: logger(),
+		Now:        clk.Now, WatermarkDelay: o.watermarkGap, PageSize: 2, Log: testkit.Logger(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -438,7 +426,7 @@ func (e *env) addLate(billed, origin, customer, meter, qty string, scale uint32)
 func (e *env) startWorkers(script stubworker.Script) *stubworker.Worker {
 	e.t.Helper()
 	stub := stubworker.New(shared.amqp, script)
-	stub.Log = logger()
+	stub.Log = testkit.Logger()
 	ctx, cancel := context.WithCancel(context.Background())
 	e.cancel = append(e.cancel, cancel)
 	e.t.Cleanup(cancel)
@@ -449,7 +437,7 @@ func (e *env) startWorkers(script stubworker.Script) *stubworker.Worker {
 }
 
 func (e *env) startConsumers(ctx context.Context) {
-	rc, err := replies.New(shared.system, e.eng, shared.amqp, logger())
+	rc, err := replies.New(shared.system, e.eng, shared.amqp, testkit.Logger())
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -461,7 +449,7 @@ func (e *env) startRelay(ctx context.Context) {
 	pub := rabbitx.NewPublisher(shared.amqp)
 	e.t.Cleanup(pub.Close)
 	relay, err := outbox.NewRelay(shared.system, outbox.Router{Kafka: e.kafka, AMQP: outbox.AMQPSink{Publisher: pub}},
-		outbox.Config{Workers: 1, BatchSize: 50}, logger())
+		outbox.Config{Workers: 1, BatchSize: 50}, testkit.Logger())
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -489,19 +477,6 @@ func periodBounds(period string) (time.Time, time.Time, error) {
 	}
 	start := time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.UTC)
 	return start, start.AddDate(0, 1, 0), nil
-}
-
-// eventually polls cond.
-func eventually(t *testing.T, timeout time.Duration, what string, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	t.Fatalf("timed out after %s waiting for %s", timeout, what)
 }
 
 // sagaStates returns the saga state per customer external id for a period.
@@ -551,13 +526,13 @@ func pgxxTx(fn func(pgx.Tx) error) error {
 
 // startConsumersWith starts the reply consumer and a relay on the given publisher with a crash hook.
 func (e *env) startConsumersWith(ctx context.Context, pub *rabbitx.Publisher, after func() error) {
-	rc, err := replies.New(shared.system, e.eng, shared.amqp, logger())
+	rc, err := replies.New(shared.system, e.eng, shared.amqp, testkit.Logger())
 	if err != nil {
 		e.t.Fatal(err)
 	}
 	go func() { _ = rc.Run(ctx) }()
 	relay, err := outbox.NewRelay(shared.system, outbox.Router{Kafka: e.kafka, AMQP: outbox.AMQPSink{Publisher: pub}},
-		outbox.Config{Workers: 1, BatchSize: 50, AfterPublish: after}, logger())
+		outbox.Config{Workers: 1, BatchSize: 50, AfterPublish: after}, testkit.Logger())
 	if err != nil {
 		e.t.Fatal(err)
 	}

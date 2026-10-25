@@ -11,6 +11,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 )
@@ -123,7 +124,7 @@ func testRerateCheaperMakesCreditsAppliedToTheNextInvoice(t *testing.T) {
 	e.clk.Advance(30 * 24 * time.Hour)
 	e.addUsage("2026-11", "cus_a", "gb_hours", "2.000", 3) // 2 x 12.5 = 25
 	e.driveRun("2026-11")
-	eventually(t, 30*time.Second, "the November sagas", func() bool {
+	testkit.Eventually(t, 30*time.Second, "the November sagas", func() bool {
 		s := e.sagaStates("2026-11")
 		return len(s) == 2 && s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
@@ -158,7 +159,7 @@ func testCreditLargerThanTheInvoiceIsAppliedInParts(t *testing.T) {
 	for i, period := range []string{"2026-11", "2026-12", "2027-01"} {
 		e.clk.Advance(32 * 24 * time.Hour)
 		e.driveRun(period)
-		eventually(t, 30*time.Second, "the sagas of "+period, func() bool {
+		testkit.Eventually(t, 30*time.Second, "the sagas of "+period, func() bool {
 			s := e.sagaStates(period)
 			return len(s) == 2 && s["cus_b"] == "COMPLETED"
 		})
@@ -219,7 +220,7 @@ func testRerateHigherMakesCorrectionInvoices(t *testing.T) {
 			t.Fatalf("correction %+v is not a finalized CORRECTION line", r)
 		}
 	}
-	eventually(t, 30*time.Second, "both correction sagas to COMPLETE", func() bool {
+	testkit.Eventually(t, 30*time.Second, "both correction sagas to COMPLETE", func() bool {
 		var n int
 		_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices i JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
 			WHERE i.tenant_id = $1 AND i.kind = 'CORRECTION' AND s.state = 'COMPLETED'`, e.tid).Scan(&n)

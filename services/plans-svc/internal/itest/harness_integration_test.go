@@ -124,10 +124,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	sharedOnce.Do(func() {
 		// Started with the top-level test's t (see TestPlansSvc), so it lives for the whole package run.
 		shared.pg = testkit.StartPostgres(top)
-		shared.db = testkit.CreateServiceDB(top, shared.pg, "plans")
-		if err := pgxx.Migrate(context.Background(), shared.db.Migrator, migrations.FS, nil); err != nil {
-			t.Fatalf("migrate: %v", err)
-		}
+		shared.db = testkit.MigratedDB(top, shared.pg, "plans", migrations.FS)
 	})
 	ctx := context.Background()
 	app, err := pgxx.NewPool(ctx, shared.db.App)

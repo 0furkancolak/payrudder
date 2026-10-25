@@ -16,6 +16,7 @@ import (
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/query"
@@ -105,7 +106,7 @@ func testThresholdsAcrossRebalance(t *testing.T) {
 	e.setEntitlement(tn, cust, "api", 100, 0, 80, 100)
 	a := e.startPod(podOpts{})
 	b := e.startPod(podOpts{})
-	eventually(t, 20*time.Second, "both pods to hold the entitlement", func() bool { return a.ents.Len() == 1 && b.ents.Len() == 1 })
+	testkit.Eventually(t, 20*time.Second, "both pods to hold the entitlement", func() bool { return a.ents.Len() == 1 && b.ents.Len() == 1 })
 
 	send := func(n int) {
 		for i := 0; i < n; i++ {
@@ -113,7 +114,7 @@ func testThresholdsAcrossRebalance(t *testing.T) {
 		}
 	}
 	waitCounter := func(want int64) {
-		eventually(t, 20*time.Second, fmt.Sprintf("counter = %d", want), func() bool { return counter(t, tn, cust, "api") == want })
+		testkit.Eventually(t, 20*time.Second, fmt.Sprintf("counter = %d", want), func() bool { return counter(t, tn, cust, "api") == want })
 	}
 	send(7)
 	waitCounter(70)
@@ -193,7 +194,7 @@ func testReconcileCorrectsDrift(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		e.produce(e.event(tn, cust, "api", 5, 0, nil))
 	}
-	eventually(t, 20*time.Second, "counter = 100", func() bool { return counter(t, tn, cust, "api") == 100 })
+	testkit.Eventually(t, 20*time.Second, "counter = 100", func() bool { return counter(t, tn, cust, "api") == 100 })
 	key := engine.CounterKey(tn, cust, "api", period.PeriodOf(time.Now(), istanbul))
 	if err := shared.rdb.IncrBy(context.Background(), key, 500).Err(); err != nil {
 		t.Fatal(err)
@@ -293,15 +294,15 @@ func testRedisFlush(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		e.produce(e.event(tn, cust, "api", 2, 0, nil))
 	}
-	eventually(t, 20*time.Second, "counter = 60", func() bool { return counter(t, tn, cust, "api") == 60 })
+	testkit.Eventually(t, 20*time.Second, "counter = 60", func() bool { return counter(t, tn, cust, "api") == 60 })
 	if err := shared.rdb.FlushAll(context.Background()).Err(); err != nil {
 		t.Fatal(err)
 	}
 	e.produce(e.event(tn, cust, "api", 2, 0, nil)) // the next batch finds the offset key gone
-	eventually(t, 30*time.Second, "counter rebuilt to 62", func() bool { return counter(t, tn, cust, "api") == 62 })
+	testkit.Eventually(t, 30*time.Second, "counter rebuilt to 62", func() bool { return counter(t, tn, cust, "api") == 62 })
 
 	key := engine.CounterKey(tn, cust, "api", period.PeriodOf(time.Now(), istanbul))
-	eventually(t, 10*time.Second, "offsets in redis", func() bool { return len(nextOffset(t, 0, 1, 2, 3)) > 0 })
+	testkit.Eventually(t, 10*time.Second, "offsets in redis", func() bool { return len(nextOffset(t, 0, 1, 2, 3)) > 0 })
 	agg := &fakeAggregator{totals: map[string]int64{key: 62}, scale: map[string]int{}, offsets: nextOffset(t, 0, 1, 2, 3)}
 	res, err := e.reconciler(p, agg, 0, 1, 2, 3).RunOnce(context.Background())
 	if err != nil || res.Corrections != 0 {
@@ -344,7 +345,7 @@ func testEntitlementVisible(t *testing.T) {
 	}
 	e.setEntitlement(tn, cust, "api", 10, 0, 100)
 	start := time.Now()
-	eventually(t, 30*time.Second, "entitlement visible", func() bool {
+	testkit.Eventually(t, 30*time.Second, "entitlement visible", func() bool {
 		r, err := svc.CheckEntitlement(ctx, &limitsv1.CheckEntitlementRequest{CustomerId: cust.String(), MeterCode: "api"})
 		return err == nil && r.GetStatus().GetLimitUnits() == 10
 	})
@@ -353,7 +354,7 @@ func testEntitlementVisible(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		e.produce(e.event(tn, cust, "api", 1, 0, nil))
 	}
-	eventually(t, 20*time.Second, "limit reached", func() bool {
+	testkit.Eventually(t, 20*time.Second, "limit reached", func() bool {
 		r, err := svc.CheckEntitlement(ctx, &limitsv1.CheckEntitlementRequest{CustomerId: cust.String(), MeterCode: "api"})
 		return err == nil && r.GetStatus().GetUsedUnits() == 10
 	})
@@ -368,7 +369,7 @@ func testEntitlementVisible(t *testing.T) {
 	}
 
 	e.produceEntitlement(fmt.Sprintf("%s/%s/api", tn, cust), nil) // tombstone
-	eventually(t, 30*time.Second, "entitlement removed", func() bool {
+	testkit.Eventually(t, 30*time.Second, "entitlement removed", func() bool {
 		r, err := svc.CheckEntitlement(ctx, &limitsv1.CheckEntitlementRequest{CustomerId: cust.String(), MeterCode: "api"})
 		return err == nil && r.GetStatus().GetUnlimited()
 	})
@@ -385,10 +386,10 @@ func testFractionalLimit(t *testing.T) {
 	tn, cust := uuid.New(), uuid.New()
 	e.setEntitlement(tn, cust, "gb", 10500, 3, 100)
 	p := e.startPod(podOpts{})
-	eventually(t, 20*time.Second, "entitlement", func() bool { return p.ents.Len() == 1 })
+	testkit.Eventually(t, 20*time.Second, "entitlement", func() bool { return p.ents.Len() == 1 })
 	e.produce(e.event(tn, cust, "gb", 10000, 3, nil))
 	e.produce(e.event(tn, cust, "gb", 499, 3, nil))
-	eventually(t, 20*time.Second, "10.499", func() bool { return counter(t, tn, cust, "gb") == 10499 })
+	testkit.Eventually(t, 20*time.Second, "10.499", func() bool { return counter(t, tn, cust, "gb") == 10499 })
 	if got := e.readLimitEvents(0, 1500*time.Millisecond); len(got) != 0 {
 		t.Fatalf("fired at 10.499: %v", got)
 	}

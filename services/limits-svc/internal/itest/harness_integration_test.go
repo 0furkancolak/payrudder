@@ -7,9 +7,6 @@ package itest
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -84,13 +81,6 @@ func infra(t *testing.T) {
 	})
 }
 
-func logger() *slog.Logger {
-	if os.Getenv("ITEST_VERBOSE") != "" {
-		return slog.New(slog.NewTextHandler(os.Stderr, nil))
-	}
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
-}
-
 // env is one test's isolated deployment: its own topics, consumer groups and an empty Redis.
 type env struct {
 	t          *testing.T
@@ -154,11 +144,11 @@ func (e *env) startPod(o podOpts) *pod {
 	e.t.Helper()
 	e.pods++
 	p := &pod{e: e, name: fmt.Sprintf("pod%d", e.pods), owned: engine.NewOwnership()}
-	p.ents = entitlements.New(shared.rdb, logger())
+	p.ents = entitlements.New(shared.rdb, testkit.Logger())
 	var err error
 	p.applier, err = engine.NewApplier(engine.Config{
 		Redis: shared.rdb, Meters: e.meters, Tenants: fixedTenants(), Ents: p.ents, Producer: e.prod, LimitTopic: e.limitTopic,
-		Log: logger(), AfterLua: o.afterLua,
+		Log: testkit.Logger(), AfterLua: o.afterLua,
 	})
 	if err != nil {
 		e.t.Fatal(err)
@@ -169,14 +159,14 @@ func (e *env) startPod(o podOpts) *pod {
 	usage, err := kafkax.NewConsumer(kafkax.ConsumerConfig{
 		Brokers: []string{shared.kafka.Brokers}, GroupID: e.group, Topic: e.usageTopic, LoadOffsets: p.applier.LoadOffsets,
 		Handler: p.applier, MaxPollRecords: 1000, Backoff: 20 * time.Millisecond, SessionTimeout: 6 * time.Second,
-		Log: logger(), Extra: p.owned.Opts(e.usageTopic),
+		Log: testkit.Logger(), Extra: p.owned.Opts(e.usageTopic),
 	})
 	if err != nil {
 		e.t.Fatal(err)
 	}
 	entC, err := kafkax.NewConsumer(kafkax.ConsumerConfig{
 		Brokers: []string{shared.kafka.Brokers}, GroupID: "limits-ent-" + e.group + "-" + p.name, Topic: e.entTopic,
-		LoadOffsets: entitlements.OffsetLoader, Handler: p.ents, MaxPollRecords: 1000, Backoff: 20 * time.Millisecond, Log: logger(),
+		LoadOffsets: entitlements.OffsetLoader, Handler: p.ents, MaxPollRecords: 1000, Backoff: 20 * time.Millisecond, Log: testkit.Logger(),
 	})
 	if err != nil {
 		e.t.Fatal(err)
@@ -271,19 +261,6 @@ func counter(t *testing.T, tenantID, customer uuid.UUID, meter string) int64 {
 	return v
 }
 
-// eventually polls cond.
-func eventually(t *testing.T, timeout time.Duration, what string, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(25 * time.Millisecond)
-	}
-	t.Fatalf("timed out after %s waiting for %s", timeout, what)
-}
-
 // readLimitEvents returns the LimitExceeded events on the test's topic, waiting for at least min of them and then
 // settle longer for any extra.
 func (e *env) readLimitEvents(min int, settle time.Duration) []*eventsv1.LimitExceeded {
@@ -365,11 +342,11 @@ func (e *env) startPodNoConsume(o podOpts) *pod {
 	e.t.Helper()
 	e.pods++
 	p := &pod{e: e, name: fmt.Sprintf("pod%d", e.pods), owned: engine.NewOwnership()}
-	p.ents = entitlements.New(shared.rdb, logger())
+	p.ents = entitlements.New(shared.rdb, testkit.Logger())
 	var err error
 	p.applier, err = engine.NewApplier(engine.Config{
 		Redis: shared.rdb, Meters: e.meters, Tenants: fixedTenants(), Ents: p.ents, Producer: e.prod, LimitTopic: e.limitTopic,
-		Log: logger(), AfterLua: o.afterLua,
+		Log: testkit.Logger(), AfterLua: o.afterLua,
 	})
 	if err != nil {
 		e.t.Fatal(err)
@@ -379,7 +356,7 @@ func (e *env) startPodNoConsume(o podOpts) *pod {
 	}
 	entC, err := kafkax.NewConsumer(kafkax.ConsumerConfig{
 		Brokers: []string{shared.kafka.Brokers}, GroupID: "limits-ent-" + e.group + "-" + p.name, Topic: e.entTopic,
-		LoadOffsets: entitlements.OffsetLoader, Handler: p.ents, MaxPollRecords: 1000, Backoff: 20 * time.Millisecond, Log: logger(),
+		LoadOffsets: entitlements.OffsetLoader, Handler: p.ents, MaxPollRecords: 1000, Backoff: 20 * time.Millisecond, Log: testkit.Logger(),
 	})
 	if err != nil {
 		e.t.Fatal(err)
@@ -396,13 +373,13 @@ func (e *env) startPodNoConsume(o podOpts) *pod {
 // eventuallyEnts waits for the pod's entitlement map to hold n entitlements.
 func eventuallyEnts(t *testing.T, _ *env, p *pod, n int) {
 	t.Helper()
-	eventually(t, 20*time.Second, "entitlements", func() bool { return p.ents.Len() == n })
+	testkit.Eventually(t, 20*time.Second, "entitlements", func() bool { return p.ents.Len() == n })
 }
 
 // reconciler builds a Reconciler over the fake aggregator for the given partitions.
 func (e *env) reconciler(p *pod, agg *fakeAggregator, parts ...int32) *engine.Reconciler {
 	return engine.NewReconciler(engine.ReconcilerConfig{
 		Applier: p.applier, Redis: shared.rdb, Aggregator: agg, Meters: e.meters,
-		Owned: func() []int32 { return parts }, CheckpointTimeout: 5 * time.Second, Log: logger(),
+		Owned: func() []int32 { return parts }, CheckpointTimeout: 5 * time.Second, Log: testkit.Logger(),
 	})
 }

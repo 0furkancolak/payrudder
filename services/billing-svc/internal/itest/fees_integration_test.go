@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 )
 
 func (e *env) feeDue(customer string, pv *plansv1.PlanVersion, interval plansv1.SubscriptionInterval, start, end time.Time, fee int64, mutate func(*plansv1.Subscription)) *plansv1.FeeDue {
@@ -87,7 +88,7 @@ func testAdvanceFeesAreInvoicedOncePerPeriod(t *testing.T) {
 	}
 
 	// The invoices are charged: their sagas complete.
-	eventually(t, 20*time.Second, "fee invoices to be paid", func() bool {
+	testkit.Eventually(t, 20*time.Second, "fee invoices to be paid", func() bool {
 		var open int
 		_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
 			WHERE i.tenant_id = $1 AND i.kind = 'FEE' AND (s.state IS NULL OR s.state <> 'COMPLETED')`, e.tid).Scan(&open)

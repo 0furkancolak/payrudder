@@ -19,6 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 )
@@ -81,7 +82,7 @@ func testEInvoiceFinalizedIssuesInvoicesAndCreditNotes(t *testing.T) {
 	e := einvoiceEnv(t, "finalized")
 	stub := e.startWorkers(nil)
 	completeOctober(e)
-	eventually(t, 20*time.Second, "both invoices e-invoiced", allIssued(t, e.tid, 2))
+	testkit.Eventually(t, 20*time.Second, "both invoices e-invoiced", allIssued(t, e.tid, 2))
 	if n := stub.Count("einvoice"); n != 2 {
 		t.Fatalf("%d e-invoice commands, want 2", n)
 	}
@@ -115,7 +116,7 @@ func testEInvoiceFinalizedIssuesInvoicesAndCreditNotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, 20*time.Second, "credit note e-invoiced", allIssued(t, e.tid, 3))
+	testkit.Eventually(t, 20*time.Second, "credit note e-invoiced", allIssued(t, e.tid, 3))
 	var cnCmd *commandsv1.IssueEInvoice
 	for _, c := range stub.Commands() {
 		if x := c.GetIssueEInvoice(); x != nil && x.GetKind() == "credit_note" {
@@ -158,7 +159,7 @@ func testEInvoiceFinalizedIssuesInvoicesAndCreditNotes(t *testing.T) {
 	if _, err := svc.CancelEInvoice(tenant.WithOperator(context.Background()), &billingv1.CancelEInvoiceRequest{TenantId: e.tid.String(), Id: only.GetDocuments()[0].GetId(), Reason: "mistake"}); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, 20*time.Second, "document cancelled", func() bool {
+	testkit.Eventually(t, 20*time.Second, "document cancelled", func() bool {
 		d, err := svc.GetEInvoice(tctx, &billingv1.GetEInvoiceRequest{Id: only.GetDocuments()[0].GetId()})
 		return err == nil && d.GetDocument().GetStatus() == "cancelled"
 	})
@@ -192,7 +193,7 @@ func paidModeDeclined(t *testing.T) {
 	})
 	e.addUsage("2026-10", "cus_a", "calls", "150", 0)
 	e.driveRun("2026-10")
-	eventually(t, 20*time.Second, "declined sagas", func() bool {
+	testkit.Eventually(t, 20*time.Second, "declined sagas", func() bool {
 		s := e.sagaStates("2026-10")
 		return len(s) == 2 && s["cus_a"] != "" && s["cus_a"] != "PDF_REQUESTED" && s["cus_a"] != "CHARGE_REQUESTED"
 	})
@@ -215,7 +216,7 @@ func paidModePaid(t *testing.T) {
 	on := einvoiceEnv(t, "paid")
 	on.startWorkers(nil)
 	completeOctober(on)
-	eventually(t, 20*time.Second, "paid invoices e-invoiced", allIssued(t, on.tid, 2))
+	testkit.Eventually(t, 20*time.Second, "paid invoices e-invoiced", allIssued(t, on.tid, 2))
 }
 
 // testEInvoiceRetriesWithBackoffAndTheOperatorRetriesFailures: a timeout is retried after the backoff; a refusal waits for the operator, whose retry reads the
@@ -239,7 +240,7 @@ func testEInvoiceRetriesWithBackoffAndTheOperatorRetriesFailures(t *testing.T) {
 	e.customer("cus_b").TaxId = "00000000000" // the integrator refuses this buyer
 	completeOctober(e)
 
-	eventually(t, 20*time.Second, "a is pending with its next attempt, b is failed", func() bool {
+	testkit.Eventually(t, 20*time.Second, "a is pending with its next attempt, b is failed", func() bool {
 		var a, b string
 		for _, d := range docs(t, e.tid) {
 			if d.ErrKey == "einvoice.provider.unavailable" && d.Status == "pending" {
@@ -258,7 +259,7 @@ func testEInvoiceRetriesWithBackoffAndTheOperatorRetriesFailures(t *testing.T) {
 			t.Fatalf("sweep = %d, %v", n, err)
 		}
 	}
-	eventually(t, 20*time.Second, "a retried and issued", func() bool {
+	testkit.Eventually(t, 20*time.Second, "a retried and issued", func() bool {
 		issued := 0
 		for _, d := range docs(t, e.tid) {
 			if d.Status == "issued" {
@@ -290,7 +291,7 @@ func testEInvoiceRetriesWithBackoffAndTheOperatorRetriesFailures(t *testing.T) {
 	if _, err := svc.RetryEInvoice(op, &billingv1.RetryEInvoiceRequest{TenantId: e.tid.String(), Id: failedID}); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, 20*time.Second, "both issued", allIssued(t, e.tid, 2))
+	testkit.Eventually(t, 20*time.Second, "both issued", allIssued(t, e.tid, 2))
 	var last *commandsv1.IssueEInvoice
 	for _, c := range stub.Commands() {
 		if x := c.GetIssueEInvoice(); x != nil && x.GetDocumentId() == failedID {
@@ -318,7 +319,7 @@ func testEInvoiceSilentWorkerIsAskedAgain(t *testing.T) {
 		return stubworker.Action{Reply: stubworker.Succeed}
 	})
 	completeOctober(e)
-	eventually(t, 20*time.Second, "one document waiting", func() bool {
+	testkit.Eventually(t, 20*time.Second, "one document waiting", func() bool {
 		issued := 0
 		for _, d := range docs(t, e.tid) {
 			if d.Status == "issued" {
@@ -331,7 +332,7 @@ func testEInvoiceSilentWorkerIsAskedAgain(t *testing.T) {
 	if n, err := sweeper.Sweep(context.Background(), 10); err != nil || n != 1 {
 		t.Fatalf("sweep = %d, %v", n, err)
 	}
-	eventually(t, 20*time.Second, "both issued", allIssued(t, e.tid, 2))
+	testkit.Eventually(t, 20*time.Second, "both issued", allIssued(t, e.tid, 2))
 }
 
 var _ = proto.Equal

@@ -16,6 +16,7 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
@@ -60,7 +61,7 @@ func (l *linkEnv) start(token string) string {
 func (l *linkEnv) waitState(token, state string) *billingv1.GetHostedInvoiceResponse {
 	l.t.Helper()
 	var last *billingv1.GetHostedInvoiceResponse
-	eventually(l.t, 30*time.Second, "payment state "+state, func() bool {
+	testkit.Eventually(l.t, 30*time.Second, "payment state "+state, func() bool {
 		last, _ = l.page(token)
 		return last.GetPaymentState() == state
 	})
@@ -393,7 +394,7 @@ func testPaymentLinkRevokeAndExpiry(t *testing.T) {
 	if _, err := l.svc.StartLinkPayment(l.visitor, &billingv1.StartLinkPaymentRequest{Token: c.GetToken()}); status.Code(err) != codes.NotFound {
 		t.Errorf("start on a revoked link: %v", err)
 	}
-	eventually(t, 15*time.Second, "the unpaid invoice to be voided", func() bool { st, ss := sagaStatus(invoiceID); return st == "void" && ss == "VOIDED" })
+	testkit.Eventually(t, 15*time.Second, "the unpaid invoice to be voided", func() bool { st, ss := sagaStatus(invoiceID); return st == "void" && ss == "VOIDED" })
 
 	// Expiry: an expired link says nothing; the sweep tells the tenant once and voids what is unpaid.
 	e := l.create(&billingv1.CreatePaymentLinkRequest{Kind: "adhoc", AmountMinor: 800, Description: "Expires"})
@@ -422,7 +423,7 @@ func testPaymentLinkRevokeAndExpiry(t *testing.T) {
 	if n := countType(types, "payment_link.expired"); n != 1 {
 		t.Errorf("payment_link.expired x%d in %v, want one (the unpaid ad-hoc link; the paid single-use one was used, not expired)", n, types)
 	}
-	eventually(t, 15*time.Second, "the expired link's invoice to be voided", func() bool { st, _ := sagaStatus(expInvoice); return st == "void" })
+	testkit.Eventually(t, 15*time.Second, "the expired link's invoice to be voided", func() bool { st, _ := sagaStatus(expInvoice); return st == "void" })
 	if got := l.link(e.GetLink().GetId()); got.GetStatus() != "expired" {
 		t.Errorf("status = %s", got.GetStatus())
 	}

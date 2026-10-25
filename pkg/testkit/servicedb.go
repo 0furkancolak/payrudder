@@ -1,7 +1,6 @@
 package testkit
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -83,12 +82,4 @@ func withUserDB(t testing.TB, dsn, user, password, db string) string {
 	}
 	u.Path = "/" + db
 	return u.String()
-}
-
-// Ctx returns a context cancelled when the test ends.
-func Ctx(t testing.TB) context.Context {
-	t.Helper()
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-	return ctx
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/ingest"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/maintenance"
 )
@@ -564,11 +565,11 @@ func testKafkaPaused(t *testing.T) {
 
 	stop := startRelay(t, outbox.Config{ErrorBackoff: 200 * time.Millisecond})
 	defer stop()
-	dockerPause(t, true)
+	testkit.DockerPause(t, shared.kafka.ContainerID, true)
 	paused := true
 	defer func() {
 		if paused {
-			dockerPause(t, false)
+			testkit.DockerPause(t, shared.kafka.ContainerID, false)
 		}
 	}()
 
@@ -600,7 +601,7 @@ func testKafkaPaused(t *testing.T) {
 	if got := outboxRows(t, tc.id); got == 0 {
 		t.Fatal("outbox drained while Kafka was paused")
 	}
-	dockerPause(t, false)
+	testkit.DockerPause(t, shared.kafka.ContainerID, false)
 	paused = false
 
 	waitOutboxEmpty(t, tc.id, 2*time.Minute)

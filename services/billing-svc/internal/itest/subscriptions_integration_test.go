@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 )
 
 func ts(y int, m time.Month, d int) *timestamppb.Timestamp {
@@ -199,7 +200,7 @@ func testProviderOwnedSubscriptionBillsOnlyUsageThroughItsProvider(t *testing.T)
 	if l := e.lines("2026-10", "cus_b"); len(l) != 1 || l[0].Kind != "BASE_FEE" || l[0].Amount != 1000 {
 		t.Errorf("a Payrudder-owned customer still pays its fixed fee: %+v", l)
 	}
-	eventually(t, 30*time.Second, "the charge command for the provider-owned invoice", func() bool {
+	testkit.Eventually(t, 30*time.Second, "the charge command for the provider-owned invoice", func() bool {
 		for _, c := range stub.Commands() {
 			if ch := c.GetChargePayment(); ch != nil && c.GetTenantId() == e.tid.String() && ch.GetAmountMinor() == 100 {
 				if ch.GetProvider() != "paddle" || ch.GetPaymentMethod() != "sub_01" {

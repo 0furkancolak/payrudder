@@ -6,10 +6,7 @@ package itest
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"math/rand/v2"
-	"os"
 	"os/exec"
 	"testing"
 	"time"
@@ -41,13 +38,6 @@ type world struct {
 	brokers  string
 	producer *kgo.Client
 	svc      *api.Server
-}
-
-func logger() *slog.Logger {
-	if os.Getenv("ITEST_VERBOSE") != "" {
-		return slog.New(slog.NewTextHandler(os.Stderr, nil))
-	}
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 func start(t *testing.T) *world {
@@ -84,7 +74,7 @@ func start(t *testing.T) *world {
 	t.Cleanup(w.producer.Close)
 
 	r, err := consumer.New(consumer.Config{Brokers: []string{w.brokers}, Group: "analytics-test", Conn: w.conn, Producer: w.producer,
-		BatchRows: 2000, BatchWait: 300 * time.Millisecond, Backoff: 200 * time.Millisecond, Log: logger()})
+		BatchRows: 2000, BatchWait: 300 * time.Millisecond, Backoff: 200 * time.Millisecond, Log: testkit.Logger()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,18 +111,6 @@ func rawRows(t *testing.T, w *world, tn uuid.UUID) uint64 {
 	return n
 }
 
-func eventually(t *testing.T, timeout time.Duration, what string, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	t.Fatalf("timed out after %s waiting for %s", timeout, what)
-}
-
 func ctxOf(tn uuid.UUID) context.Context {
 	return tenant.NewContext(context.Background(), tenant.Info{ID: tn, Timezone: "UTC"})
 }
@@ -166,7 +144,7 @@ func TestAnalytics(t *testing.T) {
 		dups := uint64(len(recs) - n)
 		w.produce(t, recs...)
 		// Background merges may already have collapsed some duplicates, so wait on the deduplicated count.
-		eventually(t, 90*time.Second, "all unique events inserted", func() bool {
+		testkit.Eventually(t, 90*time.Second, "all unique events inserted", func() bool {
 			var u uint64
 			return w.conn.QueryRow(context.Background(), `SELECT count() FROM usage_events FINAL WHERE tenant_id = ?`, tn).Scan(&u) == nil && u == n
 		})
@@ -254,7 +232,7 @@ func TestAnalytics(t *testing.T) {
 		w.produce(t,
 			&kgo.Record{Topic: consumer.UsageTopic, Key: []byte(a.String()), Value: event(a, ca, "iso-a", "api", 7000, 3, at)},
 			&kgo.Record{Topic: consumer.UsageTopic, Key: []byte(b.String()), Value: event(b, cb, "iso-b", "api", 99000, 3, at)})
-		eventually(t, 30*time.Second, "both rows", func() bool { return rawRows(t, w, a) == 1 && rawRows(t, w, b) == 1 })
+		testkit.Eventually(t, 30*time.Second, "both rows", func() bool { return rawRows(t, w, a) == 1 && rawRows(t, w, b) == 1 })
 		req := &analyticsv1.QueryUsageRequest{MeterCode: "api", From: timestamppb.New(base.Add(-time.Hour)), To: timestamppb.New(base.Add(4 * time.Hour))}
 		ra, err := w.svc.QueryUsage(ctxOf(a), req)
 		if err != nil || len(ra.GetPoints()) != 1 || ra.GetPoints()[0].GetQuantity() != "7.000" {
@@ -330,7 +308,7 @@ func TestAnalytics(t *testing.T) {
 		w.produce(t, recs...)
 		time.Sleep(30 * time.Second) // the consumer retries meanwhile; its offsets stay uncommitted
 		unpause()
-		eventually(t, 90*time.Second, "the backlog to drain", func() bool {
+		testkit.Eventually(t, 90*time.Second, "the backlog to drain", func() bool {
 			var n uint64
 			return w.conn.QueryRow(context.Background(), `SELECT count() FROM usage_events FINAL WHERE tenant_id = ?`, tn).Scan(&n) == nil && n == 3000
 		})
