@@ -7,12 +7,14 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	couponscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/command"
 	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	feesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/fees/query"
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subscriptionscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
@@ -50,8 +52,8 @@ func (c *Commands) Advance(ctx context.Context, req *plansv1.AdvanceSubscription
 		if err != nil {
 			return err
 		}
-		n, err := q.AdvanceSubscriptionFee(ctx, sqlc.AdvanceSubscriptionFeeParams{ID: id, PeriodStart: start, NextDue: end})
-		if err != nil || n == 0 {
+		advanced, err := subscriptionscmd.AdvanceFee(ctx, q, id, start, end)
+		if err != nil || !advanced {
 			return err
 		}
 		// The period was dealt with just now (not by an earlier call): if the coupon took something off its fee, that used one of the coupon's periods.
@@ -69,10 +71,7 @@ func (c *Commands) Advance(ctx context.Context, req *plansv1.AdvanceSubscription
 		if discount, _, err := couponsqry.Discount(ctx, q, id, row.Currency, fee); err != nil {
 			return err
 		} else if discount > 0 {
-			if err := q.AddRedemptionDiscount(ctx, sqlc.AddRedemptionDiscountParams{SubscriptionID: id, Discount: discount}); err != nil {
-				return err
-			}
-			return q.CountCouponPeriod(ctx, id)
+			return couponscmd.UsedOnFee(ctx, q, id, discount)
 		}
 		return nil
 	})

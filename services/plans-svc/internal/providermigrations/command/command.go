@@ -16,13 +16,13 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments/providers"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
 	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	provmigqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/providermigrations/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subscriptionscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
 	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 )
@@ -65,12 +65,12 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 	// A fee paid in advance for the rest of the period the old provider-side subscription will not serve goes to the customer's credit balance.
 	// A coupon makes that sum differ from the list fee: such a subscription is left to a credit note.
 	if creditUnused {
-		if _, err := changescmd.CreditUnusedFee(ctx, q, now, old, when); err != nil && !errors.Is(err, changesqry.ErrCouponOnCredit) {
+		if _, err := subscriptionscmd.CreditUnusedFee(ctx, q, now, old, when); err != nil && !errors.Is(err, changesqry.ErrCouponOnCredit) {
 			return sqlc.InsertSubscriptionRow{}, err
 		}
 	}
 	// The old subscription is cancelled at once only when the cutover is not in the future.
-	nr, err := changescmd.SwitchTo(ctx, q, now, tenantID, old, changescmd.Successor{
+	nr, err := subscriptionscmd.SwitchTo(ctx, q, now, tenantID, old, subscriptionscmd.Successor{
 		PlanVersionID: old.PlanVersionID, Interval: subscription.Interval(old.Interval), State: eff, TrialEnds: old.TrialEndsAt, At: when,
 		Anchor: anchor, FeeTiming: timing, FeeDue: feeDue, Owner: owner, ProviderRef: providerRef, Provider: &toProvider, LeaveOldOpen: when.After(now),
 	})

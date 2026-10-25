@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -17,9 +16,9 @@ import (
 	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subscriptionscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
 	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 )
@@ -32,86 +31,6 @@ type Commands struct {
 
 // New returns the change commands.
 func New(db *store.DB, now func() time.Time) *Commands { return &Commands{db: db, now: now} }
-
-// Successor is the subscription that takes over from another: at a plan or interval change, at a provider sync, at a provider
-// cutover. The three share SwitchTo, so they end the old subscription, start the new one, carry the coupon and publish the
-// entitlements by one rule.
-type Successor struct {
-	PlanVersionID uuid.UUID
-	Interval      subscription.Interval
-	State         subscription.State
-	TrialEnds     *time.Time
-	At, Anchor    time.Time
-	// FeeTiming and FeeDue: "advance" with the start of the next period to invoice, or "arrears" with none.
-	FeeTiming string
-	FeeDue    *time.Time
-	// Owner and ProviderRef carry a provider-run subscription's link over. Owner "" is Payrudder.
-	Owner       string
-	ProviderRef *string
-	// Provider is the successor's payment provider; nil keeps the old subscription's.
-	Provider *string
-	// LeaveOldOpen ends the old subscription at At without marking it cancelled yet: a cutover dated in the future, where the
-	// old one is still live until then.
-	LeaveOldOpen bool
-}
-
-// ownerPayrudder is the Owner of a subscription Payrudder itself invoices (the stored value predates the rename).
-const ownerPayrudder = "quotify"
-
-// carriesCoupon is the one rule for the coupon of a subscription that is replaced: it follows the subscription, with the
-// periods it has used, as long as the successor can hold one. A coupon takes something off a fee Payrudder invoices in
-// advance (coupons.Redeem refuses any other subscription), so a successor that a provider runs, or that is billed in
-// arrears, leaves it on the ended subscription.
-func carriesCoupon(next Successor) bool {
-	return (next.Owner == "" || next.Owner == ownerPayrudder) && next.FeeTiming == "advance"
-}
-
-// SwitchTo ends old at next.At and starts its successor in the same transaction, with the entitlements of both.
-func SwitchTo(ctx context.Context, q *sqlc.Queries, now time.Time, tenantID uuid.UUID, old sqlc.GetSubscriptionRow, next Successor) (sqlc.InsertSubscriptionRow, error) {
-	at := next.At
-	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: old.ID, EndTime: at}); err != nil {
-		return sqlc.InsertSubscriptionRow{}, err
-	} else if n != 1 {
-		return sqlc.InsertSubscriptionRow{}, errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
-	}
-	if !next.LeaveOldOpen {
-		if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: old.ID, State: string(subscription.Cancelled), PausedAt: old.PausedAt}); err != nil {
-			return sqlc.InsertSubscriptionRow{}, err
-		}
-	}
-	if next.ProviderRef != nil && old.ProviderRef != nil && *next.ProviderRef == *old.ProviderRef {
-		if _, err := q.ReleaseProviderLink(ctx, old.ID); err != nil {
-			return sqlc.InsertSubscriptionRow{}, err
-		}
-	}
-	oldID := old.ID
-	owner := next.Owner
-	if owner == "" {
-		owner = ownerPayrudder
-	}
-	provider := old.Provider
-	if next.Provider != nil {
-		provider = next.Provider
-	}
-	nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
-		ID: idgen.NewUUIDv7(), CustomerID: old.CustomerID, PlanVersionID: next.PlanVersionID, StartTime: at,
-		State: string(next.State), Interval: string(next.Interval), Currency: old.Currency, TrialEndsAt: next.TrialEnds,
-		BillingAnchor: next.Anchor, ChangedFromID: &oldID, Provider: provider, ProviderRef: next.ProviderRef, Owner: owner, FeeTiming: next.FeeTiming, FeeDueAt: next.FeeDue,
-	})
-	if err != nil {
-		return nr, err
-	}
-	if carriesCoupon(next) {
-		if _, err := q.MoveSubscriptionCoupon(ctx, sqlc.MoveSubscriptionCouponParams{OldID: old.ID, NewID: nr.ID}); err != nil {
-			return nr, err
-		}
-	}
-	// Old entitlements first, new ones last: the topic is compacted per customer and meter, so the last write wins.
-	if err := entitlementscmd.Publish(ctx, q, tenantID, old.CustomerID, old.PlanVersionID, old.StartTime, &at, now); err != nil {
-		return nr, err
-	}
-	return nr, entitlementscmd.Publish(ctx, q, tenantID, nr.CustomerID, nr.PlanVersionID, at, nil, now)
-}
 
 // Change moves a subscription billed in advance to another plan version and/or interval, now or at the end of the paid period.
 func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRequest) (*plansv1.ChangeSubscriptionResponse, error) {
@@ -159,7 +78,7 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 			state = subscription.Trialing
 		}
 		feeDue := qt.NewFeeDue
-		nr, err := SwitchTo(ctx, q, c.now(), ti.ID, row, Successor{PlanVersionID: pc.NewPV.ID, Interval: pc.NewInterval, State: state, TrialEnds: row.TrialEndsAt, At: pc.At,
+		nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), ti.ID, row, subscriptionscmd.Successor{PlanVersionID: pc.NewPV.ID, Interval: pc.NewInterval, State: state, TrialEnds: row.TrialEndsAt, At: pc.At,
 			Anchor: qt.NewAnchor, FeeTiming: "advance", FeeDue: &feeDue})
 		if err != nil {
 			return err
@@ -252,7 +171,7 @@ func (c *Commands) ApplyScheduled(ctx context.Context, req *plansv1.ApplySchedul
 				return err
 			}
 			effective := dc.EffectiveAt
-			nr, err := SwitchTo(ctx, q, c.now(), ti.ID, row, Successor{PlanVersionID: pv.ID, Interval: subscription.Interval(dc.Interval), State: subscription.Active,
+			nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), ti.ID, row, subscriptionscmd.Successor{PlanVersionID: pv.ID, Interval: subscription.Interval(dc.Interval), State: subscription.Active,
 				At: effective, Anchor: effective, FeeTiming: "advance", FeeDue: &effective})
 			if err != nil {
 				return err
@@ -295,16 +214,6 @@ func (c *Commands) MarkAdjustmentBilled(ctx context.Context, adjustmentID string
 		return convert.Err(err, "adjustment")
 	}
 	return nil
-}
-
-// CreditUnusedFee records the unused prepaid fee as an adjustment on the subscription, which billing turns into credit balance.
-func CreditUnusedFee(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubscriptionRow, at time.Time) (int64, error) {
-	credit, pe, ok, err := changesqry.UnusedFee(ctx, q, now, row, at)
-	if err != nil || !ok {
-		return 0, err
-	}
-	return credit, q.InsertSubscriptionAdjustment(ctx, sqlc.InsertSubscriptionAdjustmentParams{
-		ID: idgen.NewUUIDv7(), SubscriptionID: row.ID, OldPlanCode: row.PlanCode, FromAt: at, ToAt: pe, CreditMinor: credit, ChargeMinor: 0})
 }
 
 // quoteJSON is a change quote the way the API returns it, for the event that announces the change.
