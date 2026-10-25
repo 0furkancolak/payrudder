@@ -7,8 +7,6 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"io/fs"
-	"sort"
 	"strings"
 )
 
@@ -31,19 +29,6 @@ var subjects = map[string]string{
 }
 
 var set = template.Must(template.New("").ParseFS(files, "files/*.html"))
-
-// Names lists the available templates.
-func Names() []string {
-	var out []string
-	_ = fs.WalkDir(files, "files", func(p string, d fs.DirEntry, err error) error {
-		if err == nil && !d.IsDir() {
-			out = append(out, strings.TrimSuffix(strings.TrimPrefix(p, "files/"), ".html"))
-		}
-		return nil
-	})
-	sort.Strings(out)
-	return out
-}
 
 // Render executes a template with data. sandbox prefixes the subject with "[SANDBOX] ".
 func Render(name string, data map[string]string, sandbox bool) (Rendered, error) {

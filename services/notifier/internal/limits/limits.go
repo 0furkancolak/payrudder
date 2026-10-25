@@ -21,7 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
-	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
 )
 
@@ -43,7 +43,7 @@ type Admin interface {
 
 // Consumer implements kafkax.PartitionHandler.
 type Consumer struct {
-	Mailer  *handler.Mailer
+	Mailer  *delivery.Mailer
 	Plans   Plans
 	Admin   Admin
 	Offsets store.Offsets
@@ -101,8 +101,10 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 		"period": le.GetPeriodId(), "threshold_pct": fmt.Sprint(le.GetThresholdPct()),
 		"used": quantity.FormatUnits(le.GetUsedUnits(), scale), "limit": quantity.FormatUnits(le.GetLimitUnits(), scale),
 	}
-	_, err = c.Mailer.Deliver(ctx, le.GetEventId(), nil, "limit", limitTemplate, cust.GetCustomer().GetEmail(), data,
-		tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX)
+	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{
+		Key: le.GetEventId(), Kind: "limit", Template: limitTemplate, To: cust.GetCustomer().GetEmail(), Data: data,
+		Sandbox: tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX,
+	})
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
 		return c.dlq(ctx, rec, "INVALID_EVENT", err)
 	}
