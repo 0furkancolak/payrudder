@@ -26,13 +26,13 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/meters"
 	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/maintenance"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/meters"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/query"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/replay"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
@@ -160,7 +160,7 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	defer producer.Close()
 
 	handler := &apply.Handler{
-		Pool: systemPool, Meters: meters.New(plansv1.NewPlansServiceClient(plansConn), time.Minute), Settings: src,
+		Pool: systemPool, Meters: meters.New(plansv1.NewPlansServiceClient(plansConn), time.Minute, apply.ErrMeterNotFound), Settings: src,
 		DLQ: kafkax.DLQ{Client: producer, Topic: cfg.DLQTopic, Consumer: cfg.GroupID}, Log: log,
 		ConsumerGroup: cfg.GroupID, AfterCommit: afterCommitFault(),
 	}

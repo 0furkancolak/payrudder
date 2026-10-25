@@ -16,10 +16,10 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	"github.com/0furkancolak/payrudder/pkg/meters"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/usage"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
 )
 
 const (
@@ -216,7 +216,7 @@ func (r *Reconciler) checkpointFor(ctx context.Context, p int32, tid uuid.UUID, 
 	keys := make([]CheckKey, len(refs))
 	for i, ref := range refs {
 		m, err := r.cfg.Meters.Get(ctx, tid, ref.Meter)
-		if errors.Is(err, meters.ErrNotFound) {
+		if errors.Is(err, ErrMeterNotFound) {
 			continue
 		}
 		if err != nil {

@@ -18,12 +18,13 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/grpc/codes"
 
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/meters"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
@@ -33,6 +34,9 @@ const (
 	Topic = "usage.events.v1"
 	Group = "aggregator"
 )
+
+// ErrMeterNotFound is the answer for a meter plans-svc does not know.
+var ErrMeterNotFound = errkey.New(codes.NotFound, "aggregator.meter.not_found", "meter not found")
 
 // MeterSource resolves meters.
 type MeterSource interface {
@@ -250,7 +254,7 @@ func (h *Handler) meter(ctx context.Context, cache map[string]meterResult, ev us
 		case err == nil:
 			cache[key] = meterResult{meter: m}
 			return cache[key], nil
-		case errors.Is(err, meters.ErrNotFound):
+		case errors.Is(err, ErrMeterNotFound):
 			if attempt >= len(h.MeterRetryDelays) {
 				cache[key] = meterResult{missing: true}
 				return cache[key], nil
