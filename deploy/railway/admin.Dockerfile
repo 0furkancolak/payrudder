@@ -13,6 +13,6 @@ RUN npm run build
 
 FROM nginx:1.29-alpine
 # Railway sets PORT; the service variable GATEWAY_URL overrides the default, which is the gateway's private address.
-ENV PORT=3001 NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 GATEWAY_URL=http://gateway.railway.internal:8000 PREFILL_PLAYGROUND=false BRAND_NAME=Quotify QUOTIFY_DEMO=false
+ENV PORT=3001 NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 GATEWAY_URL=http://gateway.railway.internal:8000 PREFILL_PLAYGROUND=false BRAND_NAME=Payrudder QUOTIFY_DEMO=false
 COPY web/admin/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html

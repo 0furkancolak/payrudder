@@ -702,7 +702,7 @@ services:
     environment:
       GATEWAY_URL: http://gateway:8000
       QUOTIFY_DEMO: ${QUOTIFY_DEMO:-false}
-      BRAND_NAME: ${BRAND_NAME:-Quotify}
+      BRAND_NAME: ${BRAND_NAME:-Payrudder}
       # Local stack only: the operator playground's account form comes pre-filled.
       PREFILL_PLAYGROUND: "true"
     ports: ["42301:3001"]

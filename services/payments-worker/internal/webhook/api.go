@@ -472,7 +472,7 @@ func (s *Server) applyChange(w http.ResponseWriter, r *http.Request) {
 		SubscriptionId: sub.GetId(), Provider: tg.provider, ProviderRef: sub.GetProviderRef(), Owner: "provider", OccurredAt: timestamppb.Now(), PlanVersionId: pvID, Interval: iv})
 	if err != nil {
 		s.Log.ErrorContext(ctx, "the provider changed a subscription but plans-svc did not follow", "subscription", sub.GetId(), "err", err)
-		writeJSON(w, http.StatusAccepted, map[string]any{"changed_at_provider": true, "message": "the provider applied the change; Quotify will follow when the provider's notification arrives"})
+		writeJSON(w, http.StatusAccepted, map[string]any{"changed_at_provider": true, "message": "the provider applied the change; Payrudder will follow when the provider's notification arrives"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"changed_at_provider": true, "followed": true})
@@ -503,7 +503,7 @@ func (s *Server) pause(w http.ResponseWriter, r *http.Request) {
 		s.providerFail(w, r, "pause", err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]any{"requested": true, "note": "Quotify's copy follows when the provider's notification arrives"})
+	writeJSON(w, http.StatusAccepted, map[string]any{"requested": true, "note": "Payrudder's copy follows when the provider's notification arrives"})
 }
 
 func (s *Server) resume(w http.ResponseWriter, r *http.Request) {
@@ -524,7 +524,7 @@ func (s *Server) resume(w http.ResponseWriter, r *http.Request) {
 		s.providerFail(w, r, "resume", err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]any{"requested": true, "note": "Quotify's copy follows when the provider's notification arrives"})
+	writeJSON(w, http.StatusAccepted, map[string]any{"requested": true, "note": "Payrudder's copy follows when the provider's notification arrives"})
 }
 
 func (s *Server) paymentMethodLink(w http.ResponseWriter, r *http.Request) {

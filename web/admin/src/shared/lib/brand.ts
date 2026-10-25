@@ -1,6 +1,6 @@
 import "./prefill";
 
-const DEFAULT_BRAND = "Quotify";
+const DEFAULT_BRAND = "Payrudder";
 
 /** The name the product goes by: served by /env.js (BRAND_NAME), else the default. */
 export function brandName(): string {

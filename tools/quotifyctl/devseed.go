@@ -86,7 +86,7 @@ func devSeedCmd(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	return runDevSeed(devSeedOptions{Gateway: *gateway, Token: *token, Mailpit: *mailpit, Force: *force, Env: os.Getenv("QUOTIFY_ENV"), Timeout: *wait})
+	return runDevSeed(devSeedOptions{Gateway: *gateway, Token: *token, Mailpit: *mailpit, Force: *force, Env: getenv("QUOTIFY_ENV"), Timeout: *wait})
 }
 
 func runDevSeed(o devSeedOptions) error {

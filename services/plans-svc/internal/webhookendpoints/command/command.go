@@ -214,7 +214,7 @@ func (c *Commands) SendTest(ctx context.Context, rawID string) (*plansv1.Webhook
 			return err
 		}
 		event := idgen.NewUUIDv7()
-		if _, err := q.InsertWebhookEvent(ctx, sqlc.InsertWebhookEventParams{ID: event, Type: webhooks.Ping, Data: json.RawMessage(`{"message":"This is a test event from Quotify."}`), OccurredAt: c.now()}); err != nil {
+		if _, err := q.InsertWebhookEvent(ctx, sqlc.InsertWebhookEventParams{ID: event, Type: webhooks.Ping, Data: json.RawMessage(`{"message":"This is a test event from Payrudder."}`), OccurredAt: c.now()}); err != nil {
 			return err
 		}
 		did, err := q.QueueWebhookDeliveryFor(ctx, sqlc.QueueWebhookDeliveryForParams{ID: idgen.NewUUIDv7(), EventID: event, EndpointID: id})

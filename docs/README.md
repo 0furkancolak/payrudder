@@ -1,4 +1,4 @@
-# Quotify documentation
+# Payrudder documentation
 
 Status: **implemented through Phase 18** (see the [roadmap](phases/ROADMAP.md)). These documents are the source of truth for the design. Code that disagrees
 with them is a bug in the code or in the docs. Fix one of them in the same PR.

@@ -226,7 +226,7 @@ vars gateway "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "QUOTIFY_INGEST_AD
   'QUOTIFY_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'QUOTIFY_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "QUOTIFY_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}"
 
 note "admin-ui"
-vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "QUOTIFY_DEMO=$DEMO" BRAND_NAME=Quotify
+vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "QUOTIFY_DEMO=$DEMO" BRAND_NAME=Payrudder
 
 # --- 3. public domains ------------------------------------------------------------------------------------------------------------------------
 note "Public domains (the gateway, the console, and MinIO for presigned links)"

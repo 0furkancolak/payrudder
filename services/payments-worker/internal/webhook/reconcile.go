@@ -220,7 +220,7 @@ func (s *Server) unpaidCharges(ctx context.Context, rec *Reconciliation, t uuid.
 		inv, err := s.Billing.GetInvoice(ctx, t, id)
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
-				continue // not one of this tenant's invoices (or not billed through Quotify)
+				continue // not one of this tenant's invoices (or not billed through Payrudder)
 			}
 			return err
 		}

@@ -64,7 +64,7 @@ func (c *Client) SyncCatalogue(ctx context.Context, r payments.CatalogueRequest)
 		}
 		body := map[string]any{
 			"product_id":    out.ProductRef,
-			"description":   "Quotify " + spec.Key,
+			"description":   "Payrudder " + spec.Key,
 			"unit_price":    money{Amount: strconv.FormatInt(spec.AmountMinor, 10), CurrencyCode: spec.Currency},
 			"billing_cycle": map[string]any{"interval": spec.Interval, "frequency": 1},
 			"quantity":      map[string]int{"minimum": 1, "maximum": 1},
