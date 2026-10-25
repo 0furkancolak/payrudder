@@ -17,6 +17,7 @@ import (
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
+	"github.com/0furkancolak/payrudder/pkg/chaos"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
@@ -90,7 +91,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	handler := &apply.Handler{
 		Pool: systemPool, Meters: meters.New(plansv1.NewPlansServiceClient(plansConn), time.Minute, apply.ErrMeterNotFound), Settings: src,
 		DLQ: kafkax.DLQ{Client: producer, Topic: cfg.DLQTopic, Consumer: cfg.GroupID}, Log: log,
-		ConsumerGroup: cfg.GroupID, AfterCommit: afterCommitFault(),
+		ConsumerGroup: cfg.GroupID, AfterCommit: chaos.Crash("AGG_CRASH_AFTER_COMMIT", "chaos build: aggregator will crash after commit", "chaos: crashing after commit"),
 	}
 	consumer, err := newConsumer(cfg, log, handler)
 	if err != nil {
