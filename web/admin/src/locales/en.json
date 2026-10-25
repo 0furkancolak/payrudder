@@ -1670,6 +1670,51 @@
       "tenant": {
         "bad_timezone": "The time zone of this account cannot be used. Check it in the account settings."
       }
+    },
+    "assets": {
+      "asset": {
+        "bad_status": "The file is not in a state where this can be done.",
+        "cannot_abort": "This file is already uploaded or finished. Abort the upload instead of completing it.",
+        "not_found": "The file was not found.",
+        "not_in_session": "That file is not part of this upload session.",
+        "not_uploadable": "This file can no longer be uploaded."
+      },
+      "download": {
+        "not_ready": "Only files that finished uploading can be downloaded.",
+        "sign_failed": "The download link could not be created. Try again shortly."
+      },
+      "list": {
+        "bad_page_size": "The page size must be between 1 and 500.",
+        "bad_page_token": "The page token is not valid. Start the list again."
+      },
+      "request": {
+        "bad_id": "An id in the request is not a valid id."
+      },
+      "session": {
+        "bad_file_count": "A session takes between 1 and the maximum number of files.",
+        "closed": "The upload session is no longer open.",
+        "not_found": "The upload session was not found."
+      },
+      "storage": {
+        "quota_exceeded": "These files do not fit in the storage quota of this account.",
+        "sign_failed": "The upload URLs could not be created. Try again shortly.",
+        "unavailable": "File storage is not available right now. Try again shortly."
+      },
+      "upload": {
+        "bad_from_part": "The starting part is beyond the number of parts of this file.",
+        "bad_part_count": "Ask for a valid number of part URLs at a time.",
+        "bad_sha256": "The SHA-256 checksum must be 64 hexadecimal characters.",
+        "changed": "The upload changed at the same moment. Try again.",
+        "content_type_mismatch": "The content of the file does not match its declared type.",
+        "file_too_large": "The file is too large.",
+        "header_required": "The first message of an upload must be the upload header.",
+        "invalid_filename": "The file name cannot be used.",
+        "multipart_gone": "The multipart upload no longer exists. Start the upload again.",
+        "part_mismatch": "The uploaded parts do not match the file.",
+        "size_mismatch": "The size of the uploaded file does not match the declared size.",
+        "size_required": "The size of the file is required for direct uploads.",
+        "unsupported_content_type": "This type of file is not supported."
+      }
     }
   },
   "product": {

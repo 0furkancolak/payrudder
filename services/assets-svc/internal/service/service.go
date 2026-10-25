@@ -22,6 +22,7 @@ import (
 
 	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
 	"github.com/0furkancolak/quotify/pkg/blob"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
@@ -95,11 +96,28 @@ func New(pool *pgxpool.Pool, b Blob, pol policy.Policy, cfg Config) *Service {
 	return &Service{pool: pool, blob: b, pol: pol, cfg: cfg, log: cfg.Log, now: time.Now}
 }
 
-// failure builds a gRPC error that also carries an application error code (ErrorInfo.Reason), which the gateway puts in
-// the `code` of its error envelope.
+// violationKeys are the error keys of the application error codes (ErrorInfo.Reason) that policy violations carry.
+var violationKeys = map[string]string{
+	policy.UnsupportedContentType: errkey.Key("assets.upload.unsupported_content_type"),
+	policy.ContentTypeMismatch:    errkey.Key("assets.upload.content_type_mismatch"),
+	policy.FileTooLarge:           errkey.Key("assets.upload.file_too_large"),
+	policy.StorageQuotaExceeded:   errkey.Key("assets.storage.quota_exceeded"),
+	policy.InvalidFilename:        errkey.Key("assets.upload.invalid_filename"),
+	policy.PartMismatch:           errkey.Key("assets.upload.part_mismatch"),
+	policy.SizeMismatch:           errkey.Key("assets.upload.size_mismatch"),
+}
+
+// failure builds a gRPC error that carries an error key (the console translates it) and also an application error code (ErrorInfo.Reason), which the
+// gateway puts in the `code` of its error envelope.
 func failure(c codes.Code, reason, msg string) error {
+	key, ok := violationKeys[reason]
+	if !ok {
+		key = errkey.Default(c)
+	}
+	// The application code comes first: clients that read the first ErrorInfo keep getting it.
 	st := status.New(c, msg)
-	if d, err := st.WithDetails(&errdetails.ErrorInfo{Reason: reason, Domain: "quotify.assets"}); err == nil {
+	if d, err := st.WithDetails(&errdetails.ErrorInfo{Reason: reason, Domain: "quotify.assets"},
+		&errdetails.ErrorInfo{Domain: errkey.Domain, Metadata: map[string]string{errkey.MetaKey: key}}); err == nil {
 		st = d
 	}
 	return st.Err()
@@ -188,7 +206,7 @@ func objectKey(tenantID, assetID uuid.UUID) string {
 func parseID(field, v string) (uuid.UUID, error) {
 	id, err := uuid.Parse(v)
 	if err != nil {
-		return uuid.Nil, status.Errorf(codes.InvalidArgument, "%s must be a UUID", field)
+		return uuid.Nil, errkey.Newf(codes.InvalidArgument, "assets.request.bad_id", "%s must be a UUID", field)
 	}
 	return id, nil
 }
@@ -202,7 +220,7 @@ func loadSession(ctx context.Context, q *sqlc.Queries, id uuid.UUID, forUpdate b
 		sess, err = q.GetUploadSession(ctx, id)
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return sess, status.Error(codes.NotFound, "upload session not found")
+		return sess, errkey.New(codes.NotFound, "assets.session.not_found", "upload session not found")
 	}
 	return sess, err
 }
@@ -216,7 +234,7 @@ func loadAsset(ctx context.Context, q *sqlc.Queries, id uuid.UUID, forUpdate boo
 		a, err = q.GetAsset(ctx, id)
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return a, status.Error(codes.NotFound, "asset not found")
+		return a, errkey.New(codes.NotFound, "assets.asset.not_found", "asset not found")
 	}
 	return a, err
 }

@@ -1670,6 +1670,51 @@
       "tenant": {
         "bad_timezone": "Die Zeitzone dieses Kontos ist nicht verwendbar. Prüfen Sie sie in den Kontoeinstellungen."
       }
+    },
+    "assets": {
+      "asset": {
+        "bad_status": "Die Datei befindet sich nicht in einem Zustand, in dem das möglich ist.",
+        "cannot_abort": "Diese Datei ist bereits hochgeladen oder abgeschlossen. Brechen Sie den Upload ab, statt ihn abzuschließen.",
+        "not_found": "Die Datei wurde nicht gefunden.",
+        "not_in_session": "Diese Datei gehört nicht zu dieser Upload-Sitzung.",
+        "not_uploadable": "Diese Datei kann nicht mehr hochgeladen werden."
+      },
+      "download": {
+        "not_ready": "Nur Dateien, deren Upload abgeschlossen ist, können heruntergeladen werden.",
+        "sign_failed": "Der Download-Link konnte nicht erstellt werden. Versuchen Sie es gleich erneut."
+      },
+      "list": {
+        "bad_page_size": "Die Seitengröße muss zwischen 1 und 500 liegen.",
+        "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn."
+      },
+      "request": {
+        "bad_id": "Eine ID in der Anfrage ist keine gültige ID."
+      },
+      "session": {
+        "bad_file_count": "Eine Sitzung nimmt zwischen 1 und der maximalen Anzahl an Dateien auf.",
+        "closed": "Die Upload-Sitzung ist nicht mehr offen.",
+        "not_found": "Die Upload-Sitzung wurde nicht gefunden."
+      },
+      "storage": {
+        "quota_exceeded": "Diese Dateien passen nicht in das Speicherkontingent dieses Kontos.",
+        "sign_failed": "Die Upload-URLs konnten nicht erstellt werden. Versuchen Sie es gleich erneut.",
+        "unavailable": "Der Dateispeicher ist gerade nicht verfügbar. Versuchen Sie es gleich erneut."
+      },
+      "upload": {
+        "bad_from_part": "Der Startteil liegt jenseits der Anzahl der Teile dieser Datei.",
+        "bad_part_count": "Fordern Sie jeweils eine gültige Anzahl von Teil-URLs an.",
+        "bad_sha256": "Die SHA-256-Prüfsumme muss aus 64 Hexadezimalzeichen bestehen.",
+        "changed": "Der Upload hat sich gleichzeitig geändert. Versuchen Sie es erneut.",
+        "content_type_mismatch": "Der Inhalt der Datei passt nicht zum angegebenen Typ.",
+        "file_too_large": "Die Datei ist zu groß.",
+        "header_required": "Die erste Nachricht eines Uploads muss der Upload-Header sein.",
+        "invalid_filename": "Der Dateiname kann nicht verwendet werden.",
+        "multipart_gone": "Der mehrteilige Upload existiert nicht mehr. Starten Sie den Upload neu.",
+        "part_mismatch": "Die hochgeladenen Teile passen nicht zur Datei.",
+        "size_mismatch": "Die Größe der hochgeladenen Datei passt nicht zur angegebenen Größe.",
+        "size_required": "Für direkte Uploads ist die Dateigröße erforderlich.",
+        "unsupported_content_type": "Dieser Dateityp wird nicht unterstützt."
+      }
     }
   },
   "product": {

@@ -1670,6 +1670,51 @@
       "tenant": {
         "bad_timezone": "Le fuseau horaire de ce compte est inutilisable. Vérifiez-le dans les paramètres du compte."
       }
+    },
+    "assets": {
+      "asset": {
+        "bad_status": "Le fichier n'est pas dans un état qui permet cette opération.",
+        "cannot_abort": "Ce fichier est déjà téléversé ou terminé. Annulez le téléversement au lieu de le terminer.",
+        "not_found": "Le fichier est introuvable.",
+        "not_in_session": "Ce fichier ne fait pas partie de cette session de téléversement.",
+        "not_uploadable": "Ce fichier ne peut plus être téléversé."
+      },
+      "download": {
+        "not_ready": "Seuls les fichiers dont le téléversement est terminé peuvent être téléchargés.",
+        "sign_failed": "Le lien de téléchargement n'a pas pu être créé. Réessayez dans un instant."
+      },
+      "list": {
+        "bad_page_size": "La taille de page doit être comprise entre 1 et 500.",
+        "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste."
+      },
+      "request": {
+        "bad_id": "Un identifiant de la requête n'est pas valide."
+      },
+      "session": {
+        "bad_file_count": "Une session accepte entre 1 et le nombre maximal de fichiers.",
+        "closed": "La session de téléversement n'est plus ouverte.",
+        "not_found": "La session de téléversement est introuvable."
+      },
+      "storage": {
+        "quota_exceeded": "Ces fichiers ne tiennent pas dans le quota de stockage de ce compte.",
+        "sign_failed": "Les URL de téléversement n'ont pas pu être créées. Réessayez dans un instant.",
+        "unavailable": "Le stockage des fichiers n'est pas disponible pour le moment. Réessayez dans un instant."
+      },
+      "upload": {
+        "bad_from_part": "La partie de départ dépasse le nombre de parties de ce fichier.",
+        "bad_part_count": "Demandez un nombre valide d'URL de parties à la fois.",
+        "bad_sha256": "La somme de contrôle SHA-256 doit comporter 64 caractères hexadécimaux.",
+        "changed": "Le téléversement a changé au même moment. Réessayez.",
+        "content_type_mismatch": "Le contenu du fichier ne correspond pas au type déclaré.",
+        "file_too_large": "Le fichier est trop volumineux.",
+        "header_required": "Le premier message d'un téléversement doit être l'en-tête de téléversement.",
+        "invalid_filename": "Le nom du fichier est inutilisable.",
+        "multipart_gone": "Le téléversement en plusieurs parties n'existe plus. Recommencez le téléversement.",
+        "part_mismatch": "Les parties téléversées ne correspondent pas au fichier.",
+        "size_mismatch": "La taille du fichier téléversé ne correspond pas à la taille déclarée.",
+        "size_required": "La taille du fichier est requise pour les téléversements directs.",
+        "unsupported_content_type": "Ce type de fichier n'est pas pris en charge."
+      }
     }
   },
   "product": {
