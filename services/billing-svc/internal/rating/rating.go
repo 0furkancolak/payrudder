@@ -86,6 +86,8 @@ type Line struct {
 	UnitPrice    string // display, PER_UNIT only
 	AmountMinor  int64
 	Description  string
+	// CouponCode names the coupon that made a DISCOUNT line (empty for any other line).
+	CouponCode string
 	// ServiceFrom and ServiceTo are the service period the line covers; zero when it does not say.
 	ServiceFrom, ServiceTo time.Time
 }

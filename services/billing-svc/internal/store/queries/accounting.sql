@@ -54,7 +54,8 @@ SELECT (CASE WHEN @monthly::boolean THEN date_trunc('month', p.paid_at AT TIME Z
        i.currency::text AS currency,
        count(*)::bigint AS invoices,
        COALESCE(sum(i.total_minor), 0)::bigint AS gross_minor,
-       COALESCE(sum(t.tax_minor), 0)::bigint AS tax_minor
+       COALESCE(sum(t.tax_minor), 0)::bigint AS tax_minor,
+       COALESCE(sum(d.discount_minor), 0)::bigint AS discount_minor
 FROM (
   SELECT DISTINCT ON (s.invoice_id) s.invoice_id, e.at AS paid_at
   FROM saga_events e JOIN invoice_sagas s ON s.tenant_id = e.tenant_id AND s.id = e.saga_id
@@ -63,8 +64,31 @@ FROM (
 ) p
 JOIN invoices i ON i.tenant_id = @tenant_id AND i.id = p.invoice_id
 LEFT JOIN LATERAL (SELECT sum(l.amount_minor) AS tax_minor FROM invoice_lines l WHERE l.tenant_id = i.tenant_id AND l.invoice_id = i.id AND l.kind = 'TAX') t ON true
+-- What coupons took off (contra-revenue): the DISCOUNT lines a coupon made, as a positive amount. The lines that a plan change moves back are not coupons.
+LEFT JOIN LATERAL (SELECT -sum(l.amount_minor) AS discount_minor FROM invoice_lines l
+                   WHERE l.tenant_id = i.tenant_id AND l.invoice_id = i.id AND l.kind = 'DISCOUNT' AND l.coupon_code IS NOT NULL) d ON true
 GROUP BY 1, 2
 ORDER BY 1, 2;
+
+-- Per coupon, over the invoices paid in the window: how many, what they came to before the coupon (their positive lines except tax), what the coupon took off, per currency.
+-- name: AccountingCoupons :many
+SELECT i.currency::text AS currency, d.coupon_code::text AS coupon_code,
+       count(*)::bigint AS invoices,
+       COALESCE(sum(s.sales_minor), 0)::bigint AS sales_minor,
+       COALESCE(sum(d.discount_minor), 0)::bigint AS discount_minor
+FROM (
+  SELECT DISTINCT ON (s.invoice_id) s.invoice_id
+  FROM saga_events e JOIN invoice_sagas s ON s.tenant_id = e.tenant_id AND s.id = e.saga_id
+  WHERE e.tenant_id = @tenant_id AND e.to_state = 'PAID' AND e.at >= @from_at::timestamptz AND e.at < @to_at::timestamptz
+  ORDER BY s.invoice_id, e.at
+) p
+JOIN invoices i ON i.tenant_id = @tenant_id AND i.id = p.invoice_id
+JOIN LATERAL (SELECT l.coupon_code, -sum(l.amount_minor) AS discount_minor FROM invoice_lines l
+              WHERE l.tenant_id = i.tenant_id AND l.invoice_id = i.id AND l.kind = 'DISCOUNT' AND l.coupon_code IS NOT NULL GROUP BY l.coupon_code) d ON true
+JOIN LATERAL (SELECT COALESCE(sum(l.amount_minor) FILTER (WHERE l.amount_minor > 0 AND l.kind <> 'TAX'), 0) AS sales_minor FROM invoice_lines l
+              WHERE l.tenant_id = i.tenant_id AND l.invoice_id = i.id) s ON true
+GROUP BY i.currency, d.coupon_code
+ORDER BY i.currency, d.coupon_code;
 
 -- Refunds: a credit note against an invoice that was paid, on the day it was issued; and a whole invoice refunded (a paid invoice that was voided), on the day the refund happened.
 -- name: AccountingRefunds :many

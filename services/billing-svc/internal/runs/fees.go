@@ -100,7 +100,7 @@ func (m *Manager) billFee(ctx context.Context, tenantID uuid.UUID, t *plansv1.Te
 		lines := []rating.Line{{Kind: rating.KindBaseFee, AmountMinor: d.GetFeeMinor(), ServiceFrom: start, ServiceTo: end,
 			Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", feeWord(sub), sub.GetPlanCode(), day(start, loc), day(end, loc))}}
 		if d.GetDiscountMinor() > 0 {
-			lines = append(lines, rating.Line{Kind: rating.KindDiscount, AmountMinor: -d.GetDiscountMinor(), ServiceFrom: start, ServiceTo: end, Description: "Coupon " + d.GetCouponCode()})
+			lines = append(lines, rating.Line{Kind: rating.KindDiscount, AmountMinor: -d.GetDiscountMinor(), ServiceFrom: start, ServiceTo: end, Description: "Coupon " + d.GetCouponCode(), CouponCode: d.GetCouponCode()})
 		}
 		id, err := m.draftFeeInvoice(ctx, tenantID, t, loc, feeInvoiceSpec{
 			Key: sub.GetId() + "|" + start.UTC().Format(time.RFC3339), Sub: sub, PeriodStart: start, Lines: lines})

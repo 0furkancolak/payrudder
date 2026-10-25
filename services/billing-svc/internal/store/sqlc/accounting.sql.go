@@ -13,12 +13,74 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const accountingCoupons = `-- name: AccountingCoupons :many
+SELECT i.currency::text AS currency, d.coupon_code::text AS coupon_code,
+       count(*)::bigint AS invoices,
+       COALESCE(sum(s.sales_minor), 0)::bigint AS sales_minor,
+       COALESCE(sum(d.discount_minor), 0)::bigint AS discount_minor
+FROM (
+  SELECT DISTINCT ON (s.invoice_id) s.invoice_id
+  FROM saga_events e JOIN invoice_sagas s ON s.tenant_id = e.tenant_id AND s.id = e.saga_id
+  WHERE e.tenant_id = $1 AND e.to_state = 'PAID' AND e.at >= $2::timestamptz AND e.at < $3::timestamptz
+  ORDER BY s.invoice_id, e.at
+) p
+JOIN invoices i ON i.tenant_id = $1 AND i.id = p.invoice_id
+JOIN LATERAL (SELECT l.coupon_code, -sum(l.amount_minor) AS discount_minor FROM invoice_lines l
+              WHERE l.tenant_id = i.tenant_id AND l.invoice_id = i.id AND l.kind = 'DISCOUNT' AND l.coupon_code IS NOT NULL GROUP BY l.coupon_code) d ON true
+JOIN LATERAL (SELECT COALESCE(sum(l.amount_minor) FILTER (WHERE l.amount_minor > 0 AND l.kind <> 'TAX'), 0) AS sales_minor FROM invoice_lines l
+              WHERE l.tenant_id = i.tenant_id AND l.invoice_id = i.id) s ON true
+GROUP BY i.currency, d.coupon_code
+ORDER BY i.currency, d.coupon_code
+`
+
+type AccountingCouponsParams struct {
+	TenantID uuid.UUID
+	FromAt   time.Time
+	ToAt     time.Time
+}
+
+type AccountingCouponsRow struct {
+	Currency      string
+	CouponCode    string
+	Invoices      int64
+	SalesMinor    int64
+	DiscountMinor int64
+}
+
+// Per coupon, over the invoices paid in the window: how many, what they came to before the coupon (their positive lines except tax), what the coupon took off, per currency.
+func (q *Queries) AccountingCoupons(ctx context.Context, arg AccountingCouponsParams) ([]AccountingCouponsRow, error) {
+	rows, err := q.db.Query(ctx, accountingCoupons, arg.TenantID, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AccountingCouponsRow{}
+	for rows.Next() {
+		var i AccountingCouponsRow
+		if err := rows.Scan(
+			&i.Currency,
+			&i.CouponCode,
+			&i.Invoices,
+			&i.SalesMinor,
+			&i.DiscountMinor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const accountingIncome = `-- name: AccountingIncome :many
 SELECT (CASE WHEN $1::boolean THEN date_trunc('month', p.paid_at AT TIME ZONE 'UTC') ELSE date_trunc('day', p.paid_at AT TIME ZONE 'UTC') END)::date AS bucket,
        i.currency::text AS currency,
        count(*)::bigint AS invoices,
        COALESCE(sum(i.total_minor), 0)::bigint AS gross_minor,
-       COALESCE(sum(t.tax_minor), 0)::bigint AS tax_minor
+       COALESCE(sum(t.tax_minor), 0)::bigint AS tax_minor,
+       COALESCE(sum(d.discount_minor), 0)::bigint AS discount_minor
 FROM (
   SELECT DISTINCT ON (s.invoice_id) s.invoice_id, e.at AS paid_at
   FROM saga_events e JOIN invoice_sagas s ON s.tenant_id = e.tenant_id AND s.id = e.saga_id
@@ -27,6 +89,8 @@ FROM (
 ) p
 JOIN invoices i ON i.tenant_id = $2 AND i.id = p.invoice_id
 LEFT JOIN LATERAL (SELECT sum(l.amount_minor) AS tax_minor FROM invoice_lines l WHERE l.tenant_id = i.tenant_id AND l.invoice_id = i.id AND l.kind = 'TAX') t ON true
+LEFT JOIN LATERAL (SELECT -sum(l.amount_minor) AS discount_minor FROM invoice_lines l
+                   WHERE l.tenant_id = i.tenant_id AND l.invoice_id = i.id AND l.kind = 'DISCOUNT' AND l.coupon_code IS NOT NULL) d ON true
 GROUP BY 1, 2
 ORDER BY 1, 2
 `
@@ -39,15 +103,17 @@ type AccountingIncomeParams struct {
 }
 
 type AccountingIncomeRow struct {
-	Bucket     pgtype.Date
-	Currency   string
-	Invoices   int64
-	GrossMinor int64
-	TaxMinor   int64
+	Bucket        pgtype.Date
+	Currency      string
+	Invoices      int64
+	GrossMinor    int64
+	TaxMinor      int64
+	DiscountMinor int64
 }
 
 // Income: an invoice counts on the day its saga reached PAID, whatever its status is now. Gross is the invoice total (tax included), tax the sum of its TAX lines.
 // The bucket is the day, or the first day of the month.
+// What coupons took off (contra-revenue): the DISCOUNT lines a coupon made, as a positive amount. The lines that a plan change moves back are not coupons.
 func (q *Queries) AccountingIncome(ctx context.Context, arg AccountingIncomeParams) ([]AccountingIncomeRow, error) {
 	rows, err := q.db.Query(ctx, accountingIncome,
 		arg.Monthly,
@@ -68,6 +134,7 @@ func (q *Queries) AccountingIncome(ctx context.Context, arg AccountingIncomePara
 			&i.Invoices,
 			&i.GrossMinor,
 			&i.TaxMinor,
+			&i.DiscountMinor,
 		); err != nil {
 			return nil, err
 		}
