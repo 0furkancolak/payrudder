@@ -7,10 +7,10 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/subscription"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
 	couponsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/query"
@@ -37,14 +37,14 @@ func PeriodStartingAt(sub sqlc.GetSubscriptionRow, start time.Time, loc *time.Lo
 	iv := subscription.Interval(sub.Interval)
 	n, err := subscription.PeriodIndex(sub.BillingAnchor, iv, start, loc)
 	if err != nil {
-		return time.Time{}, status.Error(codes.FailedPrecondition, err.Error())
+		return time.Time{}, errkey.New(codes.FailedPrecondition, "plans.fee.invalid_period", err.Error())
 	}
 	ps, err := subscription.PeriodStart(sub.BillingAnchor, iv, n, loc)
 	if err != nil {
 		return time.Time{}, err
 	}
 	if !ps.Equal(start) {
-		return time.Time{}, status.Errorf(codes.FailedPrecondition, "%s is not the start of a billing period", start.Format(time.RFC3339))
+		return time.Time{}, errkey.Newf(codes.FailedPrecondition, "plans.fee.not_period_start", "%s is not the start of a billing period", start.Format(time.RFC3339))
 	}
 	return subscription.PeriodEnd(sub.BillingAnchor, iv, n, loc)
 }

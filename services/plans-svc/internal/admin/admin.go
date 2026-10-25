@@ -382,7 +382,7 @@ func (s *Server) IssueAPIKey(ctx context.Context, tenantID uuid.UUID, scope stri
 		s.log.InfoContext(ctx, "api key created", "tenant_id", t.ID, "api_key_id", row.ID, "prefix", row.Prefix, "scope", scope)
 		return convert.APIKey(row), key.String(), nil
 	}
-	return nil, "", status.Error(codes.Aborted, "could not allocate a unique key prefix; retry")
+	return nil, "", errkey.New(codes.Aborted, "identity.api_key.prefix_unavailable", "could not allocate a unique key prefix; retry")
 }
 
 func (s *Server) RevokeApiKey(ctx context.Context, req *plansv1.RevokeApiKeyRequest) (*plansv1.RevokeApiKeyResponse, error) {
@@ -502,7 +502,7 @@ func (s *Server) ResolveApiKey(ctx context.Context, req *plansv1.ResolveApiKeyRe
 	}
 	r, err := s.q().ResolveApiKey(ctx, req.GetPrefix())
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, status.Error(codes.NotFound, "api key not found")
+		return nil, errkey.New(codes.NotFound, "identity.api_key.not_found", "api key not found")
 	}
 	if err != nil {
 		return nil, convert.Err(err, "api key")
