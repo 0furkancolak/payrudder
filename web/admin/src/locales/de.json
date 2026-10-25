@@ -1202,7 +1202,8 @@
         "fully_credited": "Diese Rechnung wurde bereits vollständig gutgeschrieben.",
         "not_paid": "Nur eine bezahlte Rechnung kann gutgeschrieben werden.",
         "nothing_to_refund": "Für diese Gutschrift gibt es nichts auf die Karte zurückzuerstatten.",
-        "refund_not_failed": "Nur eine Gutschrift mit fehlgeschlagener Rückerstattung kann erneut versucht werden."
+        "refund_not_failed": "Nur eine Gutschrift mit fehlgeschlagener Rückerstattung kann erneut versucht werden.",
+        "bad_id": "Die Gutschrifts-ID ist keine gültige ID."
       },
       "dunning": {
         "bad_delay": "Jede Wiederholungsverzögerung muss zwischen 1 und 720 Stunden liegen.",
@@ -1210,7 +1211,8 @@
       },
       "invoice": {
         "not_found": "Die Rechnung wurde nicht gefunden.",
-        "pdf_not_ready": "Das PDF der Rechnung wurde noch nicht erstellt. Versuchen Sie es gleich noch einmal."
+        "pdf_not_ready": "Das PDF der Rechnung wurde noch nicht erstellt. Versuchen Sie es gleich noch einmal.",
+        "bad_id": "Die Rechnungs-ID ist keine gültige ID."
       },
       "invoice_link": {
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
@@ -1284,6 +1286,16 @@
         "range_too_long": "Der Zeitraum ist zu lang: höchstens fünf Jahre, eine Tagesreihe höchstens 366 Tage.",
         "reason_required": "Geben Sie zum Stornieren einer Ausgabe eine Begründung von höchstens 200 Zeichen an.",
         "unknown_currency": "Die Währung wird nicht unterstützt."
+      },
+      "einvoice": {
+        "bad_id": "Die ID der E-Rechnung oder des Kontos ist keine gültige ID."
+      },
+      "tenant": {
+        "bad_id": "Die Konto-ID ist keine gültige ID."
+      },
+      "rerating": {
+        "bad_job_id": "Die ID des Neubewertungsauftrags ist keine gültige ID.",
+        "bad_plan_version_id": "Die ID der Planversion ist keine gültige ID."
       }
     },
     "coupon": {
@@ -1460,6 +1472,49 @@
       "request": {
         "invalid": "{field} ist ungültig: {detail}",
         "too_large": "Die Anfrage ist zu groß."
+      }
+    },
+    "aggregator": {
+      "customer": {
+        "bad_id": "Die Kunden-ID ist keine gültige ID."
+      },
+      "period": {
+        "bad_id": "Der Zeitraum muss wie 2026-11 aussehen.",
+        "cannot_compute": "Die Einstellungen dieses Zeitraums lassen sich nicht berechnen. Prüfen Sie den Zeitraum und die Zeitzone des Kontos."
+      },
+      "usage": {
+        "bad_batch_size": "Fragen Sie jeweils zwischen 1 und der maximalen Anzahl an Nutzungsschlüsseln ab."
+      }
+    },
+    "analytics": {
+      "customer": {
+        "bad_id": "Die Kunden-ID ist keine gültige ID."
+      },
+      "tenant": {
+        "bad_id": "Die Konto-ID ist keine gültige ID."
+      },
+      "granularity": {
+        "unknown": "Diese Granularität wird nicht unterstützt. Verwenden Sie Stunde oder Tag."
+      },
+      "query": {
+        "exact_too_long": "Exakte Abfragen decken höchstens einen Tag ab. Verwenden Sie für längere Zeiträume die geschätzte Reihe.",
+        "invalid": "Diese Abfrage ist ungültig. Prüfen Sie Zähler, Zeitraum und Filter."
+      },
+      "range": {
+        "daily_too_long": "Eine Tagesreihe deckt höchstens 400 Tage ab.",
+        "hourly_too_long": "Eine Stundenreihe deckt höchstens 31 Tage ab.",
+        "required": "Anfang und Ende des Zeitraums sind beide erforderlich."
+      }
+    },
+    "limits": {
+      "customer": {
+        "bad_id": "Die Kunden-ID ist keine gültige ID."
+      },
+      "meter": {
+        "code_required": "Der Zählercode ist erforderlich."
+      },
+      "period": {
+        "bad_id": "Der Zeitraum muss wie 2026-11 aussehen."
       }
     }
   },

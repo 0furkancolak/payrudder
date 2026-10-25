@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/period"
 	"github.com/0furkancolak/quotify/pkg/quantity"
 	"github.com/0furkancolak/quotify/pkg/tenant"
@@ -41,12 +42,13 @@ func New(rdb *redis.Client, ents *entitlements.Store, ms meters.Source, rec *eng
 	return &Service{rdb: rdb, ents: ents, meters: ms, reconciler: rec, now: time.Now}
 }
 
-func invalid(msg string) error { return status.Error(codes.InvalidArgument, msg) }
+// invalid is an InvalidArgument status with the error key key.
+func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
 
 func (s *Service) periodFor(ti tenant.Info, id string) (string, error) {
 	if id != "" {
 		if !periodRe.MatchString(id) {
-			return "", invalid("period_id must look like 2026-11")
+			return "", invalid("limits.period.bad_id", "period_id must look like 2026-11")
 		}
 		return id, nil
 	}
@@ -67,10 +69,10 @@ func (s *Service) CheckEntitlement(ctx context.Context, req *limitsv1.CheckEntit
 	}
 	customer, err := uuid.Parse(req.GetCustomerId())
 	if err != nil {
-		return nil, invalid("customer_id must be a UUID")
+		return nil, invalid("limits.customer.bad_id", "customer_id must be a UUID")
 	}
 	if req.GetMeterCode() == "" {
-		return nil, invalid("meter_code is required")
+		return nil, invalid("limits.meter.code_required", "meter_code is required")
 	}
 	pid, err := s.periodFor(ti, req.GetPeriodId())
 	if err != nil {
@@ -108,7 +110,7 @@ func (s *Service) GetLimitStatus(ctx context.Context, req *limitsv1.GetLimitStat
 	}
 	customer, err := uuid.Parse(req.GetCustomerId())
 	if err != nil {
-		return nil, invalid("customer_id must be a UUID")
+		return nil, invalid("limits.customer.bad_id", "customer_id must be a UUID")
 	}
 	pid, err := s.periodFor(ti, req.GetPeriodId())
 	if err != nil {

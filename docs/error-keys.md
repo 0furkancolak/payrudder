@@ -2,6 +2,18 @@
 
 Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in `error.key` of every API error; translate keys, not messages.
 
+- `aggregator.customer.bad_id`
+- `aggregator.period.bad_id`
+- `aggregator.period.cannot_compute`
+- `aggregator.usage.bad_batch_size`
+- `analytics.customer.bad_id`
+- `analytics.granularity.unknown`
+- `analytics.query.exact_too_long`
+- `analytics.query.invalid`
+- `analytics.range.daily_too_long`
+- `analytics.range.hourly_too_long`
+- `analytics.range.required`
+- `analytics.tenant.bad_id`
 - `billing.accounting.bad_app`
 - `billing.accounting.bad_category`
 - `billing.accounting.bad_date`
@@ -16,6 +28,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.accounting.reason_required`
 - `billing.accounting.unknown_currency`
 - `billing.credit_note.bad_amount`
+- `billing.credit_note.bad_id`
 - `billing.credit_note.fully_credited`
 - `billing.credit_note.not_paid`
 - `billing.credit_note.nothing_to_refund`
@@ -40,6 +53,8 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.credits.unknown_currency`
 - `billing.dunning.bad_delay`
 - `billing.dunning.too_many_retries`
+- `billing.einvoice.bad_id`
+- `billing.invoice.bad_id`
 - `billing.invoice.not_found`
 - `billing.invoice.pdf_not_ready`
 - `billing.invoice_link.bad_expiry`
@@ -72,6 +87,9 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.payment_link.pack_required`
 - `billing.portal_link.customer_not_found`
 - `billing.portal_link.customer_required`
+- `billing.rerating.bad_job_id`
+- `billing.rerating.bad_plan_version_id`
+- `billing.tenant.bad_id`
 - `common.already_exists`
 - `common.conflict`
 - `common.failed_precondition`
@@ -141,6 +159,9 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.tenant.not_found`
 - `identity.token.invalid`
 - `identity.verify.throttled`
+- `limits.customer.bad_id`
+- `limits.meter.code_required`
+- `limits.period.bad_id`
 - `payments.transfer.bad_amount`
 - `payments.transfer.bad_currency`
 - `payments.transfer.bad_date`

@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/creditnotes/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/creditnotes/query"
@@ -30,7 +30,8 @@ func New(app, system *pgxpool.Pool, mgr *runs.Manager) *Handler {
 	return &Handler{app: app, system: system, runs: mgr}
 }
 
-func invalid(msg string) error { return status.Error(codes.InvalidArgument, msg) }
+// invalid is an InvalidArgument status with the error key key.
+func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
 
 // CreateCreditNote implements billingv1.BillingAdminServiceServer.
 func (h *Handler) CreateCreditNote(ctx context.Context, req *billingv1.CreateCreditNoteRequest) (*billingv1.CreateCreditNoteResponse, error) {
@@ -39,11 +40,11 @@ func (h *Handler) CreateCreditNote(ctx context.Context, req *billingv1.CreateCre
 	}
 	tid, err := uuid.Parse(req.GetTenantId())
 	if err != nil {
-		return nil, invalid("tenant_id must be a UUID")
+		return nil, invalid("billing.tenant.bad_id", "tenant_id must be a UUID")
 	}
 	iid, err := uuid.Parse(req.GetInvoiceId())
 	if err != nil {
-		return nil, invalid("invoice_id must be a UUID")
+		return nil, invalid("billing.invoice.bad_id", "invoice_id must be a UUID")
 	}
 	cn, err := command.Create(ctx, h.runs, tid, iid, req.GetAmountMinor(), req.GetReason(), req.GetRefundToCard())
 	if err != nil {
@@ -59,11 +60,11 @@ func (h *Handler) RetryCreditNoteRefund(ctx context.Context, req *billingv1.Retr
 	}
 	tid, err := uuid.Parse(req.GetTenantId())
 	if err != nil {
-		return nil, invalid("tenant_id must be a UUID")
+		return nil, invalid("billing.tenant.bad_id", "tenant_id must be a UUID")
 	}
 	id, err := uuid.Parse(req.GetCreditNoteId())
 	if err != nil {
-		return nil, invalid("credit_note_id must be a UUID")
+		return nil, invalid("billing.credit_note.bad_id", "credit_note_id must be a UUID")
 	}
 	cn, err := command.RetryRefund(ctx, h.runs, tid, id)
 	if err != nil {
@@ -80,7 +81,7 @@ func (h *Handler) GetCreditNote(ctx context.Context, req *billingv1.GetCreditNot
 	}
 	id, err := uuid.Parse(req.GetCreditNoteId())
 	if err != nil {
-		return nil, invalid("credit_note_id must be a UUID")
+		return nil, invalid("billing.credit_note.bad_id", "credit_note_id must be a UUID")
 	}
 	row, err := query.Get(ctx, h.app, ti.ID, id)
 	if err != nil {
