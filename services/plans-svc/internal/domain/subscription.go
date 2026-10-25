@@ -3,8 +3,9 @@ package domain
 import (
 	"regexp"
 
+	"github.com/0furkancolak/quotify/pkg/errkey"
+
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var providerNameRe = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
@@ -19,7 +20,7 @@ func RequireQuotifyOwned(owner string, provider *string) error {
 		if provider != nil {
 			name = *provider
 		}
-		return status.Errorf(codes.FailedPrecondition, "this subscription is run by %s; change it there", name)
+		return errkey.Newf(codes.FailedPrecondition, "plans.subscription.run_by_provider", "this subscription is run by %s; change it there", name)
 	}
 	return nil
 }

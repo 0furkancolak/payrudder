@@ -1376,7 +1376,16 @@
       "subscription": {
         "coupon_blocks_credit": "Esta suscripción tiene un cupón. Abone la parte no utilizada con una nota de abono sobre la factura de la cuota.",
         "provider_currency": "Este proveedor de pagos no puede cobrar en esta moneda. Elija otro proveedor u otra moneda.",
-        "period_overlap": "Este cliente ya tiene una suscripción que se solapa con ese período."
+        "period_overlap": "Este cliente ya tiene una suscripción que se solapa con ese período.",
+        "already_linked": "Esta suscripción ya está vinculada a un proveedor de pago.",
+        "bad_period": "No se puede calcular el período de facturación de esta suscripción.",
+        "billed_in_arrears": "Esta suscripción se factura a mes vencido: no se pagó ninguna tarifa por adelantado.",
+        "changed_concurrently": "La suscripción cambió al mismo tiempo. Recarga e inténtalo de nuevo.",
+        "ended": "La suscripción ya ha terminado.",
+        "ending_or_ended": "La suscripción ya ha terminado o ya está programada para terminar.",
+        "no_scheduled_cancel": "No hay ninguna cancelación programada que retirar.",
+        "run_by_provider": "Esta suscripción la gestiona un proveedor de pago. Cámbiala allí.",
+        "transition_not_allowed": "Esto no se puede hacer en el estado actual de la suscripción."
       },
       "webhook": {
         "not_configured": "Los webhooks no están configurados en este despliegue (falta la clave de secretos).",
@@ -1384,7 +1393,8 @@
         "tenant_not_active": "Este entorno no está activo y por eso no puede tener endpoints de webhook. Completa primero la lista de salida a producción."
       },
       "customer": {
-        "tax_invalid": "El identificador fiscal o la oficina fiscal del cliente no es válido."
+        "tax_invalid": "El identificador fiscal o la oficina fiscal del cliente no es válido.",
+        "quota_reached": "Se alcanzó el límite de clientes del plan de esta cuenta."
       },
       "common": {
         "not_found": "No se encontró.",
@@ -1396,7 +1406,8 @@
         "settings_immutable": "La moneda, la zona horaria y el entorno de una cuenta no se pueden cambiar.",
         "bad_status": "El estado debe ser active o suspended.",
         "bad_transition": "Este cambio de estado no es posible para este entorno.",
-        "reason_required": "Activar un entorno sin completar su lista requiere un motivo."
+        "reason_required": "Activar un entorno sin completar su lista requiere un motivo.",
+        "unknown": "Esta cuenta no se conoce."
       },
       "request": {
         "invalid": "{field} no es válido: {detail}"
@@ -1404,6 +1415,43 @@
       "api_key": {
         "bad_scope": "El alcance debe ser full, ingest o read.",
         "tenant_not_active": "Este entorno no está activo y por eso no puede tener claves de API. Completa primero la lista de salida a producción."
+      },
+      "change": {
+        "bad_proration": "El cargo de este cambio de plan no se puede calcular para este período.",
+        "billed_in_arrears": "Esta suscripción se factura a mes vencido. Cambia su plan con ChangePlan, que divide el mes por tiempo.",
+        "fee_not_invoiced": "La tarifa del período actual aún no se ha facturado. Inténtalo de nuevo en un momento.",
+        "invalid": "Este cambio no es válido para la suscripción.",
+        "none_scheduled": "No hay ningún cambio programado para esta suscripción.",
+        "state_not_changeable": "Una suscripción en su estado actual no puede cambiar de plan.",
+        "subscription_ended": "Una suscripción terminada o por terminar no puede cambiar de plan.",
+        "use_change_subscription": "Una suscripción cuya tarifa se factura por adelantado se cambia con ChangeSubscription."
+      },
+      "coupon": {
+        "bad_page_token": "El token de página no es válido. Empieza la lista de nuevo.",
+        "bad_state": "El estado debe ser active, inactive o estar vacío.",
+        "codes_exhausted": "No se encontraron suficientes códigos sin usar. Prueba con un prefijo más largo.",
+        "fee_not_in_advance": "Un cupón descuenta de una tarifa que se factura por adelantado. La tarifa de esta suscripción se factura de otra manera.",
+        "none_on_subscription": "Esta suscripción no tiene cupón.",
+        "subscription_ended": "Una suscripción terminada no puede recibir un cupón."
+      },
+      "fee": {
+        "invalid_period": "No se puede calcular el período de facturación de esta suscripción.",
+        "not_period_start": "Este no es el inicio de un período de facturación."
+      },
+      "meter": {
+        "changed_concurrently": "Se creó otra versión del medidor al mismo tiempo. Inténtalo de nuevo.",
+        "quota_reached": "Se alcanzó el límite de medidores del plan de esta cuenta."
+      },
+      "migration": {
+        "aborted": "La migración se canceló.",
+        "already_completed": "La migración ya se completó.",
+        "cannot_abort": "La migración se completó y no se puede cancelar.",
+        "state_not_movable": "Una suscripción en su estado actual no se puede mover a otro proveedor.",
+        "subscription_ended": "La suscripción ha terminado o está por terminar, así que no se puede mover."
+      },
+      "plan": {
+        "no_fixed_fee": "Esta versión del plan no tiene tarifa fija para ese intervalo en esta moneda.",
+        "no_metered_price": "Esta versión del plan tiene precios medidos, pero ninguno en esta moneda."
       }
     },
     "common": {
@@ -1555,7 +1603,8 @@
         "not_active": "Esta clave de API está revocada.",
         "invalid": "La clave de API no es válida.",
         "missing": "Envía tu clave de API como token Bearer en el encabezado Authorization.",
-        "sandbox_only": "Este endpoint es solo para claves sandbox (qk_test_)."
+        "sandbox_only": "Este endpoint es solo para claves sandbox (qk_test_).",
+        "prefix_unavailable": "No se pudo asignar un prefijo de clave único. Inténtalo de nuevo."
       },
       "app": {
         "not_found": "Esta aplicación no existe o no es suya.",

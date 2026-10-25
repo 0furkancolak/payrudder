@@ -1376,7 +1376,16 @@
       "subscription": {
         "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead.",
         "provider_currency": "This payment provider cannot charge in this currency. Choose another provider or currency.",
-        "period_overlap": "This customer already has a subscription that overlaps that period."
+        "period_overlap": "This customer already has a subscription that overlaps that period.",
+        "already_linked": "This subscription is already linked to a payment provider.",
+        "bad_period": "The billing period of this subscription cannot be worked out.",
+        "billed_in_arrears": "This subscription is billed in arrears: no fee was paid in advance.",
+        "changed_concurrently": "The subscription changed at the same moment. Reload and try again.",
+        "ended": "The subscription has already ended.",
+        "ending_or_ended": "The subscription has already ended or is already scheduled to end.",
+        "no_scheduled_cancel": "There is no scheduled cancellation to withdraw.",
+        "run_by_provider": "This subscription is run by a payment provider. Change it there.",
+        "transition_not_allowed": "This cannot be done in the subscription's current state."
       },
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
@@ -1384,7 +1393,8 @@
         "tenant_not_active": "This environment is not active, so it cannot have webhook endpoints. Finish the go-live checklist first."
       },
       "customer": {
-        "tax_invalid": "The customer's tax id or tax office is not valid."
+        "tax_invalid": "The customer's tax id or tax office is not valid.",
+        "quota_reached": "The customer limit of this account's plan has been reached."
       },
       "common": {
         "not_found": "It was not found.",
@@ -1396,7 +1406,8 @@
         "settings_immutable": "The currency, time zone and environment of an account cannot be changed.",
         "bad_status": "The status must be active or suspended.",
         "bad_transition": "This change of status is not possible for this environment.",
-        "reason_required": "Activating an environment without its checklist needs a reason."
+        "reason_required": "Activating an environment without its checklist needs a reason.",
+        "unknown": "This account is not known."
       },
       "request": {
         "invalid": "{field} is not valid: {detail}"
@@ -1404,6 +1415,43 @@
       "api_key": {
         "bad_scope": "The scope must be full, ingest or read.",
         "tenant_not_active": "This environment is not active, so it cannot have API keys. Finish the go-live checklist first."
+      },
+      "change": {
+        "bad_proration": "The charge for this plan change cannot be worked out for this period.",
+        "billed_in_arrears": "This subscription is billed in arrears. Change its plan with ChangePlan, which splits the month by time.",
+        "fee_not_invoiced": "The fee of the current period has not been invoiced yet. Try again in a moment.",
+        "invalid": "This change is not valid for the subscription.",
+        "none_scheduled": "No change is scheduled for this subscription.",
+        "state_not_changeable": "A subscription in its current state cannot change plan.",
+        "subscription_ended": "An ended or ending subscription cannot change plan.",
+        "use_change_subscription": "A subscription whose fee is invoiced in advance is changed with ChangeSubscription."
+      },
+      "coupon": {
+        "bad_page_token": "The page token is not valid. Start the list again.",
+        "bad_state": "The state must be active, inactive or empty.",
+        "codes_exhausted": "Not enough unused codes could be found. Try a longer prefix.",
+        "fee_not_in_advance": "A coupon takes something off a fee that is invoiced in advance. This subscription's fee is billed another way.",
+        "none_on_subscription": "This subscription has no coupon.",
+        "subscription_ended": "An ended subscription cannot take a coupon."
+      },
+      "fee": {
+        "invalid_period": "The billing period of this subscription cannot be worked out.",
+        "not_period_start": "This is not the start of a billing period."
+      },
+      "meter": {
+        "changed_concurrently": "Another meter version was created at the same moment. Try again.",
+        "quota_reached": "The meter limit of this account's plan has been reached."
+      },
+      "migration": {
+        "aborted": "The migration was aborted.",
+        "already_completed": "The migration already completed.",
+        "cannot_abort": "The migration has completed and cannot be aborted.",
+        "state_not_movable": "A subscription in its current state cannot be moved to another provider.",
+        "subscription_ended": "The subscription has ended or is ending, so it cannot be moved."
+      },
+      "plan": {
+        "no_fixed_fee": "This plan version has no fixed fee for that interval in this currency.",
+        "no_metered_price": "This plan version has metered prices but none in this currency."
       }
     },
     "common": {
@@ -1555,7 +1603,8 @@
         "not_active": "This API key is revoked.",
         "invalid": "The API key is not valid.",
         "missing": "Send your API key as a Bearer token in the Authorization header.",
-        "sandbox_only": "This endpoint is only for sandbox keys (qk_test_)."
+        "sandbox_only": "This endpoint is only for sandbox keys (qk_test_).",
+        "prefix_unavailable": "A unique key prefix could not be allocated. Try again."
       },
       "app": {
         "not_found": "This app does not exist, or it is not yours.",
