@@ -4,8 +4,6 @@ package query
 import (
 	"context"
 	"errors"
-	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -14,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -52,30 +51,22 @@ type Page struct {
 
 // List returns a page of the tenant's credit notes.
 func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) (*Page, error) {
-	size := p.PageSize
-	switch {
-	case size == 0:
-		size = 50
-	case size < 0 || size > 200:
+	size, ok := page.Size(p.PageSize, 50, 200)
+	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_page_size", "page_size must be 1..200")
 	}
 	var invoice *uuid.UUID
 	if p.InvoiceID != "" {
-		id, err := uuid.Parse(p.InvoiceID)
+		id, err := errkey.ParseUUID("billing.invoice.bad_id", "invoice_id", p.InvoiceID)
 		if err != nil {
-			return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
+			return nil, err
 		}
 		invoice = &id
 	}
 	// The token is the created_at and id of the last note of the previous page.
-	after, afterID := time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC), uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")
+	cur := page.Start()
 	if p.PageToken != "" {
-		at, id, ok := strings.Cut(p.PageToken, "|")
-		var perr error
-		if after, perr = time.Parse(time.RFC3339Nano, at); !ok || perr != nil {
-			return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_page_token", "page_token is not one this API gave")
-		}
-		if afterID, perr = uuid.Parse(id); perr != nil {
+		if cur, ok = page.ParseCursor(p.PageToken); !ok {
 			return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_page_token", "page_token is not one this API gave")
 		}
 	}
@@ -83,17 +74,17 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		var err error
 		rows, err = sqlc.New(tx).ListCreditNotes(ctx, sqlc.ListCreditNotesParams{
-			InvoiceID: invoice, CustomerExternalID: store.NilIfEmpty(p.CustomerExternalID), AfterAt: after, AfterID: afterID, PageSize: size + 1})
+			InvoiceID: invoice, CustomerExternalID: store.NilIfEmpty(p.CustomerExternalID), AfterAt: cur.At, AfterID: cur.ID, PageSize: size + 1})
 		return err
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	out := &Page{CreditNotes: rows}
-	if len(rows) > int(size) {
-		out.CreditNotes = rows[:size]
-		last := out.CreditNotes[size-1]
-		out.NextPageToken = last.CreatedAt.UTC().Format(time.RFC3339Nano) + "|" + last.ID.String()
+	out := &Page{}
+	var more bool
+	if out.CreditNotes, more = page.Trim(rows, int(size)); more {
+		last := out.CreditNotes[len(out.CreditNotes)-1]
+		out.NextPageToken = page.Cursor{At: last.CreatedAt, ID: last.ID}.Token()
 	}
 	return out, nil
 }

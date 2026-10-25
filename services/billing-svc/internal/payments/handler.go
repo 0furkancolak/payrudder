@@ -6,9 +6,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -33,13 +31,13 @@ func (h *Handler) RecordInvoicePayment(ctx context.Context, req *billingv1.Recor
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	tid, err := uuid.Parse(req.GetTenantId())
+	tid, err := errkey.ParseUUID("billing.tenant.bad_id", "tenant_id", req.GetTenantId())
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.tenant.bad_id", "tenant_id must be a UUID")
+		return nil, err
 	}
-	inv, err := uuid.Parse(req.GetInvoiceId())
+	inv, err := errkey.ParseUUID("billing.invoice.bad_id", "invoice_id", req.GetInvoiceId())
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
+		return nil, err
 	}
 	var received time.Time
 	if req.GetReceivedAt() != nil {

@@ -3,8 +3,6 @@ package query
 import (
 	"context"
 	"errors"
-	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -13,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -53,13 +52,11 @@ type LinkPage struct {
 
 // ListLinks returns a page of the tenant's payment links, newest first.
 func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) (*LinkPage, error) {
-	size := p.PageSize
-	if size <= 0 {
-		size = 50
-	}
-	if size > 200 {
+	size32, ok := page.Size(int32(p.PageSize), 50, 200) //nolint:gosec // a request's page size
+	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_page", "page_size must be 1..200")
 	}
+	size := int(size32)
 	if p.Kind != "" && p.Kind != "invoice" && p.Kind != "adhoc" && p.Kind != "credit_pack" {
 		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "kind must be invoice, adhoc or credit_pack")
 	}
@@ -70,29 +67,25 @@ func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Lis
 	}
 	var invoice *uuid.UUID
 	if p.InvoiceID != "" {
-		id, err := uuid.Parse(p.InvoiceID)
+		id, err := errkey.ParseUUID("billing.invoice.bad_id", "invoice_id", p.InvoiceID)
 		if err != nil {
-			return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
+			return nil, err
 		}
 		invoice = &id
 	}
 	// The token is the created_at and id of the last link of the previous page.
-	afterAt, afterID := time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC), uuid.Max
+	cur := page.Start()
 	if p.PageToken != "" {
-		at, id, ok := strings.Cut(p.PageToken, "|")
-		t, err1 := time.Parse(time.RFC3339Nano, at)
-		u, err2 := uuid.Parse(id)
-		if !ok || err1 != nil || err2 != nil {
+		if cur, ok = page.ParseCursor(p.PageToken); !ok {
 			return nil, errkey.New(codes.InvalidArgument, "billing.invoice_link.bad_page_token", "page_token is not one this API gave")
 		}
-		afterAt, afterID = t, u
 	}
 	var rows []sqlc.ListPaymentLinksRow
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		var err error
 		rows, err = sqlc.New(tx).ListPaymentLinks(ctx, sqlc.ListPaymentLinksParams{
 			TenantID: tenantID, Kind: store.NilIfEmpty(p.Kind), Status: store.NilIfEmpty(p.Status), InvoiceID: invoice, CustomerExternalID: store.NilIfEmpty(p.CustomerExternalID),
-			AfterAt: afterAt, AfterID: afterID, PageSize: int32(size + 1), //nolint:gosec // at most 201
+			AfterAt: cur.At, AfterID: cur.ID, PageSize: size32 + 1, //nolint:gosec // at most 201
 		})
 		return err
 	})
@@ -100,11 +93,10 @@ func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Lis
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	out := &LinkPage{}
-	if len(rows) > size {
-		last := rows[size-1]
-		out.NextPageToken = last.CreatedAt.UTC().Format(time.RFC3339Nano) + "|" + last.ID.String()
-		rows = rows[:size]
+	var more bool
+	if out.Links, more = page.Trim(rows, size); more {
+		last := out.Links[len(out.Links)-1]
+		out.NextPageToken = page.Cursor{At: last.CreatedAt, ID: last.ID}.Token()
 	}
-	out.Links = rows
 	return out, nil
 }

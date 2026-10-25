@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	paymentquery "github.com/0furkancolak/payrudder/services/billing-svc/internal/payments/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
@@ -87,18 +88,16 @@ type Page struct {
 
 // List returns a page of the tenant's invoices.
 func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) (*Page, error) {
-	size := p.PageSize
-	if size <= 0 {
-		size = 100
-	}
-	if size > 500 {
+	size32, ok := page.Size(int32(p.PageSize), 100, 500) //nolint:gosec // a request's page size
+	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_page_size", "page_size must be 1..500")
 	}
+	size := int(size32)
 	var customer *uuid.UUID
 	if p.CustomerID != "" {
-		id, err := uuid.Parse(p.CustomerID)
+		id, err := errkey.ParseUUID("billing.invoice.bad_customer_id", "customer_id", p.CustomerID)
 		if err != nil {
-			return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_customer_id", "customer_id must be a UUID")
+			return nil, err
 		}
 		customer = &id
 	}
@@ -114,7 +113,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 		var err error
 		rows, err = sqlc.New(tx).ListInvoices(ctx, sqlc.ListInvoicesParams{
 			CustomerID: customer, PeriodID: store.NilIfEmpty(p.PeriodID), Status: store.NilIfEmpty(p.Status),
-			After: after, PageSize: int32(size + 1), //nolint:gosec // at most 501
+			After: after, PageSize: size32 + 1,
 		})
 		return err
 	})
@@ -122,11 +121,10 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	out := &Page{}
-	if len(rows) > size {
-		out.NextPageToken = rows[size-1].ID.String()
-		rows = rows[:size]
+	var more bool
+	if out.Invoices, more = page.Trim(rows, size); more {
+		out.NextPageToken = out.Invoices[len(out.Invoices)-1].ID.String()
 	}
-	out.Invoices = rows
 	return out, nil
 }
 

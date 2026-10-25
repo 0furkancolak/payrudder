@@ -3,6 +3,7 @@
 package domain
 
 import (
+	"github.com/google/uuid"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,6 +35,15 @@ func (v *Violations) Err() error {
 		st = withDetails
 	}
 	return st.Err()
+}
+
+// ParseID reads a UUID from a request field; a malformed one is a violation of that field.
+func ParseID(field, raw string) (uuid.UUID, error) {
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, Invalid(field, "must be a UUID")
+	}
+	return id, nil
 }
 
 // Invalid is a shortcut for a single violation.

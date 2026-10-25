@@ -64,9 +64,9 @@ func (s *Service) CheckEntitlement(ctx context.Context, req *limitsv1.CheckEntit
 	if err != nil {
 		return nil, err
 	}
-	customer, err := uuid.Parse(req.GetCustomerId())
+	customer, err := errkey.ParseUUID("limits.customer.bad_id", "customer_id", req.GetCustomerId())
 	if err != nil {
-		return nil, invalid("limits.customer.bad_id", "customer_id must be a UUID")
+		return nil, err
 	}
 	if req.GetMeterCode() == "" {
 		return nil, invalid("limits.meter.code_required", "meter_code is required")
@@ -105,9 +105,9 @@ func (s *Service) GetLimitStatus(ctx context.Context, req *limitsv1.GetLimitStat
 	if err != nil {
 		return nil, err
 	}
-	customer, err := uuid.Parse(req.GetCustomerId())
+	customer, err := errkey.ParseUUID("limits.customer.bad_id", "customer_id", req.GetCustomerId())
 	if err != nil {
-		return nil, invalid("limits.customer.bad_id", "customer_id must be a UUID")
+		return nil, err
 	}
 	pid, err := s.periodFor(ti, req.GetPeriodId())
 	if err != nil {

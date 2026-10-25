@@ -115,7 +115,7 @@ func SwitchTo(ctx context.Context, q *sqlc.Queries, now time.Time, tenantID uuid
 
 // Change moves a subscription billed in advance to another plan version and/or interval, now or at the end of the paid period.
 func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRequest) (*plansv1.ChangeSubscriptionResponse, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 
 // CancelScheduled withdraws the change waiting for the end of the period.
 func (c *Commands) CancelScheduled(ctx context.Context, req *plansv1.CancelScheduledChangeRequest) (*plansv1.Subscription, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}
@@ -283,9 +283,9 @@ func (c *Commands) ApplyScheduled(ctx context.Context, req *plansv1.ApplySchedul
 
 // MarkAdjustmentBilled records that billing-svc has dealt with an adjustment. Marking twice is fine.
 func (c *Commands) MarkAdjustmentBilled(ctx context.Context, adjustmentID string) error {
-	id, err := uuid.Parse(adjustmentID)
+	id, err := domain.ParseID("adjustment_id", adjustmentID)
 	if err != nil {
-		return domain.Invalid("adjustment_id", "must be a UUID")
+		return err
 	}
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
 		_, err := q.MarkAdjustmentBilled(ctx, id)

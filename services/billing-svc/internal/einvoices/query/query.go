@@ -4,7 +4,6 @@ package query
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
@@ -57,20 +57,17 @@ func parseOptionalUUID(field, v string) (*uuid.UUID, error) {
 	if v == "" {
 		return nil, nil
 	}
-	id, err := uuid.Parse(v)
+	id, err := errkey.ParseUUID("billing.einvoice.bad_id", field, v)
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_id", field+" must be a UUID")
+		return nil, err
 	}
 	return &id, nil
 }
 
 // List returns a page of the tenant's e-documents.
 func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) (*Page, error) {
-	size := p.PageSize
-	switch {
-	case size == 0:
-		size = 50
-	case size < 0 || size > 200:
+	size, ok := page.Size(p.PageSize, 50, 200)
+	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_page_size", "page_size must be 1..200")
 	}
 	invoice, err := parseOptionalUUID("invoice_id", p.InvoiceID)
@@ -86,14 +83,9 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 	default:
 		return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_status", "status must be pending, issued, failed or cancelled")
 	}
-	after, afterID := time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC), uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")
+	cur := page.Start()
 	if p.PageToken != "" {
-		at, id, ok := strings.Cut(p.PageToken, "|")
-		var perr error
-		if after, perr = time.Parse(time.RFC3339Nano, at); !ok || perr != nil {
-			return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_page_token", "page_token is not one this API gave")
-		}
-		if afterID, perr = uuid.Parse(id); perr != nil {
+		if cur, ok = page.ParseCursor(p.PageToken); !ok {
 			return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_page_token", "page_token is not one this API gave")
 		}
 	}
@@ -101,20 +93,20 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 	err = pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		var err error
 		rows, err = sqlc.New(tx).ListEInvoiceDocuments(ctx, sqlc.ListEInvoiceDocumentsParams{InvoiceID: invoice, CreditNoteID: note, Status: store.NilIfEmpty(p.Status),
-			AfterAt: after, AfterID: afterID, PageSize: size + 1})
+			AfterAt: cur.At, AfterID: cur.ID, PageSize: size + 1})
 		return err
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	out := &Page{Documents: rows}
+	out := &Page{}
 	if len(rows) > 0 {
 		out.Total = rows[0].Count
 	}
-	if len(rows) > int(size) {
-		out.Documents = rows[:size]
-		last := out.Documents[size-1]
-		out.NextPageToken = last.CreatedAt.UTC().Format(time.RFC3339Nano) + "|" + last.ID.String()
+	var more bool
+	if out.Documents, more = page.Trim(rows, int(size)); more {
+		last := out.Documents[len(out.Documents)-1]
+		out.NextPageToken = page.Cursor{At: last.CreatedAt, ID: last.ID}.Token()
 	}
 	return out, nil
 }

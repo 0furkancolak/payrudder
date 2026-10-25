@@ -86,7 +86,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 
 // Start begins moving a subscription to another provider: at once when Payrudder runs it there, else when the customer has subscribed there.
 func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigrationRequest) (*plansv1.ProviderMigration, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}
@@ -162,9 +162,9 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 
 // Complete finishes a migration to a provider that runs the subscription, once the customer has subscribed there. Idempotent.
 func (c *Commands) Complete(ctx context.Context, req *plansv1.CompleteProviderMigrationRequest) (*plansv1.CompleteProviderMigrationResponse, error) {
-	id, err := uuid.Parse(req.GetMigrationId())
+	id, err := domain.ParseID("migration_id", req.GetMigrationId())
 	if err != nil {
-		return nil, domain.Invalid("migration_id", "must be a UUID")
+		return nil, err
 	}
 	if req.GetProviderRef() == "" {
 		return nil, domain.Invalid("provider_ref", "required")
@@ -235,9 +235,9 @@ func (c *Commands) Complete(ctx context.Context, req *plansv1.CompleteProviderMi
 
 // Abort gives up a migration that has not completed. Aborting twice is fine.
 func (c *Commands) Abort(ctx context.Context, migrationID string) (*plansv1.ProviderMigration, error) {
-	id, err := uuid.Parse(migrationID)
+	id, err := domain.ParseID("migration_id", migrationID)
 	if err != nil {
-		return nil, domain.Invalid("migration_id", "must be a UUID")
+		return nil, err
 	}
 	var out *plansv1.ProviderMigration
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {

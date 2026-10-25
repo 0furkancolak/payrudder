@@ -44,11 +44,11 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 }
 
 func ids(r *http.Request) (tenant, invoice uuid.UUID, err error) {
-	if tenant, err = uuid.Parse(r.PathValue("tenant")); err != nil {
-		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "payments.transfer.bad_tenant", "tenant must be a UUID")
+	if tenant, err = errkey.ParseUUID("payments.transfer.bad_tenant", "tenant", r.PathValue("tenant")); err != nil {
+		return uuid.Nil, uuid.Nil, err
 	}
-	if invoice, err = uuid.Parse(r.PathValue("invoice")); err != nil {
-		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "payments.transfer.bad_invoice_id", "invoice must be a UUID")
+	if invoice, err = errkey.ParseUUID("payments.transfer.bad_invoice_id", "invoice", r.PathValue("invoice")); err != nil {
+		return uuid.Nil, uuid.Nil, err
 	}
 	return tenant, invoice, nil
 }

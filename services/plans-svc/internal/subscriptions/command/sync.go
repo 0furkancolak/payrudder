@@ -37,7 +37,7 @@ type syncArgs struct {
 func (c *Commands) parseSync(req *plansv1.SyncProviderSubscriptionRequest) (syncArgs, error) {
 	var a syncArgs
 	var err error
-	if a.id, err = subsqry.ParseID(req.GetSubscriptionId()); err != nil {
+	if a.id, err = domain.ParseID("subscription_id", req.GetSubscriptionId()); err != nil {
 		return a, err
 	}
 	if !domain.ValidProviderName(req.GetProvider()) {
@@ -164,8 +164,8 @@ func (c *Commands) followProviderPlan(ctx context.Context, q *sqlc.Queries, tena
 	target := uuid.Nil
 	if v := req.GetPlanVersionId(); v != "" {
 		var err error
-		if target, err = uuid.Parse(v); err != nil {
-			return row.ID, domain.Invalid("plan_version_id", "must be a UUID")
+		if target, err = domain.ParseID("plan_version_id", v); err != nil {
+			return row.ID, err
 		}
 	}
 	iv := subscription.Interval(row.Interval)

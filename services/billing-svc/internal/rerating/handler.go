@@ -4,8 +4,6 @@ package rerating
 import (
 	"context"
 
-	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -24,21 +22,18 @@ type Handler struct {
 // New returns the handler.
 func New(mgr *runs.Manager) *Handler { return &Handler{runs: mgr} }
 
-// invalid is an InvalidArgument status with the error key key.
-func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
-
 // StartRerating implements billingv1.BillingAdminServiceServer.
 func (h *Handler) StartRerating(ctx context.Context, req *billingv1.StartReratingRequest) (*billingv1.StartReratingResponse, error) {
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	tid, err := uuid.Parse(req.GetTenantId())
+	tid, err := errkey.ParseUUID("billing.tenant.bad_id", "tenant_id", req.GetTenantId())
 	if err != nil {
-		return nil, invalid("billing.tenant.bad_id", "tenant_id must be a UUID")
+		return nil, err
 	}
-	pv, err := uuid.Parse(req.GetPlanVersionId())
+	pv, err := errkey.ParseUUID("billing.rerating.bad_plan_version_id", "plan_version_id", req.GetPlanVersionId())
 	if err != nil {
-		return nil, invalid("billing.rerating.bad_plan_version_id", "plan_version_id must be a UUID")
+		return nil, err
 	}
 	job, created, err := command.Start(ctx, h.runs, tid, req.GetPeriodId(), pv)
 	if err != nil {
@@ -52,13 +47,13 @@ func (h *Handler) GetReratingJob(ctx context.Context, req *billingv1.GetRerating
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	tid, err := uuid.Parse(req.GetTenantId())
+	tid, err := errkey.ParseUUID("billing.tenant.bad_id", "tenant_id", req.GetTenantId())
 	if err != nil {
-		return nil, invalid("billing.tenant.bad_id", "tenant_id must be a UUID")
+		return nil, err
 	}
-	id, err := uuid.Parse(req.GetJobId())
+	id, err := errkey.ParseUUID("billing.rerating.bad_job_id", "job_id", req.GetJobId())
 	if err != nil {
-		return nil, invalid("billing.rerating.bad_job_id", "job_id must be a UUID")
+		return nil, err
 	}
 	job, err := query.Get(ctx, h.runs, tid, id)
 	if err != nil {

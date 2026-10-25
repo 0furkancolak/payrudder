@@ -30,7 +30,7 @@ type Cancelled struct {
 
 // Cancel ends the subscription now or at the end time the request names, optionally crediting the unused prepaid fee.
 func (c *Commands) Cancel(ctx context.Context, req *plansv1.CancelSubscriptionRequest) (Cancelled, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return Cancelled{}, err
 	}
@@ -170,7 +170,7 @@ func (c *Commands) move(ctx context.Context, id uuid.UUID, ev subscription.Event
 
 // Pause stops billing the subscription until it is resumed.
 func (c *Commands) Pause(ctx context.Context, req *plansv1.PauseSubscriptionRequest) (*plansv1.Subscription, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func (c *Commands) Pause(ctx context.Context, req *plansv1.PauseSubscriptionRequ
 
 // Resume undoes a pause.
 func (c *Commands) Resume(ctx context.Context, req *plansv1.ResumeSubscriptionRequest) (*plansv1.Subscription, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func (c *Commands) Resume(ctx context.Context, req *plansv1.ResumeSubscriptionRe
 
 // ScheduleCancellation makes the subscription end with its current billing period, or withdraws that.
 func (c *Commands) ScheduleCancellation(ctx context.Context, req *plansv1.ScheduleCancellationRequest) (*plansv1.Subscription, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}

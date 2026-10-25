@@ -15,6 +15,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func TestParseUUID(t *testing.T) {
+	id, err := ParseUUID("billing.invoice.bad_id", "invoice_id", "0b8f6f5e-4b66-4d1c-8b0e-2f4d3c7a9e11")
+	if err != nil || id.String() != "0b8f6f5e-4b66-4d1c-8b0e-2f4d3c7a9e11" {
+		t.Fatalf("valid: %v %v", id, err)
+	}
+	_, err = ParseUUID("billing.invoice.bad_id", "invoice_id", "nope")
+	if status.Code(err) != codes.InvalidArgument || Of(err) != "billing.invoice.bad_id" || status.Convert(err).Message() != "invoice_id must be a UUID" {
+		t.Fatalf("invalid: code %v key %q msg %q", status.Code(err), Of(err), status.Convert(err).Message())
+	}
+	if _, err := ParseUUID("a.b", "x", ""); err == nil {
+		t.Fatal("an empty id is not a UUID")
+	}
+}
+
 func TestKeyTravelsWithTheStatus(t *testing.T) {
 	err := New(codes.FailedPrecondition, "billing.credit_note.not_paid", "only a paid invoice can be credited")
 	if got := Of(err); got != "billing.credit_note.not_paid" {
@@ -34,7 +48,7 @@ func TestKeyTravelsWithTheStatus(t *testing.T) {
 	}
 }
 
-var keyRe = regexp.MustCompile(`errkey\.(?:Newf?\(\s*codes\.\w+,|Key\()\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)+)"`)
+var keyRe = regexp.MustCompile(`errkey\.(?:Newf?\(\s*codes\.\w+,|Key\(|ParseUUID\()\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)+)"`)
 
 // helperRe finds the keys a service's local invalid(key, msg) helper wraps in errkey.New: the key is its first argument and starts with the service name.
 // payments-worker's fail(w, status, key, msg) takes the key as its third argument.

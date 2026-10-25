@@ -260,7 +260,7 @@ func Redeem(ctx context.Context, q *sqlc.Queries, now time.Time, sub sqlc.GetSub
 
 // Apply puts the coupon on an open-ended subscription and returns the subscription.
 func (c *Commands) Apply(ctx context.Context, req *plansv1.ApplyCouponRequest) (*plansv1.Subscription, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +291,7 @@ func (c *Commands) Apply(ctx context.Context, req *plansv1.ApplyCouponRequest) (
 
 // Remove takes the coupon off a subscription and returns the subscription. The redemption stays in the ledger and in the count.
 func (c *Commands) Remove(ctx context.Context, req *plansv1.RemoveCouponRequest) (*plansv1.Subscription, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}

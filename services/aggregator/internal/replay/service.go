@@ -24,16 +24,16 @@ type Service struct {
 func NewService(m *Manager) *Service { return &Service{m: m} }
 
 func ids(tenantID, jobID string) (uuid.UUID, uuid.UUID, error) {
-	t, err := uuid.Parse(tenantID)
+	t, err := errkey.ParseUUID("aggregator.replay.bad_tenant_id", "tenant_id", tenantID)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "aggregator.replay.bad_tenant_id", "tenant_id must be a UUID")
+		return uuid.Nil, uuid.Nil, err
 	}
 	if jobID == "" {
 		return t, uuid.Nil, nil
 	}
-	j, err := uuid.Parse(jobID)
+	j, err := errkey.ParseUUID("aggregator.replay.bad_job_id", "job_id", jobID)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "aggregator.replay.bad_job_id", "job_id must be a UUID")
+		return uuid.Nil, uuid.Nil, err
 	}
 	return t, j, nil
 }

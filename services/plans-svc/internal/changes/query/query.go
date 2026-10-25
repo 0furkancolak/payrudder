@@ -258,7 +258,7 @@ func prorationFromProto(p plansv1.ChangeProration) subscription.Proration {
 // Preview prices a change without making it.
 func (r *Queries) Preview(ctx context.Context, preview *plansv1.PreviewSubscriptionChangeRequest) (*plansv1.ChangeQuote, error) {
 	req := preview.GetChange()
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
@@ -24,15 +25,6 @@ type Queries struct {
 
 // New returns the subscription queries.
 func New(db *store.DB, now func() time.Time) *Queries { return &Queries{db: db, now: now} }
-
-// ParseID reads a subscription id from a request.
-func ParseID(id string) (uuid.UUID, error) {
-	u, err := uuid.Parse(id)
-	if err != nil {
-		return uuid.Nil, domain.Invalid("subscription_id", "must be a UUID")
-	}
-	return u, nil
-}
 
 // Message maps a subscription row to its API message, with the state it has at now.
 func Message(r sqlc.GetSubscriptionRow, now time.Time) *plansv1.Subscription {
@@ -98,10 +90,8 @@ func (r *Queries) Get(ctx context.Context, id uuid.UUID) (*plansv1.Subscription,
 // List returns a page of subscriptions, newest first, of one customer or of all.
 func (r *Queries) List(ctx context.Context, req *plansv1.ListSubscriptionsRequest) (*plansv1.ListSubscriptionsResponse, error) {
 	size := req.GetPageSize()
-	switch {
-	case size == 0:
-		size = 50
-	case size < 0 || size > 200:
+	size, ok := page.Size(size, 50, 200)
+	if !ok {
 		return nil, domain.Invalid("page_size", "1..200")
 	}
 	before := uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")

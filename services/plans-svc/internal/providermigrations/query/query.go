@@ -4,7 +4,6 @@ package query
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -40,9 +39,9 @@ func New(db *store.DB) *Queries { return &Queries{db: db} }
 
 // Get returns a migration.
 func (r *Queries) Get(ctx context.Context, migrationID string) (*plansv1.ProviderMigration, error) {
-	id, err := uuid.Parse(migrationID)
+	id, err := domain.ParseID("migration_id", migrationID)
 	if err != nil {
-		return nil, domain.Invalid("migration_id", "must be a UUID")
+		return nil, err
 	}
 	var out *plansv1.ProviderMigration
 	err = r.db.Tx(ctx, func(q *sqlc.Queries) error {
