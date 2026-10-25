@@ -111,6 +111,8 @@ export interface PurchaseLink {
   packId: string;
   customer: string;
   quantity: number;
+  /** A promotion code the customer gets without typing it (optional). */
+  promotion?: string;
 }
 
 /**
@@ -122,7 +124,7 @@ export function useCreatePurchaseLink(tenantId: MaybeRefOrGetter<string>) {
     mutationFn: (v: PurchaseLink & { key: string }) =>
       unwrap(
         tenantApi(toValue(tenantId)).POST("/v1/payment-links", {
-          body: { kind: "credit_pack", pack_id: v.packId, customer_external_id: v.customer, quantity: v.quantity, idempotency_key: v.key },
+          body: { kind: "credit_pack", pack_id: v.packId, customer_external_id: v.customer, quantity: v.quantity, idempotency_key: v.key, ...(v.promotion?.trim() ? { promotion_code: v.promotion.trim() } : {}) },
         }),
       ),
   });

@@ -47,10 +47,11 @@ test.describe("credit purchases", () => {
     const link = page.getByRole("form", { name: "Create purchase link" });
     await link.getByLabel("Customer").selectOption("cus_1");
     await link.getByLabel("Quantity").fill("2");
+    await link.getByLabel("Promotion code (optional)").fill("SPRING10");
     await link.getByRole("button", { name: "Create link" }).click();
     await expect(page.getByTestId("purchase-link-url")).toHaveValue(/\/i\/tok$/);
     const body = gw.called("POST", "/v1/payment-links")[0]?.body as Record<string, unknown>;
-    expect(body).toMatchObject({ kind: "credit_pack", pack_id: "p1", customer_external_id: "cus_1", quantity: 2 });
+    expect(body).toMatchObject({ kind: "credit_pack", pack_id: "p1", customer_external_id: "cus_1", quantity: 2, promotion_code: "SPRING10" });
     expect(body).not.toHaveProperty("amount_minor");
     expect(body).not.toHaveProperty("currency");
     expect(String(body.idempotency_key)).toMatch(/^[0-9a-f-]{36}$/);

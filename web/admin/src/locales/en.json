@@ -674,6 +674,96 @@
         "saved": "Retries saved.",
         "none": "No retries: a declined charge is given up at once.",
         "bad": "Each delay is a whole number from 1 to 720."
+      },
+      "promotions": {
+        "title": "Promotions",
+        "hint": "A coupon says what is taken off. A customer types a promotion code: many codes can point to one coupon, each with its own limit, expiry and rules.",
+        "kinds": {
+          "percent": "Percentage off",
+          "amount": "Amount off",
+          "bonus": "Bonus credits"
+        },
+        "valueBonus": "Extra credits, % (10 or 12.5)",
+        "bonusValue": "{pct} more credits",
+        "bonusNote": "Bonus credits are added to the same lot as the pack's credits and expire with them. Credit purchases only.",
+        "badBonus": "Not a percentage of extra credits: 0.01 to 1000 with at most two decimals.",
+        "appliesTo": "Works on",
+        "targets": {
+          "subscription": "Subscription fee",
+          "credit_purchase": "Credit purchase",
+          "payment": "Payment link or invoice",
+          "legacy": "Before the ledger"
+        },
+        "noTarget": "Pick where the coupon works.",
+        "withoutDefaultCode": "No promotion under the coupon's own name",
+        "codeCount": "Codes",
+        "manageCodes": "Codes",
+        "hideCodes": "Close",
+        "codes": {
+          "title": "Promotion codes of {coupon}",
+          "hint": "Name the codes, or generate random ones. Every code gets the limit, expiry and rules below.",
+          "formLabel": "new promotion codes",
+          "mode": "How",
+          "modeNamed": "I name them",
+          "modeRandom": "Generate random codes",
+          "names": "Codes, one per line",
+          "namesPlaceholder": "SUMMER26",
+          "count": "How many (1 to 1000)",
+          "prefix": "Prefix (optional)",
+          "maxPerCode": "Uses per code (empty: no limit)",
+          "expires": "Expires on (optional)",
+          "minAmount": "Minimum amount (optional)",
+          "minCurrency": "Currency of the minimum",
+          "allowedCurrencies": "Only in these currencies (USD, EUR)",
+          "allowedPlans": "Only on these plans (plan codes)",
+          "allowedPacks": "Only on these credit packs (ids)",
+          "firstPurchase": "First purchase only",
+          "onePerCustomer": "Once per customer",
+          "restore": "Give the use back when the purchase is voided or refunded",
+          "create": "Create codes",
+          "created": "{n} codes created",
+          "createdList": "The codes that were created",
+          "copyAll": "Copy all",
+          "copied": "Copied",
+          "download": "Download CSV",
+          "search": "Search codes",
+          "stateAll": "Any state",
+          "total": "{n} codes",
+          "used": "Used",
+          "expiresCol": "Expires",
+          "rules": "Rules",
+          "none": "No codes yet.",
+          "rule": {
+            "firstPurchase": "First purchase",
+            "onePerCustomer": "Once per customer",
+            "min": "From {amount}",
+            "plans": "Plans: {list}",
+            "packs": "{n} packs",
+            "restore": "Gives the use back"
+          },
+          "errors": {
+            "names": "Name at least one code, and at most 1000: 2 to 40 letters, digits, - or _.",
+            "count": "How many must be 1 to 1000, and the prefix at most 20 letters, digits, - or _.",
+            "max": "Uses per code must be a whole number from 1.",
+            "expires": "The expiry must be a day in the future.",
+            "minAmount": "Not an amount in that currency: digits only, with at most as many decimals as the currency has.",
+            "currencies": "Currencies are three-letter codes such as USD, separated by commas."
+          }
+        },
+        "redemptions": {
+          "title": "Redemptions",
+          "hint": "Every use of a coupon. A void or a full refund reverses the use; the count goes back only for codes that say so.",
+          "coupon": "Coupon",
+          "allCoupons": "All coupons",
+          "total": "{n} redemptions",
+          "customer": "Customer",
+          "usedOn": "Used on",
+          "discount": "Discount",
+          "bonus": "Bonus credits",
+          "reversed": "Reversed",
+          "counted": "Counted",
+          "none": "Nothing has been redeemed yet."
+        }
       }
     },
     "creditNotes": {
@@ -806,7 +896,9 @@
           "refund": "Refund"
         }
       },
-      "for": "For"
+      "for": "For",
+      "promotionCode": "Promotion code (optional)",
+      "promotionHint": "The payer gets this code's discount without typing it and may type another. It is checked against this amount now."
     },
     "mail": {
       "title": "E-mail",
@@ -903,7 +995,8 @@
         "shownOnce": "Copy the link now: it is shown once and cannot be read back.",
         "url": "Purchase link",
         "copy": "Copy",
-        "close": "Close"
+        "close": "Close",
+        "promotionCode": "Promotion code (optional)"
       },
       "settings": {
         "title": "Low-balance alert",
@@ -947,7 +1040,10 @@
         "feesNotRecorded": "Not recorded",
         "feesHint": "The payment provider's commission is not recorded by Payrudder. Add it as an expense in the category Payment fees.",
         "expenses": "Expenses",
-        "profit": "Profit"
+        "profit": "Profit",
+        "discounts": "Discounts given",
+        "discountsHint": "What coupons took off the paid invoices. Income is already after them.",
+        "sales": "Sales before discounts"
       },
       "donut": {
         "title": "Expenses by category",
@@ -1006,6 +1102,16 @@
         "hint": "A voided expense is not deleted. It leaves every total and keeps your reason.",
         "reason": "Reason",
         "submit": "Void expense"
+      },
+      "coupons": {
+        "title": "Coupons",
+        "hint": "The invoices paid in the period that used a coupon: what they came to before it, what it took off, and the net.",
+        "export": "Download coupon report",
+        "coupon": "Coupon",
+        "invoices": "Invoices",
+        "gross": "Gross",
+        "discount": "Discount",
+        "net": "Net"
       }
     }
   },

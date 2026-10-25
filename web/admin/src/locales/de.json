@@ -674,6 +674,96 @@
         "saved": "Versuche gespeichert.",
         "none": "Keine Wiederholungen: Eine abgelehnte Abbuchung wird sofort aufgegeben.",
         "bad": "Jede Wartezeit ist eine ganze Zahl von 1 bis 720."
+      },
+      "promotions": {
+        "title": "Aktionen",
+        "hint": "Ein Gutschein sagt, was abgezogen wird. Kunden geben einen Aktionscode ein: Viele Codes können auf einen Gutschein zeigen, jeder mit eigenem Limit, Ablaufdatum und eigenen Regeln.",
+        "kinds": {
+          "percent": "Prozent Rabatt",
+          "amount": "Betrag Rabatt",
+          "bonus": "Bonus-Credits"
+        },
+        "valueBonus": "Zusätzliche Credits, % (10 oder 12,5)",
+        "bonusValue": "{pct} mehr Credits",
+        "bonusNote": "Bonus-Credits kommen in dasselbe Los wie die Credits des Pakets und verfallen mit ihnen. Nur für Credit-Käufe.",
+        "badBonus": "Kein Prozentsatz zusätzlicher Credits: 0,01 bis 1000 mit höchstens zwei Dezimalstellen.",
+        "appliesTo": "Gilt für",
+        "targets": {
+          "subscription": "Abonnementgebühr",
+          "credit_purchase": "Credit-Kauf",
+          "payment": "Zahlungslink oder Rechnung",
+          "legacy": "Vor dem Einlösungsbuch"
+        },
+        "noTarget": "Wählen Sie, wofür der Gutschein gilt.",
+        "withoutDefaultCode": "Keine Aktion unter dem Namen des Gutscheins anlegen",
+        "codeCount": "Codes",
+        "manageCodes": "Codes",
+        "hideCodes": "Schließen",
+        "codes": {
+          "title": "Aktionscodes von {coupon}",
+          "hint": "Benennen Sie die Codes oder erzeugen Sie zufällige. Jeder Code erhält das Limit, das Ablaufdatum und die Regeln unten.",
+          "formLabel": "neue Aktionscodes",
+          "mode": "Wie",
+          "modeNamed": "Ich benenne sie",
+          "modeRandom": "Zufällige Codes erzeugen",
+          "names": "Codes, einer pro Zeile",
+          "namesPlaceholder": "SOMMER26",
+          "count": "Wie viele (1 bis 1000)",
+          "prefix": "Präfix (optional)",
+          "maxPerCode": "Einlösungen pro Code (leer: unbegrenzt)",
+          "expires": "Läuft ab am (optional)",
+          "minAmount": "Mindestbetrag (optional)",
+          "minCurrency": "Währung des Mindestbetrags",
+          "allowedCurrencies": "Nur in diesen Währungen (USD, EUR)",
+          "allowedPlans": "Nur für diese Pläne (Plancodes)",
+          "allowedPacks": "Nur für diese Credit-Pakete (IDs)",
+          "firstPurchase": "Nur beim ersten Kauf",
+          "onePerCustomer": "Einmal pro Kunde",
+          "restore": "Einlösung zurückgeben, wenn der Kauf storniert oder erstattet wird",
+          "create": "Codes erstellen",
+          "created": "{n} Codes erstellt",
+          "createdList": "Die erstellten Codes",
+          "copyAll": "Alle kopieren",
+          "copied": "Kopiert",
+          "download": "CSV herunterladen",
+          "search": "Codes suchen",
+          "stateAll": "Jeder Status",
+          "total": "{n} Codes",
+          "used": "Eingelöst",
+          "expiresCol": "Läuft ab",
+          "rules": "Regeln",
+          "none": "Noch keine Codes.",
+          "rule": {
+            "firstPurchase": "Erster Kauf",
+            "onePerCustomer": "Einmal pro Kunde",
+            "min": "Ab {amount}",
+            "plans": "Pläne: {list}",
+            "packs": "{n} Pakete",
+            "restore": "Gibt die Einlösung zurück"
+          },
+          "errors": {
+            "names": "Nennen Sie mindestens einen und höchstens 1000 Codes: 2 bis 40 Buchstaben, Ziffern, - oder _.",
+            "count": "Die Anzahl muss 1 bis 1000 sein, das Präfix höchstens 20 Buchstaben, Ziffern, - oder _.",
+            "max": "Einlösungen pro Code müssen eine ganze Zahl ab 1 sein.",
+            "expires": "Das Ablaufdatum muss ein Tag in der Zukunft sein.",
+            "minAmount": "Kein Betrag in dieser Währung: nur Ziffern, mit höchstens so vielen Dezimalstellen wie die Währung.",
+            "currencies": "Währungen sind dreistellige Codes wie USD, durch Kommas getrennt."
+          }
+        },
+        "redemptions": {
+          "title": "Einlösungen",
+          "hint": "Jede Verwendung eines Gutscheins. Eine Stornierung oder volle Erstattung macht sie rückgängig; der Zähler geht nur bei Codes zurück, die das vorsehen.",
+          "coupon": "Gutschein",
+          "allCoupons": "Alle Gutscheine",
+          "total": "{n} Einlösungen",
+          "customer": "Kunde",
+          "usedOn": "Eingelöst bei",
+          "discount": "Rabatt",
+          "bonus": "Bonus-Credits",
+          "reversed": "Rückgängig",
+          "counted": "Gezählt",
+          "none": "Noch nichts eingelöst."
+        }
       }
     },
     "creditNotes": {
@@ -806,7 +896,9 @@
           "refund": "Erstattung"
         }
       },
-      "for": "Für"
+      "for": "Für",
+      "promotionCode": "Aktionscode (optional)",
+      "promotionHint": "Der Zahlende erhält den Rabatt dieses Codes, ohne ihn einzugeben, und kann einen anderen eingeben. Er wird jetzt gegen diesen Betrag geprüft."
     },
     "mail": {
       "title": "E-Mail",
@@ -903,7 +995,8 @@
         "shownOnce": "Kopieren Sie den Link jetzt: Er wird nur einmal angezeigt und kann nicht erneut gelesen werden.",
         "url": "Kauflink",
         "copy": "Kopieren",
-        "close": "Schließen"
+        "close": "Schließen",
+        "promotionCode": "Aktionscode (optional)"
       },
       "settings": {
         "title": "Warnung bei niedrigem Guthaben",
@@ -947,7 +1040,10 @@
         "feesNotRecorded": "Nicht erfasst",
         "feesHint": "Die Provision des Zahlungsanbieters erfasst Payrudder nicht. Tragen Sie sie als Ausgabe in der Kategorie Zahlungsgebühren ein.",
         "expenses": "Ausgaben",
-        "profit": "Gewinn"
+        "profit": "Gewinn",
+        "discounts": "Gewährte Rabatte",
+        "discountsHint": "Was Gutscheine von den bezahlten Rechnungen abgezogen haben. Die Einnahmen sind bereits danach.",
+        "sales": "Umsatz vor Rabatten"
       },
       "donut": {
         "title": "Ausgaben nach Kategorie",
@@ -1006,6 +1102,16 @@
         "hint": "Eine stornierte Ausgabe wird nicht gelöscht. Sie fällt aus allen Summen heraus und behält Ihre Begründung.",
         "reason": "Begründung",
         "submit": "Ausgabe stornieren"
+      },
+      "coupons": {
+        "title": "Gutscheine",
+        "hint": "Die im Zeitraum bezahlten Rechnungen mit Gutschein: wie viel sie davor ergaben, was der Gutschein abzog und das Netto.",
+        "export": "Gutscheinbericht herunterladen",
+        "coupon": "Gutschein",
+        "invoices": "Rechnungen",
+        "gross": "Brutto",
+        "discount": "Rabatt",
+        "net": "Netto"
       }
     }
   },

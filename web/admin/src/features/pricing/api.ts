@@ -4,6 +4,8 @@ import { tenantApi, unwrap } from "@/shared/api/client";
 
 export const pricingKeys = {
   coupons: (tenantId: string) => ["tenants", tenantId, "coupons"] as const,
+  codes: (tenantId: string) => ["tenants", tenantId, "promotion-codes"] as const,
+  redemptions: (tenantId: string) => ["tenants", tenantId, "coupon-redemptions"] as const,
   tax: (tenantId: string) => ["tenants", tenantId, "tax-rates"] as const,
   dunning: (tenantId: string) => ["tenants", tenantId, "dunning-settings"] as const,
 };
@@ -22,9 +24,96 @@ export interface NewCoupon {
   percent_bps?: number;
   amount_minor?: string;
   currency?: string;
-  duration: "COUPON_DURATION_ONCE" | "COUPON_DURATION_REPEATING" | "COUPON_DURATION_FOREVER";
+  /** Extra credits on a credit purchase, in basis points of the credits bought (1000 is 10 % more). */
+  bonus_percent_bps?: number;
+  applies_to?: CouponTarget[];
+  /** Left out when the coupon does not work on subscriptions. */
+  duration?: "COUPON_DURATION_ONCE" | "COUPON_DURATION_REPEATING" | "COUPON_DURATION_FOREVER";
   duration_periods?: number;
   max_redemptions?: number;
+  /** Do not make the promotion code with the coupon's own text. */
+  without_default_code?: boolean;
+}
+
+export type CouponTarget = "COUPON_TARGET_SUBSCRIPTION" | "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
+
+/** What every code of one request shares: its limit, expiry and rules. Amounts are minor-unit strings. */
+export interface CodeTemplate {
+  max_redemptions?: number;
+  expire_time?: string;
+  first_purchase_only?: boolean;
+  one_per_customer?: boolean;
+  min_amount_minor?: string;
+  min_amount_currency?: string;
+  allowed_plans?: string[];
+  allowed_packs?: string[];
+  allowed_currencies?: string[];
+  restore_on_reversal?: boolean;
+}
+
+export interface NewCodes {
+  coupon: string;
+  template: CodeTemplate;
+  codes?: string[];
+  count?: number;
+  prefix?: string;
+}
+
+export function usePromotionCodes(tenantId: MaybeRefOrGetter<string>, coupon: MaybeRefOrGetter<string>, state: MaybeRefOrGetter<string>, search: MaybeRefOrGetter<string>, pageToken: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...pricingKeys.codes(toValue(tenantId)), toValue(coupon), toValue(state), toValue(search), toValue(pageToken)]),
+    enabled: computed(() => toValue(coupon) !== ""),
+    queryFn: () =>
+      unwrap(
+        tenantApi(toValue(tenantId)).GET("/v1/promotion-codes", {
+          params: {
+            query: {
+              coupon: toValue(coupon),
+              page_size: 25,
+              ...(toValue(state) ? { state: toValue(state) as "active" } : {}),
+              ...(toValue(search) ? { search: toValue(search) } : {}),
+              ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}),
+            },
+          },
+        }),
+      ),
+  });
+}
+
+export function useCodeActions(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  const refresh = () => {
+    queries.invalidateQueries({ queryKey: pricingKeys.codes(toValue(tenantId)) });
+    queries.invalidateQueries({ queryKey: pricingKeys.coupons(toValue(tenantId)) });
+  };
+  return {
+    create: useMutation({
+      mutationFn: (v: NewCodes) =>
+        unwrap(
+          tenantApi(toValue(tenantId)).POST("/v1/coupons/{code}/promotion-codes", {
+            params: { path: { code: v.coupon } },
+            body: { template: v.template as never, codes: v.codes, count: v.count, prefix: v.prefix },
+          }),
+        ),
+      onSuccess: refresh,
+    }),
+    deactivate: useMutation({
+      mutationFn: (code: string) => unwrap(tenantApi(toValue(tenantId)).DELETE("/v1/promotion-codes/{code}", { params: { path: { code } } })),
+      onSuccess: refresh,
+    }),
+  };
+}
+
+export function useRedemptions(tenantId: MaybeRefOrGetter<string>, coupon: MaybeRefOrGetter<string>, pageToken: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...pricingKeys.redemptions(toValue(tenantId)), toValue(coupon), toValue(pageToken)]),
+    queryFn: () =>
+      unwrap(
+        tenantApi(toValue(tenantId)).GET("/v1/coupon-redemptions", {
+          params: { query: { page_size: 25, ...(toValue(coupon) ? { coupon: toValue(coupon) } : {}), ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}) } },
+        }),
+      ),
+  });
 }
 
 export function useCouponActions(tenantId: MaybeRefOrGetter<string>) {

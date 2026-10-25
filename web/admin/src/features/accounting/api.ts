@@ -72,10 +72,10 @@ export function useVoidExpense(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** Downloads the CSV of the period. The file needs the session token, so it is fetched through the API client and saved from a blob, not linked. */
-export async function downloadCsv(tenantId: string, from: string, to: string, app: string, granularity: "day" | "month"): Promise<void> {
+/** Downloads a CSV of the period (the series, or with `coupons` the report per coupon). The file needs the session token, so it is fetched through the API client and saved from a blob, not linked. */
+export async function downloadCsv(tenantId: string, from: string, to: string, app: string, granularity: "day" | "month", report: "export" | "coupons" = "export"): Promise<void> {
   const blob = await unwrap(
-    tenantApi(tenantId).GET("/v1/accounting/export.csv", {
+    tenantApi(tenantId).GET(report === "coupons" ? "/v1/accounting/coupons.csv" : "/v1/accounting/export.csv", {
       params: { query: { from, to, granularity, ...(app ? { app_id: app } : {}) } },
       parseAs: "blob",
     }),
@@ -83,7 +83,7 @@ export async function downloadCsv(tenantId: string, from: string, to: string, ap
   const url = URL.createObjectURL(blob as Blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `accounting-${from}-${to}.csv`;
+  a.download = `${report === "coupons" ? "coupons" : "accounting"}-${from}-${to}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
