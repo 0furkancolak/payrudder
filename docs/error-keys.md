@@ -278,6 +278,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.operator.forbidden`
 - `identity.operator.required`
 - `identity.otp.invalid`
+- `identity.promote.stale`
 - `identity.session.act_as_required`
 - `identity.session.invalid`
 - `identity.session.unavailable`
@@ -306,6 +307,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `limits.reconcile.not_configured`
 - `limits.reconcile.unavailable`
 - `payments.account.bad_settings`
+- `payments.account.livemode_mismatch`
 - `payments.account.not_found`
 - `payments.account.sync_failed`
 - `payments.billing.failed`

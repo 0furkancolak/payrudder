@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"regexp"
 	"strconv"
 	"time"
 	_ "time/tzdata" // tenant time zones must load in distroless images
@@ -24,8 +23,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
 )
-
-var periodRe = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
 
 // Service implements limitsv1.LimitsServiceServer.
 type Service struct {
@@ -47,7 +44,7 @@ func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, k
 
 func (s *Service) periodFor(ti tenant.Info, id string) (string, error) {
 	if id != "" {
-		if !periodRe.MatchString(id) {
+		if !period.Valid(id) {
 			return "", invalid("limits.period.bad_id", "period_id must look like 2026-11")
 		}
 		return id, nil

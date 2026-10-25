@@ -69,6 +69,38 @@ test.describe("credits", () => {
     expect(String(body.idempotency_key)).toMatch(/^[0-9a-f-]{36}$/);
   });
 
+  test("a grant that did not go through is retried with the same idempotency key; the next grant gets a new one", async ({ page }) => {
+    let calls = 0;
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === "/v1/credit-packs") return { body: { packs: [] } };
+      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", name: "Ada", email: "ada@example.com" }] } };
+      if (c.path === "/v1/customers/cus_1/credits/grant") {
+        calls++;
+        // the first try times out at the gateway (it may or may not have been applied)
+        return calls === 1 ? { status: 503, body: { error: { code: "UNAVAILABLE", message: "try again" } } } : { body: { balance: "50", replayed: false } };
+      }
+      if (c.path === "/v1/customers/cus_1/credits/ledger") return { body: { entries: [], next_page_token: "" } };
+      if (c.path === "/v1/customers/cus_1/credits") return { body: { balance: "0", next_expire_time: null, lots: [] } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/credits");
+    await page.getByLabel("Choose a customer").selectOption("cus_1");
+    const form = page.getByRole("form", { name: "Add credits" });
+    await form.getByLabel("Credits to add").fill("50");
+    await form.getByRole("button", { name: "Add credits" }).click();
+    await expect(page.getByRole("alert")).toBeVisible();
+    await form.getByRole("button", { name: "Add credits" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/credits/grant").length).toBe(2);
+    await expect(form.getByLabel("Credits to add")).toHaveValue("");
+    await form.getByLabel("Credits to add").fill("10");
+    await form.getByRole("button", { name: "Add credits" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/credits/grant").length).toBe(3);
+    const keys = gw.called("POST", "/v1/customers/cus_1/credits/grant").map((c) => String(c.body?.idempotency_key));
+    expect(keys[1]).toBe(keys[0]);
+    expect(keys[2]).not.toBe(keys[1]);
+  });
+
   test("a refusal from the API is shown in the reader's language", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/credit-packs" && c.method === "POST") return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "billing.credits.unknown_currency", message: "the currency is not supported" } } };

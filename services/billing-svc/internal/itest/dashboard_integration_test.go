@@ -25,7 +25,7 @@ func seedInvoiceOf(t *testing.T, tid, customer uuid.UUID, ref, name, currency st
 		finalized = time.Now().AddDate(0, 0, -age)
 	}
 	if _, err := shared.system.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, finalized_at)
-		VALUES ($1,$2,$3,$4,'REGULAR',$5,$6,$7,$7,$8,jsonb_build_object('customer_external_id', $9::text, 'customer_name', $10::text),'',$11)`,
+		VALUES ($1,$2,$3,$4,'REGULAR',$5,$6,$7,$7,$8,jsonb_build_object('customer_external_id', $9::text, 'customer_name', $10::text, 'environment', 'live'),'',$11)`,
 		tid, id, customer, uuid.NewString()[:7], uuid.New(), currency, total, status, ref, name, finalized); err != nil {
 		t.Fatal(err)
 	}

@@ -24,3 +24,10 @@ Services grew by feature (`grpcapi/changes.go`, `grpcapi/coupons.go`…) with ha
 - **Limits of `tests/sqlguard_test.go`.** The test finds SQL built with `fmt.Sprintf` or `+` by reading the Go source of each package, and resolves a query string held in a package-level constant or variable of the same package. It does not follow identifiers from another package, and it does not see function-local variables: SQL put together in a local variable, or passed in from another package, is not checked. Review for those by eye; the rule above still applies to them.
 - New code is written in this shape from phase 24; the previous phases' files are moved into modules when a change touches them, to keep each pull request reviewable.
 - A rename of an error key is a breaking change and follows the API's deprecation rule.
+
+## Shared packages (phase 49, step 2)
+
+Rules that more than one service applies live once, in `pkg/`, and services do not keep a second implementation.
+
+- **`pkg/period.Valid`/`Parse`** is the definition of a period id (`YYYY-MM`); no service compiles its own pattern.
+- **`pkg/usage`** is the rule for a `usage.events.v1` record (`Decode`) and for which meter counts it (`Meter.Matches`/`Value`). The aggregator, limits-svc and analytics-svc all call it. The three copies had diverged, and the stricter rule now holds everywhere: `event_time` is required and valid (limits-svc did not check it, so it could count an event the aggregator dead-letters); the event id is 1 to 64 of `[A-Za-z0-9_-]`, the period is `YYYY-MM`, units are not negative (analytics-svc checked none of these, and only that the id was set). An event invalid by this rule is dead-lettered by the aggregator and analytics-svc and skipped by limits-svc, with reason `INVALID_EVENT` (`DECODE_ERROR` when the bytes are not a UsageEvent). `pkg/usage` has the one table test of the rule.

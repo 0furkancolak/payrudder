@@ -106,6 +106,17 @@ func Factory(settings []byte) (payments.Provider, error) {
 // Name implements payments.PaymentProvider.
 func (c *Client) Name() string { return Name }
 
+// Livemode implements payments.LiveModer: the documented live and sandbox hosts are told apart, any other endpoint is not known.
+func (c *Client) Livemode() (live, known bool) {
+	switch c.s.BaseURL {
+	case LiveURL:
+		return true, true
+	case SandboxURL:
+		return false, true
+	}
+	return false, false
+}
+
 // Capabilities implements payments.Provider: Paddle runs renewals and retries, calculates tax and hosts the checkout.
 // Charges are not idempotent by key. Paddle bills in more currencies than Payrudder lists; the intersection is declared.
 func (c *Client) Capabilities() payments.Capabilities { return Caps() }

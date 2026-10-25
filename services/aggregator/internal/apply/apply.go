@@ -21,6 +21,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/meters"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
@@ -35,7 +36,7 @@ const (
 
 // MeterSource resolves meters.
 type MeterSource interface {
-	Get(ctx context.Context, tenantID uuid.UUID, code string) (domain.Meter, error)
+	Get(ctx context.Context, tenantID uuid.UUID, code string) (usage.Meter, error)
 }
 
 // Settings snapshots period settings.
@@ -56,7 +57,7 @@ type Replay struct {
 	FromPeriod, ToPeriod string
 }
 
-func (r *Replay) wants(ev domain.Event) bool {
+func (r *Replay) wants(ev usage.Event) bool {
 	return ev.TenantID == r.Tenant && ev.Period >= r.FromPeriod && ev.Period <= r.ToPeriod
 }
 
@@ -155,8 +156,8 @@ type poison struct {
 }
 
 type item struct {
-	ev    domain.Event
-	meter domain.Meter
+	ev    usage.Event
+	meter usage.Meter
 }
 
 // Apply implements kafkax.PartitionHandler.
@@ -168,9 +169,9 @@ func (h *Handler) Apply(ctx context.Context, partition int32, recs []*kgo.Record
 	meterCache := map[string]meterResult{}
 
 	for _, rec := range recs {
-		ev, err := domain.Decode(rec)
+		ev, err := usage.Decode(rec)
 		if err != nil {
-			var de *domain.DecodeError
+			var de *usage.DecodeError
 			if errors.As(err, &de) {
 				if h.Replay == nil { // the live consumer already dead-lettered it
 					bad = append(bad, poison{rec, de.Reason, de.Err})
@@ -232,12 +233,12 @@ func (h *Handler) Apply(ctx context.Context, partition int32, recs []*kgo.Record
 }
 
 type meterResult struct {
-	meter   domain.Meter
+	meter   usage.Meter
 	missing bool
 }
 
 // meter resolves the meter of an event, retrying a "not found" a few times before giving up on it.
-func (h *Handler) meter(ctx context.Context, cache map[string]meterResult, ev domain.Event) (meterResult, error) {
+func (h *Handler) meter(ctx context.Context, cache map[string]meterResult, ev usage.Event) (meterResult, error) {
 	key := ev.TenantID.String() + "/" + ev.Meter
 	if r, ok := cache[key]; ok {
 		return r, nil
@@ -447,7 +448,7 @@ func (h *Handler) classify(ctx context.Context, items []item, fresh []freshRow, 
 
 // classOf is the class of an event by its ingestion time. A frozen period takes everything as late usage; a replay
 // classifies by ingested_at alone, as the live path did at the time.
-func (h *Handler) classOf(ctx context.Context, ev domain.Event, c sqlc.LockPeriodSettingsRow) period.Class {
+func (h *Handler) classOf(ctx context.Context, ev usage.Event, c sqlc.LockPeriodSettingsRow) period.Class {
 	class := period.Classify(ev.IngestedAt, c.CutoffAt)
 	if c.FrozenAt == nil || h.Replay != nil {
 		return class
@@ -515,7 +516,7 @@ func upsertOnTime(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
 		p := sqlc.UpsertUsageAggregatesParams{IsMax: isMax}
 		for _, k := range d.SortedOnTime() {
 			cell := d.OnTime[k]
-			if (cell.Aggregation == domain.Max) != isMax {
+			if (cell.Aggregation == usage.Max) != isMax {
 				continue
 			}
 			p.Tenants, p.Periods, p.Customers, p.MeterCodes, p.Generations = append(p.Tenants, k.Tenant), append(p.Periods, k.Period), append(p.Customers, k.Customer), append(p.MeterCodes, k.Meter), append(p.Generations, k.Generation)
@@ -537,7 +538,7 @@ func upsertLate(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
 		p := sqlc.UpsertLateUsageParams{IsMax: isMax}
 		for _, k := range d.SortedLate() {
 			cell := d.Late[k]
-			if (cell.Aggregation == domain.Max) != isMax {
+			if (cell.Aggregation == usage.Max) != isMax {
 				continue
 			}
 			p.Tenants, p.BilledPeriods, p.Customers, p.MeterCodes, p.OriginPeriods, p.Generations = append(p.Tenants, k.Tenant), append(p.BilledPeriods, k.Billed), append(p.Customers, k.Customer), append(p.MeterCodes, k.Meter), append(p.OriginPeriods, k.Origin), append(p.Generations, k.Generation)

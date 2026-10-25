@@ -133,6 +133,9 @@ func TestSandboxProfileHasNoLiveProvider(t *testing.T) {
 			if v != "" {
 				t.Errorf("%v has PAYMENTS_LIVE_PROVIDER=%q: a sandbox install must have no live provider", c["name"], v)
 			}
+			if env["PAYMENTS_ALLOW_MOCK_LIVE"] != "false" {
+				t.Errorf("%v has PAYMENTS_ALLOW_MOCK_LIVE=%q: a sandbox install must not allow live to reach the mock", c["name"], env["PAYMENTS_ALLOW_MOCK_LIVE"])
+			}
 		}
 		for k, v := range env {
 			if strings.Contains(strings.ToLower(k), "psp") && !strings.Contains(strings.ToLower(v), "mockpsp") && strings.HasPrefix(v, "http") {
@@ -150,6 +153,9 @@ func TestSandboxProfileHasNoLiveProvider(t *testing.T) {
 	for _, c := range containers(render(t, "payrudder")) {
 		if v, ok := envOf(c)["PAYMENTS_LIVE_PROVIDER"]; ok && v != "mockpsp" {
 			t.Errorf("default install: PAYMENTS_LIVE_PROVIDER=%q, want mockpsp", v)
+		} else if ok && envOf(c)["PAYMENTS_ALLOW_MOCK_LIVE"] != "true" {
+			// payments-worker refuses to start with the mock as the live provider unless the install says so (ADR 0023).
+			t.Errorf("default install: PAYMENTS_ALLOW_MOCK_LIVE=%q, want true next to the mock live provider", envOf(c)["PAYMENTS_ALLOW_MOCK_LIVE"])
 		}
 	}
 }

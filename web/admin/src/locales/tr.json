@@ -19,7 +19,9 @@
   "common": {
     "loading": "Yükleniyor…",
     "unknown": "?",
-    "cancel": "Vazgeç"
+    "cancel": "Vazgeç",
+    "copied": "Kopyalandı",
+    "copyFailed": "Tarayıcınız kopyalamaya izin vermedi. Metni seçip elle kopyalayın."
   },
   "enums": {
     "environment": {
@@ -1598,7 +1600,8 @@
       "account": {
         "bad_settings": "Bu sağlayıcı ayarları geçerli değil. Kimlik bilgilerini ve zorunlu alanları kontrol edin.",
         "not_found": "Bu hesapta böyle bir ödeme sağlayıcısı kurulu değil.",
-        "sync_failed": "Sağlayıcı hesabı değişti ama banka bilgileri faturalara aktarılamadı. İsteği yeniden gönderin."
+        "sync_failed": "Sağlayıcı hesabı değişti ama banka bilgileri faturalara aktarılamadı. İsteği yeniden gönderin.",
+        "livemode_mismatch": "Bu sağlayıcı hesabı sağlayıcının diğer moduna işaret ediyor: canlı ortam sağlayıcının canlı uç noktasını ve canlı anahtarlarını, sandbox ortamı ise test uç noktasını kullanmalıdır."
       },
       "billing": {
         "not_configured": "Bu kurulumda faturalama yapılandırılmamış.",
@@ -1781,6 +1784,9 @@
         "no_live": "Bu kurulumda canlı ortam yok.",
         "owner_only": "Canlı ortamı yalnızca hesabın sahibi etkinleştirebilir.",
         "suspended": "Canlı ortam askıya alınmış. Destekle iletişime geçin."
+      },
+      "promote": {
+        "stale": "Önizlemeden sonra yapılandırma değişti. Aktarımı yeniden önizleyin."
       }
     },
     "gateway": {

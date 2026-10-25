@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"net/http"
-	"regexp"
 	"time"
 	_ "time/tzdata" // tenant time zones must load in distroless images
 
@@ -10,8 +9,6 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
 )
-
-var periodParam = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
 
 type usageJSON struct {
 	CustomerExternalID string          `json:"customer_external_id"`
@@ -37,7 +34,7 @@ func (s *Server) getCustomerUsage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		periodID = period.PeriodOf(time.Now(), loc)
-	} else if !periodParam.MatchString(periodID) {
+	} else if !period.Valid(periodID) {
 		writeError(w, r, invalid("period", "must look like 2026-11"))
 		return
 	}

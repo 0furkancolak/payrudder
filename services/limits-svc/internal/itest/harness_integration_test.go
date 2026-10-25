@@ -29,7 +29,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
@@ -49,21 +49,21 @@ var (
 	istanbul, _ = time.LoadLocation("Europe/Istanbul")
 )
 
-type fakeMeters map[string]domain.Meter
+type fakeMeters map[string]usage.Meter
 
-func (f fakeMeters) Get(_ context.Context, _ uuid.UUID, code string) (domain.Meter, error) {
+func (f fakeMeters) Get(_ context.Context, _ uuid.UUID, code string) (usage.Meter, error) {
 	if m, ok := f[code]; ok {
 		return m, nil
 	}
-	return domain.Meter{}, meters.ErrNotFound
+	return usage.Meter{}, meters.ErrNotFound
 }
 
 var defaultMeters = fakeMeters{
-	"api":    {Code: "api", Aggregation: domain.Sum},
-	"calls":  {Code: "calls", Aggregation: domain.Count},
-	"peak":   {Code: "peak", Aggregation: domain.Max},
-	"gb":     {Code: "gb", Aggregation: domain.Sum, Scale: 3},
-	"eu_api": {Code: "eu_api", Aggregation: domain.Sum, Filter: map[string][]string{"region": {"eu"}}},
+	"api":    {Code: "api", Aggregation: usage.Sum},
+	"calls":  {Code: "calls", Aggregation: usage.Count},
+	"peak":   {Code: "peak", Aggregation: usage.Max},
+	"gb":     {Code: "gb", Aggregation: usage.Sum, Scale: 3},
+	"eu_api": {Code: "eu_api", Aggregation: usage.Sum, Filter: map[string][]string{"region": {"eu"}}},
 }
 
 func fixedTenants() tenants.Source {

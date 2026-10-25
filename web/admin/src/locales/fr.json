@@ -19,7 +19,9 @@
   "common": {
     "loading": "Chargement…",
     "unknown": "?",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "copied": "Copié",
+    "copyFailed": "Votre navigateur n'a pas autorisé la copie. Sélectionnez le texte et copiez-le à la main."
   },
   "enums": {
     "environment": {
@@ -1598,7 +1600,8 @@
       "account": {
         "bad_settings": "Ces paramètres du prestataire ne sont pas valides. Vérifiez les identifiants et les champs obligatoires.",
         "not_found": "Ce compte n'a pas ce prestataire de paiement configuré.",
-        "sync_failed": "Le compte du prestataire a été modifié, mais les coordonnées bancaires n'ont pas pu être transmises aux factures. Renvoyez la requête."
+        "sync_failed": "Le compte du prestataire a été modifié, mais les coordonnées bancaires n'ont pas pu être transmises aux factures. Renvoyez la requête.",
+        "livemode_mismatch": "Ce compte fournisseur pointe vers l'autre mode du fournisseur : un environnement live exige le point de terminaison et les clés live du fournisseur, un environnement sandbox son point de terminaison de test."
       },
       "billing": {
         "not_configured": "La facturation n'est pas configurée sur ce déploiement.",
@@ -1781,6 +1784,9 @@
         "no_live": "Ce déploiement n'a pas d'environnement live.",
         "owner_only": "Seul un propriétaire du compte peut activer l'environnement live.",
         "suspended": "L'environnement live est suspendu. Contactez le support."
+      },
+      "promote": {
+        "stale": "La configuration a changé depuis l'aperçu. Prévisualisez à nouveau la promotion."
       }
     },
     "gateway": {

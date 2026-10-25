@@ -6,6 +6,7 @@ import (
 
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
 type entitlementJSON struct {
@@ -38,7 +39,7 @@ func entitlementOf(external string, s *limitsv1.LimitStatus) entitlementJSON {
 // periodQuery validates the optional ?period= parameter; empty means the tenant's current period.
 func periodQuery(w http.ResponseWriter, r *http.Request) (string, bool) {
 	p := r.URL.Query().Get("period")
-	if p != "" && !periodParam.MatchString(p) {
+	if p != "" && !period.Valid(p) {
 		writeError(w, r, invalid("period", "must look like 2026-11"))
 		return "", false
 	}

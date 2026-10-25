@@ -122,6 +122,21 @@ type App struct {
 	CreatedAt time.Time
 }
 
+type ConfigPromotion struct {
+	ID              uuid.UUID
+	AppID           uuid.UUID
+	UserID          uuid.UUID
+	SandboxTenantID uuid.UUID
+	LiveTenantID    uuid.UUID
+	Created         int32
+	Unchanged       int32
+	Conflicts       int32
+	Skipped         int32
+	Failed          int32
+	Detail          json.RawMessage
+	CreatedAt       time.Time
+}
+
 type Coupon struct {
 	TenantID        uuid.UUID
 	Code            string

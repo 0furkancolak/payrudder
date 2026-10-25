@@ -124,3 +124,30 @@ func TestKeyScopeAndRotationRoutes(t *testing.T) {
 		t.Errorf("another account's app: %d", resp.StatusCode)
 	}
 }
+
+// Promotion takes the app from the path and the person from the session; the body carries only the mode and the hash of the preview. The answer holds a secret, so
+// it is not cached.
+func TestPromoteRoute(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	resp, m := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/promote", tokAda, "", `{"dry_run":true,"tenant_id":"`+bobLive+`","user_id":"`+bobUser+`"}`)
+	if resp.StatusCode != 200 || m["plan_hash"] != "h1" || resp.Header.Get("Cache-Control") != "no-store" {
+		t.Fatalf("promote: %d %v", resp.StatusCode, m)
+	}
+	got := p.ident.promotes[0]
+	if !got.GetDryRun() || got.GetUserId() != adaUser || got.GetAppId() != adaApp {
+		t.Errorf("request = %v: the user comes from the session and the app from the path", got)
+	}
+	p.call(t, "POST", "/app/v1/apps/"+adaApp+"/promote", tokAda, "", `{"plan_hash":"h1"}`)
+	if got := p.ident.promotes[1]; got.GetDryRun() || got.GetPlanHash() != "h1" {
+		t.Errorf("apply request = %v", got)
+	}
+	if resp, m := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/promote", tokViewer, "", `{}`); resp.StatusCode != 403 || errKeyOf(m) != "identity.account.forbidden" {
+		t.Errorf("a viewer: %d %v", resp.StatusCode, m)
+	}
+	if resp, _ := p.call(t, "POST", "/app/v1/apps/"+bobApp+"/promote", tokAda, "", `{}`); resp.StatusCode != 404 {
+		t.Errorf("another account's app: %d", resp.StatusCode)
+	}
+	if resp, _ := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/promote", "", "", `{}`); resp.StatusCode != 401 {
+		t.Errorf("without a session: %d", resp.StatusCode)
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 )
 
@@ -19,7 +20,7 @@ func instructionData(s *saga, data map[string]string) {
 func (e *Engine) transferNotification(s *saga) *commandsv1.SendNotification {
 	data := map[string]string{
 		"invoice_number": s.Number, "invoice_id": s.InvoiceID.String(), "period": s.PeriodID, "amount": quantity.FormatUnits(s.TotalMinor, s.Snap.CurrencyExponent),
-		"currency": s.Currency, "customer_name": s.Snap.CustomerName, "tenant_name": s.Snap.TenantName, "sandbox": fmt.Sprint(s.Snap.Environment == "sandbox"),
+		"currency": s.Currency, "customer_name": s.Snap.CustomerName, "tenant_name": s.Snap.TenantName, env.Sandbox.String(): fmt.Sprint(s.Snap.Environment == env.Sandbox.String()),
 	}
 	instructionData(s, data)
 	return &commandsv1.SendNotification{Template: "invoice_transfer.v1", To: s.Snap.CustomerEmail, Data: data}

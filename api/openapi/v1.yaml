@@ -2594,6 +2594,58 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/promote:
+    post:
+      operationId: appPromote
+      tags: [Product]
+      summary: Copy the app's sandbox configuration to its live environment
+      description: >
+        Meters, plans and their prices, tax rates, coupons, mail settings and webhook endpoints. Never customers, usage, invoices or payments. It only adds: an object
+        that exists in live and differs is a conflict, reported and left alone. Objects are matched by a stable key (meter code, plan code, tax country, coupon code,
+        webhook URL), so running it again does nothing. A new webhook endpoint gets a new signing secret, in the answer once; the sandbox's is never copied. An
+        inactive live environment takes no webhook endpoints (they are skipped). Owners and admins only. With dry_run it returns the diff and writes nothing;
+        send its plan_hash back to apply exactly that diff (409 identity.promote.stale if the configuration moved since).
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run: { type: boolean }
+                plan_hash: { type: string }
+      responses:
+        "200":
+          description: The changes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dry_run: { type: boolean }
+                  plan_hash: { type: string }
+                  created: { type: integer }
+                  unchanged: { type: integer }
+                  conflicts: { type: integer }
+                  skipped: { type: integer }
+                  failed: { type: integer }
+                  changes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        family: { type: string, enum: [meters, plans, taxes, coupons, mail, webhooks] }
+                        key: { type: string }
+                        action: { type: string, enum: [ACTION_CREATE, ACTION_UNCHANGED, ACTION_CONFLICT, ACTION_SKIPPED] }
+                        detail: { type: string }
+                        applied: { type: boolean }
+                        error: { type: string }
+                        secret: { type: string, description: "A webhook endpoint made by the promotion: its new signing secret, shown once." }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/api-keys/{key_id}/rotate:
     post:
       operationId: appRotateApiKey

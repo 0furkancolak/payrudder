@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
@@ -39,6 +39,12 @@ type Handler struct {
 	Log    *slog.Logger
 	// Demo makes every tenant, live ones too, use the sandbox provider: a demo stack can never reach a real provider.
 	Demo bool
+	// AllowMockLive lets a live tenant be served by mock-psp (PAYMENTS_LIVE_PROVIDER=mockpsp): a local stack, where there is no real provider. Off, a live
+	// command that would reach the mock is refused, whatever the configuration says: live never reaches mock-psp, as sandbox never reaches a real provider.
+	AllowMockLive bool
+	// Tenants, when set, is asked for the environment of the command's tenant, and a command that disagrees is refused (dead-lettered). Without it a command
+	// is still refused when it names no environment.
+	Tenants *env.Directory
 	// EInvoice executes IssueEInvoice commands (phase 30); nil makes them poison.
 	EInvoice workerx.Handler
 	// Transfers holds the pending rows, receipts and closures of providers whose payments an operator confirms by hand (a bank transfer).
@@ -68,8 +74,35 @@ const (
 
 // providerFor picks the provider of a command. A live tenant with its own provider account is served by it; the others by the
 // configured live provider. Refunds and status queries follow the provider the invoice was charged through.
-func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, env plansv1.Environment, invoice uuid.UUID, charge bool, named string) (payments.PaymentProvider, error) {
-	if h.Demo || env == plansv1.Environment_ENVIRONMENT_SANDBOX {
+//
+// Both directions are guarded here, in one place: a sandbox command is served by h.Sandbox and by nothing else, and a live command is never served by the mock
+// unless the stack says it has no real provider (AllowMockLive, or Demo, which serves everyone from the mock).
+func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, environment env.Env, invoice uuid.UUID, charge bool, named string) (payments.PaymentProvider, error) {
+	p, err := h.pickProvider(ctx, tenant, environment, invoice, charge, named)
+	if err != nil || p == nil {
+		return p, err
+	}
+	switch {
+	case h.Demo:
+	case environment.IsSandbox() && p != h.Sandbox:
+		return nil, fmt.Errorf("%w: a sandbox command was routed to %q", ErrWrongProvider, p.Name())
+	case environment.IsLive() && IsMock(p) && !h.AllowMockLive:
+		return nil, fmt.Errorf("%w: a live command was routed to the mock provider %q", ErrWrongProvider, p.Name())
+	}
+	return p, nil
+}
+
+// ErrWrongProvider is a routing that crosses the environments; the command is answered PROVIDER_NOT_CONFIGURED, never executed.
+var ErrWrongProvider = errors.New("handler: provider does not belong to the command's environment")
+
+// IsMock reports whether p is mock-psp (the sandbox provider).
+func IsMock(p payments.PaymentProvider) bool {
+	_, ok := p.(*payments.MockPSP)
+	return ok
+}
+
+func (h *Handler) pickProvider(ctx context.Context, tenant uuid.UUID, environment env.Env, invoice uuid.UUID, charge bool, named string) (payments.PaymentProvider, error) {
+	if h.Demo || environment.IsSandbox() {
 		return h.Sandbox, nil
 	}
 	if h.Resolver != nil {
@@ -78,10 +111,10 @@ func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, env plansv1
 			if h.Live != nil && h.Live.Name() == named {
 				return h.Live, nil
 			}
-			return h.Resolver.Named(ctx, tenant, named, "live")
+			return h.Resolver.Named(ctx, tenant, named, env.Live.String())
 		}
 		if charge {
-			p, ok, err := h.Resolver.Default(ctx, tenant, "live")
+			p, ok, err := h.Resolver.Default(ctx, tenant, env.Live.String())
 			if err != nil {
 				return nil, err
 			}
@@ -91,10 +124,10 @@ func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, env plansv1
 		} else if name, ok, err := h.Attempts.ChargeProvider(ctx, tenant, invoice); err != nil {
 			return nil, err
 		} else if ok && (h.Live == nil || h.Live.Name() != name) {
-			return h.Resolver.Named(ctx, tenant, name, "live")
+			return h.Resolver.Named(ctx, tenant, name, env.Live.String())
 		} else if !ok {
 			// Never charged through us (an invoice settled elsewhere): the tenant's default account is the best guess.
-			p, found, err := h.Resolver.Default(ctx, tenant, "live")
+			p, found, err := h.Resolver.Default(ctx, tenant, env.Live.String())
 			if err != nil {
 				return nil, err
 			}
@@ -127,13 +160,6 @@ func (h *Handler) record(ctx context.Context, e store.LedgerEntry) {
 
 func unavailable(err error) *commandsv1.ReplyEnvelope {
 	return errored(false, CodeNotConfigured, err.Error())
-}
-
-func envName(env plansv1.Environment) string {
-	if env == plansv1.Environment_ENVIRONMENT_SANDBOX {
-		return "sandbox"
-	}
-	return "live"
 }
 
 // codeKeys are the error keys (docs/error-keys.md) of the codes PaymentErrored carries.
@@ -205,8 +231,19 @@ func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 	if err != nil {
 		return nil, fmt.Errorf("%w: command_id", workerx.ErrPoison)
 	}
-	tenantID, _ := uuid.Parse(cmd.GetTenantId())
-	run := commandRun{id: commandID, tenant: tenantID, environment: cmd.GetEnvironment(), env: envName(cmd.GetEnvironment())}
+	tenantID, err := uuid.Parse(cmd.GetTenantId())
+	if err != nil {
+		return nil, fmt.Errorf("%w: tenant_id", workerx.ErrPoison)
+	}
+	// A command that names no environment, or one other than its tenant's, is dead-lettered, never executed and never defaulted to live.
+	environment, err := env.FromProto(cmd.GetEnvironment())
+	if err == nil && h.Tenants != nil {
+		err = h.Tenants.Check(ctx, tenantID, cmd.GetEnvironment(), "payment command")
+	}
+	if err != nil {
+		return nil, workerx.RefuseEnvironment(err)
+	}
+	run := commandRun{id: commandID, tenant: tenantID, environment: environment, env: environment.String()}
 
 	switch c := cmd.GetCommand().(type) {
 	case *commandsv1.CommandEnvelope_ChargePayment:
@@ -221,7 +258,7 @@ func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 
 type commandRun struct {
 	id, tenant  uuid.UUID
-	environment plansv1.Environment
+	environment env.Env
 	env         string
 }
 

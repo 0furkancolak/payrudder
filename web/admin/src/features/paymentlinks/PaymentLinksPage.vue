@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { useParams } from "@tanstack/vue-router";
+import { useParams, useSearch } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
 import { useTenantCurrency } from "@/features/tenants/currency";
+import { newKey } from "@/shared/lib/key";
+import { useSeededRef } from "@/shared/lib/seeded";
+import { CopyField } from "@/shared/ui/copy-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -13,7 +16,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { usePaymentLinkActions, usePaymentLinks } from "./api";
-import { absoluteUrl, newKey, statusVariant, toRequest, type LinkForm } from "./lib";
+import { absoluteUrl, statusVariant, toRequest, type LinkForm } from "./lib";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
@@ -22,16 +25,16 @@ const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 
-// A page can be opened from an invoice or a customer with the form prefilled (?invoice=…, ?customer=…).
-const query = new URLSearchParams(window.location.search);
-const prefillInvoice = query.get("invoice") ?? "";
+// A page can be opened from an invoice or a customer with the form prefilled (?invoice=…, ?customer=…), and follows the address when it changes in the page.
+const search = useSearch({ strict: false });
+const prefill = () => ({ invoice: String(search.value.invoice ?? ""), customer: String(search.value.customer ?? "") });
 const form = ref<LinkForm>({
-  kind: prefillInvoice ? "invoice" : "adhoc",
-  invoiceId: prefillInvoice,
+  kind: prefill().invoice ? "invoice" : "adhoc",
+  invoiceId: prefill().invoice,
   amount: "",
   currency: FALLBACK_CURRENCY,
   description: "",
-  customer: query.get("customer") ?? "",
+  customer: prefill().customer,
   promotion: "",
   singleUse: true,
   days: "30",
@@ -39,18 +42,11 @@ const form = ref<LinkForm>({
 });
 const formError = ref("");
 // An ad hoc link is in the tenant's own currency unless the person picks another one.
-const tenantCurrency = useTenantCurrency(tenantId);
-let currencySeeded = false;
-watch(
-  tenantCurrency,
-  (c) => {
-    if (c && !currencySeeded) {
-      currencySeeded = true;
-      form.value.currency = c;
-    }
-  },
-  { immediate: true },
-);
+const seededCurrency = useSeededRef<string>(useTenantCurrency(tenantId), FALLBACK_CURRENCY);
+watch(seededCurrency, (c) => (form.value.currency = c), { immediate: true });
+watch(prefill, (p) => {
+  form.value = { ...form.value, kind: p.invoice ? "invoice" : form.value.kind, invoiceId: p.invoice || form.value.invoiceId, customer: p.customer || form.value.customer };
+});
 
 const kind = ref("");
 const status = ref("");
@@ -75,13 +71,6 @@ function submit() {
 }
 function revoke(id: string | undefined) {
   if (id && window.confirm(t("billing.paymentLinks.confirmRevoke"))) act.revoke.mutate(id);
-}
-async function copy() {
-  try {
-    await navigator.clipboard.writeText(shownUrl.value);
-  } catch {
-    /* the field is selectable */
-  }
 }
 function next() {
   const token = links.data.value?.next_page_token;
@@ -130,10 +119,7 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
     <div v-if="created && act.create.isSuccess.value" class="border-warning/50 bg-warning/10 grid gap-2 rounded-md border p-3" role="status">
       <template v-if="shownUrl">
         <p class="text-sm font-medium">{{ t("billing.paymentLinks.shownOnce") }}</p>
-        <div class="flex flex-wrap items-center gap-2">
-          <Input :model-value="shownUrl" readonly class="mono max-w-xl" :aria-label="t('billing.paymentLinks.url')" data-testid="payment-link-url" @focus="($event.target as HTMLInputElement).select()" />
-          <Button type="button" variant="outline" @click="copy">{{ t("billing.paymentLinks.copy") }}</Button>
-        </div>
+        <CopyField :value="shownUrl" :label="t('billing.paymentLinks.url')" :copy-label="t('billing.paymentLinks.copy')" testid="payment-link-url" />
       </template>
       <p v-else class="text-sm">{{ t("billing.paymentLinks.replayed") }}</p>
     </div>

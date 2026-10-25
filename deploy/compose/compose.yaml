@@ -489,6 +489,8 @@ services:
       MOCKPSP_URL: http://mockpsp:8090
       # Live tenants use mock-psp in the local demo; sandbox tenants always do, whatever this says.
       PAYMENTS_LIVE_PROVIDER: ${PAYMENTS_LIVE_PROVIDER:-mockpsp}
+      # The worker refuses to start with the mock as the live provider unless this says the stack is not production (ADR 0022). This compose file is the local stack.
+      PAYMENTS_ALLOW_MOCK_LIVE: ${PAYMENTS_ALLOW_MOCK_LIVE:-true}
       # Demo mode: every tenant uses the mock provider, whatever accounts exist. See docs/phases/phase-26-demo-and-mail.md.
       PAYRUDDER_DEMO: ${PAYRUDDER_DEMO:-false}
       # Seals tenants' provider credentials (32 bytes, base64). This default is for the local stack only: generate your own with `openssl rand -base64 32`.

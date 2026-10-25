@@ -69,7 +69,7 @@ export function delta(now: number | null | undefined, before: number | null | un
   return { percent, direction: percent > 0 ? "up" : percent < 0 ? "down" : "flat" };
 }
 
-/** Basis points as a percentage with one decimal ("12.5"), or null. */
+/** Basis points as a percentage with up to two decimals (1234 is 12.34), or null. The page rounds it to one decimal when it shows it. */
 export function bpPercent(bp: number | null | undefined): number | null {
   return bp === null || bp === undefined ? null : Math.round(bp) / 100;
 }

@@ -317,6 +317,12 @@ export function useAcceptInvitationAsMe() {
 }
 
 /** Switches the account the person works in; everything that belongs to an account is read again. */
+/** After the person left an account: the choice is forgotten (the next account, if any, becomes the first) and everything cached for the old one is read again. */
+export function leaveAccount(queries: QueryClient): void {
+  setActiveAccount(null);
+  void queries.invalidateQueries({ queryKey: ["app"] });
+}
+
 export function useSwitchAccount() {
   const queries = useQueryClient();
   return (id: string) => {

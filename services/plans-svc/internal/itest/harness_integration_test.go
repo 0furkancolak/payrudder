@@ -35,6 +35,7 @@ import (
 	identitycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
 	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
 )
 
@@ -162,7 +163,8 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	mail := &recordingMail{}
 	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, mail, testAppURL, log).WithPepper(testPepper), identityqry.New(system),
-		golive.New(golivecmd.New(system, log), goliveqry.New(system))))
+		golive.New(golivecmd.New(system, log), goliveqry.New(system)),
+		promote.Wire(app, system, box, true, log)))
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)

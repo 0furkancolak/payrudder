@@ -79,6 +79,7 @@ type fakeIdentity struct {
 	goLive    []*plansv1.GetMyGoLiveRequest
 	activates []*plansv1.ActivateMyAppRequest
 	rotates   []*plansv1.RotateMyApiKeyRequest
+	promotes  []*plansv1.PromoteMyAppRequest
 	lastScope plansv1.ApiKey_Scope
 }
 
@@ -319,6 +320,22 @@ func (f *fakeIdentity) ActivateMyApp(_ context.Context, req *plansv1.ActivateMyA
 	f.activates = append(f.activates, req)
 	f.mu.Unlock()
 	return &plansv1.ActivateMyAppResponse{GoLive: &plansv1.GoLive{Ready: req.GetProviderReady()}}, nil
+}
+
+func (f *fakeIdentity) PromoteMyApp(_ context.Context, req *plansv1.PromoteMyAppRequest) (*plansv1.PromoteMyAppResponse, error) {
+	f.seen(req.GetUserId())
+	_, role := f.mine(req.GetUserId(), req.GetAppId())
+	switch role {
+	case "":
+		return nil, notFound("app")
+	case "viewer":
+		return nil, errkey.New(codes.PermissionDenied, "identity.account.forbidden", "read-only")
+	}
+	f.mu.Lock()
+	f.promotes = append(f.promotes, req)
+	f.mu.Unlock()
+	return &plansv1.PromoteMyAppResponse{DryRun: req.GetDryRun(), PlanHash: "h1", Created: 1,
+		Changes: []*plansv1.PromoteChange{{Family: "meters", Key: "gb", Action: plansv1.PromoteChange_ACTION_CREATE, Secret: "whsec_x"}}}, nil
 }
 
 func (f *fakeIdentity) RotateMyApiKey(_ context.Context, req *plansv1.RotateMyApiKeyRequest) (*plansv1.RotateMyApiKeyResponse, error) {

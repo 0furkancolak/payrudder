@@ -14,7 +14,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 )
 
 // ErrNotFound is returned for a meter plans-svc doesn't know.
@@ -23,7 +23,7 @@ var ErrNotFound = errkey.New(codes.NotFound, "aggregator.meter.not_found", "mete
 // Cache resolves meters through plans-svc (latest version of a code), caching hits for TTL.
 type Cache struct {
 	client plansv1.PlansServiceClient
-	hits   *expirable.LRU[string, domain.Meter]
+	hits   *expirable.LRU[string, usage.Meter]
 	flight singleflight.Group
 }
 
@@ -32,11 +32,11 @@ func New(client plansv1.PlansServiceClient, ttl time.Duration) *Cache {
 	if ttl <= 0 {
 		ttl = time.Minute
 	}
-	return &Cache{client: client, hits: expirable.NewLRU[string, domain.Meter](10000, nil, ttl)}
+	return &Cache{client: client, hits: expirable.NewLRU[string, usage.Meter](10000, nil, ttl)}
 }
 
 // Get returns the meter, ErrNotFound if it doesn't exist, or the transport error.
-func (c *Cache) Get(ctx context.Context, tenantID uuid.UUID, code string) (domain.Meter, error) {
+func (c *Cache) Get(ctx context.Context, tenantID uuid.UUID, code string) (usage.Meter, error) {
 	key := tenantID.String() + "/" + code
 	if m, ok := c.hits.Get(key); ok {
 		return m, nil
@@ -52,31 +52,12 @@ func (c *Cache) Get(ctx context.Context, tenantID uuid.UUID, code string) (domai
 		if err != nil {
 			return nil, err
 		}
-		m := toDomain(resp.GetMeter())
+		m := usage.FromProto(resp.GetMeter())
 		c.hits.Add(key, m)
 		return m, nil
 	})
 	if err != nil {
-		return domain.Meter{}, err
+		return usage.Meter{}, err
 	}
-	return res.(domain.Meter), nil
-}
-
-func toDomain(m *plansv1.Meter) domain.Meter {
-	out := domain.Meter{Code: m.GetCode()}
-	switch m.GetAggregation() {
-	case plansv1.Aggregation_AGGREGATION_COUNT:
-		out.Aggregation = domain.Count
-	case plansv1.Aggregation_AGGREGATION_MAX:
-		out.Aggregation = domain.Max
-	default:
-		out.Aggregation = domain.Sum
-	}
-	if len(m.GetFilter()) > 0 {
-		out.Filter = make(map[string][]string, len(m.GetFilter()))
-		for k, v := range m.GetFilter() {
-			out.Filter[k] = v.GetValues()
-		}
-	}
-	return out
+	return res.(usage.Meter), nil
 }

@@ -68,6 +68,13 @@ CREATE TABLE tenants (                                -- the isolation unit ever
   CONSTRAINT sandbox_is_always_active CHECK (environment = 'live' OR status = 'active')
 );  -- not RLS'd: operator-only via AdminService (plans_system role)
 
+CREATE TABLE config_promotions (                      -- phase 45 D: one row per applied promotion of an app's sandbox configuration to live; detail has no secrets
+  id uuid PRIMARY KEY, app_id uuid NOT NULL REFERENCES apps(id), user_id uuid NOT NULL REFERENCES users(id),
+  sandbox_tenant_id uuid NOT NULL REFERENCES tenants(id), live_tenant_id uuid NOT NULL REFERENCES tenants(id),   -- a trigger: sandbox → live of the same app only
+  created int NOT NULL, unchanged int NOT NULL, conflicts int NOT NULL, skipped int NOT NULL, failed int NOT NULL, detail jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE api_keys (
   id          uuid PRIMARY KEY,
   tenant_id   uuid NOT NULL REFERENCES tenants(id),
@@ -345,7 +352,7 @@ CREATE TABLE invoices (
   customer_id      uuid NOT NULL,
   period_id        text NOT NULL,
   kind             text NOT NULL CHECK (kind IN ('REGULAR','CORRECTION')),
-  number           text,                               -- 'INV-2026-000123', set at FINALIZED
+  number           text,                               -- 'INV-2026-000123', or 'SBX-2026-000123' for a sandbox tenant, set at FINALIZED; CHECK invoice_number_series ties the series to snapshot.environment (phase 45)
   plan_version_id  uuid NOT NULL,
   currency         char(3) NOT NULL,
   subtotal_minor   bigint NOT NULL,

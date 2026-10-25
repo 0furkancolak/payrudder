@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap, type Tenant } from "@/shared/api/client";
+import { graceDuration } from "@/shared/lib/duration";
 import type { Currency } from "@/shared/lib/currencies";
 import { operatorView } from "@/shared/lib/session";
 
@@ -33,7 +34,7 @@ export function useCreateApp(accountId: MaybeRefOrGetter<string>) {
       unwrap(
         api.POST("/admin/v1/accounts/{id}/apps", {
           params: { path: { id: toValue(accountId) } },
-          body: { name: v.name, slug: v.slug || undefined, currency: v.currency, timezone: v.timezone, grace_period: `${v.graceHours * 3600}s` },
+          body: { name: v.name, slug: v.slug || undefined, currency: v.currency, timezone: v.timezone, grace_period: graceDuration(v.graceHours) },
         }),
       ),
     onSuccess: () => queries.invalidateQueries({ queryKey: appKeys.list(toValue(accountId)) }),
