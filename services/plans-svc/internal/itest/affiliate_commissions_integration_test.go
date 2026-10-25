@@ -22,17 +22,32 @@ import (
 
 // affiliateWorld is a live tenant with an active 10 % program (hold 30 days), a partner, and a customer the partner brought.
 type affiliateWorld struct {
-	e        *env
-	ctx      context.Context
-	tenantID string
-	aff      *plansv1.Affiliate
-	cust     *plansv1.Customer
+	e           *env
+	ctx         context.Context
+	tenantID    string
+	environment string
+	aff         *plansv1.Affiliate
+	cust        *plansv1.Customer
 }
 
 func newAffiliateWorld(t *testing.T, e *env, name string, program func(p *plansv1.AffiliateProgram)) *affiliateWorld {
 	t.Helper()
-	live := e.account(t, name)[plansv1.Environment_ENVIRONMENT_LIVE]
-	w := &affiliateWorld{e: e, ctx: as(live.GetId()), tenantID: live.GetId()}
+	return newAffiliateWorldIn(t, e, name, plansv1.Environment_ENVIRONMENT_LIVE, program)
+}
+
+// newAffiliateWorldIn is newAffiliateWorld in the sandbox or the live environment of a new account.
+func newAffiliateWorldIn(t *testing.T, e *env, name string, environment plansv1.Environment, program func(p *plansv1.AffiliateProgram)) *affiliateWorld {
+	t.Helper()
+	tn := e.account(t, name)[environment]
+	return startAffiliateWorld(t, e, tn, program)
+}
+
+func startAffiliateWorld(t *testing.T, e *env, tn *plansv1.Tenant, program func(p *plansv1.AffiliateProgram)) *affiliateWorld {
+	t.Helper()
+	w := &affiliateWorld{e: e, ctx: as(tn.GetId()), tenantID: tn.GetId(), environment: "live"}
+	if tn.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
+		w.environment = "sandbox"
+	}
 	activeProgram(t, e, w.ctx, program)
 	w.aff = newAffiliate(t, e, w.ctx, uniq("p")+"@partners.test")
 	w.cust = w.customer(t)
@@ -62,7 +77,7 @@ type invoice struct {
 }
 
 func (w *affiliateWorld) newInvoice(c *plansv1.Customer, total, tax int64) invoice {
-	return invoice{id: uuid.New(), customer: c.GetId(), number: "INV-" + uniq(""), currency: "TRY", total: total, tax: tax, environment: "live"}
+	return invoice{id: uuid.New(), customer: c.GetId(), number: "INV-" + uniq(""), currency: "TRY", total: total, tax: tax, environment: w.environment}
 }
 
 func (w *affiliateWorld) send(t *testing.T, typ string, data map[string]any, at time.Time, eventID string) {
@@ -126,7 +141,8 @@ func (w *affiliateWorld) setStatus(t *testing.T, inv invoice, status string) {
 	t.Helper()
 	q := `UPDATE affiliate_commissions SET status = $2 WHERE tenant_id = $3::uuid AND invoice_id = $1 AND kind = 'commission'`
 	if status == "paid" {
-		q = `UPDATE affiliate_commissions SET status = $2, paid_at = now(), approved_at = COALESCE(approved_at, now()) WHERE tenant_id = $3::uuid AND invoice_id = $1 AND kind = 'commission'`
+		q = `UPDATE affiliate_commissions SET status = $2, paid_at = now(), settled_minor = amount_minor - reversed_minor, approved_at = COALESCE(approved_at, now())
+			WHERE tenant_id = $3::uuid AND invoice_id = $1 AND kind = 'commission'`
 	}
 	if status == "approved" {
 		q = `UPDATE affiliate_commissions SET status = $2, approved_at = now() WHERE tenant_id = $3::uuid AND invoice_id = $1 AND kind = 'commission'`

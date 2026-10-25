@@ -1988,6 +1988,13 @@
       "bad_period": "Écrivez les dates AAAA-MM-JJ, la fin après le début et au plus un an d'écart.",
       "commission": {
         "not_found": "Cette facture n'a généré aucune commission."
+      },
+      "payout": {
+        "affiliate_inactive": "Un partenaire suspendu ou en attente n'est pas payé. Son solde est conservé jusqu'à sa réactivation.",
+        "not_found": "Ce versement n'existe pas.",
+        "not_open": "Ce versement n'est plus ouvert : il a été payé ou annulé.",
+        "nothing_to_pay": "Après remboursements, ce versement ne vaut plus rien. Annulez-le ; le solde est reporté.",
+        "tenant_not_active": "Cet environnement live n'est pas actif : aucun versement ne peut être créé ni payé."
       }
     }
   },

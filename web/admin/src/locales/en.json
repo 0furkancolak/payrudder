@@ -1988,6 +1988,13 @@
       "bad_period": "Write the dates as YYYY-MM-DD, with the end after the start and at most a year apart.",
       "commission": {
         "not_found": "This invoice earned no commission."
+      },
+      "payout": {
+        "affiliate_inactive": "A suspended or pending partner is not paid. Their balance is kept until you reinstate them.",
+        "not_found": "No such payout.",
+        "not_open": "This payout is no longer open: it was paid or cancelled.",
+        "nothing_to_pay": "After refunds this payout comes to nothing. Cancel it; the balance rolls forward.",
+        "tenant_not_active": "This live environment is not active, so no payout can be made or paid."
       }
     }
   },

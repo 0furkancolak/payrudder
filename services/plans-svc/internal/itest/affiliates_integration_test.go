@@ -480,7 +480,7 @@ func seedAffiliates(t *testing.T, e *env, tenantID, suffix string) {
 		}
 	}
 	must(e.aff.SetAffiliateProgram(ctx, &plansv1.SetAffiliateProgramRequest{Program: &plansv1.AffiliateProgram{Status: "active", CommissionKind: "percent_bps", CommissionValue: 1000,
-		AttributionWindowDays: 30, HoldDays: 30}}))
+		AttributionWindowDays: 30, HoldDays: 0}}))
 	self, err := e.aff.CreateAffiliate(ctx, &plansv1.CreateAffiliateRequest{Email: "ada@example.com", Code: "SEEDSELF" + strings.ToUpper(suffix)})
 	if err != nil {
 		t.Fatal(err)
@@ -503,6 +503,12 @@ func seedAffiliates(t *testing.T, e *env, tenantID, suffix string) {
 	} {
 		must(e.hooks.RecordTenantEvent(ctx, &plansv1.RecordTenantEventRequest{EventId: uuid.NewString(), Type: ev.typ, DataJson: ev.data}))
 	}
+	// Paid out: a payout and its postings.
+	payouts, err := e.aff.CreateAffiliatePayouts(ctx, &plansv1.CreateAffiliatePayoutsRequest{AffiliateId: partner.GetAffiliate().GetId()})
+	if err != nil || len(payouts.GetPayouts()) != 1 {
+		t.Fatalf("seed payout: %v %v", payouts, err)
+	}
+	must(e.aff.MarkAffiliatePayoutPaid(ctx, &plansv1.MarkAffiliatePayoutPaidRequest{Id: payouts.GetPayouts()[0].GetId(), Reference: "seed"}))
 	must(e.pub.TrackAffiliateClick(context.Background(), &plansv1.TrackAffiliateClickRequest{Code: partner.GetAffiliate().GetCode()}))
 }
 

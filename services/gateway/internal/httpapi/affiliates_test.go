@@ -2,12 +2,16 @@ package httpapi
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -91,6 +95,86 @@ func (f *fakeAffiliates) GetAffiliateBalances(_ context.Context, r *plansv1.GetA
 func (f *fakeAffiliates) GetAffiliateFunnel(_ context.Context, r *plansv1.GetAffiliateFunnelRequest) (*plansv1.GetAffiliateFunnelResponse, error) {
 	f.remember("GetAffiliateFunnel", r)
 	return &plansv1.GetAffiliateFunnelResponse{Clicks: 9, Referrals: 3}, nil
+}
+
+func (f *fakeAffiliates) ListAffiliatePayouts(_ context.Context, r *plansv1.ListAffiliatePayoutsRequest) (*plansv1.ListAffiliatePayoutsResponse, error) {
+	f.remember("ListAffiliatePayouts", r)
+	return &plansv1.ListAffiliatePayoutsResponse{Total: 1, Payouts: []*plansv1.AffiliatePayout{{Id: "p1", Status: "open", TotalMinor: 3000, Fake: true}}}, nil
+}
+
+func (f *fakeAffiliates) CreateAffiliatePayouts(_ context.Context, r *plansv1.CreateAffiliatePayoutsRequest) (*plansv1.CreateAffiliatePayoutsResponse, error) {
+	f.remember("CreateAffiliatePayouts", r)
+	return &plansv1.CreateAffiliatePayoutsResponse{Payouts: []*plansv1.AffiliatePayout{{Id: "p1"}}, Skipped: []*plansv1.SkippedAffiliatePayout{{Currency: "TRY", Reason: "below_minimum"}}}, nil
+}
+
+func (f *fakeAffiliates) MarkAffiliatePayoutPaid(_ context.Context, r *plansv1.MarkAffiliatePayoutPaidRequest) (*plansv1.MarkAffiliatePayoutPaidResponse, error) {
+	f.remember("MarkAffiliatePayoutPaid", r)
+	return &plansv1.MarkAffiliatePayoutPaidResponse{Payout: &plansv1.AffiliatePayout{Id: r.GetId(), Status: "paid", Reference: r.GetReference()}}, nil
+}
+
+func (f *fakeAffiliates) CancelAffiliatePayout(_ context.Context, r *plansv1.CancelAffiliatePayoutRequest) (*plansv1.CancelAffiliatePayoutResponse, error) {
+	f.remember("CancelAffiliatePayout", r)
+	return &plansv1.CancelAffiliatePayoutResponse{Payout: &plansv1.AffiliatePayout{Id: r.GetId(), Status: "cancelled"}}, nil
+}
+
+func (f *fakeAffiliates) ListAffiliateJournal(_ context.Context, r *plansv1.ListAffiliateJournalRequest) (*plansv1.ListAffiliateJournalResponse, error) {
+	f.remember("ListAffiliateJournal", r)
+	return &plansv1.ListAffiliateJournalResponse{
+		Entries: []*plansv1.AffiliateJournalEntry{
+			{Id: "j1", PayoutId: "p1", Currency: "EUR", Account: "commission_expense", DebitMinor: 500, PostTime: timestamppb.New(time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)), Memo: "=cmd"},
+			{Id: "j2", PayoutId: "p1", Currency: "EUR", Account: "commissions_payable", CreditMinor: 500, PostTime: timestamppb.New(time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)), Fake: true},
+		},
+		Totals: []*plansv1.AffiliateJournalTotal{{Currency: "EUR", DebitMinor: 500, CreditMinor: 500}},
+	}, nil
+}
+
+func TestAffiliatePayoutRoutes(t *testing.T) {
+	ts, _ := newTestServer(t)
+	fa := lastAffiliates
+	if r, m := do(t, ts, http.MethodGet, "/v1/affiliates/payouts?status=open&affiliate_id=a1", "live-key", ""); r.StatusCode != http.StatusOK || m["total"] != float64(1) {
+		t.Fatalf("list: %d %v", r.StatusCode, m)
+	}
+	if l := fa.got("ListAffiliatePayouts").(*plansv1.ListAffiliatePayoutsRequest); l.GetStatus() != "open" || l.GetAffiliateId() != "a1" {
+		t.Errorf("list request: %v", l)
+	}
+	if r, m := do(t, ts, http.MethodPost, "/v1/affiliates/payouts", "live-key", `{"affiliate_id":"a1","currency":"TRY"}`); r.StatusCode != http.StatusCreated || m["skipped"] == nil {
+		t.Errorf("create: %d %v", r.StatusCode, m)
+	}
+	if r, _ := do(t, ts, http.MethodPost, "/v1/affiliates/payouts", "live-key", ``); r.StatusCode != http.StatusCreated {
+		t.Errorf("create with no body (every partner): %d", r.StatusCode)
+	}
+	if r, m := do(t, ts, http.MethodPost, "/v1/affiliates/payouts/real-id/pay", "live-key", `{"id":"forged","reference":"TR99"}`); r.StatusCode != http.StatusOK || m["status"] != "paid" {
+		t.Errorf("pay: %d %v", r.StatusCode, m)
+	}
+	if m := fa.got("MarkAffiliatePayoutPaid").(*plansv1.MarkAffiliatePayoutPaidRequest); m.GetId() != "real-id" || m.GetReference() != "TR99" {
+		t.Errorf("pay request: %v", m)
+	}
+	if r, m := do(t, ts, http.MethodPost, "/v1/affiliates/payouts/p9/cancel", "live-key", ""); r.StatusCode != http.StatusOK || m["status"] != "cancelled" {
+		t.Errorf("cancel: %d %v", r.StatusCode, m)
+	}
+	if r, m := do(t, ts, http.MethodGet, "/v1/affiliates/journal?payout_id=p1&currency=EUR&from=2026-03-01T00:00:00Z", "live-key", ""); r.StatusCode != http.StatusOK || m["totals"] == nil {
+		t.Errorf("journal: %d %v", r.StatusCode, m)
+	}
+	if r, _ := do(t, ts, http.MethodGet, "/v1/affiliates/journal?to=soon", "live-key", ""); r.StatusCode != http.StatusBadRequest {
+		t.Errorf("a bad time = %d", r.StatusCode)
+	}
+	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/v1/affiliates/journal.csv?currency=EUR", nil)
+	req.Header.Set("Authorization", "Bearer live-key")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/csv") {
+		t.Fatalf("csv: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
+	for _, want := range []string{"posted_at,payout_id,affiliate_id,currency,account,debit_minor,credit_minor,fake,memo", "2026-03-01T10:00:00Z,p1,,EUR,commission_expense,500,0,false,'=cmd",
+		"commissions_payable,0,500,true", "total,,,EUR,,500,500,,"} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("csv lacks %q:\n%s", want, body)
+		}
+	}
 }
 
 func TestAffiliateCommissionRoutes(t *testing.T) {

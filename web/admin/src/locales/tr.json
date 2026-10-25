@@ -1988,6 +1988,13 @@
       "bad_period": "Tarihleri YYYY-AA-GG biçiminde yazın; bitiş başlangıçtan sonra olmalı ve en fazla bir yıl arayla olmalıdır.",
       "commission": {
         "not_found": "Bu fatura için komisyon doğmamış."
+      },
+      "payout": {
+        "affiliate_inactive": "Askıya alınmış veya onay bekleyen ortağa ödeme yapılmaz. Bakiyesi, ortağı yeniden etkinleştirene kadar saklanır.",
+        "not_found": "Böyle bir ödeme yok.",
+        "not_open": "Bu ödeme artık açık değil: ödendi veya iptal edildi.",
+        "nothing_to_pay": "İadelerden sonra bu ödemeden geriye bir şey kalmadı. İptal edin; bakiye sonraki ödemeye devreder.",
+        "tenant_not_active": "Bu canlı ortam etkin değil; ödeme oluşturulamaz veya ödenemez."
       }
     }
   },

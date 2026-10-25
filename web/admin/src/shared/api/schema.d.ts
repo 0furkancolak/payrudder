@@ -1198,6 +1198,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/affiliates/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Payouts to partners, newest first
+         * @description A payout is the approved commissions of one partner in one currency (no conversion), with the negative rows that net earlier payments taken back. An open payout is worth what its commissions are worth now.
+         */
+        get: operations["listAffiliatePayouts"];
+        put?: never;
+        /**
+         * Batch the approved commissions into open payouts
+         * @description For one partner or for every active partner, one payout per currency. A batch below the program's minimum payout, or not above zero, is skipped and reported; what is approved later joins a payout that is still open. A suspended partner is not paid; their balance is kept. A live environment that is not active pays nobody (affiliate.payout.tenant_not_active).
+         */
+        post: operations["createAffiliatePayouts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates/payouts/{id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record that you paid a payout, and post it
+         * @description Payrudder moves no money: pay by hand or bank transfer, then say so. The commissions become paid and the journal gets the commission expense against the payable, and the payable against cash, balanced in the payout's currency. Doing it again changes nothing. In the sandbox the payout is fake and its postings say so.
+         */
+        post: operations["markAffiliatePayoutPaid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates/payouts/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Drop an open payout
+         * @description Its commissions go back to being payable in another payout.
+         */
+        post: operations["cancelAffiliatePayout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The postings of paid payouts, with debit and credit totals per currency
+         * @description totals cover the whole filter, not only the page. The books balance when debits equal credits in every currency; the database refuses to commit postings that do not.
+         */
+        get: operations["listAffiliateJournal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates/journal.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The same postings as a CSV file, with a total line per currency */
+        get: operations["exportAffiliateJournal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/affiliates/{id}": {
         parameters: {
             query?: never;
@@ -4666,6 +4767,48 @@ export interface components {
                 reversed_minor?: string;
             }[];
         };
+        AffiliatePayout: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            affiliate_id?: string;
+            affiliate_code?: string;
+            currency?: string;
+            /** @description Open: what its commissions are worth now. Paid: what was paid */
+            total_minor?: string;
+            commission_count?: number;
+            /** @enum {string} */
+            method?: "manual" | "bank_transfer";
+            payout_details?: string;
+            reference?: string;
+            /** @enum {string} */
+            status?: "open" | "paid" | "cancelled";
+            /** @description A payout of a sandbox environment: nothing was or will be paid */
+            fake?: boolean;
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            pay_time?: string;
+            /** Format: date-time */
+            cancel_time?: string;
+        };
+        AffiliateJournalEntry: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            payout_id?: string;
+            /** Format: uuid */
+            affiliate_id?: string;
+            /** Format: date-time */
+            post_time?: string;
+            currency?: string;
+            /** @enum {string} */
+            account?: "commission_expense" | "commissions_payable" | "cash";
+            debit_minor?: string;
+            credit_minor?: string;
+            memo?: string;
+            fake?: boolean;
+        };
         AffiliateReferral: {
             /** Format: uuid */
             affiliate_id?: string;
@@ -7866,6 +8009,195 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AffiliateFunnel"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    listAffiliatePayouts: {
+        parameters: {
+            query?: {
+                affiliate_id?: string;
+                status?: "open" | "paid" | "cancelled";
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        payouts?: components["schemas"]["AffiliatePayout"][];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    createAffiliatePayouts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    affiliate_id?: string;
+                    currency?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        payouts?: components["schemas"]["AffiliatePayout"][];
+                        skipped?: {
+                            /** Format: uuid */
+                            affiliate_id?: string;
+                            currency?: string;
+                            total_minor?: string;
+                            /** @enum {string} */
+                            reason?: "below_minimum" | "not_positive";
+                        }[];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    markAffiliatePayoutPaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description Your note, e.g. the bank transfer reference */
+                    reference?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AffiliatePayout"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    cancelAffiliatePayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AffiliatePayout"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    listAffiliateJournal: {
+        parameters: {
+            query?: {
+                payout_id?: string;
+                currency?: string;
+                from?: string;
+                to?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entries?: components["schemas"]["AffiliateJournalEntry"][];
+                        totals?: {
+                            currency?: string;
+                            debit_minor?: string;
+                            credit_minor?: string;
+                        }[];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    exportAffiliateJournal: {
+        parameters: {
+            query?: {
+                payout_id?: string;
+                currency?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
                 };
             };
             400: components["responses"]["Error"];
