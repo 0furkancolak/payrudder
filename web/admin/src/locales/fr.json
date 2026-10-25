@@ -1373,6 +1373,74 @@
         "nothing_pending": "Aucun virement en attente à rejeter.",
         "bad_outcome": "Le résultat doit être rejeté ou expiré.",
         "unavailable": "Le service de paiement est indisponible pour le moment. Réessayez dans un instant."
+      },
+      "account": {
+        "bad_settings": "Ces paramètres du prestataire ne sont pas valides. Vérifiez les identifiants et les champs obligatoires.",
+        "not_found": "Ce compte n'a pas ce prestataire de paiement configuré.",
+        "sync_failed": "Le compte du prestataire a été modifié, mais les coordonnées bancaires n'ont pas pu être transmises aux factures. Renvoyez la requête."
+      },
+      "billing": {
+        "not_configured": "La facturation n'est pas configurée sur ce déploiement."
+      },
+      "plans": {
+        "not_configured": "Les plans ne sont pas configurés sur ce déploiement.",
+        "failed": "Le service des plans n'a pas pu terminer cette opération. Réessayez dans un instant."
+      },
+      "checkout": {
+        "currency_unsupported": "Ce prestataire ne peut pas encaisser un paiement en ligne dans cette devise.",
+        "fields_required": "Le prestataire et la référence de prix sont requis.",
+        "unsupported": "Ce prestataire n'a pas de page de paiement hébergée."
+      },
+      "customer": {
+        "not_ready": "Le client n'a pas pu être préparé chez le prestataire."
+      },
+      "invoice": {
+        "amount_required": "Le montant et la devise sont requis.",
+        "bad_id": "L'identifiant de la facture n'est pas valide.",
+        "bad_ids": "Les identifiants de facture ne sont pas valides.",
+        "no_instructions": "Ce prestataire n'a pas d'instructions de paiement pour cette devise.",
+        "not_live": "Seules les factures en production sont payées via un prestataire.",
+        "payment_in_progress": "Un paiement pour cette facture est en cours de démarrage. Réessayez dans un instant.",
+        "return_url_required": "Une adresse de retour est requise pour un paiement en ligne.",
+        "unknown_method": "Ce mode de paiement est inconnu."
+      },
+      "ledger": {
+        "bad_limit": "La limite doit être comprise entre 1 et 1000.",
+        "too_many_invoices": "Trop de factures ont été demandées à la fois."
+      },
+      "migration": {
+        "fields_required": "L'abonnement et le prestataire cible sont requis.",
+        "price_ref_required": "Ce prestataire gère lui-même les abonnements : la référence de prix de son catalogue est requise."
+      },
+      "plan": {
+        "code_required": "Le code du plan est requis."
+      },
+      "provider": {
+        "failed": "Le prestataire de paiement n'a pas pu terminer cette opération. Réessayez dans un instant.",
+        "not_supported": "Ce prestataire de paiement ne prend pas cela en charge.",
+        "unknown": "Ce prestataire de paiement est inconnu."
+      },
+      "reconcile": {
+        "bad_period": "La période doit ressembler à 2026-10."
+      },
+      "request": {
+        "bad_body": "Le corps de la requête doit être un JSON valide.",
+        "bad_environment": "L'environnement doit être sandbox ou live.",
+        "bad_tenant": "L'identifiant du compte n'est pas valide.",
+        "too_large": "La requête est trop volumineuse."
+      },
+      "subscription": {
+        "cannot_cancel": "Ce prestataire ne peut pas résilier un abonnement depuis ici.",
+        "change_refused": "Ce changement d'abonnement n'est pas possible.",
+        "period_end_unknown": "La fin de la période payée chez le prestataire n'est pas encore connue : aucune notification ne nous l'a indiquée.",
+        "wrong_provider": "Cet abonnement n'est pas géré par ce prestataire."
+      },
+      "webhook": {
+        "malformed": "La notification n'a pas pu être lue.",
+        "not_found": "Cette adresse de notification n'existe pas.",
+        "not_recorded": "La notification n'a pas pu être enregistrée. Renvoyez-la.",
+        "try_again": "La notification n'a pas encore pu être confirmée. Renvoyez-la.",
+        "unverified": "Il n'a pas été possible de vérifier que la notification provient du prestataire."
       }
     },
     "einvoice": {

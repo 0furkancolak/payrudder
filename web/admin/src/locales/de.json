@@ -1373,6 +1373,74 @@
         "nothing_pending": "Es gibt keine ausstehende Überweisung, die abgelehnt werden könnte.",
         "bad_outcome": "Das Ergebnis muss abgelehnt oder abgelaufen sein.",
         "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal."
+      },
+      "account": {
+        "bad_settings": "Diese Anbietereinstellungen sind ungültig. Prüfen Sie die Zugangsdaten und die Pflichtfelder.",
+        "not_found": "Für dieses Konto ist dieser Zahlungsanbieter nicht eingerichtet.",
+        "sync_failed": "Das Anbieterkonto wurde geändert, die Bankdaten konnten aber nicht an die Rechnungen weitergegeben werden. Senden Sie die Anfrage erneut."
+      },
+      "billing": {
+        "not_configured": "Die Abrechnung ist in dieser Installation nicht eingerichtet."
+      },
+      "plans": {
+        "not_configured": "Pläne sind in dieser Installation nicht eingerichtet.",
+        "failed": "Der Pläne-Dienst konnte dies nicht abschließen. Versuchen Sie es gleich erneut."
+      },
+      "checkout": {
+        "currency_unsupported": "Dieser Anbieter kann in dieser Währung keine Checkout-Zahlung annehmen.",
+        "fields_required": "Anbieter und Preisreferenz sind erforderlich.",
+        "unsupported": "Dieser Anbieter hat keine gehostete Checkout-Seite."
+      },
+      "customer": {
+        "not_ready": "Der Kunde konnte beim Anbieter nicht vorbereitet werden."
+      },
+      "invoice": {
+        "amount_required": "Betrag und Währung sind erforderlich.",
+        "bad_id": "Die Rechnungs-ID ist keine gültige ID.",
+        "bad_ids": "Die Rechnungs-IDs sind keine gültigen IDs.",
+        "no_instructions": "Dieser Anbieter hat für diese Währung keine Zahlungsanweisungen.",
+        "not_live": "Nur Live-Rechnungen werden über einen Anbieter bezahlt.",
+        "payment_in_progress": "Für diese Rechnung wird gerade eine Zahlung gestartet. Versuchen Sie es gleich erneut.",
+        "return_url_required": "Für eine Checkout-Zahlung ist eine Rücksprungadresse erforderlich.",
+        "unknown_method": "Diese Zahlungsmethode ist nicht bekannt."
+      },
+      "ledger": {
+        "bad_limit": "Das Limit muss zwischen 1 und 1000 liegen.",
+        "too_many_invoices": "Es wurden zu viele Rechnungen auf einmal angefragt."
+      },
+      "migration": {
+        "fields_required": "Abonnement und Zielanbieter sind erforderlich.",
+        "price_ref_required": "Dieser Anbieter führt Abonnements selbst aus: Die Preisreferenz seines Katalogs ist erforderlich."
+      },
+      "plan": {
+        "code_required": "Der Plancode ist erforderlich."
+      },
+      "provider": {
+        "failed": "Der Zahlungsanbieter konnte dies nicht abschließen. Versuchen Sie es gleich erneut.",
+        "not_supported": "Dieser Zahlungsanbieter unterstützt das nicht.",
+        "unknown": "Dieser Zahlungsanbieter ist nicht bekannt."
+      },
+      "reconcile": {
+        "bad_period": "Der Zeitraum muss wie 2026-10 aussehen."
+      },
+      "request": {
+        "bad_body": "Der Anfragetext muss gültiges JSON sein.",
+        "bad_environment": "Die Umgebung muss sandbox oder live sein.",
+        "bad_tenant": "Die Konto-ID ist keine gültige ID.",
+        "too_large": "Die Anfrage ist zu groß."
+      },
+      "subscription": {
+        "cannot_cancel": "Dieser Anbieter kann ein Abonnement von hier aus nicht kündigen.",
+        "change_refused": "Diese Abonnementänderung ist nicht möglich.",
+        "period_end_unknown": "Das Ende des bezahlten Zeitraums beim Anbieter ist noch nicht bekannt: Es ist noch keine Benachrichtigung eingegangen.",
+        "wrong_provider": "Dieses Abonnement wird nicht von diesem Anbieter geführt."
+      },
+      "webhook": {
+        "malformed": "Die Benachrichtigung konnte nicht gelesen werden.",
+        "not_found": "Diese Benachrichtigungsadresse gibt es nicht.",
+        "not_recorded": "Die Benachrichtigung konnte nicht gespeichert werden. Senden Sie sie erneut.",
+        "try_again": "Die Benachrichtigung konnte noch nicht bestätigt werden. Senden Sie sie erneut.",
+        "unverified": "Es konnte nicht bestätigt werden, dass die Benachrichtigung vom Anbieter stammt."
       }
     },
     "einvoice": {

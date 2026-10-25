@@ -1373,6 +1373,74 @@
         "nothing_pending": "There is no pending transfer to reject.",
         "bad_outcome": "The outcome must be rejected or expired.",
         "unavailable": "The payments service is not available right now. Try again in a moment."
+      },
+      "account": {
+        "bad_settings": "These provider settings are not valid. Check the credentials and the required fields.",
+        "not_found": "This account has no such payment provider set up.",
+        "sync_failed": "The provider account was changed, but the bank details could not be passed on to the invoices. Send the request again."
+      },
+      "billing": {
+        "not_configured": "Billing is not set up on this deployment."
+      },
+      "plans": {
+        "not_configured": "Plans are not set up on this deployment.",
+        "failed": "The plans service could not complete this. Try again shortly."
+      },
+      "checkout": {
+        "currency_unsupported": "This provider cannot take a checkout payment in this currency.",
+        "fields_required": "The provider and the price reference are required.",
+        "unsupported": "This provider has no hosted checkout."
+      },
+      "customer": {
+        "not_ready": "The customer could not be prepared at the provider."
+      },
+      "invoice": {
+        "amount_required": "The amount and the currency are required.",
+        "bad_id": "The invoice id is not a valid id.",
+        "bad_ids": "The invoice ids are not valid ids.",
+        "no_instructions": "This provider has no payment instructions for this currency.",
+        "not_live": "Only live invoices are paid through a provider.",
+        "payment_in_progress": "A payment for this invoice is being started. Try again in a moment.",
+        "return_url_required": "A return address is required for a checkout payment.",
+        "unknown_method": "This payment method is not known."
+      },
+      "ledger": {
+        "bad_limit": "The limit must be between 1 and 1000.",
+        "too_many_invoices": "Too many invoices were asked for at once."
+      },
+      "migration": {
+        "fields_required": "The subscription and the target provider are required.",
+        "price_ref_required": "This provider runs subscriptions itself: the price reference of its catalogue is required."
+      },
+      "plan": {
+        "code_required": "The plan code is required."
+      },
+      "provider": {
+        "failed": "The payment provider could not complete this. Try again shortly.",
+        "not_supported": "This payment provider does not support this.",
+        "unknown": "This payment provider is not known."
+      },
+      "reconcile": {
+        "bad_period": "The period must look like 2026-10."
+      },
+      "request": {
+        "bad_body": "The request body must be valid JSON.",
+        "bad_environment": "The environment must be sandbox or live.",
+        "bad_tenant": "The account id is not a valid id.",
+        "too_large": "The request is too large."
+      },
+      "subscription": {
+        "cannot_cancel": "This provider cannot cancel a subscription from here.",
+        "change_refused": "This subscription change cannot be made.",
+        "period_end_unknown": "The end of the paid period at the provider is not known yet: no notification has told us.",
+        "wrong_provider": "This subscription is not run by this provider."
+      },
+      "webhook": {
+        "malformed": "The notification could not be read.",
+        "not_found": "There is no such notification address.",
+        "not_recorded": "The notification could not be recorded. Send it again.",
+        "try_again": "The notification could not be confirmed yet. Send it again.",
+        "unverified": "The notification could not be verified as coming from the provider."
       }
     },
     "einvoice": {

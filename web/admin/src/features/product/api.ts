@@ -9,11 +9,15 @@ import { personToken, setActiveAccount, setOperatorFlag, setPersonToken } from "
 // The product API (/auth, /app/v1): what a signed-in person sees in their accounts. Types come from the OpenAPI file.
 
 type S = components["schemas"];
+export type SessionOpened = S["SessionOpened"];
+export type SessionInfo = S["SessionInfo"];
+export type Membership = S["Membership"];
 export type MyAccount = S["MyAccount"];
 export type App = S["App"];
 export type AppOverview = S["AppOverview"];
 export type ApiKey = S["ApiKey"];
 export type Invitation = S["Invitation"];
+export type InvitationLookup = S["InvitationLookup"];
 export type Role = "owner" | "admin" | "viewer";
 export type Environment = "live" | "sandbox";
 

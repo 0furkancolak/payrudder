@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppOverview } from "./api";
-import { countOf, isEnvironment, revenueByCurrency, seriesOf, tenantOf } from "./lib";
+import { countOf, isEnvironment, revenueByCurrency, seriesOf, tenantOf, totalPayments } from "./lib";
 
 const payments: NonNullable<AppOverview["payments"]> = {
   truncated: false,
@@ -40,6 +40,7 @@ describe("overview helpers", () => {
   it("counts payments by status", () => {
     expect(countOf(payments, "failed")).toBe(2);
     expect(countOf(payments, "nope")).toBe(0);
+    expect(totalPayments(payments)).toBe(8);
   });
 
   it("finds the tenant of an environment", () => {

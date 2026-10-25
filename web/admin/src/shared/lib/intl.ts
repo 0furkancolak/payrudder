@@ -50,7 +50,7 @@ export function currencyInfo(code: string, locale: string, names?: Intl.DisplayN
   return { code, name, symbol, digits: minorDigits(code) };
 }
 
-interface ZoneInfo {
+export interface ZoneInfo {
   id: string;
   /** "UTC+03:00" now (daylight saving time included). */
   offset: string;

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import { ApiError, tenantApi, unwrap, type Plan, type PlanVersion } from "@/shared/api/client";
+import { ApiError, tenantApi, toApiError, unwrap, type Plan, type PlanVersion } from "@/shared/api/client";
 
 export const packageKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "packages"] as const,
@@ -49,7 +49,7 @@ export function useCreatePackage(tenantId: MaybeRefOrGetter<string>) {
         await unwrap(api.POST("/v1/plans", { body: { code: p.code, name: p.name } }));
       } catch (e) {
         // The package exists already: a new version of it is what is wanted.
-        if (!(e instanceof ApiError) || e.code !== "ALREADY_EXISTS") throw e;
+        if (!(e instanceof ApiError) || toApiError(e).code !== "ALREADY_EXISTS") throw e;
       }
       return unwrap(
         api.POST("/v1/plans/{code}/versions", {

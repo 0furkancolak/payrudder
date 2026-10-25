@@ -75,6 +75,8 @@ const exact = (to: string) => (path: string) => path === to;
  */
 export const PERSON_PAGES = ["customers", "subscriptions", "credits", "packages", "pricing", "invoices", "payments", "paymentLinks", "accounting", "reports", "webhooks", "mail", "members"] as const;
 
+export type PersonPage = (typeof PERSON_PAGES)[number];
+
 /** The pages of a tenant: key, icon, path under the tenant, the section it sits in, and whether a person has it or only the operator. */
 interface Page {
   key: string;
