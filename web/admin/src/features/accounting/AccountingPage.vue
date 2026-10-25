@@ -69,10 +69,10 @@ function voidOne(e: Expense) {
 }
 
 const exporting = ref(false);
-async function exportCsv() {
+async function exportCsv(report: "export" | "coupons" = "export") {
   exporting.value = true;
   try {
-    await downloadCsv(tenantId.value, range.value.from, range.value.to, app.value, granularity.value);
+    await downloadCsv(tenantId.value, range.value.from, range.value.to, app.value, granularity.value, report);
   } catch (e) {
     toast.error(errorText(e));
   } finally {
@@ -89,7 +89,7 @@ async function exportCsv() {
         <p class="text-muted-foreground text-sm">{{ t("billing.accounting.intro") }}</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" :disabled="!rangeOk || exporting" @click="exportCsv">{{ t("billing.accounting.export") }}</Button>
+        <Button type="button" variant="outline" :disabled="!rangeOk || exporting" @click="exportCsv('export')">{{ t("billing.accounting.export") }}</Button>
         <Button type="button" @click="add">{{ t("billing.accounting.addExpense") }}</Button>
       </div>
     </div>
@@ -130,6 +130,14 @@ async function exportCsv() {
           <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.tax") }}</dt>
           <dd class="text-xl font-semibold tabular-nums">{{ money(c.tax_minor, c.currency) }}</dd>
         </div>
+        <div v-if="c.discounts_minor && c.discounts_minor !== '0'" data-stat="discounts">
+          <dt class="text-muted-foreground text-sm" :title="t('billing.accounting.stat.discountsHint')">{{ t("billing.accounting.stat.discounts") }}</dt>
+          <dd class="text-xl font-semibold tabular-nums">{{ money(c.discounts_minor, c.currency) }}</dd>
+        </div>
+        <div v-if="c.discounts_minor && c.discounts_minor !== '0'" data-stat="sales">
+          <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.sales") }}</dt>
+          <dd class="text-xl font-semibold tabular-nums">{{ money(c.sales_minor, c.currency) }}</dd>
+        </div>
         <div data-stat="refunds">
           <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.refunds") }}</dt>
           <dd class="text-xl font-semibold tabular-nums">{{ money(c.refunds_minor, c.currency) }}</dd>
@@ -163,6 +171,34 @@ async function exportCsv() {
           <h4 class="mb-2 text-sm font-medium">{{ t("billing.accounting.bars.title") }}</h4>
           <BarSeries :points="c.series ?? []" :currency="c.currency ?? ''" :granularity="granularity" />
         </div>
+      </div>
+
+      <div v-if="(c.coupons ?? []).length" data-section="coupons">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h4 class="text-sm font-medium">{{ t("billing.accounting.coupons.title") }}</h4>
+          <Button type="button" variant="outline" size="sm" :disabled="!rangeOk || exporting" @click="exportCsv('coupons')">{{ t("billing.accounting.coupons.export") }}</Button>
+        </div>
+        <p class="text-muted-foreground text-xs">{{ t("billing.accounting.coupons.hint") }}</p>
+        <Table>
+          <TableHeader>
+            <TableRow class="hover:bg-transparent">
+              <TableHead>{{ t("billing.accounting.coupons.coupon") }}</TableHead>
+              <TableHead class="text-end">{{ t("billing.accounting.coupons.invoices") }}</TableHead>
+              <TableHead class="text-end">{{ t("billing.accounting.coupons.gross") }}</TableHead>
+              <TableHead class="text-end">{{ t("billing.accounting.coupons.discount") }}</TableHead>
+              <TableHead class="text-end">{{ t("billing.accounting.coupons.net") }}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="k in c.coupons" :key="k.coupon_code">
+              <TableCell class="mono font-medium">{{ k.coupon_code }}</TableCell>
+              <TableCell class="text-end tabular-nums">{{ k.invoices }}</TableCell>
+              <TableCell class="text-end tabular-nums">{{ money(k.gross_minor, c.currency) }}</TableCell>
+              <TableCell class="text-end tabular-nums">{{ money(k.discount_minor, c.currency) }}</TableCell>
+              <TableCell class="text-end tabular-nums">{{ money(k.net_minor, c.currency) }}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
     </Card>
   </section>

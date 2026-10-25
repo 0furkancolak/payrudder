@@ -177,3 +177,104 @@ export function share(value: number, max: number): number {
 export function dashSearch(s: Record<string, unknown>): Record<string, string> {
   return { ...(s.env === "sandbox" ? { env: "sandbox" } : {}), ...toSearch(parseQuery(s)) };
 }
+
+/** What the KPI cards need besides the figures themselves: the rates as percentages, the earlier ones, and every change against the period before. */
+export interface KpiFigures {
+  rate: number | null;
+  prevRate: number | null;
+  churn: number | null;
+  prevChurn: number | null;
+  dNet: Delta | null;
+  dMrr: Delta | null;
+  dArpu: Delta | null;
+  dCustomers: Delta | null;
+  dChurn: Delta | null;
+  dRate: Delta | null;
+  dRefunds: Delta | null;
+}
+
+/** The changes of one currency block (and of the customers, which are not per currency) against the period before; all null when the comparison is off. */
+export function kpiFigures(block: DashCurrency, customers: Dashboard["customers"] | undefined, compare: boolean): KpiFigures {
+  const rev = block.revenue;
+  const subs = block.subscriptions;
+  const prevRev = compare ? block.prev_revenue : null;
+  const prevSubs = compare ? block.prev_subscriptions : null;
+  const prevPay = compare ? block.prev_payments : null;
+  const rate = bpPercent(block.payments?.failed_rate_bp);
+  const prevRate = bpPercent(prevPay?.failed_rate_bp);
+  const churn = bpPercent(subs?.churn_rate_bp);
+  const prevChurn = bpPercent(prevSubs?.churn_rate_bp);
+  const hasArpu = compare && block.prev_arpu_minor !== null && block.prev_arpu_minor !== undefined && block.arpu_minor !== null;
+  return {
+    rate,
+    prevRate,
+    churn,
+    prevChurn,
+    dNet: prevRev ? delta(rev?.net_minor, prevRev.net_minor) : null,
+    dMrr: prevSubs ? delta(subs?.mrr_minor, prevSubs.mrr_minor) : null,
+    dArpu: hasArpu ? delta(block.arpu_minor, block.prev_arpu_minor) : null,
+    dCustomers: compare && customers ? delta(customers.new, customers.prev_new) : null,
+    dChurn: prevChurn !== null && churn !== null ? delta(churn, prevChurn) : null,
+    dRate: prevRate !== null && rate !== null ? delta(rate, prevRate) : null,
+    dRefunds: prevRev ? delta(rev?.refunds_minor, prevRev.refunds_minor) : null,
+  };
+}
+
+/** The arrow keys, Home and End of a tab list: the index to move to from `index` among `count` tabs, or -1 for a key that moves nothing. */
+export function nextTabIndex(key: string, index: number, count: number): number {
+  switch (key) {
+    case "ArrowRight":
+    case "ArrowDown":
+      return (index + 1) % count;
+    case "ArrowLeft":
+    case "ArrowUp":
+      return (index - 1 + count) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return -1;
+  }
+}
+
+/** A share in basis points (3 of 12 is 2500), or null when there is nothing to divide by: the failed-payment rate of added-up apps. */
+export function ratioBp(part: number, whole: number): number | null {
+  return whole > 0 ? Math.round((part * 10000) / whole) : null;
+}
+
+/** The currency tabs of several dashboards put together: every currency any of them has, the biggest net revenue first. */
+export function mergedCurrencies(dashboards: readonly (Dashboard | undefined)[]): string[] {
+  const by = new Map<string, number>();
+  for (const d of dashboards) for (const c of d?.currencies ?? []) by.set(c.currency ?? "", (by.get(c.currency ?? "") ?? 0) + (c.revenue?.net_minor ?? 0));
+  return [...by.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([c]) => c);
+}
+
+/** The revenue series of several blocks added point by point (same period, so the same buckets); the earlier period's figures only where any block has them. */
+export function mergedSeries(blocks: readonly (DashCurrency | undefined)[]): ChartPoint[] {
+  const length = Math.max(0, ...blocks.map((b) => b?.series?.length ?? 0));
+  return Array.from({ length }, (_, i) => {
+    let value = 0;
+    let prev = 0;
+    let hasPrev = false;
+    let date = "";
+    let prevDate = "";
+    for (const b of blocks) {
+      const p = b?.series?.[i];
+      if (!p) continue;
+      date = p.date ?? date;
+      value += p.net_minor ?? 0;
+      if (p.prev_net_minor !== undefined && p.prev_net_minor !== null) {
+        hasPrev = true;
+        prev += p.prev_net_minor;
+        prevDate = p.prev_date ?? prevDate;
+      }
+    }
+    return { date, value, ...(hasPrev ? { prev, prevDate } : {}) };
+  });
+}
+
+/** One figure of every block added up (a missing block counts as zero). */
+export function sumBlocks(blocks: readonly (DashCurrency | undefined)[], pick: (b: DashCurrency) => number | null | undefined): number {
+  return blocks.reduce((n, b) => n + (b ? (pick(b) ?? 0) : 0), 0);
+}

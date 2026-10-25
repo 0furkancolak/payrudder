@@ -2,6 +2,7 @@
 import { nextTick, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { currencyInfo } from "@/shared/lib/intl";
+import { nextTabIndex } from "./lib";
 
 /**
  * One tab per currency, because money of different currencies is never added up: every figure below belongs to the chosen one. A tablist with the arrow
@@ -13,8 +14,7 @@ const { t, locale } = useI18n();
 const buttons = ref<HTMLButtonElement[]>([]);
 
 function key(e: KeyboardEvent, i: number) {
-  const n = props.currencies.length;
-  const to = e.key === "ArrowRight" || e.key === "ArrowDown" ? (i + 1) % n : e.key === "ArrowLeft" || e.key === "ArrowUp" ? (i - 1 + n) % n : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : -1;
+  const to = nextTabIndex(e.key, i, props.currencies.length);
   if (to < 0) return;
   e.preventDefault();
   const c = props.currencies[to];

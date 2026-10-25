@@ -43,11 +43,12 @@ test.describe("payment links", () => {
     expect(gw.called("POST", "/v1/payment-links")).toHaveLength(0);
 
     await form.getByLabel("Amount").fill("49.90");
+    await form.getByLabel("Promotion code (optional)").fill("WELCOME");
     await form.getByRole("button", { name: "Create link" }).click();
     await expect(page.getByTestId("payment-link-url")).toHaveValue("https://api.example.com/i/tok");
     await expect(page.getByRole("status")).toContainText("shown once");
     const body = gw.called("POST", "/v1/payment-links")[0]?.body;
-    expect(body).toMatchObject({ kind: "adhoc", amount_minor: "4990", currency: "USD", description: "Workshop", single_use: true });
+    expect(body).toMatchObject({ kind: "adhoc", amount_minor: "4990", currency: "USD", description: "Workshop", single_use: true, promotion_code: "WELCOME" });
     expect(String(body?.idempotency_key).length).toBeGreaterThan(10);
 
     page.once("dialog", (d) => void d.accept());

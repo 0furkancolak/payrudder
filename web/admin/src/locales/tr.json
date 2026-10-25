@@ -19,7 +19,9 @@
   "common": {
     "loading": "Yükleniyor…",
     "unknown": "?",
-    "cancel": "Vazgeç"
+    "cancel": "Vazgeç",
+    "copied": "Kopyalandı",
+    "copyFailed": "Tarayıcınız kopyalamaya izin vermedi. Metni seçip elle kopyalayın."
   },
   "enums": {
     "environment": {
@@ -674,6 +676,96 @@
         "saved": "Denemeler kaydedildi.",
         "none": "Deneme yok: reddedilen tahsilattan hemen vazgeçilir.",
         "bad": "Her gecikme 1 ile 720 arasında bir tam sayıdır."
+      },
+      "promotions": {
+        "title": "Promosyonlar",
+        "hint": "Kupon neyin düşüleceğini söyler. Müşteri bir promosyon kodu yazar: birçok kod tek bir kupona bağlanabilir, her birinin kendi limiti, son kullanma tarihi ve kuralları vardır.",
+        "kinds": {
+          "percent": "Yüzde indirim",
+          "amount": "Tutar indirimi",
+          "bonus": "Bonus kredi"
+        },
+        "valueBonus": "Ek kredi, % (10 veya 12,5)",
+        "bonusValue": "{pct} ek kredi",
+        "bonusNote": "Bonus krediler paketin kredileriyle aynı partiye eklenir ve onlarla birlikte sona erer. Yalnızca kredi satın alımları için.",
+        "badBonus": "Ek kredi yüzdesi değil: 0,01 ile 1000 arası, en fazla iki ondalık.",
+        "appliesTo": "Geçerli olduğu yer",
+        "targets": {
+          "subscription": "Abonelik ücreti",
+          "credit_purchase": "Kredi satın alımı",
+          "payment": "Ödeme bağlantısı veya fatura",
+          "legacy": "Kayıt defterinden önce"
+        },
+        "noTarget": "Kuponun nerede geçerli olduğunu seçin.",
+        "withoutDefaultCode": "Kuponun kendi adıyla promosyon oluşturma",
+        "codeCount": "Kodlar",
+        "manageCodes": "Kodlar",
+        "hideCodes": "Kapat",
+        "codes": {
+          "title": "{coupon} kuponunun promosyon kodları",
+          "hint": "Kodları kendiniz yazın ya da rastgele üretin. Her koda aşağıdaki limit, son kullanma tarihi ve kurallar verilir.",
+          "formLabel": "yeni promosyon kodları",
+          "mode": "Nasıl",
+          "modeNamed": "Kendim yazarım",
+          "modeRandom": "Rastgele kod üret",
+          "names": "Kodlar, her satıra bir tane",
+          "namesPlaceholder": "YAZ26",
+          "count": "Kaç tane (1 ile 1000)",
+          "prefix": "Ön ek (isteğe bağlı)",
+          "maxPerCode": "Kod başına kullanım (boş: sınırsız)",
+          "expires": "Son kullanma günü (isteğe bağlı)",
+          "minAmount": "Asgari tutar (isteğe bağlı)",
+          "minCurrency": "Asgari tutarın para birimi",
+          "allowedCurrencies": "Yalnızca bu para birimlerinde (USD, EUR)",
+          "allowedPlans": "Yalnızca bu planlarda (plan kodları)",
+          "allowedPacks": "Yalnızca bu kredi paketlerinde (kimlikler)",
+          "firstPurchase": "Yalnızca ilk alışveriş",
+          "onePerCustomer": "Müşteri başına bir kez",
+          "restore": "Alışveriş iptal edilirse veya iade edilirse kullanım hakkını geri ver",
+          "create": "Kodları oluştur",
+          "created": "{n} kod oluşturuldu",
+          "createdList": "Oluşturulan kodlar",
+          "copyAll": "Hepsini kopyala",
+          "copied": "Kopyalandı",
+          "download": "CSV indir",
+          "search": "Kod ara",
+          "stateAll": "Her durum",
+          "total": "{n} kod",
+          "used": "Kullanım",
+          "expiresCol": "Son kullanma",
+          "rules": "Kurallar",
+          "none": "Henüz kod yok.",
+          "rule": {
+            "firstPurchase": "İlk alışveriş",
+            "onePerCustomer": "Müşteri başına bir kez",
+            "min": "{amount} ve üzeri",
+            "plans": "Planlar: {list}",
+            "packs": "{n} paket",
+            "restore": "Kullanım hakkını geri verir"
+          },
+          "errors": {
+            "names": "En az bir, en fazla 1000 kod yazın: 2 ile 40 harf, rakam, - veya _.",
+            "count": "Adet 1 ile 1000 arasında, ön ek en fazla 20 harf, rakam, - veya _ olmalı.",
+            "max": "Kod başına kullanım 1'den başlayan bir tam sayı olmalı.",
+            "expires": "Son kullanma gelecekte bir gün olmalı.",
+            "minAmount": "Bu para biriminde bir tutar değil: yalnızca rakamlar, para biriminin ondalık sayısını aşmayacak şekilde.",
+            "currencies": "Para birimleri USD gibi üç harfli kodlardır, virgülle ayrılır."
+          }
+        },
+        "redemptions": {
+          "title": "Kullanımlar",
+          "hint": "Bir kuponun her kullanımı. İptal veya tam iade kullanımı geri alır; sayaç yalnızca bunu belirten kodlarda geri döner.",
+          "coupon": "Kupon",
+          "allCoupons": "Tüm kuponlar",
+          "total": "{n} kullanım",
+          "customer": "Müşteri",
+          "usedOn": "Kullanıldığı yer",
+          "discount": "İndirim",
+          "bonus": "Bonus kredi",
+          "reversed": "Geri alındı",
+          "counted": "Sayılıyor",
+          "none": "Henüz kullanılan yok."
+        }
       }
     },
     "creditNotes": {
@@ -806,7 +898,9 @@
           "refund": "İade"
         }
       },
-      "for": "Konu"
+      "for": "Konu",
+      "promotionCode": "Promosyon kodu (isteğe bağlı)",
+      "promotionHint": "Ödeyen, bu kodun indirimini yazmadan alır ve başka bir kod yazabilir. Kod şimdi bu tutara göre denetlenir."
     },
     "mail": {
       "title": "E-posta",
@@ -903,7 +997,8 @@
         "shownOnce": "Bağlantıyı şimdi kopyalayın: bir kez gösterilir ve sonradan okunamaz.",
         "url": "Satın alma bağlantısı",
         "copy": "Kopyala",
-        "close": "Kapat"
+        "close": "Kapat",
+        "promotionCode": "Promosyon kodu (isteğe bağlı)"
       },
       "settings": {
         "title": "Düşük bakiye uyarısı",
@@ -947,7 +1042,10 @@
         "feesNotRecorded": "Kayıtlı değil",
         "feesHint": "Ödeme sağlayıcısının komisyonunu Payrudder kaydetmez. Ödeme komisyonu kategorisinde gider olarak ekleyin.",
         "expenses": "Giderler",
-        "profit": "Kâr"
+        "profit": "Kâr",
+        "discounts": "Verilen indirimler",
+        "discountsHint": "Kuponların ödenmiş faturalardan düştüğü tutar. Gelir zaten bunlardan sonraki tutardır.",
+        "sales": "İndirimlerden önceki satış"
       },
       "donut": {
         "title": "Kategoriye göre giderler",
@@ -1006,6 +1104,16 @@
         "hint": "İptal edilen gider silinmez. Tüm toplamlardan çıkar ve gerekçeniz kayıtlı kalır.",
         "reason": "Gerekçe",
         "submit": "Gideri iptal et"
+      },
+      "coupons": {
+        "title": "Kuponlar",
+        "hint": "Dönemde ödenen ve kupon kullanan faturalar: kupondan önceki tutar, kuponun düştüğü tutar ve net.",
+        "export": "Kupon raporunu indir",
+        "coupon": "Kupon",
+        "invoices": "Faturalar",
+        "gross": "Brüt",
+        "discount": "İndirim",
+        "net": "Net"
       }
     }
   },

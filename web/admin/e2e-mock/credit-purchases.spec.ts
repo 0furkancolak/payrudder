@@ -47,13 +47,38 @@ test.describe("credit purchases", () => {
     const link = page.getByRole("form", { name: "Create purchase link" });
     await link.getByLabel("Customer").selectOption("cus_1");
     await link.getByLabel("Quantity").fill("2");
+    await link.getByLabel("Promotion code (optional)").fill("SPRING10");
     await link.getByRole("button", { name: "Create link" }).click();
     await expect(page.getByTestId("purchase-link-url")).toHaveValue(/\/i\/tok$/);
     const body = gw.called("POST", "/v1/payment-links")[0]?.body as Record<string, unknown>;
-    expect(body).toMatchObject({ kind: "credit_pack", pack_id: "p1", customer_external_id: "cus_1", quantity: 2 });
+    expect(body).toMatchObject({ kind: "credit_pack", pack_id: "p1", customer_external_id: "cus_1", quantity: 2, promotion_code: "SPRING10" });
     expect(body).not.toHaveProperty("amount_minor");
     expect(body).not.toHaveProperty("currency");
     expect(String(body.idempotency_key)).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  test("a second purchase link for another quantity is a new request, not a replay of the first", async ({ page }) => {
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.method === "POST" && c.path === "/v1/payment-links") return { status: 201, body: { id: "l1", kind: "credit_pack", pack_id: "p1", token: "tok", url: "/i/tok", replayed: false } };
+      if (c.path === "/v1/credits/settings") return { body: { low_threshold: "0" } };
+      if (c.path === "/v1/credit-packs") return { body: { packs: [pack("p1", "Starter", "1000", "500", 30)] } };
+      if (c.path === "/v1/customers") return { body: { customers: [ada] } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/credits");
+    await page.getByRole("row", { name: /Starter/ }).getByRole("button", { name: "Create purchase link" }).click();
+    const link = page.getByRole("form", { name: "Create purchase link" });
+    await link.getByLabel("Customer").selectOption("cus_1");
+    await link.getByLabel("Quantity").fill("2");
+    await link.getByRole("button", { name: "Create link" }).click();
+    await expect(page.getByTestId("purchase-link-url")).toBeVisible();
+    await link.getByLabel("Quantity").fill("3");
+    await link.getByRole("button", { name: "Create link" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/payment-links").length).toBe(2);
+    const [first, second] = gw.called("POST", "/v1/payment-links").map((c) => c.body as Record<string, unknown>);
+    expect(second?.idempotency_key).not.toBe(first?.idempotency_key);
+    expect(second?.quantity).toBe(3);
   });
 
   test("a purchase shows in the customer's ledger, and the low-balance alert is saved", async ({ page }) => {
