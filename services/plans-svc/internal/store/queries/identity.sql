@@ -9,17 +9,18 @@ SELECT * FROM users WHERE lower(email) = lower(@email::text);
 -- name: GetUser :one
 SELECT * FROM users WHERE id = $1;
 
--- A wrong password. After a lock has run out the count starts again at one instead of locking at once on the next slip.
--- name: RecordFailedLogin :one
+-- One password try. The attempt is counted in the same statement that checks the lock and returns the hash, so parallel guesses cannot get more tries
+-- than the limit: the try that reaches it sets the lock, and every later one finds no row. After a lock has run out the count starts again at one.
+-- A successful sign-in resets the count (RecordSuccessfulLogin). An account that is locked or has no password returns no row.
+-- name: TryPassword :one
 UPDATE users SET
   failed_logins = CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END,
   locked_until = CASE
-    WHEN locked_until <= now() THEN NULL
-    WHEN failed_logins + 1 >= @max_failures::int THEN now() + @lock_for::interval
-    ELSE locked_until
+    WHEN (CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END) >= @max_failures::int THEN now() + @lock_for::interval
+    ELSE NULL
   END
-WHERE id = @id
-RETURNING failed_logins, locked_until;
+WHERE id = @id AND password_hash <> '' AND (locked_until IS NULL OR locked_until <= now())
+RETURNING *;
 
 -- name: RecordSuccessfulLogin :exec
 UPDATE users SET failed_logins = 0, locked_until = NULL, last_login_at = now() WHERE id = $1;
