@@ -123,7 +123,7 @@ var sandboxScenarios = []string{"success", "declined", "insufficient_funds_once"
 func seed(args []string) error {
 	fs := flag.NewFlagSet("seed", flag.ContinueOnError)
 	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800"), "gateway base URL")
-	token := fs.String("operator-token", os.Getenv("QUOTIFY_OPERATOR_TOKEN"), "operator token (QUOTIFY_OPERATOR_TOKEN)")
+	token := fs.String("operator-token", getenv("QUOTIFY_OPERATOR_TOKEN"), "operator token (QUOTIFY_OPERATOR_TOKEN)")
 	name := fs.String("name", "Demo Co", "account name")
 	currency := fs.String("currency", "", "ISO 4217 currency (required, e.g. TRY)")
 	timezone := fs.String("timezone", "", "IANA time zone (required, e.g. Europe/Istanbul)")
@@ -237,8 +237,18 @@ func seedCatalog(c *client, key, env string, customers int) error {
 	return nil
 }
 
+// getenv reads a QUOTIFY_ setting, preferring its PAYRUDDER_ spelling (ADR 0021).
+func getenv(k string) string {
+	if rest, ok := strings.CutPrefix(k, "QUOTIFY_"); ok {
+		if v := os.Getenv("PAYRUDDER_" + rest); v != "" {
+			return v
+		}
+	}
+	return os.Getenv(k)
+}
+
 func envOr(k, def string) string {
-	if v := os.Getenv(k); v != "" {
+	if v := getenv(k); v != "" {
 		return v
 	}
 	return def

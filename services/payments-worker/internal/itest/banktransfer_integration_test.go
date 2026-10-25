@@ -473,8 +473,8 @@ func TestBankTransferExpiryRejectionAndLatePayment(t *testing.T) {
 
 	// There is no refund API: the refund fails for good with a reason that says what to do.
 	r := run("refund", inv, 0)
-	if r.GetPaymentErrored() == nil || r.GetPaymentErrored().GetRetryable() || !strings.Contains(r.GetPaymentErrored().GetMessage(), "outside Quotify") {
-		t.Fatalf("refund reply = %v; want a permanent PaymentErrored that points to a refund outside Quotify", r)
+	if r.GetPaymentErrored() == nil || r.GetPaymentErrored().GetRetryable() || !strings.Contains(r.GetPaymentErrored().GetMessage(), "outside Payrudder") {
+		t.Fatalf("refund reply = %v; want a permanent PaymentErrored that points to a refund outside Payrudder", r)
 	}
 }
 

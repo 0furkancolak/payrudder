@@ -1,4 +1,4 @@
-# Quotify on Railway
+# Payrudder on Railway
 
 Everything to run the stack on [Railway](https://railway.com): a config-as-code file per service, images for the backing services Railway has no plugin
 for, and a script that drives the Railway CLI. The design and the decisions are in [phase 31](../../docs/phases/phase-31-railway.md).
@@ -310,7 +310,7 @@ Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account
 | `PORT` | `3001` | the public domain's port |
 | `GATEWAY_URL` | `http://gateway.railway.internal:8000` | the console proxies `/gw/*` to it, so the browser needs no CORS |
 | `QUOTIFY_DEMO` | `false` | shows the demo banner when `true` |
-| `BRAND_NAME` | `Quotify` | |
+| `BRAND_NAME` | `Payrudder` | |
 
 `PREFILL_PLAYGROUND` stays `false`: it pre-fills the operator playground's form, so it is for local stacks only. No credential is ever served to the browser.
 

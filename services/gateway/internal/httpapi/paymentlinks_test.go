@@ -411,7 +411,7 @@ func TestAdhocLinkPage(t *testing.T) {
 func TestPayWithMockInSandbox(t *testing.T) {
 	ts, _ := newTestServer(t)
 	_, page := get(t, ts, "/i/"+tokOpenSandbox)
-	for _, want := range []string{`action="/i/` + tokOpenSandbox + `/pay"`, `value="mock"`, "Pay (test)", "Awaiting payment", "Powered by Quotify", "Test mode"} {
+	for _, want := range []string{`action="/i/` + tokOpenSandbox + `/pay"`, `value="mock"`, "Pay (test)", "Awaiting payment", "Powered by Payrudder", "Test mode"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page lacks %q", want)
 		}

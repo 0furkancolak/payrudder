@@ -144,7 +144,7 @@ func (c *Commands) Deactivate(ctx context.Context, code string) (*plansv1.Coupon
 // must be in the subscription's currency. A subscription a provider renews cannot have one (its fee is the provider's; use a discount at the provider).
 func Redeem(ctx context.Context, q *sqlc.Queries, now time.Time, sub sqlc.GetSubscriptionRow, code string) error {
 	if sub.Owner == "provider" || sub.FeeTiming != "advance" {
-		return status.Error(codes.FailedPrecondition, "a coupon takes something off a fee Quotify invoices in advance; this subscription's fee is billed another way")
+		return status.Error(codes.FailedPrecondition, "a coupon takes something off a fee Payrudder invoices in advance; this subscription's fee is billed another way")
 	}
 	if _, err := q.GetSubscriptionCoupon(ctx, sub.ID); err == nil {
 		return status.Error(codes.FailedPrecondition, "the subscription has a coupon already; remove it first")

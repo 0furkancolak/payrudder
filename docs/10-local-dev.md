@@ -85,7 +85,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | loki | internal only (Grafana queries it; Vector ships logs to it) |
 | grafana | 42300 (anonymous admin locally, dashboards provisioned) |
 
-### Quotify services (`profile: app`)
+### Payrudder services (`profile: app`)
 
 | Service | gRPC | HTTP | Metrics/health |
 |---|---|---|---|
@@ -107,7 +107,7 @@ on its metrics port.
 
 ## Configuration
 
-Environment variables only (12-factor), parsed by `pkg/config` into typed structs (`caarlos0/env`). Example:
+Environment variables only (12-factor), parsed by `pkg/config` into typed structs (`caarlos0/env`). Every `QUOTIFY_*` variable can also be written `PAYRUDDER_*` (for example `PAYRUDDER_LOG_LEVEL=debug`); when both are set, `PAYRUDDER_*` wins ([ADR 0021](adr/0021-payrudder-surface-rename.md)). The examples below use the original prefix, which keeps working. Example:
 
 ```
 QUOTIFY_ENV=local

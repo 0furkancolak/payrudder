@@ -105,7 +105,7 @@ func Confirm(ctx context.Context, d Deps, in Receipt) (Confirmation, error) {
 		return Confirmation{}, errkey.New(codes.FailedPrecondition, "payments.transfer.reference_reused", "that bank reference was confirmed before with another amount")
 	case errors.As(err, &over):
 		return Confirmation{}, errkey.Newf(codes.FailedPrecondition, "payments.transfer.overpayment",
-			"%d %s is more than is outstanding (%d %s); record the outstanding amount and settle the rest with the customer outside Quotify (minor units)",
+			"%d %s is more than is outstanding (%d %s); record the outstanding amount and settle the rest with the customer outside Payrudder (minor units)",
 			in.AmountMinor, st.Currency, over.Outstanding, st.Currency)
 	case err != nil:
 		return Confirmation{}, err

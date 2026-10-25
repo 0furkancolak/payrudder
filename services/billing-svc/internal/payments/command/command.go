@@ -174,7 +174,7 @@ func checkPayable(ctx context.Context, q *sqlc.Queries, in Payment, inv sqlc.Loc
 	}
 	if outstanding := inv.TotalMinor - paid; in.AmountMinor > outstanding {
 		return uuid.Nil, errkey.Newf(codes.FailedPrecondition, "billing.payment.overpayment",
-			"%d is more than is outstanding (%d %s, minor units); record the outstanding amount and settle the rest with the customer outside Quotify", in.AmountMinor, outstanding, inv.Currency)
+			"%d is more than is outstanding (%d %s, minor units); record the outstanding amount and settle the rest with the customer outside Payrudder", in.AmountMinor, outstanding, inv.Currency)
 	}
 	return s.ID, nil
 }

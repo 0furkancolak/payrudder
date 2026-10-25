@@ -1,8 +1,8 @@
-# Quotify
+# Payrudder
 
 > Multi-tenant usage metering and billing in Go: Kafka, RabbitMQ, gRPC, Postgres Row Level Security, ClickHouse, Kubernetes.
 
-Quotify lets a SaaS company (a *tenant*) send usage events, "customer X used 1,500 AI tokens", "customer Y made one API call",
+Payrudder (the code, module path and `QUOTIFY_*` variables keep the original name `quotify`; see [ADR 0021](docs/adr/0021-payrudder-surface-rename.md) and the brand rules in [payrudder-brand/DESIGN.md](payrudder-brand/DESIGN.md)) lets a SaaS company (a *tenant*) send usage events, "customer X used 1,500 AI tokens", "customer Y made one API call",
 and turns them into correct, auditable invoices. It is in the same family as Orb, Lago and Stripe's usage-based billing.
 It is also a worked example of getting distributed-systems guarantees right and *proving* them: every claim below has a test
 that kills things.
@@ -154,11 +154,11 @@ customers x 5 meters, exact totals under chaos (container kills, resets, a broke
 
 ## Subscriptions, providers and reports
 
-On top of metering, Quotify runs the billing around it ([docs/14-billing-platform.md](docs/14-billing-platform.md)): **subscriptions**, monthly or yearly, with trials, pause, a fixed fee **in advance** per interval and currency, **upgrades, downgrades and monthly↔yearly switches** with a preview, scheduled changes and a credit balance, **coupons**, **tax rates** and **credit notes** (to the credit balance or back to the card), **signed webhooks** and **hosted invoice pages** ([docs/16-webhooks.md](docs/16-webhooks.md)); **iyzico** (which Quotify
+On top of metering, Payrudder runs the billing around it ([docs/14-billing-platform.md](docs/14-billing-platform.md)): **subscriptions**, monthly or yearly, with trials, pause, a fixed fee **in advance** per interval and currency, **upgrades, downgrades and monthly↔yearly switches** with a preview, scheduled changes and a credit balance, **coupons**, **tax rates** and **credit notes** (to the credit balance or back to the card), **signed webhooks** and **hosted invoice pages** ([docs/16-webhooks.md](docs/16-webhooks.md)); **iyzico** (which Payrudder
 schedules and retries for) and **Paddle** (the merchant of record, which runs renewals and retries itself) behind one provider contract that declares what each does; **routing rules** that choose the provider of a new
 subscription from the customer's country and the subscription's currency; **moving a subscription between providers** without two of them being live at once; a **payment ledger** with a reconciliation against the invoices; and
 **reports** (revenue, monthly recurring revenue, unpaid invoices) by provider, country and currency. Neither provider's sandbox has been run: the adapters are written from their documentation and tested against fixtures,
-and the points that only a sandbox can settle are marked in the code and the phase files. Through Quotify an operator can also create a plan's **Paddle products and prices**, preview and apply plan changes, pause, resume and hand out payment-method links on Paddle subscriptions ([docs/15-billing-lifecycle.md](docs/15-billing-lifecycle.md)).
+and the points that only a sandbox can settle are marked in the code and the phase files. Through Payrudder an operator can also create a plan's **Paddle products and prices**, preview and apply plan changes, pause, resume and hand out payment-method links on Paddle subscriptions ([docs/15-billing-lifecycle.md](docs/15-billing-lifecycle.md)).
 
 ## The operator console
 

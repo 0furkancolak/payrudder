@@ -36,6 +36,6 @@ func TestWhoMailsReceipts(t *testing.T) {
 func TestBankTransferCapabilities(t *testing.T) {
 	bt, ok := providers.Lookup("banktransfer")
 	if !ok || bt.Owner() != payments.OwnerQuotify || bt.Refunds || bt.HostedCheckout || bt.IdempotentCharges || bt.SendsOwnReceipts || !bt.CanCharge("TRY") {
-		t.Errorf("banktransfer = %+v: Quotify owns renewal and dunning, there is no refund API, no hosted checkout, and the status query reads the ledger", bt)
+		t.Errorf("banktransfer = %+v: Payrudder owns renewal and dunning, there is no refund API, no hosted checkout, and the status query reads the ledger", bt)
 	}
 }

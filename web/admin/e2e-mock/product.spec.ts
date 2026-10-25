@@ -462,7 +462,7 @@ test.describe("members and invitations", () => {
     await gw.install(page);
     await page.goto("/invite#token=qi_new");
     await expect(page.getByRole("heading", { name: "You are invited" })).toBeVisible();
-    await expect(page.getByText("Join Ada Labs on Quotify as Viewer.")).toBeVisible();
+    await expect(page.getByText("Join Ada Labs on Payrudder as Viewer.")).toBeVisible();
     await expect(page.getByText("Invited by Ada Lovelace.")).toBeVisible();
     expect(page.url()).not.toContain("qi_new");
     await expect(page.getByLabel("E-mail")).toHaveValue("ned@example.com");

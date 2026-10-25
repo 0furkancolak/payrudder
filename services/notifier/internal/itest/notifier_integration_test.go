@@ -107,7 +107,7 @@ func TestNotifier(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	notes := store.Notifications{DB: pool, Stale: 300 * time.Millisecond}
-	mailer := &handler.Mailer{Default: mail.SMTP{Addr: mp.SMTPAddr}, From: "Quotify <billing@quotify.local>", Notes: notes}
+	mailer := &handler.Mailer{Default: mail.SMTP{Addr: mp.SMTPAddr}, From: "Payrudder <billing@quotify.local>", Notes: notes}
 
 	t.Run("RedeliveredNotificationSendsOneEmail", func(t *testing.T) {
 		if err := rabbitx.DeclareTopology(amqpURL); err != nil {

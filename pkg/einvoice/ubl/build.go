@@ -176,7 +176,7 @@ func (b *builder) write() {
 	b.party("cac:AccountingCustomerParty", b.doc.Buyer)
 	if !b.tr {
 		b.w.open("cac:PaymentMeans")
-		b.w.el("cbc:PaymentMeansCode", "ZZ", "name", "Mutually defined") // UNVERIFIED: BR-49 needs a code; the payment is collected by Quotify's provider
+		b.w.el("cbc:PaymentMeansCode", "ZZ", "name", "Mutually defined") // UNVERIFIED: BR-49 needs a code; the payment is collected by Payrudder's provider
 		b.w.close("cac:PaymentMeans")
 	}
 	if b.sums.Allowance > 0 {
