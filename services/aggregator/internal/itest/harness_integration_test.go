@@ -38,10 +38,10 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/meters"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/query"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
 	"github.com/0furkancolak/payrudder/services/aggregator/migrations"
@@ -68,7 +68,7 @@ func (f fakeMeters) Get(_ context.Context, _ uuid.UUID, code string) (usage.Mete
 	if m, ok := f[code]; ok {
 		return m, nil
 	}
-	return usage.Meter{}, meters.ErrNotFound
+	return usage.Meter{}, apply.ErrMeterNotFound
 }
 
 var defaultMeters = fakeMeters{
@@ -137,8 +137,8 @@ type run struct {
 }
 
 type runOpts struct {
-	meters      apply.MeterSource             // default defaultMeters
-	tenants     map[uuid.UUID]settings.Tenant // default: Europe/Istanbul, 1 h grace
+	meters      apply.MeterSource                 // default defaultMeters
+	tenants     map[uuid.UUID]tenantinfo.Settings // default: Europe/Istanbul, 1 h grace
 	afterCommit func() error
 	partitions  int32
 }
@@ -173,12 +173,12 @@ func newRun(t *testing.T, o runOpts) *run {
 	}
 	t.Cleanup(r.prod.Close)
 
-	loader := func(_ context.Context, id uuid.UUID) (settings.Tenant, error) {
+	loader := func(_ context.Context, id uuid.UUID) (tenantinfo.Settings, error) {
 		if tn, ok := o.tenants[id]; ok {
 			return tn, nil
 		}
 		loc, _ := time.LoadLocation("Europe/Istanbul")
-		return settings.Tenant{Timezone: "Europe/Istanbul", Location: loc, Grace: time.Hour}, nil
+		return tenantinfo.Settings{Timezone: "Europe/Istanbul", Location: loc, Grace: time.Hour}, nil
 	}
 	r.src = settings.NewSourceFunc(loader, time.Minute)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))

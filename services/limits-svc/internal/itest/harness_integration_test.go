@@ -28,12 +28,11 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/tenants"
 )
 
 var (
@@ -55,7 +54,7 @@ func (f fakeMeters) Get(_ context.Context, _ uuid.UUID, code string) (usage.Mete
 	if m, ok := f[code]; ok {
 		return m, nil
 	}
-	return usage.Meter{}, meters.ErrNotFound
+	return usage.Meter{}, engine.ErrMeterNotFound
 }
 
 var defaultMeters = fakeMeters{
@@ -66,9 +65,9 @@ var defaultMeters = fakeMeters{
 	"eu_api": {Code: "eu_api", Aggregation: usage.Sum, Filter: map[string][]string{"region": {"eu"}}},
 }
 
-func fixedTenants() tenants.Source {
-	return tenants.NewFunc(func(context.Context, uuid.UUID) (tenants.Tenant, error) {
-		return tenants.Tenant{Location: istanbul, Grace: time.Hour}, nil
+func fixedTenants() tenantinfo.Source {
+	return tenantinfo.NewFunc(func(context.Context, uuid.UUID) (tenantinfo.Settings, error) {
+		return tenantinfo.Settings{Location: istanbul, Grace: time.Hour}, nil
 	}, time.Minute)
 }
 

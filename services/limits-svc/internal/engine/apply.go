@@ -17,16 +17,18 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/meters"
 	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/tenants"
 )
 
 //go:embed apply_batch.lua
@@ -38,6 +40,9 @@ const KeyTTL = 40 * 24 * time.Hour
 // firedTTL outlives any counter key, so a threshold is never fired twice for the same period.
 const firedTTL = 80 * 24 * time.Hour
 
+// ErrMeterNotFound is the answer for a meter plans-svc does not know.
+var ErrMeterNotFound = errkey.New(codes.NotFound, "limits.meter.not_found", "meter not found")
+
 // ErrRedisReset means the offset key vanished while this pod had applied records: Redis lost its data. The partition
 // is replayed from the start of the log.
 var ErrRedisReset = errors.New("redis lost its offsets: replaying the partition")
@@ -46,7 +51,7 @@ var ErrRedisReset = errors.New("redis lost its offsets: replaying the partition"
 type Config struct {
 	Redis      *redis.Client
 	Meters     meters.Source
-	Tenants    tenants.Source
+	Tenants    tenantinfo.Source
 	Ents       *entitlements.Store
 	Producer   *kgo.Client // LimitExceeded producer
 	LimitTopic string
@@ -263,7 +268,7 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 		return nil
 	}
 	m, err := a.cfg.Meters.Get(ctx, ev.TenantID, ev.Meter)
-	if errors.Is(err, meters.ErrNotFound) {
+	if errors.Is(err, ErrMeterNotFound) {
 		a.skip(ctx, "unknown_meter")
 		return nil
 	}
