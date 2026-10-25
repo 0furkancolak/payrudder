@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useNavigate } from "@tanstack/vue-router";
 import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -8,6 +7,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { useRequestCode, useVerifyCode } from "./api";
 import OtpInput from "./OtpInput.vue";
+import { useAfterSignIn } from "./afterSignIn";
 
 /**
  * Signing in (or up) with a one-time code: the address, then the six digits mailed to it. The same answer comes back for every address, so the page says
@@ -16,7 +16,7 @@ import OtpInput from "./OtpInput.vue";
  */
 const props = defineProps<{ mode: "signin" | "signup" }>();
 const { t } = useI18n();
-const navigate = useNavigate();
+const afterSignIn = useAfterSignIn();
 const request = useRequestCode();
 const verify = useVerifyCode();
 
@@ -79,7 +79,7 @@ function submit(value = code.value): void {
   verify.mutate(
     { email: email.value.trim(), code: value, display_name: name.value.trim() || undefined, account_name: organisation.value.trim() || undefined },
     {
-      onSuccess: () => void navigate({ to: "/app" }),
+      onSuccess: () => afterSignIn(),
       onError: () => {
         code.value = "";
         void nextTick(() => otp.value?.focusFirst());

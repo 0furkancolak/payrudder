@@ -14,6 +14,8 @@ import (
 	"testing"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/0furkancolak/payrudder/pkg/env"
 )
 
 type obj map[string]any
@@ -115,6 +117,52 @@ func find(docs []obj, kind, name string) obj {
 		}
 	}
 	return nil
+}
+
+// TestSandboxProfileCannotCreateALiveTenant (phase 45 G) reads the allowed environments the sandbox profile gives plans-svc and the gateway through the same
+// parser the services use, and asks the same question they ask: may a live tenant (or a live key) exist here? The services enforce it (plans-svc
+// SandboxOnlyDeployment and SandboxOnlyProductPath, the gateway's TestSandboxOnlyDeploymentRejectsLiveKeys); this ties the chart to those tests, so a profile
+// that quietly allowed live would fail here and not on a customer's cluster.
+func TestSandboxProfileCannotCreateALiveTenant(t *testing.T) {
+	docs := render(t, "payrudder", "-f", values(t, "payrudder", "values-sandbox.yaml"))
+	seen := map[string]bool{}
+	for _, c := range containers(docs) {
+		raw, ok := envOf(c)["PAYRUDDER_ALLOWED_ENVIRONMENTS"]
+		if !ok {
+			continue
+		}
+		name, _ := c["name"].(string)
+		list, err := env.ParseList(raw)
+		if err != nil {
+			t.Errorf("%s: PAYRUDDER_ALLOWED_ENVIRONMENTS=%q does not parse: %v", name, raw, err)
+			continue
+		}
+		strs := make([]string, len(list))
+		for i, e := range list {
+			strs[i] = e.String()
+		}
+		if env.Allowed(strs, env.Live) {
+			t.Errorf("%s allows live (%q): the sandbox profile must not let a live tenant or key exist", name, raw)
+		}
+		if !env.Allowed(strs, env.Sandbox) {
+			t.Errorf("%s does not allow sandbox (%q)", name, raw)
+		}
+		seen[name] = true
+	}
+	for _, must := range []string{"plans-svc", "gateway"} {
+		if !seen[must] {
+			t.Errorf("%s does not carry PAYRUDDER_ALLOWED_ENVIRONMENTS in the sandbox profile: seen %v", must, seen)
+		}
+	}
+	// For contrast, the default install serves both.
+	for _, c := range containers(render(t, "payrudder")) {
+		if raw, ok := envOf(c)["PAYRUDDER_ALLOWED_ENVIRONMENTS"]; ok {
+			list, err := env.ParseList(raw)
+			if err != nil || len(list) != 2 {
+				t.Errorf("default install: %v PAYRUDDER_ALLOWED_ENVIRONMENTS=%q (%v), want sandbox and live", c["name"], raw, err)
+			}
+		}
+	}
 }
 
 func TestSandboxProfileHasNoLiveProvider(t *testing.T) {

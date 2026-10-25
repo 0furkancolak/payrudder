@@ -46,6 +46,7 @@ func pspCharges(t *testing.T, invoiceID string) []pspCharge {
 }
 
 type mail struct {
+	ID      string
 	Subject string
 	To      []struct{ Address string }
 }
