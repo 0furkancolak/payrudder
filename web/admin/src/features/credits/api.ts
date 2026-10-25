@@ -74,9 +74,11 @@ export interface Grant {
   source: "promo" | "manual";
   expireTime?: string;
   reason?: string;
+  /** The idempotency key of this attempt: the form keeps it across retries and renews it when the grant went through. */
+  key: string;
 }
 
-/** Adds credits to a customer. The key is made here so a double click, or a retried request, adds them once. */
+/** Adds credits to a customer. The caller's key (one per attempt, see useAttemptKey) makes a double click or a retried request add them once. */
 export function useGrantCredits(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
@@ -84,7 +86,7 @@ export function useGrantCredits(tenantId: MaybeRefOrGetter<string>) {
       unwrap(
         tenantApi(toValue(tenantId)).POST("/v1/customers/{external_id}/credits/grant", {
           params: { path: { external_id: v.customer } },
-          body: { credits: v.credits, source: v.source, expire_time: v.expireTime, reason: v.reason, idempotency_key: crypto.randomUUID() },
+          body: { credits: v.credits, source: v.source, expire_time: v.expireTime, reason: v.reason, idempotency_key: v.key },
         }),
       ),
     onSuccess: (_data, v) => queries.invalidateQueries({ queryKey: creditKeys.customer(toValue(tenantId), v.customer) }),

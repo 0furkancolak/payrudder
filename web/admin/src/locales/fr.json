@@ -19,7 +19,9 @@
   "common": {
     "loading": "Chargement…",
     "unknown": "?",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "copied": "Copié",
+    "copyFailed": "Votre navigateur n'a pas autorisé la copie. Sélectionnez le texte et copiez-le à la main."
   },
   "enums": {
     "environment": {

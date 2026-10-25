@@ -19,7 +19,9 @@
   "common": {
     "loading": "Wird geladen…",
     "unknown": "?",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "copied": "Kopiert",
+    "copyFailed": "Ihr Browser hat das Kopieren nicht erlaubt. Markieren Sie den Text und kopieren Sie ihn von Hand."
   },
   "enums": {
     "environment": {

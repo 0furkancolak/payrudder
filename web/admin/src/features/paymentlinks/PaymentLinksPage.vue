@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
 import { useTenantCurrency } from "@/features/tenants/currency";
+import { newKey } from "@/shared/lib/key";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -13,7 +14,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { usePaymentLinkActions, usePaymentLinks } from "./api";
-import { absoluteUrl, newKey, statusVariant, toRequest, type LinkForm } from "./lib";
+import { absoluteUrl, statusVariant, toRequest, type LinkForm } from "./lib";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
