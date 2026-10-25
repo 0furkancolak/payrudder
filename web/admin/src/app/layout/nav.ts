@@ -24,6 +24,7 @@ import {
   Webhook,
 } from "@lucide/vue";
 import type { Component } from "vue";
+import type { Environment } from "@/shared/lib/environment";
 
 /**
  * The navigation of the signed-in console, as data. It depends on where the person is:
@@ -45,7 +46,7 @@ export interface ShellContext {
   /** The app of a person's tenant page, once known. */
   appId?: string;
   /** The environment of a person's app page. */
-  env?: "live" | "sandbox";
+  env?: Environment;
   /** Whether the server says this person is a platform operator: the organisation level then has a door to the operator console. */
   operator?: boolean;
 }

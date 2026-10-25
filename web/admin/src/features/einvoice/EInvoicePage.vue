@@ -2,6 +2,7 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { toApiError } from "@/shared/api/client";
 import { useTenant } from "@/features/tenants/api";
 import { Badge } from "@/shared/ui/badge";
@@ -11,10 +12,12 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useEInvoiceAccountActions, useEInvoiceAccounts, useSaveEInvoiceSettings, type EInvoiceOn, type LegalInfo } from "./api";
+import type { Environment } from "@/shared/lib/environment";
 
 type Provider = "mock" | "nilvera" | "webhook";
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
@@ -39,7 +42,7 @@ function saveSettings() {
 // --- the integrator account
 const accounts = useEInvoiceAccounts(tenantId);
 const actions = useEInvoiceAccountActions(tenantId);
-const environment = ref<"sandbox" | "live">("live");
+const environment = ref<Environment>("live");
 const provider = ref<Provider>("nilvera");
 const mode = ref<"test" | "production">("test");
 const apiKey = ref("");
@@ -63,10 +66,10 @@ function saveAccount() {
     { onSuccess: () => (apiKey.value = hookSecret.value = "") },
   );
 }
-function removeAccount(env: "sandbox" | "live", p: string) {
+function removeAccount(env: Environment, p: string) {
   if (window.confirm(t("einvoice.settings.confirmRemove", { provider: p, environment: env }))) actions.remove.mutate(env);
 }
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "day", "—");
 </script>
 
 <template>

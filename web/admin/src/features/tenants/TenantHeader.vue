@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { envOf } from "@/shared/lib/environment";
 import { currencyInfo } from "@/shared/lib/intl";
 import { StatusPill } from "@/shared/ui/status-pill";
 import type { Tenant } from "@/shared/api/client";
@@ -11,7 +12,7 @@ import type { Tenant } from "@/shared/api/client";
  */
 const props = defineProps<{ title: string; name?: string; tenant?: Tenant | undefined }>();
 const { t, locale } = useI18n();
-const env = computed(() => (props.tenant?.environment === "ENVIRONMENT_LIVE" ? "live" : props.tenant ? "sandbox" : ""));
+const env = computed(() => (props.tenant ? envOf(props.tenant.environment) : ""));
 const currency = computed(() => (props.tenant?.currency ? currencyInfo(props.tenant.currency, locale.value) : null));
 </script>
 

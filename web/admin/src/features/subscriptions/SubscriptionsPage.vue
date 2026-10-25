@@ -2,9 +2,11 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { type Subscription } from "@/shared/api/client";
 import { useErrorText } from "@/shared/lib/errors";
 import { PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
+import { envOf } from "@/shared/lib/environment";
 import { enumWord, label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { useCustomers } from "@/features/customers";
@@ -23,11 +25,12 @@ import { operatorView } from "@/shared/lib/session";
 import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, te, locale } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
-const environment = computed(() => (tenant.data.value?.environment === "ENVIRONMENT_SANDBOX" ? "sandbox" : "live"));
+const environment = computed(() => envOf(tenant.data.value?.environment));
 const subs = useSubscriptions(tenantId);
 const customers = useCustomers(tenantId);
 const packages = usePackages(tenantId);
@@ -86,7 +89,7 @@ const failure = computed(() => {
   for (const m of Object.values(act)) if (m.error.value) return errorText(m.error.value);
   return "";
 });
-const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
+const date = (v?: string | null) => fmt.date(v, "day", "—");
 </script>
 
 <template>

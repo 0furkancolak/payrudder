@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { type Subscription } from "@/shared/api/client";
 import { useErrorText } from "@/shared/lib/errors";
-import { formatMinor } from "@/shared/lib/money";
 import type { Package } from "@/features/packages";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
@@ -11,7 +11,8 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { useProviderRunActions, type ChangeInput } from "./api";
 
 const props = defineProps<{ subscription: Subscription; packages: Package[]; tenantId: string; environment: string }>();
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const act = useProviderRunActions(
   () => props.tenantId,
@@ -26,7 +27,7 @@ const atPeriodEnd = ref(true);
 const input = computed<ChangeInput>(() => ({ id: props.subscription.id ?? "", plan_code: plan.value, interval: interval.value, timing: "", proration: proration.value }));
 const nothingChosen = computed(() => plan.value === "" && interval.value === "");
 const quote = computed(() => act.preview.data.value);
-const money = (v?: string) => formatMinor(v, quote.value?.currency ?? props.subscription.currency, locale.value);
+const money = (v?: string) => fmt.money(v, quote.value?.currency ?? props.subscription.currency);
 const outcome = computed(() => {
   const net = quote.value?.net_minor;
   if (net === undefined || net === "0") return t("billing.subscriptions.change.nothing");

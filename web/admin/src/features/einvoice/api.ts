@@ -3,6 +3,7 @@ import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, ApiError, unwrap, type Tenant } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
 import { tenantKeys } from "@/features/tenants/api";
+import type { Environment } from "@/shared/lib/environment";
 
 export type EInvoiceDocument = components["schemas"]["EInvoiceDocument"];
 export type EInvoiceAccount = components["schemas"]["EInvoiceAccount"];
@@ -73,7 +74,7 @@ export function useEInvoiceAccountActions(tenantId: MaybeRefOrGetter<string>) {
   const done = () => queries.invalidateQueries({ queryKey: einvoiceKeys.accounts(toValue(tenantId)) });
   return {
     save: useMutation({
-      mutationFn: (v: { environment: "sandbox" | "live"; provider: "mock" | "nilvera" | "webhook"; mode: "test" | "production"; credentials: Record<string, string> }) =>
+      mutationFn: (v: { environment: Environment; provider: "mock" | "nilvera" | "webhook"; mode: "test" | "production"; credentials: Record<string, string> }) =>
         unwrap(
           api.PUT("/admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}", {
             params: { path: { tenant_id: toValue(tenantId), environment: v.environment } },
@@ -83,7 +84,7 @@ export function useEInvoiceAccountActions(tenantId: MaybeRefOrGetter<string>) {
       onSuccess: done,
     }),
     remove: useMutation({
-      mutationFn: (environment: "sandbox" | "live") =>
+      mutationFn: (environment: Environment) =>
         unwrap(api.DELETE("/admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}", { params: { path: { tenant_id: toValue(tenantId), environment } } })),
       onSuccess: done,
     }),

@@ -3,6 +3,8 @@ import { Link } from "@tanstack/vue-router";
 import { Activity, CalendarClock, CreditCard, FileText, Repeat, Rocket, TriangleAlert, Webhook } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { todayYmd } from "@/shared/lib/dates";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
 import { Button } from "@/shared/ui/button";
@@ -25,6 +27,7 @@ import RevenueChart from "./RevenueChart.vue";
 const props = defineProps<{ source: DashSource | null; base: string; query: DashQuery }>();
 const emit = defineEmits<{ "update:query": [DashQuery] }>();
 const { t, locale } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 
 const dash = useDashboard(
@@ -36,15 +39,15 @@ const blocks = computed(() => data.value?.currencies ?? []);
 const block = computed<DashCurrency | undefined>(() => chosenCurrency(blocks.value, props.query.cur));
 const cur = computed(() => block.value?.currency ?? data.value?.default_currency ?? "");
 const compare = computed(() => data.value?.range?.compare ?? props.query.compare);
-const today = new Date().toLocaleDateString("en-CA");
+const today = todayYmd();
 const loading = computed(() => dash.isPending.value && !data.value);
 const stale = computed(() => dash.isFetching.value && !!data.value);
 
-const money = (minor: number | null | undefined) => formatMinor(minor ?? 0, cur.value, locale.value);
-const count = (n: number | null | undefined) => new Intl.NumberFormat(locale.value).format(n ?? 0);
-const pct = (v: number | null) => (v === null ? "—" : `${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 1 }).format(v)}%`);
-const dayText = (iso: string) => new Intl.DateTimeFormat(locale.value, { day: "numeric", month: "short" }).format(new Date(iso));
-const when = (iso: string) => new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+const money = (minor: number | null | undefined) => fmt.amount(minor, cur.value);
+const count = fmt.count;
+const pct = fmt.percent;
+const dayText = (iso: string) => fmt.date(iso, "monthDay", "—");
+const when = (iso: string) => fmt.date(iso, "dateTime", "—");
 
 const b = computed(() => block.value);
 const rev = computed(() => b.value?.revenue);

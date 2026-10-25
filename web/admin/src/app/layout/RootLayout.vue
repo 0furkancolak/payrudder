@@ -7,7 +7,7 @@ import VerifyBanner from "@/features/product/VerifyBanner.vue";
 import { BrandLogo } from "@/shared/ui/brand-logo";
 import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
-import { isOperator, isPerson } from "@/shared/lib/session";
+import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
 import Breadcrumbs from "./Breadcrumbs.vue";
 import ContextSwitcher from "./ContextSwitcher.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
@@ -16,7 +16,7 @@ import PrivacyToggle from "./PrivacyToggle.vue";
 import Sidebar from "./Sidebar.vue";
 import ThemeToggle from "./ThemeToggle.vue";
 import UserMenu from "./UserMenu.vue";
-import { OPERATOR_PATHS, useShell } from "./useShell";
+import { useShell } from "./useShell";
 
 /**
  * The frame of every page. Signed out: a plain header with the brand, the language and the theme. Signed in: the sidebar (open by default on a wide

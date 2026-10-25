@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, tenantApi, unwrap } from "@/shared/api/client";
+import type { Environment } from "@/shared/lib/environment";
 
 export const subscriptionKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "subscriptions"] as const,
@@ -80,7 +81,7 @@ export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, envir
       mutationFn: (v: { subscription_id: string; to_provider: string; price_ref?: string }) =>
         unwrap(
           api.POST("/admin/v1/tenants/{tenant_id}/provider-migrations", {
-            params: { path: { tenant_id: toValue(tenantId) }, query: { environment: toValue(environment) as "sandbox" | "live" } },
+            params: { path: { tenant_id: toValue(tenantId) }, query: { environment: toValue(environment) as Environment } },
             body: { ...v, to_provider: v.to_provider as "iyzico" | "paddle" },
           }),
         ),
@@ -98,14 +99,12 @@ export function useEntitlements(tenantId: MaybeRefOrGetter<string>, customer: Ma
   });
 }
 
-type Env = "sandbox" | "live";
-
 /** What an operator can do to a subscription a provider runs, through the provider's API. Quotify's copy follows the provider's notification. */
 export function useProviderRunActions(tenantId: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   const refresh = () => queries.invalidateQueries({ queryKey: subscriptionKeys.list(toValue(tenantId)) });
   const at = (id: string) => ({
-    params: { path: { tenant_id: toValue(tenantId), provider: toValue(provider) as "paddle", id }, query: { environment: toValue(environment) as Env } },
+    params: { path: { tenant_id: toValue(tenantId), provider: toValue(provider) as "paddle", id }, query: { environment: toValue(environment) as Environment } },
   });
   return {
     preview: useMutation({

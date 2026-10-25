@@ -2,6 +2,8 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { ym } from "@/shared/lib/dates";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
@@ -14,6 +16,7 @@ import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
 import { useLedger, useReconcile } from "./api";
 
 const { t, te, locale } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -21,10 +24,10 @@ const ledger = useLedger(tenantId);
 const reconcile = useReconcile(tenantId);
 
 const now = new Date();
-const period = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+const period = ref(ym(now));
 const result = computed(() => reconcile.data.value);
 const kinds = computed(() => Object.entries(result.value?.discrepancy_counts ?? {}));
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "short", timeStyle: "short" }).format(new Date(v)) : "");
+const when = (v?: string) => fmt.date(v, "short");
 const variant = (status?: string) => (status === "succeeded" ? "success" : status === "declined" || status === "failed" ? "destructive" : "secondary");
 </script>
 

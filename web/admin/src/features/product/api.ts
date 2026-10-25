@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { api, unwrap } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
 import type { Currency } from "@/shared/lib/currencies";
+import type { Environment } from "@/shared/lib/environment";
 import { personToken, setActiveAccount, setOperatorFlag, setPersonToken } from "@/shared/lib/session";
 
 // The product API (/auth, /app/v1): what a signed-in person sees in their accounts. Types come from the OpenAPI file.
@@ -15,7 +16,7 @@ export type AppOverview = S["AppOverview"];
 export type ApiKey = S["ApiKey"];
 export type Invitation = S["Invitation"];
 export type Role = "owner" | "admin" | "viewer";
-export type Environment = "live" | "sandbox";
+export type { Environment };
 
 export const productKeys = {
   me: ["app", "me"] as const,

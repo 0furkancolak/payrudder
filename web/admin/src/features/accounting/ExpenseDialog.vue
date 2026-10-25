@@ -10,7 +10,7 @@ import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Textarea } from "@/shared/ui/textarea";
 import { CATEGORIES, useSaveExpense, type Category, type Expense } from "./api";
-import { ymd } from "./period";
+import { ymd } from "@/shared/lib/dates";
 import { CurrencySelect } from "@/shared/ui/search-select";
 
 /** Adds an expense, or edits `expense`. A recurring expense is edited as a whole: every occurrence changes with it. */

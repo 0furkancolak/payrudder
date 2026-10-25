@@ -1,3 +1,5 @@
+import { ymd } from "@/shared/lib/dates";
+
 /** The periods the accounting page offers. Days are the browser's calendar days, sent as 2026-10-21; the server counts UTC days. */
 export type Preset = "thisMonth" | "lastMonth" | "last30" | "thisYear" | "custom";
 export const PRESETS: readonly Preset[] = ["thisMonth", "lastMonth", "last30", "thisYear", "custom"];
@@ -5,13 +7,6 @@ export const PRESETS: readonly Preset[] = ["thisMonth", "lastMonth", "last30", "
 export interface Range {
   from: string;
   to: string;
-}
-
-const pad = (n: number) => String(n).padStart(2, "0");
-
-/** A date as 2026-10-21 in the reader's calendar. */
-export function ymd(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 /** The range of a preset on a given day. `custom` keeps whatever range the reader typed. */

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { toApiError } from "@/shared/api/client";
 import { formatMinor } from "@/shared/lib/money";
 import { Badge } from "@/shared/ui/badge";
@@ -14,6 +15,7 @@ import { absoluteUrl } from "./lib";
 const props = defineProps<{ tenantId: string; customer: string }>();
 const emit = defineEmits<{ close: [] }>();
 const { t, locale } = useI18n();
+const fmt = useFormat();
 
 const days = ref("30");
 const daysError = ref("");
@@ -44,7 +46,7 @@ async function copy() {
     /* the field is selectable */
   }
 }
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "short", timeStyle: "short" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "short", "—");
 </script>
 
 <template>

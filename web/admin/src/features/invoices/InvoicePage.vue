@@ -3,6 +3,7 @@ import { Link, useParams } from "@tanstack/vue-router";
 import { ArrowLeft, Banknote, FileText } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { label } from "@/shared/lib/labels";
@@ -24,6 +25,7 @@ import RejectTransferDialog from "./RejectTransferDialog.vue";
 import TransferCard from "./TransferCard.vue";
 
 const { t, te, locale } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -71,7 +73,7 @@ function askReject(outcome: "rejected" | "expired") {
   rejectOutcome.value = outcome;
   rejectOpen.value = true;
 }
-const day = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "");
+const day = (v?: string) => fmt.date(v, "day");
 </script>
 
 <template>

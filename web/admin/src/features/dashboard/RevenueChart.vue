@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { formatUtcDay } from "@/shared/lib/format";
 import { formatCompact, formatMinor } from "@/shared/lib/money";
 import { privacyMode } from "@/shared/lib/prefs";
 import { delta, geometry, nearestIndex, type ChartPoint } from "./lib";
@@ -20,8 +21,7 @@ const active = ref<number | null>(null);
 const box = ref<HTMLDivElement | null>(null);
 
 const ticks = computed(() => [0, 1, 2, 3, 4].map((i) => ({ value: (g.value.max * i) / 4, top: (g.value.y((g.value.max * i) / 4) / H) * 100 })));
-const date = (iso: string) =>
-  new Intl.DateTimeFormat(locale.value, props.granularity === "month" ? { month: "short", year: "numeric", timeZone: "UTC" } : { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
+const date = (iso: string) => formatUtcDay(iso, locale.value, props.granularity === "month" ? "month" : "monthDay");
 const labels = computed(() => {
   const p = props.points;
   if (p.length === 0) return [];

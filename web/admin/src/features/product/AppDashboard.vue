@@ -8,7 +8,7 @@ import DashboardView from "@/features/dashboard/DashboardView.vue";
 import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { useApp, type Environment } from "./api";
-import { isEnvironment, tenantOf } from "./lib";
+import { isEnvironment, tenantOf } from "@/shared/lib/environment";
 
 /**
  * The dashboard of one environment of an app: the page head, and the dashboard (period, currencies, figures) which keeps its choices in the address so a

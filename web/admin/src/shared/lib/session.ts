@@ -1,25 +1,13 @@
 import { computed, readonly, ref } from "vue";
+import { safeGet, safeSet } from "./storage";
 
 const PERSON_KEY = "quotify.sessionToken";
 const OPERATOR_KEY = "quotify.operator";
 const ACCOUNT_KEY = "quotify.account";
 
-function read(key: string): string | null {
-  try {
-    return window.sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function write(key: string, value: string | null): void {
-  try {
-    if (value === null) window.sessionStorage.removeItem(key);
-    else window.sessionStorage.setItem(key, value);
-  } catch {
-    // Storage can be blocked; the token then lives for the life of the page only.
-  }
-}
+// Storage can be blocked; the token then lives for the life of the page only.
+const read = (key: string) => safeGet("session", key);
+const write = (key: string, value: string | null) => void safeSet("session", key, value);
 
 const person = ref<string | null>(read(PERSON_KEY));
 const operator = ref<boolean>(read(OPERATOR_KEY) === "1");
@@ -80,8 +68,8 @@ export function sessionLost(): void {
   for (const l of lostListeners) l();
 }
 
-/** The paths of the operator console. */
-const OPERATOR_VIEW = /^\/(operator|tenants|playground|dead-letters)(\/|$)/;
+/** The paths of the operator console. A person the server calls an operator reaches them; nobody else does (the server decides on every request). */
+export const OPERATOR_PATHS = /^\/(operator|tenants|playground|dead-letters)(\/|$)/;
 
 /**
  * Whether the page being looked at belongs to the operator console and the signed-in person may use it. An operator is also a person with an organisation of
@@ -89,7 +77,7 @@ const OPERATOR_VIEW = /^\/(operator|tenants|playground|dead-letters)(\/|$)/;
  * is mounted under /tenants for the operator (admin API, any tenant) and under /app/t for a person (product API, their own tenants).
  */
 export function operatorView(): boolean {
-  return isOperator.value && OPERATOR_VIEW.test(window.location.pathname);
+  return isOperator.value && OPERATOR_PATHS.test(window.location.pathname);
 }
 
 /** Where the tenant pages live in the current view: the operator's console shows any tenant at /tenants, a person's own apps' tenants are at /app/t. */

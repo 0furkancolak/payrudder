@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { toast } from "vue-sonner";
 import { errorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
@@ -21,6 +22,7 @@ import { offlineSettlement, PAYMENT_METHODS, receivedAtToIso, toLocalInput, tran
 const props = defineProps<{ tenantId: string; invoiceId: string; currency: string; outstandingMinor: string; transfer: boolean }>();
 const open = defineModel<boolean>("open", { required: true });
 const { t, te, locale } = useI18n();
+const fmt = useFormat();
 const pay = useInvoicePayments(
   () => props.tenantId,
   () => props.invoiceId,
@@ -48,7 +50,7 @@ const error = () => pay.confirmTransfer.error.value ?? pay.recordPayment.error.v
 const pending = () => pay.confirmTransfer.isPending.value || pay.recordPayment.isPending.value;
 
 function announce(s: Settlement) {
-  const money = (m: string) => formatMinor(m, props.currency, locale.value);
+  const money = (m: string) => fmt.money(m, props.currency);
   let text = s.paid ? t("invoice.payment.toast.paid", { received: money(s.received) }) : t("invoice.payment.toast.partly", { received: money(s.received), outstanding: money(s.outstanding) });
   if (s.duplicate) text += " " + t("invoice.payment.toast.duplicate");
   toast.success(text);

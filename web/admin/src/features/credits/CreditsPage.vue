@@ -6,7 +6,7 @@ import { useCustomers } from "@/features/customers/api";
 import { absoluteUrl } from "@/features/paymentlinks/lib";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { useErrorText } from "@/shared/lib/errors";
-import { useTenantCurrency } from "@/shared/lib/tenant-currency";
+import { useTenantCurrency } from "@/features/tenants/currency";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
