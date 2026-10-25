@@ -1310,7 +1310,8 @@
       },
       "subscription": {
         "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead.",
-        "provider_currency": "This payment provider cannot charge in this currency. Choose another provider or currency."
+        "provider_currency": "This payment provider cannot charge in this currency. Choose another provider or currency.",
+        "period_overlap": "This customer already has a subscription that overlaps that period."
       },
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
@@ -1318,6 +1319,18 @@
       },
       "customer": {
         "tax_invalid": "The customer's tax id or tax office is not valid."
+      },
+      "common": {
+        "not_found": "It was not found.",
+        "already_exists": "It already exists.",
+        "broken_reference": "This refers to something that does not exist.",
+        "forbidden": "You are not allowed to do this."
+      },
+      "tenant": {
+        "settings_immutable": "The currency, time zone and environment of an account cannot be changed."
+      },
+      "request": {
+        "invalid": "{field} is not valid: {detail}"
       }
     },
     "common": {
@@ -1443,6 +1456,10 @@
       "dashboard": {
         "bad_period": "That period is not valid. Choose 7, 30 or 90 days, this year, or two days with the first not after the last.",
         "range_too_long": "A period can be at most two years."
+      },
+      "request": {
+        "invalid": "{field} is not valid: {detail}",
+        "too_large": "The request is too large."
       }
     }
   },
