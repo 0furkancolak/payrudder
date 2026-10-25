@@ -1982,7 +1982,13 @@
         "coupon_not_found": "Der Gutschein für empfohlene Kunden existiert nicht.",
         "not_set": "Diese Umgebung hat noch kein Partnerprogramm."
       },
-      "promotion_code_not_found": "Diesen Aktionscode gibt es nicht."
+      "promotion_code_not_found": "Diesen Aktionscode gibt es nicht.",
+      "bad_id": "Das ist keine gültige ID.",
+      "bad_kind": "Die Art muss commission oder reversal sein.",
+      "bad_period": "Schreiben Sie die Daten als JJJJ-MM-TT; das Ende muss nach dem Anfang liegen, höchstens ein Jahr entfernt.",
+      "commission": {
+        "not_found": "Diese Rechnung hat keine Provision ausgelöst."
+      }
     }
   },
   "product": {

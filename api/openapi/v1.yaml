@@ -1003,6 +1003,56 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: object, properties: { referrals: { type: array, items: { $ref: "#/components/schemas/AffiliateReferral" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
         "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/commissions:
+    get:
+      operationId: listAffiliateCommissions
+      summary: Commissions and the reversal rows that net against them, newest first
+      description: "One commission per paid invoice of a customer a partner brought, in the invoice's currency, on the net, pre-tax amount paid. It is pending for the program's hold (the refund window), then approved, then paid by a payout. A refund, void or credit note takes it back (reversed_minor); one already paid is netted by a negative row of kind reversal that the next payout takes."
+      parameters:
+        - { name: affiliate_id, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [pending, approved, paid, reversed] } }
+        - { name: kind, in: query, schema: { type: string, enum: [commission, reversal] } }
+        - { name: invoice_id, in: query, schema: { type: string, format: uuid } }
+        - { name: payout_id, in: query, schema: { type: string, format: uuid } }
+        - { name: from, in: query, schema: { type: string, format: date-time }, description: Earned at or after }
+        - { name: to, in: query, schema: { type: string, format: date-time }, description: Earned before }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { commissions: { type: array, items: { $ref: "#/components/schemas/AffiliateCommission" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/commissions/reverse:
+    post:
+      operationId: reverseAffiliateCommission
+      summary: Take a commission back for a chargeback, or by hand
+      description: "Refunds, voids and credit notes reverse on their own. The same (invoice, reason, reference) takes back once. A commission that was paid is netted from the partner's next payout."
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [invoice_id, reason], properties: { invoice_id: { type: string, format: uuid }, reason: { type: string, enum: [chargeback, manual] }, reference: { type: string, maxLength: 100, description: "Names this reversal; required for manual" }, amount_minor: { type: string, description: "How much to take back; 0 or absent is all that is left" }, note: { type: string, maxLength: 500 } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { reversed_minor: { type: string, description: "How much this call took back; 0 on a repeat" }, commission: { $ref: "#/components/schemas/AffiliateCommission" } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/balances:
+    get:
+      operationId: getAffiliateBalances
+      summary: What each partner has, per currency
+      description: "pending (in the hold), approved (available for a payout, net of reversals), paid (paid out, net of what was netted) and reversed (taken back in all). Currencies are never added together."
+      parameters: [{ name: affiliate_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { balances: { type: array, items: { $ref: "#/components/schemas/AffiliateBalance" } } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/funnel:
+    get:
+      operationId: getAffiliateFunnel
+      summary: Clicks, referred customers, paying customers and commissions over a period
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date }, description: "First day, UTC; default 30 days before to" }
+        - { name: to, in: query, schema: { type: string, format: date }, description: "Last day, UTC; default today" }
+        - { name: affiliate_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AffiliateFunnel" } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /v1/affiliates/{id}:
     get:
       operationId: getAffiliate
@@ -4697,6 +4747,46 @@ components:
         referrals: { type: string }
         approve_time: { type: string, format: date-time }
         create_time: { type: string, format: date-time }
+    AffiliateCommission:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        affiliate_id: { type: string, format: uuid }
+        affiliate_code: { type: string }
+        customer_external_id: { type: string }
+        kind: { type: string, enum: [commission, reversal] }
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string }
+        currency: { type: string }
+        invoice_total_minor: { type: string, description: "What the invoice came to, tax included" }
+        net_minor: { type: string, description: "The base: the net, pre-tax amount actually paid" }
+        amount_minor: { type: string, description: "The commission; negative on a reversal row" }
+        reversed_minor: { type: string, description: How much of the commission has been taken back }
+        status: { type: string, enum: [pending, approved, paid, reversed] }
+        parent_id: { type: string, format: uuid }
+        earn_time: { type: string, format: date-time }
+        approve_after_time: { type: string, format: date-time }
+        approve_time: { type: string, format: date-time }
+        pay_time: { type: string, format: date-time }
+        payout_id: { type: string, format: uuid }
+    AffiliateBalance:
+      type: object
+      properties:
+        affiliate_id: { type: string, format: uuid }
+        currency: { type: string }
+        pending_minor: { type: string }
+        approved_minor: { type: string }
+        paid_minor: { type: string }
+        reversed_minor: { type: string }
+    AffiliateFunnel:
+      type: object
+      properties:
+        from_date: { type: string, format: date }
+        to_date: { type: string, format: date }
+        clicks: { type: string }
+        referrals: { type: string, description: Customers attributed in the period }
+        paying_customers: { type: string, description: Customers with a commission earned in the period }
+        commissions: { type: array, items: { type: object, properties: { currency: { type: string }, earned_minor: { type: string }, reversed_minor: { type: string } } } }
     AffiliateReferral:
       type: object
       properties:

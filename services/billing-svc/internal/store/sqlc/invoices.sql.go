@@ -809,3 +809,20 @@ func (q *Queries) SetInvoiceTotals(ctx context.Context, arg SetInvoiceTotalsPara
 	)
 	return err
 }
+
+const sumInvoiceTax = `-- name: SumInvoiceTax :one
+SELECT COALESCE(sum(amount_minor), 0)::bigint AS tax_minor FROM invoice_lines WHERE tenant_id = $1 AND invoice_id = $2 AND kind = 'TAX'
+`
+
+type SumInvoiceTaxParams struct {
+	TenantID  uuid.UUID
+	InvoiceID uuid.UUID
+}
+
+// The tax of an invoice: the sum of its TAX lines. What is left of the total is the net, pre-tax amount, which a partner commission (phase 47) is a share of.
+func (q *Queries) SumInvoiceTax(ctx context.Context, arg SumInvoiceTaxParams) (int64, error) {
+	row := q.db.QueryRow(ctx, sumInvoiceTax, arg.TenantID, arg.InvoiceID)
+	var tax_minor int64
+	err := row.Scan(&tax_minor)
+	return tax_minor, err
+}

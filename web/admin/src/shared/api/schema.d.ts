@@ -1121,6 +1121,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/affiliates/commissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Commissions and the reversal rows that net against them, newest first
+         * @description One commission per paid invoice of a customer a partner brought, in the invoice's currency, on the net, pre-tax amount paid. It is pending for the program's hold (the refund window), then approved, then paid by a payout. A refund, void or credit note takes it back (reversed_minor); one already paid is netted by a negative row of kind reversal that the next payout takes.
+         */
+        get: operations["listAffiliateCommissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates/commissions/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Take a commission back for a chargeback, or by hand
+         * @description Refunds, voids and credit notes reverse on their own. The same (invoice, reason, reference) takes back once. A commission that was paid is netted from the partner's next payout.
+         */
+        post: operations["reverseAffiliateCommission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What each partner has, per currency
+         * @description pending (in the hold), approved (available for a payout, net of reversals), paid (paid out, net of what was netted) and reversed (taken back in all). Currencies are never added together.
+         */
+        get: operations["getAffiliateBalances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Clicks, referred customers, paying customers and commissions over a period */
+        get: operations["getAffiliateFunnel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/affiliates/{id}": {
         parameters: {
             query?: never;
@@ -4528,6 +4605,67 @@ export interface components {
             /** Format: date-time */
             create_time?: string;
         };
+        AffiliateCommission: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            affiliate_id?: string;
+            affiliate_code?: string;
+            customer_external_id?: string;
+            /** @enum {string} */
+            kind?: "commission" | "reversal";
+            /** Format: uuid */
+            invoice_id?: string;
+            invoice_number?: string;
+            currency?: string;
+            /** @description What the invoice came to, tax included */
+            invoice_total_minor?: string;
+            /** @description The base: the net, pre-tax amount actually paid */
+            net_minor?: string;
+            /** @description The commission; negative on a reversal row */
+            amount_minor?: string;
+            /** @description How much of the commission has been taken back */
+            reversed_minor?: string;
+            /** @enum {string} */
+            status?: "pending" | "approved" | "paid" | "reversed";
+            /** Format: uuid */
+            parent_id?: string;
+            /** Format: date-time */
+            earn_time?: string;
+            /** Format: date-time */
+            approve_after_time?: string;
+            /** Format: date-time */
+            approve_time?: string;
+            /** Format: date-time */
+            pay_time?: string;
+            /** Format: uuid */
+            payout_id?: string;
+        };
+        AffiliateBalance: {
+            /** Format: uuid */
+            affiliate_id?: string;
+            currency?: string;
+            pending_minor?: string;
+            approved_minor?: string;
+            paid_minor?: string;
+            reversed_minor?: string;
+        };
+        AffiliateFunnel: {
+            /** Format: date */
+            from_date?: string;
+            /** Format: date */
+            to_date?: string;
+            clicks?: string;
+            /** @description Customers attributed in the period */
+            referrals?: string;
+            /** @description Customers with a commission earned in the period */
+            paying_customers?: string;
+            commissions?: {
+                currency?: string;
+                earned_minor?: string;
+                reversed_minor?: string;
+            }[];
+        };
         AffiliateReferral: {
             /** Format: uuid */
             affiliate_id?: string;
@@ -7599,6 +7737,135 @@ export interface operations {
                         next_page_token?: string;
                         total?: number;
                     };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    listAffiliateCommissions: {
+        parameters: {
+            query?: {
+                affiliate_id?: string;
+                status?: "pending" | "approved" | "paid" | "reversed";
+                kind?: "commission" | "reversal";
+                invoice_id?: string;
+                payout_id?: string;
+                /** @description Earned at or after */
+                from?: string;
+                /** @description Earned before */
+                to?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        commissions?: components["schemas"]["AffiliateCommission"][];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    reverseAffiliateCommission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    invoice_id: string;
+                    /** @enum {string} */
+                    reason: "chargeback" | "manual";
+                    /** @description Names this reversal; required for manual */
+                    reference?: string;
+                    /** @description How much to take back; 0 or absent is all that is left */
+                    amount_minor?: string;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description How much this call took back; 0 on a repeat */
+                        reversed_minor?: string;
+                        commission?: components["schemas"]["AffiliateCommission"];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    getAffiliateBalances: {
+        parameters: {
+            query?: {
+                affiliate_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        balances?: components["schemas"]["AffiliateBalance"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getAffiliateFunnel: {
+        parameters: {
+            query?: {
+                /** @description First day, UTC; default 30 days before to */
+                from?: string;
+                /** @description Last day, UTC; default today */
+                to?: string;
+                affiliate_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AffiliateFunnel"];
                 };
             };
             400: components["responses"]["Error"];

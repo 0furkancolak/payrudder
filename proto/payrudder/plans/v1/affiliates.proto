@@ -22,6 +22,15 @@ service AffiliateService {
   // Idempotent; a refusal is a normal answer (attributed=false and a reason), not an error.
   rpc AttributeCustomer(AttributeCustomerRequest) returns (AttributeCustomerResponse);
   rpc ListAffiliateReferrals(ListAffiliateReferralsRequest) returns (ListAffiliateReferralsResponse);
+  // ListAffiliateCommissions lists commissions and the reversal rows that net against them, newest first.
+  rpc ListAffiliateCommissions(ListAffiliateCommissionsRequest) returns (ListAffiliateCommissionsResponse);
+  // ReverseAffiliateCommission takes a commission back for a chargeback, or by hand. Refunds, voids and credit notes are reversed on their own.
+  // Idempotent per (invoice, reason, reference).
+  rpc ReverseAffiliateCommission(ReverseAffiliateCommissionRequest) returns (ReverseAffiliateCommissionResponse);
+  // GetAffiliateBalances is what each affiliate has per currency: pending, available for a payout, paid out and taken back.
+  rpc GetAffiliateBalances(GetAffiliateBalancesRequest) returns (GetAffiliateBalancesResponse);
+  // GetAffiliateFunnel counts clicks, referred customers, paying customers and commissions over a period.
+  rpc GetAffiliateFunnel(GetAffiliateFunnelRequest) returns (GetAffiliateFunnelResponse);
 }
 
 // AffiliatePublicService is for the public link and cookie of the hosted pages. It holds no tenant: the code finds it. Only the gateway calls it.
@@ -194,4 +203,104 @@ message TrackAffiliateClickResponse {
   string landing_url = 4;
   // The click was counted; false once the affiliate's daily cap is reached (the cookie is still set, the visitor is not turned away).
   bool counted = 5;
+}
+
+message AffiliateCommission {
+  string id = 1;
+  string affiliate_id = 2;
+  string affiliate_code = 3;
+  string customer_external_id = 4;
+  // commission, or reversal (a negative row netting a commission that was paid already).
+  string kind = 5;
+  string invoice_id = 6;
+  string invoice_number = 7;
+  string currency = 8;
+  // What the invoice came to, tax included.
+  int64 invoice_total_minor = 9;
+  // The base: the net, pre-tax amount actually paid.
+  int64 net_minor = 10;
+  // The commission; negative on a reversal row.
+  int64 amount_minor = 11;
+  // How much of the commission has been taken back.
+  int64 reversed_minor = 12;
+  // pending (in the hold), approved (can be paid out), paid, or reversed (nothing left).
+  string status = 13;
+  string parent_id = 14;
+  google.protobuf.Timestamp earn_time = 15;
+  google.protobuf.Timestamp approve_after_time = 16;
+  google.protobuf.Timestamp approve_time = 17;
+  google.protobuf.Timestamp pay_time = 18;
+  string payout_id = 19;
+}
+
+message ListAffiliateCommissionsRequest {
+  string affiliate_id = 1;
+  string status = 2;
+  // commission or reversal, or empty for both.
+  string kind = 3;
+  string invoice_id = 4;
+  string payout_id = 5;
+  google.protobuf.Timestamp from_time = 6;
+  google.protobuf.Timestamp to_time = 7;
+  int32 page_size = 8;
+  string page_token = 9;
+}
+message ListAffiliateCommissionsResponse {
+  repeated AffiliateCommission commissions = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}
+
+message ReverseAffiliateCommissionRequest {
+  string invoice_id = 1;
+  // chargeback or manual.
+  string reason = 2;
+  // Names this reversal: the same (invoice, reason, reference) takes back once. Required for manual.
+  string reference = 3;
+  // How much of the commission to take back; 0 is all that is left.
+  int64 amount_minor = 4;
+  string note = 5;
+}
+message ReverseAffiliateCommissionResponse {
+  // How much this call took back (0 on a repeat, or when nothing was left).
+  int64 reversed_minor = 1;
+  AffiliateCommission commission = 2;
+}
+
+message AffiliateBalance {
+  string affiliate_id = 1;
+  string currency = 2;
+  int64 pending_minor = 3;
+  int64 approved_minor = 4;
+  int64 paid_minor = 5;
+  int64 reversed_minor = 6;
+}
+message GetAffiliateBalancesRequest {
+  // Empty for every affiliate.
+  string affiliate_id = 1;
+}
+message GetAffiliateBalancesResponse {
+  repeated AffiliateBalance balances = 1;
+}
+
+message GetAffiliateFunnelRequest {
+  // Dates as YYYY-MM-DD, both included (UTC). Empty from is 30 days before to; empty to is today.
+  string from_date = 1;
+  string to_date = 2;
+  string affiliate_id = 3;
+}
+message AffiliateFunnelAmount {
+  string currency = 1;
+  int64 earned_minor = 2;
+  int64 reversed_minor = 3;
+}
+message GetAffiliateFunnelResponse {
+  string from_date = 1;
+  string to_date = 2;
+  int64 clicks = 3;
+  // Customers attributed in the period.
+  int64 referrals = 4;
+  // Customers with a commission earned in the period.
+  int64 paying_customers = 5;
+  repeated AffiliateFunnelAmount commissions = 6;
 }

@@ -81,6 +81,30 @@ type AffiliateClicksDaily struct {
 	Clicks      int32
 }
 
+type AffiliateCommission struct {
+	TenantID          uuid.UUID
+	ID                uuid.UUID
+	AffiliateID       uuid.UUID
+	CustomerID        uuid.UUID
+	Kind              string
+	InvoiceID         uuid.UUID
+	InvoiceNumber     string
+	Currency          string
+	InvoiceTotalMinor int64
+	NetMinor          int64
+	AmountMinor       int64
+	ReversedMinor     int64
+	Status            string
+	ParentID          *uuid.UUID
+	ReversalKey       *string
+	EarnedAt          time.Time
+	ApproveAfter      time.Time
+	ApprovedAt        *time.Time
+	PaidAt            *time.Time
+	PayoutID          *uuid.UUID
+	CreatedAt         time.Time
+}
+
 type AffiliateProgram struct {
 	TenantID              uuid.UUID
 	Status                string
@@ -98,6 +122,18 @@ type AffiliateProgram struct {
 	AutoApprove           bool
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+}
+
+type AffiliateReversal struct {
+	TenantID      uuid.UUID
+	Key           string
+	CommissionID  uuid.UUID
+	InvoiceID     uuid.UUID
+	Kind          string
+	CreditedMinor int64
+	AmountMinor   int64
+	Note          string
+	CreatedAt     time.Time
 }
 
 type ApiKey struct {

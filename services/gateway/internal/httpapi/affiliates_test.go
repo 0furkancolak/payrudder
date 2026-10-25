@@ -73,6 +73,54 @@ func (f *fakeAffiliates) ListAffiliateReferrals(_ context.Context, r *plansv1.Li
 // lastAffiliates is the fake of the server newTestServerWith built last (the tests of this package do not run in parallel).
 var lastAffiliates *fakeAffiliates
 
+func (f *fakeAffiliates) ListAffiliateCommissions(_ context.Context, r *plansv1.ListAffiliateCommissionsRequest) (*plansv1.ListAffiliateCommissionsResponse, error) {
+	f.remember("ListAffiliateCommissions", r)
+	return &plansv1.ListAffiliateCommissionsResponse{Total: 1, Commissions: []*plansv1.AffiliateCommission{{Id: "c1", AmountMinor: 1000, Status: "pending"}}}, nil
+}
+
+func (f *fakeAffiliates) ReverseAffiliateCommission(_ context.Context, r *plansv1.ReverseAffiliateCommissionRequest) (*plansv1.ReverseAffiliateCommissionResponse, error) {
+	f.remember("ReverseAffiliateCommission", r)
+	return &plansv1.ReverseAffiliateCommissionResponse{ReversedMinor: r.GetAmountMinor()}, nil
+}
+
+func (f *fakeAffiliates) GetAffiliateBalances(_ context.Context, r *plansv1.GetAffiliateBalancesRequest) (*plansv1.GetAffiliateBalancesResponse, error) {
+	f.remember("GetAffiliateBalances", r)
+	return &plansv1.GetAffiliateBalancesResponse{Balances: []*plansv1.AffiliateBalance{{AffiliateId: "a1", Currency: "EUR", ApprovedMinor: 4200}}}, nil
+}
+
+func (f *fakeAffiliates) GetAffiliateFunnel(_ context.Context, r *plansv1.GetAffiliateFunnelRequest) (*plansv1.GetAffiliateFunnelResponse, error) {
+	f.remember("GetAffiliateFunnel", r)
+	return &plansv1.GetAffiliateFunnelResponse{Clicks: 9, Referrals: 3}, nil
+}
+
+func TestAffiliateCommissionRoutes(t *testing.T) {
+	ts, _ := newTestServer(t)
+	fa := lastAffiliates
+	if r, m := do(t, ts, http.MethodGet, "/v1/affiliates/commissions?status=pending&affiliate_id=a1&kind=commission&invoice_id=i1&payout_id=p1&from=2026-01-01T00:00:00Z&to=2026-02-01T00:00:00Z&page_size=2", "live-key", ""); r.StatusCode != http.StatusOK || m["total"] != float64(1) {
+		t.Fatalf("list: %d %v", r.StatusCode, m)
+	}
+	l := fa.got("ListAffiliateCommissions").(*plansv1.ListAffiliateCommissionsRequest)
+	if l.GetStatus() != "pending" || l.GetAffiliateId() != "a1" || l.GetKind() != "commission" || l.GetInvoiceId() != "i1" || l.GetPayoutId() != "p1" || l.GetPageSize() != 2 ||
+		l.GetFromTime().AsTime().Year() != 2026 || l.GetToTime().AsTime().Month() != 2 {
+		t.Errorf("list request: %v", l)
+	}
+	if r, _ := do(t, ts, http.MethodGet, "/v1/affiliates/commissions?from=yesterday", "live-key", ""); r.StatusCode != http.StatusBadRequest {
+		t.Errorf("a bad time = %d", r.StatusCode)
+	}
+	if r, m := do(t, ts, http.MethodPost, "/v1/affiliates/commissions/reverse", "live-key", `{"invoice_id":"i1","reason":"chargeback","amount_minor":"300"}`); r.StatusCode != http.StatusOK || m["reversed_minor"] != "300" {
+		t.Errorf("reverse: %d %v", r.StatusCode, m)
+	}
+	if r, m := do(t, ts, http.MethodGet, "/v1/affiliates/balances?affiliate_id=a1", "live-key", ""); r.StatusCode != http.StatusOK || m["balances"] == nil {
+		t.Errorf("balances: %d %v", r.StatusCode, m)
+	}
+	if r, m := do(t, ts, http.MethodGet, "/v1/affiliates/funnel?from=2026-01-01&to=2026-01-31", "live-key", ""); r.StatusCode != http.StatusOK || m["clicks"] != "9" {
+		t.Errorf("funnel: %d %v", r.StatusCode, m)
+	}
+	if f := fa.got("GetAffiliateFunnel").(*plansv1.GetAffiliateFunnelRequest); f.GetFromDate() != "2026-01-01" || f.GetToDate() != "2026-01-31" {
+		t.Errorf("funnel request: %v", f)
+	}
+}
+
 func TestAffiliateRoutes(t *testing.T) {
 	ts, _ := newTestServer(t)
 	fa := lastAffiliates
