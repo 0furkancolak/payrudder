@@ -18,7 +18,10 @@ func EnqueueOutbox(ctx context.Context, tx pgx.Tx, tenantID, messageID uuid.UUID
 	h := map[string]string{outbox.DestinationHeader: dest, outbox.MessageIDHeader: messageID.String()}
 	// The relay and every consumer continue the trace of the transition that produced the message.
 	kafkax.InjectTrace(ctx, h, otel.GetTextMapPropagator())
-	hdr, _ := json.Marshal(h)
+	hdr, err := json.Marshal(h)
+	if err != nil {
+		return err
+	}
 	q := sqlc.New(tx)
 	if err := q.InsertOutbox(ctx, sqlc.InsertOutboxParams{TenantID: tenantID, Topic: topic, PartitionKey: key, Payload: payload, Headers: hdr, MessageID: messageID}); err != nil {
 		return err

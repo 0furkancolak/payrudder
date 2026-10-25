@@ -53,10 +53,13 @@ func (c *Commands) InsertRegular(ctx context.Context, tenantID uuid.UUID, period
 
 // insertRegular writes one draft invoice and its lines; false means the customer already has its invoice for the period.
 func insertRegular(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, periodID string, d RegularDraft) (bool, error) {
-	snap, _ := json.Marshal(d.Snapshot)
+	snap, err := json.Marshal(d.Snapshot)
+	if err != nil {
+		return false, err
+	}
 	id := uuid.New()
 	subtotal := rating.Subtotal(d.Lines) // before tax
-	_, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
+	_, err = q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
 		TenantID: tenantID, ID: id, CustomerID: d.CustomerID, PeriodID: periodID, Kind: "REGULAR", PlanVersionID: d.PlanVersion, Currency: d.Currency,
 		SubtotalMinor: subtotal, TotalMinor: d.Total, Snapshot: snap, Provider: d.Provider, Country: store.NilIfEmpty(d.Country),
 	})

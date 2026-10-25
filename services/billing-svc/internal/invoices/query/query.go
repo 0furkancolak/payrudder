@@ -10,11 +10,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	paymentquery "github.com/0furkancolak/payrudder/services/billing-svc/internal/payments/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -66,7 +66,7 @@ func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (*Invoi
 		return nil, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	return inv, nil
 }
@@ -118,7 +118,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 		return err
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	out := &Page{}
 	var more bool
@@ -148,7 +148,7 @@ func PDFURL(ctx context.Context, app *pgxpool.Pool, pdfs PDFSigner, tenantID, id
 		return "", time.Time{}, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
-		return "", time.Time{}, status.Error(codes.Internal, "internal error")
+		return "", time.Time{}, apierr.Internal(ctx, err)
 	}
 	if key == "" {
 		return "", time.Time{}, errkey.New(codes.FailedPrecondition, "billing.invoice.pdf_not_ready", "the invoice PDF is not rendered yet")

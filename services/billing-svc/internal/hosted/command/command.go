@@ -26,6 +26,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
@@ -96,20 +97,13 @@ func (d Deps) now() time.Time {
 	return time.Now()
 }
 
-// NewToken makes an unguessable token: 256 random bits.
-func NewToken() (string, error) {
+// newToken makes an unguessable token: 256 random bits.
+func newToken(ctx context.Context) (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
-		return "", status.Error(codes.Internal, "internal error")
+		return "", apierr.Internal(ctx, err)
 	}
 	return base64.RawURLEncoding.EncodeToString(raw), nil
-}
-
-func internal(err error) error {
-	if _, ok := status.FromError(err); ok && status.Code(err) != codes.Unknown {
-		return err
-	}
-	return status.Error(codes.Internal, "internal error")
 }
 
 // CreateInput is a request for a payment link.
@@ -269,10 +263,10 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 			return nil, errkey.New(codes.NotFound, "billing.payment_link.customer_not_found", "no such customer")
 		}
 		if customerID, err = uuid.Parse(cu.GetId()); err != nil {
-			return nil, status.Error(codes.Internal, "internal error")
+			return nil, apierr.Internal(ctx, err)
 		}
 	}
-	token, err := NewToken()
+	token, err := newToken(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +334,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 		})
 	}
 	if err != nil {
-		return nil, internal(err)
+		return nil, apierr.Wrap(ctx, err)
 	}
 	return out, nil
 }
@@ -456,7 +450,7 @@ func RevokeLinks(ctx context.Context, d Deps, tenantID, invoiceID uuid.UUID) (in
 		return 0, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
-		return 0, status.Error(codes.Internal, "internal error")
+		return 0, apierr.Internal(ctx, err)
 	}
 	return n, nil
 }
@@ -487,7 +481,7 @@ func RevokeLink(ctx context.Context, d Deps, tenantID, linkID uuid.UUID) (sqlc.G
 		return row, errkey.New(codes.NotFound, "billing.payment_link.not_found", "no such payment link")
 	}
 	if err != nil {
-		return row, internal(err)
+		return row, apierr.Wrap(ctx, err)
 	}
 	VoidUnpaid(ctx, d.System, d.Engine, tenantID, voids)
 	return row, nil
@@ -524,9 +518,9 @@ func CreatePortalLink(ctx context.Context, d Deps, tenantID uuid.UUID, externalI
 		return "", time.Time{}, uuid.Nil, errkey.New(codes.NotFound, "billing.portal_link.customer_not_found", "no such customer")
 	}
 	if customerID, err = uuid.Parse(cu.GetId()); err != nil {
-		return "", time.Time{}, uuid.Nil, status.Error(codes.Internal, "internal error")
+		return "", time.Time{}, uuid.Nil, apierr.Internal(ctx, err)
 	}
-	if token, err = NewToken(); err != nil {
+	if token, err = newToken(ctx); err != nil {
 		return "", time.Time{}, uuid.Nil, err
 	}
 	expires = d.now().Add(time.Duration(days) * 24 * time.Hour)
@@ -534,7 +528,7 @@ func CreatePortalLink(ctx context.Context, d Deps, tenantID uuid.UUID, externalI
 		return sqlc.New(tx).InsertPortalLink(ctx, sqlc.InsertPortalLinkParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, CustomerExternalID: &externalID, TokenHash: query.TokenHash(token), ExpiresAt: expires})
 	})
 	if err != nil {
-		return "", time.Time{}, uuid.Nil, status.Error(codes.Internal, "internal error")
+		return "", time.Time{}, uuid.Nil, apierr.Internal(ctx, err)
 	}
 	return token, expires, customerID, nil
 }
@@ -550,7 +544,7 @@ func RevokePortalLinks(ctx context.Context, d Deps, tenantID uuid.UUID, external
 	}
 	customerID, err := uuid.Parse(cu.GetId())
 	if err != nil {
-		return 0, status.Error(codes.Internal, "internal error")
+		return 0, apierr.Internal(ctx, err)
 	}
 	var n int64
 	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
@@ -559,7 +553,7 @@ func RevokePortalLinks(ctx context.Context, d Deps, tenantID uuid.UUID, external
 		return err
 	})
 	if err != nil {
-		return 0, status.Error(codes.Internal, "internal error")
+		return 0, apierr.Internal(ctx, err)
 	}
 	return n, nil
 }

@@ -9,17 +9,18 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	invoices "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -52,7 +53,7 @@ func ResolveLink(ctx context.Context, system *pgxpool.Pool, token string) (*Link
 		return nil, errNoLink
 	}
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	return &Link{Row: row}, nil
 }
@@ -105,7 +106,7 @@ func resolvePortal(ctx context.Context, system *pgxpool.Pool, token, invoiceID s
 		return nil, errNoLink
 	}
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	s := &Scope{TenantID: row.TenantID, Portal: &Portal{CustomerID: row.CustomerID, ExternalID: deref(row.CustomerExternalID)}, ExpiresAt: row.ExpiresAt}
 	if invoiceID == "" {
@@ -124,7 +125,7 @@ func resolvePortal(ctx context.Context, system *pgxpool.Pool, token, invoiceID s
 		return nil, errNoLink
 	}
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	s.InvoiceID = id
 	return s, nil
@@ -240,7 +241,7 @@ func Get(ctx context.Context, d Deps, s *Scope) (*Page, error) {
 func (d Deps) adhoc(ctx context.Context, s *Scope) (*Page, error) {
 	r := s.Link.Row
 	if r.AmountMinor == nil || r.Currency == nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, errors.New("an ad-hoc link without an amount or a currency"))
 	}
 	exp := int32(2)
 	if c, ok := money.LookupCurrency(*r.Currency); ok {
@@ -295,7 +296,7 @@ func (d Deps) invoice(ctx context.Context, s *Scope) (*Page, error) {
 		return nil, errNoLink
 	}
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	if p.Invoice.Row.Status == "draft" {
 		return nil, errNoLink
@@ -334,7 +335,7 @@ func PDFURL(ctx context.Context, d Deps, s *Scope) (string, time.Time, error) {
 		return "", time.Time{}, errNoLink
 	}
 	if err != nil {
-		return "", time.Time{}, status.Error(codes.Internal, "internal error")
+		return "", time.Time{}, apierr.Internal(ctx, err)
 	}
 	if key == nil || *key == "" {
 		return "", time.Time{}, errkey.New(codes.FailedPrecondition, "billing.invoice.pdf_not_ready", "the invoice PDF is not rendered yet")
@@ -428,7 +429,7 @@ func GetPortal(ctx context.Context, d Deps, s *Scope) (*PortalPage, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	for _, r := range rows {
 		st, pay := State(r.Status, r.SagaState)
@@ -436,7 +437,11 @@ func GetPortal(ctx context.Context, d Deps, s *Scope) (*PortalPage, error) {
 	}
 	var snap sagamodel.Snapshot
 	if latest != nil {
-		_ = json.Unmarshal(latest, &snap)
+		if err := json.Unmarshal(latest, &snap); err != nil {
+			// The page is still worth showing; the seller is looked up below when the snapshot has none.
+			slog.WarnContext(ctx, "portal: invoice snapshot not read", "tenant", s.TenantID, "error", err)
+			snap = sagamodel.Snapshot{}
+		}
 	}
 	out.CustomerName, out.SellerName, out.Environment = snap.CustomerName, snap.TenantName, snap.Environment
 	logoKey := snap.LogoObjectKey

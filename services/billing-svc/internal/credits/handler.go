@@ -63,7 +63,7 @@ func (h *Handler) SetCreditPackActive(ctx context.Context, req *billingv1.SetCre
 	}
 	id, err := uuid.Parse(req.GetId())
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.credits.pack_not_found", "no such credit pack")
+		return nil, errkey.New(codes.NotFound, "billing.credits.pack_not_found", "no such credit pack")
 	}
 	if err := command.SetPackActive(ctx, h.app, ti.ID, id, req.GetActive()); err != nil {
 		return nil, err

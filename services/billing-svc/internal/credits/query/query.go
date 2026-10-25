@@ -12,11 +12,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -32,7 +32,7 @@ func Packs(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, activeOnl
 		return err
 	})
 	if err != nil {
-		return nil, internal()
+		return nil, apierr.Internal(ctx, err)
 	}
 	return out, nil
 }
@@ -52,7 +52,7 @@ func PackByID(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (*
 		return nil, errkey.New(codes.NotFound, "billing.credits.pack_not_found", "no such credit pack")
 	}
 	if err != nil {
-		return nil, internal()
+		return nil, apierr.Internal(ctx, err)
 	}
 	return out, nil
 }
@@ -94,7 +94,7 @@ func BalanceOf(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid
 		return err
 	})
 	if err != nil {
-		return nil, internal()
+		return nil, apierr.Internal(ctx, err)
 	}
 	return out, nil
 }
@@ -133,7 +133,7 @@ func Ledger(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UU
 		return err
 	})
 	if err != nil {
-		return nil, "", internal()
+		return nil, "", apierr.Internal(ctx, err)
 	}
 	next := ""
 	var more bool
@@ -172,9 +172,7 @@ func LowThreshold(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID) (i
 		return err
 	})
 	if err != nil {
-		return 0, internal()
+		return 0, apierr.Internal(ctx, err)
 	}
 	return out, nil
 }
-
-func internal() error { return status.Error(codes.Internal, "internal error") }

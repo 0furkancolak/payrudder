@@ -8,10 +8,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -49,13 +49,14 @@ func drive(ctx context.Context, system *pgxpool.Pool, eng *Engine, tid, invID uu
 		return err
 	})
 	if err != nil {
-		if _, ok := status.FromError(err); ok {
-			return sqlc.GetSagaRow{}, err
-		}
-		return sqlc.GetSagaRow{}, status.Error(codes.Internal, "internal error")
+		return sqlc.GetSagaRow{}, apierr.Wrap(ctx, err)
 	}
 	if !applied {
 		return sqlc.GetSagaRow{}, errkey.Newf(codes.FailedPrecondition, "billing.saga.event_not_possible", "%s is not possible while the invoice saga is in %s", ev, state)
 	}
-	return query.Saga(ctx, system, tid, sagaID)
+	row, err := query.Saga(ctx, system, tid, sagaID)
+	if err != nil {
+		return sqlc.GetSagaRow{}, apierr.Internal(ctx, err)
+	}
+	return row, nil
 }
