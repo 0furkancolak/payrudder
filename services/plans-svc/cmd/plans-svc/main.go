@@ -56,12 +56,9 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	GRPCAddr       string `env:"PAYRUDDER_GRPC_ADDR"`
-	PGAppDSN       string `env:"PAYRUDDER_PG_APP_DSN,required"`
-	PGSystemDSN    string `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool   `env:"PAYRUDDER_MIGRATE_ON_START"`
-	RedisURL       string `env:"PAYRUDDER_REDIS_URL"`
+	pgxx.Settings
+	GRPCAddr string `env:"PAYRUDDER_GRPC_ADDR"`
+	RedisURL string `env:"PAYRUDDER_REDIS_URL"`
 	// KafkaBrokers enables the outbox relay to plans.entitlements.v1. Without it, rows wait in the outbox.
 	KafkaBrokers   []string `env:"PAYRUDDER_KAFKA_BROKERS" envSeparator:","`
 	RelayWorkers   int      `env:"PAYRUDDER_RELAY_WORKERS"`
@@ -85,9 +82,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
-	}
+	errs = append(errs, c.CheckMigration())
 	for _, e := range c.AllowedEnvs {
 		if e != tenant.EnvSandbox && e != tenant.EnvLive {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_ALLOWED_ENVIRONMENTS: unknown environment %q", e))
@@ -151,40 +146,12 @@ func run() error {
 	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
 }
 
-// migrate applies the migrations when asked to; done reports that the process should exit afterwards (PAYRUDDER_MIGRATE_ONLY).
-func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
-	if cfg.MigrateOnStart {
-		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return false, err
-		}
-	}
-	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
-		return true, nil
-	}
-	return false, nil
-}
-
-// openPools opens the application-role and system-role Postgres pools.
-func openPools(ctx context.Context, cfg *Config) (appPool, systemPool *pgxpool.Pool, err error) {
-	appPool, err = pgxx.NewPool(ctx, cfg.PGAppDSN)
-	if err != nil {
-		return nil, nil, err
-	}
-	systemPool, err = pgxx.NewPool(ctx, cfg.PGSystemDSN)
-	if err != nil {
-		appPool.Close()
-		return nil, nil, err
-	}
-	return appPool, systemPool, nil
-}
-
 // start wires plans-svc's dependencies and runs it until ctx is cancelled.
 func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler) error {
-	if done, err := migrate(ctx, cfg, log); err != nil || done {
+	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
-	appPool, systemPool, err := openPools(ctx, cfg)
+	appPool, systemPool, err := cfg.OpenPools(ctx)
 	if err != nil {
 		return err
 	}
