@@ -16,8 +16,8 @@ import (
 // follow the slug; what people read follows Display.
 type renameSpec struct {
 	Display string // "Acme Billing"
-	Slug    string // "acme-billing"
-	Module  string // "github.com/acme/acme-billing", empty to keep the module owner
+	Slug    string // "acmebilling": lower-case letters and digits, starting with a letter
+	Module  string // "github.com/acme/acmebilling", empty to keep the module owner
 }
 
 const (
