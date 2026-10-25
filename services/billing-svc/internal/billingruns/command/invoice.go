@@ -1,15 +1,15 @@
-package runs
+package command
 
 import (
 	"context"
 
-	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // invoice finalizes every draft of the run (number, open, saga started) and reports whether the run is complete:
 // all its invoices' sagas reached COMPLETED or VOIDED.
-func (m *Manager) invoice(ctx context.Context, run *runmodel.Run) (bool, error) {
+func (m *Manager) invoice(ctx context.Context, run *model.Run) (bool, error) {
 	for {
 		ids, err := m.q.ListDraftInvoiceIDsOfRun(ctx, sqlc.ListDraftInvoiceIDsOfRunParams{TenantID: run.TenantID, PeriodID: run.PeriodID, PageSize: int32(m.cfg.PageSize)}) //nolint:gosec // small
 		if err != nil {

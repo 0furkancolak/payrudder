@@ -34,6 +34,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
+	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
 	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	feecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/fees/command"
@@ -42,7 +43,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
 	reratecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/command"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
@@ -344,7 +344,7 @@ type env struct {
 	clk      *clock
 	w        *world
 	eng      *sagacommand.Engine
-	mgr      *runs.Manager
+	mgr      *runcmd.Manager
 	notes    *creditnotecmd.Commands
 	fees     *feecmd.Commands
 	rerating *reratecmd.Commands
@@ -428,11 +428,11 @@ func newEnv(t *testing.T, o envOpts) *env {
 	e.rerating = reratecmd.New(reratecmd.Config{Pool: shared.system, Inputs: in, Invoices: e.inv, Now: clk.Now, Log: testkit.Logger()})
 	e.hosted = hostedcmd.NewBackend(hostedcmd.BackendConfig{Pool: shared.system, Inputs: in, Invoices: e.inv, Engine: e.eng, Affiliates: f, Now: clk.Now, Log: testkit.Logger()})
 	e.relay = tenantevents.NewRelay(shared.system, e.events, testkit.Logger())
-	e.mgr, err = runs.NewManager(runs.Config{
+	e.mgr, err = runcmd.NewManager(runcmd.Config{
 		Pool: shared.system, Engine: e.eng, Inputs: in, Invoices: e.inv, Ingest: f,
 		EndOffsets: func(context.Context) (map[int32]int64, error) { return map[int32]int64{0: 10, 1: 20}, nil },
 		Now:        clk.Now, WatermarkDelay: o.watermarkGap, PageSize: 2, Log: testkit.Logger(),
-		Chores: []runs.Chore{
+		Chores: []runcmd.Chore{
 			{Name: "fee billing failed", Run: e.fees.Bill},
 			{Name: "credit note refunds not swept", Run: e.notes.SweepRefunds},
 			{Name: "payment links not expired", Run: e.hosted.ExpireLinks},

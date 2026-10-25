@@ -3,6 +3,8 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -49,4 +51,17 @@ func Of(row sqlc.BillingRun) (*Run, error) {
 		}
 	}
 	return r, nil
+}
+
+// ErrBadPeriod: the period id is not YYYY-MM.
+var ErrBadPeriod = errors.New("billing run: bad period id")
+
+// PeriodOpenError: a live period can only be closed after its cutoff.
+type PeriodOpenError struct {
+	Period string
+	Cutoff time.Time
+}
+
+func (e *PeriodOpenError) Error() string {
+	return fmt.Sprintf("billing run: period %s closes at %s", e.Period, e.Cutoff.UTC().Format(time.RFC3339))
 }

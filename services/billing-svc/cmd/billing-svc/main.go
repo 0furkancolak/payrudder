@@ -34,11 +34,11 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
+	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
 	creditcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	billingreset "github.com/0furkancolak/payrudder/services/billing-svc/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
@@ -220,14 +220,14 @@ func (b *backends) close() {
 }
 
 // newRunManager builds the billing-run manager from the backend clients and the usage topic's end offsets.
-func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, mods *modules, endOffsets func(context.Context) (map[int32]int64, error)) (*runs.Manager, error) {
-	return runs.NewManager(runs.Config{
+func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, mods *modules, endOffsets func(context.Context) (map[int32]int64, error)) (*runcmd.Manager, error) {
+	return runcmd.NewManager(runcmd.Config{
 		Pool: systemPool, Engine: eng,
 		Inputs: mods.inputs, Invoices: mods.invoices,
 		Ingest:         ingestv1.NewIngestServiceClient(be.ingest),
 		EndOffsets:     endOffsets,
 		WatermarkDelay: cfg.WatermarkDelay, Log: log,
-		Chores: []runs.Chore{
+		Chores: []runcmd.Chore{
 			{Name: "fee billing failed", Run: mods.fees.Bill},
 			{Name: "credit note refunds not swept", Run: mods.creditNotes.SweepRefunds},
 			{Name: "payment links not expired", Run: mods.hosted.ExpireLinks},
@@ -279,7 +279,7 @@ type workers struct {
 	log        *slog.Logger
 	pool       *pgxpool.Pool
 	eng        *sagacommand.Engine
-	mgr        *runs.Manager
+	mgr        *runcmd.Manager
 	events     *tenantevents.Relay
 	relay      *outbox.Relay
 	replies    *replies.Consumer

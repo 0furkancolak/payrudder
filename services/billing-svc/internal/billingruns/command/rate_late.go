@@ -1,4 +1,4 @@
-package runs
+package command
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
-	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
@@ -150,7 +150,7 @@ func alreadyBilled(base, prior *apd.Decimal) (*apd.Decimal, error) {
 }
 
 // priorLate sums the LATE_USAGE lines of earlier invoices per (customer, meter, origin).
-func (m *Manager) priorLate(ctx context.Context, run *runmodel.Run, origins map[string]bool) (map[lateKey]*apd.Decimal, error) {
+func (m *Manager) priorLate(ctx context.Context, run *model.Run, origins map[string]bool) (map[lateKey]*apd.Decimal, error) {
 	list := make([]string, 0, len(origins))
 	for o := range origins {
 		list = append(list, o)
