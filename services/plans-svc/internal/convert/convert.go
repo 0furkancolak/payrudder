@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/subscription"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
@@ -33,7 +34,7 @@ func Err(err error, what string) error {
 	}
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		return status.Errorf(codes.NotFound, "%s not found", what)
+		return errkey.Newf(codes.NotFound, "plans.common.not_found", "%s not found", what)
 	case errors.Is(err, context.Canceled):
 		return status.Error(codes.Canceled, "request cancelled")
 	case errors.Is(err, context.DeadlineExceeded):
@@ -41,15 +42,15 @@ func Err(err error, what string) error {
 	}
 	switch pgxx.ErrCode(err) {
 	case pgxx.CodeUniqueViolation:
-		return status.Errorf(codes.AlreadyExists, "%s already exists", what)
+		return errkey.Newf(codes.AlreadyExists, "plans.common.already_exists", "%s already exists", what)
 	case pgxx.CodeExclusionViolation:
-		return status.Error(codes.AlreadyExists, "customer already has a subscription overlapping that period")
+		return errkey.New(codes.AlreadyExists, "plans.subscription.period_overlap", "customer already has a subscription overlapping that period")
 	case pgxx.CodeForeignKeyViolation:
-		return status.Errorf(codes.FailedPrecondition, "%s refers to something that doesn't exist", what)
+		return errkey.Newf(codes.FailedPrecondition, "plans.common.broken_reference", "%s refers to something that doesn't exist", what)
 	case pgxx.CodeRaiseException:
-		return status.Error(codes.FailedPrecondition, "currency, timezone and environment of a tenant are immutable")
+		return errkey.New(codes.FailedPrecondition, "plans.tenant.settings_immutable", "currency, timezone and environment of a tenant are immutable")
 	case pgxx.CodeInsufficientPriv:
-		return status.Error(codes.PermissionDenied, "not allowed")
+		return errkey.New(codes.PermissionDenied, "plans.common.forbidden", "not allowed")
 	}
 	return status.Error(codes.Internal, "internal error")
 }

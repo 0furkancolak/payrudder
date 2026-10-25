@@ -1202,7 +1202,8 @@
         "fully_credited": "Bu faturanın tamamı zaten alacaklandırılmış.",
         "not_paid": "Yalnızca ödenmiş bir fatura için alacak dekontu düzenlenebilir.",
         "nothing_to_refund": "Bu alacak dekontu için karta iade edilecek bir tutar yok.",
-        "refund_not_failed": "Yalnızca iadesi başarısız olan bir alacak dekontu yeniden denenebilir."
+        "refund_not_failed": "Yalnızca iadesi başarısız olan bir alacak dekontu yeniden denenebilir.",
+        "bad_id": "Alacak dekontu kimliği geçerli bir kimlik değil."
       },
       "dunning": {
         "bad_delay": "Her yeniden deneme gecikmesi 1 ile 720 saat arasında olmalı.",
@@ -1210,7 +1211,8 @@
       },
       "invoice": {
         "not_found": "Fatura bulunamadı.",
-        "pdf_not_ready": "Fatura PDF'i henüz hazırlanmadı. Birazdan tekrar deneyin."
+        "pdf_not_ready": "Fatura PDF'i henüz hazırlanmadı. Birazdan tekrar deneyin.",
+        "bad_id": "Fatura kimliği geçerli bir kimlik değil."
       },
       "invoice_link": {
         "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
@@ -1284,6 +1286,16 @@
         "range_too_long": "Dönem çok uzun: en fazla beş yıl, günlük seri ise en fazla 366 gün.",
         "reason_required": "Gideri iptal etmek için en fazla 200 karakterlik bir gerekçe verin.",
         "unknown_currency": "Para birimi desteklenmiyor."
+      },
+      "einvoice": {
+        "bad_id": "E-fatura veya hesap kimliği geçerli bir kimlik değil."
+      },
+      "tenant": {
+        "bad_id": "Hesap kimliği geçerli bir kimlik değil."
+      },
+      "rerating": {
+        "bad_job_id": "Yeniden fiyatlama işi kimliği geçerli bir kimlik değil.",
+        "bad_plan_version_id": "Plan sürümü kimliği geçerli bir kimlik değil."
       }
     },
     "coupon": {
@@ -1310,7 +1322,8 @@
       },
       "subscription": {
         "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın.",
-        "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin."
+        "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin.",
+        "period_overlap": "Bu müşterinin o dönemle çakışan bir aboneliği zaten var."
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
@@ -1318,6 +1331,18 @@
       },
       "customer": {
         "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil."
+      },
+      "common": {
+        "not_found": "Bulunamadı.",
+        "already_exists": "Zaten var.",
+        "broken_reference": "Bu kayıt var olmayan bir şeye başvuruyor.",
+        "forbidden": "Bunu yapmaya yetkiniz yok."
+      },
+      "tenant": {
+        "settings_immutable": "Bir hesabın para birimi, saat dilimi ve ortamı değiştirilemez."
+      },
+      "request": {
+        "invalid": "{field} geçerli değil: {detail}"
       }
     },
     "common": {
@@ -1443,6 +1468,53 @@
       "dashboard": {
         "bad_period": "Bu dönem geçerli değil. 7, 30 ya da 90 gün, bu yıl veya ilki sonuncudan sonra olmayan iki gün seçin.",
         "range_too_long": "Bir dönem en fazla iki yıl olabilir."
+      },
+      "request": {
+        "invalid": "{field} geçerli değil: {detail}",
+        "too_large": "İstek çok büyük."
+      }
+    },
+    "aggregator": {
+      "customer": {
+        "bad_id": "Müşteri kimliği geçerli bir kimlik değil."
+      },
+      "period": {
+        "bad_id": "Dönem 2026-11 biçiminde olmalı.",
+        "cannot_compute": "Bu dönemin ayarları hesaplanamıyor. Dönemi ve hesabın saat dilimini kontrol edin."
+      },
+      "usage": {
+        "bad_batch_size": "Bir seferde 1 ile izin verilen en fazla kullanım anahtarı kadar isteyin."
+      }
+    },
+    "analytics": {
+      "customer": {
+        "bad_id": "Müşteri kimliği geçerli bir kimlik değil."
+      },
+      "tenant": {
+        "bad_id": "Hesap kimliği geçerli bir kimlik değil."
+      },
+      "granularity": {
+        "unknown": "Bu ayrıntı düzeyi desteklenmiyor. Saat veya gün kullanın."
+      },
+      "query": {
+        "exact_too_long": "Kesin sorgular en fazla bir günü kapsar. Daha uzun aralıklar için tahmini seriyi kullanın.",
+        "invalid": "Bu sorgu geçerli değil. Sayacı, dönemi ve filtreleri kontrol edin."
+      },
+      "range": {
+        "daily_too_long": "Günlük bir seri en fazla 400 günü kapsar.",
+        "hourly_too_long": "Saatlik bir seri en fazla 31 günü kapsar.",
+        "required": "Aralığın başlangıcı ve bitişi birlikte gerekli."
+      }
+    },
+    "limits": {
+      "customer": {
+        "bad_id": "Müşteri kimliği geçerli bir kimlik değil."
+      },
+      "meter": {
+        "code_required": "Sayaç kodu gerekli."
+      },
+      "period": {
+        "bad_id": "Dönem 2026-11 biçiminde olmalı."
       }
     }
   },

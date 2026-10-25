@@ -1,6 +1,7 @@
 package errkey
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -34,6 +35,12 @@ func TestKeyTravelsWithTheStatus(t *testing.T) {
 }
 
 var keyRe = regexp.MustCompile(`errkey\.(?:Newf?\(\s*codes\.\w+,|Key\()\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)+)"`)
+
+// helperRe finds the keys a service's local invalid(key, msg) helper wraps in errkey.New: the key is its first argument and starts with the service name.
+var helperRe = regexp.MustCompile(`\binvalid\(\s*"((?:aggregator|analytics|assets|billing|ingest|limits|payments|plans)\.[a-z0-9_]+(?:\.[a-z0-9_]+)*)"`)
+
+// defaultRe finds the keys errkey.Default hands to an error without one: they reach clients too, so they are listed and translated like any other.
+var defaultRe = regexp.MustCompile(`return "(common\.[a-z0-9_]+)"`)
 var shapeRe = regexp.MustCompile(`^[a-z0-9_]+(\.[a-z0-9_]+){1,3}$`)
 
 // TestEveryKeyIsListed finds the keys the code returns and compares them with docs/error-keys.md, so that the list a client developer reads is the list the
@@ -58,8 +65,18 @@ func TestEveryKeyIsListed(t *testing.T) {
 		for _, m := range keyRe.FindAllStringSubmatch(string(b), -1) {
 			found[m[1]] = true
 		}
+		for _, m := range helperRe.FindAllStringSubmatch(string(b), -1) {
+			found[m[1]] = true
+		}
 		return nil
 	})
+	src, err := os.ReadFile("errkey.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range defaultRe.FindAllStringSubmatch(string(src), -1) {
+		found[m[1]] = true
+	}
 	var keys []string
 	for k := range found {
 		if !shapeRe.MatchString(k) {
@@ -82,5 +99,60 @@ func TestEveryKeyIsListed(t *testing.T) {
 	got, err := os.ReadFile(path)
 	if err != nil || string(got) != want {
 		t.Fatalf("docs/error-keys.md is out of date: run UPDATE_ERROR_KEYS=1 go test ./pkg/errkey (%v)", err)
+	}
+}
+
+// TestEveryDefaultIsListed checks that each code Default can return is in docs/error-keys.md.
+func TestEveryDefaultIsListed(t *testing.T) {
+	doc, err := os.ReadFile("../../docs/error-keys.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for c := codes.Code(0); c <= codes.Unauthenticated; c++ {
+		if k := Default(c); !strings.Contains(string(doc), "- `"+k+"`\n") {
+			t.Errorf("Default(%v) = %q is not in docs/error-keys.md", c, k)
+		}
+	}
+}
+
+// TestEveryKeyIsTranslated reads the console's locale files and fails when a listed key has no text in one of the six languages, so a new key cannot ship
+// untranslated. web/admin/src/shared/lib/errors.test.ts checks the same from the other side (and that no stale text stays).
+func TestEveryKeyIsTranslated(t *testing.T) {
+	doc, err := os.ReadFile("../../docs/error-keys.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var keys []string
+	for _, m := range regexp.MustCompile("(?m)^- `([^`]+)`$").FindAllStringSubmatch(string(doc), -1) {
+		keys = append(keys, m[1])
+	}
+	if len(keys) < 20 {
+		t.Fatalf("found only %d keys in docs/error-keys.md", len(keys))
+	}
+	for _, lang := range []string{"en", "tr", "de", "fr", "es", "ar"} {
+		raw, err := os.ReadFile(filepath.Join("../../web/admin/src/locales", lang+".json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var file struct {
+			Errors map[string]any `json:"errors"`
+		}
+		if err := json.Unmarshal(raw, &file); err != nil {
+			t.Fatal(err)
+		}
+		for _, k := range keys {
+			var node any = file.Errors
+			for _, part := range strings.Split(k, ".") {
+				m, ok := node.(map[string]any)
+				if !ok {
+					node = nil
+					break
+				}
+				node = m[part]
+			}
+			if s, ok := node.(string); !ok || s == "" {
+				t.Errorf("locale %s has no translation for %s (add it under \"errors\" in web/admin/src/locales/%s.json)", lang, k, lang)
+			}
+		}
 	}
 }

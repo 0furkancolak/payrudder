@@ -1202,7 +1202,8 @@
         "fully_credited": "Esta factura ya se ha abonado por completo.",
         "not_paid": "Solo se puede abonar una factura pagada.",
         "nothing_to_refund": "No hay nada que reembolsar a la tarjeta por esta nota de abono.",
-        "refund_not_failed": "Solo se puede reintentar una nota de abono cuyo reembolso ha fallado."
+        "refund_not_failed": "Solo se puede reintentar una nota de abono cuyo reembolso ha fallado.",
+        "bad_id": "El identificador de la nota de crédito no es válido."
       },
       "dunning": {
         "bad_delay": "Cada retraso de reintento debe estar entre 1 y 720 horas.",
@@ -1210,7 +1211,8 @@
       },
       "invoice": {
         "not_found": "No se encontró la factura.",
-        "pdf_not_ready": "El PDF de la factura aún no se ha generado. Inténtelo de nuevo en un momento."
+        "pdf_not_ready": "El PDF de la factura aún no se ha generado. Inténtelo de nuevo en un momento.",
+        "bad_id": "El identificador de la factura no es válido."
       },
       "invoice_link": {
         "bad_expiry": "El enlace debe caducar entre 1 y 365 días.",
@@ -1284,6 +1286,16 @@
         "range_too_long": "El periodo es demasiado largo: cinco años como máximo y una serie diaria de hasta 366 días.",
         "reason_required": "Indique un motivo de hasta 200 caracteres para anular un gasto.",
         "unknown_currency": "La moneda no es compatible."
+      },
+      "einvoice": {
+        "bad_id": "El identificador de la factura electrónica o de la cuenta no es válido."
+      },
+      "tenant": {
+        "bad_id": "El identificador de la cuenta no es válido."
+      },
+      "rerating": {
+        "bad_job_id": "El identificador del trabajo de retarificación no es válido.",
+        "bad_plan_version_id": "El identificador de la versión del plan no es válido."
       }
     },
     "coupon": {
@@ -1310,7 +1322,8 @@
       },
       "subscription": {
         "coupon_blocks_credit": "Esta suscripción tiene un cupón. Abone la parte no utilizada con una nota de abono sobre la factura de la cuota.",
-        "provider_currency": "Este proveedor de pagos no puede cobrar en esta moneda. Elija otro proveedor u otra moneda."
+        "provider_currency": "Este proveedor de pagos no puede cobrar en esta moneda. Elija otro proveedor u otra moneda.",
+        "period_overlap": "Este cliente ya tiene una suscripción que se solapa con ese período."
       },
       "webhook": {
         "not_configured": "Los webhooks no están configurados en este despliegue (falta la clave de secretos).",
@@ -1318,6 +1331,18 @@
       },
       "customer": {
         "tax_invalid": "El identificador fiscal o la oficina fiscal del cliente no es válido."
+      },
+      "common": {
+        "not_found": "No se encontró.",
+        "already_exists": "Ya existe.",
+        "broken_reference": "Esto hace referencia a algo que no existe.",
+        "forbidden": "No tienes permiso para hacer esto."
+      },
+      "tenant": {
+        "settings_immutable": "La moneda, la zona horaria y el entorno de una cuenta no se pueden cambiar."
+      },
+      "request": {
+        "invalid": "{field} no es válido: {detail}"
       }
     },
     "common": {
@@ -1443,6 +1468,53 @@
       "dashboard": {
         "bad_period": "Ese periodo no es válido. Elija 7, 30 o 90 días, este año, o dos días con el primero no posterior al último.",
         "range_too_long": "Un periodo dura como máximo dos años."
+      },
+      "request": {
+        "invalid": "{field} no es válido: {detail}",
+        "too_large": "La solicitud es demasiado grande."
+      }
+    },
+    "aggregator": {
+      "customer": {
+        "bad_id": "El identificador del cliente no es válido."
+      },
+      "period": {
+        "bad_id": "El período debe tener el formato 2026-11.",
+        "cannot_compute": "No se pueden calcular los ajustes de este período. Revisa el período y la zona horaria de la cuenta."
+      },
+      "usage": {
+        "bad_batch_size": "Pide entre 1 y el máximo de claves de uso a la vez."
+      }
+    },
+    "analytics": {
+      "customer": {
+        "bad_id": "El identificador del cliente no es válido."
+      },
+      "tenant": {
+        "bad_id": "El identificador de la cuenta no es válido."
+      },
+      "granularity": {
+        "unknown": "Esta granularidad no es compatible. Usa hora o día."
+      },
+      "query": {
+        "exact_too_long": "Las consultas exactas cubren como máximo un día. Usa la serie estimada para rangos más largos.",
+        "invalid": "Esta consulta no es válida. Revisa el medidor, el período y los filtros."
+      },
+      "range": {
+        "daily_too_long": "Una serie diaria cubre como máximo 400 días.",
+        "hourly_too_long": "Una serie por horas cubre como máximo 31 días.",
+        "required": "Se requieren el inicio y el fin del rango."
+      }
+    },
+    "limits": {
+      "customer": {
+        "bad_id": "El identificador del cliente no es válido."
+      },
+      "meter": {
+        "code_required": "Se requiere el código del medidor."
+      },
+      "period": {
+        "bad_id": "El período debe tener el formato 2026-11."
       }
     }
   },
