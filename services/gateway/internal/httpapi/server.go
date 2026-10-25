@@ -63,6 +63,8 @@ type Deps struct {
 	Admin         plansv1.AdminServiceClient
 	Identity      plansv1.IdentityServiceClient
 	Webhooks      plansv1.WebhookServiceClient
+	Affiliates    plansv1.AffiliateServiceClient
+	AffiliatePub  plansv1.AffiliatePublicServiceClient
 	Ingest        ingestv1.IngestServiceClient
 	Usage         aggregatorv1.UsageQueryServiceClient
 	Replay        aggregatorv1.ReplayServiceClient

@@ -2,6 +2,19 @@
 
 Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in `error.key` of every API error; translate keys, not messages.
 
+- `affiliate.bad_page_token`
+- `affiliate.bad_source`
+- `affiliate.bad_status`
+- `affiliate.code_required`
+- `affiliate.code_taken`
+- `affiliate.customer_not_found`
+- `affiliate.customer_required`
+- `affiliate.email_taken`
+- `affiliate.not_found`
+- `affiliate.program.coupon_inactive`
+- `affiliate.program.coupon_not_found`
+- `affiliate.program.not_set`
+- `affiliate.promotion_code_not_found`
 - `aggregator.customer.bad_id`
 - `aggregator.meter.not_found`
 - `aggregator.period.bad_id`

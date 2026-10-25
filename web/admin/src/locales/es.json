@@ -1966,6 +1966,23 @@
         "size_required": "Se requiere el tamaño del archivo para las subidas directas.",
         "unsupported_content_type": "Este tipo de archivo no es compatible."
       }
+    },
+    "affiliate": {
+      "bad_page_token": "Este enlace de página no es válido. Vuelva a cargar la lista.",
+      "bad_source": "El origen debe ser link, code o api.",
+      "bad_status": "El estado debe ser pending, active o suspended.",
+      "code_required": "Se necesita un código de afiliado.",
+      "code_taken": "Este código ya está en uso. Los códigos de afiliado son únicos en toda la plataforma: elija otro.",
+      "customer_not_found": "No existe ese cliente.",
+      "customer_required": "Indique el cliente al que atribuir la referencia.",
+      "email_taken": "Ya existe un afiliado con esta dirección de correo.",
+      "not_found": "No existe ese afiliado.",
+      "program": {
+        "coupon_inactive": "El cupón para clientes referidos no está activo.",
+        "coupon_not_found": "El cupón para clientes referidos no existe.",
+        "not_set": "Este entorno aún no tiene un programa de afiliados."
+      },
+      "promotion_code_not_found": "No existe ese código promocional."
     }
   },
   "product": {

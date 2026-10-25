@@ -42,6 +42,8 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("SubscriptionChanges", testSubscriptionChanges)
 	t.Run("Coupons", testCoupons)
 	t.Run("Promotions", testPromotions)
+	t.Run("Affiliates", testAffiliates)
+	t.Run("AffiliateRole", testAffiliateRole)
 	t.Run("CancelCredit", testCancelCredit)
 	t.Run("ProviderMigrationKeepsTheFeeTiming", testProviderMigrationKeepsTheFeeTiming)
 	t.Run("PlanChangeWithACouponIsPricedAfterTheCoupon", testPlanChangeWithACouponIsPricedAfterTheCoupon)
@@ -118,6 +120,7 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	seedAffiliates(t, e, tenantID, suffix)
 }
 
 func testRLSIsolationEveryTable(t *testing.T) {

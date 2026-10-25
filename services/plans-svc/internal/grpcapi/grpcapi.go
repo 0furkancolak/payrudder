@@ -11,6 +11,9 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	affiliatesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates"
+	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
+	affiliatesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/query"
 	changesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes"
 	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
 	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
@@ -101,12 +104,12 @@ func New(appPool *pgxpool.Pool, _ *slog.Logger) *Server {
 
 	subscriptionsQ := subscriptionsqry.New(db, now)
 	return &Server{
-		customersHandler:     customersapi.New(customerscmd.New(db), customersqry.New(db)),
+		customersHandler:     customersapi.New(customerscmd.New(db).WithReferral(affiliatescmd.Attribute, now), customersqry.New(db)),
 		metersHandler:        metersapi.New(meterscmd.New(db), metersqry.New(db)),
 		plansHandler:         plansapi.New(planscmd.New(db), plansqry.New(db)),
 		subscriptionsHandler: subscriptionsapi.New(subscriptionscmd.New(db, now), subscriptionsQ),
 		changesHandler:       changesapi.New(changescmd.New(db, now), changesqry.New(db, now)),
-		couponsHandler:       couponsapi.New(couponscmd.New(db, now), couponsqry.New(db)),
+		couponsHandler:       couponsapi.New(couponscmd.New(db, now).WithRedeemHook(affiliatescmd.AttributeByPromotionCode), couponsqry.New(db)),
 		feesHandler:          feesapi.New(feescmd.New(db), feesqry.New(db, now)),
 		migrationsHandler:    provmigapi.New(provmigcmd.New(db, now), provmigqry.New(db)),
 		routingHandler:       routingapi.New(routingcmd.New(db), routingqry.New(db)),
@@ -122,4 +125,14 @@ func New(appPool *pgxpool.Pool, _ *slog.Logger) *Server {
 // allowPrivate lets endpoints be http:// and private addresses (development and tests only).
 func NewWebhooks(s *Server, box *secretbox.Box, allowPrivate bool) *webhookendpointsapi.Handler {
 	return webhookendpointsapi.New(webhookendpointscmd.New(s.db, s.now, box, allowPrivate), webhookendpointsqry.New(s.db))
+}
+
+// NewAffiliates returns the affiliate program service on the same database as s.
+func NewAffiliates(s *Server) *affiliatesapi.Handler {
+	return affiliatesapi.New(affiliatescmd.New(s.db, s.now), affiliatesqry.New(s.db))
+}
+
+// NewAffiliatesPublic returns the public link service on the system pool: a visitor has no tenant.
+func NewAffiliatesPublic(systemPool *pgxpool.Pool, log *slog.Logger) *affiliatesapi.PublicHandler {
+	return affiliatesapi.NewPublic(affiliatescmd.NewPublic(systemPool, time.Now, log))
 }
