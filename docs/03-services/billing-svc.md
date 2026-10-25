@@ -254,7 +254,7 @@ Customers within a run are rated in pages of 500 streamed from aggregator. **Tar
 
 ## As built (Phase 05)
 
-Code: `services/billing-svc` (`internal/{rating,saga,runs,replies,api}`), commands in `proto/payrudder/commands/v1`, the RabbitMQ
+Code: `services/billing-svc` (modules under `internal/`, see [ADR 0020](../adr/0020-modules-cqrs-errors-config.md): the saga is `sagas/{model,command}`, billing runs `billingruns/{model,query,command}`, rating `rating` and `rating/inputs`, wiring `api`), commands in `proto/payrudder/commands/v1`, the RabbitMQ
 topology in `pkg/rabbitx` (exported to `deploy/rabbitmq/definitions.json`, checked by a test). Configuration:
 `PAYRUDDER_SCHEDULER_INTERVAL` (1m), `PAYRUDDER_SWEEP_INTERVAL` (30s), `PAYRUDDER_STEP_TIMEOUT` (2m), `PAYRUDDER_WATERMARK_DELAY` (30s), `PAYRUDDER_TRANSFER_POLL` (6h, phase 29).
 Gateway routes: `GET /v1/invoices[/{id}]`, `POST /v1/sandbox/close-period`, and the operator routes under `/admin/v1`

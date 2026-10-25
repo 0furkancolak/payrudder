@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
-	_ "time/tzdata" // tenant time zones must load in distroless images
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

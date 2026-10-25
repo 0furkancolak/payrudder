@@ -4,8 +4,6 @@
 package api
 
 import (
-	_ "time/tzdata" // tenant time zones must load in distroless images
-
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"

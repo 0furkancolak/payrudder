@@ -47,7 +47,7 @@ func (b *Backend) ExpireLinks(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		VoidUnpaid(ctx, b.cfg.Pool, b.cfg.Engine, d.TenantID, voids) // a payment in flight keeps the invoice
+		voidUnpaid(ctx, b.cfg.Pool, b.cfg.Engine, d.TenantID, voids) // a payment in flight keeps the invoice
 	}
 	return nil
 }

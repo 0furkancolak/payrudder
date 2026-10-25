@@ -433,15 +433,15 @@ func checkInvoice(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, in C
 	case in.RequireOpen && (inv.Status == invmodel.StatusPaid || inv.Status == invmodel.StatusVoid):
 		return "", errkey.New(codes.FailedPrecondition, "billing.payment_link.invoice_not_payable", "a paid or void invoice needs no payment link")
 	}
-	snap, err := ParseSnapshot(inv.Snapshot)
+	snap, err := parseSnapshot(inv.Snapshot)
 	if err != nil {
 		return "", err
 	}
 	return snap.CustomerExternalID, nil
 }
 
-// ParseSnapshot reads the frozen snapshot of an invoice.
-func ParseSnapshot(b []byte) (sagamodel.Snapshot, error) {
+// parseSnapshot reads the frozen snapshot of an invoice.
+func parseSnapshot(b []byte) (sagamodel.Snapshot, error) {
 	var s sagamodel.Snapshot
 	err := json.Unmarshal(b, &s)
 	return s, err
@@ -505,13 +505,13 @@ func RevokeLink(ctx context.Context, d Deps, tenantID, linkID uuid.UUID) (sqlc.G
 	if err != nil {
 		return row, apierr.Wrap(ctx, err)
 	}
-	VoidUnpaid(ctx, d.System, d.Engine, tenantID, voids)
+	voidUnpaid(ctx, d.System, d.Engine, tenantID, voids)
 	return row, nil
 }
 
-// VoidUnpaid voids invoices through their sagas. An invoice whose saga cannot be voided right now (a payment is in flight) is left as it is: the customer who
+// voidUnpaid voids invoices through their sagas. An invoice whose saga cannot be voided right now (a payment is in flight) is left as it is: the customer who
 // is paying it finishes, and the tenant sees it open.
-func VoidUnpaid(ctx context.Context, system *pgxpool.Pool, eng *sagacommand.Engine, tenantID uuid.UUID, ids []uuid.UUID) {
+func voidUnpaid(ctx context.Context, system *pgxpool.Pool, eng *sagacommand.Engine, tenantID uuid.UUID, ids []uuid.UUID) {
 	for _, id := range ids {
 		_, err := sagacommand.Void(ctx, system, eng, tenantID, id)
 		// Best effort: FailedPrecondition means the saga is busy, NotFound that the invoice has no saga yet. Anything else is worth a line in the log.

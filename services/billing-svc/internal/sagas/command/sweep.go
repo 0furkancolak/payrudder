@@ -226,6 +226,8 @@ func (e *Engine) reissue(ctx context.Context, tx pgx.Tx, s *saga, now time.Time)
 
 // Start creates the saga of a finalized invoice and issues its first command (the PDF render) in tx.
 func (e *Engine) Start(ctx context.Context, tx pgx.Tx, tenantID, invoiceID uuid.UUID) (uuid.UUID, error) {
+	// The saga id is derived in the command namespace (with a "saga|" prefix, so it cannot meet a command id). A namespace of its own would change the id of every
+	// saga that exists, so it stays.
 	sagaID := uuid.NewSHA1(commandNS, fmt.Appendf(nil, "saga|%s", invoiceID))
 	n, err := sqlc.New(tx).InsertSaga(ctx, sqlc.InsertSagaParams{TenantID: tenantID, ID: sagaID, InvoiceID: invoiceID})
 	if err != nil {
