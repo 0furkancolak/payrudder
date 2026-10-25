@@ -20,9 +20,10 @@ const { t } = useI18n();
 
 const customer = ref("");
 const quantity = ref("1");
+const promotion = ref("");
 // One key per attempt: a retry of the same click finds the link made first, but a different customer, quantity or pack is a different request.
 const attempt = useAttemptKey();
-watch([customer, quantity, () => props.pack.id], attempt.renew);
+watch([customer, quantity, promotion, () => props.pack.id], attempt.renew);
 const createLink = useCreatePurchaseLink(() => props.tenantId);
 watch(
   () => props.pack.id,
@@ -34,7 +35,7 @@ const shownUrl = computed(() => absoluteUrl(created.value?.url, window.location.
 
 function submit() {
   if (!customer.value || !quantityValid.value) return;
-  createLink.mutate({ packId: props.pack.id, customer: customer.value, quantity: Number(quantity.value), key: attempt.key.value }, { onSuccess: attempt.renew });
+  createLink.mutate({ packId: props.pack.id, customer: customer.value, quantity: Number(quantity.value), key: attempt.key.value, promotion: promotion.value }, { onSuccess: attempt.renew });
 }
 </script>
 
@@ -45,6 +46,7 @@ function submit() {
     <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="form" :aria-label="t('billing.credits.purchase.formLabel')" @submit.prevent="submit">
       <CustomerSelect v-model="customer" :tenant-id="tenantId" named required :label="t('billing.credits.purchase.customer')" :placeholder="t('billing.credits.purchase.pickCustomer')" />
       <Input v-model="quantity" inputmode="numeric" :aria-label="t('billing.credits.purchase.quantity')" :placeholder="t('billing.credits.purchase.quantity')" />
+      <Input v-model="promotion" maxlength="40" :aria-label="t('billing.credits.purchase.promotionCode')" :placeholder="t('billing.credits.purchase.promotionCode')" :title="t('billing.paymentLinks.promotionHint')" />
       <Button type="submit" :disabled="createLink.isPending.value || !customer || !quantityValid">{{ t("billing.credits.purchase.create") }}</Button>
       <Button type="button" variant="outline" @click="emit('close')">{{ t("billing.credits.purchase.close") }}</Button>
     </form>

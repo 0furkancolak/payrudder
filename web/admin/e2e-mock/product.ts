@@ -304,6 +304,7 @@ export function billingGateway(gw: MockGateway): MockGateway {
     if (c.path === "/v1/plans") return { body: { plans: [{ id: "p1", code: "pro", name: "Pro", latest_version: 2 }] } };
     if (c.path === "/v1/plans/pro/versions/latest") return { body: { version: 2, base_fee_minor: "4000", fees: [{ currency: "EUR", interval: "SUBSCRIPTION_INTERVAL_YEAR", base_fee_minor: "40000" }], prices: [{ meter_code: "api_calls" }] } };
     if (c.path === "/v1/coupons") return { body: { coupons: [{ code: "SAVE10", percent_off_bps: 1000, active: true, redeemed: 3, duration: "COUPON_DURATION_ONCE" }] } };
+    if (c.path === "/v1/coupon-redemptions") return { body: { redemptions: [], total: 0 } };
     if (c.path === "/v1/tax-rates") return { body: { rates: [{ country: "DE", name: "VAT", rate_bps: 1900 }] } };
     if (c.path === "/v1/dunning-settings") return { body: { retry_hours: [24, 72, 168], defaults_in_use: true } };
     if (c.path === "/v1/reports/revenue") return { body: { rows: [{ period: "2026-09", currency: "USD", billed_minor: "100000", collected_minor: "90000", outstanding_minor: "10000", refunded_minor: "0" }] } };

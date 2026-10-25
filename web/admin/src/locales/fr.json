@@ -676,6 +676,96 @@
         "saved": "Tentatives enregistrées.",
         "none": "Aucune nouvelle tentative : un prélèvement refusé est abandonné aussitôt.",
         "bad": "Chaque délai est un entier de 1 à 720."
+      },
+      "promotions": {
+        "title": "Promotions",
+        "hint": "Un coupon dit ce qui est déduit. Le client saisit un code promotionnel : plusieurs codes peuvent mener à un même coupon, chacun avec sa limite, son expiration et ses règles.",
+        "kinds": {
+          "percent": "Pourcentage de remise",
+          "amount": "Montant de remise",
+          "bonus": "Crédits bonus"
+        },
+        "valueBonus": "Crédits en plus, % (10 ou 12,5)",
+        "bonusValue": "{pct} de crédits en plus",
+        "bonusNote": "Les crédits bonus sont ajoutés au même lot que ceux du pack et expirent avec eux. Achats de crédits uniquement.",
+        "badBonus": "Pas un pourcentage de crédits en plus : de 0,01 à 1000 avec au plus deux décimales.",
+        "appliesTo": "S'applique à",
+        "targets": {
+          "subscription": "Abonnement",
+          "credit_purchase": "Achat de crédits",
+          "payment": "Lien de paiement ou facture",
+          "legacy": "Avant le registre"
+        },
+        "noTarget": "Choisissez où le coupon s'applique.",
+        "withoutDefaultCode": "Ne pas créer de promotion au nom du coupon",
+        "codeCount": "Codes",
+        "manageCodes": "Codes",
+        "hideCodes": "Fermer",
+        "codes": {
+          "title": "Codes promotionnels de {coupon}",
+          "hint": "Nommez les codes ou générez-en au hasard. Chaque code reçoit la limite, l'expiration et les règles ci-dessous.",
+          "formLabel": "nouveaux codes promotionnels",
+          "mode": "Comment",
+          "modeNamed": "Je les nomme",
+          "modeRandom": "Générer des codes aléatoires",
+          "names": "Codes, un par ligne",
+          "namesPlaceholder": "ETE26",
+          "count": "Combien (1 à 1000)",
+          "prefix": "Préfixe (facultatif)",
+          "maxPerCode": "Utilisations par code (vide : illimité)",
+          "expires": "Expire le (facultatif)",
+          "minAmount": "Montant minimum (facultatif)",
+          "minCurrency": "Devise du minimum",
+          "allowedCurrencies": "Seulement dans ces devises (USD, EUR)",
+          "allowedPlans": "Seulement sur ces plans (codes de plan)",
+          "allowedPacks": "Seulement sur ces packs de crédits (identifiants)",
+          "firstPurchase": "Premier achat uniquement",
+          "onePerCustomer": "Une fois par client",
+          "restore": "Rendre l'utilisation si l'achat est annulé ou remboursé",
+          "create": "Créer les codes",
+          "created": "{n} codes créés",
+          "createdList": "Les codes créés",
+          "copyAll": "Tout copier",
+          "copied": "Copié",
+          "download": "Télécharger le CSV",
+          "search": "Rechercher des codes",
+          "stateAll": "Tout état",
+          "total": "{n} codes",
+          "used": "Utilisé",
+          "expiresCol": "Expire",
+          "rules": "Règles",
+          "none": "Aucun code pour le moment.",
+          "rule": {
+            "firstPurchase": "Premier achat",
+            "onePerCustomer": "Une fois par client",
+            "min": "À partir de {amount}",
+            "plans": "Plans : {list}",
+            "packs": "{n} packs",
+            "restore": "Rend l'utilisation"
+          },
+          "errors": {
+            "names": "Indiquez au moins un code et au plus 1000 : de 2 à 40 lettres, chiffres, - ou _.",
+            "count": "Le nombre doit aller de 1 à 1000, et le préfixe compter au plus 20 lettres, chiffres, - ou _.",
+            "max": "Les utilisations par code doivent être un entier à partir de 1.",
+            "expires": "L'expiration doit être un jour à venir.",
+            "minAmount": "Pas un montant dans cette devise : des chiffres seulement, avec au plus autant de décimales que la devise.",
+            "currencies": "Les devises sont des codes de trois lettres comme USD, séparés par des virgules."
+          }
+        },
+        "redemptions": {
+          "title": "Utilisations",
+          "hint": "Chaque utilisation d'un coupon. Une annulation ou un remboursement total l'annule ; le compteur ne revient que pour les codes qui le prévoient.",
+          "coupon": "Coupon",
+          "allCoupons": "Tous les coupons",
+          "total": "{n} utilisations",
+          "customer": "Client",
+          "usedOn": "Utilisé sur",
+          "discount": "Remise",
+          "bonus": "Crédits bonus",
+          "reversed": "Annulée",
+          "counted": "Comptée",
+          "none": "Rien n'a encore été utilisé."
+        }
       }
     },
     "creditNotes": {
@@ -808,7 +898,9 @@
           "refund": "Remboursement"
         }
       },
-      "for": "Pour"
+      "for": "Pour",
+      "promotionCode": "Code promotionnel (facultatif)",
+      "promotionHint": "Le payeur obtient la remise de ce code sans le saisir et peut en saisir un autre. Il est vérifié dès maintenant pour ce montant."
     },
     "mail": {
       "title": "E-mail",
@@ -905,7 +997,8 @@
         "shownOnce": "Copiez le lien maintenant : il n'est affiché qu'une fois et ne peut plus être relu.",
         "url": "Lien d'achat",
         "copy": "Copier",
-        "close": "Fermer"
+        "close": "Fermer",
+        "promotionCode": "Code promotionnel (facultatif)"
       },
       "settings": {
         "title": "Alerte de solde bas",
@@ -949,7 +1042,10 @@
         "feesNotRecorded": "Non enregistrés",
         "feesHint": "Payrudder n'enregistre pas la commission du prestataire de paiement. Ajoutez-la comme dépense dans la catégorie Frais de paiement.",
         "expenses": "Dépenses",
-        "profit": "Bénéfice"
+        "profit": "Bénéfice",
+        "discounts": "Remises accordées",
+        "discountsHint": "Ce que les coupons ont déduit des factures payées. Les revenus sont déjà après ces remises.",
+        "sales": "Ventes avant remises"
       },
       "donut": {
         "title": "Dépenses par catégorie",
@@ -1008,6 +1104,16 @@
         "hint": "Une dépense annulée n'est pas supprimée. Elle sort de tous les totaux et garde votre motif.",
         "reason": "Motif",
         "submit": "Annuler la dépense"
+      },
+      "coupons": {
+        "title": "Coupons",
+        "hint": "Les factures payées sur la période qui ont utilisé un coupon : leur montant avant, ce que le coupon a déduit, et le net.",
+        "export": "Télécharger le rapport des coupons",
+        "coupon": "Coupon",
+        "invoices": "Factures",
+        "gross": "Brut",
+        "discount": "Remise",
+        "net": "Net"
       }
     }
   },

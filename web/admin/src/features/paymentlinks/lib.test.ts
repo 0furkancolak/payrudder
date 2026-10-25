@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { absoluteUrl, statusVariant, toRequest, type LinkForm } from "./lib";
 
-const base: LinkForm = { kind: "adhoc", invoiceId: "", amount: "12.50", currency: "USD", description: "Setup", customer: "", singleUse: true, days: "30", key: "k1" };
+const base: LinkForm = { kind: "adhoc", invoiceId: "", amount: "12.50", currency: "USD", description: "Setup", customer: "", promotion: "", singleUse: true, days: "30", key: "k1" };
 
 describe("toRequest", () => {
   it("turns a typed amount into minor units", () => {
@@ -10,6 +10,11 @@ describe("toRequest", () => {
   it("names the customer when given", () => {
     const r = toRequest({ ...base, customer: " cus_1 " });
     expect("body" in r && r.body.customer_external_id).toBe("cus_1");
+  });
+  it("carries the promotion code of an ad hoc link, and none when it is empty", () => {
+    const r = toRequest({ ...base, promotion: " SPRING10 " });
+    expect("body" in r && r.body.promotion_code).toBe("SPRING10");
+    expect("body" in toRequest(base) && "promotion_code" in (toRequest(base) as { body: object }).body).toBe(false);
   });
   it("refuses a zero or malformed amount, a missing description and bad days", () => {
     expect(toRequest({ ...base, amount: "0" })).toEqual({ error: "amount" });

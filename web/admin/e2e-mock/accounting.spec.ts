@@ -21,6 +21,12 @@ const summary = {
       provider_fees_recorded: true,
       profit_minor: "4300",
       paid_invoices: "3",
+      discounts_minor: "1500",
+      sales_minor: "11500",
+      coupons: [
+        { coupon_code: "SPRING", invoices: "2", gross_minor: "9000", discount_minor: "1000", net_minor: "8000" },
+        { coupon_code: "WELCOME", invoices: "1", gross_minor: "2500", discount_minor: "500", net_minor: "2000" },
+      ],
       expense_by_category: [
         { category: "infrastructure", amount_minor: "4000" },
         { category: "software", amount_minor: "1000" },
@@ -79,6 +85,11 @@ test.describe("accounting", () => {
     await expect(lira.locator('[data-stat="tax"]')).toContainText("TRY 20.00");
     await expect(lira.locator('[data-stat="refunds"]')).toContainText("TRY 3.00");
     await expect(lira.locator('[data-stat="net"]')).toContainText("TRY 97.00");
+    // A coupon is contra-revenue: shown as what was given, with the sales before it; a currency without any shows neither.
+    await expect(lira.locator('[data-stat="discounts"]')).toContainText("TRY 15.00");
+    await expect(lira.locator('[data-stat="sales"]')).toContainText("TRY 115.00");
+    await expect(lira.locator('[data-section="coupons"] tbody tr').first()).toContainText("SPRING");
+    await expect(lira.locator('[data-section="coupons"] tbody tr').first()).toContainText("TRY 80.00");
     await expect(lira.locator('[data-stat="fees"]')).toContainText("TRY 4.00");
     await expect(lira.locator('[data-stat="expenses"]')).toContainText("TRY 54.00");
     await expect(lira.locator('[data-stat="profit"]')).toContainText("TRY 43.00");
@@ -88,6 +99,8 @@ test.describe("accounting", () => {
 
     const dollars = page.getByRole("region", { name: "USD" });
     await expect(dollars.locator('[data-stat="income"]')).toContainText("$5.00");
+    await expect(dollars.locator('[data-stat="discounts"]')).toHaveCount(0);
+    await expect(dollars.locator('[data-section="coupons"]')).toHaveCount(0);
     await expect(dollars.locator('[data-stat="fees"]')).toContainText("Not recorded");
     await expect(dollars.locator('[data-stat="profit"]')).toContainText("-$4.00");
     await expect(dollars.locator('[data-stat="profit"] dd')).toHaveClass(/text-destructive/);

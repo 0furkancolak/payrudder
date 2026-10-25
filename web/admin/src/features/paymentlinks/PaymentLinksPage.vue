@@ -33,6 +33,7 @@ const form = ref<LinkForm>({
   currency: FALLBACK_CURRENCY,
   description: "",
   customer: query.get("customer") ?? "",
+  promotion: "",
   singleUse: true,
   days: "30",
   key: newKey(),
@@ -71,7 +72,7 @@ function submit() {
     formError.value = t(`billing.paymentLinks.errors.${r.error}`);
     return;
   }
-  act.create.mutate(r.body, { onSuccess: () => (form.value = { ...form.value, key: newKey(), amount: "", description: "" }) });
+  act.create.mutate(r.body, { onSuccess: () => (form.value = { ...form.value, key: newKey(), amount: "", description: "", promotion: "" }) });
 }
 function revoke(id: string | undefined) {
   if (id && window.confirm(t("billing.paymentLinks.confirmRevoke"))) act.revoke.mutate(id);
@@ -118,6 +119,7 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
         <CurrencySelect v-model="form.currency" :aria-label="t('billing.paymentLinks.currency')" />
         <Input v-model="form.description" maxlength="200" class="sm:col-span-2" :aria-label="t('billing.paymentLinks.description')" :placeholder="t('billing.paymentLinks.description')" />
         <Input v-model="form.customer" :aria-label="t('billing.paymentLinks.customer')" :placeholder="t('billing.paymentLinks.customerOptional')" />
+        <Input v-model="form.promotion" maxlength="40" :aria-label="t('billing.paymentLinks.promotionCode')" :placeholder="t('billing.paymentLinks.promotionCode')" :title="t('billing.paymentLinks.promotionHint')" />
       </template>
       <Input v-model="form.days" inputmode="numeric" :aria-label="t('billing.paymentLinks.days')" :placeholder="t('billing.paymentLinks.days')" />
       <label class="flex items-center gap-2 text-sm"><input v-model="form.singleUse" type="checkbox" class="size-4" />{{ t("billing.paymentLinks.singleUse") }}</label>
@@ -174,6 +176,7 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
           <TableCell>
             <span :class="l.kind === 'invoice' ? 'mono text-xs break-all' : 'tabular-nums'">{{ what(l) }}</span>
             <span v-if="l.description" class="text-muted-foreground block text-xs">{{ l.description }}</span>
+            <span v-if="l.promotion_code" class="text-muted-foreground mono block text-xs">{{ t("billing.paymentLinks.promotionCode") }}: {{ l.promotion_code }}</span>
           </TableCell>
           <TableCell>{{ l.customer_external_id || "—" }}</TableCell>
           <TableCell class="text-xs tabular-nums">{{ t("billing.paymentLinks.usesValue", { used: l.use_count ?? 0, paid: l.paid_count ?? 0 }) }}</TableCell>
