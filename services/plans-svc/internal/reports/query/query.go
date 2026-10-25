@@ -3,8 +3,6 @@ package query
 
 import (
 	"context"
-	"fmt"
-	"regexp"
 	"slices"
 	"time"
 
@@ -13,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
@@ -20,8 +19,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
-
-var monthRe = regexp.MustCompile(`^([0-9]{4})-(0[1-9]|1[0-2])$`)
 
 // Queries builds reports.
 type Queries struct {
@@ -38,12 +35,10 @@ func monthBounds(month string, loc *time.Location, now time.Time) (label string,
 		y, m, _ := now.In(loc).Date()
 		start = time.Date(y, m, 1, 0, 0, 0, 0, loc)
 	} else {
-		m := monthRe.FindStringSubmatch(month)
-		if m == nil {
+		y, mo, perr := period.Parse(month)
+		if perr != nil {
 			return "", start, end, domain.Invalid("month", "must look like 2026-10")
 		}
-		var y, mo int
-		_, _ = fmt.Sscanf(m[1]+" "+m[2], "%d %d", &y, &mo)
 		start = time.Date(y, time.Month(mo), 1, 0, 0, 0, 0, loc)
 	}
 	end = start.AddDate(0, 1, 0)

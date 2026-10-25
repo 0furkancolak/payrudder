@@ -3,7 +3,6 @@ package query
 
 import (
 	"context"
-	"regexp"
 	"slices"
 
 	"github.com/google/uuid"
@@ -13,12 +12,11 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
-
-var periodRe = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
 
 // revenueSplits are what a revenue report can be split by. Currency is always split.
 var revenueSplits = []string{"period", "provider", "country"}
@@ -32,8 +30,8 @@ type RevenueParams struct {
 
 // Revenue returns the revenue rows of a tenant.
 func Revenue(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p RevenueParams) ([]sqlc.RevenueReportRow, error) {
-	for _, period := range []string{p.FromPeriod, p.ToPeriod} {
-		if period != "" && !periodRe.MatchString(period) {
+	for _, id := range []string{p.FromPeriod, p.ToPeriod} {
+		if id != "" && !period.Valid(id) {
 			return nil, errkey.New(codes.InvalidArgument, "billing.report.bad_period", "from_period and to_period must look like 2026-10")
 		}
 	}

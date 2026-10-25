@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"sort"
 	"sync"
 	"time"
@@ -35,6 +34,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
@@ -57,8 +57,6 @@ var (
 	ErrNotFound = errors.New("replay: no such job")
 	ErrState    = errors.New("replay: the job is not in a state that allows this")
 )
-
-var periodRe = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
 
 // Config wires a Manager.
 type Config struct {
@@ -226,7 +224,7 @@ func (m *Manager) Start(ctx context.Context, tenantID uuid.UUID, from, to, reaso
 
 // validateStart checks the request and returns the first instant of the first period.
 func validateStart(from, to, reason string) (time.Time, error) {
-	if !periodRe.MatchString(from) || !periodRe.MatchString(to) || from > to {
+	if !period.Valid(from) || !period.Valid(to) || from > to {
 		return time.Time{}, fmt.Errorf("%w: periods must look like 2026-10 and from <= to", ErrInvalid)
 	}
 	if reason == "" {

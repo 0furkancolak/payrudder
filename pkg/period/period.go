@@ -14,11 +14,35 @@ func PeriodOf(t time.Time, loc *time.Location) string {
 	return fmt.Sprintf("%04d-%02d", y, int(m))
 }
 
+// Valid reports whether id is exactly "YYYY-MM": four ASCII digits, a dash and a month 01 to 12. It is the one
+// definition of a well-formed period id; services must not keep their own pattern.
+func Valid(id string) bool {
+	if len(id) != 7 || id[4] != '-' {
+		return false
+	}
+	for i := 0; i < 7; i++ {
+		if i != 4 && (id[i] < '0' || id[i] > '9') {
+			return false
+		}
+	}
+	return id[5] == '0' && id[6] != '0' || id[5] == '1' && id[6] <= '2'
+}
+
+// Parse returns the year and month of a period id, or an error when !Valid(id).
+func Parse(id string) (year, month int, err error) {
+	if !Valid(id) {
+		return 0, 0, fmt.Errorf("period: malformed id %q", id)
+	}
+	year = int(id[0]-'0')*1000 + int(id[1]-'0')*100 + int(id[2]-'0')*10 + int(id[3]-'0')
+	month = int(id[5]-'0')*10 + int(id[6]-'0')
+	return year, month, nil
+}
+
 // Bounds returns [start, end) of the period id in loc.
 func Bounds(id string, loc *time.Location) (start, end time.Time, err error) {
-	var y, m int
-	if n, err := fmt.Sscanf(id, "%4d-%2d", &y, &m); err != nil || n != 2 || m < 1 || m > 12 || len(id) != 7 {
-		return time.Time{}, time.Time{}, fmt.Errorf("period: malformed id %q", id)
+	y, m, err := Parse(id)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
 	}
 	start = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, loc)
 	return start, start.AddDate(0, 1, 0), nil
