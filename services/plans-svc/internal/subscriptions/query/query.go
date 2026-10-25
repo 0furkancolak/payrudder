@@ -25,15 +25,6 @@ type Queries struct {
 // New returns the subscription queries.
 func New(db *store.DB, now func() time.Time) *Queries { return &Queries{db: db, now: now} }
 
-// ParseID reads a subscription id from a request.
-func ParseID(id string) (uuid.UUID, error) {
-	u, err := uuid.Parse(id)
-	if err != nil {
-		return uuid.Nil, domain.Invalid("subscription_id", "must be a UUID")
-	}
-	return u, nil
-}
-
 // Message maps a subscription row to its API message, with the state it has at now.
 func Message(r sqlc.GetSubscriptionRow, now time.Time) *plansv1.Subscription {
 	return convert.Subscription(convert.SubscriptionFields{

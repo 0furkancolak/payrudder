@@ -289,11 +289,11 @@ func (s *Service) openForUpload(ctx context.Context, q *sqlc.Queries, sessionID,
 
 // PresignParts implements assetsv1.AssetsServiceServer.
 func (s *Service) PresignParts(ctx context.Context, req *assetsv1.PresignPartsRequest) (*assetsv1.PresignPartsResponse, error) {
-	sid, err := parseID("session_id", req.GetSessionId())
+	sid, err := errkey.ParseUUID("assets.request.bad_id", "session_id", req.GetSessionId())
 	if err != nil {
 		return nil, err
 	}
-	aid, err := parseID("asset_id", req.GetAssetId())
+	aid, err := errkey.ParseUUID("assets.request.bad_id", "asset_id", req.GetAssetId())
 	if err != nil {
 		return nil, err
 	}
@@ -327,11 +327,11 @@ func (s *Service) PresignParts(ctx context.Context, req *assetsv1.PresignPartsRe
 
 // GetUploadFile implements assetsv1.AssetsServiceServer.
 func (s *Service) GetUploadFile(ctx context.Context, req *assetsv1.GetUploadFileRequest) (*assetsv1.GetUploadFileResponse, error) {
-	sid, err := parseID("session_id", req.GetSessionId())
+	sid, err := errkey.ParseUUID("assets.request.bad_id", "session_id", req.GetSessionId())
 	if err != nil {
 		return nil, err
 	}
-	aid, err := parseID("asset_id", req.GetAssetId())
+	aid, err := errkey.ParseUUID("assets.request.bad_id", "asset_id", req.GetAssetId())
 	if err != nil {
 		return nil, err
 	}

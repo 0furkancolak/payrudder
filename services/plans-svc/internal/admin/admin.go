@@ -126,7 +126,7 @@ func (s *Server) CreateApp(ctx context.Context, req *plansv1.CreateAppRequest) (
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	accountID, err := parseID("account_id", req.GetAccountId())
+	accountID, err := domain.ParseID("account_id", req.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (s *Server) ListApps(ctx context.Context, req *plansv1.ListAppsRequest) (*p
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	accountID, err := parseID("account_id", req.GetAccountId())
+	accountID, err := domain.ParseID("account_id", req.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -202,19 +202,11 @@ func (s *Server) ListApps(ctx context.Context, req *plansv1.ListAppsRequest) (*p
 	return resp, nil
 }
 
-func parseID(field, raw string) (uuid.UUID, error) {
-	id, err := uuid.Parse(raw)
-	if err != nil {
-		return uuid.Nil, domain.Invalid(field, "must be a UUID")
-	}
-	return id, nil
-}
-
 func (s *Server) GetTenant(ctx context.Context, req *plansv1.GetTenantRequest) (*plansv1.GetTenantResponse, error) {
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	id, err := parseID("tenant_id", req.GetTenantId())
+	id, err := domain.ParseID("tenant_id", req.GetTenantId())
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +254,7 @@ func (s *Server) UpdateTenantSettings(ctx context.Context, req *plansv1.UpdateTe
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	id, err := parseID("tenant_id", req.GetTenantId())
+	id, err := domain.ParseID("tenant_id", req.GetTenantId())
 	if err != nil {
 		return nil, err
 	}
@@ -287,9 +279,9 @@ func (s *Server) UpdateTenantSettings(ctx context.Context, req *plansv1.UpdateTe
 		if req.GetClearInvoiceLogo() {
 			return nil, domain.Invalid("clear_invoice_logo", "cannot be combined with invoice_logo_asset_id")
 		}
-		lid, err := uuid.Parse(logo)
+		lid, err := domain.ParseID("invoice_logo_asset_id", logo)
 		if err != nil {
-			return nil, domain.Invalid("invoice_logo_asset_id", "must be a UUID")
+			return nil, err
 		}
 		params.InvoiceLogoAssetID = &lid
 	}
@@ -333,7 +325,7 @@ func (s *Server) CreateApiKey(ctx context.Context, req *plansv1.CreateApiKeyRequ
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	id, err := parseID("tenant_id", req.GetTenantId())
+	id, err := domain.ParseID("tenant_id", req.GetTenantId())
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +381,7 @@ func (s *Server) RevokeApiKey(ctx context.Context, req *plansv1.RevokeApiKeyRequ
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	id, err := parseID("api_key_id", req.GetApiKeyId())
+	id, err := domain.ParseID("api_key_id", req.GetApiKeyId())
 	if err != nil {
 		return nil, err
 	}
@@ -434,9 +426,9 @@ func (s *Server) ExpireKey(ctx context.Context, id uuid.UUID, until time.Time) (
 
 // TouchApiKey records that a key was just used. A key that does not exist is not an error: it was revoked and deleted, or the call is late.
 func (s *Server) TouchApiKey(ctx context.Context, req *plansv1.TouchApiKeyRequest) (*plansv1.TouchApiKeyResponse, error) {
-	id, err := uuid.Parse(req.GetApiKeyId())
+	id, err := domain.ParseID("api_key_id", req.GetApiKeyId())
 	if err != nil {
-		return nil, domain.Invalid("api_key_id", "must be a UUID")
+		return nil, err
 	}
 	if err := s.q().TouchApiKey(ctx, id); err != nil {
 		return nil, convert.Err(err, "api key")
@@ -449,7 +441,7 @@ func (s *Server) SetTenantStatus(ctx context.Context, req *plansv1.SetTenantStat
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	id, err := parseID("tenant_id", req.GetTenantId())
+	id, err := domain.ParseID("tenant_id", req.GetTenantId())
 	if err != nil {
 		return nil, err
 	}

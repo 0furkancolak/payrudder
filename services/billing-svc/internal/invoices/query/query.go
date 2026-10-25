@@ -96,9 +96,9 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 	}
 	var customer *uuid.UUID
 	if p.CustomerID != "" {
-		id, err := uuid.Parse(p.CustomerID)
+		id, err := errkey.ParseUUID("billing.invoice.bad_customer_id", "customer_id", p.CustomerID)
 		if err != nil {
-			return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_customer_id", "customer_id must be a UUID")
+			return nil, err
 		}
 		customer = &id
 	}

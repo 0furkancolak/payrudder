@@ -58,8 +58,8 @@ func (r *Queries) Due(ctx context.Context, req *plansv1.ListSubscriptionsFeeDueR
 	after := uuid.Nil
 	if a := req.GetAfter(); a != "" {
 		var err error
-		if after, err = uuid.Parse(a); err != nil {
-			return nil, domain.Invalid("after", "must be a UUID")
+		if after, err = domain.ParseID("after", a); err != nil {
+			return nil, err
 		}
 	}
 	size := req.GetPageSize()

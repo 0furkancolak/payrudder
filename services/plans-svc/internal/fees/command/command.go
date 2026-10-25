@@ -13,7 +13,6 @@ import (
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
@@ -26,7 +25,7 @@ func New(db *store.DB) *Commands { return &Commands{db: db} }
 // Advance marks the fee period starting at period_start as dealt with by moving fee_due_at to the period's end. It is a
 // compare-and-set: the same call twice, or a call for a period that is not the next one, changes nothing.
 func (c *Commands) Advance(ctx context.Context, req *plansv1.AdvanceSubscriptionFeeRequest) error {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return err
 	}

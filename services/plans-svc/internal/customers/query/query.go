@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/base64"
 
-	"github.com/google/uuid"
-
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
@@ -51,9 +49,9 @@ func (r *Queries) ByExternalID(ctx context.Context, externalID string) (*plansv1
 
 // ByID returns the customer with the given Payrudder id.
 func (r *Queries) ByID(ctx context.Context, id string) (*plansv1.Customer, error) {
-	uid, err := uuid.Parse(id)
+	uid, err := domain.ParseID("id", id)
 	if err != nil {
-		return nil, domain.Invalid("id", "must be a UUID")
+		return nil, err
 	}
 	var out sqlc.Customer
 	err = r.db.Tx(ctx, func(q *sqlc.Queries) (err error) {

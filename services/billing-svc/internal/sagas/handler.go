@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -28,11 +27,11 @@ type Handler struct {
 func New(system *pgxpool.Pool, eng *saga.Engine) *Handler { return &Handler{system: system, eng: eng} }
 
 func parseIDs(tenantID, invoiceID string) (tid, inv uuid.UUID, err error) {
-	if tid, err = uuid.Parse(tenantID); err != nil {
-		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "billing.tenant.bad_id", "tenant_id must be a UUID")
+	if tid, err = errkey.ParseUUID("billing.tenant.bad_id", "tenant_id", tenantID); err != nil {
+		return uuid.Nil, uuid.Nil, err
 	}
-	if inv, err = uuid.Parse(invoiceID); err != nil {
-		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
+	if inv, err = errkey.ParseUUID("billing.invoice.bad_id", "invoice_id", invoiceID); err != nil {
+		return uuid.Nil, uuid.Nil, err
 	}
 	return tid, inv, nil
 }

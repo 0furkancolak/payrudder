@@ -96,9 +96,9 @@ func (s *Service) GetCustomerUsage(ctx context.Context, req *aggregatorv1.GetCus
 	if err != nil {
 		return nil, err
 	}
-	customer, err := uuid.Parse(req.GetCustomerId())
+	customer, err := errkey.ParseUUID("aggregator.customer.bad_id", "customer_id", req.GetCustomerId())
 	if err != nil {
-		return nil, invalid("aggregator.customer.bad_id", "customer_id must be a UUID")
+		return nil, err
 	}
 	if err := validPeriod(req.GetPeriodId()); err != nil {
 		return nil, err
@@ -141,9 +141,9 @@ func (s *Service) GetUsageBatch(ctx context.Context, req *aggregatorv1.GetUsageB
 	meterCodes := make([]string, n)
 	periods := make([]string, n)
 	for i, k := range req.GetKeys() {
-		c, err := uuid.Parse(k.GetCustomerId())
+		c, err := errkey.ParseUUID("aggregator.customer.bad_id", fmt.Sprintf("keys[%d].customer_id", i), k.GetCustomerId())
 		if err != nil {
-			return nil, invalid("aggregator.customer.bad_id", fmt.Sprintf("keys[%d].customer_id must be a UUID", i))
+			return nil, err
 		}
 		if err := validPeriod(k.GetPeriodId()); err != nil {
 			return nil, err

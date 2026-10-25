@@ -4,8 +4,6 @@ package billingruns
 import (
 	"context"
 
-	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -42,9 +40,9 @@ func (h *Handler) ClosePeriod(ctx context.Context, req *billingv1.ClosePeriodReq
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	tid, err := uuid.Parse(req.GetTenantId())
+	tid, err := errkey.ParseUUID("billing.tenant.bad_id", "tenant_id", req.GetTenantId())
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.tenant.bad_id", "tenant_id must be a UUID")
+		return nil, err
 	}
 	run, err := command.ClosePeriod(ctx, h.runs, tid, req.GetPeriodId())
 	if err != nil {
@@ -58,9 +56,9 @@ func (h *Handler) GetBillingRun(ctx context.Context, req *billingv1.GetBillingRu
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	tid, err := uuid.Parse(req.GetTenantId())
+	tid, err := errkey.ParseUUID("billing.tenant.bad_id", "tenant_id", req.GetTenantId())
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.tenant.bad_id", "tenant_id must be a UUID")
+		return nil, err
 	}
 	run, err := query.Get(ctx, h.runs, tid, req.GetPeriodId())
 	if err != nil {

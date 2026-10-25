@@ -22,15 +22,6 @@ type Queries struct{ db *store.DB }
 // New returns the webhook queries.
 func New(db *store.DB) *Queries { return &Queries{db: db} }
 
-// ParseID reads an id from a request.
-func ParseID(field, v string) (uuid.UUID, error) {
-	id, err := uuid.Parse(v)
-	if err != nil {
-		return uuid.Nil, domain.Invalid(field, "must be a UUID")
-	}
-	return id, nil
-}
-
 // EndpointMessage maps an endpoint row to its API message (without the secret).
 func EndpointMessage(r sqlc.ListWebhookEndpointsRow) *plansv1.WebhookEndpoint {
 	return &plansv1.WebhookEndpoint{Id: r.ID.String(), Url: r.Url, Description: r.Description, EventTypes: r.EventTypes, Active: r.Active, CreateTime: timestamppb.New(r.CreatedAt)}
@@ -90,7 +81,7 @@ func (r *Queries) Deliveries(ctx context.Context, req *plansv1.ListWebhookDelive
 	}
 	endpoint := uuid.Nil
 	if v := req.GetEndpointId(); v != "" {
-		id, err := ParseID("endpoint_id", v)
+		id, err := domain.ParseID("endpoint_id", v)
 		if err != nil {
 			return nil, err
 		}

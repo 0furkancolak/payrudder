@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -37,9 +36,6 @@ func (h *Handler) WithFiles(s invoicequery.PDFSigner) *Handler {
 	return h
 }
 
-// invalid is an InvalidArgument status with the error key key.
-func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
-
 func docProto(d sqlc.GetEInvoiceDocumentRow) *billingv1.EInvoiceDocument {
 	out := &billingv1.EInvoiceDocument{
 		Id: d.ID.String(), Kind: d.Kind, InvoiceId: d.InvoiceID.String(), Number: d.Number, Status: d.Status, DocumentType: d.DocumentType, Provider: d.Provider,
@@ -64,21 +60,13 @@ func listProto(d sqlc.ListEInvoiceDocumentsRow) *billingv1.EInvoiceDocument {
 		LastError: d.LastError, LegalNumber: d.LegalNumber, ExternalID: d.ExternalID, HasXml: d.HasXml, HasPdf: d.HasPdf, CreatedAt: d.CreatedAt, IssuedAt: d.IssuedAt, UpdatedAt: d.UpdatedAt})
 }
 
-func parseID(field, v string) (uuid.UUID, error) {
-	id, err := uuid.Parse(v)
-	if err != nil {
-		return uuid.Nil, invalid("billing.einvoice.bad_id", field+" must be a UUID")
-	}
-	return id, nil
-}
-
 // GetEInvoice implements billingv1.BillingServiceServer.
 func (h *Handler) GetEInvoice(ctx context.Context, req *billingv1.GetEInvoiceRequest) (*billingv1.GetEInvoiceResponse, error) {
 	ti, err := tenant.Require(ctx)
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseID("id", req.GetId())
+	id, err := errkey.ParseUUID("billing.einvoice.bad_id", "id", req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +101,7 @@ func (h *Handler) GetEInvoiceFileUrl(ctx context.Context, req *billingv1.GetEInv
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseID("id", req.GetId())
+	id, err := errkey.ParseUUID("billing.einvoice.bad_id", "id", req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -146,11 +134,11 @@ func (h *Handler) operate(ctx context.Context, tenantID, docID string, do func(t
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	tid, err := parseID("tenant_id", tenantID)
+	tid, err := errkey.ParseUUID("billing.einvoice.bad_id", "tenant_id", tenantID)
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseID("id", docID)
+	id, err := errkey.ParseUUID("billing.einvoice.bad_id", "id", docID)
 	if err != nil {
 		return nil, err
 	}

@@ -59,21 +59,13 @@ func (h *Handler) WithDemo(demo bool) *Handler {
 	return h
 }
 
-func parseUUID(field, v string) (uuid.UUID, error) {
-	id, err := uuid.Parse(v)
-	if err != nil {
-		return uuid.Nil, errkey.New(codes.InvalidArgument, "billing.request.bad_id", field+" must be a UUID")
-	}
-	return id, nil
-}
-
 // CreateInvoiceLink implements billingv1.BillingServiceServer.
 func (h *Handler) CreateInvoiceLink(ctx context.Context, req *billingv1.CreateInvoiceLinkRequest) (*billingv1.CreateInvoiceLinkResponse, error) {
 	ti, err := tenant.Require(ctx)
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseUUID("invoice_id", req.GetInvoiceId())
+	id, err := errkey.ParseUUID("billing.request.bad_id", "invoice_id", req.GetInvoiceId())
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +82,7 @@ func (h *Handler) RevokeInvoiceLinks(ctx context.Context, req *billingv1.RevokeI
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseUUID("invoice_id", req.GetInvoiceId())
+	id, err := errkey.ParseUUID("billing.request.bad_id", "invoice_id", req.GetInvoiceId())
 	if err != nil {
 		return nil, err
 	}
@@ -113,12 +105,12 @@ func (h *Handler) CreatePaymentLink(ctx context.Context, req *billingv1.CreatePa
 		PromotionCode: req.GetPromotionCode(),
 	}
 	if req.GetPackId() != "" {
-		if in.PackID, err = parseUUID("pack_id", req.GetPackId()); err != nil {
+		if in.PackID, err = errkey.ParseUUID("billing.request.bad_id", "pack_id", req.GetPackId()); err != nil {
 			return nil, err
 		}
 	}
 	if req.GetInvoiceId() != "" {
-		if in.InvoiceID, err = parseUUID("invoice_id", req.GetInvoiceId()); err != nil {
+		if in.InvoiceID, err = errkey.ParseUUID("billing.request.bad_id", "invoice_id", req.GetInvoiceId()); err != nil {
 			return nil, err
 		}
 	}
@@ -213,7 +205,7 @@ func (h *Handler) SettleInvoicePayment(ctx context.Context, req *billingv1.Settl
 	if err != nil {
 		return nil, err
 	}
-	id, err := parseUUID("invoice_id", req.GetInvoiceId())
+	id, err := errkey.ParseUUID("billing.request.bad_id", "invoice_id", req.GetInvoiceId())
 	if err != nil {
 		return nil, err
 	}
