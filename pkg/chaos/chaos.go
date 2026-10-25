@@ -36,7 +36,7 @@ func Crash(env, armedMsg, crashMsg string) func() error {
 	}
 	slog.Warn(armedMsg, "probability", p)
 	return func() error {
-		if rand.Float64() < p {
+		if rand.Float64() < p { //nolint:gosec // fault injection, not a secret
 			slog.Error(crashMsg)
 			os.Exit(137)
 		}
@@ -53,7 +53,7 @@ func Fail(env, armedMsg, failMsg string) func() error {
 	}
 	slog.Warn(armedMsg, "probability", p)
 	return func() error {
-		if rand.Float64() < p {
+		if rand.Float64() < p { //nolint:gosec // fault injection, not a secret
 			return errors.New(failMsg)
 		}
 		return nil
