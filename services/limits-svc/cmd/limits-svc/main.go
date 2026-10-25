@@ -31,7 +31,7 @@ import (
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/query"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/grpcapi"
 )
 
 const (
@@ -134,7 +134,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	hh := rt.Health()
 	addHealthChecks(hh, rdb, producer, ents)
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
-	limitsv1.RegisterLimitsServiceServer(srv, query.New(rdb, ents, ms, rec))
+	limitsv1.RegisterLimitsServiceServer(srv, grpcapi.New(rdb, ents, ms, rec))
 
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
