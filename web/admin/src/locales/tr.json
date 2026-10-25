@@ -1232,6 +1232,8 @@
         "reference_reused": "Bu referans farklı bir tutarla zaten kaydedilmiş."
       },
       "payment_link": {
+        "bad_promotion_code": "Promosyon kodu 2 ila 40 harf, rakam, - veya _ olmalıdır ve tek seferlik ya da kredi paketi bağlantısına aittir; var olan bir fatura değiştirilmez.",
+        "free_total": "Bu promosyon kodu fiyatın tamamını düşüyor, ödenecek bir şey kalmıyor. Bunun yerine satın alımı doğrudan tanımlayın.",
         "bad_amount": "Tutar, küçük birimlerde pozitif bir sayı olmalıdır.",
         "bad_currency": "Bu para birimi desteklenmiyor.",
         "bad_description": "Açıklama zorunludur, en fazla 200 karakter.",

@@ -3,10 +3,10 @@
 
 -- name: InsertPaymentLink :exec
 INSERT INTO payment_links (tenant_id, id, kind, parent_id, invoice_id, token_hash, expires_at, single_use, idempotency_key, request_hash, amount_minor, currency,
-                           description, customer_id, customer_external_id, pack_id, quantity, credits, validity_days)
+                           description, customer_id, customer_external_id, pack_id, quantity, credits, validity_days, promotion_code)
 VALUES (@tenant_id, @id, @kind, sqlc.narg('parent_id'), sqlc.narg('invoice_id'), @token_hash, @expires_at, @single_use, sqlc.narg('idempotency_key'),
         sqlc.narg('request_hash'), sqlc.narg('amount_minor'), sqlc.narg('currency'), sqlc.narg('description'), sqlc.narg('customer_id'), sqlc.narg('customer_external_id'),
-        sqlc.narg('pack_id'), sqlc.narg('quantity'), sqlc.narg('credits'), sqlc.narg('validity_days'));
+        sqlc.narg('pack_id'), sqlc.narg('quantity'), sqlc.narg('credits'), sqlc.narg('validity_days'), sqlc.narg('promotion_code'));
 
 -- name: InsertInvoiceLink :exec
 INSERT INTO payment_links (tenant_id, id, kind, invoice_id, token_hash, expires_at) VALUES (@tenant_id, @id, 'invoice', @invoice_id, @token_hash, @expires_at);
@@ -15,12 +15,12 @@ INSERT INTO payment_links (tenant_id, id, kind, invoice_id, token_hash, expires_
 UPDATE payment_links SET revoked_at = now() WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND revoked_at IS NULL;
 
 -- name: FindActiveInvoiceLink :one
-SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count, pack_id, quantity, credits, validity_days
+SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count, pack_id, quantity, credits, validity_days, promotion_code
 FROM payment_links WHERE token_hash = @token_hash AND revoked_at IS NULL AND expires_at > now();
 
 -- name: GetPaymentLinkRow :one
 SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count,
-       last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key, pack_id, quantity, credits, validity_days,
+       last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key, pack_id, quantity, credits, validity_days, promotion_code,
        (CASE WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN single_use AND paid_count > 0 THEN 'paid' WHEN expires_at <= now() THEN 'expired' ELSE 'active' END)::text AS status
 FROM payment_links WHERE tenant_id = @tenant_id AND id = @id AND parent_id IS NULL;
 
@@ -30,7 +30,7 @@ SELECT id, request_hash FROM payment_links WHERE tenant_id = @tenant_id AND idem
 -- name: ListPaymentLinks :many
 SELECT * FROM (
   SELECT id, kind, invoice_id, single_use, expires_at, revoked_at, created_at, amount_minor, currency, description, customer_id, customer_external_id, use_count, paid_count,
-         last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key, pack_id, quantity, credits, validity_days,
+         last_paid_at, COALESCE(idempotency_key, '')::text AS idempotency_key, pack_id, quantity, credits, validity_days, promotion_code,
          (CASE WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN single_use AND paid_count > 0 THEN 'paid' WHEN expires_at <= now() THEN 'expired' ELSE 'active' END)::text AS status
   FROM payment_links WHERE tenant_id = @tenant_id AND parent_id IS NULL
 ) l
@@ -117,7 +117,7 @@ SELECT total_minor, currency, status FROM invoices WHERE tenant_id = @tenant_id 
 -- name: FindOpenPortalPackLink :one
 -- The link a customer's portal made for this pack and quantity that nobody has paid or revoked yet: pressing "Buy" again continues with it. The columns are those of
 -- FindActiveInvoiceLink, so that the link can be started like one a visitor opened.
-SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count, pack_id, quantity, credits, validity_days
+SELECT tenant_id, id, kind, invoice_id, parent_id, single_use, expires_at, amount_minor, currency, description, customer_id, customer_external_id, paid_count, pack_id, quantity, credits, validity_days, promotion_code
 FROM payment_links
 WHERE tenant_id = @tenant_id AND kind = 'credit_pack' AND customer_id = @customer_id AND pack_id = @pack_id AND quantity = @quantity AND idempotency_key LIKE 'portal:%'
   AND revoked_at IS NULL AND expires_at > now() AND paid_count = 0

@@ -195,7 +195,7 @@ func hostedDir(lang string) string {
 
 func hostedText(lang string) map[string]string {
 	out := map[string]string{}
-	for _, src := range []map[string]string{hostedStrings["en"], paymentStrings["en"], creditStrings["en"], hostedStrings[lang], paymentStrings[lang], creditStrings[lang]} {
+	for _, src := range []map[string]string{hostedStrings["en"], paymentStrings["en"], creditStrings["en"], promoStrings["en"], hostedStrings[lang], paymentStrings[lang], creditStrings[lang], promoStrings[lang]} {
 		for k, v := range src {
 			out[k] = v
 		}
@@ -241,6 +241,7 @@ th{font-size:.8rem;color:#5b6472;text-transform:uppercase;letter-spacing:.04em}t
 tfoot td{font-weight:600;border-bottom:0}.neg{color:#087443}
 .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.8rem;background:#e8ebf0}.badge.paid{background:#d9f3e4;color:#075c35}.badge.void,.badge.uncollectible{background:#fde2e1;color:#8a1c17}
 .pay{margin-top:20px;padding:16px;border:1px solid #e3e6eb;border-radius:8px}.pay b{display:block;margin-bottom:8px}.pay dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0}.pay dt{color:#5b6472;font-size:.9rem}.pay dd{margin:0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.was{text-decoration:line-through;color:#5b6472;font-variant-numeric:tabular-nums}.err{color:#8a1c17;margin:8px 0}.promo{margin:20px 0 8px}.promo label{display:block;font-size:.8rem;color:#5b6472;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}.promo-row{display:flex;gap:8px}.promo-row input,input.code{flex:1;min-width:0;padding:9px 10px;border:1px solid #c9ced6;border-radius:8px;font:inherit;text-transform:uppercase}.promo-row .btn{margin-top:0}input.code{max-width:9rem;margin-inline-end:6px}
 a.btn{display:inline-block;margin-top:20px;padding:10px 16px;border-radius:8px;background:#14171c;color:#fff;text-decoration:none}
 @media (prefers-color-scheme:dark){body{background:#0f1216;color:#e8eaee}.card{background:#171b21;border-color:#262c35}.pay{border-color:#262c35}.pay dt{color:#9aa4b2}th,td{border-color:#262c35}.muted,.meta b,th{color:#9aa4b2}.badge{background:#262c35}a.btn{background:#e8eaee;color:#14171c}}`
 

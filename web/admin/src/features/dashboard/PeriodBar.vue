@@ -25,9 +25,9 @@ function pick(p: Period) {
     d.setUTCDate(d.getUTCDate() - 29);
     emit("update:query", { ...props.query, period: "custom", from: props.query.from ?? d.toISOString().slice(0, 10), to: props.query.to ?? to });
   } else {
-    const { from: _from, to: _to, ...rest } = props.query;
-    void _from;
-    void _to;
+    const rest = { ...props.query };
+    delete rest.from;
+    delete rest.to;
     emit("update:query", { ...rest, period: p });
   }
 }

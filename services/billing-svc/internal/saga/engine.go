@@ -385,7 +385,11 @@ func (e *Engine) mirrorInvoiceStatus(ctx context.Context, tx pgx.Tx, s *saga, fr
 	}
 	s.InvoiceStatus = status
 	if next == Voided {
-		return reopenCredits(ctx, tx, s)
+		if err := reopenCredits(ctx, tx, s); err != nil {
+			return err
+		}
+		// An invoice that used a coupon gives its redemption back; plans-svc is told by the scheduler (the reversal is queued in this transaction).
+		return sqlc.New(tx).QueuePromotionReversal(ctx, sqlc.QueuePromotionReversalParams{TenantID: s.TenantID, ID: s.InvoiceID})
 	}
 	return nil
 }

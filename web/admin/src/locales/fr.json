@@ -1232,6 +1232,8 @@
         "reference_reused": "Cette référence a déjà été enregistrée avec un autre montant."
       },
       "payment_link": {
+        "bad_promotion_code": "Un code promotionnel compte de 2 à 40 lettres, chiffres, - ou _, et appartient à un lien ponctuel ou de pack de crédits ; une facture existante n'est pas modifiée.",
+        "free_total": "Ce code promotionnel couvre tout le prix et il ne resterait rien à payer. Accordez plutôt l'achat directement.",
         "bad_amount": "Le montant doit être un nombre positif d'unités mineures.",
         "bad_currency": "Cette devise n'est pas prise en charge.",
         "bad_description": "Une description est requise (200 caractères au plus).",

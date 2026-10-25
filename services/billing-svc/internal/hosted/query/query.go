@@ -177,6 +177,8 @@ type Adhoc struct {
 	Currency         string
 	CurrencyExponent int32
 	Consumed         bool
+	// PromotionCode is the code the operator chose for the link, if any.
+	PromotionCode string
 	// Pack is set for a credit-pack link: what the customer buys.
 	Pack *PackInfo
 }
@@ -250,6 +252,9 @@ func (d Deps) adhoc(ctx context.Context, s *Scope) (*Page, error) {
 	}
 	p := &Page{Kind: "adhoc", ExpiresAt: s.ExpiresAt, SellerName: seller.Name, Environment: seller.Environment, LogoAvailable: seller.LogoKey != "" && d.PDFs != nil,
 		Adhoc: &Adhoc{AmountMinor: *r.AmountMinor, Currency: *r.Currency, CurrencyExponent: exp, Consumed: r.SingleUse && r.PaidCount > 0}}
+	if r.PromotionCode != nil {
+		p.Adhoc.PromotionCode = *r.PromotionCode
+	}
 	if r.Description != nil {
 		p.Adhoc.Description = *r.Description
 	}

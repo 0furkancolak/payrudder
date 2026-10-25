@@ -1232,6 +1232,8 @@
         "reference_reused": "Esta referencia ya se registró con otro importe."
       },
       "payment_link": {
+        "bad_promotion_code": "Un código promocional tiene de 2 a 40 letras, dígitos, - o _, y pertenece a un enlace puntual o de paquete de créditos; una factura existente no se modifica.",
+        "free_total": "Este código promocional cubre todo el precio y no quedaría nada por pagar. Conceda la compra directamente.",
         "bad_amount": "El importe debe ser un número positivo de unidades menores.",
         "bad_currency": "Esta moneda no es compatible.",
         "bad_description": "La descripción es obligatoria (como máximo 200 caracteres).",

@@ -1237,12 +1237,35 @@ paths:
     post:
       operationId: hostedLinkStart
       summary: First use of an ad-hoc payment link — makes the invoice and continues on its page
-      description: The payer presses *Continue*. This is the point at which the invoice gets its number, not when the page is fetched. A redirect to the invoice page. At most 10 a minute per address.
+      description: The payer presses *Continue*. This is the point at which the invoice gets its number, not when the page is fetched. A redirect to the invoice page. Form field `code`, optional, is a promotion code; it takes something off the price (a DISCOUNT line on the invoice; the amount of a payment link is the total the payer pays) or adds bonus credits to a credit purchase, and is claimed here. A code that cannot be used shows the page again with the reason (422) and makes no invoice. At most 10 a minute per address.
       security: []
       parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { code: { type: string, maxLength: 40 } } }
       responses:
         "303": { description: "Redirect to the invoice page (/i/{invoice token})" }
+        "422": { description: "The promotion code cannot be used; the page is shown again with the reason", content: { text/html: { schema: { type: string } } } }
         "404": { description: "The link does not exist, has expired, or a single-use link was already paid", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /i/{token}/promo:
+    post:
+      operationId: hostedLinkPromo
+      summary: Check a promotion code on an ad-hoc or credit-pack payment link and show the new total
+      description: Form field `code`. The page is shown again with what the code takes off (or the bonus credits), or the reason it cannot be used (422). Nothing is claimed until *Continue*. At most 10 a minute per address.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { code: { type: string, maxLength: 40 } } }
+      responses:
+        "200": { description: "The page with the discounted total", content: { text/html: { schema: { type: string } } } }
+        "422": { description: "The promotion code cannot be used", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The link does not exist or has expired" }
         "429": { description: "Too many requests" }
   /i/{token}/pay:
     post:
@@ -1320,7 +1343,7 @@ paths:
       requestBody:
         content:
           application/x-www-form-urlencoded:
-            schema: { type: object, properties: { pack_id: { type: string, format: uuid }, quantity: { type: integer, minimum: 1, maximum: 1000 } }, required: [pack_id] }
+            schema: { type: object, properties: { pack_id: { type: string, format: uuid }, quantity: { type: integer, minimum: 1, maximum: 1000 }, code: { type: string, maxLength: 40, description: "A promotion code" } }, required: [pack_id] }
       responses:
         "303": { description: "Redirect to the invoice page (/i/{invoice token})" }
         "404": { description: "The link does not exist or has expired, or the pack is not on sale", content: { text/html: { schema: { type: string } } } }
@@ -4900,6 +4923,7 @@ components:
         pack_id: { type: string, description: "kind credit_pack: the pack sold" }
         quantity: { type: integer, description: "kind credit_pack: how many packs one use buys" }
         credits: { type: string, description: "kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string" }
+        promotion_code: { type: string, description: "The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another" }
         invoice_id: { type: string, description: "kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)" }
         customer_external_id: { type: string }
         single_use: { type: boolean }
@@ -4925,6 +4949,7 @@ components:
         description: { type: string, maxLength: 200, description: "adhoc: what it is for; printed on the invoice" }
         customer_external_id: { type: string, description: "adhoc: make the invoice out to this customer. credit_pack: required, the customer who receives the credits" }
         single_use: { type: boolean, description: "Default true for adhoc, false for invoice" }
+        promotion_code: { type: string, description: "adhoc and credit_pack, optional: a promotion code the payer gets without typing it (a one-off invoice with a discount). Checked against the link's own amount now (a coupon.* error if it does not work); claimed when the payer continues. An invoice that exists is not changed, so a kind invoice link takes none" }
         expires_in_days: { type: integer, minimum: 1, maximum: 365, description: "Default 30 for adhoc, 90 for invoice" }
         idempotency_key: { type: string, maxLength: 200 }
     CreatedPaymentLink:

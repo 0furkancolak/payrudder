@@ -47,8 +47,12 @@ const invoiceTmpl = `{{define "invoice"}}{{template "head" .}}
 const adhocTmpl = `{{define "adhoc"}}{{template "head" .}}
 <div class="muted">{{.Seller}}</div><h1>{{.Description}}</h1>
 {{with .Pack}}<div class="muted">{{$.L.cr_you_get}}</div><div class="big">{{.Credits}} {{$.L.cr_unit}}</div><p class="muted">{{.Valid}}{{if gt .Quantity 1}} · {{$.L.cr_qty}} {{.Quantity}}{{end}}</p>{{end}}
-<div class="muted">{{.L.adhoc_amount}}</div><div class="big">{{.Amount}} {{.Currency}}</div>
-{{if .Consumed}}<p class="hint">{{.L.adhoc_used}}</p>{{else}}<form method="post" action="{{.Start}}"><button class="btn" type="submit">{{.L.adhoc_continue}}</button></form>{{end}}
+{{with .Quote}}{{if .Bonus}}<p class="promo-line"><b>+{{.Bonus}} {{$.L.promo_bonus}}</b></p>{{end}}{{end}}
+{{if .Quote}}{{if .Quote.HasDiscount}}<div class="muted">{{.L.promo_before}}</div><div class="was">{{.Amount}} {{.Currency}}</div><div class="muted">{{.L.promo_discount}}</div><div class="neg">-{{.Quote.Discount}} {{.Currency}}</div><div class="muted">{{.L.promo_pay}}</div><div class="big">{{.Quote.Total}} {{.Currency}}</div>{{else}}<div class="muted">{{.L.adhoc_amount}}</div><div class="big">{{.Amount}} {{.Currency}}</div>{{end}}{{else}}<div class="muted">{{.L.adhoc_amount}}</div><div class="big">{{.Amount}} {{.Currency}}</div>{{end}}
+{{if .Consumed}}<p class="hint">{{.L.adhoc_used}}</p>{{else}}
+<form method="post" action="{{.PromoAction}}" class="promo"><label for="code">{{.L.promo_label}}</label><div class="promo-row"><input id="code" name="code" value="{{.Code}}" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn alt" type="submit">{{.L.promo_apply}}</button></div></form>
+{{if .PromoError}}<p class="err" role="alert">{{.PromoError}}</p>{{end}}
+<form method="post" action="{{.Start}}">{{if .Quote}}<input type="hidden" name="code" value="{{.Code}}">{{end}}<button class="btn" type="submit">{{.L.adhoc_continue}}</button></form>{{end}}
 {{template "foot" .}}{{end}}`
 
 const receiptTmpl = `{{define "receipt"}}{{template "head" .}}
@@ -91,7 +95,7 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 {{if .Packs}}<h2 class="sec">{{.L.cr_buy_title}}</h2>
 <div class="wrap"><table><thead><tr><th>{{.L.cr_pack}}</th><th class="n">{{.L.cr_unit}}</th><th class="n">{{.L.cr_price}}</th><th></th></tr></thead><tbody>
 {{range .Packs}}<tr><td>{{.Name}}<div class="muted">{{.Valid}}</div></td><td class="n">{{.Credits}}</td><td class="n">{{.Price}} {{.Currency}}</td>
-<td>{{if $.CanBuy}}<form method="post" action="{{$.Buy}}"><input type="hidden" name="pack_id" value="{{.ID}}"><button class="btn" type="submit">{{$.L.cr_buy}}</button></form>{{end}}</td></tr>
+<td>{{if $.CanBuy}}<form method="post" action="{{$.Buy}}"><input type="hidden" name="pack_id" value="{{.ID}}"><input class="code" name="code" maxlength="40" autocomplete="off" placeholder="{{$.L.promo_label}}" aria-label="{{$.L.promo_label}}"><button class="btn" type="submit">{{$.L.cr_buy}}</button></form>{{end}}</td></tr>
 {{end}}</tbody></table></div>{{end}}{{end}}
 {{template "foot" .}}{{end}}`
 

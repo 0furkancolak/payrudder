@@ -1,6 +1,6 @@
 import { parseMajor } from "@/shared/lib/money";
 
-export type LinkKind = "invoice" | "adhoc";
+type LinkKind = "invoice" | "adhoc";
 
 export interface LinkForm {
   kind: LinkKind;

@@ -65,6 +65,8 @@ type Plans interface {
 	ApplyScheduledChanges(ctx context.Context, in *plansv1.ApplyScheduledChangesRequest, opts ...grpc.CallOption) (*plansv1.ApplyScheduledChangesResponse, error)
 	ListSubscriptionAdjustments(ctx context.Context, in *plansv1.ListSubscriptionAdjustmentsRequest, opts ...grpc.CallOption) (*plansv1.ListSubscriptionAdjustmentsResponse, error)
 	MarkSubscriptionAdjustmentBilled(ctx context.Context, in *plansv1.MarkSubscriptionAdjustmentBilledRequest, opts ...grpc.CallOption) (*plansv1.MarkSubscriptionAdjustmentBilledResponse, error)
+	RedeemPromotion(ctx context.Context, in *plansv1.RedeemPromotionRequest, opts ...grpc.CallOption) (*plansv1.RedeemPromotionResponse, error)
+	ReversePromotion(ctx context.Context, in *plansv1.ReversePromotionRequest, opts ...grpc.CallOption) (*plansv1.ReversePromotionResponse, error)
 }
 
 // Admin is the part of plans-svc's AdminService billing uses.

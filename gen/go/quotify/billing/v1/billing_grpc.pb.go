@@ -1519,6 +1519,7 @@ const (
 	HostedInvoiceService_GetHostedInvoicePdfUrl_FullMethodName = "/quotify.billing.v1.HostedInvoiceService/GetHostedInvoicePdfUrl"
 	HostedInvoiceService_GetHostedLogoUrl_FullMethodName       = "/quotify.billing.v1.HostedInvoiceService/GetHostedLogoUrl"
 	HostedInvoiceService_StartLinkPayment_FullMethodName       = "/quotify.billing.v1.HostedInvoiceService/StartLinkPayment"
+	HostedInvoiceService_QuoteLinkPromotion_FullMethodName     = "/quotify.billing.v1.HostedInvoiceService/QuoteLinkPromotion"
 	HostedInvoiceService_RequestHostedPayment_FullMethodName   = "/quotify.billing.v1.HostedInvoiceService/RequestHostedPayment"
 	HostedInvoiceService_GetPortal_FullMethodName              = "/quotify.billing.v1.HostedInvoiceService/GetPortal"
 	HostedInvoiceService_StartPortalPurchase_FullMethodName    = "/quotify.billing.v1.HostedInvoiceService/StartPortalPurchase"
@@ -1536,6 +1537,9 @@ type HostedInvoiceServiceClient interface {
 	GetHostedLogoUrl(ctx context.Context, in *GetHostedLogoUrlRequest, opts ...grpc.CallOption) (*GetHostedLogoUrlResponse, error)
 	// StartLinkPayment is the first use of an ad-hoc link: it creates the invoice and hands out the invoice link the payer continues on.
 	StartLinkPayment(ctx context.Context, in *StartLinkPaymentRequest, opts ...grpc.CallOption) (*StartLinkPaymentResponse, error)
+	// QuoteLinkPromotion says what a promotion code would take off the purchase an ad-hoc or credit-pack link offers, claiming nothing: the page shows the new total
+	// before the payer continues. A refused code is an error with a coupon.* key.
+	QuoteLinkPromotion(ctx context.Context, in *QuoteLinkPromotionRequest, opts ...grpc.CallOption) (*QuoteLinkPromotionResponse, error)
 	// RequestHostedPayment asks to pay a payable invoice by a method. "mock" (sandbox and demo only) charges through the saga; any other method returns the
 	// context the gateway needs to ask payments-worker for a provider checkout or payment instructions.
 	RequestHostedPayment(ctx context.Context, in *RequestHostedPaymentRequest, opts ...grpc.CallOption) (*RequestHostedPaymentResponse, error)
@@ -1594,6 +1598,16 @@ func (c *hostedInvoiceServiceClient) StartLinkPayment(ctx context.Context, in *S
 	return out, nil
 }
 
+func (c *hostedInvoiceServiceClient) QuoteLinkPromotion(ctx context.Context, in *QuoteLinkPromotionRequest, opts ...grpc.CallOption) (*QuoteLinkPromotionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QuoteLinkPromotionResponse)
+	err := c.cc.Invoke(ctx, HostedInvoiceService_QuoteLinkPromotion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *hostedInvoiceServiceClient) RequestHostedPayment(ctx context.Context, in *RequestHostedPaymentRequest, opts ...grpc.CallOption) (*RequestHostedPaymentResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RequestHostedPaymentResponse)
@@ -1636,6 +1650,9 @@ type HostedInvoiceServiceServer interface {
 	GetHostedLogoUrl(context.Context, *GetHostedLogoUrlRequest) (*GetHostedLogoUrlResponse, error)
 	// StartLinkPayment is the first use of an ad-hoc link: it creates the invoice and hands out the invoice link the payer continues on.
 	StartLinkPayment(context.Context, *StartLinkPaymentRequest) (*StartLinkPaymentResponse, error)
+	// QuoteLinkPromotion says what a promotion code would take off the purchase an ad-hoc or credit-pack link offers, claiming nothing: the page shows the new total
+	// before the payer continues. A refused code is an error with a coupon.* key.
+	QuoteLinkPromotion(context.Context, *QuoteLinkPromotionRequest) (*QuoteLinkPromotionResponse, error)
 	// RequestHostedPayment asks to pay a payable invoice by a method. "mock" (sandbox and demo only) charges through the saga; any other method returns the
 	// context the gateway needs to ask payments-worker for a provider checkout or payment instructions.
 	RequestHostedPayment(context.Context, *RequestHostedPaymentRequest) (*RequestHostedPaymentResponse, error)
@@ -1665,6 +1682,9 @@ func (UnimplementedHostedInvoiceServiceServer) GetHostedLogoUrl(context.Context,
 }
 func (UnimplementedHostedInvoiceServiceServer) StartLinkPayment(context.Context, *StartLinkPaymentRequest) (*StartLinkPaymentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartLinkPayment not implemented")
+}
+func (UnimplementedHostedInvoiceServiceServer) QuoteLinkPromotion(context.Context, *QuoteLinkPromotionRequest) (*QuoteLinkPromotionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method QuoteLinkPromotion not implemented")
 }
 func (UnimplementedHostedInvoiceServiceServer) RequestHostedPayment(context.Context, *RequestHostedPaymentRequest) (*RequestHostedPaymentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RequestHostedPayment not implemented")
@@ -1768,6 +1788,24 @@ func _HostedInvoiceService_StartLinkPayment_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HostedInvoiceService_QuoteLinkPromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QuoteLinkPromotionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostedInvoiceServiceServer).QuoteLinkPromotion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostedInvoiceService_QuoteLinkPromotion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostedInvoiceServiceServer).QuoteLinkPromotion(ctx, req.(*QuoteLinkPromotionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _HostedInvoiceService_RequestHostedPayment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestHostedPaymentRequest)
 	if err := dec(in); err != nil {
@@ -1844,6 +1882,10 @@ var HostedInvoiceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StartLinkPayment",
 			Handler:    _HostedInvoiceService_StartLinkPayment_Handler,
+		},
+		{
+			MethodName: "QuoteLinkPromotion",
+			Handler:    _HostedInvoiceService_QuoteLinkPromotion_Handler,
 		},
 		{
 			MethodName: "RequestHostedPayment",
