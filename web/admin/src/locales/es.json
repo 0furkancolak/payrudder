@@ -1327,7 +1327,8 @@
       },
       "webhook": {
         "not_configured": "Los webhooks no están configurados en este despliegue (falta la clave de secretos).",
-        "too_many_endpoints": "Se alcanzó el límite de endpoints de webhook. Elimine uno primero."
+        "too_many_endpoints": "Se alcanzó el límite de endpoints de webhook. Elimine uno primero.",
+        "tenant_not_active": "Este entorno no está activo y por eso no puede tener endpoints de webhook. Completa primero la lista de salida a producción."
       },
       "customer": {
         "tax_invalid": "El identificador fiscal o la oficina fiscal del cliente no es válido."
@@ -1339,10 +1340,17 @@
         "forbidden": "No tienes permiso para hacer esto."
       },
       "tenant": {
-        "settings_immutable": "La moneda, la zona horaria y el entorno de una cuenta no se pueden cambiar."
+        "settings_immutable": "La moneda, la zona horaria y el entorno de una cuenta no se pueden cambiar.",
+        "bad_status": "El estado debe ser active o suspended.",
+        "bad_transition": "Este cambio de estado no es posible para este entorno.",
+        "reason_required": "Activar un entorno sin completar su lista requiere un motivo."
       },
       "request": {
         "invalid": "{field} no es válido: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "El alcance debe ser full, ingest o read.",
+        "tenant_not_active": "Este entorno no está activo y por eso no puede tener claves de API. Completa primero la lista de salida a producción."
       }
     },
     "common": {
@@ -1414,7 +1422,11 @@
       "api_key": {
         "bad_environment": "Esta aplicación no tiene ese entorno.",
         "not_found": "Esta clave de API no existe.",
-        "quota": "Un entorno puede tener como máximo 10 claves de API activas. Revoque una primero."
+        "quota": "Un entorno puede tener como máximo 10 claves de API activas. Revoque una primero.",
+        "already_rotating": "Esta clave ya se rotó y terminará pronto. Revócala o espera a que termine.",
+        "bad_overlap": "El solapamiento debe estar entre 0 horas y 7 días.",
+        "bad_scope": "El alcance debe ser full, ingest o read.",
+        "not_active": "Esta clave de API está revocada."
       },
       "app": {
         "not_found": "Esta aplicación no existe o no es suya.",
@@ -1462,6 +1474,12 @@
       },
       "operator": {
         "forbidden": "Esta zona es para los operadores de la plataforma."
+      },
+      "go_live": {
+        "incomplete": "La lista de salida a producción aún no está completa.",
+        "no_live": "Este despliegue no tiene entorno live.",
+        "owner_only": "Solo un propietario de la cuenta puede activar el entorno live.",
+        "suspended": "El entorno live está suspendido. Contacta con soporte."
       }
     },
     "gateway": {
@@ -1472,6 +1490,16 @@
       "request": {
         "invalid": "{field} no es válido: {detail}",
         "too_large": "La solicitud es demasiado grande."
+      },
+      "auth": {
+        "scope_denied": "El alcance de esta clave de API no permite esta solicitud. Usa una clave con un alcance mayor.",
+        "tenant_not_active": "Este entorno está suspendido o aún no está activo. Completa la lista de salida a producción o contacta con soporte."
+      }
+    },
+    "env": {
+      "request": {
+        "missing": "Esta solicitud no indica su entorno y por eso fue rechazada.",
+        "mismatch": "Esta solicitud es para un entorno distinto de aquel al que se envió y por eso fue rechazada."
       }
     },
     "aggregator": {

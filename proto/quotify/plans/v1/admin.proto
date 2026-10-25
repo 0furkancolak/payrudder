@@ -3,6 +3,7 @@ syntax = "proto3";
 package quotify.plans.v1;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 import "quotify/plans/v1/resources.proto";
 
 // AdminService is operator-only (the gateway checks the operator token), except ResolveApiKey,
@@ -24,6 +25,11 @@ service AdminService {
   rpc RevokeApiKey(RevokeApiKeyRequest) returns (RevokeApiKeyResponse);
   // ResolveApiKey returns what the gateway needs to authenticate a key with this prefix.
   rpc ResolveApiKey(ResolveApiKeyRequest) returns (ResolveApiKeyResponse);
+  // TouchApiKey records that a key was used just now (the gateway calls it at most every few minutes per key and replica).
+  rpc TouchApiKey(TouchApiKeyRequest) returns (TouchApiKeyResponse);
+  // SetTenantStatus is the operator's hand on a tenant's life: suspend an active tenant (its keys stop working at once), reinstate a suspended one, or
+  // activate an inactive live tenant without the go-live checklist (a support decision that needs a reason and is logged).
+  rpc SetTenantStatus(SetTenantStatusRequest) returns (SetTenantStatusResponse);
 }
 
 message CreateAccountRequest {
@@ -109,6 +115,8 @@ message UpdateTenantSettingsResponse {
 
 message CreateApiKeyRequest {
   string tenant_id = 1;
+  // Unset is FULL.
+  ApiKey.Scope scope = 2;
 }
 
 message CreateApiKeyResponse {
@@ -138,4 +146,26 @@ message ResolveApiKeyResponse {
   Environment environment = 5;
   TenantTier tier = 6;
   string timezone = 7;
+  TenantStatus tenant_status = 8;
+  ApiKey.Scope scope = 9;
+  // Set for a key that ends although it is not revoked (the old key of a rotation).
+  google.protobuf.Timestamp expire_time = 10;
+}
+
+message TouchApiKeyRequest {
+  string api_key_id = 1;
+}
+
+message TouchApiKeyResponse {}
+
+message SetTenantStatusRequest {
+  string tenant_id = 1;
+  // ACTIVE or SUSPENDED.
+  TenantStatus status = 2;
+  // Required when activating an inactive tenant.
+  string reason = 3;
+}
+
+message SetTenantStatusResponse {
+  Tenant tenant = 1;
 }

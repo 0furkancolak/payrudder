@@ -30,6 +30,10 @@ func TestUsageSeriesLatency(t *testing.T) {
 		if tn.Environment == "ENVIRONMENT_LIVE" {
 			tenant = tn.ID
 			var k struct{ Plaintext string }
+			// A live tenant is created inactive and has no keys: activate it the way support does, with a reason.
+			if c := api(t, "PUT", "/admin/v1/tenants/"+tn.ID+"/status", operator, map[string]string{"status": "active", "reason": "bench"}, nil); c != 200 {
+				t.Fatalf("activate: %d", c)
+			}
 			api(t, "POST", "/admin/v1/tenants/"+tn.ID+"/api-keys", operator, nil, &k)
 			key = k.Plaintext
 		}

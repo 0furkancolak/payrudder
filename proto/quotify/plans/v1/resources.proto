@@ -12,6 +12,15 @@ enum Environment {
   ENVIRONMENT_LIVE = 2;
 }
 
+// Where a tenant is in its life (phase 45). A sandbox tenant is always ACTIVE. A live tenant is created INACTIVE: it has no API keys and no webhook
+// endpoints until the go-live checklist is complete and it is activated. An operator can SUSPEND an active tenant: its keys stop working.
+enum TenantStatus {
+  TENANT_STATUS_UNSPECIFIED = 0;
+  TENANT_STATUS_INACTIVE = 1;
+  TENANT_STATUS_ACTIVE = 2;
+  TENANT_STATUS_SUSPENDED = 3;
+}
+
 // Rate-limit and quota tier of a tenant (docs/06-multi-tenancy.md#quotas-and-fairness).
 enum TenantTier {
   TENANT_TIER_UNSPECIFIED = 0;
@@ -104,6 +113,11 @@ message Tenant {
   LegalInfo legal = 14;
   // When an invoice becomes an e-invoice: "off" (default), "finalized" or "paid". Credit notes follow the invoice.
   string e_invoice_on = 15;
+  TenantStatus status = 16;
+  // When the tenant was activated (live) — empty while INACTIVE.
+  google.protobuf.Timestamp activate_time = 17;
+  // When the owner accepted the terms of service; empty until then.
+  google.protobuf.Timestamp terms_accept_time = 18;
 }
 
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.
@@ -113,6 +127,12 @@ message ApiKey {
     STATUS_ACTIVE = 1;
     STATUS_REVOKED = 2;
   }
+  enum Scope {
+    SCOPE_UNSPECIFIED = 0;
+    SCOPE_FULL = 1;
+    SCOPE_INGEST = 2;
+    SCOPE_READ = 3;
+  }
   string id = 1;
   string tenant_id = 2;
   // 8 characters, the non-secret lookup part of qk_{env}_{prefix}_{secret}.
@@ -121,6 +141,12 @@ message ApiKey {
   Status status = 5;
   google.protobuf.Timestamp create_time = 6;
   google.protobuf.Timestamp revoke_time = 7;
+  // What the key may do: FULL everything the tenant API offers, INGEST only POST /v1/events, READ only GET requests.
+  Scope scope = 8;
+  // When the key last authenticated a request (kept to within a few minutes); empty when never used.
+  google.protobuf.Timestamp last_used_time = 9;
+  // When the key stops working although it is not revoked: the old key of a rotation, valid for its overlap window. Empty for a key without an end.
+  google.protobuf.Timestamp expire_time = 10;
 }
 
 // Customer is a tenant's end customer, the entity that gets invoiced.

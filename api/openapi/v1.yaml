@@ -2441,6 +2441,7 @@ paths:
               required: [environment]
               properties:
                 environment: { type: string, enum: [sandbox, live] }
+                scope: { type: string, enum: [full, ingest, read], default: full, description: "full: the whole tenant API. ingest: only POST /v1/events. read: only GET requests." }
       responses:
         "201":
           description: Created
@@ -2456,6 +2457,76 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/api-keys/{key_id}/rotate:
+    post:
+      operationId: appRotateApiKey
+      tags: [Product]
+      summary: Replace an API key; the old one keeps working for an overlap window
+      description: >
+        Issues a key with the same scope and environment and sets an end time on the old one, so a deployment can switch without a gap. The plaintext of the new key is in the
+        answer once. A revoked key, or one that already ends, cannot be rotated (409 identity.api_key.not_active, identity.api_key.already_rotating).
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: key_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                overlap_hours: { type: number, minimum: 0, maximum: 168, default: 24, description: How long the old key keeps working. 0 ends it now. }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_key: { $ref: "#/components/schemas/ApiKey" }
+                  plaintext: { type: string, description: "shown once" }
+                  previous: { $ref: "#/components/schemas/ApiKey" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/go-live:
+    get:
+      operationId: appGoLive
+      tags: [Product]
+      summary: The go-live checklist of the app's live environment
+      description: >
+        A live environment is created inactive and has no API keys and no webhook endpoints until every item is done: the owner's e-mail address is verified, the legal
+        profile (name, country, tax id where the country needs one) is complete, a payment provider is connected in live mode and works, a plan is published, and the
+        terms are accepted. The list is computed on the server; the answer is the same for every member of the account.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { go_live: { $ref: "#/components/schemas/GoLive" } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: appActivateLive
+      tags: [Product]
+      summary: Activate the live environment (the owner only)
+      description: Passes only when the checklist is complete (409 identity.go_live.incomplete otherwise). Idempotent. A suspended environment is not activated by its owner (identity.go_live.suspended).
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accept_terms: { type: boolean, description: Accepts the terms of service in the same call. }
+      responses:
+        "200": { description: Activated, content: { application/json: { schema: { type: object, properties: { go_live: { $ref: "#/components/schemas/GoLive" } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/api-keys/{key_id}:
     delete:
       operationId: appRevokeApiKey
@@ -3424,12 +3495,42 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
         "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{id}/status:
+    put:
+      operationId: setTenantStatus
+      summary: Suspend an active live tenant, reinstate a suspended one, or activate an inactive one without its checklist
+      description: A suspended tenant's API keys stop working at once (403 gateway.auth.tenant_not_active). Activating an inactive tenant needs a reason and is logged.
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, suspended] }
+                reason: { type: string }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{id}/api-keys:
     post:
       operationId: createApiKey
       summary: Create an API key (qk_test_ for sandbox tenants, qk_live_ for live). The plaintext is returned once.
+      description: A live tenant that is not active has no keys (409 plans.api_key.tenant_not_active).
       security: [{ operatorToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], default: SCOPE_FULL }
       responses:
         "201":
           description: Created
@@ -5041,6 +5142,22 @@ components:
         timezone: { type: string }
         grace_period: { type: string }
         create_time: { type: string, format: date-time }
+        status: { type: string, enum: [TENANT_STATUS_INACTIVE, TENANT_STATUS_ACTIVE, TENANT_STATUS_SUSPENDED], description: "A sandbox tenant is always active. A live tenant starts inactive: no keys, no webhook endpoints, no invoices, until the go-live checklist is complete." }
+        activate_time: { type: string, format: date-time }
+        terms_accept_time: { type: string, format: date-time }
+    GoLive:
+      type: object
+      properties:
+        tenant_id: { type: string, format: uuid }
+        status: { type: string, enum: [TENANT_STATUS_INACTIVE, TENANT_STATUS_ACTIVE, TENANT_STATUS_SUSPENDED] }
+        ready: { type: boolean, description: Every item is done. }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string, enum: [email_verified, legal_profile, payment_provider, plan_published, terms_accepted] }
+              done: { type: boolean }
     Account:
       type: object
       properties:
@@ -5068,3 +5185,6 @@ components:
         status: { type: string, enum: [STATUS_ACTIVE, STATUS_REVOKED] }
         create_time: { type: string, format: date-time }
         revoke_time: { type: string, format: date-time }
+        scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], description: "FULL: everything. INGEST: only POST /v1/events. READ: only GET requests. Others are 403 gateway.auth.scope_denied." }
+        last_used_time: { type: string, format: date-time, description: Kept to within a few minutes. }
+        expire_time: { type: string, format: date-time, description: The key stops working at this time although it is not revoked (the old key of a rotation). }

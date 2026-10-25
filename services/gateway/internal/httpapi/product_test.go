@@ -74,6 +74,12 @@ type fakeIdentity struct {
 	codeRequests []*plansv1.RequestLoginCodeRequest
 	codeVerifies []*plansv1.VerifyLoginCodeRequest
 	identities   []*plansv1.SignInWithIdentityRequest
+
+	// Phase 45: what the go-live and rotation routes passed on, and the scope of the last key made.
+	goLive    []*plansv1.GetMyGoLiveRequest
+	activates []*plansv1.ActivateMyAppRequest
+	rotates   []*plansv1.RotateMyApiKeyRequest
+	lastScope plansv1.ApiKey_Scope
 }
 
 const (
@@ -282,7 +288,48 @@ func (f *fakeIdentity) CreateMyApiKey(_ context.Context, req *plansv1.CreateMyAp
 	case "viewer":
 		return nil, errkey.New(codes.PermissionDenied, "identity.account.forbidden", "read-only")
 	}
+	f.mu.Lock()
+	f.lastScope = req.GetScope()
+	f.mu.Unlock()
 	return &plansv1.CreateMyApiKeyResponse{ApiKey: &plansv1.ApiKey{Id: "key-new", Prefix: "abcdefgh"}, Plaintext: "qk_live_abcdefgh_secret"}, nil
+}
+
+func (f *fakeIdentity) GetMyGoLive(_ context.Context, req *plansv1.GetMyGoLiveRequest) (*plansv1.GetMyGoLiveResponse, error) {
+	f.seen(req.GetUserId())
+	if _, role := f.mine(req.GetUserId(), req.GetAppId()); role == "" {
+		return nil, notFound("app")
+	}
+	f.mu.Lock()
+	f.goLive = append(f.goLive, req)
+	f.mu.Unlock()
+	return &plansv1.GetMyGoLiveResponse{GoLive: &plansv1.GoLive{Ready: req.GetProviderReady(), Items: []*plansv1.GoLiveItem{{Key: "payment_provider", Done: req.GetProviderReady()}}}}, nil
+}
+
+func (f *fakeIdentity) ActivateMyApp(_ context.Context, req *plansv1.ActivateMyAppRequest) (*plansv1.ActivateMyAppResponse, error) {
+	f.seen(req.GetUserId())
+	_, role := f.mine(req.GetUserId(), req.GetAppId())
+	switch role {
+	case "":
+		return nil, notFound("app")
+	case "owner":
+	default:
+		return nil, errkey.New(codes.PermissionDenied, "identity.go_live.owner_only", "owner only")
+	}
+	f.mu.Lock()
+	f.activates = append(f.activates, req)
+	f.mu.Unlock()
+	return &plansv1.ActivateMyAppResponse{GoLive: &plansv1.GoLive{Ready: req.GetProviderReady()}}, nil
+}
+
+func (f *fakeIdentity) RotateMyApiKey(_ context.Context, req *plansv1.RotateMyApiKeyRequest) (*plansv1.RotateMyApiKeyResponse, error) {
+	f.seen(req.GetUserId())
+	if _, role := f.mine(req.GetUserId(), req.GetAppId()); role == "" {
+		return nil, notFound("app")
+	}
+	f.mu.Lock()
+	f.rotates = append(f.rotates, req)
+	f.mu.Unlock()
+	return &plansv1.RotateMyApiKeyResponse{ApiKey: &plansv1.ApiKey{Id: "key-rot", Prefix: "zyxwvuts"}, Plaintext: "qk_test_zyxwvuts_secret", Previous: &plansv1.ApiKey{Id: req.GetApiKeyId()}}, nil
 }
 
 func (f *fakeIdentity) ListMyApiKeys(_ context.Context, req *plansv1.ListMyApiKeysRequest) (*plansv1.ListMyApiKeysResponse, error) {

@@ -163,6 +163,8 @@ window or a rejection), and the operator endpoints `GET /admin/tenants/{tenant}/
 Phase 15 adds Paddle: `POST /webhooks/{provider}/{tenant}/{environment}` (a notification destination per account, verified by signature), the tenant's provider subscriptions
 and hosted checkouts under `/admin/tenants/{tenant}/`, and `QUOTIFY_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See [phase 15](../phases/phase-15-paddle.md).
 
+Phase 45 adds `GET /admin/tenants/{tenant}/go-live` (internal token): `{"ready": bool, "providers": [...]}`, true when the tenant has a live-mode account whose sealed settings still open and still build an adapter. The gateway asks it for the go-live checklist; plans-svc never reads provider data. See [ADR 0022](../adr/0022-live-and-sandbox-guards.md).
+
 ## As built: e-invoices in payments-worker (Phase 30)
 
 payments-worker also consumes `einvoice.issue` (`IssueEInvoice`: issue or cancel one document) and answers with an `EInvoiceResult` (`issued`, `cancelled`, `failed` with

@@ -48,6 +48,9 @@ const (
 	IdentityService_CreateMyApiKey_FullMethodName         = "/quotify.plans.v1.IdentityService/CreateMyApiKey"
 	IdentityService_ListMyApiKeys_FullMethodName          = "/quotify.plans.v1.IdentityService/ListMyApiKeys"
 	IdentityService_RevokeMyApiKey_FullMethodName         = "/quotify.plans.v1.IdentityService/RevokeMyApiKey"
+	IdentityService_RotateMyApiKey_FullMethodName         = "/quotify.plans.v1.IdentityService/RotateMyApiKey"
+	IdentityService_GetMyGoLive_FullMethodName            = "/quotify.plans.v1.IdentityService/GetMyGoLive"
+	IdentityService_ActivateMyApp_FullMethodName          = "/quotify.plans.v1.IdentityService/ActivateMyApp"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -116,6 +119,12 @@ type IdentityServiceClient interface {
 	CreateMyApiKey(ctx context.Context, in *CreateMyApiKeyRequest, opts ...grpc.CallOption) (*CreateMyApiKeyResponse, error)
 	ListMyApiKeys(ctx context.Context, in *ListMyApiKeysRequest, opts ...grpc.CallOption) (*ListMyApiKeysResponse, error)
 	RevokeMyApiKey(ctx context.Context, in *RevokeMyApiKeyRequest, opts ...grpc.CallOption) (*RevokeMyApiKeyResponse, error)
+	// RotateMyApiKey issues a replacement with the same scope and lets the old key live for an overlap window, so a deployment can switch without a gap.
+	RotateMyApiKey(ctx context.Context, in *RotateMyApiKeyRequest, opts ...grpc.CallOption) (*RotateMyApiKeyResponse, error)
+	// GetMyGoLive computes the go-live checklist of an app's live environment. provider_ready is what the gateway learned from payments-worker.
+	GetMyGoLive(ctx context.Context, in *GetMyGoLiveRequest, opts ...grpc.CallOption) (*GetMyGoLiveResponse, error)
+	// ActivateMyApp activates the live environment when every item is done (the owner only).
+	ActivateMyApp(ctx context.Context, in *ActivateMyAppRequest, opts ...grpc.CallOption) (*ActivateMyAppResponse, error)
 }
 
 type identityServiceClient struct {
@@ -416,6 +425,36 @@ func (c *identityServiceClient) RevokeMyApiKey(ctx context.Context, in *RevokeMy
 	return out, nil
 }
 
+func (c *identityServiceClient) RotateMyApiKey(ctx context.Context, in *RotateMyApiKeyRequest, opts ...grpc.CallOption) (*RotateMyApiKeyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RotateMyApiKeyResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RotateMyApiKey_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) GetMyGoLive(ctx context.Context, in *GetMyGoLiveRequest, opts ...grpc.CallOption) (*GetMyGoLiveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMyGoLiveResponse)
+	err := c.cc.Invoke(ctx, IdentityService_GetMyGoLive_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ActivateMyApp(ctx context.Context, in *ActivateMyAppRequest, opts ...grpc.CallOption) (*ActivateMyAppResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ActivateMyAppResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ActivateMyApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IdentityServiceServer is the server API for IdentityService service.
 // All implementations must embed UnimplementedIdentityServiceServer
 // for forward compatibility.
@@ -482,6 +521,12 @@ type IdentityServiceServer interface {
 	CreateMyApiKey(context.Context, *CreateMyApiKeyRequest) (*CreateMyApiKeyResponse, error)
 	ListMyApiKeys(context.Context, *ListMyApiKeysRequest) (*ListMyApiKeysResponse, error)
 	RevokeMyApiKey(context.Context, *RevokeMyApiKeyRequest) (*RevokeMyApiKeyResponse, error)
+	// RotateMyApiKey issues a replacement with the same scope and lets the old key live for an overlap window, so a deployment can switch without a gap.
+	RotateMyApiKey(context.Context, *RotateMyApiKeyRequest) (*RotateMyApiKeyResponse, error)
+	// GetMyGoLive computes the go-live checklist of an app's live environment. provider_ready is what the gateway learned from payments-worker.
+	GetMyGoLive(context.Context, *GetMyGoLiveRequest) (*GetMyGoLiveResponse, error)
+	// ActivateMyApp activates the live environment when every item is done (the owner only).
+	ActivateMyApp(context.Context, *ActivateMyAppRequest) (*ActivateMyAppResponse, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
 
@@ -578,6 +623,15 @@ func (UnimplementedIdentityServiceServer) ListMyApiKeys(context.Context, *ListMy
 }
 func (UnimplementedIdentityServiceServer) RevokeMyApiKey(context.Context, *RevokeMyApiKeyRequest) (*RevokeMyApiKeyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RevokeMyApiKey not implemented")
+}
+func (UnimplementedIdentityServiceServer) RotateMyApiKey(context.Context, *RotateMyApiKeyRequest) (*RotateMyApiKeyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RotateMyApiKey not implemented")
+}
+func (UnimplementedIdentityServiceServer) GetMyGoLive(context.Context, *GetMyGoLiveRequest) (*GetMyGoLiveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMyGoLive not implemented")
+}
+func (UnimplementedIdentityServiceServer) ActivateMyApp(context.Context, *ActivateMyAppRequest) (*ActivateMyAppResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ActivateMyApp not implemented")
 }
 func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
 func (UnimplementedIdentityServiceServer) testEmbeddedByValue()                         {}
@@ -1122,6 +1176,60 @@ func _IdentityService_RevokeMyApiKey_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_RotateMyApiKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RotateMyApiKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RotateMyApiKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RotateMyApiKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RotateMyApiKey(ctx, req.(*RotateMyApiKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_GetMyGoLive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMyGoLiveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).GetMyGoLive(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_GetMyGoLive_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).GetMyGoLive(ctx, req.(*GetMyGoLiveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ActivateMyApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActivateMyAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ActivateMyApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ActivateMyApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ActivateMyApp(ctx, req.(*ActivateMyAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IdentityService_ServiceDesc is the grpc.ServiceDesc for IdentityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1244,6 +1352,18 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RevokeMyApiKey",
 			Handler:    _IdentityService_RevokeMyApiKey_Handler,
+		},
+		{
+			MethodName: "RotateMyApiKey",
+			Handler:    _IdentityService_RotateMyApiKey_Handler,
+		},
+		{
+			MethodName: "GetMyGoLive",
+			Handler:    _IdentityService_GetMyGoLive_Handler,
+		},
+		{
+			MethodName: "ActivateMyApp",
+			Handler:    _IdentityService_ActivateMyApp_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/golive"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/command"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
 )
@@ -16,12 +17,31 @@ import (
 // Handler serves plansv1.IdentityService.
 type Handler struct {
 	plansv1.UnimplementedIdentityServiceServer
-	cmd *command.Commands
-	qry *query.Queries
+	cmd    *command.Commands
+	qry    *query.Queries
+	goLive *golive.Handler
 }
 
-// New returns the identity handlers.
-func New(cmd *command.Commands, qry *query.Queries) *Handler { return &Handler{cmd: cmd, qry: qry} }
+// New returns the identity handlers. goLive serves the two go-live calls (phase 45).
+func New(cmd *command.Commands, qry *query.Queries, goLive *golive.Handler) *Handler {
+	return &Handler{cmd: cmd, qry: qry, goLive: goLive}
+}
+
+func (h *Handler) GetMyGoLive(ctx context.Context, req *plansv1.GetMyGoLiveRequest) (*plansv1.GetMyGoLiveResponse, error) {
+	return h.goLive.GetMyGoLive(ctx, req)
+}
+
+func (h *Handler) ActivateMyApp(ctx context.Context, req *plansv1.ActivateMyAppRequest) (*plansv1.ActivateMyAppResponse, error) {
+	return h.goLive.ActivateMyApp(ctx, req)
+}
+
+func (h *Handler) RotateMyApiKey(ctx context.Context, req *plansv1.RotateMyApiKeyRequest) (*plansv1.RotateMyApiKeyResponse, error) {
+	fresh, plaintext, previous, err := h.cmd.RotateAPIKey(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.RotateMyApiKeyResponse{ApiKey: fresh, Plaintext: plaintext, Previous: previous}, nil
+}
 
 func (h *Handler) SignUp(ctx context.Context, req *plansv1.SignUpRequest) (*plansv1.SignUpResponse, error) {
 	if err := h.cmd.SignUp(ctx, req); err != nil {
