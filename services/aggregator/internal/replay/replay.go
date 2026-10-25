@@ -234,7 +234,7 @@ func validateStart(from, to, reason string) (time.Time, error) {
 	}
 	start, err := time.Parse("2006-01", from)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: %w", ErrInvalid, err)
+		return time.Time{}, fmt.Errorf("%w: periods must look like 2026-10", ErrInvalid)
 	}
 	return start, nil
 }

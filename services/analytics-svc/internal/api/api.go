@@ -38,6 +38,12 @@ func New(conn driver.Conn) *Server { return &Server{conn: conn, now: time.Now} }
 // invalid is an InvalidArgument status with the error key key.
 func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
 
+// badQuery answers for a query the builder refused: the builder's text names internals, so it goes to the log and the client gets a fixed message.
+func badQuery(err error) error {
+	slog.Warn("analytics query refused", "error", err)
+	return invalid("analytics.query.invalid", "the query is not valid")
+}
+
 func unavailable(err error) error {
 	slog.Warn("clickhouse query failed", "error", err)
 	return errkey.New(codes.Unavailable, "analytics.store.unavailable", "analytics store unavailable")
@@ -83,7 +89,7 @@ func (s *Server) QueryUsage(ctx context.Context, req *analyticsv1.QueryUsageRequ
 	}
 	q, err := b.Usage(f)
 	if err != nil {
-		return nil, invalid("analytics.query.invalid", err.Error())
+		return nil, badQuery(err)
 	}
 	rows, err := s.conn.Query(ctx, q.SQL, q.Args...)
 	if err != nil {
@@ -134,7 +140,7 @@ func (s *Server) TopCustomers(ctx context.Context, req *analyticsv1.TopCustomers
 	}
 	q, err := b.TopCustomers(req.GetMeterCode(), req.GetPeriodId(), limit)
 	if err != nil {
-		return nil, invalid("analytics.query.invalid", err.Error())
+		return nil, badQuery(err)
 	}
 	rows, err := s.conn.Query(ctx, q.SQL, q.Args...)
 	if err != nil {
@@ -182,11 +188,11 @@ func (s *Server) GetIngestStats(ctx context.Context, req *analyticsv1.GetIngestS
 		b, err = query.AllTenants(true)
 	}
 	if err != nil {
-		return nil, invalid("analytics.query.invalid", err.Error())
+		return nil, badQuery(err)
 	}
 	q, err := b.IngestStats(window, s.now())
 	if err != nil {
-		return nil, invalid("analytics.query.invalid", err.Error())
+		return nil, badQuery(err)
 	}
 	rows, err := s.conn.Query(ctx, q.SQL, q.Args...)
 	if err != nil {
