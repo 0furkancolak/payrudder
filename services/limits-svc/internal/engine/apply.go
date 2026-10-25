@@ -22,6 +22,7 @@ import (
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
@@ -256,7 +257,7 @@ func (a *Applier) applyRecords(ctx context.Context, p int32, recs []*kgo.Record)
 
 // accumulate folds one record into the batch, or counts it as skipped.
 func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) error {
-	ev, err := domain.Decode(rec)
+	ev, err := usage.Decode(rec)
 	if err != nil {
 		a.skip(ctx, "invalid")
 		return nil
@@ -292,7 +293,7 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 	k := ref.Key()
 	c := b.cells[k]
 	if c == nil {
-		c = &cell{ref: ref, isMax: m.Aggregation == domain.Max, expireAt: end.Add(KeyTTL).Unix()}
+		c = &cell{ref: ref, isMax: m.Aggregation == usage.Max, expireAt: end.Add(KeyTTL).Unix()}
 		b.cells[k] = c
 	}
 	v := m.Value(ev)
