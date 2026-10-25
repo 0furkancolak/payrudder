@@ -166,3 +166,7 @@ PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live
 make up-infra && make migrate && make topics
 go run ./services/ingest-svc/cmd/ingest-svc     # with .env loaded via direnv
 ```
+
+## The console and Cloudflare
+
+Locally the console is always Vite: `make dev` / `npm run dev` (port 42301 in `web/admin`) proxies `/gw` to the gateway. The compose `admin-ui` service (profile `app`) serves the built app with `vite preview` and the same proxy, for the e2e job; there is no nginx anywhere. To try the production shape (the Worker and static assets) on your machine: `cd web/admin && npm run cf:dev` builds the console and starts `wrangler dev`, which sends `/gw/*` to `API_ORIGIN` (default `http://localhost:42800`, set in `wrangler.jsonc` or in `.dev.vars`). Deploying: [runbook](runbooks/console-first-deploy.md), [ADR 0021](adr/0021-console-on-cloudflare-workers.md).

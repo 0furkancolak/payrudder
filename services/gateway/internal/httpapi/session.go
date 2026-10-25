@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"io"
@@ -98,14 +99,37 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	return principalOf(resp.GetTenant()), nil
 }
 
-// clientAddr is the address a public request is counted under. Behind the console's nginx the connection comes from the proxy, which passes the visitor's
-// address in X-Forwarded-For; that header is believed only when the deployment says so and the connection itself is from a private or loopback address.
+// EdgeAuthHeader carries the shared secret (QUOTIFY_TRUSTED_PROXY_SECRET) that an edge proxy such as the console's Worker adds to prove it is the one
+// that wrote the forwarded address headers.
+const EdgeAuthHeader = "X-Edge-Auth"
+
+// proxyTrusted says whether the headers naming the client address (X-Forwarded-For) were written by a proxy of ours, not by the client. Any one of three
+// proofs is enough: the shared secret in X-Edge-Auth (constant-time compare; the choice for Cloudflare, whose egress addresses are not stable), a peer inside
+// a configured trusted_proxies network, or, with TrustForwardedFor, a private or loopback peer.
+func (s *Server) proxyTrusted(r *http.Request, remote string) bool {
+	if secret := s.d.TrustedProxySecret; secret != "" {
+		if got := r.Header.Get(EdgeAuthHeader); got != "" && subtle.ConstantTimeCompare([]byte(got), []byte(secret)) == 1 {
+			return true
+		}
+	}
+	ip, err := netip.ParseAddr(remote)
+	if err != nil {
+		return false
+	}
+	ip = ip.Unmap()
+	for _, p := range s.d.TrustedProxies {
+		if p.Contains(ip) {
+			return true
+		}
+	}
+	return s.d.TrustForwardedFor && (ip.IsPrivate() || ip.IsLoopback())
+}
+
+// clientAddr is the address a public request is counted under. Behind a proxy the connection comes from the proxy, which passes the visitor's address in
+// X-Forwarded-For; that header is believed only from a trusted proxy (see proxyTrusted), so a client cannot choose its own bucket by sending it.
 func (s *Server) clientAddr(r *http.Request) string {
 	remote := clientIP(r)
-	if !s.d.TrustForwardedFor {
-		return remote
-	}
-	if ip, err := netip.ParseAddr(remote); err != nil || (!ip.IsPrivate() && !ip.IsLoopback()) {
+	if !s.proxyTrusted(r, remote) {
 		return remote
 	}
 	xff := r.Header.Get("X-Forwarded-For")

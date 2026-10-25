@@ -2,7 +2,7 @@ import createClient from "openapi-fetch";
 import { activeAccount, currentToken, sessionLost } from "@/shared/lib/session";
 import type { components, paths } from "./schema";
 
-// Same origin: the console talks to the gateway through its own /gw path (nginx in the image, Vite in development), so the gateway
+// Same origin: the console talks to the gateway through its own /gw path (the Cloudflare Worker in production, Vite in development), so the gateway
 // needs no CORS and the browser never holds a URL it cannot reach. Only the gateway is used: no database or broker access.
 export const api = createClient<paths>({ baseUrl: "/gw" });
 
