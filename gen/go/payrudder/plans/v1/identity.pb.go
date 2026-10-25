@@ -79,7 +79,7 @@ func (x PromoteChange_Action) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PromoteChange_Action.Descriptor instead.
 func (PromoteChange_Action) EnumDescriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{70, 0}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{74, 0}
 }
 
 type User struct {
@@ -2463,6 +2463,218 @@ func (x *ActivateMyAppResponse) GetGoLive() *GoLive {
 	return nil
 }
 
+type UpdateMyBillingProfileRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	AppId  string                 `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	// legal_name and, where the country's invoices need one, tax_id are required; tax_office, mersis_no and trade_registry_no are optional.
+	Legal *LegalInfo `protobuf:"bytes,3,opt,name=legal,proto3" json:"legal,omitempty"`
+	// line1, city and country (ISO 3166-1 alpha-2) are required.
+	Address       *Address `protobuf:"bytes,4,opt,name=address,proto3" json:"address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateMyBillingProfileRequest) Reset() {
+	*x = UpdateMyBillingProfileRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateMyBillingProfileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateMyBillingProfileRequest) ProtoMessage() {}
+
+func (x *UpdateMyBillingProfileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateMyBillingProfileRequest.ProtoReflect.Descriptor instead.
+func (*UpdateMyBillingProfileRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *UpdateMyBillingProfileRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *UpdateMyBillingProfileRequest) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+func (x *UpdateMyBillingProfileRequest) GetLegal() *LegalInfo {
+	if x != nil {
+		return x.Legal
+	}
+	return nil
+}
+
+func (x *UpdateMyBillingProfileRequest) GetAddress() *Address {
+	if x != nil {
+		return x.Address
+	}
+	return nil
+}
+
+type UpdateMyBillingProfileResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The live tenant as saved.
+	Tenant        *Tenant `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateMyBillingProfileResponse) Reset() {
+	*x = UpdateMyBillingProfileResponse{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateMyBillingProfileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateMyBillingProfileResponse) ProtoMessage() {}
+
+func (x *UpdateMyBillingProfileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateMyBillingProfileResponse.ProtoReflect.Descriptor instead.
+func (*UpdateMyBillingProfileResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *UpdateMyBillingProfileResponse) GetTenant() *Tenant {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type AcceptMyTermsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	AppId         string                 `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AcceptMyTermsRequest) Reset() {
+	*x = AcceptMyTermsRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AcceptMyTermsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AcceptMyTermsRequest) ProtoMessage() {}
+
+func (x *AcceptMyTermsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AcceptMyTermsRequest.ProtoReflect.Descriptor instead.
+func (*AcceptMyTermsRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *AcceptMyTermsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *AcceptMyTermsRequest) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+type AcceptMyTermsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When the terms were accepted (the first acceptance, if it was accepted before).
+	AcceptTime    *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=accept_time,json=acceptTime,proto3" json:"accept_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AcceptMyTermsResponse) Reset() {
+	*x = AcceptMyTermsResponse{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AcceptMyTermsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AcceptMyTermsResponse) ProtoMessage() {}
+
+func (x *AcceptMyTermsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AcceptMyTermsResponse.ProtoReflect.Descriptor instead.
+func (*AcceptMyTermsResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *AcceptMyTermsResponse) GetAcceptTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AcceptTime
+	}
+	return nil
+}
+
 type VerifyEmailRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
@@ -2472,7 +2684,7 @@ type VerifyEmailRequest struct {
 
 func (x *VerifyEmailRequest) Reset() {
 	*x = VerifyEmailRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[41]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2484,7 +2696,7 @@ func (x *VerifyEmailRequest) String() string {
 func (*VerifyEmailRequest) ProtoMessage() {}
 
 func (x *VerifyEmailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[41]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2497,7 +2709,7 @@ func (x *VerifyEmailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyEmailRequest.ProtoReflect.Descriptor instead.
 func (*VerifyEmailRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{41}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *VerifyEmailRequest) GetToken() string {
@@ -2516,7 +2728,7 @@ type VerifyEmailResponse struct {
 
 func (x *VerifyEmailResponse) Reset() {
 	*x = VerifyEmailResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[42]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2528,7 +2740,7 @@ func (x *VerifyEmailResponse) String() string {
 func (*VerifyEmailResponse) ProtoMessage() {}
 
 func (x *VerifyEmailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[42]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2541,7 +2753,7 @@ func (x *VerifyEmailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyEmailResponse.ProtoReflect.Descriptor instead.
 func (*VerifyEmailResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{42}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *VerifyEmailResponse) GetUser() *User {
@@ -2560,7 +2772,7 @@ type ResendVerificationRequest struct {
 
 func (x *ResendVerificationRequest) Reset() {
 	*x = ResendVerificationRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[43]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2572,7 +2784,7 @@ func (x *ResendVerificationRequest) String() string {
 func (*ResendVerificationRequest) ProtoMessage() {}
 
 func (x *ResendVerificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[43]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2585,7 +2797,7 @@ func (x *ResendVerificationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendVerificationRequest.ProtoReflect.Descriptor instead.
 func (*ResendVerificationRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{43}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ResendVerificationRequest) GetUserId() string {
@@ -2603,7 +2815,7 @@ type ResendVerificationResponse struct {
 
 func (x *ResendVerificationResponse) Reset() {
 	*x = ResendVerificationResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[44]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2615,7 +2827,7 @@ func (x *ResendVerificationResponse) String() string {
 func (*ResendVerificationResponse) ProtoMessage() {}
 
 func (x *ResendVerificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[44]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2628,7 +2840,7 @@ func (x *ResendVerificationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendVerificationResponse.ProtoReflect.Descriptor instead.
 func (*ResendVerificationResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{44}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{48}
 }
 
 type RequestPasswordResetRequest struct {
@@ -2641,7 +2853,7 @@ type RequestPasswordResetRequest struct {
 
 func (x *RequestPasswordResetRequest) Reset() {
 	*x = RequestPasswordResetRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[45]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2653,7 +2865,7 @@ func (x *RequestPasswordResetRequest) String() string {
 func (*RequestPasswordResetRequest) ProtoMessage() {}
 
 func (x *RequestPasswordResetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[45]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2666,7 +2878,7 @@ func (x *RequestPasswordResetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestPasswordResetRequest.ProtoReflect.Descriptor instead.
 func (*RequestPasswordResetRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{45}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *RequestPasswordResetRequest) GetEmail() string {
@@ -2691,7 +2903,7 @@ type RequestPasswordResetResponse struct {
 
 func (x *RequestPasswordResetResponse) Reset() {
 	*x = RequestPasswordResetResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[46]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2703,7 +2915,7 @@ func (x *RequestPasswordResetResponse) String() string {
 func (*RequestPasswordResetResponse) ProtoMessage() {}
 
 func (x *RequestPasswordResetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[46]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2716,7 +2928,7 @@ func (x *RequestPasswordResetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestPasswordResetResponse.ProtoReflect.Descriptor instead.
 func (*RequestPasswordResetResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{46}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{50}
 }
 
 type ResetPasswordRequest struct {
@@ -2729,7 +2941,7 @@ type ResetPasswordRequest struct {
 
 func (x *ResetPasswordRequest) Reset() {
 	*x = ResetPasswordRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[47]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2741,7 +2953,7 @@ func (x *ResetPasswordRequest) String() string {
 func (*ResetPasswordRequest) ProtoMessage() {}
 
 func (x *ResetPasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[47]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2754,7 +2966,7 @@ func (x *ResetPasswordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetPasswordRequest.ProtoReflect.Descriptor instead.
 func (*ResetPasswordRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{47}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *ResetPasswordRequest) GetToken() string {
@@ -2779,7 +2991,7 @@ type ResetPasswordResponse struct {
 
 func (x *ResetPasswordResponse) Reset() {
 	*x = ResetPasswordResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[48]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2791,7 +3003,7 @@ func (x *ResetPasswordResponse) String() string {
 func (*ResetPasswordResponse) ProtoMessage() {}
 
 func (x *ResetPasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[48]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2804,7 +3016,7 @@ func (x *ResetPasswordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetPasswordResponse.ProtoReflect.Descriptor instead.
 func (*ResetPasswordResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{48}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{52}
 }
 
 type RenameMyAccountRequest struct {
@@ -2818,7 +3030,7 @@ type RenameMyAccountRequest struct {
 
 func (x *RenameMyAccountRequest) Reset() {
 	*x = RenameMyAccountRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[49]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2830,7 +3042,7 @@ func (x *RenameMyAccountRequest) String() string {
 func (*RenameMyAccountRequest) ProtoMessage() {}
 
 func (x *RenameMyAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[49]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2843,7 +3055,7 @@ func (x *RenameMyAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameMyAccountRequest.ProtoReflect.Descriptor instead.
 func (*RenameMyAccountRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{49}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *RenameMyAccountRequest) GetUserId() string {
@@ -2876,7 +3088,7 @@ type RenameMyAccountResponse struct {
 
 func (x *RenameMyAccountResponse) Reset() {
 	*x = RenameMyAccountResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[50]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2888,7 +3100,7 @@ func (x *RenameMyAccountResponse) String() string {
 func (*RenameMyAccountResponse) ProtoMessage() {}
 
 func (x *RenameMyAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[50]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2901,7 +3113,7 @@ func (x *RenameMyAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameMyAccountResponse.ProtoReflect.Descriptor instead.
 func (*RenameMyAccountResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{50}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *RenameMyAccountResponse) GetName() string {
@@ -2928,7 +3140,7 @@ type Invitation struct {
 
 func (x *Invitation) Reset() {
 	*x = Invitation{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[51]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2940,7 +3152,7 @@ func (x *Invitation) String() string {
 func (*Invitation) ProtoMessage() {}
 
 func (x *Invitation) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[51]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2953,7 +3165,7 @@ func (x *Invitation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Invitation.ProtoReflect.Descriptor instead.
 func (*Invitation) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{51}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *Invitation) GetId() string {
@@ -3026,7 +3238,7 @@ type InviteMemberRequest struct {
 
 func (x *InviteMemberRequest) Reset() {
 	*x = InviteMemberRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[52]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3038,7 +3250,7 @@ func (x *InviteMemberRequest) String() string {
 func (*InviteMemberRequest) ProtoMessage() {}
 
 func (x *InviteMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[52]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3051,7 +3263,7 @@ func (x *InviteMemberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteMemberRequest.ProtoReflect.Descriptor instead.
 func (*InviteMemberRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{52}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *InviteMemberRequest) GetUserId() string {
@@ -3098,7 +3310,7 @@ type InviteMemberResponse struct {
 
 func (x *InviteMemberResponse) Reset() {
 	*x = InviteMemberResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[53]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3110,7 +3322,7 @@ func (x *InviteMemberResponse) String() string {
 func (*InviteMemberResponse) ProtoMessage() {}
 
 func (x *InviteMemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[53]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3123,7 +3335,7 @@ func (x *InviteMemberResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteMemberResponse.ProtoReflect.Descriptor instead.
 func (*InviteMemberResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{53}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *InviteMemberResponse) GetInvitation() *Invitation {
@@ -3143,7 +3355,7 @@ type ListInvitationsRequest struct {
 
 func (x *ListInvitationsRequest) Reset() {
 	*x = ListInvitationsRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[54]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3155,7 +3367,7 @@ func (x *ListInvitationsRequest) String() string {
 func (*ListInvitationsRequest) ProtoMessage() {}
 
 func (x *ListInvitationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[54]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3168,7 +3380,7 @@ func (x *ListInvitationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitationsRequest.ProtoReflect.Descriptor instead.
 func (*ListInvitationsRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{54}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *ListInvitationsRequest) GetUserId() string {
@@ -3194,7 +3406,7 @@ type ListInvitationsResponse struct {
 
 func (x *ListInvitationsResponse) Reset() {
 	*x = ListInvitationsResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[55]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3206,7 +3418,7 @@ func (x *ListInvitationsResponse) String() string {
 func (*ListInvitationsResponse) ProtoMessage() {}
 
 func (x *ListInvitationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[55]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3219,7 +3431,7 @@ func (x *ListInvitationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitationsResponse.ProtoReflect.Descriptor instead.
 func (*ListInvitationsResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{55}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *ListInvitationsResponse) GetInvitations() []*Invitation {
@@ -3240,7 +3452,7 @@ type RevokeInvitationRequest struct {
 
 func (x *RevokeInvitationRequest) Reset() {
 	*x = RevokeInvitationRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[56]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3252,7 +3464,7 @@ func (x *RevokeInvitationRequest) String() string {
 func (*RevokeInvitationRequest) ProtoMessage() {}
 
 func (x *RevokeInvitationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[56]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3265,7 +3477,7 @@ func (x *RevokeInvitationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInvitationRequest.ProtoReflect.Descriptor instead.
 func (*RevokeInvitationRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{56}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *RevokeInvitationRequest) GetUserId() string {
@@ -3297,7 +3509,7 @@ type RevokeInvitationResponse struct {
 
 func (x *RevokeInvitationResponse) Reset() {
 	*x = RevokeInvitationResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[57]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3309,7 +3521,7 @@ func (x *RevokeInvitationResponse) String() string {
 func (*RevokeInvitationResponse) ProtoMessage() {}
 
 func (x *RevokeInvitationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[57]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3322,7 +3534,7 @@ func (x *RevokeInvitationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInvitationResponse.ProtoReflect.Descriptor instead.
 func (*RevokeInvitationResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{57}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{61}
 }
 
 type ResendInvitationRequest struct {
@@ -3336,7 +3548,7 @@ type ResendInvitationRequest struct {
 
 func (x *ResendInvitationRequest) Reset() {
 	*x = ResendInvitationRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[58]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3348,7 +3560,7 @@ func (x *ResendInvitationRequest) String() string {
 func (*ResendInvitationRequest) ProtoMessage() {}
 
 func (x *ResendInvitationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[58]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3361,7 +3573,7 @@ func (x *ResendInvitationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendInvitationRequest.ProtoReflect.Descriptor instead.
 func (*ResendInvitationRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{58}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ResendInvitationRequest) GetUserId() string {
@@ -3394,7 +3606,7 @@ type ResendInvitationResponse struct {
 
 func (x *ResendInvitationResponse) Reset() {
 	*x = ResendInvitationResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[59]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3406,7 +3618,7 @@ func (x *ResendInvitationResponse) String() string {
 func (*ResendInvitationResponse) ProtoMessage() {}
 
 func (x *ResendInvitationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[59]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3419,7 +3631,7 @@ func (x *ResendInvitationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendInvitationResponse.ProtoReflect.Descriptor instead.
 func (*ResendInvitationResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{59}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *ResendInvitationResponse) GetInvitation() *Invitation {
@@ -3441,7 +3653,7 @@ type UpdateMemberRoleRequest struct {
 
 func (x *UpdateMemberRoleRequest) Reset() {
 	*x = UpdateMemberRoleRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[60]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3453,7 +3665,7 @@ func (x *UpdateMemberRoleRequest) String() string {
 func (*UpdateMemberRoleRequest) ProtoMessage() {}
 
 func (x *UpdateMemberRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[60]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3466,7 +3678,7 @@ func (x *UpdateMemberRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMemberRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMemberRoleRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{60}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *UpdateMemberRoleRequest) GetUserId() string {
@@ -3506,7 +3718,7 @@ type UpdateMemberRoleResponse struct {
 
 func (x *UpdateMemberRoleResponse) Reset() {
 	*x = UpdateMemberRoleResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[61]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3518,7 +3730,7 @@ func (x *UpdateMemberRoleResponse) String() string {
 func (*UpdateMemberRoleResponse) ProtoMessage() {}
 
 func (x *UpdateMemberRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[61]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3531,7 +3743,7 @@ func (x *UpdateMemberRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMemberRoleResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMemberRoleResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{61}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *UpdateMemberRoleResponse) GetRole() string {
@@ -3552,7 +3764,7 @@ type RemoveMemberRequest struct {
 
 func (x *RemoveMemberRequest) Reset() {
 	*x = RemoveMemberRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[62]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3564,7 +3776,7 @@ func (x *RemoveMemberRequest) String() string {
 func (*RemoveMemberRequest) ProtoMessage() {}
 
 func (x *RemoveMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[62]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3577,7 +3789,7 @@ func (x *RemoveMemberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMemberRequest.ProtoReflect.Descriptor instead.
 func (*RemoveMemberRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{62}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *RemoveMemberRequest) GetUserId() string {
@@ -3609,7 +3821,7 @@ type RemoveMemberResponse struct {
 
 func (x *RemoveMemberResponse) Reset() {
 	*x = RemoveMemberResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[63]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3621,7 +3833,7 @@ func (x *RemoveMemberResponse) String() string {
 func (*RemoveMemberResponse) ProtoMessage() {}
 
 func (x *RemoveMemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[63]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3634,7 +3846,7 @@ func (x *RemoveMemberResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMemberResponse.ProtoReflect.Descriptor instead.
 func (*RemoveMemberResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{63}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{67}
 }
 
 type LookupInvitationRequest struct {
@@ -3646,7 +3858,7 @@ type LookupInvitationRequest struct {
 
 func (x *LookupInvitationRequest) Reset() {
 	*x = LookupInvitationRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[64]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3658,7 +3870,7 @@ func (x *LookupInvitationRequest) String() string {
 func (*LookupInvitationRequest) ProtoMessage() {}
 
 func (x *LookupInvitationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[64]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3671,7 +3883,7 @@ func (x *LookupInvitationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LookupInvitationRequest.ProtoReflect.Descriptor instead.
 func (*LookupInvitationRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{64}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *LookupInvitationRequest) GetToken() string {
@@ -3695,7 +3907,7 @@ type LookupInvitationResponse struct {
 
 func (x *LookupInvitationResponse) Reset() {
 	*x = LookupInvitationResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[65]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3707,7 +3919,7 @@ func (x *LookupInvitationResponse) String() string {
 func (*LookupInvitationResponse) ProtoMessage() {}
 
 func (x *LookupInvitationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[65]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3720,7 +3932,7 @@ func (x *LookupInvitationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LookupInvitationResponse.ProtoReflect.Descriptor instead.
 func (*LookupInvitationResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{65}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *LookupInvitationResponse) GetAccountName() string {
@@ -3770,7 +3982,7 @@ type AcceptInvitationRequest struct {
 
 func (x *AcceptInvitationRequest) Reset() {
 	*x = AcceptInvitationRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[66]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3782,7 +3994,7 @@ func (x *AcceptInvitationRequest) String() string {
 func (*AcceptInvitationRequest) ProtoMessage() {}
 
 func (x *AcceptInvitationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[66]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3795,7 +4007,7 @@ func (x *AcceptInvitationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInvitationRequest.ProtoReflect.Descriptor instead.
 func (*AcceptInvitationRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{66}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *AcceptInvitationRequest) GetToken() string {
@@ -3838,7 +4050,7 @@ type AcceptInvitationResponse struct {
 
 func (x *AcceptInvitationResponse) Reset() {
 	*x = AcceptInvitationResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[67]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3850,7 +4062,7 @@ func (x *AcceptInvitationResponse) String() string {
 func (*AcceptInvitationResponse) ProtoMessage() {}
 
 func (x *AcceptInvitationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[67]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3863,7 +4075,7 @@ func (x *AcceptInvitationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInvitationResponse.ProtoReflect.Descriptor instead.
 func (*AcceptInvitationResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{67}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *AcceptInvitationResponse) GetUser() *User {
@@ -3904,7 +4116,7 @@ type AcceptInvitationAsUserRequest struct {
 
 func (x *AcceptInvitationAsUserRequest) Reset() {
 	*x = AcceptInvitationAsUserRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[68]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3916,7 +4128,7 @@ func (x *AcceptInvitationAsUserRequest) String() string {
 func (*AcceptInvitationAsUserRequest) ProtoMessage() {}
 
 func (x *AcceptInvitationAsUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[68]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3929,7 +4141,7 @@ func (x *AcceptInvitationAsUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInvitationAsUserRequest.ProtoReflect.Descriptor instead.
 func (*AcceptInvitationAsUserRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{68}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *AcceptInvitationAsUserRequest) GetUserId() string {
@@ -3956,7 +4168,7 @@ type AcceptInvitationAsUserResponse struct {
 
 func (x *AcceptInvitationAsUserResponse) Reset() {
 	*x = AcceptInvitationAsUserResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[69]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3968,7 +4180,7 @@ func (x *AcceptInvitationAsUserResponse) String() string {
 func (*AcceptInvitationAsUserResponse) ProtoMessage() {}
 
 func (x *AcceptInvitationAsUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[69]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3981,7 +4193,7 @@ func (x *AcceptInvitationAsUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInvitationAsUserResponse.ProtoReflect.Descriptor instead.
 func (*AcceptInvitationAsUserResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{69}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *AcceptInvitationAsUserResponse) GetMemberships() []*Membership {
@@ -4019,7 +4231,7 @@ type PromoteChange struct {
 
 func (x *PromoteChange) Reset() {
 	*x = PromoteChange{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[70]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4031,7 +4243,7 @@ func (x *PromoteChange) String() string {
 func (*PromoteChange) ProtoMessage() {}
 
 func (x *PromoteChange) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[70]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4044,7 +4256,7 @@ func (x *PromoteChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PromoteChange.ProtoReflect.Descriptor instead.
 func (*PromoteChange) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{70}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *PromoteChange) GetFamily() string {
@@ -4109,7 +4321,7 @@ type PromoteMyAppRequest struct {
 
 func (x *PromoteMyAppRequest) Reset() {
 	*x = PromoteMyAppRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[71]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4121,7 +4333,7 @@ func (x *PromoteMyAppRequest) String() string {
 func (*PromoteMyAppRequest) ProtoMessage() {}
 
 func (x *PromoteMyAppRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[71]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4134,7 +4346,7 @@ func (x *PromoteMyAppRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PromoteMyAppRequest.ProtoReflect.Descriptor instead.
 func (*PromoteMyAppRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{71}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *PromoteMyAppRequest) GetUserId() string {
@@ -4182,7 +4394,7 @@ type PromoteMyAppResponse struct {
 
 func (x *PromoteMyAppResponse) Reset() {
 	*x = PromoteMyAppResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[72]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4194,7 +4406,7 @@ func (x *PromoteMyAppResponse) String() string {
 func (*PromoteMyAppResponse) ProtoMessage() {}
 
 func (x *PromoteMyAppResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[72]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4207,7 +4419,7 @@ func (x *PromoteMyAppResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PromoteMyAppResponse.ProtoReflect.Descriptor instead.
 func (*PromoteMyAppResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{72}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *PromoteMyAppResponse) GetChanges() []*PromoteChange {
@@ -4281,7 +4493,7 @@ type SandboxResetStep struct {
 
 func (x *SandboxResetStep) Reset() {
 	*x = SandboxResetStep{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[73]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4293,7 +4505,7 @@ func (x *SandboxResetStep) String() string {
 func (*SandboxResetStep) ProtoMessage() {}
 
 func (x *SandboxResetStep) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[73]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4306,7 +4518,7 @@ func (x *SandboxResetStep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SandboxResetStep.ProtoReflect.Descriptor instead.
 func (*SandboxResetStep) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{73}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *SandboxResetStep) GetName() string {
@@ -4354,7 +4566,7 @@ type SandboxReset struct {
 
 func (x *SandboxReset) Reset() {
 	*x = SandboxReset{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[74]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4366,7 +4578,7 @@ func (x *SandboxReset) String() string {
 func (*SandboxReset) ProtoMessage() {}
 
 func (x *SandboxReset) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[74]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4379,7 +4591,7 @@ func (x *SandboxReset) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SandboxReset.ProtoReflect.Descriptor instead.
 func (*SandboxReset) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{74}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *SandboxReset) GetId() string {
@@ -4441,7 +4653,7 @@ type ResetMySandboxRequest struct {
 
 func (x *ResetMySandboxRequest) Reset() {
 	*x = ResetMySandboxRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[75]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4453,7 +4665,7 @@ func (x *ResetMySandboxRequest) String() string {
 func (*ResetMySandboxRequest) ProtoMessage() {}
 
 func (x *ResetMySandboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[75]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4466,7 +4678,7 @@ func (x *ResetMySandboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetMySandboxRequest.ProtoReflect.Descriptor instead.
 func (*ResetMySandboxRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{75}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *ResetMySandboxRequest) GetUserId() string {
@@ -4492,7 +4704,7 @@ type ResetMySandboxResponse struct {
 
 func (x *ResetMySandboxResponse) Reset() {
 	*x = ResetMySandboxResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[76]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4504,7 +4716,7 @@ func (x *ResetMySandboxResponse) String() string {
 func (*ResetMySandboxResponse) ProtoMessage() {}
 
 func (x *ResetMySandboxResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[76]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4517,7 +4729,7 @@ func (x *ResetMySandboxResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetMySandboxResponse.ProtoReflect.Descriptor instead.
 func (*ResetMySandboxResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{76}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *ResetMySandboxResponse) GetSandboxReset() *SandboxReset {
@@ -4537,7 +4749,7 @@ type GetMySandboxResetRequest struct {
 
 func (x *GetMySandboxResetRequest) Reset() {
 	*x = GetMySandboxResetRequest{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[77]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4549,7 +4761,7 @@ func (x *GetMySandboxResetRequest) String() string {
 func (*GetMySandboxResetRequest) ProtoMessage() {}
 
 func (x *GetMySandboxResetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[77]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4562,7 +4774,7 @@ func (x *GetMySandboxResetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMySandboxResetRequest.ProtoReflect.Descriptor instead.
 func (*GetMySandboxResetRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{77}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *GetMySandboxResetRequest) GetUserId() string {
@@ -4588,7 +4800,7 @@ type GetMySandboxResetResponse struct {
 
 func (x *GetMySandboxResetResponse) Reset() {
 	*x = GetMySandboxResetResponse{}
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[78]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4600,7 +4812,7 @@ func (x *GetMySandboxResetResponse) String() string {
 func (*GetMySandboxResetResponse) ProtoMessage() {}
 
 func (x *GetMySandboxResetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[78]
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4613,7 +4825,7 @@ func (x *GetMySandboxResetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMySandboxResetResponse.ProtoReflect.Descriptor instead.
 func (*GetMySandboxResetResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{78}
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *GetMySandboxResetResponse) GetSandboxReset() *SandboxReset {
@@ -4793,7 +5005,20 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\x0eprovider_ready\x18\x03 \x01(\bR\rproviderReady\x12!\n" +
 	"\faccept_terms\x18\x04 \x01(\bR\vacceptTerms\"L\n" +
 	"\x15ActivateMyAppResponse\x123\n" +
-	"\ago_live\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.GoLiveR\x06goLive\"*\n" +
+	"\ago_live\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.GoLiveR\x06goLive\"\xbb\x01\n" +
+	"\x1dUpdateMyBillingProfileRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x15\n" +
+	"\x06app_id\x18\x02 \x01(\tR\x05appId\x123\n" +
+	"\x05legal\x18\x03 \x01(\v2\x1d.payrudder.plans.v1.LegalInfoR\x05legal\x125\n" +
+	"\aaddress\x18\x04 \x01(\v2\x1b.payrudder.plans.v1.AddressR\aaddress\"T\n" +
+	"\x1eUpdateMyBillingProfileResponse\x122\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\"F\n" +
+	"\x14AcceptMyTermsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x15\n" +
+	"\x06app_id\x18\x02 \x01(\tR\x05appId\"T\n" +
+	"\x15AcceptMyTermsResponse\x12;\n" +
+	"\vaccept_time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"acceptTime\"*\n" +
 	"\x12VerifyEmailRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"C\n" +
 	"\x13VerifyEmailResponse\x12,\n" +
@@ -4956,7 +5181,7 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x15\n" +
 	"\x06app_id\x18\x02 \x01(\tR\x05appId\"b\n" +
 	"\x19GetMySandboxResetResponse\x12E\n" +
-	"\rsandbox_reset\x18\x01 \x01(\v2 .payrudder.plans.v1.SandboxResetR\fsandboxReset2\xbc\x1c\n" +
+	"\rsandbox_reset\x18\x01 \x01(\v2 .payrudder.plans.v1.SandboxResetR\fsandboxReset2\xa3\x1e\n" +
 	"\x0fIdentityService\x12O\n" +
 	"\x06SignUp\x12!.payrudder.plans.v1.SignUpRequest\x1a\".payrudder.plans.v1.SignUpResponse\x12O\n" +
 	"\x06SignIn\x12!.payrudder.plans.v1.SignInRequest\x1a\".payrudder.plans.v1.SignInResponse\x12R\n" +
@@ -4991,7 +5216,9 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\x0eRevokeMyApiKey\x12).payrudder.plans.v1.RevokeMyApiKeyRequest\x1a*.payrudder.plans.v1.RevokeMyApiKeyResponse\x12g\n" +
 	"\x0eRotateMyApiKey\x12).payrudder.plans.v1.RotateMyApiKeyRequest\x1a*.payrudder.plans.v1.RotateMyApiKeyResponse\x12^\n" +
 	"\vGetMyGoLive\x12&.payrudder.plans.v1.GetMyGoLiveRequest\x1a'.payrudder.plans.v1.GetMyGoLiveResponse\x12d\n" +
-	"\rActivateMyApp\x12(.payrudder.plans.v1.ActivateMyAppRequest\x1a).payrudder.plans.v1.ActivateMyAppResponse\x12a\n" +
+	"\rActivateMyApp\x12(.payrudder.plans.v1.ActivateMyAppRequest\x1a).payrudder.plans.v1.ActivateMyAppResponse\x12\x7f\n" +
+	"\x16UpdateMyBillingProfile\x121.payrudder.plans.v1.UpdateMyBillingProfileRequest\x1a2.payrudder.plans.v1.UpdateMyBillingProfileResponse\x12d\n" +
+	"\rAcceptMyTerms\x12(.payrudder.plans.v1.AcceptMyTermsRequest\x1a).payrudder.plans.v1.AcceptMyTermsResponse\x12a\n" +
 	"\fPromoteMyApp\x12'.payrudder.plans.v1.PromoteMyAppRequest\x1a(.payrudder.plans.v1.PromoteMyAppResponse\x12g\n" +
 	"\x0eResetMySandbox\x12).payrudder.plans.v1.ResetMySandboxRequest\x1a*.payrudder.plans.v1.ResetMySandboxResponse\x12p\n" +
 	"\x11GetMySandboxReset\x12,.payrudder.plans.v1.GetMySandboxResetRequest\x1a-.payrudder.plans.v1.GetMySandboxResetResponseB\xd6\x01\n" +
@@ -5010,7 +5237,7 @@ func file_payrudder_plans_v1_identity_proto_rawDescGZIP() []byte {
 }
 
 var file_payrudder_plans_v1_identity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_payrudder_plans_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 80)
+var file_payrudder_plans_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 84)
 var file_payrudder_plans_v1_identity_proto_goTypes = []any{
 	(PromoteChange_Action)(0),              // 0: payrudder.plans.v1.PromoteChange.Action
 	(*User)(nil),                           // 1: payrudder.plans.v1.User
@@ -5054,181 +5281,195 @@ var file_payrudder_plans_v1_identity_proto_goTypes = []any{
 	(*GetMyGoLiveResponse)(nil),            // 39: payrudder.plans.v1.GetMyGoLiveResponse
 	(*ActivateMyAppRequest)(nil),           // 40: payrudder.plans.v1.ActivateMyAppRequest
 	(*ActivateMyAppResponse)(nil),          // 41: payrudder.plans.v1.ActivateMyAppResponse
-	(*VerifyEmailRequest)(nil),             // 42: payrudder.plans.v1.VerifyEmailRequest
-	(*VerifyEmailResponse)(nil),            // 43: payrudder.plans.v1.VerifyEmailResponse
-	(*ResendVerificationRequest)(nil),      // 44: payrudder.plans.v1.ResendVerificationRequest
-	(*ResendVerificationResponse)(nil),     // 45: payrudder.plans.v1.ResendVerificationResponse
-	(*RequestPasswordResetRequest)(nil),    // 46: payrudder.plans.v1.RequestPasswordResetRequest
-	(*RequestPasswordResetResponse)(nil),   // 47: payrudder.plans.v1.RequestPasswordResetResponse
-	(*ResetPasswordRequest)(nil),           // 48: payrudder.plans.v1.ResetPasswordRequest
-	(*ResetPasswordResponse)(nil),          // 49: payrudder.plans.v1.ResetPasswordResponse
-	(*RenameMyAccountRequest)(nil),         // 50: payrudder.plans.v1.RenameMyAccountRequest
-	(*RenameMyAccountResponse)(nil),        // 51: payrudder.plans.v1.RenameMyAccountResponse
-	(*Invitation)(nil),                     // 52: payrudder.plans.v1.Invitation
-	(*InviteMemberRequest)(nil),            // 53: payrudder.plans.v1.InviteMemberRequest
-	(*InviteMemberResponse)(nil),           // 54: payrudder.plans.v1.InviteMemberResponse
-	(*ListInvitationsRequest)(nil),         // 55: payrudder.plans.v1.ListInvitationsRequest
-	(*ListInvitationsResponse)(nil),        // 56: payrudder.plans.v1.ListInvitationsResponse
-	(*RevokeInvitationRequest)(nil),        // 57: payrudder.plans.v1.RevokeInvitationRequest
-	(*RevokeInvitationResponse)(nil),       // 58: payrudder.plans.v1.RevokeInvitationResponse
-	(*ResendInvitationRequest)(nil),        // 59: payrudder.plans.v1.ResendInvitationRequest
-	(*ResendInvitationResponse)(nil),       // 60: payrudder.plans.v1.ResendInvitationResponse
-	(*UpdateMemberRoleRequest)(nil),        // 61: payrudder.plans.v1.UpdateMemberRoleRequest
-	(*UpdateMemberRoleResponse)(nil),       // 62: payrudder.plans.v1.UpdateMemberRoleResponse
-	(*RemoveMemberRequest)(nil),            // 63: payrudder.plans.v1.RemoveMemberRequest
-	(*RemoveMemberResponse)(nil),           // 64: payrudder.plans.v1.RemoveMemberResponse
-	(*LookupInvitationRequest)(nil),        // 65: payrudder.plans.v1.LookupInvitationRequest
-	(*LookupInvitationResponse)(nil),       // 66: payrudder.plans.v1.LookupInvitationResponse
-	(*AcceptInvitationRequest)(nil),        // 67: payrudder.plans.v1.AcceptInvitationRequest
-	(*AcceptInvitationResponse)(nil),       // 68: payrudder.plans.v1.AcceptInvitationResponse
-	(*AcceptInvitationAsUserRequest)(nil),  // 69: payrudder.plans.v1.AcceptInvitationAsUserRequest
-	(*AcceptInvitationAsUserResponse)(nil), // 70: payrudder.plans.v1.AcceptInvitationAsUserResponse
-	(*PromoteChange)(nil),                  // 71: payrudder.plans.v1.PromoteChange
-	(*PromoteMyAppRequest)(nil),            // 72: payrudder.plans.v1.PromoteMyAppRequest
-	(*PromoteMyAppResponse)(nil),           // 73: payrudder.plans.v1.PromoteMyAppResponse
-	(*SandboxResetStep)(nil),               // 74: payrudder.plans.v1.SandboxResetStep
-	(*SandboxReset)(nil),                   // 75: payrudder.plans.v1.SandboxReset
-	(*ResetMySandboxRequest)(nil),          // 76: payrudder.plans.v1.ResetMySandboxRequest
-	(*ResetMySandboxResponse)(nil),         // 77: payrudder.plans.v1.ResetMySandboxResponse
-	(*GetMySandboxResetRequest)(nil),       // 78: payrudder.plans.v1.GetMySandboxResetRequest
-	(*GetMySandboxResetResponse)(nil),      // 79: payrudder.plans.v1.GetMySandboxResetResponse
-	nil,                                    // 80: payrudder.plans.v1.SandboxResetStep.DeletedEntry
-	(*timestamppb.Timestamp)(nil),          // 81: google.protobuf.Timestamp
-	(*App)(nil),                            // 82: payrudder.plans.v1.App
-	(*Tenant)(nil),                         // 83: payrudder.plans.v1.Tenant
-	(Environment)(0),                       // 84: payrudder.plans.v1.Environment
-	(ApiKey_Scope)(0),                      // 85: payrudder.plans.v1.ApiKey.Scope
-	(*ApiKey)(nil),                         // 86: payrudder.plans.v1.ApiKey
-	(*durationpb.Duration)(nil),            // 87: google.protobuf.Duration
-	(TenantStatus)(0),                      // 88: payrudder.plans.v1.TenantStatus
+	(*UpdateMyBillingProfileRequest)(nil),  // 42: payrudder.plans.v1.UpdateMyBillingProfileRequest
+	(*UpdateMyBillingProfileResponse)(nil), // 43: payrudder.plans.v1.UpdateMyBillingProfileResponse
+	(*AcceptMyTermsRequest)(nil),           // 44: payrudder.plans.v1.AcceptMyTermsRequest
+	(*AcceptMyTermsResponse)(nil),          // 45: payrudder.plans.v1.AcceptMyTermsResponse
+	(*VerifyEmailRequest)(nil),             // 46: payrudder.plans.v1.VerifyEmailRequest
+	(*VerifyEmailResponse)(nil),            // 47: payrudder.plans.v1.VerifyEmailResponse
+	(*ResendVerificationRequest)(nil),      // 48: payrudder.plans.v1.ResendVerificationRequest
+	(*ResendVerificationResponse)(nil),     // 49: payrudder.plans.v1.ResendVerificationResponse
+	(*RequestPasswordResetRequest)(nil),    // 50: payrudder.plans.v1.RequestPasswordResetRequest
+	(*RequestPasswordResetResponse)(nil),   // 51: payrudder.plans.v1.RequestPasswordResetResponse
+	(*ResetPasswordRequest)(nil),           // 52: payrudder.plans.v1.ResetPasswordRequest
+	(*ResetPasswordResponse)(nil),          // 53: payrudder.plans.v1.ResetPasswordResponse
+	(*RenameMyAccountRequest)(nil),         // 54: payrudder.plans.v1.RenameMyAccountRequest
+	(*RenameMyAccountResponse)(nil),        // 55: payrudder.plans.v1.RenameMyAccountResponse
+	(*Invitation)(nil),                     // 56: payrudder.plans.v1.Invitation
+	(*InviteMemberRequest)(nil),            // 57: payrudder.plans.v1.InviteMemberRequest
+	(*InviteMemberResponse)(nil),           // 58: payrudder.plans.v1.InviteMemberResponse
+	(*ListInvitationsRequest)(nil),         // 59: payrudder.plans.v1.ListInvitationsRequest
+	(*ListInvitationsResponse)(nil),        // 60: payrudder.plans.v1.ListInvitationsResponse
+	(*RevokeInvitationRequest)(nil),        // 61: payrudder.plans.v1.RevokeInvitationRequest
+	(*RevokeInvitationResponse)(nil),       // 62: payrudder.plans.v1.RevokeInvitationResponse
+	(*ResendInvitationRequest)(nil),        // 63: payrudder.plans.v1.ResendInvitationRequest
+	(*ResendInvitationResponse)(nil),       // 64: payrudder.plans.v1.ResendInvitationResponse
+	(*UpdateMemberRoleRequest)(nil),        // 65: payrudder.plans.v1.UpdateMemberRoleRequest
+	(*UpdateMemberRoleResponse)(nil),       // 66: payrudder.plans.v1.UpdateMemberRoleResponse
+	(*RemoveMemberRequest)(nil),            // 67: payrudder.plans.v1.RemoveMemberRequest
+	(*RemoveMemberResponse)(nil),           // 68: payrudder.plans.v1.RemoveMemberResponse
+	(*LookupInvitationRequest)(nil),        // 69: payrudder.plans.v1.LookupInvitationRequest
+	(*LookupInvitationResponse)(nil),       // 70: payrudder.plans.v1.LookupInvitationResponse
+	(*AcceptInvitationRequest)(nil),        // 71: payrudder.plans.v1.AcceptInvitationRequest
+	(*AcceptInvitationResponse)(nil),       // 72: payrudder.plans.v1.AcceptInvitationResponse
+	(*AcceptInvitationAsUserRequest)(nil),  // 73: payrudder.plans.v1.AcceptInvitationAsUserRequest
+	(*AcceptInvitationAsUserResponse)(nil), // 74: payrudder.plans.v1.AcceptInvitationAsUserResponse
+	(*PromoteChange)(nil),                  // 75: payrudder.plans.v1.PromoteChange
+	(*PromoteMyAppRequest)(nil),            // 76: payrudder.plans.v1.PromoteMyAppRequest
+	(*PromoteMyAppResponse)(nil),           // 77: payrudder.plans.v1.PromoteMyAppResponse
+	(*SandboxResetStep)(nil),               // 78: payrudder.plans.v1.SandboxResetStep
+	(*SandboxReset)(nil),                   // 79: payrudder.plans.v1.SandboxReset
+	(*ResetMySandboxRequest)(nil),          // 80: payrudder.plans.v1.ResetMySandboxRequest
+	(*ResetMySandboxResponse)(nil),         // 81: payrudder.plans.v1.ResetMySandboxResponse
+	(*GetMySandboxResetRequest)(nil),       // 82: payrudder.plans.v1.GetMySandboxResetRequest
+	(*GetMySandboxResetResponse)(nil),      // 83: payrudder.plans.v1.GetMySandboxResetResponse
+	nil,                                    // 84: payrudder.plans.v1.SandboxResetStep.DeletedEntry
+	(*timestamppb.Timestamp)(nil),          // 85: google.protobuf.Timestamp
+	(*App)(nil),                            // 86: payrudder.plans.v1.App
+	(*Tenant)(nil),                         // 87: payrudder.plans.v1.Tenant
+	(Environment)(0),                       // 88: payrudder.plans.v1.Environment
+	(ApiKey_Scope)(0),                      // 89: payrudder.plans.v1.ApiKey.Scope
+	(*ApiKey)(nil),                         // 90: payrudder.plans.v1.ApiKey
+	(*durationpb.Duration)(nil),            // 91: google.protobuf.Duration
+	(TenantStatus)(0),                      // 92: payrudder.plans.v1.TenantStatus
+	(*LegalInfo)(nil),                      // 93: payrudder.plans.v1.LegalInfo
+	(*Address)(nil),                        // 94: payrudder.plans.v1.Address
 }
 var file_payrudder_plans_v1_identity_proto_depIdxs = []int32{
-	81, // 0: payrudder.plans.v1.User.create_time:type_name -> google.protobuf.Timestamp
+	85, // 0: payrudder.plans.v1.User.create_time:type_name -> google.protobuf.Timestamp
 	1,  // 1: payrudder.plans.v1.SignInResponse.user:type_name -> payrudder.plans.v1.User
 	2,  // 2: payrudder.plans.v1.SignInResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	81, // 3: payrudder.plans.v1.SignInResponse.expire_time:type_name -> google.protobuf.Timestamp
+	85, // 3: payrudder.plans.v1.SignInResponse.expire_time:type_name -> google.protobuf.Timestamp
 	1,  // 4: payrudder.plans.v1.VerifyLoginCodeResponse.user:type_name -> payrudder.plans.v1.User
 	2,  // 5: payrudder.plans.v1.VerifyLoginCodeResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	81, // 6: payrudder.plans.v1.VerifyLoginCodeResponse.expire_time:type_name -> google.protobuf.Timestamp
+	85, // 6: payrudder.plans.v1.VerifyLoginCodeResponse.expire_time:type_name -> google.protobuf.Timestamp
 	1,  // 7: payrudder.plans.v1.SignInWithIdentityResponse.user:type_name -> payrudder.plans.v1.User
 	2,  // 8: payrudder.plans.v1.SignInWithIdentityResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	81, // 9: payrudder.plans.v1.SignInWithIdentityResponse.expire_time:type_name -> google.protobuf.Timestamp
+	85, // 9: payrudder.plans.v1.SignInWithIdentityResponse.expire_time:type_name -> google.protobuf.Timestamp
 	1,  // 10: payrudder.plans.v1.GetSessionResponse.user:type_name -> payrudder.plans.v1.User
 	2,  // 11: payrudder.plans.v1.GetSessionResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	81, // 12: payrudder.plans.v1.GetSessionResponse.expire_time:type_name -> google.protobuf.Timestamp
-	81, // 13: payrudder.plans.v1.AccountMember.create_time:type_name -> google.protobuf.Timestamp
+	85, // 12: payrudder.plans.v1.GetSessionResponse.expire_time:type_name -> google.protobuf.Timestamp
+	85, // 13: payrudder.plans.v1.AccountMember.create_time:type_name -> google.protobuf.Timestamp
 	17, // 14: payrudder.plans.v1.GetMyAccountResponse.members:type_name -> payrudder.plans.v1.AccountMember
-	81, // 15: payrudder.plans.v1.GetMyAccountResponse.create_time:type_name -> google.protobuf.Timestamp
-	82, // 16: payrudder.plans.v1.CreateMyAppResponse.app:type_name -> payrudder.plans.v1.App
-	82, // 17: payrudder.plans.v1.ListMyAppsResponse.apps:type_name -> payrudder.plans.v1.App
-	82, // 18: payrudder.plans.v1.GetMyAppResponse.app:type_name -> payrudder.plans.v1.App
-	83, // 19: payrudder.plans.v1.ResolveMyTenantResponse.tenant:type_name -> payrudder.plans.v1.Tenant
-	84, // 20: payrudder.plans.v1.CreateMyApiKeyRequest.environment:type_name -> payrudder.plans.v1.Environment
-	85, // 21: payrudder.plans.v1.CreateMyApiKeyRequest.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
-	86, // 22: payrudder.plans.v1.CreateMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
-	86, // 23: payrudder.plans.v1.ListMyApiKeysResponse.api_keys:type_name -> payrudder.plans.v1.ApiKey
-	86, // 24: payrudder.plans.v1.RevokeMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
-	87, // 25: payrudder.plans.v1.RotateMyApiKeyRequest.overlap:type_name -> google.protobuf.Duration
-	86, // 26: payrudder.plans.v1.RotateMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
-	86, // 27: payrudder.plans.v1.RotateMyApiKeyResponse.previous:type_name -> payrudder.plans.v1.ApiKey
-	88, // 28: payrudder.plans.v1.GoLive.status:type_name -> payrudder.plans.v1.TenantStatus
+	85, // 15: payrudder.plans.v1.GetMyAccountResponse.create_time:type_name -> google.protobuf.Timestamp
+	86, // 16: payrudder.plans.v1.CreateMyAppResponse.app:type_name -> payrudder.plans.v1.App
+	86, // 17: payrudder.plans.v1.ListMyAppsResponse.apps:type_name -> payrudder.plans.v1.App
+	86, // 18: payrudder.plans.v1.GetMyAppResponse.app:type_name -> payrudder.plans.v1.App
+	87, // 19: payrudder.plans.v1.ResolveMyTenantResponse.tenant:type_name -> payrudder.plans.v1.Tenant
+	88, // 20: payrudder.plans.v1.CreateMyApiKeyRequest.environment:type_name -> payrudder.plans.v1.Environment
+	89, // 21: payrudder.plans.v1.CreateMyApiKeyRequest.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
+	90, // 22: payrudder.plans.v1.CreateMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
+	90, // 23: payrudder.plans.v1.ListMyApiKeysResponse.api_keys:type_name -> payrudder.plans.v1.ApiKey
+	90, // 24: payrudder.plans.v1.RevokeMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
+	91, // 25: payrudder.plans.v1.RotateMyApiKeyRequest.overlap:type_name -> google.protobuf.Duration
+	90, // 26: payrudder.plans.v1.RotateMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
+	90, // 27: payrudder.plans.v1.RotateMyApiKeyResponse.previous:type_name -> payrudder.plans.v1.ApiKey
+	92, // 28: payrudder.plans.v1.GoLive.status:type_name -> payrudder.plans.v1.TenantStatus
 	36, // 29: payrudder.plans.v1.GoLive.items:type_name -> payrudder.plans.v1.GoLiveItem
 	37, // 30: payrudder.plans.v1.GetMyGoLiveResponse.go_live:type_name -> payrudder.plans.v1.GoLive
 	37, // 31: payrudder.plans.v1.ActivateMyAppResponse.go_live:type_name -> payrudder.plans.v1.GoLive
-	1,  // 32: payrudder.plans.v1.VerifyEmailResponse.user:type_name -> payrudder.plans.v1.User
-	81, // 33: payrudder.plans.v1.Invitation.create_time:type_name -> google.protobuf.Timestamp
-	81, // 34: payrudder.plans.v1.Invitation.send_time:type_name -> google.protobuf.Timestamp
-	81, // 35: payrudder.plans.v1.Invitation.expire_time:type_name -> google.protobuf.Timestamp
-	52, // 36: payrudder.plans.v1.InviteMemberResponse.invitation:type_name -> payrudder.plans.v1.Invitation
-	52, // 37: payrudder.plans.v1.ListInvitationsResponse.invitations:type_name -> payrudder.plans.v1.Invitation
-	52, // 38: payrudder.plans.v1.ResendInvitationResponse.invitation:type_name -> payrudder.plans.v1.Invitation
-	1,  // 39: payrudder.plans.v1.AcceptInvitationResponse.user:type_name -> payrudder.plans.v1.User
-	2,  // 40: payrudder.plans.v1.AcceptInvitationResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	81, // 41: payrudder.plans.v1.AcceptInvitationResponse.expire_time:type_name -> google.protobuf.Timestamp
-	2,  // 42: payrudder.plans.v1.AcceptInvitationAsUserResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	0,  // 43: payrudder.plans.v1.PromoteChange.action:type_name -> payrudder.plans.v1.PromoteChange.Action
-	71, // 44: payrudder.plans.v1.PromoteMyAppResponse.changes:type_name -> payrudder.plans.v1.PromoteChange
-	80, // 45: payrudder.plans.v1.SandboxResetStep.deleted:type_name -> payrudder.plans.v1.SandboxResetStep.DeletedEntry
-	74, // 46: payrudder.plans.v1.SandboxReset.steps:type_name -> payrudder.plans.v1.SandboxResetStep
-	81, // 47: payrudder.plans.v1.SandboxReset.create_time:type_name -> google.protobuf.Timestamp
-	81, // 48: payrudder.plans.v1.SandboxReset.finish_time:type_name -> google.protobuf.Timestamp
-	75, // 49: payrudder.plans.v1.ResetMySandboxResponse.sandbox_reset:type_name -> payrudder.plans.v1.SandboxReset
-	75, // 50: payrudder.plans.v1.GetMySandboxResetResponse.sandbox_reset:type_name -> payrudder.plans.v1.SandboxReset
-	3,  // 51: payrudder.plans.v1.IdentityService.SignUp:input_type -> payrudder.plans.v1.SignUpRequest
-	5,  // 52: payrudder.plans.v1.IdentityService.SignIn:input_type -> payrudder.plans.v1.SignInRequest
-	13, // 53: payrudder.plans.v1.IdentityService.SignOut:input_type -> payrudder.plans.v1.SignOutRequest
-	15, // 54: payrudder.plans.v1.IdentityService.GetSession:input_type -> payrudder.plans.v1.GetSessionRequest
-	42, // 55: payrudder.plans.v1.IdentityService.VerifyEmail:input_type -> payrudder.plans.v1.VerifyEmailRequest
-	44, // 56: payrudder.plans.v1.IdentityService.ResendVerification:input_type -> payrudder.plans.v1.ResendVerificationRequest
-	46, // 57: payrudder.plans.v1.IdentityService.RequestPasswordReset:input_type -> payrudder.plans.v1.RequestPasswordResetRequest
-	48, // 58: payrudder.plans.v1.IdentityService.ResetPassword:input_type -> payrudder.plans.v1.ResetPasswordRequest
-	7,  // 59: payrudder.plans.v1.IdentityService.RequestLoginCode:input_type -> payrudder.plans.v1.RequestLoginCodeRequest
-	9,  // 60: payrudder.plans.v1.IdentityService.VerifyLoginCode:input_type -> payrudder.plans.v1.VerifyLoginCodeRequest
-	11, // 61: payrudder.plans.v1.IdentityService.SignInWithIdentity:input_type -> payrudder.plans.v1.SignInWithIdentityRequest
-	18, // 62: payrudder.plans.v1.IdentityService.GetMyAccount:input_type -> payrudder.plans.v1.GetMyAccountRequest
-	50, // 63: payrudder.plans.v1.IdentityService.RenameMyAccount:input_type -> payrudder.plans.v1.RenameMyAccountRequest
-	53, // 64: payrudder.plans.v1.IdentityService.InviteMember:input_type -> payrudder.plans.v1.InviteMemberRequest
-	55, // 65: payrudder.plans.v1.IdentityService.ListInvitations:input_type -> payrudder.plans.v1.ListInvitationsRequest
-	57, // 66: payrudder.plans.v1.IdentityService.RevokeInvitation:input_type -> payrudder.plans.v1.RevokeInvitationRequest
-	59, // 67: payrudder.plans.v1.IdentityService.ResendInvitation:input_type -> payrudder.plans.v1.ResendInvitationRequest
-	61, // 68: payrudder.plans.v1.IdentityService.UpdateMemberRole:input_type -> payrudder.plans.v1.UpdateMemberRoleRequest
-	63, // 69: payrudder.plans.v1.IdentityService.RemoveMember:input_type -> payrudder.plans.v1.RemoveMemberRequest
-	65, // 70: payrudder.plans.v1.IdentityService.LookupInvitation:input_type -> payrudder.plans.v1.LookupInvitationRequest
-	67, // 71: payrudder.plans.v1.IdentityService.AcceptInvitation:input_type -> payrudder.plans.v1.AcceptInvitationRequest
-	69, // 72: payrudder.plans.v1.IdentityService.AcceptInvitationAsUser:input_type -> payrudder.plans.v1.AcceptInvitationAsUserRequest
-	20, // 73: payrudder.plans.v1.IdentityService.CreateMyApp:input_type -> payrudder.plans.v1.CreateMyAppRequest
-	22, // 74: payrudder.plans.v1.IdentityService.ListMyApps:input_type -> payrudder.plans.v1.ListMyAppsRequest
-	24, // 75: payrudder.plans.v1.IdentityService.GetMyApp:input_type -> payrudder.plans.v1.GetMyAppRequest
-	26, // 76: payrudder.plans.v1.IdentityService.ResolveMyTenant:input_type -> payrudder.plans.v1.ResolveMyTenantRequest
-	28, // 77: payrudder.plans.v1.IdentityService.CreateMyApiKey:input_type -> payrudder.plans.v1.CreateMyApiKeyRequest
-	30, // 78: payrudder.plans.v1.IdentityService.ListMyApiKeys:input_type -> payrudder.plans.v1.ListMyApiKeysRequest
-	32, // 79: payrudder.plans.v1.IdentityService.RevokeMyApiKey:input_type -> payrudder.plans.v1.RevokeMyApiKeyRequest
-	34, // 80: payrudder.plans.v1.IdentityService.RotateMyApiKey:input_type -> payrudder.plans.v1.RotateMyApiKeyRequest
-	38, // 81: payrudder.plans.v1.IdentityService.GetMyGoLive:input_type -> payrudder.plans.v1.GetMyGoLiveRequest
-	40, // 82: payrudder.plans.v1.IdentityService.ActivateMyApp:input_type -> payrudder.plans.v1.ActivateMyAppRequest
-	72, // 83: payrudder.plans.v1.IdentityService.PromoteMyApp:input_type -> payrudder.plans.v1.PromoteMyAppRequest
-	76, // 84: payrudder.plans.v1.IdentityService.ResetMySandbox:input_type -> payrudder.plans.v1.ResetMySandboxRequest
-	78, // 85: payrudder.plans.v1.IdentityService.GetMySandboxReset:input_type -> payrudder.plans.v1.GetMySandboxResetRequest
-	4,  // 86: payrudder.plans.v1.IdentityService.SignUp:output_type -> payrudder.plans.v1.SignUpResponse
-	6,  // 87: payrudder.plans.v1.IdentityService.SignIn:output_type -> payrudder.plans.v1.SignInResponse
-	14, // 88: payrudder.plans.v1.IdentityService.SignOut:output_type -> payrudder.plans.v1.SignOutResponse
-	16, // 89: payrudder.plans.v1.IdentityService.GetSession:output_type -> payrudder.plans.v1.GetSessionResponse
-	43, // 90: payrudder.plans.v1.IdentityService.VerifyEmail:output_type -> payrudder.plans.v1.VerifyEmailResponse
-	45, // 91: payrudder.plans.v1.IdentityService.ResendVerification:output_type -> payrudder.plans.v1.ResendVerificationResponse
-	47, // 92: payrudder.plans.v1.IdentityService.RequestPasswordReset:output_type -> payrudder.plans.v1.RequestPasswordResetResponse
-	49, // 93: payrudder.plans.v1.IdentityService.ResetPassword:output_type -> payrudder.plans.v1.ResetPasswordResponse
-	8,  // 94: payrudder.plans.v1.IdentityService.RequestLoginCode:output_type -> payrudder.plans.v1.RequestLoginCodeResponse
-	10, // 95: payrudder.plans.v1.IdentityService.VerifyLoginCode:output_type -> payrudder.plans.v1.VerifyLoginCodeResponse
-	12, // 96: payrudder.plans.v1.IdentityService.SignInWithIdentity:output_type -> payrudder.plans.v1.SignInWithIdentityResponse
-	19, // 97: payrudder.plans.v1.IdentityService.GetMyAccount:output_type -> payrudder.plans.v1.GetMyAccountResponse
-	51, // 98: payrudder.plans.v1.IdentityService.RenameMyAccount:output_type -> payrudder.plans.v1.RenameMyAccountResponse
-	54, // 99: payrudder.plans.v1.IdentityService.InviteMember:output_type -> payrudder.plans.v1.InviteMemberResponse
-	56, // 100: payrudder.plans.v1.IdentityService.ListInvitations:output_type -> payrudder.plans.v1.ListInvitationsResponse
-	58, // 101: payrudder.plans.v1.IdentityService.RevokeInvitation:output_type -> payrudder.plans.v1.RevokeInvitationResponse
-	60, // 102: payrudder.plans.v1.IdentityService.ResendInvitation:output_type -> payrudder.plans.v1.ResendInvitationResponse
-	62, // 103: payrudder.plans.v1.IdentityService.UpdateMemberRole:output_type -> payrudder.plans.v1.UpdateMemberRoleResponse
-	64, // 104: payrudder.plans.v1.IdentityService.RemoveMember:output_type -> payrudder.plans.v1.RemoveMemberResponse
-	66, // 105: payrudder.plans.v1.IdentityService.LookupInvitation:output_type -> payrudder.plans.v1.LookupInvitationResponse
-	68, // 106: payrudder.plans.v1.IdentityService.AcceptInvitation:output_type -> payrudder.plans.v1.AcceptInvitationResponse
-	70, // 107: payrudder.plans.v1.IdentityService.AcceptInvitationAsUser:output_type -> payrudder.plans.v1.AcceptInvitationAsUserResponse
-	21, // 108: payrudder.plans.v1.IdentityService.CreateMyApp:output_type -> payrudder.plans.v1.CreateMyAppResponse
-	23, // 109: payrudder.plans.v1.IdentityService.ListMyApps:output_type -> payrudder.plans.v1.ListMyAppsResponse
-	25, // 110: payrudder.plans.v1.IdentityService.GetMyApp:output_type -> payrudder.plans.v1.GetMyAppResponse
-	27, // 111: payrudder.plans.v1.IdentityService.ResolveMyTenant:output_type -> payrudder.plans.v1.ResolveMyTenantResponse
-	29, // 112: payrudder.plans.v1.IdentityService.CreateMyApiKey:output_type -> payrudder.plans.v1.CreateMyApiKeyResponse
-	31, // 113: payrudder.plans.v1.IdentityService.ListMyApiKeys:output_type -> payrudder.plans.v1.ListMyApiKeysResponse
-	33, // 114: payrudder.plans.v1.IdentityService.RevokeMyApiKey:output_type -> payrudder.plans.v1.RevokeMyApiKeyResponse
-	35, // 115: payrudder.plans.v1.IdentityService.RotateMyApiKey:output_type -> payrudder.plans.v1.RotateMyApiKeyResponse
-	39, // 116: payrudder.plans.v1.IdentityService.GetMyGoLive:output_type -> payrudder.plans.v1.GetMyGoLiveResponse
-	41, // 117: payrudder.plans.v1.IdentityService.ActivateMyApp:output_type -> payrudder.plans.v1.ActivateMyAppResponse
-	73, // 118: payrudder.plans.v1.IdentityService.PromoteMyApp:output_type -> payrudder.plans.v1.PromoteMyAppResponse
-	77, // 119: payrudder.plans.v1.IdentityService.ResetMySandbox:output_type -> payrudder.plans.v1.ResetMySandboxResponse
-	79, // 120: payrudder.plans.v1.IdentityService.GetMySandboxReset:output_type -> payrudder.plans.v1.GetMySandboxResetResponse
-	86, // [86:121] is the sub-list for method output_type
-	51, // [51:86] is the sub-list for method input_type
-	51, // [51:51] is the sub-list for extension type_name
-	51, // [51:51] is the sub-list for extension extendee
-	0,  // [0:51] is the sub-list for field type_name
+	93, // 32: payrudder.plans.v1.UpdateMyBillingProfileRequest.legal:type_name -> payrudder.plans.v1.LegalInfo
+	94, // 33: payrudder.plans.v1.UpdateMyBillingProfileRequest.address:type_name -> payrudder.plans.v1.Address
+	87, // 34: payrudder.plans.v1.UpdateMyBillingProfileResponse.tenant:type_name -> payrudder.plans.v1.Tenant
+	85, // 35: payrudder.plans.v1.AcceptMyTermsResponse.accept_time:type_name -> google.protobuf.Timestamp
+	1,  // 36: payrudder.plans.v1.VerifyEmailResponse.user:type_name -> payrudder.plans.v1.User
+	85, // 37: payrudder.plans.v1.Invitation.create_time:type_name -> google.protobuf.Timestamp
+	85, // 38: payrudder.plans.v1.Invitation.send_time:type_name -> google.protobuf.Timestamp
+	85, // 39: payrudder.plans.v1.Invitation.expire_time:type_name -> google.protobuf.Timestamp
+	56, // 40: payrudder.plans.v1.InviteMemberResponse.invitation:type_name -> payrudder.plans.v1.Invitation
+	56, // 41: payrudder.plans.v1.ListInvitationsResponse.invitations:type_name -> payrudder.plans.v1.Invitation
+	56, // 42: payrudder.plans.v1.ResendInvitationResponse.invitation:type_name -> payrudder.plans.v1.Invitation
+	1,  // 43: payrudder.plans.v1.AcceptInvitationResponse.user:type_name -> payrudder.plans.v1.User
+	2,  // 44: payrudder.plans.v1.AcceptInvitationResponse.memberships:type_name -> payrudder.plans.v1.Membership
+	85, // 45: payrudder.plans.v1.AcceptInvitationResponse.expire_time:type_name -> google.protobuf.Timestamp
+	2,  // 46: payrudder.plans.v1.AcceptInvitationAsUserResponse.memberships:type_name -> payrudder.plans.v1.Membership
+	0,  // 47: payrudder.plans.v1.PromoteChange.action:type_name -> payrudder.plans.v1.PromoteChange.Action
+	75, // 48: payrudder.plans.v1.PromoteMyAppResponse.changes:type_name -> payrudder.plans.v1.PromoteChange
+	84, // 49: payrudder.plans.v1.SandboxResetStep.deleted:type_name -> payrudder.plans.v1.SandboxResetStep.DeletedEntry
+	78, // 50: payrudder.plans.v1.SandboxReset.steps:type_name -> payrudder.plans.v1.SandboxResetStep
+	85, // 51: payrudder.plans.v1.SandboxReset.create_time:type_name -> google.protobuf.Timestamp
+	85, // 52: payrudder.plans.v1.SandboxReset.finish_time:type_name -> google.protobuf.Timestamp
+	79, // 53: payrudder.plans.v1.ResetMySandboxResponse.sandbox_reset:type_name -> payrudder.plans.v1.SandboxReset
+	79, // 54: payrudder.plans.v1.GetMySandboxResetResponse.sandbox_reset:type_name -> payrudder.plans.v1.SandboxReset
+	3,  // 55: payrudder.plans.v1.IdentityService.SignUp:input_type -> payrudder.plans.v1.SignUpRequest
+	5,  // 56: payrudder.plans.v1.IdentityService.SignIn:input_type -> payrudder.plans.v1.SignInRequest
+	13, // 57: payrudder.plans.v1.IdentityService.SignOut:input_type -> payrudder.plans.v1.SignOutRequest
+	15, // 58: payrudder.plans.v1.IdentityService.GetSession:input_type -> payrudder.plans.v1.GetSessionRequest
+	46, // 59: payrudder.plans.v1.IdentityService.VerifyEmail:input_type -> payrudder.plans.v1.VerifyEmailRequest
+	48, // 60: payrudder.plans.v1.IdentityService.ResendVerification:input_type -> payrudder.plans.v1.ResendVerificationRequest
+	50, // 61: payrudder.plans.v1.IdentityService.RequestPasswordReset:input_type -> payrudder.plans.v1.RequestPasswordResetRequest
+	52, // 62: payrudder.plans.v1.IdentityService.ResetPassword:input_type -> payrudder.plans.v1.ResetPasswordRequest
+	7,  // 63: payrudder.plans.v1.IdentityService.RequestLoginCode:input_type -> payrudder.plans.v1.RequestLoginCodeRequest
+	9,  // 64: payrudder.plans.v1.IdentityService.VerifyLoginCode:input_type -> payrudder.plans.v1.VerifyLoginCodeRequest
+	11, // 65: payrudder.plans.v1.IdentityService.SignInWithIdentity:input_type -> payrudder.plans.v1.SignInWithIdentityRequest
+	18, // 66: payrudder.plans.v1.IdentityService.GetMyAccount:input_type -> payrudder.plans.v1.GetMyAccountRequest
+	54, // 67: payrudder.plans.v1.IdentityService.RenameMyAccount:input_type -> payrudder.plans.v1.RenameMyAccountRequest
+	57, // 68: payrudder.plans.v1.IdentityService.InviteMember:input_type -> payrudder.plans.v1.InviteMemberRequest
+	59, // 69: payrudder.plans.v1.IdentityService.ListInvitations:input_type -> payrudder.plans.v1.ListInvitationsRequest
+	61, // 70: payrudder.plans.v1.IdentityService.RevokeInvitation:input_type -> payrudder.plans.v1.RevokeInvitationRequest
+	63, // 71: payrudder.plans.v1.IdentityService.ResendInvitation:input_type -> payrudder.plans.v1.ResendInvitationRequest
+	65, // 72: payrudder.plans.v1.IdentityService.UpdateMemberRole:input_type -> payrudder.plans.v1.UpdateMemberRoleRequest
+	67, // 73: payrudder.plans.v1.IdentityService.RemoveMember:input_type -> payrudder.plans.v1.RemoveMemberRequest
+	69, // 74: payrudder.plans.v1.IdentityService.LookupInvitation:input_type -> payrudder.plans.v1.LookupInvitationRequest
+	71, // 75: payrudder.plans.v1.IdentityService.AcceptInvitation:input_type -> payrudder.plans.v1.AcceptInvitationRequest
+	73, // 76: payrudder.plans.v1.IdentityService.AcceptInvitationAsUser:input_type -> payrudder.plans.v1.AcceptInvitationAsUserRequest
+	20, // 77: payrudder.plans.v1.IdentityService.CreateMyApp:input_type -> payrudder.plans.v1.CreateMyAppRequest
+	22, // 78: payrudder.plans.v1.IdentityService.ListMyApps:input_type -> payrudder.plans.v1.ListMyAppsRequest
+	24, // 79: payrudder.plans.v1.IdentityService.GetMyApp:input_type -> payrudder.plans.v1.GetMyAppRequest
+	26, // 80: payrudder.plans.v1.IdentityService.ResolveMyTenant:input_type -> payrudder.plans.v1.ResolveMyTenantRequest
+	28, // 81: payrudder.plans.v1.IdentityService.CreateMyApiKey:input_type -> payrudder.plans.v1.CreateMyApiKeyRequest
+	30, // 82: payrudder.plans.v1.IdentityService.ListMyApiKeys:input_type -> payrudder.plans.v1.ListMyApiKeysRequest
+	32, // 83: payrudder.plans.v1.IdentityService.RevokeMyApiKey:input_type -> payrudder.plans.v1.RevokeMyApiKeyRequest
+	34, // 84: payrudder.plans.v1.IdentityService.RotateMyApiKey:input_type -> payrudder.plans.v1.RotateMyApiKeyRequest
+	38, // 85: payrudder.plans.v1.IdentityService.GetMyGoLive:input_type -> payrudder.plans.v1.GetMyGoLiveRequest
+	40, // 86: payrudder.plans.v1.IdentityService.ActivateMyApp:input_type -> payrudder.plans.v1.ActivateMyAppRequest
+	42, // 87: payrudder.plans.v1.IdentityService.UpdateMyBillingProfile:input_type -> payrudder.plans.v1.UpdateMyBillingProfileRequest
+	44, // 88: payrudder.plans.v1.IdentityService.AcceptMyTerms:input_type -> payrudder.plans.v1.AcceptMyTermsRequest
+	76, // 89: payrudder.plans.v1.IdentityService.PromoteMyApp:input_type -> payrudder.plans.v1.PromoteMyAppRequest
+	80, // 90: payrudder.plans.v1.IdentityService.ResetMySandbox:input_type -> payrudder.plans.v1.ResetMySandboxRequest
+	82, // 91: payrudder.plans.v1.IdentityService.GetMySandboxReset:input_type -> payrudder.plans.v1.GetMySandboxResetRequest
+	4,  // 92: payrudder.plans.v1.IdentityService.SignUp:output_type -> payrudder.plans.v1.SignUpResponse
+	6,  // 93: payrudder.plans.v1.IdentityService.SignIn:output_type -> payrudder.plans.v1.SignInResponse
+	14, // 94: payrudder.plans.v1.IdentityService.SignOut:output_type -> payrudder.plans.v1.SignOutResponse
+	16, // 95: payrudder.plans.v1.IdentityService.GetSession:output_type -> payrudder.plans.v1.GetSessionResponse
+	47, // 96: payrudder.plans.v1.IdentityService.VerifyEmail:output_type -> payrudder.plans.v1.VerifyEmailResponse
+	49, // 97: payrudder.plans.v1.IdentityService.ResendVerification:output_type -> payrudder.plans.v1.ResendVerificationResponse
+	51, // 98: payrudder.plans.v1.IdentityService.RequestPasswordReset:output_type -> payrudder.plans.v1.RequestPasswordResetResponse
+	53, // 99: payrudder.plans.v1.IdentityService.ResetPassword:output_type -> payrudder.plans.v1.ResetPasswordResponse
+	8,  // 100: payrudder.plans.v1.IdentityService.RequestLoginCode:output_type -> payrudder.plans.v1.RequestLoginCodeResponse
+	10, // 101: payrudder.plans.v1.IdentityService.VerifyLoginCode:output_type -> payrudder.plans.v1.VerifyLoginCodeResponse
+	12, // 102: payrudder.plans.v1.IdentityService.SignInWithIdentity:output_type -> payrudder.plans.v1.SignInWithIdentityResponse
+	19, // 103: payrudder.plans.v1.IdentityService.GetMyAccount:output_type -> payrudder.plans.v1.GetMyAccountResponse
+	55, // 104: payrudder.plans.v1.IdentityService.RenameMyAccount:output_type -> payrudder.plans.v1.RenameMyAccountResponse
+	58, // 105: payrudder.plans.v1.IdentityService.InviteMember:output_type -> payrudder.plans.v1.InviteMemberResponse
+	60, // 106: payrudder.plans.v1.IdentityService.ListInvitations:output_type -> payrudder.plans.v1.ListInvitationsResponse
+	62, // 107: payrudder.plans.v1.IdentityService.RevokeInvitation:output_type -> payrudder.plans.v1.RevokeInvitationResponse
+	64, // 108: payrudder.plans.v1.IdentityService.ResendInvitation:output_type -> payrudder.plans.v1.ResendInvitationResponse
+	66, // 109: payrudder.plans.v1.IdentityService.UpdateMemberRole:output_type -> payrudder.plans.v1.UpdateMemberRoleResponse
+	68, // 110: payrudder.plans.v1.IdentityService.RemoveMember:output_type -> payrudder.plans.v1.RemoveMemberResponse
+	70, // 111: payrudder.plans.v1.IdentityService.LookupInvitation:output_type -> payrudder.plans.v1.LookupInvitationResponse
+	72, // 112: payrudder.plans.v1.IdentityService.AcceptInvitation:output_type -> payrudder.plans.v1.AcceptInvitationResponse
+	74, // 113: payrudder.plans.v1.IdentityService.AcceptInvitationAsUser:output_type -> payrudder.plans.v1.AcceptInvitationAsUserResponse
+	21, // 114: payrudder.plans.v1.IdentityService.CreateMyApp:output_type -> payrudder.plans.v1.CreateMyAppResponse
+	23, // 115: payrudder.plans.v1.IdentityService.ListMyApps:output_type -> payrudder.plans.v1.ListMyAppsResponse
+	25, // 116: payrudder.plans.v1.IdentityService.GetMyApp:output_type -> payrudder.plans.v1.GetMyAppResponse
+	27, // 117: payrudder.plans.v1.IdentityService.ResolveMyTenant:output_type -> payrudder.plans.v1.ResolveMyTenantResponse
+	29, // 118: payrudder.plans.v1.IdentityService.CreateMyApiKey:output_type -> payrudder.plans.v1.CreateMyApiKeyResponse
+	31, // 119: payrudder.plans.v1.IdentityService.ListMyApiKeys:output_type -> payrudder.plans.v1.ListMyApiKeysResponse
+	33, // 120: payrudder.plans.v1.IdentityService.RevokeMyApiKey:output_type -> payrudder.plans.v1.RevokeMyApiKeyResponse
+	35, // 121: payrudder.plans.v1.IdentityService.RotateMyApiKey:output_type -> payrudder.plans.v1.RotateMyApiKeyResponse
+	39, // 122: payrudder.plans.v1.IdentityService.GetMyGoLive:output_type -> payrudder.plans.v1.GetMyGoLiveResponse
+	41, // 123: payrudder.plans.v1.IdentityService.ActivateMyApp:output_type -> payrudder.plans.v1.ActivateMyAppResponse
+	43, // 124: payrudder.plans.v1.IdentityService.UpdateMyBillingProfile:output_type -> payrudder.plans.v1.UpdateMyBillingProfileResponse
+	45, // 125: payrudder.plans.v1.IdentityService.AcceptMyTerms:output_type -> payrudder.plans.v1.AcceptMyTermsResponse
+	77, // 126: payrudder.plans.v1.IdentityService.PromoteMyApp:output_type -> payrudder.plans.v1.PromoteMyAppResponse
+	81, // 127: payrudder.plans.v1.IdentityService.ResetMySandbox:output_type -> payrudder.plans.v1.ResetMySandboxResponse
+	83, // 128: payrudder.plans.v1.IdentityService.GetMySandboxReset:output_type -> payrudder.plans.v1.GetMySandboxResetResponse
+	92, // [92:129] is the sub-list for method output_type
+	55, // [55:92] is the sub-list for method input_type
+	55, // [55:55] is the sub-list for extension type_name
+	55, // [55:55] is the sub-list for extension extendee
+	0,  // [0:55] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_identity_proto_init() }
@@ -5243,7 +5484,7 @@ func file_payrudder_plans_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_identity_proto_rawDesc), len(file_payrudder_plans_v1_identity_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   80,
+			NumMessages:   84,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

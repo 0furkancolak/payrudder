@@ -1998,7 +1998,10 @@
         "bad_settings": "Ces paramètres du prestataire ne sont pas valides. Vérifiez les identifiants et les champs obligatoires.",
         "not_found": "Ce compte n'a pas ce prestataire de paiement configuré.",
         "sync_failed": "Le compte du prestataire a été modifié, mais les coordonnées bancaires n'ont pas pu être transmises aux factures. Renvoyez la requête.",
-        "livemode_mismatch": "Ce compte fournisseur pointe vers l'autre mode du fournisseur : un environnement live exige le point de terminaison et les clés live du fournisseur, un environnement sandbox son point de terminaison de test."
+        "livemode_mismatch": "Ce compte fournisseur pointe vers l'autre mode du fournisseur : un environnement live exige le point de terminaison et les clés live du fournisseur, un environnement sandbox son point de terminaison de test.",
+        "endpoint_not_allowed": "Seul le point d'accès réel du prestataire est autorisé. Laissez ce champ vide.",
+        "health_check_failed": "Le prestataire n'a pas accepté ces identifiants. Vérifiez les clés et qu'il s'agit de clés réelles.",
+        "health_check_unreachable": "Le prestataire n'a pas pu être joint pour vérifier ces identifiants. Réessayez dans un instant."
       },
       "billing": {
         "not_configured": "La facturation n'est pas configurée sur ce déploiement.",
@@ -2187,6 +2190,12 @@
       },
       "sandbox": {
         "reset_rate_limited": "Le sandbox vient d'être réinitialisé. Attendez quelques minutes avant de le réinitialiser à nouveau."
+      },
+      "billing_profile": {
+        "legal_name_required": "Saisissez la raison sociale de l'entreprise.",
+        "country_required": "Choisissez le pays de l'entreprise.",
+        "address_required": "Saisissez la rue et la ville.",
+        "tax_id_required": "Un numéro fiscal est obligatoire pour les factures dans ce pays."
       }
     },
     "gateway": {
@@ -2825,12 +2834,11 @@
       },
       "help": {
         "email_verified": "Ouvrez le lien du message que nous avons envoyé, ou demandez-en un nouveau depuis le bandeau.",
-        "legal_profile": "Le nom, le pays et le numéro fiscal du vendeur figurent sur chaque facture live.",
-        "payment_provider": "Un prestataire connecté pour de vrais paiements, dont le contrôle de santé est réussi.",
+        "legal_profile": "Votre raison sociale, votre adresse et votre numéro fiscal figurent sur chaque facture réelle. Remplissez le profil de facturation ci-dessous.",
+        "payment_provider": "Connectez un prestataire ci-dessous. On lui demande d'accepter vos clés avant qu'elles ne comptent.",
         "plan_published": "Copiez vos plans sandbox vers live ci-dessous, ou créez-en un en live.",
-        "terms_accepted": "Acceptées par le propriétaire avec l'activation ci-dessous."
+        "terms_accepted": "Lisez et acceptez les conditions d'utilisation ci-dessous. Seul le propriétaire peut le faire."
       },
-      "askTeam": "L'équipe Payrudder s'en occupe avec vous pour l'instant. Contactez le support.",
       "open": "Ouvrir",
       "nothingYet": "Live n'affiche aucun chiffre tant qu'il n'est pas actif.",
       "continue": "Poursuivre la configuration",
@@ -2839,7 +2847,79 @@
       "activate": "Activer live",
       "notReady": "Terminez d'abord les autres étapes.",
       "inactiveNote": "Live n'a pas de données tant qu'il n'est pas actif. Votre sandbox continue de fonctionner entre-temps.",
-      "toSandbox": "Ouvrir la sandbox"
+      "toSandbox": "Ouvrir la sandbox",
+      "fillIn": "Remplir",
+      "acceptTermsButton": "Accepter les conditions",
+      "termsAccepted": "Les conditions d'utilisation sont acceptées.",
+      "profile": {
+        "title": "Profil de facturation",
+        "intro": "Les informations du vendeur imprimées sur vos factures réelles : qui vous êtes, où vous êtes et votre numéro fiscal.",
+        "ownerOnly": "Seul le propriétaire du compte peut modifier le profil de facturation.",
+        "legalName": "Raison sociale",
+        "taxId": "Numéro fiscal",
+        "taxIdRequired": "Obligatoire pour les factures en {country}. Les espaces et les tirets sont ignorés.",
+        "taxIdOptional": "Facultatif pour ce pays. Les espaces et les tirets sont ignorés.",
+        "taxOffice": "Centre des impôts (facultatif)",
+        "save": "Enregistrer le profil de facturation",
+        "saved": "Profil de facturation enregistré.",
+        "problems": {
+          "required": "Obligatoire.",
+          "taxIdFormat": "De 5 à 20 lettres et chiffres."
+        }
+      },
+      "provider": {
+        "title": "Prestataire de paiement",
+        "intro": "Connectez le prestataire par lequel vos clients paient en mode réel. Les clés sont saisies une fois et stockées chiffrées. On demande au prestataire de les accepter avant qu'elles ne comptent.",
+        "ownerOnly": "Seul le propriétaire du compte peut connecter ou retirer un prestataire.",
+        "none": "Aucun prestataire n'est encore connecté en mode réel.",
+        "connected": "Prestataires connectés",
+        "connectedNow": "{provider} est connecté.",
+        "connectTitle": "Connecter un prestataire",
+        "provider": "Prestataire",
+        "choose": "Choisissez un prestataire",
+        "secretsOnce": "Les clés secrètes ne sont plus affichées après l'enregistrement. Utilisez des clés réelles, pas des clés de test.",
+        "optional": "facultatif",
+        "checkAndConnect": "Vérifier et connecter",
+        "saveBank": "Enregistrer les coordonnées bancaires",
+        "checking": "Vérification auprès du prestataire...",
+        "remove": "Retirer",
+        "confirmRemove": "Retirer le compte réel chez {provider} ? Les clients ne pourront plus payer par ce biais.",
+        "default": "par défaut",
+        "working": "Fonctionne",
+        "notWorking": "Ne fonctionne pas",
+        "checkedYes": "Le prestataire accepte ces clés.",
+        "checkedNo": "Coordonnées bancaires seulement : il n'y a rien à vérifier chez un prestataire.",
+        "names": {
+          "iyzico": "iyzico",
+          "paddle": "Paddle",
+          "banktransfer": "Virement bancaire"
+        },
+        "fields": {
+          "api_key": "Clé d'API",
+          "secret_key": "Clé secrète",
+          "webhook_secret": "Secret du webhook",
+          "usage_product_id": "ID du produit d'usage (pro_...)",
+          "buyer_name": "Prénom de l'acheteur",
+          "buyer_surname": "Nom de l'acheteur",
+          "buyer_identity_number": "Numéro d'identité de l'acheteur",
+          "buyer_email": "E-mail de l'acheteur",
+          "buyer_address": "Adresse de l'acheteur",
+          "buyer_city": "Ville de l'acheteur",
+          "buyer_country": "Pays de l'acheteur",
+          "buyer_zip_code": "Code postal de l'acheteur",
+          "buyer_ip": "Adresse IP publique de votre entreprise",
+          "buyer_gsm_number": "Téléphone de l'acheteur"
+        },
+        "problems": {
+          "required": "Obligatoire.",
+          "badFormat": "Cela ne semble pas correct."
+        },
+        "accountProblems": {
+          "unreadable": "Les clés enregistrées sont illisibles. Reconnectez le prestataire.",
+          "refused": "Le prestataire n'accepte plus ces clés. Reconnectez-le avec de nouvelles clés.",
+          "unreachable": "Le prestataire n'a pas pu être joint à l'instant. Il sera vérifié de nouveau sous peu."
+        }
+      }
     },
     "promote": {
       "title": "Copier la configuration sandbox vers live",

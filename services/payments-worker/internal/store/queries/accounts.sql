@@ -19,3 +19,7 @@ SELECT settings_enc, updated_at FROM provider_accounts WHERE tenant_id = @tenant
 
 -- name: GetDefaultProvider :one
 SELECT provider FROM provider_accounts WHERE tenant_id = @tenant_id AND environment = @environment AND is_default;
+
+-- name: InsertProviderAccountEvent :exec
+INSERT INTO provider_account_events (tenant_id, provider, environment, action, actor, is_default, verified_remote)
+VALUES (@tenant_id, @provider, @environment, @action, @actor, @is_default, @verified_remote);

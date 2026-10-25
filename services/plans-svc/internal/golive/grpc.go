@@ -27,6 +27,22 @@ func (h *Handler) GetMyGoLive(ctx context.Context, req *plansv1.GetMyGoLiveReque
 	return &plansv1.GetMyGoLiveResponse{GoLive: g}, nil
 }
 
+func (h *Handler) UpdateMyBillingProfile(ctx context.Context, req *plansv1.UpdateMyBillingProfileRequest) (*plansv1.UpdateMyBillingProfileResponse, error) {
+	t, err := h.cmd.UpdateBillingProfile(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.UpdateMyBillingProfileResponse{Tenant: t}, nil
+}
+
+func (h *Handler) AcceptMyTerms(ctx context.Context, req *plansv1.AcceptMyTermsRequest) (*plansv1.AcceptMyTermsResponse, error) {
+	at, err := h.cmd.AcceptTerms(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.AcceptMyTermsResponse{AcceptTime: at}, nil
+}
+
 func (h *Handler) ActivateMyApp(ctx context.Context, req *plansv1.ActivateMyAppRequest) (*plansv1.ActivateMyAppResponse, error) {
 	g, err := h.cmd.Activate(ctx, req)
 	if err != nil {

@@ -36,13 +36,14 @@ type fakeIyzico struct {
 	calls  map[string]int
 	detail string // answer of /payment/detail
 	auth   string // answer of /payment/auth
+	bin    string // answer of /payment/bin/check, the health check
 	status int    // HTTP status of /payment/detail
 	basket string // the basketId of the last charge: iyzico's payment detail names it
 }
 
 func newFakeIyzico(t *testing.T) *fakeIyzico {
 	f := &fakeIyzico{calls: map[string]int{}, status: 200,
-		detail: `{"status":"success","paymentId":"P1","paymentStatus":"SUCCESS"}`, auth: `{"status":"success","paymentId":"P1"}`}
+		bin: `{"status":"success"}`, detail: `{"status":"success","paymentId":"P1","paymentStatus":"SUCCESS"}`, auth: `{"status":"success","paymentId":"P1"}`}
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
@@ -65,6 +66,8 @@ func newFakeIyzico(t *testing.T) *fakeIyzico {
 				return
 			}
 			_, _ = io.WriteString(w, f.detail)
+		case "/payment/bin/check":
+			_, _ = io.WriteString(w, f.bin)
 		case "/v2/payment/refund":
 			_, _ = io.WriteString(w, `{"status":"success","paymentId":"P1","refundHostReference":"R1"}`)
 		default:

@@ -1998,7 +1998,10 @@
         "bad_settings": "Estos ajustes del proveedor no son válidos. Revisa las credenciales y los campos obligatorios.",
         "not_found": "Esta cuenta no tiene configurado ese proveedor de pago.",
         "sync_failed": "La cuenta del proveedor se modificó, pero los datos bancarios no pudieron pasarse a las facturas. Envía la solicitud de nuevo.",
-        "livemode_mismatch": "Esta cuenta de proveedor apunta al otro modo del proveedor: un entorno live necesita el endpoint y las claves live del proveedor, un entorno sandbox su endpoint de prueba."
+        "livemode_mismatch": "Esta cuenta de proveedor apunta al otro modo del proveedor: un entorno live necesita el endpoint y las claves live del proveedor, un entorno sandbox su endpoint de prueba.",
+        "endpoint_not_allowed": "Solo se permite el punto de acceso real del propio proveedor. Deje el campo vacío.",
+        "health_check_failed": "El proveedor no aceptó estas credenciales. Compruebe las claves y que sean claves reales.",
+        "health_check_unreachable": "No se pudo contactar con el proveedor para comprobar las credenciales. Inténtelo de nuevo en un momento."
       },
       "billing": {
         "not_configured": "La facturación no está configurada en este despliegue.",
@@ -2187,6 +2190,12 @@
       },
       "sandbox": {
         "reset_rate_limited": "El sandbox se restableció hace un momento. Espera unos minutos antes de restablecerlo de nuevo."
+      },
+      "billing_profile": {
+        "legal_name_required": "Introduzca la razón social de la empresa.",
+        "country_required": "Elija el país de la empresa.",
+        "address_required": "Introduzca la calle y la ciudad.",
+        "tax_id_required": "Para las facturas en este país se necesita una identificación fiscal."
       }
     },
     "gateway": {
@@ -2825,12 +2834,11 @@
       },
       "help": {
         "email_verified": "Abre el enlace del mensaje que te enviamos, o pide uno nuevo desde el aviso.",
-        "legal_profile": "El nombre, el país y la identificación fiscal del vendedor se imprimen en cada factura live.",
-        "payment_provider": "Un proveedor conectado para pagos reales, con su comprobación de estado superada.",
+        "legal_profile": "Su razón social, su dirección y su identificación fiscal se imprimen en cada factura real. Complete el perfil de facturación de abajo.",
+        "payment_provider": "Conecte un proveedor abajo. Se le pide que acepte sus claves antes de que cuenten.",
         "plan_published": "Copia abajo tus planes del sandbox a live, o crea uno en live.",
-        "terms_accepted": "Los acepta el propietario junto con la activación de abajo."
+        "terms_accepted": "Lea y acepte las condiciones del servicio de abajo. Solo puede hacerlo el titular."
       },
-      "askTeam": "Por ahora el equipo de Payrudder lo configura contigo. Contacta con soporte.",
       "open": "Abrir",
       "nothingYet": "Live no muestra cifras hasta que esté activo.",
       "continue": "Continuar la configuración",
@@ -2839,7 +2847,79 @@
       "activate": "Encender live",
       "notReady": "Completa antes los otros pasos.",
       "inactiveNote": "Live no tiene datos hasta que esté activo. Mientras tanto, tu sandbox sigue funcionando.",
-      "toSandbox": "Abrir el sandbox"
+      "toSandbox": "Abrir el sandbox",
+      "fillIn": "Completar",
+      "acceptTermsButton": "Aceptar las condiciones",
+      "termsAccepted": "Las condiciones del servicio están aceptadas.",
+      "profile": {
+        "title": "Perfil de facturación",
+        "intro": "Los datos del vendedor que se imprimen en sus facturas reales: quién es usted, dónde está y su identificación fiscal.",
+        "ownerOnly": "Solo el titular de la cuenta puede cambiar el perfil de facturación.",
+        "legalName": "Razón social",
+        "taxId": "Identificación fiscal",
+        "taxIdRequired": "Obligatoria para las facturas en {country}. Se ignoran los espacios y los guiones.",
+        "taxIdOptional": "Opcional para este país. Se ignoran los espacios y los guiones.",
+        "taxOffice": "Oficina fiscal (opcional)",
+        "save": "Guardar perfil de facturación",
+        "saved": "Perfil de facturación guardado.",
+        "problems": {
+          "required": "Obligatorio.",
+          "taxIdFormat": "De 5 a 20 letras y dígitos."
+        }
+      },
+      "provider": {
+        "title": "Proveedor de pagos",
+        "intro": "Conecte el proveedor con el que sus clientes pagan en modo real. Las claves se escriben una vez y se guardan cifradas. Se le pide al proveedor que las acepte antes de que cuenten.",
+        "ownerOnly": "Solo el titular de la cuenta puede conectar o quitar un proveedor.",
+        "none": "Todavía no hay ningún proveedor conectado en modo real.",
+        "connected": "Proveedores conectados",
+        "connectedNow": "{provider} está conectado.",
+        "connectTitle": "Conectar un proveedor",
+        "provider": "Proveedor",
+        "choose": "Elija un proveedor",
+        "secretsOnce": "Las claves secretas no se vuelven a mostrar después de guardar. Use claves reales, no de prueba.",
+        "optional": "opcional",
+        "checkAndConnect": "Comprobar y conectar",
+        "saveBank": "Guardar datos bancarios",
+        "checking": "Comprobando con el proveedor...",
+        "remove": "Quitar",
+        "confirmRemove": "¿Quitar la cuenta real en {provider}? Los clientes ya no podrán pagar a través de ella.",
+        "default": "predeterminado",
+        "working": "Funciona",
+        "notWorking": "No funciona",
+        "checkedYes": "El proveedor acepta estas claves.",
+        "checkedNo": "Solo datos bancarios: no hay nada que comprobar en un proveedor.",
+        "names": {
+          "iyzico": "iyzico",
+          "paddle": "Paddle",
+          "banktransfer": "Transferencia bancaria"
+        },
+        "fields": {
+          "api_key": "Clave de API",
+          "secret_key": "Clave secreta",
+          "webhook_secret": "Secreto del webhook",
+          "usage_product_id": "ID del producto de uso (pro_...)",
+          "buyer_name": "Nombre del comprador",
+          "buyer_surname": "Apellido del comprador",
+          "buyer_identity_number": "Número de identidad del comprador",
+          "buyer_email": "Correo del comprador",
+          "buyer_address": "Dirección del comprador",
+          "buyer_city": "Ciudad del comprador",
+          "buyer_country": "País del comprador",
+          "buyer_zip_code": "Código postal del comprador",
+          "buyer_ip": "Dirección IP pública de su empresa",
+          "buyer_gsm_number": "Teléfono del comprador"
+        },
+        "problems": {
+          "required": "Obligatorio.",
+          "badFormat": "Esto no parece correcto."
+        },
+        "accountProblems": {
+          "unreadable": "No se pueden leer las claves guardadas. Vuelva a conectar el proveedor.",
+          "refused": "El proveedor ya no acepta estas claves. Vuelva a conectarlo con claves nuevas.",
+          "unreachable": "No se pudo contactar con el proveedor ahora. Se comprobará de nuevo en breve."
+        }
+      }
     },
     "promote": {
       "title": "Copiar la configuración del sandbox a live",

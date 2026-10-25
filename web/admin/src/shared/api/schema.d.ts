@@ -3046,6 +3046,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/billing-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save the seller's legal and billing profile of the live environment (the owner only)
+         * @description The legal name, tax id and address the live environment's invoices print as the seller, and what the go-live checklist reads. The profile replaces the stored one. A tax id is required in Turkey and the EU member states; the legal name, the country and the first address line and city always. Each missing part is refused with its own key (identity.billing_profile.legal_name_required, country_required, address_required, tax_id_required). The change is recorded in the audit trail (the country and whether a tax id was given, never the values). The sandbox environment is not changed.
+         */
+        put: operations["appSaveBillingProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/go-live/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept the terms of service for the live environment (the owner only)
+         * @description The first acceptance is kept; accepting again changes nothing. The go-live checklist item terms_accepted follows.
+         */
+        post: operations["appAcceptTerms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/go-live/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The payment providers connected to the live environment, and whether each works
+         * @description Any member reads it. No setting or secret is in the answer. working is what the go-live checklist counts: the stored credentials open, and for a provider that can be asked (iyzico, Paddle) the provider accepts them now (checked true). A bank transfer account is only bank details (checked false). problem says why an account does not work: unreadable, refused or unreachable.
+         */
+        get: operations["appLiveProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/go-live/providers/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Connect the live environment to a payment provider (the owner only)
+         * @description The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id; bank transfer: bank details). The environment is live whatever the request says. The settings are sealed, shown once and never echoed back. The provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed when it does not, 502 payments.account.health_check_unreachable when it cannot be asked), a base_url other than the provider's own live host is refused (payments.account.endpoint_not_allowed), and so is the provider's test host (payments.account.livemode_mismatch). The first live account becomes the default. The change is recorded for the person.
+         */
+        put: operations["appConnectLiveProvider"];
+        post?: never;
+        /** Remove the live environment's account at a payment provider (the owner only) */
+        delete: operations["appRemoveLiveProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/api-keys/{key_id}": {
         parameters: {
             query?: never;
@@ -6137,6 +6218,24 @@ export interface components {
                 /** @enum {string} */
                 key?: "email_verified" | "legal_profile" | "payment_provider" | "plan_published" | "terms_accepted";
                 done?: boolean;
+            }[];
+        };
+        LiveProviders: {
+            /** @description At least one account works. */
+            ready?: boolean;
+            /** @description The providers whose accounts work. */
+            providers?: string[];
+            accounts?: {
+                provider?: string;
+                /** @description Live charges go to the default account unless a routing rule says otherwise. */
+                default?: boolean;
+                working?: boolean;
+                /** @description The provider itself was asked. */
+                checked?: boolean;
+                /** @enum {string} */
+                problem?: "unreadable" | "refused" | "unreachable";
+                /** Format: date-time */
+                updated_at?: string;
             }[];
         };
         Account: {
@@ -12074,6 +12173,155 @@ export interface operations {
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    appSaveBillingProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    legal: components["schemas"]["LegalInfo"];
+                    address: components["schemas"]["Address"];
+                };
+            };
+        };
+        responses: {
+            /** @description The live tenant as saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appAcceptTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date-time */
+                        accept_time?: string;
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appLiveProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveProviders"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    appConnectLiveProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: "banktransfer" | "iyzico" | "paddle";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Stored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        provider?: string;
+                        /** @enum {string} */
+                        environment?: "live";
+                        default?: boolean;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    appRemoveLiveProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: "banktransfer" | "iyzico" | "paddle";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     appRevokeApiKey: {

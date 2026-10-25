@@ -262,7 +262,53 @@ export function useActivateLive(id: MaybeRefOrGetter<string>) {
   });
 }
 
-export type PromoteResult = NonNullable<Awaited<ReturnType<typeof promoteCall>>>;
+export type LiveProviders = S["LiveProviders"];
+
+/** The seller's legal name, tax id and address of the live environment (the owner only; the server checks the profile again). The app, its tenants and the checklist are read again. */
+export function useSaveBillingProfile(id: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { legal: S["LegalInfo"]; address: S["Address"] }) => unwrap(api.PUT("/app/v1/apps/{id}/billing-profile", { params: { path: { id: toValue(id) } }, body })),
+    onSuccess: () => Promise.all([queries.invalidateQueries({ queryKey: productKeys.app(toValue(id)) }), queries.invalidateQueries({ queryKey: productKeys.apps })]),
+  });
+}
+
+/** Records that the owner accepted the terms of service for the live environment. */
+export function useAcceptTerms(id: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.POST("/app/v1/apps/{id}/go-live/terms", { params: { path: { id: toValue(id) } } })),
+    onSuccess: () => Promise.all([queries.invalidateQueries({ queryKey: productKeys.app(toValue(id)) }), queries.invalidateQueries({ queryKey: productKeys.apps })]),
+  });
+}
+
+/** The live provider accounts of an app and whether each works. No setting is in it. */
+export function useLiveProviders(id: MaybeRefOrGetter<string>, on: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => [...liveKeys.goLive(toValue(id)), "providers"] as const),
+    queryFn: () => unwrap(api.GET("/app/v1/apps/{id}/go-live/providers", { params: { path: { id: toValue(id) } } })),
+    enabled: computed(() => enabled.value && toValue(id) !== "" && toValue(on)),
+  });
+}
+
+/** Connects or removes the live account at a provider (the owner only). The settings go up once and are never read back. */
+export function useLiveProviderActions(id: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  const refresh = () => queries.invalidateQueries({ queryKey: productKeys.app(toValue(id)) });
+  return {
+    connect: useMutation({
+      mutationFn: (v: { provider: "iyzico" | "paddle" | "banktransfer"; settings: Record<string, unknown> }) =>
+        unwrap(api.PUT("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id: toValue(id), provider: v.provider } }, body: v.settings })),
+      onSuccess: refresh,
+    }),
+    remove: useMutation({
+      mutationFn: (provider: "iyzico" | "paddle" | "banktransfer") => unwrap(api.DELETE("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id: toValue(id), provider } } })),
+      onSuccess: refresh,
+    }),
+  };
+}
+
+export type PromoteResult =NonNullable<Awaited<ReturnType<typeof promoteCall>>>;
 
 function promoteCall(id: string, body: { dry_run: boolean; plan_hash?: string }) {
   return unwrap(api.POST("/app/v1/apps/{id}/promote", { params: { path: { id } }, body }));

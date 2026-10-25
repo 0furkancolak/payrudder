@@ -269,6 +269,16 @@ type CustomerCoupon struct {
 	ConsumedRedemptionID *uuid.UUID
 }
 
+type GoLiveAudit struct {
+	ID           uuid.UUID
+	AppID        uuid.UUID
+	LiveTenantID uuid.UUID
+	UserID       uuid.UUID
+	Action       string
+	Detail       json.RawMessage
+	CreatedAt    time.Time
+}
+
 type LoginCode struct {
 	ID        uuid.UUID
 	Email     string

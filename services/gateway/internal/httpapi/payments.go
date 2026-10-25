@@ -16,6 +16,12 @@ import (
 // internal token, and with the operator's own Authorization header removed.
 
 func (s *Server) paymentsProxy(path func(*http.Request) string) http.HandlerFunc {
+	return s.paymentsForward(path, nil)
+}
+
+// paymentsForward is paymentsProxy with a last word on the outgoing request: tweak may set a query or headers the caller's own request must not decide (the
+// environment of an owner's provider account, who is asking). It runs after the caller's Authorization and internal-token headers are gone.
+func (s *Server) paymentsForward(path func(*http.Request) string, tweak func(*httputil.ProxyRequest)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.d.PaymentsURL == nil {
 			writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.not_configured", "payment providers are not configured on this deployment"))
@@ -32,6 +38,9 @@ func (s *Server) paymentsProxy(path func(*http.Request) string) http.HandlerFunc
 					pr.Out.Header.Set("X-Internal-Token", s.d.PaymentsToken)
 				}
 				pr.Out.Header.Set("X-Request-Id", requestID(pr.In.Context()))
+				if tweak != nil {
+					tweak(pr)
+				}
 			},
 			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 				writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.unreachable", "payments-worker is not reachable"))

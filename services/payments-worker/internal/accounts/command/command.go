@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -33,6 +34,9 @@ type Deps struct {
 	Log      *slog.Logger
 }
 
+// HealthTimeout bounds the one call a health check makes to a provider.
+const HealthTimeout = 8 * time.Second
+
 // Put is a provider account to store.
 type Put struct {
 	Tenant      uuid.UUID
@@ -40,6 +44,11 @@ type Put struct {
 	Environment string
 	Settings    []byte
 	MakeDefault bool
+	// Actor is who asked, for the audit trail: "user:<id>" or "operator".
+	Actor string
+	// Verify is set when a person connects the account themselves (not support): the endpoint must be one of the provider's documented hosts (the platform would
+	// otherwise send the person's secret keys wherever they point it), and the provider must accept the credentials before they are stored.
+	Verify bool
 }
 
 // PutAccount stores (or replaces) an account. The settings are validated by building the adapter, and the provider's own mode must be the environment's.
@@ -51,11 +60,30 @@ func PutAccount(ctx context.Context, d Deps, in Put) error {
 		}
 		return refuse.New(http.StatusBadRequest, "payments.account.bad_settings", err.Error())
 	}
-	// A provider connection has a mode of its own (live or test at the provider), and it must be the environment's.
-	if err := payments.CheckLivemode(built, in.Environment); err != nil {
+	var remote bool
+	if in.Verify {
+		hctx, cancel := context.WithTimeout(ctx, HealthTimeout)
+		defer cancel()
+		h, err := payments.Verify(hctx, built, in.Environment)
+		if err != nil {
+			d.Log.WarnContext(ctx, "provider account refused", "provider", in.Provider, "environment", in.Environment, "err", err)
+			switch {
+			case errors.Is(err, payments.ErrUnknownEndpoint):
+				return refuse.New(http.StatusBadRequest, "payments.account.endpoint_not_allowed", "base_url must be one of the provider's own hosts: leave it out to use the live one")
+			case errors.Is(err, payments.ErrLivemodeMismatch):
+				return refuse.New(http.StatusBadRequest, "payments.account.livemode_mismatch", err.Error())
+			case errors.Is(err, payments.ErrUnreachable):
+				return refuse.New(http.StatusBadGateway, "payments.account.health_check_unreachable", "the provider could not be reached to check these credentials: try again")
+			default:
+				return refuse.New(http.StatusBadRequest, "payments.account.health_check_failed", "the provider did not accept these credentials")
+			}
+		}
+		remote = h.Remote
+	} else if err := payments.CheckLivemode(built, in.Environment); err != nil {
+		// A provider connection has a mode of its own (live or test at the provider), and it must be the environment's.
 		return refuse.New(http.StatusBadRequest, "payments.account.livemode_mismatch", err.Error())
 	}
-	if err := d.Accounts.Put(ctx, in.Tenant, in.Provider, in.Environment, in.Settings, in.MakeDefault); err != nil {
+	if err := d.Accounts.PutAudited(ctx, in.Tenant, in.Provider, in.Environment, in.Settings, in.MakeDefault, store.Audit{Actor: in.Actor, VerifiedRemote: remote}); err != nil {
 		return fmt.Errorf("provider account write failed: %w", err)
 	}
 	if in.Environment == env.Live.String() && (in.Provider == banktransfer.Name || in.MakeDefault) {
@@ -67,9 +95,9 @@ func PutAccount(ctx context.Context, d Deps, in Put) error {
 	return nil
 }
 
-// DeleteAccount removes a tenant's account at a provider in an environment.
-func DeleteAccount(ctx context.Context, d Deps, tenant uuid.UUID, provider, environment string) error {
-	deleted, err := d.Accounts.Delete(ctx, tenant, provider, environment)
+// DeleteAccount removes a tenant's account at a provider in an environment; actor is who asked, for the audit trail.
+func DeleteAccount(ctx context.Context, d Deps, tenant uuid.UUID, provider, environment, actor string) error {
+	deleted, err := d.Accounts.DeleteAudited(ctx, tenant, provider, environment, store.Audit{Actor: actor})
 	if err != nil {
 		return fmt.Errorf("provider account delete failed: %w", err)
 	}

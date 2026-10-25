@@ -222,6 +222,28 @@ test.describe("settings and chrome", () => {
     await page.waitForURL("**/signin");
   });
 
+  test("leaving a page before its code has arrived raises no error and lands on the page that was asked for", async ({ page }) => {
+    // Pages are fetched on first visit. Hold the organisation home's chunk back so the person is certain to leave while it is still on its way: the page they
+    // asked for must render, and the home that never appeared must not throw when its code arrives after they have gone (`insertBefore` of null).
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.route("**/assets/OrgHome-*.js", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      await route.continue();
+    });
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await page.goto("/");
+    await page.getByLabel("E-mail").fill("ada@example.com");
+    await page.getByLabel("Password", { exact: true }).fill("right password!");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("link", { name: "Settings" }).click();
+    await expect(page.getByTestId("account-name")).toHaveText("Ada Labs");
+    await page.waitForTimeout(900); // the held chunk arrives now
+    await expect(page.getByTestId("account-name")).toHaveText("Ada Labs");
+    expect(errors).toEqual([]);
+  });
+
   test("dark mode applies to the whole app", async ({ page }) => {
     await productGateway(new MockGateway()).gw.install(page);
     await signInAsAda(page);
