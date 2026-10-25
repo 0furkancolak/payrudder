@@ -8,6 +8,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
 // listInvoices is GET /v1/invoices?customer=&period=&status=&page_size=&page_token=. customer is the external id.
@@ -62,7 +63,7 @@ func (s *Server) sandboxClosePeriod(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if body.Period != "" && !periodParam.MatchString(body.Period) {
+	if body.Period != "" && !period.Valid(body.Period) {
 		writeError(w, r, invalid("period", "must look like 2026-11"))
 		return
 	}

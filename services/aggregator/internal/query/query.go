@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"regexp"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -17,6 +16,7 @@ import (
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
@@ -26,8 +26,6 @@ import (
 
 // MaxBatchKeys is the size limit of GetUsageBatch.
 const MaxBatchKeys = 1000
-
-var periodRe = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
 
 // Service implements aggregatorv1.UsageQueryServiceServer on the app pool (RLS enforced).
 type Service struct {
@@ -60,7 +58,7 @@ func cannotCompute(ctx context.Context, tenantID uuid.UUID, periodID string, err
 }
 
 func validPeriod(p string) error {
-	if !periodRe.MatchString(p) {
+	if !period.Valid(p) {
 		return invalid("aggregator.period.bad_id", "period_id must look like 2026-11")
 	}
 	return nil
