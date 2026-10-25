@@ -2437,7 +2437,8 @@
       "label": "Environment",
       "live": "Live",
       "sandbox": "Sandbox",
-      "sandboxNote": "Sandbox: test data and a pretend payment provider. Nothing here is real money."
+      "sandboxNote": "Sandbox: test data and a pretend payment provider. Nothing here is real money.",
+      "banner": "Sandbox: test data and a pretend payment provider. Nothing here is real money."
     },
     "donut": {
       "title": "Payments by status",
@@ -2504,7 +2505,29 @@
       "saved": "I have saved it",
       "revokeTitle": "Revoke this key?",
       "revokeBody": "Anything still using it stops working at once. This cannot be undone.",
-      "needsVerified": "Confirm your e-mail address to create live keys."
+      "needsVerified": "Confirm your e-mail address to create live keys.",
+      "scope": "Scope of a new key",
+      "scopes": {
+        "full": "Full access",
+        "ingest": "Send usage only",
+        "read": "Read only"
+      },
+      "scopeHelp": {
+        "full": "The whole API.",
+        "ingest": "Can only send usage events. Safe to put in a service that reports usage.",
+        "read": "Can only read. Safe for dashboards and reports."
+      },
+      "liveInactive": "Live keys can be made once the live environment is active.",
+      "rotate": "Rotate",
+      "rotateNamed": "Rotate key {key}",
+      "rotateTitle": "Rotate this key?",
+      "rotateBody": "A new key with the same access is made and shown once. The old one keeps working for the time below, so you can switch without a gap.",
+      "overlap": "Keep the old key working for",
+      "overlapNow": "Stop it now",
+      "overlapHours": "{n} hours",
+      "lastUsed": "last used {date}",
+      "neverUsed": "never used",
+      "ends": "Stops working on {date}"
     },
     "links": {
       "title": "Go deeper",
@@ -2676,6 +2699,128 @@
       "grace": "Grace period",
       "tenant": "Environment id",
       "moreCurrencies": "An app can sell in many currencies: add a price in another currency to a package, under"
+    },
+    "goLive": {
+      "title": "Go live",
+      "pageIntro": "The live environment starts switched off: no live keys, no live webhooks, no real charges. Finish the list, then switch it on.",
+      "intro": "Your live environment is not active yet. Finish these steps to switch it on.",
+      "liveNow": "Your live environment is active.",
+      "suspended": "Your live environment is suspended. Contact support to have it reinstated.",
+      "stateActive": "Active",
+      "stateSuspended": "Suspended",
+      "count": "{done} of {total} done",
+      "noLive": "This deployment has no live environment.",
+      "done": "done",
+      "todo": "not done yet",
+      "items": {
+        "email_verified": "Confirm the owner's e-mail address",
+        "legal_profile": "Complete the legal profile (name, country, tax id)",
+        "payment_provider": "Connect a payment provider in live mode",
+        "plan_published": "Publish at least one plan in live",
+        "terms_accepted": "Accept the terms of service"
+      },
+      "help": {
+        "email_verified": "Open the link in the message we sent you, or ask for a new one from the banner.",
+        "legal_profile": "The seller's name, country and tax id are printed on every live invoice.",
+        "payment_provider": "A provider connected for real payments, with its health check passed.",
+        "plan_published": "Copy your sandbox plans to live below, or create one in live.",
+        "terms_accepted": "Accepted together with the activation below, by the owner."
+      },
+      "askTeam": "The Payrudder team sets this up with you for now. Contact support.",
+      "open": "Open",
+      "nothingYet": "Live shows no figures until it is active.",
+      "continue": "Continue setup",
+      "acceptTerms": "I accept the terms of service for this app's live environment.",
+      "ownerOnly": "Only the owner of the account can switch live on.",
+      "activate": "Switch live on",
+      "notReady": "Finish the other steps first.",
+      "inactiveNote": "Live has no data until it is active. Your sandbox keeps working in the meantime.",
+      "toSandbox": "Open the sandbox"
+    },
+    "promote": {
+      "title": "Copy sandbox configuration to live",
+      "intro": "Meters, plans and prices, tax rates, coupons, mail settings and webhook endpoints. Never customers, usage, invoices or payments. It only adds: anything that already exists in live and differs is left alone.",
+      "preview": "Preview the changes",
+      "adminOnly": "Only owners and administrators can do this.",
+      "previewed": "Preview, nothing written",
+      "applied": "Applied",
+      "created": "{n} to add",
+      "unchanged": "{n} already the same",
+      "conflicts": "{n} in conflict",
+      "skipped": "{n} skipped",
+      "failed": "{n} failed",
+      "nothing": "Nothing to copy: live already has everything the sandbox has.",
+      "family": {
+        "meters": "Meters",
+        "plans": "Plans",
+        "taxes": "Tax rates",
+        "coupons": "Coupons",
+        "mail": "E-mail",
+        "webhooks": "Webhooks"
+      },
+      "action": {
+        "create": "Add",
+        "unchanged": "Same",
+        "conflict": "Conflict",
+        "skipped": "Skipped"
+      },
+      "conflictNote": "A conflict is an object that exists in live with different settings. It is left as it is; change it in live by hand if you want them to match.",
+      "apply": "Add {n} to live",
+      "applyNote": "Applies exactly the changes shown. If the configuration changed meanwhile, you are asked to preview again.",
+      "secretOnce": "A new signing secret was made for each webhook endpoint below. It is shown only now; the sandbox's secret was not copied.",
+      "secretLabel": "Signing secret"
+    },
+    "sandbox": {
+      "intro": "Tools for the test environment: start again from a clean slate, and see how each kind of payment behaves.",
+      "resetTitle": "Reset the sandbox",
+      "resetBody": "Deletes the sandbox's customers, subscriptions, usage, invoices and payments. Plans, prices, meters, tax rates, coupons, webhook endpoints, mail settings and API keys stay. Live is never touched.",
+      "reset": "Reset sandbox",
+      "state": {
+        "queued": "Waiting",
+        "running": "Running",
+        "done": "Done",
+        "failed": "Failed"
+      },
+      "started": "Asked {date}",
+      "byRetention": "Started automatically after a long time without use.",
+      "step": {
+        "plans": "Customers and plans",
+        "ingest": "Usage intake",
+        "aggregator": "Usage totals",
+        "analytics": "Analytics",
+        "billing": "Invoices",
+        "payments": "Payments"
+      },
+      "deleted": "{n} rows removed",
+      "skipped": "Skipped: not part of this deployment",
+      "failedNote": "Nothing is lost by trying again: every step can be repeated.",
+      "neverReset": "This sandbox has not been reset yet.",
+      "confirmTitle": "Reset the sandbox?",
+      "confirmBody": "All test customers, subscriptions, invoices and payments are deleted. This cannot be undone. Your configuration stays.",
+      "scenariosTitle": "Payment scenarios",
+      "scenariosBody": "Give a sandbox customer one of these payment methods and their invoices behave as described. No real provider is ever called.",
+      "scenario": {
+        "success": "The charge succeeds and the invoice is paid.",
+        "declined": "Every attempt is declined. After the retries the invoice becomes uncollectible.",
+        "insufficient_funds_once": "The first attempt is declined, the retry succeeds.",
+        "error_then_success": "The provider fails twice with a server error, then succeeds.",
+        "timeout_committed": "The provider takes the payment but does not answer in time. A status check finds it.",
+        "timeout_not_committed": "The provider does not answer and has not taken the payment. The charge is made again."
+      },
+      "outcome": {
+        "paid": "Paid",
+        "uncollectible": "Uncollectible",
+        "paid_after_retry": "Paid after a retry",
+        "paid_after_status_query": "Paid after a status check",
+        "paid_after_recharge": "Paid after charging again"
+      },
+      "default": "Default",
+      "simulateNote": "To try one, open a sandbox invoice and use Simulate payment.",
+      "simulateTitle": "Simulate payment",
+      "simulateBody": "Run this invoice's payment again as one of the scenarios. The customer keeps the scenario as their payment method.",
+      "simulate": "Simulate",
+      "simulated": "Payment run again as {scenario}.",
+      "simulateNotRetried": "The scenario is set, but the payment could not run again now ({why})."
     }
   },
   "shell": {
@@ -2729,7 +2874,9 @@
       "appSettings": "App settings",
       "operator": "Operator console",
       "myApps": "My apps",
-      "affiliates": "Affiliates"
+      "affiliates": "Affiliates",
+      "goLive": "Go live",
+      "sandbox": "Sandbox tools"
     }
   },
   "privacy": {

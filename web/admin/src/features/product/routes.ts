@@ -60,9 +60,12 @@ export function personRoutes(parent: AnyRoute) {
     component: lazyPage(() => import("./AppDashboard.vue")),
     validateSearch: dashSearch,
   });
-  const envSearch = (s: Record<string, unknown>) => (s.env === "sandbox" ? { env: "sandbox" } : {});
+  const envSearch = (s: Record<string, unknown>) => (s.env === "sandbox" || s.env === "live" ? { env: s.env } : {});
   const keys = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/keys", component: lazyPage(() => import("./ApiKeysPage.vue")), validateSearch: envSearch });
   const appSettings = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/settings", component: lazyPage(() => import("./AppSettingsPage.vue")), validateSearch: envSearch });
+  // Going live and the sandbox's own tools (phase 45): the checklist and promote, and reset and scenarios.
+  const goLive = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/go-live", component: lazyPage(() => import("./GoLivePage.vue")), validateSearch: envSearch });
+  const sandbox = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/sandbox", component: lazyPage(() => import("./SandboxPage.vue")), validateSearch: envSearch });
   const members = createRoute({ getParentRoute: () => signedIn, path: "/app/members", component: lazyPage(() => import("./MembersPage.vue")) });
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazyPage(() => import("./SettingsPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazyPage(() => import("./ProductTenantLayout.vue")) });
@@ -75,6 +78,8 @@ export function personRoutes(parent: AnyRoute) {
     dashboard,
     keys,
     appSettings,
+    goLive,
+    sandbox,
     members,
     settings,
     // One line per page, and the same page in PERSON_PAGES (app/layout/nav.ts), which is what puts it in the sidebar.

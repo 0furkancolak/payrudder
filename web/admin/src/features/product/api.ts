@@ -205,11 +205,82 @@ export function useCreateApp() {
   });
 }
 
+export type KeyScope = "full" | "ingest" | "read";
+
 export function useCreateApiKey(id: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (environment: Environment) => unwrap(api.POST("/app/v1/apps/{id}/api-keys", { params: { path: { id: toValue(id) } }, body: { environment } })),
+    mutationFn: (v: { environment: Environment; scope: KeyScope }) =>
+      unwrap(api.POST("/app/v1/apps/{id}/api-keys", { params: { path: { id: toValue(id) } }, body: { environment: v.environment, scope: v.scope } })),
     onSuccess: () => queries.invalidateQueries({ queryKey: productKeys.keys(toValue(id)) }),
+  });
+}
+
+/** Replaces a key: the new key's plaintext is in the answer once, and the old key keeps working for the overlap. */
+export function useRotateApiKey(id: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { keyId: string; overlapHours: number }) =>
+      unwrap(api.POST("/app/v1/apps/{id}/api-keys/{key_id}/rotate", { params: { path: { id: toValue(id), key_id: v.keyId } }, body: { overlap_hours: v.overlapHours } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: productKeys.keys(toValue(id)) }),
+  });
+}
+
+// --- going live, promoting configuration and the sandbox lifecycle (phase 45)
+
+export const liveKeys = {
+  goLive: (id: string) => ["app", "apps", id, "go-live"] as const,
+  reset: (id: string) => ["app", "apps", id, "sandbox-reset"] as const,
+};
+
+/** The go-live checklist of an app's live environment. Not asked for an app without a live environment. */
+export function useGoLive(id: MaybeRefOrGetter<string>, on: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => liveKeys.goLive(toValue(id))),
+    queryFn: async () => (await unwrap(api.GET("/app/v1/apps/{id}/go-live", { params: { path: { id: toValue(id) } } }))).go_live,
+    enabled: computed(() => enabled.value && toValue(id) !== "" && toValue(on)),
+  });
+}
+
+/** Activates the live environment (the owner only; the server checks the list again and refuses when it is not complete). */
+export function useActivateLive(id: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (acceptTerms: boolean) => unwrap(api.POST("/app/v1/apps/{id}/go-live", { params: { path: { id: toValue(id) } }, body: { accept_terms: acceptTerms } })),
+    onSuccess: () => Promise.all([queries.invalidateQueries({ queryKey: liveKeys.goLive(toValue(id)) }), queries.invalidateQueries({ queryKey: productKeys.apps }), queries.invalidateQueries({ queryKey: productKeys.app(toValue(id)) })]),
+  });
+}
+
+export type PromoteResult = NonNullable<Awaited<ReturnType<typeof promoteCall>>>;
+
+function promoteCall(id: string, body: { dry_run: boolean; plan_hash?: string }) {
+  return unwrap(api.POST("/app/v1/apps/{id}/promote", { params: { path: { id } }, body }));
+}
+
+/** Promote configuration from sandbox to live. A dry run only reads; applying sends back the hash of the diff the person saw. */
+export function usePromote(id: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { dryRun: boolean; planHash?: string }) => promoteCall(toValue(id), { dry_run: v.dryRun, ...(v.planHash ? { plan_hash: v.planHash } : {}) }),
+    onSuccess: (_r, v) => (v.dryRun ? undefined : queries.invalidateQueries({ queryKey: ["app", "tenant"] })),
+  });
+}
+
+/** The latest reset of the sandbox, polled while one is running. */
+export function useSandboxReset(id: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => liveKeys.reset(toValue(id))),
+    queryFn: async () => (await unwrap(api.GET("/app/v1/apps/{id}/sandbox/reset", { params: { path: { id: toValue(id) } } }))).sandbox_reset,
+    enabled: computed(() => enabled.value && toValue(id) !== ""),
+    refetchInterval: (q) => (q.state.data?.state === "queued" || q.state.data?.state === "running" ? 2_000 : false),
+  });
+}
+
+export function useResetSandbox(id: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.POST("/app/v1/apps/{id}/sandbox/reset", { params: { path: { id: toValue(id) } } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: liveKeys.reset(toValue(id)) }),
   });
 }
 

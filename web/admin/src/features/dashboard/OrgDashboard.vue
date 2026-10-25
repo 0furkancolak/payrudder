@@ -7,9 +7,8 @@ import { POLL } from "@/shared/api/limits";
 import { todayYmd } from "@/shared/lib/dates";
 import { useFormat } from "@/shared/lib/format";
 import { type App } from "@/features/product/api";
-import { tenantOf } from "@/shared/lib/environment";
+import { liveState, tenantOf } from "@/shared/lib/environment";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { SegmentedControl } from "@/shared/ui/segmented";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { dashKeys, fetchDashboard } from "./api";
 import BarList from "./BarList.vue";
@@ -26,7 +25,7 @@ import type { Environment } from "@/shared/lib/environment";
  * as the app dashboards and agrees with them. An app that does not answer is named and left out.
  */
 const props = defineProps<{ apps: App[]; query: DashQuery; env: Environment }>();
-const emit = defineEmits<{ "update:query": [DashQuery]; "update:env": [Environment] }>();
+const emit = defineEmits<{ "update:query": [DashQuery] }>();
 const { t } = useI18n();
 const fmt = useFormat();
 
@@ -35,7 +34,8 @@ const MAX_APPS = 12;
 /** Each app's dashboard is read again this often while the page is open, and counts as fresh for this long. */
 const REFRESH_MS = POLL.figures;
 const FRESH_MS = 15_000;
-const shown = computed(() => props.apps.filter((a) => tenantOf(a, props.env) !== "").slice(0, MAX_APPS));
+// A live environment that is not active has no figures to add up (its checklist is shown instead, on the home), so it is left out, not counted as zeros.
+const shown = computed(() => props.apps.filter((a) => tenantOf(a, props.env) !== "" && (props.env === "sandbox" || liveState(a) === "active")).slice(0, MAX_APPS));
 const results = useQueries({
   queries: computed(() =>
     shown.value.map((a) => {
@@ -95,10 +95,6 @@ const dNet = computed(() => (compare.value ? delta(net.value, prevNet.value) : n
 const dMrr = computed(() => (compare.value ? delta(mrr.value, prevMrr.value) : null));
 const dRate = computed(() => (compare.value && rate.value !== null && prevRate.value !== null ? delta(bpPercent(rate.value), bpPercent(prevRate.value)) : null));
 const dCustomers = computed(() => (compare.value ? delta(newCustomers.value, prevNewCustomers.value) : null));
-const envOptions = computed(() => [
-  { value: "live", label: t("product.env.live") },
-  { value: "sandbox", label: t("product.env.sandbox") },
-]);
 </script>
 
 <template>
@@ -108,7 +104,7 @@ const envOptions = computed(() => [
         <h2 class="text-xl font-semibold tracking-tight">{{ t("dash.org.title") }}</h2>
         <p class="text-muted-foreground text-sm">{{ t("dash.org.intro") }}</p>
       </div>
-      <SegmentedControl :model-value="env" :options="envOptions" :label="t('product.env.label')" @update:model-value="emit('update:env', $event === 'sandbox' ? 'sandbox' : 'live')" />
+      <StatusPill :tone="env === 'live' ? 'info' : 'neutral'" data-testid="org-env">{{ t(`product.env.${env}`) }}</StatusPill>
     </div>
 
     <div class="flex flex-col gap-4">

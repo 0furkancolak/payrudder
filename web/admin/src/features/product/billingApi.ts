@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/vue-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, tenantApi, unwrap } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
@@ -39,6 +39,19 @@ export function useInvoice(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeR
   return useQuery({
     queryKey: computed(() => billingKeys.invoice(toValue(tenantId), toValue(invoiceId))),
     queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/invoices/{id}", { params: { path: { id: toValue(invoiceId) } } })),
+  });
+}
+
+/**
+ * Runs the payment of a sandbox invoice again under a scenario (phase 45 E): the customer takes the scenario and the saga retries. Sandbox tenants only; the
+ * gateway refuses anything else, and the page does not offer it for a live tenant.
+ */
+export function useSimulateInvoice(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (scenario: string) =>
+      unwrap(tenantApi(toValue(tenantId)).POST("/v1/sandbox/invoices/{id}/simulate", { params: { path: { id: toValue(invoiceId) } }, body: { scenario } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: ["app", "tenant", toValue(tenantId)] }),
   });
 }
 

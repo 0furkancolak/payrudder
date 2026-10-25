@@ -2437,7 +2437,8 @@
       "label": "Ortam",
       "live": "Canlı",
       "sandbox": "Sandbox",
-      "sandboxNote": "Sandbox: deneme verileri ve sahte bir ödeme sağlayıcısı. Burada gerçek para yok."
+      "sandboxNote": "Sandbox: deneme verileri ve sahte bir ödeme sağlayıcısı. Burada gerçek para yok.",
+      "banner": "Sandbox: test verisi ve sahte bir ödeme sağlayıcısı. Burada hiçbir şey gerçek para değildir."
     },
     "donut": {
       "title": "Duruma göre ödemeler",
@@ -2504,7 +2505,29 @@
       "saved": "Kaydettim",
       "revokeTitle": "Bu anahtar iptal edilsin mi?",
       "revokeBody": "Onu kullanan her şey hemen çalışmayı durdurur. Bu geri alınamaz.",
-      "needsVerified": "Canlı anahtar oluşturmak için e-posta adresinizi doğrulayın."
+      "needsVerified": "Canlı anahtar oluşturmak için e-posta adresinizi doğrulayın.",
+      "scope": "Yeni anahtarın kapsamı",
+      "scopes": {
+        "full": "Tam erişim",
+        "ingest": "Yalnızca kullanım gönder",
+        "read": "Yalnızca okuma"
+      },
+      "scopeHelp": {
+        "full": "API'nin tamamı.",
+        "ingest": "Yalnızca kullanım olayı gönderebilir. Kullanım bildiren bir servise koymak güvenlidir.",
+        "read": "Yalnızca okuyabilir. Panolar ve raporlar için güvenlidir."
+      },
+      "liveInactive": "Canlı anahtarlar, canlı ortam etkinleştikten sonra oluşturulabilir.",
+      "rotate": "Döndür",
+      "rotateNamed": "{key} anahtarını döndür",
+      "rotateTitle": "Bu anahtar döndürülsün mü?",
+      "rotateBody": "Aynı erişimle yeni bir anahtar üretilir ve bir kez gösterilir. Eskisi aşağıdaki süre boyunca çalışmaya devam eder; böylece kesintisiz geçiş yaparsınız.",
+      "overlap": "Eski anahtar şu süre çalışmaya devam etsin",
+      "overlapNow": "Hemen durdur",
+      "overlapHours": "{n} saat",
+      "lastUsed": "son kullanım {date}",
+      "neverUsed": "hiç kullanılmadı",
+      "ends": "{date} tarihinde çalışmayı bırakır"
     },
     "links": {
       "title": "Daha derine inin",
@@ -2676,6 +2699,128 @@
       "grace": "Ek süre",
       "tenant": "Ortam kimliği",
       "moreCurrencies": "Bir uygulama birçok para biriminde satış yapabilir: bir pakete başka para biriminde fiyat ekleyin, şurada:"
+    },
+    "goLive": {
+      "title": "Canlıya geç",
+      "pageIntro": "Canlı ortam kapalı başlar: canlı anahtar, canlı webhook ve gerçek tahsilat yoktur. Listeyi tamamlayın, sonra açın.",
+      "intro": "Canlı ortamınız henüz etkin değil. Açmak için şu adımları tamamlayın.",
+      "liveNow": "Canlı ortamınız etkin.",
+      "suspended": "Canlı ortamınız askıya alındı. Yeniden açtırmak için destekle iletişime geçin.",
+      "stateActive": "Etkin",
+      "stateSuspended": "Askıda",
+      "count": "{done} / {total} tamam",
+      "noLive": "Bu kurulumda canlı ortam yok.",
+      "done": "tamam",
+      "todo": "henüz tamamlanmadı",
+      "items": {
+        "email_verified": "Sahibin e-posta adresini doğrulayın",
+        "legal_profile": "Yasal profili tamamlayın (ad, ülke, vergi no)",
+        "payment_provider": "Canlı modda bir ödeme sağlayıcısı bağlayın",
+        "plan_published": "Canlıda en az bir plan yayınlayın",
+        "terms_accepted": "Hizmet şartlarını kabul edin"
+      },
+      "help": {
+        "email_verified": "Size gönderdiğimiz iletideki bağlantıyı açın ya da banttan yenisini isteyin.",
+        "legal_profile": "Satıcının adı, ülkesi ve vergi numarası her canlı faturada basılır.",
+        "payment_provider": "Gerçek ödemeler için bağlanmış ve sağlık kontrolünü geçmiş bir sağlayıcı.",
+        "plan_published": "Aşağıdan sandbox planlarınızı canlıya kopyalayın ya da canlıda bir plan oluşturun.",
+        "terms_accepted": "Aşağıdaki etkinleştirme ile birlikte, sahip tarafından kabul edilir."
+      },
+      "askTeam": "Şimdilik bunu Payrudder ekibi sizinle birlikte kurar. Destekle iletişime geçin.",
+      "open": "Aç",
+      "nothingYet": "Canlı ortam etkinleşene kadar rakam göstermez.",
+      "continue": "Kuruluma devam et",
+      "acceptTerms": "Bu uygulamanın canlı ortamı için hizmet şartlarını kabul ediyorum.",
+      "ownerOnly": "Canlıyı yalnızca hesabın sahibi açabilir.",
+      "activate": "Canlıyı aç",
+      "notReady": "Önce diğer adımları tamamlayın.",
+      "inactiveNote": "Canlı ortam etkinleşene kadar veri içermez. Bu arada sandbox çalışmaya devam eder.",
+      "toSandbox": "Sandbox'ı aç"
+    },
+    "promote": {
+      "title": "Sandbox yapılandırmasını canlıya kopyala",
+      "intro": "Sayaçlar, planlar ve fiyatlar, vergi oranları, kuponlar, e-posta ayarları ve webhook uç noktaları. Müşteri, kullanım, fatura ya da ödeme asla. Yalnızca ekler: canlıda zaten var olan ve farklı olan hiçbir şeye dokunulmaz.",
+      "preview": "Değişiklikleri önizle",
+      "adminOnly": "Bunu yalnızca sahipler ve yöneticiler yapabilir.",
+      "previewed": "Önizleme, hiçbir şey yazılmadı",
+      "applied": "Uygulandı",
+      "created": "{n} eklenecek",
+      "unchanged": "{n} zaten aynı",
+      "conflicts": "{n} çakışıyor",
+      "skipped": "{n} atlandı",
+      "failed": "{n} başarısız",
+      "nothing": "Kopyalanacak bir şey yok: canlıda sandbox'taki her şey zaten var.",
+      "family": {
+        "meters": "Sayaçlar",
+        "plans": "Planlar",
+        "taxes": "Vergi oranları",
+        "coupons": "Kuponlar",
+        "mail": "E-posta",
+        "webhooks": "Webhook'lar"
+      },
+      "action": {
+        "create": "Ekle",
+        "unchanged": "Aynı",
+        "conflict": "Çakışma",
+        "skipped": "Atlandı"
+      },
+      "conflictNote": "Çakışma, canlıda farklı ayarlarla var olan bir nesnedir. Olduğu gibi bırakılır; eşleşmesini istiyorsanız canlıda elle değiştirin.",
+      "apply": "{n} öğeyi canlıya ekle",
+      "applyNote": "Tam olarak gösterilen değişiklikleri uygular. Bu arada yapılandırma değiştiyse yeniden önizlemeniz istenir.",
+      "secretOnce": "Aşağıdaki her webhook uç noktası için yeni bir imza sırrı üretildi. Yalnızca şimdi gösterilir; sandbox'ın sırrı kopyalanmadı.",
+      "secretLabel": "İmza sırrı"
+    },
+    "sandbox": {
+      "intro": "Test ortamı için araçlar: temiz bir sayfayla yeniden başlayın ve her ödeme türünün nasıl davrandığını görün.",
+      "resetTitle": "Sandbox'ı sıfırla",
+      "resetBody": "Sandbox'taki müşterileri, abonelikleri, kullanımı, faturaları ve ödemeleri siler. Planlar, fiyatlar, sayaçlar, vergi oranları, kuponlar, webhook uç noktaları, e-posta ayarları ve API anahtarları kalır. Canlıya asla dokunulmaz.",
+      "reset": "Sandbox'ı sıfırla",
+      "state": {
+        "queued": "Bekliyor",
+        "running": "Çalışıyor",
+        "done": "Bitti",
+        "failed": "Başarısız"
+      },
+      "started": "{date} tarihinde istendi",
+      "byRetention": "Uzun süre kullanılmadığı için otomatik başlatıldı.",
+      "step": {
+        "plans": "Müşteriler ve planlar",
+        "ingest": "Kullanım girişi",
+        "aggregator": "Kullanım toplamları",
+        "analytics": "Analitik",
+        "billing": "Faturalar",
+        "payments": "Ödemeler"
+      },
+      "deleted": "{n} satır silindi",
+      "skipped": "Atlandı: bu kurulumun parçası değil",
+      "failedNote": "Yeniden denemekle bir şey kaybetmezsiniz: her adım tekrarlanabilir.",
+      "neverReset": "Bu sandbox henüz hiç sıfırlanmadı.",
+      "confirmTitle": "Sandbox sıfırlansın mı?",
+      "confirmBody": "Tüm test müşterileri, abonelikleri, faturaları ve ödemeleri silinir. Bu geri alınamaz. Yapılandırmanız kalır.",
+      "scenariosTitle": "Ödeme senaryoları",
+      "scenariosBody": "Bir sandbox müşterisine bu ödeme yöntemlerinden birini verin; faturaları anlatıldığı gibi davranır. Gerçek bir sağlayıcı asla çağrılmaz.",
+      "scenario": {
+        "success": "Tahsilat başarılı olur ve fatura ödenir.",
+        "declined": "Her deneme reddedilir. Yeniden denemelerden sonra fatura tahsil edilemez olur.",
+        "insufficient_funds_once": "İlk deneme reddedilir, yeniden deneme başarılı olur.",
+        "error_then_success": "Sağlayıcı iki kez sunucu hatası verir, sonra başarılı olur.",
+        "timeout_committed": "Sağlayıcı ödemeyi alır ama zamanında yanıt vermez. Durum sorgusu bulur.",
+        "timeout_not_committed": "Sağlayıcı yanıt vermez ve ödemeyi almamıştır. Tahsilat yeniden yapılır."
+      },
+      "outcome": {
+        "paid": "Ödendi",
+        "uncollectible": "Tahsil edilemez",
+        "paid_after_retry": "Yeniden denemeyle ödendi",
+        "paid_after_status_query": "Durum sorgusuyla ödendi",
+        "paid_after_recharge": "Yeniden tahsil edilince ödendi"
+      },
+      "default": "Varsayılan",
+      "simulateNote": "Denemek için bir sandbox faturasını açın ve Ödemeyi simüle et'i kullanın.",
+      "simulateTitle": "Ödemeyi simüle et",
+      "simulateBody": "Bu faturanın ödemesini senaryolardan biriyle yeniden çalıştırın. Müşteri senaryoyu ödeme yöntemi olarak korur.",
+      "simulate": "Simüle et",
+      "simulated": "Ödeme {scenario} olarak yeniden çalıştırıldı.",
+      "simulateNotRetried": "Senaryo ayarlandı ama ödeme şu an yeniden çalıştırılamadı ({why})."
     }
   },
   "shell": {
@@ -2729,7 +2874,9 @@
       "appSettings": "Uygulama ayarları",
       "operator": "Operatör konsolu",
       "myApps": "Uygulamalarım",
-      "affiliates": "Ortaklar"
+      "affiliates": "Ortaklar",
+      "goLive": "Canlıya geç",
+      "sandbox": "Sandbox araçları"
     }
   },
   "privacy": {

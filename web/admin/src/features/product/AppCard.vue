@@ -11,11 +11,11 @@ import { tenantOf } from "@/shared/lib/environment";
 import { countOf, revenueByCurrency, seriesOf } from "./lib";
 
 /** One app on the organisation's home: its status, the last 30 days of money that arrived, a trend line, and how many payments need a look. */
-const props = defineProps<{ app: App }>();
+const props = defineProps<{ app: App; env: Environment }>();
 const { t, locale } = useI18n();
 
-// The live environment is the one that matters; a sandbox-only deployment shows the sandbox.
-const env = computed<Environment>(() => (tenantOf(props.app, "live") ? "live" : "sandbox"));
+// The card shows the environment the home is showing, never the other one: a home does not mix live and sandbox.
+const env = computed<Environment>(() => (tenantOf(props.app, props.env) ? props.env : props.env === "live" ? "sandbox" : "live"));
 const overview = useOverview(
   () => props.app.id ?? "",
   env,
@@ -29,6 +29,7 @@ const status = computed(() => overview.data.value?.status);
 <template>
   <Link
     :to="`/app/apps/${app.id}`"
+    :search="{ env } as never"
     class="surface group flex flex-col gap-5 p-6 transition-shadow hover:shadow-pop focus-visible:outline-2 focus-visible:outline-offset-2"
     :aria-label="app.name"
   >
