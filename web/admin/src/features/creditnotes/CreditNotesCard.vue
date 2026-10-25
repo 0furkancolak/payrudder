@@ -2,8 +2,8 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -15,7 +15,6 @@ import { useCreateCreditNote, useCreditNotes, useRetryCreditNoteRefund } from ".
 const props = defineProps<{ tenantId: string; invoiceId?: string; currency?: string; issuable?: boolean }>();
 const { t, locale } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const notes = useCreditNotes(
   () => props.tenantId,
   () => props.invoiceId ?? "",
@@ -68,10 +67,10 @@ function issue() {
       <label class="flex items-center gap-2 text-sm"><input v-model="toCard" type="checkbox" class="size-4" />{{ t("billing.creditNotes.refundToCard") }}</label>
       <Button type="submit" :disabled="create.isPending.value">{{ t("billing.creditNotes.create") }}</Button>
     </form>
-    <p v-if="formError" class="text-destructive px-3 text-sm" role="alert">{{ formError }}</p>
-    <p v-if="create.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(create.error.value) }}</p>
-    <p v-if="retry.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(retry.error.value) }}</p>
-    <p v-if="notes.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(notes.error.value) }}</p>
+    <ErrorText :message="formError" class="px-3" />
+    <ErrorText :error="create.error.value" class="px-3" />
+    <ErrorText :error="retry.error.value" class="px-3" />
+    <ErrorText :error="notes.error.value" class="px-3" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

@@ -3,8 +3,8 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { toApiError } from "@/shared/api/client";
 import { useTenant } from "@/features/tenants/api";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -76,7 +76,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("einvoice.settings.title") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("einvoice.settings.hint") }}</p>
-    <p v-if="tenant.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(tenant.error.value).message }}</p>
+    <ErrorText :error="tenant.error.value" />
     <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="form" :aria-label="t('einvoice.settings.formLabel')" @submit.prevent="saveSettings">
       <NativeSelect v-model="eInvoiceOn" :aria-label="t('einvoice.settings.on')">
         <option value="off">{{ t("einvoice.settings.onOff") }}</option>
@@ -90,14 +90,14 @@ const when = (v?: string) => fmt.date(v, "day", "—");
       <Input v-model="legal.trade_registry_no" maxlength="40" :aria-label="t('einvoice.settings.tradeRegistry')" :placeholder="t('einvoice.settings.tradeRegistry')" />
       <div class="sm:col-span-2 lg:col-span-3"><Button type="submit" :disabled="save.isPending.value">{{ t("einvoice.settings.save") }}</Button></div>
     </form>
-    <p v-if="save.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(save.error.value).message }}</p>
+    <ErrorText :error="save.error.value" />
     <p v-if="save.isSuccess.value" class="text-success text-sm" role="status">{{ t("einvoice.settings.saved") }}</p>
   </Card>
 
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("einvoice.account.title") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("einvoice.account.hint") }}</p>
-    <p v-if="accounts.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(accounts.error.value).message }}</p>
+    <ErrorText :error="accounts.error.value" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -149,8 +149,8 @@ const when = (v?: string) => fmt.date(v, "day", "—");
       <p v-if="provider !== 'mock'" class="text-muted-foreground text-xs">{{ t("einvoice.account.neverShown") }}</p>
       <div><Button type="submit" :disabled="actions.save.isPending.value">{{ t("einvoice.account.save") }}</Button></div>
     </form>
-    <p v-if="actions.save.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(actions.save.error.value).message }}</p>
-    <p v-if="actions.remove.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(actions.remove.error.value).message }}</p>
+    <ErrorText :error="actions.save.error.value" />
+    <ErrorText :error="actions.remove.error.value" />
     <p v-if="actions.save.isSuccess.value" class="text-success text-sm" role="status">{{ t("einvoice.account.saved") }}</p>
   </Card>
 </template>

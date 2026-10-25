@@ -2,7 +2,7 @@
 import { Link, useNavigate } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -14,7 +14,6 @@ import OtpFlow from "./OtpFlow.vue";
 import PasswordField from "./PasswordField.vue";
 
 const { t } = useI18n();
-const errorText = useErrorText();
 const navigate = useNavigate();
 const name = ref("");
 const account = ref("");
@@ -87,7 +86,7 @@ function submit() {
         <PasswordField id="su-password" v-model="password" autocomplete="new-password" describedby="su-password-hint" />
         <p id="su-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: MIN }) }}</p>
       </div>
-      <p v-if="signup.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(signup.error.value) }}</p>
+      <ErrorText :error="signup.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
       <Button type="submit" size="lg" :disabled="signup.isPending.value || !ready">{{ t("product.signUp.submit") }}</Button>
     </form>
     <template #footer>

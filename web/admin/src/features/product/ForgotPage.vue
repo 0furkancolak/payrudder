@@ -2,7 +2,7 @@
 import { Link } from "@tanstack/vue-router";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -11,7 +11,6 @@ import AuthShell from "./AuthShell.vue";
 
 /** "Forgot your password": the answer is the same for every address, and so is what this page says. */
 const { t } = useI18n();
-const errorText = useErrorText();
 const email = ref("");
 const sentTo = ref("");
 const forgot = useForgotPassword();
@@ -33,7 +32,7 @@ function submit() {
         <Label for="fp-email">{{ t("product.auth.email") }}</Label>
         <Input id="fp-email" v-model="email" type="email" autocomplete="username" inputmode="email" required />
       </div>
-      <p v-if="forgot.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(forgot.error.value) }}</p>
+      <ErrorText :error="forgot.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
       <Button type="submit" size="lg" :disabled="forgot.isPending.value || email.trim() === ''">{{ t("product.forgot.submit") }}</Button>
     </form>
     <template #footer>

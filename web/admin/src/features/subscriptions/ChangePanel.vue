@@ -3,7 +3,8 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { type Subscription } from "@/shared/api/client";
-import { useErrorText } from "@/shared/lib/errors";
+import { firstError } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Alert } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -13,7 +14,6 @@ import { useSubscriptionActions, type ChangeInput } from "./api";
 const props = defineProps<{ subscription: Subscription; packages: Package[]; tenantId: string; environment: string }>();
 const { t } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const act = useSubscriptionActions(
   () => props.tenantId,
   () => props.environment,
@@ -36,10 +36,7 @@ const outcome = computed(() => {
   if (net === undefined || net === "0") return t("billing.subscriptions.change.nothing");
   return net.startsWith("-") ? t("billing.subscriptions.change.creditAdded", { amount: money(net.slice(1)) }) : t("billing.subscriptions.change.due", { amount: money(net) });
 });
-const failure = computed(() => {
-  for (const m of [act.previewChange, act.change, act.cancelScheduledChange]) if (m.error.value) return errorText(m.error.value);
-  return "";
-});
+const failure = computed(() => firstError(act.previewChange, act.change, act.cancelScheduledChange));
 
 function reset() {
   act.previewChange.reset();
@@ -104,6 +101,6 @@ function apply() {
       <dt class="text-muted-foreground">{{ t("billing.subscriptions.change.next") }}</dt>
       <dd class="tabular-nums">{{ money(quote.next_renewal_minor) }} · {{ date(quote.next_renewal_time) }}</dd>
     </dl>
-    <p v-if="failure" class="text-destructive text-sm" role="alert">{{ failure }}</p>
+    <ErrorText :error="failure" />
   </section>
 </template>

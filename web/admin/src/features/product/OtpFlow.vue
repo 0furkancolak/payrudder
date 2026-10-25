@@ -2,7 +2,7 @@
 import { useNavigate } from "@tanstack/vue-router";
 import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -16,7 +16,6 @@ import OtpInput from "./OtpInput.vue";
  */
 const props = defineProps<{ mode: "signin" | "signup" }>();
 const { t } = useI18n();
-const errorText = useErrorText();
 const navigate = useNavigate();
 const request = useRequestCode();
 const verify = useVerifyCode();
@@ -115,14 +114,14 @@ function change(): void {
       <Label for="otp-email">{{ t("product.auth.email") }}</Label>
       <Input id="otp-email" v-model="email" type="email" autocomplete="username" inputmode="email" required />
     </div>
-    <p v-if="request.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(request.error.value) }}</p>
+    <ErrorText :error="request.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
     <Button type="submit" size="lg" :disabled="!canSend">{{ t("product.signIn.code.send") }}</Button>
   </form>
 
   <form v-else class="flex flex-col gap-4" :aria-label="t('product.signIn.code.verifyLabel')" @submit.prevent="submit()">
     <p class="text-muted-foreground text-sm" role="status">{{ t("product.signIn.code.sentTo", { email: email.trim() }) }}</p>
     <OtpInput ref="otp" v-model="code" :disabled="verify.isPending.value" :invalid="verify.isError.value" @complete="submit" />
-    <p v-if="verify.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(verify.error.value) }}</p>
+    <ErrorText v-if="verify.error.value" :error="verify.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
     <p v-else-if="resent" class="bg-success-soft text-success rounded-2xl px-4 py-3 text-sm" role="status">{{ t("product.signIn.code.resent") }}</p>
     <Button type="submit" size="lg" :disabled="code.length !== 6 || verify.isPending.value">
       {{ props.mode === "signup" ? t("product.signUp.submit") : t("product.signIn.submit") }}
