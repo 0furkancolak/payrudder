@@ -3,6 +3,9 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
+import { validLinkDays } from "@/shared/lib/rules";
+import { absoluteUrl } from "@/shared/lib/url";
+import { CopyField } from "@/shared/ui/copy-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -10,7 +13,6 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCustomerPayments, usePortalLinkActions } from "./api";
-import { absoluteUrl } from "./lib";
 
 const props = defineProps<{ tenantId: string; customer: string }>();
 const emit = defineEmits<{ close: [] }>();
@@ -30,7 +32,7 @@ const url = computed(() => absoluteUrl((act.create.data.value as { url?: string 
 function make() {
   daysError.value = "";
   const n = Number(days.value);
-  if (!Number.isInteger(n) || n < 1 || n > 365) {
+  if (!validLinkDays(n)) {
     daysError.value = t("billing.paymentLinks.errors.days");
     return;
   }
@@ -38,13 +40,6 @@ function make() {
 }
 function revoke() {
   if (window.confirm(t("billing.paymentLinks.portal.confirmRevoke"))) act.revoke.mutate(props.customer);
-}
-async function copy() {
-  try {
-    await navigator.clipboard.writeText(url.value);
-  } catch {
-    /* the field is selectable */
-  }
 }
 const when = (v?: string) => fmt.date(v, "short", "—");
 </script>
@@ -61,11 +56,7 @@ const when = (v?: string) => fmt.date(v, "short", "—");
       <Button type="submit" :disabled="act.create.isPending.value">{{ t("billing.paymentLinks.portal.create") }}</Button>
       <Button type="button" variant="outline" :disabled="act.revoke.isPending.value" @click="revoke">{{ t("billing.paymentLinks.portal.revoke") }}</Button>
     </form>
-    <div v-if="url" class="flex flex-wrap items-center gap-2" role="status">
-      <Input :model-value="url" readonly class="mono max-w-xl" :aria-label="t('billing.paymentLinks.portal.link')" data-testid="portal-link-url" @focus="($event.target as HTMLInputElement).select()" />
-      <Button type="button" variant="outline" @click="copy">{{ t("billing.paymentLinks.copy") }}</Button>
-      <span class="text-muted-foreground text-xs">{{ t("billing.paymentLinks.shownOnce") }}</span>
-    </div>
+    <CopyField v-if="url" :value="url" :label="t('billing.paymentLinks.portal.link')" :copy-label="t('billing.paymentLinks.copy')" testid="portal-link-url"><span class="text-muted-foreground text-xs">{{ t("billing.paymentLinks.shownOnce") }}</span></CopyField>
     <p v-if="act.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.paymentLinks.portal.revoked") }}</p>
     <ErrorText :message="daysError" />
     <ErrorText :error="act.create.error.value" />
