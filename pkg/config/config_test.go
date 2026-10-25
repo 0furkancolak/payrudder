@@ -94,20 +94,20 @@ func TestPort(t *testing.T) {
 	})
 }
 
-func TestPayrudderPrefixWinsAndPayrudderStillWorks(t *testing.T) {
+func TestPayrudderPrefixWinsAndQuotifyStillWorks(t *testing.T) {
 	cfg, err := config.LoadFrom[httpConfig](map[string]string{
-		"PAYRUDDER_SERVICE_NAME": "old", "PAYRUDDER_SERVICE_NAME": "new", // both: the new name wins
-		"PAYRUDDER_LOG_LEVEL":   "debug", // only the deprecated name: it still works
+		"QUOTIFY_SERVICE_NAME": "old", "PAYRUDDER_SERVICE_NAME": "new", // both: the new name wins
+		"QUOTIFY_LOG_LEVEL":   "debug", // only the deprecated name: it still works
 		"PAYRUDDER_HTTP_ADDR": ":9999",
 	})
 	if err != nil {
 		t.Fatalf("LoadFrom: %v", err)
 	}
 	if cfg.ServiceName != "new" || cfg.LogLevel != "debug" || cfg.HTTPAddr != ":9999" {
-		t.Fatalf("PAYRUDDER_ must win and PAYRUDDER_ must still work alone: %+v", cfg)
+		t.Fatalf("PAYRUDDER_ must win and QUOTIFY_ must still work alone: %+v", cfg)
 	}
 	// PORT does not override an explicit address in either spelling.
-	for _, k := range []string{"PAYRUDDER_HTTP_ADDR", "PAYRUDDER_HTTP_ADDR"} {
+	for _, k := range []string{"PAYRUDDER_HTTP_ADDR", "QUOTIFY_HTTP_ADDR"} {
 		cfg, err = config.LoadFrom[httpConfig](map[string]string{"PAYRUDDER_SERVICE_NAME": "x", k: ":9999", "PORT": "8080"})
 		if err != nil || cfg.HTTPAddr != ":9999" {
 			t.Fatalf("PORT overrode the explicit address %s: %+v %v", k, cfg, err)
@@ -116,12 +116,12 @@ func TestPayrudderPrefixWinsAndPayrudderStillWorks(t *testing.T) {
 }
 
 func TestUpgradeLegacy(t *testing.T) {
-	in := map[string]string{"PAYRUDDER_B": "1", "PAYRUDDER_A": "2", "PAYRUDDER_A": "3", "OTHER": "4"}
+	in := map[string]string{"QUOTIFY_B": "1", "QUOTIFY_A": "2", "PAYRUDDER_A": "3", "OTHER": "4"}
 	out, legacy := config.UpgradeLegacy(in)
 	if out["PAYRUDDER_B"] != "1" || out["PAYRUDDER_A"] != "3" || out["OTHER"] != "4" {
 		t.Fatalf("upgraded = %v", out)
 	}
-	if len(legacy) != 2 || legacy[0] != "PAYRUDDER_A" || legacy[1] != "PAYRUDDER_B" {
+	if len(legacy) != 2 || legacy[0] != "QUOTIFY_A" || legacy[1] != "QUOTIFY_B" {
 		t.Fatalf("legacy = %v", legacy)
 	}
 	if _, ok := in["PAYRUDDER_B"]; ok {
@@ -130,9 +130,9 @@ func TestUpgradeLegacy(t *testing.T) {
 }
 
 func TestGetenv(t *testing.T) {
-	t.Setenv("PAYRUDDER_X_TEST", "old")
+	t.Setenv("QUOTIFY_X_TEST", "old")
 	if config.Getenv("PAYRUDDER_X_TEST") != "old" {
-		t.Fatal("the deprecated PAYRUDDER_ name must still work alone")
+		t.Fatal("the deprecated QUOTIFY_ name must still work alone")
 	}
 	t.Setenv("PAYRUDDER_X_TEST", "new")
 	if config.Getenv("PAYRUDDER_X_TEST") != "new" {

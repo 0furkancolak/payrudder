@@ -6,7 +6,7 @@ Run from the repository root on a clean checkout of main:
     python3 scripts/rename-to-payrudder.py        # rename paths and contents
     make gen                                       # regenerate protobuf and sqlc code (needs the tools: make tools)
 
-Idempotent: a second run finds nothing left to change. When main moves before the rename is merged, reset the branch to the new main and run it again.
+Run it on a fresh checkout of main, then apply the hand-written follow-up (config fallback, ADR). It is not meant to be re-run over that follow-up, because it would rewrite the deliberate QUOTIFY_ fallback; when main moves, redo both steps from the new main.
 
 What it renames: Go module paths, proto packages, binaries and commands, directories and files, Helm charts, compose and Kubernetes names, QUOTIFY_ environment
 variables, metric names, dev database, role and bucket names, header names, docs and web package names (case kept: quotify, Quotify, QUOTIFY).

@@ -103,7 +103,7 @@ func LoadFrom[T any](environ map[string]string, defaults ...[]byte) (T, error) {
 	}
 	environ, legacy := UpgradeLegacy(environ)
 	if len(legacy) > 0 {
-		slog.Warn("deprecated environment variables: rename the PAYRUDDER_ prefix to PAYRUDDER_ (the old names stop working in a later release)", "names", legacy)
+		slog.Warn("deprecated environment variables: rename the QUOTIFY_ prefix to PAYRUDDER_ (the old names stop working in a later release)", "names", legacy)
 	}
 	for k, v := range environ {
 		merged[k] = v
@@ -156,10 +156,10 @@ func applyPort[T any](merged, environ map[string]string) error {
 const (
 	prefix = "PAYRUDDER_"
 	// legacyPrefix is the deprecated spelling of every setting, from before the product was renamed (ADR 0022). It still works and logs a warning.
-	legacyPrefix = "PAYRUDDER_"
+	legacyPrefix = "QUOTIFY_"
 )
 
-// UpgradeLegacy returns environ with every deprecated PAYRUDDER_X setting also under PAYRUDDER_X, unless PAYRUDDER_X is set: the new name wins when both are
+// UpgradeLegacy returns environ with every deprecated QUOTIFY_X setting also under PAYRUDDER_X, unless PAYRUDDER_X is set: the new name wins when both are
 // present. It also returns the deprecated names it found, sorted. The input map is not changed.
 func UpgradeLegacy(environ map[string]string) (map[string]string, []string) {
 	out := make(map[string]string, len(environ))
@@ -181,7 +181,7 @@ func UpgradeLegacy(environ map[string]string) (map[string]string, []string) {
 	return out, legacy
 }
 
-// Getenv reads a setting by its PAYRUDDER_ name and falls back to the deprecated PAYRUDDER_ spelling, with a warning. For tools that read the environment
+// Getenv reads a setting by its PAYRUDDER_ name and falls back to the deprecated QUOTIFY_ spelling, with a warning. For tools that read the environment
 // without Load.
 func Getenv(name string) string {
 	if v := os.Getenv(name); v != "" {
