@@ -38,9 +38,7 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	PGSystemDSN    string        `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
+	pgxx.SystemSettings
 	RabbitMQURL    string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
 	KafkaBrokers   []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
 	PlansAddr      string        `env:"PAYRUDDER_PLANS_ADDR"`
@@ -56,9 +54,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
-	}
+	errs = append(errs, c.CheckMigration())
 	return errors.Join(errs...)
 }
 
@@ -95,14 +91,8 @@ func run() error {
 		_ = providers.Shutdown(c)
 	}()
 
-	if cfg.MigrateOnStart {
-		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return err
-		}
-	}
-	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
-		return nil
+	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
+		return err
 	}
 	pool, err := pgxx.NewPool(ctx, cfg.PGSystemDSN)
 	if err != nil {

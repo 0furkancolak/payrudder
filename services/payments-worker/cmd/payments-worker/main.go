@@ -56,12 +56,10 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	PGSystemDSN    string        `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
-	RabbitMQURL    string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
-	MockPSPURL     string        `env:"MOCKPSP_URL"`
-	PSPTimeout     time.Duration `env:"PAYMENTS_PSP_TIMEOUT"`
+	pgxx.SystemSettings
+	RabbitMQURL string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
+	MockPSPURL  string        `env:"MOCKPSP_URL"`
+	PSPTimeout  time.Duration `env:"PAYMENTS_PSP_TIMEOUT"`
 	// LiveProvider selects the provider for live tenants: "mockpsp" (the local demo) or empty (not configured: live
 	// charges reply PROVIDER_NOT_CONFIGURED). Sandbox tenants always use mock-psp.
 	LiveProvider string `env:"PAYMENTS_LIVE_PROVIDER"`
@@ -96,9 +94,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
-	}
+	errs = append(errs, c.CheckMigration())
 	if c.SecretsKey != "" {
 		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err))
@@ -162,23 +158,9 @@ func run() error {
 	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
 }
 
-// migrate applies the migrations when asked to; done reports that the process should exit afterwards (PAYRUDDER_MIGRATE_ONLY).
-func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
-	if cfg.MigrateOnStart {
-		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return false, err
-		}
-	}
-	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
-		return true, nil
-	}
-	return false, nil
-}
-
 // start wires payments-worker's dependencies and runs it until ctx is cancelled.
 func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler) error {
-	if done, err := migrate(ctx, cfg, log); err != nil || done {
+	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
 	pool, err := pgxx.NewPool(ctx, cfg.PGSystemDSN)

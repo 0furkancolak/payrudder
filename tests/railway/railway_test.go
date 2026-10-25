@@ -206,8 +206,17 @@ func requiredEnv(t *testing.T, repo, name string) []string {
 		if strings.HasSuffix(f, "_test.go") {
 			continue
 		}
-		for _, m := range requiredTag.FindAllStringSubmatch(read(t, f), -1) {
+		src := read(t, f)
+		for _, m := range requiredTag.FindAllStringSubmatch(src, -1) {
 			set[m[1]] = true
+		}
+		// The Postgres settings a service embeds (pkg/pgxx/settings.go) carry required variables of their own.
+		for _, typ := range []string{"Settings", "SystemSettings"} {
+			if strings.Contains(src, "pgxx."+typ+"\n") {
+				for _, m := range requiredTag.FindAllStringSubmatch(pgxxSettings(t, repo, typ), -1) {
+					set[m[1]] = true
+				}
+			}
 		}
 	}
 	var out []string
@@ -216,6 +225,21 @@ func requiredEnv(t *testing.T, repo, name string) []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+// pgxxSettings is the source of the struct pgxx.<typ>, with the structs it embeds.
+func pgxxSettings(t *testing.T, repo, typ string) string {
+	t.Helper()
+	src := read(t, repo, "pkg", "pgxx", "settings.go")
+	_, rest, ok := strings.Cut(src, "type "+typ+" struct {\n")
+	if !ok {
+		t.Fatalf("pkg/pgxx/settings.go has no struct %s", typ)
+	}
+	body, _, _ := strings.Cut(rest, "\n}\n")
+	if typ == "Settings" {
+		body += pgxxSettings(t, repo, "SystemSettings")
+	}
+	return body
 }
 
 // section returns the README text under "### <name>" up to the next heading.
