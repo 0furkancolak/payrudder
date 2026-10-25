@@ -61,7 +61,7 @@ type Config struct {
 	AllowedEnvs   []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// PublicURL is the address customers reach the gateway at, for the invoice links it hands out (https://api.example.com). Empty: relative links.
 	PublicURL string `env:"QUOTIFY_PUBLIC_URL"`
-	// TrustForwardedFor counts the public sign-in limits by X-Forwarded-For, for requests that come from a private address (the console's nginx).
+	// TrustForwardedFor counts the public sign-in limits by X-Forwarded-For, for requests that come from a private address (the console's Worker or proxy).
 	TrustForwardedFor bool `env:"QUOTIFY_TRUST_FORWARDED_FOR"`
 	// OperatorEmails lists the addresses of the platform operators (comma separated). A person who signs in with one of them and has verified it may use the
 	// operator console. Empty: nobody does; the machine token (QUOTIFY_OPERATOR_TOKEN) is still the credential of the API.

@@ -98,7 +98,7 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	return principalOf(resp.GetTenant()), nil
 }
 
-// clientAddr is the address a public request is counted under. Behind the console's nginx the connection comes from the proxy, which passes the visitor's
+// clientAddr is the address a public request is counted under. Behind the console's proxy the connection comes from the proxy, which passes the visitor's
 // address in X-Forwarded-For; that header is believed only when the deployment says so and the connection itself is from a private or loopback address.
 func (s *Server) clientAddr(r *http.Request) string {
 	remote := clientIP(r)
