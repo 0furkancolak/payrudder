@@ -1,4 +1,4 @@
-package service
+package apierr
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 )
 
 func TestFailureCarriesTheKeyAndKeepsTheReasonFirst(t *testing.T) {
-	err := failure(codes.FailedPrecondition, policy.StorageQuotaExceeded, "full")
+	err := Failure(codes.FailedPrecondition, policy.StorageQuotaExceeded, "full")
 	if got := errkey.Of(err); got != "assets.storage.quota_exceeded" {
 		t.Fatalf("key = %q", got)
 	}
@@ -21,11 +21,11 @@ func TestFailureCarriesTheKeyAndKeepsTheReasonFirst(t *testing.T) {
 		t.Fatalf("first detail = %v", status.Convert(err).Details()[0])
 	}
 	for reason, key := range violationKeys {
-		if got := errkey.Of(failure(codes.InvalidArgument, reason, "m")); got != key || key == "" {
+		if got := errkey.Of(Failure(codes.InvalidArgument, reason, "m")); got != key || key == "" {
 			t.Errorf("%s: key %q", reason, got)
 		}
 	}
-	if got := errkey.Of(failure(codes.InvalidArgument, "SOMETHING_NEW", "m")); got != "common.invalid_argument" {
+	if got := errkey.Of(Failure(codes.InvalidArgument, "SOMETHING_NEW", "m")); got != "common.invalid_argument" {
 		t.Errorf("unknown reason: key %q", got)
 	}
 }
