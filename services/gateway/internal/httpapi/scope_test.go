@@ -55,10 +55,10 @@ func TestEnvironmentComesFromTheKeyNeverFromTheRequest(t *testing.T) {
 	ts, f := newTestServer(t)
 	req, _ := http.NewRequest("POST", ts.URL+"/v1/customers?environment=live", strings.NewReader(`{"external_id":"c1","name":"Ada","email":"ada@example.com"}`))
 	req.Header.Set("Authorization", "Bearer sandbox-key")
-	for _, h := range []string{"X-Quotify-Environment", "x-quotify-environment", "X-Environment", "X-Quotify-Tenant-Id"} {
+	for _, h := range []string{"X-Payrudder-Environment", "x-payrudder-environment", "X-Environment", "X-Payrudder-Tenant-Id"} {
 		req.Header.Set(h, "live")
 	}
-	req.Header.Set("X-Quotify-Tenant-Id", liveTenant.String())
+	req.Header.Set("X-Payrudder-Tenant-Id", liveTenant.String())
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)

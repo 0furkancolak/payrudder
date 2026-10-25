@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
 )
 
 func TestValidateIBAN(t *testing.T) {
@@ -144,7 +144,7 @@ func TestChargeIsPendingAndCallsNothing(t *testing.T) {
 func TestCapabilities(t *testing.T) {
 	p, _ := banktransfer.New(valid())
 	c := p.Capabilities()
-	if c.Name != "banktransfer" || c.Owner() != payments.OwnerQuotify || c.Refunds || c.HostedCheckout || c.IdempotentCharges || c.OwnsRenewal || c.OwnsDunning {
+	if c.Name != "banktransfer" || c.Owner() != payments.OwnerPayrudder || c.Refunds || c.HostedCheckout || c.IdempotentCharges || c.OwnsRenewal || c.OwnsDunning {
 		t.Errorf("capabilities = %+v", c)
 	}
 	if !c.CanCharge("JPY") {

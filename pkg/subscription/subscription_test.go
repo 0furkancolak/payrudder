@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
 )
 
 func TestNext(t *testing.T) {

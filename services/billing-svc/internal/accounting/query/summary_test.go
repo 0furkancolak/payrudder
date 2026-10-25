@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/accounting/model"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/model"
 )
 
 func day(s string) time.Time {

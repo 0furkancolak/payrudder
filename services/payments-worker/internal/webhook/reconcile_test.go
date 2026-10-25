@@ -3,8 +3,8 @@ package webhook
 import (
 	"testing"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // Several transfers of one invoice are one charge of the sum, not several charges; other providers' charges are left as they are.

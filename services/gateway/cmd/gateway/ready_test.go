@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/health"
 )
 
 func TestWithLiveness(t *testing.T) {

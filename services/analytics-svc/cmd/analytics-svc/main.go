@@ -18,18 +18,18 @@ import (
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/analytics-svc/internal/api"
-	"github.com/0furkancolak/quotify/services/analytics-svc/internal/chmigrate"
-	"github.com/0furkancolak/quotify/services/analytics-svc/internal/consumer"
-	"github.com/0furkancolak/quotify/services/analytics-svc/migrations"
+	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/api"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/chmigrate"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/consumer"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/migrations"
 )
 
 //go:embed config.default.yaml
@@ -37,16 +37,16 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	GRPCAddr       string        `env:"QUOTIFY_GRPC_ADDR"`
+	GRPCAddr       string        `env:"PAYRUDDER_GRPC_ADDR"`
 	ClickHouseAddr string        `env:"CLICKHOUSE_ADDR"`
 	ClickHouseDB   string        `env:"CLICKHOUSE_DB"`
 	ClickHouseUser string        `env:"CLICKHOUSE_USER"`
 	ClickHousePass string        `env:"CLICKHOUSE_PASSWORD,required"`
-	KafkaBrokers   []string      `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	Group          string        `env:"QUOTIFY_CONSUMER_GROUP"`
+	KafkaBrokers   []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
+	Group          string        `env:"PAYRUDDER_CONSUMER_GROUP"`
 	BatchRows      int           `env:"ANALYTICS_BATCH_ROWS"`
 	BatchWait      time.Duration `env:"ANALYTICS_BATCH_WAIT"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
+	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
 }
 
 func main() {
@@ -102,7 +102,7 @@ func run() error {
 		}
 	}
 	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
 		return nil
 	}
 	producer, err := kafkax.NewProducer(cfg.KafkaBrokers)

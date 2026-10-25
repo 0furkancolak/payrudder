@@ -1,9 +1,9 @@
-module github.com/0furkancolak/quotify/pkg
+module github.com/0furkancolak/payrudder/pkg
 
 go 1.27.2
 
 require (
-	github.com/0furkancolak/quotify/gen/go v0.0.0
+	github.com/0furkancolak/payrudder/gen/go v0.0.0
 	github.com/aws/aws-sdk-go-v2 v1.47.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.23.14
@@ -119,4 +119,4 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20261005182115-fad411399dd8 // indirect
 )
 
-replace github.com/0furkancolak/quotify/gen/go => ../gen/go
+replace github.com/0furkancolak/payrudder/gen/go => ../gen/go

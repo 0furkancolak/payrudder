@@ -15,7 +15,7 @@ Kafka and is processed by many pods. A strongly consistent check would need a sy
 - `CheckEntitlement` is **eventually consistent** and returns `as_of` so callers see staleness. **Target** p99 staleness < 2 s.
 - Threshold crossings emit `usage.limit-exceeded.v1` once per (customer, meter, period, threshold), with a deterministic event ID.
 - **Reconciliation** against aggregator's authoritative totals, at the same offset prefix per partition, corrects drift every 5 min.
-- Quotify **doesn't reject usage events** over the limit. Enforcement is the tenant's decision.
+- Payrudder **doesn't reject usage events** over the limit. Enforcement is the tenant's decision.
 - Billing never reads Redis.
 
 ## Alternatives considered

@@ -1,4 +1,4 @@
-// Package grpcx builds gRPC servers and clients with Quotify's defaults: OpenTelemetry stats handlers,
+// Package grpcx builds gRPC servers and clients with Payrudder's defaults: OpenTelemetry stats handlers,
 // panic recovery, a default client deadline, the standard health service and (locally) reflection.
 package grpcx
 

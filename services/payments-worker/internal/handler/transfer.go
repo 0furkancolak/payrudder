@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // Decline codes of a bank transfer that was given up. The ledger keeps them as the start of the detail of the declined row ("code: reason").

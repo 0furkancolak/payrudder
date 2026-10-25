@@ -4,9 +4,9 @@ package mailsettings
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/mailsettings/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/mailsettings/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/mailsettings/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/mailsettings/query"
 )
 
 // Handler serves the mail settings methods of PlansService.

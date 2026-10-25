@@ -15,7 +15,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/protobuf/proto"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 )
 
 // State is the limit of one customer on one meter.

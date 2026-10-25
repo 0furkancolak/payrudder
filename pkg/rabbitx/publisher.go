@@ -10,7 +10,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
 
-	"github.com/0furkancolak/quotify/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 )
 
 // Message is one publication.

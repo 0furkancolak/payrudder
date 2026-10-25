@@ -3,7 +3,7 @@ package httpapi
 import (
 	"strings"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // The strings of the promotion code field of the payment pages (phase 46) and the refusals a code can meet. hostedText (hosted.go) merges them like the other maps,

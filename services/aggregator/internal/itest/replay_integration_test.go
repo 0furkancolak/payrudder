@@ -14,11 +14,11 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/domain"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/meters"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/replay"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/meters"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/replay"
 )
 
 // switchMeters serves sum_m with a definition that can be swapped at run time (the "fix"); other codes come from defaultMeters.

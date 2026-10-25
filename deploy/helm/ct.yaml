@@ -2,8 +2,8 @@
 chart-dirs:
   - deploy/helm
 charts:
-  - deploy/helm/quotify
-  - deploy/helm/quotify-infra
+  - deploy/helm/payrudder
+  - deploy/helm/payrudder-infra
 lint-conf: deploy/helm/lintconf.yaml
 validate-maintainers: false
 check-version-increment: false

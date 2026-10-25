@@ -13,9 +13,9 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/apikey"
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // Env is the environment of a tenant.
@@ -141,7 +141,7 @@ func SameProto(cmd plansv1.Environment, tenant Env, what string) error {
 	return Same(c, tenant, what)
 }
 
-// ParseList reads a comma-separated QUOTIFY_ALLOWED_ENVIRONMENTS. An empty or unknown entry is an error.
+// ParseList reads a comma-separated PAYRUDDER_ALLOWED_ENVIRONMENTS. An empty or unknown entry is an error.
 func ParseList(s string) ([]Env, error) {
 	var out []Env
 	for _, part := range strings.Split(s, ",") {

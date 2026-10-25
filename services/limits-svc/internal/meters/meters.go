@@ -11,10 +11,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/domain"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
 )
 
 // ErrNotFound is returned for a meter plans-svc doesn't know.

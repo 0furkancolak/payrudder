@@ -4,10 +4,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/einvoice/mock"
-	"github.com/0furkancolak/quotify/pkg/einvoice/nilvera"
-	"github.com/0furkancolak/quotify/pkg/einvoice/webhook"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/mock"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/nilvera"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/webhook"
 )
 
 func TestRegistry(t *testing.T) {

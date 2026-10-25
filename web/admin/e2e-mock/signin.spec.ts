@@ -10,7 +10,7 @@ async function shoot(page: Page, name: string): Promise<void> {
   if (shots) await page.screenshot({ path: `${shots}/${name}.png`, fullPage: true });
 }
 
-const sessionToken = (page: Page) => page.evaluate(() => window.sessionStorage.getItem("quotify.sessionToken"));
+const sessionToken = (page: Page) => page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"));
 
 test.describe("the sign-in page", () => {
   test("offers a password, an e-mailed code and, when the deployment has it, Google", async ({ page }) => {
@@ -221,7 +221,7 @@ test.describe("the operator is a person", () => {
     // The operator routes are called with the session token, which is all this tab holds.
     expect(gw.called("GET", "/admin/v1/tenants")[0]?.headers.authorization).toBe(`Bearer ${OPERATOR}`);
     expect(await sessionToken(page)).toBe(OPERATOR);
-    expect(await page.evaluate(() => Object.keys(window.sessionStorage))).not.toContain("quotify.operatorToken");
+    expect(await page.evaluate(() => Object.keys(window.sessionStorage))).not.toContain("payrudder.operatorToken");
     await shoot(page, "15-operator-console");
     // The rail leads back to the person's own apps.
     await page.getByRole("link", { name: "My apps" }).click();
@@ -256,13 +256,13 @@ test.describe("the operator is a person", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await page.waitForURL("**/app");
     // A person edits their own storage to look like an operator and opens the console.
-    await page.evaluate(() => window.sessionStorage.setItem("quotify.operator", "1"));
+    await page.evaluate(() => window.sessionStorage.setItem("payrudder.operator", "1"));
     await page.goto("/tenants");
     // /auth/me says operator=false: the flag is corrected and the person is sent to their own home. They stay signed in (a 403 is not an expired session).
     await page.waitForURL("**/app");
     await expect(page.getByRole("heading", { name: "Tenants" })).toHaveCount(0);
     expect(await sessionToken(page)).toBe(SESSION);
-    expect(await page.evaluate(() => window.sessionStorage.getItem("quotify.operator"))).toBeNull();
+    expect(await page.evaluate(() => window.sessionStorage.getItem("payrudder.operator"))).toBeNull();
     // Whatever the page asked of the operator routes got the server's refusal, carrying only the person's own session.
     expect(gw.called("GET", "/admin/v1/tenants").every((c) => c.headers.authorization === `Bearer ${SESSION}`)).toBe(true);
   });

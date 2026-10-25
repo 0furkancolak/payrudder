@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/einvoice/ubl"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/ubl"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")

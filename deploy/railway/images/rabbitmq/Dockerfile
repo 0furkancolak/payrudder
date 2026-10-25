@@ -4,7 +4,7 @@ FROM rabbitmq:4.2.9-management-alpine
 # The node name defaults to the container's hostname, which Railway changes on every deploy; a changed name would orphan the data directory.
 ENV RABBITMQ_NODENAME=rabbit@localhost
 RUN rabbitmq-plugins enable --offline rabbitmq_prometheus
-COPY deploy/rabbitmq/rabbitmq.conf /etc/rabbitmq/conf.d/20-quotify.conf
+COPY deploy/rabbitmq/rabbitmq.conf /etc/rabbitmq/conf.d/20-payrudder.conf
 COPY deploy/railway/images/rabbitmq/railway.conf /etc/rabbitmq/conf.d/30-railway.conf
 COPY deploy/rabbitmq/definitions.json /etc/rabbitmq/definitions.template.json
 COPY deploy/railway/images/rabbitmq/entrypoint.sh /railway-entrypoint.sh

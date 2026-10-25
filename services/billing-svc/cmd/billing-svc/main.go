@@ -20,30 +20,30 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/outbox"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
-	creditcmd "github.com/0furkancolak/quotify/services/billing-svc/internal/credits/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
-	einvoicecmd "github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/replies"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/migrations"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
+	creditcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
+	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
 
 const usageTopic = "usage.events.v1"
@@ -53,27 +53,27 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	GRPCAddr          string        `env:"QUOTIFY_GRPC_ADDR"`
-	PGAppDSN          string        `env:"QUOTIFY_PG_APP_DSN,required"`
-	PGSystemDSN       string        `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN     string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart    bool          `env:"QUOTIFY_MIGRATE_ON_START"`
-	PlansAddr         string        `env:"QUOTIFY_PLANS_ADDR"`
-	IngestAddr        string        `env:"QUOTIFY_INGEST_ADDR"`
-	AggregatorAddr    string        `env:"QUOTIFY_AGGREGATOR_ADDR"`
-	KafkaBrokers      []string      `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	RabbitMQURL       string        `env:"QUOTIFY_RABBITMQ_URL,required"`
-	SchedulerInterval time.Duration `env:"QUOTIFY_SCHEDULER_INTERVAL"`
-	SweepInterval     time.Duration `env:"QUOTIFY_SWEEP_INTERVAL"`
-	StepTimeout       time.Duration `env:"QUOTIFY_STEP_TIMEOUT"`
+	GRPCAddr          string        `env:"PAYRUDDER_GRPC_ADDR"`
+	PGAppDSN          string        `env:"PAYRUDDER_PG_APP_DSN,required"`
+	PGSystemDSN       string        `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
+	PGMigratorDSN     string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
+	MigrateOnStart    bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
+	PlansAddr         string        `env:"PAYRUDDER_PLANS_ADDR"`
+	IngestAddr        string        `env:"PAYRUDDER_INGEST_ADDR"`
+	AggregatorAddr    string        `env:"PAYRUDDER_AGGREGATOR_ADDR"`
+	KafkaBrokers      []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
+	RabbitMQURL       string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
+	SchedulerInterval time.Duration `env:"PAYRUDDER_SCHEDULER_INTERVAL"`
+	SweepInterval     time.Duration `env:"PAYRUDDER_SWEEP_INTERVAL"`
+	StepTimeout       time.Duration `env:"PAYRUDDER_STEP_TIMEOUT"`
 	// TransferPoll is how often a pending bank transfer is looked for in the ledger (an operator's receipt does not wait for it).
-	TransferPoll   time.Duration `env:"QUOTIFY_TRANSFER_POLL"`
-	WatermarkDelay time.Duration `env:"QUOTIFY_WATERMARK_DELAY"`
+	TransferPoll   time.Duration `env:"PAYRUDDER_TRANSFER_POLL"`
+	WatermarkDelay time.Duration `env:"PAYRUDDER_WATERMARK_DELAY"`
 	// Dunning delays before payment retry 1..3 (ADR 0011: sandbox tenants run on minutes instead of days).
-	DunningLive    []time.Duration `env:"QUOTIFY_DUNNING_LIVE" envSeparator:","`
-	DunningSandbox []time.Duration `env:"QUOTIFY_DUNNING_SANDBOX" envSeparator:","`
-	RelayWorkers   int             `env:"QUOTIFY_RELAY_WORKERS"`
-	RelayBatchSize int             `env:"QUOTIFY_RELAY_BATCH_SIZE"`
+	DunningLive    []time.Duration `env:"PAYRUDDER_DUNNING_LIVE" envSeparator:","`
+	DunningSandbox []time.Duration `env:"PAYRUDDER_DUNNING_SANDBOX" envSeparator:","`
+	RelayWorkers   int             `env:"PAYRUDDER_RELAY_WORKERS"`
+	RelayBatchSize int             `env:"PAYRUDDER_RELAY_BATCH_SIZE"`
 	// Object storage, for presigned invoice PDF links (optional: without S3_ACCESS_KEY the PDF RPC is unimplemented).
 	S3Endpoint       string `env:"S3_ENDPOINT"`
 	S3PublicEndpoint string `env:"S3_PUBLIC_ENDPOINT"`
@@ -87,16 +87,16 @@ type Config struct {
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("QUOTIFY_PG_MIGRATOR_DSN is required with QUOTIFY_MIGRATE_ON_START"))
+		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
 	}
 	if len(c.DunningLive) != saga.MaxDunning || len(c.DunningSandbox) != saga.MaxDunning {
-		errs = append(errs, fmt.Errorf("QUOTIFY_DUNNING_LIVE and QUOTIFY_DUNNING_SANDBOX need exactly %d delays", saga.MaxDunning))
+		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", saga.MaxDunning))
 	}
 	if c.TransferPoll < time.Minute {
-		errs = append(errs, errors.New("QUOTIFY_TRANSFER_POLL must be at least 1m"))
+		errs = append(errs, errors.New("PAYRUDDER_TRANSFER_POLL must be at least 1m"))
 	}
 	if c.SchedulerInterval < time.Second || c.SweepInterval < time.Second {
-		errs = append(errs, errors.New("QUOTIFY_SCHEDULER_INTERVAL and QUOTIFY_SWEEP_INTERVAL must be ≥ 1s"))
+		errs = append(errs, errors.New("PAYRUDDER_SCHEDULER_INTERVAL and PAYRUDDER_SWEEP_INTERVAL must be ≥ 1s"))
 	}
 	return errors.Join(errs...)
 }
@@ -138,7 +138,7 @@ func run() error {
 	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
 }
 
-// migrate applies the migrations when asked to; done reports that the process should exit afterwards (QUOTIFY_MIGRATE_ONLY).
+// migrate applies the migrations when asked to; done reports that the process should exit afterwards (PAYRUDDER_MIGRATE_ONLY).
 func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
 	if cfg.MigrateOnStart {
 		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
@@ -146,7 +146,7 @@ func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err
 		}
 	}
 	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
 		return true, nil
 	}
 	return false, nil

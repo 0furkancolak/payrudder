@@ -8,18 +8,18 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	changescmd "github.com/0furkancolak/quotify/services/plans-svc/internal/changes/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/quotify/services/plans-svc/internal/entitlements/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 )
 
 // Cancelled is the outcome of Cancel: the subscription and the unused fee credited to the customer.
@@ -92,7 +92,7 @@ func (c *Commands) Cancel(ctx context.Context, req *plansv1.CancelSubscriptionRe
 
 // requireCancellable refuses a subscription that cannot end at end, or whose unused fee cannot be credited.
 func requireCancellable(row sqlc.GetSubscriptionRow, end time.Time, creditUnused bool) error {
-	if err := domain.RequireQuotifyOwned(row.Owner, row.Provider); err != nil {
+	if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 		return err
 	}
 	if !row.OpenEnded {
@@ -132,7 +132,7 @@ func (c *Commands) move(ctx context.Context, id uuid.UUID, ev subscription.Event
 			return err
 		}
 		row := sqlc.GetSubscriptionRow(cur)
-		if err := domain.RequireQuotifyOwned(row.Owner, row.Provider); err != nil {
+		if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 			return err
 		}
 		if !row.OpenEnded {
@@ -216,7 +216,7 @@ func (c *Commands) ScheduleCancellation(ctx context.Context, req *plansv1.Schedu
 			return err
 		}
 		row := sqlc.GetSubscriptionRow(cur)
-		if err := domain.RequireQuotifyOwned(row.Owner, row.Provider); err != nil {
+		if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 			return err
 		}
 		now := c.now()

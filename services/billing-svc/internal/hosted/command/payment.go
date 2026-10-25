@@ -11,12 +11,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // MockToken is the payment method the mock payment charges: the sandbox provider's "approve" scenario.
@@ -185,7 +185,7 @@ type Paid struct {
 	Page    *query.Page
 }
 
-// RequestPayment starts a payment the visitor asked for. "mock" (a sandbox invoice, or any with QUOTIFY_DEMO) charges through the saga; any other method leaves
+// RequestPayment starts a payment the visitor asked for. "mock" (a sandbox invoice, or any with PAYRUDDER_DEMO) charges through the saga; any other method leaves
 // the page's context to the gateway, which asks payments-worker for a provider checkout or payment instructions. Nothing is marked paid here.
 func RequestPayment(ctx context.Context, d Deps, qd query.Deps, req PaymentRequest) (*Paid, error) {
 	page, err := query.Get(ctx, qd, req.Scope)

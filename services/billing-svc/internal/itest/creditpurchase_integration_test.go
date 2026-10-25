@@ -13,10 +13,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/credits/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/credits/query"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/query"
 )
 
 func (l *linkEnv) pack(name string, credits, price int64, currency string, validity int32) *billingv1.CreditPack {

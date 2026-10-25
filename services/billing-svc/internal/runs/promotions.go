@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // The two things a promotion code can be used on besides a subscription's fee, as the invoice remembers them.

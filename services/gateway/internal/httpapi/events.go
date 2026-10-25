@@ -14,9 +14,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // MaxEventsPerRequest is the batch size limit of POST /v1/events.

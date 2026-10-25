@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 
 	"google.golang.org/grpc/codes"
 )
@@ -102,7 +102,7 @@ func (s *Server) providerAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 // invoiceTransfer forwards the bank transfer endpoints of an invoice (its state, a confirmed receipt, a rejection) to payments-worker. The caller's
-// X-Quotify-Actor header travels with it: it is who the receipt is recorded for.
+// X-Payrudder-Actor header travels with it: it is who the receipt is recorded for.
 func (s *Server) invoiceTransfer(w http.ResponseWriter, r *http.Request) {
 	s.paymentsProxy(func(r *http.Request) string {
 		return "/admin" + strings.TrimPrefix(r.URL.Path, "/admin/v1")

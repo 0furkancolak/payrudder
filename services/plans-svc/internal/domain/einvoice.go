@@ -6,8 +6,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // EInvoiceOn values of a tenant.

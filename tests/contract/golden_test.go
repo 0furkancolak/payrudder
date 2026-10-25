@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden fixtures of the current release (only for a new release tag)")

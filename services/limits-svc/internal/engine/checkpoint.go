@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	reconMeter       = otel.Meter("github.com/0furkancolak/quotify/services/limits-svc/reconcile")
+	reconMeter       = otel.Meter("github.com/0furkancolak/payrudder/services/limits-svc/reconcile")
 	corrections, _   = reconMeter.Int64Counter("limits_reconcile_corrections", metric.WithDescription("Counters corrected to the aggregator's total"))
 	reconSkipped, _  = reconMeter.Int64Counter("limits_reconcile_skipped", metric.WithDescription("Reconciliations skipped, by reason"))
 	reconChecked, _  = reconMeter.Int64Counter("limits_reconcile_keys_checked", metric.WithDescription("Counters compared with the aggregator"))

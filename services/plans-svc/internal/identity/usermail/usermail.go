@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 )
 
 // Kind is what a mail is for.

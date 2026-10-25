@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/0furkancolak/quotify/pkg/tzdata"
+	_ "github.com/0furkancolak/payrudder/pkg/tzdata"
 )
 
 func TestZonesLoadWithoutHostDatabase(t *testing.T) {

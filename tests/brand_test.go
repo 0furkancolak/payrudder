@@ -8,12 +8,9 @@ import (
 	"testing"
 )
 
-// ADR 0021: what people read says Payrudder. This fails on "Quotify" in the console's locale files and in the e-mail and hosted-page templates, except in the
-// compatibility notes below, which must name the wire format that did not change.
-var brandAllowed = []string{
-	"Quotify-Signature", // the webhook signature header
-	"X-Quotify-",        // request headers of the API
-}
+// ADR 0022: what people read says Payrudder. This fails on "Quotify" in the console's locale files and in the e-mail and hosted-page templates. Add a
+// string to brandAllowed only for a legal or compatibility note that must name the old product (none today).
+var brandAllowed = []string{}
 
 var brandRoots = []string{
 	"web/admin/src/locales",
@@ -41,7 +38,7 @@ func TestNoQuotifyInUserVisibleText(t *testing.T) {
 					line = strings.ReplaceAll(line, ok, "")
 				}
 				if strings.Contains(line, "Quotify") && !strings.HasPrefix(strings.TrimSpace(line), "//") {
-					t.Errorf("%s:%d says Quotify; user-visible text says Payrudder (ADR 0021): %s", p, i+1, strings.TrimSpace(line))
+					t.Errorf("%s:%d says Quotify; user-visible text says Payrudder (ADR 0022): %s", p, i+1, strings.TrimSpace(line))
 				}
 			}
 			return nil

@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
 )
 
 //nolint:gosec // XML namespace URIs, not credentials

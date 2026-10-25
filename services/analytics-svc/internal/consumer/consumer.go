@@ -18,8 +18,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/protobuf/proto"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
 )
 
 // Topics and their dead-letter topics.
@@ -77,7 +77,7 @@ func New(cfg Config) (*Runner, error) {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
-	m := otel.Meter("github.com/0furkancolak/quotify/services/analytics-svc")
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/analytics-svc")
 	r := &Runner{cfg: cfg, log: cfg.Log}
 	var err error
 	if r.rows, err = m.Int64Counter("analytics_rows_inserted", metric.WithDescription("Rows inserted into ClickHouse, by table")); err != nil {

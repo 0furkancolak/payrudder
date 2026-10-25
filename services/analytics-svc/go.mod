@@ -1,10 +1,10 @@
-module github.com/0furkancolak/quotify/services/analytics-svc
+module github.com/0furkancolak/payrudder/services/analytics-svc
 
 go 1.27.2
 
 require (
-	github.com/0furkancolak/quotify/gen/go v0.0.0
-	github.com/0furkancolak/quotify/pkg v0.0.0-00010101000000-000000000000
+	github.com/0furkancolak/payrudder/gen/go v0.0.0
+	github.com/0furkancolak/payrudder/pkg v0.0.0-00010101000000-000000000000
 	github.com/ClickHouse/clickhouse-go/v2 v2.49.0
 	github.com/google/uuid v1.6.0
 	github.com/twmb/franz-go v1.22.2
@@ -107,6 +107,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/0furkancolak/quotify/pkg => ../../pkg
+replace github.com/0furkancolak/payrudder/pkg => ../../pkg
 
-replace github.com/0furkancolak/quotify/gen/go => ../../gen/go
+replace github.com/0furkancolak/payrudder/gen/go => ../../gen/go

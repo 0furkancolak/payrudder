@@ -4,17 +4,17 @@ package command
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	couponsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	feesqry "github.com/0furkancolak/quotify/services/plans-svc/internal/fees/query"
-	plansqry "github.com/0furkancolak/quotify/services/plans-svc/internal/plans/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	feesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/fees/query"
+	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
 // Commands changes the fee state of subscriptions.

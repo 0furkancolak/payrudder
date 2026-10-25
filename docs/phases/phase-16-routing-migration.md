@@ -21,12 +21,12 @@ payments-worker orchestration, `/admin/v1/tenants/{id}/provider-migrations`), Pa
 - **A migration never has two providers live at once.** The new subscription starts exactly where the old one ends, in one transaction (a plan-change-style chain, so billing splits the month's fixed fee along it).
   - *To a provider that runs subscriptions (Paddle):* the migration is `started`, a checkout is made, and **the old subscription is untouched** until Paddle's `subscription.created` (carrying the migration id)
     arrives; only then does the cutover happen. A customer who never completes the checkout costs nothing; the migration can be aborted. If no checkout can be made the migration is aborted at once.
-  - *To a provider Quotify runs (iyzico):* the cutover is immediate, except from a provider-run subscription, where it is the end of the period that provider was paid for. The old provider is told
+  - *To a provider Payrudder runs (iyzico):* the cutover is immediate, except from a provider-run subscription, where it is the end of the period that provider was paid for. The old provider is told
     to stop renewing **first** (effective at the end of the paid period); only then is the migration started. A failure in between leaves a subscription that ends without a successor, which an operator retries,
     and never two that both bill.
   - After a cutover to a provider-run subscription, a source subscription that the old provider ran is cancelled there **immediately**: the customer now pays the new provider.
 - **Completing is idempotent** (Paddle delivers notifications more than once); completing with another provider id is refused; if the old provider cannot be told, the webhook answers 503 and is retried.
-- **The fixed fee is never billed on both sides**: a provider-run subscription is waived on Quotify's invoice (phase 15), and the old subscription's share of the month ends at the cutover.
+- **The fixed fee is never billed on both sides**: a provider-run subscription is waived on Payrudder's invoice (phase 15), and the old subscription's share of the month ends at the cutover.
 - **Re-rating** still skips a subscription changed inside the period, so a migration month is not re-rated.
 
 ## Tasks

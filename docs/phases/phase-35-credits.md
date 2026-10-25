@@ -21,7 +21,7 @@
 - **Append-only ledger.** Every grant, consume and expiry is a row with the lot it touched; the ledger of a customer adds up to the balance. A consume that spans two lots writes two rows under one idempotency key.
 - **One writer per customer.** A transaction takes `pg_advisory_xact_lock` on the customer before it reads lots, so two concurrent consumes cannot spend the same credits. A refused consume (too few credits) rolls back and takes nothing.
 - **Idempotency.** `consume` requires a key (body or `Idempotency-Key` header): a retried call returns the first result with `replayed: true`. The same key with another amount is `billing.credits.key_reused` (409). A grant may carry a key too. A purchase grants once per payment (unique `(tenant, source, source_ref)`).
-- **Operator and tenant.** The console reaches the tenant API as the operator with `X-Quotify-Tenant`, as it does for customers and packages, so there are no separate admin routes.
+- **Operator and tenant.** The console reaches the tenant API as the operator with `X-Payrudder-Tenant`, as it does for customers and packages, so there are no separate admin routes.
 - **Error status.** Too few credits is `FAILED_PRECONDITION`, which the gateway already answers as 409; the key `billing.credits.insufficient` is what a client tells it apart by.
 - **Expiry runs in the existing sweeper**, on the system pool, 200 lots per pass.
 

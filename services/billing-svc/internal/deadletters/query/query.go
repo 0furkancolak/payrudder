@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
 )
 
 // List returns the depth of the dead-letter queues and up to limit messages of queue.

@@ -68,7 +68,7 @@
       "id": "A7",
       "name": "aggregator_frozen_period_violations_total == 0",
       "status": "skipped",
-      "detail": "QUOTIFY_PROMETHEUS_URL not set"
+      "detail": "PAYRUDDER_PROMETHEUS_URL not set"
     },
     {
       "id": "A8",

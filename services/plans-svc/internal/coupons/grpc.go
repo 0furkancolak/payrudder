@@ -4,9 +4,9 @@ package coupons
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
 )
 
 // Handler serves the coupon methods of PlansService.

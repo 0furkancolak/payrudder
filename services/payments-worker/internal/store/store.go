@@ -12,8 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/proto"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store/sqlc"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
 // Attempts implements workerx.Inbox over payment_attempts.

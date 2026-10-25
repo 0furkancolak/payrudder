@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 func TestCreateInvoiceCheckout(t *testing.T) {

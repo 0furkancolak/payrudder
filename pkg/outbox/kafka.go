@@ -8,8 +8,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 )
 
 // KafkaSink publishes rows to Kafka with the given (idempotent, acks=all) client.

@@ -5,7 +5,7 @@
 | Layer | Mechanism | Enforced by |
 |---|---|---|
 | Edge | API key → `tenant_id`. The tenant is **never** taken from the request body | gateway |
-| Service-to-service | `x-quotify-tenant-id` gRPC metadata, set only by gateway. Internal callers propagate it | `pkg/tenant` interceptor |
+| Service-to-service | `x-payrudder-tenant-id` gRPC metadata, set only by gateway. Internal callers propagate it | `pkg/tenant` interceptor |
 | Postgres | Shared schema + `tenant_id` column + **Row Level Security** | Postgres ([ADR 0004](adr/0004-shared-schema-rls-tenancy.md)) |
 | Kafka | `tenant_id` partition key + `tenant-id` header. Consumers validate that payload and header agree | consumers |
 | RabbitMQ | `tenant-id` header + `tenant_id` field in the command. Workers set it on their spans and metrics | workers |
@@ -89,6 +89,6 @@ Fairness beyond rate limits (partition hot-spotting, lag isolation) is in [07-co
 2. Operator: `POST /admin/v1/tenants/{id}/api-keys` → plaintext key returned once (`qk_test_` for the sandbox, `qk_live_` for live; a live tenant must be active first: `PUT /admin/v1/tenants/{id}/status`, or the owner's go-live checklist in the console).
 3. Tenant integrates in the sandbox: meters, plans, customers with `pm_sandbox_*` scenarios, events, `POST /v1/sandbox/periods/{p}/close`.
    Then it repeats the setup in live. Copying config from sandbox to live is a documented extension, not in v1.
-4. A deployment running `values-sandbox.yaml` (`QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox`) creates only the sandbox tenant.
+4. A deployment running `values-sandbox.yaml` (`PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox`) creates only the sandbox tenant.
 5. Off-boarding (out of scope for v1): documented as revoke keys → final billing run → data export → delete by
    `tenant_id` per service. RLS makes "delete everything of tenant X" a straightforward `DELETE ... WHERE tenant_id = $1` as `_system`.

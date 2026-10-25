@@ -32,9 +32,9 @@ describe("the theme the header toggle shows", () => {
     applyTheme("dark");
     expect(isDarkFor(theme.value, false)).toBe(true);
     expect(attrs.get("data-theme")).toBe("dark");
-    expect(store.get("quotify.theme")).toBe("dark");
+    expect(store.get("payrudder.theme")).toBe("dark");
     applyTheme("system");
     expect(isDarkFor(theme.value, true)).toBe(true);
-    expect(store.has("quotify.theme")).toBe(false);
+    expect(store.has("payrudder.theme")).toBe(false);
   });
 });

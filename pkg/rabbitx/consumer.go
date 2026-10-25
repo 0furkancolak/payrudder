@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/0furkancolak/quotify/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 )
 
 // Outcome tells the consumer what to do with a delivery once the handler returns.
@@ -174,13 +174,13 @@ func consumeOnce(ctx context.Context, url, queue string, prefetch int, h Handler
 // message headers, so a command's processing and its reply continue the trace that issued the command.
 func consumerSpan(ctx context.Context, d amqp.Delivery, queue string) (context.Context, trace.Span) {
 	parent := otel.GetTextMapPropagator().Extract(ctx, otelx.AMQPTableCarrier(d.Headers))
-	return otel.Tracer("github.com/0furkancolak/quotify/pkg/rabbitx").Start(parent, queue+" process",
+	return otel.Tracer("github.com/0furkancolak/payrudder/pkg/rabbitx").Start(parent, queue+" process",
 		trace.WithSpanKind(trace.SpanKindConsumer), trace.WithAttributes(
 			attribute.String("messaging.system", "rabbitmq"),
 			attribute.String("messaging.destination.name", queue),
 			attribute.String("messaging.operation.type", "process"),
 			attribute.String("messaging.message.id", d.MessageId),
-			attribute.Int("quotify.attempt", Attempt(d)),
+			attribute.Int("payrudder.attempt", Attempt(d)),
 		))
 }
 
@@ -197,7 +197,7 @@ func settle(ctx, stop context.Context, d amqp.Delivery, queue string, h Handler,
 		}
 	}()
 	outcome := h(ctx, d)
-	span.SetAttributes(attribute.Int("quotify.outcome", int(outcome)))
+	span.SetAttributes(attribute.Int("payrudder.outcome", int(outcome)))
 	switch outcome {
 	case Ack:
 		_ = d.Ack(false)

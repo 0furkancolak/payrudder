@@ -6,7 +6,7 @@
 // they expire (what the migration does) against one plain table pruned by batched DELETEs. It runs against the compose
 // Postgres in a scratch database and prints one line per measurement:
 //
-//	QUOTIFY_BENCH_ROWS=3000000 go test -tags bench -run TestIdempotencyRetention -v ./bench/
+//	PAYRUDDER_BENCH_ROWS=3000000 go test -tags bench -run TestIdempotencyRetention -v ./bench/
 package bench
 
 import (
@@ -133,7 +133,7 @@ func quantiles(d []time.Duration) (p50, p99 time.Duration) {
 
 func TestIdempotencyRetention(t *testing.T) {
 	ctx := context.Background()
-	admin, err := pgx.Connect(ctx, envOr("QUOTIFY_BENCH_DSN", fmt.Sprintf("postgres://postgres:postgres_local@localhost:%s/postgres", envOr("QUOTIFY_PG_HOST_PORT", "42432"))))
+	admin, err := pgx.Connect(ctx, envOr("PAYRUDDER_BENCH_DSN", fmt.Sprintf("postgres://postgres:postgres_local@localhost:%s/postgres", envOr("PAYRUDDER_PG_HOST_PORT", "42432"))))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestIdempotencyRetention(t *testing.T) {
 	}
 	defer pool.Close()
 
-	rows := envInt("QUOTIFY_BENCH_ROWS", 3000000)
+	rows := envInt("PAYRUDDER_BENCH_ROWS", 3000000)
 	const batch = 500
 	now := time.Now().UTC()
 	months := []time.Time{monthStart(now, -2), monthStart(now, -1), monthStart(now, 0), monthStart(now, 1)}

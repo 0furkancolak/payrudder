@@ -20,18 +20,18 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/iyzico"
-	"github.com/0furkancolak/quotify/pkg/payments/paddle"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/secretbox"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/quotify/services/payments-worker/migrations"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
+	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
+	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 type fakePaddle struct {
@@ -270,7 +270,7 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 
 	completed := func(id, k, txn string) string {
 		return event(id, "transaction.completed", "2027-01-05T10:00:00Z", `{"id":"`+txn+`","status":"completed","currency_code":"USD","subscription_id":"sub_01",
-			"items":[{"price":{"custom_data":{"quotify_key":"`+k+`"}},"quantity":1}],"details":{"totals":{"grand_total":"1116"}}}`)
+			"items":[{"price":{"custom_data":{"payrudder_key":"`+k+`"}},"quantity":1}],"details":{"totals":{"grand_total":"1116"}}}`)
 	}
 
 	t.Run("a bad signature is refused and does not use up the event id", func(t *testing.T) {
@@ -315,7 +315,7 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 		inv2 := uuid.New()
 		k2 := inv2.String() + ":charge:0"
 		body := event("evt_2", "transaction.payment_failed", "2027-01-05T11:00:00Z", `{"id":"txn_02","currency_code":"USD","subscription_id":"sub_01",
-			"items":[{"price":{"custom_data":{"quotify_key":"`+k2+`"}}}],"details":{"totals":{"grand_total":"500"}},"payments":[{"status":"error","error_code":"insufficient_funds"}]}`)
+			"items":[{"price":{"custom_data":{"payrudder_key":"`+k2+`"}}}],"details":{"totals":{"grand_total":"500"}},"payments":[{"status":"error","error_code":"insufficient_funds"}]}`)
 		if code, resp := post(hook, body, signed(body, time.Now())); code != 200 {
 			t.Fatalf("webhook: %d %s", code, resp)
 		}
@@ -579,7 +579,7 @@ func TestProviderMigrationThroughTheWorker(t *testing.T) {
 			plans.completed[0].GetCutoverTime().AsTime().Year() != 2027 {
 			t.Fatalf("completed = %v", plans.completed)
 		}
-		q, found, err := subs.QuotifyID(ctx, tenant, "paddle", "live", "sub_NEW")
+		q, found, err := subs.PayrudderID(ctx, tenant, "paddle", "live", "sub_NEW")
 		if err != nil || !found || q.String() != "22222222-2222-2222-2222-222222222222" {
 			t.Fatalf("remembered subscription = %v, %v, %v", q, found, err)
 		}

@@ -1,9 +1,9 @@
 // Package iyzico is the iyzico adapter of payments.Provider (https://docs.iyzico.com).
 //
-// What it does for Quotify: charges a stored card (cardUserKey and cardToken, the "pm" token of the customer) through
+// What it does for Payrudder: charges a stored card (cardUserKey and cardToken, the "pm" token of the customer) through
 // POST /payment/auth, refunds a payment through POST /v2/payment/refund, looks a payment up through POST /payment/detail
 // and confirms webhook notifications by looking the payment up. iyzico does not schedule renewals or retry failed
-// payments for us: Quotify drives both (Capabilities).
+// payments for us: Payrudder drives both (Capabilities).
 //
 // It was written from iyzico's public documentation and tested against recorded fixtures. Behaviour that the documentation
 // does not settle is marked "UNVERIFIED" below and is checked by the sandbox test, which is skipped unless
@@ -29,8 +29,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/money"
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 // Name is the registry name.
@@ -43,7 +43,7 @@ const (
 )
 
 // Buyer is what iyzico wants to know about the payer. iyzico requires these fields on every payment, also on a stored-card one.
-// Quotify does not hold them per customer yet, so the account's defaults are sent; real values per customer are a later addition.
+// Payrudder does not hold them per customer yet, so the account's defaults are sent; real values per customer are a later addition.
 type Buyer struct {
 	Name           string `json:"name"`
 	Surname        string `json:"surname"`
@@ -66,7 +66,7 @@ type Settings struct {
 	Buyer   Buyer  `json:"buyer"`
 	// NotFoundCodes are the errorCode values that mean "no payment with this conversation id" in a /payment/detail answer.
 	// UNVERIFIED: the documentation does not list the code, so none is assumed. Until the sandbox settles it, an
-	// unknown outcome is reported as an error (never as "not found"), so Quotify cannot charge a second time.
+	// unknown outcome is reported as an error (never as "not found"), so Payrudder cannot charge a second time.
 	NotFoundCodes []string `json:"not_found_codes,omitempty"`
 	// SystemErrorCodes are errorCode values that mean a failure at iyzico worth retrying instead of a decline.
 	SystemErrorCodes []string `json:"system_error_codes,omitempty"`
@@ -109,8 +109,8 @@ func Factory(settings []byte) (payments.Provider, error) {
 // Name implements payments.PaymentProvider.
 func (c *Client) Name() string { return Name }
 
-// Capabilities implements payments.Provider. iyzico charges and refunds; Quotify schedules renewals, retries failed payments and
-// issues the invoice. The currency list is the intersection of iyzico's and Quotify's.
+// Capabilities implements payments.Provider. iyzico charges and refunds; Payrudder schedules renewals, retries failed payments and
+// issues the invoice. The currency list is the intersection of iyzico's and Payrudder's.
 func (c *Client) Capabilities() payments.Capabilities { return Caps() }
 
 // Caps are iyzico's capabilities, which do not depend on an account: routing rules are checked against them before any account exists.
@@ -233,7 +233,7 @@ func SplitPaymentMethod(pm string) (userKey, token string, err error) {
 	return userKey, token, nil
 }
 
-// classify maps a failed answer to Quotify's error kinds.
+// classify maps a failed answer to Payrudder's error kinds.
 func (c *Client) classify(r response) error {
 	for _, code := range c.s.SystemErrorCodes {
 		if r.ErrorCode == code {
@@ -367,7 +367,7 @@ func ParseWebhook(body []byte) (WebhookEvent, error) {
 }
 
 // Confirm asks iyzico what the notified payment really is. The webhook signature scheme of API payments is not settled by the
-// documentation, which tells merchants without notification validation to retrieve the payment instead, so Quotify never acts on
+// documentation, which tells merchants without notification validation to retrieve the payment instead, so Payrudder never acts on
 // the body of a notification alone.
 //
 // The body is unsigned, so its conversation id is only a claim: the payment it names must be the charge of that conversation. Charge sends the invoice id as
@@ -377,7 +377,7 @@ func ParseWebhook(body []byte) (WebhookEvent, error) {
 func (c *Client) Confirm(ctx context.Context, e WebhookEvent) (payments.StatusResult, error) {
 	invoice, _, ok := strings.Cut(e.ConversationID, ":")
 	if !ok || invoice == "" {
-		return payments.StatusResult{}, fmt.Errorf("%w: the conversation id %q is not one of Quotify's charges", payments.ErrUnverified, e.ConversationID)
+		return payments.StatusResult{}, fmt.Errorf("%w: the conversation id %q is not one of Payrudder's charges", payments.ErrUnverified, e.ConversationID)
 	}
 	out, err := c.do(ctx, "/payment/detail", map[string]any{"locale": "en", "conversationId": e.ConversationID, "paymentId": e.ID()})
 	if err != nil {

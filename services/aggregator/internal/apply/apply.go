@@ -19,12 +19,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/domain"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/meters"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/settings"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/meters"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
 
 // Topic and group the live consumer uses.
@@ -106,7 +106,7 @@ func (h *Handler) init() {
 		if h.Log == nil {
 			h.Log = slog.Default()
 		}
-		mt := otel.Meter("github.com/0furkancolak/quotify/services/aggregator")
+		mt := otel.Meter("github.com/0furkancolak/payrudder/services/aggregator")
 		ctr := func(name, desc string) metric.Int64Counter {
 			c, err := mt.Int64Counter(name, metric.WithDescription(desc))
 			if err != nil {

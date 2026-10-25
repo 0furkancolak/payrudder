@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 type call struct {
@@ -70,7 +70,7 @@ func TestSyncCatalogueCreatesTheProductAndEachPrice(t *testing.T) {
 		"POST /prices":   `{"data":{"id":"pri_01"}}`,
 	})
 	res, err := c.SyncCatalogue(context.Background(), payments.CatalogueRequest{
-		ProductName: "Pro", QuotifyPlanCode: "pro",
+		ProductName: "Pro", PayrudderPlanCode: "pro",
 		Prices: []payments.PriceSpec{
 			{Key: "pv|month|USD", Currency: "USD", AmountMinor: 1900, Interval: "month", Name: "Pro (monthly)"},
 			{Key: "pv|year|EUR", Currency: "EUR", AmountMinor: 19000, Interval: "year"},
@@ -95,7 +95,7 @@ func TestSyncCatalogueCreatesTheProductAndEachPrice(t *testing.T) {
 	bc := b["billing_cycle"].(map[string]any)
 	up := b["unit_price"].(map[string]any)
 	if b["product_id"] != "pro_01" || bc["interval"] != "year" || bc["frequency"].(float64) != 1 || up["amount"] != "19000" || up["currency_code"] != "EUR" ||
-		b["custom_data"].(map[string]any)["quotify_key"] != "pv|year|EUR" || b["quantity"].(map[string]any)["maximum"].(float64) != 1 {
+		b["custom_data"].(map[string]any)["payrudder_key"] != "pv|year|EUR" || b["quantity"].(map[string]any)["maximum"].(float64) != 1 {
 		t.Errorf("price = %v", b)
 	}
 }
@@ -122,7 +122,7 @@ func TestEnsureCustomerFindsOrCreates(t *testing.T) {
 			"GET /customers/ctm_01/businesses":  `{"data":[]}`,
 			"POST /customers/ctm_01/businesses": `{"data":{"id":"biz_01"}}`,
 		})
-		refs, err := c.EnsureCustomer(context.Background(), payments.CustomerSpec{QuotifyCustomerID: "cus_1", Email: "a+b@example.com", Name: "Ada", Country: "DE", PostalCode: "10115", TaxID: "DE123", Business: "Ada GmbH"})
+		refs, err := c.EnsureCustomer(context.Background(), payments.CustomerSpec{PayrudderCustomerID: "cus_1", Email: "a+b@example.com", Name: "Ada", Country: "DE", PostalCode: "10115", TaxID: "DE123", Business: "Ada GmbH"})
 		if err != nil {
 			t.Fatal(err)
 		}

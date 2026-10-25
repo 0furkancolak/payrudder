@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 )
 
 var placeholder = regexp.MustCompile(`\{[a-z]+\}`)

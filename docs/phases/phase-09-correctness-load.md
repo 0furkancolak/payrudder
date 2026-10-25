@@ -16,8 +16,8 @@ nightly workflow, k6 scenarios, `docs/benchmarks.md`.
 ## Tasks
 
 - [x] Compose `chaos` profile: 2× ingest-svc, aggregator, limits-svc. Toxiproxy in front of Postgres, Redpanda, Redis
-- [x] Generator: 50 tenants × 20 customers × 5 meters, 1M unique events, 5% duplicates, unbounded client retries, 2% late, 0.1% invalid, ledger output (parameterised: `QUOTIFY_CHAOS_TENANTS`, 10 by default and 50 in the nightly)
-- [x] Test-only tenant settings: grace = 2 min, shortened period via `QUOTIFY_CLOCK_OFFSET` (grace 0 instead of a shifted clock: late events are those of the previous month)
+- [x] Generator: 50 tenants × 20 customers × 5 meters, 1M unique events, 5% duplicates, unbounded client retries, 2% late, 0.1% invalid, ledger output (parameterised: `PAYRUDDER_CHAOS_TENANTS`, 10 by default and 50 in the nightly)
+- [x] Test-only tenant settings: grace = 2 min, shortened period via `PAYRUDDER_CLOCK_OFFSET` (grace 0 instead of a shifted clock: late events are those of the previous month)
 - [x] chaosmonkey: random `docker kill` every 10–30 s, Toxiproxy faults every 60 s, one Redpanda stop (30 s), one Redis restart without persistence
 - [x] Drain detector (outbox empty, lag 0, sagas terminal)
 - [x] Assertions A1–A9 with a per-key mismatch report
@@ -36,7 +36,7 @@ nightly workflow, k6 scenarios, `docs/benchmarks.md`.
 ## Acceptance criteria
 
 - [ ] 1M chaos run: A1–A9 all pass with zero mismatches, three consecutive nightly runs
-- [x] The report counts the faults actually injected, and the nightly fails below 30 kills / 10 faults (`QUOTIFY_CHAOS_MIN_KILLS`, `QUOTIFY_CHAOS_MIN_FAULTS`); the 20k local run injected 10 kills and 2 faults
+- [x] The report counts the faults actually injected, and the nightly fails below 30 kills / 10 faults (`PAYRUDDER_CHAOS_MIN_KILLS`, `PAYRUDDER_CHAOS_MIN_FAULTS`); the 20k local run injected 10 kills and 2 faults
 - [ ] Duplicate rate observed by aggregator (`aggregator_duplicates_skipped_total`) > 0, which proves the dedup paths were exercised
 - [x] k6 `noisy_neighbor`: tenant A receives 429s, and B–J p99 is recorded against baseline (pass/fail vs the 20% **target** reported honestly)
 - [x] `docs/benchmarks.md` published. Every number links to a k6 summary or chaos report artifact
@@ -63,7 +63,7 @@ Phases 00–08.
 - **Not decided by this repo's CI.** "Three consecutive green nightlies" and the 1M run need the nightly workflow to run on
   a runner; `.github/workflows/nightly.yml` is in place, but no nightly has run yet. `docs/benchmarks.md` carries only
   what was measured, on the laptop described there.
-- **k6.** `tests/load/*.js`, `make load S=<scenario>`; results stream to Prometheus (remote write) and the "Quotify / k6"
+- **k6.** `tests/load/*.js`, `make load S=<scenario>`; results stream to Prometheus (remote write) and the "Payrudder / k6"
   dashboard; `--summary-export` JSON lands in `tests/load/results/`.
-- **Kafka DLQ redrive** (open since Phase 02): `quotifyctl dlq ls|show|redrive --broker kafka`, tracked by the
-  `quotifyctl-redrive` consumer group; Kafka has no delete, so `purge` is refused.
+- **Kafka DLQ redrive** (open since Phase 02): `payrudderctl dlq ls|show|redrive --broker kafka`, tracked by the
+  `payrudderctl-redrive` consumer group; Kafka has no delete, so `purge` is refused.

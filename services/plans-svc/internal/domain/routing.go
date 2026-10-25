@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/0furkancolak/quotify/pkg/money"
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 // Rule sends customers who match to a provider. An empty Country or Currency matches any.

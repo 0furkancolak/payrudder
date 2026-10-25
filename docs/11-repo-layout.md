@@ -4,18 +4,18 @@ Go workspace monorepo ([ADR 0001](adr/0001-go-workspace-monorepo.md)). Each serv
 so dependencies and builds stay independent. Shared code lives in a small set of library modules.
 
 ```
-quotify/
+payrudder/
 ├── go.work                         # use ./pkg ./gen/go ./services/* ./tests (tools/ is outside: see 10-local-dev)
 ├── Makefile
 ├── buf.yaml / buf.gen.yaml         # buf v2 config, lint + breaking rules
 ├── proto/
-│   └── quotify/
+│   └── payrudder/
 │       ├── events/v1/              # UsageEvent, LimitExceeded, EntitlementState, InvoiceFact
 │       ├── commands/v1/            # CommandEnvelope, ReplyEnvelope and payloads
 │       ├── plans/v1/  ingest/v1/  aggregator/v1/  limits/v1/  billing/v1/  analytics/v1/
 │       └── testdata/               # golden binary fixtures per release
-├── gen/go/                         # module github.com/0furkancolak/quotify/gen/go — generated, committed
-├── pkg/                            # module github.com/0furkancolak/quotify/pkg
+├── gen/go/                         # module github.com/0furkancolak/payrudder/gen/go — generated, committed
+├── pkg/                            # module github.com/0furkancolak/payrudder/pkg
 │   ├── config/                     # env parsing
 │   ├── logx/                       # slog setup, trace-aware handler, redaction
 │   ├── otelx/                      # SDK init, Kafka + AMQP header carriers
@@ -35,7 +35,7 @@ quotify/
 │   └── testkit/                    # testcontainers helpers, fixtures, fake clock
 ├── services/
 │   ├── gateway/
-│   │   ├── go.mod                  # module github.com/0furkancolak/quotify/services/gateway
+│   │   ├── go.mod                  # module github.com/0furkancolak/payrudder/services/gateway
 │   │   ├── cmd/gateway/main.go
 │   │   └── internal/{http,auth,ratelimit,upstream}/
 │   ├── plans-svc/
@@ -55,7 +55,7 @@ quotify/
 ├── tools/
 │   ├── go.mod                      # pinned dev tools (tools directive)
 │   ├── mockpsp/                    # fake payment provider (HTTP)
-│   ├── quotifyctl/                 # operator CLI: dlq, replay, rerate, close-period, seed
+│   ├── payrudderctl/                 # operator CLI: dlq, replay, rerate, close-period, seed
 │   └── eventgen/                   # load + correctness generator (shared with tests/chaos)
 ├── tests/
 │   ├── go.mod
@@ -70,10 +70,10 @@ quotify/
 │   ├── otel/collector.yaml
 │   ├── kind/{cluster,cluster-min}.yaml, netpol-test.sh
 │   └── helm/
-│       ├── quotify/                # the services: one template loops over values `services` (incl. mock-psp)
+│       ├── payrudder/                # the services: one template loops over values `services` (incl. mock-psp)
 │       │   ├── values-kind.yaml, values-kind-min.yaml
 │       │   └── values-sandbox.yaml # sandbox-only deployment
-│       └── quotify-infra/          # Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO, Mailpit (replaceable by managed services)
+│       └── payrudder-infra/          # Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO, Mailpit (replaceable by managed services)
 ├── .github/workflows/              # ci.yml, e2e.yml, nightly.yml, release.yml
 └── docs/
 ```

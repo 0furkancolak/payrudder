@@ -38,8 +38,8 @@ describe("the session of this tab", () => {
     s.sessionLost();
     expect(s.isOperator.value).toBe(false);
     expect(s.currentToken()).toBeNull();
-    expect(store.has("quotify.sessionToken")).toBe(false);
-    expect(store.has("quotify.operator")).toBe(false);
+    expect(store.has("payrudder.sessionToken")).toBe(false);
+    expect(store.has("payrudder.operator")).toBe(false);
   });
 
   it("starts as a plain person unless told otherwise, and follows the server's later verdict", async () => {

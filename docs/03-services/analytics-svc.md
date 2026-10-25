@@ -66,7 +66,7 @@ by a query builder that **requires** `tenant_id` as the first `WHERE` predicate 
 ## gRPC API (sketch)
 
 ```proto
-package quotify.analytics.v1;
+package payrudder.analytics.v1;
 
 service AnalyticsService {
   rpc QueryUsage(QueryUsageRequest) returns (QueryUsageResponse);          // meter, customer?, from, to, granularity HOUR|DAY

@@ -13,11 +13,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	invoicequery "github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 var errNotFound = errkey.New(codes.NotFound, "einvoice.document.not_found", "e-document not found")

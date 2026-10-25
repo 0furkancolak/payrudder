@@ -10,17 +10,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/money"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/invoices"
-	invoicequery "github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices"
+	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Handler implements the link methods of billingv1.BillingServiceServer and billingv1.HostedInvoiceServiceServer.
@@ -53,7 +53,7 @@ func (h *Handler) WithPDFs(p invoicequery.PDFSigner) *Handler {
 	return h
 }
 
-// WithDemo allows the mock payment for live tenants too (QUOTIFY_DEMO).
+// WithDemo allows the mock payment for live tenants too (PAYRUDDER_DEMO).
 func (h *Handler) WithDemo(demo bool) *Handler {
 	h.d.Demo = demo
 	return h

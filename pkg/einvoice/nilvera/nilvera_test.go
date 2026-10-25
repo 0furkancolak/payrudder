@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/einvoice/nilvera"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/nilvera"
 )
 
 const key = "nv-super-secret-key"

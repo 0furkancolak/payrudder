@@ -8,10 +8,10 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/golive"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 )
 
 // Handler serves plansv1.IdentityService.

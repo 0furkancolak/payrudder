@@ -1,4 +1,4 @@
-// Package mailcategory names the kinds of e-mail Quotify sends for a tenant, so that a tenant can switch each kind off (plans-svc stores the switch,
+// Package mailcategory names the kinds of e-mail Payrudder sends for a tenant, so that a tenant can switch each kind off (plans-svc stores the switch,
 // notifier enforces it). Both sides share this list, so a category the API accepts is one the notifier can recognise.
 package mailcategory
 

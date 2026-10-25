@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/brand"
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/safehttp"
-	"github.com/0furkancolak/quotify/pkg/webhooksig"
+	"github.com/0furkancolak/payrudder/pkg/brand"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/safehttp"
+	"github.com/0furkancolak/payrudder/pkg/webhooksig"
 )
 
 // Name is the registry name.

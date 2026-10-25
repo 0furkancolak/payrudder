@@ -2,8 +2,8 @@
 # NetworkPolicy check against a running cluster (make netpol-test): ingest-svc:7002 is reachable from a pod that carries the
 # gateway's labels, and not from a pod in another namespace or from an unlabelled pod of the same namespace.
 set -uo pipefail
-ctx=${KUBE_CONTEXT:-kind-quotify}
-ns=${HELM_NS:-quotify}
+ctx=${KUBE_CONTEXT:-kind-payrudder}
+ns=${HELM_NS:-payrudder}
 k="kubectl --context $ctx"
 target="ingest-svc.$ns.svc.cluster.local"
 
@@ -14,7 +14,7 @@ probe() { # probe <namespace> <labels>: exit status of nc against ingest-svc:700
 $k create namespace netpol-outsider >/dev/null 2>&1 || true
 fail=0
 
-if probe "$ns" "app.kubernetes.io/name=gateway,app.kubernetes.io/instance=quotify"; then
+if probe "$ns" "app.kubernetes.io/name=gateway,app.kubernetes.io/instance=payrudder"; then
   echo "ok    a pod with the gateway's labels reaches ingest-svc:7002"
 else
   echo "FAIL  a pod with the gateway's labels cannot reach ingest-svc:7002"; fail=1
@@ -24,7 +24,7 @@ if probe "$ns" "app=intruder"; then
 else
   echo "ok    an unlabelled pod of the same namespace is refused"
 fi
-if probe netpol-outsider "app.kubernetes.io/name=gateway,app.kubernetes.io/instance=quotify"; then
+if probe netpol-outsider "app.kubernetes.io/name=gateway,app.kubernetes.io/instance=payrudder"; then
   echo "FAIL  a pod in another namespace reaches ingest-svc:7002 (even with the gateway's labels)"; fail=1
 else
   echo "ok    a pod in another namespace is refused"

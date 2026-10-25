@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // fakeIngest records what the gateway forwarded and answers by event content.

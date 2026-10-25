@@ -7,16 +7,16 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	changescmd "github.com/0furkancolak/quotify/services/plans-svc/internal/changes/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/quotify/services/plans-svc/internal/entitlements/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 )
 
 // providerStates maps a provider's status word to the state a subscription is in. The provider is the truth for a subscription it runs,

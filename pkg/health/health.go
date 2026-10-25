@@ -1,4 +1,4 @@
-// Package health serves the operational HTTP endpoints of every Quotify process on its metrics port:
+// Package health serves the operational HTTP endpoints of every Payrudder process on its metrics port:
 // /healthz (liveness), /readyz (readiness with pluggable checks) and /metrics (Prometheus).
 package health
 

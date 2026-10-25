@@ -17,10 +17,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/oidctest"
-	"github.com/0furkancolak/quotify/services/gateway/internal/oidc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/oidctest"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
 )
 
 // Phase 42: the three ways to sign in and the operator who is a person.
@@ -90,10 +90,10 @@ func TestSpoofedOperatorClaimsAreIgnored(t *testing.T) {
 	p := newProduct(t, nil, withOperators("boss@example.com"))
 	req, _ := http.NewRequest("POST", p.ts.URL+"/admin/v1/accounts", strings.NewReader(`{"name":"Acme","operator":true,"is_operator":true,"email":"boss@example.com"}`))
 	req.Header.Set("Authorization", "Bearer "+tokAda)
-	for _, h := range []string{"X-Quotify-Operator", "X-Operator", "X-Forwarded-User", "X-Quotify-Role", "X-Quotify-Actor"} {
+	for _, h := range []string{"X-Payrudder-Operator", "X-Operator", "X-Forwarded-User", "X-Payrudder-Role", "X-Payrudder-Actor"} {
 		req.Header.Set(h, "true")
 	}
-	req.Header.Set("X-Quotify-Tenant", adaLive)
+	req.Header.Set("X-Payrudder-Tenant", adaLive)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)

@@ -8,8 +8,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // The customer portal: GET /c/{token}. Read-only, for one customer of one tenant. billing-svc resolves the token to the tenant and the customer and returns only

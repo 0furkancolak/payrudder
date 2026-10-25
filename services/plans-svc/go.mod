@@ -1,10 +1,10 @@
-module github.com/0furkancolak/quotify/services/plans-svc
+module github.com/0furkancolak/payrudder/services/plans-svc
 
 go 1.27.2
 
 require (
-	github.com/0furkancolak/quotify/gen/go v0.0.0
-	github.com/0furkancolak/quotify/pkg v0.0.0
+	github.com/0furkancolak/payrudder/gen/go v0.0.0
+	github.com/0furkancolak/payrudder/pkg v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/redis/go-redis/v9 v9.23.0
@@ -107,6 +107,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/0furkancolak/quotify/pkg => ../../pkg
+replace github.com/0furkancolak/payrudder/pkg => ../../pkg
 
-replace github.com/0furkancolak/quotify/gen/go => ../../gen/go
+replace github.com/0furkancolak/payrudder/gen/go => ../../gen/go

@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // GET /v1/payments is the tenant's payment ledger as a person reads it: charges and refunds, newest first, each payment folded to its most settled

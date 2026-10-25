@@ -85,7 +85,7 @@ failover, and bugs.
 ## gRPC API (sketch)
 
 ```proto
-package quotify.limits.v1;
+package payrudder.limits.v1;
 
 service LimitsService {
   rpc CheckEntitlement(CheckEntitlementRequest) returns (CheckEntitlementResponse);
@@ -100,7 +100,7 @@ message CheckEntitlementResponse {
 }
 ```
 
-Quotify **does not block ingest** when a limit is exceeded. Usage events are facts that already happened.
+Payrudder **does not block ingest** when a limit is exceeded. Usage events are facts that already happened.
 Tenants call `CheckEntitlement` before serving their customer and decide what to do.
 
 ## Failure modes
@@ -120,8 +120,8 @@ our ingest **targets**. `CheckEntitlement` is a single `MGET` (counter + entitle
 ## As built (Phase 04)
 
 - Code: `services/limits-svc` (`internal/engine` = Lua apply, thresholds, checkpoints, reconciler; `internal/entitlements` =
-  in-memory map + Redis mirror; `internal/query` = gRPC). Configuration is environment-only (`QUOTIFY_REDIS_URL`,
-  `QUOTIFY_KAFKA_BROKERS`, `QUOTIFY_PLANS_ADDR`, `QUOTIFY_AGGREGATOR_ADDR`, `QUOTIFY_RECONCILE_INTERVAL`, `QUOTIFY_POD_NAME`).
+  in-memory map + Redis mirror; `internal/query` = gRPC). Configuration is environment-only (`PAYRUDDER_REDIS_URL`,
+  `PAYRUDDER_KAFKA_BROKERS`, `PAYRUDDER_PLANS_ADDR`, `PAYRUDDER_AGGREGATOR_ADDR`, `PAYRUDDER_RECONCILE_INTERVAL`, `PAYRUDDER_POD_NAME`).
 - The script takes `(key, op, delta, expireat)` per counter (`op` `I` increments, `M` keeps the maximum for `MAX` meters),
   writes `lim:off:{p}`, `lim:active:{p}` and `lim:ts:{tenant}` (the `as_of` of `CheckEntitlement`) in the same call, and
   refuses to pass 2^53 (`limits_counter_overflow`).

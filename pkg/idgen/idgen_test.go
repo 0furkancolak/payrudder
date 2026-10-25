@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
 )
 
 func TestUUIDv7Version(t *testing.T) {

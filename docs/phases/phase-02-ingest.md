@@ -7,7 +7,7 @@
 
 ## Scope
 
-**In:** `proto/quotify/events/v1/usage_event.proto`, `proto/quotify/ingest/v1`, ingest-svc handler, `ingest_db` schema
+**In:** `proto/payrudder/events/v1/usage_event.proto`, `proto/payrudder/ingest/v1`, ingest-svc handler, `ingest_db` schema
 (partitioned `idempotency_keys`, `outbox`), generic `pkg/outbox` relay with a Kafka sink, `pkg/kafkax` producer factory,
 gateway `POST /v1/events`, topic creation (`make topics`), `GetOutboxWatermark`.
 
@@ -61,7 +61,7 @@ gateway `POST /v1/events`, topic creation (`make topics`), `GetOutboxWatermark`.
 - [x] Unit: validation table (too old, future, negative quantity, too many decimals, unknown meter/customer, live without key)
 - [x] Unit/property: decimal → scaled units → decimal round-trips exactly for every scale 0–6. JSON number `1.1` never goes through `float64`
 - [x] Unit: `PeriodOf` for `Europe/Istanbul`, `America/New_York` (DST transitions), `Pacific/Kiritimati` around month boundaries
-- [x] Kafka record headers contain `traceparent`, `ce-type=quotify.events.v1.UsageEvent`, `tenant-id`
+- [x] Kafka record headers contain `traceparent`, `ce-type=payrudder.events.v1.UsageEvent`, `tenant-id`
 
 ## Dependencies
 
