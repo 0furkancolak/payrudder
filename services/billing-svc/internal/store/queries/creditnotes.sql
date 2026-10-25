@@ -87,8 +87,8 @@ VALUES (@tenant_id, @customer_id, @id, @amount_minor, @source_adjustment_id::uui
 ON CONFLICT (tenant_id, source_adjustment_id) WHERE source_adjustment_id IS NOT NULL DO NOTHING;
 
 -- name: InsertCreditBalanceForRerating :exec
-INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_rerating_job_id)
-VALUES (@tenant_id, @customer_id, @id, @amount_minor, @source_rerating_job_id::uuid)
+INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_rerating_job_id, currency)
+VALUES (@tenant_id, @customer_id, @id, @amount_minor, @source_rerating_job_id::uuid, @currency::text)
 ON CONFLICT (tenant_id, customer_id, source_rerating_job_id) DO NOTHING;
 
 -- name: ListUnappliedCredits :many

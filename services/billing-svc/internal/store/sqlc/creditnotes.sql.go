@@ -212,8 +212,8 @@ func (q *Queries) InsertCreditBalanceForNote(ctx context.Context, arg InsertCred
 }
 
 const insertCreditBalanceForRerating = `-- name: InsertCreditBalanceForRerating :exec
-INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_rerating_job_id)
-VALUES ($1, $2, $3, $4, $5::uuid)
+INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_rerating_job_id, currency)
+VALUES ($1, $2, $3, $4, $5::uuid, $6::text)
 ON CONFLICT (tenant_id, customer_id, source_rerating_job_id) DO NOTHING
 `
 
@@ -223,6 +223,7 @@ type InsertCreditBalanceForReratingParams struct {
 	ID                  uuid.UUID
 	AmountMinor         int64
 	SourceReratingJobID uuid.UUID
+	Currency            string
 }
 
 func (q *Queries) InsertCreditBalanceForRerating(ctx context.Context, arg InsertCreditBalanceForReratingParams) error {
@@ -232,6 +233,7 @@ func (q *Queries) InsertCreditBalanceForRerating(ctx context.Context, arg Insert
 		arg.ID,
 		arg.AmountMinor,
 		arg.SourceReratingJobID,
+		arg.Currency,
 	)
 	return err
 }

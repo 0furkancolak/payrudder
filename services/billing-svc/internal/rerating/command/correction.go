@@ -131,7 +131,7 @@ func (c *Commands) record(ctx context.Context, job *model.Job, customer uuid.UUI
 		q := c.q.WithTx(tx)
 		if total < 0 {
 			return q.InsertCreditBalanceForRerating(ctx, sqlc.InsertCreditBalanceForReratingParams{TenantID: job.TenantID, CustomerID: customer, ID: uuid.New(),
-				AmountMinor: -total, SourceReratingJobID: job.ID})
+				AmountMinor: -total, SourceReratingJobID: job.ID, Currency: currency})
 		}
 		id := uuid.New()
 		_, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{

@@ -70,6 +70,7 @@ func TestBilling(t *testing.T) {
 		{"CreditLargerThanTheInvoiceIsAppliedInParts", testCreditLargerThanTheInvoiceIsAppliedInParts},
 		{"RerateHigherMakesCorrectionInvoicesAndRepeatsAreNoOps", testRerateHigherMakesCorrectionInvoices},
 		{"RerateRunTwiceIsIdempotent", testRerateRunTwiceIsIdempotent},
+		{"RerateCreditsAreInTheCurrencyOfTheInvoices", testRerateCreditsAreInTheCurrencyOfTheInvoices},
 		{"OperatorSeesTheSagaTimeline", testInvoiceSagaTimeline},
 		{"PlanChangeSplitsTheFixedFeeBetweenThePlans", testPlanChangeSplitsTheFixedFee},
 		{"TrialAndPauseWaiveTheFixedFee", testTrialAndPauseWaiveTheFixedFee},
