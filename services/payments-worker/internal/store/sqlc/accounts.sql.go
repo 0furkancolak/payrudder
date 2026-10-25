@@ -84,6 +84,34 @@ func (q *Queries) GetProviderAccountSettings(ctx context.Context, arg GetProvide
 	return i, err
 }
 
+const insertProviderAccountEvent = `-- name: InsertProviderAccountEvent :exec
+INSERT INTO provider_account_events (tenant_id, provider, environment, action, actor, is_default, verified_remote)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertProviderAccountEventParams struct {
+	TenantID       uuid.UUID
+	Provider       string
+	Environment    string
+	Action         string
+	Actor          string
+	IsDefault      bool
+	VerifiedRemote bool
+}
+
+func (q *Queries) InsertProviderAccountEvent(ctx context.Context, arg InsertProviderAccountEventParams) error {
+	_, err := q.db.Exec(ctx, insertProviderAccountEvent,
+		arg.TenantID,
+		arg.Provider,
+		arg.Environment,
+		arg.Action,
+		arg.Actor,
+		arg.IsDefault,
+		arg.VerifiedRemote,
+	)
+	return err
+}
+
 const listProviderAccounts = `-- name: ListProviderAccounts :many
 SELECT provider, environment, is_default, updated_at FROM provider_accounts WHERE tenant_id = $1 ORDER BY environment, provider
 `

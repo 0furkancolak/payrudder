@@ -51,6 +51,8 @@ const (
 	IdentityService_RotateMyApiKey_FullMethodName         = "/payrudder.plans.v1.IdentityService/RotateMyApiKey"
 	IdentityService_GetMyGoLive_FullMethodName            = "/payrudder.plans.v1.IdentityService/GetMyGoLive"
 	IdentityService_ActivateMyApp_FullMethodName          = "/payrudder.plans.v1.IdentityService/ActivateMyApp"
+	IdentityService_UpdateMyBillingProfile_FullMethodName = "/payrudder.plans.v1.IdentityService/UpdateMyBillingProfile"
+	IdentityService_AcceptMyTerms_FullMethodName          = "/payrudder.plans.v1.IdentityService/AcceptMyTerms"
 	IdentityService_PromoteMyApp_FullMethodName           = "/payrudder.plans.v1.IdentityService/PromoteMyApp"
 	IdentityService_ResetMySandbox_FullMethodName         = "/payrudder.plans.v1.IdentityService/ResetMySandbox"
 	IdentityService_GetMySandboxReset_FullMethodName      = "/payrudder.plans.v1.IdentityService/GetMySandboxReset"
@@ -128,6 +130,11 @@ type IdentityServiceClient interface {
 	GetMyGoLive(ctx context.Context, in *GetMyGoLiveRequest, opts ...grpc.CallOption) (*GetMyGoLiveResponse, error)
 	// ActivateMyApp activates the live environment when every item is done (the owner only).
 	ActivateMyApp(ctx context.Context, in *ActivateMyAppRequest, opts ...grpc.CallOption) (*ActivateMyAppResponse, error)
+	// UpdateMyBillingProfile sets the legal name, tax id and address of the app's live environment: what its invoices print as the seller and what the go-live
+	// checklist reads. The owner only; recorded in the go-live audit trail.
+	UpdateMyBillingProfile(ctx context.Context, in *UpdateMyBillingProfileRequest, opts ...grpc.CallOption) (*UpdateMyBillingProfileResponse, error)
+	// AcceptMyTerms records that the owner accepted the terms of service for the app's live environment (the first acceptance is kept).
+	AcceptMyTerms(ctx context.Context, in *AcceptMyTermsRequest, opts ...grpc.CallOption) (*AcceptMyTermsResponse, error)
 	// PromoteMyApp copies the configuration of an app's sandbox to its live environment (meters, plans and prices, taxes, coupons, webhook endpoints, mail
 	// settings), never customers, usage, invoices or payments. With dry_run it only returns the diff. It only adds: what exists in live and differs is
 	// reported as a conflict and left alone.
@@ -467,6 +474,26 @@ func (c *identityServiceClient) ActivateMyApp(ctx context.Context, in *ActivateM
 	return out, nil
 }
 
+func (c *identityServiceClient) UpdateMyBillingProfile(ctx context.Context, in *UpdateMyBillingProfileRequest, opts ...grpc.CallOption) (*UpdateMyBillingProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateMyBillingProfileResponse)
+	err := c.cc.Invoke(ctx, IdentityService_UpdateMyBillingProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) AcceptMyTerms(ctx context.Context, in *AcceptMyTermsRequest, opts ...grpc.CallOption) (*AcceptMyTermsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AcceptMyTermsResponse)
+	err := c.cc.Invoke(ctx, IdentityService_AcceptMyTerms_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityServiceClient) PromoteMyApp(ctx context.Context, in *PromoteMyAppRequest, opts ...grpc.CallOption) (*PromoteMyAppResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PromoteMyAppResponse)
@@ -569,6 +596,11 @@ type IdentityServiceServer interface {
 	GetMyGoLive(context.Context, *GetMyGoLiveRequest) (*GetMyGoLiveResponse, error)
 	// ActivateMyApp activates the live environment when every item is done (the owner only).
 	ActivateMyApp(context.Context, *ActivateMyAppRequest) (*ActivateMyAppResponse, error)
+	// UpdateMyBillingProfile sets the legal name, tax id and address of the app's live environment: what its invoices print as the seller and what the go-live
+	// checklist reads. The owner only; recorded in the go-live audit trail.
+	UpdateMyBillingProfile(context.Context, *UpdateMyBillingProfileRequest) (*UpdateMyBillingProfileResponse, error)
+	// AcceptMyTerms records that the owner accepted the terms of service for the app's live environment (the first acceptance is kept).
+	AcceptMyTerms(context.Context, *AcceptMyTermsRequest) (*AcceptMyTermsResponse, error)
 	// PromoteMyApp copies the configuration of an app's sandbox to its live environment (meters, plans and prices, taxes, coupons, webhook endpoints, mail
 	// settings), never customers, usage, invoices or payments. With dry_run it only returns the diff. It only adds: what exists in live and differs is
 	// reported as a conflict and left alone.
@@ -683,6 +715,12 @@ func (UnimplementedIdentityServiceServer) GetMyGoLive(context.Context, *GetMyGoL
 }
 func (UnimplementedIdentityServiceServer) ActivateMyApp(context.Context, *ActivateMyAppRequest) (*ActivateMyAppResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ActivateMyApp not implemented")
+}
+func (UnimplementedIdentityServiceServer) UpdateMyBillingProfile(context.Context, *UpdateMyBillingProfileRequest) (*UpdateMyBillingProfileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateMyBillingProfile not implemented")
+}
+func (UnimplementedIdentityServiceServer) AcceptMyTerms(context.Context, *AcceptMyTermsRequest) (*AcceptMyTermsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AcceptMyTerms not implemented")
 }
 func (UnimplementedIdentityServiceServer) PromoteMyApp(context.Context, *PromoteMyAppRequest) (*PromoteMyAppResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PromoteMyApp not implemented")
@@ -1290,6 +1328,42 @@ func _IdentityService_ActivateMyApp_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_UpdateMyBillingProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMyBillingProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).UpdateMyBillingProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_UpdateMyBillingProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).UpdateMyBillingProfile(ctx, req.(*UpdateMyBillingProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_AcceptMyTerms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AcceptMyTermsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).AcceptMyTerms(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_AcceptMyTerms_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).AcceptMyTerms(ctx, req.(*AcceptMyTermsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_PromoteMyApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PromoteMyAppRequest)
 	if err := dec(in); err != nil {
@@ -1478,6 +1552,14 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ActivateMyApp",
 			Handler:    _IdentityService_ActivateMyApp_Handler,
+		},
+		{
+			MethodName: "UpdateMyBillingProfile",
+			Handler:    _IdentityService_UpdateMyBillingProfile_Handler,
+		},
+		{
+			MethodName: "AcceptMyTerms",
+			Handler:    _IdentityService_AcceptMyTerms_Handler,
 		},
 		{
 			MethodName: "PromoteMyApp",

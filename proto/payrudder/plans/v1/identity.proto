@@ -78,6 +78,11 @@ service IdentityService {
   rpc GetMyGoLive(GetMyGoLiveRequest) returns (GetMyGoLiveResponse);
   // ActivateMyApp activates the live environment when every item is done (the owner only).
   rpc ActivateMyApp(ActivateMyAppRequest) returns (ActivateMyAppResponse);
+  // UpdateMyBillingProfile sets the legal name, tax id and address of the app's live environment: what its invoices print as the seller and what the go-live
+  // checklist reads. The owner only; recorded in the go-live audit trail.
+  rpc UpdateMyBillingProfile(UpdateMyBillingProfileRequest) returns (UpdateMyBillingProfileResponse);
+  // AcceptMyTerms records that the owner accepted the terms of service for the app's live environment (the first acceptance is kept).
+  rpc AcceptMyTerms(AcceptMyTermsRequest) returns (AcceptMyTermsResponse);
   // PromoteMyApp copies the configuration of an app's sandbox to its live environment (meters, plans and prices, taxes, coupons, webhook endpoints, mail
   // settings), never customers, usage, invoices or payments. With dry_run it only returns the diff. It only adds: what exists in live and differs is
   // reported as a conflict and left alone.
@@ -345,6 +350,30 @@ message ActivateMyAppRequest {
 
 message ActivateMyAppResponse {
   GoLive go_live = 1;
+}
+
+message UpdateMyBillingProfileRequest {
+  string user_id = 1;
+  string app_id = 2;
+  // legal_name and, where the country's invoices need one, tax_id are required; tax_office, mersis_no and trade_registry_no are optional.
+  LegalInfo legal = 3;
+  // line1, city and country (ISO 3166-1 alpha-2) are required.
+  Address address = 4;
+}
+
+message UpdateMyBillingProfileResponse {
+  // The live tenant as saved.
+  Tenant tenant = 1;
+}
+
+message AcceptMyTermsRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message AcceptMyTermsResponse {
+  // When the terms were accepted (the first acceptance, if it was accepted before).
+  google.protobuf.Timestamp accept_time = 1;
 }
 
 message VerifyEmailRequest {

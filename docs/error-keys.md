@@ -275,6 +275,10 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.auth.invalid_credentials`
 - `identity.auth.rate_limited`
 - `identity.auth.unavailable`
+- `identity.billing_profile.address_required`
+- `identity.billing_profile.country_required`
+- `identity.billing_profile.legal_name_required`
+- `identity.billing_profile.tax_id_required`
 - `identity.email.not_verified`
 - `identity.go_live.incomplete`
 - `identity.go_live.no_live`
@@ -325,6 +329,9 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `limits.reconcile.not_configured`
 - `limits.reconcile.unavailable`
 - `payments.account.bad_settings`
+- `payments.account.endpoint_not_allowed`
+- `payments.account.health_check_failed`
+- `payments.account.health_check_unreachable`
 - `payments.account.livemode_mismatch`
 - `payments.account.not_found`
 - `payments.account.sync_failed`

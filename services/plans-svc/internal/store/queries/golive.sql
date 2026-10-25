@@ -15,6 +15,15 @@ SELECT EXISTS (
 -- name: TenantHasPublishedPlan :one
 SELECT EXISTS (SELECT 1 FROM plan_versions WHERE tenant_id = $1) AS published;
 
+-- The seller's legal and billing profile, set by the owner. Both documents are replaced whole: the form always sends all of it.
+-- name: UpdateTenantBillingProfile :one
+UPDATE tenants SET address = @address::jsonb, legal = @legal::jsonb WHERE id = @id RETURNING *;
+
+-- What an owner did on the way to going live; one row per change, never updated.
+-- name: InsertGoLiveAudit :exec
+INSERT INTO go_live_audit (id, app_id, live_tenant_id, user_id, action, detail)
+VALUES (@id, @app_id, @live_tenant_id, @user_id, @action, @detail);
+
 -- The first acceptance is the one kept.
 -- name: AcceptTenantTerms :exec
 UPDATE tenants SET terms_accepted_at = COALESCE(terms_accepted_at, now()), terms_accepted_by = COALESCE(terms_accepted_by, @user_id)

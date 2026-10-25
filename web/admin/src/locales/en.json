@@ -1998,7 +1998,10 @@
         "bad_settings": "These provider settings are not valid. Check the credentials and the required fields.",
         "not_found": "This account has no such payment provider set up.",
         "sync_failed": "The provider account was changed, but the bank details could not be passed on to the invoices. Send the request again.",
-        "livemode_mismatch": "This provider account points at the provider's other mode: a live environment needs the provider's live endpoint and live keys, a sandbox environment its test endpoint."
+        "livemode_mismatch": "This provider account points at the provider's other mode: a live environment needs the provider's live endpoint and live keys, a sandbox environment its test endpoint.",
+        "endpoint_not_allowed": "Only the provider's own live endpoint is allowed. Leave the endpoint out.",
+        "health_check_failed": "The provider did not accept these credentials. Check the keys, and that they are live keys.",
+        "health_check_unreachable": "The provider could not be reached to check these credentials. Try again in a moment."
       },
       "billing": {
         "not_configured": "Billing is not set up on this deployment.",
@@ -2187,6 +2190,12 @@
       },
       "sandbox": {
         "reset_rate_limited": "The sandbox was reset a moment ago. Wait a few minutes before resetting it again."
+      },
+      "billing_profile": {
+        "legal_name_required": "Enter the legal name of the business.",
+        "country_required": "Choose the country of the business.",
+        "address_required": "Enter the street address and the city.",
+        "tax_id_required": "A tax id is required for invoices in this country."
       }
     },
     "gateway": {
@@ -2825,12 +2834,11 @@
       },
       "help": {
         "email_verified": "Open the link in the message we sent you, or ask for a new one from the banner.",
-        "legal_profile": "The seller's name, country and tax id are printed on every live invoice.",
-        "payment_provider": "A provider connected for real payments, with its health check passed.",
+        "legal_profile": "Your legal name, address and tax id are printed on every live invoice. Fill in the billing profile below.",
+        "payment_provider": "Connect a provider below. It is asked to accept your keys before they count.",
         "plan_published": "Copy your sandbox plans to live below, or create one in live.",
-        "terms_accepted": "Accepted together with the activation below, by the owner."
+        "terms_accepted": "Read and accept the terms of service below. Only the owner can."
       },
-      "askTeam": "The Payrudder team sets this up with you for now. Contact support.",
       "open": "Open",
       "nothingYet": "Live shows no figures until it is active.",
       "continue": "Continue setup",
@@ -2839,7 +2847,79 @@
       "activate": "Switch live on",
       "notReady": "Finish the other steps first.",
       "inactiveNote": "Live has no data until it is active. Your sandbox keeps working in the meantime.",
-      "toSandbox": "Open the sandbox"
+      "toSandbox": "Open the sandbox",
+      "fillIn": "Fill in",
+      "acceptTermsButton": "Accept the terms",
+      "termsAccepted": "The terms of service are accepted.",
+      "profile": {
+        "title": "Billing profile",
+        "intro": "The seller details printed on your live invoices: who you are, where, and your tax id.",
+        "ownerOnly": "Only the owner of the account can change the billing profile.",
+        "legalName": "Legal name",
+        "taxId": "Tax id",
+        "taxIdRequired": "Required for invoices in {country}. Spaces and dashes are ignored.",
+        "taxIdOptional": "Optional for this country. Spaces and dashes are ignored.",
+        "taxOffice": "Tax office (optional)",
+        "save": "Save billing profile",
+        "saved": "Billing profile saved.",
+        "problems": {
+          "required": "Required.",
+          "taxIdFormat": "5 to 20 letters and digits."
+        }
+      },
+      "provider": {
+        "title": "Payment provider",
+        "intro": "Connect the provider your customers pay through in live mode. Keys are typed once and stored encrypted. The provider is asked to accept them before they count.",
+        "ownerOnly": "Only the owner of the account can connect or remove a provider.",
+        "none": "No provider is connected in live mode yet.",
+        "connected": "Connected providers",
+        "connectedNow": "{provider} is connected.",
+        "connectTitle": "Connect a provider",
+        "provider": "Provider",
+        "choose": "Choose a provider",
+        "secretsOnce": "Secret keys are not shown again after you save. Use live keys, not test keys.",
+        "optional": "optional",
+        "checkAndConnect": "Check and connect",
+        "saveBank": "Save bank details",
+        "checking": "Checking with the provider...",
+        "remove": "Remove",
+        "confirmRemove": "Remove the live account at {provider}? Customers can no longer pay through it.",
+        "default": "default",
+        "working": "Working",
+        "notWorking": "Not working",
+        "checkedYes": "The provider accepts these keys.",
+        "checkedNo": "Bank details only: there is nothing to check at a provider.",
+        "names": {
+          "iyzico": "iyzico",
+          "paddle": "Paddle",
+          "banktransfer": "Bank transfer"
+        },
+        "fields": {
+          "api_key": "API key",
+          "secret_key": "Secret key",
+          "webhook_secret": "Webhook secret",
+          "usage_product_id": "Usage product id (pro_...)",
+          "buyer_name": "Buyer first name",
+          "buyer_surname": "Buyer last name",
+          "buyer_identity_number": "Buyer identity number",
+          "buyer_email": "Buyer e-mail",
+          "buyer_address": "Buyer address",
+          "buyer_city": "Buyer city",
+          "buyer_country": "Buyer country",
+          "buyer_zip_code": "Buyer postal code",
+          "buyer_ip": "Public IP address of your business",
+          "buyer_gsm_number": "Buyer phone number"
+        },
+        "problems": {
+          "required": "Required.",
+          "badFormat": "This does not look right."
+        },
+        "accountProblems": {
+          "unreadable": "The stored keys cannot be read. Connect the provider again.",
+          "refused": "The provider does not accept these keys any more. Connect it again with new keys.",
+          "unreachable": "The provider could not be reached just now. It is checked again shortly."
+        }
+      }
     },
     "promote": {
       "title": "Copy sandbox configuration to live",

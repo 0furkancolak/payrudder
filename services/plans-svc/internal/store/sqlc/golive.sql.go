@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 )
@@ -40,6 +41,33 @@ func (q *Queries) AccountOwnerVerified(ctx context.Context, accountID uuid.UUID)
 	var verified bool
 	err := row.Scan(&verified)
 	return verified, err
+}
+
+const insertGoLiveAudit = `-- name: InsertGoLiveAudit :exec
+INSERT INTO go_live_audit (id, app_id, live_tenant_id, user_id, action, detail)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type InsertGoLiveAuditParams struct {
+	ID           uuid.UUID
+	AppID        uuid.UUID
+	LiveTenantID uuid.UUID
+	UserID       uuid.UUID
+	Action       string
+	Detail       json.RawMessage
+}
+
+// What an owner did on the way to going live; one row per change, never updated.
+func (q *Queries) InsertGoLiveAudit(ctx context.Context, arg InsertGoLiveAuditParams) error {
+	_, err := q.db.Exec(ctx, insertGoLiveAudit,
+		arg.ID,
+		arg.AppID,
+		arg.LiveTenantID,
+		arg.UserID,
+		arg.Action,
+		arg.Detail,
+	)
+	return err
 }
 
 const lockTenantForGoLive = `-- name: LockTenantForGoLive :one
@@ -86,4 +114,42 @@ func (q *Queries) TenantHasPublishedPlan(ctx context.Context, tenantID uuid.UUID
 	var published bool
 	err := row.Scan(&published)
 	return published, err
+}
+
+const updateTenantBillingProfile = `-- name: UpdateTenantBillingProfile :one
+UPDATE tenants SET address = $1::jsonb, legal = $2::jsonb WHERE id = $3 RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by
+`
+
+type UpdateTenantBillingProfileParams struct {
+	Address json.RawMessage
+	Legal   json.RawMessage
+	ID      uuid.UUID
+}
+
+// The seller's legal and billing profile, set by the owner. Both documents are replaced whole: the form always sends all of it.
+func (q *Queries) UpdateTenantBillingProfile(ctx context.Context, arg UpdateTenantBillingProfileParams) (Tenant, error) {
+	row := q.db.QueryRow(ctx, updateTenantBillingProfile, arg.Address, arg.Legal, arg.ID)
+	var i Tenant
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Environment,
+		&i.Name,
+		&i.Tier,
+		&i.Currency,
+		&i.Timezone,
+		&i.GracePeriod,
+		&i.CreatedAt,
+		&i.InvoiceLogoAssetID,
+		&i.AppID,
+		&i.Address,
+		&i.BankTransfer,
+		&i.Legal,
+		&i.EInvoiceOn,
+		&i.Status,
+		&i.ActivatedAt,
+		&i.TermsAcceptedAt,
+		&i.TermsAcceptedBy,
+	)
+	return i, err
 }

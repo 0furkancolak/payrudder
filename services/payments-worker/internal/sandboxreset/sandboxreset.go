@@ -15,7 +15,7 @@ import (
 // Tables are the tables a reset deletes from; Kept are the tables with tenant rows it leaves alone on purpose.
 var (
 	Tables = []string{"manual_receipts", "payment_ledger", "payment_attempts", "provider_subscriptions", "provider_events", "einvoice_issuances"}
-	Kept   = []string{"provider_accounts", "provider_objects", "einvoice_accounts"}
+	Kept   = []string{"provider_accounts", "provider_account_events", "provider_objects", "einvoice_accounts"}
 )
 
 // Resetter deletes on the system pool, which sees every tenant: each statement names the tenant.

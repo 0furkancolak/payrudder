@@ -47,6 +47,14 @@ func (h *Handler) GetMyGoLive(ctx context.Context, req *plansv1.GetMyGoLiveReque
 	return h.goLive.GetMyGoLive(ctx, req)
 }
 
+func (h *Handler) UpdateMyBillingProfile(ctx context.Context, req *plansv1.UpdateMyBillingProfileRequest) (*plansv1.UpdateMyBillingProfileResponse, error) {
+	return h.goLive.UpdateMyBillingProfile(ctx, req)
+}
+
+func (h *Handler) AcceptMyTerms(ctx context.Context, req *plansv1.AcceptMyTermsRequest) (*plansv1.AcceptMyTermsResponse, error) {
+	return h.goLive.AcceptMyTerms(ctx, req)
+}
+
 func (h *Handler) ActivateMyApp(ctx context.Context, req *plansv1.ActivateMyAppRequest) (*plansv1.ActivateMyAppResponse, error) {
 	return h.goLive.ActivateMyApp(ctx, req)
 }

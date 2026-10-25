@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { MockGateway } from "./gateway";
+import { baseTenant, MockGateway, openTenantPage } from "./gateway";
 import { APP, appWithLive, liveGateway, productGateway, signInAsAda } from "./product";
 import { pickLanguage } from "./ui";
 
@@ -30,6 +30,27 @@ test.describe("which environment is on screen", () => {
     await page.goto(`/app/t/a1000000-0000-4000-8000-000000000002/customers`);
     await expect(page.getByTestId("sandbox-banner")).toBeVisible();
     await page.goto(`/app/t/a1000000-0000-4000-8000-000000000001/customers`);
+    await expect(page.getByTestId("sandbox-banner")).toHaveCount(0);
+  });
+
+  test("an operator's tenant page is marked too: the sandbox tenant has the stripe and the banner, the live tenant has neither", async ({ page }) => {
+    const gw = baseTenant(new MockGateway(), { environment: "ENVIRONMENT_SANDBOX", name: "Acme (sandbox)" });
+    await gw.install(page);
+    await openTenantPage(page, "");
+    await expect(page.getByTestId("tenant-id")).toBeVisible();
+    await expect(page.getByTestId("sandbox-stripe")).toBeAttached();
+    await expect(page.getByTestId("sandbox-banner")).toContainText("Nothing here is real money");
+    // The operator's own pages (the tenant list) are not a sandbox page.
+    await page.goto("/tenants");
+    await expect(page.getByTestId("sandbox-banner")).toHaveCount(0);
+  });
+
+  test("an operator's live tenant page has no stripe and no banner", async ({ page }) => {
+    const gw = baseTenant(new MockGateway());
+    await gw.install(page);
+    await openTenantPage(page, "");
+    await expect(page.getByTestId("tenant-id")).toBeVisible();
+    await expect(page.getByTestId("sandbox-stripe")).toHaveCount(0);
     await expect(page.getByTestId("sandbox-banner")).toHaveCount(0);
   });
 
@@ -90,24 +111,166 @@ test.describe("going live", () => {
     const button = page.getByTestId("go-live-activate");
     await expect(page.getByTestId("go-live-terms_accepted")).toHaveAttribute("data-done", "false");
     await expect(button).toBeDisabled();
+    // The terms are a step of their own: ticking the box is not accepting, and the button waits for the acceptance.
+    const accept = page.getByTestId("go-live-accept-terms");
+    await expect(accept).toBeDisabled();
     await page.getByTestId("go-live-terms").click();
+    await expect(button).toBeDisabled();
+    await accept.click();
+    await expect(page.getByTestId("go-live-terms_accepted")).toHaveAttribute("data-done", "true");
+    expect(gw.called("POST", `/app/v1/apps/${APP}/go-live/terms`)).toHaveLength(1);
     await expect(button).toBeEnabled();
     await button.click();
     await expect(page.getByTestId("go-live-state")).toContainText("Active");
-    expect(gw.called("POST", `/app/v1/apps/${APP}/go-live`)[0]?.body).toEqual({ accept_terms: true });
+    expect(gw.called("POST", `/app/v1/apps/${APP}/go-live`)[0]?.body).toEqual({ accept_terms: false });
     expect(live.state.status).toBe("ACTIVE");
   });
 
-  test("with steps missing the button stays off, and a person who is not the owner is told why", async ({ page }) => {
+  test("with steps missing the button stays off, and each missing step points to where the owner does it", async ({ page }) => {
     const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("INACTIVE")] });
     liveGateway(gw, { done: { email_verified: true } });
     await gw.install(page);
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}/go-live?env=live`);
-    await page.getByTestId("go-live-terms").click();
     await expect(page.getByTestId("go-live-activate")).toBeDisabled();
-    // The legal profile and the payment provider are set up by the team for now: a person is told so rather than sent to a page they cannot open.
-    await expect(page.getByTestId("go-live-legal_profile")).toContainText("Contact support");
+    // The owner is not told to ask the team: the profile and the provider are cards on this page, and the item scrolls to them.
+    await expect(page.getByTestId("go-live-legal_profile")).not.toContainText("Contact support");
+    await expect(page.getByTestId("billing-profile")).toBeVisible();
+    await expect(page.getByTestId("live-provider")).toBeVisible();
+    await page.getByTestId("go-live-go-payment_provider").click();
+    await expect(page.getByTestId("live-provider")).toBeInViewport();
+  });
+
+  test("a member who is not the owner reads the steps but cannot change anything, and is told why", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("INACTIVE")], role: "viewer" });
+    liveGateway(gw, { done: { email_verified: true }, accounts: [{ provider: "paddle", default: true, working: true, checked: true }] });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/go-live?env=live`);
+    await expect(page.getByTestId("profile-owner-only")).toBeVisible();
+    await expect(page.getByTestId("profile-save")).toBeDisabled();
+    await expect(page.getByTestId("provider-owner-only")).toBeVisible();
+    await expect(page.getByTestId("provider-select")).toHaveCount(0);
+    await expect(page.getByTestId("live-account-remove-paddle")).toHaveCount(0);
+    await expect(page.getByTestId("live-account-paddle")).toContainText("Working");
+    await expect(page.getByTestId("go-live-accept-terms")).toBeDisabled();
+  });
+});
+
+test.describe("the owner's own steps", () => {
+  test("the billing profile is checked as the server checks it, saved once, and completes its item", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("INACTIVE")] });
+    liveGateway(gw, { done: { email_verified: true } });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/go-live?env=live`);
+    const card = page.getByTestId("billing-profile");
+    await expect(page.getByTestId("go-live-legal_profile")).toHaveAttribute("data-done", "false");
+    await card.getByLabel("Legal name").fill("Shop GmbH");
+    await card.getByLabel("Country", { exact: true }).selectOption("DE");
+    await card.getByLabel("Address line 1").fill("Hauptstr. 1");
+    await card.getByLabel("City").fill("Berlin");
+    // In Germany the seller's tax id is required; nothing is sent until it is there.
+    await expect(card.getByText("Required for invoices in DE")).toBeVisible();
+    await card.getByTestId("profile-save").click();
+    await expect(card.getByRole("alert")).toContainText("Required.");
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/billing-profile`)).toHaveLength(0);
+    await card.getByLabel("Tax id").fill("de 123-456 789");
+    await card.getByTestId("profile-save").click();
+    await expect(card.getByTestId("profile-saved")).toBeVisible();
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/billing-profile`)).toHaveLength(1);
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/billing-profile`)[0]?.body).toEqual({
+      legal: { legal_name: "Shop GmbH", tax_id: "DE123456789" },
+      address: { line1: "Hauptstr. 1", city: "Berlin", country: "DE" },
+    });
+    await expect(page.getByTestId("go-live-legal_profile")).toHaveAttribute("data-done", "true");
+  });
+
+  test("a live provider is connected with its keys typed once, never shown again, and removed on request", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("INACTIVE")] });
+    liveGateway(gw, { done: { email_verified: true } });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/go-live?env=live`);
+    const card = page.getByTestId("live-provider");
+    await expect(page.getByTestId("live-accounts-none")).toBeVisible();
+    await card.getByTestId("provider-select").selectOption("paddle");
+    // Keys are password fields, and the form never asks for an endpoint.
+    await expect(card.getByTestId("lp-api_key")).toHaveAttribute("type", "password");
+    await expect(card.getByTestId("lp-webhook_secret")).toHaveAttribute("type", "password");
+    await expect(card.getByLabel(/base.?url|endpoint/i)).toHaveCount(0);
+    await card.getByTestId("provider-connect").click();
+    await expect(card.getByRole("alert").first()).toContainText("Required.");
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/paddle`)).toHaveLength(0);
+    await card.getByTestId("lp-api_key").fill("pdl_live_SECRETKEY");
+    await card.getByTestId("lp-webhook_secret").fill("pdl_ntfset_SECRETHOOK");
+    await card.getByTestId("lp-usage_product_id").fill("pro_01abc");
+    await card.getByTestId("provider-connect").click();
+    await expect(page.getByTestId("provider-connected")).toContainText("Paddle is connected");
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/paddle`)[0]?.body).toEqual({
+      api_key: "pdl_live_SECRETKEY", webhook_secret: "pdl_ntfset_SECRETHOOK", usage_product_id: "pro_01abc",
+    });
+    // The secrets are gone from the form and from the page, and the checklist item is done.
+    await expect(page.getByTestId("live-account-paddle")).toContainText("Working");
+    await expect(page.getByTestId("go-live-payment_provider")).toHaveAttribute("data-done", "true");
+    await expect(card.getByTestId("provider-select")).toHaveValue("");
+    expect(await page.content()).not.toContain("SECRETKEY");
+    expect(await page.evaluate(() => [...document.querySelectorAll("input")].map((i) => i.value).join("|"))).not.toMatch(/SECRET/);
+    // Removing asks first.
+    page.once("dialog", (d) => void d.dismiss());
+    await page.getByTestId("live-account-remove-paddle").click();
+    expect(gw.called("DELETE", `/app/v1/apps/${APP}/go-live/providers/paddle`)).toHaveLength(0);
+    page.once("dialog", (d) => void d.accept());
+    await page.getByTestId("live-account-remove-paddle").click();
+    await expect(page.getByTestId("live-accounts-none")).toBeVisible();
+    await expect(page.getByTestId("go-live-payment_provider")).toHaveAttribute("data-done", "false");
+  });
+
+  test("iyzico's buyer details are filled from the profile and the person, and a bank account needs no provider check", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), {
+      apps: [{ ...appWithLive("INACTIVE"), tenants: [{ ...appWithLive("INACTIVE").tenants[0]!, legal: { legal_name: "Ada Labs", tax_id: "1234567890" }, address: { line1: "Bagdat Cd. 1", city: "Istanbul", postal_code: "34000", country: "TR" } }, appWithLive("INACTIVE").tenants[1]!] }],
+    });
+    liveGateway(gw, {});
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/go-live?env=live`);
+    const card = page.getByTestId("live-provider");
+    await card.getByTestId("provider-select").selectOption("iyzico");
+    await expect(card.getByTestId("lp-buyer_email")).toHaveValue("ada@example.com");
+    await expect(card.getByTestId("lp-buyer_address")).toHaveValue("Bagdat Cd. 1");
+    await expect(card.getByTestId("lp-buyer_country")).toHaveValue(/^(Turkey|Türkiye)$/);
+    await expect(card.getByTestId("lp-buyer_identity_number")).toHaveValue("1234567890");
+    await expect(card.getByTestId("lp-secret_key")).toHaveValue("");
+    await card.getByTestId("provider-select").selectOption("banktransfer");
+    await expect(card.getByLabel("IBAN")).toBeVisible();
+    await expect(card.getByText(/Sandbox charges never reach/)).toHaveCount(0);
+  });
+
+  test("a provider that refuses the keys is explained in words, and nothing is connected", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("INACTIVE")] });
+    liveGateway(gw, { done: { email_verified: true }, refuseProvider: { status: 400, key: "payments.account.health_check_failed" } });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/go-live?env=live`);
+    const card = page.getByTestId("live-provider");
+    await card.getByTestId("provider-select").selectOption("paddle");
+    await card.getByTestId("lp-api_key").fill("pdl_live_x");
+    await card.getByTestId("lp-webhook_secret").fill("pdl_ntfset_x");
+    await card.getByTestId("lp-usage_product_id").fill("pro_01abc");
+    await card.getByTestId("provider-connect").click();
+    await expect(card.getByRole("alert")).toContainText("did not accept these credentials");
+    await expect(page.getByTestId("live-accounts-none")).toBeVisible();
+    await expect(page.getByTestId("go-live-payment_provider")).toHaveAttribute("data-done", "false");
+  });
+
+  test("an account the provider no longer accepts is shown as not working, with the reason", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("INACTIVE")] });
+    liveGateway(gw, { accounts: [{ provider: "iyzico", default: true, working: false, checked: true, problem: "refused" }] });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/go-live?env=live`);
+    await expect(page.getByTestId("live-account-iyzico")).toContainText("Not working");
+    await expect(page.getByTestId("live-account-problem")).toContainText("does not accept these keys any more");
   });
 
   test("a live key cannot be made while live is inactive, and the page points to the checklist", async ({ page }) => {

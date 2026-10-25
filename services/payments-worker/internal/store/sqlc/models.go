@@ -93,6 +93,18 @@ type ProviderAccount struct {
 	UpdatedAt   time.Time
 }
 
+type ProviderAccountEvent struct {
+	ID             int64
+	TenantID       uuid.UUID
+	Provider       string
+	Environment    string
+	Action         string
+	Actor          string
+	IsDefault      bool
+	VerifiedRemote bool
+	CreatedAt      time.Time
+}
+
 type ProviderEvent struct {
 	Provider    string
 	EventID     string
