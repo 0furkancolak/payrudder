@@ -25,11 +25,24 @@ type Store interface {
 	Put(ctx context.Context, key string, body []byte, o blob.PutOptions) error
 }
 
+// LogoReader reads the tenants' invoice logos from the assets bucket (pkg/blob.Store satisfies it).
+type LogoReader interface {
+	Get(ctx context.Context, key string) ([]byte, error)
+}
+
+const (
+	// metaSHA256 is the object metadata key that carries the PDF's hash.
+	metaSHA256 = "sha256"
+	// tagEnvironment is the object tag the bucket's lifecycle rule matches on.
+	tagEnvironment = "environment"
+)
+
 // Handler renders invoices.
 type Handler struct {
 	Store Store
-	// Logos is the assets bucket the tenants' invoice logos live in (nil: no logos).
-	Logos Store
+	// Logos is the assets bucket the tenants' invoice logos live in. The worker always sets it; nil renders every
+	// invoice without a logo.
+	Logos LogoReader
 	// Log receives what is kept out of the reply; nil is slog.Default().
 	Log *slog.Logger
 
@@ -80,8 +93,8 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 
 	info, err := h.Store.Head(ctx, key)
 	switch {
-	case err == nil && info.Metadata["sha256"] != "":
-		return rendered(key, info.Metadata["sha256"], info.Size), nil
+	case err == nil && info.Metadata[metaSHA256] != "":
+		return rendered(key, info.Metadata[metaSHA256], info.Size), nil
 	case err != nil && !errors.Is(err, blob.ErrNotFound):
 		return nil, err // storage unavailable: retry
 	}
@@ -108,9 +121,9 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 	sum := sha256.Sum256(pdf)
 	hash := hex.EncodeToString(sum[:])
 	if err := h.Store.Put(ctx, key, pdf, blob.PutOptions{
-		ContentType: "application/pdf", Metadata: map[string]string{"sha256": hash},
+		ContentType: "application/pdf", Metadata: map[string]string{metaSHA256: hash},
 		// The bucket's lifecycle rule expires objects tagged environment=sandbox after 30 days.
-		Tags: map[string]string{"environment": environment.String()},
+		Tags: map[string]string{tagEnvironment: environment.String()},
 	}); err != nil {
 		return nil, err
 	}

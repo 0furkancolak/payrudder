@@ -25,8 +25,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/reports"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 )
 
 // PDFSigner presigns downloads of invoice PDFs (pkg/blob.Store).
@@ -77,7 +77,7 @@ type Server struct {
 }
 
 // New returns the API. app is the billing_app pool, system the billing_system pool.
-func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server {
+func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *sagacommand.Engine) *Server {
 	einv := &einvoicecmd.Commands{Pool: system, Parties: mgr}
 	return &Server{
 		invoiceHandler:    invoices.New(app),

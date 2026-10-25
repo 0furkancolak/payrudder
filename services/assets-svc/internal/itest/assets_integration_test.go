@@ -31,8 +31,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/background"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
-	"github.com/0furkancolak/payrudder/services/assets-svc/internal/service"
 	"github.com/0furkancolak/payrudder/services/assets-svc/migrations"
 )
 
@@ -40,7 +40,7 @@ type world struct {
 	store  *blob.Store
 	app    *pgxpool.Pool
 	system *pgxpool.Pool
-	svc    *service.Service
+	svc    *grpcapi.Server
 	quota  map[string]int64
 }
 
@@ -66,7 +66,7 @@ func start(t *testing.T) *world {
 		t.Fatal(err)
 	}
 	w.quota = map[string]int64{"free": 1 * policy.MiB, "standard": 10 * policy.GiB}
-	w.svc = service.New(w.app, w.store, policy.New(policy.DefaultGeneralTypes), service.Config{Quotas: w.quota})
+	w.svc = grpcapi.New(w.app, w.store, policy.New(policy.DefaultGeneralTypes), grpcapi.Config{Quotas: w.quota})
 	return w
 }
 

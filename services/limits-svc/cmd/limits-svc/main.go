@@ -21,17 +21,17 @@ import (
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
+	"github.com/0furkancolak/payrudder/pkg/chaos"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/meters"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/query"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/grpcapi"
 )
 
 const (
@@ -110,7 +110,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	ents := entitlements.New(rdb, log)
 	applier, err := engine.NewApplier(engine.Config{
 		Redis: rdb, Meters: ms, Tenants: tn, Ents: ents, Producer: producer, LimitTopic: cfg.LimitTopic, Log: log,
-		AfterLua: afterLuaFault(),
+		AfterLua: chaos.Crash("LIMITS_CRASH_AFTER_LUA", "chaos build: limits-svc will crash after the script", "chaos: crashing after the script"),
 	})
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	hh := rt.Health()
 	addHealthChecks(hh, rdb, producer, ents)
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
-	limitsv1.RegisterLimitsServiceServer(srv, query.New(rdb, ents, ms, rec))
+	limitsv1.RegisterLimitsServiceServer(srv, grpcapi.New(rdb, ents, ms, rec))
 
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
@@ -156,11 +156,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 
 // dialPeer connects to another service, forwarding the tenant on every call.
 func dialPeer(name, addr string) (*grpc.ClientConn, error) {
-	conn, err := grpcx.NewClient(addr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return nil, fmt.Errorf("%s client: %w", name, err)
-	}
-	return conn, nil
+	return grpcx.NewTenantClient(name, addr)
 }
 
 // newConsumers builds the usage consumer and the entitlement consumer; closeAll closes both.

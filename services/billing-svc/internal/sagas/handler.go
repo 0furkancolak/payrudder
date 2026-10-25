@@ -11,7 +11,6 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -20,11 +19,13 @@ import (
 // Handler implements the invoice-saga methods of billingv1.BillingAdminServiceServer.
 type Handler struct {
 	system *pgxpool.Pool
-	eng    *saga.Engine
+	eng    *command.Engine
 }
 
 // New returns the handler over the billing_system pool.
-func New(system *pgxpool.Pool, eng *saga.Engine) *Handler { return &Handler{system: system, eng: eng} }
+func New(system *pgxpool.Pool, eng *command.Engine) *Handler {
+	return &Handler{system: system, eng: eng}
+}
 
 func parseIDs(tenantID, invoiceID string) (tid, inv uuid.UUID, err error) {
 	if tid, err = errkey.ParseUUID("billing.tenant.bad_id", "tenant_id", tenantID); err != nil {

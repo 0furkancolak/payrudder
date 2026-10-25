@@ -4,6 +4,7 @@ package blob
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -41,7 +42,7 @@ type Store struct {
 
 func newClient(cfg Config, endpoint string) *s3.Client {
 	return s3.New(s3.Options{
-		Region:       orDefault(cfg.Region, "us-east-1"),
+		Region:       cmp.Or(cfg.Region, "us-east-1"),
 		BaseEndpoint: nilIfEmpty(endpoint),
 		UsePathStyle: cfg.ForcePathStyle,
 		Credentials:  credentials.NewStaticCredentialsProvider(cfg.AccessKey, cfg.SecretKey, ""),
@@ -61,13 +62,6 @@ func New(cfg Config) (*Store, error) {
 		pub = cfg.Endpoint
 	}
 	return &Store{cfg: cfg, client: newClient(cfg, cfg.Endpoint), presign: s3.NewPresignClient(newClient(cfg, pub))}, nil
-}
-
-func orDefault(s, d string) string {
-	if s == "" {
-		return d
-	}
-	return s
 }
 
 func nilIfEmpty(s string) *string {

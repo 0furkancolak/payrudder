@@ -11,11 +11,38 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
+
+func TestNewTenantClientForwardsTenantMetadata(t *testing.T) {
+	var got []string
+	capture := grpc.UnaryInterceptor(func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, h grpc.UnaryHandler) (any, error) {
+		md, _ := metadata.FromIncomingContext(ctx)
+		got = md.Get(tenant.MDOperator)
+		return h(ctx, req)
+	})
+	srv, _ := grpcx.NewServer(grpcx.ServerOptions{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), Extra: []grpc.ServerOption{capture}})
+	lis := bufconn.Listen(1 << 20)
+	go func() { _ = srv.Serve(lis) }()
+	t.Cleanup(srv.Stop)
+	conn, err := grpcx.NewTenantClient("peer", "passthrough:///bufnet",
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) { return lis.DialContext(ctx) }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if _, err := healthpb.NewHealthClient(conn).Check(tenant.WithOperator(context.Background()), &healthpb.HealthCheckRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0] != "true" {
+		t.Fatalf("operator metadata = %v, want [true]", got)
+	}
+}
 
 // panicHealth panics in Check to exercise the recovery interceptor.
 type panicHealth struct {

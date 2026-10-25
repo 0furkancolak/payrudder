@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -20,10 +21,9 @@ import (
 
 // State is the limit of one customer on one meter.
 type State struct {
-	Tenant      uuid.UUID
-	Customer    uuid.UUID
-	Meter       string
-	PlanVersion string
+	Tenant   uuid.UUID
+	Customer uuid.UUID
+	Meter    string
 	// Limit in scaled units; 0 = unlimited.
 	Limit      int64
 	Thresholds []int32
@@ -154,7 +154,7 @@ func fromProto(pb *eventsv1.EntitlementState) (State, error) {
 		return State{}, fmt.Errorf("invalid meter, limit or scale")
 	}
 	st := State{
-		Tenant: t, Customer: c, Meter: pb.GetMeterCode(), PlanVersion: pb.GetPlanVersionId(), Limit: pb.GetLimitUnits(),
+		Tenant: t, Customer: c, Meter: pb.GetMeterCode(), Limit: pb.GetLimitUnits(),
 		Thresholds: pb.GetAlertThresholdsPct(), Scale: int(pb.GetQuantityScale()),
 	}
 	if pb.GetValidFrom() != nil {
@@ -187,11 +187,7 @@ func (s *Store) ForCustomer(tenantID, customer uuid.UUID, now time.Time) []State
 			out = append(out, st)
 		}
 	}
-	for i := 1; i < len(out); i++ {
-		for j := i; j > 0 && out[j].Meter < out[j-1].Meter; j-- {
-			out[j], out[j-1] = out[j-1], out[j]
-		}
-	}
+	slices.SortFunc(out, func(a, b State) int { return strings.Compare(a.Meter, b.Meter) })
 	return out
 }
 

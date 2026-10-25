@@ -271,55 +271,42 @@ func (r *Runner) insert(ctx context.Context, b *batch) error {
 	}
 }
 
+// insertOnce writes what is left of the batch, table by table. A table that went in is cleared, so a retry of the rest does not insert it again.
 func (r *Runner) insertOnce(ctx context.Context, b *batch) error {
-	if len(b.usage) > 0 {
-		batch, err := r.cfg.Conn.PrepareBatch(ctx, "INSERT INTO usage_events")
-		if err != nil {
-			return err
-		}
-		for _, u := range b.usage {
-			if err := batch.Append(u.Tenant, u.EventID, u.Customer, u.ExternalID, u.Meter, u.Units, u.Scale, u.Period, u.EventTime, u.IngestedAt, u.Properties); err != nil {
-				return err
-			}
-		}
-		if err := batch.Send(); err != nil {
-			return err
-		}
-		r.rows.Add(ctx, int64(len(b.usage)), metric.WithAttributes(attribute.String("table", "usage_events")))
-		b.usage = nil // inserted: a retry of the rest must not insert it again
+	if err := insertTable(ctx, r, "usage_events", "INSERT INTO usage_events", &b.usage, func(batch driver.Batch, u usageRow) error {
+		return batch.Append(u.Tenant, u.EventID, u.Customer, u.ExternalID, u.Meter, u.Units, u.Scale, u.Period, u.EventTime, u.IngestedAt, u.Properties)
+	}); err != nil {
+		return err
 	}
-	if len(b.limits) > 0 {
-		batch, err := r.cfg.Conn.PrepareBatch(ctx, "INSERT INTO limit_events")
-		if err != nil {
-			return err
-		}
-		for _, l := range b.limits {
-			if err := batch.Append(l.Tenant, l.EventID, l.Customer, l.Meter, l.Period, l.Threshold, l.Limit, l.Used, l.Scale, l.DetectedAt); err != nil {
-				return err
-			}
-		}
-		if err := batch.Send(); err != nil {
-			return err
-		}
-		r.rows.Add(ctx, int64(len(b.limits)), metric.WithAttributes(attribute.String("table", "limit_events")))
-		b.limits = nil
+	if err := insertTable(ctx, r, "limit_events", "INSERT INTO limit_events", &b.limits, func(batch driver.Batch, l limitRow) error {
+		return batch.Append(l.Tenant, l.EventID, l.Customer, l.Meter, l.Period, l.Threshold, l.Limit, l.Used, l.Scale, l.DetectedAt)
+	}); err != nil {
+		return err
 	}
-	if len(b.invoices) > 0 {
-		batch, err := r.cfg.Conn.PrepareBatch(ctx, "INSERT INTO invoice_facts")
-		if err != nil {
-			return err
-		}
-		for _, f := range b.invoices {
-			if err := batch.Append(f.Tenant, f.Invoice, f.Version, f.Customer, f.Period, f.Kind, f.TotalMinor, f.Currency, f.Number, f.OccurredAt); err != nil {
-				return err
-			}
-		}
-		if err := batch.Send(); err != nil {
-			return err
-		}
-		r.rows.Add(ctx, int64(len(b.invoices)), metric.WithAttributes(attribute.String("table", "invoice_facts")))
-		b.invoices = nil
+	return insertTable(ctx, r, "invoice_facts", "INSERT INTO invoice_facts", &b.invoices, func(batch driver.Batch, f invoiceRow) error {
+		return batch.Append(f.Tenant, f.Invoice, f.Version, f.Customer, f.Period, f.Kind, f.TotalMinor, f.Currency, f.Number, f.OccurredAt)
+	})
+}
+
+// insertTable sends rows (statement stmt, metric label table) in one ClickHouse batch and empties rows once the batch is in.
+func insertTable[T any](ctx context.Context, r *Runner, table, stmt string, rows *[]T, appendRow func(driver.Batch, T) error) error {
+	if len(*rows) == 0 {
+		return nil
 	}
+	batch, err := r.cfg.Conn.PrepareBatch(ctx, stmt)
+	if err != nil {
+		return err
+	}
+	for _, row := range *rows {
+		if err := appendRow(batch, row); err != nil {
+			return err
+		}
+	}
+	if err := batch.Send(); err != nil {
+		return err
+	}
+	r.rows.Add(ctx, int64(len(*rows)), metric.WithAttributes(attribute.String("table", table)))
+	*rows = nil
 	return nil
 }
 
@@ -365,7 +352,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	if len(b.records) > 0 {
 		fctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
-		_ = r.flush(fctx, cl, b)
+		if err := r.flush(fctx, cl, b); err != nil {
+			r.log.WarnContext(ctx, "last batch not flushed on shutdown, it is read again after a restart", "rows", b.size(), "error", err)
+		}
 	}
 	return nil
 }

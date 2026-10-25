@@ -16,7 +16,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -220,7 +220,7 @@ func RequestPayment(ctx context.Context, d Deps, qd query.Deps, req PaymentReque
 		if err != nil {
 			return err
 		}
-		out, err := d.Engine.Handle(ctx, tx, req.Scope.TenantID, sagaID, saga.EvPayRequested, "customer:pay", nil)
+		out, err := d.Engine.Handle(ctx, tx, req.Scope.TenantID, sagaID, sagamodel.EvPayRequested, "customer:pay", nil)
 		if err != nil {
 			return err
 		}
@@ -265,7 +265,7 @@ func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in Se
 		if err != nil {
 			return err
 		}
-		out, err := d.Engine.Handle(ctx, tx, tenantID, sagaID, saga.EvProviderSettled, "settle:"+in.Provider+":"+in.ProviderRef, nil)
+		out, err := d.Engine.Handle(ctx, tx, tenantID, sagaID, sagamodel.EvProviderSettled, "settle:"+in.Provider+":"+in.ProviderRef, nil)
 		applied = out.Applied
 		return err
 	})

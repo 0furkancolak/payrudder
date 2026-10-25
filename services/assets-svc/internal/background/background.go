@@ -10,7 +10,6 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,6 +22,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store/sqlc"
 )
 
@@ -154,7 +154,7 @@ func (j *Jobs) VerifyUploads(ctx context.Context, limit int) (int, error) {
 
 // inspect checks one object and returns the verdict (ok, missing, type_mismatch or corrupt) with the reject reason.
 func (j *Jobs) inspect(ctx context.Context, it sqlc.ListUnverifiedAssetsRow) (result, reason string, err error) {
-	head, err := j.Store.GetRange(ctx, it.ObjectKey, 512)
+	head, err := j.Store.GetRange(ctx, it.ObjectKey, policy.SniffBytes)
 	switch {
 	case errors.Is(err, blob.ErrNotFound):
 		return "missing", "OBJECT_MISSING", nil
@@ -243,12 +243,8 @@ func (j *Jobs) deleteOrphans(ctx context.Context, keys []string) (int, error) {
 	ids := make([]uuid.UUID, 0, len(keys))
 	byID := map[uuid.UUID]string{}
 	for _, k := range keys {
-		parts := strings.Split(k, "/")
-		if len(parts) != 3 || parts[1] != "assets" {
-			continue
-		}
-		id, err := uuid.Parse(parts[2])
-		if err != nil {
+		id, ok := store.AssetIDOfKey(k)
+		if !ok {
 			continue
 		}
 		ids = append(ids, id)

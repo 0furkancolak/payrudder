@@ -27,10 +27,11 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
 
 // Lifetimes of links, in days.
@@ -81,7 +82,7 @@ type Directory interface {
 type Deps struct {
 	App    *pgxpool.Pool
 	System *pgxpool.Pool
-	Engine *saga.Engine
+	Engine *sagacommand.Engine
 	Dir    Directory
 	// Demo allows the mock payment for live tenants too (PAYRUDDER_DEMO).
 	Demo bool
@@ -321,7 +322,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 		if err != nil {
 			return err
 		}
-		if err := saga.TenantEvent(ctx, tx, tenantID, saga.EventPaymentLinkCreated, id.String(), d.now(), linkData(row)); err != nil {
+		if err := tenantevents.Write(ctx, tx, tenantID, tenantevents.EventPaymentLinkCreated, id.String(), d.now(), linkData(row)); err != nil {
 			return err
 		}
 		out = &Created{Link: row, Token: token}
@@ -424,8 +425,8 @@ func checkInvoice(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, in C
 }
 
 // ParseSnapshot reads the frozen snapshot of an invoice.
-func ParseSnapshot(b []byte) (saga.Snapshot, error) {
-	var s saga.Snapshot
+func ParseSnapshot(b []byte) (sagamodel.Snapshot, error) {
+	var s sagamodel.Snapshot
 	err := json.Unmarshal(b, &s)
 	return s, err
 }
@@ -503,7 +504,7 @@ func UnpaidInvoices(ctx context.Context, q *sqlc.Queries, tenantID, linkID uuid.
 
 // VoidUnpaid voids invoices through their sagas. An invoice whose saga cannot be voided right now (a payment is in flight) is left as it is: the customer who
 // is paying it finishes, and the tenant sees it open.
-func VoidUnpaid(ctx context.Context, system *pgxpool.Pool, eng *saga.Engine, tenantID uuid.UUID, ids []uuid.UUID) {
+func VoidUnpaid(ctx context.Context, system *pgxpool.Pool, eng *sagacommand.Engine, tenantID uuid.UUID, ids []uuid.UUID) {
 	for _, id := range ids {
 		_, _ = sagacommand.Void(ctx, system, eng, tenantID, id) // best effort: FailedPrecondition means the saga is busy
 	}

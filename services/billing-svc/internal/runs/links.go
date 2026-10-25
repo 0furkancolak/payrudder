@@ -16,7 +16,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -97,9 +97,9 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 	if !ok {
 		return uuid.Nil, permanent{fmt.Errorf("currency %q is not supported", currency)}
 	}
-	snap := saga.Snapshot{
+	snap := sagamodel.Snapshot{
 		TenantName: t.GetName(), Environment: environmentOf(t), CurrencyExponent: cur.Exponent, LogoObjectKey: logoKeyOf(tenantID, t), SellerAddress: addressLines(t.GetAddress()),
-		Collection: saga.CollectionLink, Description: spec.Description,
+		Collection: sagamodel.CollectionLink, Description: spec.Description,
 	}
 	customerID, country := uuid.Nil, ""
 	if spec.CustomerExternalID != "" {

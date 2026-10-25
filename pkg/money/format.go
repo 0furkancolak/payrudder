@@ -73,3 +73,11 @@ func place(digits string, exp int, neg bool) string {
 	}
 	return digits
 }
+
+// Abs is the absolute value of a minor-unit amount.
+func Abs(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}

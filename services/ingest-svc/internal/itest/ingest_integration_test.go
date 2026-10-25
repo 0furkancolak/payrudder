@@ -22,7 +22,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/ingest"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/events/command"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/maintenance"
 )
 
@@ -657,4 +657,4 @@ func testPartitionMaintenance(t *testing.T) {
 	}
 }
 
-var _ = ingest.Topic
+var _ = command.Topic

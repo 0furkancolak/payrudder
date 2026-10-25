@@ -6,7 +6,8 @@ profile=${KIND_PROFILE:-kind}
 ns=${HELM_NS:-payrudder}
 root=$(cd "$(dirname "$0")/../.." && pwd)
 bin=$root/bin
-images=(plans-svc ingest-svc aggregator limits-svc billing-svc analytics-svc assets-svc gateway invoice-worker payments-worker notifier mockpsp)
+# The images to roll: the Makefile passes SERVICE_IMAGES, so the list lives in one place.
+read -r -a images <<<"${SERVICE_IMAGES:?SERVICE_IMAGES is not set: run this through make rollout-test}"
 duration=${ROLLOUT_LOAD_SECONDS:-240}
 
 for i in "${images[@]}"; do

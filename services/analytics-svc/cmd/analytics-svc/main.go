@@ -16,9 +16,9 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
-	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/api"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/chmigrate"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/consumer"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/grpcapi"
 	analyticsreset "github.com/0furkancolak/payrudder/services/analytics-svc/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/migrations"
 )
@@ -82,7 +82,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	hh.AddCheck("clickhouse", func(ctx context.Context) error { return conn.Ping(ctx) })
 	hh.AddCheck("kafka", producer.Ping)
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
-	analyticsv1.RegisterAnalyticsServiceServer(srv, api.New(conn))
+	analyticsv1.RegisterAnalyticsServiceServer(srv, grpcapi.New(conn))
 	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(analyticsreset.New(conn).Reset))
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
