@@ -180,7 +180,10 @@ type Purchase struct {
 	PackID             *uuid.UUID
 	PackName           string
 	Quantity           int32
-	Credits            int64
+	// Credits is what the lot holds: the pack's credits and the bonus a coupon added.
+	Credits int64
+	// BonusCredits is the part of Credits a coupon added (0 without one).
+	BonusCredits int64
 	// ValidityDays is 0 for credits that never expire.
 	ValidityDays int32
 	InvoiceID    uuid.UUID
@@ -217,6 +220,7 @@ func PurchasePaid(ctx context.Context, tx pgx.Tx, p Purchase) error {
 	data := map[string]any{
 		"link_id": p.LinkID.String(), "customer_id": p.CustomerID.String(), "customer_external_id": p.CustomerExternalID, "credits": p.Credits, "quantity": p.Quantity,
 		"balance": balance, "invoice_id": p.InvoiceID.String(), "invoice_number": p.InvoiceNo, "currency": p.Currency, "amount_minor": strconv.FormatInt(p.AmountMinor, 10),
+		"bonus_credits": p.BonusCredits,
 	}
 	if p.PackID != nil {
 		data["pack_id"] = p.PackID.String()

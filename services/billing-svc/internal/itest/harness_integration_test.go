@@ -127,6 +127,7 @@ type world struct {
 	billedAdj []string
 	applyCall int
 	taxRates  []*plansv1.TaxRate
+	promo     promoState
 
 	usage     map[string][]*aggregatorv1.UsageAggregate // by period id
 	late      map[string][]*aggregatorv1.LateUsage      // by billed period id

@@ -1230,6 +1230,8 @@
         "reference_reused": "This reference was already recorded with a different amount."
       },
       "payment_link": {
+        "bad_promotion_code": "A promotion code is 2 to 40 letters, digits, - or _, and belongs to an ad-hoc or credit pack link; an invoice that exists is not changed.",
+        "free_total": "This promotion code takes the whole price, which leaves nothing to pay. Grant the purchase directly instead.",
         "bad_amount": "The amount must be a positive number of minor units.",
         "bad_currency": "This currency is not supported.",
         "bad_description": "A description is required, at most 200 characters.",

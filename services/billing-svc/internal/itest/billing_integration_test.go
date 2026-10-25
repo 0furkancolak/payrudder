@@ -52,6 +52,8 @@ func TestBilling(t *testing.T) {
 		{"APaidPackGrantsOnce", testAPaidPackGrantsOnce},
 		{"CreditPackValidityIsValidated", testCreditPackValidityIsValidated},
 		{"CreditPackIsBoughtThroughAPaymentLink", testCreditPackIsBoughtThroughAPaymentLink},
+		{"PromotionCodesOnPaymentLinks", testPromotionCodesOnPaymentLinks},
+		{"PromotionCodesOnCreditPurchases", testPromotionCodesOnCreditPurchases},
 		{"AVoidedCreditPurchaseGrantsNothing", testAVoidedCreditPurchaseGrantsNothing},
 		{"CreditPacksAreBoughtFromThePortal", testCreditPacksAreBoughtFromThePortal},
 		{"CreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold", testCreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold},
