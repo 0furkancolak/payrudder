@@ -85,7 +85,7 @@ payrudder/
   exceptions: they're shared *definitions*, and two implementations of lateness would be a correctness bug.
 - Generated code (`gen/go`, `sqlc` output in `internal/store/sqlc`) **is committed**, so `go build` works without tools
   and diffs are reviewable. CI fails if `make gen` produces a diff.
-- Dockerfiles: one multi-stage `services/<svc>/Dockerfile` with a `distroless/static` final image. The build context is the repo root,
+- Dockerfiles: one multi-stage `deploy/docker/go.Dockerfile` for every Go program (`--build-arg SERVICE_DIR=services/<svc>`) with a `distroless/static` final image. The build context is the repo root,
   so `go.work` resolves.
 - Import-boundary lint (`depguard`): only `internal/worker`, `internal/relay`, `internal/consumer`, `internal/scheduler` may receive
   the `system` Postgres pool ([06-multi-tenancy.md](06-multi-tenancy.md#roles-per-service)).

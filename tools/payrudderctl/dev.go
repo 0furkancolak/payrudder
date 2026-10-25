@@ -31,9 +31,14 @@ type composeFile struct {
 	Services map[string]composeService `json:"services"`
 }
 
+// composeBuild is the part of a service's build section that names its module: every Go image is built by deploy/docker/go.Dockerfile.
+type composeBuild struct {
+	Args map[string]string `json:"args"`
+}
+
 type composeService struct {
-	Build       *struct{ Dockerfile string } `json:"build"`
-	Environment map[string]string            `json:"environment"`
+	Build       *composeBuild     `json:"build"`
+	Environment map[string]string `json:"environment"`
 	Ports       []struct {
 		Target    int    `json:"target"`
 		Published string `json:"published"`
@@ -67,10 +72,13 @@ func hostServices(c composeFile) []hostService {
 	}
 	var out []hostService
 	for name, s := range c.Services {
-		if s.Build == nil || (!strings.HasPrefix(s.Build.Dockerfile, "services/") && !strings.HasPrefix(s.Build.Dockerfile, "tools/")) {
+		if s.Build == nil {
 			continue
 		}
-		dir := filepath.Dir(s.Build.Dockerfile)
+		dir := s.Build.Args["SERVICE_DIR"]
+		if !strings.HasPrefix(dir, "services/") && !strings.HasPrefix(dir, "tools/") {
+			continue
+		}
 		env := map[string]string{}
 		for k, v := range s.Environment {
 			env[k] = toHost(v, published)
