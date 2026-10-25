@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
  * A person's session is never an operator: the gateway answers 401 to a session on /admin/v1/*, and a 401 sends the person back to the sign-in page. So no
  * page that the product app mounts under /app/t/{tenant} may call an operator route. This reads the sources of those pages (and of what they import
  * from the console's own features) and fails when one mentions an /admin route or the operator's tenant lookup. The only allowed mention is
- * shared/lib/tenant-currency.ts, which asks the operator's tenant list only when no person is signed in.
+ * features/tenants/currency.ts, which asks the operator's tenant list only when no person is signed in.
  */
 const sources = import.meta.glob(
   [

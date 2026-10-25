@@ -7,7 +7,8 @@ import { Sparkline } from "@/shared/ui/sparkline";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { useOverview, type App, type Environment } from "./api";
-import { countOf, revenueByCurrency, seriesOf, tenantOf } from "./lib";
+import { tenantOf } from "@/shared/lib/environment";
+import { countOf, revenueByCurrency, seriesOf } from "./lib";
 
 /** One app on the organisation's home: its status, the last 30 days of money that arrived, a trend line, and how many payments need a look. */
 const props = defineProps<{ app: App }>();

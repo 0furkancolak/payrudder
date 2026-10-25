@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { safeGet, safeSet } from "./storage";
 
 /**
  * Per-browser conveniences kept in localStorage: whether the sidebar is folded to its icon rail and whether privacy mode hides money. Every read and
@@ -8,22 +9,8 @@ import { ref } from "vue";
 const SIDEBAR_KEY = "quotify.sidebar.collapsed";
 const PRIVACY_KEY = "quotify.privacy";
 
-function readFlag(key: string): boolean {
-  try {
-    return window.localStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeFlag(key: string, on: boolean): void {
-  try {
-    if (on) window.localStorage.setItem(key, "1");
-    else window.localStorage.removeItem(key);
-  } catch {
-    // storage blocked: the choice lasts for this page only
-  }
-}
+const readFlag = (key: string): boolean => safeGet("local", key) === "1";
+const writeFlag = (key: string, on: boolean): void => void safeSet("local", key, on ? "1" : null);
 
 /** The sidebar is open (icons and labels) unless the person folded it. */
 export const sidebarCollapsed = ref(readFlag(SIDEBAR_KEY));

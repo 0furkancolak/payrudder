@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { useCanWrite } from "@/shared/lib/access";
-import { useTenantCurrency } from "@/shared/lib/tenant-currency";
+import { useTenantCurrency } from "@/features/tenants/currency";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";

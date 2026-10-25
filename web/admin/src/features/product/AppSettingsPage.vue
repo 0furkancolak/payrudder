@@ -2,6 +2,7 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { envOf } from "@/shared/lib/environment";
 import { currencyInfo, formatOffset, zoneMinutes } from "@/shared/lib/intl";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
@@ -20,7 +21,7 @@ const app = useApp(appId);
 const envs = computed(() =>
   (app.data.value?.app?.tenants ?? []).map((x) => ({
     id: x.id ?? "",
-    env: x.environment === "ENVIRONMENT_LIVE" ? "live" : "sandbox",
+    env: envOf(x.environment),
     currency: x.currency ?? "",
     info: currencyInfo(x.currency ?? "USD", locale.value),
     timezone: x.timezone ?? "",

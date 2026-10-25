@@ -2,6 +2,7 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -10,7 +11,8 @@ import { Input } from "@/shared/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { EVENT_TYPES, useWebhookActions, useWebhookDeliveries, useWebhookEndpoints } from "./api";
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -26,7 +28,7 @@ const list = computed(() => endpoints.data.value?.endpoints ?? []);
 const log = computed(() => deliveries.data.value?.deliveries ?? []);
 /** A secret is shown right after it is made and never again. */
 const secret = computed(() => ((act.create.data.value ?? act.rotate.data.value) as { secret?: string } | undefined)?.secret ?? "");
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "short", timeStyle: "medium" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "shortSeconds", "—");
 const stateVariant = (s?: string) => (s === "WEBHOOK_DELIVERY_STATE_DELIVERED" ? "success" : s === "WEBHOOK_DELIVERY_STATE_FAILED" ? "destructive" : "secondary");
 const stateWord = (s?: string) => t(`billing.webhooks.state.${(s ?? "").replace("WEBHOOK_DELIVERY_STATE_", "").toLowerCase()}`);
 const failure = computed(() => {

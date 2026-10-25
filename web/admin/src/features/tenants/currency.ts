@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { useApps } from "@/features/product/api";
-import { tenantKeys } from "@/features/tenants/api";
-import { api, unwrap } from "@/shared/api/client";
+import { findTenant } from "@/shared/lib/environment";
 import { isOperator } from "@/shared/lib/session";
+import { useTenants } from "./api";
 
 /**
  * The currency of one tenant, for forms that default a money field to it (a pack's price, an ad hoc link). A person reads it from the apps it
@@ -11,17 +10,11 @@ import { isOperator } from "@/shared/lib/session";
  */
 export function useTenantCurrency(tenantId: MaybeRefOrGetter<string>) {
   const apps = useApps();
-  const operator = useQuery({
-    queryKey: tenantKeys.list,
-    queryFn: () => unwrap(api.GET("/admin/v1/tenants", { params: { query: { page_size: 200 } } })),
-    enabled: isOperator,
-  });
+  const operator = useTenants({ enabled: isOperator });
   return computed(() => {
     const id = toValue(tenantId);
-    for (const app of apps.data.value?.apps ?? []) {
-      const t = app.tenants?.find((x) => x.id === id);
-      if (t?.currency) return t.currency;
-    }
+    const own = findTenant(apps.data.value?.apps, id)?.tenant.currency;
+    if (own) return own;
     return operator.data.value?.tenants?.find((x) => x.id === id)?.currency ?? "";
   });
 }

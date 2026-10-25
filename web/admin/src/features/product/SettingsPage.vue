@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/vue-router";
 import { LogOut } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { applyTheme, theme, type ThemeChoice } from "@/shared/lib/theme";
 import { Button } from "@/shared/ui/button";
@@ -14,7 +15,8 @@ import { StatusPill } from "@/shared/ui/status-pill";
 import { useAccount, useMe, useRenameAccount, useSignOut } from "./api";
 import AccountSwitcher from "./AccountSwitcher.vue";
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const navigate = useNavigate();
 const me = useMe();
@@ -27,7 +29,7 @@ watch(() => account.data.value?.name, (n) => (accountName.value = n ?? ""), { im
 const isOwner = computed(() => account.data.value?.role === "owner");
 const nameChanged = computed(() => accountName.value.trim() !== "" && accountName.value.trim() !== account.data.value?.name);
 
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(v)) : "");
+const when = (v?: string) => fmt.date(v, "dateTime");
 const themes = computed(() => [
   { value: "system", label: t("product.settings.themeSystem") },
   { value: "light", label: t("product.settings.themeLight") },

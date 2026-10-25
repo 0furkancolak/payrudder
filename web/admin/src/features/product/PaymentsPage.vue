@@ -2,6 +2,7 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -13,12 +14,13 @@ import { usePayments } from "./billingApi";
  * The operator's ledger (provider references, decline details) and the reconciliation are operator tools and are not here.
  */
 const { t, locale } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const payments = usePayments(tenantId);
 const rows = computed(() => payments.data.value?.payments ?? []);
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(v)) : "");
+const when = (v?: string) => fmt.date(v, "dateTime");
 </script>
 
 <template>

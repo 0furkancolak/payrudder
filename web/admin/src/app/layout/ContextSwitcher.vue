@@ -4,7 +4,7 @@ import { Check, ChevronsUpDown, Plus } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { App, Environment } from "@/features/product/api";
-import { tenantOf } from "@/features/product/lib";
+import { tenantOf } from "@/shared/lib/environment";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { SegmentedControl } from "@/shared/ui/segmented";
 import type { ShellContext } from "./nav";

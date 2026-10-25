@@ -2,6 +2,8 @@
 import { Check, Copy, KeyRound, Plus } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { envOf, keyMask } from "@/shared/lib/environment";
+import { useFormat } from "@/shared/lib/format";
 import { copyText } from "@/shared/lib/clipboard";
 import { useErrorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
@@ -14,7 +16,8 @@ import { useApiKeys, useCreateApiKey, useMe, useRevokeApiKey, type ApiKey, type 
  * and nothing about it is stored in the browser. The list shows the non-secret prefix only.
  */
 const props = defineProps<{ appId: string; canManage: boolean }>();
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const keys = useApiKeys(() => props.appId);
 const create = useCreateApiKey(() => props.appId);
@@ -25,10 +28,10 @@ const unverified = computed(() => me.data.value?.user?.email_verified === false)
 
 const list = computed(() => (keys.data.value?.api_keys ?? []).slice().sort((a, b) => Number(isRevoked(a)) - Number(isRevoked(b))));
 const isRevoked = (k: ApiKey) => k.status === "STATUS_REVOKED";
-const envOf = (k: ApiKey): Environment => (k.environment === "ENVIRONMENT_SANDBOX" ? "sandbox" : "live");
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "");
+const keyEnv = (k: ApiKey): Environment => envOf(k.environment);
+const when = (v?: string) => fmt.date(v, "day");
 /** What the list may show of a key: its kind and prefix. The secret part is never known here after creation. */
-const shown = (k: ApiKey) => `qk_${envOf(k) === "live" ? "live" : "test"}_${k.prefix}_••••••••`;
+const shown = (k: ApiKey) => `${keyMask(keyEnv(k), k.prefix)}_••••••••`;
 
 // --- a new key: its plaintext lives in this ref until the dialog closes
 const secret = ref<{ plaintext: string; env: Environment } | null>(null);
@@ -81,7 +84,7 @@ function doRevoke() {
           <p class="mono text-sm break-all" :class="isRevoked(k) && 'text-muted-foreground line-through'">{{ shown(k) }}</p>
           <p class="text-muted-foreground text-xs">{{ t("product.keys.created", { date: when(k.create_time) }) }}</p>
         </div>
-        <StatusPill :tone="envOf(k) === 'live' ? 'info' : 'neutral'">{{ t(`product.env.${envOf(k)}`) }}</StatusPill>
+        <StatusPill :tone="keyEnv(k) === 'live' ? 'info' : 'neutral'">{{ t(`product.env.${keyEnv(k)}`) }}</StatusPill>
         <StatusPill :tone="toneOf(isRevoked(k) ? 'revoked' : 'active')">{{ t(isRevoked(k) ? "product.keys.revoked" : "product.keys.active") }}</StatusPill>
         <Button v-if="canManage && !isRevoked(k)" variant="ghost" size="sm" :aria-label="t('product.keys.revokeNamed', { key: shown(k) })" @click="revoking = k">{{ t("product.keys.revoke") }}</Button>
       </li>

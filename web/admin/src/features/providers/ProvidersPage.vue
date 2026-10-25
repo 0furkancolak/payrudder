@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { COUNTRY_HINTS, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { Badge } from "@/shared/ui/badge";
@@ -18,8 +19,10 @@ import CatalogueCard from "./CatalogueCard.vue";
 import BankTransferForm from "./BankTransferForm.vue";
 import { templateText } from "./templates";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import type { Environment } from "@/shared/lib/environment";
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -28,7 +31,7 @@ const tenantId = computed(() => String(params.value.id ?? ""));
 const accounts = useProviderAccounts(tenantId);
 const actions = useAccountActions(tenantId);
 const provider = ref("");
-const environment = ref<"sandbox" | "live">("live");
+const environment = ref<Environment>("live");
 const makeDefault = ref(true);
 const settings = ref("");
 const settingsError = ref("");
@@ -59,7 +62,7 @@ function saveAccount() {
     { onSuccess: () => (settings.value = templateText(provider.value)) },
   );
 }
-function removeAccount(p: string, env: "sandbox" | "live") {
+function removeAccount(p: string, env: Environment) {
   if (window.confirm(t("billing.providers.confirmRemove", { provider: p, environment: env }))) actions.remove.mutate({ provider: p, environment: env });
 }
 const webhookPath = computed(() => `/webhooks/${provider.value || "{provider}"}/${tenantId.value}/${environment.value}`);
@@ -79,7 +82,7 @@ const pCurrency = ref("");
 
 // --- what providers run
 const providerSubs = useProviderSubscriptions(tenantId);
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "day", "—");
 </script>
 
 <template>
