@@ -1,6 +1,6 @@
 # Settings every process shares. A service adds its own config.default.yaml next to its main.go; an environment variable of the same name overrides both.
 # The product name people see. Renaming the product starts here; internal identifiers follow with tools/rename.
-BRAND_NAME: Quotify
+BRAND_NAME: Payrudder
 QUOTIFY_ENV: local
 QUOTIFY_VERSION: dev
 QUOTIFY_LOG_LEVEL: info

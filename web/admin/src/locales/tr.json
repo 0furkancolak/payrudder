@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Quotify operatör konsolu",
+    "title": "Payrudder operatör konsolu",
     "language": "Dil",
     "demo": "Demo modu: örnek veriler, sahte bir ödeme sağlayıcısı, e-postalar yerel posta yakalayıcıya gider. Buradaki hiçbir şey gerçek değildir.",
     "themeLight": "Açık temaya geç",
@@ -70,7 +70,7 @@
       "pending": "beklemede"
     },
     "ledgerSource": {
-      "command": "Quotify",
+      "command": "Payrudder",
       "webhook": "sağlayıcı bildirimi",
       "reconciliation": "mutabakat",
       "manual": "elle kaydedildi"
@@ -170,7 +170,7 @@
     "payment": {
       "record": "Ödeme kaydet",
       "confirmTransfer": "Banka havalesini onayla",
-      "offlineHint": "Quotify dışında alınan parayı kaydedin (havale, nakit, diğer). Kısmi tutar girilebilir: ödemeler toplamı fatura tutarına ulaşınca fatura ödenmiş olur.",
+      "offlineHint": "Payrudder dışında alınan parayı kaydedin (havale, nakit, diğer). Kısmi tutar girilebilir: ödemeler toplamı fatura tutarına ulaşınca fatura ödenmiş olur.",
       "transferHint": "Banka ekstresine geçeni onaylayın. Kısmi tutar kaydedilir; havaleler toplamı fatura tutarına ulaşınca fatura ödenmiş olur.",
       "method": "Yöntem",
       "amount": "Tutar ({currency})",
@@ -462,7 +462,7 @@
       },
       "providerRun": {
         "title": "{provider} yönetiyor",
-        "hint": "Bu işlemler sağlayıcıda yapılır; sağlayıcının bildirimi gelince Quotify'ın kopyası onu izler. Değişikliği sağlayıcı faturalar ve hemen uygulanır.",
+        "hint": "Bu işlemler sağlayıcıda yapılır; sağlayıcının bildirimi gelince Payrudder'ın kopyası onu izler. Değişikliği sağlayıcı faturalar ve hemen uygulanır.",
         "none": "Orantılama yok: sonraki yenilemeden itibaren faturalanır",
         "changed": "Sağlayıcı değişikliği uyguladı.",
         "atPeriodEnd": "Ödenmiş dönemin sonunda duraklat",
@@ -549,7 +549,7 @@
         "result": "{created} fiyat oluşturuldu, {existing} zaten vardı.",
         "skipped": "{key}: {why}",
         "kind": "Tür",
-        "key": "Quotify adı",
+        "key": "Payrudder adı",
         "empty": "Bu sağlayıcıda henüz bir şey oluşturulmadı."
       },
       "bank": {
@@ -623,7 +623,7 @@
     "pricing": {
       "coupons": {
         "title": "Kuponlar",
-        "hint": "Kupon, Quotify'ın peşin faturaladığı sabit ücretten bir yüzde ya da tutar düşer: bir kez, belirli sayıda dönem ya da abonelik sürdüğü sürece. Sağlayıcının yönettiği abonelik bunun yerine sağlayıcıdaki indirimi kullanır.",
+        "hint": "Kupon, Payrudder'ın peşin faturaladığı sabit ücretten bir yüzde ya da tutar düşer: bir kez, belirli sayıda dönem ya da abonelik sürdüğü sürece. Sağlayıcının yönettiği abonelik bunun yerine sağlayıcıdaki indirimi kullanır.",
         "formLabel": "yeni kupon",
         "code": "Kod",
         "name": "Ad",
@@ -650,7 +650,7 @@
       },
       "tax": {
         "title": "Vergi",
-        "hint": "Quotify bu oranları, kestiği faturalara müşterinin ülkesine göre fiyatın üstüne ekler (ülkesiz oran diğer tüm ülkeleri kapsar). Oranları siz belirler ve onlardan siz sorumlusunuz; sağlayıcının kestiği faturayı sağlayıcı vergilendirir.",
+        "hint": "Payrudder bu oranları, kestiği faturalara müşterinin ülkesine göre fiyatın üstüne ekler (ülkesiz oran diğer tüm ülkeleri kapsar). Oranları siz belirler ve onlardan siz sorumlusunuz; sağlayıcının kestiği faturayı sağlayıcı vergilendirir.",
         "country": "Ülke {n}",
         "anyCountry": "Diğer tüm ülkeler",
         "name": "Ad {n}",
@@ -665,7 +665,7 @@
       },
       "dunning": {
         "title": "Ödeme yeniden denemeleri",
-        "hint": "Bir tahsilat reddedilirse Quotify aşağıdaki her gecikmeden sonra yeniden dener, sonunda faturayı tahsil edilemez sayar. Gecikmeler saat cinsindendir (sandbox hesapta dakika).",
+        "hint": "Bir tahsilat reddedilirse Payrudder aşağıdaki her gecikmeden sonra yeniden dener, sonunda faturayı tahsil edilemez sayar. Gecikmeler saat cinsindendir (sandbox hesapta dakika).",
         "defaults": "Hiç ayarlamadınız: standart gecikmeler gösteriliyor.",
         "retry": "{n}. deneme",
         "delay": "{n}. denemeden önceki saat",
@@ -699,7 +699,7 @@
     },
     "webhooks": {
       "title": "Webhooklar",
-      "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Quotify bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Quotify-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
+      "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Payrudder bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Quotify-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
       "formLabel": "yeni webhook uç noktası",
       "url": "Uç nokta URL'si",
       "description": "Açıklama",
@@ -810,7 +810,7 @@
     },
     "mail": {
       "title": "E-posta",
-      "hint": "Quotify'ın bu kiracının müşterilerine hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
+      "hint": "Payrudder'ın bu kiracının müşterilerine hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
       "categories": {
         "invoice_issued": "Fatura kesildi",
         "payment_receipts": "Ödeme makbuzları",
@@ -821,11 +821,11 @@
       "descriptions": {
         "invoice_issued": "Müşteriye yeni bir faturanın kesildiğini bildirir.",
         "payment_receipts": "Başarılı bir ödemeden sonraki makbuz.",
-        "payment_failed": "Başarısız ödeme, yeniden deneme ve Quotify'ın tahsilattan vazgeçtiği bildirimi.",
+        "payment_failed": "Başarısız ödeme, yeniden deneme ve Payrudder'ın tahsilattan vazgeçtiği bildirimi.",
         "usage_alerts": "Bir müşteri planının kullanım limitini aştı.",
-        "system": "Quotify'ın gönderdiği diğer tüm iletiler."
+        "system": "Payrudder'ın gönderdiği diğer tüm iletiler."
       },
-      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Quotify'ın e-postalarını yönetir."
+      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Payrudder'ın e-postalarını yönetir."
     },
     "credits": {
       "packs": {
@@ -907,7 +907,7 @@
       },
       "settings": {
         "title": "Düşük bakiye uyarısı",
-        "hint": "Bir müşterinin bakiyesi bu sayının altına düştüğünde Quotify credits.low webhook olayını bir kez gönderir. 0 kapatır.",
+        "hint": "Bir müşterinin bakiyesi bu sayının altına düştüğünde Payrudder credits.low webhook olayını bir kez gönderir. 0 kapatır.",
         "formLabel": "Düşük bakiye uyarısı",
         "threshold": "Şunun altında uyar (kredi)",
         "save": "Kaydet",
@@ -945,7 +945,7 @@
         "net": "Net gelir",
         "fees": "Sağlayıcı komisyonu",
         "feesNotRecorded": "Kayıtlı değil",
-        "feesHint": "Ödeme sağlayıcısının komisyonunu Quotify kaydetmez. Ödeme komisyonu kategorisinde gider olarak ekleyin.",
+        "feesHint": "Ödeme sağlayıcısının komisyonunu Payrudder kaydetmez. Ödeme komisyonu kategorisinde gider olarak ekleyin.",
         "expenses": "Giderler",
         "profit": "Kâr"
       },
@@ -1286,6 +1286,20 @@
         "unknown_currency": "Para birimi desteklenmiyor."
       }
     },
+    "coupon": {
+      "not_found": "Bu kod mevcut değil. Kontrol edip tekrar deneyin.",
+      "inactive": "Bu kod artık etkin değil.",
+      "expired": "Bu kodun süresi dolmuş.",
+      "exhausted": "Bu kodun kullanım hakkı tükendi.",
+      "not_applicable": "Bu kod bu alışverişte geçerli değil.",
+      "currency_mismatch": "Bu kod, bu alışverişin para biriminde geçerli değil.",
+      "already_used": "Bu kodu zaten kullandınız.",
+      "first_purchase_only": "Bu kod yalnızca ilk alışveriş için geçerlidir.",
+      "below_minimum": "Alışveriş tutarı bu kodun asgari tutarının altında.",
+      "customer_required": "Bu kod müşterinin bilinmesini gerektirir; misafir ödemesinde kullanılamaz.",
+      "already_applied": "Bu alışverişte zaten bir kupon kullanılıyor. Alışveriş başına yalnızca bir kupon.",
+      "code_taken": "Bu metinle bir promosyon kodu zaten var (kodlarda büyük/küçük harf farkı yoktur)."
+    },
     "plans": {
       "app": {
         "bad_slug": "Uygulama kısaltması yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter olmalı.",
@@ -1296,7 +1310,8 @@
       },
       "subscription": {
         "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın.",
-        "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin."
+        "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin.",
+        "period_overlap": "Bu müşterinin o dönemle çakışan bir aboneliği zaten var."
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
@@ -1306,14 +1321,24 @@
       "customer": {
         "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil."
       },
-      "api_key": {
-        "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
-        "tenant_not_active": "Bu ortam etkin olmadığı için API anahtarı alamaz. Önce canlıya geçiş listesini tamamlayın."
+      "common": {
+        "not_found": "Bulunamadı.",
+        "already_exists": "Zaten var.",
+        "broken_reference": "Bu kayıt var olmayan bir şeye başvuruyor.",
+        "forbidden": "Bunu yapmaya yetkiniz yok."
       },
       "tenant": {
+        "settings_immutable": "Bir hesabın para birimi, saat dilimi ve ortamı değiştirilemez.",
         "bad_status": "Durum active veya suspended olmalıdır.",
         "bad_transition": "Bu durum değişikliği bu ortam için mümkün değil.",
         "reason_required": "Bir ortamı listesi tamamlanmadan etkinleştirmek için gerekçe gerekir."
+      },
+      "request": {
+        "invalid": "{field} geçerli değil: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
+        "tenant_not_active": "Bu ortam etkin olmadığı için API anahtarı alamaz. Önce canlıya geçiş listesini tamamlayın."
       }
     },
     "common": {
@@ -1336,7 +1361,7 @@
         "invoice_closed": "Fatura zaten ödenmiş veya iptal edilmiş.",
         "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
         "bad_currency": "Para birimi faturanınkinden farklı.",
-        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin, fazlasını Quotify dışında halledin.",
+        "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin, fazlasını Payrudder dışında halledin.",
         "reference_reused": "Bu banka referansı farklı bir tutarla zaten kaydedilmiş.",
         "bad_reference": "Banka referansı eksik veya geçersiz.",
         "bad_note": "Not çok uzun (en fazla 500 karakter).",
@@ -1449,6 +1474,10 @@
       "dashboard": {
         "bad_period": "Bu dönem geçerli değil. 7, 30 ya da 90 gün, bu yıl veya ilki sonuncudan sonra olmayan iki gün seçin.",
         "range_too_long": "Bir dönem en fazla iki yıl olabilir."
+      },
+      "request": {
+        "invalid": "{field} geçerli değil: {detail}",
+        "too_large": "İstek çok büyük."
       },
       "auth": {
         "scope_denied": "Bu API anahtarının kapsamı bu isteğe izin vermiyor. Daha geniş kapsamlı bir anahtar kullanın.",
@@ -1644,7 +1673,7 @@
     },
     "keys": {
       "title": "API anahtarları",
-      "intro": "Sunucunuz Quotify ile bir anahtarla konuşur. Sandbox anahtarları yalnızca deneme verilerine dokunur.",
+      "intro": "Sunucunuz Payrudder ile bir anahtarla konuşur. Sandbox anahtarları yalnızca deneme verilerine dokunur.",
       "newSandbox": "Sandbox anahtarı",
       "newLive": "Canlı anahtar",
       "created": "Oluşturuldu: {date}",
@@ -1764,7 +1793,7 @@
     },
     "invite": {
       "title": "Davet edildiniz",
-      "intro": "Quotify'da {account} hesabına {role} olarak katılın.",
+      "intro": "Payrudder'da {account} hesabına {role} olarak katılın.",
       "checking": "Davet denetleniyor…",
       "noToken": "Bu sayfa, davet e-postanızdaki bağlantıyla açılmalıdır. Bağlantıyı yeniden açın.",
       "invalid": "Bu davet artık geçerli değil: kullanılmış, iptal edilmiş, değiştirilmiş ya da süresi dolmuş. Sizi davet eden kişiden yeniden göndermesini isteyin.",
@@ -1821,7 +1850,7 @@
       "intro": "Bu kuruluşa kimlerin ait olduğu, rolleri ve henüz açık olan davetler."
     },
     "apiKeysPage": {
-      "intro": "Sunucunuzun bu uygulama için Quotify'ı çağırırken kullandığı anahtarlar. Bir anahtar tek bir ortama aittir; gizli kısmı bir kez gösterilir."
+      "intro": "Sunucunuzun bu uygulama için Payrudder'ı çağırırken kullandığı anahtarlar. Bir anahtar tek bir ortama aittir; gizli kısmı bir kez gösterilir."
     },
     "appSettings": {
       "intro": "Bu uygulamanın oluşturulurken seçilenleri. Para birimi ve saat dilimi her faturanın nasıl hesaplanacağını belirler; bu yüzden uygulama oluşturulduktan sonra değişmez.",

@@ -104,7 +104,9 @@ func NewMockPSP(baseURL string, timeout time.Duration) *MockPSP {
 // Name implements PaymentProvider.
 func (m *MockPSP) Name() string { return "mockpsp" }
 
-func (m *MockPSP) do(ctx context.Context, method, path, key string, in, out any) (int, error) {
+// do sends a request. A 404 is an answer only when the caller says so (allowNotFound, for Status: "no charge under this key"); for a charge or a refund it is
+// a wrong URL or path, never a payment that went through.
+func (m *MockPSP) do(ctx context.Context, method, path, key string, in, out any, allowNotFound bool) (int, error) {
 	var body io.Reader
 	if in != nil {
 		b, err := json.Marshal(in)
@@ -143,7 +145,7 @@ func (m *MockPSP) do(ctx context.Context, method, path, key string, in, out any)
 	if resp.StatusCode >= 500 {
 		return resp.StatusCode, &TransientError{Err: fmt.Errorf("psp answered %d", resp.StatusCode)}
 	}
-	if resp.StatusCode >= 400 && resp.StatusCode != http.StatusNotFound {
+	if resp.StatusCode >= 400 && (!allowNotFound || resp.StatusCode != http.StatusNotFound) {
 		return resp.StatusCode, fmt.Errorf("psp rejected the request: %d %s", resp.StatusCode, raw)
 	}
 	if out != nil && len(raw) > 0 {
@@ -160,7 +162,7 @@ func (m *MockPSP) Charge(ctx context.Context, r ChargeRequest) (ChargeResult, er
 		return ChargeResult{}, errors.New("payments: idempotency key is mandatory")
 	}
 	var out ChargeResult
-	if _, err := m.do(ctx, http.MethodPost, "/v1/charges", r.IdempotencyKey, r, &out); err != nil {
+	if _, err := m.do(ctx, http.MethodPost, "/v1/charges", r.IdempotencyKey, r, &out, false); err != nil {
 		return ChargeResult{}, err
 	}
 	return out, nil
@@ -169,7 +171,7 @@ func (m *MockPSP) Charge(ctx context.Context, r ChargeRequest) (ChargeResult, er
 // Refund implements PaymentProvider.
 func (m *MockPSP) Refund(ctx context.Context, r RefundRequest) (RefundResult, error) {
 	var out RefundResult
-	if _, err := m.do(ctx, http.MethodPost, "/v1/refunds", r.IdempotencyKey, r, &out); err != nil {
+	if _, err := m.do(ctx, http.MethodPost, "/v1/refunds", r.IdempotencyKey, r, &out, false); err != nil {
 		return RefundResult{}, err
 	}
 	return out, nil
@@ -183,7 +185,7 @@ func (m *MockPSP) Status(ctx context.Context, key string) (StatusResult, error) 
 		ID          string `json:"id"`
 		DeclineCode string `json:"decline_code"`
 	}
-	code, err := m.do(ctx, http.MethodGet, "/v1/charges?idempotency_key="+url.QueryEscape(key), "", nil, &out)
+	code, err := m.do(ctx, http.MethodGet, "/v1/charges?idempotency_key="+url.QueryEscape(key), "", nil, &out, true)
 	if err != nil {
 		return StatusResult{}, err
 	}

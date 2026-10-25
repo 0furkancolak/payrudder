@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -29,6 +30,8 @@ type Monkey struct {
 
 	wg     sync.WaitGroup
 	cancel context.CancelFunc
+	// boost shortens the pause between faults; Meet sets it when the workload ended before the required amount of chaos was injected.
+	boost atomic.Bool
 }
 
 // MonkeyReport is what the monkey actually did.
@@ -88,6 +91,29 @@ func StartMonkey(parent context.Context, seed uint64, total time.Duration) *Monk
 	return m
 }
 
+// Meet keeps the faults coming, at a faster pace, until at least minKills containers were killed and minFaults network
+// faults injected, or the budget is spent. The workload can finish sooner than the schedule assumes (a fast runner), and the
+// chaos requirement must not depend on how fast the stack is: the backlog is still being processed, so the faults still land
+// on a working system. It returns whether both minimums were reached.
+func (m *Monkey) Meet(minKills, minFaults int, budget time.Duration) bool {
+	met := func() bool {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		return m.Report.Kills >= minKills && m.Report.Faults >= minFaults
+	}
+	if met() {
+		return true
+	}
+	m.boost.Store(true)
+	defer m.boost.Store(false)
+	for deadline := time.Now().Add(budget); time.Now().Before(deadline); time.Sleep(time.Second) {
+		if met() {
+			return true
+		}
+	}
+	return met()
+}
+
 // Stop ends the faults, heals the network and brings back whatever is still down.
 func (m *Monkey) Stop() MonkeyReport {
 	m.cancel()
@@ -134,7 +160,14 @@ func run(name string, args ...string) (string, error) {
 }
 
 func (m *Monkey) killLoop(ctx context.Context) {
-	for sleepCtx(ctx, time.Duration(10+m.pick(21))*time.Second) {
+	for {
+		pause := time.Duration(10+m.pick(21)) * time.Second
+		if m.boost.Load() {
+			pause = time.Duration(4+m.pick(5)) * time.Second
+		}
+		if !sleepCtx(ctx, pause) {
+			return
+		}
 		svc := killTargets[m.pick(len(killTargets))]
 		cs := m.p.instances(svc)
 		if len(cs) == 0 {
@@ -154,7 +187,14 @@ func (m *Monkey) killLoop(ctx context.Context) {
 }
 
 func (m *Monkey) faultLoop(ctx context.Context) {
-	for sleepCtx(ctx, 60*time.Second) {
+	for {
+		pause := 60 * time.Second
+		if m.boost.Load() {
+			pause = 10 * time.Second
+		}
+		if !sleepCtx(ctx, pause) {
+			return
+		}
 		kind, undo, err := m.p.fault(m.pick)
 		if err != nil {
 			m.fail(err)
@@ -272,7 +312,16 @@ func (c *composePlatform) fault(pick func(int) int) (string, func(), error) {
 		// reset_peer with timeout 0 resets each connection as soon as data flows.
 		spec["type"], spec["attributes"] = "reset_peer", map[string]any{"timeout": 0}
 	}
-	if err := toxiCall(c.toxi, "POST", "/proxies/"+f[0]+"/toxics", spec); err != nil {
+	// Toxiproxy's API sits behind a port forward: a dropped connection (EOF) is retried. A 409 on a retry means the first attempt did land.
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		if err = toxiCall(c.toxi, "POST", "/proxies/"+f[0]+"/toxics", spec); err == nil || (attempt > 0 && strings.HasSuffix(err.Error(), ": 409")) {
+			err = nil
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if err != nil {
 		return "", nil, err
 	}
 	return f[0] + "/" + f[1], func() { _ = toxiCall(c.toxi, "DELETE", "/proxies/"+f[0]+"/toxics/chaos", nil) }, nil

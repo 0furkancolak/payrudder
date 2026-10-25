@@ -1,8 +1,9 @@
 import { CURRENCIES } from "./currencies";
+import { minorDigits } from "./money";
 
 /**
  * What the pickers show about a currency and a time zone, worked out with Intl so there is no table to keep: the currency's name in the person's language,
- * its symbol, its real number of fraction digits; the zone's current offset from UTC.
+ * its symbol, its number of fraction digits (from the backend table); the zone's current offset from UTC.
  */
 
 export interface CurrencyInfo {
@@ -35,7 +36,6 @@ export function currencyList(locale: string): CurrencyInfo[] {
 export function currencyInfo(code: string, locale: string, names?: Intl.DisplayNames | null): CurrencyInfo {
   let name = code;
   let symbol = code;
-  let digits = 2;
   try {
     name = (names === undefined ? new Intl.DisplayNames([locale], { type: "currency" }) : names)?.of(code) ?? code;
   } catch {
@@ -44,11 +44,10 @@ export function currencyInfo(code: string, locale: string, names?: Intl.DisplayN
   try {
     const f = new Intl.NumberFormat(locale, { style: "currency", currency: code, currencyDisplay: "narrowSymbol" });
     symbol = f.formatToParts(0).find((p) => p.type === "currency")?.value ?? code;
-    digits = f.resolvedOptions().maximumFractionDigits ?? 2;
   } catch {
     // keep the defaults
   }
-  return { code, name, symbol, digits };
+  return { code, name, symbol, digits: minorDigits(code) };
 }
 
 export interface ZoneInfo {

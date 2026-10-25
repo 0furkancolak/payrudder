@@ -202,7 +202,7 @@ func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments
 		"items": []map[string]any{{
 			"quantity": 1,
 			"price": map[string]any{
-				"description": "Quotify invoice " + r.InvoiceID,
+				"description": "Payrudder invoice " + r.InvoiceID,
 				"name":        name,
 				"product_id":  c.s.UsageProductID,
 				"tax_mode":    c.s.TaxMode,
@@ -232,7 +232,7 @@ func (c *Client) Refund(ctx context.Context, r payments.RefundRequest) (payments
 		} `json:"data"`
 	}
 	err := c.do(ctx, http.MethodPost, "/adjustments", map[string]any{
-		"action": "refund", "type": "full", "transaction_id": r.ChargeID, "reason": "Quotify refund " + r.IdempotencyKey,
+		"action": "refund", "type": "full", "transaction_id": r.ChargeID, "reason": "Payrudder refund " + r.IdempotencyKey,
 	}, &out)
 	if err != nil {
 		return payments.RefundResult{}, err

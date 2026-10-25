@@ -190,6 +190,22 @@ func (q *Queries) LockInvoiceForPayment(ctx context.Context, arg LockInvoiceForP
 	return i, err
 }
 
+const lockSagaStateByInvoice = `-- name: LockSagaStateByInvoice :one
+SELECT state FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2 FOR UPDATE
+`
+
+type LockSagaStateByInvoiceParams struct {
+	TenantID  uuid.UUID
+	InvoiceID uuid.UUID
+}
+
+func (q *Queries) LockSagaStateByInvoice(ctx context.Context, arg LockSagaStateByInvoiceParams) (string, error) {
+	row := q.db.QueryRow(ctx, lockSagaStateByInvoice, arg.TenantID, arg.InvoiceID)
+	var state string
+	err := row.Scan(&state)
+	return state, err
+}
+
 const sumInvoicePayments = `-- name: SumInvoicePayments :one
 SELECT COALESCE(sum(amount_minor), 0)::bigint AS paid FROM invoice_payments WHERE tenant_id = $1 AND invoice_id = $2
 `

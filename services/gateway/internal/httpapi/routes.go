@@ -17,6 +17,7 @@ func (s *Server) routes() []Route {
 	return slices.Concat(
 		s.ingestAndCatalogRoutes(),
 		s.subscriptionRoutes(),
+		s.promotionRoutes(),
 		s.webhookAndInvoiceLinkRoutes(),
 		s.paymentLinkRoutes(),
 		s.hostedPublicRoutes(),

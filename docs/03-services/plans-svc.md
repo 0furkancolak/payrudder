@@ -170,6 +170,18 @@ instead of applied if the subscription ended, is paused, past due, or ending by 
 `GetTaxRates`/`SetTaxRates` hold the tenant's rates by customer country (`tax_rates`; empty country = every other country), replaced as a whole. Billing reads them when it raises an invoice.
 
 
+## As built: promotion codes and the redemption ledger (Phase 46)
+
+A **coupon** is the definition of a discount (`percent_bps`, `amount_minor` + currency, or `bonus_percent_bps` extra credits on a credit purchase; `applies_to` says where it works: subscription fee, credit purchase, payment link or invoice). A **promotion code** is what a customer types: many codes point to one coupon, each with its own `max_redemptions`, `expire_time`, `first_purchase_only`, `one_per_customer`, a minimum amount, `allowed_plans` / `allowed_packs` / `allowed_currencies` and `restore_on_reversal`. Codes are compared in any letter case (`upper(code)` is unique per tenant). A new coupon also gets a code with its own text unless `without_default_code`; the migration (`00030_promotions.sql`) gave every existing coupon one, and is reversible.
+
+`coupon_redemptions` is the ledger: one row per use, with the coupon, the code, the customer, the target (`subscription`, `credit_purchase`, `payment`; the id is the subscription or the invoice), the discount or bonus credits, the currency, `reversed_at`. `coupons.redeemed` and `promotion_codes.redeemed` are the count of it. Claiming is two conditional `UPDATE`s (`ClaimPromotionCode`, `ClaimCoupon`: `... WHERE redeemed < max_redemptions`) inside the checkout's transaction, so 50 checkouts racing for the last 7 places give exactly 7 (tested); the code's row lock also serialises the one-per-customer check. A unique index on `(target_kind, target_id)` of live rows makes asking twice for one purchase one redemption. A void or full refund calls `ReversePromotion`: the row is marked reversed, and the place goes back to the count only for a code with `restore_on_reversal` (default no, as before). `RemoveCoupon` reverses a subscription's redemption the same way, so the subscription can take another coupon.
+
+`RedeemPromotion` is what a checkout calls (billing-svc, or a tenant's own page through `POST /v1/promotions/quote` with `preview`): it checks the rules (`coupons/model`, pure and table-tested), quotes the discount or bonus and, unless `preview`, claims it. A discount never takes the total below zero; an amount coupon applies only in its currency (`coupon.currency_mismatch`); a percentage rounds half to even. One coupon per subscription or purchase. Refusals carry `coupon.*` keys: `not_found`, `inactive`, `expired`, `exhausted`, `not_applicable`, `currency_mismatch`, `already_used`, `first_purchase_only`, `below_minimum`, `customer_required`, `already_applied`, `code_taken`.
+
+**Affiliate hook (phase 47).** `GrantCustomerCoupon` (`customer_coupons`) puts a coupon in wait for a customer, once per `(customer, source, source_ref)`; the customer's next eligible checkout that types no code uses it. A referral programme calls it with `source = "affiliate"`; nothing in this schema needs to change for that. `coupons.id` is the stable identity a programme stores.
+
+Bulk generation (`CreatePromotionCodes`): the codes named, or `count` (1 to 1000) random ones, `prefix` + 8 characters from an alphabet without `0 O 1 I L`, all with the template's rules.
+
 ## As built: webhooks and early-cancel credit (Phase 23)
 
 `WebhookService` (same server, `webhooks.proto`) owns the tenant's webhook endpoints, the events and their deliveries (tables `webhook_endpoints`, `webhook_events`, `webhook_deliveries`, RLS like the rest). Subscription RPCs write their event in the same transaction as the change (`Server.emit`);

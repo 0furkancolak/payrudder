@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Consola de operador de Quotify",
+    "title": "Consola de operador de Payrudder",
     "language": "Idioma",
     "demo": "Modo demo: datos de ejemplo, un proveedor de pago simulado y el correo va al receptor local. Nada de esto es real.",
     "themeLight": "Cambiar al tema claro",
@@ -70,7 +70,7 @@
       "pending": "pendiente"
     },
     "ledgerSource": {
-      "command": "Quotify",
+      "command": "Payrudder",
       "webhook": "notificación del proveedor",
       "reconciliation": "conciliación",
       "manual": "registrado a mano"
@@ -170,7 +170,7 @@
     "payment": {
       "record": "Registrar pago",
       "confirmTransfer": "Confirmar transferencia bancaria",
-      "offlineHint": "Registre el dinero recibido fuera de Quotify (transferencia, efectivo, otro). Se admiten importes parciales: la factura se paga cuando los pagos suman el total.",
+      "offlineHint": "Registre el dinero recibido fuera de Payrudder (transferencia, efectivo, otro). Se admiten importes parciales: la factura se paga cuando los pagos suman el total.",
       "transferHint": "Confirme lo que llegó al extracto bancario. Un importe parcial se registra y la factura se paga cuando las transferencias suman el total.",
       "method": "Método",
       "amount": "Importe ({currency})",
@@ -462,7 +462,7 @@
       },
       "providerRun": {
         "title": "Gestionado por {provider}",
-        "hint": "Estas acciones se hacen en el proveedor; la copia de Quotify lo sigue cuando llega su notificación. El proveedor factura el cambio y se aplica de inmediato.",
+        "hint": "Estas acciones se hacen en el proveedor; la copia de Payrudder lo sigue cuando llega su notificación. El proveedor factura el cambio y se aplica de inmediato.",
         "none": "Sin prorrateo: se factura desde la próxima renovación",
         "changed": "El proveedor aplicó el cambio.",
         "atPeriodEnd": "Pausar al final del periodo pagado",
@@ -549,7 +549,7 @@
         "result": "{created} precio(s) creado(s), {existing} ya estaban.",
         "skipped": "{key}: {why}",
         "kind": "Tipo",
-        "key": "Nombre en Quotify",
+        "key": "Nombre en Payrudder",
         "empty": "Todavía no se ha creado nada en este proveedor."
       },
       "bank": {
@@ -623,7 +623,7 @@
     "pricing": {
       "coupons": {
         "title": "Cupones",
-        "hint": "Un cupón descuenta un porcentaje o un importe de la cuota fija que Quotify factura por adelantado: una vez, durante unos periodos o mientras dure la suscripción. Una suscripción gestionada por un proveedor usa en su lugar un descuento del proveedor.",
+        "hint": "Un cupón descuenta un porcentaje o un importe de la cuota fija que Payrudder factura por adelantado: una vez, durante unos periodos o mientras dure la suscripción. Una suscripción gestionada por un proveedor usa en su lugar un descuento del proveedor.",
         "formLabel": "nuevo cupón",
         "code": "Código",
         "name": "Nombre",
@@ -650,7 +650,7 @@
       },
       "tax": {
         "title": "Impuestos",
-        "hint": "Quotify suma estas tasas al precio en las facturas que emite, según el país del cliente (la tasa sin país cubre los demás). Usted fija las tasas y responde de ellas; una factura emitida por un proveedor la grava el proveedor.",
+        "hint": "Payrudder suma estas tasas al precio en las facturas que emite, según el país del cliente (la tasa sin país cubre los demás). Usted fija las tasas y responde de ellas; una factura emitida por un proveedor la grava el proveedor.",
         "country": "País {n}",
         "anyCountry": "Todos los demás países",
         "name": "Nombre {n}",
@@ -665,7 +665,7 @@
       },
       "dunning": {
         "title": "Reintentos de pago",
-        "hint": "Cuando se rechaza un cobro, Quotify lo reintenta tras cada espera de abajo y después da la factura por incobrable. Las esperas son en horas (en minutos en una cuenta sandbox).",
+        "hint": "Cuando se rechaza un cobro, Payrudder lo reintenta tras cada espera de abajo y después da la factura por incobrable. Las esperas son en horas (en minutos en una cuenta sandbox).",
         "defaults": "No has configurado nada: se muestran las esperas estándar.",
         "retry": "Reintento {n}",
         "delay": "Horas antes del reintento {n}",
@@ -699,7 +699,7 @@
     },
     "webhooks": {
       "title": "Webhooks",
-      "hint": "Quotify envía un POST JSON firmado a estos endpoints HTTPS cuando ocurre algo en la cuenta: se paga una factura, se emite una nota de crédito, cambia una suscripción. Verifica la cabecera Quotify-Signature con el secreto del endpoint; las entregas fallidas se reintentan durante día y medio aproximadamente.",
+      "hint": "Payrudder envía un POST JSON firmado a estos endpoints HTTPS cuando ocurre algo en la cuenta: se paga una factura, se emite una nota de crédito, cambia una suscripción. Verifica la cabecera Quotify-Signature con el secreto del endpoint; las entregas fallidas se reintentan durante día y medio aproximadamente.",
       "formLabel": "nuevo endpoint de webhook",
       "url": "URL del endpoint",
       "description": "Descripción",
@@ -810,7 +810,7 @@
     },
     "mail": {
       "title": "Correo electrónico",
-      "hint": "Elija qué tipos de correo envía Quotify a los clientes de este inquilino. Un tipo desactivado se descarta, no se pone en cola: al activarlo de nuevo no se envía lo omitido.",
+      "hint": "Elija qué tipos de correo envía Payrudder a los clientes de este inquilino. Un tipo desactivado se descarta, no se pone en cola: al activarlo de nuevo no se envía lo omitido.",
       "categories": {
         "invoice_issued": "Factura emitida",
         "payment_receipts": "Recibos de pago",
@@ -821,11 +821,11 @@
       "descriptions": {
         "invoice_issued": "Avisa al cliente de que se emitió una factura nueva.",
         "payment_receipts": "El recibo tras un pago correcto.",
-        "payment_failed": "Un pago fallido, un reintento y el aviso de que Quotify dejó de cobrar.",
+        "payment_failed": "Un pago fallido, un reintento y el aviso de que Payrudder dejó de cobrar.",
         "usage_alerts": "Un cliente superó un límite de uso de su plan.",
-        "system": "Cualquier otro mensaje que envía Quotify."
+        "system": "Cualquier otro mensaje que envía Payrudder."
       },
-      "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Quotify."
+      "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Payrudder."
     },
     "credits": {
       "packs": {
@@ -907,7 +907,7 @@
       },
       "settings": {
         "title": "Alerta de saldo bajo",
-        "hint": "Cuando el saldo de un cliente baja de este número, Quotify envía una vez el evento webhook credits.low. 0 lo desactiva.",
+        "hint": "Cuando el saldo de un cliente baja de este número, Payrudder envía una vez el evento webhook credits.low. 0 lo desactiva.",
         "formLabel": "Alerta de saldo bajo",
         "threshold": "Avisar por debajo de (créditos)",
         "save": "Guardar",
@@ -945,7 +945,7 @@
         "net": "Ingresos netos",
         "fees": "Comisiones del proveedor",
         "feesNotRecorded": "No registradas",
-        "feesHint": "Quotify no registra la comisión del proveedor de pagos. Añádala como gasto en la categoría Comisiones de pago.",
+        "feesHint": "Payrudder no registra la comisión del proveedor de pagos. Añádala como gasto en la categoría Comisiones de pago.",
         "expenses": "Gastos",
         "profit": "Beneficio"
       },
@@ -1286,6 +1286,20 @@
         "unknown_currency": "La moneda no es compatible."
       }
     },
+    "coupon": {
+      "not_found": "Este código no existe. Compruébelo e inténtelo de nuevo.",
+      "inactive": "Este código ya no está activo.",
+      "expired": "Este código ha caducado.",
+      "exhausted": "Este código se ha agotado.",
+      "not_applicable": "Este código no es válido para esta compra.",
+      "currency_mismatch": "Este código no es válido en la moneda de esta compra.",
+      "already_used": "Ya ha utilizado este código.",
+      "first_purchase_only": "Este código es solo para una primera compra.",
+      "below_minimum": "El importe de la compra es inferior al mínimo de este código.",
+      "customer_required": "Este código necesita un cliente conocido, por lo que no sirve en un pago de invitado.",
+      "already_applied": "Esta compra ya usa un cupón. Solo se permite un cupón por compra.",
+      "code_taken": "Ya existe un código promocional con este texto (no se distingue entre mayúsculas y minúsculas)."
+    },
     "plans": {
       "app": {
         "bad_slug": "El identificador de la app solo puede tener minúsculas, dígitos y guiones sencillos, con un máximo de 60 caracteres.",
@@ -1296,7 +1310,8 @@
       },
       "subscription": {
         "coupon_blocks_credit": "Esta suscripción tiene un cupón. Abone la parte no utilizada con una nota de abono sobre la factura de la cuota.",
-        "provider_currency": "Este proveedor de pagos no puede cobrar en esta moneda. Elija otro proveedor u otra moneda."
+        "provider_currency": "Este proveedor de pagos no puede cobrar en esta moneda. Elija otro proveedor u otra moneda.",
+        "period_overlap": "Este cliente ya tiene una suscripción que se solapa con ese período."
       },
       "webhook": {
         "not_configured": "Los webhooks no están configurados en este despliegue (falta la clave de secretos).",
@@ -1306,14 +1321,24 @@
       "customer": {
         "tax_invalid": "El identificador fiscal o la oficina fiscal del cliente no es válido."
       },
-      "api_key": {
-        "bad_scope": "El alcance debe ser full, ingest o read.",
-        "tenant_not_active": "Este entorno no está activo y por eso no puede tener claves de API. Completa primero la lista de salida a producción."
+      "common": {
+        "not_found": "No se encontró.",
+        "already_exists": "Ya existe.",
+        "broken_reference": "Esto hace referencia a algo que no existe.",
+        "forbidden": "No tienes permiso para hacer esto."
       },
       "tenant": {
+        "settings_immutable": "La moneda, la zona horaria y el entorno de una cuenta no se pueden cambiar.",
         "bad_status": "El estado debe ser active o suspended.",
         "bad_transition": "Este cambio de estado no es posible para este entorno.",
         "reason_required": "Activar un entorno sin completar su lista requiere un motivo."
+      },
+      "request": {
+        "invalid": "{field} no es válido: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "El alcance debe ser full, ingest o read.",
+        "tenant_not_active": "Este entorno no está activo y por eso no puede tener claves de API. Completa primero la lista de salida a producción."
       }
     },
     "common": {
@@ -1336,7 +1361,7 @@
         "invoice_closed": "La factura ya está pagada o anulada.",
         "bad_amount": "El importe debe ser un número entero de unidades menores mayor que cero.",
         "bad_currency": "La moneda difiere de la de la factura.",
-        "overpayment": "Es más de lo pendiente. Registre solo el importe pendiente y resuelva el resto fuera de Quotify.",
+        "overpayment": "Es más de lo pendiente. Registre solo el importe pendiente y resuelva el resto fuera de Payrudder.",
         "reference_reused": "Esta referencia bancaria ya se registró con otro importe.",
         "bad_reference": "Falta la referencia bancaria o no es válida.",
         "bad_note": "La nota es demasiado larga (500 caracteres como máximo).",
@@ -1449,6 +1474,10 @@
       "dashboard": {
         "bad_period": "Ese periodo no es válido. Elija 7, 30 o 90 días, este año, o dos días con el primero no posterior al último.",
         "range_too_long": "Un periodo dura como máximo dos años."
+      },
+      "request": {
+        "invalid": "{field} no es válido: {detail}",
+        "too_large": "La solicitud es demasiado grande."
       },
       "auth": {
         "scope_denied": "El alcance de esta clave de API no permite esta solicitud. Usa una clave con un alcance mayor.",
@@ -1644,7 +1673,7 @@
     },
     "keys": {
       "title": "Claves de API",
-      "intro": "Su servidor usa una clave para hablar con Quotify. Las claves de sandbox solo tocan datos de prueba.",
+      "intro": "Su servidor usa una clave para hablar con Payrudder. Las claves de sandbox solo tocan datos de prueba.",
       "newSandbox": "Clave de sandbox",
       "newLive": "Clave de producción",
       "created": "Creada el {date}",
@@ -1764,7 +1793,7 @@
     },
     "invite": {
       "title": "Estás invitado",
-      "intro": "Únete a {account} en Quotify como {role}.",
+      "intro": "Únete a {account} en Payrudder como {role}.",
       "checking": "Comprobando la invitación…",
       "noToken": "Esta página necesita el enlace del correo de invitación. Ábrelo de nuevo.",
       "invalid": "Esta invitación ya no es válida: se usó, se canceló, se reemplazó o ha caducado. Pide a quien te invitó que la envíe de nuevo.",
@@ -1821,7 +1850,7 @@
       "intro": "Quién pertenece a esta organización, con qué roles, y las invitaciones que siguen abiertas."
     },
     "apiKeysPage": {
-      "intro": "Las claves que su servidor usa para llamar a Quotify en esta aplicación. Una clave pertenece a un entorno; su secreto se muestra una sola vez."
+      "intro": "Las claves que su servidor usa para llamar a Payrudder en esta aplicación. Una clave pertenece a un entorno; su secreto se muestra una sola vez."
     },
     "appSettings": {
       "intro": "Con qué se creó esta aplicación. La moneda y la zona horaria deciden cómo se calcula cada factura, por eso quedan fijas una vez creada la aplicación.",

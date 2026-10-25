@@ -17,7 +17,7 @@ import (
 func demo(args []string) error {
 	fs := flag.NewFlagSet("demo", flag.ContinueOnError)
 	gateway := fs.String("gateway", envOr("QUOTIFY_GATEWAY_URL", "http://localhost:42800"), "gateway base URL")
-	token := fs.String("operator-token", os.Getenv("QUOTIFY_OPERATOR_TOKEN"), "operator token (QUOTIFY_OPERATOR_TOKEN)")
+	token := fs.String("operator-token", getenv("QUOTIFY_OPERATOR_TOKEN"), "operator token (QUOTIFY_OPERATOR_TOKEN)")
 	mailpit := fs.String("mailpit", envOr("MAILPIT_URL", "http://localhost:42825"), "Mailpit URL")
 	events := fs.Int("events", 600, "usage events to send")
 	if err := fs.Parse(args); err != nil {

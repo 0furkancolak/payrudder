@@ -93,7 +93,7 @@ func (r *relay) Send(_ context.Context, m mailx.Message) (string, error) {
 
 func TestSMTPSendsInTheBackground(t *testing.T) {
 	r := &relay{}
-	s := NewSMTP(r, "Quotify <no-reply@example.com>", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s := NewSMTP(r, "Payrudder <no-reply@example.com>", slog.New(slog.NewTextHandler(io.Discard, nil)))
 	s.Send(context.Background(), Mail{Kind: KindReset, To: "ada@example.com", Locale: "de", Link: "https://x.example/r"})
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
@@ -107,7 +107,7 @@ func TestSMTPSendsInTheBackground(t *testing.T) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if len(r.sent) != 1 || r.sent[0].To != "ada@example.com" || r.sent[0].From != "Quotify <no-reply@example.com>" || !strings.Contains(r.sent[0].Text, "https://x.example/r") {
+	if len(r.sent) != 1 || r.sent[0].To != "ada@example.com" || r.sent[0].From != "Payrudder <no-reply@example.com>" || !strings.Contains(r.sent[0].Text, "https://x.example/r") {
 		t.Fatalf("sent: %+v", r.sent)
 	}
 }

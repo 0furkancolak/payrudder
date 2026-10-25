@@ -17,7 +17,7 @@ function row(it: NavItem): string {
   return cn(
     "group relative flex items-center gap-3 rounded-2xl text-sm font-medium transition-colors min-h-11 md:min-h-9",
     props.collapsed ? "justify-center px-0" : "px-3.5",
-    active ? "bg-brand-soft text-brand-strong" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+    active ? "bg-rail-accent text-rail-accent-foreground" : "text-rail-foreground hover:bg-rail-accent hover:text-rail-accent-foreground",
   );
 }
 </script>
@@ -25,7 +25,7 @@ function row(it: NavItem): string {
 <template>
   <nav :aria-label="label" class="flex flex-col gap-4" data-testid="sidebar-nav">
     <section v-for="s in sections" :key="s.key" :aria-labelledby="`nav-${s.key}`">
-      <h2 :id="`nav-${s.key}`" :class="collapsed ? 'sr-only' : 'text-muted-foreground mb-1.5 px-3.5 text-[0.7rem] font-semibold tracking-wider uppercase'">{{ t(`shell.sections.${s.key}`) }}</h2>
+      <h2 :id="`nav-${s.key}`" :class="collapsed ? 'sr-only' : 'text-rail-muted mb-1.5 px-3.5 text-[0.7rem] font-semibold tracking-wider uppercase'">{{ t(`shell.sections.${s.key}`) }}</h2>
       <ul class="flex flex-col gap-0.5">
         <li v-for="it in s.items" :key="it.key">
           <Link
@@ -37,7 +37,7 @@ function row(it: NavItem): string {
             :data-nav="it.key"
             @click="emit('navigate')"
           >
-            <span v-if="current?.key === it.key && current?.to === it.to" class="bg-brand-strong absolute inset-y-2 start-0 w-1 rounded-full" aria-hidden="true" />
+            <span v-if="current?.key === it.key && current?.to === it.to" class="bg-rail-primary absolute inset-y-2 start-0 w-1 rounded-full" aria-hidden="true" />
             <component :is="it.icon" class="size-[1.15rem] shrink-0" aria-hidden="true" />
             <span :class="collapsed ? 'sr-only' : 'truncate'">{{ t(`shell.items.${it.label}`) }}</span>
           </Link>

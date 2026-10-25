@@ -103,3 +103,9 @@ INSERT INTO credit_applications (tenant_id, credit_id, invoice_id, amount_minor)
 
 -- name: MarkCreditApplied :exec
 UPDATE credit_balances SET applied_invoice_id = @applied_invoice_id::uuid WHERE tenant_id = @tenant_id AND id = @id;
+
+-- name: DeleteCreditApplicationsOfInvoice :exec
+DELETE FROM credit_applications WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id;
+
+-- name: ClearCreditsAppliedToInvoice :exec
+UPDATE credit_balances SET applied_invoice_id = NULL WHERE tenant_id = @tenant_id AND applied_invoice_id = @invoice_id::uuid;

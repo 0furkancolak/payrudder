@@ -194,7 +194,7 @@ func TestProviderAPIThroughTheWorker(t *testing.T) {
 		}
 	})
 
-	t.Run("a webhook for a price Quotify created names its plan version and interval", func(t *testing.T) {
+	t.Run("a webhook for a price Payrudder created names its plan version and interval", func(t *testing.T) {
 		yearRef := ""
 		_, out := do("GET", "/catalogue", "")
 		for _, o := range out["objects"].([]any) {
@@ -212,7 +212,7 @@ func TestProviderAPIThroughTheWorker(t *testing.T) {
 		}
 	})
 
-	t.Run("a Paddle event for a price Quotify created makes plans-svc follow the plan and interval", func(t *testing.T) {
+	t.Run("a Paddle event for a price Payrudder created makes plans-svc follow the plan and interval", func(t *testing.T) {
 		_, out := do("GET", "/catalogue", "")
 		yearRef := ""
 		for _, o := range out["objects"].([]any) {

@@ -29,6 +29,70 @@ func (q *Queries) ActivateGeneration(ctx context.Context, arg ActivateGeneration
 	return result.RowsAffected(), nil
 }
 
+const clearGenerationLateUsageOutside = `-- name: ClearGenerationLateUsageOutside :exec
+DELETE FROM late_usage WHERE tenant_id = $1 AND generation = $2 AND (origin_period_id < $3::text OR origin_period_id > $4::text)
+`
+
+type ClearGenerationLateUsageOutsideParams struct {
+	TenantID   uuid.UUID
+	Generation int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) ClearGenerationLateUsageOutside(ctx context.Context, arg ClearGenerationLateUsageOutsideParams) error {
+	_, err := q.db.Exec(ctx, clearGenerationLateUsageOutside,
+		arg.TenantID,
+		arg.Generation,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
+const clearGenerationProcessedEventsOutside = `-- name: ClearGenerationProcessedEventsOutside :exec
+DELETE FROM processed_events WHERE tenant_id = $1 AND generation = $2 AND (period_id < $3::text OR period_id > $4::text)
+`
+
+type ClearGenerationProcessedEventsOutsideParams struct {
+	TenantID   uuid.UUID
+	Generation int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) ClearGenerationProcessedEventsOutside(ctx context.Context, arg ClearGenerationProcessedEventsOutsideParams) error {
+	_, err := q.db.Exec(ctx, clearGenerationProcessedEventsOutside,
+		arg.TenantID,
+		arg.Generation,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
+const clearGenerationUsageOutside = `-- name: ClearGenerationUsageOutside :exec
+DELETE FROM usage_aggregates WHERE tenant_id = $1 AND generation = $2 AND (period_id < $3::text OR period_id > $4::text)
+`
+
+type ClearGenerationUsageOutsideParams struct {
+	TenantID   uuid.UUID
+	Generation int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+// A replay rebuilds only [from, to]; the live consumer dual-writes every period, so the target holds a partial tail of the others.
+func (q *Queries) ClearGenerationUsageOutside(ctx context.Context, arg ClearGenerationUsageOutsideParams) error {
+	_, err := q.db.Exec(ctx, clearGenerationUsageOutside,
+		arg.TenantID,
+		arg.Generation,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
 const compareLateUsage = `-- name: CompareLateUsage :many
 SELECT COALESCE(a.billed_period_id, b.billed_period_id)::text AS period_id, COALESCE(a.customer_id, b.customer_id)::text AS customer_id,
        COALESCE(a.meter_code, b.meter_code)::text AS meter_code, COALESCE(a.origin_period_id, b.origin_period_id)::text AS origin_period_id,
@@ -173,6 +237,82 @@ func (q *Queries) CompareUsage(ctx context.Context, arg CompareUsageParams) ([]C
 		return nil, err
 	}
 	return items, nil
+}
+
+const copyGenerationLateUsageOutside = `-- name: CopyGenerationLateUsageOutside :exec
+INSERT INTO late_usage (tenant_id, billed_period_id, customer_id, meter_code, origin_period_id, generation, quantity, quantity_scale, event_count, updated_at)
+SELECT s.tenant_id, s.billed_period_id, s.customer_id, s.meter_code, s.origin_period_id, $1::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+FROM late_usage s WHERE s.tenant_id = $2 AND s.generation = $3 AND (s.origin_period_id < $4::text OR s.origin_period_id > $5::text)
+`
+
+type CopyGenerationLateUsageOutsideParams struct {
+	Target     int32
+	TenantID   uuid.UUID
+	Source     int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) CopyGenerationLateUsageOutside(ctx context.Context, arg CopyGenerationLateUsageOutsideParams) error {
+	_, err := q.db.Exec(ctx, copyGenerationLateUsageOutside,
+		arg.Target,
+		arg.TenantID,
+		arg.Source,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
+const copyGenerationProcessedEventsOutside = `-- name: CopyGenerationProcessedEventsOutside :exec
+INSERT INTO processed_events (tenant_id, event_id, generation, period_id)
+SELECT s.tenant_id, s.event_id, $1::int, s.period_id
+FROM processed_events s WHERE s.tenant_id = $2 AND s.generation = $3 AND (s.period_id < $4::text OR s.period_id > $5::text)
+`
+
+type CopyGenerationProcessedEventsOutsideParams struct {
+	Target     int32
+	TenantID   uuid.UUID
+	Source     int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+// The inbox of the periods outside the replay, so a redelivered old event is still recognised after the promotion.
+func (q *Queries) CopyGenerationProcessedEventsOutside(ctx context.Context, arg CopyGenerationProcessedEventsOutsideParams) error {
+	_, err := q.db.Exec(ctx, copyGenerationProcessedEventsOutside,
+		arg.Target,
+		arg.TenantID,
+		arg.Source,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
+const copyGenerationUsageOutside = `-- name: CopyGenerationUsageOutside :exec
+INSERT INTO usage_aggregates (tenant_id, period_id, customer_id, meter_code, generation, quantity, quantity_scale, event_count, updated_at)
+SELECT s.tenant_id, s.period_id, s.customer_id, s.meter_code, $1::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+FROM usage_aggregates s WHERE s.tenant_id = $2 AND s.generation = $3 AND (s.period_id < $4::text OR s.period_id > $5::text)
+`
+
+type CopyGenerationUsageOutsideParams struct {
+	Target     int32
+	TenantID   uuid.UUID
+	Source     int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) CopyGenerationUsageOutside(ctx context.Context, arg CopyGenerationUsageOutsideParams) error {
+	_, err := q.db.Exec(ctx, copyGenerationUsageOutside,
+		arg.Target,
+		arg.TenantID,
+		arg.Source,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
 }
 
 const deleteGenerationLateUsage = `-- name: DeleteGenerationLateUsage :exec

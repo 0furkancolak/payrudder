@@ -24,3 +24,5 @@ The built files are static; nginx serves them and forwards `/gw` to the gateway.
 - Route paths are not type-checked globally: registering the router for inference creates a type cycle between pages and the route tree in the Vue toolchain. Playwright covers navigation.
 - The nginx image resolves the gateway per request, so it needs the container runtime's resolver (`NGINX_ENTRYPOINT_LOCAL_RESOLVERS`); on Kubernetes that is the cluster DNS.
 - Translations are files in the repository; a unit test keeps them complete.
+
+> Update: the static files are no longer served by nginx. See [ADR 0021](0021-console-on-cloudflare-workers.md).

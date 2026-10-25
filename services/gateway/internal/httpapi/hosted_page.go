@@ -253,7 +253,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 		v.Bank = &hostedBank{Name: in.GetBankName(), Holder: in.GetAccountHolder(), IBAN: groupIBAN(in.GetIban()), BIC: in.GetBic(), Reference: in.GetReference()}
 	}
 	rows, _ := s.ledgerLookup(ctx, resp.GetPayment().GetTenantId(), []string{inv.GetId()})
-	v.State = refineState(v.State, rows, inv.GetId())
+	v.State = refineState(v.State, rows, inv.GetId(), time.Now())
 	v.StateLabel = v.L["st_"+v.State]
 	switch v.State {
 	case "processing":

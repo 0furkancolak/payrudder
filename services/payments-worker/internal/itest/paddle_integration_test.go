@@ -631,7 +631,7 @@ func TestProviderMigrationThroughTheWorker(t *testing.T) {
 		plans.completion = nil
 	})
 
-	t.Run("to a provider Quotify runs: from a provider-run subscription at the end of the paid period, old provider told first", func(t *testing.T) {
+	t.Run("to a provider Payrudder runs: from a provider-run subscription at the end of the paid period, old provider told first", func(t *testing.T) {
 		plans.sub = &plansv1.Subscription{Id: subID, Provider: "paddle", ProviderRef: "sub_PAID", Owner: "provider"}
 		// Nothing is known of the paid period yet: nothing is cancelled and nothing is started.
 		startedBefore := len(plans.started)

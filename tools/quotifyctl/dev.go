@@ -334,7 +334,7 @@ func autoDevSeed(ctx context.Context) {
 		Gateway: envOr("QUOTIFY_GATEWAY_URL", defaultGatewayURL),
 		Token:   envOr("QUOTIFY_OPERATOR_TOKEN", devDefaultToken),
 		Mailpit: envOr("MAILPIT_URL", defaultMailpitURL),
-		Env:     os.Getenv("QUOTIFY_ENV"),
+		Env:     getenv("QUOTIFY_ENV"),
 		Timeout: 8 * time.Minute,
 		Out:     os.Stdout,
 	}

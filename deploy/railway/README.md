@@ -1,4 +1,4 @@
-# Quotify on Railway
+# Payrudder on Railway
 
 Everything to run the stack on [Railway](https://railway.com): a config-as-code file per service, images for the backing services Railway has no plugin
 for, and a script that drives the Railway CLI. The design and the decisions are in [phase 31](../../docs/phases/phase-31-railway.md).
@@ -34,7 +34,7 @@ Service names are the compose names, lower-case, because they become DNS names. 
   on the private network. The gateway also answers `GET /healthz` on its public port (liveness only; `/metrics` stays on its private port 9100).
   `bootstrap.sh` sets `PORT` explicitly on every service (the tables below) so the addresses other services use are fixed.
 - **IPv6.** Railway's private network is IPv6 (newer environments are dual-stack). Go's `:port` listeners are dual-stack, so every Quotify listener works
-  as it is. nginx (`admin-ui`) now listens on `[::]` too, RabbitMQ and ClickHouse are configured for `::`, Redpanda listens on `REDPANDA_BIND`
+  as it is. The console (`admin-ui`, `vite preview`) listens on `::` too, RabbitMQ and ClickHouse are configured for `::`, Redpanda listens on `REDPANDA_BIND`
   (default `0.0.0.0`; set it to `::` if your environment is IPv6-only).
 - **`QUOTIFY_ENV=railway`**, a new accepted value (it only labels traces and keeps gRPC reflection off).
 - **Dockerfiles.** Railway rejects BuildKit cache mounts without its own `id`, so the services build from `go.Dockerfile`, which is the per-service
@@ -123,6 +123,7 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PORT` | `8000` | the HTTP API; the public domain's port |
 | `QUOTIFY_OPERATOR_TOKEN` | generated | at least 32 characters; the machine credential of the operator API (scripts, `quotifyctl`); never typed into the console |
 | `QUOTIFY_OPERATOR_EMAILS` | e.g. `you@example.com` | comma separated; people who sign in with one of these and have verified it are platform operators (empty: nobody) |
+| `QUOTIFY_TRUSTED_PROXY_SECRET` | generated, 32+ characters | only with the console on Cloudflare: the same value as the Worker secret `EDGE_AUTH_SECRET`; makes the gateway count sign-in limits per visitor ([runbook](../../docs/runbooks/console-first-deploy.md)) |
 | `QUOTIFY_APP_URL` | `https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}` | where the browser returns after Google; also set on `plans-svc` for the links in mails |
 | `QUOTIFY_GOOGLE_CLIENT_ID`, `QUOTIFY_GOOGLE_CLIENT_SECRET` | from Google | optional: both set shows "Continue with Google" ([how](../../docs/13-admin-ui.md#sign-in-methods)); register `<console domain>/gw/auth/google/callback` as the redirect URI |
 | `QUOTIFY_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |
@@ -309,7 +310,7 @@ Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account
 | `PORT` | `3001` | the public domain's port |
 | `GATEWAY_URL` | `http://gateway.railway.internal:8000` | the console proxies `/gw/*` to it, so the browser needs no CORS |
 | `QUOTIFY_DEMO` | `false` | shows the demo banner when `true` |
-| `BRAND_NAME` | `Quotify` | |
+| `BRAND_NAME` | `Payrudder` | |
 
 `PREFILL_PLAYGROUND` stays `false`: it pre-fills the operator playground's form, so it is for local stacks only. No credential is ever served to the browser.
 
@@ -388,7 +389,7 @@ The helm `values-small.yaml` also drops the mock provider; here `mockpsp` stays 
 
 Railway bills for resources used, not for limits, so the figures that matter are resident memory. The compose limits are the ceiling each service was
 designed to stay under: gateway, plans, ingest, limits, analytics, invoice-worker 128 MiB; aggregator, billing 192 MiB; assets, payments-worker,
-notifier, mockpsp 96 MiB; about 1.5 GiB for the 12 Go processes at the limit, usually well under that. The console (nginx) is a few MiB. Backing services
+notifier, mockpsp 96 MiB; about 1.5 GiB for the 12 Go processes at the limit, usually well under that. The console (`vite preview` on Node) is about 100 MiB. Backing services
 are heavier: Redpanda 512 MiB by design (`REDPANDA_MEMORY`), RabbitMQ up to 256 MiB of broker memory, ClickHouse up to 1 GiB, MinIO about 100 to 400 MiB,
 Postgres and Redis whatever their plugins use. Plan for roughly 3 GiB for the small profile and 4 GiB for the full one, plus volumes, and check the
 plan's per-service and per-project limits. These are estimates from the compose and helm limits, not Railway measurements. Nothing is Railway-sized
@@ -405,7 +406,7 @@ Verified (static checks, `make railway-check`, run in CI as part of `make test`)
 
 Run locally with Docker (not on Railway):
 
-- `go.Dockerfile` builds a service image; the console's nginx template starts with an injected `PORT` and answers on IPv4 and IPv6;
+- `go.Dockerfile` builds a service image; the console (`vite preview`) starts with an injected `PORT` and answers on IPv4 and IPv6;
 - `init-postgres` creates the roles and databases, is idempotent, rotates passwords, and the roles cannot cross databases or create in `public`;
 - the RabbitMQ image renders the password into the definitions, loads the queues, rejects the local password, and listens on `::` (AMQP and health);
 - the Redpanda image starts with its admin health endpoint, and `init-redpanda` creates the seven topics.

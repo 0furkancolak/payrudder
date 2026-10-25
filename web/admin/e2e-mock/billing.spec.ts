@@ -293,7 +293,7 @@ test.describe("subscriptions", () => {
     await expect.poll(() => gw.called("DELETE", "/v1/subscriptions/s1/coupon").length).toBe(1);
   });
 
-  test("a Quotify-run subscription can be paused, moved to another package and cancelled at the period end", async ({ page }) => {
+  test("a Payrudder-run subscription can be paused, moved to another package and cancelled at the period end", async ({ page }) => {
     const gw = common(new MockGateway(), [sub("s1")]).on((c) => {
       if (c.method === "POST" && /^\/v1\/subscriptions\/s1\/(pause|cancel-at-period-end|change-plan)$/.test(c.path)) return { body: sub("s1") };
       return undefined;

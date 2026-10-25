@@ -293,7 +293,8 @@ func (m *Manager) billAdjustment(ctx context.Context, tenantID uuid.UUID, t *pla
 		lines := []rating.Line{{Kind: rating.KindBaseFee, AmountMinor: a.GetChargeMinor(), ServiceFrom: from, ServiceTo: to,
 			Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", feeWord(sub), sub.GetPlanCode(), day(from, loc), day(to, loc))}}
 		if a.GetCreditMinor() > 0 {
-			lines = append(lines, rating.Line{Kind: rating.KindCredit, AmountMinor: -a.GetCreditMinor(), ServiceFrom: from, ServiceTo: to,
+			// The unused time of the old plan lowers what was sold, so it lowers the tax base too; a credit balance would not.
+			lines = append(lines, rating.Line{Kind: rating.KindDiscount, AmountMinor: -a.GetCreditMinor(), ServiceFrom: from, ServiceTo: to,
 				Description: fmt.Sprintf("Unused time on %s — %s to %s", a.GetOldPlanCode(), day(from, loc), day(to, loc))})
 		}
 		id, err := m.draftFeeInvoice(ctx, tenantID, t, loc, feeInvoiceSpec{Key: "adj|" + a.GetId(), Sub: sub, PeriodStart: from, Lines: lines})

@@ -99,6 +99,7 @@ func LoadFrom[T any](environ map[string]string, defaults ...[]byte) (T, error) {
 	if environ == nil {
 		environ = processEnv()
 	}
+	environ = AliasPrefix(environ)
 	for k, v := range environ {
 		merged[k] = v
 	}
@@ -145,6 +146,36 @@ func applyPort[T any](merged, environ map[string]string) error {
 		return nil
 	}
 	return nil
+}
+
+const (
+	legacyPrefix = "QUOTIFY_"
+	brandPrefix  = "PAYRUDDER_"
+)
+
+// AliasPrefix returns environ with every PAYRUDDER_X setting also under its internal name QUOTIFY_X. PAYRUDDER_X wins when both are set, and QUOTIFY_X keeps
+// working alone (ADR 0021). The input map is not changed.
+func AliasPrefix(environ map[string]string) map[string]string {
+	out := make(map[string]string, len(environ))
+	for k, v := range environ {
+		out[k] = v
+	}
+	for k, v := range environ {
+		if rest, ok := strings.CutPrefix(k, brandPrefix); ok {
+			out[legacyPrefix+rest] = v
+		}
+	}
+	return out
+}
+
+// Getenv reads a setting by its internal QUOTIFY_ name and honours the PAYRUDDER_ spelling first. For tools that read the environment without Load.
+func Getenv(name string) string {
+	if rest, ok := strings.CutPrefix(name, legacyPrefix); ok {
+		if v := os.Getenv(brandPrefix + rest); v != "" {
+			return v
+		}
+	}
+	return os.Getenv(name)
 }
 
 func processEnv() map[string]string {

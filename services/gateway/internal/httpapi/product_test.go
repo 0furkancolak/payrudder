@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"strings"
 	"sync"
@@ -578,6 +579,37 @@ func TestClientAddrTrustsForwardedForOnlyFromPrivateProxies(t *testing.T) {
 	}
 	if got := (&Server{}).clientAddr(mk("10.0.0.5:1", "203.0.113.9")); got != "10.0.0.5" {
 		t.Errorf("without the setting the header is ignored: %s", got)
+	}
+}
+
+func TestClientAddrTrustedProxySecretAndNetworks(t *testing.T) {
+	const secret = "edge-secret-0123456789-0123456789-xx"
+	s := &Server{d: Deps{TrustedProxySecret: secret, TrustedProxies: []netip.Prefix{netip.MustParsePrefix("198.51.100.0/24")}}}
+	mk := func(remote, edge string) *http.Request {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.RemoteAddr = remote
+		r.Header.Set("X-Forwarded-For", "203.0.113.9")
+		if edge != "" {
+			r.Header.Set(EdgeAuthHeader, edge)
+		}
+		return r
+	}
+	for _, c := range []struct{ name, remote, edge, want string }{
+		{"secret ok from a public peer", "192.0.2.7:1", secret, "203.0.113.9"},
+		{"wrong secret", "192.0.2.7:1", secret + "x", "192.0.2.7"},
+		{"shorter secret", "192.0.2.7:1", "edge", "192.0.2.7"},
+		{"no secret: a direct client spoofing the header", "192.0.2.7:1", "", "192.0.2.7"},
+		{"peer inside a trusted network", "198.51.100.20:1", "", "203.0.113.9"},
+		{"peer just outside the network", "198.51.101.20:1", "", "198.51.101.20"},
+		{"a private peer is not trusted without TrustForwardedFor", "10.0.0.5:1", "", "10.0.0.5"},
+	} {
+		if got := s.clientAddr(mk(c.remote, c.edge)); got != c.want {
+			t.Errorf("%s: %s, want %s", c.name, got, c.want)
+		}
+	}
+	// Without a configured secret the header proves nothing.
+	if got := (&Server{}).clientAddr(mk("192.0.2.7:1", "anything")); got != "192.0.2.7" {
+		t.Errorf("no secret configured: %s", got)
 	}
 }
 

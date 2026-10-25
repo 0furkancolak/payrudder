@@ -93,3 +93,33 @@ func TestPort(t *testing.T) {
 		}
 	})
 }
+
+func TestPayrudderPrefixWins(t *testing.T) {
+	cfg, err := config.LoadFrom[httpConfig](map[string]string{
+		"QUOTIFY_SERVICE_NAME": "old", "PAYRUDDER_SERVICE_NAME": "new",
+		"QUOTIFY_LOG_LEVEL":   "debug",
+		"PAYRUDDER_HTTP_ADDR": ":9999",
+	})
+	if err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+	if cfg.ServiceName != "new" || cfg.LogLevel != "debug" || cfg.HTTPAddr != ":9999" {
+		t.Fatalf("PAYRUDDER_ must win and QUOTIFY_ must still work alone: %+v", cfg)
+	}
+	// PORT does not override a PAYRUDDER_ address either.
+	cfg, err = config.LoadFrom[httpConfig](map[string]string{"PAYRUDDER_SERVICE_NAME": "x", "PAYRUDDER_HTTP_ADDR": ":9999", "PORT": "8080"})
+	if err != nil || cfg.HTTPAddr != ":9999" {
+		t.Fatalf("PORT overrode the explicit address: %+v %v", cfg, err)
+	}
+}
+
+func TestGetenv(t *testing.T) {
+	t.Setenv("QUOTIFY_X_TEST", "old")
+	if config.Getenv("QUOTIFY_X_TEST") != "old" {
+		t.Fatal("QUOTIFY_ alone must work")
+	}
+	t.Setenv("PAYRUDDER_X_TEST", "new")
+	if config.Getenv("QUOTIFY_X_TEST") != "new" {
+		t.Fatal("PAYRUDDER_ must win")
+	}
+}

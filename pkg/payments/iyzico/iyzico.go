@@ -143,12 +143,28 @@ type response struct {
 	ConversationID string `json:"conversationId"`
 	PaymentID      string `json:"paymentId"`
 	PaymentStatus  string `json:"paymentStatus"`
+	BasketID       string `json:"basketId"`
 	Retryable      bool   `json:"retryable"`
 	RefundRef      string `json:"refundHostReference"`
 	Price          any    `json:"price"`
 }
 
 func (r response) ok() bool { return strings.EqualFold(r.Status, "success") }
+
+// state reads the final state of a payment from a /payment/detail answer. Only an explicit SUCCESS is a success, and then the payment has an id (a refund needs
+// it); an answer that says nothing about the payment is an error, never a guess.
+func (r response) state() (payments.StatusResult, error) {
+	switch strings.ToUpper(r.PaymentStatus) {
+	case "SUCCESS":
+		if r.PaymentID == "" {
+			return payments.StatusResult{}, errors.New("iyzico: a successful payment without a paymentId")
+		}
+		return payments.StatusResult{State: payments.StateSucceeded, ChargeID: r.PaymentID}, nil
+	case "FAILURE":
+		return payments.StatusResult{State: payments.StateDeclined, ChargeID: r.PaymentID, DeclineCode: "FAILURE"}, nil
+	}
+	return payments.StatusResult{}, fmt.Errorf("iyzico: payment %s is %q, not final", r.PaymentID, r.PaymentStatus)
+}
 
 func (c *Client) do(ctx context.Context, path string, in any) (response, error) {
 	var out response
@@ -307,13 +323,7 @@ func (c *Client) Status(ctx context.Context, key string) (payments.StatusResult,
 		return payments.StatusResult{}, err
 	}
 	if out.ok() {
-		switch strings.ToUpper(out.PaymentStatus) {
-		case "SUCCESS", "":
-			return payments.StatusResult{State: payments.StateSucceeded, ChargeID: out.PaymentID}, nil
-		case "FAILURE":
-			return payments.StatusResult{State: payments.StateDeclined, ChargeID: out.PaymentID, DeclineCode: "FAILURE"}, nil
-		}
-		return payments.StatusResult{}, fmt.Errorf("iyzico: payment %s is %q, not final", out.PaymentID, out.PaymentStatus)
+		return out.state()
 	}
 	for _, code := range c.s.NotFoundCodes {
 		if out.ErrorCode == code {
@@ -359,7 +369,16 @@ func ParseWebhook(body []byte) (WebhookEvent, error) {
 // Confirm asks iyzico what the notified payment really is. The webhook signature scheme of API payments is not settled by the
 // documentation, which tells merchants without notification validation to retrieve the payment instead, so Quotify never acts on
 // the body of a notification alone.
+//
+// The body is unsigned, so its conversation id is only a claim: the payment it names must be the charge of that conversation. Charge sends the invoice id as
+// the basketId and the idempotency key ("<invoice id>:charge:<attempt>") as the conversationId, so the payment's basketId must be the invoice of the key.
+// Otherwise a real payment of one invoice could be notified as the payment of another (UNVERIFIED: that /payment/detail answers with the basketId; one that
+// does not is refused rather than believed).
 func (c *Client) Confirm(ctx context.Context, e WebhookEvent) (payments.StatusResult, error) {
+	invoice, _, ok := strings.Cut(e.ConversationID, ":")
+	if !ok || invoice == "" {
+		return payments.StatusResult{}, fmt.Errorf("%w: the conversation id %q is not one of Quotify's charges", payments.ErrUnverified, e.ConversationID)
+	}
 	out, err := c.do(ctx, "/payment/detail", map[string]any{"locale": "en", "conversationId": e.ConversationID, "paymentId": e.ID()})
 	if err != nil {
 		return payments.StatusResult{}, err
@@ -367,16 +386,10 @@ func (c *Client) Confirm(ctx context.Context, e WebhookEvent) (payments.StatusRe
 	if !out.ok() {
 		return payments.StatusResult{}, fmt.Errorf("iyzico: cannot confirm payment %s: %s %s", e.ID(), out.ErrorCode, out.ErrorMessage)
 	}
-	st := payments.StatusResult{ChargeID: out.PaymentID}
-	switch strings.ToUpper(out.PaymentStatus) {
-	case "SUCCESS", "":
-		st.State = payments.StateSucceeded
-	case "FAILURE":
-		st.State, st.DeclineCode = payments.StateDeclined, "FAILURE"
-	default:
-		return payments.StatusResult{}, fmt.Errorf("iyzico: payment %s is %q, not final", e.ID(), out.PaymentStatus)
+	if out.BasketID != invoice {
+		return payments.StatusResult{}, fmt.Errorf("%w: payment %s is not a payment of conversation %q", payments.ErrUnverified, e.ID(), e.ConversationID)
 	}
-	return st, nil
+	return out.state()
 }
 
 // ParseNotification reads an iyzico webhook for payments.Registry.RegisterParser. iyzico's paymentConversationId is the idempotency

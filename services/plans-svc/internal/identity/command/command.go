@@ -220,13 +220,18 @@ func (c *Commands) SignIn(ctx context.Context, req *plansv1.SignInRequest) (Open
 		// An account that signs in by code or by a provider has no password (yet): the answer and the time are those of a wrong password.
 		return Opened{}, c.burn(ctx, password)
 	}
-	if user.LockedUntil != nil && user.LockedUntil.After(c.now()) {
-		// Locked: do the work of a verify anyway, so the time does not tell, and do not count the attempt (an attacker could extend the lock forever).
+	// The try is counted before the password is checked, in one statement that also refuses a locked account: parallel guesses cannot all slip past a
+	// lock that only the first failure sets. A locked account does the work of a verify anyway, so the time does not tell.
+	tried, err := db.TryPassword(ctx, sqlc.TryPasswordParams{ID: user.ID, MaxFailures: MaxFailures, LockFor: convert.Interval(LockFor)})
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Opened{}, c.burn(ctx, password)
+	}
+	if err != nil {
+		return Opened{}, convert.Err(err, "user")
 	}
 	var ok bool
 	var verr error
-	if err := c.withSlot(ctx, func() { ok, verr = credential.Verify(password, user.PasswordHash) }); err != nil {
+	if err := c.withSlot(ctx, func() { ok, verr = credential.Verify(password, tried.PasswordHash) }); err != nil {
 		return Opened{}, err
 	}
 	if verr != nil {
@@ -234,12 +239,12 @@ func (c *Commands) SignIn(ctx context.Context, req *plansv1.SignInRequest) (Open
 		return Opened{}, invalidCredentials()
 	}
 	if !ok {
-		r, err := db.RecordFailedLogin(ctx, sqlc.RecordFailedLoginParams{ID: user.ID, MaxFailures: MaxFailures, LockFor: convert.Interval(LockFor)})
-		if err == nil && r.LockedUntil != nil {
-			c.log.WarnContext(ctx, "sign-in locked after repeated failures", "user_id", user.ID, "failures", r.FailedLogins)
+		if tried.LockedUntil != nil {
+			c.log.WarnContext(ctx, "sign-in locked after repeated failures", "user_id", user.ID, "failures", tried.FailedLogins)
 		}
 		return Opened{}, invalidCredentials()
 	}
+	user = tried
 	var out Opened
 	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		var err error

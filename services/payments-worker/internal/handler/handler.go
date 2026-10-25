@@ -324,7 +324,7 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 	}
 	if !capabilities(prov).Refunds {
 		// The credit note then shows the refund as failed, with this reason: the money goes back outside Quotify (for a bank transfer, by a transfer back).
-		return errored(false, CodeRejected, prov.Name()+" has no refund API; refund the customer outside Quotify"), nil
+		return errored(false, CodeRejected, prov.Name()+" has no refund API; refund the customer outside Payrudder"), nil
 	}
 	if _, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, "refund", run.env, prov.Name(), rf.GetIdempotencyKey(), rf); err != nil {
 		return nil, err

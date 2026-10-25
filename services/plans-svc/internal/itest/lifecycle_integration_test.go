@@ -354,7 +354,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatalf("new subscription = %v", nw)
 		}
 		if done.GetSourceProvider() != "iyzico" || done.GetSourceProviderRef() != "" {
-			t.Errorf("source = %q %q; Quotify ran the old one, so there is nothing to release at iyzico", done.GetSourceProvider(), done.GetSourceProviderRef())
+			t.Errorf("source = %q %q; Payrudder ran the old one, so there is nothing to release at iyzico", done.GetSourceProvider(), done.GetSourceProviderRef())
 		}
 		if got := get(old.GetId()); got.GetEndTime() == nil || !got.GetEndTime().AsTime().Equal(cut) || got.GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_CANCELLED {
 			t.Fatalf("old subscription = %v; it ends exactly when the new one starts", got)
@@ -423,7 +423,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatalf("subscription at iyzico = %v", next)
 		}
 		if got := get(paid.GetId()); got.GetEndTime() == nil || !got.GetEndTime().AsTime().Equal(periodEnd) {
-			t.Fatalf("the Paddle subscription ends where Quotify's starts: %v", got)
+			t.Fatalf("the Paddle subscription ends where Payrudder's starts: %v", got)
 		}
 		// The provider may still announce the cancellation it was asked for; it changes nothing now.
 		if _, err := e.plans.SyncProviderSubscription(ctx, &plansv1.SyncProviderSubscriptionRequest{SubscriptionId: paid.GetId(), Provider: "paddle", ProviderRef: "sub_NEW",

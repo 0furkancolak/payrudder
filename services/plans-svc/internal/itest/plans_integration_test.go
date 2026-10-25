@@ -41,13 +41,17 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("SubscriptionLifecycle", testSubscriptionLifecycle)
 	t.Run("SubscriptionChanges", testSubscriptionChanges)
 	t.Run("Coupons", testCoupons)
+	t.Run("Promotions", testPromotions)
 	t.Run("CancelCredit", testCancelCredit)
+	t.Run("ProviderMigrationKeepsTheFeeTiming", testProviderMigrationKeepsTheFeeTiming)
+	t.Run("PlanChangeWithACouponIsPricedAfterTheCoupon", testPlanChangeWithACouponIsPricedAfterTheCoupon)
 	t.Run("Webhooks", testWebhooks)
 	t.Run("Apps", testApps)
 	t.Run("Identity", testIdentity)
 	t.Run("GoLive", testGoLive)
 	t.Run("APIKeyScopesAndRotation", testAPIKeyScopesAndRotation)
 	t.Run("EmailVerificationAndReset", testEmailVerificationAndReset)
+	t.Run("PasswordLockout", testPasswordLockout)
 	t.Run("SignInMethods", testSignInMethods)
 	t.Run("MembersAndInvitations", testMembersAndInvitations)
 	t.Run("Addresses", testAddresses)
@@ -58,6 +62,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("DashboardFacts", testDashboardFacts)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
+	t.Run("PromotionsMigration", testPromotionsMigration) // last: it rolls the newest migration back and forward
 }
 
 func code(t *testing.T, err error) codes.Code {
@@ -91,6 +96,7 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 	must(e.plans.CreateCoupon(ctx, &plansv1.CreateCouponRequest{Coupon: &plansv1.Coupon{Code: "SEED", PercentBps: 100, Duration: plansv1.CouponDuration_COUPON_DURATION_ONCE}}))
 	must(e.hooks.CreateWebhookEndpoint(ctx, &plansv1.CreateWebhookEndpointRequest{Url: "https://example.com/hook"}))
 	must(e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_" + suffix, PlanCode: "pro", CouponCode: "SEED"}))
+	must(e.plans.GrantCustomerCoupon(ctx, &plansv1.GrantCustomerCouponRequest{CustomerExternalId: "cus_" + suffix, CouponCode: "SEED", Source: "operator", SourceRef: "seed"}))
 	// provider_migrations is written by StartProviderMigration, which would move the fixture's subscription; an aborted row stands in.
 	if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
 		_, err := tx.Exec(context.Background(), `INSERT INTO provider_migrations (tenant_id, id, subscription_id, to_provider, state)

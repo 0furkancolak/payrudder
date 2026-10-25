@@ -41,3 +41,21 @@ func Migrate(ctx context.Context, migratorDSN string, fsys fs.FS, log *slog.Logg
 	}
 	return nil
 }
+
+// MigrateVersion applies (up) or rolls back (down) the one migration of the given version, whatever the others are. It is for tests that check a migration and its Down
+// on data; a service never calls it.
+func MigrateVersion(ctx context.Context, migratorDSN string, fsys fs.FS, version int64, up bool) error {
+	db, err := sql.Open("pgx", migratorDSN)
+	if err != nil {
+		return fmt.Errorf("pgxx: open migrator: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+	p, err := goose.NewProvider(goose.DialectPostgres, db, fsys, goose.WithAllowOutofOrder(true))
+	if err != nil {
+		return fmt.Errorf("pgxx: migration provider: %w", err)
+	}
+	if _, err := p.ApplyVersion(ctx, version, up); err != nil {
+		return fmt.Errorf("pgxx: migration %d (up=%t): %w", version, up, err)
+	}
+	return nil
+}

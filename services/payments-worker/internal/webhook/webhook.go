@@ -335,7 +335,7 @@ func (d *delivery) recordCharge(conf payments.Notification) error {
 		return err
 	}
 	if conf.ProviderRef != "" {
-		if n, err := d.s.Ledger.Outcomes(ctx, d.name, entry.Kind, conf.ProviderRef); err == nil && n > 1 {
+		if n, err := d.s.Ledger.Outcomes(ctx, entry.TenantID, d.name, entry.Kind, conf.ProviderRef); err == nil && n > 1 {
 			discrepancy.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", d.name)))
 			d.s.Log.ErrorContext(ctx, "payment outcomes disagree", "provider", d.name, "ref", conf.ProviderRef, "tenant", d.tenant, "invoice", d.at.InvoiceID)
 		}
@@ -472,7 +472,7 @@ func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provi
 // releaseSource stops the old provider from billing a subscription that has moved: a subscription the old provider ran is cancelled there.
 func (s *Server) releaseSource(ctx context.Context, tenant uuid.UUID, env string, done *plansv1.CompleteProviderMigrationResponse) error {
 	if done.GetSourceProviderRef() == "" {
-		return nil // Quotify ran the old subscription: it ended with the cutover
+		return nil // Payrudder ran the old subscription: it ended with the cutover
 	}
 	prov, err := s.Resolver.Named(ctx, tenant, done.GetSourceProvider(), env)
 	if err != nil {
@@ -778,7 +778,7 @@ func (s *Server) stopRenewals(w http.ResponseWriter, r *http.Request, t uuid.UUI
 	}
 	m, ok := old.(payments.SubscriptionManager)
 	if !ok {
-		fail(w, http.StatusConflict, sub.GetProvider()+" cannot cancel a subscription through Quotify")
+		fail(w, http.StatusConflict, sub.GetProvider()+" cannot cancel a subscription through Payrudder")
 		return nil, false
 	}
 	if err := m.CancelSubscription(ctx, sub.GetProviderRef(), true); err != nil {

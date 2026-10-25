@@ -55,9 +55,26 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 			return sqlc.InsertSubscriptionRow{}, err
 		}
 	}
+	// What the successor pays, and when. A Quotify-run subscription whose fee is already paid in advance goes on with the period it paid for (no credit, the
+	// same renewal, its coupon); a yearly one that a provider ran comes back billed in advance from the cutover, as a year cannot be waited out in arrears.
+	timing, anchor, feeDue, creditUnused := "arrears", old.BillingAnchor, (*time.Time)(nil), old.Owner == "quotify"
+	if owner == "quotify" {
+		switch {
+		case old.FeeTiming == "advance" && old.Owner == "quotify":
+			due, err := q.GetSubscriptionFeeDue(ctx, old.ID)
+			if err != nil {
+				return sqlc.InsertSubscriptionRow{}, err
+			}
+			if due != nil {
+				timing, feeDue, creditUnused = "advance", due, false
+			}
+		case subscription.Interval(old.Interval) == subscription.Yearly:
+			timing, anchor, feeDue = "advance", when, &when
+		}
+	}
 	// A fee paid in advance for the rest of the period the old provider-side subscription will not serve goes to the customer's credit balance.
 	// A coupon makes that sum differ from the list fee: such a subscription is left to a credit note.
-	if old.Owner == "quotify" {
+	if creditUnused {
 		if _, err := changescmd.CreditUnusedFee(ctx, q, now, old, when); err != nil && !errors.Is(err, changesqry.ErrCouponOnCredit) {
 			return sqlc.InsertSubscriptionRow{}, err
 		}
@@ -66,10 +83,15 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 	nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 		ID: idgen.NewUUIDv7(), CustomerID: old.CustomerID, PlanVersionID: old.PlanVersionID, StartTime: when,
 		State: string(eff), Interval: old.Interval, Currency: old.Currency, TrialEndsAt: old.TrialEndsAt,
-		BillingAnchor: old.BillingAnchor, ChangedFromID: &oldID, Provider: &toProvider, ProviderRef: providerRef, Owner: owner, FeeTiming: "arrears",
+		BillingAnchor: anchor, ChangedFromID: &oldID, Provider: &toProvider, ProviderRef: providerRef, Owner: owner, FeeTiming: timing, FeeDueAt: feeDue,
 	})
 	if err != nil {
 		return nr, err
+	}
+	if timing == "advance" && old.FeeTiming == "advance" {
+		if _, err := q.MoveSubscriptionCoupon(ctx, sqlc.MoveSubscriptionCouponParams{OldID: old.ID, NewID: nr.ID}); err != nil {
+			return nr, err
+		}
 	}
 	if err := entitlementscmd.Publish(ctx, q, tenantID, old.CustomerID, old.PlanVersionID, old.StartTime, &when, now); err != nil {
 		return nr, err

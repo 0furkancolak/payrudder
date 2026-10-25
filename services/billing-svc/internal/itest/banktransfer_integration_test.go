@@ -212,14 +212,18 @@ func testExpiredTransferFollowsDunning(t *testing.T) {
 		t.Fatalf("charge commands = %d, want 4", n)
 	}
 	// Each charge told the customer how to pay again; the give-up notice repeats the bank details.
-	var withBank int
-	for _, c := range e.mine(stub) {
-		if n := c.GetSendNotification(); n != nil && n.GetTemplate() == "payment_failed.v1" && n.GetData()["iban"] != "" {
-			withBank++
+	withBank := func() (n int) {
+		for _, c := range e.mine(stub) {
+			if sn := c.GetSendNotification(); sn != nil && sn.GetTemplate() == "payment_failed.v1" && sn.GetData()["iban"] != "" {
+				n++
+			}
 		}
+		return n
 	}
-	if withBank != 2 {
-		t.Fatalf("give-up notices with the bank details = %d, want 2", withBank)
+	// The notices are commands the relay sends after the invoices turn uncollectible: wait for them.
+	eventually(t, 20*time.Second, "both give-up notices with the bank details", func() bool { return withBank() >= 2 })
+	if n := withBank(); n != 2 {
+		t.Fatalf("give-up notices with the bank details = %d, want 2", n)
 	}
 }
 

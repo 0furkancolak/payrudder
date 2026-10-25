@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Quotify-Operator-Konsole",
+    "title": "Payrudder-Operator-Konsole",
     "language": "Sprache",
     "demo": "Demo-Modus: Beispieldaten, ein simulierter Zahlungsanbieter, Mails gehen an den lokalen Mail-Catcher. Nichts davon ist echt.",
     "themeLight": "Zum hellen Design wechseln",
@@ -70,7 +70,7 @@
       "pending": "ausstehend"
     },
     "ledgerSource": {
-      "command": "Quotify",
+      "command": "Payrudder",
       "webhook": "Anbieter-Benachrichtigung",
       "reconciliation": "Abgleich",
       "manual": "von Hand erfasst"
@@ -170,7 +170,7 @@
     "payment": {
       "record": "Zahlung erfassen",
       "confirmTransfer": "Banküberweisung bestätigen",
-      "offlineHint": "Erfassen Sie Geld, das außerhalb von Quotify eingegangen ist (Überweisung, Bargeld, Sonstiges). Teilbeträge sind erlaubt: Die Rechnung ist bezahlt, sobald die Zahlungen die Summe erreichen.",
+      "offlineHint": "Erfassen Sie Geld, das außerhalb von Payrudder eingegangen ist (Überweisung, Bargeld, Sonstiges). Teilbeträge sind erlaubt: Die Rechnung ist bezahlt, sobald die Zahlungen die Summe erreichen.",
       "transferHint": "Bestätigen Sie, was auf dem Kontoauszug eingegangen ist. Ein Teilbetrag wird erfasst; die Rechnung ist bezahlt, sobald die Überweisungen die Summe erreichen.",
       "method": "Zahlungsart",
       "amount": "Betrag ({currency})",
@@ -462,7 +462,7 @@
       },
       "providerRun": {
         "title": "Betrieben von {provider}",
-        "hint": "Diese Aktionen laufen beim Anbieter; Quotifys Kopie folgt, wenn dessen Benachrichtigung eintrifft. Eine Änderung rechnet der Anbieter ab, sie gilt sofort.",
+        "hint": "Diese Aktionen laufen beim Anbieter; Payrudders Kopie folgt, wenn dessen Benachrichtigung eintrifft. Eine Änderung rechnet der Anbieter ab, sie gilt sofort.",
         "none": "Keine Anteilsberechnung: ab der nächsten Verlängerung abgerechnet",
         "changed": "Der Anbieter hat die Änderung angewendet.",
         "atPeriodEnd": "Zum Ende des bezahlten Zeitraums pausieren",
@@ -549,7 +549,7 @@
         "result": "{created} Preis(e) angelegt, {existing} waren schon da.",
         "skipped": "{key}: {why}",
         "kind": "Art",
-        "key": "Name in Quotify",
+        "key": "Name in Payrudder",
         "empty": "Bei diesem Anbieter wurde noch nichts angelegt."
       },
       "bank": {
@@ -623,7 +623,7 @@
     "pricing": {
       "coupons": {
         "title": "Gutscheine",
-        "hint": "Ein Gutschein nimmt einen Prozentsatz oder Betrag von der Festgebühr ab, die Quotify im Voraus berechnet: einmal, für eine Anzahl Zeiträume oder solange das Abonnement läuft. Ein vom Anbieter betriebenes Abonnement nutzt stattdessen einen Rabatt beim Anbieter.",
+        "hint": "Ein Gutschein nimmt einen Prozentsatz oder Betrag von der Festgebühr ab, die Payrudder im Voraus berechnet: einmal, für eine Anzahl Zeiträume oder solange das Abonnement läuft. Ein vom Anbieter betriebenes Abonnement nutzt stattdessen einen Rabatt beim Anbieter.",
         "formLabel": "neuer Gutschein",
         "code": "Code",
         "name": "Name",
@@ -650,7 +650,7 @@
       },
       "tax": {
         "title": "Steuer",
-        "hint": "Quotify addiert diese Sätze zum Preis auf die Rechnungen, die es erstellt, nach dem Land des Kunden (der Satz ohne Land gilt für alle anderen). Sie legen die Sätze fest und verantworten sie; eine Rechnung des Anbieters versteuert der Anbieter.",
+        "hint": "Payrudder addiert diese Sätze zum Preis auf die Rechnungen, die es erstellt, nach dem Land des Kunden (der Satz ohne Land gilt für alle anderen). Sie legen die Sätze fest und verantworten sie; eine Rechnung des Anbieters versteuert der Anbieter.",
         "country": "Land {n}",
         "anyCountry": "Alle anderen Länder",
         "name": "Name {n}",
@@ -665,7 +665,7 @@
       },
       "dunning": {
         "title": "Zahlungswiederholungen",
-        "hint": "Wird eine Abbuchung abgelehnt, versucht Quotify es nach jeder Wartezeit erneut und stuft die Rechnung danach als uneinbringlich ein. Die Zeiten sind in Stunden (in einem Sandbox-Konto in Minuten).",
+        "hint": "Wird eine Abbuchung abgelehnt, versucht Payrudder es nach jeder Wartezeit erneut und stuft die Rechnung danach als uneinbringlich ein. Die Zeiten sind in Stunden (in einem Sandbox-Konto in Minuten).",
         "defaults": "Nichts eingestellt: Es werden die Standardzeiten angezeigt.",
         "retry": "Versuch {n}",
         "delay": "Stunden vor Versuch {n}",
@@ -699,7 +699,7 @@
     },
     "webhooks": {
       "title": "Webhooks",
-      "hint": "Quotify sendet an diese HTTPS-Endpunkte einen signierten JSON-POST, wenn im Konto etwas passiert: eine Rechnung wird bezahlt, eine Gutschrift ausgestellt, ein Abonnement ändert sich. Prüfen Sie den Header Quotify-Signature mit dem Secret des Endpunkts; fehlgeschlagene Zustellungen werden etwa eineinhalb Tage lang wiederholt.",
+      "hint": "Payrudder sendet an diese HTTPS-Endpunkte einen signierten JSON-POST, wenn im Konto etwas passiert: eine Rechnung wird bezahlt, eine Gutschrift ausgestellt, ein Abonnement ändert sich. Prüfen Sie den Header Quotify-Signature mit dem Secret des Endpunkts; fehlgeschlagene Zustellungen werden etwa eineinhalb Tage lang wiederholt.",
       "formLabel": "neuer Webhook-Endpunkt",
       "url": "Endpunkt-URL",
       "description": "Beschreibung",
@@ -810,7 +810,7 @@
     },
     "mail": {
       "title": "E-Mail",
-      "hint": "Legen Sie fest, welche Arten von E-Mails Quotify an die Kunden dieses Mandanten sendet. Eine abgeschaltete Art wird verworfen, nicht vorgemerkt: Wieder einschalten sendet das Übersprungene nicht nach.",
+      "hint": "Legen Sie fest, welche Arten von E-Mails Payrudder an die Kunden dieses Mandanten sendet. Eine abgeschaltete Art wird verworfen, nicht vorgemerkt: Wieder einschalten sendet das Übersprungene nicht nach.",
       "categories": {
         "invoice_issued": "Rechnung erstellt",
         "payment_receipts": "Zahlungsbelege",
@@ -821,11 +821,11 @@
       "descriptions": {
         "invoice_issued": "Teilt dem Kunden mit, dass eine neue Rechnung abgeschlossen wurde.",
         "payment_receipts": "Der Beleg nach einer erfolgreichen Zahlung.",
-        "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Quotify die Einziehung aufgegeben hat.",
+        "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Payrudder die Einziehung aufgegeben hat.",
         "usage_alerts": "Ein Kunde hat ein Nutzungslimit seines Tarifs überschritten.",
-        "system": "Alle übrigen Nachrichten von Quotify."
+        "system": "Alle übrigen Nachrichten von Payrudder."
       },
-      "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Quotify."
+      "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Payrudder."
     },
     "credits": {
       "packs": {
@@ -907,7 +907,7 @@
       },
       "settings": {
         "title": "Warnung bei niedrigem Guthaben",
-        "hint": "Fällt das Guthaben eines Kunden unter diese Zahl, sendet Quotify das Webhook-Ereignis credits.low einmalig. 0 schaltet es aus.",
+        "hint": "Fällt das Guthaben eines Kunden unter diese Zahl, sendet Payrudder das Webhook-Ereignis credits.low einmalig. 0 schaltet es aus.",
         "formLabel": "Warnung bei niedrigem Guthaben",
         "threshold": "Warnen unter (Credits)",
         "save": "Speichern",
@@ -945,7 +945,7 @@
         "net": "Nettoeinnahmen",
         "fees": "Anbietergebühren",
         "feesNotRecorded": "Nicht erfasst",
-        "feesHint": "Die Provision des Zahlungsanbieters erfasst Quotify nicht. Tragen Sie sie als Ausgabe in der Kategorie Zahlungsgebühren ein.",
+        "feesHint": "Die Provision des Zahlungsanbieters erfasst Payrudder nicht. Tragen Sie sie als Ausgabe in der Kategorie Zahlungsgebühren ein.",
         "expenses": "Ausgaben",
         "profit": "Gewinn"
       },
@@ -1286,6 +1286,20 @@
         "unknown_currency": "Die Währung wird nicht unterstützt."
       }
     },
+    "coupon": {
+      "not_found": "Diesen Code gibt es nicht. Bitte prüfen Sie ihn und versuchen Sie es erneut.",
+      "inactive": "Dieser Code ist nicht mehr aktiv.",
+      "expired": "Dieser Code ist abgelaufen.",
+      "exhausted": "Dieser Code wurde bereits vollständig eingelöst.",
+      "not_applicable": "Dieser Code gilt für diesen Kauf nicht.",
+      "currency_mismatch": "Dieser Code gilt nicht in der Währung dieses Kaufs.",
+      "already_used": "Sie haben diesen Code bereits verwendet.",
+      "first_purchase_only": "Dieser Code gilt nur für den ersten Kauf.",
+      "below_minimum": "Der Kaufbetrag liegt unter dem Mindestbetrag für diesen Code.",
+      "customer_required": "Dieser Code setzt einen bekannten Kunden voraus und gilt daher nicht für eine Gastzahlung.",
+      "already_applied": "Für diesen Kauf wird bereits ein Gutschein verwendet. Pro Kauf ist nur ein Gutschein möglich.",
+      "code_taken": "Ein Aktionscode mit diesem Text existiert bereits (Groß- und Kleinschreibung zählt nicht)."
+    },
     "plans": {
       "app": {
         "bad_slug": "Das Kürzel der App darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten und höchstens 60 Zeichen lang sein.",
@@ -1296,7 +1310,8 @@
       },
       "subscription": {
         "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut.",
-        "provider_currency": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen. Wählen Sie einen anderen Anbieter oder eine andere Währung."
+        "provider_currency": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen. Wählen Sie einen anderen Anbieter oder eine andere Währung.",
+        "period_overlap": "Dieser Kunde hat bereits ein Abonnement, das sich mit diesem Zeitraum überschneidet."
       },
       "webhook": {
         "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
@@ -1306,14 +1321,24 @@
       "customer": {
         "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig."
       },
-      "api_key": {
-        "bad_scope": "Der Bereich muss full, ingest oder read sein.",
-        "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine API-Schlüssel haben. Schließen Sie zuerst die Go-live-Checkliste ab."
+      "common": {
+        "not_found": "Der Eintrag wurde nicht gefunden.",
+        "already_exists": "Der Eintrag existiert bereits.",
+        "broken_reference": "Das verweist auf etwas, das nicht existiert.",
+        "forbidden": "Dazu fehlt Ihnen die Berechtigung."
       },
       "tenant": {
+        "settings_immutable": "Währung, Zeitzone und Umgebung eines Kontos lassen sich nicht ändern.",
         "bad_status": "Der Status muss active oder suspended sein.",
         "bad_transition": "Diese Statusänderung ist für diese Umgebung nicht möglich.",
         "reason_required": "Für die Aktivierung ohne Checkliste ist eine Begründung nötig."
+      },
+      "request": {
+        "invalid": "{field} ist ungültig: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "Der Bereich muss full, ingest oder read sein.",
+        "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine API-Schlüssel haben. Schließen Sie zuerst die Go-live-Checkliste ab."
       }
     },
     "common": {
@@ -1336,7 +1361,7 @@
         "invoice_closed": "Die Rechnung ist bereits bezahlt oder storniert.",
         "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
         "bad_currency": "Die Währung weicht von der der Rechnung ab.",
-        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag und klären Sie den Rest außerhalb von Quotify.",
+        "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag und klären Sie den Rest außerhalb von Payrudder.",
         "reference_reused": "Diese Bankreferenz wurde bereits mit einem anderen Betrag erfasst.",
         "bad_reference": "Die Bankreferenz fehlt oder ist ungültig.",
         "bad_note": "Die Notiz ist zu lang (höchstens 500 Zeichen).",
@@ -1449,6 +1474,10 @@
       "dashboard": {
         "bad_period": "Dieser Zeitraum ist ungültig. Wählen Sie 7, 30 oder 90 Tage, dieses Jahr oder zwei Tage, deren erster nicht nach dem letzten liegt.",
         "range_too_long": "Ein Zeitraum darf höchstens zwei Jahre lang sein."
+      },
+      "request": {
+        "invalid": "{field} ist ungültig: {detail}",
+        "too_large": "Die Anfrage ist zu groß."
       },
       "auth": {
         "scope_denied": "Der Bereich dieses API-Schlüssels erlaubt diese Anfrage nicht. Verwenden Sie einen Schlüssel mit größerem Bereich.",
@@ -1644,7 +1673,7 @@
     },
     "keys": {
       "title": "API-Schlüssel",
-      "intro": "Ihr Server nutzt einen Schlüssel, um mit Quotify zu sprechen. Sandbox-Schlüssel berühren nur Testdaten.",
+      "intro": "Ihr Server nutzt einen Schlüssel, um mit Payrudder zu sprechen. Sandbox-Schlüssel berühren nur Testdaten.",
       "newSandbox": "Sandbox-Schlüssel",
       "newLive": "Live-Schlüssel",
       "created": "Erstellt am {date}",
@@ -1764,7 +1793,7 @@
     },
     "invite": {
       "title": "Sie sind eingeladen",
-      "intro": "Treten Sie {account} bei Quotify als {role} bei.",
+      "intro": "Treten Sie {account} bei Payrudder als {role} bei.",
       "checking": "Einladung wird geprüft …",
       "noToken": "Diese Seite braucht den Link aus Ihrer Einladungs-E-Mail. Öffnen Sie den Link erneut.",
       "invalid": "Diese Einladung ist nicht mehr gültig: Sie wurde benutzt, zurückgezogen, ersetzt oder ist abgelaufen. Bitten Sie die einladende Person, sie erneut zu senden.",
@@ -1821,7 +1850,7 @@
       "intro": "Wer zu dieser Organisation gehört, mit welchen Rollen, und welche Einladungen noch offen sind."
     },
     "apiKeysPage": {
-      "intro": "Schlüssel, mit denen Ihr Server Quotify für diese App aufruft. Ein Schlüssel gehört zu einer Umgebung; sein Geheimnis wird einmal angezeigt."
+      "intro": "Schlüssel, mit denen Ihr Server Payrudder für diese App aufruft. Ein Schlüssel gehört zu einer Umgebung; sein Geheimnis wird einmal angezeigt."
     },
     "appSettings": {
       "intro": "Womit diese App angelegt wurde. Währung und Zeitzone bestimmen, wie jede Rechnung berechnet wird, und sind deshalb nach dem Anlegen fest.",

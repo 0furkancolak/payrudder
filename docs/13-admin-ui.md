@@ -76,8 +76,8 @@ job; `e2e/` still drives the real stack.
 - **Typed client.** `npm run gen` generates `src/lib/schema.d.ts` from [`api/openapi/v1.yaml`](../api/openapi/v1.yaml) with `openapi-typescript`;
   the client is `openapi-fetch` over those types, so a route or field that does not exist in the spec does not compile. CI regenerates the file and fails on a
   diff, and the ESLint config forbids `any`. The gateway does not serve the spec: the file in the repository is the source.
-- **Same origin.** The browser calls `/gw/...`; nginx in the image (Vite's dev server in development) forwards it to `GATEWAY_URL` with the `Authorization` header and resolves the
-  gateway on every request, so a recreated gateway is found again. The gateway needs no CORS configuration.
+- **Same origin.** The browser calls `/gw/...`; in production a Cloudflare Worker (`worker/`, [ADR 0021](adr/0021-console-on-cloudflare-workers.md)) strips `/gw` and forwards the request to `API_ORIGIN` with its cookies and `Authorization` header; Vite's dev server and `vite preview` (the compose `admin-ui` container used by the e2e job) do the same to `GATEWAY_URL`. The gateway needs no CORS configuration.
+- **Deploy.** `npm run build` writes `dist/`; `wrangler.jsonc` serves it as Workers static assets (single-page-app fallback, `public/_headers` for the CSP, security headers and the one-year cache of hashed files). `npm run cf:dev` runs it locally, `cf:deploy:staging` / `cf:deploy` publish it; first deploy and secrets: [runbook](runbooks/console-first-deploy.md). Runtime settings (`window.__QUOTIFY__`, from `/env.js`) come from the Worker's `BRAND_NAME` / `CONSOLE_DEMO` vars.
 - **Operator routes added for it** (all behind operator access: the machine token or an operator's session, in the OpenAPI file): `GET /admin/v1/tenants`, `GET /admin/v1/tenants/{tenant_id}/invoices[/{invoice_id}[/pdf|/saga]]`,
   `GET /admin/v1/dead-letters`, `POST /admin/v1/dead-letters/redrive`. The tenant-scoped reads run the billing call in the tenant named in the path; the dead-letter
   and saga operations are `BillingAdminService` RPCs (billing-svc owns the saga log and the RabbitMQ topology).

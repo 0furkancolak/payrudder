@@ -172,17 +172,18 @@ func (m *Manager) rerate(ctx context.Context, job *ReratingJob) (*ReratingJob, e
 
 // reratePass is what one pass over a job reads before it prices any customer.
 type reratePass struct {
-	job      *ReratingJob
-	tctx     context.Context
-	currency string
-	meters   map[string]meterInfo
-	subs     map[string]subscription
-	target   rating.PlanVersion
-	planCode string
-	usage    map[string][]rating.Usage
-	billed   map[string]map[string]int64
-	snaps    map[string]json.RawMessage
-	codes    map[string]string // plan version id -> plan code
+	job        *ReratingJob
+	start, end time.Time // the period
+	tctx       context.Context
+	currency   string
+	meters     map[string]meterInfo
+	subs       map[string]subscription
+	target     rating.PlanVersion
+	planCode   string
+	usage      map[string][]rating.Usage
+	billed     map[string]map[string]int64
+	snaps      map[string]json.RawMessage
+	codes      map[string]string // plan version id -> plan code
 }
 
 func (m *Manager) rerateOnce(ctx context.Context, job *ReratingJob) error {
@@ -220,6 +221,7 @@ func (m *Manager) loadRerating(ctx context.Context, job *ReratingJob) (*reratePa
 	if err != nil {
 		return nil, permanent{err}
 	}
+	rp.start, rp.end = start, end
 	if rp.meters, err = m.meters(rp.tctx); err != nil {
 		return nil, err
 	}
@@ -327,7 +329,7 @@ func (m *Manager) rerateCustomer(ctx context.Context, rp *reratePass, cid string
 	if code != rp.planCode {
 		return false, nil // another plan: not what this job re-prices
 	}
-	deltas, total, err := correctionDeltas(rp.target, rp.usage[cid], rp.billed[cid], rp.meters)
+	deltas, total, err := correctionDeltas(rp.target, rp.usage[cid], rp.billed[cid], rp.meters, feeWaived(sub, rp.start, rp.end))
 	if err != nil {
 		return true, err
 	}
@@ -343,7 +345,9 @@ func (m *Manager) rerateCustomer(ctx context.Context, rp *reratePass, cid string
 
 // correctionDeltas prices usage under target and returns, per component (a meter, "" for the base fee), the lines that bring what was billed to the new price
 // and their sum: positive when the customer owes more, negative when it is owed a credit.
-func correctionDeltas(target rating.PlanVersion, usage []rating.Usage, billed map[string]int64, meters map[string]meterInfo) ([]rating.Line, int64, error) {
+//
+// feeWaived: the customer's fixed fee is not on the regular invoice (a trial, an advance fee, a provider that bills it), so the target's fixed fee is not owed either.
+func correctionDeltas(target rating.PlanVersion, usage []rating.Usage, billed map[string]int64, meters map[string]meterInfo, feeWaived bool) ([]rating.Line, int64, error) {
 	lines, err := rating.Rate(target, usage)
 	if err != nil {
 		return nil, 0, permanent{err}
@@ -351,6 +355,9 @@ func correctionDeltas(target rating.PlanVersion, usage []rating.Usage, billed ma
 	newAmount := map[string]int64{}
 	newLine := map[string]rating.Line{}
 	for _, l := range lines {
+		if feeWaived && l.Kind == rating.KindBaseFee {
+			continue
+		}
 		newAmount[l.MeterCode] += l.AmountMinor
 		newLine[l.MeterCode] = l
 	}

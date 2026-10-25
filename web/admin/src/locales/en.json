@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Quotify operator console",
+    "title": "Payrudder operator console",
     "language": "Language",
     "demo": "Demo mode: sample data, a mock payment provider, mail goes to the local mail catcher. Nothing here is real.",
     "themeLight": "Switch to light mode",
@@ -70,7 +70,7 @@
       "pending": "pending"
     },
     "ledgerSource": {
-      "command": "Quotify",
+      "command": "Payrudder",
       "webhook": "provider notification",
       "reconciliation": "reconciliation",
       "manual": "recorded by hand"
@@ -170,7 +170,7 @@
     "payment": {
       "record": "Record payment",
       "confirmTransfer": "Confirm bank transfer",
-      "offlineHint": "Record money received outside Quotify (a transfer, cash, other). A partial amount is allowed: the invoice is paid when the payments add up to the total.",
+      "offlineHint": "Record money received outside Payrudder (a transfer, cash, other). A partial amount is allowed: the invoice is paid when the payments add up to the total.",
       "transferHint": "Confirm what arrived on the bank statement. A partial amount is recorded and the invoice is paid when the transfers add up to the total.",
       "method": "Method",
       "amount": "Amount ({currency})",
@@ -462,7 +462,7 @@
       },
       "providerRun": {
         "title": "Run by {provider}",
-        "hint": "These actions are made at the provider; Quotify's copy follows when the provider's notification arrives. A change is billed by the provider and applies at once.",
+        "hint": "These actions are made at the provider; Payrudder's copy follows when the provider's notification arrives. A change is billed by the provider and applies at once.",
         "none": "No proration: billed from the next renewal",
         "changed": "The provider applied the change.",
         "atPeriodEnd": "Pause at the end of the paid period",
@@ -549,7 +549,7 @@
         "result": "{created} price(s) created, {existing} already there.",
         "skipped": "{key}: {why}",
         "kind": "Kind",
-        "key": "Quotify's name",
+        "key": "Payrudder's name",
         "empty": "Nothing has been created at this provider yet."
       },
       "bank": {
@@ -623,7 +623,7 @@
     "pricing": {
       "coupons": {
         "title": "Coupons",
-        "hint": "A coupon takes a percentage or an amount off the fixed fee Quotify invoices in advance: once, for a number of periods, or for as long as the subscription lasts. A subscription run by a provider uses a discount at the provider instead.",
+        "hint": "A coupon takes a percentage or an amount off the fixed fee Payrudder invoices in advance: once, for a number of periods, or for as long as the subscription lasts. A subscription run by a provider uses a discount at the provider instead.",
         "formLabel": "new coupon",
         "code": "Code",
         "name": "Name",
@@ -650,7 +650,7 @@
       },
       "tax": {
         "title": "Tax",
-        "hint": "Quotify adds these rates on top of the price to the invoices it raises, by the customer's country (the rate without a country covers all others). You set the rates and are responsible for them; an invoice a provider issues is taxed by the provider.",
+        "hint": "Payrudder adds these rates on top of the price to the invoices it raises, by the customer's country (the rate without a country covers all others). You set the rates and are responsible for them; an invoice a provider issues is taxed by the provider.",
         "country": "Country {n}",
         "anyCountry": "Every other country",
         "name": "Name {n}",
@@ -665,7 +665,7 @@
       },
       "dunning": {
         "title": "Payment retries",
-        "hint": "When a charge is declined, Quotify tries again after each delay below, then gives the invoice up as uncollectible. Delays are in hours (minutes in a sandbox account).",
+        "hint": "When a charge is declined, Payrudder tries again after each delay below, then gives the invoice up as uncollectible. Delays are in hours (minutes in a sandbox account).",
         "defaults": "You have not set any: the standard delays are shown.",
         "retry": "Retry {n}",
         "delay": "Hours before retry {n}",
@@ -699,7 +699,7 @@
     },
     "webhooks": {
       "title": "Webhooks",
-      "hint": "Quotify sends a signed JSON POST to these HTTPS endpoints when something happens in the account: an invoice is paid, a credit note is issued, a subscription changes. Verify the Quotify-Signature header with the endpoint's secret; failed deliveries are retried for about a day and a half.",
+      "hint": "Payrudder sends a signed JSON POST to these HTTPS endpoints when something happens in the account: an invoice is paid, a credit note is issued, a subscription changes. Verify the Quotify-Signature header with the endpoint's secret; failed deliveries are retried for about a day and a half.",
       "formLabel": "new webhook endpoint",
       "url": "Endpoint URL",
       "description": "Description",
@@ -810,7 +810,7 @@
     },
     "mail": {
       "title": "E-mail",
-      "hint": "Choose which kinds of e-mail Quotify sends to this tenant's customers. A kind that is switched off is dropped, not queued: switching it on again does not send what was skipped.",
+      "hint": "Choose which kinds of e-mail Payrudder sends to this tenant's customers. A kind that is switched off is dropped, not queued: switching it on again does not send what was skipped.",
       "categories": {
         "invoice_issued": "Invoice issued",
         "payment_receipts": "Payment receipts",
@@ -821,11 +821,11 @@
       "descriptions": {
         "invoice_issued": "Tells the customer that a new invoice was finalized.",
         "payment_receipts": "The receipt after a successful payment.",
-        "payment_failed": "A failed payment, a retry and the notice that Quotify gave up collecting.",
+        "payment_failed": "A failed payment, a retry and the notice that Payrudder gave up collecting.",
         "usage_alerts": "A customer passed a usage limit of its plan.",
-        "system": "Every other message Quotify sends."
+        "system": "Every other message Payrudder sends."
       },
-      "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Quotify's mail."
+      "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Payrudder's mail."
     },
     "credits": {
       "packs": {
@@ -907,7 +907,7 @@
       },
       "settings": {
         "title": "Low-balance alert",
-        "hint": "When a customer's balance drops below this number, Quotify sends the credits.low webhook event once. 0 turns it off.",
+        "hint": "When a customer's balance drops below this number, Payrudder sends the credits.low webhook event once. 0 turns it off.",
         "formLabel": "Low-balance alert",
         "threshold": "Alert below (credits)",
         "save": "Save",
@@ -945,7 +945,7 @@
         "net": "Net income",
         "fees": "Provider fees",
         "feesNotRecorded": "Not recorded",
-        "feesHint": "The payment provider's commission is not recorded by Quotify. Add it as an expense in the category Payment fees.",
+        "feesHint": "The payment provider's commission is not recorded by Payrudder. Add it as an expense in the category Payment fees.",
         "expenses": "Expenses",
         "profit": "Profit"
       },
@@ -1286,6 +1286,20 @@
         "unknown_currency": "The currency is not supported."
       }
     },
+    "coupon": {
+      "not_found": "This code does not exist. Check it and try again.",
+      "inactive": "This code is no longer active.",
+      "expired": "This code has expired.",
+      "exhausted": "This code has been used up.",
+      "not_applicable": "This code does not work for this purchase.",
+      "currency_mismatch": "This code does not work in the currency of this purchase.",
+      "already_used": "You have already used this code.",
+      "first_purchase_only": "This code is for a first purchase only.",
+      "below_minimum": "The purchase is below the minimum amount for this code.",
+      "customer_required": "This code needs a known customer, so it cannot be used on a guest payment.",
+      "already_applied": "This purchase already uses a coupon. Only one coupon per purchase.",
+      "code_taken": "A promotion code with this text already exists (codes are the same in any letter case)."
+    },
     "plans": {
       "app": {
         "bad_slug": "The app slug may only have lower-case letters, digits and single dashes, and at most 60 characters.",
@@ -1296,7 +1310,8 @@
       },
       "subscription": {
         "coupon_blocks_credit": "This subscription has a coupon. Credit the unused part with a credit note on its fee invoice instead.",
-        "provider_currency": "This payment provider cannot charge in this currency. Choose another provider or currency."
+        "provider_currency": "This payment provider cannot charge in this currency. Choose another provider or currency.",
+        "period_overlap": "This customer already has a subscription that overlaps that period."
       },
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
@@ -1306,14 +1321,24 @@
       "customer": {
         "tax_invalid": "The customer's tax id or tax office is not valid."
       },
-      "api_key": {
-        "bad_scope": "The scope must be full, ingest or read.",
-        "tenant_not_active": "This environment is not active, so it cannot have API keys. Finish the go-live checklist first."
+      "common": {
+        "not_found": "It was not found.",
+        "already_exists": "It already exists.",
+        "broken_reference": "This refers to something that does not exist.",
+        "forbidden": "You are not allowed to do this."
       },
       "tenant": {
+        "settings_immutable": "The currency, time zone and environment of an account cannot be changed.",
         "bad_status": "The status must be active or suspended.",
         "bad_transition": "This change of status is not possible for this environment.",
         "reason_required": "Activating an environment without its checklist needs a reason."
+      },
+      "request": {
+        "invalid": "{field} is not valid: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "The scope must be full, ingest or read.",
+        "tenant_not_active": "This environment is not active, so it cannot have API keys. Finish the go-live checklist first."
       }
     },
     "common": {
@@ -1336,7 +1361,7 @@
         "invoice_closed": "The invoice is already paid or void.",
         "bad_amount": "The amount must be a whole number of minor units above zero.",
         "bad_currency": "The currency differs from the invoice's.",
-        "overpayment": "That is more than is outstanding. Record only the outstanding amount and handle the rest outside Quotify.",
+        "overpayment": "That is more than is outstanding. Record only the outstanding amount and handle the rest outside Payrudder.",
         "reference_reused": "This bank reference was already recorded with a different amount.",
         "bad_reference": "The bank reference is missing or not valid.",
         "bad_note": "The note is too long (at most 500 characters).",
@@ -1449,6 +1474,10 @@
       "dashboard": {
         "bad_period": "That period is not valid. Choose 7, 30 or 90 days, this year, or two days with the first not after the last.",
         "range_too_long": "A period can be at most two years."
+      },
+      "request": {
+        "invalid": "{field} is not valid: {detail}",
+        "too_large": "The request is too large."
       },
       "auth": {
         "scope_denied": "This API key's scope does not allow this request. Use a key with a wider scope.",
@@ -1644,7 +1673,7 @@
     },
     "keys": {
       "title": "API keys",
-      "intro": "Your server uses a key to talk to Quotify. Sandbox keys only touch test data.",
+      "intro": "Your server uses a key to talk to Payrudder. Sandbox keys only touch test data.",
       "newSandbox": "Sandbox key",
       "newLive": "Live key",
       "created": "Created {date}",
@@ -1764,7 +1793,7 @@
     },
     "invite": {
       "title": "You are invited",
-      "intro": "Join {account} on Quotify as {role}.",
+      "intro": "Join {account} on Payrudder as {role}.",
       "checking": "Checking the invitation…",
       "noToken": "This page needs the link from your invitation e-mail. Open the link again.",
       "invalid": "This invitation is not valid any more: it was used, cancelled, replaced or has expired. Ask the person who invited you to send it again.",
@@ -1821,7 +1850,7 @@
       "intro": "Who belongs to this organisation, their roles, and the invitations that are still open."
     },
     "apiKeysPage": {
-      "intro": "Keys your server uses to call Quotify for this app. A key belongs to one environment; its secret is shown once."
+      "intro": "Keys your server uses to call Payrudder for this app. A key belongs to one environment; its secret is shown once."
     },
     "appSettings": {
       "intro": "What this app was created with. The currency and the time zone decide how every invoice is worked out, so they are fixed once the app exists.",

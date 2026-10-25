@@ -55,6 +55,8 @@ operatorToken: local-operator-token-change-me-0123456789   # the machine credent
 auth:
   appURL: http://localhost:42301   # the console's public address: mailed links and the return from Google point into it
   operatorEmails: ""               # comma separated: people who sign in with one of these (verified) addresses are platform operators
+  trustedProxies: ""               # comma separated CIDRs of a proxy with a fixed address whose X-Forwarded-For is believed (QUOTIFY_TRUSTED_PROXIES); empty: none
+  trustedProxySecret: ""           # >= 32 characters; the console Worker's EDGE_AUTH_SECRET. Set: its X-Forwarded-For is believed (QUOTIFY_TRUSTED_PROXY_SECRET); empty: off
   otpPepper: local-otp-pepper-change-me-0123456789   # keys the hash of one-time codes (a secret: set your own, or use secrets.existingSecrets)
   google:
     clientId: ""                   # both set: the "Continue with Google" button appears (docs/13-admin-ui.md says how to create the client)
@@ -95,12 +97,13 @@ services:
     nodePort: 30080          # the only service reachable from outside; null for ClusterIP (put an Ingress in front)
     metricsPort: 9100
     replicas: 1
-    uses: [operatorToken, paymentsToken, google]
+    uses: [operatorToken, paymentsToken, google, trustedProxySecret]
     hpa: { enabled: false, max: 4, cpu: 70 }
     env:
       QUOTIFY_HTTP_ADDR: ":8000"
       QUOTIFY_APP_URL: "{{ .Values.auth.appURL }}"
       QUOTIFY_OPERATOR_EMAILS: "{{ .Values.auth.operatorEmails }}"
+      QUOTIFY_TRUSTED_PROXIES: "{{ .Values.auth.trustedProxies }}"
       QUOTIFY_GOOGLE_REDIRECT_URL: "{{ .Values.auth.google.redirectURL }}"
       QUOTIFY_PAYMENTS_URL: http://payments-worker:8095
       QUOTIFY_PUBLIC_URL: "{{ .Values.global.publicURL }}"

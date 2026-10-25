@@ -37,6 +37,7 @@ type fakeIyzico struct {
 	detail string // answer of /payment/detail
 	auth   string // answer of /payment/auth
 	status int    // HTTP status of /payment/detail
+	basket string // the basketId of the last charge: iyzico's payment detail names it
 }
 
 func newFakeIyzico(t *testing.T) *fakeIyzico {
@@ -48,9 +49,21 @@ func newFakeIyzico(t *testing.T) *fakeIyzico {
 		f.calls[r.URL.Path]++
 		switch r.URL.Path {
 		case "/payment/auth":
+			var in struct {
+				BasketID string `json:"basketId"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&in)
+			f.basket = in.BasketID
 			_, _ = io.WriteString(w, f.auth)
 		case "/payment/detail":
 			w.WriteHeader(f.status)
+			var d map[string]any
+			if json.Unmarshal([]byte(f.detail), &d) == nil && d["paymentId"] != nil {
+				d["basketId"] = f.basket
+				b, _ := json.Marshal(d)
+				_, _ = w.Write(b)
+				return
+			}
 			_, _ = io.WriteString(w, f.detail)
 		case "/v2/payment/refund":
 			_, _ = io.WriteString(w, `{"status":"success","paymentId":"P1","refundHostReference":"R1"}`)
@@ -329,7 +342,7 @@ func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 		if code, body := notify("ev-2", key); code != 200 || !strings.Contains(body, "processed") {
 			t.Fatalf("%d %s", code, body)
 		}
-		n, err := ledger.Outcomes(ctx, "iyzico", "charge", "P1")
+		n, err := ledger.Outcomes(ctx, tenant, "iyzico", "charge", "P1")
 		if err != nil || n != 2 {
 			t.Fatalf("outcomes for P1 = %d, %v; the command said succeeded and iyzico now says declined", n, err)
 		}

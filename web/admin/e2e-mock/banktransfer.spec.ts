@@ -224,11 +224,11 @@ test.describe("invoice money", () => {
     await dialog.getByLabel("Amount (USD)").fill("150");
     await dialog.getByLabel("Bank reference").fill("BANK-1");
     await dialog.getByRole("button", { name: "Confirm transfer" }).click();
-    await expect(dialog.getByRole("alert")).toContainText("Record only the outstanding amount and handle the rest outside Quotify");
+    await expect(dialog.getByRole("alert")).toContainText("Record only the outstanding amount and handle the rest outside Payrudder");
     await expect(dialog.getByRole("alert")).not.toContainText("raw:");
   });
 
-  test("a payment received outside Quotify is recorded with a string amount and the actor header", async ({ page }) => {
+  test("a payment received outside Payrudder is recorded with a string amount and the actor header", async ({ page }) => {
     const state = { invoice: invoice({ saga_state: "PAYMENT_DECLINED" }), transfer: transfer({ state: "none", receipts: [] }) as Record<string, unknown> | null };
     const gw = invoicePage(state).on((c) => {
       if (c.method === "POST" && c.path === "/admin/v1/invoices/inv1/payments") {

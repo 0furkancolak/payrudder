@@ -56,7 +56,7 @@ One operation, `ChangeSubscription`, with explicit inputs: new plan version, new
 - Proration is by time to the second over the period, rounded half-even once per line (the existing `subscription.Portion`), in the subscription's currency.
 - Paddle-owned subscriptions: map to `PATCH /subscriptions/{id}` with the matching `proration_billing_mode` and `scheduled_change` handling; a preview calls Paddle's preview endpoint; Quotify mirrors the result from the webhook. Where Paddle cannot do a combination (it prorates by its own rules), Quotify refuses it with the reason instead of approximating.
 
-## 3. Paddle through Quotify (phase 21)
+## 3. Paddle through Payrudder (phase 21)
 
 A provider-neutral `Catalogue` capability (optional interface, like `CheckoutProvider`) so the console and API work the same for any provider that has one:
 

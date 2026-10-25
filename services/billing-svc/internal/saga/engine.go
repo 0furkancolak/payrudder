@@ -181,6 +181,8 @@ type saga struct {
 	Snap                                Snapshot
 	// RetryHours are the tenant's own dunning delays; nil means the service-wide defaults.
 	RetryHours []int32
+	// CreditedMinor is the sum of the invoice's credit notes, read when a void asks what is left to refund.
+	CreditedMinor int64
 }
 
 func (e *Engine) load(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UUID) (*saga, error) {
@@ -236,12 +238,20 @@ func (e *Engine) Handle(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UU
 }
 
 func (e *Engine) guardCtx(s *saga) Ctx {
-	return Ctx{TotalMinor: s.TotalMinor, Paid: s.InvoiceStatus == "paid", DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)),
+	return Ctx{TotalMinor: s.TotalMinor, CreditedMinor: s.CreditedMinor, Paid: s.InvoiceStatus == "paid", DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)),
 		ProviderMails: s.Snap.ProviderMails || s.Snap.SkipMail, Link: s.Snap.Collection == CollectionLink}
 }
 
 func (e *Engine) handleLoaded(ctx context.Context, tx pgx.Tx, s *saga, ev Event, cause string, commandID *uuid.UUID) (Outcome, error) {
 	out := Outcome{From: s.State}
+	if ev == EvVoid {
+		// What a void refunds is what the credit notes left: an invoice credited in full has nothing to give back.
+		credited, err := sqlc.New(tx).SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+		if err != nil {
+			return out, err
+		}
+		s.CreditedMinor = credited
+	}
 	for {
 		res, ok := Next(s.State, ev, e.guardCtx(s))
 		if !ok {
@@ -374,7 +384,19 @@ func (e *Engine) mirrorInvoiceStatus(ctx context.Context, tx pgx.Tx, s *saga, fr
 		return err
 	}
 	s.InvoiceStatus = status
+	if next == Voided {
+		return reopenCredits(ctx, tx, s)
+	}
 	return nil
+}
+
+// reopenCredits gives back the credit balances a voided invoice consumed when its draft was made, so the customer does not lose them.
+func reopenCredits(ctx context.Context, tx pgx.Tx, s *saga) error {
+	q := sqlc.New(tx)
+	if err := q.DeleteCreditApplicationsOfInvoice(ctx, sqlc.DeleteCreditApplicationsOfInvoiceParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID}); err != nil {
+		return err
+	}
+	return q.ClearCreditsAppliedToInvoice(ctx, sqlc.ClearCreditsAppliedToInvoiceParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
 }
 
 // announce tells the tenant's endpoints and the invoice topic about the states that are outcomes.
@@ -442,8 +464,16 @@ func (e *Engine) issue(ctx context.Context, tx pgx.Tx, s *saga, eff Effect) erro
 		env.Command = &commandsv1.CommandEnvelope_RenderInvoicePdf{RenderInvoicePdf: &commandsv1.RenderInvoicePdf{Invoice: e.invoiceSnapshot(s, lines)}}
 	case EffCharge, EffChargeDunning:
 		step, route = "charge", rabbitx.QueuePaymentCharge
+		// A part payment recorded by hand is not charged again: the card is asked for what is still outstanding.
+		paid, err := sqlc.New(tx).SumInvoicePayments(ctx, sqlc.SumInvoicePaymentsParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+		if err != nil {
+			return err
+		}
+		if s.TotalMinor-paid <= 0 {
+			return fmt.Errorf("saga %s: invoice %s has nothing outstanding to charge", s.ID, s.InvoiceID)
+		}
 		env.Command = &commandsv1.CommandEnvelope_ChargePayment{ChargePayment: &commandsv1.ChargePayment{
-			InvoiceId: s.InvoiceID.String(), InvoiceNumber: s.Number, AmountMinor: s.TotalMinor, Currency: s.Currency, PaymentMethod: s.Snap.PaymentMethod, Provider: s.Snap.Provider,
+			InvoiceId: s.InvoiceID.String(), InvoiceNumber: s.Number, AmountMinor: s.TotalMinor - paid, Currency: s.Currency, PaymentMethod: s.Snap.PaymentMethod, Provider: s.Snap.Provider,
 			DunningAttempt: int32(s.DunningAttempt), IdempotencyKey: ChargeKey(s.InvoiceID, s.DunningAttempt), //nolint:gosec // 0..3
 		}}
 	case EffQueryStatus:
@@ -452,8 +482,16 @@ func (e *Engine) issue(ctx context.Context, tx pgx.Tx, s *saga, eff Effect) erro
 			InvoiceId: s.InvoiceID.String(), IdempotencyKey: ChargeKey(s.InvoiceID, s.DunningAttempt)}}
 	case EffRefund:
 		step, route = "refund", rabbitx.QueuePaymentRefund
+		// Credit notes already gave part of the invoice back (to the card, or as a credit balance).
+		credited, err := sqlc.New(tx).SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+		if err != nil {
+			return err
+		}
+		if s.TotalMinor-credited <= 0 {
+			return fmt.Errorf("saga %s: invoice %s is credited in full, there is nothing to refund", s.ID, s.InvoiceID)
+		}
 		env.Command = &commandsv1.CommandEnvelope_RefundPayment{RefundPayment: &commandsv1.RefundPayment{
-			InvoiceId: s.InvoiceID.String(), AmountMinor: s.TotalMinor, Currency: s.Currency,
+			InvoiceId: s.InvoiceID.String(), AmountMinor: s.TotalMinor - credited, Currency: s.Currency,
 			IdempotencyKey: s.InvoiceID.String() + ":refund"}}
 	case EffNotify:
 		step, route = "notify", rabbitx.QueueNotificationSend

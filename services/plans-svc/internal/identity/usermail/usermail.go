@@ -1,4 +1,4 @@
-// Package usermail sends the mail Quotify itself writes to people (not to a tenant's customers, which is the notifier's job through the tenant's own mail
+// Package usermail sends the mail Payrudder itself writes to people (not to a tenant's customers, which is the notifier's job through the tenant's own mail
 // switch): an address to verify, a password to reset, an invitation to join an account, and the warning that somebody tried to sign up with an address that
 // already has an account. Texts exist in the six languages of the console. A mail is sent in the background with a bounded number at a time: the request that
 // caused it never waits for the SMTP relay, and a lost mail is something the person can ask for again (resend, forgot password).
@@ -139,7 +139,7 @@ func Render(m Mail) (subject, text, htmlBody string) {
 	if m.Link != "" {
 		t.WriteString(c.Button + ": " + m.Link + "\n\n")
 	}
-	t.WriteString(c.Ignore + "\n\nQuotify\n")
+	t.WriteString(c.Ignore + "\n\nPayrudder\n")
 
 	dir := "ltr"
 	if loc == "ar" {
@@ -155,7 +155,7 @@ func Render(m Mail) (subject, text, htmlBody string) {
 			html.EscapeString(m.Link), html.EscapeString(c.Button))
 		fmt.Fprintf(&h, `<p style="color:#5b6577;font-size:13px;word-break:break-all">%s</p>`, html.EscapeString(m.Link))
 	}
-	fmt.Fprintf(&h, `<p style="color:#5b6577;font-size:13px">%s</p><p style="color:#5b6577;font-size:13px">Quotify</p></body></html>`, html.EscapeString(c.Ignore))
+	fmt.Fprintf(&h, `<p style="color:#5b6577;font-size:13px">%s</p><p style="color:#5b6577;font-size:13px">Payrudder</p></body></html>`, html.EscapeString(c.Ignore))
 	return subject, t.String(), h.String()
 }
 

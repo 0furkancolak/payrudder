@@ -4,6 +4,7 @@ import { Menu } from "@lucide/vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import VerifyBanner from "@/features/product/VerifyBanner.vue";
+import { BrandLogo } from "@/shared/ui/brand-logo";
 import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
 import { isOperator, isPerson } from "@/shared/lib/session";
@@ -95,8 +96,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
       </header>
       <header v-else class="mx-auto flex max-w-[1240px] items-center justify-between gap-3 px-4 pt-4 md:px-8 md:pt-6">
         <Link to="/signin" class="flex items-center gap-2.5 text-lg font-semibold tracking-tight">
-          <span class="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-xl text-base font-bold" aria-hidden="true">{{ brand.slice(0, 1) }}</span>
-          <span>{{ brand }}</span>
+          <BrandLogo />
         </Link>
         <div class="flex items-center gap-2">
           <LanguageSwitcher />

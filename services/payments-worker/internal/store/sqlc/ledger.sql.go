@@ -57,17 +57,23 @@ func (q *Queries) AppendLedger(ctx context.Context, arg AppendLedgerParams) (int
 }
 
 const countLedgerOutcomes = `-- name: CountLedgerOutcomes :one
-SELECT count(DISTINCT status) FROM payment_ledger WHERE provider = $1 AND kind = $2 AND provider_ref = $3 AND status <> 'pending'
+SELECT count(DISTINCT status) FROM payment_ledger WHERE tenant_id = $1 AND provider = $2 AND kind = $3 AND provider_ref = $4 AND status <> 'pending'
 `
 
 type CountLedgerOutcomesParams struct {
+	TenantID    uuid.UUID
 	Provider    string
 	Kind        string
 	ProviderRef *string
 }
 
 func (q *Queries) CountLedgerOutcomes(ctx context.Context, arg CountLedgerOutcomesParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countLedgerOutcomes, arg.Provider, arg.Kind, arg.ProviderRef)
+	row := q.db.QueryRow(ctx, countLedgerOutcomes,
+		arg.TenantID,
+		arg.Provider,
+		arg.Kind,
+		arg.ProviderRef,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

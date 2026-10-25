@@ -91,6 +91,19 @@ service PlansService {
   // ApplyCoupon redeems a coupon on a subscription that has none; RemoveCoupon takes it off (the redemption count is not given back).
   rpc ApplyCoupon(ApplyCouponRequest) returns (ApplyCouponResponse);
   rpc RemoveCoupon(RemoveCouponRequest) returns (RemoveCouponResponse);
+  // CreatePromotionCodes makes codes for a coupon: the ones named, or count random ones, all with the same limit, expiry and restrictions.
+  rpc CreatePromotionCodes(CreatePromotionCodesRequest) returns (CreatePromotionCodesResponse);
+  rpc ListPromotionCodes(ListPromotionCodesRequest) returns (ListPromotionCodesResponse);
+  // DeactivatePromotionCode stops new redemptions of one code; the coupon and its other codes are not touched.
+  rpc DeactivatePromotionCode(DeactivatePromotionCodeRequest) returns (DeactivatePromotionCodeResponse);
+  rpc ListCouponRedemptions(ListCouponRedemptionsRequest) returns (ListCouponRedemptionsResponse);
+  // RedeemPromotion checks a typed code (or the coupon waiting for the customer when code is empty) against a purchase and, unless preview is set, claims it.
+  // Claiming is idempotent per (target, target_id): asking again for the same purchase returns the same redemption. billing-svc calls it when an invoice is made.
+  rpc RedeemPromotion(RedeemPromotionRequest) returns (RedeemPromotionResponse);
+  // ReversePromotion gives a redemption back after a void or a full refund. Reversing a purchase that used no coupon, or twice, does nothing.
+  rpc ReversePromotion(ReversePromotionRequest) returns (ReversePromotionResponse);
+  // GrantCustomerCoupon puts a coupon in wait for a customer: their next eligible checkout without a typed code uses it. One grant per (customer, source, source_ref).
+  rpc GrantCustomerCoupon(GrantCustomerCouponRequest) returns (GrantCustomerCouponResponse);
   rpc ListSubscriptionsFeeDue(ListSubscriptionsFeeDueRequest) returns (ListSubscriptionsFeeDueResponse);
   // AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
   rpc AdvanceSubscriptionFee(AdvanceSubscriptionFeeRequest) returns (AdvanceSubscriptionFeeResponse);
@@ -727,6 +740,117 @@ message RemoveCouponRequest {
 
 message RemoveCouponResponse {
   Subscription subscription = 1;
+}
+
+message CreatePromotionCodesRequest {
+  string coupon_code = 1;
+  // What every new code shares: limits and restrictions. Its id, code, redeemed and coupon_code are ignored.
+  PromotionCode template = 2;
+  // The codes to make, 2-40 letters, digits, - or _. Case does not matter: SUMMER and summer are one code.
+  repeated string codes = 3;
+  // Or: how many random codes to make (1-1000). Both may not be given.
+  int32 count = 4;
+  // Random codes are prefix + 8 characters (no 0, O, 1, I, L).
+  string prefix = 5;
+}
+
+message CreatePromotionCodesResponse {
+  repeated PromotionCode codes = 1;
+}
+
+message ListPromotionCodesRequest {
+  // Empty means every coupon.
+  string coupon_code = 1;
+  // active, inactive or empty for both.
+  string state = 2;
+  string search = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListPromotionCodesResponse {
+  repeated PromotionCode codes = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}
+
+message DeactivatePromotionCodeRequest {
+  string code = 1;
+}
+
+message DeactivatePromotionCodeResponse {
+  PromotionCode code = 1;
+}
+
+message ListCouponRedemptionsRequest {
+  string coupon_code = 1;
+  string promotion_code = 2;
+  string customer_external_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListCouponRedemptionsResponse {
+  repeated CouponRedemption redemptions = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}
+
+message RedeemPromotionRequest {
+  // What the customer typed. Empty: use the coupon waiting for the customer, if any.
+  string code = 1;
+  string customer_external_id = 2;
+  CouponTarget target = 3;
+  // The purchase this redemption belongs to (the invoice id). Asking twice for the same one is one redemption.
+  string target_id = 4;
+  // The price before the discount, in minor units, and its currency.
+  int64 amount_minor = 5;
+  string currency = 6;
+  // The plan code (SUBSCRIPTION) or the credit pack id (CREDIT_PURCHASE), for the codes restricted to some.
+  string item = 7;
+  // The credits sold (CREDIT_PURCHASE), for a bonus coupon.
+  int64 credits = 8;
+  // The customer has paid for something before (billing-svc knows; plans-svc knows only subscriptions).
+  bool prior_purchases = 9;
+  // Check only: claim nothing, write nothing.
+  bool preview = 10;
+  // The invoice the redemption ends up on, if known when claiming.
+  string invoice_id = 11;
+}
+
+message RedeemPromotionResponse {
+  // False when nothing applies (no code typed and nothing waiting).
+  bool applied = 1;
+  string redemption_id = 2;
+  string coupon_code = 3;
+  string coupon_name = 4;
+  string promotion_code = 5;
+  int64 discount_minor = 6;
+  int64 bonus_credits = 7;
+  // amount_minor - discount_minor.
+  int64 total_minor = 8;
+  string currency = 9;
+}
+
+message ReversePromotionRequest {
+  CouponTarget target = 1;
+  string target_id = 2;
+}
+
+message ReversePromotionResponse {
+  bool reversed = 1;
+}
+
+message GrantCustomerCouponRequest {
+  string customer_external_id = 1;
+  string coupon_code = 2;
+  string source = 3;
+  string source_ref = 4;
+}
+
+message GrantCustomerCouponResponse {
+  // False when the same (customer, source, source_ref) had been granted already.
+  bool granted = 1;
 }
 
 // TaxRate is a tax added on top of the price for customers in a country.
