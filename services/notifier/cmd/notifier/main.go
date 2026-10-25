@@ -6,22 +6,15 @@ import (
 	_ "embed" // config.default.yaml
 	"errors"
 	"fmt"
-	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
-	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
-	"github.com/0furkancolak/payrudder/pkg/logx"
-	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -58,39 +51,10 @@ func (c *Config) Validate() error {
 	return errors.Join(errs...)
 }
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "notifier:", err)
-		os.Exit(1)
-	}
-}
+func main() { app.Main("notifier", defaults, start) }
 
-func run() error {
-	cfg, err := config.Load[Config](defaults)
-	if err != nil {
-		return err
-	}
-	log, err := logx.New(logx.Options{Service: cfg.ServiceName, Version: cfg.Version, Level: cfg.LogLevel, Writer: os.Stdout})
-	if err != nil {
-		return err
-	}
-	slog.SetDefault(log)
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	reg := health.NewRegistry()
-	providers, err := otelx.Setup(ctx, otelx.Options{
-		ServiceName: cfg.ServiceName, Version: cfg.Version, Environment: string(cfg.Env), OTLPEndpoint: cfg.OTLPEndpoint, Registry: reg,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = providers.Shutdown(c)
-	}()
-
+func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
+	log := rt.Log
 	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
@@ -131,20 +95,16 @@ func run() error {
 	}
 	defer consumer.Close()
 
-	hh := health.New(reg, 2*time.Second)
+	hh := rt.Health()
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
 	hh.AddCheck("kafka", producer.Ping)
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
+	g := app.NewGroup(ctx, log, cfg.MetricsAddr, hh)
+	gctx := g.Context()
 	g.Go(func() error {
 		log.Info("notifier consuming commands and limit alerts", "smtp", cfg.SMTPAddr)
 		return w.Run(gctx)
 	})
 	g.Go(func() error { return consumer.Run(gctx) })
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	log.Info("stopped")
-	return nil
+	return g.Wait()
 }

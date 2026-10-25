@@ -8,27 +8,21 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
-	"github.com/0furkancolak/payrudder/pkg/logx"
 	"github.com/0furkancolak/payrudder/pkg/meters"
-	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -67,45 +61,11 @@ func (c *Config) Validate() error {
 	return errors.Join(errs...)
 }
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "aggregator:", err)
-		os.Exit(1)
-	}
-}
-
-func run() error {
-	cfg, err := config.Load[Config](defaults)
-	if err != nil {
-		return err
-	}
-	log, err := logx.New(logx.Options{Service: cfg.ServiceName, Version: cfg.Version, Level: cfg.LogLevel, Writer: os.Stdout})
-	if err != nil {
-		return err
-	}
-	slog.SetDefault(log)
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	reg := health.NewRegistry()
-	providers, err := otelx.Setup(ctx, otelx.Options{
-		ServiceName: cfg.ServiceName, Version: cfg.Version, Environment: string(cfg.Env), OTLPEndpoint: cfg.OTLPEndpoint, Registry: reg,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = providers.Shutdown(c)
-	}()
-
-	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
-}
+func main() { app.Main("aggregator", defaults, start) }
 
 // start wires aggregator's dependencies and runs it until ctx is cancelled.
-func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler) error {
+func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
+	log, hh := rt.Log, rt.Health()
 	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
@@ -163,13 +123,7 @@ func newConsumer(cfg *Config, log *slog.Logger, handler *apply.Handler) (*kafkax
 
 // newGRPCServer builds the gRPC server with the usage query and replay services registered; the replay runner is returned to be run.
 func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, handler *apply.Handler, src *settings.Source) (*grpc.Server, *grpchealth.Server, *replay.Manager) {
-	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
-		Logger: log, Reflection: cfg.Env == config.EnvLocal,
-		Extra: []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
-			grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
-		},
-	})
+	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
 	aggregatorv1.RegisterUsageQueryServiceServer(srv, query.New(appPool, src, cfg.GroupID, apply.Topic))
 	replays := replay.New(replay.Config{
 		Pool: systemPool, Brokers: cfg.KafkaBrokers, Topic: apply.Topic, LiveGroup: cfg.GroupID,
@@ -195,24 +149,12 @@ type workers struct {
 
 // run starts everything and blocks until ctx is cancelled or one of them fails, then drains the gRPC server.
 func (w *workers) run(ctx context.Context) error {
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, w.cfg.MetricsAddr, w.health) })
+	g := app.NewGroup(ctx, w.log, w.cfg.MetricsAddr, w.health)
+	gctx := g.Context()
 	g.Go(func() error { return w.consumer.Run(gctx) })
 	g.Go(func() error { maintenance.Run(gctx, w.pool, time.Hour, w.log); return nil })
 	g.Go(func() error { return w.replays.Run(gctx) })
-	g.Go(func() error {
-		w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr, "kafka", w.cfg.KafkaBrokers)
-		return w.srv.Serve(w.lis)
-	})
-	g.Go(func() error {
-		<-gctx.Done()
-		w.grpcHealth.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
-		w.srv.GracefulStop()
-		return nil
-	})
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	w.log.Info("stopped")
-	return nil
+	w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr, "kafka", w.cfg.KafkaBrokers)
+	g.ServeGRPC(w.srv, w.grpcHealth, w.lis)
+	return g.Wait()
 }

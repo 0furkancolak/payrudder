@@ -56,6 +56,9 @@ type Base struct {
 	Demo bool `env:"PAYRUDDER_DEMO"`
 }
 
+// Common returns the shared settings of a config struct that embeds Base, so that generic code (pkg/app) can read them.
+func (b *Base) Common() *Base { return b }
+
 // Validate checks the shared settings.
 func (b Base) Validate() error {
 	var errs []error

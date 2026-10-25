@@ -4,21 +4,10 @@ package main
 import (
 	"context"
 	_ "embed" // config.default.yaml
-	"errors"
-	"fmt"
-	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
-	"golang.org/x/sync/errgroup"
-
+	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/config"
-	"github.com/0furkancolak/payrudder/pkg/health"
-	"github.com/0furkancolak/payrudder/pkg/logx"
-	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/invoice-worker/internal/handler"
@@ -41,39 +30,10 @@ type Config struct {
 	EnsureBucket   bool   `env:"S3_ENSURE_BUCKET"`
 }
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "invoice-worker:", err)
-		os.Exit(1)
-	}
-}
+func main() { app.Main("invoice-worker", defaults, start) }
 
-func run() error {
-	cfg, err := config.Load[Config](defaults)
-	if err != nil {
-		return err
-	}
-	log, err := logx.New(logx.Options{Service: cfg.ServiceName, Version: cfg.Version, Level: cfg.LogLevel, Writer: os.Stdout})
-	if err != nil {
-		return err
-	}
-	slog.SetDefault(log)
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	reg := health.NewRegistry()
-	providers, err := otelx.Setup(ctx, otelx.Options{
-		ServiceName: cfg.ServiceName, Version: cfg.Version, Environment: string(cfg.Env), OTLPEndpoint: cfg.OTLPEndpoint, Registry: reg,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = providers.Shutdown(c)
-	}()
-
+func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
+	log := rt.Log
 	store, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
 		AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
 	if err != nil {
@@ -92,14 +52,10 @@ func run() error {
 	w := &workerx.Worker{URL: cfg.RabbitMQURL, Prefetch: cfg.Prefetch, Handler: &handler.Handler{Store: store, Logos: logos}, Log: log,
 		Queues: []string{rabbitx.QueueInvoiceRender}}
 
-	hh := health.New(reg, 2*time.Second)
+	hh := rt.Health()
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
+	g := app.NewGroup(ctx, log, cfg.MetricsAddr, hh)
+	gctx := g.Context()
 	g.Go(func() error { log.Info("invoice-worker consuming", "bucket", cfg.S3Bucket); return w.Run(gctx) })
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	log.Info("stopped")
-	return nil
+	return g.Wait()
 }
