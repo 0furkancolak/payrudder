@@ -1526,6 +1526,881 @@ func (x *TrackAffiliateClickResponse) GetCounted() bool {
 	return false
 }
 
+type AffiliateCommission struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AffiliateId        string                 `protobuf:"bytes,2,opt,name=affiliate_id,json=affiliateId,proto3" json:"affiliate_id,omitempty"`
+	AffiliateCode      string                 `protobuf:"bytes,3,opt,name=affiliate_code,json=affiliateCode,proto3" json:"affiliate_code,omitempty"`
+	CustomerExternalId string                 `protobuf:"bytes,4,opt,name=customer_external_id,json=customerExternalId,proto3" json:"customer_external_id,omitempty"`
+	// commission, or reversal (a negative row netting a commission that was paid already).
+	Kind          string `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	InvoiceId     string `protobuf:"bytes,6,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
+	InvoiceNumber string `protobuf:"bytes,7,opt,name=invoice_number,json=invoiceNumber,proto3" json:"invoice_number,omitempty"`
+	Currency      string `protobuf:"bytes,8,opt,name=currency,proto3" json:"currency,omitempty"`
+	// What the invoice came to, tax included.
+	InvoiceTotalMinor int64 `protobuf:"varint,9,opt,name=invoice_total_minor,json=invoiceTotalMinor,proto3" json:"invoice_total_minor,omitempty"`
+	// The base: the net, pre-tax amount actually paid.
+	NetMinor int64 `protobuf:"varint,10,opt,name=net_minor,json=netMinor,proto3" json:"net_minor,omitempty"`
+	// The commission; negative on a reversal row.
+	AmountMinor int64 `protobuf:"varint,11,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
+	// How much of the commission has been taken back.
+	ReversedMinor int64 `protobuf:"varint,12,opt,name=reversed_minor,json=reversedMinor,proto3" json:"reversed_minor,omitempty"`
+	// pending (in the hold), approved (can be paid out), paid, or reversed (nothing left).
+	Status           string                 `protobuf:"bytes,13,opt,name=status,proto3" json:"status,omitempty"`
+	ParentId         string                 `protobuf:"bytes,14,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	EarnTime         *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=earn_time,json=earnTime,proto3" json:"earn_time,omitempty"`
+	ApproveAfterTime *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=approve_after_time,json=approveAfterTime,proto3" json:"approve_after_time,omitempty"`
+	ApproveTime      *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=approve_time,json=approveTime,proto3" json:"approve_time,omitempty"`
+	PayTime          *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=pay_time,json=payTime,proto3" json:"pay_time,omitempty"`
+	PayoutId         string                 `protobuf:"bytes,19,opt,name=payout_id,json=payoutId,proto3" json:"payout_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AffiliateCommission) Reset() {
+	*x = AffiliateCommission{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AffiliateCommission) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AffiliateCommission) ProtoMessage() {}
+
+func (x *AffiliateCommission) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AffiliateCommission.ProtoReflect.Descriptor instead.
+func (*AffiliateCommission) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AffiliateCommission) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetAffiliateId() string {
+	if x != nil {
+		return x.AffiliateId
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetAffiliateCode() string {
+	if x != nil {
+		return x.AffiliateCode
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetCustomerExternalId() string {
+	if x != nil {
+		return x.CustomerExternalId
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetInvoiceId() string {
+	if x != nil {
+		return x.InvoiceId
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetInvoiceNumber() string {
+	if x != nil {
+		return x.InvoiceNumber
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetInvoiceTotalMinor() int64 {
+	if x != nil {
+		return x.InvoiceTotalMinor
+	}
+	return 0
+}
+
+func (x *AffiliateCommission) GetNetMinor() int64 {
+	if x != nil {
+		return x.NetMinor
+	}
+	return 0
+}
+
+func (x *AffiliateCommission) GetAmountMinor() int64 {
+	if x != nil {
+		return x.AmountMinor
+	}
+	return 0
+}
+
+func (x *AffiliateCommission) GetReversedMinor() int64 {
+	if x != nil {
+		return x.ReversedMinor
+	}
+	return 0
+}
+
+func (x *AffiliateCommission) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetParentId() string {
+	if x != nil {
+		return x.ParentId
+	}
+	return ""
+}
+
+func (x *AffiliateCommission) GetEarnTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EarnTime
+	}
+	return nil
+}
+
+func (x *AffiliateCommission) GetApproveAfterTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ApproveAfterTime
+	}
+	return nil
+}
+
+func (x *AffiliateCommission) GetApproveTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ApproveTime
+	}
+	return nil
+}
+
+func (x *AffiliateCommission) GetPayTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PayTime
+	}
+	return nil
+}
+
+func (x *AffiliateCommission) GetPayoutId() string {
+	if x != nil {
+		return x.PayoutId
+	}
+	return ""
+}
+
+type ListAffiliateCommissionsRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	AffiliateId string                 `protobuf:"bytes,1,opt,name=affiliate_id,json=affiliateId,proto3" json:"affiliate_id,omitempty"`
+	Status      string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	// commission or reversal, or empty for both.
+	Kind          string                 `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	InvoiceId     string                 `protobuf:"bytes,4,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
+	PayoutId      string                 `protobuf:"bytes,5,opt,name=payout_id,json=payoutId,proto3" json:"payout_id,omitempty"`
+	FromTime      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=from_time,json=fromTime,proto3" json:"from_time,omitempty"`
+	ToTime        *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=to_time,json=toTime,proto3" json:"to_time,omitempty"`
+	PageSize      int32                  `protobuf:"varint,8,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,9,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAffiliateCommissionsRequest) Reset() {
+	*x = ListAffiliateCommissionsRequest{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAffiliateCommissionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAffiliateCommissionsRequest) ProtoMessage() {}
+
+func (x *ListAffiliateCommissionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAffiliateCommissionsRequest.ProtoReflect.Descriptor instead.
+func (*ListAffiliateCommissionsRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ListAffiliateCommissionsRequest) GetAffiliateId() string {
+	if x != nil {
+		return x.AffiliateId
+	}
+	return ""
+}
+
+func (x *ListAffiliateCommissionsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListAffiliateCommissionsRequest) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *ListAffiliateCommissionsRequest) GetInvoiceId() string {
+	if x != nil {
+		return x.InvoiceId
+	}
+	return ""
+}
+
+func (x *ListAffiliateCommissionsRequest) GetPayoutId() string {
+	if x != nil {
+		return x.PayoutId
+	}
+	return ""
+}
+
+func (x *ListAffiliateCommissionsRequest) GetFromTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FromTime
+	}
+	return nil
+}
+
+func (x *ListAffiliateCommissionsRequest) GetToTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ToTime
+	}
+	return nil
+}
+
+func (x *ListAffiliateCommissionsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListAffiliateCommissionsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type ListAffiliateCommissionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Commissions   []*AffiliateCommission `protobuf:"bytes,1,rep,name=commissions,proto3" json:"commissions,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	Total         int32                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAffiliateCommissionsResponse) Reset() {
+	*x = ListAffiliateCommissionsResponse{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAffiliateCommissionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAffiliateCommissionsResponse) ProtoMessage() {}
+
+func (x *ListAffiliateCommissionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAffiliateCommissionsResponse.ProtoReflect.Descriptor instead.
+func (*ListAffiliateCommissionsResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ListAffiliateCommissionsResponse) GetCommissions() []*AffiliateCommission {
+	if x != nil {
+		return x.Commissions
+	}
+	return nil
+}
+
+func (x *ListAffiliateCommissionsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListAffiliateCommissionsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type ReverseAffiliateCommissionRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	InvoiceId string                 `protobuf:"bytes,1,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
+	// chargeback or manual.
+	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Names this reversal: the same (invoice, reason, reference) takes back once. Required for manual.
+	Reference string `protobuf:"bytes,3,opt,name=reference,proto3" json:"reference,omitempty"`
+	// How much of the commission to take back; 0 is all that is left.
+	AmountMinor   int64  `protobuf:"varint,4,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
+	Note          string `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReverseAffiliateCommissionRequest) Reset() {
+	*x = ReverseAffiliateCommissionRequest{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReverseAffiliateCommissionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReverseAffiliateCommissionRequest) ProtoMessage() {}
+
+func (x *ReverseAffiliateCommissionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReverseAffiliateCommissionRequest.ProtoReflect.Descriptor instead.
+func (*ReverseAffiliateCommissionRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ReverseAffiliateCommissionRequest) GetInvoiceId() string {
+	if x != nil {
+		return x.InvoiceId
+	}
+	return ""
+}
+
+func (x *ReverseAffiliateCommissionRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ReverseAffiliateCommissionRequest) GetReference() string {
+	if x != nil {
+		return x.Reference
+	}
+	return ""
+}
+
+func (x *ReverseAffiliateCommissionRequest) GetAmountMinor() int64 {
+	if x != nil {
+		return x.AmountMinor
+	}
+	return 0
+}
+
+func (x *ReverseAffiliateCommissionRequest) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+type ReverseAffiliateCommissionResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How much this call took back (0 on a repeat, or when nothing was left).
+	ReversedMinor int64                `protobuf:"varint,1,opt,name=reversed_minor,json=reversedMinor,proto3" json:"reversed_minor,omitempty"`
+	Commission    *AffiliateCommission `protobuf:"bytes,2,opt,name=commission,proto3" json:"commission,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReverseAffiliateCommissionResponse) Reset() {
+	*x = ReverseAffiliateCommissionResponse{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReverseAffiliateCommissionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReverseAffiliateCommissionResponse) ProtoMessage() {}
+
+func (x *ReverseAffiliateCommissionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReverseAffiliateCommissionResponse.ProtoReflect.Descriptor instead.
+func (*ReverseAffiliateCommissionResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ReverseAffiliateCommissionResponse) GetReversedMinor() int64 {
+	if x != nil {
+		return x.ReversedMinor
+	}
+	return 0
+}
+
+func (x *ReverseAffiliateCommissionResponse) GetCommission() *AffiliateCommission {
+	if x != nil {
+		return x.Commission
+	}
+	return nil
+}
+
+type AffiliateBalance struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AffiliateId   string                 `protobuf:"bytes,1,opt,name=affiliate_id,json=affiliateId,proto3" json:"affiliate_id,omitempty"`
+	Currency      string                 `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"`
+	PendingMinor  int64                  `protobuf:"varint,3,opt,name=pending_minor,json=pendingMinor,proto3" json:"pending_minor,omitempty"`
+	ApprovedMinor int64                  `protobuf:"varint,4,opt,name=approved_minor,json=approvedMinor,proto3" json:"approved_minor,omitempty"`
+	PaidMinor     int64                  `protobuf:"varint,5,opt,name=paid_minor,json=paidMinor,proto3" json:"paid_minor,omitempty"`
+	ReversedMinor int64                  `protobuf:"varint,6,opt,name=reversed_minor,json=reversedMinor,proto3" json:"reversed_minor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AffiliateBalance) Reset() {
+	*x = AffiliateBalance{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AffiliateBalance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AffiliateBalance) ProtoMessage() {}
+
+func (x *AffiliateBalance) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AffiliateBalance.ProtoReflect.Descriptor instead.
+func (*AffiliateBalance) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *AffiliateBalance) GetAffiliateId() string {
+	if x != nil {
+		return x.AffiliateId
+	}
+	return ""
+}
+
+func (x *AffiliateBalance) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *AffiliateBalance) GetPendingMinor() int64 {
+	if x != nil {
+		return x.PendingMinor
+	}
+	return 0
+}
+
+func (x *AffiliateBalance) GetApprovedMinor() int64 {
+	if x != nil {
+		return x.ApprovedMinor
+	}
+	return 0
+}
+
+func (x *AffiliateBalance) GetPaidMinor() int64 {
+	if x != nil {
+		return x.PaidMinor
+	}
+	return 0
+}
+
+func (x *AffiliateBalance) GetReversedMinor() int64 {
+	if x != nil {
+		return x.ReversedMinor
+	}
+	return 0
+}
+
+type GetAffiliateBalancesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty for every affiliate.
+	AffiliateId   string `protobuf:"bytes,1,opt,name=affiliate_id,json=affiliateId,proto3" json:"affiliate_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAffiliateBalancesRequest) Reset() {
+	*x = GetAffiliateBalancesRequest{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAffiliateBalancesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAffiliateBalancesRequest) ProtoMessage() {}
+
+func (x *GetAffiliateBalancesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAffiliateBalancesRequest.ProtoReflect.Descriptor instead.
+func (*GetAffiliateBalancesRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GetAffiliateBalancesRequest) GetAffiliateId() string {
+	if x != nil {
+		return x.AffiliateId
+	}
+	return ""
+}
+
+type GetAffiliateBalancesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Balances      []*AffiliateBalance    `protobuf:"bytes,1,rep,name=balances,proto3" json:"balances,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAffiliateBalancesResponse) Reset() {
+	*x = GetAffiliateBalancesResponse{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAffiliateBalancesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAffiliateBalancesResponse) ProtoMessage() {}
+
+func (x *GetAffiliateBalancesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAffiliateBalancesResponse.ProtoReflect.Descriptor instead.
+func (*GetAffiliateBalancesResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *GetAffiliateBalancesResponse) GetBalances() []*AffiliateBalance {
+	if x != nil {
+		return x.Balances
+	}
+	return nil
+}
+
+type GetAffiliateFunnelRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Dates as YYYY-MM-DD, both included (UTC). Empty from is 30 days before to; empty to is today.
+	FromDate      string `protobuf:"bytes,1,opt,name=from_date,json=fromDate,proto3" json:"from_date,omitempty"`
+	ToDate        string `protobuf:"bytes,2,opt,name=to_date,json=toDate,proto3" json:"to_date,omitempty"`
+	AffiliateId   string `protobuf:"bytes,3,opt,name=affiliate_id,json=affiliateId,proto3" json:"affiliate_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAffiliateFunnelRequest) Reset() {
+	*x = GetAffiliateFunnelRequest{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAffiliateFunnelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAffiliateFunnelRequest) ProtoMessage() {}
+
+func (x *GetAffiliateFunnelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAffiliateFunnelRequest.ProtoReflect.Descriptor instead.
+func (*GetAffiliateFunnelRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *GetAffiliateFunnelRequest) GetFromDate() string {
+	if x != nil {
+		return x.FromDate
+	}
+	return ""
+}
+
+func (x *GetAffiliateFunnelRequest) GetToDate() string {
+	if x != nil {
+		return x.ToDate
+	}
+	return ""
+}
+
+func (x *GetAffiliateFunnelRequest) GetAffiliateId() string {
+	if x != nil {
+		return x.AffiliateId
+	}
+	return ""
+}
+
+type AffiliateFunnelAmount struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Currency      string                 `protobuf:"bytes,1,opt,name=currency,proto3" json:"currency,omitempty"`
+	EarnedMinor   int64                  `protobuf:"varint,2,opt,name=earned_minor,json=earnedMinor,proto3" json:"earned_minor,omitempty"`
+	ReversedMinor int64                  `protobuf:"varint,3,opt,name=reversed_minor,json=reversedMinor,proto3" json:"reversed_minor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AffiliateFunnelAmount) Reset() {
+	*x = AffiliateFunnelAmount{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AffiliateFunnelAmount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AffiliateFunnelAmount) ProtoMessage() {}
+
+func (x *AffiliateFunnelAmount) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AffiliateFunnelAmount.ProtoReflect.Descriptor instead.
+func (*AffiliateFunnelAmount) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *AffiliateFunnelAmount) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *AffiliateFunnelAmount) GetEarnedMinor() int64 {
+	if x != nil {
+		return x.EarnedMinor
+	}
+	return 0
+}
+
+func (x *AffiliateFunnelAmount) GetReversedMinor() int64 {
+	if x != nil {
+		return x.ReversedMinor
+	}
+	return 0
+}
+
+type GetAffiliateFunnelResponse struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	FromDate string                 `protobuf:"bytes,1,opt,name=from_date,json=fromDate,proto3" json:"from_date,omitempty"`
+	ToDate   string                 `protobuf:"bytes,2,opt,name=to_date,json=toDate,proto3" json:"to_date,omitempty"`
+	Clicks   int64                  `protobuf:"varint,3,opt,name=clicks,proto3" json:"clicks,omitempty"`
+	// Customers attributed in the period.
+	Referrals int64 `protobuf:"varint,4,opt,name=referrals,proto3" json:"referrals,omitempty"`
+	// Customers with a commission earned in the period.
+	PayingCustomers int64                    `protobuf:"varint,5,opt,name=paying_customers,json=payingCustomers,proto3" json:"paying_customers,omitempty"`
+	Commissions     []*AffiliateFunnelAmount `protobuf:"bytes,6,rep,name=commissions,proto3" json:"commissions,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GetAffiliateFunnelResponse) Reset() {
+	*x = GetAffiliateFunnelResponse{}
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAffiliateFunnelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAffiliateFunnelResponse) ProtoMessage() {}
+
+func (x *GetAffiliateFunnelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_affiliates_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAffiliateFunnelResponse.ProtoReflect.Descriptor instead.
+func (*GetAffiliateFunnelResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_affiliates_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *GetAffiliateFunnelResponse) GetFromDate() string {
+	if x != nil {
+		return x.FromDate
+	}
+	return ""
+}
+
+func (x *GetAffiliateFunnelResponse) GetToDate() string {
+	if x != nil {
+		return x.ToDate
+	}
+	return ""
+}
+
+func (x *GetAffiliateFunnelResponse) GetClicks() int64 {
+	if x != nil {
+		return x.Clicks
+	}
+	return 0
+}
+
+func (x *GetAffiliateFunnelResponse) GetReferrals() int64 {
+	if x != nil {
+		return x.Referrals
+	}
+	return 0
+}
+
+func (x *GetAffiliateFunnelResponse) GetPayingCustomers() int64 {
+	if x != nil {
+		return x.PayingCustomers
+	}
+	return 0
+}
+
+func (x *GetAffiliateFunnelResponse) GetCommissions() []*AffiliateFunnelAmount {
+	if x != nil {
+		return x.Commissions
+	}
+	return nil
+}
+
 var File_payrudder_plans_v1_affiliates_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_affiliates_proto_rawDesc = "" +
@@ -1649,7 +2524,84 @@ const file_payrudder_plans_v1_affiliates_proto_rawDesc = "" +
 	"\x17attribution_window_days\x18\x03 \x01(\x05R\x15attributionWindowDays\x12\x1f\n" +
 	"\vlanding_url\x18\x04 \x01(\tR\n" +
 	"landingUrl\x12\x18\n" +
-	"\acounted\x18\x05 \x01(\bR\acounted2\xa7\b\n" +
+	"\acounted\x18\x05 \x01(\bR\acounted\"\xf9\x05\n" +
+	"\x13AffiliateCommission\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\faffiliate_id\x18\x02 \x01(\tR\vaffiliateId\x12%\n" +
+	"\x0eaffiliate_code\x18\x03 \x01(\tR\raffiliateCode\x120\n" +
+	"\x14customer_external_id\x18\x04 \x01(\tR\x12customerExternalId\x12\x12\n" +
+	"\x04kind\x18\x05 \x01(\tR\x04kind\x12\x1d\n" +
+	"\n" +
+	"invoice_id\x18\x06 \x01(\tR\tinvoiceId\x12%\n" +
+	"\x0einvoice_number\x18\a \x01(\tR\rinvoiceNumber\x12\x1a\n" +
+	"\bcurrency\x18\b \x01(\tR\bcurrency\x12.\n" +
+	"\x13invoice_total_minor\x18\t \x01(\x03R\x11invoiceTotalMinor\x12\x1b\n" +
+	"\tnet_minor\x18\n" +
+	" \x01(\x03R\bnetMinor\x12!\n" +
+	"\famount_minor\x18\v \x01(\x03R\vamountMinor\x12%\n" +
+	"\x0ereversed_minor\x18\f \x01(\x03R\rreversedMinor\x12\x16\n" +
+	"\x06status\x18\r \x01(\tR\x06status\x12\x1b\n" +
+	"\tparent_id\x18\x0e \x01(\tR\bparentId\x127\n" +
+	"\tearn_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\bearnTime\x12H\n" +
+	"\x12approve_after_time\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x10approveAfterTime\x12=\n" +
+	"\fapprove_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\vapproveTime\x125\n" +
+	"\bpay_time\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\apayTime\x12\x1b\n" +
+	"\tpayout_id\x18\x13 \x01(\tR\bpayoutId\"\xd6\x02\n" +
+	"\x1fListAffiliateCommissionsRequest\x12!\n" +
+	"\faffiliate_id\x18\x01 \x01(\tR\vaffiliateId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x12\n" +
+	"\x04kind\x18\x03 \x01(\tR\x04kind\x12\x1d\n" +
+	"\n" +
+	"invoice_id\x18\x04 \x01(\tR\tinvoiceId\x12\x1b\n" +
+	"\tpayout_id\x18\x05 \x01(\tR\bpayoutId\x127\n" +
+	"\tfrom_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bfromTime\x123\n" +
+	"\ato_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x06toTime\x12\x1b\n" +
+	"\tpage_size\x18\b \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\t \x01(\tR\tpageToken\"\xab\x01\n" +
+	" ListAffiliateCommissionsResponse\x12I\n" +
+	"\vcommissions\x18\x01 \x03(\v2'.payrudder.plans.v1.AffiliateCommissionR\vcommissions\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\xaf\x01\n" +
+	"!ReverseAffiliateCommissionRequest\x12\x1d\n" +
+	"\n" +
+	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1c\n" +
+	"\treference\x18\x03 \x01(\tR\treference\x12!\n" +
+	"\famount_minor\x18\x04 \x01(\x03R\vamountMinor\x12\x12\n" +
+	"\x04note\x18\x05 \x01(\tR\x04note\"\x94\x01\n" +
+	"\"ReverseAffiliateCommissionResponse\x12%\n" +
+	"\x0ereversed_minor\x18\x01 \x01(\x03R\rreversedMinor\x12G\n" +
+	"\n" +
+	"commission\x18\x02 \x01(\v2'.payrudder.plans.v1.AffiliateCommissionR\n" +
+	"commission\"\xe3\x01\n" +
+	"\x10AffiliateBalance\x12!\n" +
+	"\faffiliate_id\x18\x01 \x01(\tR\vaffiliateId\x12\x1a\n" +
+	"\bcurrency\x18\x02 \x01(\tR\bcurrency\x12#\n" +
+	"\rpending_minor\x18\x03 \x01(\x03R\fpendingMinor\x12%\n" +
+	"\x0eapproved_minor\x18\x04 \x01(\x03R\rapprovedMinor\x12\x1d\n" +
+	"\n" +
+	"paid_minor\x18\x05 \x01(\x03R\tpaidMinor\x12%\n" +
+	"\x0ereversed_minor\x18\x06 \x01(\x03R\rreversedMinor\"@\n" +
+	"\x1bGetAffiliateBalancesRequest\x12!\n" +
+	"\faffiliate_id\x18\x01 \x01(\tR\vaffiliateId\"`\n" +
+	"\x1cGetAffiliateBalancesResponse\x12@\n" +
+	"\bbalances\x18\x01 \x03(\v2$.payrudder.plans.v1.AffiliateBalanceR\bbalances\"t\n" +
+	"\x19GetAffiliateFunnelRequest\x12\x1b\n" +
+	"\tfrom_date\x18\x01 \x01(\tR\bfromDate\x12\x17\n" +
+	"\ato_date\x18\x02 \x01(\tR\x06toDate\x12!\n" +
+	"\faffiliate_id\x18\x03 \x01(\tR\vaffiliateId\"}\n" +
+	"\x15AffiliateFunnelAmount\x12\x1a\n" +
+	"\bcurrency\x18\x01 \x01(\tR\bcurrency\x12!\n" +
+	"\fearned_minor\x18\x02 \x01(\x03R\vearnedMinor\x12%\n" +
+	"\x0ereversed_minor\x18\x03 \x01(\x03R\rreversedMinor\"\x80\x02\n" +
+	"\x1aGetAffiliateFunnelResponse\x12\x1b\n" +
+	"\tfrom_date\x18\x01 \x01(\tR\bfromDate\x12\x17\n" +
+	"\ato_date\x18\x02 \x01(\tR\x06toDate\x12\x16\n" +
+	"\x06clicks\x18\x03 \x01(\x03R\x06clicks\x12\x1c\n" +
+	"\treferrals\x18\x04 \x01(\x03R\treferrals\x12)\n" +
+	"\x10paying_customers\x18\x05 \x01(\x03R\x0fpayingCustomers\x12K\n" +
+	"\vcommissions\x18\x06 \x03(\v2).payrudder.plans.v1.AffiliateFunnelAmountR\vcommissions2\xad\f\n" +
 	"\x10AffiliateService\x12v\n" +
 	"\x13GetAffiliateProgram\x12..payrudder.plans.v1.GetAffiliateProgramRequest\x1a/.payrudder.plans.v1.GetAffiliateProgramResponse\x12v\n" +
 	"\x13SetAffiliateProgram\x12..payrudder.plans.v1.SetAffiliateProgramRequest\x1a/.payrudder.plans.v1.SetAffiliateProgramResponse\x12j\n" +
@@ -1659,7 +2611,11 @@ const file_payrudder_plans_v1_affiliates_proto_rawDesc = "" +
 	"\x0fUpdateAffiliate\x12*.payrudder.plans.v1.UpdateAffiliateRequest\x1a+.payrudder.plans.v1.UpdateAffiliateResponse\x12\x8b\x01\n" +
 	"\x1aLinkAffiliatePromotionCode\x125.payrudder.plans.v1.LinkAffiliatePromotionCodeRequest\x1a6.payrudder.plans.v1.LinkAffiliatePromotionCodeResponse\x12p\n" +
 	"\x11AttributeCustomer\x12,.payrudder.plans.v1.AttributeCustomerRequest\x1a-.payrudder.plans.v1.AttributeCustomerResponse\x12\x7f\n" +
-	"\x16ListAffiliateReferrals\x121.payrudder.plans.v1.ListAffiliateReferralsRequest\x1a2.payrudder.plans.v1.ListAffiliateReferralsResponse2\x90\x01\n" +
+	"\x16ListAffiliateReferrals\x121.payrudder.plans.v1.ListAffiliateReferralsRequest\x1a2.payrudder.plans.v1.ListAffiliateReferralsResponse\x12\x85\x01\n" +
+	"\x18ListAffiliateCommissions\x123.payrudder.plans.v1.ListAffiliateCommissionsRequest\x1a4.payrudder.plans.v1.ListAffiliateCommissionsResponse\x12\x8b\x01\n" +
+	"\x1aReverseAffiliateCommission\x125.payrudder.plans.v1.ReverseAffiliateCommissionRequest\x1a6.payrudder.plans.v1.ReverseAffiliateCommissionResponse\x12y\n" +
+	"\x14GetAffiliateBalances\x12/.payrudder.plans.v1.GetAffiliateBalancesRequest\x1a0.payrudder.plans.v1.GetAffiliateBalancesResponse\x12s\n" +
+	"\x12GetAffiliateFunnel\x12-.payrudder.plans.v1.GetAffiliateFunnelRequest\x1a..payrudder.plans.v1.GetAffiliateFunnelResponse2\x90\x01\n" +
 	"\x16AffiliatePublicService\x12v\n" +
 	"\x13TrackAffiliateClick\x12..payrudder.plans.v1.TrackAffiliateClickRequest\x1a/.payrudder.plans.v1.TrackAffiliateClickResponseB\xd8\x01\n" +
 	"\x16com.payrudder.plans.v1B\x0fAffiliatesProtoP\x01ZCgithub.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1;plansv1\xa2\x02\x03PPX\xaa\x02\x12Payrudder.Plans.V1\xca\x02\x12Payrudder\\Plans\\V1\xe2\x02\x1ePayrudder\\Plans\\V1\\GPBMetadata\xea\x02\x14Payrudder::Plans::V1b\x06proto3"
@@ -1676,7 +2632,7 @@ func file_payrudder_plans_v1_affiliates_proto_rawDescGZIP() []byte {
 	return file_payrudder_plans_v1_affiliates_proto_rawDescData
 }
 
-var file_payrudder_plans_v1_affiliates_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_payrudder_plans_v1_affiliates_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_payrudder_plans_v1_affiliates_proto_goTypes = []any{
 	(*AffiliateProgram)(nil),                   // 0: payrudder.plans.v1.AffiliateProgram
 	(*GetAffiliateProgramRequest)(nil),         // 1: payrudder.plans.v1.GetAffiliateProgramRequest
@@ -1701,49 +2657,78 @@ var file_payrudder_plans_v1_affiliates_proto_goTypes = []any{
 	(*ListAffiliateReferralsResponse)(nil),     // 20: payrudder.plans.v1.ListAffiliateReferralsResponse
 	(*TrackAffiliateClickRequest)(nil),         // 21: payrudder.plans.v1.TrackAffiliateClickRequest
 	(*TrackAffiliateClickResponse)(nil),        // 22: payrudder.plans.v1.TrackAffiliateClickResponse
-	(*timestamppb.Timestamp)(nil),              // 23: google.protobuf.Timestamp
+	(*AffiliateCommission)(nil),                // 23: payrudder.plans.v1.AffiliateCommission
+	(*ListAffiliateCommissionsRequest)(nil),    // 24: payrudder.plans.v1.ListAffiliateCommissionsRequest
+	(*ListAffiliateCommissionsResponse)(nil),   // 25: payrudder.plans.v1.ListAffiliateCommissionsResponse
+	(*ReverseAffiliateCommissionRequest)(nil),  // 26: payrudder.plans.v1.ReverseAffiliateCommissionRequest
+	(*ReverseAffiliateCommissionResponse)(nil), // 27: payrudder.plans.v1.ReverseAffiliateCommissionResponse
+	(*AffiliateBalance)(nil),                   // 28: payrudder.plans.v1.AffiliateBalance
+	(*GetAffiliateBalancesRequest)(nil),        // 29: payrudder.plans.v1.GetAffiliateBalancesRequest
+	(*GetAffiliateBalancesResponse)(nil),       // 30: payrudder.plans.v1.GetAffiliateBalancesResponse
+	(*GetAffiliateFunnelRequest)(nil),          // 31: payrudder.plans.v1.GetAffiliateFunnelRequest
+	(*AffiliateFunnelAmount)(nil),              // 32: payrudder.plans.v1.AffiliateFunnelAmount
+	(*GetAffiliateFunnelResponse)(nil),         // 33: payrudder.plans.v1.GetAffiliateFunnelResponse
+	(*timestamppb.Timestamp)(nil),              // 34: google.protobuf.Timestamp
 }
 var file_payrudder_plans_v1_affiliates_proto_depIdxs = []int32{
-	23, // 0: payrudder.plans.v1.AffiliateProgram.create_time:type_name -> google.protobuf.Timestamp
-	23, // 1: payrudder.plans.v1.AffiliateProgram.update_time:type_name -> google.protobuf.Timestamp
+	34, // 0: payrudder.plans.v1.AffiliateProgram.create_time:type_name -> google.protobuf.Timestamp
+	34, // 1: payrudder.plans.v1.AffiliateProgram.update_time:type_name -> google.protobuf.Timestamp
 	0,  // 2: payrudder.plans.v1.GetAffiliateProgramResponse.program:type_name -> payrudder.plans.v1.AffiliateProgram
 	0,  // 3: payrudder.plans.v1.SetAffiliateProgramRequest.program:type_name -> payrudder.plans.v1.AffiliateProgram
 	0,  // 4: payrudder.plans.v1.SetAffiliateProgramResponse.program:type_name -> payrudder.plans.v1.AffiliateProgram
-	23, // 5: payrudder.plans.v1.Affiliate.approve_time:type_name -> google.protobuf.Timestamp
-	23, // 6: payrudder.plans.v1.Affiliate.create_time:type_name -> google.protobuf.Timestamp
+	34, // 5: payrudder.plans.v1.Affiliate.approve_time:type_name -> google.protobuf.Timestamp
+	34, // 6: payrudder.plans.v1.Affiliate.create_time:type_name -> google.protobuf.Timestamp
 	5,  // 7: payrudder.plans.v1.CreateAffiliateResponse.affiliate:type_name -> payrudder.plans.v1.Affiliate
 	5,  // 8: payrudder.plans.v1.ListAffiliatesResponse.affiliates:type_name -> payrudder.plans.v1.Affiliate
 	5,  // 9: payrudder.plans.v1.GetAffiliateResponse.affiliate:type_name -> payrudder.plans.v1.Affiliate
 	5,  // 10: payrudder.plans.v1.UpdateAffiliateResponse.affiliate:type_name -> payrudder.plans.v1.Affiliate
 	5,  // 11: payrudder.plans.v1.LinkAffiliatePromotionCodeResponse.affiliate:type_name -> payrudder.plans.v1.Affiliate
-	23, // 12: payrudder.plans.v1.AttributeCustomerRequest.touch_time:type_name -> google.protobuf.Timestamp
-	23, // 13: payrudder.plans.v1.AffiliateReferral.attribute_time:type_name -> google.protobuf.Timestamp
+	34, // 12: payrudder.plans.v1.AttributeCustomerRequest.touch_time:type_name -> google.protobuf.Timestamp
+	34, // 13: payrudder.plans.v1.AffiliateReferral.attribute_time:type_name -> google.protobuf.Timestamp
 	19, // 14: payrudder.plans.v1.ListAffiliateReferralsResponse.referrals:type_name -> payrudder.plans.v1.AffiliateReferral
-	1,  // 15: payrudder.plans.v1.AffiliateService.GetAffiliateProgram:input_type -> payrudder.plans.v1.GetAffiliateProgramRequest
-	3,  // 16: payrudder.plans.v1.AffiliateService.SetAffiliateProgram:input_type -> payrudder.plans.v1.SetAffiliateProgramRequest
-	6,  // 17: payrudder.plans.v1.AffiliateService.CreateAffiliate:input_type -> payrudder.plans.v1.CreateAffiliateRequest
-	8,  // 18: payrudder.plans.v1.AffiliateService.ListAffiliates:input_type -> payrudder.plans.v1.ListAffiliatesRequest
-	10, // 19: payrudder.plans.v1.AffiliateService.GetAffiliate:input_type -> payrudder.plans.v1.GetAffiliateRequest
-	12, // 20: payrudder.plans.v1.AffiliateService.UpdateAffiliate:input_type -> payrudder.plans.v1.UpdateAffiliateRequest
-	14, // 21: payrudder.plans.v1.AffiliateService.LinkAffiliatePromotionCode:input_type -> payrudder.plans.v1.LinkAffiliatePromotionCodeRequest
-	16, // 22: payrudder.plans.v1.AffiliateService.AttributeCustomer:input_type -> payrudder.plans.v1.AttributeCustomerRequest
-	18, // 23: payrudder.plans.v1.AffiliateService.ListAffiliateReferrals:input_type -> payrudder.plans.v1.ListAffiliateReferralsRequest
-	21, // 24: payrudder.plans.v1.AffiliatePublicService.TrackAffiliateClick:input_type -> payrudder.plans.v1.TrackAffiliateClickRequest
-	2,  // 25: payrudder.plans.v1.AffiliateService.GetAffiliateProgram:output_type -> payrudder.plans.v1.GetAffiliateProgramResponse
-	4,  // 26: payrudder.plans.v1.AffiliateService.SetAffiliateProgram:output_type -> payrudder.plans.v1.SetAffiliateProgramResponse
-	7,  // 27: payrudder.plans.v1.AffiliateService.CreateAffiliate:output_type -> payrudder.plans.v1.CreateAffiliateResponse
-	9,  // 28: payrudder.plans.v1.AffiliateService.ListAffiliates:output_type -> payrudder.plans.v1.ListAffiliatesResponse
-	11, // 29: payrudder.plans.v1.AffiliateService.GetAffiliate:output_type -> payrudder.plans.v1.GetAffiliateResponse
-	13, // 30: payrudder.plans.v1.AffiliateService.UpdateAffiliate:output_type -> payrudder.plans.v1.UpdateAffiliateResponse
-	15, // 31: payrudder.plans.v1.AffiliateService.LinkAffiliatePromotionCode:output_type -> payrudder.plans.v1.LinkAffiliatePromotionCodeResponse
-	17, // 32: payrudder.plans.v1.AffiliateService.AttributeCustomer:output_type -> payrudder.plans.v1.AttributeCustomerResponse
-	20, // 33: payrudder.plans.v1.AffiliateService.ListAffiliateReferrals:output_type -> payrudder.plans.v1.ListAffiliateReferralsResponse
-	22, // 34: payrudder.plans.v1.AffiliatePublicService.TrackAffiliateClick:output_type -> payrudder.plans.v1.TrackAffiliateClickResponse
-	25, // [25:35] is the sub-list for method output_type
-	15, // [15:25] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	34, // 15: payrudder.plans.v1.AffiliateCommission.earn_time:type_name -> google.protobuf.Timestamp
+	34, // 16: payrudder.plans.v1.AffiliateCommission.approve_after_time:type_name -> google.protobuf.Timestamp
+	34, // 17: payrudder.plans.v1.AffiliateCommission.approve_time:type_name -> google.protobuf.Timestamp
+	34, // 18: payrudder.plans.v1.AffiliateCommission.pay_time:type_name -> google.protobuf.Timestamp
+	34, // 19: payrudder.plans.v1.ListAffiliateCommissionsRequest.from_time:type_name -> google.protobuf.Timestamp
+	34, // 20: payrudder.plans.v1.ListAffiliateCommissionsRequest.to_time:type_name -> google.protobuf.Timestamp
+	23, // 21: payrudder.plans.v1.ListAffiliateCommissionsResponse.commissions:type_name -> payrudder.plans.v1.AffiliateCommission
+	23, // 22: payrudder.plans.v1.ReverseAffiliateCommissionResponse.commission:type_name -> payrudder.plans.v1.AffiliateCommission
+	28, // 23: payrudder.plans.v1.GetAffiliateBalancesResponse.balances:type_name -> payrudder.plans.v1.AffiliateBalance
+	32, // 24: payrudder.plans.v1.GetAffiliateFunnelResponse.commissions:type_name -> payrudder.plans.v1.AffiliateFunnelAmount
+	1,  // 25: payrudder.plans.v1.AffiliateService.GetAffiliateProgram:input_type -> payrudder.plans.v1.GetAffiliateProgramRequest
+	3,  // 26: payrudder.plans.v1.AffiliateService.SetAffiliateProgram:input_type -> payrudder.plans.v1.SetAffiliateProgramRequest
+	6,  // 27: payrudder.plans.v1.AffiliateService.CreateAffiliate:input_type -> payrudder.plans.v1.CreateAffiliateRequest
+	8,  // 28: payrudder.plans.v1.AffiliateService.ListAffiliates:input_type -> payrudder.plans.v1.ListAffiliatesRequest
+	10, // 29: payrudder.plans.v1.AffiliateService.GetAffiliate:input_type -> payrudder.plans.v1.GetAffiliateRequest
+	12, // 30: payrudder.plans.v1.AffiliateService.UpdateAffiliate:input_type -> payrudder.plans.v1.UpdateAffiliateRequest
+	14, // 31: payrudder.plans.v1.AffiliateService.LinkAffiliatePromotionCode:input_type -> payrudder.plans.v1.LinkAffiliatePromotionCodeRequest
+	16, // 32: payrudder.plans.v1.AffiliateService.AttributeCustomer:input_type -> payrudder.plans.v1.AttributeCustomerRequest
+	18, // 33: payrudder.plans.v1.AffiliateService.ListAffiliateReferrals:input_type -> payrudder.plans.v1.ListAffiliateReferralsRequest
+	24, // 34: payrudder.plans.v1.AffiliateService.ListAffiliateCommissions:input_type -> payrudder.plans.v1.ListAffiliateCommissionsRequest
+	26, // 35: payrudder.plans.v1.AffiliateService.ReverseAffiliateCommission:input_type -> payrudder.plans.v1.ReverseAffiliateCommissionRequest
+	29, // 36: payrudder.plans.v1.AffiliateService.GetAffiliateBalances:input_type -> payrudder.plans.v1.GetAffiliateBalancesRequest
+	31, // 37: payrudder.plans.v1.AffiliateService.GetAffiliateFunnel:input_type -> payrudder.plans.v1.GetAffiliateFunnelRequest
+	21, // 38: payrudder.plans.v1.AffiliatePublicService.TrackAffiliateClick:input_type -> payrudder.plans.v1.TrackAffiliateClickRequest
+	2,  // 39: payrudder.plans.v1.AffiliateService.GetAffiliateProgram:output_type -> payrudder.plans.v1.GetAffiliateProgramResponse
+	4,  // 40: payrudder.plans.v1.AffiliateService.SetAffiliateProgram:output_type -> payrudder.plans.v1.SetAffiliateProgramResponse
+	7,  // 41: payrudder.plans.v1.AffiliateService.CreateAffiliate:output_type -> payrudder.plans.v1.CreateAffiliateResponse
+	9,  // 42: payrudder.plans.v1.AffiliateService.ListAffiliates:output_type -> payrudder.plans.v1.ListAffiliatesResponse
+	11, // 43: payrudder.plans.v1.AffiliateService.GetAffiliate:output_type -> payrudder.plans.v1.GetAffiliateResponse
+	13, // 44: payrudder.plans.v1.AffiliateService.UpdateAffiliate:output_type -> payrudder.plans.v1.UpdateAffiliateResponse
+	15, // 45: payrudder.plans.v1.AffiliateService.LinkAffiliatePromotionCode:output_type -> payrudder.plans.v1.LinkAffiliatePromotionCodeResponse
+	17, // 46: payrudder.plans.v1.AffiliateService.AttributeCustomer:output_type -> payrudder.plans.v1.AttributeCustomerResponse
+	20, // 47: payrudder.plans.v1.AffiliateService.ListAffiliateReferrals:output_type -> payrudder.plans.v1.ListAffiliateReferralsResponse
+	25, // 48: payrudder.plans.v1.AffiliateService.ListAffiliateCommissions:output_type -> payrudder.plans.v1.ListAffiliateCommissionsResponse
+	27, // 49: payrudder.plans.v1.AffiliateService.ReverseAffiliateCommission:output_type -> payrudder.plans.v1.ReverseAffiliateCommissionResponse
+	30, // 50: payrudder.plans.v1.AffiliateService.GetAffiliateBalances:output_type -> payrudder.plans.v1.GetAffiliateBalancesResponse
+	33, // 51: payrudder.plans.v1.AffiliateService.GetAffiliateFunnel:output_type -> payrudder.plans.v1.GetAffiliateFunnelResponse
+	22, // 52: payrudder.plans.v1.AffiliatePublicService.TrackAffiliateClick:output_type -> payrudder.plans.v1.TrackAffiliateClickResponse
+	39, // [39:53] is the sub-list for method output_type
+	25, // [25:39] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_affiliates_proto_init() }
@@ -1757,7 +2742,7 @@ func file_payrudder_plans_v1_affiliates_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_affiliates_proto_rawDesc), len(file_payrudder_plans_v1_affiliates_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

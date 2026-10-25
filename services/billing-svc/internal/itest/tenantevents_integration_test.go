@@ -5,6 +5,7 @@ package itest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -88,6 +89,14 @@ func testTenantEvents(t *testing.T) {
 		}
 		if r.GetType() == "invoice.paid" && (data["status"] != "paid" || data["customer_external_id"] == "" || data["number"] == "") {
 			t.Errorf("invoice.paid data = %v", data)
+		}
+		// The partner program reads its commission off the net amount and checks the environment (phase 47).
+		if r.GetType() == "invoice.paid" {
+			if data["environment"] == "" || data["tax_minor"] == nil || data["net_minor"] == nil {
+				t.Errorf("invoice.paid carries no environment, tax or net: %v", data)
+			} else if tax, net, total := fmt.Sprint(data["tax_minor"]), fmt.Sprint(data["net_minor"]), fmt.Sprint(data["total_minor"]); tax == "" || net == "" || total == "" {
+				t.Errorf("invoice.paid amounts = %v", data)
+			}
 		}
 	}
 	if c := counts(); len(c) != 0 {

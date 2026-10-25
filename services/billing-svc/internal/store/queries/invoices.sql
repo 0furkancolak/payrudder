@@ -126,3 +126,7 @@ GROUP BY 1, 2;
 -- name: ListRegularInvoiceSnapshots :many
 SELECT customer_id::text AS customer_id, snapshot FROM invoices
 WHERE tenant_id = @tenant_id AND period_id = @period_id AND kind = 'REGULAR' AND status <> 'void';
+
+-- name: SumInvoiceTax :one
+-- The tax of an invoice: the sum of its TAX lines. What is left of the total is the net, pre-tax amount, which a partner commission (phase 47) is a share of.
+SELECT COALESCE(sum(amount_minor), 0)::bigint AS tax_minor FROM invoice_lines WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'TAX';

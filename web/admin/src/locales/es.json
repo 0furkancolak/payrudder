@@ -1982,7 +1982,13 @@
         "coupon_not_found": "El cupón para clientes referidos no existe.",
         "not_set": "Este entorno aún no tiene un programa de afiliados."
       },
-      "promotion_code_not_found": "No existe ese código promocional."
+      "promotion_code_not_found": "No existe ese código promocional.",
+      "bad_id": "Ese no es un identificador válido.",
+      "bad_kind": "El tipo debe ser commission o reversal.",
+      "bad_period": "Escriba las fechas como AAAA-MM-DD, con el final después del inicio y como mucho un año de diferencia.",
+      "commission": {
+        "not_found": "Esta factura no generó ninguna comisión."
+      }
     }
   },
   "product": {

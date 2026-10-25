@@ -124,7 +124,7 @@ func New(appPool *pgxpool.Pool, _ *slog.Logger) *Server {
 // NewWebhooks returns the webhook service on the same database as s. box seals the signing secrets (nil: endpoints cannot be created).
 // allowPrivate lets endpoints be http:// and private addresses (development and tests only).
 func NewWebhooks(s *Server, box *secretbox.Box, allowPrivate bool) *webhookendpointsapi.Handler {
-	return webhookendpointsapi.New(webhookendpointscmd.New(s.db, s.now, box, allowPrivate), webhookendpointsqry.New(s.db))
+	return webhookendpointsapi.New(webhookendpointscmd.New(s.db, s.now, box, allowPrivate).WithEventHook(affiliatescmd.OnTenantEvent), webhookendpointsqry.New(s.db))
 }
 
 // NewAffiliates returns the affiliate program service on the same database as s.

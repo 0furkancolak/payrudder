@@ -37,6 +37,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/admin"
+	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
 	golivecmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/command"
 	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
@@ -78,6 +79,8 @@ type Config struct {
 	AppURL string `env:"PAYRUDDER_APP_URL"`
 	// OTPPepper keys the hash of one-time sign-in codes (a secret, never in YAML). Without it the hash is salted but unkeyed: fine for development, set it in production.
 	OTPPepper string `env:"PAYRUDDER_OTP_PEPPER"`
+	// AffiliateApproveEvery is how often the job that ends the hold of affiliate commissions looks (phase 47). The holds are days long; an hour is plenty.
+	AffiliateApproveEvery time.Duration `env:"PAYRUDDER_AFFILIATE_APPROVE_EVERY"`
 }
 
 func (c *Config) Validate() error {
@@ -94,6 +97,9 @@ func (c *Config) Validate() error {
 		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err))
 		}
+	}
+	if c.AffiliateApproveEvery < time.Minute {
+		errs = append(errs, errors.New("PAYRUDDER_AFFILIATE_APPROVE_EVERY must be at least a minute"))
 	}
 	if !slices.Contains(c.AllowedEnvs, tenant.EnvSandbox) {
 		errs = append(errs, errors.New("PAYRUDDER_ALLOWED_ENVIRONMENTS must include sandbox"))
@@ -305,6 +311,7 @@ func (w *workers) run(ctx context.Context) error {
 		disp := &webhooks.Dispatcher{Pool: w.pool, Box: w.box, Client: safehttp.NewClient(10*time.Second, w.cfg.WebhookAllowPrivate), Log: w.log}
 		g.Go(func() error { return disp.Run(gctx) })
 	}
+	g.Go(func() error { return affiliatescmd.NewApprover(w.pool, w.cfg.AffiliateApproveEvery, w.log).Run(gctx) })
 	g.Go(func() error {
 		w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr, "environments", w.cfg.AllowedEnvs)
 		return w.srv.Serve(w.lis)

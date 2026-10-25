@@ -1982,7 +1982,13 @@
         "coupon_not_found": "Le coupon des clients parrainés n'existe pas.",
         "not_set": "Cet environnement n'a pas encore de programme de partenariat."
       },
-      "promotion_code_not_found": "Ce code promotionnel n'existe pas."
+      "promotion_code_not_found": "Ce code promotionnel n'existe pas.",
+      "bad_id": "Ce n'est pas un identifiant valide.",
+      "bad_kind": "Le type doit être commission ou reversal.",
+      "bad_period": "Écrivez les dates AAAA-MM-JJ, la fin après le début et au plus un an d'écart.",
+      "commission": {
+        "not_found": "Cette facture n'a généré aucune commission."
+      }
     }
   },
   "product": {

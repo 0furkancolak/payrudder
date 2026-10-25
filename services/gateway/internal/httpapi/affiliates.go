@@ -2,6 +2,9 @@ package httpapi
 
 import (
 	"net/http"
+	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -18,6 +21,10 @@ func (s *Server) affiliateRoutes() []Route {
 		{"POST", "/v1/affiliates", AccessTenant, ratelimit.ClassWrite, s.createAffiliate},
 		{"GET", "/v1/affiliates", AccessTenant, ratelimit.ClassRead, s.listAffiliates},
 		{"GET", "/v1/affiliates/referrals", AccessTenant, ratelimit.ClassRead, s.listAffiliateReferrals},
+		{"GET", "/v1/affiliates/commissions", AccessTenant, ratelimit.ClassRead, s.listAffiliateCommissions},
+		{"POST", "/v1/affiliates/commissions/reverse", AccessTenant, ratelimit.ClassWrite, s.reverseAffiliateCommission},
+		{"GET", "/v1/affiliates/balances", AccessTenant, ratelimit.ClassRead, s.getAffiliateBalances},
+		{"GET", "/v1/affiliates/funnel", AccessTenant, ratelimit.ClassRead, s.getAffiliateFunnel},
 		{"GET", "/v1/affiliates/{id}", AccessTenant, ratelimit.ClassRead, s.getAffiliate},
 		{"PATCH", "/v1/affiliates/{id}", AccessTenant, ratelimit.ClassWrite, s.updateAffiliate},
 		{"PUT", "/v1/affiliates/{id}/promotion-code", AccessTenant, ratelimit.ClassWrite, s.linkAffiliatePromotionCode},
@@ -105,5 +112,50 @@ func (s *Server) attributeCustomer(w http.ResponseWriter, r *http.Request) {
 	}
 	req.CustomerExternalId, req.CustomerId = r.PathValue("external_id"), ""
 	resp, err := s.d.Affiliates.AttributeCustomer(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) listAffiliateCommissions(w http.ResponseWriter, r *http.Request) {
+	size, token, ok := pageParams(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	req := &plansv1.ListAffiliateCommissionsRequest{AffiliateId: q.Get("affiliate_id"), Status: q.Get("status"), Kind: q.Get("kind"), InvoiceId: q.Get("invoice_id"),
+		PayoutId: q.Get("payout_id"), PageSize: size, PageToken: token}
+	for name, dst := range map[string]**timestamppb.Timestamp{"from": &req.FromTime, "to": &req.ToTime} {
+		if v := q.Get(name); v != "" {
+			t, err := time.Parse(time.RFC3339, v)
+			if err != nil {
+				writeError(w, r, invalid(name, "must be an RFC 3339 time"))
+				return
+			}
+			*dst = timestamppb.New(t)
+		}
+	}
+	resp, err := s.d.Affiliates.ListAffiliateCommissions(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// reverseAffiliateCommission is POST /v1/affiliates/commissions/reverse: take a commission back for a chargeback or by hand. Refunds, voids and credit notes
+// reverse on their own.
+func (s *Server) reverseAffiliateCommission(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.ReverseAffiliateCommissionRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Affiliates.ReverseAffiliateCommission(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) getAffiliateBalances(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Affiliates.GetAffiliateBalances(r.Context(), &plansv1.GetAffiliateBalancesRequest{AffiliateId: r.URL.Query().Get("affiliate_id")})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) getAffiliateFunnel(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	resp, err := s.d.Affiliates.GetAffiliateFunnel(r.Context(), &plansv1.GetAffiliateFunnelRequest{FromDate: q.Get("from"), ToDate: q.Get("to"), AffiliateId: q.Get("affiliate_id")})
 	respond(w, r, http.StatusOK, resp, err)
 }
