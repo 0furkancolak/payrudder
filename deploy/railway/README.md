@@ -123,6 +123,7 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PORT` | `8000` | the HTTP API; the public domain's port |
 | `QUOTIFY_OPERATOR_TOKEN` | generated | at least 32 characters; the machine credential of the operator API (scripts, `quotifyctl`); never typed into the console |
 | `QUOTIFY_OPERATOR_EMAILS` | e.g. `you@example.com` | comma separated; people who sign in with one of these and have verified it are platform operators (empty: nobody) |
+| `QUOTIFY_TRUSTED_PROXY_SECRET` | generated, 32+ characters | only with the console on Cloudflare: the same value as the Worker secret `EDGE_AUTH_SECRET`; makes the gateway count sign-in limits per visitor ([runbook](../../docs/runbooks/console-first-deploy.md)) |
 | `QUOTIFY_APP_URL` | `https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}` | where the browser returns after Google; also set on `plans-svc` for the links in mails |
 | `QUOTIFY_GOOGLE_CLIENT_ID`, `QUOTIFY_GOOGLE_CLIENT_SECRET` | from Google | optional: both set shows "Continue with Google" ([how](../../docs/13-admin-ui.md#sign-in-methods)); register `<console domain>/gw/auth/google/callback` as the redirect URI |
 | `QUOTIFY_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |

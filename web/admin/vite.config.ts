@@ -28,5 +28,5 @@ export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: { proxy },
   preview: { proxy, allowedHosts: true },
-  test: { environment: "node", include: ["src/**/*.test.ts"] },
+  test: { environment: "node", include: ["src/**/*.test.ts", "worker/**/*.test.ts"] },
 });
