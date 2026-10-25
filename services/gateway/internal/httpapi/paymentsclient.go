@@ -116,15 +116,22 @@ func (s *Server) ledgerLookup(ctx context.Context, tenantID string, invoiceIDs [
 	return rows, nil
 }
 
+// pendingWindow is how long a pending charge row keeps an invoice "processing". It matches payments-worker's checkoutReuse: the time a handed-out
+// checkout is still reused, after which a new one is opened anyway.
+const pendingWindow = 30 * time.Minute
+
 // refineState turns billing's payment state into what the ledger adds for an invoice that is not settled: a pending row of the invoice means a payment
 // is on its way, a declined or failed latest row means the last attempt did not go through.
-func refineState(state string, rows []ledgerRow, invoiceID string) string {
+//
+// A pending row only counts for pendingWindow. Most providers say nothing when a customer closes the checkout, and nothing ever closes the row of
+// bank instructions that were only looked at; without a limit the page would say "processing" for ever and never offer the pay buttons again.
+func refineState(state string, rows []ledgerRow, invoiceID string, now time.Time) string {
 	if state != "open" && state != "failed" {
 		return state
 	}
 	var latest *ledgerRow
 	for i := range rows {
-		if rows[i].InvoiceID == invoiceID && rows[i].Kind == "charge" {
+		if rows[i].InvoiceID == invoiceID && rows[i].Kind == "charge" && (rows[i].Status != "pending" || now.Sub(rows[i].OccurredAt) <= pendingWindow) {
 			latest = &rows[i]
 		}
 	}

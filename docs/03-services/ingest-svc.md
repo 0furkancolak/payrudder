@@ -103,7 +103,7 @@ Details that differ from the sketch above:
 - A key repeated within one request is resolved in memory: the second occurrence is a `DUPLICATE` of the first, or
   `IDEMPOTENCY_KEY_REUSED` if the payload differs.
 - `created_at` of a key row is the start (UTC) of the month, see the partitioned-PK note in
-  [05-data-model.md](../05-data-model.md#ingest_db). The previous month's bucket is checked with an explicit `SELECT` before the insert.
+  [05-data-model.md](../05-data-model.md#ingest_db). The two previous months' buckets are checked with an explicit `SELECT` before the insert.
 - Sandbox events without a key skip `idempotency_keys` entirely.
 - Meter and customer lookups are cached per tenant (hits 30 s, misses 2 s, so a freshly created meter works within
   seconds). A batch resolves its distinct meters and customers concurrently first.

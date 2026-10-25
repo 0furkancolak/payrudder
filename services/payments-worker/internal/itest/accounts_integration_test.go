@@ -293,7 +293,7 @@ func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 		if code, body := notify("ev-2", key); code != 200 || !strings.Contains(body, "processed") {
 			t.Fatalf("%d %s", code, body)
 		}
-		n, err := ledger.Outcomes(ctx, "iyzico", "charge", "P1")
+		n, err := ledger.Outcomes(ctx, tenant, "iyzico", "charge", "P1")
 		if err != nil || n != 2 {
 			t.Fatalf("outcomes for P1 = %d, %v; the command said succeeded and iyzico now says declined", n, err)
 		}

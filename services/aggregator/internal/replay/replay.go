@@ -632,7 +632,33 @@ func swapGenerations(ctx context.Context, q *sqlc.Queries, j *Job) error {
 	if n != 1 {
 		return fmt.Errorf("%w: generation %d is not catching up", ErrState, j.TargetGeneration)
 	}
+	if err := carryOverOutsideRange(ctx, q, j); err != nil {
+		return err
+	}
 	return q.MarkReplayPromoted(ctx, sqlc.MarkReplayPromotedParams{TenantID: j.TenantID, ID: j.ID})
+}
+
+// carryOverOutsideRange gives the target generation the source's history of every period the replay did not rebuild. The
+// replay rebuilds [From, To] only, but the live consumer dual-wrote all periods into the target since the catch-up began, so
+// outside the range the target holds just that tail; the source, active until now, has the whole history. Runs inside the
+// promote transaction, with the live generations locked.
+func carryOverOutsideRange(ctx context.Context, q *sqlc.Queries, j *Job) error {
+	if err := q.ClearGenerationUsageOutside(ctx, sqlc.ClearGenerationUsageOutsideParams{TenantID: j.TenantID, Generation: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
+	if err := q.CopyGenerationUsageOutside(ctx, sqlc.CopyGenerationUsageOutsideParams{TenantID: j.TenantID, Source: j.SourceGeneration, Target: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
+	if err := q.ClearGenerationLateUsageOutside(ctx, sqlc.ClearGenerationLateUsageOutsideParams{TenantID: j.TenantID, Generation: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
+	if err := q.CopyGenerationLateUsageOutside(ctx, sqlc.CopyGenerationLateUsageOutsideParams{TenantID: j.TenantID, Source: j.SourceGeneration, Target: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
+	if err := q.ClearGenerationProcessedEventsOutside(ctx, sqlc.ClearGenerationProcessedEventsOutsideParams{TenantID: j.TenantID, Generation: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
+	return q.CopyGenerationProcessedEventsOutside(ctx, sqlc.CopyGenerationProcessedEventsOutsideParams{TenantID: j.TenantID, Source: j.SourceGeneration, Target: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To})
 }
 
 // Discard abandons a generation that was not promoted and deletes its rows.

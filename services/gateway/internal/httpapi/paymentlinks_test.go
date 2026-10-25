@@ -533,7 +533,7 @@ func TestPaymentStateDecidesTheRefresh(t *testing.T) {
 	// Open at billing, a pending row in the ledger: processing. A declined latest row: failed, and it can be paid again.
 	f.mu.Lock()
 	f.methods = []map[string]string{{"id": "checkout", "kind": "checkout", "provider": "paddle"}}
-	f.rows = []map[string]any{{"id": 7, "invoice_id": "inv-open", "provider": "paddle", "kind": "charge", "status": "pending", "amount_minor": 5000, "currency": "USD", "occurred_at": "2026-10-03T10:00:00Z"}}
+	f.rows = []map[string]any{{"id": 7, "invoice_id": "inv-open", "provider": "paddle", "kind": "charge", "status": "pending", "amount_minor": 5000, "currency": "USD", "occurred_at": time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)}}
 	f.mu.Unlock()
 	if _, page := get(t, ts, "/i/"+tokOpenLive); !strings.Contains(page, `http-equiv="refresh"`) || !strings.Contains(page, "Payment processing") {
 		t.Error("a pending ledger row means processing")
@@ -544,6 +544,13 @@ func TestPaymentStateDecidesTheRefresh(t *testing.T) {
 	_, page = get(t, ts, "/i/"+tokOpenLive)
 	if strings.Contains(page, `http-equiv="refresh"`) || !strings.Contains(page, "Payment failed") || !strings.Contains(page, "You can try again") || !strings.Contains(page, `value="checkout"`) {
 		t.Errorf("failed page:\n%s", page)
+	}
+	// An abandoned checkout (a pending row nothing ever closed) does not keep the page on "processing": the buttons come back.
+	f.mu.Lock()
+	f.rows = []map[string]any{{"id": 9, "invoice_id": "inv-open", "provider": "paddle", "kind": "charge", "status": "pending", "amount_minor": 5000, "currency": "USD", "occurred_at": time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)}}
+	f.mu.Unlock()
+	if _, page := get(t, ts, "/i/"+tokOpenLive); strings.Contains(page, `http-equiv="refresh"`) || strings.Contains(page, "Payment processing") || !strings.Contains(page, `value="checkout"`) {
+		t.Errorf("an abandoned checkout page:\n%s", page)
 	}
 	// The ledger never overrides a paid invoice.
 	if _, paid := get(t, ts, "/i/"+goodToken); strings.Contains(paid, `http-equiv="refresh"`) || !strings.Contains(paid, "Paid") {

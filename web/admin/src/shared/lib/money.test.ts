@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatMinor, maskDigits, maskEmail, minorToMajor, parseMajor } from "./money";
+import { currencyInfo } from "./intl";
+import { formatMinor, maskDigits, maskEmail, minorDigits, minorToMajor, parseMajor } from "./money";
 import { privacyMode } from "./prefs";
 
 describe("minorToMajor", () => {
@@ -18,6 +19,26 @@ describe("minorToMajor", () => {
     expect(minorToMajor("-5", "USD")).toBe("");
     expect(minorToMajor("1.5", "USD")).toBe("");
     expect(minorToMajor(undefined, "USD")).toBe("");
+  });
+});
+
+describe("exponents come from the backend table, not from Intl", () => {
+  it("formats HUF and IDR with two digits and IQD with three, as pkg/money does", () => {
+    expect(formatMinor("150000", "HUF", "en")).toMatch(/1,500\.00/);
+    expect(formatMinor("150000", "IDR", "en")).toMatch(/1,500\.00/);
+    expect(formatMinor("1500000", "IQD", "en")).toMatch(/1,500\.000/);
+  });
+  it("parses and prints typed amounts with those exponents", () => {
+    expect(parseMajor("1500", "HUF")).toBe("150000");
+    expect(parseMajor("1500", "IQD")).toBe("1500000");
+    expect(minorToMajor("150000", "HUF")).toBe("1500.00");
+    expect(minorDigits("COP")).toBe(2);
+    expect(minorDigits("JPY")).toBe(0);
+    expect(minorDigits("KWD")).toBe(3);
+  });
+  it("reports the same digits for the currency picker", () => {
+    expect(currencyInfo("HUF", "en").digits).toBe(2);
+    expect(currencyInfo("IQD", "en").digits).toBe(3);
   });
 });
 

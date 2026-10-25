@@ -41,6 +41,7 @@ func TestAggregator(t *testing.T) {
 	t.Run("FreezePeriodRoutesLateArrivals", testFreeze)
 	t.Run("ReplayFixesAFilterAndPromotesUnderLoad", testReplayFixesAFilterAndPromotesUnderLoad)
 	t.Run("ReplayCanBeDiscardedAndRestarted", testReplayDiscard)
+	t.Run("ReplayPromoteKeepsPeriodsOutsideTheRange", testReplayPromoteKeepsPeriodsOutsideTheRange)
 	t.Run("ReadAPIs", testReadAPIs)
 	t.Run("RLSAndPartitions", testRLSAndPartitions) // last: drops old partitions
 }
