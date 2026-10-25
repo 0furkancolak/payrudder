@@ -77,6 +77,17 @@ const messageTmpl = `{{define "message"}}{{template "head" .}}
 <h1>{{.Heading}}</h1><p class="hint">{{.Text}}</p>{{if .Back}}<a class="btn alt" href="{{.Back}}">{{.L.instr_back}}</a>{{end}}
 {{template "foot" .}}{{end}}`
 
+const referralTmpl = `{{define "referral"}}{{template "head" .}}
+<h1>{{.L.ref_title}}</h1><p class="hint">{{.L.ref_text}}</p><a class="btn alt" href="{{.Privacy}}">{{.L.ref_privacy}}</a>
+{{template "foot" .}}{{end}}`
+
+const privacyTmpl = `{{define "privacy"}}{{template "head" .}}
+<h1>{{.L.priv_title}}</h1><p>{{.L.priv_intro}}</p>
+<h2 class="sec">{{.L.priv_h_cookie}}</h2><p>{{.L.priv_cookie}}</p>
+<h2 class="sec">{{.L.priv_h_counts}}</h2><p>{{.L.priv_counts}}</p>
+<h2 class="sec">{{.L.priv_h_control}}</h2><p>{{.L.priv_control}}</p>
+{{template "foot" .}}{{end}}`
+
 const portalTmpl = `{{define "portal"}}{{template "head" .}}
 <div class="muted">{{.Seller}}</div><h1>{{.L.portal_title}}</h1><div class="muted">{{.Customer}}</div>
 <h2 class="sec">{{.L.portal_invoices}}</h2>
@@ -99,4 +110,4 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 {{end}}</tbody></table></div>{{end}}{{end}}
 {{template "foot" .}}{{end}}`
 
-var pageTemplates = template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl))
+var pageTemplates = template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + privacyTmpl))

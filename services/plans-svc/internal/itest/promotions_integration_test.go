@@ -577,14 +577,14 @@ func testPromotionsMigration(t *testing.T) {
 	consistent(t, "before")
 
 	ctxb := context.Background()
-	// The affiliate program (47, 48, 49) refers to a coupon by the key this migration adds, so it goes down first and comes back last.
-	for _, v := range []int64{49, 48, 47, 30} {
+	// The affiliate program (47, 48, 50) and the sandbox reset (49) refer to a coupon by the key this migration adds, so it goes down first and comes back last.
+	for _, v := range []int64{50, 49, 48, 47, 30} {
 		if err := pgxx.MigrateVersion(ctxb, e.db.Migrator, migrations.FS, v, false); err != nil {
 			t.Fatal(err)
 		}
 	}
 	t.Cleanup(func() { // whatever happens, leave the schema migrated for the tests that follow
-		for _, v := range []int64{30, 47, 48, 49} {
+		for _, v := range []int64{30, 47, 48, 49, 50} {
 			_ = pgxx.MigrateVersion(ctxb, e.db.Migrator, migrations.FS, v, true)
 		}
 	})

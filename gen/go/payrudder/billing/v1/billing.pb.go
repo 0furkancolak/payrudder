@@ -5827,8 +5827,12 @@ type StartLinkPaymentRequest struct {
 	Token string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	// What the payer typed. Empty uses the code of the link, if it has one, or the coupon waiting for the link's customer.
 	PromotionCode string `protobuf:"bytes,2,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The affiliate code in the visitor's referral cookie and when they followed that link (phase 47). Billing tells the affiliate program, which decides; it never
+	// fails a payment. A guest payment has no customer, so nothing is attributed.
+	ReferralCode      string                 `protobuf:"bytes,3,opt,name=referral_code,json=referralCode,proto3" json:"referral_code,omitempty"`
+	ReferralTouchTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=referral_touch_time,json=referralTouchTime,proto3" json:"referral_touch_time,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *StartLinkPaymentRequest) Reset() {
@@ -5873,6 +5877,20 @@ func (x *StartLinkPaymentRequest) GetPromotionCode() string {
 		return x.PromotionCode
 	}
 	return ""
+}
+
+func (x *StartLinkPaymentRequest) GetReferralCode() string {
+	if x != nil {
+		return x.ReferralCode
+	}
+	return ""
+}
+
+func (x *StartLinkPaymentRequest) GetReferralTouchTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReferralTouchTime
+	}
+	return nil
 }
 
 type QuoteLinkPromotionRequest struct {
@@ -6064,9 +6082,12 @@ type RequestHostedPaymentRequest struct {
 	PortalToken string                 `protobuf:"bytes,2,opt,name=portal_token,json=portalToken,proto3" json:"portal_token,omitempty"`
 	InvoiceId   string                 `protobuf:"bytes,3,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
 	// "mock" or the id of a method the gateway got from payments-worker (checkout, bank_transfer…).
-	Method        string `protobuf:"bytes,4,opt,name=method,proto3" json:"method,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Method string `protobuf:"bytes,4,opt,name=method,proto3" json:"method,omitempty"`
+	// The referral cookie of the visitor, as on StartLinkPaymentRequest.
+	ReferralCode      string                 `protobuf:"bytes,5,opt,name=referral_code,json=referralCode,proto3" json:"referral_code,omitempty"`
+	ReferralTouchTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=referral_touch_time,json=referralTouchTime,proto3" json:"referral_touch_time,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *RequestHostedPaymentRequest) Reset() {
@@ -6125,6 +6146,20 @@ func (x *RequestHostedPaymentRequest) GetMethod() string {
 		return x.Method
 	}
 	return ""
+}
+
+func (x *RequestHostedPaymentRequest) GetReferralCode() string {
+	if x != nil {
+		return x.ReferralCode
+	}
+	return ""
+}
+
+func (x *RequestHostedPaymentRequest) GetReferralTouchTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReferralTouchTime
+	}
+	return nil
 }
 
 type RequestHostedPaymentResponse struct {
@@ -6644,8 +6679,11 @@ type StartPortalPurchaseRequest struct {
 	Quantity int32 `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	// What the customer typed; empty uses the coupon waiting for the customer, if any.
 	PromotionCode string `protobuf:"bytes,4,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The referral cookie of the visitor, as on StartLinkPaymentRequest.
+	ReferralCode      string                 `protobuf:"bytes,5,opt,name=referral_code,json=referralCode,proto3" json:"referral_code,omitempty"`
+	ReferralTouchTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=referral_touch_time,json=referralTouchTime,proto3" json:"referral_touch_time,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *StartPortalPurchaseRequest) Reset() {
@@ -6704,6 +6742,20 @@ func (x *StartPortalPurchaseRequest) GetPromotionCode() string {
 		return x.PromotionCode
 	}
 	return ""
+}
+
+func (x *StartPortalPurchaseRequest) GetReferralCode() string {
+	if x != nil {
+		return x.ReferralCode
+	}
+	return ""
+}
+
+func (x *StartPortalPurchaseRequest) GetReferralTouchTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReferralTouchTime
+	}
+	return nil
 }
 
 type StartPortalPurchaseResponse struct {
@@ -11202,10 +11254,12 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\n" +
 	"invoice_id\x18\x03 \x01(\tR\tinvoiceId\",\n" +
 	"\x18GetHostedLogoUrlResponse\x12\x10\n" +
-	"\x03url\x18\x01 \x01(\tR\x03url\"V\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\"\xc7\x01\n" +
 	"\x17StartLinkPaymentRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12%\n" +
-	"\x0epromotion_code\x18\x02 \x01(\tR\rpromotionCode\"X\n" +
+	"\x0epromotion_code\x18\x02 \x01(\tR\rpromotionCode\x12#\n" +
+	"\rreferral_code\x18\x03 \x01(\tR\freferralCode\x12J\n" +
+	"\x13referral_touch_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x11referralTouchTime\"X\n" +
 	"\x19QuoteLinkPromotionRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12%\n" +
 	"\x0epromotion_code\x18\x02 \x01(\tR\rpromotionCode\"\xeb\x01\n" +
@@ -11219,13 +11273,15 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\vtotal_minor\x18\x06 \x01(\x03R\n" +
 	"totalMinor\"?\n" +
 	"\x18StartLinkPaymentResponse\x12#\n" +
-	"\rinvoice_token\x18\x01 \x01(\tR\finvoiceToken\"\x8d\x01\n" +
+	"\rinvoice_token\x18\x01 \x01(\tR\finvoiceToken\"\xfe\x01\n" +
 	"\x1bRequestHostedPaymentRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12!\n" +
 	"\fportal_token\x18\x02 \x01(\tR\vportalToken\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x03 \x01(\tR\tinvoiceId\x12\x16\n" +
-	"\x06method\x18\x04 \x01(\tR\x06method\"|\n" +
+	"\x06method\x18\x04 \x01(\tR\x06method\x12#\n" +
+	"\rreferral_code\x18\x05 \x01(\tR\freferralCode\x12J\n" +
+	"\x13referral_touch_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x11referralTouchTime\"|\n" +
 	"\x1cRequestHostedPaymentResponse\x12\x16\n" +
 	"\x06action\x18\x01 \x01(\tR\x06action\x12D\n" +
 	"\apayment\x18\x02 \x01(\v2*.payrudder.billing.v1.HostedPaymentContextR\apayment\"5\n" +
@@ -11277,12 +11333,14 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"priceMinor\x12\x1a\n" +
 	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x12+\n" +
 	"\x11currency_exponent\x18\x06 \x01(\x05R\x10currencyExponent\x12#\n" +
-	"\rvalidity_days\x18\a \x01(\x05R\fvalidityDays\"\x9b\x01\n" +
+	"\rvalidity_days\x18\a \x01(\x05R\fvalidityDays\"\x8c\x02\n" +
 	"\x1aStartPortalPurchaseRequest\x12!\n" +
 	"\fportal_token\x18\x01 \x01(\tR\vportalToken\x12\x17\n" +
 	"\apack_id\x18\x02 \x01(\tR\x06packId\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\x05R\bquantity\x12%\n" +
-	"\x0epromotion_code\x18\x04 \x01(\tR\rpromotionCode\"B\n" +
+	"\x0epromotion_code\x18\x04 \x01(\tR\rpromotionCode\x12#\n" +
+	"\rreferral_code\x18\x05 \x01(\tR\freferralCode\x12J\n" +
+	"\x13referral_touch_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x11referralTouchTime\"B\n" +
 	"\x1bStartPortalPurchaseResponse\x12#\n" +
 	"\rinvoice_token\x18\x01 \x01(\tR\finvoiceToken\"\xee\x05\n" +
 	"\vPaymentLink\x12\x0e\n" +
@@ -11947,171 +12005,174 @@ var file_payrudder_billing_v1_billing_proto_depIdxs = []int32{
 	157, // 60: payrudder.billing.v1.GetEInvoiceFileUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
 	74,  // 61: payrudder.billing.v1.RetryEInvoiceResponse.document:type_name -> payrudder.billing.v1.EInvoiceDocument
 	74,  // 62: payrudder.billing.v1.CancelEInvoiceResponse.document:type_name -> payrudder.billing.v1.EInvoiceDocument
-	71,  // 63: payrudder.billing.v1.RequestHostedPaymentResponse.payment:type_name -> payrudder.billing.v1.HostedPaymentContext
-	157, // 64: payrudder.billing.v1.PortalInvoice.issue_time:type_name -> google.protobuf.Timestamp
-	157, // 65: payrudder.billing.v1.GetPortalResponse.expire_time:type_name -> google.protobuf.Timestamp
-	94,  // 66: payrudder.billing.v1.GetPortalResponse.invoices:type_name -> payrudder.billing.v1.PortalInvoice
-	96,  // 67: payrudder.billing.v1.GetPortalResponse.credit_lots:type_name -> payrudder.billing.v1.PortalCreditLot
-	97,  // 68: payrudder.billing.v1.GetPortalResponse.credit_packs:type_name -> payrudder.billing.v1.PortalCreditPack
-	157, // 69: payrudder.billing.v1.PortalCreditLot.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 70: payrudder.billing.v1.PaymentLink.create_time:type_name -> google.protobuf.Timestamp
-	157, // 71: payrudder.billing.v1.PaymentLink.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 72: payrudder.billing.v1.PaymentLink.revoke_time:type_name -> google.protobuf.Timestamp
-	157, // 73: payrudder.billing.v1.PaymentLink.last_paid_time:type_name -> google.protobuf.Timestamp
-	100, // 74: payrudder.billing.v1.CreatePaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
-	100, // 75: payrudder.billing.v1.GetPaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
-	100, // 76: payrudder.billing.v1.ListPaymentLinksResponse.links:type_name -> payrudder.billing.v1.PaymentLink
-	100, // 77: payrudder.billing.v1.RevokePaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
-	157, // 78: payrudder.billing.v1.CreatePortalLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 79: payrudder.billing.v1.CreditPack.create_time:type_name -> google.protobuf.Timestamp
-	115, // 80: payrudder.billing.v1.ListCreditPacksResponse.packs:type_name -> payrudder.billing.v1.CreditPack
-	115, // 81: payrudder.billing.v1.CreateCreditPackResponse.pack:type_name -> payrudder.billing.v1.CreditPack
-	157, // 82: payrudder.billing.v1.CreditLot.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 83: payrudder.billing.v1.CreditLot.create_time:type_name -> google.protobuf.Timestamp
-	157, // 84: payrudder.billing.v1.GetCreditBalanceResponse.next_expire_time:type_name -> google.protobuf.Timestamp
-	122, // 85: payrudder.billing.v1.GetCreditBalanceResponse.lots:type_name -> payrudder.billing.v1.CreditLot
-	157, // 86: payrudder.billing.v1.GrantCreditsRequest.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 87: payrudder.billing.v1.CreditLedgerEntry.create_time:type_name -> google.protobuf.Timestamp
-	129, // 88: payrudder.billing.v1.ListCreditLedgerResponse.entries:type_name -> payrudder.billing.v1.CreditLedgerEntry
-	157, // 89: payrudder.billing.v1.Expense.void_time:type_name -> google.protobuf.Timestamp
-	157, // 90: payrudder.billing.v1.Expense.create_time:type_name -> google.protobuf.Timestamp
-	157, // 91: payrudder.billing.v1.Expense.update_time:type_name -> google.protobuf.Timestamp
-	132, // 92: payrudder.billing.v1.CreateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
-	132, // 93: payrudder.billing.v1.UpdateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
-	132, // 94: payrudder.billing.v1.VoidExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
-	132, // 95: payrudder.billing.v1.ListExpensesResponse.expenses:type_name -> payrudder.billing.v1.Expense
-	142, // 96: payrudder.billing.v1.DashboardCurrency.top_customers:type_name -> payrudder.billing.v1.DashboardTopCustomer
-	143, // 97: payrudder.billing.v1.DashboardCurrency.aging:type_name -> payrudder.billing.v1.DashboardAgingBucket
-	157, // 98: payrudder.billing.v1.DashboardInvoice.create_time:type_name -> google.protobuf.Timestamp
-	144, // 99: payrudder.billing.v1.GetDashboardStatsResponse.currencies:type_name -> payrudder.billing.v1.DashboardCurrency
-	145, // 100: payrudder.billing.v1.GetDashboardStatsResponse.recent_invoices:type_name -> payrudder.billing.v1.DashboardInvoice
-	148, // 101: payrudder.billing.v1.AccountingCurrency.expense_by_category:type_name -> payrudder.billing.v1.AccountingCategoryTotal
-	149, // 102: payrudder.billing.v1.AccountingCurrency.series:type_name -> payrudder.billing.v1.AccountingPoint
-	150, // 103: payrudder.billing.v1.AccountingCurrency.coupons:type_name -> payrudder.billing.v1.AccountingCoupon
-	151, // 104: payrudder.billing.v1.GetAccountingSummaryResponse.currencies:type_name -> payrudder.billing.v1.AccountingCurrency
-	10,  // 105: payrudder.billing.v1.BillingService.GetInvoice:input_type -> payrudder.billing.v1.GetInvoiceRequest
-	12,  // 106: payrudder.billing.v1.BillingService.ListInvoices:input_type -> payrudder.billing.v1.ListInvoicesRequest
-	14,  // 107: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> payrudder.billing.v1.GetInvoicePdfUrlRequest
-	41,  // 108: payrudder.billing.v1.BillingService.GetRevenueReport:input_type -> payrudder.billing.v1.GetRevenueReportRequest
-	44,  // 109: payrudder.billing.v1.BillingService.GetDunningReport:input_type -> payrudder.billing.v1.GetDunningReportRequest
-	53,  // 110: payrudder.billing.v1.BillingService.GetCreditNote:input_type -> payrudder.billing.v1.GetCreditNoteRequest
-	55,  // 111: payrudder.billing.v1.BillingService.ListCreditNotes:input_type -> payrudder.billing.v1.ListCreditNotesRequest
-	75,  // 112: payrudder.billing.v1.BillingService.GetEInvoice:input_type -> payrudder.billing.v1.GetEInvoiceRequest
-	77,  // 113: payrudder.billing.v1.BillingService.ListEInvoices:input_type -> payrudder.billing.v1.ListEInvoicesRequest
-	79,  // 114: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:input_type -> payrudder.billing.v1.GetEInvoiceFileUrlRequest
-	62,  // 115: payrudder.billing.v1.BillingService.CreateInvoiceLink:input_type -> payrudder.billing.v1.CreateInvoiceLinkRequest
-	64,  // 116: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> payrudder.billing.v1.RevokeInvoiceLinksRequest
-	101, // 117: payrudder.billing.v1.BillingService.CreatePaymentLink:input_type -> payrudder.billing.v1.CreatePaymentLinkRequest
-	103, // 118: payrudder.billing.v1.BillingService.GetPaymentLink:input_type -> payrudder.billing.v1.GetPaymentLinkRequest
-	105, // 119: payrudder.billing.v1.BillingService.ListPaymentLinks:input_type -> payrudder.billing.v1.ListPaymentLinksRequest
-	107, // 120: payrudder.billing.v1.BillingService.RevokePaymentLink:input_type -> payrudder.billing.v1.RevokePaymentLinkRequest
-	109, // 121: payrudder.billing.v1.BillingService.CreatePortalLink:input_type -> payrudder.billing.v1.CreatePortalLinkRequest
-	111, // 122: payrudder.billing.v1.BillingService.RevokePortalLinks:input_type -> payrudder.billing.v1.RevokePortalLinksRequest
-	113, // 123: payrudder.billing.v1.BillingService.SettleInvoicePayment:input_type -> payrudder.billing.v1.SettleInvoicePaymentRequest
-	58,  // 124: payrudder.billing.v1.BillingService.GetDunningSettings:input_type -> payrudder.billing.v1.GetDunningSettingsRequest
-	60,  // 125: payrudder.billing.v1.BillingService.SetDunningSettings:input_type -> payrudder.billing.v1.SetDunningSettingsRequest
-	116, // 126: payrudder.billing.v1.BillingService.ListCreditPacks:input_type -> payrudder.billing.v1.ListCreditPacksRequest
-	118, // 127: payrudder.billing.v1.BillingService.CreateCreditPack:input_type -> payrudder.billing.v1.CreateCreditPackRequest
-	120, // 128: payrudder.billing.v1.BillingService.SetCreditPackActive:input_type -> payrudder.billing.v1.SetCreditPackActiveRequest
-	123, // 129: payrudder.billing.v1.BillingService.GetCreditBalance:input_type -> payrudder.billing.v1.GetCreditBalanceRequest
-	125, // 130: payrudder.billing.v1.BillingService.GrantCredits:input_type -> payrudder.billing.v1.GrantCreditsRequest
-	127, // 131: payrudder.billing.v1.BillingService.ConsumeCredits:input_type -> payrudder.billing.v1.ConsumeCreditsRequest
-	130, // 132: payrudder.billing.v1.BillingService.ListCreditLedger:input_type -> payrudder.billing.v1.ListCreditLedgerRequest
-	133, // 133: payrudder.billing.v1.BillingService.CreateExpense:input_type -> payrudder.billing.v1.CreateExpenseRequest
-	135, // 134: payrudder.billing.v1.BillingService.UpdateExpense:input_type -> payrudder.billing.v1.UpdateExpenseRequest
-	137, // 135: payrudder.billing.v1.BillingService.VoidExpense:input_type -> payrudder.billing.v1.VoidExpenseRequest
-	139, // 136: payrudder.billing.v1.BillingService.ListExpenses:input_type -> payrudder.billing.v1.ListExpensesRequest
-	147, // 137: payrudder.billing.v1.BillingService.GetAccountingSummary:input_type -> payrudder.billing.v1.GetAccountingSummaryRequest
-	141, // 138: payrudder.billing.v1.BillingService.GetDashboardStats:input_type -> payrudder.billing.v1.GetDashboardStatsRequest
-	153, // 139: payrudder.billing.v1.BillingService.GetCreditSettings:input_type -> payrudder.billing.v1.GetCreditSettingsRequest
-	155, // 140: payrudder.billing.v1.BillingService.SetCreditSettings:input_type -> payrudder.billing.v1.SetCreditSettingsRequest
-	66,  // 141: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> payrudder.billing.v1.GetHostedInvoiceRequest
-	72,  // 142: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlRequest
-	85,  // 143: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:input_type -> payrudder.billing.v1.GetHostedLogoUrlRequest
-	87,  // 144: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:input_type -> payrudder.billing.v1.StartLinkPaymentRequest
-	88,  // 145: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:input_type -> payrudder.billing.v1.QuoteLinkPromotionRequest
-	91,  // 146: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:input_type -> payrudder.billing.v1.RequestHostedPaymentRequest
-	93,  // 147: payrudder.billing.v1.HostedInvoiceService.GetPortal:input_type -> payrudder.billing.v1.GetPortalRequest
-	98,  // 148: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:input_type -> payrudder.billing.v1.StartPortalPurchaseRequest
-	16,  // 149: payrudder.billing.v1.SandboxService.ClosePeriodNow:input_type -> payrudder.billing.v1.ClosePeriodNowRequest
-	18,  // 150: payrudder.billing.v1.BillingAdminService.ClosePeriod:input_type -> payrudder.billing.v1.ClosePeriodRequest
-	20,  // 151: payrudder.billing.v1.BillingAdminService.GetBillingRun:input_type -> payrudder.billing.v1.GetBillingRunRequest
-	23,  // 152: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> payrudder.billing.v1.RetryInvoiceSagaRequest
-	25,  // 153: payrudder.billing.v1.BillingAdminService.VoidInvoice:input_type -> payrudder.billing.v1.VoidInvoiceRequest
-	8,   // 154: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:input_type -> payrudder.billing.v1.RecordInvoicePaymentRequest
-	49,  // 155: payrudder.billing.v1.BillingAdminService.CreateCreditNote:input_type -> payrudder.billing.v1.CreateCreditNoteRequest
-	50,  // 156: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> payrudder.billing.v1.RetryCreditNoteRefundRequest
-	81,  // 157: payrudder.billing.v1.BillingAdminService.RetryEInvoice:input_type -> payrudder.billing.v1.RetryEInvoiceRequest
-	82,  // 158: payrudder.billing.v1.BillingAdminService.CancelEInvoice:input_type -> payrudder.billing.v1.CancelEInvoiceRequest
-	28,  // 159: payrudder.billing.v1.BillingAdminService.StartRerating:input_type -> payrudder.billing.v1.StartReratingRequest
-	30,  // 160: payrudder.billing.v1.BillingAdminService.GetReratingJob:input_type -> payrudder.billing.v1.GetReratingJobRequest
-	33,  // 161: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> payrudder.billing.v1.GetInvoiceSagaRequest
-	37,  // 162: payrudder.billing.v1.BillingAdminService.ListDeadLetters:input_type -> payrudder.billing.v1.ListDeadLettersRequest
-	39,  // 163: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> payrudder.billing.v1.RedriveDeadLettersRequest
-	11,  // 164: payrudder.billing.v1.BillingService.GetInvoice:output_type -> payrudder.billing.v1.GetInvoiceResponse
-	13,  // 165: payrudder.billing.v1.BillingService.ListInvoices:output_type -> payrudder.billing.v1.ListInvoicesResponse
-	15,  // 166: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> payrudder.billing.v1.GetInvoicePdfUrlResponse
-	43,  // 167: payrudder.billing.v1.BillingService.GetRevenueReport:output_type -> payrudder.billing.v1.GetRevenueReportResponse
-	47,  // 168: payrudder.billing.v1.BillingService.GetDunningReport:output_type -> payrudder.billing.v1.GetDunningReportResponse
-	54,  // 169: payrudder.billing.v1.BillingService.GetCreditNote:output_type -> payrudder.billing.v1.GetCreditNoteResponse
-	56,  // 170: payrudder.billing.v1.BillingService.ListCreditNotes:output_type -> payrudder.billing.v1.ListCreditNotesResponse
-	76,  // 171: payrudder.billing.v1.BillingService.GetEInvoice:output_type -> payrudder.billing.v1.GetEInvoiceResponse
-	78,  // 172: payrudder.billing.v1.BillingService.ListEInvoices:output_type -> payrudder.billing.v1.ListEInvoicesResponse
-	80,  // 173: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:output_type -> payrudder.billing.v1.GetEInvoiceFileUrlResponse
-	63,  // 174: payrudder.billing.v1.BillingService.CreateInvoiceLink:output_type -> payrudder.billing.v1.CreateInvoiceLinkResponse
-	65,  // 175: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> payrudder.billing.v1.RevokeInvoiceLinksResponse
-	102, // 176: payrudder.billing.v1.BillingService.CreatePaymentLink:output_type -> payrudder.billing.v1.CreatePaymentLinkResponse
-	104, // 177: payrudder.billing.v1.BillingService.GetPaymentLink:output_type -> payrudder.billing.v1.GetPaymentLinkResponse
-	106, // 178: payrudder.billing.v1.BillingService.ListPaymentLinks:output_type -> payrudder.billing.v1.ListPaymentLinksResponse
-	108, // 179: payrudder.billing.v1.BillingService.RevokePaymentLink:output_type -> payrudder.billing.v1.RevokePaymentLinkResponse
-	110, // 180: payrudder.billing.v1.BillingService.CreatePortalLink:output_type -> payrudder.billing.v1.CreatePortalLinkResponse
-	112, // 181: payrudder.billing.v1.BillingService.RevokePortalLinks:output_type -> payrudder.billing.v1.RevokePortalLinksResponse
-	114, // 182: payrudder.billing.v1.BillingService.SettleInvoicePayment:output_type -> payrudder.billing.v1.SettleInvoicePaymentResponse
-	59,  // 183: payrudder.billing.v1.BillingService.GetDunningSettings:output_type -> payrudder.billing.v1.GetDunningSettingsResponse
-	61,  // 184: payrudder.billing.v1.BillingService.SetDunningSettings:output_type -> payrudder.billing.v1.SetDunningSettingsResponse
-	117, // 185: payrudder.billing.v1.BillingService.ListCreditPacks:output_type -> payrudder.billing.v1.ListCreditPacksResponse
-	119, // 186: payrudder.billing.v1.BillingService.CreateCreditPack:output_type -> payrudder.billing.v1.CreateCreditPackResponse
-	121, // 187: payrudder.billing.v1.BillingService.SetCreditPackActive:output_type -> payrudder.billing.v1.SetCreditPackActiveResponse
-	124, // 188: payrudder.billing.v1.BillingService.GetCreditBalance:output_type -> payrudder.billing.v1.GetCreditBalanceResponse
-	126, // 189: payrudder.billing.v1.BillingService.GrantCredits:output_type -> payrudder.billing.v1.GrantCreditsResponse
-	128, // 190: payrudder.billing.v1.BillingService.ConsumeCredits:output_type -> payrudder.billing.v1.ConsumeCreditsResponse
-	131, // 191: payrudder.billing.v1.BillingService.ListCreditLedger:output_type -> payrudder.billing.v1.ListCreditLedgerResponse
-	134, // 192: payrudder.billing.v1.BillingService.CreateExpense:output_type -> payrudder.billing.v1.CreateExpenseResponse
-	136, // 193: payrudder.billing.v1.BillingService.UpdateExpense:output_type -> payrudder.billing.v1.UpdateExpenseResponse
-	138, // 194: payrudder.billing.v1.BillingService.VoidExpense:output_type -> payrudder.billing.v1.VoidExpenseResponse
-	140, // 195: payrudder.billing.v1.BillingService.ListExpenses:output_type -> payrudder.billing.v1.ListExpensesResponse
-	152, // 196: payrudder.billing.v1.BillingService.GetAccountingSummary:output_type -> payrudder.billing.v1.GetAccountingSummaryResponse
-	146, // 197: payrudder.billing.v1.BillingService.GetDashboardStats:output_type -> payrudder.billing.v1.GetDashboardStatsResponse
-	154, // 198: payrudder.billing.v1.BillingService.GetCreditSettings:output_type -> payrudder.billing.v1.GetCreditSettingsResponse
-	156, // 199: payrudder.billing.v1.BillingService.SetCreditSettings:output_type -> payrudder.billing.v1.SetCreditSettingsResponse
-	67,  // 200: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> payrudder.billing.v1.GetHostedInvoiceResponse
-	73,  // 201: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlResponse
-	86,  // 202: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:output_type -> payrudder.billing.v1.GetHostedLogoUrlResponse
-	90,  // 203: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:output_type -> payrudder.billing.v1.StartLinkPaymentResponse
-	89,  // 204: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:output_type -> payrudder.billing.v1.QuoteLinkPromotionResponse
-	92,  // 205: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:output_type -> payrudder.billing.v1.RequestHostedPaymentResponse
-	95,  // 206: payrudder.billing.v1.HostedInvoiceService.GetPortal:output_type -> payrudder.billing.v1.GetPortalResponse
-	99,  // 207: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:output_type -> payrudder.billing.v1.StartPortalPurchaseResponse
-	17,  // 208: payrudder.billing.v1.SandboxService.ClosePeriodNow:output_type -> payrudder.billing.v1.ClosePeriodNowResponse
-	19,  // 209: payrudder.billing.v1.BillingAdminService.ClosePeriod:output_type -> payrudder.billing.v1.ClosePeriodResponse
-	21,  // 210: payrudder.billing.v1.BillingAdminService.GetBillingRun:output_type -> payrudder.billing.v1.GetBillingRunResponse
-	24,  // 211: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> payrudder.billing.v1.RetryInvoiceSagaResponse
-	26,  // 212: payrudder.billing.v1.BillingAdminService.VoidInvoice:output_type -> payrudder.billing.v1.VoidInvoiceResponse
-	9,   // 213: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:output_type -> payrudder.billing.v1.RecordInvoicePaymentResponse
-	52,  // 214: payrudder.billing.v1.BillingAdminService.CreateCreditNote:output_type -> payrudder.billing.v1.CreateCreditNoteResponse
-	51,  // 215: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> payrudder.billing.v1.RetryCreditNoteRefundResponse
-	83,  // 216: payrudder.billing.v1.BillingAdminService.RetryEInvoice:output_type -> payrudder.billing.v1.RetryEInvoiceResponse
-	84,  // 217: payrudder.billing.v1.BillingAdminService.CancelEInvoice:output_type -> payrudder.billing.v1.CancelEInvoiceResponse
-	29,  // 218: payrudder.billing.v1.BillingAdminService.StartRerating:output_type -> payrudder.billing.v1.StartReratingResponse
-	31,  // 219: payrudder.billing.v1.BillingAdminService.GetReratingJob:output_type -> payrudder.billing.v1.GetReratingJobResponse
-	34,  // 220: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> payrudder.billing.v1.GetInvoiceSagaResponse
-	38,  // 221: payrudder.billing.v1.BillingAdminService.ListDeadLetters:output_type -> payrudder.billing.v1.ListDeadLettersResponse
-	40,  // 222: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> payrudder.billing.v1.RedriveDeadLettersResponse
-	164, // [164:223] is the sub-list for method output_type
-	105, // [105:164] is the sub-list for method input_type
-	105, // [105:105] is the sub-list for extension type_name
-	105, // [105:105] is the sub-list for extension extendee
-	0,   // [0:105] is the sub-list for field type_name
+	157, // 63: payrudder.billing.v1.StartLinkPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	157, // 64: payrudder.billing.v1.RequestHostedPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	71,  // 65: payrudder.billing.v1.RequestHostedPaymentResponse.payment:type_name -> payrudder.billing.v1.HostedPaymentContext
+	157, // 66: payrudder.billing.v1.PortalInvoice.issue_time:type_name -> google.protobuf.Timestamp
+	157, // 67: payrudder.billing.v1.GetPortalResponse.expire_time:type_name -> google.protobuf.Timestamp
+	94,  // 68: payrudder.billing.v1.GetPortalResponse.invoices:type_name -> payrudder.billing.v1.PortalInvoice
+	96,  // 69: payrudder.billing.v1.GetPortalResponse.credit_lots:type_name -> payrudder.billing.v1.PortalCreditLot
+	97,  // 70: payrudder.billing.v1.GetPortalResponse.credit_packs:type_name -> payrudder.billing.v1.PortalCreditPack
+	157, // 71: payrudder.billing.v1.PortalCreditLot.expire_time:type_name -> google.protobuf.Timestamp
+	157, // 72: payrudder.billing.v1.StartPortalPurchaseRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	157, // 73: payrudder.billing.v1.PaymentLink.create_time:type_name -> google.protobuf.Timestamp
+	157, // 74: payrudder.billing.v1.PaymentLink.expire_time:type_name -> google.protobuf.Timestamp
+	157, // 75: payrudder.billing.v1.PaymentLink.revoke_time:type_name -> google.protobuf.Timestamp
+	157, // 76: payrudder.billing.v1.PaymentLink.last_paid_time:type_name -> google.protobuf.Timestamp
+	100, // 77: payrudder.billing.v1.CreatePaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
+	100, // 78: payrudder.billing.v1.GetPaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
+	100, // 79: payrudder.billing.v1.ListPaymentLinksResponse.links:type_name -> payrudder.billing.v1.PaymentLink
+	100, // 80: payrudder.billing.v1.RevokePaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
+	157, // 81: payrudder.billing.v1.CreatePortalLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
+	157, // 82: payrudder.billing.v1.CreditPack.create_time:type_name -> google.protobuf.Timestamp
+	115, // 83: payrudder.billing.v1.ListCreditPacksResponse.packs:type_name -> payrudder.billing.v1.CreditPack
+	115, // 84: payrudder.billing.v1.CreateCreditPackResponse.pack:type_name -> payrudder.billing.v1.CreditPack
+	157, // 85: payrudder.billing.v1.CreditLot.expire_time:type_name -> google.protobuf.Timestamp
+	157, // 86: payrudder.billing.v1.CreditLot.create_time:type_name -> google.protobuf.Timestamp
+	157, // 87: payrudder.billing.v1.GetCreditBalanceResponse.next_expire_time:type_name -> google.protobuf.Timestamp
+	122, // 88: payrudder.billing.v1.GetCreditBalanceResponse.lots:type_name -> payrudder.billing.v1.CreditLot
+	157, // 89: payrudder.billing.v1.GrantCreditsRequest.expire_time:type_name -> google.protobuf.Timestamp
+	157, // 90: payrudder.billing.v1.CreditLedgerEntry.create_time:type_name -> google.protobuf.Timestamp
+	129, // 91: payrudder.billing.v1.ListCreditLedgerResponse.entries:type_name -> payrudder.billing.v1.CreditLedgerEntry
+	157, // 92: payrudder.billing.v1.Expense.void_time:type_name -> google.protobuf.Timestamp
+	157, // 93: payrudder.billing.v1.Expense.create_time:type_name -> google.protobuf.Timestamp
+	157, // 94: payrudder.billing.v1.Expense.update_time:type_name -> google.protobuf.Timestamp
+	132, // 95: payrudder.billing.v1.CreateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
+	132, // 96: payrudder.billing.v1.UpdateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
+	132, // 97: payrudder.billing.v1.VoidExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
+	132, // 98: payrudder.billing.v1.ListExpensesResponse.expenses:type_name -> payrudder.billing.v1.Expense
+	142, // 99: payrudder.billing.v1.DashboardCurrency.top_customers:type_name -> payrudder.billing.v1.DashboardTopCustomer
+	143, // 100: payrudder.billing.v1.DashboardCurrency.aging:type_name -> payrudder.billing.v1.DashboardAgingBucket
+	157, // 101: payrudder.billing.v1.DashboardInvoice.create_time:type_name -> google.protobuf.Timestamp
+	144, // 102: payrudder.billing.v1.GetDashboardStatsResponse.currencies:type_name -> payrudder.billing.v1.DashboardCurrency
+	145, // 103: payrudder.billing.v1.GetDashboardStatsResponse.recent_invoices:type_name -> payrudder.billing.v1.DashboardInvoice
+	148, // 104: payrudder.billing.v1.AccountingCurrency.expense_by_category:type_name -> payrudder.billing.v1.AccountingCategoryTotal
+	149, // 105: payrudder.billing.v1.AccountingCurrency.series:type_name -> payrudder.billing.v1.AccountingPoint
+	150, // 106: payrudder.billing.v1.AccountingCurrency.coupons:type_name -> payrudder.billing.v1.AccountingCoupon
+	151, // 107: payrudder.billing.v1.GetAccountingSummaryResponse.currencies:type_name -> payrudder.billing.v1.AccountingCurrency
+	10,  // 108: payrudder.billing.v1.BillingService.GetInvoice:input_type -> payrudder.billing.v1.GetInvoiceRequest
+	12,  // 109: payrudder.billing.v1.BillingService.ListInvoices:input_type -> payrudder.billing.v1.ListInvoicesRequest
+	14,  // 110: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> payrudder.billing.v1.GetInvoicePdfUrlRequest
+	41,  // 111: payrudder.billing.v1.BillingService.GetRevenueReport:input_type -> payrudder.billing.v1.GetRevenueReportRequest
+	44,  // 112: payrudder.billing.v1.BillingService.GetDunningReport:input_type -> payrudder.billing.v1.GetDunningReportRequest
+	53,  // 113: payrudder.billing.v1.BillingService.GetCreditNote:input_type -> payrudder.billing.v1.GetCreditNoteRequest
+	55,  // 114: payrudder.billing.v1.BillingService.ListCreditNotes:input_type -> payrudder.billing.v1.ListCreditNotesRequest
+	75,  // 115: payrudder.billing.v1.BillingService.GetEInvoice:input_type -> payrudder.billing.v1.GetEInvoiceRequest
+	77,  // 116: payrudder.billing.v1.BillingService.ListEInvoices:input_type -> payrudder.billing.v1.ListEInvoicesRequest
+	79,  // 117: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:input_type -> payrudder.billing.v1.GetEInvoiceFileUrlRequest
+	62,  // 118: payrudder.billing.v1.BillingService.CreateInvoiceLink:input_type -> payrudder.billing.v1.CreateInvoiceLinkRequest
+	64,  // 119: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> payrudder.billing.v1.RevokeInvoiceLinksRequest
+	101, // 120: payrudder.billing.v1.BillingService.CreatePaymentLink:input_type -> payrudder.billing.v1.CreatePaymentLinkRequest
+	103, // 121: payrudder.billing.v1.BillingService.GetPaymentLink:input_type -> payrudder.billing.v1.GetPaymentLinkRequest
+	105, // 122: payrudder.billing.v1.BillingService.ListPaymentLinks:input_type -> payrudder.billing.v1.ListPaymentLinksRequest
+	107, // 123: payrudder.billing.v1.BillingService.RevokePaymentLink:input_type -> payrudder.billing.v1.RevokePaymentLinkRequest
+	109, // 124: payrudder.billing.v1.BillingService.CreatePortalLink:input_type -> payrudder.billing.v1.CreatePortalLinkRequest
+	111, // 125: payrudder.billing.v1.BillingService.RevokePortalLinks:input_type -> payrudder.billing.v1.RevokePortalLinksRequest
+	113, // 126: payrudder.billing.v1.BillingService.SettleInvoicePayment:input_type -> payrudder.billing.v1.SettleInvoicePaymentRequest
+	58,  // 127: payrudder.billing.v1.BillingService.GetDunningSettings:input_type -> payrudder.billing.v1.GetDunningSettingsRequest
+	60,  // 128: payrudder.billing.v1.BillingService.SetDunningSettings:input_type -> payrudder.billing.v1.SetDunningSettingsRequest
+	116, // 129: payrudder.billing.v1.BillingService.ListCreditPacks:input_type -> payrudder.billing.v1.ListCreditPacksRequest
+	118, // 130: payrudder.billing.v1.BillingService.CreateCreditPack:input_type -> payrudder.billing.v1.CreateCreditPackRequest
+	120, // 131: payrudder.billing.v1.BillingService.SetCreditPackActive:input_type -> payrudder.billing.v1.SetCreditPackActiveRequest
+	123, // 132: payrudder.billing.v1.BillingService.GetCreditBalance:input_type -> payrudder.billing.v1.GetCreditBalanceRequest
+	125, // 133: payrudder.billing.v1.BillingService.GrantCredits:input_type -> payrudder.billing.v1.GrantCreditsRequest
+	127, // 134: payrudder.billing.v1.BillingService.ConsumeCredits:input_type -> payrudder.billing.v1.ConsumeCreditsRequest
+	130, // 135: payrudder.billing.v1.BillingService.ListCreditLedger:input_type -> payrudder.billing.v1.ListCreditLedgerRequest
+	133, // 136: payrudder.billing.v1.BillingService.CreateExpense:input_type -> payrudder.billing.v1.CreateExpenseRequest
+	135, // 137: payrudder.billing.v1.BillingService.UpdateExpense:input_type -> payrudder.billing.v1.UpdateExpenseRequest
+	137, // 138: payrudder.billing.v1.BillingService.VoidExpense:input_type -> payrudder.billing.v1.VoidExpenseRequest
+	139, // 139: payrudder.billing.v1.BillingService.ListExpenses:input_type -> payrudder.billing.v1.ListExpensesRequest
+	147, // 140: payrudder.billing.v1.BillingService.GetAccountingSummary:input_type -> payrudder.billing.v1.GetAccountingSummaryRequest
+	141, // 141: payrudder.billing.v1.BillingService.GetDashboardStats:input_type -> payrudder.billing.v1.GetDashboardStatsRequest
+	153, // 142: payrudder.billing.v1.BillingService.GetCreditSettings:input_type -> payrudder.billing.v1.GetCreditSettingsRequest
+	155, // 143: payrudder.billing.v1.BillingService.SetCreditSettings:input_type -> payrudder.billing.v1.SetCreditSettingsRequest
+	66,  // 144: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> payrudder.billing.v1.GetHostedInvoiceRequest
+	72,  // 145: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlRequest
+	85,  // 146: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:input_type -> payrudder.billing.v1.GetHostedLogoUrlRequest
+	87,  // 147: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:input_type -> payrudder.billing.v1.StartLinkPaymentRequest
+	88,  // 148: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:input_type -> payrudder.billing.v1.QuoteLinkPromotionRequest
+	91,  // 149: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:input_type -> payrudder.billing.v1.RequestHostedPaymentRequest
+	93,  // 150: payrudder.billing.v1.HostedInvoiceService.GetPortal:input_type -> payrudder.billing.v1.GetPortalRequest
+	98,  // 151: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:input_type -> payrudder.billing.v1.StartPortalPurchaseRequest
+	16,  // 152: payrudder.billing.v1.SandboxService.ClosePeriodNow:input_type -> payrudder.billing.v1.ClosePeriodNowRequest
+	18,  // 153: payrudder.billing.v1.BillingAdminService.ClosePeriod:input_type -> payrudder.billing.v1.ClosePeriodRequest
+	20,  // 154: payrudder.billing.v1.BillingAdminService.GetBillingRun:input_type -> payrudder.billing.v1.GetBillingRunRequest
+	23,  // 155: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> payrudder.billing.v1.RetryInvoiceSagaRequest
+	25,  // 156: payrudder.billing.v1.BillingAdminService.VoidInvoice:input_type -> payrudder.billing.v1.VoidInvoiceRequest
+	8,   // 157: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:input_type -> payrudder.billing.v1.RecordInvoicePaymentRequest
+	49,  // 158: payrudder.billing.v1.BillingAdminService.CreateCreditNote:input_type -> payrudder.billing.v1.CreateCreditNoteRequest
+	50,  // 159: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> payrudder.billing.v1.RetryCreditNoteRefundRequest
+	81,  // 160: payrudder.billing.v1.BillingAdminService.RetryEInvoice:input_type -> payrudder.billing.v1.RetryEInvoiceRequest
+	82,  // 161: payrudder.billing.v1.BillingAdminService.CancelEInvoice:input_type -> payrudder.billing.v1.CancelEInvoiceRequest
+	28,  // 162: payrudder.billing.v1.BillingAdminService.StartRerating:input_type -> payrudder.billing.v1.StartReratingRequest
+	30,  // 163: payrudder.billing.v1.BillingAdminService.GetReratingJob:input_type -> payrudder.billing.v1.GetReratingJobRequest
+	33,  // 164: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> payrudder.billing.v1.GetInvoiceSagaRequest
+	37,  // 165: payrudder.billing.v1.BillingAdminService.ListDeadLetters:input_type -> payrudder.billing.v1.ListDeadLettersRequest
+	39,  // 166: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> payrudder.billing.v1.RedriveDeadLettersRequest
+	11,  // 167: payrudder.billing.v1.BillingService.GetInvoice:output_type -> payrudder.billing.v1.GetInvoiceResponse
+	13,  // 168: payrudder.billing.v1.BillingService.ListInvoices:output_type -> payrudder.billing.v1.ListInvoicesResponse
+	15,  // 169: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> payrudder.billing.v1.GetInvoicePdfUrlResponse
+	43,  // 170: payrudder.billing.v1.BillingService.GetRevenueReport:output_type -> payrudder.billing.v1.GetRevenueReportResponse
+	47,  // 171: payrudder.billing.v1.BillingService.GetDunningReport:output_type -> payrudder.billing.v1.GetDunningReportResponse
+	54,  // 172: payrudder.billing.v1.BillingService.GetCreditNote:output_type -> payrudder.billing.v1.GetCreditNoteResponse
+	56,  // 173: payrudder.billing.v1.BillingService.ListCreditNotes:output_type -> payrudder.billing.v1.ListCreditNotesResponse
+	76,  // 174: payrudder.billing.v1.BillingService.GetEInvoice:output_type -> payrudder.billing.v1.GetEInvoiceResponse
+	78,  // 175: payrudder.billing.v1.BillingService.ListEInvoices:output_type -> payrudder.billing.v1.ListEInvoicesResponse
+	80,  // 176: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:output_type -> payrudder.billing.v1.GetEInvoiceFileUrlResponse
+	63,  // 177: payrudder.billing.v1.BillingService.CreateInvoiceLink:output_type -> payrudder.billing.v1.CreateInvoiceLinkResponse
+	65,  // 178: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> payrudder.billing.v1.RevokeInvoiceLinksResponse
+	102, // 179: payrudder.billing.v1.BillingService.CreatePaymentLink:output_type -> payrudder.billing.v1.CreatePaymentLinkResponse
+	104, // 180: payrudder.billing.v1.BillingService.GetPaymentLink:output_type -> payrudder.billing.v1.GetPaymentLinkResponse
+	106, // 181: payrudder.billing.v1.BillingService.ListPaymentLinks:output_type -> payrudder.billing.v1.ListPaymentLinksResponse
+	108, // 182: payrudder.billing.v1.BillingService.RevokePaymentLink:output_type -> payrudder.billing.v1.RevokePaymentLinkResponse
+	110, // 183: payrudder.billing.v1.BillingService.CreatePortalLink:output_type -> payrudder.billing.v1.CreatePortalLinkResponse
+	112, // 184: payrudder.billing.v1.BillingService.RevokePortalLinks:output_type -> payrudder.billing.v1.RevokePortalLinksResponse
+	114, // 185: payrudder.billing.v1.BillingService.SettleInvoicePayment:output_type -> payrudder.billing.v1.SettleInvoicePaymentResponse
+	59,  // 186: payrudder.billing.v1.BillingService.GetDunningSettings:output_type -> payrudder.billing.v1.GetDunningSettingsResponse
+	61,  // 187: payrudder.billing.v1.BillingService.SetDunningSettings:output_type -> payrudder.billing.v1.SetDunningSettingsResponse
+	117, // 188: payrudder.billing.v1.BillingService.ListCreditPacks:output_type -> payrudder.billing.v1.ListCreditPacksResponse
+	119, // 189: payrudder.billing.v1.BillingService.CreateCreditPack:output_type -> payrudder.billing.v1.CreateCreditPackResponse
+	121, // 190: payrudder.billing.v1.BillingService.SetCreditPackActive:output_type -> payrudder.billing.v1.SetCreditPackActiveResponse
+	124, // 191: payrudder.billing.v1.BillingService.GetCreditBalance:output_type -> payrudder.billing.v1.GetCreditBalanceResponse
+	126, // 192: payrudder.billing.v1.BillingService.GrantCredits:output_type -> payrudder.billing.v1.GrantCreditsResponse
+	128, // 193: payrudder.billing.v1.BillingService.ConsumeCredits:output_type -> payrudder.billing.v1.ConsumeCreditsResponse
+	131, // 194: payrudder.billing.v1.BillingService.ListCreditLedger:output_type -> payrudder.billing.v1.ListCreditLedgerResponse
+	134, // 195: payrudder.billing.v1.BillingService.CreateExpense:output_type -> payrudder.billing.v1.CreateExpenseResponse
+	136, // 196: payrudder.billing.v1.BillingService.UpdateExpense:output_type -> payrudder.billing.v1.UpdateExpenseResponse
+	138, // 197: payrudder.billing.v1.BillingService.VoidExpense:output_type -> payrudder.billing.v1.VoidExpenseResponse
+	140, // 198: payrudder.billing.v1.BillingService.ListExpenses:output_type -> payrudder.billing.v1.ListExpensesResponse
+	152, // 199: payrudder.billing.v1.BillingService.GetAccountingSummary:output_type -> payrudder.billing.v1.GetAccountingSummaryResponse
+	146, // 200: payrudder.billing.v1.BillingService.GetDashboardStats:output_type -> payrudder.billing.v1.GetDashboardStatsResponse
+	154, // 201: payrudder.billing.v1.BillingService.GetCreditSettings:output_type -> payrudder.billing.v1.GetCreditSettingsResponse
+	156, // 202: payrudder.billing.v1.BillingService.SetCreditSettings:output_type -> payrudder.billing.v1.SetCreditSettingsResponse
+	67,  // 203: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> payrudder.billing.v1.GetHostedInvoiceResponse
+	73,  // 204: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlResponse
+	86,  // 205: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:output_type -> payrudder.billing.v1.GetHostedLogoUrlResponse
+	90,  // 206: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:output_type -> payrudder.billing.v1.StartLinkPaymentResponse
+	89,  // 207: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:output_type -> payrudder.billing.v1.QuoteLinkPromotionResponse
+	92,  // 208: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:output_type -> payrudder.billing.v1.RequestHostedPaymentResponse
+	95,  // 209: payrudder.billing.v1.HostedInvoiceService.GetPortal:output_type -> payrudder.billing.v1.GetPortalResponse
+	99,  // 210: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:output_type -> payrudder.billing.v1.StartPortalPurchaseResponse
+	17,  // 211: payrudder.billing.v1.SandboxService.ClosePeriodNow:output_type -> payrudder.billing.v1.ClosePeriodNowResponse
+	19,  // 212: payrudder.billing.v1.BillingAdminService.ClosePeriod:output_type -> payrudder.billing.v1.ClosePeriodResponse
+	21,  // 213: payrudder.billing.v1.BillingAdminService.GetBillingRun:output_type -> payrudder.billing.v1.GetBillingRunResponse
+	24,  // 214: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> payrudder.billing.v1.RetryInvoiceSagaResponse
+	26,  // 215: payrudder.billing.v1.BillingAdminService.VoidInvoice:output_type -> payrudder.billing.v1.VoidInvoiceResponse
+	9,   // 216: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:output_type -> payrudder.billing.v1.RecordInvoicePaymentResponse
+	52,  // 217: payrudder.billing.v1.BillingAdminService.CreateCreditNote:output_type -> payrudder.billing.v1.CreateCreditNoteResponse
+	51,  // 218: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> payrudder.billing.v1.RetryCreditNoteRefundResponse
+	83,  // 219: payrudder.billing.v1.BillingAdminService.RetryEInvoice:output_type -> payrudder.billing.v1.RetryEInvoiceResponse
+	84,  // 220: payrudder.billing.v1.BillingAdminService.CancelEInvoice:output_type -> payrudder.billing.v1.CancelEInvoiceResponse
+	29,  // 221: payrudder.billing.v1.BillingAdminService.StartRerating:output_type -> payrudder.billing.v1.StartReratingResponse
+	31,  // 222: payrudder.billing.v1.BillingAdminService.GetReratingJob:output_type -> payrudder.billing.v1.GetReratingJobResponse
+	34,  // 223: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> payrudder.billing.v1.GetInvoiceSagaResponse
+	38,  // 224: payrudder.billing.v1.BillingAdminService.ListDeadLetters:output_type -> payrudder.billing.v1.ListDeadLettersResponse
+	40,  // 225: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> payrudder.billing.v1.RedriveDeadLettersResponse
+	167, // [167:226] is the sub-list for method output_type
+	108, // [108:167] is the sub-list for method input_type
+	108, // [108:108] is the sub-list for extension type_name
+	108, // [108:108] is the sub-list for extension extendee
+	0,   // [0:108] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_billing_v1_billing_proto_init() }

@@ -119,9 +119,13 @@ func (fakeBilling) RevokePortalLinks(context.Context, *billingv1.RevokePortalLin
 // startedWith is the promotion code the last StartLinkPayment was given.
 var startedWith string
 
+// lastStart is the last StartLinkPayment request billing got.
+var lastStart *billingv1.StartLinkPaymentRequest
+
 func (fakeBilling) StartLinkPayment(_ context.Context, req *billingv1.StartLinkPaymentRequest) (*billingv1.StartLinkPaymentResponse, error) {
 	billingMu.Lock()
 	startedWith = req.GetPromotionCode()
+	lastStart = req
 	billingMu.Unlock()
 	if strings.EqualFold(req.GetPromotionCode(), "old") {
 		return nil, errkey.New(codes.FailedPrecondition, "coupon.expired", "expired")

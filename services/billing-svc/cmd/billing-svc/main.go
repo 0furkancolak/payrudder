@@ -219,7 +219,7 @@ func (b *backends) close() {
 func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *saga.Engine, be *backends, endOffsets func(context.Context) (map[int32]int64, error)) (*runs.Manager, error) {
 	return runs.NewManager(runs.Config{
 		Pool: systemPool, Engine: eng,
-		Plans: plansv1.NewPlansServiceClient(be.plans), Events: plansv1.NewWebhookServiceClient(be.plans), Admin: plansv1.NewAdminServiceClient(be.plans),
+		Plans: plansv1.NewPlansServiceClient(be.plans), Events: plansv1.NewWebhookServiceClient(be.plans), Affiliates: plansv1.NewAffiliateServiceClient(be.plans), Admin: plansv1.NewAdminServiceClient(be.plans),
 		Ingest: ingestv1.NewIngestServiceClient(be.ingest), Aggregator: aggregatorv1.NewUsageQueryServiceClient(be.aggregator),
 		EndOffsets:     endOffsets,
 		WatermarkDelay: cfg.WatermarkDelay, Log: log,

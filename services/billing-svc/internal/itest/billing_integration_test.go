@@ -85,6 +85,7 @@ func TestBilling(t *testing.T) {
 		{"PaymentLinksAreIdempotentAndValidated", testPaymentLinkCreation},
 		{"RevokedAndExpiredLinksStopAndVoidWhatIsUnpaid", testPaymentLinkRevokeAndExpiry},
 		{"PortalTokensStayWithinTheirTenantAndCustomer", testPortalIsolation},
+		{"ReferralCookieIsPassedToTheAffiliateProgramAndNeverFailsAPayment", testReferralPassedOn},
 		{"ProviderConfirmedPaymentsSettleTheSaga", testSettleInvoicePayment},
 		{"InvoiceAndCreditNoteEventsAreHandedToPlansOnce", testTenantEvents},
 		{"CreditNoteRefundsToTheCardAndIsRetriedUntilAnswered", testCreditNoteRefundToCard},

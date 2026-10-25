@@ -47,6 +47,10 @@ func (p *Public) TrackClick(ctx context.Context, req *plansv1.TrackAffiliateClic
 	if row.AffiliateStatus != model.AffiliateActive || row.ProgramStatus != model.ProgramActive {
 		return &plansv1.TrackAffiliateClickResponse{}, nil
 	}
+	if req.GetSkipCount() {
+		// The visitor carries the code in their cookie already: a reload is not a second click.
+		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: row.Code, AttributionWindowDays: row.AttributionWindowDays, LandingUrl: convert.Str(row.LandingUrl)}, nil
+	}
 	day := p.now().UTC()
 	n, err := p.db.SystemCountClick(ctx, sqlc.SystemCountClickParams{TenantID: row.TenantID, AffiliateID: row.ID,
 		Day: pgtype.Date{Time: time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC), Valid: true}, Cap: row.DailyClickCap})
