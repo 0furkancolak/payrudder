@@ -9,12 +9,11 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
-	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
@@ -145,18 +144,9 @@ func splitFees(oldFee, newFee int64, at, periodStart, periodEnd time.Time) (oldP
 
 // replacePlan ends the subscription at `at` and starts its successor on another plan version.
 func (c *Commands) replacePlan(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row sqlc.GetSubscriptionRow, planVersionID uuid.UUID, state subscription.State, at time.Time) (*plansv1.Subscription, error) {
-	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: row.ID, EndTime: at}); err != nil {
-		return nil, err
-	} else if n != 1 {
-		return nil, errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
-	}
-	if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: row.ID, State: string(subscription.Cancelled), PausedAt: row.PausedAt}); err != nil {
-		return nil, err
-	}
-	nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
-		ID: idgen.NewUUIDv7(), CustomerID: row.CustomerID, PlanVersionID: planVersionID, StartTime: at,
-		State: string(state), Interval: row.Interval, Currency: row.Currency, TrialEndsAt: row.TrialEndsAt,
-		BillingAnchor: row.BillingAnchor, ChangedFromID: &row.ID, Provider: row.Provider, Owner: "quotify", FeeTiming: row.FeeTiming,
+	nr, err := changescmd.SwitchTo(ctx, q, c.now(), tenantID, row, changescmd.Successor{
+		PlanVersionID: planVersionID, Interval: subscription.Interval(row.Interval), State: state, TrialEnds: row.TrialEndsAt, At: at,
+		Anchor: row.BillingAnchor, FeeTiming: row.FeeTiming,
 	})
 	if err != nil {
 		return nil, err
@@ -165,10 +155,5 @@ func (c *Commands) replacePlan(ctx context.Context, q *sqlc.Queries, tenantID uu
 	if err != nil {
 		return nil, err
 	}
-	out := subsqry.Message(full, c.now())
-	// Old entitlements first, new ones last: the topic is compacted per customer and meter, so the last write wins.
-	if err := entitlementscmd.Publish(ctx, q, tenantID, row.CustomerID, row.PlanVersionID, row.StartTime, &at, c.now()); err != nil {
-		return nil, err
-	}
-	return out, entitlementscmd.Publish(ctx, q, tenantID, nr.CustomerID, nr.PlanVersionID, at, nil, c.now())
+	return subsqry.Message(full, c.now()), nil
 }

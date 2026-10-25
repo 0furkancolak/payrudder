@@ -20,7 +20,6 @@ import (
 	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
 	provmigqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/providermigrations/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
@@ -45,17 +44,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 		return sqlc.InsertSubscriptionRow{}, domain.Invalid("cutover_time", "must be after the subscription start")
 	}
 	now := c.now()
-	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: old.ID, EndTime: when}); err != nil {
-		return sqlc.InsertSubscriptionRow{}, err
-	} else if n != 1 {
-		return sqlc.InsertSubscriptionRow{}, errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
-	}
 	eff := convert.SubscriptionState(old.State, old.TrialEndsAt, old.OpenEnded, old.EndTime, now)
-	if !when.After(now) {
-		if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: old.ID, State: string(subscription.Cancelled), PausedAt: old.PausedAt}); err != nil {
-			return sqlc.InsertSubscriptionRow{}, err
-		}
-	}
 	// What the successor pays, and when. A Payrudder-run subscription whose fee is already paid in advance goes on with the period it paid for (no credit, the
 	// same renewal, its coupon); a yearly one that a provider ran comes back billed in advance from the cutover, as a year cannot be waited out in arrears.
 	timing, anchor, feeDue, creditUnused := "arrears", old.BillingAnchor, (*time.Time)(nil), old.Owner == "quotify"
@@ -80,24 +69,12 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 			return sqlc.InsertSubscriptionRow{}, err
 		}
 	}
-	oldID := old.ID
-	nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
-		ID: idgen.NewUUIDv7(), CustomerID: old.CustomerID, PlanVersionID: old.PlanVersionID, StartTime: when,
-		State: string(eff), Interval: old.Interval, Currency: old.Currency, TrialEndsAt: old.TrialEndsAt,
-		BillingAnchor: anchor, ChangedFromID: &oldID, Provider: &toProvider, ProviderRef: providerRef, Owner: owner, FeeTiming: timing, FeeDueAt: feeDue,
+	// The old subscription is cancelled at once only when the cutover is not in the future.
+	nr, err := changescmd.SwitchTo(ctx, q, now, tenantID, old, changescmd.Successor{
+		PlanVersionID: old.PlanVersionID, Interval: subscription.Interval(old.Interval), State: eff, TrialEnds: old.TrialEndsAt, At: when,
+		Anchor: anchor, FeeTiming: timing, FeeDue: feeDue, Owner: owner, ProviderRef: providerRef, Provider: &toProvider, LeaveOldOpen: when.After(now),
 	})
 	if err != nil {
-		return nr, err
-	}
-	if timing == "advance" && old.FeeTiming == "advance" {
-		if _, err := q.MoveSubscriptionCoupon(ctx, sqlc.MoveSubscriptionCouponParams{OldID: old.ID, NewID: nr.ID}); err != nil {
-			return nr, err
-		}
-	}
-	if err := entitlementscmd.Publish(ctx, q, tenantID, old.CustomerID, old.PlanVersionID, old.StartTime, &when, now); err != nil {
-		return nr, err
-	}
-	if err := entitlementscmd.Publish(ctx, q, tenantID, nr.CustomerID, nr.PlanVersionID, when, nil, now); err != nil {
 		return nr, err
 	}
 	moved, err := q.GetSubscription(ctx, nr.ID)
