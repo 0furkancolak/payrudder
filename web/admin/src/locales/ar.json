@@ -19,7 +19,9 @@
   "common": {
     "loading": "جارٍ التحميل…",
     "unknown": "؟",
-    "cancel": "إلغاء"
+    "cancel": "إلغاء",
+    "copied": "تم النسخ",
+    "copyFailed": "لم يسمح المتصفح بالنسخ. حدد النص وانسخه يدويًا."
   },
   "enums": {
     "environment": {

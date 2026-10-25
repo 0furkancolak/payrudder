@@ -19,7 +19,9 @@
   "common": {
     "loading": "Loading…",
     "unknown": "?",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "copied": "Copied",
+    "copyFailed": "Your browser did not allow copying. Select the text and copy it by hand."
   },
   "enums": {
     "environment": {

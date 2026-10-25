@@ -19,7 +19,9 @@
   "common": {
     "loading": "Cargando…",
     "unknown": "?",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "copied": "Copiado",
+    "copyFailed": "Tu navegador no permitió copiar. Selecciona el texto y cópialo a mano."
   },
   "enums": {
     "environment": {

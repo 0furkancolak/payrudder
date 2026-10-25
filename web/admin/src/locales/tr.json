@@ -19,7 +19,9 @@
   "common": {
     "loading": "Yükleniyor…",
     "unknown": "?",
-    "cancel": "Vazgeç"
+    "cancel": "Vazgeç",
+    "copied": "Kopyalandı",
+    "copyFailed": "Tarayıcınız kopyalamaya izin vermedi. Metni seçip elle kopyalayın."
   },
   "enums": {
     "environment": {
