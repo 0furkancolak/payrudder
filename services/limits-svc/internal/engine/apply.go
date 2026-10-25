@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc/codes"
@@ -24,6 +23,7 @@ import (
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/meters"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/usage"
@@ -95,22 +95,14 @@ func NewApplier(cfg Config) (*Applier, error) {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	m := otel.Meter("github.com/0furkancolak/payrudder/services/limits-svc")
+	b := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/limits-svc")
 	a := &Applier{cfg: cfg, log: cfg.Log, script: redis.NewScript(applyBatchLua), cps: newCheckpoints(), parts: map[int32]*partState{}}
-	var err error
-	if a.applied, err = m.Int64Counter("limits_events_applied", metric.WithDescription("Usage events added to a counter")); err != nil {
-		return nil, err
-	}
-	if a.skipped, err = m.Int64Counter("limits_events_skipped", metric.WithDescription("Usage events not counted, by reason")); err != nil {
-		return nil, err
-	}
-	if a.overflow, err = m.Int64Counter("limits_counter_overflow", metric.WithDescription("Counter updates refused because they would pass 2^53")); err != nil {
-		return nil, err
-	}
-	if a.fired, err = m.Int64Counter("limits_thresholds_fired", metric.WithDescription("LimitExceeded events produced")); err != nil {
-		return nil, err
-	}
-	if a.fireErrors, err = m.Int64Counter("limits_threshold_publish_failures", metric.WithDescription("LimitExceeded events that could not be produced")); err != nil {
+	a.applied = b.Counter("limits_events_applied", "Usage events added to a counter")
+	a.skipped = b.Counter("limits_events_skipped", "Usage events not counted, by reason")
+	a.overflow = b.Counter("limits_counter_overflow", "Counter updates refused because they would pass 2^53")
+	a.fired = b.Counter("limits_thresholds_fired", "LimitExceeded events produced")
+	a.fireErrors = b.Counter("limits_threshold_publish_failures", "LimitExceeded events that could not be produced")
+	if err := b.Err(); err != nil {
 		return nil, err
 	}
 	return a, nil
