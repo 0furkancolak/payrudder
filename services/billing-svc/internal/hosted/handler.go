@@ -19,7 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices"
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -31,7 +31,7 @@ type Handler struct {
 
 // New returns the handler over the billing_app and billing_system pools. mgr makes the invoices of ad-hoc links and looks up customers and sellers; eng drives
 // their sagas.
-func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Handler {
+func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *sagacommand.Engine) *Handler {
 	h := &Handler{d: command.Deps{App: app, System: system, Engine: eng}, q: query.Deps{App: app, System: system}}
 	if mgr != nil {
 		h.d.Dir = mgr
@@ -258,10 +258,13 @@ func (h *Handler) GetHostedLogoUrl(ctx context.Context, req *billingv1.GetHosted
 
 // StartLinkPayment implements billingv1.HostedInvoiceServiceServer.
 func (h *Handler) StartLinkPayment(ctx context.Context, req *billingv1.StartLinkPaymentRequest) (*billingv1.StartLinkPaymentResponse, error) {
+	// The link's customer, read before the payment starts: a single-use link is spent by it.
+	tenantID, customerID := h.linkCustomer(ctx, req.GetToken(), req.GetReferralCode())
 	token, err := command.StartLinkPayment(ctx, h.d, req.GetToken(), req.GetPromotionCode())
 	if err != nil {
 		return nil, err
 	}
+	h.refer(ctx, tenantID, customerID, req.GetReferralCode(), req.GetReferralTouchTime())
 	return &billingv1.StartLinkPaymentResponse{InvoiceToken: token}, nil
 }
 
@@ -274,6 +277,9 @@ func (h *Handler) RequestHostedPayment(ctx context.Context, req *billingv1.Reque
 	paid, err := command.RequestPayment(ctx, h.d, h.q, command.PaymentRequest{Scope: scope, Method: req.GetMethod()})
 	if err != nil {
 		return nil, err
+	}
+	if paid.Page != nil {
+		h.refer(ctx, scope.TenantID, paid.Page.CustomerID, req.GetReferralCode(), req.GetReferralTouchTime())
 	}
 	if paid.Started {
 		return &billingv1.RequestHostedPaymentResponse{Action: "started"}, nil
@@ -339,6 +345,11 @@ func (h *Handler) StartPortalPurchase(ctx context.Context, req *billingv1.StartP
 	token, err := command.StartPortalPurchase(ctx, h.d, h.q, req.GetPortalToken(), req.GetPackId(), req.GetQuantity(), req.GetPromotionCode())
 	if err != nil {
 		return nil, err
+	}
+	if req.GetReferralCode() != "" {
+		if scope, err := query.Resolve(ctx, h.q.System, "", req.GetPortalToken(), ""); err == nil && scope.Portal != nil {
+			h.refer(ctx, scope.TenantID, scope.Portal.CustomerID, req.GetReferralCode(), req.GetReferralTouchTime())
+		}
 	}
 	return &billingv1.StartPortalPurchaseResponse{InvoiceToken: token}, nil
 }

@@ -1577,6 +1577,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/r/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A partner's public link (public)
+         * @description Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address.
+         */
+        get: operations["affiliateLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/privacy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the referral cookie holds, what is counted and what a visitor can do (public) */
+        get: operations["privacyPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/i/{token}": {
         parameters: {
             query?: never;
@@ -2818,6 +2855,167 @@ export interface paths {
          * @description Issues a key with the same scope and environment and sets an end time on the old one, so a deployment can switch without a gap. The plaintext of the new key is in the answer once. A revoked key, or one that already ends, cannot be rotated (409 identity.api_key.not_active, identity.api_key.already_rotating).
          */
         post: operations["appRotateApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/affiliate/affiliations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The partner's own affiliations
+         * @description One per seller environment the person is a partner of (live ones first). A partner sees only their own data: the records made for their verified e-mail address are linked to them by claim, or they apply.
+         */
+        get: operations["myAffiliations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/affiliate/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link the partner records a seller made for your verified e-mail address to you
+         * @description Needs a verified address (403 identity.email.not_verified otherwise). Repeating it only takes records nobody has claimed. The person becomes a member of the seller's account with the role affiliate, which sees none of the account.
+         */
+        post: operations["claimMyAffiliations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/affiliate/programs/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A seller's program terms, for someone about to apply
+         * @description 404 affiliate.portal.program_unavailable for a seller without a program that is open to applications, whatever the reason: the answer reveals nothing about whether the id exists.
+         */
+        get: operations["lookupAffiliateProgram"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/affiliate/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply to a seller's program
+         * @description With the person's verified address. The application is pending until the seller approves it, or active at once if the program approves applications automatically. 409 affiliate.portal.already_applied when the person is a partner of this seller already.
+         */
+        post: operations["applyAsAffiliate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/affiliate/affiliations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One affiliation: link, clicks, referrals and earnings
+         * @description The figures cover the period (default the last 30 days); balances are as of now, per currency (pending, approved, paid, taken back).
+         */
+        get: operations["myAffiliation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the partner's name and payout details */
+        patch: operations["updateMyAffiliation"];
+        trace?: never;
+    };
+    "/app/v1/affiliate/affiliations/{id}/referrals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who the partner brought, newest first
+         * @description The customer is a masked e-mail address (j***@example.com).
+         */
+        get: operations["myReferrals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/affiliate/affiliations/{id}/commissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The partner's commissions, newest first
+         * @description pending commissions wait out the seller's hold; a refund takes back in proportion; one already paid is netted by a negative row.
+         */
+        get: operations["myCommissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/affiliate/affiliations/{id}/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Payouts made to the partner, newest first
+         * @description A payout of a sandbox environment is fake (fake true): nothing was paid.
+         */
+        get: operations["myPayouts"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4766,6 +4964,8 @@ export interface components {
             approve_time?: string;
             /** Format: date-time */
             create_time?: string;
+            /** @description The partner's public referral link, https://<gateway>/r/<code> */
+            link?: string;
         };
         AffiliateCommission: {
             /** Format: uuid */
@@ -4869,6 +5069,102 @@ export interface components {
             credit_minor?: string;
             memo?: string;
             fake?: boolean;
+        };
+        MyProgram: {
+            /** @enum {string} */
+            status?: "draft" | "active" | "paused";
+            /** @enum {string} */
+            commission_kind?: "percent_bps" | "fixed";
+            commission_value?: string;
+            currency?: string;
+            /** @enum {string} */
+            commission_term?: "first_invoices" | "months" | "lifetime";
+            commission_term_value?: number;
+            attribution_window_days?: number;
+            hold_days?: number;
+            min_payout_minor?: string;
+        };
+        MyAffiliation: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            tenant_id?: string;
+            /**
+             * @description A sandbox partner earns fake money
+             * @enum {string}
+             */
+            environment?: "sandbox" | "live";
+            seller_name?: string;
+            code?: string;
+            /** @description The partner's public referral link */
+            link?: string;
+            /** @enum {string} */
+            status?: "pending" | "active" | "suspended";
+            name?: string;
+            email?: string;
+            /** @enum {string} */
+            payout_method?: "manual" | "bank_transfer";
+            payout_details?: string;
+            program?: components["schemas"]["MyProgram"];
+            /** Format: date-time */
+            create_time?: string;
+        };
+        MyAffiliationDetail: {
+            affiliation?: components["schemas"]["MyAffiliation"];
+            /** Format: date */
+            from_date?: string;
+            /** Format: date */
+            to_date?: string;
+            clicks?: string;
+            referrals?: string;
+            paying_customers?: string;
+            earned?: {
+                currency?: string;
+                earned_minor?: string;
+                reversed_minor?: string;
+            }[];
+            balances?: components["schemas"]["AffiliateBalance"][];
+        };
+        MyReferral: {
+            customer_email_masked?: string;
+            /** @enum {string} */
+            source?: "link" | "code" | "api";
+            /** Format: date-time */
+            attribute_time?: string;
+        };
+        MyCommission: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            kind?: "commission" | "reversal";
+            customer_email_masked?: string;
+            currency?: string;
+            amount_minor?: string;
+            reversed_minor?: string;
+            /** @enum {string} */
+            status?: "pending" | "approved" | "paid" | "reversed";
+            /** Format: date-time */
+            earn_time?: string;
+            /** Format: date-time */
+            approve_after_time?: string;
+            /** Format: date-time */
+            pay_time?: string;
+            /** Format: uuid */
+            payout_id?: string;
+        };
+        MyPayout: {
+            /** Format: uuid */
+            id?: string;
+            currency?: string;
+            total_minor?: string;
+            /** @enum {string} */
+            status?: "open" | "paid" | "cancelled";
+            reference?: string;
+            fake?: boolean;
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            pay_time?: string;
         };
         AffiliateReferral: {
             /** Format: uuid */
@@ -8877,6 +9173,82 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    affiliateLink: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A thank-you page, when the program has no landing page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Redirect to the program's landing page, with the cookie set */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    privacyPage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The privacy page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     hostedInvoicePage: {
         parameters: {
             query?: {
@@ -11375,6 +11747,272 @@ export interface operations {
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    myAffiliations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        affiliations?: components["schemas"]["MyAffiliation"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    claimMyAffiliations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        claimed?: number;
+                        affiliations?: components["schemas"]["MyAffiliation"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+        };
+    };
+    lookupAffiliateProgram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        seller_name?: string;
+                        environment?: string;
+                        applied?: boolean;
+                        program?: components["schemas"]["MyProgram"];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    applyAsAffiliate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    tenant_id: string;
+                    name?: string;
+                    /** @enum {string} */
+                    payout_method?: "manual" | "bank_transfer";
+                    payout_details?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAffiliation"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    myAffiliation: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAffiliationDetail"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    updateMyAffiliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @enum {string} */
+                    payout_method: "manual" | "bank_transfer";
+                    payout_details?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAffiliation"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    myReferrals: {
+        parameters: {
+            query?: {
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        referrals?: components["schemas"]["MyReferral"][];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    myCommissions: {
+        parameters: {
+            query?: {
+                status?: "pending" | "approved" | "paid" | "reversed";
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        commissions?: components["schemas"]["MyCommission"][];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    myPayouts: {
+        parameters: {
+            query?: {
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        payouts?: components["schemas"]["MyPayout"][];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     appGoLive: {

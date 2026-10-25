@@ -8,18 +8,15 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
@@ -29,8 +26,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
-	"github.com/0furkancolak/payrudder/pkg/logx"
-	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
@@ -56,12 +51,10 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	PGSystemDSN    string        `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
-	RabbitMQURL    string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
-	MockPSPURL     string        `env:"MOCKPSP_URL"`
-	PSPTimeout     time.Duration `env:"PAYMENTS_PSP_TIMEOUT"`
+	pgxx.SystemSettings
+	RabbitMQURL string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
+	MockPSPURL  string        `env:"MOCKPSP_URL"`
+	PSPTimeout  time.Duration `env:"PAYMENTS_PSP_TIMEOUT"`
 	// LiveProvider selects the provider for live tenants: "mockpsp" (the local demo) or empty (not configured: live
 	// charges reply PROVIDER_NOT_CONFIGURED). Sandbox tenants always use mock-psp.
 	LiveProvider string `env:"PAYMENTS_LIVE_PROVIDER"`
@@ -96,9 +89,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
-	}
+	errs = append(errs, c.CheckMigration())
 	if c.SecretsKey != "" {
 		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err))
@@ -126,59 +117,12 @@ func checkLiveProvider(provider string, allowMock, demo bool) error {
 	return fmt.Errorf("PAYMENTS_LIVE_PROVIDER %q is not supported (v1 ships only mockpsp, and live tenants use their own provider accounts)", provider)
 }
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "payments-worker:", err)
-		os.Exit(1)
-	}
-}
-
-func run() error {
-	cfg, err := config.Load[Config](defaults)
-	if err != nil {
-		return err
-	}
-	log, err := logx.New(logx.Options{Service: cfg.ServiceName, Version: cfg.Version, Level: cfg.LogLevel, Writer: os.Stdout})
-	if err != nil {
-		return err
-	}
-	slog.SetDefault(log)
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	reg := health.NewRegistry()
-	providers, err := otelx.Setup(ctx, otelx.Options{
-		ServiceName: cfg.ServiceName, Version: cfg.Version, Environment: string(cfg.Env), OTLPEndpoint: cfg.OTLPEndpoint, Registry: reg,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = providers.Shutdown(c)
-	}()
-
-	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
-}
-
-// migrate applies the migrations when asked to; done reports that the process should exit afterwards (PAYRUDDER_MIGRATE_ONLY).
-func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
-	if cfg.MigrateOnStart {
-		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return false, err
-		}
-	}
-	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
-		return true, nil
-	}
-	return false, nil
-}
+func main() { app.Main("payments-worker", defaults, start) }
 
 // start wires payments-worker's dependencies and runs it until ctx is cancelled.
-func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler) error {
-	if done, err := migrate(ctx, cfg, log); err != nil || done {
+func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
+	log, hh := rt.Log, rt.Health()
+	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
 	pool, err := pgxx.NewPool(ctx, cfg.PGSystemDSN)
@@ -226,9 +170,9 @@ func tenantDirectory(cfg *Config) (*env.Directory, func(), error) {
 	if cfg.PlansAddr == "" {
 		return nil, func() {}, nil
 	}
-	conn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	conn, err := grpcx.NewTenantClient("plans-svc", cfg.PlansAddr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("plans-svc client: %w", err)
+		return nil, nil, err
 	}
 	admin := plansv1.NewAdminServiceClient(conn)
 	return env.NewDirectory(func(ctx context.Context, id uuid.UUID) (env.Env, error) {
@@ -253,8 +197,8 @@ func newHandler(cfg *Config, pool *pgxpool.Pool, log *slog.Logger) *handler.Hand
 
 // serve runs the metrics server, the optional webhook/operator HTTP server and the queue worker until ctx is cancelled or one of them fails.
 func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler, w *workerx.Worker, httpHandler http.Handler) error {
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
+	g := app.NewGroup(ctx, log, cfg.MetricsAddr, hh)
+	gctx := g.Context()
 	if httpHandler != nil {
 		g.Go(func() error { return serveHTTP(gctx, cfg.HTTPAddr, httpHandler, log) })
 	} else {
@@ -264,11 +208,7 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 		log.Info("payments-worker consuming", "live_provider", cfg.LiveProvider)
 		return w.Run(gctx)
 	})
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	log.Info("stopped")
-	return nil
+	return g.Wait()
 }
 
 // webhookHandler builds the provider-account, webhook and operator server. The returned func closes its gRPC connections.
@@ -287,10 +227,10 @@ func webhookHandler(cfg Config, pool *pgxpool.Pool, h *handler.Handler, registry
 		}
 	}
 	dial := func(addr, what string) (*grpc.ClientConn, error) {
-		conn, err := grpcx.NewClient(addr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+		conn, err := grpcx.NewTenantClient(what, addr)
 		if err != nil {
 			closeConns()
-			return nil, fmt.Errorf("%s client: %w", what, err)
+			return nil, err
 		}
 		conns = append(conns, conn)
 		return conn, nil

@@ -2296,6 +2296,11 @@
         "not_open": "This payout is no longer open: it was paid or cancelled.",
         "nothing_to_pay": "After refunds this payout comes to nothing. Cancel it; the balance rolls forward.",
         "tenant_not_active": "This live environment is not active, so no payout can be made or paid."
+      },
+      "portal": {
+        "already_applied": "You are a partner of this seller already, or you have applied.",
+        "program_unavailable": "This seller has no partner program open to applications.",
+        "try_again": "A code could not be made just now. Try again."
       }
     },
     "admin": {

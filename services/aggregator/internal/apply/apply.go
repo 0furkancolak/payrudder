@@ -35,6 +35,9 @@ const (
 	Group = "aggregator"
 )
 
+// batchTxTimeout bounds one batch transaction (a Postgres interval).
+const batchTxTimeout = "30s"
+
 // ErrMeterNotFound is the answer for a meter plans-svc does not know.
 var ErrMeterNotFound = errkey.New(codes.NotFound, "aggregator.meter.not_found", "meter not found")
 
@@ -140,17 +143,7 @@ func (h *Handler) init() {
 // LoadOffsets implements kafkax.OffsetLoader.
 func (h *Handler) LoadOffsets(ctx context.Context, topic string, partitions []int32) (map[int32]int64, error) {
 	h.init()
-	ps := make([]int32, len(partitions))
-	copy(ps, partitions)
-	rows, err := sqlc.New(h.Pool).LoadOffsets(ctx, sqlc.LoadOffsetsParams{ConsumerGroup: h.ConsumerGroup, Topic: topic, Partitions: ps})
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[int32]int64, len(rows))
-	for _, r := range rows {
-		out[r.Partition] = r.NextOffset
-	}
-	return out, nil
+	return kafkax.PGOffsets{DB: h.Pool, Group: h.ConsumerGroup, Table: "consumer_offsets"}.Load(ctx, topic, partitions)
 }
 
 type poison struct {
@@ -168,44 +161,12 @@ type item struct {
 func (h *Handler) Apply(ctx context.Context, partition int32, recs []*kgo.Record) error {
 	h.init()
 	start := time.Now()
-	var items []item
-	var bad []poison
-	meterCache := map[string]meterResult{}
-
-	for _, rec := range recs {
-		ev, err := usage.Decode(rec)
-		if err != nil {
-			var de *usage.DecodeError
-			if errors.As(err, &de) {
-				if h.Replay == nil { // the live consumer already dead-lettered it
-					bad = append(bad, poison{rec, de.Reason, de.Err})
-				}
-				continue
-			}
-			return err
-		}
-		if h.Replay != nil && !h.Replay.wants(ev) {
-			continue
-		}
-		mr, err := h.meter(ctx, meterCache, ev)
-		if err != nil {
-			return err // infrastructure: pause and retry, never DLQ
-		}
-		if mr.missing {
-			if h.Replay == nil {
-				bad = append(bad, poison{rec, "UNKNOWN_METER", fmt.Errorf("meter %q of tenant %s does not exist", ev.Meter, ev.TenantID)})
-			}
-			continue
-		}
-		items = append(items, item{ev: ev, meter: mr.meter})
+	items, bad, err := h.decodeBatch(ctx, recs)
+	if err != nil {
+		return err
 	}
-
-	for _, p := range bad {
-		if err := h.DLQ.Send(ctx, p.rec, p.reason, p.err); err != nil {
-			return err
-		}
-		h.m.dlq.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", p.reason)))
-		h.Log.WarnContext(ctx, "record sent to DLQ", "partition", partition, "offset", p.rec.Offset, "reason", p.reason, "error", p.err)
+	if err := h.sendDeadLetters(ctx, partition, bad); err != nil {
+		return err
 	}
 
 	// Period snapshots and inbox partitions are prepared outside the batch transaction: they are idempotent and
@@ -216,7 +177,7 @@ func (h *Handler) Apply(ctx context.Context, partition int32, recs []*kgo.Record
 
 	next := recs[len(recs)-1].Offset + 1
 	var fenced bool
-	err := pgx.BeginFunc(ctx, h.Pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, h.Pool, func(tx pgx.Tx) error {
 		var err error
 		fenced, err = h.applyTx(ctx, tx, partition, items, next)
 		return err
@@ -236,6 +197,52 @@ func (h *Handler) Apply(ctx context.Context, partition int32, recs []*kgo.Record
 	return nil
 }
 
+// decodeBatch decodes the records of a batch and resolves their meters. A record that can never be applied (undecodable, unknown meter)
+// is returned as poison, except in a replay, where the live consumer has already dead-lettered it.
+func (h *Handler) decodeBatch(ctx context.Context, recs []*kgo.Record) (items []item, bad []poison, err error) {
+	meterCache := map[string]meterResult{}
+	for _, rec := range recs {
+		ev, err := usage.Decode(rec)
+		if err != nil {
+			var de *usage.DecodeError
+			if errors.As(err, &de) {
+				if h.Replay == nil { // the live consumer already dead-lettered it
+					bad = append(bad, poison{rec, de.Reason, de.Err})
+				}
+				continue
+			}
+			return nil, nil, err
+		}
+		if h.Replay != nil && !h.Replay.wants(ev) {
+			continue
+		}
+		mr, err := h.meter(ctx, meterCache, ev)
+		if err != nil {
+			return nil, nil, err // infrastructure: pause and retry, never DLQ
+		}
+		if mr.missing {
+			if h.Replay == nil {
+				bad = append(bad, poison{rec, "UNKNOWN_METER", fmt.Errorf("meter %q of tenant %s does not exist", ev.Meter, ev.TenantID)})
+			}
+			continue
+		}
+		items = append(items, item{ev: ev, meter: mr.meter})
+	}
+	return items, bad, nil
+}
+
+// sendDeadLetters publishes the poison records of a batch to the dead-letter topic.
+func (h *Handler) sendDeadLetters(ctx context.Context, partition int32, bad []poison) error {
+	for _, p := range bad {
+		if err := h.DLQ.Send(ctx, p.rec, p.reason, p.err); err != nil {
+			return err
+		}
+		h.m.dlq.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", p.reason)))
+		h.Log.WarnContext(ctx, "record sent to DLQ", "partition", partition, "offset", p.rec.Offset, "reason", p.reason, "error", p.err)
+	}
+	return nil
+}
+
 type meterResult struct {
 	meter   usage.Meter
 	missing bool
@@ -247,7 +254,6 @@ func (h *Handler) meter(ctx context.Context, cache map[string]meterResult, ev us
 	if r, ok := cache[key]; ok {
 		return r, nil
 	}
-	var lastErr error
 	for attempt := 0; ; attempt++ {
 		m, err := h.Meters.Get(ctx, ev.TenantID, ev.Meter)
 		switch {
@@ -265,8 +271,7 @@ func (h *Handler) meter(ctx context.Context, cache map[string]meterResult, ev us
 			case <-time.After(h.MeterRetryDelays[attempt]):
 			}
 		default:
-			lastErr = err
-			return meterResult{}, fmt.Errorf("meter lookup: %w", lastErr)
+			return meterResult{}, fmt.Errorf("meter lookup: %w", err)
 		}
 	}
 }
@@ -318,7 +323,7 @@ func (h *Handler) applyTx(ctx context.Context, tx pgx.Tx, partition int32, items
 
 // applyItems locks the batch's period settings and generations, then dedups, classifies, pre-sums and upserts.
 func (h *Handler) applyItems(ctx context.Context, q *sqlc.Queries, items []item) error {
-	if err := q.SetTransactionTimeout(ctx, "30s"); err != nil {
+	if err := q.SetTransactionTimeout(ctx, batchTxTimeout); err != nil {
 		return err
 	}
 	tenants, periods := distinct(items)

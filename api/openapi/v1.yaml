@@ -1449,6 +1449,30 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: object, properties: { revoked: { type: integer } } } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /r/{code}:
+    get:
+      operationId: affiliateLink
+      summary: "A partner's public link (public)"
+      description: "Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address."
+      security: []
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "A thank-you page, when the program has no landing page", content: { text/html: { schema: { type: string } } } }
+        "302": { description: "Redirect to the program's landing page, with the cookie set" }
+        "404": { description: "No such partner", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /privacy:
+    get:
+      operationId: privacyPage
+      summary: "What the referral cookie holds, what is counted and what a visitor can do (public)"
+      security: []
+      parameters:
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "The privacy page", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
   /i/{token}:
     get:
       operationId: hostedInvoicePage
@@ -2895,6 +2919,117 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /app/v1/affiliate/affiliations:
+    get:
+      operationId: myAffiliations
+      tags: [Affiliate portal]
+      summary: The partner's own affiliations
+      description: "One per seller environment the person is a partner of (live ones first). A partner sees only their own data: the records made for their verified e-mail address are linked to them by claim, or they apply."
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { affiliations: { type: array, items: { $ref: "#/components/schemas/MyAffiliation" } } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /app/v1/affiliate/claim:
+    post:
+      operationId: claimMyAffiliations
+      tags: [Affiliate portal]
+      summary: Link the partner records a seller made for your verified e-mail address to you
+      description: "Needs a verified address (403 identity.email.not_verified otherwise). Repeating it only takes records nobody has claimed. The person becomes a member of the seller's account with the role affiliate, which sees none of the account."
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { claimed: { type: integer }, affiliations: { type: array, items: { $ref: "#/components/schemas/MyAffiliation" } } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /app/v1/affiliate/programs/{tenant_id}:
+    get:
+      operationId: lookupAffiliateProgram
+      tags: [Affiliate portal]
+      summary: A seller's program terms, for someone about to apply
+      description: "404 affiliate.portal.program_unavailable for a seller without a program that is open to applications, whatever the reason: the answer reveals nothing about whether the id exists."
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: tenant_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { seller_name: { type: string }, environment: { type: string }, applied: { type: boolean }, program: { $ref: "#/components/schemas/MyProgram" } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/affiliate/applications:
+    post:
+      operationId: applyAsAffiliate
+      tags: [Affiliate portal]
+      summary: Apply to a seller's program
+      description: "With the person's verified address. The application is pending until the seller approves it, or active at once if the program approves applications automatically. 409 affiliate.portal.already_applied when the person is a partner of this seller already."
+      security: [{ sessionToken: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [tenant_id], properties: { tenant_id: { type: string }, name: { type: string, maxLength: 200 }, payout_method: { type: string, enum: [manual, bank_transfer] }, payout_details: { type: string, maxLength: 1000 } } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/MyAffiliation" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /app/v1/affiliate/affiliations/{id}:
+    get:
+      operationId: myAffiliation
+      tags: [Affiliate portal]
+      summary: "One affiliation: link, clicks, referrals and earnings"
+      description: "The figures cover the period (default the last 30 days); balances are as of now, per currency (pending, approved, paid, taken back)."
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: from, in: query, schema: { type: string, format: date } }, { name: to, in: query, schema: { type: string, format: date } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyAffiliationDetail" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateMyAffiliation
+      tags: [Affiliate portal]
+      summary: Change the partner's name and payout details
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [payout_method], properties: { name: { type: string }, payout_method: { type: string, enum: [manual, bank_transfer] }, payout_details: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyAffiliation" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/affiliate/affiliations/{id}/referrals:
+    get:
+      operationId: myReferrals
+      tags: [Affiliate portal]
+      summary: Who the partner brought, newest first
+      description: "The customer is a masked e-mail address (j***@example.com)."
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: page_token, in: query, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { referrals: { type: array, items: { $ref: "#/components/schemas/MyReferral" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/affiliate/affiliations/{id}/commissions:
+    get:
+      operationId: myCommissions
+      tags: [Affiliate portal]
+      summary: The partner's commissions, newest first
+      description: "pending commissions wait out the seller's hold; a refund takes back in proportion; one already paid is netted by a negative row."
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: status, in: query, schema: { type: string, enum: [pending, approved, paid, reversed] } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: page_token, in: query, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { commissions: { type: array, items: { $ref: "#/components/schemas/MyCommission" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/affiliate/affiliations/{id}/payouts:
+    get:
+      operationId: myPayouts
+      tags: [Affiliate portal]
+      summary: Payouts made to the partner, newest first
+      description: "A payout of a sandbox environment is fake (fake true): nothing was paid."
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: page_token, in: query, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { payouts: { type: array, items: { $ref: "#/components/schemas/MyPayout" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/go-live:
     get:
       operationId: appGoLive
@@ -4911,6 +5046,7 @@ components:
         referrals: { type: string }
         approve_time: { type: string, format: date-time }
         create_time: { type: string, format: date-time }
+        link: { type: string, description: "The partner's public referral link, https://<gateway>/r/<code>" }
     AffiliateCommission:
       type: object
       properties:
@@ -4981,6 +5117,76 @@ components:
         credit_minor: { type: string }
         memo: { type: string }
         fake: { type: boolean }
+    MyProgram:
+      type: object
+      properties:
+        status: { type: string, enum: [draft, active, paused] }
+        commission_kind: { type: string, enum: [percent_bps, fixed] }
+        commission_value: { type: string }
+        currency: { type: string }
+        commission_term: { type: string, enum: [first_invoices, months, lifetime] }
+        commission_term_value: { type: integer }
+        attribution_window_days: { type: integer }
+        hold_days: { type: integer }
+        min_payout_minor: { type: string }
+    MyAffiliation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        environment: { type: string, enum: [sandbox, live], description: "A sandbox partner earns fake money" }
+        seller_name: { type: string }
+        code: { type: string }
+        link: { type: string, description: "The partner's public referral link" }
+        status: { type: string, enum: [pending, active, suspended] }
+        name: { type: string }
+        email: { type: string }
+        payout_method: { type: string, enum: [manual, bank_transfer] }
+        payout_details: { type: string }
+        program: { $ref: "#/components/schemas/MyProgram" }
+        create_time: { type: string, format: date-time }
+    MyAffiliationDetail:
+      type: object
+      properties:
+        affiliation: { $ref: "#/components/schemas/MyAffiliation" }
+        from_date: { type: string, format: date }
+        to_date: { type: string, format: date }
+        clicks: { type: string }
+        referrals: { type: string }
+        paying_customers: { type: string }
+        earned: { type: array, items: { type: object, properties: { currency: { type: string }, earned_minor: { type: string }, reversed_minor: { type: string } } } }
+        balances: { type: array, items: { $ref: "#/components/schemas/AffiliateBalance" } }
+    MyReferral:
+      type: object
+      properties:
+        customer_email_masked: { type: string }
+        source: { type: string, enum: [link, code, api] }
+        attribute_time: { type: string, format: date-time }
+    MyCommission:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [commission, reversal] }
+        customer_email_masked: { type: string }
+        currency: { type: string }
+        amount_minor: { type: string }
+        reversed_minor: { type: string }
+        status: { type: string, enum: [pending, approved, paid, reversed] }
+        earn_time: { type: string, format: date-time }
+        approve_after_time: { type: string, format: date-time }
+        pay_time: { type: string, format: date-time }
+        payout_id: { type: string, format: uuid }
+    MyPayout:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        currency: { type: string }
+        total_minor: { type: string }
+        status: { type: string, enum: [open, paid, cancelled] }
+        reference: { type: string }
+        fake: { type: boolean }
+        create_time: { type: string, format: date-time }
+        pay_time: { type: string, format: date-time }
     AffiliateReferral:
       type: object
       properties:

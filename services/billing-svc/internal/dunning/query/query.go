@@ -14,7 +14,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -49,9 +49,9 @@ func Get(ctx context.Context, app *pgxpool.Pool, ti tenant.Info) (*Settings, err
 
 // defaultRetryHours shows the service-wide delays the way a tenant would set them: hours, or minutes in a sandbox tenant.
 func defaultRetryHours(sandbox bool) []int32 {
-	d, unit := saga.DefaultDunningLive, time.Hour
+	d, unit := sagacommand.DefaultDunningLive, time.Hour
 	if sandbox {
-		d, unit = saga.DefaultDunningSandbox, time.Minute
+		d, unit = sagacommand.DefaultDunningSandbox, time.Minute
 	}
 	out := make([]int32, len(d))
 	for i, v := range d {

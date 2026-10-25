@@ -13,6 +13,9 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	affiliatesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
+	affiliatesportal "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/portal"
+	portalcmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/portal/command"
+	portalqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/portal/query"
 	affiliatesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/query"
 	changesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes"
 	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
@@ -135,4 +138,10 @@ func NewAffiliates(s *Server) *affiliatesapi.Handler {
 // NewAffiliatesPublic returns the public link service on the system pool: a visitor has no tenant.
 func NewAffiliatesPublic(systemPool *pgxpool.Pool, log *slog.Logger) *affiliatesapi.PublicHandler {
 	return affiliatesapi.NewPublic(affiliatescmd.NewPublic(systemPool, time.Now, log))
+}
+
+// NewAffiliatePortal returns what a signed-in partner sees of their own affiliations: the person is found on the system pool, the figures are read through the tenant's
+// own queries on the same database as s.
+func NewAffiliatePortal(s *Server, systemPool *pgxpool.Pool) *affiliatesportal.Handler {
+	return affiliatesportal.New(portalcmd.New(systemPool, s.now), portalqry.New(systemPool, affiliatesqry.New(s.db), s.now))
 }

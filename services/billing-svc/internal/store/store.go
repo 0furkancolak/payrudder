@@ -15,6 +15,17 @@ func NilIfEmpty(s string) *string {
 	return &s
 }
 
+// Deref is the string a nullable column holds, "" for NULL.
+func Deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// I32 narrows a small count (an attempt number, a page size, a calendar year) to the int32 a query parameter takes.
+func I32(n int) int32 { return int32(n) } //nolint:gosec // attempt counters, page sizes and calendar years are small
+
 // NilIfZero is NULL for the zero time.
 func NilIfZero(t time.Time) *time.Time {
 	if t.IsZero() {

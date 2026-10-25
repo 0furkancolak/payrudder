@@ -8,32 +8,26 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twmb/franz-go/pkg/kadm"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
-	"github.com/0furkancolak/payrudder/pkg/logx"
-	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
@@ -46,7 +40,7 @@ import (
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	billingreset "github.com/0furkancolak/payrudder/services/billing-svc/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
@@ -58,11 +52,8 @@ var defaults []byte
 
 type Config struct {
 	config.Base
+	pgxx.Settings
 	GRPCAddr          string        `env:"PAYRUDDER_GRPC_ADDR"`
-	PGAppDSN          string        `env:"PAYRUDDER_PG_APP_DSN,required"`
-	PGSystemDSN       string        `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN     string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
-	MigrateOnStart    bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
 	PlansAddr         string        `env:"PAYRUDDER_PLANS_ADDR"`
 	IngestAddr        string        `env:"PAYRUDDER_INGEST_ADDR"`
 	AggregatorAddr    string        `env:"PAYRUDDER_AGGREGATOR_ADDR"`
@@ -91,11 +82,9 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
-	}
-	if len(c.DunningLive) != saga.MaxDunning || len(c.DunningSandbox) != saga.MaxDunning {
-		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", saga.MaxDunning))
+	errs = append(errs, c.CheckMigration())
+	if len(c.DunningLive) != sagacommand.MaxDunning || len(c.DunningSandbox) != sagacommand.MaxDunning {
+		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", sagacommand.MaxDunning))
 	}
 	if c.TransferPoll < time.Minute {
 		errs = append(errs, errors.New("PAYRUDDER_TRANSFER_POLL must be at least 1m"))
@@ -106,77 +95,15 @@ func (c *Config) Validate() error {
 	return errors.Join(errs...)
 }
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "billing-svc:", err)
-		os.Exit(1)
-	}
-}
-
-func run() error {
-	cfg, err := config.Load[Config](defaults)
-	if err != nil {
-		return err
-	}
-	log, err := logx.New(logx.Options{Service: cfg.ServiceName, Version: cfg.Version, Level: cfg.LogLevel, Writer: os.Stdout})
-	if err != nil {
-		return err
-	}
-	slog.SetDefault(log)
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	reg := health.NewRegistry()
-	providers, err := otelx.Setup(ctx, otelx.Options{
-		ServiceName: cfg.ServiceName, Version: cfg.Version, Environment: string(cfg.Env), OTLPEndpoint: cfg.OTLPEndpoint, Registry: reg,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = providers.Shutdown(c)
-	}()
-
-	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
-}
-
-// migrate applies the migrations when asked to; done reports that the process should exit afterwards (PAYRUDDER_MIGRATE_ONLY).
-func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
-	if cfg.MigrateOnStart {
-		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return false, err
-		}
-	}
-	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
-		return true, nil
-	}
-	return false, nil
-}
-
-// openPools opens the application-role and system-role Postgres pools.
-func openPools(ctx context.Context, cfg *Config) (appPool, systemPool *pgxpool.Pool, err error) {
-	appPool, err = pgxx.NewPool(ctx, cfg.PGAppDSN)
-	if err != nil {
-		return nil, nil, err
-	}
-	systemPool, err = pgxx.NewPool(ctx, cfg.PGSystemDSN)
-	if err != nil {
-		appPool.Close()
-		return nil, nil, err
-	}
-	return appPool, systemPool, nil
-}
+func main() { app.Main("billing-svc", defaults, start) }
 
 // start wires billing-svc's dependencies and runs it until ctx is cancelled.
-func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler) error {
-	if done, err := migrate(ctx, cfg, log); err != nil || done {
+func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
+	log, hh := rt.Log, rt.Health()
+	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
-	appPool, systemPool, err := openPools(ctx, cfg)
+	appPool, systemPool, err := cfg.OpenPools(ctx)
 	if err != nil {
 		return err
 	}
@@ -209,7 +136,7 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 		}
 		return env.FromProto(r.GetTenant().GetEnvironment())
 	}, 0)
-	eng, err := saga.NewEngine(saga.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log, Tenants: tenantEnvs})
+	eng, err := sagacommand.NewEngine(sagacommand.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log, Tenants: tenantEnvs})
 	if err != nil {
 		return err
 	}
@@ -289,10 +216,10 @@ func (b *backends) close() {
 }
 
 // newRunManager builds the billing-run manager from the backend clients and the usage topic's end offsets.
-func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *saga.Engine, be *backends, endOffsets func(context.Context) (map[int32]int64, error)) (*runs.Manager, error) {
+func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, endOffsets func(context.Context) (map[int32]int64, error)) (*runs.Manager, error) {
 	return runs.NewManager(runs.Config{
 		Pool: systemPool, Engine: eng,
-		Plans: plansv1.NewPlansServiceClient(be.plans), Events: plansv1.NewWebhookServiceClient(be.plans), Admin: plansv1.NewAdminServiceClient(be.plans),
+		Plans: plansv1.NewPlansServiceClient(be.plans), Events: plansv1.NewWebhookServiceClient(be.plans), Affiliates: plansv1.NewAffiliateServiceClient(be.plans), Admin: plansv1.NewAdminServiceClient(be.plans),
 		Ingest: ingestv1.NewIngestServiceClient(be.ingest), Aggregator: aggregatorv1.NewUsageQueryServiceClient(be.aggregator),
 		EndOffsets:     endOffsets,
 		WatermarkDelay: cfg.WatermarkDelay, Log: log,
@@ -316,14 +243,8 @@ func usageEndOffsets(adm *kadm.Client) func(context.Context) (map[int32]int64, e
 }
 
 // newGRPCServer builds the gRPC server with every billing service registered; the PDF store is optional.
-func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) (*grpc.Server, *grpchealth.Server, error) {
-	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
-		Logger: log, Reflection: cfg.Env == config.EnvLocal,
-		Extra: []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
-			grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
-		},
-	})
+func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, mgr *runs.Manager, eng *sagacommand.Engine) (*grpc.Server, *grpchealth.Server, error) {
+	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
 	svc := api.New(appPool, systemPool, mgr, eng).WithDeadLetters(&dlq.Admin{URL: cfg.RabbitMQURL}).WithDemo(cfg.Demo)
 	if cfg.S3AccessKey != "" {
 		store, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, PublicEndpoint: cfg.S3PublicEndpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
@@ -346,7 +267,7 @@ type workers struct {
 	cfg        *Config
 	log        *slog.Logger
 	pool       *pgxpool.Pool
-	eng        *saga.Engine
+	eng        *sagacommand.Engine
 	mgr        *runs.Manager
 	relay      *outbox.Relay
 	replies    *replies.Consumer
@@ -358,30 +279,18 @@ type workers struct {
 
 // run starts everything and blocks until ctx is cancelled or one of them fails, then drains the gRPC server.
 func (w *workers) run(ctx context.Context) error {
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, w.cfg.MetricsAddr, w.health) })
+	g := app.NewGroup(ctx, w.log, w.cfg.MetricsAddr, w.health)
+	gctx := g.Context()
 	g.Go(func() error { return w.relay.Run(gctx) })
 	g.Go(func() error { return w.replies.Run(gctx) })
 	w.startLoops(gctx, g)
-	g.Go(func() error {
-		w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr)
-		return w.srv.Serve(w.lis)
-	})
-	g.Go(func() error {
-		<-gctx.Done()
-		w.grpcHealth.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
-		w.srv.GracefulStop()
-		return nil
-	})
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	w.log.Info("stopped")
-	return nil
+	w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr)
+	g.ServeGRPC(w.srv, w.grpcHealth, w.lis)
+	return g.Wait()
 }
 
 // startLoops starts the scheduler, the tenant-event flusher and the saga sweeper.
-func (w *workers) startLoops(ctx context.Context, g *errgroup.Group) {
+func (w *workers) startLoops(ctx context.Context, g *app.Group) {
 	g.Go(func() error { loop(ctx, w.cfg.SchedulerInterval, "scheduler", w.log, w.mgr.Tick); return nil })
 	g.Go(func() error { loop(ctx, 5*time.Second, "tenant-events", w.log, w.mgr.FlushTenantEvents); return nil })
 	g.Go(func() error { loop(ctx, w.cfg.SweepInterval, "sweeper", w.log, w.sweep); return nil })

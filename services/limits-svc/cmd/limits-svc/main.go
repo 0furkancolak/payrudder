@@ -10,33 +10,28 @@ import (
 	"log/slog"
 	"net"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/app"
+	"github.com/0furkancolak/payrudder/pkg/chaos"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
-	"github.com/0furkancolak/payrudder/pkg/logx"
 	"github.com/0furkancolak/payrudder/pkg/meters"
-	"github.com/0furkancolak/payrudder/pkg/otelx"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/query"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/grpcapi"
 )
 
 const (
@@ -74,44 +69,17 @@ func (c *Config) Validate() error {
 	return errors.Join(errs...)
 }
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "limits-svc:", err)
-		os.Exit(1)
-	}
-}
+func main() { app.Main("limits-svc", defaults, start) }
 
-func run() error {
-	cfg, err := config.Load[Config](defaults)
-	if err != nil {
-		return err
-	}
-	log, err := logx.New(logx.Options{Service: cfg.ServiceName, Version: cfg.Version, Level: cfg.LogLevel, Writer: os.Stdout})
-	if err != nil {
-		return err
-	}
-	slog.SetDefault(log)
+func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
+	log := rt.Log
 	if cfg.PodName == "" {
-		if cfg.PodName, err = os.Hostname(); err != nil || cfg.PodName == "" {
+		if name, err := os.Hostname(); err == nil && name != "" {
+			cfg.PodName = name
+		} else {
 			cfg.PodName = "limits-0"
 		}
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	reg := health.NewRegistry()
-	providers, err := otelx.Setup(ctx, otelx.Options{
-		ServiceName: cfg.ServiceName, Version: cfg.Version, Environment: string(cfg.Env), OTLPEndpoint: cfg.OTLPEndpoint, Registry: reg,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = providers.Shutdown(c)
-	}()
 
 	opts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
@@ -142,7 +110,7 @@ func run() error {
 	ents := entitlements.New(rdb, log)
 	applier, err := engine.NewApplier(engine.Config{
 		Redis: rdb, Meters: ms, Tenants: tn, Ents: ents, Producer: producer, LimitTopic: cfg.LimitTopic, Log: log,
-		AfterLua: afterLuaFault(),
+		AfterLua: chaos.Crash("LIMITS_CRASH_AFTER_LUA", "chaos build: limits-svc will crash after the script", "chaos: crashing after the script"),
 	})
 	if err != nil {
 		return err
@@ -163,23 +131,17 @@ func run() error {
 		Owned: owned.Partitions, Interval: cfg.ReconcileInterval, Log: log,
 	})
 
-	hh := health.New(reg, 2*time.Second)
+	hh := rt.Health()
 	addHealthChecks(hh, rdb, producer, ents)
-	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
-		Logger: log, Reflection: cfg.Env == config.EnvLocal,
-		Extra: []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
-			grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
-		},
-	})
-	limitsv1.RegisterLimitsServiceServer(srv, query.New(rdb, ents, ms, rec))
+	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
+	limitsv1.RegisterLimitsServiceServer(srv, grpcapi.New(rdb, ents, ms, rec))
 
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
 		return err
 	}
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
+	g := app.NewGroup(ctx, log, cfg.MetricsAddr, hh)
+	gctx := g.Context()
 	g.Go(func() error { return entConsumer.Run(gctx) })
 	g.Go(func() error {
 		// Usage is applied only once the entitlement map has caught up, so thresholds see the limits in force.
@@ -187,34 +149,18 @@ func run() error {
 		return usage.Run(gctx)
 	})
 	g.Go(func() error { rec.Run(gctx); return nil })
-	g.Go(func() error {
-		log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr, "kafka", cfg.KafkaBrokers, "pod", cfg.PodName)
-		return srv.Serve(lis)
-	})
-	g.Go(func() error {
-		<-gctx.Done()
-		grpcHealth.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
-		srv.GracefulStop()
-		return nil
-	})
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	log.Info("stopped")
-	return nil
+	log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr, "kafka", cfg.KafkaBrokers, "pod", cfg.PodName)
+	g.ServeGRPC(srv, grpcHealth, lis)
+	return g.Wait()
 }
 
 // dialPeer connects to another service, forwarding the tenant on every call.
 func dialPeer(name, addr string) (*grpc.ClientConn, error) {
-	conn, err := grpcx.NewClient(addr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return nil, fmt.Errorf("%s client: %w", name, err)
-	}
-	return conn, nil
+	return grpcx.NewTenantClient(name, addr)
 }
 
 // newConsumers builds the usage consumer and the entitlement consumer; closeAll closes both.
-func newConsumers(cfg Config, applier *engine.Applier, ents *entitlements.Store, owned *engine.Ownership, log *slog.Logger) (usage, entConsumer *kafkax.Consumer, closeAll func(), err error) {
+func newConsumers(cfg *Config, applier *engine.Applier, ents *entitlements.Store, owned *engine.Ownership, log *slog.Logger) (usage, entConsumer *kafkax.Consumer, closeAll func(), err error) {
 	usage, err = kafkax.NewConsumer(kafkax.ConsumerConfig{
 		Brokers: cfg.KafkaBrokers, GroupID: cfg.GroupID, Topic: usageTopic, LoadOffsets: applier.LoadOffsets,
 		Handler: applier, MaxPollRecords: cfg.PollRecords, Backoff: cfg.Backoff, SessionTimeout: cfg.SessionTimeout, Log: log,

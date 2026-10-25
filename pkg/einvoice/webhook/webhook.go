@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/brand"
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
+	"github.com/0furkancolak/payrudder/pkg/strx"
 	"github.com/0furkancolak/payrudder/pkg/webhooksig"
 )
 
@@ -140,7 +142,7 @@ func (p *Provider) post(ctx context.Context, action, contentType string, body []
 	case resp.StatusCode == http.StatusRequestTimeout, resp.StatusCode == http.StatusTooManyRequests, resp.StatusCode >= 500:
 		return answer{}, &einvoice.TransientError{Err: fmt.Errorf("the endpoint answered %d", resp.StatusCode)}
 	case resp.StatusCode < 200 || resp.StatusCode > 299:
-		return answer{}, &einvoice.PermanentError{Code: fmt.Sprintf("http_%d", resp.StatusCode), Message: orDefault(msg, fmt.Sprintf("the endpoint answered %d", resp.StatusCode))}
+		return answer{}, &einvoice.PermanentError{Code: fmt.Sprintf("http_%d", resp.StatusCode), Message: cmp.Or(msg, fmt.Sprintf("the endpoint answered %d", resp.StatusCode))}
 	case !jsonOK:
 		return answer{}, &einvoice.PermanentError{Code: "bad_response", Message: "the endpoint did not answer with JSON"}
 	}
@@ -148,19 +150,8 @@ func (p *Provider) post(ctx context.Context, action, contentType string, body []
 	return a, nil
 }
 
-func orDefault(s, d string) string {
-	if s == "" {
-		return d
-	}
-	return s
-}
-
 func truncate(s string) string {
-	s = strings.TrimSpace(s)
-	if len(s) > maxMessage {
-		s = strings.ToValidUTF8(s[:maxMessage], "")
-	}
-	return s
+	return strx.Truncate(strings.TrimSpace(s), maxMessage)
 }
 
 func toState(s string) (einvoice.State, bool) {
@@ -190,7 +181,7 @@ func (p *Provider) Issue(ctx context.Context, r einvoice.IssueRequest) (einvoice
 		return einvoice.IssueResult{}, &einvoice.PermanentError{Code: "bad_response", Message: "the endpoint answered with an unknown state"}
 	}
 	if st == einvoice.StateRejected {
-		return einvoice.IssueResult{}, &einvoice.PermanentError{Code: "rejected", Message: orDefault(a.Message, "the endpoint rejected the document")}
+		return einvoice.IssueResult{}, &einvoice.PermanentError{Code: "rejected", Message: cmp.Or(a.Message, "the endpoint rejected the document")}
 	}
 	if st == einvoice.StateIssued && a.LegalNumber == "" {
 		return einvoice.IssueResult{}, &einvoice.PermanentError{Code: "bad_response", Message: "an issued document needs a legal_number"}
@@ -229,7 +220,7 @@ func (p *Provider) Cancel(ctx context.Context, ref einvoice.Ref, reason string) 
 		return err
 	}
 	if a.State != "cancelled" {
-		return &einvoice.PermanentError{Code: "not_cancelled", Message: orDefault(a.Message, "the endpoint did not cancel the document")}
+		return &einvoice.PermanentError{Code: "not_cancelled", Message: cmp.Or(a.Message, "the endpoint did not cancel the document")}
 	}
 	return nil
 }

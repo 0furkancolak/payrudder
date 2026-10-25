@@ -203,6 +203,7 @@ func (s *Server) invoiceOrAdhoc(w http.ResponseWriter, r *http.Request, sc scope
 	if !s.hostedAllowed(w, r) {
 		return
 	}
+	s.captureRef(w, r)
 	resp, err := s.d.Hosted.GetHostedInvoice(r.Context(), sc.get())
 	if goneError(err) {
 		hostedNotFound(w, lang)
@@ -385,7 +386,8 @@ func (s *Server) hostedLinkStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := formCode(r)
-	resp, err := s.d.Hosted.StartLinkPayment(r.Context(), &billingv1.StartLinkPaymentRequest{Token: r.PathValue("token"), PromotionCode: code})
+	refCode, refAt := referral(r)
+	resp, err := s.d.Hosted.StartLinkPayment(r.Context(), &billingv1.StartLinkPaymentRequest{Token: r.PathValue("token"), PromotionCode: code, ReferralCode: refCode, ReferralTouchTime: refAt})
 	switch {
 	case isPromoError(errkey.Of(err)):
 		// The code did not work: no invoice was made. The payer sees why, with the code still in the field.
@@ -655,7 +657,9 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 		s.message(w, r, http.StatusConflict, lang, l["pay_title"], l["pay_cannot"], back)
 		return
 	}
-	resp, err := s.d.Hosted.RequestHostedPayment(r.Context(), &billingv1.RequestHostedPaymentRequest{Token: sc.token, PortalToken: sc.portal, InvoiceId: sc.invoice, Method: method})
+	refCode, refAt := referral(r)
+	resp, err := s.d.Hosted.RequestHostedPayment(r.Context(), &billingv1.RequestHostedPaymentRequest{Token: sc.token, PortalToken: sc.portal, InvoiceId: sc.invoice, Method: method,
+		ReferralCode: refCode, ReferralTouchTime: refAt})
 	switch {
 	case err == nil:
 	case goneError(err):

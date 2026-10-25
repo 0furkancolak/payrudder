@@ -25,7 +25,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 )
 
 func TestBilling(t *testing.T) {
@@ -85,6 +85,7 @@ func TestBilling(t *testing.T) {
 		{"PaymentLinksAreIdempotentAndValidated", testPaymentLinkCreation},
 		{"RevokedAndExpiredLinksStopAndVoidWhatIsUnpaid", testPaymentLinkRevokeAndExpiry},
 		{"PortalTokensStayWithinTheirTenantAndCustomer", testPortalIsolation},
+		{"ReferralCookieIsPassedToTheAffiliateProgramAndNeverFailsAPayment", testReferralPassedOn},
 		{"ProviderConfirmedPaymentsSettleTheSaga", testSettleInvoicePayment},
 		{"InvoiceAndCreditNoteEventsAreHandedToPlansOnce", testTenantEvents},
 		{"CreditNoteRefundsToTheCardAndIsRetriedUntilAnswered", testCreditNoteRefundToCard},
@@ -716,8 +717,8 @@ func testRandomRepliesNeverDoubleCharge(t *testing.T) {
 	seed := uint64(time.Now().UnixNano())
 	t.Logf("seed %d", seed)
 	rng := rand.New(rand.NewPCG(seed, 7))
-	events := []saga.Event{saga.EvPdfRendered, saga.EvPdfFailed, saga.EvPaymentOK, saga.EvPaymentDeclined, saga.EvPaymentErrored,
-		saga.EvStatusSucceeded, saga.EvStatusDeclined, saga.EvNotified, saga.EvRefunded, saga.EvDunningDue}
+	events := []sagamodel.Event{sagamodel.EvPdfRendered, sagamodel.EvPdfFailed, sagamodel.EvPaymentOK, sagamodel.EvPaymentDeclined, sagamodel.EvPaymentErrored,
+		sagamodel.EvStatusSucceeded, sagamodel.EvStatusDeclined, sagamodel.EvNotified, sagamodel.EvRefunded, sagamodel.EvDunningDue}
 	for round := 0; round < 60; round++ {
 		invID := uuid.New()
 		snap := `{"environment":"live","currency_exponent":2,"customer_external_id":"c","customer_email":"c@example.com","payment_method":"pm"}`

@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+import "google/protobuf/timestamp.proto";
+import "payrudder/plans/v1/affiliates.proto";
+
+// AffiliatePortalService is what a partner sees of their own affiliations (phase 47). The caller is a signed-in person: user_id is set by the gateway from the session,
+// never by a client, and every call finds a row only through that person's own affiliate record, so another partner's data is "not found". An affiliation is one
+// partner record at one seller's environment (a person can have several). The partner sees their link, clicks, referrals (the customer as a masked e-mail address),
+// earnings by status and payouts, and nothing else of the seller.
+service AffiliatePortalService {
+  // ListMyAffiliations lists the person's affiliations, in every environment they are a partner of.
+  rpc ListMyAffiliations(ListMyAffiliationsRequest) returns (ListMyAffiliationsResponse);
+  // ClaimMyAffiliations links the partner records a seller made for the person's verified e-mail address to the person, so that they can sign in as the partner.
+  rpc ClaimMyAffiliations(ClaimMyAffiliationsRequest) returns (ClaimMyAffiliationsResponse);
+  // LookupAffiliateProgram shows the terms of a seller's program to someone who is about to apply. Not found when there is no open program.
+  rpc LookupAffiliateProgram(LookupAffiliateProgramRequest) returns (LookupAffiliateProgramResponse);
+  // ApplyAsAffiliate applies to a seller's program with the person's verified e-mail address. The application waits for the seller's approval unless the program
+  // approves at once.
+  rpc ApplyAsAffiliate(ApplyAsAffiliateRequest) returns (ApplyAsAffiliateResponse);
+  rpc GetMyAffiliation(GetMyAffiliationRequest) returns (GetMyAffiliationResponse);
+  // UpdateMyAffiliation changes the partner's name and payout details.
+  rpc UpdateMyAffiliation(UpdateMyAffiliationRequest) returns (UpdateMyAffiliationResponse);
+  rpc ListMyReferrals(ListMyReferralsRequest) returns (ListMyReferralsResponse);
+  rpc ListMyCommissions(ListMyCommissionsRequest) returns (ListMyCommissionsResponse);
+  rpc ListMyPayouts(ListMyPayoutsRequest) returns (ListMyPayoutsResponse);
+}
+
+// MyProgram is the seller's program as the partner may know it.
+message MyProgram {
+  // active means new commissions are earned; paused or draft means they are not.
+  string status = 1;
+  string commission_kind = 2;
+  int64 commission_value = 3;
+  string currency = 4;
+  string commission_term = 5;
+  int32 commission_term_value = 6;
+  int32 attribution_window_days = 7;
+  int32 hold_days = 8;
+  int64 min_payout_minor = 9;
+}
+
+message MyAffiliation {
+  string id = 1;
+  string tenant_id = 2;
+  // sandbox or live: a sandbox partner earns fake money.
+  string environment = 3;
+  string seller_name = 4;
+  string code = 5;
+  // Filled in by the gateway.
+  string link = 6;
+  // pending, active or suspended.
+  string status = 7;
+  string name = 8;
+  string email = 9;
+  string payout_method = 10;
+  string payout_details = 11;
+  MyProgram program = 12;
+  google.protobuf.Timestamp create_time = 13;
+}
+
+message ListMyAffiliationsRequest {
+  string user_id = 1;
+}
+message ListMyAffiliationsResponse {
+  repeated MyAffiliation affiliations = 1;
+}
+
+message ClaimMyAffiliationsRequest {
+  string user_id = 1;
+}
+message ClaimMyAffiliationsResponse {
+  // How many partner records were linked to the person by this call.
+  int32 claimed = 1;
+  repeated MyAffiliation affiliations = 2;
+}
+
+message LookupAffiliateProgramRequest {
+  string user_id = 1;
+  string tenant_id = 2;
+}
+message LookupAffiliateProgramResponse {
+  string seller_name = 1;
+  string environment = 2;
+  MyProgram program = 3;
+  // The person already has an affiliation here.
+  bool applied = 4;
+}
+
+message ApplyAsAffiliateRequest {
+  string user_id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string payout_method = 4;
+  string payout_details = 5;
+}
+message ApplyAsAffiliateResponse {
+  MyAffiliation affiliation = 1;
+}
+
+message GetMyAffiliationRequest {
+  string user_id = 1;
+  string affiliate_id = 2;
+  // Dates as YYYY-MM-DD for the figures; the default is the last 30 days.
+  string from_date = 3;
+  string to_date = 4;
+}
+message GetMyAffiliationResponse {
+  MyAffiliation affiliation = 1;
+  string from_date = 2;
+  string to_date = 3;
+  int64 clicks = 4;
+  int64 referrals = 5;
+  int64 paying_customers = 6;
+  // Earned in the period per currency (before what was taken back), and the earnings by status as of now.
+  repeated AffiliateFunnelAmount earned = 7;
+  repeated AffiliateBalance balances = 8;
+}
+
+message UpdateMyAffiliationRequest {
+  string user_id = 1;
+  string affiliate_id = 2;
+  string name = 3;
+  string payout_method = 4;
+  string payout_details = 5;
+}
+message UpdateMyAffiliationResponse {
+  MyAffiliation affiliation = 1;
+}
+
+message MyReferral {
+  // j***@example.com: the partner never sees who the customer is.
+  string customer_email_masked = 1;
+  // link, code or api.
+  string source = 2;
+  google.protobuf.Timestamp attribute_time = 3;
+}
+message ListMyReferralsRequest {
+  string user_id = 1;
+  string affiliate_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+message ListMyReferralsResponse {
+  repeated MyReferral referrals = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}
+
+message MyCommission {
+  string id = 1;
+  // commission, or reversal (a negative row netting a commission that was paid).
+  string kind = 2;
+  string customer_email_masked = 3;
+  string currency = 4;
+  int64 amount_minor = 5;
+  int64 reversed_minor = 6;
+  // pending (in the hold), approved, paid or reversed.
+  string status = 7;
+  google.protobuf.Timestamp earn_time = 8;
+  google.protobuf.Timestamp approve_after_time = 9;
+  google.protobuf.Timestamp pay_time = 10;
+  string payout_id = 11;
+}
+message ListMyCommissionsRequest {
+  string user_id = 1;
+  string affiliate_id = 2;
+  string status = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+message ListMyCommissionsResponse {
+  repeated MyCommission commissions = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}
+
+message MyPayout {
+  string id = 1;
+  string currency = 2;
+  int64 total_minor = 3;
+  // open, paid or cancelled.
+  string status = 4;
+  string reference = 5;
+  // A sandbox payout: nothing was paid.
+  bool fake = 6;
+  google.protobuf.Timestamp create_time = 7;
+  google.protobuf.Timestamp pay_time = 8;
+}
+message ListMyPayoutsRequest {
+  string user_id = 1;
+  string affiliate_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+message ListMyPayoutsResponse {
+  repeated MyPayout payouts = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}

@@ -10,14 +10,10 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
@@ -27,11 +23,10 @@ import (
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
-	"github.com/0furkancolak/payrudder/pkg/logx"
-	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
@@ -132,40 +127,10 @@ func parseProxies(list []string) ([]netip.Prefix, error) {
 	return out, nil
 }
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "gateway:", err)
-		os.Exit(1)
-	}
-}
+func main() { app.Main("gateway", defaults, start) }
 
-func run() error {
-	cfg, err := config.Load[Config](defaults)
-	if err != nil {
-		return err
-	}
-	log, err := logx.New(logx.Options{Service: cfg.ServiceName, Version: cfg.Version, Level: cfg.LogLevel, Writer: os.Stdout})
-	if err != nil {
-		return err
-	}
-	slog.SetDefault(log)
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	reg := health.NewRegistry()
-	providers, err := otelx.Setup(ctx, otelx.Options{
-		ServiceName: cfg.ServiceName, Version: cfg.Version, Environment: string(cfg.Env), OTLPEndpoint: cfg.OTLPEndpoint, Registry: reg,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = providers.Shutdown(c)
-	}()
-
+func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
+	log := rt.Log
 	opts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
 		return fmt.Errorf("PAYRUDDER_REDIS_URL: %w", err)
@@ -173,19 +138,19 @@ func run() error {
 	rdb := redis.NewClient(opts)
 	defer func() { _ = rdb.Close() }()
 
-	up, err := dialUpstreams(&cfg)
+	up, err := dialUpstreams(cfg)
 	if err != nil {
 		return err
 	}
 	defer up.close()
 
-	api, err := newAPI(&cfg, log, rdb, up)
+	api, err := newAPI(cfg, log, rdb, up)
 	if err != nil {
 		return err
 	}
-	hh := health.New(reg, 2*time.Second)
+	hh := rt.Health()
 	addReadinessChecks(hh, up)
-	return serve(ctx, &cfg, log, api, hh)
+	return serve(ctx, cfg, log, api, hh)
 }
 
 // upstreams are the gateway's gRPC connections, one per backend service.
@@ -269,7 +234,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 	}
 	return httpapi.New(httpapi.Deps{
 		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), Google: google, AppURL: appURL,
-		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
+		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),
 		Billing: billingv1.NewBillingServiceClient(up.billing), Sandbox: billingv1.NewSandboxServiceClient(up.billing),
 		BillingAdmin: billingv1.NewBillingAdminServiceClient(up.billing), Hosted: billingv1.NewHostedInvoiceServiceClient(up.billing), PublicURL: strings.TrimRight(cfg.PublicURL, "/"), Analytics: analyticsv1.NewAnalyticsServiceClient(up.analytics),
@@ -298,8 +263,8 @@ func addReadinessChecks(hh *health.Handler, up *upstreams) {
 func serve(ctx context.Context, cfg *Config, log *slog.Logger, api http.Handler, hh *health.Handler) error {
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: withLiveness(api, hh), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second,
 		WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second}
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
+	g := app.NewGroup(ctx, log, cfg.MetricsAddr, hh)
+	gctx := g.Context()
 	g.Go(func() error {
 		log.Info("http listening", "addr", cfg.HTTPAddr, "plans", cfg.PlansAddr, "metrics", cfg.MetricsAddr)
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
@@ -313,9 +278,5 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, api http.Handler,
 		defer cancel()
 		return srv.Shutdown(c)
 	})
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	log.Info("stopped")
-	return nil
+	return g.Wait()
 }

@@ -23,7 +23,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -262,7 +262,7 @@ type draftInvoice struct {
 	Lines             []rating.Line
 	LineScales        []int
 	Total             int64
-	Snapshot          saga.Snapshot
+	Snapshot          sagamodel.Snapshot
 }
 
 // rateRun is what rating one billing run needs about the tenant and the period.
@@ -609,7 +609,7 @@ func (m *Manager) buildDraft(rr *rateRun, cu *plansv1.Customer, ls *lineSet, cid
 		}
 	}
 	t := rr.tenant
-	snapshot := saga.Snapshot{
+	snapshot := sagamodel.Snapshot{
 		CustomerExternalID: snapExternal, CustomerName: cu.GetName(), CustomerEmail: cu.GetEmail(),
 		PaymentMethod: paymentMethod, Provider: provider, TenantName: t.GetName(), Environment: rr.env, CurrencyExponent: invCur.Exponent, ProviderMails: providerMails(provider),
 		SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetAddress()), LogoObjectKey: rr.logoKey,

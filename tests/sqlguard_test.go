@@ -16,7 +16,7 @@ import (
 // ADR 0020 §5: SQL is never assembled at run time. This fails on fmt.Sprintf or string concatenation that builds a
 // statement. The exceptions cannot be plain sqlc: ClickHouse is not supported by sqlc, and DDL cannot take parameters.
 var sqlAssembled = map[string]string{
-	"services/analytics-svc/internal/query/query.go": "ClickHouse: sqlc does not support it",
+	"services/analytics-svc/internal/usage/query/builder.go": "ClickHouse: sqlc does not support it",
 	"pkg/testkit/servicedb.go":                       "DDL for throw-away test databases",
 }
 

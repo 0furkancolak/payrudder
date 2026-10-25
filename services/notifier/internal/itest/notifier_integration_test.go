@@ -26,13 +26,14 @@ import (
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
-	"github.com/0furkancolak/payrudder/services/notifier/internal/mail"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
 	"github.com/0furkancolak/payrudder/services/notifier/migrations"
 )
@@ -104,7 +105,7 @@ func TestNotifier(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	notes := store.Notifications{DB: pool, Stale: 300 * time.Millisecond}
-	mailer := &handler.Mailer{Default: mail.SMTP{Addr: mp.SMTPAddr}, From: "Payrudder <billing@payrudder.local>", Notes: notes}
+	mailer := &delivery.Mailer{Default: mailx.SMTP{Addr: mp.SMTPAddr}, From: "Payrudder <billing@payrudder.local>", Notes: notes}
 
 	t.Run("RedeliveredNotificationSendsOneEmail", func(t *testing.T) {
 		if err := rabbitx.DeclareTopology(amqpURL); err != nil {
@@ -156,7 +157,7 @@ func TestNotifier(t *testing.T) {
 
 	t.Run("SandboxMailIsPrefixedAndGoesToTheSandboxSink", func(t *testing.T) {
 		sink := testkit.StartMailpit(t)
-		m := &handler.Mailer{Default: mail.SMTP{Addr: mp.SMTPAddr}, Sandbox: mail.SMTP{Addr: sink.SMTPAddr}, From: "q@payrudder.local", Notes: notes}
+		m := &delivery.Mailer{Default: mailx.SMTP{Addr: mp.SMTPAddr}, Sandbox: mailx.SMTP{Addr: sink.SMTPAddr}, From: "q@payrudder.local", Notes: notes}
 		to := "sandbox-" + uuid.NewString()[:8] + "@example.com"
 		cmd := &commandsv1.CommandEnvelope{CommandId: uuid.NewString(), Environment: plansv1.Environment_ENVIRONMENT_SANDBOX,
 			Command: &commandsv1.CommandEnvelope_SendNotification{SendNotification: &commandsv1.SendNotification{Template: "payment_failed.v1", To: to,
@@ -174,7 +175,7 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("DisabledCategoryIsDroppedAndTheOthersStillSend", func(t *testing.T) {
-		m := &handler.Mailer{Default: mail.SMTP{Addr: mp.SMTPAddr}, From: "q@payrudder.local", Notes: notes,
+		m := &delivery.Mailer{Default: mailx.SMTP{Addr: mp.SMTPAddr}, From: "q@payrudder.local", Notes: notes,
 			Switch: offSwitch{"payment_receipts": true}}
 		to := "switch-" + uuid.NewString()[:8] + "@example.com"
 		send := func(template string) *commandsv1.ReplyEnvelope {
@@ -201,14 +202,14 @@ func TestNotifier(t *testing.T) {
 	})
 
 	t.Run("UnsentClaimIsReleasedWhenSMTPIsDown", func(t *testing.T) {
-		down := &handler.Mailer{Default: mail.SMTP{Addr: "127.0.0.1:1", Timeout: time.Second}, From: "q@payrudder.local", Notes: notes}
+		down := &delivery.Mailer{Default: mailx.SMTP{Addr: "127.0.0.1:1", Timeout: time.Second}, From: "q@payrudder.local", Notes: notes}
 		cmd := &commandsv1.CommandEnvelope{CommandId: uuid.NewString(),
 			Command: &commandsv1.CommandEnvelope_SendNotification{SendNotification: &commandsv1.SendNotification{Template: "invoice_paid.v1", To: "down@example.com", Data: map[string]string{}}}}
 		if _, err := (&handler.Handler{Mailer: down}).Handle(context.Background(), cmd); err == nil {
 			t.Fatal("expected an SMTP failure")
 		}
 		// The retry (SMTP is back) sends at once; it does not wait for the SENDING row to go stale.
-		up := &handler.Mailer{Default: mail.SMTP{Addr: mp.SMTPAddr}, From: "q@payrudder.local", Notes: store.Notifications{DB: pool, Stale: time.Hour}}
+		up := &delivery.Mailer{Default: mailx.SMTP{Addr: mp.SMTPAddr}, From: "q@payrudder.local", Notes: store.Notifications{DB: pool, Stale: time.Hour}}
 		if _, err := (&handler.Handler{Mailer: up}).Handle(context.Background(), cmd); err != nil {
 			t.Fatalf("retry: %v", err)
 		}

@@ -54,7 +54,7 @@ func (s *Server) createAffiliate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp, err := s.d.Affiliates.CreateAffiliate(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp.GetAffiliate(), err)
+	respond(w, r, http.StatusCreated, s.withLink(resp.GetAffiliate()), err)
 }
 
 func (s *Server) listAffiliates(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +64,9 @@ func (s *Server) listAffiliates(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	resp, err := s.d.Affiliates.ListAffiliates(r.Context(), &plansv1.ListAffiliatesRequest{Status: q.Get("status"), Search: q.Get("search"), PageSize: size, PageToken: token})
+	for _, a := range resp.GetAffiliates() {
+		s.withLink(a)
+	}
 	respond(w, r, http.StatusOK, resp, err)
 }
 
@@ -78,7 +81,7 @@ func (s *Server) listAffiliateReferrals(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) getAffiliate(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Affiliates.GetAffiliate(r.Context(), &plansv1.GetAffiliateRequest{Id: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp.GetAffiliate(), err)
+	respond(w, r, http.StatusOK, s.withLink(resp.GetAffiliate()), err)
 }
 
 func (s *Server) updateAffiliate(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +92,7 @@ func (s *Server) updateAffiliate(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Id = r.PathValue("id")
 	resp, err := s.d.Affiliates.UpdateAffiliate(r.Context(), req)
-	respond(w, r, http.StatusOK, resp.GetAffiliate(), err)
+	respond(w, r, http.StatusOK, s.withLink(resp.GetAffiliate()), err)
 }
 
 func (s *Server) linkAffiliatePromotionCode(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +103,7 @@ func (s *Server) linkAffiliatePromotionCode(w http.ResponseWriter, r *http.Reque
 	}
 	req.AffiliateId = r.PathValue("id")
 	resp, err := s.d.Affiliates.LinkAffiliatePromotionCode(r.Context(), req)
-	respond(w, r, http.StatusOK, resp.GetAffiliate(), err)
+	respond(w, r, http.StatusOK, s.withLink(resp.GetAffiliate()), err)
 }
 
 // attributeCustomer is POST /v1/customers/{external_id}/referral: the tenant's own sign-up says which affiliate brought a customer who already exists.

@@ -370,11 +370,13 @@ type Affiliate struct {
 	// owner (made by the owner) or application (the partner applied).
 	Source string `protobuf:"bytes,8,opt,name=source,proto3" json:"source,omitempty"`
 	// The partner has signed in and claimed this affiliate.
-	SignedIn      bool                   `protobuf:"varint,9,opt,name=signed_in,json=signedIn,proto3" json:"signed_in,omitempty"`
-	Clicks        int64                  `protobuf:"varint,10,opt,name=clicks,proto3" json:"clicks,omitempty"`
-	Referrals     int64                  `protobuf:"varint,11,opt,name=referrals,proto3" json:"referrals,omitempty"`
-	ApproveTime   *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=approve_time,json=approveTime,proto3" json:"approve_time,omitempty"`
-	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	SignedIn    bool                   `protobuf:"varint,9,opt,name=signed_in,json=signedIn,proto3" json:"signed_in,omitempty"`
+	Clicks      int64                  `protobuf:"varint,10,opt,name=clicks,proto3" json:"clicks,omitempty"`
+	Referrals   int64                  `protobuf:"varint,11,opt,name=referrals,proto3" json:"referrals,omitempty"`
+	ApproveTime *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=approve_time,json=approveTime,proto3" json:"approve_time,omitempty"`
+	CreateTime  *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// The public referral link https://<gateway>/r/<code>. Filled in by the gateway, which knows its public address.
+	Link          string `protobuf:"bytes,14,opt,name=link,proto3" json:"link,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -498,6 +500,13 @@ func (x *Affiliate) GetCreateTime() *timestamppb.Timestamp {
 		return x.CreateTime
 	}
 	return nil
+}
+
+func (x *Affiliate) GetLink() string {
+	if x != nil {
+		return x.Link
+	}
+	return ""
 }
 
 type CreateAffiliateRequest struct {
@@ -1404,8 +1413,10 @@ func (x *ListAffiliateReferralsResponse) GetTotal() int32 {
 }
 
 type TrackAffiliateClickRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Code  string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	// The visitor carries this code already (their cookie): answer, but count nothing, so that a reload is not a second click.
+	SkipCount     bool `protobuf:"varint,2,opt,name=skip_count,json=skipCount,proto3" json:"skip_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1445,6 +1456,13 @@ func (x *TrackAffiliateClickRequest) GetCode() string {
 		return x.Code
 	}
 	return ""
+}
+
+func (x *TrackAffiliateClickRequest) GetSkipCount() bool {
+	if x != nil {
+		return x.SkipCount
+	}
+	return false
 }
 
 type TrackAffiliateClickResponse struct {
@@ -3412,7 +3430,7 @@ const file_payrudder_plans_v1_affiliates_proto_rawDesc = "" +
 	"\x1aSetAffiliateProgramRequest\x12>\n" +
 	"\aprogram\x18\x01 \x01(\v2$.payrudder.plans.v1.AffiliateProgramR\aprogram\"]\n" +
 	"\x1bSetAffiliateProgramResponse\x12>\n" +
-	"\aprogram\x18\x01 \x01(\v2$.payrudder.plans.v1.AffiliateProgramR\aprogram\"\xa4\x03\n" +
+	"\aprogram\x18\x01 \x01(\v2$.payrudder.plans.v1.AffiliateProgramR\aprogram\"\xb8\x03\n" +
 	"\tAffiliate\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x14\n" +
@@ -3428,7 +3446,8 @@ const file_payrudder_plans_v1_affiliates_proto_rawDesc = "" +
 	"\treferrals\x18\v \x01(\x03R\treferrals\x12=\n" +
 	"\fapprove_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vapproveTime\x12;\n" +
 	"\vcreate_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime\"\xbc\x01\n" +
+	"createTime\x12\x12\n" +
+	"\x04link\x18\x0e \x01(\tR\x04link\"\xbc\x01\n" +
 	"\x16CreateAffiliateRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -3495,9 +3514,11 @@ const file_payrudder_plans_v1_affiliates_proto_rawDesc = "" +
 	"\x1eListAffiliateReferralsResponse\x12C\n" +
 	"\treferrals\x18\x01 \x03(\v2%.payrudder.plans.v1.AffiliateReferralR\treferrals\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"0\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"O\n" +
 	"\x1aTrackAffiliateClickRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"\xba\x01\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1d\n" +
+	"\n" +
+	"skip_count\x18\x02 \x01(\bR\tskipCount\"\xba\x01\n" +
 	"\x1bTrackAffiliateClickResponse\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x126\n" +

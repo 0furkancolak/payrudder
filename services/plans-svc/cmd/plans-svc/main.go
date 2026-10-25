@@ -9,29 +9,23 @@ import (
 	"log/slog"
 	"net"
 	"net/url"
-	"os"
-	"os/signal"
 	"slices"
-	"syscall"
 	"time"
 	_ "time/tzdata" // tenant time zones must load in distroless images
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
-	"github.com/0furkancolak/payrudder/pkg/logx"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
-	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
@@ -60,12 +54,9 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	GRPCAddr       string `env:"PAYRUDDER_GRPC_ADDR"`
-	PGAppDSN       string `env:"PAYRUDDER_PG_APP_DSN,required"`
-	PGSystemDSN    string `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool   `env:"PAYRUDDER_MIGRATE_ON_START"`
-	RedisURL       string `env:"PAYRUDDER_REDIS_URL"`
+	pgxx.Settings
+	GRPCAddr string `env:"PAYRUDDER_GRPC_ADDR"`
+	RedisURL string `env:"PAYRUDDER_REDIS_URL"`
 	// KafkaBrokers enables the outbox relay to plans.entitlements.v1. Without it, rows wait in the outbox.
 	KafkaBrokers   []string `env:"PAYRUDDER_KAFKA_BROKERS" envSeparator:","`
 	RelayWorkers   int      `env:"PAYRUDDER_RELAY_WORKERS"`
@@ -101,9 +92,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
-	}
+	errs = append(errs, c.CheckMigration())
 	for _, e := range c.AllowedEnvs {
 		if e != tenant.EnvSandbox && e != tenant.EnvLive {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_ALLOWED_ENVIRONMENTS: unknown environment %q", e))
@@ -130,77 +119,15 @@ func (r redisEvictor) EvictAPIKey(ctx context.Context, prefix string) error {
 	return r.c.Del(ctx, "gw:apikey:"+prefix).Err()
 }
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "plans-svc:", err)
-		os.Exit(1)
-	}
-}
-
-func run() error {
-	cfg, err := config.Load[Config](defaults)
-	if err != nil {
-		return err
-	}
-	log, err := logx.New(logx.Options{Service: cfg.ServiceName, Version: cfg.Version, Level: cfg.LogLevel, Writer: os.Stdout})
-	if err != nil {
-		return err
-	}
-	slog.SetDefault(log)
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	reg := health.NewRegistry()
-	providers, err := otelx.Setup(ctx, otelx.Options{
-		ServiceName: cfg.ServiceName, Version: cfg.Version, Environment: string(cfg.Env), OTLPEndpoint: cfg.OTLPEndpoint, Registry: reg,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = providers.Shutdown(c)
-	}()
-
-	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
-}
-
-// migrate applies the migrations when asked to; done reports that the process should exit afterwards (PAYRUDDER_MIGRATE_ONLY).
-func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
-	if cfg.MigrateOnStart {
-		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
-			return false, err
-		}
-	}
-	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
-		return true, nil
-	}
-	return false, nil
-}
-
-// openPools opens the application-role and system-role Postgres pools.
-func openPools(ctx context.Context, cfg *Config) (appPool, systemPool *pgxpool.Pool, err error) {
-	appPool, err = pgxx.NewPool(ctx, cfg.PGAppDSN)
-	if err != nil {
-		return nil, nil, err
-	}
-	systemPool, err = pgxx.NewPool(ctx, cfg.PGSystemDSN)
-	if err != nil {
-		appPool.Close()
-		return nil, nil, err
-	}
-	return appPool, systemPool, nil
-}
+func main() { app.Main("plans-svc", defaults, start) }
 
 // start wires plans-svc's dependencies and runs it until ctx is cancelled.
-func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler) error {
-	if done, err := migrate(ctx, cfg, log); err != nil || done {
+func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
+	log, hh := rt.Log, rt.Health()
+	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
-	appPool, systemPool, err := openPools(ctx, cfg)
+	appPool, systemPool, err := cfg.OpenPools(ctx)
 	if err != nil {
 		return err
 	}
@@ -330,13 +257,7 @@ func newSandbox(cfg *Config, log *slog.Logger, _, systemPool *pgxpool.Pool) (*sa
 
 // newGRPCServer builds the gRPC server with the plans, webhook and admin services registered.
 func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor admin.CacheEvictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, error) {
-	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
-		Logger: log, Reflection: cfg.Env == config.EnvLocal,
-		Extra: []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
-			grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
-		},
-	})
+	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
 	plansSrv := grpcapi.New(appPool, log)
 	plansv1.RegisterPlansServiceServer(srv, plansSrv)
 	box, err := newSecretBox(cfg, log)
@@ -346,6 +267,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, cfg.WebhookAllowPrivate))
 	plansv1.RegisterAffiliateServiceServer(srv, grpcapi.NewAffiliates(plansSrv))
 	plansv1.RegisterAffiliatePublicServiceServer(srv, grpcapi.NewAffiliatesPublic(systemPool, log))
+	plansv1.RegisterAffiliatePortalServiceServer(srv, grpcapi.NewAffiliatePortal(plansSrv, systemPool))
 	adminSrv := admin.New(systemPool, evictor, cfg.AllowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log).WithPepper(cfg.OTPPepper), identityqry.New(systemPool),
@@ -370,8 +292,8 @@ type workers struct {
 
 // run starts everything and blocks until ctx is cancelled or one of them fails, then drains the gRPC server.
 func (w *workers) run(ctx context.Context) error {
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, w.cfg.MetricsAddr, w.health) })
+	g := app.NewGroup(ctx, w.log, w.cfg.MetricsAddr, w.health)
+	gctx := g.Context()
 	if w.relay != nil {
 		g.Go(func() error { return w.relay.Run(gctx) })
 	}
@@ -383,19 +305,7 @@ func (w *workers) run(ctx context.Context) error {
 		g.Go(func() error { return w.sandbox.Run(gctx) })
 	}
 	g.Go(func() error { return affiliatescmd.NewApprover(w.pool, w.cfg.AffiliateApproveEvery, w.log).Run(gctx) })
-	g.Go(func() error {
-		w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr, "environments", w.cfg.AllowedEnvs)
-		return w.srv.Serve(w.lis)
-	})
-	g.Go(func() error {
-		<-gctx.Done()
-		w.grpcHealth.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
-		w.srv.GracefulStop()
-		return nil
-	})
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	w.log.Info("stopped")
-	return nil
+	w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr, "environments", w.cfg.AllowedEnvs)
+	g.ServeGRPC(w.srv, w.grpcHealth, w.lis)
+	return g.Wait()
 }

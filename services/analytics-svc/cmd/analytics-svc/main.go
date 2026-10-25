@@ -4,33 +4,21 @@ package main
 import (
 	"context"
 	_ "embed" // config.default.yaml
-	"errors"
 	"fmt"
-	"log/slog"
 	"net"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
+	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/config"
-	"github.com/0furkancolak/payrudder/pkg/grpcx"
-	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
-	"github.com/0furkancolak/payrudder/pkg/logx"
-	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/api"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/chmigrate"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/consumer"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/grpcapi"
 	analyticsreset "github.com/0furkancolak/payrudder/services/analytics-svc/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/migrations"
 )
@@ -52,39 +40,10 @@ type Config struct {
 	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
 }
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "analytics-svc:", err)
-		os.Exit(1)
-	}
-}
+func main() { app.Main("analytics-svc", defaults, start) }
 
-func run() error {
-	cfg, err := config.Load[Config](defaults)
-	if err != nil {
-		return err
-	}
-	log, err := logx.New(logx.Options{Service: cfg.ServiceName, Version: cfg.Version, Level: cfg.LogLevel, Writer: os.Stdout})
-	if err != nil {
-		return err
-	}
-	slog.SetDefault(log)
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	reg := health.NewRegistry()
-	providers, err := otelx.Setup(ctx, otelx.Options{
-		ServiceName: cfg.ServiceName, Version: cfg.Version, Environment: string(cfg.Env), OTLPEndpoint: cfg.OTLPEndpoint, Registry: reg,
-	})
-	if err != nil {
-		return err
-	}
-	defer func() {
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = providers.Shutdown(c)
-	}()
-
+func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
+	log := rt.Log
 	conn, err := clickhouse.Open(chmigrate.Options(cfg.ClickHouseAddr, cfg.ClickHouseDB, cfg.ClickHouseUser, cfg.ClickHousePass))
 	if err != nil {
 		return fmt.Errorf("clickhouse: %w", err)
@@ -119,38 +78,20 @@ func run() error {
 		return err
 	}
 
-	hh := health.New(reg, 2*time.Second)
+	hh := rt.Health()
 	hh.AddCheck("clickhouse", func(ctx context.Context) error { return conn.Ping(ctx) })
 	hh.AddCheck("kafka", producer.Ping)
-	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
-		Logger: log, Reflection: cfg.Env == config.EnvLocal,
-		Extra: []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
-			grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
-		},
-	})
-	analyticsv1.RegisterAnalyticsServiceServer(srv, api.New(conn))
+	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
+	analyticsv1.RegisterAnalyticsServiceServer(srv, grpcapi.New(conn))
 	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(analyticsreset.New(conn).Reset))
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
 		return err
 	}
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return health.Serve(gctx, cfg.MetricsAddr, hh) })
+	g := app.NewGroup(ctx, log, cfg.MetricsAddr, hh)
+	gctx := g.Context()
 	g.Go(func() error { return runner.Run(gctx) })
-	g.Go(func() error {
-		log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr)
-		return srv.Serve(lis)
-	})
-	g.Go(func() error {
-		<-gctx.Done()
-		grpcHealth.SetServingStatus("", healthpb.HealthCheckResponse_NOT_SERVING)
-		srv.GracefulStop()
-		return nil
-	})
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		return err
-	}
-	log.Info("stopped")
-	return nil
+	log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr)
+	g.ServeGRPC(srv, grpcHealth, lis)
+	return g.Wait()
 }

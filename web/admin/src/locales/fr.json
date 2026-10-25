@@ -2296,6 +2296,11 @@
         "not_open": "Ce versement n'est plus ouvert : il a été payé ou annulé.",
         "nothing_to_pay": "Après remboursements, ce versement ne vaut plus rien. Annulez-le ; le solde est reporté.",
         "tenant_not_active": "Cet environnement live n'est pas actif : aucun versement ne peut être créé ni payé."
+      },
+      "portal": {
+        "already_applied": "Vous êtes déjà partenaire de ce vendeur, ou vous avez déjà postulé.",
+        "program_unavailable": "Ce vendeur n'a pas de programme de partenaires ouvert aux candidatures.",
+        "try_again": "Un code n'a pas pu être créé à l'instant. Réessayez."
       }
     },
     "admin": {
