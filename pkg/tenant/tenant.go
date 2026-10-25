@@ -153,6 +153,11 @@ func StreamServerInterceptor() grpc.StreamServerInterceptor {
 	}
 }
 
+// OutgoingFor is the context of a call made for the tenant id: the tenant travels in the call's metadata.
+func OutgoingFor(ctx context.Context, id uuid.UUID) context.Context {
+	return OutgoingContext(NewContext(ctx, Info{ID: id}))
+}
+
 // OutgoingContext copies the tenant and operator flag of ctx into outgoing gRPC metadata.
 func OutgoingContext(ctx context.Context) context.Context {
 	var kv []string

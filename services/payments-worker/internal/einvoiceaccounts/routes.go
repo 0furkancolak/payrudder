@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoiceaccounts/command"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoiceaccounts/query"
@@ -28,12 +29,12 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 
 // pathEnvironment reads the {environment} of the path, or answers 400 and reports false.
 func pathEnvironment(w http.ResponseWriter, r *http.Request) (string, bool) {
-	env := r.PathValue("environment")
-	if env != command.Sandbox && env != command.Live {
+	e, err := env.Parse(r.PathValue("environment"))
+	if err != nil {
 		httpx.Fail(w, http.StatusBadRequest, errkey.Key("common.invalid_argument"), "environment must be sandbox or live")
 		return "", false
 	}
-	return env, true
+	return e.String(), true
 }
 
 // ready answers 503 and reports false when the deployment holds no e-invoice accounts.

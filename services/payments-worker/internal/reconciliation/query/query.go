@@ -91,9 +91,9 @@ func Get(ctx context.Context, d Deps, t uuid.UUID, pid string) (*Reconciliation,
 	if err != nil {
 		return nil, fmt.Errorf("list successful charges: %w", err)
 	}
-	byInvoice := map[string][]ledgerCharge{}
+	byInvoice := map[string][]store.Charge{}
 	for _, c := range mergeTransfers(charges) {
-		byInvoice[c.InvoiceID] = append(byInvoice[c.InvoiceID], ledgerCharge(c))
+		byInvoice[c.InvoiceID] = append(byInvoice[c.InvoiceID], c)
 	}
 	rec.Charges = len(charges)
 
@@ -148,7 +148,7 @@ func paidInvoices(ctx context.Context, d Deps, t uuid.UUID, pid string) (map[str
 }
 
 // compare checks every paid invoice against the successful charges the ledger holds for it.
-func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge, byHand func(id string) bool) {
+func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice map[string][]store.Charge, byHand func(id string) bool) {
 	for _, id := range slices.Sorted(maps.Keys(paid)) {
 		inv := paid[id]
 		if inv.GetTotalMinor() == 0 {
@@ -162,7 +162,7 @@ func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice
 			rec.add(Discrepancy{Kind: PaidWithoutCharge, InvoiceID: id, Number: inv.GetNumber(), Currency: inv.GetCurrency(), BilledMinor: inv.GetTotalMinor()})
 			continue
 		}
-		distinct := map[string]ledgerCharge{}
+		distinct := map[string]store.Charge{}
 		for _, c := range cs {
 			distinct[c.Provider+"|"+c.ProviderRef] = c
 		}
@@ -180,7 +180,7 @@ func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice
 }
 
 // unpaidCharges finds charges in the ledger for invoices of this period that billing does not call paid.
-func unpaidCharges(ctx context.Context, d Deps, rec *Reconciliation, t uuid.UUID, paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge) error {
+func unpaidCharges(ctx context.Context, d Deps, rec *Reconciliation, t uuid.UUID, paid map[string]*billingv1.Invoice, byInvoice map[string][]store.Charge) error {
 	var unknown []string
 	for id := range byInvoice {
 		if _, isPaid := paid[id]; !isPaid {
@@ -207,11 +207,6 @@ func unpaidCharges(ctx context.Context, d Deps, rec *Reconciliation, t uuid.UUID
 			BilledMinor: inv.GetTotalMinor(), LedgerMinor: c.AmountMinor, Detail: "invoice status " + inv.GetStatus()})
 	}
 	return nil
-}
-
-type ledgerCharge struct {
-	InvoiceID, Provider, ProviderRef, Currency string
-	AmountMinor                                int64
 }
 
 // mergeTransfers adds up the receipts of a bank transfer: an invoice paid by several transfers has one ledger row each, which together are one charge of the

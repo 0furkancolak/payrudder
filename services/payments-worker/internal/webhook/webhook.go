@@ -217,7 +217,10 @@ func inboxBody(body []byte) []byte {
 	if json.Valid(body) {
 		return body
 	}
-	wrapped, _ := json.Marshal(map[string]string{"raw": string(body)})
+	wrapped, err := json.Marshal(map[string]string{"raw": string(body)})
+	if err != nil {
+		return []byte(`{"raw":"unreadable"}`) // cannot happen for a string map; the inbox still gets a JSON value
+	}
 	return wrapped
 }
 
@@ -304,7 +307,9 @@ func (d *delivery) confirm(body []byte) (payments.Notification, bool) {
 	if errors.Is(err, payments.ErrUnverified) {
 		// Not from the provider: nothing to retry. Forget it so a genuine event with the same id is not taken for a duplicate.
 		d.s.Log.WarnContext(ctx, "webhook failed verification", "provider", d.name, "tenant", d.tenant, "err", err)
-		_ = d.s.Events.Forget(ctx, d.name, d.eventID)
+		if err := d.s.Events.Forget(ctx, d.name, d.eventID); err != nil {
+			d.s.Log.ErrorContext(ctx, "webhook inbox cleanup failed", "provider", d.name, "event", d.eventID, "err", err)
+		}
 		d.s.result(ctx, d.name, "unverified")
 		httpx.Fail(d.w, http.StatusUnauthorized, "payments.webhook.unverified", "verification failed")
 		return payments.Notification{}, false
@@ -357,7 +362,7 @@ func (d *delivery) recordCharge(conf payments.Notification) error {
 
 // settleHostedPayment tells billing that a hosted payment succeeded. An error makes the provider retry the notification.
 func (d *delivery) settleHostedPayment(ctx context.Context, entry store.LedgerEntry, fresh bool) error {
-	if entry.Kind != "charge" || entry.Status != "succeeded" || !strings.HasPrefix(entry.IdempotencyKey, invoicepaymentscommand.LinkKeyPrefix) || entry.InvoiceID == uuid.Nil {
+	if entry.Kind != store.KindCharge || entry.Status != store.StatusSucceeded || !strings.HasPrefix(entry.IdempotencyKey, invoicepaymentscommand.LinkKeyPrefix) || entry.InvoiceID == uuid.Nil {
 		return nil
 	}
 	if d.s.Billing == nil {
@@ -378,12 +383,12 @@ func (d *delivery) settleHostedPayment(ctx context.Context, entry store.LedgerEn
 }
 
 func (d *delivery) ledgerEntry(conf payments.Notification) (store.LedgerEntry, error) {
-	kind := "charge"
+	kind := store.KindCharge
 	if conf.Kind == payments.KindRefund {
-		kind = "refund"
+		kind = store.KindRefund
 	}
 	entry := store.LedgerEntry{TenantID: d.tenant, Provider: d.name, Environment: d.env, Kind: kind, AmountMinor: conf.AmountMinor, Currency: conf.Currency,
-		ProviderRef: conf.ProviderRef, IdempotencyKey: conf.Ref.IdempotencyKey, Source: "webhook"}
+		ProviderRef: conf.ProviderRef, IdempotencyKey: conf.Ref.IdempotencyKey, Source: store.SourceWebhook}
 	if d.at.InvoiceID != uuid.Nil {
 		entry.InvoiceID = d.at.InvoiceID
 		if entry.AmountMinor == 0 {
@@ -400,11 +405,11 @@ func (d *delivery) ledgerEntry(conf payments.Notification) (store.LedgerEntry, e
 	}
 	switch conf.State {
 	case payments.StateSucceeded:
-		entry.Status = "succeeded"
+		entry.Status = store.StatusSucceeded
 	case payments.StateDeclined:
-		entry.Status, entry.Detail = "declined", conf.DeclineCode
-		if kind == "refund" {
-			entry.Status = "failed"
+		entry.Status, entry.Detail = store.StatusDeclined, conf.DeclineCode
+		if kind == store.KindRefund {
+			entry.Status = store.StatusFailed
 		}
 	default:
 		return entry, errors.New("provider did not report a final state")
@@ -415,63 +420,78 @@ func (d *delivery) ledgerEntry(conf payments.Notification) (store.LedgerEntry, e
 	return entry, nil
 }
 
+// subscriptionEvent is what a provider says about a subscription it runs, and whose account it is.
+type subscriptionEvent struct {
+	tenant   uuid.UUID
+	provider string
+	env      string
+	sub      *payments.SubscriptionEvent
+	occurred time.Time
+}
+
+// recordSubscription keeps what the provider says about a subscription and lets plans-svc follow it.
 func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provider, env string, n payments.Notification) error {
-	ev := n.Subscription
-	if ev == nil {
+	if n.Subscription == nil {
 		return errors.New("subscription notification without a subscription")
 	}
-	var q *uuid.UUID
-	if id, err := uuid.Parse(ev.PayrudderSubscriptionID); err == nil {
-		q = &id
+	e := subscriptionEvent{tenant: tenant, provider: provider, env: env, sub: n.Subscription, occurred: n.OccurredAt}
+	if e.occurred.IsZero() {
+		e.occurred = time.Now()
 	}
-	occurred := n.OccurredAt
-	if occurred.IsZero() {
-		occurred = time.Now()
+	var linked *uuid.UUID
+	if id, err := uuid.Parse(e.sub.PayrudderSubscriptionID); err == nil {
+		linked = &id
 	}
 	prov, err := s.Resolver.Named(ctx, tenant, provider, env)
 	if err != nil {
 		return err
 	}
-	owner := string(prov.Capabilities().Owner())
-
-	// A subscription that completes a provider migration: the cutover happens now, in plans-svc, and the old one is released.
-	if mig := ev.PayrudderMigrationID; mig != "" && s.Plans != nil {
-		done, err := migrationscommand.Complete(ctx, s.migrationDeps(), tenant, mig, ev.ProviderRef, occurred)
-		if err != nil {
-			return err
-		}
-		if id, err := uuid.Parse(done.GetSubscription().GetId()); err == nil {
-			q = &id
-		}
-		if err := s.Subscriptions.Upsert(ctx, tenant, provider, env, ev.ProviderRef, q, ev.Status, ev.NextBilledAt, occurred); err != nil {
-			return err
-		}
-		return migrationscommand.ReleaseSource(ctx, s.migrationDeps(), tenant, env, done)
+	if e.sub.PayrudderMigrationID != "" && s.Plans != nil {
+		return s.completeMigration(ctx, e, linked)
 	}
+	return s.followSubscription(ctx, e, linked, string(prov.Capabilities().Owner()))
+}
 
-	if err := s.Subscriptions.Upsert(ctx, tenant, provider, env, ev.ProviderRef, q, ev.Status, ev.NextBilledAt, occurred); err != nil {
+// completeMigration handles a subscription that completes a provider migration: the cutover happens now, in plans-svc, and the old one is released.
+func (s *Server) completeMigration(ctx context.Context, e subscriptionEvent, linked *uuid.UUID) error {
+	done, err := migrationscommand.Complete(ctx, s.migrationDeps(), e.tenant, e.sub.PayrudderMigrationID, e.sub.ProviderRef, e.occurred)
+	if err != nil {
+		return err
+	}
+	if id, err := uuid.Parse(done.GetSubscription().GetId()); err == nil {
+		linked = &id
+	}
+	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.occurred); err != nil {
+		return err
+	}
+	return migrationscommand.ReleaseSource(ctx, s.migrationDeps(), e.tenant, e.env, done)
+}
+
+// followSubscription stores the provider's view of a subscription and tells plans-svc, which links it to ours and follows its status.
+func (s *Server) followSubscription(ctx context.Context, e subscriptionEvent, linked *uuid.UUID, owner string) error {
+	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.occurred); err != nil {
 		return err
 	}
 	if s.Plans == nil {
 		return nil
 	}
-	if q == nil {
+	if linked == nil {
 		// Later events of a subscription we already know carry no id of ours; the row remembers it.
-		known, found, err := s.Subscriptions.PayrudderID(ctx, tenant, provider, env, ev.ProviderRef)
+		known, found, err := s.Subscriptions.PayrudderID(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef)
 		if err != nil {
 			return err
 		}
 		if !found {
 			return nil // a subscription we did not start: kept for the operator, nothing to link
 		}
-		q = &known
+		linked = &known
 	}
 	req := &plansv1.SyncProviderSubscriptionRequest{
-		SubscriptionId: q.String(), Provider: provider, ProviderRef: ev.ProviderRef, Owner: owner, ProviderStatus: ev.Status, OccurredAt: timestamppb.New(occurred),
+		SubscriptionId: linked.String(), Provider: e.provider, ProviderRef: e.sub.ProviderRef, Owner: owner, ProviderStatus: e.sub.Status, OccurredAt: timestamppb.New(e.occurred),
 	}
 	// What the provider bills the subscription for: if it is a price Payrudder created, the plan version and interval follow.
-	if pv, iv, ok := cataloguequery.PriceTarget(ctx, s.Log, s.Objects, tenant, provider, env, ev.PriceRefs); ok {
+	if pv, iv, ok := cataloguequery.PriceTarget(ctx, s.Log, s.Objects, e.tenant, e.provider, e.env, e.sub.PriceRefs); ok {
 		req.PlanVersionId, req.Interval = pv, iv
 	}
-	return s.Plans.SyncProviderSubscription(ctx, tenant, req)
+	return s.Plans.SyncProviderSubscription(ctx, e.tenant, req)
 }
