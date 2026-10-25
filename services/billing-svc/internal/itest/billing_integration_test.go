@@ -24,7 +24,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 )
 
@@ -438,7 +437,7 @@ func testSilentWorker(t *testing.T) {
 	sw.set(func(*commandsv1.CommandEnvelope, int) stubworker.Action {
 		return stubworker.Action{Reply: stubworker.Succeed}
 	})
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	for _, name := range []string{"cus_a", "cus_b"} {
 		var invID uuid.UUID
 		if err := shared.system.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = $2`, e.tid, name).Scan(&invID); err != nil {
@@ -571,7 +570,7 @@ func testClosePeriodTwice(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	e.startWorkers(nil)
 	e.addUsage("2026-10", "cus_a", "gb_hours", "1.000", 3)
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	for i := 0; i < 2; i++ {
 		if _, err := svc.ClosePeriod(opCtx(), &billingv1.ClosePeriodRequest{TenantId: e.tid.String(), PeriodId: "2026-10"}); err != nil {
 			t.Fatalf("ClosePeriod #%d: %v", i+1, err)
@@ -649,7 +648,7 @@ func testSandbox(t *testing.T) {
 	// The sandbox tenant closes the current month early: cutoff = now + 5 s, then the normal flow.
 	e.w.earlyCut = e.clk.Now().Add(5 * time.Second)
 	e.addUsage("2026-11", "cus_a", "gb_hours", "2.000", 3)
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	ctx := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid, Environment: tenant.EnvSandbox, Timezone: "UTC"})
 	resp, err := svc.ClosePeriodNow(ctx, &billingv1.ClosePeriodNowRequest{})
 	if err != nil || resp.GetRun().GetPeriodId() != "2026-11" {
@@ -689,7 +688,7 @@ func testVoidRefund(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	stub := e.startWorkers(nil)
 	completeOctober(e)
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	var invID uuid.UUID
 	if err := shared.system.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&invID); err != nil {
 		t.Fatal(err)

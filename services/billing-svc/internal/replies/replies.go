@@ -19,8 +19,8 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -92,7 +92,7 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 			return nil
 		}
 		// A refund of a credit note is answered like any command, but no saga is waiting for it.
-		if handled, err := runs.SettleRefund(ctx, tx, tenantID, cmdID, &reply); err != nil || handled {
+		if handled, err := creditnotecmd.SettleRefund(ctx, tx, tenantID, cmdID, &reply); err != nil || handled {
 			return err
 		}
 		out, err := c.Engine.Handle(ctx, tx, tenantID, sagaID, ev, cause, &cmdID)
