@@ -30,12 +30,17 @@ type Config struct {
 	EnsureBucket   bool   `env:"S3_ENSURE_BUCKET"`
 }
 
+// s3 is the object storage connection for one bucket.
+func (c *Config) s3(bucket string) blob.Config {
+	return blob.Config{Endpoint: c.S3Endpoint, Region: c.S3Region, Bucket: bucket,
+		AccessKey: c.S3AccessKey, SecretKey: c.S3SecretKey, ForcePathStyle: c.S3ForcePath}
+}
+
 func main() { app.Main("invoice-worker", defaults, start) }
 
 func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	log := rt.Log
-	store, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
-		AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
+	store, err := blob.New(cfg.s3(cfg.S3Bucket))
 	if err != nil {
 		return err
 	}
@@ -44,8 +49,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 			return err
 		}
 	}
-	logos, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, Region: cfg.S3Region, Bucket: cfg.S3AssetsBucket,
-		AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
+	logos, err := blob.New(cfg.s3(cfg.S3AssetsBucket))
 	if err != nil {
 		return err
 	}
