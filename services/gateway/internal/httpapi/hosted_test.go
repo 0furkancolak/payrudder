@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 const goodToken = "0123456789abcdefghijklmnopqrstuvwxyz0123456"
@@ -69,8 +70,8 @@ func TestFormatMinor(t *testing.T) {
 		exp  int
 		want string
 	}{{123456, 2, "1,234.56"}, {5, 2, "0.05"}, {-5, 2, "-0.05"}, {1000, 0, "1,000"}, {1234567, 3, "1,234.567"}, {0, 2, "0.00"}, {-123461, 2, "-1,234.61"}} {
-		if got := formatMinor(c.v, c.exp); got != c.want {
-			t.Errorf("formatMinor(%d, %d) = %q, want %q", c.v, c.exp, got, c.want)
+		if got := money.FormatMinorGrouped(c.v, c.exp); got != c.want {
+			t.Errorf("money.FormatMinorGrouped(%d, %d) = %q, want %q", c.v, c.exp, got, c.want)
 		}
 	}
 }

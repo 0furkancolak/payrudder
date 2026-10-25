@@ -232,7 +232,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 	v := &invoiceView{
 		pageBase: newBase(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(),
 		SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines(), Number: inv.GetNumber(), Status: inv.GetStatus(),
-		Currency: inv.GetCurrency(), Subtotal: formatMinor(inv.GetSubtotalMinor(), exp), Total: formatMinor(inv.GetTotalMinor(), exp), HasPDF: resp.GetPdfAvailable(),
+		Currency: inv.GetCurrency(), Subtotal: money.FormatMinorGrouped(inv.GetSubtotalMinor(), exp), Total: money.FormatMinorGrouped(inv.GetTotalMinor(), exp), HasPDF: resp.GetPdfAvailable(),
 		PDF: sc.page() + "/pdf", Pay: sc.page() + "/pay" + q, Back: sc.back(), State: stateOf(resp),
 	}
 	v.Test = resp.GetEnvironment() == env.Sandbox.String()
@@ -246,7 +246,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 		v.Date = t.AsTime().UTC().Format("2006-01-02")
 	}
 	for _, l := range inv.GetLines() {
-		line := hostedLine{Description: l.GetDescription(), Amount: formatMinor(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0}
+		line := hostedLine{Description: l.GetDescription(), Amount: money.FormatMinorGrouped(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0}
 		if f, t := l.GetServiceFrom(), l.GetServiceTo(); f != nil && t != nil {
 			line.Period = f.AsTime().UTC().Format("2006-01-02") + " – " + t.AsTime().UTC().Format("2006-01-02")
 		}
@@ -349,17 +349,17 @@ func (s *Server) adhocPage(w http.ResponseWriter, r *http.Request, sc scope, lan
 func (s *Server) adhocPageWith(w http.ResponseWriter, r *http.Request, sc scope, lang string, resp *billingv1.GetHostedInvoiceResponse, in promoInput) {
 	a := resp.GetAdhoc()
 	v := &adhocView{pageBase: newBase(lang), Seller: orDefault(a.GetSellerName(), resp.GetSellerName()), Description: a.GetDescription(),
-		Amount: formatMinor(a.GetAmountMinor(), int(a.GetCurrencyExponent())), Currency: a.GetCurrency(), Consumed: a.GetConsumed(), Start: sc.page() + "/start" + langSuffix(r),
+		Amount: money.FormatMinorGrouped(a.GetAmountMinor(), int(a.GetCurrencyExponent())), Currency: a.GetCurrency(), Consumed: a.GetConsumed(), Start: sc.page() + "/start" + langSuffix(r),
 		PromoAction: sc.page() + "/promo" + langSuffix(r), Code: in.Code}
 	v.Test = orDefault(a.GetEnvironment(), resp.GetEnvironment()) == env.Sandbox.String()
 	if k := a.GetPack(); k != nil {
-		v.Pack = &packView{Name: k.GetName(), Credits: formatMinor(k.GetCredits(), 0), Valid: validText(v.L, k.GetValidityDays()), Quantity: k.GetQuantity()}
+		v.Pack = &packView{Name: k.GetName(), Credits: money.FormatMinorGrouped(k.GetCredits(), 0), Valid: validText(v.L, k.GetValidityDays()), Quantity: k.GetQuantity()}
 	}
 	if q := in.Quote; q != nil {
 		exp := int(a.GetCurrencyExponent())
-		v.Quote = &quoteView{Discount: formatMinor(q.GetDiscountMinor(), exp), Total: formatMinor(q.GetTotalMinor(), exp), HasDiscount: q.GetDiscountMinor() > 0}
+		v.Quote = &quoteView{Discount: money.FormatMinorGrouped(q.GetDiscountMinor(), exp), Total: money.FormatMinorGrouped(q.GetTotalMinor(), exp), HasDiscount: q.GetDiscountMinor() > 0}
 		if q.GetBonusCredits() > 0 {
-			v.Quote.Bonus = formatMinor(q.GetBonusCredits(), 0)
+			v.Quote.Bonus = money.FormatMinorGrouped(q.GetBonusCredits(), 0)
 		}
 	}
 	if in.ErrKey != "" {
@@ -600,7 +600,7 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 	inv := resp.GetInvoice()
 	exp := int(resp.GetCurrencyExponent())
 	v := &receiptView{pageBase: newBase(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(), Number: inv.GetNumber(),
-		SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines(), Currency: inv.GetCurrency(), Total: formatMinor(inv.GetTotalMinor(), exp),
+		SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines(), Currency: inv.GetCurrency(), Total: money.FormatMinorGrouped(inv.GetTotalMinor(), exp),
 		Back: sc.page() + langSuffix(r)}
 	v.Test = resp.GetEnvironment() == env.Sandbox.String()
 	if resp.GetLogoAvailable() {
@@ -610,7 +610,7 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 		v.Date = t.AsTime().UTC().Format("2006-01-02")
 	}
 	for _, l := range inv.GetLines() {
-		v.Lines = append(v.Lines, hostedLine{Description: l.GetDescription(), Amount: formatMinor(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0})
+		v.Lines = append(v.Lines, hostedLine{Description: l.GetDescription(), Amount: money.FormatMinorGrouped(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0})
 	}
 	rows, _ := s.ledgerLookup(r.Context(), resp.GetPayment().GetTenantId(), []string{inv.GetId()})
 	for _, row := range rows {
@@ -701,7 +701,7 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
-	v := &instructionsView{pageBase: newBase(lang), Number: p.GetNumber(), Total: formatMinor(p.GetAmountMinor(), exponentOf(p.GetCurrency())),
+	v := &instructionsView{pageBase: newBase(lang), Number: p.GetNumber(), Total: money.FormatMinorGrouped(p.GetAmountMinor(), exponentOf(p.GetCurrency())),
 		Currency: p.GetCurrency(), Reference: out.Reference, Back: back}
 	v.Test = p.GetEnvironment() == env.Sandbox.String()
 	for _, ln := range out.Lines {

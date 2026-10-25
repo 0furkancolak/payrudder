@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 )
 
@@ -58,17 +59,5 @@ func TaxLine(lines []Line, name string, rateBps int32) (Line, bool) {
 	if amount == 0 {
 		return Line{}, false
 	}
-	return Line{Kind: KindTax, AmountMinor: amount, Description: fmt.Sprintf("%s %s", name, percent(rateBps))}, true
-}
-
-// percent renders basis points as a percentage: 2000 → "20%", 750 → "7.5%", 825 → "8.25%".
-func percent(bps int32) string {
-	whole, frac := bps/100, bps%100
-	switch {
-	case frac == 0:
-		return fmt.Sprintf("%d%%", whole)
-	case frac%10 == 0:
-		return fmt.Sprintf("%d.%d%%", whole, frac/10)
-	}
-	return fmt.Sprintf("%d.%02d%%", whole, frac)
+	return Line{Kind: KindTax, AmountMinor: amount, Description: fmt.Sprintf("%s %s%%", name, money.FormatBps(int64(rateBps), true))}, true
 }
