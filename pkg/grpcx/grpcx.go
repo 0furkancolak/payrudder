@@ -4,6 +4,7 @@ package grpcx
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"runtime/debug"
 	"time"
@@ -17,6 +18,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/resolver/dns"
 	"google.golang.org/grpc/status"
+
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // DefaultClientTimeout applies to unary calls whose context has no deadline.
@@ -105,4 +108,16 @@ func defaultDeadline(d time.Duration) grpc.UnaryClientInterceptor {
 		}
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
+}
+
+// NewTenantClient is NewClient plus tenant forwarding on unary calls: the tenant of the caller's context travels to the
+// callee as metadata. Failures read "<name> client: <cause>". Callers needing streams pass tenant.StreamClientInterceptor
+// through extra.
+func NewTenantClient(name, target string, extra ...grpc.DialOption) (*grpc.ClientConn, error) {
+	opts := append([]grpc.DialOption{grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor())}, extra...)
+	conn, err := NewClient(target, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("%s client: %w", name, err)
+	}
+	return conn, nil
 }

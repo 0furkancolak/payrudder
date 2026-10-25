@@ -5,7 +5,6 @@ import (
 	"context"
 	_ "embed" // config.default.yaml
 	"errors"
-	"fmt"
 	"log/slog"
 	"net"
 	"time"
@@ -25,7 +24,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/meters"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/maintenance"
@@ -76,9 +74,9 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	defer appPool.Close()
 	defer systemPool.Close()
 
-	plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	plansConn, err := grpcx.NewTenantClient("plans-svc", cfg.PlansAddr)
 	if err != nil {
-		return fmt.Errorf("plans-svc client: %w", err)
+		return err
 	}
 	defer func() { _ = plansConn.Close() }()
 	src := settings.NewSource(plansv1.NewAdminServiceClient(plansConn), time.Minute)
