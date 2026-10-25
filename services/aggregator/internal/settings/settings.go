@@ -4,7 +4,6 @@ package settings
 import (
 	"context"
 	"time"
-	_ "time/tzdata" // tenant time zones must load in distroless images
 
 	"github.com/google/uuid"
 

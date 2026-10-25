@@ -17,6 +17,7 @@ import {
   Plug,
   Receipt,
   Repeat,
+  Rocket,
   Settings,
   ShieldCheck,
   Users,
@@ -151,7 +152,11 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
       const sections: NavSection[] = [
         {
           key: "overview",
-          items: [item("dashboard", dash, LayoutDashboard, exact(dash), { env })],
+          items: [
+            item("dashboard", dash, LayoutDashboard, exact(dash), { env }),
+            // Going live is about the live environment whichever one the page is showing; the link keeps the environment the person is in (a link never flips it).
+            ...(ctx.appId ? [item("goLive", `${dash}/go-live`, Rocket, under(`${dash}/go-live`), { env })] : []),
+          ],
         },
       ];
       for (const s of SECTION_ORDER) {
@@ -159,6 +164,9 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
         if (s === "developers" && ctx.appId) {
           const keys = `/app/apps/${ctx.appId}/keys`;
           items.unshift(item("apiKeys", keys, KeyRound, under(keys), { env }));
+          // The sandbox's tools (reset, scenarios) act on the sandbox only; the page says so, and the link keeps the environment the person is in (a link never flips it).
+          const sandbox = `/app/apps/${ctx.appId}/sandbox`;
+          items.splice(1, 0, item("sandbox", sandbox, FlaskConical, under(sandbox), { env }));
         }
         if (s === "settings" && ctx.appId) {
           const settings = `/app/apps/${ctx.appId}/settings`;

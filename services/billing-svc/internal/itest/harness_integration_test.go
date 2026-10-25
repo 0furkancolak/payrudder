@@ -33,9 +33,11 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
+	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
 
@@ -334,8 +336,9 @@ type env struct {
 	t      *testing.T
 	clk    *clock
 	w      *world
-	eng    *saga.Engine
+	eng    *sagacommand.Engine
 	mgr    *runs.Manager
+	notes  *creditnotecmd.Commands
 	events *fakeEvents
 	kafka  *kafkaSink
 	tid    uuid.UUID
@@ -391,7 +394,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 	if o.stepTimeout == 0 {
 		o.stepTimeout = time.Hour
 	}
-	e.eng, err = saga.NewEngine(saga.Config{Now: clk.Now, StepTimeout: o.stepTimeout, Log: testkit.Logger()})
+	e.eng, err = sagacommand.NewEngine(sagacommand.Config{Now: clk.Now, StepTimeout: o.stepTimeout, Log: testkit.Logger()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,15 +404,22 @@ func newEnv(t *testing.T, o envOpts) *env {
 	f := fakeAll{w: w}
 	e.events = &fakeEvents{}
 	allEvents.add(e.events)
+	e.notes = creditnotecmd.New(creditnotecmd.Config{Pool: shared.system, Engine: e.eng, Now: clk.Now, Log: testkit.Logger()})
 	e.mgr, err = runs.NewManager(runs.Config{
 		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Affiliates: f, Ingest: f, Aggregator: f, Events: e.events,
 		EndOffsets: func(context.Context) (map[int32]int64, error) { return map[int32]int64{0: 10, 1: 20}, nil },
 		Now:        clk.Now, WatermarkDelay: o.watermarkGap, PageSize: 2, Log: testkit.Logger(),
+		Chores: []runs.Chore{{Name: "credit note refunds not swept", Run: e.notes.SweepRefunds}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return e
+}
+
+// api is the billing API over this deployment's modules.
+func (e *env) api() *api.Server {
+	return api.New(api.Deps{App: shared.app, System: shared.system, Runs: e.mgr, Engine: e.eng, CreditNotes: e.notes})
 }
 
 func (e *env) customer(name string) *plansv1.Customer { return e.w.customers[name] }

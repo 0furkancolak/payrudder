@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useApps, useAccount, useMe, type App } from "@/features/product/api";
 import { hasPartnerRole } from "@/features/product/lib";
 import { useTenant } from "@/features/tenants/api";
-import { envEnum, findTenant, type Environment } from "@/shared/lib/environment";
+import { defaultEnv, defaultOrgEnv, envEnum, findTenant, isEnvironment, type Environment } from "@/shared/lib/environment";
 import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
 import { activeItem, buildNav, type NavSection, type ShellContext } from "./nav";
 
@@ -54,12 +54,19 @@ export function useShell() {
     }
     if (appInPath.value) {
       const app = apps.data.value?.apps?.find((a) => a.id === appInPath.value);
-      const envSearch = search.value.env === "sandbox" ? "sandbox" : "live";
-      const tenantId = app?.tenants?.find((x) => x.environment === envEnum(envSearch))?.id;
-      return { level: "app", appId: appInPath.value, env: envSearch, operator: isOperator.value, ...(tenantId ? { tenantId } : {}) };
+      // The address wins; without it the console opens the app where the person last was (or in live when it is active, else the sandbox).
+      // Until the apps have arrived there is nothing to choose from, and the shell says nothing rather than guess and then flip.
+      const envSearch: Environment | undefined = isEnvironment(search.value.env) ? search.value.env : app ? defaultEnv(app) : undefined;
+      const tenantId = envSearch ? app?.tenants?.find((x) => x.environment === envEnum(envSearch))?.id : undefined;
+      return { level: "app", appId: appInPath.value, ...(envSearch ? { env: envSearch } : {}), operator: isOperator.value, ...(tenantId ? { tenantId } : {}) };
     }
     if (path.value.startsWith("/app/t/")) {
       return { level: "app", tenantId: tenantInPath.value, ...(located.value ? { appId: located.value.app.id ?? "", env: located.value.env } : {}) };
+    }
+    // The home shows one environment at a time; the other organisation pages (members, settings) have none.
+    if (path.value === "/app") {
+      const env: Environment | undefined = isEnvironment(search.value.env) ? search.value.env : apps.data.value ? defaultOrgEnv(apps.data.value.apps) : undefined;
+      return { level: "org", operator: isOperator.value, partner: partner.value, ...(env ? { env } : {}) };
     }
     return { level: "org", operator: isOperator.value, partner: partner.value };
   });
@@ -98,5 +105,5 @@ export function useShell() {
     return list;
   });
 
-  return { path, context, sections, current, crumbs, apps, appName, orgName, located, tenant };
+  return { path, search, context, sections, current, crumbs, apps, appName, orgName, located, tenant };
 }

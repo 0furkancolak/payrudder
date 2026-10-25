@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -32,7 +34,7 @@ const redriveGroup = "payrudderctl-redrive"
 // A redrive produces each record back to its source topic with the x-dlq-* headers dropped and x-redriven-at added, waits
 // for every produce to be acknowledged, and only then commits the group offset. Crashing in between redrives a record
 // twice at worst, which the consumers' idempotency (event ids, command ids) absorbs.
-func dlqKafka(sub string, brokers []string, topic string, limit int, yes bool) error {
+func dlqKafka(sub string, brokers []string, topic string, limit int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	switch sub {
@@ -50,11 +52,7 @@ func dlqKafka(sub string, brokers []string, topic string, limit int, yes bool) e
 }
 
 func kafkaDLQTopics() []string {
-	out := make([]string, 0, len(kafkaDLQs))
-	for t := range kafkaDLQs {
-		out = append(out, t)
-	}
-	return out
+	return slices.Sorted(maps.Keys(kafkaDLQs))
 }
 
 func kafkaDLQList(ctx context.Context, brokers []string) error {
@@ -129,7 +127,7 @@ func kafkaDLQRead(ctx context.Context, brokers []string, topic string, limit int
 		}
 		out.Headers = append(out.Headers, kgo.RecordHeader{Key: "x-redriven-at", Value: []byte(time.Now().UTC().Format(time.RFC3339))})
 		if err := cl.ProduceSync(ctx, out).FirstErr(); err != nil {
-			return fmt.Errorf("produce to %s (record %d of %d; nothing was committed past the previous one): %w", target, i+1, len(recs), err)
+			return fmt.Errorf("produce to %s (record %d of %d; the group offset is committed only after every record is produced, so none of this run is committed): %w", target, i+1, len(recs), err)
 		}
 	}
 	if redrive && len(recs) > 0 {

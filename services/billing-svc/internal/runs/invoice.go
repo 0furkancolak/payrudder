@@ -9,8 +9,9 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
 
 // invoice finalizes every draft of the run (number, open, saga started) and reports whether the run is complete:
@@ -65,11 +66,11 @@ func (m *Manager) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) e
 		if err := q.OpenInvoice(ctx, sqlc.OpenInvoiceParams{Number: number, FinalizedAt: now, TenantID: tenantID, ID: invoiceID}); err != nil {
 			return err
 		}
-		if err := saga.FinalizedFact(ctx, tx, now, tenantID, invoiceID, inv.CustomerID, inv.PeriodID, number, inv.Currency, inv.TotalMinor); err != nil {
+		if err := sagacommand.FinalizedFact(ctx, tx, now, tenantID, invoiceID, inv.CustomerID, inv.PeriodID, number, inv.Currency, inv.TotalMinor); err != nil {
 			return err
 		}
-		if err := saga.TenantEvent(ctx, tx, tenantID, saga.EventInvoiceFinalized, invoiceID.String(), now,
-			saga.InvoiceData(invoiceID, inv.CustomerID, inv.CustomerExternalID, number, inv.PeriodID, inv.Currency, inv.TotalMinor, "open")); err != nil {
+		if err := tenantevents.Write(ctx, tx, tenantID, tenantevents.EventInvoiceFinalized, invoiceID.String(), now,
+			tenantevents.InvoiceData(invoiceID, inv.CustomerID, inv.CustomerExternalID, number, inv.PeriodID, inv.Currency, inv.TotalMinor, "open")); err != nil {
 			return err
 		}
 		sagaID, err := m.cfg.Engine.Start(ctx, tx, tenantID, invoiceID)

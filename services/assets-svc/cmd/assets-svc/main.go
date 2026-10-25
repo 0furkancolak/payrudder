@@ -15,8 +15,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/background"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
-	"github.com/0furkancolak/payrudder/services/assets-svc/internal/service"
 	"github.com/0furkancolak/payrudder/services/assets-svc/migrations"
 )
 
@@ -72,7 +72,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	svc := service.New(appPool, store, policy.New(cfg.GeneralTypes), service.Config{
+	svc := grpcapi.New(appPool, store, policy.New(cfg.GeneralTypes), grpcapi.Config{
 		Quotas: map[string]int64{"free": cfg.QuotaFreeMiB * policy.MiB, "standard": cfg.QuotaStdMiB * policy.MiB, "enterprise": cfg.QuotaEntMiB * policy.MiB},
 		Log:    log,
 	})

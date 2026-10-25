@@ -23,11 +23,12 @@ export const invitation = (id: string, email: string, role: string, expire_time 
   id, email, role, invited_by_email: user.email, invited_by_name: user.display_name, create_time: "2026-10-20T09:00:00Z", send_time: "2026-10-20T09:00:00Z", expire_time,
 });
 
-export const tenant = (id: string, environment: "LIVE" | "SANDBOX", currency = "USD") => ({
+export const tenant = (id: string, environment: "LIVE" | "SANDBOX", currency = "USD", status: "ACTIVE" | "INACTIVE" | "SUSPENDED" = "ACTIVE") => ({
   id,
   account_id: ACCOUNT,
   app_id: APP,
   environment: `ENVIRONMENT_${environment}`,
+  status: `TENANT_STATUS_${status}`,
   name: environment === "LIVE" ? "Web shop" : "Web shop (sandbox)",
   tier: "TENANT_TIER_FREE",
   currency,
@@ -230,7 +231,7 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
       s.apps = [...s.apps, created];
       return { status: 201, body: created };
     }
-    if (c.path === `/app/v1/apps/${APP}` && c.method === "GET") return { body: { app, role: "owner" } };
+    if (c.path === `/app/v1/apps/${APP}` && c.method === "GET") return { body: { app: (s.apps as { id: string }[]).find((a) => a.id === APP) ?? app, role: s.role } };
     if (c.path === `/app/v1/apps/${APP}/dashboard`) {
       const q = Object.fromEntries(c.query.entries());
       if (typeof s.dashboard === "function") return s.dashboard(q);
@@ -249,6 +250,64 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
       const id = c.path.split("/").pop();
       s.keys = s.keys.map((k) => (k.id === id ? { ...k, status: "STATUS_REVOKED" } : k));
       return { status: 200, body: {} };
+    }
+    return undefined;
+  });
+  return { gw, state: s };
+}
+
+/** The app of the fixture with its live environment in the given status (inactive: just created, nothing set up yet). */
+export const appWithLive = (status: "ACTIVE" | "INACTIVE" | "SUSPENDED") => ({ ...app, tenants: [tenant(LIVE, "LIVE", "USD", status), tenant(SANDBOX, "SANDBOX")] });
+
+export interface LiveState {
+  done: Record<string, boolean>;
+  status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+  /** The reset job the gateway reports (null: never reset), and what the promote preview shows. */
+  reset: Record<string, unknown> | null;
+  changes: { family: string; key: string; action: string; detail?: string; secret?: string }[];
+  hash: string;
+  /** When set, applying a promote answers 409 stale. */
+  stale: boolean;
+}
+
+const goLiveBody = (s: LiveState) => {
+  const items = ["email_verified", "legal_profile", "payment_provider", "plan_published", "terms_accepted"].map((key) => ({ key, done: s.done[key] === true }));
+  return { tenant_id: LIVE, status: `TENANT_STATUS_${s.status}`, ready: items.every((i) => i.done), items };
+};
+
+/** The go-live checklist, promote, sandbox reset and key rotation of the product API (phase 45). `state` is the test's to change while it runs. */
+export function liveGateway(gw: MockGateway, state: Partial<LiveState> = {}): { gw: MockGateway; state: LiveState } {
+  const s: LiveState = { done: { email_verified: true }, status: "INACTIVE", reset: null, changes: [], hash: "h1", stale: false, ...state };
+  gw.on((c) => {
+    if (c.path === `/app/v1/apps/${APP}/go-live` && c.method === "GET") return { body: { go_live: goLiveBody(s) } };
+    if (c.path === `/app/v1/apps/${APP}/go-live` && c.method === "POST") {
+      const body = goLiveBody({ ...s, done: { ...s.done, terms_accepted: s.done.terms_accepted || c.body?.accept_terms === true } });
+      if (!body.ready) return { status: 409, body: { error: { code: "FAILED_PRECONDITION", key: "identity.go_live.incomplete", message: "not ready" } } };
+      s.status = "ACTIVE";
+      s.done.terms_accepted = true;
+      return { body: { go_live: goLiveBody(s) } };
+    }
+    if (c.path === `/app/v1/apps/${APP}/promote` && c.method === "POST") {
+      const create = s.changes.filter((x) => x.action === "ACTION_CREATE").length;
+      const dry = c.body?.dry_run === true;
+      if (!dry && (s.stale || c.body?.plan_hash !== s.hash)) return { status: 409, body: { error: { code: "FAILED_PRECONDITION", key: "identity.promote.stale", message: "moved" } } };
+      return {
+        body: {
+          dry_run: dry, plan_hash: s.hash, created: create, unchanged: s.changes.filter((x) => x.action === "ACTION_UNCHANGED").length,
+          conflicts: s.changes.filter((x) => x.action === "ACTION_CONFLICT").length, skipped: 0, failed: 0,
+          changes: s.changes.map((x) => ({ ...x, applied: !dry && x.action === "ACTION_CREATE" })),
+        },
+      };
+    }
+    if (c.path === `/app/v1/apps/${APP}/sandbox/reset` && c.method === "GET") return { body: s.reset ? { sandbox_reset: s.reset } : {} };
+    if (c.path === `/app/v1/apps/${APP}/sandbox/reset` && c.method === "POST") {
+      const steps = ["plans", "ingest", "aggregator", "analytics", "billing", "payments"].map((name) => ({ name, state: "done", deleted: name === "plans" ? { customers: 4, subscriptions: 3 } : {} }));
+      s.reset = { id: "r1", state: "done", kind: "manual", steps, create_time: "2026-10-21T10:00:00Z", finish_time: "2026-10-21T10:00:05Z" };
+      return { status: 202, body: { sandbox_reset: s.reset } };
+    }
+    if (c.path.startsWith(`/app/v1/apps/${APP}/api-keys/`) && c.path.endsWith("/rotate") && c.method === "POST") {
+      const key = { id: "k10", tenant_id: SANDBOX, prefix: "rotated1", environment: "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", scope: "SCOPE_FULL", create_time: "2026-10-21T10:00:00Z" };
+      return { status: 201, body: { api_key: key, plaintext: "qk_test_rotated1_SECRETSECRETSECRETSECRET", previous: { id: c.path.split("/")[6], expire_time: "2026-10-22T10:00:00Z" } } };
     }
     return undefined;
   });

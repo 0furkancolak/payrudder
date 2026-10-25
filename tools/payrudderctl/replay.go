@@ -16,7 +16,7 @@ import (
 //	payrudderctl replay status  --tenant ID --job ID
 //	payrudderctl replay promote --tenant ID --job ID
 //	payrudderctl replay discard --tenant ID --job ID
-//	payrudderctl rerate         --tenant ID --period 2026-10 --plan-version ID [--wait]
+//	payrudderctl rerate         --tenant ID --period 2026-10 --plan-version ID
 func replay(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("usage: payrudderctl replay start|status|promote|discard --tenant ID [flags]")

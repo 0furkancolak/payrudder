@@ -18,7 +18,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
 var seededInvoices int
@@ -38,7 +37,7 @@ func seedOne(t *testing.T, tid, customer uuid.UUID, ext, status, currency, numbe
 
 func testCreditNotes(t *testing.T) {
 	e := newEnv(t, envOpts{})
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	op := tenant.WithOperator(context.Background())
 	tctx := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
 	customer := uuid.New()
@@ -166,7 +165,7 @@ func testCreditNoteRefundToCard(t *testing.T) {
 		}
 		return stubworker.Action{Reply: stubworker.Succeed}
 	})
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	op := tenant.WithOperator(context.Background())
 	tctx := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
 	customer := uuid.New()
@@ -234,7 +233,7 @@ func testCreditNoteRefundToCard(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		testkit.Eventually(t, 20*time.Second, "the unanswered command to arrive", func() bool { return stub.Count("refund") >= 4+i })
 		e.clk.Advance(6 * time.Minute)
-		if err := e.mgr.SweepRefunds(context.Background()); err != nil {
+		if err := e.notes.SweepRefunds(context.Background()); err != nil {
 			t.Fatal(err)
 		}
 	}

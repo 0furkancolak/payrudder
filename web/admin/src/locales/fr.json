@@ -2541,7 +2541,8 @@
       "label": "Environnement",
       "live": "Production",
       "sandbox": "Sandbox",
-      "sandboxNote": "Sandbox : données de test et faux prestataire de paiement. Rien ici n'est de l'argent réel."
+      "sandboxNote": "Sandbox : données de test et faux prestataire de paiement. Rien ici n'est de l'argent réel.",
+      "banner": "Sandbox : données de test et faux prestataire de paiement. Rien ici n'est de l'argent réel."
     },
     "donut": {
       "title": "Paiements par statut",
@@ -2608,7 +2609,29 @@
       "saved": "Je l'ai enregistrée",
       "revokeTitle": "Révoquer cette clé ?",
       "revokeBody": "Tout ce qui l'utilise encore cesse de fonctionner immédiatement. Cette action est irréversible.",
-      "needsVerified": "Confirmez votre adresse e-mail pour créer des clés de production."
+      "needsVerified": "Confirmez votre adresse e-mail pour créer des clés de production.",
+      "scope": "Portée d'une nouvelle clé",
+      "scopes": {
+        "full": "Accès complet",
+        "ingest": "Envoi d'usage seulement",
+        "read": "Lecture seule"
+      },
+      "scopeHelp": {
+        "full": "Toute l'API.",
+        "ingest": "Peut seulement envoyer des événements d'usage. Sûre dans un service qui déclare l'usage.",
+        "read": "Peut seulement lire. Sûre pour les tableaux de bord et les rapports."
+      },
+      "liveInactive": "Les clés live peuvent être créées une fois l'environnement live actif.",
+      "rotate": "Renouveler",
+      "rotateNamed": "Renouveler la clé {key}",
+      "rotateTitle": "Renouveler cette clé ?",
+      "rotateBody": "Une nouvelle clé avec le même accès est créée et affichée une seule fois. L'ancienne continue de fonctionner pendant la durée ci-dessous, pour basculer sans interruption.",
+      "overlap": "Garder l'ancienne clé active pendant",
+      "overlapNow": "L'arrêter maintenant",
+      "overlapHours": "{n} heures",
+      "lastUsed": "dernière utilisation {date}",
+      "neverUsed": "jamais utilisée",
+      "ends": "Cesse de fonctionner le {date}"
     },
     "links": {
       "title": "Aller plus loin",
@@ -2780,6 +2803,128 @@
       "grace": "Délai de grâce",
       "tenant": "Identifiant de l'environnement",
       "moreCurrencies": "Une application peut vendre dans plusieurs devises : ajoutez un prix dans une autre devise à un forfait, sous"
+    },
+    "goLive": {
+      "title": "Passer en production",
+      "pageIntro": "L'environnement live démarre désactivé : pas de clés live, pas de webhooks live, pas de prélèvements réels. Terminez la liste, puis activez-le.",
+      "intro": "Votre environnement live n'est pas encore actif. Terminez ces étapes pour l'activer.",
+      "liveNow": "Votre environnement live est actif.",
+      "suspended": "Votre environnement live est suspendu. Contactez le support pour le rétablir.",
+      "stateActive": "Actif",
+      "stateSuspended": "Suspendu",
+      "count": "{done} sur {total} faites",
+      "noLive": "Ce déploiement n'a pas d'environnement live.",
+      "done": "fait",
+      "todo": "pas encore fait",
+      "items": {
+        "email_verified": "Confirmer l'adresse e-mail du propriétaire",
+        "legal_profile": "Compléter le profil légal (nom, pays, numéro fiscal)",
+        "payment_provider": "Connecter un prestataire de paiement en mode live",
+        "plan_published": "Publier au moins un plan en live",
+        "terms_accepted": "Accepter les conditions d'utilisation"
+      },
+      "help": {
+        "email_verified": "Ouvrez le lien du message que nous avons envoyé, ou demandez-en un nouveau depuis le bandeau.",
+        "legal_profile": "Le nom, le pays et le numéro fiscal du vendeur figurent sur chaque facture live.",
+        "payment_provider": "Un prestataire connecté pour de vrais paiements, dont le contrôle de santé est réussi.",
+        "plan_published": "Copiez vos plans sandbox vers live ci-dessous, ou créez-en un en live.",
+        "terms_accepted": "Acceptées par le propriétaire avec l'activation ci-dessous."
+      },
+      "askTeam": "L'équipe Payrudder s'en occupe avec vous pour l'instant. Contactez le support.",
+      "open": "Ouvrir",
+      "nothingYet": "Live n'affiche aucun chiffre tant qu'il n'est pas actif.",
+      "continue": "Poursuivre la configuration",
+      "acceptTerms": "J'accepte les conditions d'utilisation pour l'environnement live de cette application.",
+      "ownerOnly": "Seul le propriétaire du compte peut activer live.",
+      "activate": "Activer live",
+      "notReady": "Terminez d'abord les autres étapes.",
+      "inactiveNote": "Live n'a pas de données tant qu'il n'est pas actif. Votre sandbox continue de fonctionner entre-temps.",
+      "toSandbox": "Ouvrir la sandbox"
+    },
+    "promote": {
+      "title": "Copier la configuration sandbox vers live",
+      "intro": "Compteurs, plans et prix, taux de taxe, coupons, réglages e-mail et points de terminaison webhook. Jamais les clients, l'usage, les factures ni les paiements. Cela ajoute seulement : ce qui existe déjà en live et diffère n'est pas touché.",
+      "preview": "Prévisualiser les changements",
+      "adminOnly": "Seuls les propriétaires et les administrateurs peuvent le faire.",
+      "previewed": "Aperçu, rien d'écrit",
+      "applied": "Appliqué",
+      "created": "{n} à ajouter",
+      "unchanged": "{n} déjà identiques",
+      "conflicts": "{n} en conflit",
+      "skipped": "{n} ignorés",
+      "failed": "{n} en échec",
+      "nothing": "Rien à copier : live a déjà tout ce que la sandbox a.",
+      "family": {
+        "meters": "Compteurs",
+        "plans": "Plans",
+        "taxes": "Taux de taxe",
+        "coupons": "Coupons",
+        "mail": "E-mail",
+        "webhooks": "Webhooks"
+      },
+      "action": {
+        "create": "Ajouter",
+        "unchanged": "Identique",
+        "conflict": "Conflit",
+        "skipped": "Ignoré"
+      },
+      "conflictNote": "Un conflit est un objet qui existe en live avec d'autres réglages. Il est laissé tel quel ; modifiez-le à la main en live si vous voulez qu'ils concordent.",
+      "apply": "Ajouter {n} à live",
+      "applyNote": "Applique exactement les changements affichés. Si la configuration a changé entre-temps, il vous sera demandé de prévisualiser à nouveau.",
+      "secretOnce": "Un nouveau secret de signature a été créé pour chaque point de terminaison webhook ci-dessous. Il n'est affiché que maintenant ; celui de la sandbox n'a pas été copié.",
+      "secretLabel": "Secret de signature"
+    },
+    "sandbox": {
+      "intro": "Outils pour l'environnement de test : repartir de zéro et voir comment se comporte chaque type de paiement.",
+      "resetTitle": "Réinitialiser la sandbox",
+      "resetBody": "Supprime les clients, abonnements, usages, factures et paiements de la sandbox. Les plans, prix, compteurs, taux de taxe, coupons, points de terminaison webhook, réglages e-mail et clés API restent. Live n'est jamais touché.",
+      "reset": "Réinitialiser la sandbox",
+      "state": {
+        "queued": "En attente",
+        "running": "En cours",
+        "done": "Terminé",
+        "failed": "Échec"
+      },
+      "started": "Demandé le {date}",
+      "byRetention": "Lancé automatiquement après une longue période sans utilisation.",
+      "step": {
+        "plans": "Clients et plans",
+        "ingest": "Collecte d'usage",
+        "aggregator": "Totaux d'usage",
+        "analytics": "Analytique",
+        "billing": "Factures",
+        "payments": "Paiements"
+      },
+      "deleted": "{n} lignes supprimées",
+      "skipped": "Ignoré : ne fait pas partie de ce déploiement",
+      "failedNote": "Réessayer ne coûte rien : chaque étape peut être répétée.",
+      "neverReset": "Cette sandbox n'a jamais été réinitialisée.",
+      "confirmTitle": "Réinitialiser la sandbox ?",
+      "confirmBody": "Tous les clients, abonnements, factures et paiements de test sont supprimés. Cette action est irréversible. Votre configuration reste.",
+      "scenariosTitle": "Scénarios de paiement",
+      "scenariosBody": "Donnez à un client sandbox l'un de ces moyens de paiement et ses factures se comportent comme décrit. Aucun vrai prestataire n'est jamais appelé.",
+      "scenario": {
+        "success": "Le prélèvement réussit et la facture est payée.",
+        "declined": "Chaque tentative est refusée. Après les relances, la facture devient irrécouvrable.",
+        "insufficient_funds_once": "La première tentative est refusée, la relance réussit.",
+        "error_then_success": "Le prestataire échoue deux fois avec une erreur serveur, puis réussit.",
+        "timeout_committed": "Le prestataire prend le paiement mais ne répond pas à temps. Une requête de statut le retrouve.",
+        "timeout_not_committed": "Le prestataire ne répond pas et n'a pas pris le paiement. Le prélèvement est refait."
+      },
+      "outcome": {
+        "paid": "Payée",
+        "uncollectible": "Irrécouvrable",
+        "paid_after_retry": "Payée après une relance",
+        "paid_after_status_query": "Payée après une requête de statut",
+        "paid_after_recharge": "Payée après un nouveau prélèvement"
+      },
+      "default": "Par défaut",
+      "simulateNote": "Pour en essayer un, ouvrez une facture sandbox et utilisez Simuler le paiement.",
+      "simulateTitle": "Simuler le paiement",
+      "simulateBody": "Relance le paiement de cette facture selon l'un des scénarios. Le client garde le scénario comme moyen de paiement.",
+      "simulate": "Simuler",
+      "simulated": "Paiement relancé comme {scenario}.",
+      "simulateNotRetried": "Le scénario est défini, mais le paiement n'a pas pu être relancé maintenant ({why})."
     }
   },
   "shell": {
@@ -2834,6 +2979,8 @@
       "operator": "Console opérateur",
       "myApps": "Mes applications",
       "affiliates": "Affiliés",
+      "goLive": "Passer en production",
+      "sandbox": "Outils sandbox",
       "partner": "Portail partenaire"
     }
   },

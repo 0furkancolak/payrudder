@@ -12,6 +12,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes"
+	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/deadletters"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
@@ -25,8 +26,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/reports"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 )
 
 // PDFSigner presigns downloads of invoice PDFs (pkg/blob.Store).
@@ -76,12 +77,21 @@ type Server struct {
 	*paymentHandler
 }
 
-// New returns the API. app is the billing_app pool, system the billing_system pool.
-func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Server {
+// Deps are the modules the API serves and the pools they read and write through.
+type Deps struct {
+	App, System *pgxpool.Pool // billing_app (RLS), billing_system
+	Runs        *runs.Manager
+	Engine      *sagacommand.Engine
+	CreditNotes *creditnotecmd.Commands
+}
+
+// New returns the API.
+func New(d Deps) *Server {
+	app, system, mgr, eng := d.App, d.System, d.Runs, d.Engine
 	einv := &einvoicecmd.Commands{Pool: system, Parties: mgr}
 	return &Server{
 		invoiceHandler:    invoices.New(app),
-		creditNoteHandler: creditnotes.New(app, system, mgr),
+		creditNoteHandler: creditnotes.New(app, system, d.CreditNotes),
 		dunningHandler:    dunning.New(app),
 		creditsHandler:    credits.New(app),
 		accountingHandler: accounting.New(app),

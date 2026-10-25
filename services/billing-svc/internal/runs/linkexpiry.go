@@ -8,9 +8,9 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
 
 // expiryBatch is how many expired links one pass handles.
@@ -40,7 +40,7 @@ func (m *Manager) ExpireLinks(ctx context.Context) error {
 					return err
 				}
 			}
-			if err := saga.TenantEvent(ctx, tx, d.TenantID, saga.EventPaymentLinkExpired, l.ID.String(), m.cfg.Now(), saga.PaymentLinkExpiredData(l)); err != nil {
+			if err := tenantevents.Write(ctx, tx, d.TenantID, tenantevents.EventPaymentLinkExpired, l.ID.String(), m.cfg.Now(), tenantevents.PaymentLinkExpiredData(l)); err != nil {
 				return err
 			}
 			return q.MarkLinkExpiredNotified(ctx, sqlc.MarkLinkExpiredNotifiedParams(d))

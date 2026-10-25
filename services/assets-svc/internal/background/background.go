@@ -10,19 +10,19 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store/sqlc"
 )
 
@@ -62,16 +62,11 @@ func (j *Jobs) init() error {
 	if j.swept != nil {
 		return nil
 	}
-	m := otel.Meter("github.com/0furkancolak/payrudder/services/assets-svc/background")
-	var err error
-	if j.swept, err = m.Int64Counter("assets_sessions_swept", metric.WithDescription("Expired upload sessions aborted")); err != nil {
-		return err
-	}
-	if j.verified, err = m.Int64Counter("assets_verified", metric.WithDescription("Direct uploads verified, by result")); err != nil {
-		return err
-	}
-	j.orphans, err = m.Int64Counter("assets_orphans_deleted", metric.WithDescription("Objects without an asset row that were deleted"))
-	return err
+	b := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/assets-svc/background")
+	j.swept = b.Counter("assets_sessions_swept", "Expired upload sessions aborted")
+	j.verified = b.Counter("assets_verified", "Direct uploads verified, by result")
+	j.orphans = b.Counter("assets_orphans_deleted", "Objects without an asset row that were deleted")
+	return b.Err()
 }
 
 // SweepExpired aborts the S3 multipart uploads of expired OPEN sessions and marks them EXPIRED. It returns how many
@@ -154,7 +149,7 @@ func (j *Jobs) VerifyUploads(ctx context.Context, limit int) (int, error) {
 
 // inspect checks one object and returns the verdict (ok, missing, type_mismatch or corrupt) with the reject reason.
 func (j *Jobs) inspect(ctx context.Context, it sqlc.ListUnverifiedAssetsRow) (result, reason string, err error) {
-	head, err := j.Store.GetRange(ctx, it.ObjectKey, 512)
+	head, err := j.Store.GetRange(ctx, it.ObjectKey, policy.SniffBytes)
 	switch {
 	case errors.Is(err, blob.ErrNotFound):
 		return "missing", "OBJECT_MISSING", nil
@@ -243,12 +238,8 @@ func (j *Jobs) deleteOrphans(ctx context.Context, keys []string) (int, error) {
 	ids := make([]uuid.UUID, 0, len(keys))
 	byID := map[uuid.UUID]string{}
 	for _, k := range keys {
-		parts := strings.Split(k, "/")
-		if len(parts) != 3 || parts[1] != "assets" {
-			continue
-		}
-		id, err := uuid.Parse(parts[2])
-		if err != nil {
+		id, ok := store.AssetIDOfKey(k)
+		if !ok {
 			continue
 		}
 		ids = append(ids, id)

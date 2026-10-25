@@ -1,6 +1,7 @@
 package einvoice
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/einvoice/ubl"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/strx"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
@@ -75,14 +77,7 @@ func (h *Handler) mockProvider() pkg.Provider {
 
 func failed(key, msg string, retryable bool) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_EInvoiceResult{EInvoiceResult: &commandsv1.EInvoiceResult{
-		State: "failed", Retryable: retryable, ErrorKey: key, ErrorMessage: truncate(msg, 400)}}}
-}
-
-func truncate(s string, n int) string {
-	if len(s) > n {
-		return s[:n]
-	}
-	return s
+		State: "failed", Retryable: retryable, ErrorKey: key, ErrorMessage: strx.Truncate(msg, 400)}}}
 }
 
 func issued(i store.Issuance) *commandsv1.ReplyEnvelope {
@@ -173,7 +168,7 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 		ApplySandboxDefaults(&d)
 	}
 	if d.Kind == pkg.KindCreditNote {
-		origID, err := uuid.Parse(orDefault(c.GetOriginalDocumentId(), uuid.Nil.String()))
+		origID, err := uuid.Parse(cmp.Or(c.GetOriginalDocumentId(), uuid.Nil.String()))
 		if err != nil {
 			return nil, fmt.Errorf("%w: original document id: %w", workerx.ErrPoison, err)
 		}
@@ -245,13 +240,6 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 		return nil, err // the integrator has it; the repeat finds it by UUID and records the same number
 	}
 	return issued(store.Issuance{LegalNumber: res.LegalNumber, ExternalID: res.ExternalID, DocumentType: string(d.Type), Provider: name, XMLKey: xmlKey, PDFKey: pdfKey}), nil
-}
-
-func orDefault(s, d string) string {
-	if s == "" {
-		return d
-	}
-	return s
 }
 
 // decideType picks the legal channel and, when the adapter can tell and the buyer is not known as registered, asks the integrator.

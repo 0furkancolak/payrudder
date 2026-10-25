@@ -170,9 +170,9 @@ func tenantDirectory(cfg *Config) (*env.Directory, func(), error) {
 	if cfg.PlansAddr == "" {
 		return nil, func() {}, nil
 	}
-	conn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	conn, err := grpcx.NewTenantClient("plans-svc", cfg.PlansAddr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("plans-svc client: %w", err)
+		return nil, nil, err
 	}
 	admin := plansv1.NewAdminServiceClient(conn)
 	return env.NewDirectory(func(ctx context.Context, id uuid.UUID) (env.Env, error) {
@@ -227,10 +227,10 @@ func webhookHandler(cfg Config, pool *pgxpool.Pool, h *handler.Handler, registry
 		}
 	}
 	dial := func(addr, what string) (*grpc.ClientConn, error) {
-		conn, err := grpcx.NewClient(addr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+		conn, err := grpcx.NewTenantClient(what, addr)
 		if err != nil {
 			closeConns()
-			return nil, fmt.Errorf("%s client: %w", what, err)
+			return nil, err
 		}
 		conns = append(conns, conn)
 		return conn, nil

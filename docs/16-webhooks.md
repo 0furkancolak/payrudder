@@ -15,7 +15,7 @@ A development stack may lift the address rule with `PAYRUDDER_WEBHOOK_ALLOW_PRIV
 | Type | When | `data` |
 |---|---|---|
 | `invoice.finalized` | an invoice gets its number | `invoice_id`, `number`, `customer_id`, `customer_external_id`, `period_id`, `currency`, `total_minor`, `status` |
-| `invoice.paid` · `invoice.voided` · `invoice.uncollectible` | the invoice reaches that state | the same |
+| `invoice.paid` · `invoice.voided` · `invoice.uncollectible` | the invoice reaches that state | the same; every invoice event carries `environment`, and `invoice.paid` also `tax_minor` and `net_minor` (the total less its TAX lines: what a partner commission is a share of) |
 | `credit_note.created` | a credit note is issued | `credit_note_id`, `number`, `invoice_id`, `invoice_number`, `customer_id`, `customer_external_id`, `currency`, `total_minor`, `reason`, `disposition` (`credit`/`refund`), and for a refund `refund_state` |
 | `credit_note.refunded` · `credit_note.refund_failed` | the provider settled (or refused) a refund to the card | the same, with the outcome (`refund_error` on failure) |
 | `subscription.created` | a subscription is created | `subscription`, as the API returns it |
@@ -34,7 +34,7 @@ A development stack may lift the address rule with `PAYRUDDER_WEBHOOK_ALLOW_PRIV
 A delivery is a JSON `POST`:
 
 ```json
-{ "id": "0192…", "type": "invoice.paid", "created": "2026-10-20T10:00:00Z", "tenant_id": "0192…", "data": { "invoice_id": "…", "number": "INV-2026-000007", "total_minor": "1116", "status": "paid" } }
+{ "id": "0192…", "type": "invoice.paid", "created": "2026-10-20T10:00:00Z", "tenant_id": "0192…", "data": { "invoice_id": "…", "number": "INV-2026-000007", "total_minor": "1116", "tax_minor": "186", "net_minor": "930", "environment": "live", "status": "paid" } }
 ```
 
 Money is a string of minor units, as in the REST API. Events are delivered **at least once and not in order**: use `id` to ignore a repeat, and fetch the object from the API when you need its present state. A `ping` event is sent by `POST …/test`.

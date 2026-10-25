@@ -19,7 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/query"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/grpcapi"
 )
 
 func TestLimits(t *testing.T) {
@@ -336,7 +336,7 @@ func testEntitlementVisible(t *testing.T) {
 	e := newEnv(t)
 	tn, cust := uuid.New(), uuid.New()
 	p := e.startPod(podOpts{})
-	svc := query.New(shared.rdb, p.ents, e.meters, nil)
+	svc := grpcapi.New(shared.rdb, p.ents, e.meters, nil)
 	ctx := tenant.NewContext(context.Background(), tenant.Info{ID: tn, Timezone: "Europe/Istanbul"})
 
 	before, err := svc.CheckEntitlement(ctx, &limitsv1.CheckEntitlementRequest{CustomerId: cust.String(), MeterCode: "api"})
@@ -398,7 +398,7 @@ func testFractionalLimit(t *testing.T) {
 	if len(got) != 1 || got[0].GetUsedUnits() != 10500 || got[0].GetLimitUnits() != 10500 || got[0].GetQuantityScale() != 3 {
 		t.Fatalf("got %v, want one event at used = limit = 10500 (scale 3)", got)
 	}
-	svc := query.New(shared.rdb, p.ents, e.meters, nil)
+	svc := grpcapi.New(shared.rdb, p.ents, e.meters, nil)
 	ctx := tenant.NewContext(context.Background(), tenant.Info{ID: tn, Timezone: "Europe/Istanbul"})
 	r, _ := svc.CheckEntitlement(ctx, &limitsv1.CheckEntitlementRequest{CustomerId: cust.String(), MeterCode: "gb"})
 	if r.GetStatus().GetUsed() != "10.500" || r.GetStatus().GetLimit() != "10.500" || r.GetStatus().GetAllowed() {

@@ -5,6 +5,7 @@ package einvoice
 import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 // Placeholders a sandbox document may use for data the sandbox tenant never entered, so the mock can accept it. Live documents never get them, except the
@@ -27,21 +28,14 @@ func lineKind(kind string, amount int64) (einvoice.LineKind, int64) {
 	case "TAX":
 		return einvoice.LineTax, amount
 	case "DISCOUNT":
-		return einvoice.LineDiscount, abs(amount)
+		return einvoice.LineDiscount, money.Abs(amount)
 	case "CREDIT":
-		return einvoice.LineCredit, abs(amount)
+		return einvoice.LineCredit, money.Abs(amount)
 	}
 	if amount < 0 { // a correction that takes something back lowers the base like a discount
 		return einvoice.LineDiscount, -amount
 	}
 	return einvoice.LineItem, amount
-}
-
-func abs(v int64) int64 {
-	if v < 0 {
-		return -v
-	}
-	return v
 }
 
 // Document maps a command to the provider-neutral document. The type is decided later (it depends on the seller's country and the buyer's registration).

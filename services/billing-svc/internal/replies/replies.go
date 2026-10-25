@@ -19,16 +19,17 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Consumer applies replies to sagas.
 type Consumer struct {
 	Pool   *pgxpool.Pool // billing_system
-	Engine *saga.Engine
+	Engine *sagacommand.Engine
 	URL    string
 	Log    *slog.Logger
 
@@ -37,7 +38,7 @@ type Consumer struct {
 }
 
 // New registers metrics.
-func New(pool *pgxpool.Pool, eng *saga.Engine, url string, log *slog.Logger) (*Consumer, error) {
+func New(pool *pgxpool.Pool, eng *sagacommand.Engine, url string, log *slog.Logger) (*Consumer, error) {
 	if log == nil {
 		log = slog.Default()
 	}
@@ -69,7 +70,7 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 	if reply.GetEInvoiceResult() != nil {
 		return c.handleEInvoice(ctx, &reply)
 	}
-	ev, cause, ok := saga.ReplyEvent(&reply)
+	ev, cause, ok := sagacommand.ReplyEvent(&reply)
 	sagaID, err1 := uuid.Parse(reply.GetSagaId())
 	tenantID, err2 := uuid.Parse(reply.GetTenantId())
 	replyID, err3 := uuid.Parse(reply.GetReplyId())
@@ -91,7 +92,7 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 			return nil
 		}
 		// A refund of a credit note is answered like any command, but no saga is waiting for it.
-		if handled, err := runs.SettleRefund(ctx, tx, tenantID, cmdID, &reply); err != nil || handled {
+		if handled, err := creditnotecmd.SettleRefund(ctx, tx, tenantID, cmdID, &reply); err != nil || handled {
 			return err
 		}
 		out, err := c.Engine.Handle(ctx, tx, tenantID, sagaID, ev, cause, &cmdID)
@@ -99,13 +100,13 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 			return err
 		}
 		applied = out.Applied
-		if out.Applied && ev == saga.EvPdfRendered {
+		if out.Applied && ev == sagamodel.EvPdfRendered {
 			err = q.SetInvoicePDFKeyBySaga(ctx, sqlc.SetInvoicePDFKeyBySagaParams{PdfObjectKey: reply.GetPdfRendered().GetObjectKey(), TenantID: tenantID, SagaID: sagaID})
 		}
 		return err
 	})
 	if err != nil {
-		if errors.Is(err, saga.ErrNotFound) {
+		if errors.Is(err, sagacommand.ErrNotFound) {
 			c.Log.WarnContext(ctx, "reply for an unknown saga", "saga", sagaID)
 			return rabbitx.Reject
 		}

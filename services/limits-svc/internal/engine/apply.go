@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc/codes"
@@ -24,6 +23,7 @@ import (
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/meters"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/usage"
@@ -95,22 +95,14 @@ func NewApplier(cfg Config) (*Applier, error) {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	m := otel.Meter("github.com/0furkancolak/payrudder/services/limits-svc")
+	b := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/limits-svc")
 	a := &Applier{cfg: cfg, log: cfg.Log, script: redis.NewScript(applyBatchLua), cps: newCheckpoints(), parts: map[int32]*partState{}}
-	var err error
-	if a.applied, err = m.Int64Counter("limits_events_applied", metric.WithDescription("Usage events added to a counter")); err != nil {
-		return nil, err
-	}
-	if a.skipped, err = m.Int64Counter("limits_events_skipped", metric.WithDescription("Usage events not counted, by reason")); err != nil {
-		return nil, err
-	}
-	if a.overflow, err = m.Int64Counter("limits_counter_overflow", metric.WithDescription("Counter updates refused because they would pass 2^53")); err != nil {
-		return nil, err
-	}
-	if a.fired, err = m.Int64Counter("limits_thresholds_fired", metric.WithDescription("LimitExceeded events produced")); err != nil {
-		return nil, err
-	}
-	if a.fireErrors, err = m.Int64Counter("limits_threshold_publish_failures", metric.WithDescription("LimitExceeded events that could not be produced")); err != nil {
+	a.applied = b.Counter("limits_events_applied", "Usage events added to a counter")
+	a.skipped = b.Counter("limits_events_skipped", "Usage events not counted, by reason")
+	a.overflow = b.Counter("limits_counter_overflow", "Counter updates refused because they would pass 2^53")
+	a.fired = b.Counter("limits_thresholds_fired", "LimitExceeded events produced")
+	a.fireErrors = b.Counter("limits_threshold_publish_failures", "LimitExceeded events that could not be produced")
+	if err := b.Err(); err != nil {
 		return nil, err
 	}
 	return a, nil
@@ -264,6 +256,7 @@ func (a *Applier) applyRecords(ctx context.Context, p int32, recs []*kgo.Record)
 func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) error {
 	ev, err := usage.Decode(rec)
 	if err != nil {
+		a.log.DebugContext(ctx, "usage event skipped as invalid", "partition", rec.Partition, "offset", rec.Offset, "error", err)
 		a.skip(ctx, "invalid")
 		return nil
 	}
@@ -373,6 +366,7 @@ func (a *Applier) fireCrossed(ctx context.Context, rows []any) {
 	for _, item := range rows {
 		row, ok := item.([]any)
 		if !ok || len(row) != 3 {
+			a.log.WarnContext(ctx, "apply_batch returned a malformed threshold row", "row", item)
 			continue
 		}
 		key, _ := row[0].(string)
@@ -385,27 +379,37 @@ func (a *Applier) fireCrossed(ctx context.Context, rows []any) {
 		after, err2 := strconv.ParseInt(fmt.Sprint(row[2]), 10, 64)
 		ref, okRef := ParseCounterKey(key)
 		if err1 != nil || err2 != nil || !okRef {
+			a.log.WarnContext(ctx, "apply_batch returned an unreadable threshold row", "key", key, "before", row[1], "after", row[2])
 			continue
 		}
-		a.thresholds(ctx, ref, before, after, false)
+		a.crossed(ctx, ref, before, after)
 	}
 }
 
-// thresholds fires the LimitExceeded events for the thresholds a counter crossed from before to after. With sweep it
-// fires every threshold the counter has already reached (before is ignored): the repair path of reconciliation.
-func (a *Applier) thresholds(ctx context.Context, ref Ref, before, after int64, sweep bool) {
+// crossed fires the LimitExceeded events for the thresholds a counter crossed from before to after.
+func (a *Applier) crossed(ctx context.Context, ref Ref, before, after int64) {
+	a.fireWhere(ctx, ref, after, func(ent entitlements.State, pct int32) bool {
+		return domain.Crossed(before, after, ent.Limit, pct)
+	})
+}
+
+// reached fires the LimitExceeded events for every threshold the counter has already reached: the repair path of reconciliation.
+func (a *Applier) reached(ctx context.Context, ref Ref, used int64) {
+	a.fireWhere(ctx, ref, used, func(ent entitlements.State, pct int32) bool {
+		return domain.Reached(used, ent.Limit, pct)
+	})
+}
+
+// fireWhere fires the thresholds of the counter's entitlement that hit selects, if the entitlement limits the period.
+func (a *Applier) fireWhere(ctx context.Context, ref Ref, used int64, hit func(ent entitlements.State, pct int32) bool) {
 	now := a.cfg.Now()
 	ent, ok := a.cfg.Ents.Get(ref.Tenant, ref.Customer, ref.Meter, now)
 	if !ok || ent.Limit <= 0 || !a.overlaps(ctx, ent, ref.Period) {
 		return
 	}
 	for _, pct := range ent.Thresholds {
-		hit := domain.Crossed(before, after, ent.Limit, pct)
-		if sweep {
-			hit = domain.Reached(after, ent.Limit, pct)
-		}
-		if hit {
-			a.fire(ctx, ent, ref, pct, after, now)
+		if hit(ent, pct) {
+			a.fire(ctx, ent, ref, pct, used, now)
 		}
 	}
 }
@@ -414,10 +418,12 @@ func (a *Applier) thresholds(ctx context.Context, ref Ref, before, after int64, 
 func (a *Applier) overlaps(ctx context.Context, ent entitlements.State, periodID string) bool {
 	tn, err := a.cfg.Tenants.Tenant(ctx, ent.Tenant)
 	if err != nil {
+		a.log.WarnContext(ctx, "tenant lookup failed, threshold not evaluated", "tenant", ent.Tenant, "error", err)
 		return false
 	}
 	start, end, err := period.Bounds(periodID, tn.Location)
 	if err != nil {
+		a.log.WarnContext(ctx, "period bounds failed, threshold not evaluated", "tenant", ent.Tenant, "period", periodID, "error", err)
 		return false
 	}
 	return ent.From.Before(end) && (ent.Until.IsZero() || ent.Until.After(start))
@@ -450,7 +456,9 @@ func (a *Applier) fire(ctx context.Context, ent entitlements.State, ref Ref, pct
 	}
 	if err != nil {
 		// Un-mark so that the reconciliation sweep produces it.
-		a.cfg.Redis.Del(context.WithoutCancel(ctx), fk)
+		if derr := a.cfg.Redis.Del(context.WithoutCancel(ctx), fk).Err(); derr != nil {
+			a.log.ErrorContext(ctx, "threshold marker not removed, the threshold will not fire again for this period", "key", fk, "error", derr)
+		}
 		a.fireErrors.Add(ctx, 1)
 		a.log.WarnContext(ctx, "LimitExceeded not produced, the next reconciliation retries", "event_id", pb.GetEventId(), "error", err)
 		return
@@ -478,7 +486,7 @@ func (a *Applier) Sweep(ctx context.Context, keys []string) error {
 		if err != nil {
 			continue
 		}
-		a.thresholds(ctx, ref, 0, used, true)
+		a.reached(ctx, ref, used)
 	}
 	return nil
 }
