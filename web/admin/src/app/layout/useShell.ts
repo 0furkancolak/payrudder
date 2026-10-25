@@ -97,5 +97,5 @@ export function useShell() {
     return list;
   });
 
-  return { path, search, context, sections, current, crumbs, apps, appName, orgName, located, tenant };
+  return { path, context, sections, current, crumbs, apps, appName, orgName, located, tenant };
 }
