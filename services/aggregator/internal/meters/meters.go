@@ -12,12 +12,13 @@ import (
 	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/aggregator/internal/domain"
 )
 
 // ErrNotFound is returned for a meter plans-svc doesn't know.
-var ErrNotFound = status.Error(codes.NotFound, "meter not found")
+var ErrNotFound = errkey.New(codes.NotFound, "aggregator.meter.not_found", "meter not found")
 
 // Cache resolves meters through plans-svc (latest version of a code), caching hits for TTL.
 type Cache struct {

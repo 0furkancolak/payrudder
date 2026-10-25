@@ -66,7 +66,7 @@ func mapErr(err error) error {
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return status.FromContextError(err).Err()
 	}
-	return status.Error(codes.Unavailable, "database unavailable")
+	return errkey.New(codes.Unavailable, "aggregator.store.unavailable", "database unavailable")
 }
 
 // generation returns the pinned generation, or the tenant's active one.
@@ -333,7 +333,7 @@ func (s *Service) ClosePeriodEarly(ctx context.Context, req *aggregatorv1.CloseP
 	}
 	// The environment comes from the authenticated tenant, never from the request.
 	if ti.Environment != tenant.EnvSandbox {
-		return nil, status.Error(codes.FailedPrecondition, "periods can only be closed early in a sandbox tenant")
+		return nil, errkey.New(codes.FailedPrecondition, "aggregator.period.not_sandbox", "periods can only be closed early in a sandbox tenant")
 	}
 	if err := validPeriod(req.GetPeriodId()); err != nil {
 		return nil, err
@@ -345,7 +345,7 @@ func (s *Service) ClosePeriodEarly(ctx context.Context, req *aggregatorv1.CloseP
 		}
 		at, err := sqlc.New(tx).ClosePeriodEarly(ctx, req.GetPeriodId())
 		if errors.Is(err, pgx.ErrNoRows) {
-			return status.Error(codes.FailedPrecondition, "period is frozen or already closes within 5 seconds")
+			return errkey.New(codes.FailedPrecondition, "aggregator.period.frozen", "period is frozen or already closes within 5 seconds")
 		}
 		if err != nil {
 			return err

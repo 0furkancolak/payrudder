@@ -1365,7 +1365,8 @@
       "timeout": "Die Anfrage hat zu lange gedauert. Versuchen Sie es erneut.",
       "conflict": "Die Daten haben sich während Ihrer Arbeit geändert. Laden Sie neu und versuchen Sie es erneut.",
       "not_implemented": "Das wird noch nicht unterstützt.",
-      "internal": "Auf unserer Seite ist etwas schiefgelaufen. Versuchen Sie es erneut; bleibt es dabei, suchen Sie mit der Anfrage-ID in den Logs."
+      "internal": "Auf unserer Seite ist etwas schiefgelaufen. Versuchen Sie es erneut; bleibt es dabei, suchen Sie mit der Anfrage-ID in den Logs.",
+      "canceled": "Die Anfrage wurde abgebrochen."
     },
     "payments": {
       "transfer": {
@@ -1380,7 +1381,11 @@
         "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
         "nothing_pending": "Es gibt keine ausstehende Überweisung, die abgelehnt werden könnte.",
         "bad_outcome": "Das Ergebnis muss abgelehnt oder abgelaufen sein.",
-        "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal."
+        "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal.",
+        "bad_body": "Der Anfragetext konnte nicht gelesen werden: Senden Sie gültiges JSON, das nicht zu groß ist.",
+        "bad_invoice_id": "Die Rechnungs-ID ist keine gültige ID.",
+        "bad_tenant": "Die Konto-ID ist keine gültige ID.",
+        "invoice_not_found": "Diese Rechnung wurde nicht gefunden."
       },
       "account": {
         "bad_settings": "Diese Anbietereinstellungen sind ungültig. Prüfen Sie die Zugangsdaten und die Pflichtfelder.",
@@ -1508,7 +1513,9 @@
         "invalid": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
       },
       "tenant": {
-        "not_found": "Diese Umgebung existiert nicht oder gehört Ihnen nicht."
+        "not_found": "Diese Umgebung existiert nicht oder gehört Ihnen nicht.",
+        "bad_metadata": "Das Konto in der Anfrage ist ungültig.",
+        "metadata_missing": "Die Anfrage gibt nicht an, für welches Konto sie gilt."
       },
       "token": {
         "invalid": "Dieser Link ist ungültig, abgelaufen oder wurde schon benutzt. Fordern Sie einen neuen an."
@@ -1576,10 +1583,25 @@
       },
       "period": {
         "bad_id": "Der Zeitraum muss wie 2026-11 aussehen.",
-        "cannot_compute": "Die Einstellungen dieses Zeitraums lassen sich nicht berechnen. Prüfen Sie den Zeitraum und die Zeitzone des Kontos."
+        "cannot_compute": "Die Einstellungen dieses Zeitraums lassen sich nicht berechnen. Prüfen Sie den Zeitraum und die Zeitzone des Kontos.",
+        "frozen": "Dieser Zeitraum ist eingefroren oder schließt ohnehin innerhalb von fünf Sekunden und kann daher nicht vorzeitig geschlossen werden.",
+        "not_sandbox": "Zeiträume lassen sich nur in einem Sandbox-Konto vorzeitig schließen."
       },
       "usage": {
         "bad_batch_size": "Fragen Sie jeweils zwischen 1 und der maximalen Anzahl an Nutzungsschlüsseln ab."
+      },
+      "meter": {
+        "not_found": "Dieser Zähler wurde nicht gefunden."
+      },
+      "replay": {
+        "bad_job_id": "Die ID des Wiederholungsauftrags ist keine gültige ID.",
+        "bad_state": "Der Wiederholungsauftrag befindet sich nicht in einem Zustand, in dem das möglich ist.",
+        "bad_tenant_id": "Die Konto-ID ist keine gültige ID.",
+        "invalid": "Diese Wiederholungsanfrage ist ungültig.",
+        "not_found": "Dieser Wiederholungsauftrag wurde nicht gefunden."
+      },
+      "store": {
+        "unavailable": "Nutzungsdaten sind gerade nicht verfügbar. Versuchen Sie es gleich erneut."
       }
     },
     "analytics": {
@@ -1587,7 +1609,8 @@
         "bad_id": "Die Kunden-ID ist keine gültige ID."
       },
       "tenant": {
-        "bad_id": "Die Konto-ID ist keine gültige ID."
+        "bad_id": "Die Konto-ID ist keine gültige ID.",
+        "unknown": "Dieses Konto ist den Analysen nicht bekannt."
       },
       "granularity": {
         "unknown": "Diese Granularität wird nicht unterstützt. Verwenden Sie Stunde oder Tag."
@@ -1600,6 +1623,9 @@
         "daily_too_long": "Eine Tagesreihe deckt höchstens 400 Tage ab.",
         "hourly_too_long": "Eine Stundenreihe deckt höchstens 31 Tage ab.",
         "required": "Anfang und Ende des Zeitraums sind beide erforderlich."
+      },
+      "store": {
+        "unavailable": "Analysen sind gerade nicht verfügbar. Versuchen Sie es gleich erneut."
       }
     },
     "limits": {
@@ -1607,10 +1633,42 @@
         "bad_id": "Die Kunden-ID ist keine gültige ID."
       },
       "meter": {
-        "code_required": "Der Zählercode ist erforderlich."
+        "code_required": "Der Zählercode ist erforderlich.",
+        "not_found": "Dieser Zähler wurde nicht gefunden.",
+        "unavailable": "Der Zähler konnte gerade nicht abgefragt werden. Versuchen Sie es gleich erneut."
       },
       "period": {
         "bad_id": "Der Zeitraum muss wie 2026-11 aussehen."
+      },
+      "counter": {
+        "unavailable": "Nutzungszähler sind gerade nicht verfügbar. Versuchen Sie es gleich erneut."
+      },
+      "reconcile": {
+        "not_configured": "Der Abgleich ist in dieser Installation nicht eingerichtet.",
+        "unavailable": "Der Abgleich konnte gerade nicht laufen. Versuchen Sie es gleich erneut."
+      }
+    },
+    "ingest": {
+      "backlog": {
+        "full": "Die Aufnahme ist gerade überlastet. Nichts wurde angenommen; versuchen Sie es später erneut."
+      },
+      "batch": {
+        "bad_size": "Eine Anfrage muss zwischen 1 und 500 Ereignisse enthalten."
+      },
+      "db": {
+        "conflict": "Die Daten haben sich gleichzeitig geändert. Nichts wurde angenommen; ein erneuter Versuch ist sicher.",
+        "slow": "Die Datenbank war zu langsam. Nichts wurde angenommen; ein erneuter Versuch ist sicher.",
+        "timeout": "Die Aufnahme ist abgelaufen. Nichts wurde angenommen; ein erneuter Versuch ist sicher.",
+        "unavailable": "Die Datenbank ist nicht verfügbar. Nichts wurde angenommen; ein erneuter Versuch ist sicher."
+      },
+      "outbox": {
+        "unavailable": "Die Aufnahme kann Ereignisse gerade nicht weitergeben. Versuchen Sie es gleich erneut."
+      },
+      "plans": {
+        "unavailable": "Der Pläne-Dienst ist nicht verfügbar, daher lassen sich Ereignisse nicht prüfen. Versuchen Sie es gleich erneut."
+      },
+      "tenant": {
+        "bad_timezone": "Die Zeitzone dieses Kontos ist nicht verwendbar. Prüfen Sie sie in den Kontoeinstellungen."
       }
     }
   },
