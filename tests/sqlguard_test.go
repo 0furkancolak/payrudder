@@ -17,7 +17,7 @@ import (
 // statement. The exceptions cannot be plain sqlc: ClickHouse is not supported by sqlc, and DDL cannot take parameters.
 var sqlAssembled = map[string]string{
 	"services/analytics-svc/internal/usage/query/builder.go": "ClickHouse: sqlc does not support it",
-	"pkg/testkit/servicedb.go":                       "DDL for throw-away test databases",
+	"pkg/testkit/servicedb.go":                               "DDL for throw-away test databases",
 }
 
 var sqlShape = regexp.MustCompile(`(?is)\b(select\b.+\bfrom\b|insert\s+into\b|update\s+\w+\s+set\b|delete\s+from\b)`)
