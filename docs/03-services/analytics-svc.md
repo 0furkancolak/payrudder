@@ -99,3 +99,7 @@ service AnalyticsService {
 
 Insert big batches (≥ 10k rows) to avoid too many parts. One consumer per partition is plenty.
 **Target:** query p95 < 300 ms for a 30-day hourly series of one tenant.
+
+## As built: sandbox reset (Phase 45 E)
+
+`SandboxResetService.ResetTenant` (operator only, environment must be SANDBOX) deletes a sandbox tenant's data in ClickHouse: usage events and their hourly roll-up, limit events, invoice facts. plans-svc calls it from the reset job; `internal/sandboxreset` lists what goes and `Kept` what stays on purpose, and a test fails for a table that is neither. See [ADR 0023](../adr/0023-live-and-sandbox-guards.md).

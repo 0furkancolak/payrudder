@@ -1117,6 +1117,299 @@
       }
     }
   },
+  "affiliates": {
+    "intro": "Gestione un programa de socios: cada socio recibe un enlace y un código, los clientes que trae quedan registrados y gana una comisión sobre lo que esos clientes pagan. El pago lo hace usted.",
+    "tabsLabel": "Secciones del programa de afiliados",
+    "tabs": {
+      "overview": "Resumen",
+      "program": "Programa",
+      "partners": "Afiliados",
+      "commissions": "Comisiones",
+      "payouts": "Pagos",
+      "journal": "Diario"
+    },
+    "payoutMethod": "Método de pago",
+    "payoutDetails": "Datos de pago",
+    "payoutDetailsHint": "Texto libre para usted: el IBAN, el titular de la cuenta o lo que necesite para pagar a este socio a mano.",
+    "methods": {
+      "manual": "Manual",
+      "bank_transfer": "Transferencia bancaria"
+    },
+    "common": {
+      "status": "Estado",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "save": "Guardar",
+      "yes": "Sí",
+      "no": "No",
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "total": "{count} en total"
+    },
+    "status": {
+      "program": {
+        "draft": "Borrador",
+        "active": "Activo",
+        "paused": "En pausa"
+      },
+      "affiliate": {
+        "pending": "Pendiente",
+        "active": "Activo",
+        "suspended": "Suspendido"
+      },
+      "commission": {
+        "pending": "Pendiente",
+        "approved": "Aprobada",
+        "paid": "Pagada",
+        "reversed": "Revertida"
+      },
+      "payout": {
+        "open": "Abierto",
+        "paid": "Pagado",
+        "cancelled": "Cancelado"
+      }
+    },
+    "overview": {
+      "noProgram": "Todavía no hay un programa de socios. Configure uno para empezar a recibir referidos.",
+      "setUp": "Configurar el programa",
+      "inactive": "Los enlaces están apagados y no se gana comisión hasta que el programa esté activo.",
+      "funnel": "Embudo",
+      "steps": {
+        "clicks": "Clics en el enlace",
+        "referrals": "Clientes referidos",
+        "paying": "Clientes que pagan",
+        "commission": "Comisión ganada"
+      },
+      "rate": "{pct} del paso anterior",
+      "noCommission": "Ninguna comisión en este periodo.",
+      "reversed": "{amount} devuelto",
+      "periodNote": "Contado en el periodo elegido. Las comisiones se muestran por moneda y nunca se suman.",
+      "balances": "Lo que tienen los socios",
+      "balancesHint": "Todos los socios juntos, por moneda. Las monedas nunca se suman ni se convierten.",
+      "noBalances": "Todavía no se ha ganado ninguna comisión.",
+      "pending": "Pendiente",
+      "pendingHint": "Espera a que termine el plazo de reembolso antes de poder pagarse",
+      "available": "Disponible para pago",
+      "paid": "Pagado",
+      "takenBack": "Devuelto"
+    },
+    "program": {
+      "title": "Ajustes del programa",
+      "hint": "Las reglas bajo las que ganan todos los socios.",
+      "notSet": "Todavía no hay programa. Los valores de abajo son un buen comienzo; guarde para crearlo.",
+      "appliesFromNow": "Un cambio se aplica a las comisiones ganadas desde ese momento, nunca a las ya ganadas.",
+      "status": "Estado del programa",
+      "statusHint": "Borrador y en pausa apagan los enlaces y no se gana nada.",
+      "kind": "Comisión",
+      "kinds": {
+        "percent_bps": "Porcentaje del importe neto",
+        "fixed": "Importe fijo por factura"
+      },
+      "percent": "Porcentaje",
+      "percentHint": "Del importe neto sin impuestos de una factura pagada. Hasta dos decimales, por ejemplo 12,5.",
+      "fixed": "Importe por factura",
+      "fixedHint": "Se gana solo en facturas en la moneda de abajo.",
+      "currency": "Moneda",
+      "currencyHint": "Para un importe fijo y para el pago mínimo.",
+      "term": "Durante cuánto tiempo gana un cliente",
+      "terms": {
+        "first_invoices": "Las primeras facturas",
+        "months": "Un número de meses",
+        "lifetime": "Toda la vida del cliente"
+      },
+      "termInvoices": "Número de facturas",
+      "termMonths": "Número de meses",
+      "window": "Ventana de atribución (días)",
+      "windowHint": "Cuánto tiempo después de seguir un enlace un cliente sigue contando para el socio.",
+      "hold": "Retención (días)",
+      "holdHint": "Cuánto espera una comisión, el plazo de reembolso, antes de poder pagarse.",
+      "minPayout": "Pago mínimo ({currency})",
+      "minPayoutHint": "Un socio por debajo de este importe se omite al crear los pagos. Déjelo vacío para no tener mínimo.",
+      "coupon": "Cupón para clientes referidos",
+      "noCoupon": "Sin cupón",
+      "couponHint": "Un cliente referido lo recibe en su siguiente compra. Los cupones se crean en Precios.",
+      "clickCap": "Límite diario de clics por socio",
+      "clickCapHint": "Los clics por encima de este número al día no se cuentan.",
+      "landing": "Página de destino",
+      "landingHint": "A dónde envía el enlace del socio al visitante. Vacío muestra una página sencilla.",
+      "autoApprove": "Aprobar las solicitudes automáticamente",
+      "autoApproveHint": "Un socio que solicita queda activo al instante. Si no, la solicitud espera su aprobación en Afiliados.",
+      "save": "Guardar programa",
+      "saved": "Programa guardado.",
+      "errors": {
+        "value": "Introduzca una comisión mayor que cero: un porcentaje hasta 100 con como máximo dos decimales, o un importe en {currency}.",
+        "term": "Introduzca el número de facturas o de meses, un entero de 1 a 1200.",
+        "window": "La ventana de atribución es un número entero de días de 1 a 365.",
+        "hold": "La retención es un número entero de días de 0 a 180.",
+        "minPayout": "Introduzca el pago mínimo como un importe en {currency}, o déjelo vacío.",
+        "clickCap": "El límite de clics es un entero de 1 a 100000.",
+        "landing": "La página de destino debe ser una dirección web que empiece por http:// o https://."
+      }
+    },
+    "partners": {
+      "waiting": "Esperando su aprobación: {count}",
+      "showWaiting": "Mostrarlas",
+      "allStatuses": "Todos los estados",
+      "search": "Buscar por código, correo o nombre",
+      "add": "Añadir afiliado",
+      "empty": "Ningún afiliado coincide.",
+      "code": "Código",
+      "partner": "Socio",
+      "applied": "Solicitó por el formulario",
+      "clicks": "Clics",
+      "referrals": "Referidos",
+      "signedIn": "Ha iniciado sesión",
+      "balance": "Saldo",
+      "available": "{amount} disponible",
+      "paidAmount": "{amount} pagado",
+      "approve": "Aprobar",
+      "suspend": "Suspender",
+      "reinstate": "Reactivar",
+      "edit": "Editar",
+      "linkAndCode": "Enlace y código",
+      "referralsOf": "Referidos"
+    },
+    "add": {
+      "title": "Añadir un afiliado",
+      "hint": "El socio queda activo al instante, salvo que lo deje pendiente.",
+      "email": "Correo electrónico",
+      "name": "Nombre",
+      "code": "Código (opcional)",
+      "codeHint": "De 3 a 32 letras, números, - o _. Debe ser único en toda la plataforma porque el enlace público no incluye la aplicación. Déjelo vacío para uno aleatorio.",
+      "pending": "Dejar pendiente hasta que yo apruebe",
+      "submit": "Añadir afiliado",
+      "done": "Afiliado {code} añadido."
+    },
+    "edit": {
+      "title": "Editar {code}",
+      "done": "Afiliado guardado."
+    },
+    "link": {
+      "title": "Enlace y código de {code}",
+      "hint": "Envíe al socio su enlace. Un cliente que escriba el código promocional del socio al pagar también queda atribuido a él.",
+      "referralLink": "Enlace de referido",
+      "copy": "Copiar enlace",
+      "noLink": "El enlace de {code} es https://su-pasarela/r/{code}.",
+      "promotionCode": "Código promocional",
+      "promotionHint": "Un código promocional existente de Precios. Canjearlo cuenta como seguir el enlace.",
+      "submit": "Vincular código",
+      "done": "Código {code} vinculado."
+    },
+    "referrals": {
+      "title": "Clientes de {code}",
+      "hint": "Las direcciones de correo están enmascaradas.",
+      "empty": "Este socio todavía no ha traído ningún cliente.",
+      "customer": "Cliente",
+      "email": "Correo",
+      "source": "Origen",
+      "time": "Atribuido",
+      "sources": {
+        "link": "Enlace",
+        "code": "Código",
+        "api": "API"
+      }
+    },
+    "commissions": {
+      "title": "Comisiones",
+      "intro": "Una comisión por cada factura pagada de un cliente que trajo un socio, sobre el importe neto sin impuestos. Espera la retención, luego se aprueba y se paga con un pago.",
+      "allPartners": "Todos los socios",
+      "allStatuses": "Todos los estados",
+      "allKinds": "Comisiones y reversiones",
+      "kind": "Tipo",
+      "kinds": {
+        "commission": "Comisión",
+        "reversal": "Reversión"
+      },
+      "partner": "Socio",
+      "empty": "Ninguna comisión coincide.",
+      "earned": "Ganada",
+      "invoice": "Factura",
+      "base": "Importe neto",
+      "amount": "Comisión",
+      "reversedOf": "{amount} devuelto",
+      "payout": "Pago",
+      "openPayout": "Abrir el pago",
+      "reverse": "Revertir"
+    },
+    "reverse": {
+      "title": "Revertir una comisión",
+      "hint": "Recupere una comisión por una disputa de pago, o a mano.",
+      "auto": "Los reembolsos, anulaciones y notas de crédito revierten las comisiones por sí solos. Use esto solo para lo que Payrudder no puede ver.",
+      "left": "Pendiente de devolver",
+      "reason": "Motivo",
+      "reasons": {
+        "chargeback": "Disputa de pago",
+        "manual": "Manual"
+      },
+      "amount": "Importe ({currency})",
+      "amountHint": "Déjelo vacío para devolver todo lo que queda.",
+      "reference": "Referencia (opcional)",
+      "referenceRequiredLabel": "Referencia (obligatoria)",
+      "referenceHint": "Da nombre a esta reversión. La misma factura, motivo y referencia solo revierten una vez.",
+      "note": "Nota",
+      "paidNote": "Una comisión ya pagada se descuenta del siguiente pago del socio.",
+      "badAmount": "Introduzca un importe mayor que cero en {currency}, sin superar lo que queda.",
+      "referenceRequired": "Una reversión manual necesita una referencia.",
+      "submit": "Revertir comisión",
+      "done": "{amount} devuelto.",
+      "nothing": "No queda nada por devolver: esta reversión ya se hizo."
+    },
+    "payouts": {
+      "title": "Pagos",
+      "intro": "Un pago reúne las comisiones aprobadas de un socio en una moneda. Payrudder no mueve dinero: pague a mano o por transferencia y luego marque el pago como pagado.",
+      "create": "Crear pagos",
+      "result": "Pagos creados",
+      "created": "Pagos creados: {count}",
+      "skipped": "Omitidos: {count}",
+      "reasons": {
+        "below_minimum": "por debajo del pago mínimo",
+        "not_positive": "no mayor que cero"
+      },
+      "nothing": "No hay nada que pagar ahora mismo.",
+      "allStatuses": "Todos los estados",
+      "empty": "Todavía no hay pagos.",
+      "created_at": "Creado",
+      "total": "Total",
+      "count": "Comisiones",
+      "reference": "Referencia",
+      "fake": "Falso (sandbox)",
+      "fakeNote": "Este es un pago de sandbox. No se pagó ni se pagará nada.",
+      "commissions": "Comisiones",
+      "commissionsOf": "Comisiones del pago de {code}",
+      "markPaid": "Marcar pagado",
+      "cancel": "Cancelar"
+    },
+    "pay": {
+      "title": "Marcar el pago como pagado",
+      "summary": "{amount} a {code}",
+      "noMoney": "Payrudder no mueve dinero. Pague al socio usted mismo, a mano o por transferencia, y confirme aquí para registrarlo en su contabilidad.",
+      "fakeWarning": "Este es un pago de sandbox: no se paga nada de verdad y sus asientos quedan marcados como falsos.",
+      "reference": "Referencia (opcional)",
+      "referenceHint": "Por ejemplo la referencia de la transferencia bancaria.",
+      "submit": "Marcar pagado",
+      "done": "Pago marcado como pagado."
+    },
+    "journal": {
+      "title": "Diario",
+      "intro": "Lo que los pagos realizados asentaron en su contabilidad: el gasto de comisiones contra la cuenta por pagar, y la cuenta por pagar contra caja.",
+      "download": "Descargar CSV",
+      "balanced": "Cuadrado",
+      "unbalanced": "Descuadrado",
+      "debits": "Débitos",
+      "credits": "Créditos",
+      "empty": "Todavía no hay asientos. Pagar un pago asienta en el diario.",
+      "time": "Asentado",
+      "account": "Cuenta",
+      "debit": "Débito",
+      "credit": "Crédito",
+      "memo": "Concepto",
+      "accounts": {
+        "commission_expense": "Gasto de comisiones",
+        "commissions_payable": "Comisiones por pagar",
+        "cash": "Caja"
+      }
+    }
+  },
   "einvoice": {
     "title": "Factura electrónica",
     "confirmCancel": "¿Anular este documento electrónico legal? No se puede deshacer.",
@@ -1460,6 +1753,9 @@
       },
       "storage": {
         "not_configured": "El almacenamiento de archivos no está configurado en este despliegue."
+      },
+      "sandbox": {
+        "unknown_scenario": "Este escenario de pago no existe. Consulta el catálogo de escenarios."
       }
     },
     "coupon": {
@@ -1789,6 +2085,9 @@
       },
       "promote": {
         "stale": "La configuración cambió desde la vista previa. Vuelve a previsualizar la promoción."
+      },
+      "sandbox": {
+        "reset_rate_limited": "El sandbox se restableció hace un momento. Espera unos minutos antes de restablecerlo de nuevo."
       }
     },
     "gateway": {
@@ -1997,6 +2296,12 @@
         "not_open": "Este pago ya no está abierto: se pagó o se canceló.",
         "nothing_to_pay": "Tras los reembolsos este pago se queda en nada. Cancélelo; el saldo pasa al siguiente.",
         "tenant_not_active": "Este entorno live no está activo, así que no se puede crear ni pagar ningún pago."
+      }
+    },
+    "admin": {
+      "sandbox": {
+        "live_refused": "Solo se puede restablecer un entorno sandbox. Un entorno live nunca se toca.",
+        "bad_tenant": "El entorno que se quiere restablecer no es válido."
       }
     }
   },
@@ -2392,6 +2697,7 @@
       "overview": "Resumen",
       "customers": "Clientes",
       "billing": "Facturación",
+      "growth": "Crecimiento",
       "developers": "Desarrolladores",
       "settings": "Ajustes"
     },
@@ -2422,7 +2728,8 @@
       "einvoice": "Factura electrónica",
       "appSettings": "Ajustes de la aplicación",
       "operator": "Consola de operador",
-      "myApps": "Mis aplicaciones"
+      "myApps": "Mis aplicaciones",
+      "affiliates": "Afiliados"
     }
   },
   "privacy": {

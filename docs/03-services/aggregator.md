@@ -165,3 +165,7 @@ never touches other tenants' rows, and promotion flips only T. Live traffic is n
 Parallelism = partitions (12). Batch size 500–2000 records per transaction. Pre-summing in Go collapses
 N events to ≤ N distinct keys, which is a large win for hot customers. `processed_events` is the largest table.
 Monthly partitions are dropped 45 days after period end. **Target:** 20k events/s across 12 partitions.
+
+## As built: sandbox reset (Phase 45 E)
+
+`SandboxResetService.ResetTenant` (operator only, environment must be SANDBOX) deletes a sandbox tenant's data in aggregator_db: usage, late usage, processed events and period settings (generations and replay jobs stay). plans-svc calls it from the reset job; `internal/sandboxreset` lists what goes and `Kept` what stays on purpose, and a test fails for a table that is neither. See [ADR 0023](../adr/0023-live-and-sandbox-guards.md).

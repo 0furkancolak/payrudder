@@ -185,7 +185,7 @@ CREATE TABLE outbox (                                  -- shared outbox shape, s
 );
 ```
 
-RLS: on all tables except `accounts`, `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey) and `outbox`.
+RLS: on all tables except `accounts`, `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey), `sandbox_resets` (system role only, phase 45 E) and `outbox`.
 
 ---
 

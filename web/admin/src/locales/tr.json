@@ -1117,6 +1117,299 @@
       }
     }
   },
+  "affiliates": {
+    "intro": "Bir ortaklık programı işletin: ortaklar bir bağlantı ve bir kod alır, getirdikleri müşteriler hatırlanır ve bu müşterilerin ödediği tutardan komisyon kazanırlar. Ödemeyi siz yaparsınız.",
+    "tabsLabel": "Ortaklık programı bölümleri",
+    "tabs": {
+      "overview": "Genel bakış",
+      "program": "Program",
+      "partners": "Ortaklar",
+      "commissions": "Komisyonlar",
+      "payouts": "Ödemeler",
+      "journal": "Yevmiye"
+    },
+    "payoutMethod": "Ödeme yöntemi",
+    "payoutDetails": "Ödeme bilgileri",
+    "payoutDetailsHint": "Sizin için serbest metin: IBAN, hesap sahibi ya da bu ortağa elle ödeme yaparken gereken her şey.",
+    "methods": {
+      "manual": "Elle",
+      "bank_transfer": "Banka havalesi"
+    },
+    "common": {
+      "status": "Durum",
+      "cancel": "Vazgeç",
+      "close": "Kapat",
+      "save": "Kaydet",
+      "yes": "Evet",
+      "no": "Hayır",
+      "prev": "Önceki",
+      "next": "Sonraki",
+      "total": "Toplam {count}"
+    },
+    "status": {
+      "program": {
+        "draft": "Taslak",
+        "active": "Etkin",
+        "paused": "Duraklatıldı"
+      },
+      "affiliate": {
+        "pending": "Beklemede",
+        "active": "Etkin",
+        "suspended": "Askıda"
+      },
+      "commission": {
+        "pending": "Beklemede",
+        "approved": "Onaylandı",
+        "paid": "Ödendi",
+        "reversed": "Geri alındı"
+      },
+      "payout": {
+        "open": "Açık",
+        "paid": "Ödendi",
+        "cancelled": "İptal edildi"
+      }
+    },
+    "overview": {
+      "noProgram": "Henüz bir ortaklık programı yok. Yönlendirme kazanmaya başlamak için bir program oluşturun.",
+      "setUp": "Programı kur",
+      "inactive": "Program etkin olana kadar bağlantılar kapalıdır ve komisyon kazanılmaz.",
+      "funnel": "Huni",
+      "steps": {
+        "clicks": "Bağlantı tıklamaları",
+        "referrals": "Yönlendirilen müşteriler",
+        "paying": "Ödeme yapan müşteriler",
+        "commission": "Kazanılan komisyon"
+      },
+      "rate": "Önceki adımın {pct} kadarı",
+      "noCommission": "Bu dönemde komisyon yok.",
+      "reversed": "{amount} geri alındı",
+      "periodNote": "Seçtiğiniz dönem için sayılır. Komisyonlar para birimine göre gösterilir, hiçbir zaman toplanmaz.",
+      "balances": "Ortakların bakiyesi",
+      "balancesHint": "Tüm ortaklar birlikte, para birimine göre. Para birimleri hiçbir zaman toplanmaz ya da çevrilmez.",
+      "noBalances": "Henüz komisyon kazanılmadı.",
+      "pending": "Beklemede",
+      "pendingHint": "Ödenebilmesi için iade süresini bekliyor",
+      "available": "Ödemeye hazır",
+      "paid": "Ödenen",
+      "takenBack": "Geri alınan"
+    },
+    "program": {
+      "title": "Program ayarları",
+      "hint": "Tüm ortakların kazandığı kurallar.",
+      "notSet": "Henüz program yok. Aşağıdaki değerler makul bir başlangıçtır; oluşturmak için kaydedin.",
+      "appliesFromNow": "Bir değişiklik, o andan sonra kazanılan komisyonlara uygulanır; daha önce kazanılanlara asla.",
+      "status": "Program durumu",
+      "statusHint": "Taslak ve duraklatılmış durumda bağlantılar kapanır ve hiçbir şey kazanılmaz.",
+      "kind": "Komisyon",
+      "kinds": {
+        "percent_bps": "Net tutarın yüzdesi",
+        "fixed": "Fatura başına sabit tutar"
+      },
+      "percent": "Yüzde",
+      "percentHint": "Ödenen faturanın vergisiz net tutarı üzerinden. En fazla iki ondalık, örneğin 12,5.",
+      "fixed": "Fatura başına tutar",
+      "fixedHint": "Yalnızca aşağıdaki para birimindeki faturalarda kazanılır.",
+      "currency": "Para birimi",
+      "currencyHint": "Sabit tutar ve asgari ödeme için.",
+      "term": "Müşteri ne kadar süre kazandırır",
+      "terms": {
+        "first_invoices": "İlk faturalar",
+        "months": "Belirli sayıda ay",
+        "lifetime": "Müşterinin tüm ömrü boyunca"
+      },
+      "termInvoices": "Fatura sayısı",
+      "termMonths": "Ay sayısı",
+      "window": "Atıf süresi (gün)",
+      "windowHint": "Bağlantıyı izledikten sonra müşterinin ne kadar süre ortağa ait sayılacağı.",
+      "hold": "Bekleme (gün)",
+      "holdHint": "Bir komisyonun ödenebilmesi için ne kadar beklediği, yani iade süresi.",
+      "minPayout": "Asgari ödeme ({currency})",
+      "minPayoutHint": "Bu tutarın altındaki ortak, ödemeler oluşturulurken atlanır. Sınır istemiyorsanız boş bırakın.",
+      "coupon": "Yönlendirilen müşteriler için kupon",
+      "noCoupon": "Kupon yok",
+      "couponHint": "Yönlendirilen müşteri bir sonraki ödemesinde alır. Kuponlar Fiyatlandırma bölümünde oluşturulur.",
+      "clickCap": "Ortak başına günlük tıklama sınırı",
+      "clickCapHint": "Günlük bu sayıyı aşan tıklamalar sayılmaz.",
+      "landing": "Açılış sayfası",
+      "landingHint": "Ortak bağlantısının ziyaretçiyi gönderdiği yer. Boşsa sade bir sayfa gösterilir.",
+      "autoApprove": "Başvuruları otomatik onayla",
+      "autoApproveHint": "Başvuran ortak hemen etkin olur. Aksi halde başvuru Ortaklar sekmesinde onayınızı bekler.",
+      "save": "Programı kaydet",
+      "saved": "Program kaydedildi.",
+      "errors": {
+        "value": "Sıfırdan büyük bir komisyon girin: en fazla iki ondalıklı, 100'e kadar bir yüzde ya da {currency} cinsinden bir tutar.",
+        "term": "Fatura veya ay sayısını 1 ile 1200 arasında bir tam sayı olarak girin.",
+        "window": "Atıf süresi 1 ile 365 arasında tam sayıda gündür.",
+        "hold": "Bekleme 0 ile 180 arasında tam sayıda gündür.",
+        "minPayout": "Asgari ödemeyi {currency} cinsinden bir tutar olarak girin ya da boş bırakın.",
+        "clickCap": "Tıklama sınırı 1 ile 100000 arasında bir tam sayıdır.",
+        "landing": "Açılış sayfası http:// veya https:// ile başlayan bir web adresi olmalıdır."
+      }
+    },
+    "partners": {
+      "waiting": "Onayınızı bekleyen başvuru: {count}",
+      "showWaiting": "Göster",
+      "allStatuses": "Tüm durumlar",
+      "search": "Kod, e-posta veya ada göre ara",
+      "add": "Ortak ekle",
+      "empty": "Eşleşen ortak yok.",
+      "code": "Kod",
+      "partner": "Ortak",
+      "applied": "Formla başvurdu",
+      "clicks": "Tıklama",
+      "referrals": "Yönlendirme",
+      "signedIn": "Giriş yaptı",
+      "balance": "Bakiye",
+      "available": "{amount} ödenebilir",
+      "paidAmount": "{amount} ödendi",
+      "approve": "Onayla",
+      "suspend": "Askıya al",
+      "reinstate": "Yeniden etkinleştir",
+      "edit": "Düzenle",
+      "linkAndCode": "Bağlantı ve kod",
+      "referralsOf": "Yönlendirmeler"
+    },
+    "add": {
+      "title": "Ortak ekle",
+      "hint": "Beklemede bırakmazsanız ortak hemen etkin olur.",
+      "email": "E-posta",
+      "name": "Ad",
+      "code": "Kod (isteğe bağlı)",
+      "codeHint": "3 ile 32 arasında harf, rakam, - veya _. Herkese açık bağlantı bir uygulama içermediği için tüm platformda benzersiz olmalıdır. Rastgele bir kod için boş bırakın.",
+      "pending": "Ben onaylayana kadar beklemede bırak",
+      "submit": "Ortak ekle",
+      "done": "{code} ortağı eklendi."
+    },
+    "edit": {
+      "title": "{code} düzenle",
+      "done": "Ortak kaydedildi."
+    },
+    "link": {
+      "title": "{code} bağlantısı ve kodu",
+      "hint": "Ortağa bağlantısını gönderin. Ortağın promosyon kodunu ödemede yazan müşteri de ona atfedilir.",
+      "referralLink": "Yönlendirme bağlantısı",
+      "copy": "Bağlantıyı kopyala",
+      "noLink": "{code} bağlantısı https://sizin-gateway/r/{code} biçimindedir.",
+      "promotionCode": "Promosyon kodu",
+      "promotionHint": "Fiyatlandırma'da var olan bir promosyon kodu. Kullanılması, bağlantının izlenmesi sayılır.",
+      "submit": "Kodu bağla",
+      "done": "{code} kodu bağlandı."
+    },
+    "referrals": {
+      "title": "{code} ortağının müşterileri",
+      "hint": "E-posta adresleri maskelenmiştir.",
+      "empty": "Bu ortak henüz müşteri getirmedi.",
+      "customer": "Müşteri",
+      "email": "E-posta",
+      "source": "Kaynak",
+      "time": "Atıf zamanı",
+      "sources": {
+        "link": "Bağlantı",
+        "code": "Kod",
+        "api": "API"
+      }
+    },
+    "commissions": {
+      "title": "Komisyonlar",
+      "intro": "Bir ortağın getirdiği müşterinin her ödenmiş faturası için bir komisyon, vergisiz net tutar üzerinden. Bekleme süresini bekler, sonra onaylanır ve bir ödemeyle ödenir.",
+      "allPartners": "Tüm ortaklar",
+      "allStatuses": "Tüm durumlar",
+      "allKinds": "Komisyonlar ve geri almalar",
+      "kind": "Tür",
+      "kinds": {
+        "commission": "Komisyon",
+        "reversal": "Geri alma"
+      },
+      "partner": "Ortak",
+      "empty": "Eşleşen komisyon yok.",
+      "earned": "Kazanıldı",
+      "invoice": "Fatura",
+      "base": "Net tutar",
+      "amount": "Komisyon",
+      "reversedOf": "{amount} geri alındı",
+      "payout": "Ödeme",
+      "openPayout": "Ödemeyi aç",
+      "reverse": "Geri al"
+    },
+    "reverse": {
+      "title": "Komisyonu geri al",
+      "hint": "Bir komisyonu ödeme itirazı için ya da elle geri alın.",
+      "auto": "İadeler, iptaller ve alacak dekontları komisyonları kendiliğinden geri alır. Bunu yalnızca Payrudder'ın göremediği durumlar için kullanın.",
+      "left": "Geri alınacak kalan",
+      "reason": "Neden",
+      "reasons": {
+        "chargeback": "Ödeme itirazı",
+        "manual": "Elle"
+      },
+      "amount": "Tutar ({currency})",
+      "amountHint": "Kalan her şeyi geri almak için boş bırakın.",
+      "reference": "Referans (isteğe bağlı)",
+      "referenceRequiredLabel": "Referans (zorunlu)",
+      "referenceHint": "Bu geri almayı adlandırır. Aynı fatura, neden ve referans yalnızca bir kez geri alır.",
+      "note": "Not",
+      "paidNote": "Zaten ödenmiş bir komisyon, ortağın bir sonraki ödemesinden düşülür.",
+      "badAmount": "{currency} cinsinden sıfırdan büyük ve kalandan fazla olmayan bir tutar girin.",
+      "referenceRequired": "Elle geri alma için bir referans gerekir.",
+      "submit": "Komisyonu geri al",
+      "done": "{amount} geri alındı.",
+      "nothing": "Geri alınacak başka bir şey yok: bu geri alma zaten yapılmış."
+    },
+    "payouts": {
+      "title": "Ödemeler",
+      "intro": "Ödeme, bir ortağın tek para birimindeki onaylı komisyonlarıdır. Payrudder para taşımaz: elle ya da banka havalesiyle ödeyin, sonra ödemeyi ödendi olarak işaretleyin.",
+      "create": "Ödemeleri oluştur",
+      "result": "Oluşturulan ödemeler",
+      "created": "Oluşturulan ödeme: {count}",
+      "skipped": "Dışarıda kalan: {count}",
+      "reasons": {
+        "below_minimum": "asgari ödemenin altında",
+        "not_positive": "sıfırın üzerinde değil"
+      },
+      "nothing": "Şu anda ödenecek bir şey yok.",
+      "allStatuses": "Tüm durumlar",
+      "empty": "Henüz ödeme yok.",
+      "created_at": "Oluşturuldu",
+      "total": "Toplam",
+      "count": "Komisyon",
+      "reference": "Referans",
+      "fake": "Sahte (sandbox)",
+      "fakeNote": "Bu bir sandbox ödemesidir. Hiçbir şey ödenmedi ve ödenmeyecek.",
+      "commissions": "Komisyonlar",
+      "commissionsOf": "{code} ödemesinin komisyonları",
+      "markPaid": "Ödendi işaretle",
+      "cancel": "İptal et"
+    },
+    "pay": {
+      "title": "Ödemeyi ödendi olarak işaretle",
+      "summary": "{code} ortağına {amount}",
+      "noMoney": "Payrudder para taşımaz. Ortağa kendiniz, elle ya da banka havalesiyle ödeyin, sonra defterlerinize işlemek için burada onaylayın.",
+      "fakeWarning": "Bu bir sandbox ödemesidir: gerçekte hiçbir şey ödenmez ve kayıtları sahte olarak işaretlenir.",
+      "reference": "Referans (isteğe bağlı)",
+      "referenceHint": "Örneğin banka havalesi referansı.",
+      "submit": "Ödendi işaretle",
+      "done": "Ödeme ödendi olarak işaretlendi."
+    },
+    "journal": {
+      "title": "Yevmiye",
+      "intro": "Ödenen ödemelerin defterlerinize işlediği kayıtlar: komisyon gideri karşılığında borç hesabı, borç hesabı karşılığında kasa.",
+      "download": "CSV indir",
+      "balanced": "Dengeli",
+      "unbalanced": "Dengeli değil",
+      "debits": "Borç",
+      "credits": "Alacak",
+      "empty": "Henüz kayıt yok. Bir ödemeyi ödemek yevmiyeye kayıt işler.",
+      "time": "Kayıt zamanı",
+      "account": "Hesap",
+      "debit": "Borç",
+      "credit": "Alacak",
+      "memo": "Açıklama",
+      "accounts": {
+        "commission_expense": "Komisyon gideri",
+        "commissions_payable": "Ödenecek komisyonlar",
+        "cash": "Kasa"
+      }
+    }
+  },
   "einvoice": {
     "title": "E-fatura",
     "confirmCancel": "Bu yasal e-belge iptal edilsin mi? Geri alınamaz.",
@@ -1460,6 +1753,9 @@
       },
       "storage": {
         "not_configured": "Bu kurulumda dosya depolama yapılandırılmamış."
+      },
+      "sandbox": {
+        "unknown_scenario": "Böyle bir ödeme senaryosu yok. Liste için senaryo kataloğuna bakın."
       }
     },
     "coupon": {
@@ -1789,6 +2085,9 @@
       },
       "promote": {
         "stale": "Önizlemeden sonra yapılandırma değişti. Aktarımı yeniden önizleyin."
+      },
+      "sandbox": {
+        "reset_rate_limited": "Sandbox az önce sıfırlandı. Yeniden sıfırlamak için birkaç dakika bekleyin."
       }
     },
     "gateway": {
@@ -1997,6 +2296,12 @@
         "not_open": "Bu ödeme artık açık değil: ödendi veya iptal edildi.",
         "nothing_to_pay": "İadelerden sonra bu ödemeden geriye bir şey kalmadı. İptal edin; bakiye sonraki ödemeye devreder.",
         "tenant_not_active": "Bu canlı ortam etkin değil; ödeme oluşturulamaz veya ödenemez."
+      }
+    },
+    "admin": {
+      "sandbox": {
+        "live_refused": "Yalnızca sandbox ortamı sıfırlanabilir. Canlı ortama asla dokunulmaz.",
+        "bad_tenant": "Sıfırlanacak ortam geçerli değil."
       }
     }
   },
@@ -2392,6 +2697,7 @@
       "overview": "Genel bakış",
       "customers": "Müşteriler",
       "billing": "Faturalama",
+      "growth": "Büyüme",
       "developers": "Geliştiriciler",
       "settings": "Ayarlar"
     },
@@ -2422,7 +2728,8 @@
       "einvoice": "E-fatura",
       "appSettings": "Uygulama ayarları",
       "operator": "Operatör konsolu",
-      "myApps": "Uygulamalarım"
+      "myApps": "Uygulamalarım",
+      "affiliates": "Ortaklar"
     }
   },
   "privacy": {

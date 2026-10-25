@@ -42,6 +42,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	einvoiceworker "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers"
 	transfercommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/command"
@@ -299,6 +300,7 @@ func webhookHandler(cfg Config, pool *pgxpool.Pool, h *handler.Handler, registry
 	return (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
 		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Objects: store.Objects{DB: pool}, Log: log, Token: cfg.InternalToken,
 		EInvoiceAccounts: store.EInvoiceAccounts{DB: pool, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
+		Reset:   sandboxreset.New(pool).Reset,
 		Modules: []webhook.RouteRegistrar{transferHandler}}).Handler(), closeConns, nil
 }
 

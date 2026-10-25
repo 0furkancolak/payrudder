@@ -13,6 +13,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
+	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
 )
 
 // Handler serves plansv1.IdentityService.
@@ -22,11 +23,20 @@ type Handler struct {
 	qry    *query.Queries
 	goLive *golive.Handler
 	promo  *promote.Handler
+	sbx    *sandboxapi.Handler
 }
 
 // New returns the identity handlers. goLive serves the two go-live calls (phase 45).
-func New(cmd *command.Commands, qry *query.Queries, goLive *golive.Handler, promo *promote.Handler) *Handler {
-	return &Handler{cmd: cmd, qry: qry, goLive: goLive, promo: promo}
+func New(cmd *command.Commands, qry *query.Queries, goLive *golive.Handler, promo *promote.Handler, sbx *sandboxapi.Handler) *Handler {
+	return &Handler{cmd: cmd, qry: qry, goLive: goLive, promo: promo, sbx: sbx}
+}
+
+func (h *Handler) ResetMySandbox(ctx context.Context, req *plansv1.ResetMySandboxRequest) (*plansv1.ResetMySandboxResponse, error) {
+	return h.sbx.ResetMySandbox(ctx, req)
+}
+
+func (h *Handler) GetMySandboxReset(ctx context.Context, req *plansv1.GetMySandboxResetRequest) (*plansv1.GetMySandboxResetResponse, error) {
+	return h.sbx.GetMySandboxReset(ctx, req)
 }
 
 func (h *Handler) PromoteMyApp(ctx context.Context, req *plansv1.PromoteMyAppRequest) (*plansv1.PromoteMyAppResponse, error) {

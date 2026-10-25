@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/config"
@@ -29,11 +30,13 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/ingest"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/lookup"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/maintenance"
+	ingestreset "github.com/0furkancolak/payrudder/services/ingest-svc/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/migrations"
 )
 
@@ -152,6 +155,7 @@ func run() error {
 		},
 	})
 	ingestv1.RegisterIngestServiceServer(srv, svc)
+	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(ingestreset.New(systemPool).Reset))
 
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {

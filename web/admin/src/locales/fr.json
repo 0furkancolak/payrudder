@@ -1117,6 +1117,299 @@
       }
     }
   },
+  "affiliates": {
+    "intro": "Gérez un programme de partenaires : chaque partenaire reçoit un lien et un code, les clients qu'il amène sont mémorisés et il gagne une commission sur ce que ces clients paient. C'est vous qui le payez.",
+    "tabsLabel": "Sections du programme d'affiliation",
+    "tabs": {
+      "overview": "Aperçu",
+      "program": "Programme",
+      "partners": "Affiliés",
+      "commissions": "Commissions",
+      "payouts": "Versements",
+      "journal": "Journal"
+    },
+    "payoutMethod": "Mode de versement",
+    "payoutDetails": "Coordonnées de versement",
+    "payoutDetailsHint": "Texte libre pour vous : l'IBAN, le titulaire du compte ou tout ce dont vous avez besoin pour payer ce partenaire à la main.",
+    "methods": {
+      "manual": "Manuel",
+      "bank_transfer": "Virement bancaire"
+    },
+    "common": {
+      "status": "Statut",
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "save": "Enregistrer",
+      "yes": "Oui",
+      "no": "Non",
+      "prev": "Précédent",
+      "next": "Suivant",
+      "total": "{count} au total"
+    },
+    "status": {
+      "program": {
+        "draft": "Brouillon",
+        "active": "Actif",
+        "paused": "En pause"
+      },
+      "affiliate": {
+        "pending": "En attente",
+        "active": "Actif",
+        "suspended": "Suspendu"
+      },
+      "commission": {
+        "pending": "En attente",
+        "approved": "Approuvée",
+        "paid": "Payée",
+        "reversed": "Annulée"
+      },
+      "payout": {
+        "open": "Ouvert",
+        "paid": "Payé",
+        "cancelled": "Annulé"
+      }
+    },
+    "overview": {
+      "noProgram": "Il n'y a pas encore de programme de partenaires. Configurez-en un pour commencer à recevoir des recommandations.",
+      "setUp": "Configurer le programme",
+      "inactive": "Les liens sont désactivés et aucune commission n'est gagnée tant que le programme n'est pas actif.",
+      "funnel": "Entonnoir",
+      "steps": {
+        "clicks": "Clics sur le lien",
+        "referrals": "Clients recommandés",
+        "paying": "Clients payants",
+        "commission": "Commission gagnée"
+      },
+      "rate": "{pct} de l'étape précédente",
+      "noCommission": "Aucune commission sur cette période.",
+      "reversed": "{amount} repris",
+      "periodNote": "Compté sur la période choisie. Les commissions sont affichées par devise et jamais additionnées.",
+      "balances": "Ce que les partenaires ont",
+      "balancesHint": "Tous les partenaires ensemble, par devise. Les devises ne sont jamais additionnées ni converties.",
+      "noBalances": "Aucune commission n'a encore été gagnée.",
+      "pending": "En attente",
+      "pendingHint": "Attend la fin du délai de remboursement avant de pouvoir être versée",
+      "available": "Disponible pour versement",
+      "paid": "Versé",
+      "takenBack": "Repris"
+    },
+    "program": {
+      "title": "Réglages du programme",
+      "hint": "Les règles selon lesquelles tous les partenaires gagnent.",
+      "notSet": "Il n'y a pas encore de programme. Les valeurs ci-dessous sont un bon point de départ ; enregistrez pour le créer.",
+      "appliesFromNow": "Une modification s'applique aux commissions gagnées à partir de ce moment, jamais à celles déjà gagnées.",
+      "status": "Statut du programme",
+      "statusHint": "Brouillon et en pause désactivent les liens et rien n'est gagné.",
+      "kind": "Commission",
+      "kinds": {
+        "percent_bps": "Pourcentage du montant net",
+        "fixed": "Montant fixe par facture"
+      },
+      "percent": "Pourcentage",
+      "percentHint": "Du montant net hors taxes d'une facture payée. Jusqu'à deux décimales, par exemple 12,5.",
+      "fixed": "Montant par facture",
+      "fixedHint": "Gagné uniquement sur les factures dans la devise ci-dessous.",
+      "currency": "Devise",
+      "currencyHint": "Pour un montant fixe et pour le versement minimum.",
+      "term": "Durée pendant laquelle un client rapporte",
+      "terms": {
+        "first_invoices": "Les premières factures",
+        "months": "Un nombre de mois",
+        "lifetime": "Toute la durée de vie du client"
+      },
+      "termInvoices": "Nombre de factures",
+      "termMonths": "Nombre de mois",
+      "window": "Fenêtre d'attribution (jours)",
+      "windowHint": "Combien de temps après avoir suivi un lien un client compte encore pour le partenaire.",
+      "hold": "Délai de rétention (jours)",
+      "holdHint": "Combien de temps une commission attend, le délai de remboursement, avant de pouvoir être versée.",
+      "minPayout": "Versement minimum ({currency})",
+      "minPayoutHint": "Un partenaire en dessous de ce montant est ignoré à la création des versements. Laissez vide pour aucun minimum.",
+      "coupon": "Coupon pour les clients recommandés",
+      "noCoupon": "Aucun coupon",
+      "couponHint": "Un client recommandé le reçoit à son prochain paiement. Les coupons se créent dans Tarification.",
+      "clickCap": "Plafond de clics par jour et par partenaire",
+      "clickCapHint": "Les clics au-dessus de ce nombre par jour ne sont pas comptés.",
+      "landing": "Page d'atterrissage",
+      "landingHint": "Où le lien du partenaire envoie le visiteur. Vide, une page simple s'affiche.",
+      "autoApprove": "Approuver les candidatures automatiquement",
+      "autoApproveHint": "Un partenaire qui postule est actif tout de suite. Sinon la candidature attend votre accord sous Affiliés.",
+      "save": "Enregistrer le programme",
+      "saved": "Programme enregistré.",
+      "errors": {
+        "value": "Saisissez une commission supérieure à zéro : un pourcentage jusqu'à 100 avec au plus deux décimales, ou un montant en {currency}.",
+        "term": "Saisissez le nombre de factures ou de mois, un entier de 1 à 1200.",
+        "window": "La fenêtre d'attribution est un nombre entier de jours de 1 à 365.",
+        "hold": "Le délai de rétention est un nombre entier de jours de 0 à 180.",
+        "minPayout": "Saisissez le versement minimum comme un montant en {currency}, ou laissez vide.",
+        "clickCap": "Le plafond de clics est un entier de 1 à 100000.",
+        "landing": "La page d'atterrissage doit être une adresse web commençant par http:// ou https://."
+      }
+    },
+    "partners": {
+      "waiting": "En attente de votre approbation : {count}",
+      "showWaiting": "Les afficher",
+      "allStatuses": "Tous les statuts",
+      "search": "Rechercher par code, e-mail ou nom",
+      "add": "Ajouter un affilié",
+      "empty": "Aucun affilié ne correspond.",
+      "code": "Code",
+      "partner": "Partenaire",
+      "applied": "A postulé par le formulaire",
+      "clicks": "Clics",
+      "referrals": "Recommandations",
+      "signedIn": "Connecté",
+      "balance": "Solde",
+      "available": "{amount} disponible",
+      "paidAmount": "{amount} versé",
+      "approve": "Approuver",
+      "suspend": "Suspendre",
+      "reinstate": "Rétablir",
+      "edit": "Modifier",
+      "linkAndCode": "Lien et code",
+      "referralsOf": "Recommandations"
+    },
+    "add": {
+      "title": "Ajouter un affilié",
+      "hint": "Le partenaire est actif tout de suite, sauf si vous le laissez en attente.",
+      "email": "E-mail",
+      "name": "Nom",
+      "code": "Code (facultatif)",
+      "codeHint": "3 à 32 lettres, chiffres, - ou _. Il doit être unique sur toute la plateforme car le lien public ne contient pas d'application. Laissez vide pour un code aléatoire.",
+      "pending": "Laisser en attente jusqu'à mon approbation",
+      "submit": "Ajouter l'affilié",
+      "done": "Affilié {code} ajouté."
+    },
+    "edit": {
+      "title": "Modifier {code}",
+      "done": "Affilié enregistré."
+    },
+    "link": {
+      "title": "Lien et code de {code}",
+      "hint": "Envoyez au partenaire son lien. Un client qui saisit le code promo du partenaire au paiement lui est aussi attribué.",
+      "referralLink": "Lien de recommandation",
+      "copy": "Copier le lien",
+      "noLink": "Le lien de {code} est https://votre-passerelle/r/{code}.",
+      "promotionCode": "Code promo",
+      "promotionHint": "Un code promo existant de Tarification. L'utiliser compte comme avoir suivi le lien.",
+      "submit": "Lier le code",
+      "done": "Code {code} lié."
+    },
+    "referrals": {
+      "title": "Clients de {code}",
+      "hint": "Les adresses e-mail sont masquées.",
+      "empty": "Ce partenaire n'a pas encore amené de client.",
+      "customer": "Client",
+      "email": "E-mail",
+      "source": "Source",
+      "time": "Attribué le",
+      "sources": {
+        "link": "Lien",
+        "code": "Code",
+        "api": "API"
+      }
+    },
+    "commissions": {
+      "title": "Commissions",
+      "intro": "Une commission par facture payée d'un client amené par un partenaire, sur le montant net hors taxes. Elle attend la fin du délai de rétention, est ensuite approuvée, puis payée par un versement.",
+      "allPartners": "Tous les partenaires",
+      "allStatuses": "Tous les statuts",
+      "allKinds": "Commissions et annulations",
+      "kind": "Type",
+      "kinds": {
+        "commission": "Commission",
+        "reversal": "Annulation"
+      },
+      "partner": "Partenaire",
+      "empty": "Aucune commission ne correspond.",
+      "earned": "Gagnée le",
+      "invoice": "Facture",
+      "base": "Montant net",
+      "amount": "Commission",
+      "reversedOf": "{amount} repris",
+      "payout": "Versement",
+      "openPayout": "Ouvrir le versement",
+      "reverse": "Annuler"
+    },
+    "reverse": {
+      "title": "Annuler une commission",
+      "hint": "Reprenez une commission pour une contestation de paiement, ou à la main.",
+      "auto": "Les remboursements, annulations et avoirs reprennent les commissions d'eux-mêmes. Ne l'utilisez que pour ce que Payrudder ne voit pas.",
+      "left": "Reste à reprendre",
+      "reason": "Motif",
+      "reasons": {
+        "chargeback": "Contestation de paiement",
+        "manual": "Manuel"
+      },
+      "amount": "Montant ({currency})",
+      "amountHint": "Laissez vide pour reprendre tout ce qui reste.",
+      "reference": "Référence (facultatif)",
+      "referenceRequiredLabel": "Référence (obligatoire)",
+      "referenceHint": "Nomme cette annulation. La même facture, le même motif et la même référence ne reprennent qu'une fois.",
+      "note": "Note",
+      "paidNote": "Une commission déjà versée est déduite du prochain versement du partenaire.",
+      "badAmount": "Saisissez un montant supérieur à zéro en {currency}, sans dépasser le reste.",
+      "referenceRequired": "Une annulation manuelle nécessite une référence.",
+      "submit": "Annuler la commission",
+      "done": "{amount} repris.",
+      "nothing": "Plus rien à reprendre : cette annulation a déjà été faite."
+    },
+    "payouts": {
+      "title": "Versements",
+      "intro": "Un versement regroupe les commissions approuvées d'un partenaire dans une devise. Payrudder ne déplace pas d'argent : payez à la main ou par virement, puis marquez le versement comme payé.",
+      "create": "Créer les versements",
+      "result": "Versements créés",
+      "created": "Versements créés : {count}",
+      "skipped": "Laissés de côté : {count}",
+      "reasons": {
+        "below_minimum": "sous le versement minimum",
+        "not_positive": "pas supérieur à zéro"
+      },
+      "nothing": "Rien à verser pour le moment.",
+      "allStatuses": "Tous les statuts",
+      "empty": "Aucun versement pour l'instant.",
+      "created_at": "Créé le",
+      "total": "Total",
+      "count": "Commissions",
+      "reference": "Référence",
+      "fake": "Faux (sandbox)",
+      "fakeNote": "Ceci est un versement de sandbox. Rien n'a été et ne sera payé.",
+      "commissions": "Commissions",
+      "commissionsOf": "Commissions du versement de {code}",
+      "markPaid": "Marquer payé",
+      "cancel": "Annuler"
+    },
+    "pay": {
+      "title": "Marquer le versement comme payé",
+      "summary": "{amount} à {code}",
+      "noMoney": "Payrudder ne déplace pas d'argent. Payez le partenaire vous-même, à la main ou par virement, puis confirmez ici pour l'enregistrer dans votre comptabilité.",
+      "fakeWarning": "Ceci est un versement de sandbox : rien n'est vraiment payé et ses écritures sont marquées comme fausses.",
+      "reference": "Référence (facultatif)",
+      "referenceHint": "Par exemple la référence du virement bancaire.",
+      "submit": "Marquer payé",
+      "done": "Versement marqué comme payé."
+    },
+    "journal": {
+      "title": "Journal",
+      "intro": "Ce que les versements payés ont inscrit dans votre comptabilité : la charge de commission contre la dette, et la dette contre la trésorerie.",
+      "download": "Télécharger le CSV",
+      "balanced": "Équilibré",
+      "unbalanced": "Non équilibré",
+      "debits": "Débits",
+      "credits": "Crédits",
+      "empty": "Rien d'inscrit pour l'instant. Payer un versement inscrit au journal.",
+      "time": "Inscrit le",
+      "account": "Compte",
+      "debit": "Débit",
+      "credit": "Crédit",
+      "memo": "Libellé",
+      "accounts": {
+        "commission_expense": "Charge de commission",
+        "commissions_payable": "Commissions à payer",
+        "cash": "Trésorerie"
+      }
+    }
+  },
   "einvoice": {
     "title": "Facture électronique",
     "confirmCancel": "Annuler ce document électronique légal ? C'est irréversible.",
@@ -1460,6 +1753,9 @@
       },
       "storage": {
         "not_configured": "Le stockage de fichiers n'est pas configuré sur ce déploiement."
+      },
+      "sandbox": {
+        "unknown_scenario": "Ce scénario de paiement n'existe pas. Consultez le catalogue des scénarios."
       }
     },
     "coupon": {
@@ -1789,6 +2085,9 @@
       },
       "promote": {
         "stale": "La configuration a changé depuis l'aperçu. Prévisualisez à nouveau la promotion."
+      },
+      "sandbox": {
+        "reset_rate_limited": "Le sandbox vient d'être réinitialisé. Attendez quelques minutes avant de le réinitialiser à nouveau."
       }
     },
     "gateway": {
@@ -1997,6 +2296,12 @@
         "not_open": "Ce versement n'est plus ouvert : il a été payé ou annulé.",
         "nothing_to_pay": "Après remboursements, ce versement ne vaut plus rien. Annulez-le ; le solde est reporté.",
         "tenant_not_active": "Cet environnement live n'est pas actif : aucun versement ne peut être créé ni payé."
+      }
+    },
+    "admin": {
+      "sandbox": {
+        "live_refused": "Seul un environnement sandbox peut être réinitialisé. Un environnement live n'est jamais touché.",
+        "bad_tenant": "L'environnement à réinitialiser n'est pas valide."
       }
     }
   },
@@ -2392,6 +2697,7 @@
       "overview": "Vue d'ensemble",
       "customers": "Clients",
       "billing": "Facturation",
+      "growth": "Croissance",
       "developers": "Développeurs",
       "settings": "Paramètres"
     },
@@ -2422,7 +2728,8 @@
       "einvoice": "Facture électronique",
       "appSettings": "Paramètres de l'application",
       "operator": "Console opérateur",
-      "myApps": "Mes applications"
+      "myApps": "Mes applications",
+      "affiliates": "Affiliés"
     }
   },
   "privacy": {

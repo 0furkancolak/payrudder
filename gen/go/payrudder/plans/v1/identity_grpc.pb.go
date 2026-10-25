@@ -52,6 +52,8 @@ const (
 	IdentityService_GetMyGoLive_FullMethodName            = "/payrudder.plans.v1.IdentityService/GetMyGoLive"
 	IdentityService_ActivateMyApp_FullMethodName          = "/payrudder.plans.v1.IdentityService/ActivateMyApp"
 	IdentityService_PromoteMyApp_FullMethodName           = "/payrudder.plans.v1.IdentityService/PromoteMyApp"
+	IdentityService_ResetMySandbox_FullMethodName         = "/payrudder.plans.v1.IdentityService/ResetMySandbox"
+	IdentityService_GetMySandboxReset_FullMethodName      = "/payrudder.plans.v1.IdentityService/GetMySandboxReset"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -130,6 +132,11 @@ type IdentityServiceClient interface {
 	// settings), never customers, usage, invoices or payments. With dry_run it only returns the diff. It only adds: what exists in live and differs is
 	// reported as a conflict and left alone.
 	PromoteMyApp(ctx context.Context, in *PromoteMyAppRequest, opts ...grpc.CallOption) (*PromoteMyAppResponse, error)
+	// ResetMySandbox starts the reset of an app's sandbox: an asynchronous job that deletes its customers, subscriptions, usage, invoices and payments and keeps its
+	// configuration. Owners and admins; at most one running per sandbox and one every few minutes.
+	ResetMySandbox(ctx context.Context, in *ResetMySandboxRequest, opts ...grpc.CallOption) (*ResetMySandboxResponse, error)
+	// GetMySandboxReset returns the latest reset of an app's sandbox, running or finished; unset when there has been none.
+	GetMySandboxReset(ctx context.Context, in *GetMySandboxResetRequest, opts ...grpc.CallOption) (*GetMySandboxResetResponse, error)
 }
 
 type identityServiceClient struct {
@@ -470,6 +477,26 @@ func (c *identityServiceClient) PromoteMyApp(ctx context.Context, in *PromoteMyA
 	return out, nil
 }
 
+func (c *identityServiceClient) ResetMySandbox(ctx context.Context, in *ResetMySandboxRequest, opts ...grpc.CallOption) (*ResetMySandboxResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResetMySandboxResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ResetMySandbox_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) GetMySandboxReset(ctx context.Context, in *GetMySandboxResetRequest, opts ...grpc.CallOption) (*GetMySandboxResetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMySandboxResetResponse)
+	err := c.cc.Invoke(ctx, IdentityService_GetMySandboxReset_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IdentityServiceServer is the server API for IdentityService service.
 // All implementations must embed UnimplementedIdentityServiceServer
 // for forward compatibility.
@@ -546,6 +573,11 @@ type IdentityServiceServer interface {
 	// settings), never customers, usage, invoices or payments. With dry_run it only returns the diff. It only adds: what exists in live and differs is
 	// reported as a conflict and left alone.
 	PromoteMyApp(context.Context, *PromoteMyAppRequest) (*PromoteMyAppResponse, error)
+	// ResetMySandbox starts the reset of an app's sandbox: an asynchronous job that deletes its customers, subscriptions, usage, invoices and payments and keeps its
+	// configuration. Owners and admins; at most one running per sandbox and one every few minutes.
+	ResetMySandbox(context.Context, *ResetMySandboxRequest) (*ResetMySandboxResponse, error)
+	// GetMySandboxReset returns the latest reset of an app's sandbox, running or finished; unset when there has been none.
+	GetMySandboxReset(context.Context, *GetMySandboxResetRequest) (*GetMySandboxResetResponse, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
 
@@ -654,6 +686,12 @@ func (UnimplementedIdentityServiceServer) ActivateMyApp(context.Context, *Activa
 }
 func (UnimplementedIdentityServiceServer) PromoteMyApp(context.Context, *PromoteMyAppRequest) (*PromoteMyAppResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PromoteMyApp not implemented")
+}
+func (UnimplementedIdentityServiceServer) ResetMySandbox(context.Context, *ResetMySandboxRequest) (*ResetMySandboxResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResetMySandbox not implemented")
+}
+func (UnimplementedIdentityServiceServer) GetMySandboxReset(context.Context, *GetMySandboxResetRequest) (*GetMySandboxResetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMySandboxReset not implemented")
 }
 func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
 func (UnimplementedIdentityServiceServer) testEmbeddedByValue()                         {}
@@ -1270,6 +1308,42 @@ func _IdentityService_PromoteMyApp_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_ResetMySandbox_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetMySandboxRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ResetMySandbox(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ResetMySandbox_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ResetMySandbox(ctx, req.(*ResetMySandboxRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_GetMySandboxReset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMySandboxResetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).GetMySandboxReset(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_GetMySandboxReset_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).GetMySandboxReset(ctx, req.(*GetMySandboxResetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IdentityService_ServiceDesc is the grpc.ServiceDesc for IdentityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1408,6 +1482,14 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PromoteMyApp",
 			Handler:    _IdentityService_PromoteMyApp_Handler,
+		},
+		{
+			MethodName: "ResetMySandbox",
+			Handler:    _IdentityService_ResetMySandbox_Handler,
+		},
+		{
+			MethodName: "GetMySandboxReset",
+			Handler:    _IdentityService_GetMySandboxReset_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

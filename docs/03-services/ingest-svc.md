@@ -161,3 +161,7 @@ ingest answers `UNAVAILABLE` for keyed events until the job succeeds, so alert o
 The write path is one round trip per batch (`unnest` bulk insert). Expect the bottleneck to be Postgres WAL fsync.
 Mitigations, in order: larger client batches, `synchronous_commit=on` kept (correctness), then
 partition `idempotency_keys` by hash of tenant. **Target:** 5,000 events/s per pod on a laptop-class Postgres.
+
+## As built: sandbox reset (Phase 45 E)
+
+`SandboxResetService.ResetTenant` (operator only, environment must be SANDBOX) deletes a sandbox tenant's data in ingest_db: dedup keys and unpublished events. plans-svc calls it from the reset job; `internal/sandboxreset` lists what goes and `Kept` what stays on purpose, and a test fails for a table that is neither. See [ADR 0023](../adr/0023-live-and-sandbox-guards.md).

@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package payrudder.admin.v1;
+
+import "payrudder/plans/v1/resources.proto";
+
+// SandboxResetService is implemented by every service that keeps data of a tenant (billing-svc, ingest-svc, aggregator, analytics-svc). plans-svc calls it, as
+// an operator, when a sandbox is reset (phase 45 E): the tenant's customers' side of the data goes (usage, invoices, payments), the configuration stays. It is
+// never reachable by a tenant, and it refuses anything but a sandbox tenant.
+service SandboxResetService {
+  // ResetTenant deletes the data of one sandbox tenant in this service and reports how much. It is idempotent: a second call deletes nothing.
+  rpc ResetTenant(ResetTenantRequest) returns (ResetTenantResponse);
+}
+
+message ResetTenantRequest {
+  string tenant_id = 1;
+  // Must be SANDBOX. The caller names it so that a request for a live tenant is refused here too, not only where it was made.
+  payrudder.plans.v1.Environment environment = 2;
+}
+
+message ResetTenantResponse {
+  // Rows (or documents) deleted, by table.
+  map<string, int64> deleted = 1;
+}

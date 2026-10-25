@@ -82,6 +82,11 @@ service IdentityService {
   // settings), never customers, usage, invoices or payments. With dry_run it only returns the diff. It only adds: what exists in live and differs is
   // reported as a conflict and left alone.
   rpc PromoteMyApp(PromoteMyAppRequest) returns (PromoteMyAppResponse);
+  // ResetMySandbox starts the reset of an app's sandbox: an asynchronous job that deletes its customers, subscriptions, usage, invoices and payments and keeps its
+  // configuration. Owners and admins; at most one running per sandbox and one every few minutes.
+  rpc ResetMySandbox(ResetMySandboxRequest) returns (ResetMySandboxResponse);
+  // GetMySandboxReset returns the latest reset of an app's sandbox, running or finished; unset when there has been none.
+  rpc GetMySandboxReset(GetMySandboxResetRequest) returns (GetMySandboxResetResponse);
 }
 
 message User {
@@ -533,4 +538,44 @@ message PromoteMyAppResponse {
   int32 conflicts = 6;
   int32 skipped = 7;
   int32 failed = 8;
+}
+
+message SandboxResetStep {
+  // plans, ingest, aggregator, analytics, billing, payments.
+  string name = 1;
+  // pending, done, failed, skipped (the service is not configured on this deployment).
+  string state = 2;
+  // Rows deleted, by table.
+  map<string, int64> deleted = 3;
+  string error = 4;
+}
+
+message SandboxReset {
+  string id = 1;
+  // queued, running, done, failed.
+  string state = 2;
+  // manual, or retention (a sandbox untouched for the retention period).
+  string kind = 3;
+  repeated SandboxResetStep steps = 4;
+  string error = 5;
+  google.protobuf.Timestamp create_time = 6;
+  google.protobuf.Timestamp finish_time = 7;
+}
+
+message ResetMySandboxRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message ResetMySandboxResponse {
+  SandboxReset sandbox_reset = 1;
+}
+
+message GetMySandboxResetRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message GetMySandboxResetResponse {
+  SandboxReset sandbox_reset = 1;
 }

@@ -19,6 +19,7 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/config"
@@ -29,12 +30,14 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/meters"
 	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/maintenance"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/query"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/replay"
+	aggregatorreset "github.com/0furkancolak/payrudder/services/aggregator/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
 	"github.com/0furkancolak/payrudder/services/aggregator/migrations"
 )
@@ -173,6 +176,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 		Meters: handler.Meters, Settings: src, Log: log,
 	})
 	aggregatorv1.RegisterReplayServiceServer(srv, replay.NewService(replays))
+	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(aggregatorreset.New(systemPool).Reset))
 	return srv, grpcHealth, replays
 }
 

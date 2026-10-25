@@ -21,6 +21,7 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
@@ -36,6 +37,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
@@ -45,6 +47,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	billingreset "github.com/0furkancolak/payrudder/services/billing-svc/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
 
@@ -301,6 +304,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 	billingv1.RegisterSandboxServiceServer(srv, svc)
 	billingv1.RegisterHostedInvoiceServiceServer(srv, svc)
 	billingv1.RegisterBillingAdminServiceServer(srv, svc)
+	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(billingreset.New(systemPool).Reset))
 	return srv, grpcHealth, nil
 }
 

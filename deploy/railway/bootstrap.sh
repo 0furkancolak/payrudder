@@ -160,7 +160,11 @@ note "plans-svc"
 go_service plans-svc services/plans-svc 9100
 pg_vars plans-svc plans app system migrator
 vars plans-svc 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_KAFKA_BROKERS=$KAFKA" 'PAYRUDDER_SECRETS_KEY=${{payments-worker.PAYRUDDER_SECRETS_KEY}}' \
-  PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}'
+  PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' \
+  "PAYRUDDER_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_BILLING_ADDR=$(grpc_addr billing-svc 7005)" \
+  PAYRUDDER_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'PAYRUDDER_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}'
+# A sandbox reset also empties analytics-svc where there is one (the small profile has none: its step is skipped).
+if [[ $PROFILE == full ]]; then vars plans-svc "PAYRUDDER_ANALYTICS_ADDR=$(grpc_addr analytics-svc 7006)"; fi
 
 note "ingest-svc"
 go_service ingest-svc services/ingest-svc 9100

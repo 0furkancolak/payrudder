@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"os/signal"
 	"slices"
@@ -22,6 +23,7 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
@@ -47,6 +49,8 @@ import (
 	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
+	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
 )
@@ -74,6 +78,18 @@ type Config struct {
 	MailFrom string `env:"MAIL_FROM"`
 	// AppURL is the console's public address; the links in those mails point into it.
 	AppURL string `env:"PAYRUDDER_APP_URL"`
+	// The services a sandbox reset empties besides plans-svc itself (phase 45 E). An empty address skips that step, so a deployment without the service still resets
+	// the rest. The gRPC ones are the services' usual addresses; payments-worker is HTTP and takes the internal token the gateway also uses.
+	IngestAddr     string `env:"PAYRUDDER_INGEST_ADDR"`
+	AggregatorAddr string `env:"PAYRUDDER_AGGREGATOR_ADDR"`
+	AnalyticsAddr  string `env:"PAYRUDDER_ANALYTICS_ADDR"`
+	BillingAddr    string `env:"PAYRUDDER_BILLING_ADDR"`
+	PaymentsURL    string `env:"PAYRUDDER_PAYMENTS_URL"`
+	PaymentsToken  string `env:"PAYRUDDER_PAYMENTS_INTERNAL_TOKEN"`
+	// SandboxRetention is how long a sandbox may sit untouched before its data is deleted (configuration is kept); 0 switches it off. SandboxResetCooldown is the
+	// least time between two resets a person asks for.
+	SandboxRetention     time.Duration `env:"PAYRUDDER_SANDBOX_RETENTION"`
+	SandboxResetCooldown time.Duration `env:"PAYRUDDER_SANDBOX_RESET_COOLDOWN"`
 	// OTPPepper keys the hash of one-time sign-in codes (a secret, never in YAML). Without it the hash is salted but unkeyed: fine for development, set it in production.
 	OTPPepper string `env:"PAYRUDDER_OTP_PEPPER"`
 	// AffiliateApproveEvery is how often the job that ends the hold of affiliate commissions looks (phase 47). The holds are days long; an hour is plenty.
@@ -170,7 +186,12 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	}
 	defer closeRelay()
 
-	srv, grpcHealth, box, err := newGRPCServer(cfg, log, appPool, systemPool, evictor)
+	sbx, sbxRunner, closeSbx, err := newSandbox(cfg, log, appPool, systemPool)
+	if err != nil {
+		return err
+	}
+	defer closeSbx()
+	srv, grpcHealth, box, err := newGRPCServer(cfg, log, appPool, systemPool, evictor, sbx)
 	if err != nil {
 		return err
 	}
@@ -178,7 +199,7 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	if err != nil {
 		return err
 	}
-	w := &workers{cfg: cfg, log: log, pool: systemPool, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis}
+	w := &workers{cfg: cfg, log: log, pool: systemPool, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner}
 	return w.run(ctx)
 }
 
@@ -228,8 +249,54 @@ func newSecretBox(cfg *Config, log *slog.Logger) (*secretbox.Box, error) {
 	return secretbox.New(key)
 }
 
+// newSandbox builds the sandbox reset module: the steps for the other services, the handler for the two calls, and the runner that executes the jobs. The returned func
+// closes the connections.
+func newSandbox(cfg *Config, log *slog.Logger, _, systemPool *pgxpool.Pool) (*sandboxapi.Handler, *sandbox.Runner, func(), error) {
+	var conns []*grpc.ClientConn
+	closeAll := func() {
+		for _, c := range conns {
+			_ = c.Close()
+		}
+	}
+	remote := func(name, addr string) (sandbox.Step, error) {
+		if addr == "" {
+			return sandbox.Step{Name: name}, nil
+		}
+		conn, err := grpcx.NewClient(addr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+		if err != nil {
+			return sandbox.Step{}, fmt.Errorf("%s client: %w", name, err)
+		}
+		conns = append(conns, conn)
+		return sandbox.GRPC(name, adminv1.NewSandboxResetServiceClient(conn)), nil
+	}
+	var steps []sandbox.Step
+	// The order: usage first (the source, then what was built from it), then invoices, then payments.
+	for _, r := range []struct{ name, addr string }{
+		{"ingest", cfg.IngestAddr}, {"aggregator", cfg.AggregatorAddr}, {"analytics", cfg.AnalyticsAddr}, {"billing", cfg.BillingAddr},
+	} {
+		s, err := remote(r.name, r.addr)
+		if err != nil {
+			closeAll()
+			return nil, nil, nil, err
+		}
+		steps = append(steps, s)
+	}
+	var payments *url.URL
+	if cfg.PaymentsURL != "" {
+		u, err := url.Parse(cfg.PaymentsURL)
+		if err != nil {
+			closeAll()
+			return nil, nil, nil, fmt.Errorf("PAYRUDDER_PAYMENTS_URL: %w", err)
+		}
+		payments = u
+	}
+	steps = append(steps, sandbox.HTTP("payments", payments, cfg.PaymentsToken, nil))
+	h, runner := sandboxapi.Wire(systemPool, steps, cfg.SandboxResetCooldown, sandbox.Settings{Retention: cfg.SandboxRetention}, log)
+	return h, runner, closeAll, nil
+}
+
 // newGRPCServer builds the gRPC server with the plans, webhook and admin services registered.
-func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor admin.CacheEvictor) (*grpc.Server, *grpchealth.Server, *secretbox.Box, error) {
+func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor admin.CacheEvictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, error) {
 	srv, grpcHealth := grpcx.NewServer(grpcx.ServerOptions{
 		Logger: log, Reflection: cfg.Env == config.EnvLocal,
 		Extra: []grpc.ServerOption{
@@ -250,7 +317,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log).WithPepper(cfg.OTPPepper), identityqry.New(systemPool),
 		golive.New(golivecmd.New(systemPool, log), goliveqry.New(systemPool)),
-		promote.Wire(appPool, systemPool, box, cfg.WebhookAllowPrivate, log)))
+		promote.Wire(appPool, systemPool, box, cfg.WebhookAllowPrivate, log), sbx))
 	return srv, grpcHealth, box, nil
 }
 
@@ -265,6 +332,7 @@ type workers struct {
 	srv        *grpc.Server
 	grpcHealth *grpchealth.Server
 	lis        net.Listener
+	sandbox    *sandbox.Runner // runs the sandbox resets and the retention sweep
 }
 
 // run starts everything and blocks until ctx is cancelled or one of them fails, then drains the gRPC server.
@@ -277,6 +345,9 @@ func (w *workers) run(ctx context.Context) error {
 	if w.box != nil {
 		disp := &webhooks.Dispatcher{Pool: w.pool, Box: w.box, Client: safehttp.NewClient(10*time.Second, w.cfg.WebhookAllowPrivate), Log: w.log}
 		g.Go(func() error { return disp.Run(gctx) })
+	}
+	if w.sandbox != nil {
+		g.Go(func() error { return w.sandbox.Run(gctx) })
 	}
 	g.Go(func() error { return affiliatescmd.NewApprover(w.pool, w.cfg.AffiliateApproveEvery, w.log).Run(gctx) })
 	g.Go(func() error {

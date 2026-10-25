@@ -30,6 +30,7 @@ func (s *Server) routes() []Route {
 		s.billingReadRoutes(),
 		s.appRoutes(),
 		s.goLiveRoutes(),
+		s.sandboxRoutes(),
 		s.memberRoutes(),
 		s.operatorProviderRoutes(),
 		s.operatorAdminRoutes(),
