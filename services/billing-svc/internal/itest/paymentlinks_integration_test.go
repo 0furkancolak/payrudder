@@ -81,7 +81,7 @@ func (l *linkEnv) link(id string) *billingv1.PaymentLink {
 func (l *linkEnv) events() []string {
 	l.t.Helper()
 	for i := 0; i < 20; i++ { // the hand-over takes the oldest 200 of every tenant: earlier tests' leftovers go first
-		if err := l.mgr.FlushTenantEvents(context.Background()); err != nil {
+		if err := l.relay.Flush(context.Background()); err != nil {
 			l.t.Fatal(err)
 		}
 		var left int
@@ -415,7 +415,7 @@ func testPaymentLinkRevokeAndExpiry(t *testing.T) {
 		t.Errorf("expired: %v", err)
 	}
 	for i := 0; i < 2; i++ { // the second pass finds nothing left to do
-		if err := l.mgr.ExpireLinks(context.Background()); err != nil {
+		if err := l.hosted.ExpireLinks(context.Background()); err != nil {
 			t.Fatal(err)
 		}
 	}

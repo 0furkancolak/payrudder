@@ -20,7 +20,6 @@ import (
 	"google.golang.org/grpc"
 
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	runquery "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/query"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
@@ -32,11 +31,6 @@ import (
 // Ingest is the part of ingest-svc the watermark needs.
 type Ingest interface {
 	GetOutboxWatermark(ctx context.Context, in *ingestv1.GetOutboxWatermarkRequest, opts ...grpc.CallOption) (*ingestv1.GetOutboxWatermarkResponse, error)
-}
-
-// Affiliates is the part of plans-svc's AffiliateService billing uses (phase 47): telling the program which partner a paying customer came through.
-type Affiliates interface {
-	AttributeCustomer(ctx context.Context, in *plansv1.AttributeCustomerRequest, opts ...grpc.CallOption) (*plansv1.AttributeCustomerResponse, error)
 }
 
 // Chore is a piece of upkeep another module owns (the resending of credit note refunds, ...) that the scheduler runs on every tick. A failure is logged as
@@ -52,10 +46,7 @@ type Config struct {
 	Engine   *sagacommand.Engine
 	Inputs   *inputs.Inputs
 	Invoices *invoicecmd.Commands
-	Events   Events // optional: without it tenant events stay in tenant_event_outbox
-	// Affiliates is optional: without it a payer's referral cookie is not passed on.
-	Affiliates Affiliates
-	Ingest     Ingest
+	Ingest   Ingest
 	// EndOffsets snapshots the end offsets of usage.events.v1.
 	EndOffsets func(ctx context.Context) (map[int32]int64, error)
 	Now        func() time.Time

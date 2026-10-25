@@ -18,7 +18,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices"
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -29,22 +28,16 @@ type Handler struct {
 	q query.Deps
 }
 
-// New returns the handler over the billing_app and billing_system pools. mgr makes the invoices of ad-hoc links and looks up customers and sellers; eng drives
+// New returns the handler over the billing_app and billing_system pools. backend makes the invoices of ad-hoc links and looks up customers and sellers; eng drives
 // their sagas.
-func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *sagacommand.Engine) *Handler {
-	h := &Handler{d: command.Deps{App: app, System: system, Engine: eng}, q: query.Deps{App: app, System: system}}
-	if mgr != nil {
-		h.d.Dir = mgr
-		h.q.Seller = func(ctx context.Context, tenantID uuid.UUID) (query.Seller, error) {
-			s, err := mgr.Seller(ctx, tenantID)
+func New(app, system *pgxpool.Pool, backend *command.Backend, eng *sagacommand.Engine) *Handler {
+	return &Handler{
+		d: command.Deps{App: app, System: system, Engine: eng, Dir: backend},
+		q: query.Deps{App: app, System: system, Seller: func(ctx context.Context, tenantID uuid.UUID) (query.Seller, error) {
+			s, err := backend.Seller(ctx, tenantID)
 			return query.Seller{Name: s.Name, LogoKey: s.LogoKey, Environment: s.Environment}, err
-		}
-	} else {
-		h.q.Seller = func(context.Context, uuid.UUID) (query.Seller, error) {
-			return query.Seller{}, errkey.New(codes.Unavailable, "billing.hosted.seller_unavailable", "seller lookup unavailable")
-		}
+		}},
 	}
-	return h
 }
 
 // WithPDFs enables the PDF and logo links of the hosted pages.

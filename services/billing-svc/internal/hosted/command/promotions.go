@@ -1,4 +1,4 @@
-package runs
+package command
 
 import (
 	"context"
@@ -48,7 +48,7 @@ func (s LinkInvoiceSpec) wantsPromotion() bool {
 
 // redeem asks plans-svc to check (preview) or claim the spec's promotion for the invoice targetID. The amount and the credits are the link's own, frozen when it was
 // made; nothing the payer sends can change them. nil without an error means no promotion applies.
-func (m *Manager) redeem(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec, customerID uuid.UUID, currency string, targetID uuid.UUID, preview bool) (*plansv1.RedeemPromotionResponse, error) {
+func (b *Backend) redeem(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec, customerID uuid.UUID, currency string, targetID uuid.UUID, preview bool) (*plansv1.RedeemPromotionResponse, error) {
 	if !spec.wantsPromotion() {
 		return nil, nil
 	}
@@ -56,7 +56,7 @@ func (m *Manager) redeem(ctx context.Context, tenantID uuid.UUID, spec LinkInvoi
 	prior := false
 	if customerID != uuid.Nil {
 		var err error
-		if prior, err = m.q.CustomerHasPaidInvoice(ctx, sqlc.CustomerHasPaidInvoiceParams{TenantID: tenantID, CustomerID: customerID}); err != nil {
+		if prior, err = b.q.CustomerHasPaidInvoice(ctx, sqlc.CustomerHasPaidInvoiceParams{TenantID: tenantID, CustomerID: customerID}); err != nil {
 			return nil, err
 		}
 	}
@@ -67,7 +67,7 @@ func (m *Manager) redeem(ctx context.Context, tenantID uuid.UUID, spec LinkInvoi
 	if !preview {
 		req.InvoiceId = targetID.String()
 	}
-	resp, err := m.in.Plans.RedeemPromotion(inputs.TenantCtx(ctx, tenantID), req)
+	resp, err := b.in.Plans.RedeemPromotion(inputs.TenantCtx(ctx, tenantID), req)
 	if err != nil {
 		return nil, err
 	}
@@ -90,17 +90,17 @@ func discountText(p *plansv1.RedeemPromotionResponse) string {
 }
 
 // QuotePromotion says what the spec's promotion code would take off, claiming nothing.
-func (m *Manager) QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec) (PromotionQuote, error) {
+func (b *Backend) QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec) (PromotionQuote, error) {
 	currency := spec.Currency
 	if currency == "" {
 		var err error
-		if currency, err = m.TenantCurrency(ctx, tenantID); err != nil {
+		if currency, err = b.TenantCurrency(ctx, tenantID); err != nil {
 			return PromotionQuote{}, err
 		}
 	}
 	customerID := uuid.Nil
 	if spec.CustomerExternalID != "" {
-		cu, found, err := m.Customer(ctx, tenantID, spec.CustomerExternalID)
+		cu, found, err := b.Customer(ctx, tenantID, spec.CustomerExternalID)
 		if err != nil {
 			return PromotionQuote{}, err
 		}
@@ -111,7 +111,7 @@ func (m *Manager) QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec L
 			return PromotionQuote{}, err
 		}
 	}
-	resp, err := m.redeem(ctx, tenantID, spec, customerID, currency, uuid.Nil, true)
+	resp, err := b.redeem(ctx, tenantID, spec, customerID, currency, uuid.Nil, true)
 	if err != nil || resp == nil {
 		return PromotionQuote{TotalMinor: spec.AmountMinor}, err
 	}
@@ -121,9 +121,9 @@ func (m *Manager) QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec L
 
 // giveBack tells plans-svc that the purchase of invoice id will not happen, after it claimed a promotion for it. Best effort: a failure leaves the redemption
 // counted against a purchase that does not exist, which an operator sees in the redemption list.
-func (m *Manager) giveBack(ctx context.Context, tenantID, id uuid.UUID, target plansv1.CouponTarget) {
-	if _, err := m.in.Plans.ReversePromotion(inputs.TenantCtx(ctx, tenantID), &plansv1.ReversePromotionRequest{Target: target, TargetId: id.String()}); err != nil {
-		m.log.WarnContext(ctx, "promotion not given back", "tenant", tenantID, "invoice", id, "error", err)
+func (b *Backend) giveBack(ctx context.Context, tenantID, id uuid.UUID, target plansv1.CouponTarget) {
+	if _, err := b.in.Plans.ReversePromotion(inputs.TenantCtx(ctx, tenantID), &plansv1.ReversePromotionRequest{Target: target, TargetId: id.String()}); err != nil {
+		b.cfg.Log.WarnContext(ctx, "promotion not given back", "tenant", tenantID, "invoice", id, "error", err)
 	}
 }
 
@@ -132,8 +132,8 @@ const reversalBatch = 100
 
 // ReversePromotions tells plans-svc about the invoices that were voided after they used a coupon (queued in the transaction of the void). Whether the place goes
 // back to the count is the code's setting. A reversal plans-svc has nothing for is done as well; an unreachable plans-svc is tried again next pass.
-func (m *Manager) ReversePromotions(ctx context.Context) error {
-	due, err := m.q.ListPendingPromotionReversals(ctx, reversalBatch)
+func (b *Backend) ReversePromotions(ctx context.Context) error {
+	due, err := b.q.ListPendingPromotionReversals(ctx, reversalBatch)
 	if err != nil {
 		return err
 	}
@@ -142,15 +142,15 @@ func (m *Manager) ReversePromotions(ctx context.Context) error {
 		if d.TargetKind == PromotionCreditPurchase {
 			target = plansv1.CouponTarget_COUPON_TARGET_CREDIT_PURCHASE
 		}
-		_, err := m.in.Plans.ReversePromotion(inputs.TenantCtx(ctx, d.TenantID), &plansv1.ReversePromotionRequest{Target: target, TargetId: d.InvoiceID.String()})
+		_, err := b.in.Plans.ReversePromotion(inputs.TenantCtx(ctx, d.TenantID), &plansv1.ReversePromotionRequest{Target: target, TargetId: d.InvoiceID.String()})
 		if err != nil && status.Code(err) != codes.NotFound {
-			m.log.WarnContext(ctx, "promotion reversal not delivered", "tenant", d.TenantID, "invoice", d.InvoiceID, "error", err)
-			if berr := m.q.BumpPromotionReversalAttempts(ctx, sqlc.BumpPromotionReversalAttemptsParams{TenantID: d.TenantID, InvoiceID: d.InvoiceID}); berr != nil && !errors.Is(berr, pgx.ErrNoRows) {
+			b.cfg.Log.WarnContext(ctx, "promotion reversal not delivered", "tenant", d.TenantID, "invoice", d.InvoiceID, "error", err)
+			if berr := b.q.BumpPromotionReversalAttempts(ctx, sqlc.BumpPromotionReversalAttemptsParams{TenantID: d.TenantID, InvoiceID: d.InvoiceID}); berr != nil && !errors.Is(berr, pgx.ErrNoRows) {
 				return berr
 			}
 			continue
 		}
-		if err := m.q.MarkPromotionReversalDone(ctx, sqlc.MarkPromotionReversalDoneParams{TenantID: d.TenantID, InvoiceID: d.InvoiceID}); err != nil {
+		if err := b.q.MarkPromotionReversalDone(ctx, sqlc.MarkPromotionReversalDoneParams{TenantID: d.TenantID, InvoiceID: d.InvoiceID}); err != nil {
 			return err
 		}
 	}

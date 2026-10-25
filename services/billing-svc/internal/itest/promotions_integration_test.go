@@ -356,7 +356,7 @@ func testPromotionCodesOnPaymentLinks(t *testing.T) {
 				}
 				return n > 0
 			})
-			if err := l.mgr.ReversePromotions(context.Background()); err != nil {
+			if err := l.hosted.ReversePromotions(context.Background()); err != nil {
 				t.Fatal(err)
 			}
 			_, err = l.startWith(other.GetToken(), code)
@@ -373,7 +373,7 @@ func testPromotionCodesOnPaymentLinks(t *testing.T) {
 		}
 		// A second pass has nothing to do.
 		before := len(p.reversals)
-		if err := l.mgr.ReversePromotions(context.Background()); err != nil || len(p.reversals) != before {
+		if err := l.hosted.ReversePromotions(context.Background()); err != nil || len(p.reversals) != before {
 			t.Errorf("second pass: %v", err)
 		}
 	})

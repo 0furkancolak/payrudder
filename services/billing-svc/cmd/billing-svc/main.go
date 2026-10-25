@@ -41,6 +41,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	billingreset "github.com/0furkancolak/payrudder/services/billing-svc/internal/sandboxreset"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
 
@@ -161,7 +162,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	hh.AddCheck("kafka", producer.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return pub.Ping() })
 
-	srv, grpcHealth, err := newGRPCServer(cfg, log, api.Deps{App: appPool, System: systemPool, Runs: mgr, Engine: eng, CreditNotes: mods.creditNotes, Rerating: mods.rerating, Inputs: mods.inputs})
+	srv, grpcHealth, err := newGRPCServer(cfg, log, api.Deps{App: appPool, System: systemPool, Runs: mgr, Engine: eng, CreditNotes: mods.creditNotes, Rerating: mods.rerating, Inputs: mods.inputs, Hosted: mods.hosted})
 	if err != nil {
 		return err
 	}
@@ -169,7 +170,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	w := &workers{cfg: cfg, log: log, pool: systemPool, eng: eng, mgr: mgr, relay: relay, replies: rc,
+	w := &workers{cfg: cfg, log: log, pool: systemPool, eng: eng, mgr: mgr, events: mods.tenantEvents, relay: relay, replies: rc,
 		health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis}
 	return w.run(ctx)
 }
@@ -222,13 +223,15 @@ func (b *backends) close() {
 func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, mods *modules, endOffsets func(context.Context) (map[int32]int64, error)) (*runs.Manager, error) {
 	return runs.NewManager(runs.Config{
 		Pool: systemPool, Engine: eng,
-		Inputs: mods.inputs, Invoices: mods.invoices, Events: plansv1.NewWebhookServiceClient(be.plans), Affiliates: plansv1.NewAffiliateServiceClient(be.plans),
+		Inputs: mods.inputs, Invoices: mods.invoices,
 		Ingest:         ingestv1.NewIngestServiceClient(be.ingest),
 		EndOffsets:     endOffsets,
 		WatermarkDelay: cfg.WatermarkDelay, Log: log,
 		Chores: []runs.Chore{
 			{Name: "fee billing failed", Run: mods.fees.Bill},
 			{Name: "credit note refunds not swept", Run: mods.creditNotes.SweepRefunds},
+			{Name: "payment links not expired", Run: mods.hosted.ExpireLinks},
+			{Name: "promotion reversals not delivered", Run: mods.hosted.ReversePromotions},
 			{Name: "re-rating resume failed", Run: mods.rerating.Resume},
 		},
 	})
@@ -277,6 +280,7 @@ type workers struct {
 	pool       *pgxpool.Pool
 	eng        *sagacommand.Engine
 	mgr        *runs.Manager
+	events     *tenantevents.Relay
 	relay      *outbox.Relay
 	replies    *replies.Consumer
 	health     *health.Handler
@@ -300,7 +304,7 @@ func (w *workers) run(ctx context.Context) error {
 // startLoops starts the scheduler, the tenant-event flusher and the saga sweeper.
 func (w *workers) startLoops(ctx context.Context, g *app.Group) {
 	g.Go(func() error { loop(ctx, w.cfg.SchedulerInterval, "scheduler", w.log, w.mgr.Tick); return nil })
-	g.Go(func() error { loop(ctx, 5*time.Second, "tenant-events", w.log, w.mgr.FlushTenantEvents); return nil })
+	g.Go(func() error { loop(ctx, 5*time.Second, "tenant-events", w.log, w.events.Flush); return nil })
 	g.Go(func() error { loop(ctx, w.cfg.SweepInterval, "sweeper", w.log, w.sweep); return nil })
 }
 

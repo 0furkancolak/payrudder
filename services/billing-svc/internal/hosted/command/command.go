@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
@@ -26,7 +27,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
@@ -70,9 +70,9 @@ func factory(kind string) bool { return kind == KindAdhoc || kind == KindCreditP
 type Directory interface {
 	Customer(ctx context.Context, tenantID uuid.UUID, externalID string) (*plansv1.Customer, bool, error)
 	TenantCurrency(ctx context.Context, tenantID uuid.UUID) (string, error)
-	CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spec runs.LinkInvoiceSpec) (uuid.UUID, error)
+	CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec) (uuid.UUID, error)
 	// QuotePromotion says what the spec's promotion code takes off, claiming nothing.
-	QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec runs.LinkInvoiceSpec) (runs.PromotionQuote, error)
+	QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec) (PromotionQuote, error)
 	// Attribute tells the affiliate program that a customer who is paying carried a partner's referral code (phase 47). It is best effort: a payment never waits for it
 	// to succeed. touched is when the visitor followed the link, the zero time when unknown.
 	Attribute(ctx context.Context, tenantID, customerID uuid.UUID, code string, touched time.Time)
@@ -306,7 +306,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 		}
 		if in.PromotionCode != "" {
 			// The code must work for this link's own amount, or the payer would meet the refusal at the end. It is claimed only when the payer continues.
-			spec := runs.LinkInvoiceSpec{AmountMinor: *p.AmountMinor, Currency: *p.Currency, CustomerExternalID: deref(p.CustomerExternalID), PromotionCode: in.PromotionCode}
+			spec := LinkInvoiceSpec{AmountMinor: *p.AmountMinor, Currency: *p.Currency, CustomerExternalID: deref(p.CustomerExternalID), PromotionCode: in.PromotionCode}
 			if p.PackID != nil {
 				spec.PackID, spec.Credits = p.PackID.String(), *p.Credits
 			}
@@ -473,7 +473,7 @@ func RevokeLink(ctx context.Context, d Deps, tenantID, linkID uuid.UUID) (sqlc.G
 			return err
 		}
 		if factory(cur.Kind) {
-			if voids, err = unpaidInvoices(ctx, q, tenantID, linkID); err != nil {
+			if voids, err = q.ChildInvoicesToVoid(ctx, sqlc.ChildInvoicesToVoidParams{TenantID: tenantID, ID: linkID}); err != nil {
 				return err
 			}
 		}
@@ -493,20 +493,15 @@ func RevokeLink(ctx context.Context, d Deps, tenantID, linkID uuid.UUID) (sqlc.G
 	return row, nil
 }
 
-func unpaidInvoices(ctx context.Context, q *sqlc.Queries, tenantID, linkID uuid.UUID) ([]uuid.UUID, error) {
-	return q.ChildInvoicesToVoid(ctx, sqlc.ChildInvoicesToVoidParams{TenantID: tenantID, ID: linkID})
-}
-
-// UnpaidInvoices lists the open invoices an ad-hoc link made.
-func UnpaidInvoices(ctx context.Context, q *sqlc.Queries, tenantID, linkID uuid.UUID) ([]uuid.UUID, error) {
-	return unpaidInvoices(ctx, q, tenantID, linkID)
-}
-
 // VoidUnpaid voids invoices through their sagas. An invoice whose saga cannot be voided right now (a payment is in flight) is left as it is: the customer who
 // is paying it finishes, and the tenant sees it open.
 func VoidUnpaid(ctx context.Context, system *pgxpool.Pool, eng *sagacommand.Engine, tenantID uuid.UUID, ids []uuid.UUID) {
 	for _, id := range ids {
-		_, _ = sagacommand.Void(ctx, system, eng, tenantID, id) // best effort: FailedPrecondition means the saga is busy
+		_, err := sagacommand.Void(ctx, system, eng, tenantID, id)
+		// Best effort: FailedPrecondition means the saga is busy, NotFound that the invoice has no saga yet. Anything else is worth a line in the log.
+		if err != nil && status.Code(err) != codes.FailedPrecondition && status.Code(err) != codes.NotFound {
+			slog.WarnContext(ctx, "unpaid invoice not voided", "tenant", tenantID, "invoice", id, "error", err)
+		}
 	}
 }
 

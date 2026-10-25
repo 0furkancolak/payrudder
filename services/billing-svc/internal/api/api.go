@@ -20,6 +20,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted"
+	hostedcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices"
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/payments"
@@ -87,6 +88,7 @@ type Deps struct {
 	CreditNotes *creditnotecmd.Commands
 	Rerating    *reratingcmd.Commands
 	Inputs      *inputs.Inputs
+	Hosted      *hostedcmd.Backend
 }
 
 // New returns the API.
@@ -100,7 +102,7 @@ func New(d Deps) *Server {
 		creditsHandler:    credits.New(app),
 		accountingHandler: accounting.New(app),
 		reportHandler:     reports.New(app),
-		hostedHandler:     hosted.New(app, system, mgr, eng),
+		hostedHandler:     hosted.New(app, system, d.Hosted, eng),
 		runHandler:        billingruns.New(mgr),
 		sagaHandler:       sagas.New(system, eng),
 		reratingHandler:   rerating.New(d.Rerating, system),

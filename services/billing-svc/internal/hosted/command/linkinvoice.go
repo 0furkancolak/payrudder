@@ -1,4 +1,4 @@
-package runs
+package command
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/money"
@@ -38,54 +36,11 @@ type LinkInvoiceSpec struct {
 	Credits int64
 }
 
-// Customer is a customer of a tenant as plans-svc knows it; ok is false when there is none.
-func (m *Manager) Customer(ctx context.Context, tenantID uuid.UUID, externalID string) (*plansv1.Customer, bool, error) {
-	resp, err := m.in.Plans.GetCustomer(inputs.TenantCtx(ctx, tenantID), &plansv1.GetCustomerRequest{ExternalId: externalID})
-	if isNotFound(err) {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	if resp.GetCustomer() == nil {
-		return nil, false, nil
-	}
-	return resp.GetCustomer(), true, nil
-}
-
-func isNotFound(err error) bool { return status.Code(err) == codes.NotFound }
-
-// Seller is the tenant as the party that issues a link's invoices.
-type Seller struct {
-	Name        string
-	LogoKey     string
-	Environment string
-}
-
-// Seller looks the tenant up: its name, the object key of its logo and its environment.
-func (m *Manager) Seller(ctx context.Context, tenantID uuid.UUID) (Seller, error) {
-	tn, err := m.in.Admin.GetTenant(inputs.OperatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
-	if err != nil {
-		return Seller{}, fmt.Errorf("get tenant: %w", err)
-	}
-	t := tn.GetTenant()
-	return Seller{Name: t.GetName(), LogoKey: inputs.LogoKey(tenantID, t), Environment: inputs.Environment(t)}, nil
-}
-
-// TenantCurrency is the tenant's default currency, which an ad-hoc link without one is in.
-func (m *Manager) TenantCurrency(ctx context.Context, tenantID uuid.UUID) (string, error) {
-	tn, err := m.in.Admin.GetTenant(inputs.OperatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
-	if err != nil {
-		return "", fmt.Errorf("get tenant: %w", err)
-	}
-	return tn.GetTenant().GetCurrency(), nil
-}
-
 // CreateLinkInvoice makes the invoice of one use of an ad-hoc link: a single line for the amount, numbered gap-free by the same finalization every invoice goes
 // through, so its saga renders the PDF and then waits for the customer to pay (the invoice is collected through the link, not charged to a stored method).
 // There is no tax on it: the amount is what the customer pays.
-func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec) (uuid.UUID, error) {
-	tn, err := m.in.Admin.GetTenant(inputs.OperatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
+func (b *Backend) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec) (uuid.UUID, error) {
+	tn, err := b.in.Admin.GetTenant(inputs.OperatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("get tenant: %w", err)
 	}
@@ -105,7 +60,7 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 	}
 	customerID, country := uuid.Nil, ""
 	if spec.CustomerExternalID != "" {
-		cu, found, err := m.Customer(ctx, tenantID, spec.CustomerExternalID)
+		cu, found, err := b.Customer(ctx, tenantID, spec.CustomerExternalID)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("get customer: %w", err)
 		}
@@ -131,10 +86,10 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 	// nothing to pay does not use up a redemption; then it is claimed for this invoice, and given back if the invoice is not made.
 	var promo *plansv1.RedeemPromotionResponse
 	target, promoTarget := spec.target()
-	if quote, err := m.redeem(ctx, tenantID, spec, customerID, currency, id, true); err != nil {
+	if quote, err := b.redeem(ctx, tenantID, spec, customerID, currency, id, true); err != nil {
 		return uuid.Nil, err
 	} else if quote != nil {
-		if promo, err = m.redeem(ctx, tenantID, spec, customerID, currency, id, false); err != nil {
+		if promo, err = b.redeem(ctx, tenantID, spec, customerID, currency, id, false); err != nil {
 			return uuid.Nil, err
 		}
 		if promo != nil && promo.GetDiscountMinor() > 0 {
@@ -142,11 +97,11 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 			total = promo.GetTotalMinor()
 		}
 	}
-	err = pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		q := m.q.WithTx(tx)
+	err = pgxx.InTx(ctx, b.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := b.q.WithTx(tx)
 		// plan_version_id has no meaning for a payment link: the nil id says so.
 		if _, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
-			TenantID: tenantID, ID: id, CustomerID: customerID, PeriodID: period.PeriodOf(m.cfg.Now(), loc), Kind: "LINK", PlanVersionID: uuid.Nil, Currency: currency,
+			TenantID: tenantID, ID: id, CustomerID: customerID, PeriodID: period.PeriodOf(b.cfg.Now(), loc), Kind: "LINK", PlanVersionID: uuid.Nil, Currency: currency,
 			SubtotalMinor: total, TotalMinor: total, Snapshot: body, Provider: "", Country: store.NilIfEmpty(country),
 		}); err != nil {
 			return err
@@ -163,13 +118,13 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 	})
 	if err != nil {
 		if promo != nil {
-			m.giveBack(ctx, tenantID, id, target)
+			b.giveBack(ctx, tenantID, id, target)
 		}
 		return uuid.Nil, err
 	}
-	if err := m.cfg.Invoices.Finalize(ctx, tenantID, id); err != nil {
+	if err := b.cfg.Invoices.Finalize(ctx, tenantID, id); err != nil {
 		return uuid.Nil, err
 	}
-	m.cfg.Invoices.Drafted(ctx, 1)
+	b.cfg.Invoices.Drafted(ctx, 1)
 	return id, nil
 }
