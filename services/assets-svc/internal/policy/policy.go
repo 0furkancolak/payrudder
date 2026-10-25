@@ -5,6 +5,7 @@ package policy
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -34,6 +35,8 @@ const (
 	// MinPartSize is S3's lower bound for every part but the last; MaxParts its upper bound on the part count.
 	MinPartSize = 8 * MiB
 	MaxParts    = 10000
+	// SniffBytes is how many leading bytes of a file decide its content type.
+	SniffBytes = 512
 )
 
 type rule struct {
@@ -124,26 +127,10 @@ func (p Policy) Check(purpose assetsv1.Purpose, contentType string, size int64) 
 func (p Policy) MaxSize(purpose assetsv1.Purpose) int64 { return p.rules[purpose].maxSize }
 
 func humanSize(n int64) string {
-	switch {
-	case n >= GiB:
-		return itoa(n/GiB) + " GiB"
-	default:
-		return itoa(n/MiB) + " MiB"
+	if n >= GiB {
+		return strconv.FormatInt(n/GiB, 10) + " GiB"
 	}
-}
-
-func itoa(n int64) string {
-	if n == 0 {
-		return "0"
-	}
-	var b [20]byte
-	i := len(b)
-	for n > 0 {
-		i--
-		b[i] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(b[i:])
+	return strconv.FormatInt(n/MiB, 10) + " MiB"
 }
 
 // PartSize is max(8 MiB, ceil(size / 10 000)): S3's 5 MiB minimum and 10 000-part maximum both hold. The last part may be

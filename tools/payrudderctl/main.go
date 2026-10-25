@@ -2,7 +2,7 @@
 //
 //	payrudderctl seed --currency TRY --timezone Europe/Istanbul --grace 24h
 //
-// dlq is the exception: it talks to RabbitMQ directly. Later phases add replay, rerate and close-period subcommands.
+// dlq is the exception: it talks to RabbitMQ directly. replay and rerate work through the gateway like any other command.
 package main
 
 import (
