@@ -9,10 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/period"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
@@ -121,13 +121,13 @@ func (m *Manager) ClosePeriod(ctx context.Context, tenantID uuid.UUID, periodID 
 	}
 	cutoff, err := period.Cutoff(periodID, loc, t.GetGracePeriod().AsDuration())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "period_id must look like 2026-11")
+		return nil, errkey.New(codes.InvalidArgument, "billing.run.bad_period", "period_id must look like 2026-11")
 	}
 	if existing, err := m.GetRun(ctx, tenantID, periodID); err == nil {
 		return existing, nil
 	}
 	if m.cfg.Now().Before(cutoff) {
-		return nil, status.Errorf(codes.FailedPrecondition, "period %s closes at %s", periodID, cutoff.UTC().Format(time.RFC3339))
+		return nil, errkey.Newf(codes.FailedPrecondition, "billing.run.period_open", "period %s closes at %s", periodID, cutoff.UTC().Format(time.RFC3339))
 	}
 	return m.EnsureRun(ctx, tenantID, periodID, cutoff, false)
 }

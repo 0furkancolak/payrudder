@@ -59,7 +59,7 @@ func parseOptionalUUID(field, v string) (*uuid.UUID, error) {
 	}
 	id, err := uuid.Parse(v)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, field+" must be a UUID")
+		return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_id", field+" must be a UUID")
 	}
 	return &id, nil
 }
@@ -71,7 +71,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 	case size == 0:
 		size = 50
 	case size < 0 || size > 200:
-		return nil, status.Error(codes.InvalidArgument, "page_size must be 1..200")
+		return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_page_size", "page_size must be 1..200")
 	}
 	invoice, err := parseOptionalUUID("invoice_id", p.InvoiceID)
 	if err != nil {
@@ -84,17 +84,17 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 	switch p.Status {
 	case "", "pending", "issued", "failed", "cancelled":
 	default:
-		return nil, status.Error(codes.InvalidArgument, "status must be pending, issued, failed or cancelled")
+		return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_status", "status must be pending, issued, failed or cancelled")
 	}
 	after, afterID := time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC), uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")
 	if p.PageToken != "" {
 		at, id, ok := strings.Cut(p.PageToken, "|")
 		var perr error
 		if after, perr = time.Parse(time.RFC3339Nano, at); !ok || perr != nil {
-			return nil, status.Error(codes.InvalidArgument, "page_token is not one this API gave")
+			return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_page_token", "page_token is not one this API gave")
 		}
 		if afterID, perr = uuid.Parse(id); perr != nil {
-			return nil, status.Error(codes.InvalidArgument, "page_token is not one this API gave")
+			return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_page_token", "page_token is not one this API gave")
 		}
 	}
 	var rows []sqlc.ListEInvoiceDocumentsRow
@@ -122,10 +122,10 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 // FileURL presigns the download of a document's UBL XML (kind "xml") or PDF ("pdf").
 func FileURL(ctx context.Context, app *pgxpool.Pool, signer invoicequery.PDFSigner, tenantID, id uuid.UUID, kind string) (string, time.Time, error) {
 	if kind != "xml" && kind != "pdf" {
-		return "", time.Time{}, status.Error(codes.InvalidArgument, "kind must be xml or pdf")
+		return "", time.Time{}, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_file_kind", "kind must be xml or pdf")
 	}
 	if signer == nil {
-		return "", time.Time{}, status.Error(codes.Unimplemented, "object storage is not configured")
+		return "", time.Time{}, errkey.New(codes.Unimplemented, "billing.storage.not_configured", "object storage is not configured")
 	}
 	var keys sqlc.GetEInvoiceFileKeyRow
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {

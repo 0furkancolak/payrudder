@@ -241,7 +241,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 		if in.Currency == "" {
 			c, err := d.Dir.TenantCurrency(ctx, tenantID)
 			if err != nil {
-				return nil, status.Error(codes.Unavailable, "tenant lookup unavailable")
+				return nil, errkey.New(codes.Unavailable, "billing.hosted.tenant_unavailable", "tenant lookup unavailable")
 			}
 			in.Currency = c
 		}
@@ -249,7 +249,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 			_, found, err := d.Dir.Customer(ctx, tenantID, in.CustomerExternalID)
 			switch {
 			case err != nil:
-				return nil, status.Error(codes.Unavailable, "customer lookup unavailable")
+				return nil, errkey.New(codes.Unavailable, "billing.hosted.customer_unavailable", "customer lookup unavailable")
 			case !found:
 				return nil, errkey.New(codes.NotFound, "billing.payment_link.customer_not_found", "no such customer")
 			}
@@ -260,7 +260,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 		cu, found, err := d.Dir.Customer(ctx, tenantID, in.CustomerExternalID)
 		switch {
 		case err != nil:
-			return nil, status.Error(codes.Unavailable, "customer lookup unavailable")
+			return nil, errkey.New(codes.Unavailable, "billing.hosted.customer_unavailable", "customer lookup unavailable")
 		case !found:
 			return nil, errkey.New(codes.NotFound, "billing.payment_link.customer_not_found", "no such customer")
 		}
@@ -402,7 +402,7 @@ func replay(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, in CreateI
 func checkInvoice(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, in CreateInput) (string, error) {
 	inv, err := q.GetInvoiceForLink(ctx, sqlc.GetInvoiceForLinkParams{TenantID: tenantID, ID: in.InvoiceID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", status.Error(codes.NotFound, "invoice not found")
+		return "", errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
 		return "", err
@@ -449,7 +449,7 @@ func RevokeLinks(ctx context.Context, d Deps, tenantID, invoiceID uuid.UUID) (in
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, status.Error(codes.NotFound, "invoice not found")
+		return 0, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
 		return 0, status.Error(codes.Internal, "internal error")
@@ -520,7 +520,7 @@ func CreatePortalLink(ctx context.Context, d Deps, tenantID uuid.UUID, externalI
 	cu, found, lerr := d.Dir.Customer(ctx, tenantID, externalID)
 	switch {
 	case lerr != nil:
-		return "", time.Time{}, uuid.Nil, status.Error(codes.Unavailable, "customer lookup unavailable")
+		return "", time.Time{}, uuid.Nil, errkey.New(codes.Unavailable, "billing.hosted.customer_unavailable", "customer lookup unavailable")
 	case !found:
 		return "", time.Time{}, uuid.Nil, errkey.New(codes.NotFound, "billing.portal_link.customer_not_found", "no such customer")
 	}
@@ -545,7 +545,7 @@ func RevokePortalLinks(ctx context.Context, d Deps, tenantID uuid.UUID, external
 	cu, found, err := d.Dir.Customer(ctx, tenantID, externalID)
 	switch {
 	case err != nil:
-		return 0, status.Error(codes.Unavailable, "customer lookup unavailable")
+		return 0, errkey.New(codes.Unavailable, "billing.hosted.customer_unavailable", "customer lookup unavailable")
 	case !found:
 		return 0, errkey.New(codes.NotFound, "billing.portal_link.customer_not_found", "no such customer")
 	}

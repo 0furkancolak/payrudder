@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 )
 
@@ -19,16 +19,16 @@ func Start(ctx context.Context, mgr *runs.Manager, tenantID uuid.UUID, periodID 
 	job, created, err = mgr.StartRerating(ctx, tenantID, periodID, planVersionID)
 	switch {
 	case errors.Is(err, runs.ErrNoRun):
-		return nil, false, status.Error(codes.NotFound, "no billing run for that period")
+		return nil, false, errkey.New(codes.NotFound, "billing.run.not_found", "no billing run for that period")
 	case errors.Is(err, runs.ErrRunNotCompleted):
-		return nil, false, status.Error(codes.FailedPrecondition, "the billing run of that period is not COMPLETED")
+		return nil, false, errkey.New(codes.FailedPrecondition, "billing.rerating.run_not_completed", "the billing run of that period is not COMPLETED")
 	case errors.Is(err, runs.ErrUnknownPlanVer):
-		return nil, false, status.Error(codes.InvalidArgument, "plan_version_id: no such plan version")
+		return nil, false, errkey.New(codes.InvalidArgument, "billing.rerating.unknown_plan_version", "plan_version_id: no such plan version")
 	case err != nil && job != nil:
 		return job, created, nil
 	case err != nil:
 		slog.ErrorContext(ctx, "start rerating", "error", err)
-		return nil, false, status.Error(codes.Unavailable, "re-rating could not start; retry")
+		return nil, false, errkey.New(codes.Unavailable, "billing.rerating.unavailable", "re-rating could not start; retry")
 	}
 	return job, created, nil
 }

@@ -248,7 +248,7 @@ func (d Deps) adhoc(ctx context.Context, s *Scope) (*Page, error) {
 	}
 	seller, err := d.Seller(ctx, s.TenantID)
 	if err != nil {
-		return nil, status.Error(codes.Unavailable, "seller lookup unavailable")
+		return nil, errkey.New(codes.Unavailable, "billing.hosted.seller_unavailable", "seller lookup unavailable")
 	}
 	p := &Page{Kind: "adhoc", ExpiresAt: s.ExpiresAt, SellerName: seller.Name, Environment: seller.Environment, LogoAvailable: seller.LogoKey != "" && d.PDFs != nil,
 		Adhoc: &Adhoc{AmountMinor: *r.AmountMinor, Currency: *r.Currency, CurrencyExponent: exp, Consumed: r.SingleUse && r.PaidCount > 0}}
@@ -322,7 +322,7 @@ func PDFURL(ctx context.Context, d Deps, s *Scope) (string, time.Time, error) {
 		return "", time.Time{}, errNoLink
 	}
 	if d.PDFs == nil {
-		return "", time.Time{}, status.Error(codes.Unimplemented, "object storage is not configured")
+		return "", time.Time{}, errkey.New(codes.Unimplemented, "billing.storage.not_configured", "object storage is not configured")
 	}
 	var key *string
 	err := pgxx.InTenantTx(ctx, d.App, s.TenantID, func(tx pgx.Tx) error {
@@ -358,7 +358,7 @@ func LogoURL(ctx context.Context, d Deps, s *Scope) (string, error) {
 	if key == "" {
 		seller, err := d.Seller(ctx, s.TenantID)
 		if err != nil {
-			return "", status.Error(codes.Unavailable, "seller lookup unavailable")
+			return "", errkey.New(codes.Unavailable, "billing.hosted.seller_unavailable", "seller lookup unavailable")
 		}
 		key = seller.LogoKey
 	}
@@ -443,7 +443,7 @@ func GetPortal(ctx context.Context, d Deps, s *Scope) (*PortalPage, error) {
 	if out.SellerName == "" || out.Environment == "" {
 		seller, err := d.Seller(ctx, s.TenantID)
 		if err != nil {
-			return nil, status.Error(codes.Unavailable, "seller lookup unavailable")
+			return nil, errkey.New(codes.Unavailable, "billing.hosted.seller_unavailable", "seller lookup unavailable")
 		}
 		out.SellerName, out.Environment, logoKey = seller.Name, seller.Environment, seller.LogoKey
 	}

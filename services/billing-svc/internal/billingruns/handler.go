@@ -6,10 +6,10 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/billingruns/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/billingruns/query"
@@ -44,7 +44,7 @@ func (h *Handler) ClosePeriod(ctx context.Context, req *billingv1.ClosePeriodReq
 	}
 	tid, err := uuid.Parse(req.GetTenantId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id must be a UUID")
+		return nil, errkey.New(codes.InvalidArgument, "billing.tenant.bad_id", "tenant_id must be a UUID")
 	}
 	run, err := command.ClosePeriod(ctx, h.runs, tid, req.GetPeriodId())
 	if err != nil {
@@ -60,7 +60,7 @@ func (h *Handler) GetBillingRun(ctx context.Context, req *billingv1.GetBillingRu
 	}
 	tid, err := uuid.Parse(req.GetTenantId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id must be a UUID")
+		return nil, errkey.New(codes.InvalidArgument, "billing.tenant.bad_id", "tenant_id must be a UUID")
 	}
 	run, err := query.Get(ctx, h.runs, tid, req.GetPeriodId())
 	if err != nil {

@@ -9,10 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/payments/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
@@ -35,11 +35,11 @@ func (h *Handler) RecordInvoicePayment(ctx context.Context, req *billingv1.Recor
 	}
 	tid, err := uuid.Parse(req.GetTenantId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id must be a UUID")
+		return nil, errkey.New(codes.InvalidArgument, "billing.tenant.bad_id", "tenant_id must be a UUID")
 	}
 	inv, err := uuid.Parse(req.GetInvoiceId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invoice_id must be a UUID")
+		return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
 	}
 	var received time.Time
 	if req.GetReceivedAt() != nil {
