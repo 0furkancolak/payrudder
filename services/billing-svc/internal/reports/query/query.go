@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
@@ -33,11 +34,11 @@ type RevenueParams struct {
 func Revenue(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p RevenueParams) ([]sqlc.RevenueReportRow, error) {
 	for _, period := range []string{p.FromPeriod, p.ToPeriod} {
 		if period != "" && !periodRe.MatchString(period) {
-			return nil, status.Error(codes.InvalidArgument, "from_period and to_period must look like 2026-10")
+			return nil, errkey.New(codes.InvalidArgument, "billing.report.bad_period", "from_period and to_period must look like 2026-10")
 		}
 	}
 	if p.FromPeriod != "" && p.ToPeriod != "" && p.FromPeriod > p.ToPeriod {
-		return nil, status.Error(codes.InvalidArgument, "from_period is after to_period")
+		return nil, errkey.New(codes.InvalidArgument, "billing.report.period_order", "from_period is after to_period")
 	}
 	groups := p.GroupBy
 	if len(groups) == 0 {
@@ -45,7 +46,7 @@ func Revenue(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Reven
 	}
 	for _, g := range groups {
 		if !slices.Contains(revenueSplits, g) {
-			return nil, status.Error(codes.InvalidArgument, "group_by may name period, provider and country; got "+g)
+			return nil, errkey.New(codes.InvalidArgument, "billing.report.bad_group_by", "group_by may name period, provider and country; got "+g)
 		}
 	}
 	// A refunded invoice is one whose saga passed through REFUNDED, whatever its status is now (voiding a paid invoice refunds it first).
@@ -76,7 +77,7 @@ func Dunning(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, limit i
 	case limit == 0:
 		limit = 100
 	case limit < 0 || limit > 500:
-		return nil, status.Error(codes.InvalidArgument, "limit must be 1..500")
+		return nil, errkey.New(codes.InvalidArgument, "billing.report.bad_limit", "limit must be 1..500")
 	}
 	out := &DunningReport{}
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {

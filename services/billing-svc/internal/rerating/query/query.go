@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
 )
 
@@ -16,7 +17,7 @@ import (
 func Get(ctx context.Context, mgr *runs.Manager, tenantID, jobID uuid.UUID) (*runs.ReratingJob, error) {
 	job, err := mgr.GetReratingJob(ctx, tenantID, jobID)
 	if errors.Is(err, runs.ErrReratingNotFound) {
-		return nil, status.Error(codes.NotFound, "no such re-rating job")
+		return nil, errkey.New(codes.NotFound, "billing.rerating.not_found", "no such re-rating job")
 	}
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")

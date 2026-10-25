@@ -1203,7 +1203,11 @@
         "not_paid": "Nur eine bezahlte Rechnung kann gutgeschrieben werden.",
         "nothing_to_refund": "Für diese Gutschrift gibt es nichts auf die Karte zurückzuerstatten.",
         "refund_not_failed": "Nur eine Gutschrift mit fehlgeschlagener Rückerstattung kann erneut versucht werden.",
-        "bad_id": "Die Gutschrifts-ID ist keine gültige ID."
+        "bad_id": "Die Gutschrifts-ID ist keine gültige ID.",
+        "bad_page_size": "Die Seitengröße muss zwischen 1 und 200 liegen.",
+        "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
+        "not_found": "Diese Gutschrift wurde nicht gefunden.",
+        "reason_too_long": "Der Grund darf höchstens 500 Zeichen lang sein."
       },
       "dunning": {
         "bad_delay": "Jede Wiederholungsverzögerung muss zwischen 1 und 720 Stunden liegen.",
@@ -1212,12 +1216,17 @@
       "invoice": {
         "not_found": "Die Rechnung wurde nicht gefunden.",
         "pdf_not_ready": "Das PDF der Rechnung wurde noch nicht erstellt. Versuchen Sie es gleich noch einmal.",
-        "bad_id": "Die Rechnungs-ID ist keine gültige ID."
+        "bad_id": "Die Rechnungs-ID ist keine gültige ID.",
+        "bad_customer_id": "Die Kunden-ID ist keine gültige ID.",
+        "bad_page_size": "Die Seitengröße muss zwischen 1 und 500 liegen.",
+        "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
+        "pdf_sign_failed": "Der PDF-Download-Link konnte nicht erstellt werden. Versuchen Sie es gleich erneut."
       },
       "invoice_link": {
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
         "draft_invoice": "Eine Rechnung im Entwurf kann nicht per Link geteilt werden.",
-        "not_found": "Der Rechnungslink wurde nicht gefunden."
+        "not_found": "Der Rechnungslink wurde nicht gefunden.",
+        "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn."
       },
       "payment": {
         "amount_mismatch": "Die Zahlung entspricht nicht dem Rechnungsbetrag.",
@@ -1290,14 +1299,56 @@
         "unknown_currency": "Die Währung wird nicht unterstützt."
       },
       "einvoice": {
-        "bad_id": "Die ID der E-Rechnung oder des Kontos ist keine gültige ID."
+        "bad_id": "Die ID der E-Rechnung oder des Kontos ist keine gültige ID.",
+        "bad_file_kind": "Die Dateiart muss xml oder pdf sein.",
+        "bad_page_size": "Die Seitengröße muss zwischen 1 und 200 liegen.",
+        "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
+        "bad_status": "Der Status muss pending, issued, failed oder cancelled sein."
       },
       "tenant": {
         "bad_id": "Die Konto-ID ist keine gültige ID."
       },
       "rerating": {
         "bad_job_id": "Die ID des Neubewertungsauftrags ist keine gültige ID.",
-        "bad_plan_version_id": "Die ID der Planversion ist keine gültige ID."
+        "bad_plan_version_id": "Die ID der Planversion ist keine gültige ID.",
+        "not_found": "Dieser Neubewertungsauftrag wurde nicht gefunden.",
+        "run_not_completed": "Der Abrechnungslauf dieses Zeitraums ist noch nicht abgeschlossen.",
+        "unavailable": "Die Neubewertung konnte gerade nicht starten. Versuchen Sie es erneut.",
+        "unknown_plan_version": "Diese Planversion existiert nicht."
+      },
+      "dead_letter": {
+        "broker_unavailable": "Der Message-Broker ist gerade nicht erreichbar. Versuchen Sie es erneut.",
+        "invalid": "Diese Dead-Letter-Anfrage ist ungültig.",
+        "not_configured": "Dead-Letter-Vorgänge sind in dieser Installation nicht eingerichtet."
+      },
+      "hosted": {
+        "customer_unavailable": "Der Kunde konnte gerade nicht abgefragt werden. Versuchen Sie es gleich erneut.",
+        "seller_unavailable": "Die Verkäuferdaten konnten gerade nicht abgefragt werden. Versuchen Sie es gleich erneut.",
+        "tenant_unavailable": "Das Konto konnte gerade nicht abgefragt werden. Versuchen Sie es gleich erneut."
+      },
+      "report": {
+        "bad_group_by": "Die Gruppierung darf nur Zeitraum, Anbieter und Land nennen.",
+        "bad_limit": "Das Limit muss zwischen 1 und 500 liegen.",
+        "bad_period": "Erster und letzter Zeitraum müssen wie 2026-10 aussehen.",
+        "period_order": "Der erste Zeitraum darf nicht nach dem letzten liegen."
+      },
+      "request": {
+        "bad_id": "Eine ID in der Anfrage ist keine gültige ID."
+      },
+      "run": {
+        "bad_period": "Der Zeitraum muss wie 2026-11 aussehen.",
+        "not_closable": "Dieser Zeitraum kann jetzt nicht geschlossen werden.",
+        "not_found": "Für diesen Zeitraum gibt es keinen Abrechnungslauf.",
+        "period_open": "Dieser Zeitraum ist noch nicht abgeschlossen und kann daher nicht abgerechnet werden.",
+        "retry_later": "Der Abrechnungslauf konnte gerade nicht fortfahren. Er wird erneut versucht.",
+        "sandbox_only": "Das sofortige Schließen eines Zeitraums ist nur für Sandbox-Konten möglich."
+      },
+      "saga": {
+        "event_not_possible": "Das ist im aktuellen Zahlungsstatus der Rechnung nicht möglich.",
+        "not_found": "Diese Rechnung hat noch keinen Zahlungsvorgang: Sie ist nicht finalisiert."
+      },
+      "storage": {
+        "not_configured": "Der Dateispeicher ist in dieser Installation nicht eingerichtet."
       }
     },
     "coupon": {

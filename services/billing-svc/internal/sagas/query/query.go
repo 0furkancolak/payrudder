@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
 )
 
@@ -30,7 +31,7 @@ func Get(ctx context.Context, system *pgxpool.Pool, tenantID, invoiceID uuid.UUI
 	q := sqlc.New(system)
 	sagaID, err := q.GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tenantID, InvoiceID: invoiceID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, status.Error(codes.NotFound, "invoice has no saga (it is not finalized)")
+		return nil, errkey.New(codes.NotFound, "billing.saga.not_found", "invoice has no saga (it is not finalized)")
 	}
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")

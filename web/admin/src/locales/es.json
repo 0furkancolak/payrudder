@@ -1203,7 +1203,11 @@
         "not_paid": "Solo se puede abonar una factura pagada.",
         "nothing_to_refund": "No hay nada que reembolsar a la tarjeta por esta nota de abono.",
         "refund_not_failed": "Solo se puede reintentar una nota de abono cuyo reembolso ha fallado.",
-        "bad_id": "El identificador de la nota de crédito no es válido."
+        "bad_id": "El identificador de la nota de crédito no es válido.",
+        "bad_page_size": "El tamaño de página debe estar entre 1 y 200.",
+        "bad_page_token": "El token de página no es válido. Empieza la lista de nuevo.",
+        "not_found": "No se encontró esta nota de crédito.",
+        "reason_too_long": "El motivo puede tener como máximo 500 caracteres."
       },
       "dunning": {
         "bad_delay": "Cada retraso de reintento debe estar entre 1 y 720 horas.",
@@ -1212,12 +1216,17 @@
       "invoice": {
         "not_found": "No se encontró la factura.",
         "pdf_not_ready": "El PDF de la factura aún no se ha generado. Inténtelo de nuevo en un momento.",
-        "bad_id": "El identificador de la factura no es válido."
+        "bad_id": "El identificador de la factura no es válido.",
+        "bad_customer_id": "El identificador del cliente no es válido.",
+        "bad_page_size": "El tamaño de página debe estar entre 1 y 500.",
+        "bad_page_token": "El token de página no es válido. Empieza la lista de nuevo.",
+        "pdf_sign_failed": "No se pudo crear el enlace de descarga del PDF. Inténtalo de nuevo en un momento."
       },
       "invoice_link": {
         "bad_expiry": "El enlace debe caducar entre 1 y 365 días.",
         "draft_invoice": "Una factura en borrador no se puede compartir por enlace.",
-        "not_found": "No se encontró el enlace de la factura."
+        "not_found": "No se encontró el enlace de la factura.",
+        "bad_page_token": "El token de página no es válido. Empieza la lista de nuevo."
       },
       "payment": {
         "amount_mismatch": "El pago no corresponde al importe de la factura.",
@@ -1290,14 +1299,56 @@
         "unknown_currency": "La moneda no es compatible."
       },
       "einvoice": {
-        "bad_id": "El identificador de la factura electrónica o de la cuenta no es válido."
+        "bad_id": "El identificador de la factura electrónica o de la cuenta no es válido.",
+        "bad_file_kind": "El tipo de archivo debe ser xml o pdf.",
+        "bad_page_size": "El tamaño de página debe estar entre 1 y 200.",
+        "bad_page_token": "El token de página no es válido. Empieza la lista de nuevo.",
+        "bad_status": "El estado debe ser pending, issued, failed o cancelled."
       },
       "tenant": {
         "bad_id": "El identificador de la cuenta no es válido."
       },
       "rerating": {
         "bad_job_id": "El identificador del trabajo de retarificación no es válido.",
-        "bad_plan_version_id": "El identificador de la versión del plan no es válido."
+        "bad_plan_version_id": "El identificador de la versión del plan no es válido.",
+        "not_found": "No se encontró este trabajo de retarificación.",
+        "run_not_completed": "El ciclo de facturación de ese período aún no se ha completado.",
+        "unavailable": "La retarificación no pudo iniciarse ahora mismo. Inténtalo de nuevo.",
+        "unknown_plan_version": "Esa versión del plan no existe."
+      },
+      "dead_letter": {
+        "broker_unavailable": "No se puede acceder al intermediario de mensajes ahora mismo. Inténtalo de nuevo.",
+        "invalid": "Esta solicitud de mensajes fallidos no es válida.",
+        "not_configured": "Las operaciones de mensajes fallidos no están configuradas en este despliegue."
+      },
+      "hosted": {
+        "customer_unavailable": "No se pudo consultar al cliente ahora mismo. Inténtalo de nuevo en un momento.",
+        "seller_unavailable": "No se pudieron consultar los datos del vendedor ahora mismo. Inténtalo de nuevo en un momento.",
+        "tenant_unavailable": "No se pudo consultar la cuenta ahora mismo. Inténtalo de nuevo en un momento."
+      },
+      "report": {
+        "bad_group_by": "La agrupación solo puede nombrar período, proveedor y país.",
+        "bad_limit": "El límite debe estar entre 1 y 500.",
+        "bad_period": "El primer y el último período deben tener el formato 2026-10.",
+        "period_order": "El primer período no puede ser posterior al último."
+      },
+      "request": {
+        "bad_id": "Un identificador de la solicitud no es válido."
+      },
+      "run": {
+        "bad_period": "El período debe tener el formato 2026-11.",
+        "not_closable": "Este período no se puede cerrar ahora.",
+        "not_found": "No hay ciclo de facturación para ese período.",
+        "period_open": "Ese período aún no se ha cerrado, así que no se puede facturar.",
+        "retry_later": "El ciclo de facturación no pudo avanzar ahora mismo. Se reintentará.",
+        "sandbox_only": "Cerrar un período ahora solo está disponible para cuentas sandbox."
+      },
+      "saga": {
+        "event_not_possible": "Esto no se puede hacer mientras la factura está en su estado de pago actual.",
+        "not_found": "Esta factura aún no tiene proceso de pago: no está finalizada."
+      },
+      "storage": {
+        "not_configured": "El almacenamiento de archivos no está configurado en este despliegue."
       }
     },
     "coupon": {

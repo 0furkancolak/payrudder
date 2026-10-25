@@ -7,15 +7,15 @@ import (
 	"log/slog"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
 )
 
 // Redrive moves up to limit dead letters of queue back and returns how many moved.
 func Redrive(ctx context.Context, admin *dlq.Admin, queue string, limit int) (int, error) {
 	if admin == nil {
-		return 0, status.Error(codes.Unimplemented, "dead-letter operations are not configured")
+		return 0, errkey.New(codes.Unimplemented, "billing.dead_letter.not_configured", "dead-letter operations are not configured")
 	}
 	n, err := admin.Redrive(ctx, queue, limit)
 	if err != nil {
@@ -28,9 +28,9 @@ func Redrive(ctx context.Context, admin *dlq.Admin, queue string, limit int) (in
 func brokerErr(err error) error {
 	switch {
 	case errors.Is(err, dlq.ErrUnknownQueue):
-		return status.Error(codes.InvalidArgument, err.Error())
+		return errkey.New(codes.InvalidArgument, "billing.dead_letter.invalid", err.Error())
 	default:
 		slog.Error("dead letters", "error", err)
-		return status.Error(codes.Unavailable, "the broker could not be reached; retry")
+		return errkey.New(codes.Unavailable, "billing.dead_letter.broker_unavailable", "the broker could not be reached; retry")
 	}
 }
