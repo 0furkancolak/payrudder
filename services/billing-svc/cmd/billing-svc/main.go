@@ -92,7 +92,22 @@ func (c *Config) Validate() error {
 	if c.SchedulerInterval < time.Second || c.SweepInterval < time.Second {
 		errs = append(errs, errors.New("PAYRUDDER_SCHEDULER_INTERVAL and PAYRUDDER_SWEEP_INTERVAL must be ≥ 1s"))
 	}
+	errs = append(errs, c.checkObjectStorage())
 	return errors.Join(errs...)
+}
+
+// checkObjectStorage refuses half a storage setup: an endpoint without credentials, or one key without the other, would otherwise leave the PDF links switched off
+// without a word.
+func (c *Config) checkObjectStorage() error {
+	switch {
+	case c.S3AccessKey != "" && c.S3SecretKey == "":
+		return errors.New("S3_ACCESS_KEY needs S3_SECRET_KEY")
+	case c.S3AccessKey == "" && c.S3SecretKey != "":
+		return errors.New("S3_SECRET_KEY needs S3_ACCESS_KEY")
+	case c.S3Endpoint != "" && c.S3AccessKey == "":
+		return errors.New("S3_ENDPOINT needs S3_ACCESS_KEY and S3_SECRET_KEY")
+	}
+	return nil
 }
 
 func main() { app.Main("billing-svc", defaults, start) }

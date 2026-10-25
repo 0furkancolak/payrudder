@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -47,12 +48,22 @@ func New(cfg Config) *Commands {
 	return &Commands{cfg: cfg, q: sqlc.New(cfg.Pool)}
 }
 
+// checkReason trims the reason and refuses one of more than maxReasonLen characters (not bytes: the message says characters).
+func checkReason(reason string) (string, error) {
+	reason = strings.TrimSpace(reason)
+	if utf8.RuneCountInString(reason) > maxReasonLen {
+		return "", errkey.New(codes.InvalidArgument, "billing.credit_note.reason_too_long", "reason is at most 500 characters")
+	}
+	return reason, nil
+}
+
 // Create writes a credit note for a paid invoice, optionally refunding it to the card.
 func (c *Commands) Create(ctx context.Context, tenantID, invoiceID uuid.UUID, amountMinor int64, reason string, refundToCard bool) (*model.CreditNote, error) {
-	if len(reason) > maxReasonLen {
-		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.reason_too_long", "reason is at most 500 characters")
+	reason, err := checkReason(reason)
+	if err != nil {
+		return nil, err
 	}
-	cn, err := c.create(ctx, tenantID, invoiceID, amountMinor, strings.TrimSpace(reason), refundToCard)
+	cn, err := c.create(ctx, tenantID, invoiceID, amountMinor, reason, refundToCard)
 	switch {
 	case errors.Is(err, model.ErrInvoiceNotFound):
 		return nil, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")

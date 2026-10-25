@@ -60,6 +60,7 @@ func TestBilling(t *testing.T) {
 		{"CreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold", testCreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold},
 		{"ClosePeriodTwiceMakesOneRunAndOneInvoicePerCustomer", testClosePeriodTwice},
 		{"ClosePeriodRefusesABadAndAnOpenPeriod", testClosePeriodRefusals},
+		{"DeadLettersArePeekedAndRedriven", testDeadLettersArePeekedAndRedriven},
 		{"InvoiceNumbersAreGapFreeUnderConcurrency", testGapFree},
 		{"SandboxClosePeriodNowAndLiveIsRefused", testSandbox},
 		{"VoidingAPaidInvoiceRefundsIt", testVoidRefund},
