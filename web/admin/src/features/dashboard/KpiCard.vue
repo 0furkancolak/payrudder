@@ -2,6 +2,7 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Sparkles } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { Sparkline } from "@/shared/ui/sparkline";
 import type { Delta } from "./lib";
 
@@ -10,7 +11,8 @@ import type { Delta } from "./lib";
  * `good` says which way is good news: revenue rising is, churn rising is not. The arrow and the sign carry the direction; the colour only the verdict.
  */
 const props = withDefaults(defineProps<{ label: string; testid: string; delta?: Delta | null; good?: "up" | "down"; previous?: string; spark?: number[] }>(), { good: "up", delta: null, previous: undefined, spark: undefined });
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const fmt = useFormat();
 
 const verdict = computed<"good" | "bad" | "neutral">(() => {
   const d = props.delta;
@@ -20,7 +22,7 @@ const verdict = computed<"good" | "bad" | "neutral">(() => {
 });
 const percent = computed(() => {
   const p = props.delta?.percent;
-  return p === null || p === undefined ? "" : `${p > 0 ? "+" : ""}${new Intl.NumberFormat(locale.value, { maximumFractionDigits: 1 }).format(p)}%`;
+  return p === null || p === undefined ? "" : `${p > 0 ? "+" : ""}${fmt.percent(p)}`;
 });
 const word = computed(() => {
   const d = props.delta;
