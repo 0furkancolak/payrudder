@@ -1988,6 +1988,13 @@
       "bad_period": "Escriba las fechas como AAAA-MM-DD, con el final después del inicio y como mucho un año de diferencia.",
       "commission": {
         "not_found": "Esta factura no generó ninguna comisión."
+      },
+      "payout": {
+        "affiliate_inactive": "No se paga a un afiliado suspendido o pendiente. Su saldo se conserva hasta que lo reactive.",
+        "not_found": "No existe ese pago.",
+        "not_open": "Este pago ya no está abierto: se pagó o se canceló.",
+        "nothing_to_pay": "Tras los reembolsos este pago se queda en nada. Cancélelo; el saldo pasa al siguiente.",
+        "tenant_not_active": "Este entorno live no está activo, así que no se puede crear ni pagar ningún pago."
       }
     }
   },

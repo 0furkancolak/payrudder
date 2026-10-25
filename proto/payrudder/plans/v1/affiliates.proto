@@ -31,6 +31,16 @@ service AffiliateService {
   rpc GetAffiliateBalances(GetAffiliateBalancesRequest) returns (GetAffiliateBalancesResponse);
   // GetAffiliateFunnel counts clicks, referred customers, paying customers and commissions over a period.
   rpc GetAffiliateFunnel(GetAffiliateFunnelRequest) returns (GetAffiliateFunnelResponse);
+  rpc ListAffiliatePayouts(ListAffiliatePayoutsRequest) returns (ListAffiliatePayoutsResponse);
+  // CreateAffiliatePayouts puts the approved commissions (and the negative rows that net earlier payments taken back) of one affiliate, or of all, into open
+  // payouts, one per currency. A batch below the program's minimum, or not above zero, is skipped and said so.
+  rpc CreateAffiliatePayouts(CreateAffiliatePayoutsRequest) returns (CreateAffiliatePayoutsResponse);
+  // MarkAffiliatePayoutPaid records that the owner paid an open payout (by hand or bank transfer; nothing moves here) and posts it to the journal.
+  rpc MarkAffiliatePayoutPaid(MarkAffiliatePayoutPaidRequest) returns (MarkAffiliatePayoutPaidResponse);
+  // CancelAffiliatePayout releases an open payout's commissions to be paid in another.
+  rpc CancelAffiliatePayout(CancelAffiliatePayoutRequest) returns (CancelAffiliatePayoutResponse);
+  // ListAffiliateJournal lists the postings of paid payouts with debit and credit totals per currency.
+  rpc ListAffiliateJournal(ListAffiliateJournalRequest) returns (ListAffiliateJournalResponse);
 }
 
 // AffiliatePublicService is for the public link and cookie of the hosted pages. It holds no tenant: the code finds it. Only the gateway calls it.
@@ -303,4 +313,108 @@ message GetAffiliateFunnelResponse {
   // Customers with a commission earned in the period.
   int64 paying_customers = 5;
   repeated AffiliateFunnelAmount commissions = 6;
+}
+
+message AffiliatePayout {
+  string id = 1;
+  string affiliate_id = 2;
+  string affiliate_code = 3;
+  string currency = 4;
+  // What the payout is worth: for an open one, its commissions as they stand now (a refund since lowers it); for a paid one, what was paid.
+  int64 total_minor = 5;
+  int32 commission_count = 6;
+  // manual or bank_transfer.
+  string method = 7;
+  string payout_details = 8;
+  // The owner's note when marking it paid, e.g. the bank transfer reference.
+  string reference = 9;
+  // open, paid or cancelled.
+  string status = 10;
+  // A payout of a sandbox environment is fake: nothing was or will be paid.
+  bool fake = 11;
+  google.protobuf.Timestamp create_time = 12;
+  google.protobuf.Timestamp pay_time = 13;
+  google.protobuf.Timestamp cancel_time = 14;
+}
+
+message ListAffiliatePayoutsRequest {
+  string affiliate_id = 1;
+  // open, paid, cancelled or empty.
+  string status = 2;
+  string id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+message ListAffiliatePayoutsResponse {
+  repeated AffiliatePayout payouts = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}
+
+message CreateAffiliatePayoutsRequest {
+  // Empty takes every active affiliate's.
+  string affiliate_id = 1;
+  // Empty takes every currency.
+  string currency = 2;
+}
+message SkippedAffiliatePayout {
+  string affiliate_id = 1;
+  string currency = 2;
+  int64 total_minor = 3;
+  // below_minimum or not_positive.
+  string reason = 4;
+}
+message CreateAffiliatePayoutsResponse {
+  repeated AffiliatePayout payouts = 1;
+  repeated SkippedAffiliatePayout skipped = 2;
+}
+
+message MarkAffiliatePayoutPaidRequest {
+  string id = 1;
+  string reference = 2;
+}
+message MarkAffiliatePayoutPaidResponse {
+  AffiliatePayout payout = 1;
+}
+
+message CancelAffiliatePayoutRequest {
+  string id = 1;
+}
+message CancelAffiliatePayoutResponse {
+  AffiliatePayout payout = 1;
+}
+
+message AffiliateJournalEntry {
+  string id = 1;
+  string payout_id = 2;
+  string affiliate_id = 3;
+  google.protobuf.Timestamp post_time = 4;
+  string currency = 5;
+  // commission_expense, commissions_payable or cash.
+  string account = 6;
+  int64 debit_minor = 7;
+  int64 credit_minor = 8;
+  string memo = 9;
+  // Posted by a sandbox payout: fake.
+  bool fake = 10;
+}
+message AffiliateJournalTotal {
+  string currency = 1;
+  int64 debit_minor = 2;
+  int64 credit_minor = 3;
+}
+message ListAffiliateJournalRequest {
+  string payout_id = 1;
+  string currency = 2;
+  google.protobuf.Timestamp from_time = 3;
+  google.protobuf.Timestamp to_time = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+message ListAffiliateJournalResponse {
+  repeated AffiliateJournalEntry entries = 1;
+  // Over the whole filter, not only this page: the books balance when debits equal credits in every currency.
+  repeated AffiliateJournalTotal totals = 2;
+  string next_page_token = 3;
+  int32 total = 4;
 }

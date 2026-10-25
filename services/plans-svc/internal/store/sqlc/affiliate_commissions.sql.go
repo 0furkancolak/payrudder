@@ -17,7 +17,7 @@ const affiliateBalances = `-- name: AffiliateBalances :many
 SELECT affiliate_id, currency,
   COALESCE(sum(amount_minor - reversed_minor) FILTER (WHERE kind = 'commission' AND status = 'pending'), 0)::bigint AS pending_minor,
   COALESCE(sum(CASE kind WHEN 'commission' THEN amount_minor - reversed_minor ELSE amount_minor END) FILTER (WHERE status = 'approved'), 0)::bigint AS approved_minor,
-  COALESCE(sum(amount_minor) FILTER (WHERE status = 'paid'), 0)::bigint AS paid_minor,
+  COALESCE(sum(settled_minor) FILTER (WHERE status = 'paid'), 0)::bigint AS paid_minor,
   COALESCE(sum(reversed_minor) FILTER (WHERE kind = 'commission'), 0)::bigint AS reversed_minor
 FROM affiliate_commissions
 WHERE tenant_id = app_tenant_id() AND ($1::uuid IS NULL OR affiliate_id = $1)

@@ -19,6 +19,7 @@ func (s *Server) routes() []Route {
 		s.subscriptionRoutes(),
 		s.promotionRoutes(),
 		s.affiliateRoutes(),
+		s.affiliatePayoutRoutes(),
 		s.webhookAndInvoiceLinkRoutes(),
 		s.paymentLinkRoutes(),
 		s.hostedPublicRoutes(),

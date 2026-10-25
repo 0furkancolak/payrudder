@@ -97,6 +97,34 @@ func (h *Handler) GetAffiliateFunnel(ctx context.Context, req *plansv1.GetAffili
 	return h.qry.Funnel(ctx, req, time.Now())
 }
 
+func (h *Handler) ListAffiliatePayouts(ctx context.Context, req *plansv1.ListAffiliatePayoutsRequest) (*plansv1.ListAffiliatePayoutsResponse, error) {
+	return h.qry.Payouts(ctx, req)
+}
+
+func (h *Handler) CreateAffiliatePayouts(ctx context.Context, req *plansv1.CreateAffiliatePayoutsRequest) (*plansv1.CreateAffiliatePayoutsResponse, error) {
+	return h.cmd.CreatePayouts(ctx, req)
+}
+
+func (h *Handler) MarkAffiliatePayoutPaid(ctx context.Context, req *plansv1.MarkAffiliatePayoutPaidRequest) (*plansv1.MarkAffiliatePayoutPaidResponse, error) {
+	p, err := h.cmd.MarkPaid(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.MarkAffiliatePayoutPaidResponse{Payout: p}, nil
+}
+
+func (h *Handler) CancelAffiliatePayout(ctx context.Context, req *plansv1.CancelAffiliatePayoutRequest) (*plansv1.CancelAffiliatePayoutResponse, error) {
+	p, err := h.cmd.CancelPayout(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.CancelAffiliatePayoutResponse{Payout: p}, nil
+}
+
+func (h *Handler) ListAffiliateJournal(ctx context.Context, req *plansv1.ListAffiliateJournalRequest) (*plansv1.ListAffiliateJournalResponse, error) {
+	return h.qry.Journal(ctx, req)
+}
+
 // PublicHandler serves plansv1.AffiliatePublicService.
 type PublicHandler struct {
 	plansv1.UnimplementedAffiliatePublicServiceServer
