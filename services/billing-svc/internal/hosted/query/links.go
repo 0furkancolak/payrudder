@@ -70,9 +70,9 @@ func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Lis
 	}
 	var invoice *uuid.UUID
 	if p.InvoiceID != "" {
-		id, err := uuid.Parse(p.InvoiceID)
+		id, err := errkey.ParseUUID("billing.invoice.bad_id", "invoice_id", p.InvoiceID)
 		if err != nil {
-			return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
+			return nil, err
 		}
 		invoice = &id
 	}

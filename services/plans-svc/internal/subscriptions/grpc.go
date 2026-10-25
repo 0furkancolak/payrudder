@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 )
@@ -29,7 +30,7 @@ func (h *Handler) CreateSubscription(ctx context.Context, req *plansv1.CreateSub
 }
 
 func (h *Handler) GetSubscription(ctx context.Context, req *plansv1.GetSubscriptionRequest) (*plansv1.GetSubscriptionResponse, error) {
-	id, err := query.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return nil, err
 	}

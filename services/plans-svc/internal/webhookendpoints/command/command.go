@@ -155,7 +155,7 @@ func (c *Commands) CreateEndpoint(ctx context.Context, req *plansv1.CreateWebhoo
 
 // UpdateEndpoint replaces an endpoint's url, description, event types and active flag.
 func (c *Commands) UpdateEndpoint(ctx context.Context, req *plansv1.UpdateWebhookEndpointRequest) (*plansv1.WebhookEndpoint, error) {
-	id, err := endpointsqry.ParseID("id", req.GetId())
+	id, err := domain.ParseID("id", req.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (c *Commands) UpdateEndpoint(ctx context.Context, req *plansv1.UpdateWebhoo
 
 // DeleteEndpoint removes an endpoint.
 func (c *Commands) DeleteEndpoint(ctx context.Context, rawID string) error {
-	id, err := endpointsqry.ParseID("id", rawID)
+	id, err := domain.ParseID("id", rawID)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func (c *Commands) RotateSecret(ctx context.Context, rawID string) (*plansv1.Web
 	if err := c.requireBox(); err != nil {
 		return nil, err
 	}
-	id, err := endpointsqry.ParseID("id", rawID)
+	id, err := domain.ParseID("id", rawID)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +238,7 @@ func (c *Commands) RotateSecret(ctx context.Context, rawID string) (*plansv1.Web
 
 // SendTest queues a ping event to one endpoint.
 func (c *Commands) SendTest(ctx context.Context, rawID string) (*plansv1.WebhookDelivery, error) {
-	id, err := endpointsqry.ParseID("id", rawID)
+	id, err := domain.ParseID("id", rawID)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +270,7 @@ func (c *Commands) SendTest(ctx context.Context, rawID string) (*plansv1.Webhook
 
 // Redeliver puts a delivery back in the queue.
 func (c *Commands) Redeliver(ctx context.Context, rawID string) (*plansv1.WebhookDelivery, error) {
-	id, err := endpointsqry.ParseID("delivery_id", rawID)
+	id, err := domain.ParseID("delivery_id", rawID)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func (c *Commands) Redeliver(ctx context.Context, rawID string) (*plansv1.Webhoo
 
 // RecordEvent records an event another service produced and queues it to the endpoints that want its type; it returns how many deliveries.
 func (c *Commands) RecordEvent(ctx context.Context, req *plansv1.RecordTenantEventRequest) (int32, error) {
-	id, err := endpointsqry.ParseID("event_id", req.GetEventId())
+	id, err := domain.ParseID("event_id", req.GetEventId())
 	if err != nil {
 		return 0, err
 	}

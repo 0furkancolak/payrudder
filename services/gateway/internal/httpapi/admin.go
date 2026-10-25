@@ -5,9 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
-
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -18,9 +15,9 @@ import (
 // An operator acts on behalf of the tenant named in the path, so these routes put it into the call's tenant context.
 
 func operatorAs(r *http.Request) (context.Context, error) {
-	id, err := uuid.Parse(r.PathValue("tenant_id"))
+	id, err := errkey.ParseUUID("gateway.request.bad_tenant_id", "tenant_id", r.PathValue("tenant_id"))
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "gateway.request.bad_tenant_id", "tenant_id must be a UUID")
+		return nil, err
 	}
 	return tenant.NewContext(r.Context(), tenant.Info{ID: id}), nil
 }

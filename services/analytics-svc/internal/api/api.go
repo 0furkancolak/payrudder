@@ -61,8 +61,8 @@ func (s *Server) QueryUsage(ctx context.Context, req *analyticsv1.QueryUsageRequ
 	}
 	f := query.UsageFilter{Meter: req.GetMeterCode(), Timezone: ti.Timezone, Exact: req.GetExact()}
 	if c := req.GetCustomerId(); c != "" {
-		if f.Customer, err = uuid.Parse(c); err != nil {
-			return nil, invalid("analytics.customer.bad_id", "customer_id must be a UUID")
+		if f.Customer, err = errkey.ParseUUID("analytics.customer.bad_id", "customer_id", c); err != nil {
+			return nil, err
 		}
 	}
 	if req.GetFrom() == nil || req.GetTo() == nil || req.GetFrom().CheckValid() != nil || req.GetTo().CheckValid() != nil {
@@ -179,9 +179,9 @@ func (s *Server) GetIngestStats(ctx context.Context, req *analyticsv1.GetIngestS
 	var b query.Builder
 	var err error
 	if t := req.GetTenantId(); t != "" {
-		id, perr := uuid.Parse(t)
+		id, perr := errkey.ParseUUID("analytics.tenant.bad_id", "tenant_id", t)
 		if perr != nil {
-			return nil, invalid("analytics.tenant.bad_id", "tenant_id must be a UUID")
+			return nil, perr
 		}
 		b, err = query.ForTenant(id)
 	} else {

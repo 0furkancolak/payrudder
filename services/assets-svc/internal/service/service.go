@@ -203,14 +203,6 @@ func objectKey(tenantID, assetID uuid.UUID) string {
 	return fmt.Sprintf("%s/assets/%s", tenantID, assetID)
 }
 
-func parseID(field, v string) (uuid.UUID, error) {
-	id, err := uuid.Parse(v)
-	if err != nil {
-		return uuid.Nil, errkey.Newf(codes.InvalidArgument, "assets.request.bad_id", "%s must be a UUID", field)
-	}
-	return id, nil
-}
-
 func loadSession(ctx context.Context, q *sqlc.Queries, id uuid.UUID, forUpdate bool) (sqlc.UploadSession, error) {
 	var sess sqlc.UploadSession
 	var err error

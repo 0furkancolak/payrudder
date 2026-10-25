@@ -62,11 +62,11 @@ func (s *Service) CompleteFile(ctx context.Context, req *assetsv1.CompleteFileRe
 	if err != nil {
 		return nil, err
 	}
-	sid, err := parseID("session_id", req.GetSessionId())
+	sid, err := errkey.ParseUUID("assets.request.bad_id", "session_id", req.GetSessionId())
 	if err != nil {
 		return nil, err
 	}
-	aid, err := parseID("asset_id", req.GetAssetId())
+	aid, err := errkey.ParseUUID("assets.request.bad_id", "asset_id", req.GetAssetId())
 	if err != nil {
 		return nil, err
 	}
@@ -165,13 +165,13 @@ func checkParts(a sqlc.Asset, given []*assetsv1.PartETag, parts []blob.Part) str
 
 // AbortUpload implements assetsv1.AssetsServiceServer.
 func (s *Service) AbortUpload(ctx context.Context, req *assetsv1.AbortUploadRequest) (*assetsv1.AbortUploadResponse, error) {
-	sid, err := parseID("session_id", req.GetSessionId())
+	sid, err := errkey.ParseUUID("assets.request.bad_id", "session_id", req.GetSessionId())
 	if err != nil {
 		return nil, err
 	}
 	var aid *uuid.UUID
 	if req.GetAssetId() != "" {
-		id, err := parseID("asset_id", req.GetAssetId())
+		id, err := errkey.ParseUUID("assets.request.bad_id", "asset_id", req.GetAssetId())
 		if err != nil {
 			return nil, err
 		}
@@ -227,7 +227,7 @@ func (s *Service) abortAssets(ctx context.Context, q *sqlc.Queries, sessionID uu
 
 // GetAsset implements assetsv1.AssetsServiceServer.
 func (s *Service) GetAsset(ctx context.Context, req *assetsv1.GetAssetRequest) (*assetsv1.GetAssetResponse, error) {
-	id, err := parseID("asset_id", req.GetAssetId())
+	id, err := errkey.ParseUUID("assets.request.bad_id", "asset_id", req.GetAssetId())
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +286,7 @@ func (s *Service) ListAssets(ctx context.Context, req *assetsv1.ListAssetsReques
 
 // GetDownloadUrl implements assetsv1.AssetsServiceServer.
 func (s *Service) GetDownloadUrl(ctx context.Context, req *assetsv1.GetDownloadUrlRequest) (*assetsv1.GetDownloadUrlResponse, error) {
-	id, err := parseID("asset_id", req.GetAssetId())
+	id, err := errkey.ParseUUID("assets.request.bad_id", "asset_id", req.GetAssetId())
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +306,7 @@ func (s *Service) GetDownloadUrl(ctx context.Context, req *assetsv1.GetDownloadU
 
 // DeleteAsset implements assetsv1.AssetsServiceServer.
 func (s *Service) DeleteAsset(ctx context.Context, req *assetsv1.DeleteAssetRequest) (*assetsv1.DeleteAssetResponse, error) {
-	id, err := parseID("asset_id", req.GetAssetId())
+	id, err := errkey.ParseUUID("assets.request.bad_id", "asset_id", req.GetAssetId())
 	if err != nil {
 		return nil, err
 	}

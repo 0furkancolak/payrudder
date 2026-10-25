@@ -28,7 +28,7 @@ type PlanChanged struct {
 
 // ChangePlan moves a subscription whose fee is invoiced in arrears to another plan version, splitting the month's fee by time.
 func (c *Commands) ChangePlan(ctx context.Context, req *plansv1.ChangePlanRequest) (PlanChanged, error) {
-	id, err := subsqry.ParseID(req.GetSubscriptionId())
+	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
 	if err != nil {
 		return PlanChanged{}, err
 	}

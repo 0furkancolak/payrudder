@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -40,9 +39,9 @@ func (h *Handler) GetInvoicePdfUrl(ctx context.Context, req *billingv1.GetInvoic
 	if err != nil {
 		return nil, err
 	}
-	id, err := uuid.Parse(req.GetInvoiceId())
+	id, err := errkey.ParseUUID("billing.invoice.bad_id", "invoice_id", req.GetInvoiceId())
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
+		return nil, err
 	}
 	url, expires, err := query.PDFURL(ctx, h.app, h.pdfs, ti.ID, id)
 	if err != nil {
@@ -57,9 +56,9 @@ func (h *Handler) GetInvoice(ctx context.Context, req *billingv1.GetInvoiceReque
 	if err != nil {
 		return nil, err
 	}
-	id, err := uuid.Parse(req.GetInvoiceId())
+	id, err := errkey.ParseUUID("billing.invoice.bad_id", "invoice_id", req.GetInvoiceId())
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
+		return nil, err
 	}
 	inv, err := query.Get(ctx, h.app, ti.ID, id)
 	if err != nil {

@@ -57,9 +57,9 @@ func parseOptionalUUID(field, v string) (*uuid.UUID, error) {
 	if v == "" {
 		return nil, nil
 	}
-	id, err := uuid.Parse(v)
+	id, err := errkey.ParseUUID("billing.einvoice.bad_id", field, v)
 	if err != nil {
-		return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_id", field+" must be a UUID")
+		return nil, err
 	}
 	return &id, nil
 }

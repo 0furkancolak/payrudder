@@ -52,9 +52,9 @@ func (r *Queries) Version(ctx context.Context, req *plansv1.GetPlanVersionReques
 			return err
 		}
 		if req.GetPlanVersionId() != "" {
-			id, err := uuid.Parse(req.GetPlanVersionId())
+			id, err := domain.ParseID("plan_version_id", req.GetPlanVersionId())
 			if err != nil {
-				return domain.Invalid("plan_version_id", "must be a UUID")
+				return err
 			}
 			r, err := q.GetPlanVersionByID(ctx, id)
 			if err != nil {
