@@ -29,7 +29,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/ingest"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/events/command"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/lookup"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/migrations"
@@ -112,22 +113,22 @@ func createTopic(t *testing.T) {
 	defer cl.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if _, err := kadm.NewClient(cl).CreateTopic(ctx, 12, 1, nil, ingest.Topic); err != nil {
+	if _, err := kadm.NewClient(cl).CreateTopic(ctx, 12, 1, nil, command.Topic); err != nil {
 		t.Fatalf("create topic: %v", err)
 	}
 }
 
 type testOpts struct {
 	clock          *clock
-	lookups        ingest.Lookups
+	lookups        command.Lookups
 	maxOutboxDepth int64
 	propagator     propagation.TextMapPropagator
 }
 
-func newService(t *testing.T, o testOpts) *ingest.Service {
+func newService(t *testing.T, o testOpts) *grpcapi.Server {
 	t.Helper()
 	infra(t)
-	opts := ingest.Options{
+	opts := grpcapi.Options{
 		App: shared.app, System: shared.system, Lookup: o.lookups, MaxOutboxDepth: o.maxOutboxDepth,
 		DepthRefresh: 50 * time.Millisecond, Propagator: o.propagator,
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -142,7 +143,7 @@ func newService(t *testing.T, o testOpts) *ingest.Service {
 		opts.Now = o.clock.Now
 		opts.NowInTx = func(context.Context, *sqlc.Queries) (time.Time, error) { return o.clock.Now(), nil }
 	}
-	svc, err := ingest.New(opts)
+	svc, err := grpcapi.New(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +168,7 @@ func event(key, qty string, at time.Time) *ingestv1.IncomingEvent {
 	}
 }
 
-func ingestOne(t *testing.T, svc *ingest.Service, tc tenantCtx, ev *ingestv1.IncomingEvent) *ingestv1.EventResult {
+func ingestOne(t *testing.T, svc *grpcapi.Server, tc tenantCtx, ev *ingestv1.IncomingEvent) *ingestv1.EventResult {
 	t.Helper()
 	resp, err := svc.IngestEvents(tc.ctx, &ingestv1.IngestEventsRequest{Events: []*ingestv1.IncomingEvent{ev}})
 	if err != nil {
@@ -232,7 +233,7 @@ func waitOutboxEmpty(t *testing.T, tenantID uuid.UUID, timeout time.Duration) {
 // It stops when want records were seen and quiet has passed without news, or at timeout.
 func consume(t *testing.T, tenantID uuid.UUID, want int, quiet, timeout time.Duration) []*kgo.Record {
 	t.Helper()
-	cl, err := kgo.NewClient(kgo.SeedBrokers(shared.kafka.Brokers), kgo.ConsumeTopics(ingest.Topic),
+	cl, err := kgo.NewClient(kgo.SeedBrokers(shared.kafka.Brokers), kgo.ConsumeTopics(command.Topic),
 		kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()))
 	if err != nil {
 		t.Fatal(err)
