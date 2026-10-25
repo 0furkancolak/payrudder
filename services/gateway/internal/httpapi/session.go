@@ -61,7 +61,7 @@ func (s *Server) session(r *http.Request) (session, error) {
 	case codes.Unauthenticated, codes.InvalidArgument, codes.NotFound:
 		return session{}, errkey.New(codes.Unauthenticated, "identity.session.invalid", "sign in to continue")
 	case codes.Unavailable, codes.DeadlineExceeded:
-		return session{}, status.Error(codes.Unavailable, "sign-in is temporarily unavailable")
+		return session{}, errkey.New(codes.Unavailable, "identity.session.unavailable", "sign-in is temporarily unavailable")
 	default:
 		return session{}, err
 	}
@@ -73,7 +73,7 @@ func (s *Server) session(r *http.Request) (session, error) {
 func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	id := r.Header.Get(ActAsHeader)
 	if id == "" {
-		return auth.Principal{}, status.Error(codes.Unauthenticated, "a session token needs "+ActAsHeader+": the tenant to act on")
+		return auth.Principal{}, errkey.New(codes.Unauthenticated, "identity.session.act_as_required", "a session token needs "+ActAsHeader+": the tenant to act on")
 	}
 	sess, err := s.session(r)
 	if err != nil {
@@ -89,7 +89,7 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	case codes.NotFound, codes.InvalidArgument:
 		return auth.Principal{}, errkey.New(codes.NotFound, "identity.tenant.not_found", "no such tenant")
 	case codes.Unavailable, codes.DeadlineExceeded:
-		return auth.Principal{}, status.Error(codes.Unavailable, "tenant lookup unavailable")
+		return auth.Principal{}, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable")
 	default:
 		return auth.Principal{}, err
 	}
@@ -240,13 +240,13 @@ func decodeJSON(r *http.Request, v any) error {
 		if errors.As(err, &mbe) {
 			return errTooLarge{limit: mbe.Limit}
 		}
-		return status.Error(codes.InvalidArgument, "unreadable body")
+		return errkey.New(codes.InvalidArgument, "gateway.request.unreadable_body", "unreadable body")
 	}
 	if len(strings.TrimSpace(string(raw))) == 0 {
 		return nil
 	}
 	if err := json.Unmarshal(raw, v); err != nil {
-		return status.Error(codes.InvalidArgument, "malformed JSON body")
+		return errkey.New(codes.InvalidArgument, "gateway.request.malformed_json", "malformed JSON body")
 	}
 	return nil
 }

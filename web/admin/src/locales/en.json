@@ -1501,7 +1501,10 @@
         "already_rotating": "This key was already rotated and ends soon. Revoke it, or wait for it to end.",
         "bad_overlap": "The overlap must be between 0 hours and 7 days.",
         "bad_scope": "The scope must be full, ingest or read.",
-        "not_active": "This API key is revoked."
+        "not_active": "This API key is revoked.",
+        "invalid": "The API key is not valid.",
+        "missing": "Send your API key as a Bearer token in the Authorization header.",
+        "sandbox_only": "This endpoint is only for sandbox keys (qk_test_)."
       },
       "app": {
         "not_found": "This app does not exist, or it is not yours.",
@@ -1509,15 +1512,20 @@
       },
       "auth": {
         "invalid_credentials": "Wrong e-mail or password, or too many attempts. After five wrong passwords, sign-in for that address is paused for 15 minutes, even with the right password.",
-        "rate_limited": "Too many attempts from this address. Try again in a minute."
+        "rate_limited": "Too many attempts from this address. Try again in a minute.",
+        "unavailable": "Sign-in checks are not available right now. Try again shortly."
       },
       "session": {
-        "invalid": "Your session has ended. Sign in again."
+        "invalid": "Your session has ended. Sign in again.",
+        "act_as_required": "A signed-in session must say which account it acts on.",
+        "unavailable": "Sign-in is temporarily unavailable. Try again shortly."
       },
       "tenant": {
         "not_found": "This environment does not exist, or it is not yours.",
         "bad_metadata": "The account in the request is not valid.",
-        "metadata_missing": "The request does not say which account it is for."
+        "metadata_missing": "The request does not say which account it is for.",
+        "bad_act_as": "The account to act on must be a valid account id.",
+        "lookup_unavailable": "The account could not be looked up right now. Try again shortly."
       },
       "token": {
         "invalid": "This link is invalid, has expired or was already used. Ask for a new one."
@@ -1550,7 +1558,8 @@
         "not_configured": "Sign-in with Google is not set up here."
       },
       "operator": {
-        "forbidden": "This area is for platform operators."
+        "forbidden": "This area is for platform operators.",
+        "required": "This area is for platform operators. Sign in as an operator."
       },
       "go_live": {
         "incomplete": "The go-live checklist is not complete yet.",
@@ -1562,15 +1571,34 @@
     "gateway": {
       "dashboard": {
         "bad_period": "That period is not valid. Choose 7, 30 or 90 days, this year, or two days with the first not after the last.",
-        "range_too_long": "A period can be at most two years."
+        "range_too_long": "A period can be at most two years.",
+        "limits_unavailable": "Usage limits are not available right now, so this view cannot be built. Try again shortly.",
+        "payments_unavailable": "Payments are not available right now, so this view cannot be built. Try again shortly."
       },
       "request": {
         "invalid": "{field} is not valid: {detail}",
-        "too_large": "The request is too large."
+        "too_large": "The request is too large.",
+        "bad_tenant_id": "The account id is not a valid id.",
+        "malformed_json": "The request body is not valid JSON.",
+        "unreadable_body": "The request body could not be read."
       },
       "auth": {
         "scope_denied": "This API key's scope does not allow this request. Use a key with a wider scope.",
         "tenant_not_active": "This environment is suspended or not active yet. Finish the go-live checklist, or contact support."
+      },
+      "assets": {
+        "bad_invoice_logo": "The invoice logo must be a finished upload of the invoice logo kind."
+      },
+      "payments": {
+        "ledger_unreachable": "The payment ledger cannot be reached right now. Try again shortly.",
+        "not_configured": "Payment providers are not set up on this deployment.",
+        "unreachable": "The payments service cannot be reached right now. Try again shortly."
+      },
+      "rate_limit": {
+        "exceeded": "Too many requests of this kind. Wait a moment and try again."
+      },
+      "route": {
+        "not_found": "There is no such address in the API."
       }
     },
     "env": {

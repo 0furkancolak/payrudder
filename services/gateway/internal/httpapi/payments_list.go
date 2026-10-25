@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 )
 
@@ -47,13 +47,13 @@ func (s *Server) listPayments(w http.ResponseWriter, r *http.Request) {
 	}
 	ti, ok := tenant.FromContext(r.Context())
 	if !ok {
-		writeError(w, r, status.Error(codes.Unauthenticated, "no tenant"))
+		writeError(w, r, errkey.New(codes.Unauthenticated, "identity.tenant.metadata_missing", "no tenant"))
 		return
 	}
 	rows, err := s.recentLedger(r.Context(), ti.ID.String())
 	if err != nil {
 		s.d.Log.WarnContext(r.Context(), "ledger read failed", "error", err)
-		writeError(w, r, status.Error(codes.Unavailable, "the payment ledger is not reachable"))
+		writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.ledger_unreachable", "the payment ledger is not reachable"))
 		return
 	}
 	folded := foldLedger(rows)
