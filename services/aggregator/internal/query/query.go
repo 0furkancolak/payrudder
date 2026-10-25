@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/aggregator/internal/apply"
@@ -48,11 +49,12 @@ func New(app *pgxpool.Pool, src *settings.Source, group, topic string) *Service 
 	return &Service{app: app, settings: src, group: group, topic: topic}
 }
 
-func invalid(msg string) error { return status.Error(codes.InvalidArgument, msg) }
+// invalid is an InvalidArgument status with the error key key.
+func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
 
 func validPeriod(p string) error {
 	if !periodRe.MatchString(p) {
-		return invalid("period_id must look like 2026-11")
+		return invalid("aggregator.period.bad_id", "period_id must look like 2026-11")
 	}
 	return nil
 }
@@ -91,7 +93,7 @@ func (s *Service) GetCustomerUsage(ctx context.Context, req *aggregatorv1.GetCus
 	}
 	customer, err := uuid.Parse(req.GetCustomerId())
 	if err != nil {
-		return nil, invalid("customer_id must be a UUID")
+		return nil, invalid("aggregator.customer.bad_id", "customer_id must be a UUID")
 	}
 	if err := validPeriod(req.GetPeriodId()); err != nil {
 		return nil, err
@@ -128,7 +130,7 @@ func (s *Service) GetUsageBatch(ctx context.Context, req *aggregatorv1.GetUsageB
 	}
 	n := len(req.GetKeys())
 	if n == 0 || n > MaxBatchKeys {
-		return nil, invalid(fmt.Sprintf("keys: need 1..%d, got %d", MaxBatchKeys, n))
+		return nil, invalid("aggregator.usage.bad_batch_size", fmt.Sprintf("keys: need 1..%d, got %d", MaxBatchKeys, n))
 	}
 	customers := make([]uuid.UUID, n)
 	meterCodes := make([]string, n)
@@ -136,7 +138,7 @@ func (s *Service) GetUsageBatch(ctx context.Context, req *aggregatorv1.GetUsageB
 	for i, k := range req.GetKeys() {
 		c, err := uuid.Parse(k.GetCustomerId())
 		if err != nil {
-			return nil, invalid(fmt.Sprintf("keys[%d].customer_id must be a UUID", i))
+			return nil, invalid("aggregator.customer.bad_id", fmt.Sprintf("keys[%d].customer_id must be a UUID", i))
 		}
 		if err := validPeriod(k.GetPeriodId()); err != nil {
 			return nil, err
@@ -286,7 +288,7 @@ func (s *Service) ensurePeriod(ctx context.Context, tx pgx.Tx, tenantID uuid.UUI
 	}
 	snap, err := settings.Compute(t, periodID)
 	if err != nil {
-		return invalid(err.Error())
+		return invalid("aggregator.period.cannot_compute", err.Error())
 	}
 	return sqlc.New(tx).EnsurePeriodSettingsApp(ctx, sqlc.EnsurePeriodSettingsAppParams{
 		PeriodID: periodID, Timezone: snap.Timezone, PeriodStart: snap.Start, PeriodEnd: snap.End,

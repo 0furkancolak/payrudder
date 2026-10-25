@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices/query"
@@ -37,7 +37,8 @@ func (h *Handler) WithFiles(s invoicequery.PDFSigner) *Handler {
 	return h
 }
 
-func invalid(msg string) error { return status.Error(codes.InvalidArgument, msg) }
+// invalid is an InvalidArgument status with the error key key.
+func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
 
 func docProto(d sqlc.GetEInvoiceDocumentRow) *billingv1.EInvoiceDocument {
 	out := &billingv1.EInvoiceDocument{
@@ -66,7 +67,7 @@ func listProto(d sqlc.ListEInvoiceDocumentsRow) *billingv1.EInvoiceDocument {
 func parseID(field, v string) (uuid.UUID, error) {
 	id, err := uuid.Parse(v)
 	if err != nil {
-		return uuid.Nil, invalid(field + " must be a UUID")
+		return uuid.Nil, invalid("billing.einvoice.bad_id", field+" must be a UUID")
 	}
 	return id, nil
 }

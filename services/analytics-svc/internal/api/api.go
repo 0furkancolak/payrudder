@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/quantity"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/analytics-svc/internal/query"
@@ -35,7 +36,8 @@ type Server struct {
 // New returns the service.
 func New(conn driver.Conn) *Server { return &Server{conn: conn, now: time.Now} }
 
-func invalid(msg string) error { return status.Error(codes.InvalidArgument, msg) }
+// invalid is an InvalidArgument status with the error key key.
+func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
 
 func unavailable(err error) error {
 	slog.Warn("clickhouse query failed", "error", err)
@@ -55,11 +57,11 @@ func (s *Server) QueryUsage(ctx context.Context, req *analyticsv1.QueryUsageRequ
 	f := query.UsageFilter{Meter: req.GetMeterCode(), Timezone: ti.Timezone, Exact: req.GetExact()}
 	if c := req.GetCustomerId(); c != "" {
 		if f.Customer, err = uuid.Parse(c); err != nil {
-			return nil, invalid("customer_id must be a UUID")
+			return nil, invalid("analytics.customer.bad_id", "customer_id must be a UUID")
 		}
 	}
 	if req.GetFrom() == nil || req.GetTo() == nil || req.GetFrom().CheckValid() != nil || req.GetTo().CheckValid() != nil {
-		return nil, invalid("from and to are required")
+		return nil, invalid("analytics.range.required", "from and to are required")
 	}
 	f.From, f.To = req.GetFrom().AsTime(), req.GetTo().AsTime()
 	span := f.To.Sub(f.From)
@@ -67,22 +69,22 @@ func (s *Server) QueryUsage(ctx context.Context, req *analyticsv1.QueryUsageRequ
 	case analyticsv1.Granularity_GRANULARITY_HOUR, analyticsv1.Granularity_GRANULARITY_UNSPECIFIED:
 		f.Granularity = query.Hour
 		if span > maxHourRange {
-			return nil, invalid("an hourly series covers at most 31 days")
+			return nil, invalid("analytics.range.hourly_too_long", "an hourly series covers at most 31 days")
 		}
 	case analyticsv1.Granularity_GRANULARITY_DAY:
 		f.Granularity = query.Day
 		if span > maxDayRange {
-			return nil, invalid("a daily series covers at most 400 days")
+			return nil, invalid("analytics.range.daily_too_long", "a daily series covers at most 400 days")
 		}
 	default:
-		return nil, invalid("unknown granularity")
+		return nil, invalid("analytics.granularity.unknown", "unknown granularity")
 	}
 	if f.Exact && span > query.MaxExactRange {
-		return nil, invalid("exact queries cover at most one day; use the estimated series for longer ranges")
+		return nil, invalid("analytics.query.exact_too_long", "exact queries cover at most one day; use the estimated series for longer ranges")
 	}
 	q, err := b.Usage(f)
 	if err != nil {
-		return nil, invalid(err.Error())
+		return nil, invalid("analytics.query.invalid", err.Error())
 	}
 	rows, err := s.conn.Query(ctx, q.SQL, q.Args...)
 	if err != nil {
@@ -133,7 +135,7 @@ func (s *Server) TopCustomers(ctx context.Context, req *analyticsv1.TopCustomers
 	}
 	q, err := b.TopCustomers(req.GetMeterCode(), req.GetPeriodId(), limit)
 	if err != nil {
-		return nil, invalid(err.Error())
+		return nil, invalid("analytics.query.invalid", err.Error())
 	}
 	rows, err := s.conn.Query(ctx, q.SQL, q.Args...)
 	if err != nil {
@@ -174,18 +176,18 @@ func (s *Server) GetIngestStats(ctx context.Context, req *analyticsv1.GetIngestS
 	if t := req.GetTenantId(); t != "" {
 		id, perr := uuid.Parse(t)
 		if perr != nil {
-			return nil, invalid("tenant_id must be a UUID")
+			return nil, invalid("analytics.tenant.bad_id", "tenant_id must be a UUID")
 		}
 		b, err = query.ForTenant(id)
 	} else {
 		b, err = query.AllTenants(true)
 	}
 	if err != nil {
-		return nil, invalid(err.Error())
+		return nil, invalid("analytics.query.invalid", err.Error())
 	}
 	q, err := b.IngestStats(window, s.now())
 	if err != nil {
-		return nil, invalid(err.Error())
+		return nil, invalid("analytics.query.invalid", err.Error())
 	}
 	rows, err := s.conn.Query(ctx, q.SQL, q.Args...)
 	if err != nil {

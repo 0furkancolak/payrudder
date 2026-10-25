@@ -36,6 +36,9 @@ func TestKeyTravelsWithTheStatus(t *testing.T) {
 
 var keyRe = regexp.MustCompile(`errkey\.(?:Newf?\(\s*codes\.\w+,|Key\()\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)+)"`)
 
+// helperRe finds the keys a service's local invalid(key, msg) helper wraps in errkey.New: the key is its first argument and starts with the service name.
+var helperRe = regexp.MustCompile(`\binvalid\(\s*"((?:aggregator|analytics|assets|billing|ingest|limits|payments|plans)\.[a-z0-9_]+(?:\.[a-z0-9_]+)*)"`)
+
 // defaultRe finds the keys errkey.Default hands to an error without one: they reach clients too, so they are listed and translated like any other.
 var defaultRe = regexp.MustCompile(`return "(common\.[a-z0-9_]+)"`)
 var shapeRe = regexp.MustCompile(`^[a-z0-9_]+(\.[a-z0-9_]+){1,3}$`)
@@ -60,6 +63,9 @@ func TestEveryKeyIsListed(t *testing.T) {
 			return nil
 		}
 		for _, m := range keyRe.FindAllStringSubmatch(string(b), -1) {
+			found[m[1]] = true
+		}
+		for _, m := range helperRe.FindAllStringSubmatch(string(b), -1) {
 			found[m[1]] = true
 		}
 		return nil

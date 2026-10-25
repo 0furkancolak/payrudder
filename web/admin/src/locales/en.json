@@ -1202,7 +1202,8 @@
         "fully_credited": "This invoice has already been credited in full.",
         "not_paid": "Only a paid invoice can be credited.",
         "nothing_to_refund": "There is nothing to refund to the card for this credit note.",
-        "refund_not_failed": "Only a credit note whose refund failed can be retried."
+        "refund_not_failed": "Only a credit note whose refund failed can be retried.",
+        "bad_id": "The credit note id is not a valid id."
       },
       "dunning": {
         "bad_delay": "Each retry delay must be between 1 and 720 hours.",
@@ -1210,7 +1211,8 @@
       },
       "invoice": {
         "not_found": "The invoice was not found.",
-        "pdf_not_ready": "The invoice PDF has not been rendered yet. Try again in a moment."
+        "pdf_not_ready": "The invoice PDF has not been rendered yet. Try again in a moment.",
+        "bad_id": "The invoice id is not a valid id."
       },
       "invoice_link": {
         "bad_expiry": "The link must expire in 1 to 365 days.",
@@ -1284,6 +1286,16 @@
         "range_too_long": "The period is too long: five years at most, and a daily series up to 366 days.",
         "reason_required": "Give a reason of up to 200 characters to void an expense.",
         "unknown_currency": "The currency is not supported."
+      },
+      "einvoice": {
+        "bad_id": "The e-invoice or account id is not a valid id."
+      },
+      "tenant": {
+        "bad_id": "The account id is not a valid id."
+      },
+      "rerating": {
+        "bad_job_id": "The re-rating job id is not a valid id.",
+        "bad_plan_version_id": "The plan version id is not a valid id."
       }
     },
     "coupon": {
@@ -1460,6 +1472,49 @@
       "request": {
         "invalid": "{field} is not valid: {detail}",
         "too_large": "The request is too large."
+      }
+    },
+    "aggregator": {
+      "customer": {
+        "bad_id": "The customer id is not a valid id."
+      },
+      "period": {
+        "bad_id": "The period must look like 2026-11.",
+        "cannot_compute": "The settings of this period cannot be worked out. Check the period and the account's time zone."
+      },
+      "usage": {
+        "bad_batch_size": "Ask for between 1 and the maximum number of usage keys at a time."
+      }
+    },
+    "analytics": {
+      "customer": {
+        "bad_id": "The customer id is not a valid id."
+      },
+      "tenant": {
+        "bad_id": "The account id is not a valid id."
+      },
+      "granularity": {
+        "unknown": "This granularity is not supported. Use hour or day."
+      },
+      "query": {
+        "exact_too_long": "Exact queries cover at most one day. Use the estimated series for longer ranges.",
+        "invalid": "This query is not valid. Check the meter, the period and the filters."
+      },
+      "range": {
+        "daily_too_long": "A daily series covers at most 400 days.",
+        "hourly_too_long": "An hourly series covers at most 31 days.",
+        "required": "Both the start and the end of the range are required."
+      }
+    },
+    "limits": {
+      "customer": {
+        "bad_id": "The customer id is not a valid id."
+      },
+      "meter": {
+        "code_required": "The meter code is required."
+      },
+      "period": {
+        "bad_id": "The period must look like 2026-11."
       }
     }
   },
