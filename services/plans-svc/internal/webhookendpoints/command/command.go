@@ -27,7 +27,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 	endpointsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhookendpoints/query"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
+	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
+	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
 
 const (
@@ -72,7 +73,7 @@ func (c *Commands) validate(url, description string, types []string) ([]string, 
 	out := make([]string, 0, len(types))
 	for i, t := range types {
 		switch {
-		case !webhooks.Known(t):
+		case !webhooksmodel.Known(t):
 			v.Add("event_types["+strconv.Itoa(i)+"]", "unknown event type "+t)
 		case !seen[t]:
 			out = append(out, t)
@@ -123,7 +124,7 @@ func (c *Commands) CreateEndpoint(ctx context.Context, req *plansv1.CreateWebhoo
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	id := idgen.NewUUIDv7()
-	sealed, err := c.box.Seal([]byte(secret), webhooks.SecretAAD(id))
+	sealed, err := c.box.Seal([]byte(secret), webhooksmodel.SecretAAD(id))
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
@@ -215,7 +216,7 @@ func (c *Commands) RotateSecret(ctx context.Context, rawID string) (*plansv1.Web
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	sealed, err := c.box.Seal([]byte(secret), webhooks.SecretAAD(id))
+	sealed, err := c.box.Seal([]byte(secret), webhooksmodel.SecretAAD(id))
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
@@ -248,7 +249,7 @@ func (c *Commands) SendTest(ctx context.Context, rawID string) (*plansv1.Webhook
 			return err
 		}
 		event := idgen.NewUUIDv7()
-		if _, err := q.InsertWebhookEvent(ctx, sqlc.InsertWebhookEventParams{ID: event, Type: webhooks.Ping, Data: json.RawMessage(`{"message":"This is a test event from Payrudder."}`), OccurredAt: c.now()}); err != nil {
+		if _, err := q.InsertWebhookEvent(ctx, sqlc.InsertWebhookEventParams{ID: event, Type: webhooksmodel.Ping, Data: json.RawMessage(`{"message":"This is a test event from Payrudder."}`), OccurredAt: c.now()}); err != nil {
 			return err
 		}
 		did, err := q.QueueWebhookDeliveryFor(ctx, sqlc.QueueWebhookDeliveryForParams{ID: idgen.NewUUIDv7(), EventID: event, EndpointID: id})
@@ -298,7 +299,7 @@ func (c *Commands) RecordEvent(ctx context.Context, req *plansv1.RecordTenantEve
 	if err != nil {
 		return 0, err
 	}
-	if !webhooks.Known(req.GetType()) {
+	if !webhooksmodel.Known(req.GetType()) {
 		return 0, domain.Invalid("type", "unknown event type")
 	}
 	if !json.Valid([]byte(req.GetDataJson())) || !strings.HasPrefix(strings.TrimSpace(req.GetDataJson()), "{") {
@@ -311,7 +312,7 @@ func (c *Commands) RecordEvent(ctx context.Context, req *plansv1.RecordTenantEve
 	var queued int64
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
 		var err error
-		queued, err = webhooks.Emit(ctx, q, id, req.GetType(), json.RawMessage(req.GetDataJson()), at)
+		queued, err = webhookscmd.Emit(ctx, q, id, req.GetType(), json.RawMessage(req.GetDataJson()), at)
 		if err != nil {
 			return err
 		}

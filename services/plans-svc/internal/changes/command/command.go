@@ -20,7 +20,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subscriptionscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
 	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
+	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
+	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
 
 // Commands changes subscriptions from one plan version or interval to another.
@@ -71,7 +72,7 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 			if err := subsqry.AttachExtras(ctx, q, resp.Subscription); err != nil {
 				return err
 			}
-			return webhooks.EmitSubscription(ctx, q, c.now(), webhooks.SubscriptionChangeScheduled, resp.Subscription, map[string]any{"quote": json.RawMessage(quoteJSON(resp.Quote))})
+			return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChangeScheduled, resp.Subscription, map[string]any{"quote": json.RawMessage(quoteJSON(resp.Quote))})
 		}
 		state := subscription.Active
 		if pc.Trial {
@@ -97,7 +98,7 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 		if err := subsqry.AttachExtras(ctx, q, resp.Subscription); err != nil {
 			return err
 		}
-		return webhooks.EmitSubscription(ctx, q, c.now(), webhooks.SubscriptionChanged, resp.Subscription, map[string]any{"previous_subscription_id": row.ID.String(), "quote": json.RawMessage(quoteJSON(resp.Quote))})
+		return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChanged, resp.Subscription, map[string]any{"previous_subscription_id": row.ID.String(), "quote": json.RawMessage(quoteJSON(resp.Quote))})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
@@ -188,7 +189,7 @@ func (c *Commands) ApplyScheduled(ctx context.Context, req *plansv1.ApplySchedul
 			if err := subsqry.AttachExtras(ctx, q, msg); err != nil {
 				return err
 			}
-			if err := webhooks.EmitSubscription(ctx, q, c.now(), webhooks.SubscriptionChanged, msg, map[string]any{"previous_subscription_id": row.ID.String(), "scheduled": true}); err != nil {
+			if err := webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChanged, msg, map[string]any{"previous_subscription_id": row.ID.String(), "scheduled": true}); err != nil {
 				return err
 			}
 		}
@@ -218,7 +219,7 @@ func (c *Commands) MarkAdjustmentBilled(ctx context.Context, adjustmentID string
 
 // quoteJSON is a change quote the way the API returns it, for the event that announces the change.
 func quoteJSON(q *plansv1.ChangeQuote) []byte {
-	b, err := webhooks.EventJSON.Marshal(q)
+	b, err := webhooksmodel.EventJSON.Marshal(q)
 	if err != nil {
 		return []byte("null")
 	}

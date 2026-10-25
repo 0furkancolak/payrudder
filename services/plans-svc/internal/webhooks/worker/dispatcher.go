@@ -1,4 +1,5 @@
-package webhooks
+// Package worker delivers the queued webhook deliveries of every tenant, signed, to the tenants' endpoints.
+package worker
 
 import (
 	"bytes"
@@ -21,29 +22,28 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/webhooksig"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
-
-// Backoff is the wait before attempt 2, 3, ...; a delivery that fails after the last one is failed (7 attempts in about 32 hours).
-var Backoff = []time.Duration{time.Minute, 5 * time.Minute, 30 * time.Minute, 2 * time.Hour, 6 * time.Hour, 24 * time.Hour}
 
 const (
 	lease     = 2 * time.Minute // a claimed delivery is not claimed again before this, so a crashed dispatcher's work is picked up again
 	retention = 30 * 24 * time.Hour
-)
 
-// SecretAAD is the associated data an endpoint's secret is sealed with.
-func SecretAAD(endpoint uuid.UUID) []byte { return []byte("webhook:" + endpoint.String()) }
+	pollEvery = 2 * time.Second // how often the dispatcher looks for due deliveries
+	batchSize = 50              // deliveries claimed per pass
+	workers   = 8               // concurrent HTTP calls per pass
+	// maxErrorText bounds the error a failed delivery keeps, and the snippet of the endpoint's answer in it.
+	maxErrorText = 300
+	maxSnippet   = 200
+)
 
 // Dispatcher delivers the due webhook deliveries of every tenant. Several may run: a delivery is claimed with SKIP LOCKED and a lease.
 type Dispatcher struct {
-	Pool    *pgxpool.Pool // plans_system
-	Box     *secretbox.Box
-	Client  *http.Client
-	Log     *slog.Logger
-	Now     func() time.Time
-	Every   time.Duration // poll interval (default 2 s)
-	Batch   int           // deliveries claimed per pass (default 50)
-	Workers int           // concurrent HTTP calls per pass (default 8)
+	Pool   *pgxpool.Pool // plans_system
+	Box    *secretbox.Box
+	Client *http.Client
+	Log    *slog.Logger
+	Now    func() time.Time
 
 	lastPrune time.Time
 }
@@ -51,15 +51,6 @@ type Dispatcher struct {
 func (d *Dispatcher) defaults() {
 	if d.Now == nil {
 		d.Now = time.Now
-	}
-	if d.Every <= 0 {
-		d.Every = 2 * time.Second
-	}
-	if d.Batch <= 0 {
-		d.Batch = 50
-	}
-	if d.Workers <= 0 {
-		d.Workers = 8
 	}
 	if d.Log == nil {
 		d.Log = slog.Default()
@@ -69,14 +60,14 @@ func (d *Dispatcher) defaults() {
 // Run delivers until ctx is done.
 func (d *Dispatcher) Run(ctx context.Context) error {
 	d.defaults()
-	t := time.NewTicker(d.Every)
+	t := time.NewTicker(pollEvery)
 	defer t.Stop()
 	for {
 		n, err := d.Once(ctx)
 		if err != nil && ctx.Err() == nil {
 			d.Log.WarnContext(ctx, "webhook dispatcher pass failed", "error", err)
 		}
-		if n >= d.Batch { // a full batch: there is probably more waiting
+		if n >= batchSize { // a full batch: there is probably more waiting
 			continue
 		}
 		select {
@@ -96,7 +87,7 @@ type claimed struct {
 func (d *Dispatcher) Once(ctx context.Context) (int, error) {
 	d.defaults()
 	now := d.Now()
-	rows, err := sqlc.New(d.Pool).ClaimDueWebhookDeliveries(ctx, sqlc.ClaimDueWebhookDeliveriesParams{Now: now, Batch: int32(d.Batch), LeaseSecs: lease.Seconds()}) //nolint:gosec // a small batch size
+	rows, err := sqlc.New(d.Pool).ClaimDueWebhookDeliveries(ctx, sqlc.ClaimDueWebhookDeliveriesParams{Now: now, Batch: int32(batchSize), LeaseSecs: lease.Seconds()}) //nolint:gosec // a small batch size
 	if err != nil {
 		return 0, err
 	}
@@ -105,7 +96,7 @@ func (d *Dispatcher) Once(ctx context.Context) (int, error) {
 		batch[i] = claimed{tenant: r.TenantID, id: r.ID, event: r.EventID, endpoint: r.EndpointID, attempt: int(r.Attempts)}
 	}
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, d.Workers)
+	sem := make(chan struct{}, workers)
 	for _, c := range batch {
 		sem <- struct{}{}
 		wg.Add(1)
@@ -126,15 +117,6 @@ func (d *Dispatcher) Once(ctx context.Context) (int, error) {
 	return len(batch), nil
 }
 
-// Envelope is the body of a delivery.
-type Envelope struct {
-	ID       string          `json:"id"`
-	Type     string          `json:"type"`
-	Created  string          `json:"created"`
-	TenantID string          `json:"tenant_id"`
-	Data     json.RawMessage `json:"data"`
-}
-
 func (d *Dispatcher) deliver(ctx context.Context, c claimed) error {
 	t, err := sqlc.New(d.Pool).GetWebhookDeliveryTarget(ctx, sqlc.GetWebhookDeliveryTargetParams{TenantID: c.tenant, ID: c.id})
 	if err != nil {
@@ -147,7 +129,7 @@ func (d *Dispatcher) deliver(ctx context.Context, c claimed) error {
 	if err != nil {
 		return d.finish(ctx, c, "failed", 0, "the signing secret cannot be read: "+err.Error())
 	}
-	body, err := json.Marshal(Envelope{ID: c.event.String(), Type: t.Type, Created: t.OccurredAt.UTC().Format(time.RFC3339), TenantID: c.tenant.String(), Data: t.Data})
+	body, err := json.Marshal(model.Envelope{ID: c.event.String(), Type: t.Type, Created: t.OccurredAt.UTC().Format(time.RFC3339), TenantID: c.tenant.String(), Data: t.Data})
 	if err != nil {
 		return err
 	}
@@ -155,23 +137,23 @@ func (d *Dispatcher) deliver(ctx context.Context, c claimed) error {
 	if errText == "" {
 		return d.finish(ctx, c, "delivered", status, "")
 	}
-	if c.attempt > len(Backoff) {
+	if c.attempt > len(model.Backoff) {
 		return d.finish(ctx, c, "failed", status, errText)
 	}
-	wait := Backoff[c.attempt-1]
+	wait := model.Backoff[c.attempt-1]
 	return sqlc.New(d.Pool).RescheduleWebhookDelivery(ctx, sqlc.RescheduleWebhookDeliveryParams{
 		TenantID: c.tenant, ID: c.id, NextAttemptAt: d.Now().Add(wait), LastStatus: int32(status), LastError: errText, //nolint:gosec // an HTTP status
 	})
 }
 
 func (d *Dispatcher) secrets(endpoint uuid.UUID, current, previous []byte, until *time.Time) ([]string, error) {
-	cur, err := d.Box.Open(current, SecretAAD(endpoint))
+	cur, err := d.Box.Open(current, model.SecretAAD(endpoint))
 	if err != nil {
 		return nil, err
 	}
 	out := []string{string(cur)}
 	if previous != nil && until != nil && until.After(d.Now()) {
-		if prev, err := d.Box.Open(previous, SecretAAD(endpoint)); err == nil {
+		if prev, err := d.Box.Open(previous, model.SecretAAD(endpoint)); err == nil {
 			out = append(out, string(prev))
 		}
 	}
@@ -197,14 +179,14 @@ func (d *Dispatcher) post(ctx context.Context, url string, c claimed, typ string
 		if errors.As(err, &ue) {
 			err = ue.Err
 		}
-		return 0, truncate("no answer: "+err.Error(), 300)
+		return 0, truncate("no answer: "+err.Error(), maxErrorText)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 200))
+	snippet, _ := io.ReadAll(io.LimitReader(resp.Body, maxSnippet))
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return resp.StatusCode, ""
 	}
-	return resp.StatusCode, truncate(fmt.Sprintf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(snippet))), 300)
+	return resp.StatusCode, truncate(fmt.Sprintf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(snippet))), maxErrorText)
 }
 
 func (d *Dispatcher) finish(ctx context.Context, c claimed, state string, status int, errText string) error {

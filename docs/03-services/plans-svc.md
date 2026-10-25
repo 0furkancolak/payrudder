@@ -189,7 +189,7 @@ Module `affiliates` (ADR 0020 shape: `model/` pure rules, `command/`, `query/`, 
 ## As built: webhooks and early-cancel credit (Phase 23)
 
 `WebhookService` (same server, `webhooks.proto`) owns the tenant's webhook endpoints, the events and their deliveries (tables `webhook_endpoints`, `webhook_events`, `webhook_deliveries`, RLS like the rest). Subscription RPCs write their event in the same transaction as the change (`Server.emit`);
-`RecordTenantEvent` takes the events billing-svc hands over. The dispatcher (`internal/webhooks`, run as a goroutine when `PAYRUDDER_SECRETS_KEY` is set) claims due deliveries with `FOR UPDATE SKIP LOCKED` and a two-minute lease, signs and posts through `pkg/safehttp`, and retries on the backoff in [16-webhooks.md](../16-webhooks.md).
+`RecordTenantEvent` takes the events billing-svc hands over. The dispatcher (`internal/webhooks/worker`, run as a goroutine when `PAYRUDDER_SECRETS_KEY` is set) claims due deliveries with `FOR UPDATE SKIP LOCKED` and a two-minute lease, signs and posts through `pkg/safehttp`, and retries on the backoff in [16-webhooks.md](../16-webhooks.md).
 `CancelSubscription` with `credit_unused` and the provider cutover record the unused prepaid fee as a `subscription_adjustments` row (`Server.creditUnusedFee`).
 
 
