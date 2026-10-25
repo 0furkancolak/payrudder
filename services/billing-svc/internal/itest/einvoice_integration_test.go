@@ -102,7 +102,7 @@ func testEInvoiceFinalizedIssuesInvoicesAndCreditNotes(t *testing.T) {
 	}
 
 	// Finalizing again (a replayed transition) creates no second document.
-	if err := e.mgr.Finalize(context.Background(), e.tid, uuid.MustParse(invoiceID(t, e, "cus_a"))); err != nil {
+	if err := e.inv.Finalize(context.Background(), e.tid, uuid.MustParse(invoiceID(t, e, "cus_a"))); err != nil {
 		t.Fatal(err)
 	}
 	if got := len(docs(t, e.tid)); got != 2 {

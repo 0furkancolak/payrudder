@@ -87,7 +87,7 @@ func testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit(t *testing.T) {
 	start, end := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC), time.Date(2026, 12, 3, 0, 0, 0, 0, time.UTC)
 	d := e.feeDue("cus_a", pv, plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH, start, end, 10000, nil)
 	d.DiscountMinor, d.CouponCode = 2500, "WELCOME"
-	if err := e.mgr.BillFees(context.Background()); err != nil {
+	if err := e.fees.Bill(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	// (10000 - 2500) × 20 % = 1500 tax; total 9000, less the credit of 1000.

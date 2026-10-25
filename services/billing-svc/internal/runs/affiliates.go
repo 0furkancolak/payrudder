@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 )
 
 // attributeTimeout bounds the wait for the affiliate program: a referral is never worth a slow payment page.
@@ -25,7 +26,7 @@ func (m *Manager) Attribute(ctx context.Context, tenantID, customerID uuid.UUID,
 	if !touched.IsZero() {
 		req.TouchTime = timestamppb.New(touched)
 	}
-	resp, err := m.cfg.Affiliates.AttributeCustomer(tenantCtx(ctx, tenantID), req)
+	resp, err := m.cfg.Affiliates.AttributeCustomer(inputs.TenantCtx(ctx, tenantID), req)
 	if err != nil {
 		m.log.WarnContext(ctx, "referral not passed on to the affiliate program", "tenant", tenantID, "customer", customerID, "error", err)
 		return

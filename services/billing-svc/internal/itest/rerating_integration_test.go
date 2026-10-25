@@ -12,7 +12,9 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	reratemodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/model"
+	reratequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // newVersion adds another version of the "pro" plan to the world: base fee, gb_hours per unit and the price per call
@@ -30,9 +32,9 @@ func (e *env) newVersion(base int64, gbPerUnit, callPrice string) uuid.UUID {
 	return uuid.MustParse(pv.Id)
 }
 
-func (e *env) rerate(period string, pv uuid.UUID) (*runs.ReratingJob, bool) {
+func (e *env) rerate(period string, pv uuid.UUID) (*reratemodel.Job, bool) {
 	e.t.Helper()
-	job, created, err := e.mgr.StartRerating(context.Background(), e.tid, period, pv)
+	job, created, err := e.rerating.StartJob(context.Background(), e.tid, period, pv)
 	if err != nil {
 		e.t.Fatalf("StartRerating: %v", err)
 	}
@@ -81,17 +83,17 @@ func (e *env) invoiceKinds(period string) map[string]int {
 func testRerateRequiresACompletedRun(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	pv := e.newVersion(800, "10", "1.6")
-	if _, _, err := e.mgr.StartRerating(context.Background(), e.tid, "2026-10", pv); err != runs.ErrNoRun {
+	if _, _, err := e.rerating.StartJob(context.Background(), e.tid, "2026-10", pv); err != reratemodel.ErrNoRun {
 		t.Fatalf("without a run: %v, want ErrNoRun", err)
 	}
 	e.addUsage("2026-10", "cus_a", "gb_hours", "1.250", 3)
 	e.driveRun("2026-10") // INVOICING, no worker: not COMPLETED
-	if _, _, err := e.mgr.StartRerating(context.Background(), e.tid, "2026-10", pv); err != runs.ErrRunNotCompleted {
+	if _, _, err := e.rerating.StartJob(context.Background(), e.tid, "2026-10", pv); err != reratemodel.ErrRunNotCompleted {
 		t.Fatalf("with an open run: %v, want ErrRunNotCompleted", err)
 	}
 	e.startWorkers(nil)
 	completeOctober(e)
-	if _, _, err := e.mgr.StartRerating(context.Background(), e.tid, "2026-10", uuid.New()); err == nil {
+	if _, _, err := e.rerating.StartJob(context.Background(), e.tid, "2026-10", uuid.New()); err == nil {
 		t.Fatal("an unknown plan version was accepted")
 	}
 }
@@ -106,7 +108,7 @@ func testRerateCheaperMakesCreditsAppliedToTheNextInvoice(t *testing.T) {
 	pv := e.newVersion(800, "10", "1.6")
 
 	job, created := e.rerate("2026-10", pv)
-	if !created || job.Status != runs.ReratingCompleted || job.CustomersRated != 2 || job.Corrections != 0 || job.Credits != 2 {
+	if !created || job.Status != reratemodel.Completed || job.CustomersRated != 2 || job.Corrections != 0 || job.Credits != 2 {
 		t.Fatalf("job = %+v created=%v, want COMPLETED, 2 customers rated, 0 corrections, 2 credits", job, created)
 	}
 	if got := e.credits(); got["cus_a"] != 1116-(800+12+80) || got["cus_b"] != 1000-800 {
@@ -249,11 +251,11 @@ func testRerateRunTwiceIsIdempotent(t *testing.T) {
 	if _, err := shared.system.Exec(context.Background(), `UPDATE rerating_jobs SET status = 'RUNNING', created_at = created_at - interval '5 minutes' WHERE tenant_id = $1 AND id = $2`, e.tid, job.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.mgr.ResumeRerating(context.Background()); err != nil {
+	if err := e.rerating.Resume(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	done, err := e.mgr.GetReratingJob(context.Background(), e.tid, job.ID)
-	if err != nil || done.Status != runs.ReratingCompleted || done.Corrections != 2 {
+	done, err := reratequery.Load(context.Background(), sqlc.New(shared.system), e.tid, job.ID)
+	if err != nil || done.Status != reratemodel.Completed || done.Corrections != 2 {
 		t.Fatalf("job after the resume = %+v, %v; want COMPLETED with 2 corrections", done, err)
 	}
 	if k := e.invoiceKinds("2026-10"); k["CORRECTION"] != 2 {

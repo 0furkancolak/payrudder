@@ -10,6 +10,8 @@ import (
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -20,7 +22,7 @@ import (
 //  3. the aggregator has consumed up to those offsets.
 //
 // It reports false while any step is not yet true.
-func (m *Manager) watermark(ctx context.Context, run *Run) (bool, error) {
+func (m *Manager) watermark(ctx context.Context, run *runmodel.Run) (bool, error) {
 	if run.Offsets == nil {
 		w, err := m.cfg.Ingest.GetOutboxWatermark(ctx, &ingestv1.GetOutboxWatermarkRequest{})
 		if err != nil {
@@ -34,17 +36,16 @@ func (m *Manager) watermark(ctx context.Context, run *Run) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("kafka end offsets: %w", err)
 		}
-		raw := make(map[string]int64, len(offsets))
-		for p, o := range offsets {
-			raw[fmt.Sprint(p)] = o
+		b, err := json.Marshal(offsets)
+		if err != nil {
+			return false, err
 		}
-		b, _ := json.Marshal(raw)
 		if err := m.q.SetRunOffsets(ctx, sqlc.SetRunOffsetsParams{RequiredOffsets: b, TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
 			return false, err
 		}
 		run.Offsets = offsets
 	}
-	resp, err := m.cfg.Aggregator.GetIngestWatermark(tenantCtx(ctx, run.TenantID), &aggregatorv1.GetIngestWatermarkRequest{RequiredOffsets: run.Offsets})
+	resp, err := m.in.Aggregator.GetIngestWatermark(inputs.TenantCtx(ctx, run.TenantID), &aggregatorv1.GetIngestWatermarkRequest{RequiredOffsets: run.Offsets})
 	if err != nil {
 		return false, fmt.Errorf("aggregator watermark: %w", err)
 	}

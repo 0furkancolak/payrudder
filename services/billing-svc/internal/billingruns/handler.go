@@ -10,6 +10,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
+	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 )
@@ -67,23 +68,23 @@ func (h *Handler) GetBillingRun(ctx context.Context, req *billingv1.GetBillingRu
 	return &billingv1.GetBillingRunResponse{Run: runProto(run, run.InvoiceCount)}, nil
 }
 
-func runProto(r *runs.Run, invoices int) *billingv1.BillingRun {
+func runProto(r *runmodel.Run, invoices int) *billingv1.BillingRun {
 	out := &billingv1.BillingRun{
 		TenantId: r.TenantID.String(), PeriodId: r.PeriodID, CutoffTime: timestamppb.New(r.CutoffAt), InvoiceCount: int32(invoices), //nolint:gosec // small
 		LastError: r.LastError,
 	}
 	switch r.Status {
-	case runs.Scheduled:
+	case runmodel.Scheduled:
 		out.Status = billingv1.RunStatus_RUN_STATUS_SCHEDULED
-	case runs.WaitingWatermark:
+	case runmodel.WaitingWatermark:
 		out.Status = billingv1.RunStatus_RUN_STATUS_WAITING_WATERMARK
-	case runs.Rating:
+	case runmodel.Rating:
 		out.Status = billingv1.RunStatus_RUN_STATUS_RATING
-	case runs.Invoicing:
+	case runmodel.Invoicing:
 		out.Status = billingv1.RunStatus_RUN_STATUS_INVOICING
-	case runs.Completed:
+	case runmodel.Completed:
 		out.Status = billingv1.RunStatus_RUN_STATUS_COMPLETED
-	case runs.Failed:
+	case runmodel.Failed:
 		out.Status = billingv1.RunStatus_RUN_STATUS_FAILED
 	}
 	if r.Generation != nil {
