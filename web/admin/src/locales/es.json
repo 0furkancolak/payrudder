@@ -2296,6 +2296,11 @@
         "not_open": "Este pago ya no está abierto: se pagó o se canceló.",
         "nothing_to_pay": "Tras los reembolsos este pago se queda en nada. Cancélelo; el saldo pasa al siguiente.",
         "tenant_not_active": "Este entorno live no está activo, así que no se puede crear ni pagar ningún pago."
+      },
+      "portal": {
+        "already_applied": "Ya eres afiliado de este vendedor, o ya has solicitado serlo.",
+        "program_unavailable": "Este vendedor no tiene un programa de afiliados abierto a solicitudes.",
+        "try_again": "No se pudo crear un código en este momento. Inténtalo de nuevo."
       }
     },
     "admin": {

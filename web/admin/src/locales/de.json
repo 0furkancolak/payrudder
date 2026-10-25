@@ -2296,6 +2296,11 @@
         "not_open": "Diese Auszahlung ist nicht mehr offen: Sie wurde bezahlt oder storniert.",
         "nothing_to_pay": "Nach Erstattungen bleibt von dieser Auszahlung nichts übrig. Stornieren Sie sie; das Guthaben wird übertragen.",
         "tenant_not_active": "Diese Live-Umgebung ist nicht aktiv, daher kann keine Auszahlung erstellt oder bezahlt werden."
+      },
+      "portal": {
+        "already_applied": "Sie sind bereits Partner dieses Verkäufers oder haben sich beworben.",
+        "program_unavailable": "Dieser Verkäufer hat kein Partnerprogramm, das Bewerbungen annimmt.",
+        "try_again": "Ein Code konnte gerade nicht erzeugt werden. Versuchen Sie es erneut."
       }
     },
     "admin": {

@@ -58,6 +58,26 @@ func optionalTime(t *timestamppb.Timestamp) *time.Time {
 
 // Commissions lists commissions and reversal rows, newest first, with filters.
 func (r *Queries) Commissions(ctx context.Context, req *plansv1.ListAffiliateCommissionsRequest) (*plansv1.ListAffiliateCommissionsResponse, error) {
+	page, err := r.CommissionRows(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	out := &plansv1.ListAffiliateCommissionsResponse{Total: page.Total, NextPageToken: page.NextPageToken}
+	for _, row := range page.Rows {
+		out.Commissions = append(out.Commissions, CommissionMessage(row))
+	}
+	return out, nil
+}
+
+// CommissionPage is a page of commission rows as stored, for a caller that shapes them itself (the partner's portal masks the customer).
+type CommissionPage struct {
+	Rows          []sqlc.ListAffiliateCommissionsRow
+	Total         int32
+	NextPageToken string
+}
+
+// CommissionRows is Commissions before the rows become messages.
+func (r *Queries) CommissionRows(ctx context.Context, req *plansv1.ListAffiliateCommissionsRequest) (*CommissionPage, error) {
 	limit, offset, err := Page(req.GetPageSize(), req.GetPageToken())
 	if err != nil {
 		return nil, err
@@ -85,7 +105,7 @@ func (r *Queries) Commissions(ctx context.Context, req *plansv1.ListAffiliateCom
 		}
 		*f.dst = id
 	}
-	out := &plansv1.ListAffiliateCommissionsResponse{}
+	out := &CommissionPage{}
 	var total int64
 	err = r.db.Tx(ctx, func(q *sqlc.Queries) error {
 		rows, err := q.ListAffiliateCommissions(ctx, p)
@@ -94,8 +114,8 @@ func (r *Queries) Commissions(ctx context.Context, req *plansv1.ListAffiliateCom
 		}
 		for _, row := range rows {
 			total = row.Count
-			out.Commissions = append(out.Commissions, CommissionMessage(row))
 		}
+		out.Rows = rows
 		return nil
 	})
 	if err != nil {
