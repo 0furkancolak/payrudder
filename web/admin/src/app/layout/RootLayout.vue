@@ -30,7 +30,6 @@ const brand = brandName();
 const signedIn = computed(() => isPerson.value);
 const shell = useShell();
 const drawer = ref(false);
-const menuButton = ref<HTMLButtonElement | null>(null);
 
 // A route change closes the drawer (the links also do; this covers the browser's back button).
 watch(shell.path, () => (drawer.value = false));
@@ -66,7 +65,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
       <header v-if="signedIn" class="bg-background/85 sticky top-0 z-20 backdrop-blur" data-testid="topbar">
         <div class="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-8 md:py-4">
           <button
-            ref="menuButton"
             type="button"
             data-testid="menu-button"
             class="bg-card text-foreground border-border/60 shadow-card inline-flex size-10 shrink-0 items-center justify-center rounded-xl border lg:hidden"
