@@ -1410,6 +1410,105 @@
       }
     }
   },
+  "partner": {
+    "title": "Ortak portalı",
+    "intro": "Programlarının ortağı olduğunuz satıcılar: bağlantılarınız, kazandıklarınız ve size ödenenler.",
+    "verifyHint": "Satıcıların e-posta adresiniz için oluşturduğu ortak kayıtlarını görmek için e-posta adresinizi doğrulayın.",
+    "verifyResend": "E-postayı yeniden gönder",
+    "verifySent": "E-posta gönderildi",
+    "empty": {
+      "title": "Henüz hiçbir satıcının ortağı değilsiniz",
+      "body": "Bir satıcıdan sizi bu e-posta adresiyle ortak olarak eklemesini isteyin ya da satıcının verdiği başvuru bağlantısını açın. Doğrulanmış e-posta adresiniz için açılan kayıtlar burada kendiliğinden görünür."
+    },
+    "code": "Kod",
+    "environment": {
+      "sandbox": "Sandbox",
+      "live": "Canlı"
+    },
+    "status": {
+      "pending": "Onay bekliyor",
+      "active": "Etkin",
+      "suspended": "Askıda"
+    },
+    "link": "Yönlendirme bağlantınız",
+    "copyLink": "Bağlantıyı kopyala",
+    "open": "Aç",
+    "back": "Ortak portalına dön",
+    "banner": {
+      "pending": "Başvurunuz satıcının onayını bekliyor. Bağlantınız onaylandıktan sonra kazandırmaya başlar; aşağıda gördükleriniz zaten sizindir.",
+      "suspended": "Satıcı sizi askıya aldı. Yeni müşteriler size atfedilmez ve yeni bir şey kazanılmaz. Daha önce onaylananlar sizde kalır; satıcıya sorun.",
+      "sandbox": "Burası bir sandbox: satıcı test yapıyor. Buradaki her şey sahte paradır ve gerçekte hiçbir şey ödenmeyecek."
+    },
+    "terms": {
+      "title": "Satıcının koşulları",
+      "percent": "Getirdiğiniz bir müşterinin ödediği her faturanın vergi öncesi net tutarının yüzde {pct} kadarını kazanırsınız.",
+      "fixed": "Getirdiğiniz bir müşterinin ödediği her faturada {amount} kazanırsınız.",
+      "firstInvoices": "Her müşterinin ilk {n} faturasında kazanılır.",
+      "months": "Her müşterinin ilk {n} ayında kazanılır.",
+      "lifetime": "Müşteri ödemeye devam ettiği sürece kazanılır.",
+      "window": "Bağlantınızı izledikten sonra {days} gün boyunca müşteri sizin sayılır.",
+      "hold": "Bir komisyon, ödenebilmesi için {days} gün, yani iade süresi boyunca bekler.",
+      "minPayout": "Satıcı {amount} tutarından itibaren ödeme yapar.",
+      "noMinimum": "Satıcı asgari ödeme tutarı belirlememiş."
+    },
+    "stats": {
+      "clicks": "Bağlantı tıklamaları",
+      "referrals": "Getirdiğiniz müşteriler",
+      "paying": "Ödeme yapan müşteriler"
+    },
+    "earned": {
+      "title": "Bu dönemde kazanılan",
+      "none": "Bu dönemde kazanılan bir şey yok.",
+      "takenBack": "{amount} geri alındı",
+      "note": "Para birimine göre, hiçbir zaman toplanmaz. Rakamlar seçtiğiniz dönemi kapsar; aşağıdaki bakiyeler şu anki durumdur."
+    },
+    "balances": {
+      "title": "Bakiyeniz",
+      "none": "Henüz bir şey kazanmadınız.",
+      "pending": "Beklemede",
+      "pendingHint": "Ödenebilmesi için iade süresini bekliyor",
+      "available": "Ödemeye hazır",
+      "paid": "Size ödenen",
+      "takenBack": "Geri alınan"
+    },
+    "tabsLabel": "Ortak bölümleri",
+    "tabs": {
+      "referrals": "Yönlendirmeler",
+      "commissions": "Komisyonlar",
+      "payouts": "Ödemeler",
+      "settings": "Ayarlar"
+    },
+    "referrals": {
+      "hint": "Müşterilerinizin e-posta adresleri maskelenmiştir. Müşterilerle ilgili diğer her şey satıcıda kalır.",
+      "empty": "Henüz müşteri getirmediniz.",
+      "customer": "Müşteri",
+      "source": "Kaynak",
+      "time": "Atıf zamanı"
+    },
+    "commissions": {
+      "hint": "Bir iade, komisyonu oranında geri alır. Zaten ödenmiş olan, bir sonraki ödemenizden negatif bir satırla düşülür.",
+      "empty": "Henüz komisyon yok.",
+      "payableFrom": "{date} tarihinden itibaren ödenebilir"
+    },
+    "payouts": {
+      "empty": "Size henüz bir şey ödenmedi.",
+      "paidOn": "Ödeme tarihi"
+    },
+    "settings": {
+      "name": "Adınız",
+      "detailsHint": "Satıcının size ödeme yapması için gereken bilgiler, örneğin IBAN ve hesap sahibi.",
+      "saved": "Kaydedildi."
+    },
+    "apply": {
+      "title": "Ortak olun",
+      "missing": "Bu sayfa bir satıcının program bağlantısına ihtiyaç duyar. Satıcının verdiği başvuru bağlantısını açın.",
+      "submit": "Başvur",
+      "pendingTitle": "Başvuru gönderildi",
+      "pendingBody": "Satıcının onaylaması gerekiyor. Bağlantınızı ve rakamlarınızı şimdiden görebilirsiniz.",
+      "activeTitle": "Artık ortaksınız",
+      "activeBody": "Satıcı başvuruları otomatik onaylıyor. Bağlantınız hazır."
+    }
+  },
   "einvoice": {
     "title": "E-fatura",
     "confirmCancel": "Bu yasal e-belge iptal edilsin mi? Geri alınamaz.",
@@ -2881,7 +2980,8 @@
       "myApps": "Uygulamalarım",
       "affiliates": "Ortaklar",
       "goLive": "Canlıya geç",
-      "sandbox": "Sandbox araçları"
+      "sandbox": "Sandbox araçları",
+      "partner": "Ortak portalı"
     }
   },
   "privacy": {

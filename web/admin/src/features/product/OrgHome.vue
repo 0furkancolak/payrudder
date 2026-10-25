@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useNavigate, useSearch } from "@tanstack/vue-router";
+import { Link, useNavigate, useSearch } from "@tanstack/vue-router";
 import { Plus, Rocket } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -13,6 +13,7 @@ import AccountSwitcher from "./AccountSwitcher.vue";
 import AppCard from "./AppCard.vue";
 import AppGoLiveCard from "./AppGoLiveCard.vue";
 import CreateAppDialog from "./CreateAppDialog.vue";
+import { hasPartnerRole, ownMemberships } from "./lib";
 import { defaultOrgEnv, isEnvironment, liveState, tenantOf, type Environment } from "@/shared/lib/environment";
 import type { App } from "./api";
 
@@ -43,7 +44,9 @@ const withFigures = computed(() => list.value.filter((a) => env.value !== null &
 const notLive = (a: App) => env.value === "live" && liveState(a) !== "active";
 const canCreate = computed(() => account.data.value?.role !== "viewer");
 /** A person who left (or was removed from) every account has nothing to show; the page says so instead of listing errors. */
-const noAccount = computed(() => me.data.value?.user !== undefined && (me.data.value.memberships ?? []).length === 0);
+// A membership with the role affiliate is a seller's account the person is a partner of: it is not an account of theirs.
+const noAccount = computed(() => me.data.value?.user !== undefined && ownMemberships(me.data.value.memberships).length === 0);
+const partner = computed(() => hasPartnerRole(me.data.value?.memberships));
 const first = computed(() => (me.data.value?.user?.display_name || me.data.value?.user?.email?.split("@")[0] || "").split(/\s+/)[0]);
 </script>
 
@@ -51,6 +54,7 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
   <section v-if="noAccount" class="surface mx-auto flex max-w-xl flex-col items-center gap-3 px-6 py-16 text-center" data-testid="no-account">
     <h1 class="text-xl font-semibold tracking-tight">{{ t("product.account.noneTitle") }}</h1>
     <p class="text-muted-foreground text-sm">{{ t("product.account.noneBody") }}</p>
+    <Link v-if="partner" to="/app/partner" class="text-brand-strong text-sm font-medium underline-offset-4 hover:underline" data-testid="to-partner">{{ t("shell.items.partner") }}</Link>
   </section>
   <section v-else class="flex flex-col gap-8">
     <header class="flex flex-wrap items-end justify-between gap-4 px-1">

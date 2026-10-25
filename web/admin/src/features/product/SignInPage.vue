@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, useNavigate, useSearch } from "@tanstack/vue-router";
+import { Link, useSearch } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -8,6 +8,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { useAuthMethods, useSignIn } from "./api";
+import { useAfterSignIn } from "./afterSignIn";
 import { OAUTH_ERRORS } from "./lib";
 import AuthShell from "./AuthShell.vue";
 import GoogleButton from "./GoogleButton.vue";
@@ -16,7 +17,7 @@ import PasswordField from "./PasswordField.vue";
 
 // The three ways to sign in: e-mail and password, a one-time code mailed to the address, and Google (only when the deployment has set it up).
 const { t } = useI18n();
-const navigate = useNavigate();
+const afterSignIn = useAfterSignIn();
 const search = useSearch({ strict: false });
 const methods = useAuthMethods();
 const email = ref("");
@@ -33,7 +34,7 @@ const oauthError = computed(() => {
 });
 
 function submit() {
-  login.mutate({ email: email.value.trim(), password: password.value }, { onSuccess: () => navigate({ to: "/app" }) });
+  login.mutate({ email: email.value.trim(), password: password.value }, { onSuccess: () => afterSignIn() });
 }
 </script>
 

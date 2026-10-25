@@ -1410,6 +1410,105 @@
       }
     }
   },
+  "partner": {
+    "title": "Portal de socios",
+    "intro": "Los vendedores de cuyo programa es socio: sus enlaces, lo que ha ganado y lo que se le ha pagado.",
+    "verifyHint": "Confirme su correo electrónico para ver los registros de socio que los vendedores crearon para esa dirección.",
+    "verifyResend": "Reenviar el correo",
+    "verifySent": "Correo enviado",
+    "empty": {
+      "title": "Todavía no es socio de ningún vendedor",
+      "body": "Pida a un vendedor que le añada como socio con este correo electrónico, o abra el enlace de solicitud que le dio un vendedor. Los registros hechos para su correo verificado aparecen aquí solos."
+    },
+    "code": "Código",
+    "environment": {
+      "sandbox": "Sandbox",
+      "live": "Producción"
+    },
+    "status": {
+      "pending": "Esperando aprobación",
+      "active": "Activo",
+      "suspended": "Suspendido"
+    },
+    "link": "Su enlace de referido",
+    "copyLink": "Copiar enlace",
+    "open": "Abrir",
+    "back": "Volver al portal de socios",
+    "banner": {
+      "pending": "Su solicitud espera la aprobación del vendedor. Su enlace empieza a ganar cuando sea aprobado; lo que ve abajo ya es suyo.",
+      "suspended": "El vendedor le ha suspendido. Los clientes nuevos no se le atribuyen y no se gana nada nuevo. Lo ya aprobado sigue siendo suyo; pregunte al vendedor.",
+      "sandbox": "Esto es una sandbox: el vendedor está probando. Todo aquí es dinero ficticio y no se pagará nada de verdad."
+    },
+    "terms": {
+      "title": "Las condiciones del vendedor",
+      "percent": "Gana el {pct} % del importe neto, antes de impuestos, de cada factura que pague un cliente que usted trajo.",
+      "fixed": "Gana {amount} por cada factura que pague un cliente que usted trajo.",
+      "firstInvoices": "Se gana en las primeras {n} facturas de cada cliente.",
+      "months": "Se gana durante los primeros {n} meses de cada cliente.",
+      "lifetime": "Se gana mientras el cliente siga pagando.",
+      "window": "Un cliente cuenta como suyo durante {days} días después de seguir su enlace.",
+      "hold": "Una comisión espera {days} días, el plazo de reembolso, antes de poder pagarse.",
+      "minPayout": "El vendedor paga a partir de {amount}.",
+      "noMinimum": "El vendedor no fija un pago mínimo."
+    },
+    "stats": {
+      "clicks": "Clics en el enlace",
+      "referrals": "Clientes que ha traído",
+      "paying": "Clientes que pagan"
+    },
+    "earned": {
+      "title": "Ganado en este periodo",
+      "none": "No ha ganado nada en este periodo.",
+      "takenBack": "{amount} devuelto",
+      "note": "Por moneda, nunca sumadas. Las cifras cubren el periodo elegido; los saldos de abajo son los de ahora."
+    },
+    "balances": {
+      "title": "Su saldo",
+      "none": "Todavía no ha ganado nada.",
+      "pending": "Pendiente",
+      "pendingHint": "Espera a que termine el plazo de reembolso antes de poder pagarse",
+      "available": "Disponible para pago",
+      "paid": "Pagado",
+      "takenBack": "Devuelto"
+    },
+    "tabsLabel": "Secciones de socio",
+    "tabs": {
+      "referrals": "Referidos",
+      "commissions": "Comisiones",
+      "payouts": "Pagos",
+      "settings": "Ajustes"
+    },
+    "referrals": {
+      "hint": "Los correos de sus clientes están enmascarados. El vendedor guarda todo lo demás sobre ellos.",
+      "empty": "Todavía no ha traído ningún cliente.",
+      "customer": "Cliente",
+      "source": "Origen",
+      "time": "Atribuido"
+    },
+    "commissions": {
+      "hint": "Un reembolso devuelve una comisión en proporción. Una ya pagada se descuenta de su siguiente pago con una fila negativa.",
+      "empty": "Todavía no hay comisiones.",
+      "payableFrom": "Pagadera desde el {date}"
+    },
+    "payouts": {
+      "empty": "Todavía no se le ha pagado nada.",
+      "paidOn": "Pagado el"
+    },
+    "settings": {
+      "name": "Su nombre",
+      "detailsHint": "Lo que el vendedor necesita para pagarle, por ejemplo su IBAN y el titular de la cuenta.",
+      "saved": "Guardado."
+    },
+    "apply": {
+      "title": "Hágase socio",
+      "missing": "Esta página necesita el enlace del programa de un vendedor. Abra el enlace de solicitud que le dio el vendedor.",
+      "submit": "Solicitar",
+      "pendingTitle": "Solicitud enviada",
+      "pendingBody": "El vendedor tiene que aprobarla. Ya puede ver su enlace y sus cifras.",
+      "activeTitle": "Es usted socio",
+      "activeBody": "El vendedor aprueba las solicitudes automáticamente. Su enlace está listo."
+    }
+  },
   "einvoice": {
     "title": "Factura electrónica",
     "confirmCancel": "¿Anular este documento electrónico legal? No se puede deshacer.",
@@ -2881,7 +2980,8 @@
       "myApps": "Mis aplicaciones",
       "affiliates": "Afiliados",
       "goLive": "Pasar a producción",
-      "sandbox": "Herramientas del sandbox"
+      "sandbox": "Herramientas del sandbox",
+      "partner": "Portal de socios"
     }
   },
   "privacy": {

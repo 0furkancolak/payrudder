@@ -1,3 +1,4 @@
+import { returnTo } from "@/features/product/lib";
 import { createRootRoute, createRoute, createRouter } from "@tanstack/vue-router";
 import { authRoutes } from "@/features/auth/routes";
 import { requireOperator } from "@/features/auth";
@@ -31,5 +32,6 @@ export const router = createRouter({ routeTree, defaultPreload: "intent" });
 // The gateway refused the person's session (expired, revoked): everything cached belongs to nobody now, and the sign-in page says why.
 onSessionLost(() => {
   queryClient.clear();
-  void router.navigate({ to: "/signin", search: { expired: "1" } as never });
+  const next = returnTo(router.state.location.href);
+  void router.navigate({ to: "/signin", search: { expired: "1", ...(next ? { next } : {}) } as never });
 });
