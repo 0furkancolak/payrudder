@@ -13,7 +13,7 @@ export const options = {
     },
   },
   thresholds: {
-    'http_req_duration{name:GET entitlement}': [{ threshold: 'p(99)<10', abortOnFail: false }],
+    'http_req_duration{name:GET entitlement}': [{ threshold: `p(99)<${envNum('P99_MS', 10)}`, abortOnFail: false }],
     http_req_failed: ['rate==0'],
   },
   summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],

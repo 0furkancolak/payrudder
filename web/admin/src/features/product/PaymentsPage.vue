@@ -34,7 +34,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
     <p v-if="payments.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(payments.error.value) }}</p>
     <Skeleton v-if="payments.isPending.value" class="h-40 rounded-2xl" />
     <p v-else-if="rows.length === 0 && !payments.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t("product.billing.payments.empty") }}</p>
-    <div v-else class="-mx-2 overflow-x-auto px-2">
+    <div v-else class="relative -mx-2 overflow-x-auto px-2">
       <table class="w-full text-sm">
         <thead>
           <tr class="text-muted-foreground text-xs">
