@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -111,10 +112,10 @@ type Entry struct {
 
 // Ledger returns a page of a customer's ledger, newest first, and the token of the next page ("" at the end).
 func Ledger(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UUID, pageSize int32, token string) ([]Entry, string, error) {
-	if pageSize < 1 {
-		pageSize = 50
+	pageSize, ok := page.Size(pageSize, 50, 200)
+	if !ok {
+		return nil, "", errkey.New(codes.InvalidArgument, "billing.credits.bad_page_size", "page_size must be 1..200")
 	}
-	pageSize = min(pageSize, 200)
 	params := sqlc.ListCreditLedgerParams{TenantID: tenantID, CustomerID: customerID, RowLimit: pageSize + 1}
 	if token != "" {
 		t, id, ok := parseToken(token)
@@ -135,8 +136,8 @@ func Ledger(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UU
 		return nil, "", internal()
 	}
 	next := ""
-	if int32(len(out)) > pageSize { //nolint:gosec // bounded by pageSize+1 <= 201
-		out = out[:pageSize]
+	var more bool
+	if out, more = page.Trim(out, int(pageSize)); more {
 		last := out[len(out)-1]
 		next = strconv.FormatInt(last.CreatedAt.UnixMicro(), 10) + "." + last.ID.String()
 	}

@@ -81,6 +81,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.accounting.bad_date`
 - `billing.accounting.bad_expense`
 - `billing.accounting.bad_granularity`
+- `billing.accounting.bad_page_size`
 - `billing.accounting.bad_page_token`
 - `billing.accounting.bad_period`
 - `billing.accounting.bad_recurring`
@@ -104,6 +105,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.credits.bad_expiry`
 - `billing.credits.bad_key`
 - `billing.credits.bad_pack`
+- `billing.credits.bad_page_size`
 - `billing.credits.bad_page_token`
 - `billing.credits.bad_quantity`
 - `billing.credits.bad_reason`

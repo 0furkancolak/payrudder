@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
@@ -66,11 +67,8 @@ func (r *Queries) ByID(ctx context.Context, id string) (*plansv1.Customer, error
 
 // List returns a page of customers in external id order.
 func (r *Queries) List(ctx context.Context, req *plansv1.ListCustomersRequest) (*plansv1.ListCustomersResponse, error) {
-	size := req.GetPageSize()
-	switch {
-	case size == 0:
-		size = 100
-	case size < 0 || size > 500:
+	size, ok := page.Size(req.GetPageSize(), 100, 500)
+	if !ok {
 		return nil, domain.Invalid("page_size", "between 1 and 500")
 	}
 	after, err := decodePageToken(req.GetPageToken())

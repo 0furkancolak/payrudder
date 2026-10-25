@@ -11,6 +11,7 @@ import (
 	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store/sqlc"
@@ -250,13 +251,11 @@ func (s *Service) readAsset(ctx context.Context, id uuid.UUID) (sqlc.Asset, erro
 
 // ListAssets implements assetsv1.AssetsServiceServer.
 func (s *Service) ListAssets(ctx context.Context, req *assetsv1.ListAssetsRequest) (*assetsv1.ListAssetsResponse, error) {
-	size := int(req.GetPageSize())
-	if size <= 0 {
-		size = 100
-	}
-	if size > 500 {
+	size32, ok := page.Size(req.GetPageSize(), 100, 500)
+	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "assets.list.bad_page_size", "page_size must be 1..500")
 	}
+	size := int(size32)
 	after := uuid.Nil
 	if t := req.GetPageToken(); t != "" {
 		var err error
@@ -267,7 +266,7 @@ func (s *Service) ListAssets(ctx context.Context, req *assetsv1.ListAssetsReques
 	var rows []sqlc.Asset
 	err := s.tx(ctx, func(q *sqlc.Queries) error {
 		var err error
-		rows, err = q.ListReadyAssets(ctx, sqlc.ListReadyAssetsParams{Purpose: policy.PurposeName(req.GetPurpose()), After: after, PageSize: int32(size + 1)}) //nolint:gosec // ≤ 501
+		rows, err = q.ListReadyAssets(ctx, sqlc.ListReadyAssetsParams{Purpose: policy.PurposeName(req.GetPurpose()), After: after, PageSize: size32 + 1})
 		return err
 	})
 	if err != nil {

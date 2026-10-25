@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
@@ -89,10 +90,8 @@ func (r *Queries) Get(ctx context.Context, id uuid.UUID) (*plansv1.Subscription,
 // List returns a page of subscriptions, newest first, of one customer or of all.
 func (r *Queries) List(ctx context.Context, req *plansv1.ListSubscriptionsRequest) (*plansv1.ListSubscriptionsResponse, error) {
 	size := req.GetPageSize()
-	switch {
-	case size == 0:
-		size = 50
-	case size < 0 || size > 200:
+	size, ok := page.Size(size, 50, 200)
+	if !ok {
 		return nil, domain.Invalid("page_size", "1..200")
 	}
 	before := uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")
