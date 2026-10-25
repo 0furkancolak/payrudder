@@ -23,7 +23,7 @@ import (
 const MaxBody = 64 << 10
 
 // ProviderTrouble is what a caller is told when a provider call failed; the cause is in the log.
-const ProviderTrouble = "the payment provider could not complete the request"
+const ProviderTrouble = refuse.ProviderTrouble
 
 // WriteJSON answers with v as JSON.
 func WriteJSON(w http.ResponseWriter, code int, v any) {
