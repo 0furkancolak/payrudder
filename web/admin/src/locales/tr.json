@@ -1327,7 +1327,8 @@
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
-        "too_many_endpoints": "Webhook uç noktası sınırına ulaşıldı. Önce birini silin."
+        "too_many_endpoints": "Webhook uç noktası sınırına ulaşıldı. Önce birini silin.",
+        "tenant_not_active": "Bu ortam etkin olmadığı için webhook uç noktası ekleyemez. Önce canlıya geçiş listesini tamamlayın."
       },
       "customer": {
         "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil."
@@ -1339,10 +1340,17 @@
         "forbidden": "Bunu yapmaya yetkiniz yok."
       },
       "tenant": {
-        "settings_immutable": "Bir hesabın para birimi, saat dilimi ve ortamı değiştirilemez."
+        "settings_immutable": "Bir hesabın para birimi, saat dilimi ve ortamı değiştirilemez.",
+        "bad_status": "Durum active veya suspended olmalıdır.",
+        "bad_transition": "Bu durum değişikliği bu ortam için mümkün değil.",
+        "reason_required": "Bir ortamı listesi tamamlanmadan etkinleştirmek için gerekçe gerekir."
       },
       "request": {
         "invalid": "{field} geçerli değil: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
+        "tenant_not_active": "Bu ortam etkin olmadığı için API anahtarı alamaz. Önce canlıya geçiş listesini tamamlayın."
       }
     },
     "common": {
@@ -1482,7 +1490,11 @@
       "api_key": {
         "bad_environment": "Bu uygulamada böyle bir ortam yok.",
         "not_found": "Bu API anahtarı yok.",
-        "quota": "Bir ortamda en fazla 10 etkin API anahtarı olabilir. Önce birini iptal edin."
+        "quota": "Bir ortamda en fazla 10 etkin API anahtarı olabilir. Önce birini iptal edin.",
+        "already_rotating": "Bu anahtar zaten yenilendi ve yakında sona erecek. İptal edin ya da bitmesini bekleyin.",
+        "bad_overlap": "Geçiş süresi 0 saat ile 7 gün arasında olmalıdır.",
+        "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
+        "not_active": "Bu API anahtarı iptal edilmiş."
       },
       "app": {
         "not_found": "Bu uygulama yok ya da size ait değil.",
@@ -1530,6 +1542,12 @@
       },
       "operator": {
         "forbidden": "Bu alan platform operatörlerine ayrılmıştır."
+      },
+      "go_live": {
+        "incomplete": "Canlıya geçiş listesi henüz tamamlanmadı.",
+        "no_live": "Bu kurulumda canlı ortam yok.",
+        "owner_only": "Canlı ortamı yalnızca hesabın sahibi etkinleştirebilir.",
+        "suspended": "Canlı ortam askıya alınmış. Destekle iletişime geçin."
       }
     },
     "gateway": {
@@ -1540,6 +1558,16 @@
       "request": {
         "invalid": "{field} geçerli değil: {detail}",
         "too_large": "İstek çok büyük."
+      },
+      "auth": {
+        "scope_denied": "Bu API anahtarının kapsamı bu isteğe izin vermiyor. Daha geniş kapsamlı bir anahtar kullanın.",
+        "tenant_not_active": "Bu ortam askıya alınmış ya da henüz etkin değil. Canlıya geçiş listesini tamamlayın veya destekle iletişime geçin."
+      }
+    },
+    "env": {
+      "request": {
+        "missing": "Bu istek hangi ortam için olduğunu belirtmediği için reddedildi.",
+        "mismatch": "Bu istek, gönderildiği ortamdan farklı bir ortam için hazırlandığı için reddedildi."
       }
     },
     "aggregator": {

@@ -113,6 +113,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /admin/tenants/{tenant}/provider-accounts", s.admin(s.listAccounts))
 	mux.HandleFunc("PUT /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.putAccount))
 	mux.HandleFunc("DELETE /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.deleteAccount))
+	mux.HandleFunc("GET /admin/tenants/{tenant}/go-live", s.admin(s.goLive))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/ledger", s.admin(s.ledger))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/invoice-methods", s.admin(s.invoiceMethods))
 	mux.HandleFunc("POST /admin/tenants/{tenant}/invoice-payments", s.admin(s.invoicePayment))

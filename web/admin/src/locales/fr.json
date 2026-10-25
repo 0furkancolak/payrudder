@@ -1327,7 +1327,8 @@
       },
       "webhook": {
         "not_configured": "Les webhooks ne sont pas configurés sur ce déploiement (la clé des secrets est absente).",
-        "too_many_endpoints": "La limite de points de terminaison webhook est atteinte. Supprimez-en un d'abord."
+        "too_many_endpoints": "La limite de points de terminaison webhook est atteinte. Supprimez-en un d'abord.",
+        "tenant_not_active": "Cet environnement n'est pas actif et ne peut donc pas avoir de points de terminaison webhook. Terminez d'abord la liste de mise en production."
       },
       "customer": {
         "tax_invalid": "Le numéro fiscal ou le centre des impôts du client n'est pas valide."
@@ -1339,10 +1340,17 @@
         "forbidden": "Vous n'êtes pas autorisé à faire cela."
       },
       "tenant": {
-        "settings_immutable": "La devise, le fuseau horaire et l'environnement d'un compte ne peuvent pas être modifiés."
+        "settings_immutable": "La devise, le fuseau horaire et l'environnement d'un compte ne peuvent pas être modifiés.",
+        "bad_status": "Le statut doit être active ou suspended.",
+        "bad_transition": "Ce changement de statut n'est pas possible pour cet environnement.",
+        "reason_required": "Activer un environnement sans sa liste complète exige une raison."
       },
       "request": {
         "invalid": "{field} n'est pas valide : {detail}"
+      },
+      "api_key": {
+        "bad_scope": "La portée doit être full, ingest ou read.",
+        "tenant_not_active": "Cet environnement n'est pas actif et ne peut donc pas avoir de clés API. Terminez d'abord la liste de mise en production."
       }
     },
     "common": {
@@ -1482,7 +1490,11 @@
       "api_key": {
         "bad_environment": "Cette application n'a pas un tel environnement.",
         "not_found": "Cette clé d'API n'existe pas.",
-        "quota": "Un environnement peut avoir 10 clés d'API actives au plus. Révoquez-en une d'abord."
+        "quota": "Un environnement peut avoir 10 clés d'API actives au plus. Révoquez-en une d'abord.",
+        "already_rotating": "Cette clé a déjà été remplacée et va bientôt expirer. Révoquez-la ou attendez sa fin.",
+        "bad_overlap": "Le chevauchement doit être compris entre 0 heure et 7 jours.",
+        "bad_scope": "La portée doit être full, ingest ou read.",
+        "not_active": "Cette clé API est révoquée."
       },
       "app": {
         "not_found": "Cette application n'existe pas, ou elle n'est pas la vôtre.",
@@ -1530,6 +1542,12 @@
       },
       "operator": {
         "forbidden": "Cette zone est réservée aux opérateurs de la plateforme."
+      },
+      "go_live": {
+        "incomplete": "La liste de mise en production n'est pas encore complète.",
+        "no_live": "Ce déploiement n'a pas d'environnement live.",
+        "owner_only": "Seul un propriétaire du compte peut activer l'environnement live.",
+        "suspended": "L'environnement live est suspendu. Contactez le support."
       }
     },
     "gateway": {
@@ -1540,6 +1558,16 @@
       "request": {
         "invalid": "{field} n'est pas valide : {detail}",
         "too_large": "La requête est trop volumineuse."
+      },
+      "auth": {
+        "scope_denied": "La portée de cette clé API n'autorise pas cette requête. Utilisez une clé de portée plus large.",
+        "tenant_not_active": "Cet environnement est suspendu ou pas encore actif. Terminez la liste de mise en production ou contactez le support."
+      }
+    },
+    "env": {
+      "request": {
+        "missing": "Cette requête n'indique pas son environnement et a donc été refusée.",
+        "mismatch": "Cette requête vise un autre environnement que celui auquel elle a été envoyée et a donc été refusée."
       }
     },
     "aggregator": {

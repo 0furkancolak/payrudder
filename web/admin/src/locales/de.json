@@ -1327,7 +1327,8 @@
       },
       "webhook": {
         "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
-        "too_many_endpoints": "Die Höchstzahl an Webhook-Endpunkten ist erreicht. Löschen Sie zuerst einen."
+        "too_many_endpoints": "Die Höchstzahl an Webhook-Endpunkten ist erreicht. Löschen Sie zuerst einen.",
+        "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine Webhook-Endpunkte haben. Schließen Sie zuerst die Go-live-Checkliste ab."
       },
       "customer": {
         "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig."
@@ -1339,10 +1340,17 @@
         "forbidden": "Dazu fehlt Ihnen die Berechtigung."
       },
       "tenant": {
-        "settings_immutable": "Währung, Zeitzone und Umgebung eines Kontos lassen sich nicht ändern."
+        "settings_immutable": "Währung, Zeitzone und Umgebung eines Kontos lassen sich nicht ändern.",
+        "bad_status": "Der Status muss active oder suspended sein.",
+        "bad_transition": "Diese Statusänderung ist für diese Umgebung nicht möglich.",
+        "reason_required": "Für die Aktivierung ohne Checkliste ist eine Begründung nötig."
       },
       "request": {
         "invalid": "{field} ist ungültig: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "Der Bereich muss full, ingest oder read sein.",
+        "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine API-Schlüssel haben. Schließen Sie zuerst die Go-live-Checkliste ab."
       }
     },
     "common": {
@@ -1482,7 +1490,11 @@
       "api_key": {
         "bad_environment": "Diese App hat keine solche Umgebung.",
         "not_found": "Dieser API-Schlüssel existiert nicht.",
-        "quota": "Eine Umgebung kann höchstens 10 aktive API-Schlüssel haben. Widerrufen Sie zuerst einen."
+        "quota": "Eine Umgebung kann höchstens 10 aktive API-Schlüssel haben. Widerrufen Sie zuerst einen.",
+        "already_rotating": "Dieser Schlüssel wurde bereits ersetzt und läuft bald ab. Widerrufen Sie ihn oder warten Sie, bis er endet.",
+        "bad_overlap": "Die Überlappung muss zwischen 0 Stunden und 7 Tagen liegen.",
+        "bad_scope": "Der Bereich muss full, ingest oder read sein.",
+        "not_active": "Dieser API-Schlüssel wurde widerrufen."
       },
       "app": {
         "not_found": "Diese App existiert nicht oder gehört Ihnen nicht.",
@@ -1530,6 +1542,12 @@
       },
       "operator": {
         "forbidden": "Dieser Bereich ist Plattformbetreibern vorbehalten."
+      },
+      "go_live": {
+        "incomplete": "Die Go-live-Checkliste ist noch nicht vollständig.",
+        "no_live": "Diese Installation hat keine Live-Umgebung.",
+        "owner_only": "Nur ein Inhaber des Kontos kann die Live-Umgebung aktivieren.",
+        "suspended": "Die Live-Umgebung ist gesperrt. Wenden Sie sich an den Support."
       }
     },
     "gateway": {
@@ -1540,6 +1558,16 @@
       "request": {
         "invalid": "{field} ist ungültig: {detail}",
         "too_large": "Die Anfrage ist zu groß."
+      },
+      "auth": {
+        "scope_denied": "Der Bereich dieses API-Schlüssels erlaubt diese Anfrage nicht. Verwenden Sie einen Schlüssel mit größerem Bereich.",
+        "tenant_not_active": "Diese Umgebung ist gesperrt oder noch nicht aktiv. Schließen Sie die Go-live-Checkliste ab oder wenden Sie sich an den Support."
+      }
+    },
+    "env": {
+      "request": {
+        "missing": "Diese Anfrage nennt keine Umgebung und wurde deshalb abgelehnt.",
+        "mismatch": "Diese Anfrage gehört zu einer anderen Umgebung als der, an die sie gesendet wurde, und wurde deshalb abgelehnt."
       }
     },
     "aggregator": {

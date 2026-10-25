@@ -57,6 +57,10 @@ func liveKey(t *testing.T) string {
 	for _, tn := range acct.Tenants {
 		if tn.Environment == "ENVIRONMENT_LIVE" {
 			var k struct{ Plaintext string }
+			// A live tenant is created inactive and has no keys: activate it the way support does, with a reason.
+			if c := api(t, "PUT", "/admin/v1/tenants/"+tn.ID+"/status", operator, map[string]string{"status": "active", "reason": "bench"}, nil); c != 200 {
+				t.Fatalf("activate: %d", c)
+			}
 			api(t, "POST", "/admin/v1/tenants/"+tn.ID+"/api-keys", operator, nil, &k)
 			return k.Plaintext
 		}

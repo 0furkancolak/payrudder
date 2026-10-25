@@ -1327,7 +1327,8 @@
       },
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
-        "too_many_endpoints": "The limit of webhook endpoints is reached. Delete one first."
+        "too_many_endpoints": "The limit of webhook endpoints is reached. Delete one first.",
+        "tenant_not_active": "This environment is not active, so it cannot have webhook endpoints. Finish the go-live checklist first."
       },
       "customer": {
         "tax_invalid": "The customer's tax id or tax office is not valid."
@@ -1339,10 +1340,17 @@
         "forbidden": "You are not allowed to do this."
       },
       "tenant": {
-        "settings_immutable": "The currency, time zone and environment of an account cannot be changed."
+        "settings_immutable": "The currency, time zone and environment of an account cannot be changed.",
+        "bad_status": "The status must be active or suspended.",
+        "bad_transition": "This change of status is not possible for this environment.",
+        "reason_required": "Activating an environment without its checklist needs a reason."
       },
       "request": {
         "invalid": "{field} is not valid: {detail}"
+      },
+      "api_key": {
+        "bad_scope": "The scope must be full, ingest or read.",
+        "tenant_not_active": "This environment is not active, so it cannot have API keys. Finish the go-live checklist first."
       }
     },
     "common": {
@@ -1482,7 +1490,11 @@
       "api_key": {
         "bad_environment": "This app has no such environment.",
         "not_found": "This API key does not exist.",
-        "quota": "An environment can have at most 10 active API keys. Revoke one first."
+        "quota": "An environment can have at most 10 active API keys. Revoke one first.",
+        "already_rotating": "This key was already rotated and ends soon. Revoke it, or wait for it to end.",
+        "bad_overlap": "The overlap must be between 0 hours and 7 days.",
+        "bad_scope": "The scope must be full, ingest or read.",
+        "not_active": "This API key is revoked."
       },
       "app": {
         "not_found": "This app does not exist, or it is not yours.",
@@ -1530,6 +1542,12 @@
       },
       "operator": {
         "forbidden": "This area is for platform operators."
+      },
+      "go_live": {
+        "incomplete": "The go-live checklist is not complete yet.",
+        "no_live": "This deployment has no live environment.",
+        "owner_only": "Only an owner of the account can activate the live environment.",
+        "suspended": "The live environment is suspended. Contact support."
       }
     },
     "gateway": {
@@ -1540,6 +1558,16 @@
       "request": {
         "invalid": "{field} is not valid: {detail}",
         "too_large": "The request is too large."
+      },
+      "auth": {
+        "scope_denied": "This API key's scope does not allow this request. Use a key with a wider scope.",
+        "tenant_not_active": "This environment is suspended or not active yet. Finish the go-live checklist, or contact support."
+      }
+    },
+    "env": {
+      "request": {
+        "missing": "This request does not say which environment it is for, so it was refused.",
+        "mismatch": "This request is for a different environment than the one it was sent to, so it was refused."
       }
     },
     "aggregator": {

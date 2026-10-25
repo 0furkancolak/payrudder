@@ -48,6 +48,8 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("Webhooks", testWebhooks)
 	t.Run("Apps", testApps)
 	t.Run("Identity", testIdentity)
+	t.Run("GoLive", testGoLive)
+	t.Run("APIKeyScopesAndRotation", testAPIKeyScopesAndRotation)
 	t.Run("EmailVerificationAndReset", testEmailVerificationAndReset)
 	t.Run("PasswordLockout", testPasswordLockout)
 	t.Run("SignInMethods", testSignInMethods)

@@ -8,8 +8,8 @@ import (
 	"errors"
 	"log/slog"
 	"regexp"
-	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -18,9 +18,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/apikey"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
@@ -87,23 +89,27 @@ const defaultSlug = "default"
 
 // InsertApp makes an app of the account with its sandbox tenant and, when the deployment allows live, its live tenant.
 func (s *Server) InsertApp(ctx context.Context, q *sqlc.Queries, accountID uuid.UUID, settings domain.AccountSettings, slug string) (*plansv1.App, error) {
-	envs := []string{"sandbox"}
-	if slices.Contains(s.allowedEnvs, "live") {
-		envs = append(envs, "live")
+	envs := []env.Env{env.Sandbox}
+	if env.Allowed(s.allowedEnvs, env.Live) {
+		envs = append(envs, env.Live)
 	}
 	app, err := q.InsertApp(ctx, sqlc.InsertAppParams{ID: idgen.NewUUIDv7(), AccountID: accountID, Name: settings.Name, Slug: slug})
 	if err != nil {
 		return nil, err
 	}
 	var tenants []sqlc.Tenant
-	for _, env := range envs {
+	for _, e := range envs {
 		name := settings.Name
-		if env == "sandbox" {
+		// Live is earned (phase 45): a live tenant starts inactive, with no keys, until its go-live checklist is complete.
+		tenantStatus := domain.StatusActive
+		if e == env.Sandbox {
 			name += " (sandbox)"
+		} else {
+			tenantStatus = domain.StatusInactive
 		}
 		t, err := q.InsertTenant(ctx, sqlc.InsertTenantParams{
-			ID: idgen.NewUUIDv7(), AccountID: accountID, AppID: app.ID, Environment: env, Name: name, Tier: settings.Tier,
-			Currency: settings.Currency, Timezone: settings.Timezone, GracePeriod: convert.Interval(settings.Grace),
+			ID: idgen.NewUUIDv7(), AccountID: accountID, AppID: app.ID, Environment: e.String(), Name: name, Tier: settings.Tier,
+			Currency: settings.Currency, Timezone: settings.Timezone, GracePeriod: convert.Interval(settings.Grace), Status: tenantStatus,
 		})
 		if err != nil {
 			return nil, err
@@ -331,32 +337,41 @@ func (s *Server) CreateApiKey(ctx context.Context, req *plansv1.CreateApiKeyRequ
 	if err != nil {
 		return nil, err
 	}
-	key, plaintext, err := s.IssueAPIKey(ctx, id)
+	scope, ok := domain.ScopeToDB(req.GetScope())
+	if !ok {
+		return nil, errkey.New(codes.InvalidArgument, "plans.api_key.bad_scope", "scope: full, ingest or read")
+	}
+	key, plaintext, err := s.IssueAPIKey(ctx, id, scope)
 	if err != nil {
 		return nil, err
 	}
 	return &plansv1.CreateApiKeyResponse{ApiKey: key, Plaintext: plaintext}, nil
 }
 
-// IssueAPIKey makes a key for the tenant and returns it with its plaintext, which is shown once. It does no authorisation: the operator RPC and the
-// identity module (a member of the tenant's account) each check theirs before calling it.
-func (s *Server) IssueAPIKey(ctx context.Context, tenantID uuid.UUID) (*plansv1.ApiKey, string, error) {
+// IssueAPIKey makes a key of the given scope (domain.ScopeFull, ScopeIngest or ScopeRead) for the tenant and returns it with its plaintext, which is shown
+// once. It does no authorisation: the operator RPC and the identity module (a member of the tenant's account) each check theirs before calling it.
+// A live tenant that is not active has no keys (the go-live gate), and neither has a suspended one.
+func (s *Server) IssueAPIKey(ctx context.Context, tenantID uuid.UUID, scope string) (*plansv1.ApiKey, string, error) {
 	t, err := s.q().GetTenant(ctx, tenantID)
 	if err != nil {
 		return nil, "", convert.Err(err, "tenant")
 	}
-	// The key environment always follows the tenant: test <-> sandbox, live <-> live (ADR 0011).
-	env := apikey.EnvLive
-	if t.Environment == "sandbox" {
-		env = apikey.EnvTest
+	if t.Status != domain.StatusActive {
+		return nil, "", errkey.New(codes.FailedPrecondition, "plans.api_key.tenant_not_active", "this environment is not active: finish the go-live checklist first")
 	}
+	// The key environment always follows the tenant: test <-> sandbox, live <-> live (ADR 0011).
+	tenantEnv, err := env.Parse(t.Environment)
+	if err != nil {
+		return nil, "", status.Error(codes.Internal, "tenant has no environment")
+	}
+	keyEnv := tenantEnv.ForKey()
 	for attempt := 0; attempt < 3; attempt++ {
-		key, err := apikey.Generate(env)
+		key, err := apikey.Generate(keyEnv)
 		if err != nil {
 			return nil, "", status.Error(codes.Internal, "key generation failed")
 		}
 		row, err := s.q().InsertApiKey(ctx, sqlc.InsertApiKeyParams{
-			ID: idgen.NewUUIDv7(), TenantID: t.ID, Prefix: key.Prefix, KeyHash: key.Hash(), Env: string(env),
+			ID: idgen.NewUUIDv7(), TenantID: t.ID, Prefix: key.Prefix, KeyHash: key.Hash(), Env: string(keyEnv), Scope: scope,
 		})
 		if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
 			continue // prefix collision (62^8 space): draw again
@@ -364,7 +379,7 @@ func (s *Server) IssueAPIKey(ctx context.Context, tenantID uuid.UUID) (*plansv1.
 		if err != nil {
 			return nil, "", convert.Err(err, "api key")
 		}
-		s.log.InfoContext(ctx, "api key created", "tenant_id", t.ID, "api_key_id", row.ID, "prefix", row.Prefix)
+		s.log.InfoContext(ctx, "api key created", "tenant_id", t.ID, "api_key_id", row.ID, "prefix", row.Prefix, "scope", scope)
 		return convert.APIKey(row), key.String(), nil
 	}
 	return nil, "", status.Error(codes.Aborted, "could not allocate a unique key prefix; retry")
@@ -401,6 +416,86 @@ func (s *Server) RevokeKey(ctx context.Context, id uuid.UUID) (*plansv1.ApiKey, 
 	return convert.APIKey(row), nil
 }
 
+// ExpireKey makes an active key stop working at until without revoking it: the old key of a rotation. It never extends a key that already ends sooner.
+// The gateway checks the time itself on every request, so no cache has to be told.
+func (s *Server) ExpireKey(ctx context.Context, id uuid.UUID, until time.Time) (*plansv1.ApiKey, error) {
+	row, err := s.q().ExpireApiKey(ctx, sqlc.ExpireApiKeyParams{ID: id, ExpiresAt: until})
+	if err != nil {
+		return nil, convert.Err(err, "api key")
+	}
+	if s.evict != nil {
+		// The cached entry holds the old end time (none): drop it so the next request reads the new one.
+		if err := s.evict.EvictAPIKey(ctx, row.Prefix); err != nil {
+			s.log.WarnContext(ctx, "api key cache eviction failed; bounded by cache TTL", "prefix", row.Prefix, "error", err)
+		}
+	}
+	return convert.APIKey(row), nil
+}
+
+// TouchApiKey records that a key was just used. A key that does not exist is not an error: it was revoked and deleted, or the call is late.
+func (s *Server) TouchApiKey(ctx context.Context, req *plansv1.TouchApiKeyRequest) (*plansv1.TouchApiKeyResponse, error) {
+	id, err := uuid.Parse(req.GetApiKeyId())
+	if err != nil {
+		return nil, domain.Invalid("api_key_id", "must be a UUID")
+	}
+	if err := s.q().TouchApiKey(ctx, id); err != nil {
+		return nil, convert.Err(err, "api key")
+	}
+	return &plansv1.TouchApiKeyResponse{}, nil
+}
+
+// SetTenantStatus is the operator's hand on a tenant's life. Suspending evicts every key of the tenant from the gateway cache at once.
+func (s *Server) SetTenantStatus(ctx context.Context, req *plansv1.SetTenantStatusRequest) (*plansv1.SetTenantStatusResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	id, err := parseID("tenant_id", req.GetTenantId())
+	if err != nil {
+		return nil, err
+	}
+	want, ok := domain.StatusToDB(req.GetStatus())
+	if !ok || want == domain.StatusInactive {
+		return nil, errkey.New(codes.InvalidArgument, "plans.tenant.bad_status", "status: active or suspended")
+	}
+	var out sqlc.Tenant
+	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		cur, err := q.LockTenantForGoLive(ctx, id)
+		if err != nil {
+			return err
+		}
+		switch {
+		case cur.Environment != env.Live.String():
+			return errkey.New(codes.FailedPrecondition, "plans.tenant.bad_transition", "a sandbox tenant is always active")
+		case cur.Status == want:
+			out = cur
+			return nil
+		case want == domain.StatusSuspended && cur.Status != domain.StatusActive:
+			return errkey.New(codes.FailedPrecondition, "plans.tenant.bad_transition", "only an active tenant can be suspended")
+		case want == domain.StatusActive && cur.Status == domain.StatusInactive && strings.TrimSpace(req.GetReason()) == "":
+			return errkey.New(codes.InvalidArgument, "plans.tenant.reason_required", "activating a tenant without its checklist needs a reason")
+		}
+		out, err = q.SetTenantStatus(ctx, sqlc.SetTenantStatusParams{ID: id, Status: want})
+		return err
+	})
+	if err != nil {
+		return nil, convert.Err(err, "tenant")
+	}
+	s.log.WarnContext(ctx, "tenant status set by an operator", "tenant_id", id, "status", want, "reason", req.GetReason())
+	if want == domain.StatusSuspended && s.evict != nil {
+		prefixes, err := s.q().ListTenantApiKeyPrefixes(ctx, id)
+		if err != nil {
+			return nil, convert.Err(err, "api key")
+		}
+		for _, p := range prefixes {
+			if err := s.evict.EvictAPIKey(ctx, p); err != nil {
+				s.log.WarnContext(ctx, "api key cache eviction failed; bounded by cache TTL", "prefix", p, "error", err)
+			}
+		}
+	}
+	return &plansv1.SetTenantStatusResponse{Tenant: convert.Tenant(out)}, nil
+}
+
 func (s *Server) ResolveApiKey(ctx context.Context, req *plansv1.ResolveApiKeyRequest) (*plansv1.ResolveApiKeyResponse, error) {
 	if len(req.GetPrefix()) != apikey.PrefixLen {
 		return nil, domain.Invalid("prefix", "must be 8 characters")
@@ -415,5 +510,13 @@ func (s *Server) ResolveApiKey(ctx context.Context, req *plansv1.ResolveApiKeyRe
 	return &plansv1.ResolveApiKeyResponse{
 		ApiKeyId: r.ID.String(), TenantId: r.TenantID.String(), Status: convert.APIKeyStatus(r.Status), KeyHash: r.KeyHash,
 		Environment: domain.EnvironmentFromDB(r.Environment), Tier: domain.TierFromDB(r.Tier), Timezone: r.Timezone,
+		TenantStatus: domain.StatusFromDB(r.TenantStatus), Scope: domain.ScopeFromDB(r.Scope), ExpireTime: expireTime(r.ExpiresAt),
 	}, nil
+}
+
+func expireTime(t *time.Time) *timestamppb.Timestamp {
+	if t == nil {
+		return nil
+	}
+	return timestamppb.New(*t)
 }

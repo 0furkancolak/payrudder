@@ -83,6 +83,12 @@ func newAccount(t *testing.T, tier string) account {
 	a := account{id: r.body["id"].(string)}
 	for _, raw := range r.body["tenants"].([]any) {
 		tn := raw.(map[string]any)
+		if tn["environment"] == "ENVIRONMENT_LIVE" {
+			// A live tenant is created inactive and has no keys: activate it the way support does, with a reason.
+			if s := call(t, "PUT", "/admin/v1/tenants/"+tn["id"].(string)+"/status", operatorToken, map[string]any{"status": "active", "reason": "e2e"}); s.status != 200 {
+				t.Fatalf("activate: %d %v", s.status, s.body)
+			}
+		}
 		k := call(t, "POST", "/admin/v1/tenants/"+tn["id"].(string)+"/api-keys", operatorToken, nil)
 		if k.status != 201 {
 			t.Fatalf("create key: %d %v", k.status, k.body)

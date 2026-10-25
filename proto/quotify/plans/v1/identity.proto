@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package quotify.plans.v1;
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "quotify/plans/v1/resources.proto";
 
@@ -71,6 +72,12 @@ service IdentityService {
   rpc CreateMyApiKey(CreateMyApiKeyRequest) returns (CreateMyApiKeyResponse);
   rpc ListMyApiKeys(ListMyApiKeysRequest) returns (ListMyApiKeysResponse);
   rpc RevokeMyApiKey(RevokeMyApiKeyRequest) returns (RevokeMyApiKeyResponse);
+  // RotateMyApiKey issues a replacement with the same scope and lets the old key live for an overlap window, so a deployment can switch without a gap.
+  rpc RotateMyApiKey(RotateMyApiKeyRequest) returns (RotateMyApiKeyResponse);
+  // GetMyGoLive computes the go-live checklist of an app's live environment. provider_ready is what the gateway learned from payments-worker.
+  rpc GetMyGoLive(GetMyGoLiveRequest) returns (GetMyGoLiveResponse);
+  // ActivateMyApp activates the live environment when every item is done (the owner only).
+  rpc ActivateMyApp(ActivateMyAppRequest) returns (ActivateMyAppResponse);
 }
 
 message User {
@@ -248,6 +255,8 @@ message CreateMyApiKeyRequest {
   string user_id = 1;
   string app_id = 2;
   Environment environment = 3;
+  // Unset is FULL.
+  ApiKey.Scope scope = 4;
 }
 
 message CreateMyApiKeyResponse {
@@ -273,6 +282,60 @@ message RevokeMyApiKeyRequest {
 
 message RevokeMyApiKeyResponse {
   ApiKey api_key = 1;
+}
+
+message RotateMyApiKeyRequest {
+  string user_id = 1;
+  string app_id = 2;
+  string api_key_id = 3;
+  // How long the old key stays valid: 0 (the default is 24 hours) up to 7 days; revoke it by hand to end it sooner.
+  google.protobuf.Duration overlap = 4;
+}
+
+message RotateMyApiKeyResponse {
+  // The replacement, with its plaintext shown once.
+  ApiKey api_key = 1;
+  string plaintext = 2;
+  // The old key, now with expire_time.
+  ApiKey previous = 3;
+}
+
+// One line of the go-live checklist.
+message GoLiveItem {
+  // email_verified, legal_profile, payment_provider, plan_published, terms_accepted.
+  string key = 1;
+  bool done = 2;
+}
+
+message GoLive {
+  TenantStatus status = 1;
+  repeated GoLiveItem items = 2;
+  // Every item is done: the owner may activate.
+  bool ready = 3;
+  // The live tenant the checklist is about.
+  string tenant_id = 4;
+}
+
+message GetMyGoLiveRequest {
+  string user_id = 1;
+  string app_id = 2;
+  bool provider_ready = 3;
+}
+
+message GetMyGoLiveResponse {
+  GoLive go_live = 1;
+}
+
+message ActivateMyAppRequest {
+  string user_id = 1;
+  string app_id = 2;
+  bool provider_ready = 3;
+  // Accepts the terms of service in the same call.
+  bool accept_terms = 4;
+}
+
+message ActivateMyAppResponse {
+  GoLive go_live = 1;
 }
 
 message VerifyEmailRequest {
