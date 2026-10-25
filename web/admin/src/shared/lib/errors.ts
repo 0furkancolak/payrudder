@@ -17,6 +17,12 @@ export function errorText(t: Translate, te: Exists, error: unknown): string {
   return e.message;
 }
 
+/** The first error among several queries or mutations (anything with an `error` ref), or null: one place for a card to say what went wrong. */
+export function firstError(...sources: { error: { value: unknown } }[]): unknown {
+  for (const s of sources) if (s.error.value) return s.error.value;
+  return null;
+}
+
 /** `errorText` bound to the current locale: the one function every page and toast uses to show an API error. */
 export function useErrorText(): (error: unknown) => string {
   const { t, te } = useI18n();

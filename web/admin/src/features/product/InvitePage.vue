@@ -2,9 +2,9 @@
 import { useNavigate } from "@tanstack/vue-router";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
 import { takeFragmentToken } from "@/shared/lib/fragment";
 import { isPerson } from "@/shared/lib/session";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -17,7 +17,6 @@ import PasswordField from "./PasswordField.vue";
  * somebody without an account chooses a password; somebody with one signs in (or, when already signed in with that address, just joins).
  */
 const { t } = useI18n();
-const errorText = useErrorText();
 const navigate = useNavigate();
 const token = takeFragmentToken();
 const lookup = useLookupInvitation();
@@ -62,7 +61,7 @@ const signInAndJoin = () => login.mutate({ email: info.value?.email ?? "", passw
       <!-- Signed in with the address that was invited: one click. -->
       <div v-if="signedInAsInvitee" class="flex flex-col gap-4">
         <p class="text-sm">{{ t("product.invite.joinAs", { email: info.email ?? '' }) }}</p>
-        <p v-if="error" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(error) }}</p>
+        <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
         <Button size="lg" :disabled="acceptMe.isPending.value" @click="joinAsMe">{{ t("product.invite.join") }}</Button>
       </div>
 
@@ -83,7 +82,7 @@ const signInAndJoin = () => login.mutate({ email: info.value?.email ?? "", passw
           <Label for="iv-password">{{ t("product.auth.password") }}</Label>
           <PasswordField id="iv-password" v-model="password" autocomplete="current-password" />
         </div>
-        <p v-if="error" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(error) }}</p>
+        <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
         <Button type="submit" size="lg" :disabled="login.isPending.value || acceptMe.isPending.value || password === ''">{{ t("product.invite.signInJoin") }}</Button>
       </form>
 
@@ -102,7 +101,7 @@ const signInAndJoin = () => login.mutate({ email: info.value?.email ?? "", passw
           <PasswordField id="iv-new-password" v-model="password" autocomplete="new-password" describedby="iv-password-hint" />
           <p id="iv-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: MIN }) }}</p>
         </div>
-        <p v-if="error" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(error) }}</p>
+        <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
         <Button type="submit" size="lg" :disabled="acceptNew.isPending.value || !longEnough">{{ t("product.invite.createJoin") }}</Button>
       </form>
     </template>

@@ -8,6 +8,7 @@ import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -85,7 +86,7 @@ const day = (v?: string) => fmt.date(v, "day");
     <Button v-if="canRecord" type="button" variant="outline" @click="recordOpen = true"><Banknote />{{ t("invoice.payment.record") }}</Button>
     <Button type="button" :disabled="!inv?.number || pdf.isPending.value" @click="pdf.mutate()"><FileText />{{ t("invoice.openPdf") }}</Button>
   </PageHeader>
-  <p v-if="invoice.error.value" class="text-destructive mb-3" role="alert">{{ errorText(invoice.error.value) }}</p>
+  <ErrorText :error="invoice.error.value" class="mb-3" />
 
   <div v-if="inv" class="mb-6 grid gap-4 sm:grid-cols-2">
     <Card class="gap-2">
@@ -150,8 +151,8 @@ const day = (v?: string) => fmt.date(v, "day");
     </div>
     <Link to="/tenants/$id/payment-links" :params="{ id: tenantId }" :search="{ invoice: invoiceId } as never" class="text-sm underline">{{ t("invoice.share.paymentLink") }}</Link>
     <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
-    <p v-if="linkError" class="text-destructive text-sm" role="alert">{{ linkError }}</p>
-    <p v-if="links.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(links.create.error.value) }}</p>
+    <ErrorText :message="linkError" />
+    <ErrorText :error="links.create.error.value" />
   </Card>
 
   <EInvoiceStatus v-if="inv && inv.number" :tenant-id="tenantId" :invoice-id="invoiceId" boxed />
@@ -161,7 +162,7 @@ const day = (v?: string) => fmt.date(v, "day");
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.saga") }}</h2>
-    <p v-if="saga.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(saga.error.value) }}</p>
+    <ErrorText :error="saga.error.value" class="px-3" />
     <Table :aria-label="t('invoice.saga')">
       <TableHeader>
         <TableRow class="hover:bg-transparent">

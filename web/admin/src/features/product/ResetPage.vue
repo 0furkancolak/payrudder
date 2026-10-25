@@ -2,8 +2,8 @@
 import { Link } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
 import { takeFragmentToken } from "@/shared/lib/fragment";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Label } from "@/shared/ui/label";
 import { useResetPassword } from "./api";
@@ -12,7 +12,6 @@ import PasswordField from "./PasswordField.vue";
 
 /** The page the reset mail opens: /reset#token=… . The token is read from the fragment once and kept only in this component. */
 const { t } = useI18n();
-const errorText = useErrorText();
 const token = takeFragmentToken();
 const password = ref("");
 const done = ref(false);
@@ -40,7 +39,7 @@ function submit() {
         <PasswordField id="rp-password" v-model="password" autocomplete="new-password" describedby="rp-password-hint" />
         <p id="rp-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: MIN }) }}</p>
       </div>
-      <p v-if="reset.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(reset.error.value) }}</p>
+      <ErrorText :error="reset.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
       <Button type="submit" size="lg" :disabled="reset.isPending.value || !longEnough">{{ t("product.reset.submit") }}</Button>
     </form>
     <template #footer>

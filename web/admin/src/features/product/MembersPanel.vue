@@ -3,7 +3,8 @@ import { Mail, Send, UserMinus } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { useErrorText } from "@/shared/lib/errors";
+import { firstError } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
@@ -22,7 +23,6 @@ const props = defineProps<{ account: MyAccount | undefined; myId: string; loadin
 const emit = defineEmits<{ left: [] }>();
 const { t } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 
 const myRole = computed(() => (props.account?.role ?? "viewer") as Role);
 const isOwner = computed(() => myRole.value === "owner");
@@ -66,7 +66,7 @@ function doRemove() {
   });
 }
 
-const error = computed(() => invite.error.value ?? revokeInvite.error.value ?? resendInvite.error.value ?? changeRole.error.value ?? remove.error.value ?? invitations.error.value);
+const error = computed(() => firstError(invite, revokeInvite, resendInvite, changeRole, remove, invitations));
 </script>
 
 <template>
@@ -76,7 +76,7 @@ const error = computed(() => invite.error.value ?? revokeInvite.error.value ?? r
       <p class="text-muted-foreground text-sm">{{ t(canManage ? "product.members.manageNote" : "product.members.readNote") }}</p>
     </div>
 
-    <p v-if="error" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(error) }}</p>
+    <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
 
     <Skeleton v-if="loading" class="h-20 rounded-2xl" />
     <ul v-else class="divide-border/70 divide-y" :aria-label="t('product.members.title')">
@@ -155,7 +155,7 @@ const error = computed(() => invite.error.value ?? revokeInvite.error.value ?? r
           <DialogTitle>{{ removing?.self ? t("product.members.leaveTitle") : t("product.members.removeTitle") }}</DialogTitle>
           <DialogDescription>{{ removing?.self ? t("product.members.leaveBody") : t("product.members.removeBody", { name: removing?.name ?? "" }) }}</DialogDescription>
         </DialogHeader>
-        <p v-if="remove.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(remove.error.value) }}</p>
+        <ErrorText :error="remove.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
         <DialogFooter>
           <Button variant="ghost" @click="confirm = false">{{ t("common.cancel") }}</Button>
           <Button variant="destructive" :disabled="remove.isPending.value" @click="doRemove">{{ removing?.self ? t("product.members.leave") : t("product.members.remove") }}</Button>

@@ -2,7 +2,8 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { firstError } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Card } from "@/shared/ui/card";
 import { MAIL_CATEGORIES, useMailSettings, useSetMailCategory, type MailCategory } from "./api";
 
@@ -18,10 +19,7 @@ const enabled = computed(() => {
   for (const c of settings.data.value?.categories ?? []) if (c.category) state.set(c.category, c.enabled ?? true);
   return (category: MailCategory) => state.get(category) ?? true;
 });
-const failure = computed(() => {
-  const err = settings.error.value ?? set.error.value;
-  return err ? toApiError(err).message : "";
-});
+const failure = computed(() => firstError(settings, set));
 
 function toggle(category: MailCategory, event: Event) {
   set.mutate({ category, enabled: (event.target as HTMLInputElement).checked });
@@ -51,6 +49,6 @@ function toggle(category: MailCategory, event: Event) {
       </li>
     </ul>
     <p class="text-muted-foreground text-xs">{{ t("billing.mail.providerNote") }}</p>
-    <p v-if="failure" class="text-destructive text-sm" role="alert">{{ failure }}</p>
+    <ErrorText :error="failure" />
   </Card>
 </template>

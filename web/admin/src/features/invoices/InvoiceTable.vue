@@ -1,22 +1,21 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useTenantInvoices } from "./api";
 
 const props = defineProps<{ tenantId: string }>();
 const { t, te, locale } = useI18n();
-const errorText = useErrorText();
 const invoices = useTenantInvoices(() => props.tenantId);
 </script>
 
 <template>
-  <p v-if="invoices.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(invoices.error.value) }}</p>
+  <ErrorText :error="invoices.error.value" class="px-3" />
   <Table>
     <TableHeader>
       <TableRow class="hover:bg-transparent">

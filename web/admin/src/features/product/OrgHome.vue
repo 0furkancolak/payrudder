@@ -5,7 +5,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import OrgDashboard from "@/features/dashboard/OrgDashboard.vue";
 import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useAccount, useApps, useMe } from "./api";
@@ -15,7 +15,6 @@ import CreateAppDialog from "./CreateAppDialog.vue";
 import type { Environment } from "@/shared/lib/environment";
 
 const { t } = useI18n();
-const errorText = useErrorText();
 const me = useMe();
 const account = useAccount();
 const apps = useApps();
@@ -53,7 +52,7 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
       <Button v-if="canCreate" size="lg" @click="creating = true"><Plus />{{ t("product.home.create") }}</Button>
     </header>
 
-    <p v-if="apps.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(apps.error.value) }}</p>
+    <ErrorText :error="apps.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
 
     <div v-if="apps.isPending.value" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
       <Skeleton v-for="n in 3" :key="n" class="h-52 rounded-3xl" />
