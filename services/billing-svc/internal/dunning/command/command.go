@@ -9,10 +9,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -41,7 +41,7 @@ func Set(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, hours []int
 		return err
 	})
 	if err != nil {
-		return nil, time.Time{}, status.Error(codes.Internal, "internal error")
+		return nil, time.Time{}, apierr.Internal(ctx, err)
 	}
 	return hours, at, nil
 }

@@ -15,12 +15,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -135,7 +135,7 @@ func Create(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, in *Inpu
 		return err
 	})
 	if err != nil {
-		return nil, internal()
+		return nil, apierr.Internal(ctx, err)
 	}
 	return e, nil
 }
@@ -185,14 +185,19 @@ func notFoundOrVoided(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.
 	case err == nil:
 		return nil
 	case !isNoRows(err):
-		return internal()
+		return apierr.Internal(ctx, err)
 	}
 	var voided bool
-	_ = pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
+	if lerr := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		row, gerr := sqlc.New(tx).GetExpense(ctx, sqlc.GetExpenseParams{TenantID: tenantID, ID: id})
+		if gerr != nil && !isNoRows(gerr) {
+			return gerr
+		}
 		voided = gerr == nil && row.VoidedAt != nil
 		return nil
-	})
+	}); lerr != nil {
+		return apierr.Internal(ctx, lerr) // a database failure is not "no such expense"
+	}
 	if voided {
 		return errkey.New(codes.FailedPrecondition, "billing.accounting.expense_voided", "the expense was voided")
 	}
@@ -208,5 +213,3 @@ func get(ctx context.Context, q *sqlc.Queries, tenantID, id uuid.UUID) (*model.E
 	}
 	return model.FromRow(&r), nil
 }
-
-func internal() error { return status.Error(codes.Internal, "internal error") }

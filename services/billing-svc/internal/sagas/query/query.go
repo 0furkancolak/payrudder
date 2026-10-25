@@ -9,9 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -34,15 +34,15 @@ func Get(ctx context.Context, system *pgxpool.Pool, tenantID, invoiceID uuid.UUI
 		return nil, errkey.New(codes.NotFound, "billing.saga.not_found", "invoice has no saga (it is not finalized)")
 	}
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	saga, err := Saga(ctx, system, tenantID, sagaID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	events, err := q.ListSagaEvents(ctx, sqlc.ListSagaEventsParams{TenantID: tenantID, SagaID: sagaID})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	return &History{Saga: saga, Events: events}, nil
 }

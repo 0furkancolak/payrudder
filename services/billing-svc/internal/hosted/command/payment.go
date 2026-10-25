@@ -14,6 +14,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -64,7 +65,7 @@ func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken
 		return err
 	})
 	if err != nil {
-		return "", internal(err)
+		return "", apierr.Wrap(ctx, err)
 	}
 	if open != nil {
 		return startLink(ctx, d, *open, promotionCode)
@@ -112,7 +113,7 @@ func QuoteLinkPromotion(ctx context.Context, d Deps, token, promotionCode string
 	}
 	q, err := d.Dir.QuotePromotion(ctx, r.TenantID, specOf(r, promotionCode))
 	if err != nil {
-		return PromotionQuote{}, internal(err)
+		return PromotionQuote{}, apierr.Wrap(ctx, err)
 	}
 	return q, nil
 }
@@ -123,7 +124,7 @@ func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow, pro
 	if !factory(r.Kind) || r.AmountMinor == nil || r.Currency == nil {
 		return "", query.NoLink()
 	}
-	child, err := NewToken()
+	child, err := newToken(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -167,7 +168,7 @@ func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow, pro
 			TokenHash: query.TokenHash(child), ExpiresAt: expires, CustomerExternalID: r.CustomerExternalID})
 	})
 	if err != nil {
-		return "", internal(err)
+		return "", apierr.Wrap(ctx, err)
 	}
 	return child, nil
 }
@@ -229,7 +230,7 @@ func RequestPayment(ctx context.Context, d Deps, qd query.Deps, req PaymentReque
 		return nil
 	})
 	if err != nil {
-		return nil, internal(err)
+		return nil, apierr.Wrap(ctx, err)
 	}
 	return &Paid{Started: true, Page: page}, nil
 }
@@ -272,7 +273,7 @@ func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in Se
 		return false, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
-		return false, internal(err)
+		return false, apierr.Wrap(ctx, err)
 	}
 	return applied, nil
 }

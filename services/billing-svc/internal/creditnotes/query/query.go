@@ -4,16 +4,17 @@ package query
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -30,7 +31,7 @@ func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.G
 		return out, errkey.New(codes.NotFound, "billing.credit_note.not_found", "credit note not found")
 	}
 	if err != nil {
-		return out, status.Error(codes.Internal, "internal error")
+		return out, apierr.Internal(ctx, err)
 	}
 	return out, nil
 }
@@ -78,7 +79,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 		return err
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	out := &Page{}
 	var more bool
@@ -91,6 +92,9 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 
 // CustomerExternalID is best effort (empty when the lookup fails): a credit note that was just written is returned even if the lookup fails.
 func CustomerExternalID(ctx context.Context, system *pgxpool.Pool, tenantID, invoiceID uuid.UUID) string {
-	external, _ := sqlc.New(system).GetInvoiceCustomerExternalID(ctx, sqlc.GetInvoiceCustomerExternalIDParams{TenantID: tenantID, ID: invoiceID})
+	external, err := sqlc.New(system).GetInvoiceCustomerExternalID(ctx, sqlc.GetInvoiceCustomerExternalIDParams{TenantID: tenantID, ID: invoiceID})
+	if err != nil {
+		slog.WarnContext(ctx, "credit note: customer of the invoice not read", "tenant", tenantID, "invoice", invoiceID, "error", err)
+	}
 	return external
 }

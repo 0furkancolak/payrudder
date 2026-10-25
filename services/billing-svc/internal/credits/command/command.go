@@ -16,11 +16,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
@@ -82,7 +82,7 @@ func CreatePack(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, name
 		return err
 	})
 	if err != nil {
-		return nil, internal(err)
+		return nil, apierr.Internal(ctx, err)
 	}
 	return p, nil
 }
@@ -96,7 +96,7 @@ func SetPackActive(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUI
 		return err
 	})
 	if err != nil {
-		return internal(err)
+		return apierr.Internal(ctx, err)
 	}
 	if n == 0 {
 		return errkey.New(codes.NotFound, "billing.credits.pack_not_found", "no such credit pack")
@@ -146,7 +146,7 @@ func Grant(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UUI
 		return balanceInto(ctx, q, tenantID, customerID, out)
 	})
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrap(ctx, err)
 	}
 	return out, nil
 }
@@ -306,7 +306,7 @@ func Consume(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.U
 		return announceLow(ctx, tx, tenantID, customerID, externalID, key, out.Balance, credits)
 	})
 	if err != nil {
-		return nil, wrap(err)
+		return nil, wrap(ctx, err)
 	}
 	return out, nil
 }
@@ -337,7 +337,7 @@ func SetLowThreshold(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID,
 		return sqlc.New(tx).UpsertCreditSettings(ctx, sqlc.UpsertCreditSettingsParams{TenantID: tenantID, LowThreshold: threshold})
 	})
 	if err != nil {
-		return internal(err)
+		return apierr.Internal(ctx, err)
 	}
 	return nil
 }
@@ -395,11 +395,9 @@ func keyPtr(k string) *string {
 }
 
 // wrap passes errors that carry a key through and hides the rest.
-func wrap(err error) error {
+func wrap(ctx context.Context, err error) error {
 	if errkey.Of(err) != "" {
 		return err
 	}
-	return internal(err)
+	return apierr.Internal(ctx, err)
 }
-
-func internal(error) error { return status.Error(codes.Internal, "internal error") }

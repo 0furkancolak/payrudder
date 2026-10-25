@@ -14,12 +14,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -83,7 +83,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 		return err
 	})
 	if err != nil {
-		return nil, "", internal()
+		return nil, "", apierr.Internal(ctx, err)
 	}
 	next := ""
 	var more bool
@@ -164,7 +164,7 @@ func Summary(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Summa
 		return nil
 	})
 	if err != nil {
-		return nil, internal()
+		return nil, apierr.Internal(ctx, err)
 	}
 	res := &Result{From: from, To: to, Granularity: gran, AppID: p.AppID, Currencies: Build(from, to, gran, income, refunds, stored)}
 	AddCoupons(res.Currencies, coupons)
@@ -238,5 +238,3 @@ func parseToken(token string) (time.Time, uuid.UUID, bool) {
 	}
 	return d, u, true
 }
-
-func internal() error { return status.Error(codes.Internal, "internal error") }

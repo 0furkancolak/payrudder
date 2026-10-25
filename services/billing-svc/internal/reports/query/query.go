@@ -9,11 +9,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -58,7 +58,7 @@ func Revenue(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Reven
 		return err
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	return rows, nil
 }
@@ -88,7 +88,7 @@ func Dunning(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, limit i
 		return err
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, apierr.Internal(ctx, err)
 	}
 	return out, nil
 }

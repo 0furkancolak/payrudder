@@ -14,10 +14,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -71,10 +71,7 @@ func Record(ctx context.Context, system *pgxpool.Pool, eng *sagacommand.Engine, 
 		return err
 	})
 	if err != nil {
-		if _, ok := status.FromError(err); ok {
-			return Result{}, err
-		}
-		return Result{}, status.Error(codes.Internal, "internal error")
+		return Result{}, apierr.Wrap(ctx, err)
 	}
 	return out, nil
 }

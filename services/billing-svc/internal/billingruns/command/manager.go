@@ -158,7 +158,9 @@ func (m *Manager) withLock(ctx context.Context, tenantID uuid.UUID, periodID str
 	}
 	defer func() {
 		// A cancelled ctx must not leave the lock behind on a pooled connection.
-		_ = q.ReleaseRunLock(context.WithoutCancel(ctx), key)
+		if err := q.ReleaseRunLock(context.WithoutCancel(ctx), key); err != nil {
+			m.log.WarnContext(ctx, "billing run lock not released", "tenant", tenantID, "period", periodID, "error", err)
+		}
 	}()
 	return true, fn(ctx)
 }
