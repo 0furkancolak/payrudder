@@ -14,6 +14,7 @@ import (
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
+	"github.com/0furkancolak/payrudder/pkg/chaos"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
@@ -93,7 +94,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return err
 	}
 	relay, err := outbox.NewRelay(systemPool, outbox.KafkaSink{Client: producer}, outbox.Config{
-		Workers: cfg.RelayWorkers, BatchSize: cfg.RelayBatchSize, AfterPublish: afterPublishFault(),
+		Workers: cfg.RelayWorkers, BatchSize: cfg.RelayBatchSize, AfterPublish: chaos.Fail("RELAY_CRASH_AFTER_PRODUCE", "chaos build: relay will crash after produce", "chaos: simulated relay crash after produce"),
 	}, log)
 	if err != nil {
 		return err
