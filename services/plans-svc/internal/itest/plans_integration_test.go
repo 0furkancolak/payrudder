@@ -43,7 +43,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("Coupons", testCoupons)
 	t.Run("CancelCredit", testCancelCredit)
 	t.Run("ProviderMigrationKeepsTheFeeTiming", testProviderMigrationKeepsTheFeeTiming)
-	t.Run("PlanChangeWithACouponIsNotPricedAtListFee", testPlanChangeWithACouponIsNotPricedAtListFee)
+	t.Run("PlanChangeWithACouponIsPricedAfterTheCoupon", testPlanChangeWithACouponIsPricedAfterTheCoupon)
 	t.Run("Webhooks", testWebhooks)
 	t.Run("Apps", testApps)
 	t.Run("Identity", testIdentity)

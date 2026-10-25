@@ -145,7 +145,7 @@ func (m *MockPSP) do(ctx context.Context, method, path, key string, in, out any,
 	if resp.StatusCode >= 500 {
 		return resp.StatusCode, &TransientError{Err: fmt.Errorf("psp answered %d", resp.StatusCode)}
 	}
-	if resp.StatusCode >= 400 && !(allowNotFound && resp.StatusCode == http.StatusNotFound) {
+	if resp.StatusCode >= 400 && (!allowNotFound || resp.StatusCode != http.StatusNotFound) {
 		return resp.StatusCode, fmt.Errorf("psp rejected the request: %d %s", resp.StatusCode, raw)
 	}
 	if out != nil && len(raw) > 0 {
