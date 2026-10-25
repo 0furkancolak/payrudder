@@ -1784,6 +1784,9 @@
         "no_live": "Diese Installation hat keine Live-Umgebung.",
         "owner_only": "Nur ein Inhaber des Kontos kann die Live-Umgebung aktivieren.",
         "suspended": "Die Live-Umgebung ist gesperrt. Wenden Sie sich an den Support."
+      },
+      "promote": {
+        "stale": "Die Konfiguration hat sich seit der Vorschau geändert. Zeigen Sie die Übernahme erneut in der Vorschau an."
       }
     },
     "gateway": {

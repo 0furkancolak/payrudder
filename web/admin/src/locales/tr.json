@@ -1784,6 +1784,9 @@
         "no_live": "Bu kurulumda canlı ortam yok.",
         "owner_only": "Canlı ortamı yalnızca hesabın sahibi etkinleştirebilir.",
         "suspended": "Canlı ortam askıya alınmış. Destekle iletişime geçin."
+      },
+      "promote": {
+        "stale": "Önizlemeden sonra yapılandırma değişti. Aktarımı yeniden önizleyin."
       }
     },
     "gateway": {
