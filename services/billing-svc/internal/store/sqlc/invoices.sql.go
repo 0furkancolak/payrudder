@@ -149,39 +149,6 @@ func (q *Queries) GetInvoice(ctx context.Context, id uuid.UUID) (GetInvoiceRow, 
 	return i, err
 }
 
-const getInvoiceAddresses = `-- name: GetInvoiceAddresses :one
-SELECT COALESCE(snapshot->'seller_address', '[]'::jsonb)::jsonb AS seller_address, COALESCE(snapshot->'customer_address', '[]'::jsonb)::jsonb AS customer_address
-FROM invoices WHERE id = $1
-`
-
-type GetInvoiceAddressesRow struct {
-	SellerAddress   json.RawMessage
-	CustomerAddress json.RawMessage
-}
-
-func (q *Queries) GetInvoiceAddresses(ctx context.Context, id uuid.UUID) (GetInvoiceAddressesRow, error) {
-	row := q.db.QueryRow(ctx, getInvoiceAddresses, id)
-	var i GetInvoiceAddressesRow
-	err := row.Scan(&i.SellerAddress, &i.CustomerAddress)
-	return i, err
-}
-
-const getInvoiceBankTransfer = `-- name: GetInvoiceBankTransfer :one
-SELECT COALESCE(number, '')::text AS number, COALESCE(snapshot->'bank_transfer', 'null'::jsonb)::jsonb AS bank_transfer FROM invoices WHERE id = $1
-`
-
-type GetInvoiceBankTransferRow struct {
-	Number       string
-	BankTransfer json.RawMessage
-}
-
-func (q *Queries) GetInvoiceBankTransfer(ctx context.Context, id uuid.UUID) (GetInvoiceBankTransferRow, error) {
-	row := q.db.QueryRow(ctx, getInvoiceBankTransfer, id)
-	var i GetInvoiceBankTransferRow
-	err := row.Scan(&i.Number, &i.BankTransfer)
-	return i, err
-}
-
 const getInvoiceCustomerExternalID = `-- name: GetInvoiceCustomerExternalID :one
 SELECT COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id FROM invoices WHERE tenant_id = $1 AND id = $2
 `
@@ -196,25 +163,6 @@ func (q *Queries) GetInvoiceCustomerExternalID(ctx context.Context, arg GetInvoi
 	var customer_external_id string
 	err := row.Scan(&customer_external_id)
 	return customer_external_id, err
-}
-
-const getInvoiceHostedFields = `-- name: GetInvoiceHostedFields :one
-SELECT COALESCE(snapshot->>'tenant_name', '')::text AS seller_name, COALESCE(snapshot->>'customer_name', '')::text AS customer_name,
-       COALESCE((snapshot->>'currency_exponent')::int, 2)::int AS currency_exponent
-FROM invoices WHERE id = $1
-`
-
-type GetInvoiceHostedFieldsRow struct {
-	SellerName       string
-	CustomerName     string
-	CurrencyExponent int32
-}
-
-func (q *Queries) GetInvoiceHostedFields(ctx context.Context, id uuid.UUID) (GetInvoiceHostedFieldsRow, error) {
-	row := q.db.QueryRow(ctx, getInvoiceHostedFields, id)
-	var i GetInvoiceHostedFieldsRow
-	err := row.Scan(&i.SellerName, &i.CustomerName, &i.CurrencyExponent)
-	return i, err
 }
 
 const getInvoiceIDByFeeKey = `-- name: GetInvoiceIDByFeeKey :one
@@ -242,17 +190,6 @@ func (q *Queries) GetInvoicePDFKey(ctx context.Context, id uuid.UUID) (*string, 
 	var pdf_object_key *string
 	err := row.Scan(&pdf_object_key)
 	return pdf_object_key, err
-}
-
-const getInvoiceStatus = `-- name: GetInvoiceStatus :one
-SELECT status FROM invoices WHERE id = $1
-`
-
-func (q *Queries) GetInvoiceStatus(ctx context.Context, id uuid.UUID) (string, error) {
-	row := q.db.QueryRow(ctx, getInvoiceStatus, id)
-	var status string
-	err := row.Scan(&status)
-	return status, err
 }
 
 const insertDraftInvoice = `-- name: InsertDraftInvoice :one
@@ -348,17 +285,6 @@ func (q *Queries) InsertInvoiceLine(ctx context.Context, arg InsertInvoiceLinePa
 		arg.CouponCode,
 	)
 	return err
-}
-
-const invoiceExists = `-- name: InvoiceExists :one
-SELECT EXISTS (SELECT 1 FROM invoices WHERE id = $1)
-`
-
-func (q *Queries) InvoiceExists(ctx context.Context, id uuid.UUID) (bool, error) {
-	row := q.db.QueryRow(ctx, invoiceExists, id)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }
 
 const listDraftInvoiceIDsOfRerating = `-- name: ListDraftInvoiceIDsOfRerating :many

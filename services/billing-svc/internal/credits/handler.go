@@ -14,6 +14,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/query"
 )
 
@@ -149,7 +150,7 @@ func (h *Handler) scope(ctx context.Context, customerID string) (tenant.Info, uu
 	return ti, cid, nil
 }
 
-func packProto(p *command.Pack) *billingv1.CreditPack {
+func packProto(p *model.Pack) *billingv1.CreditPack {
 	out := &billingv1.CreditPack{Id: p.ID.String(), Name: p.Name, Credits: p.Credits, PriceMinor: p.PriceMinor, Currency: p.Currency, Active: p.Active, CreateTime: timestamppb.New(p.CreatedAt)}
 	if p.ValidityDays != nil {
 		out.ValidityDays = *p.ValidityDays

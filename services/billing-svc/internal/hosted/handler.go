@@ -12,7 +12,6 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
-	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
@@ -310,10 +309,7 @@ func (h *Handler) GetPortal(ctx context.Context, req *billingv1.GetPortalRequest
 		resp.CreditLots = append(resp.CreditLots, lot)
 	}
 	for _, p := range page.CreditPacks {
-		exp := int32(2)
-		if c, ok := money.LookupCurrency(p.Currency); ok {
-			exp = int32(c.Exponent) //nolint:gosec // 0..3
-		}
+		exp := query.CurrencyExponent(p.Currency)
 		pack := &billingv1.PortalCreditPack{Id: p.ID.String(), Name: p.Name, Credits: p.Credits, PriceMinor: p.PriceMinor, Currency: p.Currency, CurrencyExponent: exp}
 		if p.ValidityDays != nil {
 			pack.ValidityDays = *p.ValidityDays

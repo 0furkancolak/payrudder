@@ -8,9 +8,6 @@ VALUES (@tenant_id, @id, @kind, sqlc.narg('parent_id'), sqlc.narg('invoice_id'),
         sqlc.narg('request_hash'), sqlc.narg('amount_minor'), sqlc.narg('currency'), sqlc.narg('description'), sqlc.narg('customer_id'), sqlc.narg('customer_external_id'),
         sqlc.narg('pack_id'), sqlc.narg('quantity'), sqlc.narg('credits'), sqlc.narg('validity_days'), sqlc.narg('promotion_code'));
 
--- name: InsertInvoiceLink :exec
-INSERT INTO payment_links (tenant_id, id, kind, invoice_id, token_hash, expires_at) VALUES (@tenant_id, @id, 'invoice', @invoice_id, @token_hash, @expires_at);
-
 -- name: RevokeInvoiceLinks :execrows
 UPDATE payment_links SET revoked_at = now() WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND revoked_at IS NULL;
 

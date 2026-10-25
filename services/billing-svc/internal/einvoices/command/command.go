@@ -19,6 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	einvoicemodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/model"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -76,8 +77,8 @@ func ApplyResult(ctx context.Context, tx pgx.Tx, now time.Time, tenantID, docID 
 	switch res.GetState() {
 	case "issued":
 		// Also from failed: a late answer means the document exists at the integrator, and that fact must not be lost.
-		return q.SetEInvoiceIssued(ctx, sqlc.SetEInvoiceIssuedParams{LegalNumber: ptr(res.GetLegalNumber()), ExternalID: res.GetExternalId(), DocumentType: res.GetDocumentType(),
-			Provider: res.GetProvider(), XmlKey: ptrOrNil(res.GetXmlObjectKey()), PdfKey: ptrOrNil(res.GetPdfObjectKey()), Now: now, TenantID: tenantID, ID: docID})
+		return q.SetEInvoiceIssued(ctx, sqlc.SetEInvoiceIssuedParams{LegalNumber: store.Ptr(res.GetLegalNumber()), ExternalID: res.GetExternalId(), DocumentType: res.GetDocumentType(),
+			Provider: res.GetProvider(), XmlKey: store.NilIfEmpty(res.GetXmlObjectKey()), PdfKey: store.NilIfEmpty(res.GetPdfObjectKey()), Now: now, TenantID: tenantID, ID: docID})
 	case "cancelled":
 		return q.SetEInvoiceCancelled(ctx, sqlc.SetEInvoiceCancelledParams{Now: now, TenantID: tenantID, ID: docID})
 	}
@@ -93,15 +94,6 @@ func ApplyResult(ctx context.Context, tx pgx.Tx, now time.Time, tenantID, docID 
 	}
 	return q.SetEInvoiceFailed(ctx, sqlc.SetEInvoiceFailedParams{ErrorKey: key, Error: msg, DocumentType: res.GetDocumentType(), Provider: res.GetProvider(),
 		Now: now, TenantID: tenantID, ID: docID})
-}
-
-func ptr(s string) *string { return &s }
-
-func ptrOrNil(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }
 
 // dispatch sends the command of a locked document again as the next attempt.
@@ -168,7 +160,7 @@ func (c *Commands) retry(ctx context.Context, tenantID, docID uuid.UUID) error {
 	if c.Parties != nil {
 		ext, err := sqlc.New(c.Pool).GetEInvoiceExternalCustomer(ctx, sqlc.GetEInvoiceExternalCustomerParams{TenantID: tenantID, ID: docID})
 		if errors.Is(err, pgx.ErrNoRows) {
-			return notFound()
+			return einvoicemodel.ErrNotFound
 		}
 		if err != nil {
 			return err
@@ -184,7 +176,7 @@ func (c *Commands) retry(ctx context.Context, tenantID, docID uuid.UUID) error {
 		q := sqlc.New(tx)
 		doc, err := q.LockEInvoiceDocument(ctx, sqlc.LockEInvoiceDocumentParams{TenantID: tenantID, ID: docID})
 		if errors.Is(err, pgx.ErrNoRows) {
-			return notFound()
+			return einvoicemodel.ErrNotFound
 		}
 		if err != nil {
 			return err
@@ -222,7 +214,7 @@ func (c *Commands) cancel(ctx context.Context, tenantID, docID uuid.UUID, reason
 		q := sqlc.New(tx)
 		doc, err := q.LockEInvoiceDocument(ctx, sqlc.LockEInvoiceDocumentParams{TenantID: tenantID, ID: docID})
 		if errors.Is(err, pgx.ErrNoRows) {
-			return notFound()
+			return einvoicemodel.ErrNotFound
 		}
 		if err != nil {
 			return err
@@ -236,8 +228,4 @@ func (c *Commands) cancel(ctx context.Context, tenantID, docID uuid.UUID, reason
 		}
 		return dispatch(ctx, tx, now, tenantID, docID, doc, truncate(reason, 300))
 	})
-}
-
-func notFound() error {
-	return errkey.New(codes.NotFound, "einvoice.document.not_found", "e-document not found")
 }

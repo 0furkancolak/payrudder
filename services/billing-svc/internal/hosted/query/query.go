@@ -21,16 +21,31 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	invoices "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
-// errNoLink is what a visitor gets for a token that is unknown, expired or revoked, and for an invoice that is not in its scope: they all look the same.
-var errNoLink = errkey.New(codes.NotFound, "billing.invoice_link.not_found", "this link does not exist or has expired")
+// ErrNoLink is what a visitor gets for a token that is unknown, expired or revoked, and for an invoice that is not in its scope: they all look the same.
+var ErrNoLink = errkey.New(codes.NotFound, "billing.invoice_link.not_found", "this link does not exist or has expired")
 
-// NoLink is the error of an unknown link, for callers that decide a link cannot be used.
-func NoLink() error { return errNoLink }
+// CurrencyExponent is the number of decimals of a currency; a code billing does not know prints with two.
+func CurrencyExponent(code string) int32 {
+	if c, ok := money.LookupCurrency(code); ok {
+		return int32(c.Exponent) //nolint:gosec // 0..3
+	}
+	return 2
+}
+
+// A link token is 20 to 100 characters (ours are 43); anything else is not one and is not looked up.
+const (
+	minTokenLen = 20
+	maxTokenLen = 100
+)
+
+func validToken(t string) bool { return len(t) >= minTokenLen && len(t) <= maxTokenLen }
 
 // TokenHash is what is stored of a link token: the token itself is only ever shown once.
 func TokenHash(token string) []byte {
@@ -45,12 +60,12 @@ type Link struct {
 
 // ResolveLink resolves a token to its link, or a not-found error.
 func ResolveLink(ctx context.Context, system *pgxpool.Pool, token string) (*Link, error) {
-	if len(token) < 20 || len(token) > 100 {
-		return nil, errNoLink
+	if !validToken(token) {
+		return nil, ErrNoLink
 	}
 	row, err := sqlc.New(system).FindActiveInvoiceLink(ctx, TokenHash(token))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errNoLink
+		return nil, ErrNoLink
 	}
 	if err != nil {
 		return nil, apierr.Internal(ctx, err)
@@ -80,7 +95,7 @@ type Portal struct {
 func Resolve(ctx context.Context, system *pgxpool.Pool, token, portalToken, invoiceID string) (*Scope, error) {
 	switch {
 	case token != "" && portalToken != "":
-		return nil, errNoLink
+		return nil, ErrNoLink
 	case token != "":
 		l, err := ResolveLink(ctx, system, token)
 		if err != nil {
@@ -94,27 +109,27 @@ func Resolve(ctx context.Context, system *pgxpool.Pool, token, portalToken, invo
 	case portalToken != "":
 		return resolvePortal(ctx, system, portalToken, invoiceID)
 	}
-	return nil, errNoLink
+	return nil, ErrNoLink
 }
 
 func resolvePortal(ctx context.Context, system *pgxpool.Pool, token, invoiceID string) (*Scope, error) {
-	if len(token) < 20 || len(token) > 100 {
-		return nil, errNoLink
+	if !validToken(token) {
+		return nil, ErrNoLink
 	}
 	row, err := sqlc.New(system).FindActivePortalLink(ctx, TokenHash(token))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errNoLink
+		return nil, ErrNoLink
 	}
 	if err != nil {
 		return nil, apierr.Internal(ctx, err)
 	}
-	s := &Scope{TenantID: row.TenantID, Portal: &Portal{CustomerID: row.CustomerID, ExternalID: deref(row.CustomerExternalID)}, ExpiresAt: row.ExpiresAt}
+	s := &Scope{TenantID: row.TenantID, Portal: &Portal{CustomerID: row.CustomerID, ExternalID: store.Deref(row.CustomerExternalID)}, ExpiresAt: row.ExpiresAt}
 	if invoiceID == "" {
 		return s, nil
 	}
 	id, err := uuid.Parse(invoiceID)
 	if err != nil {
-		return nil, errNoLink
+		return nil, ErrNoLink
 	}
 	// The invoice must be this customer's, in this tenant: the predicate names both, besides the RLS of the transaction.
 	err = pgxx.InTx(ctx, system, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
@@ -122,7 +137,7 @@ func resolvePortal(ctx context.Context, system *pgxpool.Pool, token, invoiceID s
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errNoLink
+		return nil, ErrNoLink
 	}
 	if err != nil {
 		return nil, apierr.Internal(ctx, err)
@@ -137,11 +152,11 @@ func resolvePortal(ctx context.Context, system *pgxpool.Pool, token, invoiceID s
 // too), a charge in flight is processing. Anything before the PDF is rendered is processing: the customer cannot pay what is not ready.
 func State(invoiceStatus, sagaState string) (state string, payable bool) {
 	switch invoiceStatus {
-	case "paid":
+	case invmodel.StatusPaid:
 		return "paid", false
-	case "void":
+	case invmodel.StatusVoid:
 		return "void", false
-	case "uncollectible":
+	case invmodel.StatusUncollectible:
 		return "failed", false
 	}
 	switch sagamodel.State(sagaState) {
@@ -192,16 +207,9 @@ type PackInfo struct {
 	ValidityDays int32
 }
 
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
 // Page is what the gateway renders for a link or an invoice of a portal.
 type Page struct {
-	// Kind is invoice or adhoc.
+	// Kind is invoice, adhoc or credit_pack.
 	Kind    string
 	Invoice *invoices.Invoice
 	Adhoc   *Adhoc
@@ -233,7 +241,7 @@ func Get(ctx context.Context, d Deps, s *Scope) (*Page, error) {
 		return d.adhoc(ctx, s)
 	}
 	if s.InvoiceID == uuid.Nil {
-		return nil, errNoLink
+		return nil, ErrNoLink
 	}
 	return d.invoice(ctx, s)
 }
@@ -243,10 +251,7 @@ func (d Deps) adhoc(ctx context.Context, s *Scope) (*Page, error) {
 	if r.AmountMinor == nil || r.Currency == nil {
 		return nil, apierr.Internal(ctx, errors.New("an ad-hoc link without an amount or a currency"))
 	}
-	exp := int32(2)
-	if c, ok := money.LookupCurrency(*r.Currency); ok {
-		exp = int32(c.Exponent) //nolint:gosec // 0..3
-	}
+	exp := CurrencyExponent(*r.Currency)
 	seller, err := d.Seller(ctx, s.TenantID)
 	if err != nil {
 		return nil, errkey.New(codes.Unavailable, "billing.hosted.seller_unavailable", "seller lookup unavailable")
@@ -293,13 +298,13 @@ func (d Deps) invoice(ctx context.Context, s *Scope) (*Page, error) {
 		return nil
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errNoLink
+		return nil, ErrNoLink
 	}
 	if err != nil {
 		return nil, apierr.Internal(ctx, err)
 	}
-	if p.Invoice.Row.Status == "draft" {
-		return nil, errNoLink
+	if p.Invoice.Row.Status == invmodel.StatusDraft {
+		return nil, ErrNoLink
 	}
 	snap := p.Snapshot
 	p.SellerName, p.CustomerName, p.CurrencyExponent = snap.TenantName, snap.CustomerName, int32(snap.CurrencyExponent) //nolint:gosec // 0..3
@@ -311,7 +316,7 @@ func (d Deps) invoice(ctx context.Context, s *Scope) (*Page, error) {
 	p.PDFAvailable = p.Invoice.Row.PdfObjectKey != "" && d.PDFs != nil
 	p.LogoAvailable = snap.LogoObjectKey != "" && d.PDFs != nil
 	p.State, p.Payable = State(p.Invoice.Row.Status, p.SagaState)
-	if p.Invoice.Row.Status == "open" {
+	if p.Invoice.Row.Status == invmodel.StatusOpen {
 		p.PaymentInstructions = snap.Instructions(p.Invoice.Row.Number, s.InvoiceID)
 	}
 	return p, nil
@@ -320,7 +325,7 @@ func (d Deps) invoice(ctx context.Context, s *Scope) (*Page, error) {
 // PDFURL returns a presigned link to the PDF of the invoice in scope.
 func PDFURL(ctx context.Context, d Deps, s *Scope) (string, time.Time, error) {
 	if s.InvoiceID == uuid.Nil {
-		return "", time.Time{}, errNoLink
+		return "", time.Time{}, ErrNoLink
 	}
 	if d.PDFs == nil {
 		return "", time.Time{}, errkey.New(codes.Unimplemented, "billing.storage.not_configured", "object storage is not configured")
@@ -332,7 +337,7 @@ func PDFURL(ctx context.Context, d Deps, s *Scope) (string, time.Time, error) {
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", time.Time{}, errNoLink
+		return "", time.Time{}, ErrNoLink
 	}
 	if err != nil {
 		return "", time.Time{}, apierr.Internal(ctx, err)
@@ -346,7 +351,7 @@ func PDFURL(ctx context.Context, d Deps, s *Scope) (string, time.Time, error) {
 // LogoURL returns a short-lived link to the seller's logo, or a not-found error when there is none.
 func LogoURL(ctx context.Context, d Deps, s *Scope) (string, error) {
 	if d.PDFs == nil {
-		return "", errNoLink
+		return "", ErrNoLink
 	}
 	key := ""
 	if s.InvoiceID != uuid.Nil {
@@ -364,7 +369,7 @@ func LogoURL(ctx context.Context, d Deps, s *Scope) (string, error) {
 		key = seller.LogoKey
 	}
 	if key == "" {
-		return "", errNoLink
+		return "", ErrNoLink
 	}
 	url, _, err := invoices.Sign(ctx, d.PDFs, key)
 	return url, err
@@ -379,7 +384,6 @@ type PortalInvoice struct {
 
 // PortalPage is the customer's page.
 type PortalPage struct {
-	Scope         *Scope
 	CustomerName  string
 	SellerName    string
 	LogoAvailable bool
@@ -398,9 +402,9 @@ const portalLimit = 100
 // GetPortal returns the customer's page: their finalized invoices, newest first.
 func GetPortal(ctx context.Context, d Deps, s *Scope) (*PortalPage, error) {
 	if s.Portal == nil {
-		return nil, errNoLink
+		return nil, ErrNoLink
 	}
-	out := &PortalPage{Scope: s}
+	out := &PortalPage{}
 	var rows []sqlc.ListPortalInvoicesRow
 	var latest []byte
 	err := pgxx.InTenantTx(ctx, d.App, s.TenantID, func(tx pgx.Tx) error {

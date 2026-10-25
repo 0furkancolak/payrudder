@@ -31,8 +31,7 @@ func (h *Handler) CreateExpense(ctx context.Context, req *billingv1.CreateExpens
 	if err != nil {
 		return nil, err
 	}
-	e, err := command.Create(ctx, h.app, ti.ID, &command.Input{AppID: req.GetAppId(), Vendor: req.GetVendor(), Category: req.GetCategory(), AmountMinor: req.GetAmountMinor(),
-		Currency: req.GetCurrency(), IncurredOn: req.GetIncurredOn(), Note: req.GetNote(), Recurring: req.GetRecurring(), RecurringUntil: req.GetRecurringUntil()})
+	e, err := command.Create(ctx, h.app, ti.ID, inputOf(req))
 	if err != nil {
 		return nil, err
 	}
@@ -45,8 +44,7 @@ func (h *Handler) UpdateExpense(ctx context.Context, req *billingv1.UpdateExpens
 	if err != nil {
 		return nil, err
 	}
-	e, err := command.Update(ctx, h.app, ti.ID, id, &command.Input{AppID: req.GetAppId(), Vendor: req.GetVendor(), Category: req.GetCategory(), AmountMinor: req.GetAmountMinor(),
-		Currency: req.GetCurrency(), IncurredOn: req.GetIncurredOn(), Note: req.GetNote(), Recurring: req.GetRecurring(), RecurringUntil: req.GetRecurringUntil()})
+	e, err := command.Update(ctx, h.app, ti.ID, id, inputOf(req))
 	if err != nil {
 		return nil, err
 	}
@@ -155,6 +153,24 @@ func (h *Handler) scope(ctx context.Context, expenseID string) (tenant.Info, uui
 		return tenant.Info{}, uuid.Nil, errkey.New(codes.NotFound, "billing.accounting.expense_not_found", "no such expense")
 	}
 	return ti, id, nil
+}
+
+// expenseRequest is what creating and updating an expense both ask for.
+type expenseRequest interface {
+	GetAppId() string
+	GetVendor() string
+	GetCategory() string
+	GetAmountMinor() int64
+	GetCurrency() string
+	GetIncurredOn() string
+	GetNote() string
+	GetRecurring() string
+	GetRecurringUntil() string
+}
+
+func inputOf(req expenseRequest) *command.Input {
+	return &command.Input{AppID: req.GetAppId(), Vendor: req.GetVendor(), Category: req.GetCategory(), AmountMinor: req.GetAmountMinor(), Currency: req.GetCurrency(),
+		IncurredOn: req.GetIncurredOn(), Note: req.GetNote(), Recurring: req.GetRecurring(), RecurringUntil: req.GetRecurringUntil()}
 }
 
 func expenseProto(e *model.Expense) *billingv1.Expense {

@@ -32,7 +32,7 @@ func (h *Handler) ClosePeriodNow(ctx context.Context, req *billingv1.ClosePeriod
 	if err != nil {
 		return nil, err
 	}
-	return &billingv1.ClosePeriodNowResponse{Run: runProto(run, run.InvoiceCount)}, nil
+	return &billingv1.ClosePeriodNowResponse{Run: runProto(run)}, nil
 }
 
 // ClosePeriod implements billingv1.BillingAdminServiceServer.
@@ -48,7 +48,7 @@ func (h *Handler) ClosePeriod(ctx context.Context, req *billingv1.ClosePeriodReq
 	if err != nil {
 		return nil, err
 	}
-	return &billingv1.ClosePeriodResponse{Run: runProto(run, run.InvoiceCount)}, nil
+	return &billingv1.ClosePeriodResponse{Run: runProto(run)}, nil
 }
 
 // GetBillingRun implements billingv1.BillingAdminServiceServer.
@@ -64,12 +64,12 @@ func (h *Handler) GetBillingRun(ctx context.Context, req *billingv1.GetBillingRu
 	if err != nil {
 		return nil, err
 	}
-	return &billingv1.GetBillingRunResponse{Run: runProto(run, run.InvoiceCount)}, nil
+	return &billingv1.GetBillingRunResponse{Run: runProto(run)}, nil
 }
 
-func runProto(r *runmodel.Run, invoices int) *billingv1.BillingRun {
+func runProto(r *runmodel.Run) *billingv1.BillingRun {
 	out := &billingv1.BillingRun{
-		TenantId: r.TenantID.String(), PeriodId: r.PeriodID, CutoffTime: timestamppb.New(r.CutoffAt), InvoiceCount: int32(invoices), //nolint:gosec // small
+		TenantId: r.TenantID.String(), PeriodId: r.PeriodID, CutoffTime: timestamppb.New(r.CutoffAt), InvoiceCount: int32(r.InvoiceCount), //nolint:gosec // small
 		LastError: r.LastError,
 	}
 	switch r.Status {

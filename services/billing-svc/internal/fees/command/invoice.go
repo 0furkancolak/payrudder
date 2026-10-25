@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
@@ -125,7 +126,7 @@ func (c *Commands) insertDraft(ctx context.Context, tenantID uuid.UUID, d *draft
 	return pgxx.InTx(ctx, c.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := c.q.WithTx(tx)
 		_, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
-			TenantID: tenantID, ID: d.id, CustomerID: d.customerID, PeriodID: d.periodID, Kind: "FEE", PlanVersionID: d.planVersionID, Currency: d.currency,
+			TenantID: tenantID, ID: d.id, CustomerID: d.customerID, PeriodID: d.periodID, Kind: invmodel.KindFee, PlanVersionID: d.planVersionID, Currency: d.currency,
 			SubtotalMinor: d.subtotal, TotalMinor: d.total, Snapshot: d.snapshot, Provider: d.provider, Country: d.country, FeeKey: &d.key,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {

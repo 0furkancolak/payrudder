@@ -17,17 +17,17 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Packs lists the tenant's packs; activeOnly leaves out the ones withdrawn from sale.
-func Packs(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, activeOnly bool) ([]command.Pack, error) {
-	var out []command.Pack
+func Packs(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, activeOnly bool) ([]model.Pack, error) {
+	var out []model.Pack
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		rows, err := sqlc.New(tx).ListCreditPacks(ctx, sqlc.ListCreditPacksParams{TenantID: tenantID, ActiveOnly: activeOnly})
 		for _, r := range rows {
-			out = append(out, command.Pack{ID: r.ID, Name: r.Name, Credits: r.Credits, PriceMinor: r.PriceMinor, Currency: r.Currency, Active: r.Active, CreatedAt: r.CreatedAt, ValidityDays: r.ValidityDays})
+			out = append(out, packOf(sqlc.GetCreditPackRow(r)))
 		}
 		return err
 	})
@@ -37,15 +37,20 @@ func Packs(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, activeOnl
 	return out, nil
 }
 
+func packOf(r sqlc.GetCreditPackRow) model.Pack {
+	return model.Pack{ID: r.ID, Name: r.Name, Credits: r.Credits, PriceMinor: r.PriceMinor, Currency: r.Currency, Active: r.Active, CreatedAt: r.CreatedAt, ValidityDays: r.ValidityDays}
+}
+
 // PackByID returns one pack, or billing.credits.pack_not_found.
-func PackByID(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (*command.Pack, error) {
-	var out *command.Pack
+func PackByID(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (*model.Pack, error) {
+	var out *model.Pack
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		r, err := sqlc.New(tx).GetCreditPack(ctx, sqlc.GetCreditPackParams{TenantID: tenantID, ID: id})
 		if err != nil {
 			return err
 		}
-		out = &command.Pack{ID: r.ID, Name: r.Name, Credits: r.Credits, PriceMinor: r.PriceMinor, Currency: r.Currency, Active: r.Active, CreatedAt: r.CreatedAt, ValidityDays: r.ValidityDays}
+		p := packOf(r)
+		out = &p
 		return nil
 	})
 	if errors.Is(err, pgx.ErrNoRows) {

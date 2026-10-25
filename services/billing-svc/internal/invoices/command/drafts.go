@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
@@ -60,7 +61,7 @@ func insertRegular(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, per
 	id := uuid.New()
 	subtotal := rating.Subtotal(d.Lines) // before tax
 	_, err = q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
-		TenantID: tenantID, ID: id, CustomerID: d.CustomerID, PeriodID: periodID, Kind: "REGULAR", PlanVersionID: d.PlanVersion, Currency: d.Currency,
+		TenantID: tenantID, ID: id, CustomerID: d.CustomerID, PeriodID: periodID, Kind: invmodel.KindRegular, PlanVersionID: d.PlanVersion, Currency: d.Currency,
 		SubtotalMinor: subtotal, TotalMinor: d.Total, Snapshot: snap, Provider: d.Provider, Country: store.NilIfEmpty(d.Country),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {

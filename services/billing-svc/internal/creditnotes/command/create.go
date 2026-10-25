@@ -11,6 +11,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/model"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
@@ -38,7 +39,7 @@ func (c *Commands) create(ctx context.Context, tenantID, invoiceID uuid.UUID, am
 		if err != nil {
 			return err
 		}
-		if inv.Status != "paid" {
+		if inv.Status != invmodel.StatusPaid {
 			return model.ErrNotPaid
 		}
 		if amount, err = creditableAmount(ctx, q, tenantID, invoiceID, inv.TotalMinor, amount); err != nil {

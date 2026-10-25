@@ -19,15 +19,14 @@ import (
 
 // Handler implements the e-document methods of billingv1.BillingServiceServer and billingv1.BillingAdminServiceServer.
 type Handler struct {
-	app    *pgxpool.Pool
-	system *pgxpool.Pool
-	cmd    *command.Commands
-	files  invoicequery.PDFSigner
+	app   *pgxpool.Pool
+	cmd   *command.Commands
+	files invoicequery.PDFSigner
 }
 
-// New returns the handler over the billing_app and billing_system pools.
-func New(app, system *pgxpool.Pool, cmd *command.Commands) *Handler {
-	return &Handler{app: app, system: system, cmd: cmd}
+// New returns the handler over the billing_app pool; the commands work on billing_system.
+func New(app *pgxpool.Pool, cmd *command.Commands) *Handler {
+	return &Handler{app: app, cmd: cmd}
 }
 
 // WithFiles enables GetEInvoiceFileUrl.

@@ -3,7 +3,6 @@ package invoices
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,6 +14,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/payments"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -127,8 +127,7 @@ func lineProto(r sqlc.ListInvoiceLinesRow) *billingv1.InvoiceLine {
 		l.ServiceTo = timestamppb.New(*r.ServiceTo)
 	}
 	if r.Quantity != "" && r.QuantityScale != nil {
-		var units int64
-		if err := json.Unmarshal([]byte(r.Quantity), &units); err == nil {
+		if units, err := rating.StoredUnits(r.Quantity); err == nil {
 			l.Quantity = quantity.FormatUnits(units, int(*r.QuantityScale))
 		}
 	}

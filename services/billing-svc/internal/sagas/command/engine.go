@@ -17,8 +17,9 @@ import (
 // MaxStepAttempts is how often the sweeper issues the command of one step before giving up.
 const MaxStepAttempts = 3
 
-// MaxDunning is the number of payment retries after the first declined charge.
-const MaxDunning = 3
+// DefaultDunningAttempts is the number of payment retries after the first declined charge for a tenant that set no delays of its own (it may set up to six): the
+// number of delays PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX hold.
+const DefaultDunningAttempts = 3
 
 // InvoicesTopic is the Kafka topic of InvoiceFact events.
 const InvoicesTopic = "billing.invoices.v1"

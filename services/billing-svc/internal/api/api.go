@@ -107,7 +107,7 @@ func New(d Deps) *Server {
 		sagaHandler:       sagas.New(system, eng),
 		reratingHandler:   rerating.New(d.Rerating, system),
 		deadLetterHandler: deadletters.New(),
-		einvoiceHandler:   einvoices.New(app, system, einv),
+		einvoiceHandler:   einvoices.New(app, einv),
 		paymentHandler:    payments.New(system, eng),
 	}
 }
