@@ -113,3 +113,21 @@ func TestCutoffAndClassify(t *testing.T) {
 		t.Fatal("malformed period accepted")
 	}
 }
+
+func TestValid(t *testing.T) {
+	for id, want := range map[string]bool{
+		"2026-11": true, "2026-01": true, "2026-12": true, "0000-01": true,
+		"2026-00": false, "2026-13": false, "2026-1": false, "2026-011": false, "202611": false, "2026/11": false,
+		"+026-11": false, "2026-1a": false, "": false, "2026-11\n": false, " 2026-11": false, "２０２６-11": false,
+	} {
+		if got := Valid(id); got != want {
+			t.Errorf("Valid(%q) = %v, want %v", id, got, want)
+		}
+		if _, _, err := Bounds(id, time.UTC); (err == nil) != want {
+			t.Errorf("Bounds(%q) err = %v, want valid=%v", id, err, want)
+		}
+	}
+	if y, m, err := Parse("2026-11"); err != nil || y != 2026 || m != 11 {
+		t.Fatalf("Parse = %d %d %v", y, m, err)
+	}
+}

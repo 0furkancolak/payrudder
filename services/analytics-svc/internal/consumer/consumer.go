@@ -20,6 +20,7 @@ import (
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 )
 
 // Topics and their dead-letter topics.
@@ -139,23 +140,24 @@ type decodeError struct {
 
 func (e *decodeError) Error() string { return e.reason + ": " + e.err.Error() }
 
+// decodeUsage applies the one usage-event rule of pkg/usage, the same as the aggregator and limits-svc, so reporting never
+// shows an event billing refused.
 func decodeUsage(rec *kgo.Record) (usageRow, error) {
-	var pb eventsv1.UsageEvent
-	if err := proto.Unmarshal(rec.Value, &pb); err != nil {
-		return usageRow{}, &decodeError{"DECODE_ERROR", err}
+	ev, err := usage.Decode(rec)
+	if err != nil {
+		var ue *usage.DecodeError
+		if errors.As(err, &ue) {
+			return usageRow{}, &decodeError{ue.Reason, ue.Err}
+		}
+		return usageRow{}, err
 	}
-	t, err1 := uuid.Parse(pb.GetTenantId())
-	c, err2 := uuid.Parse(pb.GetCustomerId())
-	if err := errors.Join(err1, err2); err != nil || pb.GetEventId() == "" || pb.GetMeterCode() == "" || pb.GetEventTime() == nil || pb.GetIngestedAt() == nil || pb.GetQuantityScale() > 6 {
-		return usageRow{}, &decodeError{"INVALID_EVENT", errors.Join(fmt.Errorf("incomplete usage event %q", pb.GetEventId()), err)}
-	}
-	props := pb.GetProperties()
+	props := ev.Props
 	if props == nil {
 		props = map[string]string{}
 	}
-	return usageRow{Tenant: t, Customer: c, EventID: pb.GetEventId(), ExternalID: pb.GetCustomerExternalId(), Meter: pb.GetMeterCode(),
-		Period: pb.GetPeriodId(), Units: pb.GetQuantityUnits(), Scale: uint8(pb.GetQuantityScale()), //nolint:gosec // 0..6
-		EventTime: pb.GetEventTime().AsTime(), IngestedAt: pb.GetIngestedAt().AsTime(), Properties: props}, nil
+	return usageRow{Tenant: ev.TenantID, Customer: ev.CustomerID, EventID: ev.EventID, ExternalID: ev.CustomerExternalID, Meter: ev.Meter,
+		Period: ev.Period, Units: ev.Units, Scale: uint8(ev.Scale), //nolint:gosec // 0..6
+		EventTime: ev.EventTime, IngestedAt: ev.IngestedAt, Properties: props}, nil
 }
 
 func decodeLimit(rec *kgo.Record) (limitRow, error) {

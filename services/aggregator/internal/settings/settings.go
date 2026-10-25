@@ -3,8 +3,6 @@ package settings
 
 import (
 	"context"
-	"fmt"
-	"sync"
 	"time"
 	_ "time/tzdata" // tenant time zones must load in distroless images
 
@@ -12,76 +10,26 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
 
-// Tenant is what the aggregator needs of a tenant.
-type Tenant struct {
-	Timezone string
-	Location *time.Location
-	Grace    time.Duration
-}
-
-// Loader fetches a tenant's current settings.
-type Loader func(ctx context.Context, id uuid.UUID) (Tenant, error)
-
-// Source loads tenant settings, cached for a short while.
-type Source struct {
-	load Loader
-	ttl  time.Duration
-
-	mu    sync.Mutex
-	cache map[uuid.UUID]cached
-}
-
-type cached struct {
-	t       Tenant
-	expires time.Time
-}
+// Source snapshots the period settings of tenants, whose own settings come from pkg/tenantinfo (cached, one load per tenant).
+type Source struct{ tenants tenantinfo.Source }
 
 // NewSource returns a Source that loads tenants from plans-svc, cached for ttl (default 1 minute).
 func NewSource(admin plansv1.AdminServiceClient, ttl time.Duration) *Source {
-	return NewSourceFunc(func(ctx context.Context, id uuid.UUID) (Tenant, error) {
-		octx := tenant.OutgoingContext(tenant.WithOperator(ctx))
-		resp, err := admin.GetTenant(octx, &plansv1.GetTenantRequest{TenantId: id.String()})
-		if err != nil {
-			return Tenant{}, fmt.Errorf("get tenant %s: %w", id, err)
-		}
-		tn := resp.GetTenant()
-		loc, err := time.LoadLocation(tn.GetTimezone())
-		if err != nil {
-			return Tenant{}, fmt.Errorf("tenant %s has unusable time zone %q: %w", id, tn.GetTimezone(), err)
-		}
-		return Tenant{Timezone: tn.GetTimezone(), Location: loc, Grace: tn.GetGracePeriod().AsDuration()}, nil
-	}, ttl)
+	return &Source{tenantinfo.New(admin, ttl)}
 }
 
 // NewSourceFunc returns a Source over any loader (tests).
-func NewSourceFunc(load Loader, ttl time.Duration) *Source {
-	if ttl <= 0 {
-		ttl = time.Minute
-	}
-	return &Source{load: load, ttl: ttl, cache: map[uuid.UUID]cached{}}
+func NewSourceFunc(load tenantinfo.Loader, ttl time.Duration) *Source {
+	return &Source{tenantinfo.NewFunc(load, ttl)}
 }
 
 // Tenant returns the tenant's current settings.
-func (s *Source) Tenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
-	s.mu.Lock()
-	if c, ok := s.cache[id]; ok && time.Now().Before(c.expires) {
-		s.mu.Unlock()
-		return c.t, nil
-	}
-	s.mu.Unlock()
-
-	t, err := s.load(ctx, id)
-	if err != nil {
-		return Tenant{}, err
-	}
-	s.mu.Lock()
-	s.cache[id] = cached{t: t, expires: time.Now().Add(s.ttl)}
-	s.mu.Unlock()
-	return t, nil
+func (s *Source) Tenant(ctx context.Context, id uuid.UUID) (tenantinfo.Settings, error) {
+	return s.tenants.Tenant(ctx, id)
 }
 
 // Snapshot is the row to insert into period_settings.
@@ -93,7 +41,7 @@ type Snapshot struct {
 }
 
 // Compute derives the snapshot of a period for a tenant.
-func Compute(t Tenant, periodID string) (Snapshot, error) {
+func Compute(t tenantinfo.Settings, periodID string) (Snapshot, error) {
 	start, end, err := period.Bounds(periodID, t.Location)
 	if err != nil {
 		return Snapshot{}, err

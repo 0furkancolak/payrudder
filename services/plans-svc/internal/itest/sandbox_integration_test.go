@@ -99,8 +99,8 @@ func testSandboxReset(t *testing.T) {
 	app := created.GetApp()
 	live, sandboxT := envOf(app, plansv1.Environment_ENVIRONMENT_LIVE), envOf(app, plansv1.Environment_ENVIRONMENT_SANDBOX)
 	e.activate(t, live.GetId()) // so that its own data includes a webhook endpoint
-	seed(t, e, sandboxT.GetId(), "sbx")
-	seed(t, e, live.GetId(), "liv")
+	seed(t, e, sandboxT.GetId(), "rsb")
+	seed(t, e, live.GetId(), "rlv")
 	liveBefore := fingerprint(t, e, live.GetId())
 	sbxBefore := fingerprint(t, e, sandboxT.GetId())
 	status := func() *plansv1.SandboxReset {
@@ -169,7 +169,7 @@ func testSandboxReset(t *testing.T) {
 			t.Errorf("step %v is not done", s)
 		}
 	}
-	if stepState(done, "plans").GetDeleted()["customers"] != 1 || stepState(done, "plans").GetDeleted()["subscriptions"] != 1 {
+	if stepState(done, "plans").GetDeleted()["customers"] != 2 || stepState(done, "plans").GetDeleted()["subscriptions"] != 1 {
 		t.Errorf("plans step = %v", stepState(done, "plans"))
 	}
 	// Every other service was asked about the sandbox and about no other tenant, plans-svc's own part first.

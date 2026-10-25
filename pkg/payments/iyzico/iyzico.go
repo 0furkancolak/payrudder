@@ -225,14 +225,7 @@ func price(minor int64, currency string) (string, error) {
 	if minor < 0 {
 		return "", errors.New("iyzico: negative amount")
 	}
-	s := strconv.FormatInt(minor, 10)
-	if cur.Exponent == 0 {
-		return s, nil
-	}
-	if len(s) <= cur.Exponent {
-		s = strings.Repeat("0", cur.Exponent-len(s)+1) + s
-	}
-	return s[:len(s)-cur.Exponent] + "." + s[len(s)-cur.Exponent:], nil
+	return money.FormatMinor(minor, cur.Exponent), nil
 }
 
 // SplitPaymentMethod reads a customer's payment method token "cardUserKey:cardToken".

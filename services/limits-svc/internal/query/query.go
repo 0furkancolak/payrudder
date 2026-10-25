@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"regexp"
 	"strconv"
 	"time"
 	_ "time/tzdata" // tenant time zones must load in distroless images
@@ -17,15 +16,13 @@ import (
 
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/meters"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
 )
-
-var periodRe = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
 
 // Service implements limitsv1.LimitsServiceServer.
 type Service struct {
@@ -47,7 +44,7 @@ func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, k
 
 func (s *Service) periodFor(ti tenant.Info, id string) (string, error) {
 	if id != "" {
-		if !periodRe.MatchString(id) {
+		if !period.Valid(id) {
 			return "", invalid("limits.period.bad_id", "period_id must look like 2026-11")
 		}
 		return id, nil
@@ -87,8 +84,8 @@ func (s *Service) CheckEntitlement(ctx context.Context, req *limitsv1.CheckEntit
 		scale = ent.Scale
 	} else {
 		m, err := s.meters.Get(ctx, ti.ID, req.GetMeterCode())
-		if errors.Is(err, meters.ErrNotFound) {
-			return nil, errkey.New(codes.NotFound, "limits.meter.not_found", "meter not found")
+		if errors.Is(err, engine.ErrMeterNotFound) {
+			return nil, engine.ErrMeterNotFound
 		}
 		if err != nil {
 			return nil, errkey.New(codes.Unavailable, "limits.meter.unavailable", "meter lookup failed")

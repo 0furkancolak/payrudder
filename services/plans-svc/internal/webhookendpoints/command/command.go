@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,12 +35,23 @@ const (
 	secretOverlap       = 24 * time.Hour
 )
 
+// EventHook is told about every event RecordEvent records, in the same transaction, whether or not an endpoint wants it: the affiliate program reads paid
+// invoices, voids and credit notes this way. An error rolls the recording back, so billing hands the event over again.
+type EventHook func(ctx context.Context, q *sqlc.Queries, typ string, id uuid.UUID, data json.RawMessage, at time.Time) error
+
 // Commands changes webhook endpoints.
 type Commands struct {
 	db           *store.DB
 	now          func() time.Time
 	box          *secretbox.Box
 	allowPrivate bool
+	hooks        []EventHook
+}
+
+// WithEventHook adds a reader of the events billing-svc hands over.
+func (c *Commands) WithEventHook(h EventHook) *Commands {
+	c.hooks = append(c.hooks, h)
+	return c
 }
 
 // New returns the webhook commands. box seals the signing secrets (nil: endpoints cannot be created). allowPrivate lets endpoints be http:// and
@@ -300,7 +312,15 @@ func (c *Commands) RecordEvent(ctx context.Context, req *plansv1.RecordTenantEve
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
 		var err error
 		queued, err = webhooks.Emit(ctx, q, id, req.GetType(), json.RawMessage(req.GetDataJson()), at)
-		return err
+		if err != nil {
+			return err
+		}
+		for _, h := range c.hooks {
+			if err := h(ctx, q, req.GetType(), id, json.RawMessage(req.GetDataJson()), at); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return 0, convert.Err(err, "webhook event")

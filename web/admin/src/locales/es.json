@@ -1973,6 +1973,29 @@
         "unsupported_content_type": "Este tipo de archivo no es compatible."
       }
     },
+    "affiliate": {
+      "bad_page_token": "Este enlace de página no es válido. Vuelva a cargar la lista.",
+      "bad_source": "El origen debe ser link, code o api.",
+      "bad_status": "El estado debe ser pending, active o suspended.",
+      "code_required": "Se necesita un código de afiliado.",
+      "code_taken": "Este código ya está en uso. Los códigos de afiliado son únicos en toda la plataforma: elija otro.",
+      "customer_not_found": "No existe ese cliente.",
+      "customer_required": "Indique el cliente al que atribuir la referencia.",
+      "email_taken": "Ya existe un afiliado con esta dirección de correo.",
+      "not_found": "No existe ese afiliado.",
+      "program": {
+        "coupon_inactive": "El cupón para clientes referidos no está activo.",
+        "coupon_not_found": "El cupón para clientes referidos no existe.",
+        "not_set": "Este entorno aún no tiene un programa de afiliados."
+      },
+      "promotion_code_not_found": "No existe ese código promocional.",
+      "bad_id": "Ese no es un identificador válido.",
+      "bad_kind": "El tipo debe ser commission o reversal.",
+      "bad_period": "Escriba las fechas como AAAA-MM-DD, con el final después del inicio y como mucho un año de diferencia.",
+      "commission": {
+        "not_found": "Esta factura no generó ninguna comisión."
+      }
+    },
     "admin": {
       "sandbox": {
         "live_refused": "Solo se puede restablecer un entorno sandbox. Un entorno live nunca se toca.",

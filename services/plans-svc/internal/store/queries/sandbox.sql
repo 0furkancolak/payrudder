@@ -6,6 +6,17 @@
 DELETE FROM customer_coupons WHERE tenant_id = $1;
 -- name: ResetCouponRedemptions :execrows
 DELETE FROM coupon_redemptions WHERE tenant_id = $1;
+-- The partner program's customer side: commissions, their reversals, who was attributed and the clicks. The program and the partners are configuration and stay.
+-- name: ResetAffiliateReversals :execrows
+DELETE FROM affiliate_reversals WHERE tenant_id = $1;
+-- name: ResetAffiliateCommissions :execrows
+DELETE FROM affiliate_commissions WHERE tenant_id = $1;
+-- name: ResetAffiliateAttributions :execrows
+DELETE FROM affiliate_attributions WHERE tenant_id = $1;
+-- name: ResetAffiliateAttributionRejections :execrows
+DELETE FROM affiliate_attribution_rejections WHERE tenant_id = $1;
+-- name: ResetAffiliateClicks :execrows
+DELETE FROM affiliate_clicks_daily WHERE tenant_id = $1;
 -- name: ResetSubscriptionAdjustments :execrows
 DELETE FROM subscription_adjustments WHERE tenant_id = $1;
 -- name: ResetSubscriptionChanges :execrows

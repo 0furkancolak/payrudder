@@ -9,6 +9,7 @@ import (
 
 	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
 // getAnalyticsUsage is GET /v1/analytics/usage: a usage series of one meter. The answer is an estimate (precision
@@ -60,7 +61,7 @@ func (s *Server) getAnalyticsUsage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getTopCustomers(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := &analyticsv1.TopCustomersRequest{MeterCode: q.Get("meter"), PeriodId: q.Get("period")}
-	if req.MeterCode == "" || !periodParam.MatchString(req.PeriodId) {
+	if req.MeterCode == "" || !period.Valid(req.PeriodId) {
 		writeError(w, r, invalid("meter", "meter and period (2026-11) are required"))
 		return
 	}

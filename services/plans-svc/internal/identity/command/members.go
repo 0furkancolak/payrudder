@@ -82,7 +82,8 @@ func actor(ctx context.Context, q *sqlc.Queries, userID, accountID string) (uid,
 // mayHandle reports whether a caller of this role may create or cancel an invitation, or change or remove a member, whose role is target: owners only for
 // owner-level targets.
 func mayHandle(actorRole, target string) bool {
-	if !query.CanManage(actorRole) {
+	if !query.CanManage(actorRole) || target == query.RoleAffiliate {
+		// A partner is managed in the affiliate program, not as a member.
 		return false
 	}
 	return target != query.RoleOwner || actorRole == query.RoleOwner

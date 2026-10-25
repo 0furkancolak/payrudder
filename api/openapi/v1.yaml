@@ -949,6 +949,155 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { type: object, properties: { granted: { type: boolean } } } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/program:
+    get:
+      operationId: getAffiliateProgram
+      summary: The partner program of this environment
+      description: "One program per environment, so the sandbox and live have their own. 404 with the key affiliate.program.not_set before one is set."
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AffiliateProgram" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: setAffiliateProgram
+      summary: Set the rules of the partner program
+      description: "Replaces the program. A change applies to commissions earned from then on, never to those already earned. A commission is a share of the net, pre-tax amount of a paid invoice (percent_bps) or a fixed amount in one currency (fixed, earned only on invoices in that currency)."
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AffiliateProgram" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AffiliateProgram" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/affiliates:
+    post:
+      operationId: createAffiliate
+      summary: Add a partner
+      description: "The code (3 to 32 letters, numbers, - or _) is unique across the whole platform because the public link /r/<code> carries no tenant; leave it out for a random one. A partner you add is active unless you ask for pending."
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string, format: email }, name: { type: string }, code: { type: string }, payout_method: { type: string, enum: [manual, bank_transfer] }, payout_details: { type: string, maxLength: 1000 }, pending: { type: boolean } } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Affiliate" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listAffiliates
+      summary: Partners, newest first
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, active, suspended] } }
+        - { name: search, in: query, schema: { type: string }, description: Part of the code, e-mail address or name }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { affiliates: { type: array, items: { $ref: "#/components/schemas/Affiliate" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/referrals:
+    get:
+      operationId: listAffiliateReferrals
+      summary: The customers partners brought, newest first
+      description: The customer's e-mail address is masked (j***@example.com).
+      parameters:
+        - { name: affiliate_id, in: query, schema: { type: string, format: uuid }, description: Only this partner's }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { referrals: { type: array, items: { $ref: "#/components/schemas/AffiliateReferral" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/commissions:
+    get:
+      operationId: listAffiliateCommissions
+      summary: Commissions and the reversal rows that net against them, newest first
+      description: "One commission per paid invoice of a customer a partner brought, in the invoice's currency, on the net, pre-tax amount paid. It is pending for the program's hold (the refund window), then approved, then paid by a payout. A refund, void or credit note takes it back (reversed_minor); one already paid is netted by a negative row of kind reversal that the next payout takes."
+      parameters:
+        - { name: affiliate_id, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [pending, approved, paid, reversed] } }
+        - { name: kind, in: query, schema: { type: string, enum: [commission, reversal] } }
+        - { name: invoice_id, in: query, schema: { type: string, format: uuid } }
+        - { name: payout_id, in: query, schema: { type: string, format: uuid } }
+        - { name: from, in: query, schema: { type: string, format: date-time }, description: Earned at or after }
+        - { name: to, in: query, schema: { type: string, format: date-time }, description: Earned before }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { commissions: { type: array, items: { $ref: "#/components/schemas/AffiliateCommission" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/commissions/reverse:
+    post:
+      operationId: reverseAffiliateCommission
+      summary: Take a commission back for a chargeback, or by hand
+      description: "Refunds, voids and credit notes reverse on their own. The same (invoice, reason, reference) takes back once. A commission that was paid is netted from the partner's next payout."
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [invoice_id, reason], properties: { invoice_id: { type: string, format: uuid }, reason: { type: string, enum: [chargeback, manual] }, reference: { type: string, maxLength: 100, description: "Names this reversal; required for manual" }, amount_minor: { type: string, description: "How much to take back; 0 or absent is all that is left" }, note: { type: string, maxLength: 500 } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { reversed_minor: { type: string, description: "How much this call took back; 0 on a repeat" }, commission: { $ref: "#/components/schemas/AffiliateCommission" } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/balances:
+    get:
+      operationId: getAffiliateBalances
+      summary: What each partner has, per currency
+      description: "pending (in the hold), approved (available for a payout, net of reversals), paid (paid out, net of what was netted) and reversed (taken back in all). Currencies are never added together."
+      parameters: [{ name: affiliate_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { balances: { type: array, items: { $ref: "#/components/schemas/AffiliateBalance" } } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/funnel:
+    get:
+      operationId: getAffiliateFunnel
+      summary: Clicks, referred customers, paying customers and commissions over a period
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date }, description: "First day, UTC; default 30 days before to" }
+        - { name: to, in: query, schema: { type: string, format: date }, description: "Last day, UTC; default today" }
+        - { name: affiliate_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AffiliateFunnel" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/{id}:
+    get:
+      operationId: getAffiliate
+      summary: One partner with their click and referral counts
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Affiliate" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateAffiliate
+      summary: Change a partner's name, payout details or status
+      description: "status active approves a pending partner or reinstates a suspended one; suspended stops new attributions and commissions but keeps what was approved. Nothing returns to pending."
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { name: { type: string }, payout_method: { type: string, enum: [manual, bank_transfer] }, payout_details: { type: string }, status: { type: string, enum: [active, suspended] } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Affiliate" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/{id}/promotion-code:
+    put:
+      operationId: linkAffiliatePromotionCode
+      summary: Make a promotion code the partner's
+      description: A customer who redeems the code at a checkout is attributed to the partner, as if they had followed the link.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [promotion_code], properties: { promotion_code: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Affiliate" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/referral:
+    post:
+      operationId: attributeCustomer
+      summary: Say which partner brought a customer
+      description: "For your own sign-up, which reads the ?ref= of the link. First touch wins: a customer who has an attribution keeps it. A refusal is a normal answer (attributed false and a reason), not an error: already_attributed, unknown_code, program_inactive, affiliate_inactive, expired, same_email, same_domain, same_payment_method."
+      parameters: [{ name: external_id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string }, source: { type: string, enum: [link, code, api] }, touch_time: { type: string, format: date-time, description: When the visitor followed the link; default now } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { attributed: { type: boolean }, reason: { type: string } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/subscriptions/{id}/scheduled-change:
     delete:
       operationId: cancelScheduledChange
@@ -4652,6 +4801,90 @@ components:
               type: array
               items: { type: object, properties: { field: { type: string }, description: { type: string } } }
             request_id: { type: string }
+    AffiliateProgram:
+      type: object
+      description: The rules of the partner program of one environment.
+      properties:
+        status: { type: string, enum: [draft, active, paused], description: "paused and draft earn nothing and turn the links off" }
+        commission_kind: { type: string, enum: [percent_bps, fixed] }
+        commission_value: { type: string, description: "Basis points of the net, pre-tax amount paid (1000 is 10 %), or minor units of currency for fixed" }
+        currency: { type: string, description: "Only for fixed; a percentage follows the currency of each invoice" }
+        commission_term: { type: string, enum: [first_invoices, months, lifetime] }
+        commission_term_value: { type: integer, description: "N invoices or N months; absent for lifetime" }
+        attribution_window_days: { type: integer, minimum: 1, maximum: 365, default: 30 }
+        hold_days: { type: integer, minimum: 0, maximum: 180, description: "How long a commission waits (the refund window) before it can be paid" }
+        min_payout_minor: { type: string }
+        referred_coupon_code: { type: string, description: "Coupon a referred customer gets on their next checkout" }
+        daily_click_cap: { type: integer, minimum: 1, maximum: 100000, default: 1000 }
+        landing_url: { type: string, description: "Where /r/<code> sends the visitor; empty shows a plain page" }
+        auto_approve: { type: boolean, description: "A partner who applies is active at once" }
+        create_time: { type: string, format: date-time, readOnly: true }
+        update_time: { type: string, format: date-time, readOnly: true }
+    Affiliate:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        email: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [pending, active, suspended] }
+        payout_method: { type: string, enum: [manual, bank_transfer] }
+        payout_details: { type: string }
+        source: { type: string, enum: [owner, application] }
+        signed_in: { type: boolean, description: The partner has signed in and claimed this affiliate }
+        clicks: { type: string }
+        referrals: { type: string }
+        approve_time: { type: string, format: date-time }
+        create_time: { type: string, format: date-time }
+    AffiliateCommission:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        affiliate_id: { type: string, format: uuid }
+        affiliate_code: { type: string }
+        customer_external_id: { type: string }
+        kind: { type: string, enum: [commission, reversal] }
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string }
+        currency: { type: string }
+        invoice_total_minor: { type: string, description: "What the invoice came to, tax included" }
+        net_minor: { type: string, description: "The base: the net, pre-tax amount actually paid" }
+        amount_minor: { type: string, description: "The commission; negative on a reversal row" }
+        reversed_minor: { type: string, description: How much of the commission has been taken back }
+        status: { type: string, enum: [pending, approved, paid, reversed] }
+        parent_id: { type: string, format: uuid }
+        earn_time: { type: string, format: date-time }
+        approve_after_time: { type: string, format: date-time }
+        approve_time: { type: string, format: date-time }
+        pay_time: { type: string, format: date-time }
+        payout_id: { type: string, format: uuid }
+    AffiliateBalance:
+      type: object
+      properties:
+        affiliate_id: { type: string, format: uuid }
+        currency: { type: string }
+        pending_minor: { type: string }
+        approved_minor: { type: string }
+        paid_minor: { type: string }
+        reversed_minor: { type: string }
+    AffiliateFunnel:
+      type: object
+      properties:
+        from_date: { type: string, format: date }
+        to_date: { type: string, format: date }
+        clicks: { type: string }
+        referrals: { type: string, description: Customers attributed in the period }
+        paying_customers: { type: string, description: Customers with a commission earned in the period }
+        commissions: { type: array, items: { type: object, properties: { currency: { type: string }, earned_minor: { type: string }, reversed_minor: { type: string } } } }
+    AffiliateReferral:
+      type: object
+      properties:
+        affiliate_id: { type: string, format: uuid }
+        affiliate_code: { type: string }
+        customer_external_id: { type: string }
+        customer_email_masked: { type: string }
+        source: { type: string, enum: [link, code, api] }
+        attribute_time: { type: string, format: date-time }
     CreateCustomerRequest:
       type: object
       required: [external_id, name, email]
@@ -4663,6 +4896,8 @@ components:
         country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2 }
         billing_currency: { type: string, description: ISO 4217; default is the tenant's currency }
         address: { $ref: "#/components/schemas/Address" }
+        referral_code: { type: string, description: "The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation." }
+        referral_touch_time: { type: string, format: date-time, description: When the visitor followed that link; default now }
     Address:
       type: object
       description: A postal address as printed on an invoice. Every part is optional.

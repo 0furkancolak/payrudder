@@ -194,6 +194,67 @@ func (q *Queries) LatestSandboxReset(ctx context.Context, tenantID uuid.UUID) (S
 	return i, err
 }
 
+const resetAffiliateAttributionRejections = `-- name: ResetAffiliateAttributionRejections :execrows
+DELETE FROM affiliate_attribution_rejections WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetAffiliateAttributionRejections(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetAffiliateAttributionRejections, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetAffiliateAttributions = `-- name: ResetAffiliateAttributions :execrows
+DELETE FROM affiliate_attributions WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetAffiliateAttributions(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetAffiliateAttributions, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetAffiliateClicks = `-- name: ResetAffiliateClicks :execrows
+DELETE FROM affiliate_clicks_daily WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetAffiliateClicks(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetAffiliateClicks, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetAffiliateCommissions = `-- name: ResetAffiliateCommissions :execrows
+DELETE FROM affiliate_commissions WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetAffiliateCommissions(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetAffiliateCommissions, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetAffiliateReversals = `-- name: ResetAffiliateReversals :execrows
+DELETE FROM affiliate_reversals WHERE tenant_id = $1
+`
+
+// The partner program's customer side: commissions, their reversals, who was attributed and the clicks. The program and the partners are configuration and stay.
+func (q *Queries) ResetAffiliateReversals(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetAffiliateReversals, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetCouponCounters = `-- name: ResetCouponCounters :exec
 UPDATE coupons SET redeemed = 0 WHERE tenant_id = $1 AND redeemed <> 0
 `

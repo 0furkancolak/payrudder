@@ -1,135 +1,15 @@
-// Package domain holds the aggregator's pure rules: decoding and validating events, meter filters and the merge of
+// Package domain holds the aggregator's pure rules: the merge of
 // events into aggregate cells. No I/O.
 package domain
 
 import (
-	"fmt"
 	"math/big"
-	"regexp"
 	"sort"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/twmb/franz-go/pkg/kgo"
-	"google.golang.org/protobuf/proto"
 
-	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 )
-
-// Event is a validated usage event.
-type Event struct {
-	EventID    string
-	TenantID   uuid.UUID
-	CustomerID uuid.UUID
-	Meter      string
-	Units      int64
-	Scale      int
-	EventTime  time.Time
-	IngestedAt time.Time
-	Period     string
-	Props      map[string]string
-}
-
-var (
-	periodRe  = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
-	eventIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
-)
-
-// DecodeError marks a record that can never be applied, however often it's retried. It goes to the DLQ.
-type DecodeError struct {
-	Reason string
-	Err    error
-}
-
-func (e *DecodeError) Error() string { return e.Reason + ": " + e.Err.Error() }
-func (e *DecodeError) Unwrap() error { return e.Err }
-
-// Decode parses and validates a usage.events.v1 record.
-func Decode(rec *kgo.Record) (Event, error) {
-	var pb eventsv1.UsageEvent
-	if err := proto.Unmarshal(rec.Value, &pb); err != nil {
-		return Event{}, &DecodeError{"DECODE_ERROR", err}
-	}
-	bad := func(format string, a ...any) (Event, error) {
-		return Event{}, &DecodeError{"INVALID_EVENT", fmt.Errorf(format, a...)}
-	}
-	tenant, err := uuid.Parse(pb.GetTenantId())
-	if err != nil {
-		return bad("tenant_id %q is not a UUID", pb.GetTenantId())
-	}
-	customer, err := uuid.Parse(pb.GetCustomerId())
-	if err != nil {
-		return bad("customer_id %q is not a UUID", pb.GetCustomerId())
-	}
-	switch {
-	case !eventIDRe.MatchString(pb.GetEventId()):
-		return bad("event_id %q is malformed", pb.GetEventId())
-	case pb.GetMeterCode() == "":
-		return bad("meter_code is empty")
-	case !periodRe.MatchString(pb.GetPeriodId()):
-		return bad("period_id %q is malformed", pb.GetPeriodId())
-	case pb.GetQuantityScale() > 6:
-		return bad("quantity_scale %d is out of range", pb.GetQuantityScale())
-	case pb.GetQuantityUnits() < 0:
-		return bad("quantity_units %d is negative", pb.GetQuantityUnits())
-	case pb.GetEventTime() == nil || pb.GetEventTime().CheckValid() != nil:
-		return bad("event_time is missing or invalid")
-	case pb.GetIngestedAt() == nil || pb.GetIngestedAt().CheckValid() != nil:
-		return bad("ingested_at is missing or invalid")
-	}
-	return Event{
-		EventID: pb.GetEventId(), TenantID: tenant, CustomerID: customer, Meter: pb.GetMeterCode(),
-		Units: pb.GetQuantityUnits(), Scale: int(pb.GetQuantityScale()),
-		EventTime: pb.GetEventTime().AsTime(), IngestedAt: pb.GetIngestedAt().AsTime(),
-		Period: pb.GetPeriodId(), Props: pb.GetProperties(),
-	}, nil
-}
-
-// Aggregation is how a meter combines event quantities.
-type Aggregation int
-
-const (
-	Sum Aggregation = iota
-	Count
-	Max
-)
-
-// Meter is the part of a meter definition the aggregator needs.
-type Meter struct {
-	Code        string
-	Aggregation Aggregation
-	// Filter maps a property name to its accepted values. An event matches when every listed property has an accepted value.
-	Filter map[string][]string
-}
-
-// Matches reports whether an event's properties satisfy the meter filter.
-func (m Meter) Matches(props map[string]string) bool {
-	for name, accepted := range m.Filter {
-		v, ok := props[name]
-		if !ok {
-			return false
-		}
-		found := false
-		for _, a := range accepted {
-			if a == v {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
-}
-
-// Value is what an event contributes to its meter's aggregate: its quantity, or 1 for COUNT.
-func (m Meter) Value(e Event) int64 {
-	if m.Aggregation == Count {
-		return 1
-	}
-	return e.Units
-}
 
 // OnTimeKey identifies a usage_aggregates row.
 type OnTimeKey struct {
@@ -151,7 +31,7 @@ type Cell struct {
 	Value       *big.Int // SUM/COUNT: the total to add. MAX: the maximum seen
 	Scale       int
 	Events      int64
-	Aggregation Aggregation
+	Aggregation usage.Aggregation
 }
 
 // Delta collects the pre-summed contributions of one batch (one cell per distinct row, whatever the number of events).
@@ -165,14 +45,14 @@ func NewDelta() *Delta {
 	return &Delta{OnTime: map[OnTimeKey]*Cell{}, Late: map[LateKey]*Cell{}}
 }
 
-func (c *Cell) add(v int64, scale int, agg Aggregation) {
+func (c *Cell) add(v int64, scale int, agg usage.Aggregation) {
 	if c.Value == nil {
 		c.Value, c.Scale, c.Aggregation = big.NewInt(v), scale, agg
 		c.Events = 1
 		return
 	}
 	c.Events++
-	if agg == Max {
+	if agg == usage.Max {
 		if n := big.NewInt(v); n.Cmp(c.Value) > 0 {
 			c.Value = n
 		}
@@ -182,7 +62,7 @@ func (c *Cell) add(v int64, scale int, agg Aggregation) {
 }
 
 // AddOnTime merges an on-time event into the cell of its row.
-func (d *Delta) AddOnTime(k OnTimeKey, m Meter, e Event) {
+func (d *Delta) AddOnTime(k OnTimeKey, m usage.Meter, e usage.Event) {
 	c := d.OnTime[k]
 	if c == nil {
 		c = &Cell{}
@@ -192,7 +72,7 @@ func (d *Delta) AddOnTime(k OnTimeKey, m Meter, e Event) {
 }
 
 // AddLate merges a late event into the cell of its row.
-func (d *Delta) AddLate(k LateKey, m Meter, e Event) {
+func (d *Delta) AddLate(k LateKey, m usage.Meter, e usage.Event) {
 	c := d.Late[k]
 	if c == nil {
 		c = &Cell{}

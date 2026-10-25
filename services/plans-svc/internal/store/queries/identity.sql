@@ -33,15 +33,16 @@ SELECT m.account_id, a.name AS account_name, m.role
 FROM account_members m JOIN accounts a ON a.id = m.account_id
 WHERE m.user_id = $1 ORDER BY a.created_at, a.id;
 
+-- An affiliate (phase 47) is a member of the account only so that the console knows to show the partner portal: every account-wide read leaves the role out.
 -- name: GetMembership :one
 SELECT m.role, a.name AS account_name, a.created_at
 FROM account_members m JOIN accounts a ON a.id = m.account_id
-WHERE m.account_id = @account_id AND m.user_id = @user_id;
+WHERE m.account_id = @account_id AND m.user_id = @user_id AND m.role <> 'affiliate';
 
 -- name: ListAccountMembers :many
 SELECT u.id AS user_id, u.email, u.display_name, m.role, m.created_at
 FROM account_members m JOIN users u ON u.id = m.user_id
-WHERE m.account_id = $1 ORDER BY m.created_at, u.id;
+WHERE m.account_id = $1 AND m.role <> 'affiliate' ORDER BY m.created_at, u.id;
 
 -- name: InsertSession :one
 INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES ($1, $2, $3, $4) RETURNING *;
@@ -64,12 +65,12 @@ DELETE FROM user_sessions WHERE user_id = $1 AND (expires_at < now() - interval 
 -- An app of an account the user is a member of, with the user's role. No membership, no row.
 -- name: GetAppForUser :one
 SELECT a.id, a.account_id, a.name, a.slug, a.created_at, m.role
-FROM apps a JOIN account_members m ON m.account_id = a.account_id AND m.user_id = @user_id
+FROM apps a JOIN account_members m ON m.account_id = a.account_id AND m.user_id = @user_id AND m.role <> 'affiliate'
 WHERE a.id = @app_id;
 
 -- name: GetTenantForUser :one
 SELECT t.*, m.role
-FROM tenants t JOIN account_members m ON m.account_id = t.account_id AND m.user_id = @user_id
+FROM tenants t JOIN account_members m ON m.account_id = t.account_id AND m.user_id = @user_id AND m.role <> 'affiliate'
 WHERE t.id = @tenant_id;
 
 -- name: ListAppTenants :many

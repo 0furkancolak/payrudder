@@ -4,6 +4,23 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 
 - `admin.sandbox.bad_tenant`
 - `admin.sandbox.live_refused`
+- `affiliate.bad_id`
+- `affiliate.bad_kind`
+- `affiliate.bad_page_token`
+- `affiliate.bad_period`
+- `affiliate.bad_source`
+- `affiliate.bad_status`
+- `affiliate.code_required`
+- `affiliate.code_taken`
+- `affiliate.commission.not_found`
+- `affiliate.customer_not_found`
+- `affiliate.customer_required`
+- `affiliate.email_taken`
+- `affiliate.not_found`
+- `affiliate.program.coupon_inactive`
+- `affiliate.program.coupon_not_found`
+- `affiliate.program.not_set`
+- `affiliate.promotion_code_not_found`
 - `aggregator.customer.bad_id`
 - `aggregator.meter.not_found`
 - `aggregator.period.bad_id`

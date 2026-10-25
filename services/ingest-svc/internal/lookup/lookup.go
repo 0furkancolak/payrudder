@@ -6,12 +6,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/hashicorp/golang-lru/v2/expirable"
-	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/cachex"
 )
 
 // Meter is what ingest needs of a meter.
@@ -50,79 +49,40 @@ func (o *Options) defaults() {
 	}
 }
 
-type cache[V any] struct {
-	hits    *expirable.LRU[string, V]
-	misses  *expirable.LRU[string, struct{}]
-	flight  singleflight.Group
-	load    func(ctx context.Context, key string) (V, error)
-	timeout time.Duration
+func (o Options) cachex() cachex.Options {
+	return cachex.Options{Size: o.Size, HitTTL: o.HitTTL, MissTTL: o.MissTTL, LoadTimeout: o.LoadTimeout}
 }
 
-func newCache[V any](o Options, load func(ctx context.Context, key string) (V, error)) *cache[V] {
-	return &cache[V]{
-		hits:    expirable.NewLRU[string, V](o.Size, nil, o.HitTTL),
-		misses:  expirable.NewLRU[string, struct{}](o.Size, nil, o.MissTTL),
-		load:    load,
-		timeout: o.LoadTimeout,
+// notFound turns plans-svc's NotFound into the cache's "does not exist" answer.
+func notFound(err error) error {
+	if status.Code(err) == codes.NotFound {
+		return cachex.ErrNotFound
 	}
-}
-
-// get returns (value, found, err). tenantID scopes the cache key; ctx must carry the tenant metadata for the load.
-func (c *cache[V]) get(ctx context.Context, tenantID, key string) (V, bool, error) {
-	var zero V
-	ck := tenantID + "/" + key
-	if v, ok := c.hits.Get(ck); ok {
-		return v, true, nil
-	}
-	if _, ok := c.misses.Get(ck); ok {
-		return zero, false, nil
-	}
-	res, err, _ := c.flight.Do(ck, func() (any, error) {
-		// Detached from the first caller's cancellation: the result is shared with every waiter.
-		lctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), c.timeout)
-		defer cancel()
-		v, err := c.load(lctx, key)
-		if status.Code(err) == codes.NotFound {
-			c.misses.Add(ck, struct{}{})
-			return nil, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		c.hits.Add(ck, v)
-		return v, nil
-	})
-	if err != nil {
-		return zero, false, err
-	}
-	if res == nil {
-		return zero, false, nil
-	}
-	return res.(V), true, nil
+	return err
 }
 
 // Plans resolves meters and customers through plans-svc.
 type Plans struct {
-	meters    *cache[Meter]
-	customers *cache[Customer]
+	meters    *cachex.Cache[Meter]
+	customers *cachex.Cache[Customer]
 }
 
 // NewPlans returns cached lookups over client. The context of every call must carry the tenant metadata.
 func NewPlans(client plansv1.PlansServiceClient, o Options) *Plans {
 	o.defaults()
 	return &Plans{
-		meters: newCache(o, func(ctx context.Context, code string) (Meter, error) {
+		meters: cachex.New(o.cachex(), func(ctx context.Context, _, code string) (Meter, error) {
 			resp, err := client.GetMeter(ctx, &plansv1.GetMeterRequest{Code: code})
 			if err != nil {
-				return Meter{}, err
+				return Meter{}, notFound(err)
 			}
 			m := resp.GetMeter()
 			return Meter{Code: m.GetCode(), Version: m.GetVersion(), Scale: int(m.GetQuantityScale())}, nil
 		}),
-		customers: newCache(o, func(ctx context.Context, externalID string) (Customer, error) {
+		customers: cachex.New(o.cachex(), func(ctx context.Context, _, externalID string) (Customer, error) {
 			resp, err := client.ResolveCustomer(ctx, &plansv1.ResolveCustomerRequest{ExternalId: externalID})
 			if err != nil {
-				return Customer{}, err
+				return Customer{}, notFound(err)
 			}
 			c := resp.GetCustomer()
 			return Customer{ID: c.GetId(), ExternalID: c.GetExternalId()}, nil
@@ -132,10 +92,10 @@ func NewPlans(client plansv1.PlansServiceClient, o Options) *Plans {
 
 // Meter returns the latest version of a meter. found=false means plans-svc answered NotFound.
 func (p *Plans) Meter(ctx context.Context, tenantID, code string) (Meter, bool, error) {
-	return p.meters.get(ctx, tenantID, code)
+	return p.meters.Get(ctx, tenantID, code)
 }
 
 // Customer resolves a customer by external id. found=false means plans-svc answered NotFound.
 func (p *Plans) Customer(ctx context.Context, tenantID, externalID string) (Customer, bool, error) {
-	return p.customers.get(ctx, tenantID, externalID)
+	return p.customers.Get(ctx, tenantID, externalID)
 }

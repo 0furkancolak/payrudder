@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"regexp"
 	"sort"
 
 	"github.com/google/uuid"
@@ -13,6 +12,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
@@ -81,16 +81,14 @@ const (
 	maxInvoicePgs = 100
 )
 
-var reconcilePeriod = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
-
 // reconcile is GET /admin/tenants/{tenant}/reconciliation?period=YYYY-MM.
 func (s *Server) reconcile(w http.ResponseWriter, r *http.Request) {
 	t, ok := s.tenant(w, r)
 	if !ok {
 		return
 	}
-	period := r.URL.Query().Get("period")
-	if !reconcilePeriod.MatchString(period) {
+	pid := r.URL.Query().Get("period")
+	if !period.Valid(pid) {
 		fail(w, http.StatusBadRequest, "payments.reconcile.bad_period", "period must look like 2026-10")
 		return
 	}
@@ -98,7 +96,7 @@ func (s *Server) reconcile(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusServiceUnavailable, "payments.billing.not_configured", "billing-svc is not configured")
 		return
 	}
-	rec, err := s.Reconcile(r.Context(), t, period)
+	rec, err := s.Reconcile(r.Context(), t, pid)
 	if err != nil {
 		if status.Code(err) == codes.Unknown {
 			s.Log.ErrorContext(r.Context(), "reconciliation failed", "err", err)

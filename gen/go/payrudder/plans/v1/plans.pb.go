@@ -190,9 +190,14 @@ type CreateCustomerRequest struct {
 	Country         string                 `protobuf:"bytes,5,opt,name=country,proto3" json:"country,omitempty"`
 	BillingCurrency string                 `protobuf:"bytes,6,opt,name=billing_currency,json=billingCurrency,proto3" json:"billing_currency,omitempty"`
 	// The billing address. If it has a country, that is the customer's country (country above must be empty or equal).
-	Address       *Address `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Address *Address `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty"`
+	// The code of the affiliate whose link or code brought this customer (phase 47), as the tenant's own sign-up saw it. Optional; a code that cannot attribute
+	// (unknown, expired, self-referral) does not fail the creation.
+	ReferralCode string `protobuf:"bytes,8,opt,name=referral_code,json=referralCode,proto3" json:"referral_code,omitempty"`
+	// When the visitor followed that link; empty is now.
+	ReferralTouchTime *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=referral_touch_time,json=referralTouchTime,proto3" json:"referral_touch_time,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *CreateCustomerRequest) Reset() {
@@ -270,6 +275,20 @@ func (x *CreateCustomerRequest) GetBillingCurrency() string {
 func (x *CreateCustomerRequest) GetAddress() *Address {
 	if x != nil {
 		return x.Address
+	}
+	return nil
+}
+
+func (x *CreateCustomerRequest) GetReferralCode() string {
+	if x != nil {
+		return x.ReferralCode
+	}
+	return ""
+}
+
+func (x *CreateCustomerRequest) GetReferralTouchTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReferralTouchTime
 	}
 	return nil
 }
@@ -6963,7 +6982,7 @@ var File_payrudder_plans_v1_plans_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\n" +
-	"\x1epayrudder/plans/v1/plans.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"payrudder/plans/v1/resources.proto\"\x85\x02\n" +
+	"\x1epayrudder/plans/v1/plans.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"payrudder/plans/v1/resources.proto\"\xf6\x02\n" +
 	"\x15CreateCustomerRequest\x12\x1f\n" +
 	"\vexternal_id\x18\x01 \x01(\tR\n" +
 	"externalId\x12\x12\n" +
@@ -6972,7 +6991,9 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x0epayment_method\x18\x04 \x01(\tR\rpaymentMethod\x12\x18\n" +
 	"\acountry\x18\x05 \x01(\tR\acountry\x12)\n" +
 	"\x10billing_currency\x18\x06 \x01(\tR\x0fbillingCurrency\x125\n" +
-	"\aaddress\x18\a \x01(\v2\x1b.payrudder.plans.v1.AddressR\aaddress\"R\n" +
+	"\aaddress\x18\a \x01(\v2\x1b.payrudder.plans.v1.AddressR\aaddress\x12#\n" +
+	"\rreferral_code\x18\b \x01(\tR\freferralCode\x12J\n" +
+	"\x13referral_touch_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x11referralTouchTime\"R\n" +
 	"\x16CreateCustomerResponse\x128\n" +
 	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"E\n" +
 	"\x12GetCustomerRequest\x12\x1f\n" +
@@ -7645,16 +7666,16 @@ var file_payrudder_plans_v1_plans_proto_goTypes = []any{
 	(*SetTaxRatesResponse)(nil),                      // 124: payrudder.plans.v1.SetTaxRatesResponse
 	nil,                                              // 125: payrudder.plans.v1.CreateMeterRequest.FilterEntry
 	(*Address)(nil),                                  // 126: payrudder.plans.v1.Address
-	(*Customer)(nil),                                 // 127: payrudder.plans.v1.Customer
-	(Aggregation)(0),                                 // 128: payrudder.plans.v1.Aggregation
-	(*Meter)(nil),                                    // 129: payrudder.plans.v1.Meter
-	(*Plan)(nil),                                     // 130: payrudder.plans.v1.Plan
-	(*Price)(nil),                                    // 131: payrudder.plans.v1.Price
-	(*Entitlement)(nil),                              // 132: payrudder.plans.v1.Entitlement
-	(*CurrencyFee)(nil),                              // 133: payrudder.plans.v1.CurrencyFee
-	(*CurrencyPrices)(nil),                           // 134: payrudder.plans.v1.CurrencyPrices
-	(*PlanVersion)(nil),                              // 135: payrudder.plans.v1.PlanVersion
-	(*timestamppb.Timestamp)(nil),                    // 136: google.protobuf.Timestamp
+	(*timestamppb.Timestamp)(nil),                    // 127: google.protobuf.Timestamp
+	(*Customer)(nil),                                 // 128: payrudder.plans.v1.Customer
+	(Aggregation)(0),                                 // 129: payrudder.plans.v1.Aggregation
+	(*Meter)(nil),                                    // 130: payrudder.plans.v1.Meter
+	(*Plan)(nil),                                     // 131: payrudder.plans.v1.Plan
+	(*Price)(nil),                                    // 132: payrudder.plans.v1.Price
+	(*Entitlement)(nil),                              // 133: payrudder.plans.v1.Entitlement
+	(*CurrencyFee)(nil),                              // 134: payrudder.plans.v1.CurrencyFee
+	(*CurrencyPrices)(nil),                           // 135: payrudder.plans.v1.CurrencyPrices
+	(*PlanVersion)(nil),                              // 136: payrudder.plans.v1.PlanVersion
 	(SubscriptionInterval)(0),                        // 137: payrudder.plans.v1.SubscriptionInterval
 	(FeeTiming)(0),                                   // 138: payrudder.plans.v1.FeeTiming
 	(*Subscription)(nil),                             // 139: payrudder.plans.v1.Subscription
@@ -7666,230 +7687,231 @@ var file_payrudder_plans_v1_plans_proto_goTypes = []any{
 }
 var file_payrudder_plans_v1_plans_proto_depIdxs = []int32{
 	126, // 0: payrudder.plans.v1.CreateCustomerRequest.address:type_name -> payrudder.plans.v1.Address
-	127, // 1: payrudder.plans.v1.CreateCustomerResponse.customer:type_name -> payrudder.plans.v1.Customer
-	127, // 2: payrudder.plans.v1.GetCustomerResponse.customer:type_name -> payrudder.plans.v1.Customer
-	127, // 3: payrudder.plans.v1.ResolveCustomerResponse.customer:type_name -> payrudder.plans.v1.Customer
-	127, // 4: payrudder.plans.v1.ListCustomersResponse.customers:type_name -> payrudder.plans.v1.Customer
-	127, // 5: payrudder.plans.v1.SetPaymentMethodResponse.customer:type_name -> payrudder.plans.v1.Customer
-	126, // 6: payrudder.plans.v1.SetCustomerAddressRequest.address:type_name -> payrudder.plans.v1.Address
-	127, // 7: payrudder.plans.v1.SetCustomerAddressResponse.customer:type_name -> payrudder.plans.v1.Customer
-	127, // 8: payrudder.plans.v1.SetCustomerTaxResponse.customer:type_name -> payrudder.plans.v1.Customer
-	128, // 9: payrudder.plans.v1.CreateMeterRequest.aggregation:type_name -> payrudder.plans.v1.Aggregation
-	125, // 10: payrudder.plans.v1.CreateMeterRequest.filter:type_name -> payrudder.plans.v1.CreateMeterRequest.FilterEntry
-	129, // 11: payrudder.plans.v1.CreateMeterResponse.meter:type_name -> payrudder.plans.v1.Meter
-	129, // 12: payrudder.plans.v1.GetMeterResponse.meter:type_name -> payrudder.plans.v1.Meter
-	129, // 13: payrudder.plans.v1.ListMetersResponse.meters:type_name -> payrudder.plans.v1.Meter
-	130, // 14: payrudder.plans.v1.CreatePlanResponse.plan:type_name -> payrudder.plans.v1.Plan
-	130, // 15: payrudder.plans.v1.ListPlansResponse.plans:type_name -> payrudder.plans.v1.Plan
-	131, // 16: payrudder.plans.v1.PublishPlanVersionRequest.prices:type_name -> payrudder.plans.v1.Price
-	132, // 17: payrudder.plans.v1.PublishPlanVersionRequest.entitlements:type_name -> payrudder.plans.v1.Entitlement
-	133, // 18: payrudder.plans.v1.PublishPlanVersionRequest.fees:type_name -> payrudder.plans.v1.CurrencyFee
-	134, // 19: payrudder.plans.v1.PublishPlanVersionRequest.currency_prices:type_name -> payrudder.plans.v1.CurrencyPrices
-	135, // 20: payrudder.plans.v1.PublishPlanVersionResponse.plan_version:type_name -> payrudder.plans.v1.PlanVersion
-	135, // 21: payrudder.plans.v1.GetPlanVersionResponse.plan_version:type_name -> payrudder.plans.v1.PlanVersion
-	136, // 22: payrudder.plans.v1.CreateSubscriptionRequest.start_time:type_name -> google.protobuf.Timestamp
-	137, // 23: payrudder.plans.v1.CreateSubscriptionRequest.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	138, // 24: payrudder.plans.v1.CreateSubscriptionRequest.fee_timing:type_name -> payrudder.plans.v1.FeeTiming
-	139, // 25: payrudder.plans.v1.CreateSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	136, // 26: payrudder.plans.v1.CancelSubscriptionRequest.end_time:type_name -> google.protobuf.Timestamp
-	139, // 27: payrudder.plans.v1.CancelSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	136, // 28: payrudder.plans.v1.ListSubscriptionsForPeriodRequest.period_start:type_name -> google.protobuf.Timestamp
-	136, // 29: payrudder.plans.v1.ListSubscriptionsForPeriodRequest.period_end:type_name -> google.protobuf.Timestamp
-	139, // 30: payrudder.plans.v1.ListSubscriptionsForPeriodResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	139, // 31: payrudder.plans.v1.GetSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	139, // 32: payrudder.plans.v1.PauseSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	139, // 33: payrudder.plans.v1.ResumeSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	139, // 34: payrudder.plans.v1.ScheduleCancellationResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	136, // 35: payrudder.plans.v1.ChangePlanRequest.change_time:type_name -> google.protobuf.Timestamp
-	139, // 36: payrudder.plans.v1.ChangePlanResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	136, // 37: payrudder.plans.v1.SyncProviderSubscriptionRequest.occurred_at:type_name -> google.protobuf.Timestamp
-	137, // 38: payrudder.plans.v1.SyncProviderSubscriptionRequest.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	139, // 39: payrudder.plans.v1.SyncProviderSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	50,  // 40: payrudder.plans.v1.GetMailSettingsResponse.categories:type_name -> payrudder.plans.v1.MailCategorySetting
-	50,  // 41: payrudder.plans.v1.SetMailSettingsRequest.categories:type_name -> payrudder.plans.v1.MailCategorySetting
-	50,  // 42: payrudder.plans.v1.SetMailSettingsResponse.categories:type_name -> payrudder.plans.v1.MailCategorySetting
-	49,  // 43: payrudder.plans.v1.GetRoutingRulesResponse.rules:type_name -> payrudder.plans.v1.RoutingRule
-	49,  // 44: payrudder.plans.v1.SetRoutingRulesRequest.rules:type_name -> payrudder.plans.v1.RoutingRule
-	49,  // 45: payrudder.plans.v1.SetRoutingRulesResponse.rules:type_name -> payrudder.plans.v1.RoutingRule
-	2,   // 46: payrudder.plans.v1.ProviderMigration.state:type_name -> payrudder.plans.v1.ProviderMigration.State
-	136, // 47: payrudder.plans.v1.ProviderMigration.cutover_time:type_name -> google.protobuf.Timestamp
-	136, // 48: payrudder.plans.v1.ProviderMigration.create_time:type_name -> google.protobuf.Timestamp
-	136, // 49: payrudder.plans.v1.StartProviderMigrationRequest.cutover_time:type_name -> google.protobuf.Timestamp
-	61,  // 50: payrudder.plans.v1.StartProviderMigrationResponse.migration:type_name -> payrudder.plans.v1.ProviderMigration
-	136, // 51: payrudder.plans.v1.CompleteProviderMigrationRequest.cutover_time:type_name -> google.protobuf.Timestamp
-	61,  // 52: payrudder.plans.v1.CompleteProviderMigrationResponse.migration:type_name -> payrudder.plans.v1.ProviderMigration
-	139, // 53: payrudder.plans.v1.CompleteProviderMigrationResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	61,  // 54: payrudder.plans.v1.AbortProviderMigrationResponse.migration:type_name -> payrudder.plans.v1.ProviderMigration
-	61,  // 55: payrudder.plans.v1.GetProviderMigrationResponse.migration:type_name -> payrudder.plans.v1.ProviderMigration
-	71,  // 56: payrudder.plans.v1.GetSubscriptionReportResponse.rows:type_name -> payrudder.plans.v1.SubscriptionReportRow
-	136, // 57: payrudder.plans.v1.GetCustomerStatsRequest.from_time:type_name -> google.protobuf.Timestamp
-	136, // 58: payrudder.plans.v1.GetCustomerStatsRequest.to_time:type_name -> google.protobuf.Timestamp
-	136, // 59: payrudder.plans.v1.GetCustomerStatsRequest.prev_from_time:type_name -> google.protobuf.Timestamp
-	136, // 60: payrudder.plans.v1.GetCustomerStatsRequest.prev_to_time:type_name -> google.protobuf.Timestamp
-	139, // 61: payrudder.plans.v1.ListSubscriptionsResponse.subscriptions:type_name -> payrudder.plans.v1.Subscription
-	136, // 62: payrudder.plans.v1.ListSubscriptionsFeeDueRequest.now:type_name -> google.protobuf.Timestamp
-	139, // 63: payrudder.plans.v1.FeeDue.subscription:type_name -> payrudder.plans.v1.Subscription
-	136, // 64: payrudder.plans.v1.FeeDue.period_start:type_name -> google.protobuf.Timestamp
-	136, // 65: payrudder.plans.v1.FeeDue.period_end:type_name -> google.protobuf.Timestamp
-	78,  // 66: payrudder.plans.v1.ListSubscriptionsFeeDueResponse.due:type_name -> payrudder.plans.v1.FeeDue
-	136, // 67: payrudder.plans.v1.AdvanceSubscriptionFeeRequest.period_start:type_name -> google.protobuf.Timestamp
-	137, // 68: payrudder.plans.v1.ChangeSubscriptionRequest.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	0,   // 69: payrudder.plans.v1.ChangeSubscriptionRequest.timing:type_name -> payrudder.plans.v1.ChangeTiming
-	1,   // 70: payrudder.plans.v1.ChangeSubscriptionRequest.proration:type_name -> payrudder.plans.v1.ChangeProration
-	136, // 71: payrudder.plans.v1.ChangeSubscriptionRequest.change_time:type_name -> google.protobuf.Timestamp
-	0,   // 72: payrudder.plans.v1.ChangeQuote.timing:type_name -> payrudder.plans.v1.ChangeTiming
-	1,   // 73: payrudder.plans.v1.ChangeQuote.proration:type_name -> payrudder.plans.v1.ChangeProration
-	136, // 74: payrudder.plans.v1.ChangeQuote.effective_time:type_name -> google.protobuf.Timestamp
-	136, // 75: payrudder.plans.v1.ChangeQuote.period_start:type_name -> google.protobuf.Timestamp
-	136, // 76: payrudder.plans.v1.ChangeQuote.period_end:type_name -> google.protobuf.Timestamp
-	136, // 77: payrudder.plans.v1.ChangeQuote.next_renewal_time:type_name -> google.protobuf.Timestamp
-	137, // 78: payrudder.plans.v1.ChangeQuote.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	82,  // 79: payrudder.plans.v1.PreviewSubscriptionChangeRequest.change:type_name -> payrudder.plans.v1.ChangeSubscriptionRequest
-	83,  // 80: payrudder.plans.v1.PreviewSubscriptionChangeResponse.quote:type_name -> payrudder.plans.v1.ChangeQuote
-	139, // 81: payrudder.plans.v1.ChangeSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	83,  // 82: payrudder.plans.v1.ChangeSubscriptionResponse.quote:type_name -> payrudder.plans.v1.ChangeQuote
-	139, // 83: payrudder.plans.v1.CancelScheduledChangeResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	136, // 84: payrudder.plans.v1.ApplyScheduledChangesRequest.now:type_name -> google.protobuf.Timestamp
-	139, // 85: payrudder.plans.v1.Adjustment.subscription:type_name -> payrudder.plans.v1.Subscription
-	136, // 86: payrudder.plans.v1.Adjustment.from_time:type_name -> google.protobuf.Timestamp
-	136, // 87: payrudder.plans.v1.Adjustment.to_time:type_name -> google.protobuf.Timestamp
-	91,  // 88: payrudder.plans.v1.ListSubscriptionAdjustmentsResponse.adjustments:type_name -> payrudder.plans.v1.Adjustment
-	140, // 89: payrudder.plans.v1.CreateCouponRequest.coupon:type_name -> payrudder.plans.v1.Coupon
-	140, // 90: payrudder.plans.v1.CreateCouponResponse.coupon:type_name -> payrudder.plans.v1.Coupon
-	140, // 91: payrudder.plans.v1.ListCouponsResponse.coupons:type_name -> payrudder.plans.v1.Coupon
-	140, // 92: payrudder.plans.v1.DeactivateCouponResponse.coupon:type_name -> payrudder.plans.v1.Coupon
-	139, // 93: payrudder.plans.v1.ApplyCouponResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	139, // 94: payrudder.plans.v1.RemoveCouponResponse.subscription:type_name -> payrudder.plans.v1.Subscription
-	141, // 95: payrudder.plans.v1.CreatePromotionCodesRequest.template:type_name -> payrudder.plans.v1.PromotionCode
-	141, // 96: payrudder.plans.v1.CreatePromotionCodesResponse.codes:type_name -> payrudder.plans.v1.PromotionCode
-	141, // 97: payrudder.plans.v1.ListPromotionCodesResponse.codes:type_name -> payrudder.plans.v1.PromotionCode
-	141, // 98: payrudder.plans.v1.DeactivatePromotionCodeResponse.code:type_name -> payrudder.plans.v1.PromotionCode
-	142, // 99: payrudder.plans.v1.ListCouponRedemptionsResponse.redemptions:type_name -> payrudder.plans.v1.CouponRedemption
-	143, // 100: payrudder.plans.v1.RedeemPromotionRequest.target:type_name -> payrudder.plans.v1.CouponTarget
-	143, // 101: payrudder.plans.v1.ReversePromotionRequest.target:type_name -> payrudder.plans.v1.CouponTarget
-	120, // 102: payrudder.plans.v1.GetTaxRatesResponse.rates:type_name -> payrudder.plans.v1.TaxRate
-	120, // 103: payrudder.plans.v1.SetTaxRatesRequest.rates:type_name -> payrudder.plans.v1.TaxRate
-	120, // 104: payrudder.plans.v1.SetTaxRatesResponse.rates:type_name -> payrudder.plans.v1.TaxRate
-	144, // 105: payrudder.plans.v1.CreateMeterRequest.FilterEntry.value:type_name -> payrudder.plans.v1.FilterValues
-	3,   // 106: payrudder.plans.v1.PlansService.CreateCustomer:input_type -> payrudder.plans.v1.CreateCustomerRequest
-	5,   // 107: payrudder.plans.v1.PlansService.GetCustomer:input_type -> payrudder.plans.v1.GetCustomerRequest
-	7,   // 108: payrudder.plans.v1.PlansService.ResolveCustomer:input_type -> payrudder.plans.v1.ResolveCustomerRequest
-	9,   // 109: payrudder.plans.v1.PlansService.ListCustomers:input_type -> payrudder.plans.v1.ListCustomersRequest
-	11,  // 110: payrudder.plans.v1.PlansService.SetPaymentMethod:input_type -> payrudder.plans.v1.SetPaymentMethodRequest
-	13,  // 111: payrudder.plans.v1.PlansService.SetCustomerAddress:input_type -> payrudder.plans.v1.SetCustomerAddressRequest
-	15,  // 112: payrudder.plans.v1.PlansService.SetCustomerTax:input_type -> payrudder.plans.v1.SetCustomerTaxRequest
-	17,  // 113: payrudder.plans.v1.PlansService.CreateMeter:input_type -> payrudder.plans.v1.CreateMeterRequest
-	19,  // 114: payrudder.plans.v1.PlansService.GetMeter:input_type -> payrudder.plans.v1.GetMeterRequest
-	21,  // 115: payrudder.plans.v1.PlansService.ListMeters:input_type -> payrudder.plans.v1.ListMetersRequest
-	23,  // 116: payrudder.plans.v1.PlansService.CreatePlan:input_type -> payrudder.plans.v1.CreatePlanRequest
-	25,  // 117: payrudder.plans.v1.PlansService.ListPlans:input_type -> payrudder.plans.v1.ListPlansRequest
-	27,  // 118: payrudder.plans.v1.PlansService.PublishPlanVersion:input_type -> payrudder.plans.v1.PublishPlanVersionRequest
-	29,  // 119: payrudder.plans.v1.PlansService.GetPlanVersion:input_type -> payrudder.plans.v1.GetPlanVersionRequest
-	31,  // 120: payrudder.plans.v1.PlansService.CreateSubscription:input_type -> payrudder.plans.v1.CreateSubscriptionRequest
-	33,  // 121: payrudder.plans.v1.PlansService.CancelSubscription:input_type -> payrudder.plans.v1.CancelSubscriptionRequest
-	37,  // 122: payrudder.plans.v1.PlansService.GetSubscription:input_type -> payrudder.plans.v1.GetSubscriptionRequest
-	75,  // 123: payrudder.plans.v1.PlansService.ListSubscriptions:input_type -> payrudder.plans.v1.ListSubscriptionsRequest
-	55,  // 124: payrudder.plans.v1.PlansService.GetRoutingRules:input_type -> payrudder.plans.v1.GetRoutingRulesRequest
-	57,  // 125: payrudder.plans.v1.PlansService.SetRoutingRules:input_type -> payrudder.plans.v1.SetRoutingRulesRequest
-	51,  // 126: payrudder.plans.v1.PlansService.GetMailSettings:input_type -> payrudder.plans.v1.GetMailSettingsRequest
-	53,  // 127: payrudder.plans.v1.PlansService.SetMailSettings:input_type -> payrudder.plans.v1.SetMailSettingsRequest
-	59,  // 128: payrudder.plans.v1.PlansService.PreviewRouting:input_type -> payrudder.plans.v1.PreviewRoutingRequest
-	62,  // 129: payrudder.plans.v1.PlansService.StartProviderMigration:input_type -> payrudder.plans.v1.StartProviderMigrationRequest
-	64,  // 130: payrudder.plans.v1.PlansService.CompleteProviderMigration:input_type -> payrudder.plans.v1.CompleteProviderMigrationRequest
-	66,  // 131: payrudder.plans.v1.PlansService.AbortProviderMigration:input_type -> payrudder.plans.v1.AbortProviderMigrationRequest
-	68,  // 132: payrudder.plans.v1.PlansService.GetProviderMigration:input_type -> payrudder.plans.v1.GetProviderMigrationRequest
-	70,  // 133: payrudder.plans.v1.PlansService.GetSubscriptionReport:input_type -> payrudder.plans.v1.GetSubscriptionReportRequest
-	73,  // 134: payrudder.plans.v1.PlansService.GetCustomerStats:input_type -> payrudder.plans.v1.GetCustomerStatsRequest
-	47,  // 135: payrudder.plans.v1.PlansService.SyncProviderSubscription:input_type -> payrudder.plans.v1.SyncProviderSubscriptionRequest
-	39,  // 136: payrudder.plans.v1.PlansService.PauseSubscription:input_type -> payrudder.plans.v1.PauseSubscriptionRequest
-	41,  // 137: payrudder.plans.v1.PlansService.ResumeSubscription:input_type -> payrudder.plans.v1.ResumeSubscriptionRequest
-	43,  // 138: payrudder.plans.v1.PlansService.ScheduleCancellation:input_type -> payrudder.plans.v1.ScheduleCancellationRequest
-	45,  // 139: payrudder.plans.v1.PlansService.ChangePlan:input_type -> payrudder.plans.v1.ChangePlanRequest
-	84,  // 140: payrudder.plans.v1.PlansService.PreviewSubscriptionChange:input_type -> payrudder.plans.v1.PreviewSubscriptionChangeRequest
-	82,  // 141: payrudder.plans.v1.PlansService.ChangeSubscription:input_type -> payrudder.plans.v1.ChangeSubscriptionRequest
-	87,  // 142: payrudder.plans.v1.PlansService.CancelScheduledChange:input_type -> payrudder.plans.v1.CancelScheduledChangeRequest
-	89,  // 143: payrudder.plans.v1.PlansService.ApplyScheduledChanges:input_type -> payrudder.plans.v1.ApplyScheduledChangesRequest
-	92,  // 144: payrudder.plans.v1.PlansService.ListSubscriptionAdjustments:input_type -> payrudder.plans.v1.ListSubscriptionAdjustmentsRequest
-	94,  // 145: payrudder.plans.v1.PlansService.MarkSubscriptionAdjustmentBilled:input_type -> payrudder.plans.v1.MarkSubscriptionAdjustmentBilledRequest
-	121, // 146: payrudder.plans.v1.PlansService.GetTaxRates:input_type -> payrudder.plans.v1.GetTaxRatesRequest
-	123, // 147: payrudder.plans.v1.PlansService.SetTaxRates:input_type -> payrudder.plans.v1.SetTaxRatesRequest
-	96,  // 148: payrudder.plans.v1.PlansService.CreateCoupon:input_type -> payrudder.plans.v1.CreateCouponRequest
-	98,  // 149: payrudder.plans.v1.PlansService.ListCoupons:input_type -> payrudder.plans.v1.ListCouponsRequest
-	100, // 150: payrudder.plans.v1.PlansService.DeactivateCoupon:input_type -> payrudder.plans.v1.DeactivateCouponRequest
-	102, // 151: payrudder.plans.v1.PlansService.ApplyCoupon:input_type -> payrudder.plans.v1.ApplyCouponRequest
-	104, // 152: payrudder.plans.v1.PlansService.RemoveCoupon:input_type -> payrudder.plans.v1.RemoveCouponRequest
-	106, // 153: payrudder.plans.v1.PlansService.CreatePromotionCodes:input_type -> payrudder.plans.v1.CreatePromotionCodesRequest
-	108, // 154: payrudder.plans.v1.PlansService.ListPromotionCodes:input_type -> payrudder.plans.v1.ListPromotionCodesRequest
-	110, // 155: payrudder.plans.v1.PlansService.DeactivatePromotionCode:input_type -> payrudder.plans.v1.DeactivatePromotionCodeRequest
-	112, // 156: payrudder.plans.v1.PlansService.ListCouponRedemptions:input_type -> payrudder.plans.v1.ListCouponRedemptionsRequest
-	114, // 157: payrudder.plans.v1.PlansService.RedeemPromotion:input_type -> payrudder.plans.v1.RedeemPromotionRequest
-	116, // 158: payrudder.plans.v1.PlansService.ReversePromotion:input_type -> payrudder.plans.v1.ReversePromotionRequest
-	118, // 159: payrudder.plans.v1.PlansService.GrantCustomerCoupon:input_type -> payrudder.plans.v1.GrantCustomerCouponRequest
-	77,  // 160: payrudder.plans.v1.PlansService.ListSubscriptionsFeeDue:input_type -> payrudder.plans.v1.ListSubscriptionsFeeDueRequest
-	80,  // 161: payrudder.plans.v1.PlansService.AdvanceSubscriptionFee:input_type -> payrudder.plans.v1.AdvanceSubscriptionFeeRequest
-	35,  // 162: payrudder.plans.v1.PlansService.ListSubscriptionsForPeriod:input_type -> payrudder.plans.v1.ListSubscriptionsForPeriodRequest
-	4,   // 163: payrudder.plans.v1.PlansService.CreateCustomer:output_type -> payrudder.plans.v1.CreateCustomerResponse
-	6,   // 164: payrudder.plans.v1.PlansService.GetCustomer:output_type -> payrudder.plans.v1.GetCustomerResponse
-	8,   // 165: payrudder.plans.v1.PlansService.ResolveCustomer:output_type -> payrudder.plans.v1.ResolveCustomerResponse
-	10,  // 166: payrudder.plans.v1.PlansService.ListCustomers:output_type -> payrudder.plans.v1.ListCustomersResponse
-	12,  // 167: payrudder.plans.v1.PlansService.SetPaymentMethod:output_type -> payrudder.plans.v1.SetPaymentMethodResponse
-	14,  // 168: payrudder.plans.v1.PlansService.SetCustomerAddress:output_type -> payrudder.plans.v1.SetCustomerAddressResponse
-	16,  // 169: payrudder.plans.v1.PlansService.SetCustomerTax:output_type -> payrudder.plans.v1.SetCustomerTaxResponse
-	18,  // 170: payrudder.plans.v1.PlansService.CreateMeter:output_type -> payrudder.plans.v1.CreateMeterResponse
-	20,  // 171: payrudder.plans.v1.PlansService.GetMeter:output_type -> payrudder.plans.v1.GetMeterResponse
-	22,  // 172: payrudder.plans.v1.PlansService.ListMeters:output_type -> payrudder.plans.v1.ListMetersResponse
-	24,  // 173: payrudder.plans.v1.PlansService.CreatePlan:output_type -> payrudder.plans.v1.CreatePlanResponse
-	26,  // 174: payrudder.plans.v1.PlansService.ListPlans:output_type -> payrudder.plans.v1.ListPlansResponse
-	28,  // 175: payrudder.plans.v1.PlansService.PublishPlanVersion:output_type -> payrudder.plans.v1.PublishPlanVersionResponse
-	30,  // 176: payrudder.plans.v1.PlansService.GetPlanVersion:output_type -> payrudder.plans.v1.GetPlanVersionResponse
-	32,  // 177: payrudder.plans.v1.PlansService.CreateSubscription:output_type -> payrudder.plans.v1.CreateSubscriptionResponse
-	34,  // 178: payrudder.plans.v1.PlansService.CancelSubscription:output_type -> payrudder.plans.v1.CancelSubscriptionResponse
-	38,  // 179: payrudder.plans.v1.PlansService.GetSubscription:output_type -> payrudder.plans.v1.GetSubscriptionResponse
-	76,  // 180: payrudder.plans.v1.PlansService.ListSubscriptions:output_type -> payrudder.plans.v1.ListSubscriptionsResponse
-	56,  // 181: payrudder.plans.v1.PlansService.GetRoutingRules:output_type -> payrudder.plans.v1.GetRoutingRulesResponse
-	58,  // 182: payrudder.plans.v1.PlansService.SetRoutingRules:output_type -> payrudder.plans.v1.SetRoutingRulesResponse
-	52,  // 183: payrudder.plans.v1.PlansService.GetMailSettings:output_type -> payrudder.plans.v1.GetMailSettingsResponse
-	54,  // 184: payrudder.plans.v1.PlansService.SetMailSettings:output_type -> payrudder.plans.v1.SetMailSettingsResponse
-	60,  // 185: payrudder.plans.v1.PlansService.PreviewRouting:output_type -> payrudder.plans.v1.PreviewRoutingResponse
-	63,  // 186: payrudder.plans.v1.PlansService.StartProviderMigration:output_type -> payrudder.plans.v1.StartProviderMigrationResponse
-	65,  // 187: payrudder.plans.v1.PlansService.CompleteProviderMigration:output_type -> payrudder.plans.v1.CompleteProviderMigrationResponse
-	67,  // 188: payrudder.plans.v1.PlansService.AbortProviderMigration:output_type -> payrudder.plans.v1.AbortProviderMigrationResponse
-	69,  // 189: payrudder.plans.v1.PlansService.GetProviderMigration:output_type -> payrudder.plans.v1.GetProviderMigrationResponse
-	72,  // 190: payrudder.plans.v1.PlansService.GetSubscriptionReport:output_type -> payrudder.plans.v1.GetSubscriptionReportResponse
-	74,  // 191: payrudder.plans.v1.PlansService.GetCustomerStats:output_type -> payrudder.plans.v1.GetCustomerStatsResponse
-	48,  // 192: payrudder.plans.v1.PlansService.SyncProviderSubscription:output_type -> payrudder.plans.v1.SyncProviderSubscriptionResponse
-	40,  // 193: payrudder.plans.v1.PlansService.PauseSubscription:output_type -> payrudder.plans.v1.PauseSubscriptionResponse
-	42,  // 194: payrudder.plans.v1.PlansService.ResumeSubscription:output_type -> payrudder.plans.v1.ResumeSubscriptionResponse
-	44,  // 195: payrudder.plans.v1.PlansService.ScheduleCancellation:output_type -> payrudder.plans.v1.ScheduleCancellationResponse
-	46,  // 196: payrudder.plans.v1.PlansService.ChangePlan:output_type -> payrudder.plans.v1.ChangePlanResponse
-	85,  // 197: payrudder.plans.v1.PlansService.PreviewSubscriptionChange:output_type -> payrudder.plans.v1.PreviewSubscriptionChangeResponse
-	86,  // 198: payrudder.plans.v1.PlansService.ChangeSubscription:output_type -> payrudder.plans.v1.ChangeSubscriptionResponse
-	88,  // 199: payrudder.plans.v1.PlansService.CancelScheduledChange:output_type -> payrudder.plans.v1.CancelScheduledChangeResponse
-	90,  // 200: payrudder.plans.v1.PlansService.ApplyScheduledChanges:output_type -> payrudder.plans.v1.ApplyScheduledChangesResponse
-	93,  // 201: payrudder.plans.v1.PlansService.ListSubscriptionAdjustments:output_type -> payrudder.plans.v1.ListSubscriptionAdjustmentsResponse
-	95,  // 202: payrudder.plans.v1.PlansService.MarkSubscriptionAdjustmentBilled:output_type -> payrudder.plans.v1.MarkSubscriptionAdjustmentBilledResponse
-	122, // 203: payrudder.plans.v1.PlansService.GetTaxRates:output_type -> payrudder.plans.v1.GetTaxRatesResponse
-	124, // 204: payrudder.plans.v1.PlansService.SetTaxRates:output_type -> payrudder.plans.v1.SetTaxRatesResponse
-	97,  // 205: payrudder.plans.v1.PlansService.CreateCoupon:output_type -> payrudder.plans.v1.CreateCouponResponse
-	99,  // 206: payrudder.plans.v1.PlansService.ListCoupons:output_type -> payrudder.plans.v1.ListCouponsResponse
-	101, // 207: payrudder.plans.v1.PlansService.DeactivateCoupon:output_type -> payrudder.plans.v1.DeactivateCouponResponse
-	103, // 208: payrudder.plans.v1.PlansService.ApplyCoupon:output_type -> payrudder.plans.v1.ApplyCouponResponse
-	105, // 209: payrudder.plans.v1.PlansService.RemoveCoupon:output_type -> payrudder.plans.v1.RemoveCouponResponse
-	107, // 210: payrudder.plans.v1.PlansService.CreatePromotionCodes:output_type -> payrudder.plans.v1.CreatePromotionCodesResponse
-	109, // 211: payrudder.plans.v1.PlansService.ListPromotionCodes:output_type -> payrudder.plans.v1.ListPromotionCodesResponse
-	111, // 212: payrudder.plans.v1.PlansService.DeactivatePromotionCode:output_type -> payrudder.plans.v1.DeactivatePromotionCodeResponse
-	113, // 213: payrudder.plans.v1.PlansService.ListCouponRedemptions:output_type -> payrudder.plans.v1.ListCouponRedemptionsResponse
-	115, // 214: payrudder.plans.v1.PlansService.RedeemPromotion:output_type -> payrudder.plans.v1.RedeemPromotionResponse
-	117, // 215: payrudder.plans.v1.PlansService.ReversePromotion:output_type -> payrudder.plans.v1.ReversePromotionResponse
-	119, // 216: payrudder.plans.v1.PlansService.GrantCustomerCoupon:output_type -> payrudder.plans.v1.GrantCustomerCouponResponse
-	79,  // 217: payrudder.plans.v1.PlansService.ListSubscriptionsFeeDue:output_type -> payrudder.plans.v1.ListSubscriptionsFeeDueResponse
-	81,  // 218: payrudder.plans.v1.PlansService.AdvanceSubscriptionFee:output_type -> payrudder.plans.v1.AdvanceSubscriptionFeeResponse
-	36,  // 219: payrudder.plans.v1.PlansService.ListSubscriptionsForPeriod:output_type -> payrudder.plans.v1.ListSubscriptionsForPeriodResponse
-	163, // [163:220] is the sub-list for method output_type
-	106, // [106:163] is the sub-list for method input_type
-	106, // [106:106] is the sub-list for extension type_name
-	106, // [106:106] is the sub-list for extension extendee
-	0,   // [0:106] is the sub-list for field type_name
+	127, // 1: payrudder.plans.v1.CreateCustomerRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	128, // 2: payrudder.plans.v1.CreateCustomerResponse.customer:type_name -> payrudder.plans.v1.Customer
+	128, // 3: payrudder.plans.v1.GetCustomerResponse.customer:type_name -> payrudder.plans.v1.Customer
+	128, // 4: payrudder.plans.v1.ResolveCustomerResponse.customer:type_name -> payrudder.plans.v1.Customer
+	128, // 5: payrudder.plans.v1.ListCustomersResponse.customers:type_name -> payrudder.plans.v1.Customer
+	128, // 6: payrudder.plans.v1.SetPaymentMethodResponse.customer:type_name -> payrudder.plans.v1.Customer
+	126, // 7: payrudder.plans.v1.SetCustomerAddressRequest.address:type_name -> payrudder.plans.v1.Address
+	128, // 8: payrudder.plans.v1.SetCustomerAddressResponse.customer:type_name -> payrudder.plans.v1.Customer
+	128, // 9: payrudder.plans.v1.SetCustomerTaxResponse.customer:type_name -> payrudder.plans.v1.Customer
+	129, // 10: payrudder.plans.v1.CreateMeterRequest.aggregation:type_name -> payrudder.plans.v1.Aggregation
+	125, // 11: payrudder.plans.v1.CreateMeterRequest.filter:type_name -> payrudder.plans.v1.CreateMeterRequest.FilterEntry
+	130, // 12: payrudder.plans.v1.CreateMeterResponse.meter:type_name -> payrudder.plans.v1.Meter
+	130, // 13: payrudder.plans.v1.GetMeterResponse.meter:type_name -> payrudder.plans.v1.Meter
+	130, // 14: payrudder.plans.v1.ListMetersResponse.meters:type_name -> payrudder.plans.v1.Meter
+	131, // 15: payrudder.plans.v1.CreatePlanResponse.plan:type_name -> payrudder.plans.v1.Plan
+	131, // 16: payrudder.plans.v1.ListPlansResponse.plans:type_name -> payrudder.plans.v1.Plan
+	132, // 17: payrudder.plans.v1.PublishPlanVersionRequest.prices:type_name -> payrudder.plans.v1.Price
+	133, // 18: payrudder.plans.v1.PublishPlanVersionRequest.entitlements:type_name -> payrudder.plans.v1.Entitlement
+	134, // 19: payrudder.plans.v1.PublishPlanVersionRequest.fees:type_name -> payrudder.plans.v1.CurrencyFee
+	135, // 20: payrudder.plans.v1.PublishPlanVersionRequest.currency_prices:type_name -> payrudder.plans.v1.CurrencyPrices
+	136, // 21: payrudder.plans.v1.PublishPlanVersionResponse.plan_version:type_name -> payrudder.plans.v1.PlanVersion
+	136, // 22: payrudder.plans.v1.GetPlanVersionResponse.plan_version:type_name -> payrudder.plans.v1.PlanVersion
+	127, // 23: payrudder.plans.v1.CreateSubscriptionRequest.start_time:type_name -> google.protobuf.Timestamp
+	137, // 24: payrudder.plans.v1.CreateSubscriptionRequest.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	138, // 25: payrudder.plans.v1.CreateSubscriptionRequest.fee_timing:type_name -> payrudder.plans.v1.FeeTiming
+	139, // 26: payrudder.plans.v1.CreateSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	127, // 27: payrudder.plans.v1.CancelSubscriptionRequest.end_time:type_name -> google.protobuf.Timestamp
+	139, // 28: payrudder.plans.v1.CancelSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	127, // 29: payrudder.plans.v1.ListSubscriptionsForPeriodRequest.period_start:type_name -> google.protobuf.Timestamp
+	127, // 30: payrudder.plans.v1.ListSubscriptionsForPeriodRequest.period_end:type_name -> google.protobuf.Timestamp
+	139, // 31: payrudder.plans.v1.ListSubscriptionsForPeriodResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	139, // 32: payrudder.plans.v1.GetSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	139, // 33: payrudder.plans.v1.PauseSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	139, // 34: payrudder.plans.v1.ResumeSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	139, // 35: payrudder.plans.v1.ScheduleCancellationResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	127, // 36: payrudder.plans.v1.ChangePlanRequest.change_time:type_name -> google.protobuf.Timestamp
+	139, // 37: payrudder.plans.v1.ChangePlanResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	127, // 38: payrudder.plans.v1.SyncProviderSubscriptionRequest.occurred_at:type_name -> google.protobuf.Timestamp
+	137, // 39: payrudder.plans.v1.SyncProviderSubscriptionRequest.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	139, // 40: payrudder.plans.v1.SyncProviderSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	50,  // 41: payrudder.plans.v1.GetMailSettingsResponse.categories:type_name -> payrudder.plans.v1.MailCategorySetting
+	50,  // 42: payrudder.plans.v1.SetMailSettingsRequest.categories:type_name -> payrudder.plans.v1.MailCategorySetting
+	50,  // 43: payrudder.plans.v1.SetMailSettingsResponse.categories:type_name -> payrudder.plans.v1.MailCategorySetting
+	49,  // 44: payrudder.plans.v1.GetRoutingRulesResponse.rules:type_name -> payrudder.plans.v1.RoutingRule
+	49,  // 45: payrudder.plans.v1.SetRoutingRulesRequest.rules:type_name -> payrudder.plans.v1.RoutingRule
+	49,  // 46: payrudder.plans.v1.SetRoutingRulesResponse.rules:type_name -> payrudder.plans.v1.RoutingRule
+	2,   // 47: payrudder.plans.v1.ProviderMigration.state:type_name -> payrudder.plans.v1.ProviderMigration.State
+	127, // 48: payrudder.plans.v1.ProviderMigration.cutover_time:type_name -> google.protobuf.Timestamp
+	127, // 49: payrudder.plans.v1.ProviderMigration.create_time:type_name -> google.protobuf.Timestamp
+	127, // 50: payrudder.plans.v1.StartProviderMigrationRequest.cutover_time:type_name -> google.protobuf.Timestamp
+	61,  // 51: payrudder.plans.v1.StartProviderMigrationResponse.migration:type_name -> payrudder.plans.v1.ProviderMigration
+	127, // 52: payrudder.plans.v1.CompleteProviderMigrationRequest.cutover_time:type_name -> google.protobuf.Timestamp
+	61,  // 53: payrudder.plans.v1.CompleteProviderMigrationResponse.migration:type_name -> payrudder.plans.v1.ProviderMigration
+	139, // 54: payrudder.plans.v1.CompleteProviderMigrationResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	61,  // 55: payrudder.plans.v1.AbortProviderMigrationResponse.migration:type_name -> payrudder.plans.v1.ProviderMigration
+	61,  // 56: payrudder.plans.v1.GetProviderMigrationResponse.migration:type_name -> payrudder.plans.v1.ProviderMigration
+	71,  // 57: payrudder.plans.v1.GetSubscriptionReportResponse.rows:type_name -> payrudder.plans.v1.SubscriptionReportRow
+	127, // 58: payrudder.plans.v1.GetCustomerStatsRequest.from_time:type_name -> google.protobuf.Timestamp
+	127, // 59: payrudder.plans.v1.GetCustomerStatsRequest.to_time:type_name -> google.protobuf.Timestamp
+	127, // 60: payrudder.plans.v1.GetCustomerStatsRequest.prev_from_time:type_name -> google.protobuf.Timestamp
+	127, // 61: payrudder.plans.v1.GetCustomerStatsRequest.prev_to_time:type_name -> google.protobuf.Timestamp
+	139, // 62: payrudder.plans.v1.ListSubscriptionsResponse.subscriptions:type_name -> payrudder.plans.v1.Subscription
+	127, // 63: payrudder.plans.v1.ListSubscriptionsFeeDueRequest.now:type_name -> google.protobuf.Timestamp
+	139, // 64: payrudder.plans.v1.FeeDue.subscription:type_name -> payrudder.plans.v1.Subscription
+	127, // 65: payrudder.plans.v1.FeeDue.period_start:type_name -> google.protobuf.Timestamp
+	127, // 66: payrudder.plans.v1.FeeDue.period_end:type_name -> google.protobuf.Timestamp
+	78,  // 67: payrudder.plans.v1.ListSubscriptionsFeeDueResponse.due:type_name -> payrudder.plans.v1.FeeDue
+	127, // 68: payrudder.plans.v1.AdvanceSubscriptionFeeRequest.period_start:type_name -> google.protobuf.Timestamp
+	137, // 69: payrudder.plans.v1.ChangeSubscriptionRequest.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	0,   // 70: payrudder.plans.v1.ChangeSubscriptionRequest.timing:type_name -> payrudder.plans.v1.ChangeTiming
+	1,   // 71: payrudder.plans.v1.ChangeSubscriptionRequest.proration:type_name -> payrudder.plans.v1.ChangeProration
+	127, // 72: payrudder.plans.v1.ChangeSubscriptionRequest.change_time:type_name -> google.protobuf.Timestamp
+	0,   // 73: payrudder.plans.v1.ChangeQuote.timing:type_name -> payrudder.plans.v1.ChangeTiming
+	1,   // 74: payrudder.plans.v1.ChangeQuote.proration:type_name -> payrudder.plans.v1.ChangeProration
+	127, // 75: payrudder.plans.v1.ChangeQuote.effective_time:type_name -> google.protobuf.Timestamp
+	127, // 76: payrudder.plans.v1.ChangeQuote.period_start:type_name -> google.protobuf.Timestamp
+	127, // 77: payrudder.plans.v1.ChangeQuote.period_end:type_name -> google.protobuf.Timestamp
+	127, // 78: payrudder.plans.v1.ChangeQuote.next_renewal_time:type_name -> google.protobuf.Timestamp
+	137, // 79: payrudder.plans.v1.ChangeQuote.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	82,  // 80: payrudder.plans.v1.PreviewSubscriptionChangeRequest.change:type_name -> payrudder.plans.v1.ChangeSubscriptionRequest
+	83,  // 81: payrudder.plans.v1.PreviewSubscriptionChangeResponse.quote:type_name -> payrudder.plans.v1.ChangeQuote
+	139, // 82: payrudder.plans.v1.ChangeSubscriptionResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	83,  // 83: payrudder.plans.v1.ChangeSubscriptionResponse.quote:type_name -> payrudder.plans.v1.ChangeQuote
+	139, // 84: payrudder.plans.v1.CancelScheduledChangeResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	127, // 85: payrudder.plans.v1.ApplyScheduledChangesRequest.now:type_name -> google.protobuf.Timestamp
+	139, // 86: payrudder.plans.v1.Adjustment.subscription:type_name -> payrudder.plans.v1.Subscription
+	127, // 87: payrudder.plans.v1.Adjustment.from_time:type_name -> google.protobuf.Timestamp
+	127, // 88: payrudder.plans.v1.Adjustment.to_time:type_name -> google.protobuf.Timestamp
+	91,  // 89: payrudder.plans.v1.ListSubscriptionAdjustmentsResponse.adjustments:type_name -> payrudder.plans.v1.Adjustment
+	140, // 90: payrudder.plans.v1.CreateCouponRequest.coupon:type_name -> payrudder.plans.v1.Coupon
+	140, // 91: payrudder.plans.v1.CreateCouponResponse.coupon:type_name -> payrudder.plans.v1.Coupon
+	140, // 92: payrudder.plans.v1.ListCouponsResponse.coupons:type_name -> payrudder.plans.v1.Coupon
+	140, // 93: payrudder.plans.v1.DeactivateCouponResponse.coupon:type_name -> payrudder.plans.v1.Coupon
+	139, // 94: payrudder.plans.v1.ApplyCouponResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	139, // 95: payrudder.plans.v1.RemoveCouponResponse.subscription:type_name -> payrudder.plans.v1.Subscription
+	141, // 96: payrudder.plans.v1.CreatePromotionCodesRequest.template:type_name -> payrudder.plans.v1.PromotionCode
+	141, // 97: payrudder.plans.v1.CreatePromotionCodesResponse.codes:type_name -> payrudder.plans.v1.PromotionCode
+	141, // 98: payrudder.plans.v1.ListPromotionCodesResponse.codes:type_name -> payrudder.plans.v1.PromotionCode
+	141, // 99: payrudder.plans.v1.DeactivatePromotionCodeResponse.code:type_name -> payrudder.plans.v1.PromotionCode
+	142, // 100: payrudder.plans.v1.ListCouponRedemptionsResponse.redemptions:type_name -> payrudder.plans.v1.CouponRedemption
+	143, // 101: payrudder.plans.v1.RedeemPromotionRequest.target:type_name -> payrudder.plans.v1.CouponTarget
+	143, // 102: payrudder.plans.v1.ReversePromotionRequest.target:type_name -> payrudder.plans.v1.CouponTarget
+	120, // 103: payrudder.plans.v1.GetTaxRatesResponse.rates:type_name -> payrudder.plans.v1.TaxRate
+	120, // 104: payrudder.plans.v1.SetTaxRatesRequest.rates:type_name -> payrudder.plans.v1.TaxRate
+	120, // 105: payrudder.plans.v1.SetTaxRatesResponse.rates:type_name -> payrudder.plans.v1.TaxRate
+	144, // 106: payrudder.plans.v1.CreateMeterRequest.FilterEntry.value:type_name -> payrudder.plans.v1.FilterValues
+	3,   // 107: payrudder.plans.v1.PlansService.CreateCustomer:input_type -> payrudder.plans.v1.CreateCustomerRequest
+	5,   // 108: payrudder.plans.v1.PlansService.GetCustomer:input_type -> payrudder.plans.v1.GetCustomerRequest
+	7,   // 109: payrudder.plans.v1.PlansService.ResolveCustomer:input_type -> payrudder.plans.v1.ResolveCustomerRequest
+	9,   // 110: payrudder.plans.v1.PlansService.ListCustomers:input_type -> payrudder.plans.v1.ListCustomersRequest
+	11,  // 111: payrudder.plans.v1.PlansService.SetPaymentMethod:input_type -> payrudder.plans.v1.SetPaymentMethodRequest
+	13,  // 112: payrudder.plans.v1.PlansService.SetCustomerAddress:input_type -> payrudder.plans.v1.SetCustomerAddressRequest
+	15,  // 113: payrudder.plans.v1.PlansService.SetCustomerTax:input_type -> payrudder.plans.v1.SetCustomerTaxRequest
+	17,  // 114: payrudder.plans.v1.PlansService.CreateMeter:input_type -> payrudder.plans.v1.CreateMeterRequest
+	19,  // 115: payrudder.plans.v1.PlansService.GetMeter:input_type -> payrudder.plans.v1.GetMeterRequest
+	21,  // 116: payrudder.plans.v1.PlansService.ListMeters:input_type -> payrudder.plans.v1.ListMetersRequest
+	23,  // 117: payrudder.plans.v1.PlansService.CreatePlan:input_type -> payrudder.plans.v1.CreatePlanRequest
+	25,  // 118: payrudder.plans.v1.PlansService.ListPlans:input_type -> payrudder.plans.v1.ListPlansRequest
+	27,  // 119: payrudder.plans.v1.PlansService.PublishPlanVersion:input_type -> payrudder.plans.v1.PublishPlanVersionRequest
+	29,  // 120: payrudder.plans.v1.PlansService.GetPlanVersion:input_type -> payrudder.plans.v1.GetPlanVersionRequest
+	31,  // 121: payrudder.plans.v1.PlansService.CreateSubscription:input_type -> payrudder.plans.v1.CreateSubscriptionRequest
+	33,  // 122: payrudder.plans.v1.PlansService.CancelSubscription:input_type -> payrudder.plans.v1.CancelSubscriptionRequest
+	37,  // 123: payrudder.plans.v1.PlansService.GetSubscription:input_type -> payrudder.plans.v1.GetSubscriptionRequest
+	75,  // 124: payrudder.plans.v1.PlansService.ListSubscriptions:input_type -> payrudder.plans.v1.ListSubscriptionsRequest
+	55,  // 125: payrudder.plans.v1.PlansService.GetRoutingRules:input_type -> payrudder.plans.v1.GetRoutingRulesRequest
+	57,  // 126: payrudder.plans.v1.PlansService.SetRoutingRules:input_type -> payrudder.plans.v1.SetRoutingRulesRequest
+	51,  // 127: payrudder.plans.v1.PlansService.GetMailSettings:input_type -> payrudder.plans.v1.GetMailSettingsRequest
+	53,  // 128: payrudder.plans.v1.PlansService.SetMailSettings:input_type -> payrudder.plans.v1.SetMailSettingsRequest
+	59,  // 129: payrudder.plans.v1.PlansService.PreviewRouting:input_type -> payrudder.plans.v1.PreviewRoutingRequest
+	62,  // 130: payrudder.plans.v1.PlansService.StartProviderMigration:input_type -> payrudder.plans.v1.StartProviderMigrationRequest
+	64,  // 131: payrudder.plans.v1.PlansService.CompleteProviderMigration:input_type -> payrudder.plans.v1.CompleteProviderMigrationRequest
+	66,  // 132: payrudder.plans.v1.PlansService.AbortProviderMigration:input_type -> payrudder.plans.v1.AbortProviderMigrationRequest
+	68,  // 133: payrudder.plans.v1.PlansService.GetProviderMigration:input_type -> payrudder.plans.v1.GetProviderMigrationRequest
+	70,  // 134: payrudder.plans.v1.PlansService.GetSubscriptionReport:input_type -> payrudder.plans.v1.GetSubscriptionReportRequest
+	73,  // 135: payrudder.plans.v1.PlansService.GetCustomerStats:input_type -> payrudder.plans.v1.GetCustomerStatsRequest
+	47,  // 136: payrudder.plans.v1.PlansService.SyncProviderSubscription:input_type -> payrudder.plans.v1.SyncProviderSubscriptionRequest
+	39,  // 137: payrudder.plans.v1.PlansService.PauseSubscription:input_type -> payrudder.plans.v1.PauseSubscriptionRequest
+	41,  // 138: payrudder.plans.v1.PlansService.ResumeSubscription:input_type -> payrudder.plans.v1.ResumeSubscriptionRequest
+	43,  // 139: payrudder.plans.v1.PlansService.ScheduleCancellation:input_type -> payrudder.plans.v1.ScheduleCancellationRequest
+	45,  // 140: payrudder.plans.v1.PlansService.ChangePlan:input_type -> payrudder.plans.v1.ChangePlanRequest
+	84,  // 141: payrudder.plans.v1.PlansService.PreviewSubscriptionChange:input_type -> payrudder.plans.v1.PreviewSubscriptionChangeRequest
+	82,  // 142: payrudder.plans.v1.PlansService.ChangeSubscription:input_type -> payrudder.plans.v1.ChangeSubscriptionRequest
+	87,  // 143: payrudder.plans.v1.PlansService.CancelScheduledChange:input_type -> payrudder.plans.v1.CancelScheduledChangeRequest
+	89,  // 144: payrudder.plans.v1.PlansService.ApplyScheduledChanges:input_type -> payrudder.plans.v1.ApplyScheduledChangesRequest
+	92,  // 145: payrudder.plans.v1.PlansService.ListSubscriptionAdjustments:input_type -> payrudder.plans.v1.ListSubscriptionAdjustmentsRequest
+	94,  // 146: payrudder.plans.v1.PlansService.MarkSubscriptionAdjustmentBilled:input_type -> payrudder.plans.v1.MarkSubscriptionAdjustmentBilledRequest
+	121, // 147: payrudder.plans.v1.PlansService.GetTaxRates:input_type -> payrudder.plans.v1.GetTaxRatesRequest
+	123, // 148: payrudder.plans.v1.PlansService.SetTaxRates:input_type -> payrudder.plans.v1.SetTaxRatesRequest
+	96,  // 149: payrudder.plans.v1.PlansService.CreateCoupon:input_type -> payrudder.plans.v1.CreateCouponRequest
+	98,  // 150: payrudder.plans.v1.PlansService.ListCoupons:input_type -> payrudder.plans.v1.ListCouponsRequest
+	100, // 151: payrudder.plans.v1.PlansService.DeactivateCoupon:input_type -> payrudder.plans.v1.DeactivateCouponRequest
+	102, // 152: payrudder.plans.v1.PlansService.ApplyCoupon:input_type -> payrudder.plans.v1.ApplyCouponRequest
+	104, // 153: payrudder.plans.v1.PlansService.RemoveCoupon:input_type -> payrudder.plans.v1.RemoveCouponRequest
+	106, // 154: payrudder.plans.v1.PlansService.CreatePromotionCodes:input_type -> payrudder.plans.v1.CreatePromotionCodesRequest
+	108, // 155: payrudder.plans.v1.PlansService.ListPromotionCodes:input_type -> payrudder.plans.v1.ListPromotionCodesRequest
+	110, // 156: payrudder.plans.v1.PlansService.DeactivatePromotionCode:input_type -> payrudder.plans.v1.DeactivatePromotionCodeRequest
+	112, // 157: payrudder.plans.v1.PlansService.ListCouponRedemptions:input_type -> payrudder.plans.v1.ListCouponRedemptionsRequest
+	114, // 158: payrudder.plans.v1.PlansService.RedeemPromotion:input_type -> payrudder.plans.v1.RedeemPromotionRequest
+	116, // 159: payrudder.plans.v1.PlansService.ReversePromotion:input_type -> payrudder.plans.v1.ReversePromotionRequest
+	118, // 160: payrudder.plans.v1.PlansService.GrantCustomerCoupon:input_type -> payrudder.plans.v1.GrantCustomerCouponRequest
+	77,  // 161: payrudder.plans.v1.PlansService.ListSubscriptionsFeeDue:input_type -> payrudder.plans.v1.ListSubscriptionsFeeDueRequest
+	80,  // 162: payrudder.plans.v1.PlansService.AdvanceSubscriptionFee:input_type -> payrudder.plans.v1.AdvanceSubscriptionFeeRequest
+	35,  // 163: payrudder.plans.v1.PlansService.ListSubscriptionsForPeriod:input_type -> payrudder.plans.v1.ListSubscriptionsForPeriodRequest
+	4,   // 164: payrudder.plans.v1.PlansService.CreateCustomer:output_type -> payrudder.plans.v1.CreateCustomerResponse
+	6,   // 165: payrudder.plans.v1.PlansService.GetCustomer:output_type -> payrudder.plans.v1.GetCustomerResponse
+	8,   // 166: payrudder.plans.v1.PlansService.ResolveCustomer:output_type -> payrudder.plans.v1.ResolveCustomerResponse
+	10,  // 167: payrudder.plans.v1.PlansService.ListCustomers:output_type -> payrudder.plans.v1.ListCustomersResponse
+	12,  // 168: payrudder.plans.v1.PlansService.SetPaymentMethod:output_type -> payrudder.plans.v1.SetPaymentMethodResponse
+	14,  // 169: payrudder.plans.v1.PlansService.SetCustomerAddress:output_type -> payrudder.plans.v1.SetCustomerAddressResponse
+	16,  // 170: payrudder.plans.v1.PlansService.SetCustomerTax:output_type -> payrudder.plans.v1.SetCustomerTaxResponse
+	18,  // 171: payrudder.plans.v1.PlansService.CreateMeter:output_type -> payrudder.plans.v1.CreateMeterResponse
+	20,  // 172: payrudder.plans.v1.PlansService.GetMeter:output_type -> payrudder.plans.v1.GetMeterResponse
+	22,  // 173: payrudder.plans.v1.PlansService.ListMeters:output_type -> payrudder.plans.v1.ListMetersResponse
+	24,  // 174: payrudder.plans.v1.PlansService.CreatePlan:output_type -> payrudder.plans.v1.CreatePlanResponse
+	26,  // 175: payrudder.plans.v1.PlansService.ListPlans:output_type -> payrudder.plans.v1.ListPlansResponse
+	28,  // 176: payrudder.plans.v1.PlansService.PublishPlanVersion:output_type -> payrudder.plans.v1.PublishPlanVersionResponse
+	30,  // 177: payrudder.plans.v1.PlansService.GetPlanVersion:output_type -> payrudder.plans.v1.GetPlanVersionResponse
+	32,  // 178: payrudder.plans.v1.PlansService.CreateSubscription:output_type -> payrudder.plans.v1.CreateSubscriptionResponse
+	34,  // 179: payrudder.plans.v1.PlansService.CancelSubscription:output_type -> payrudder.plans.v1.CancelSubscriptionResponse
+	38,  // 180: payrudder.plans.v1.PlansService.GetSubscription:output_type -> payrudder.plans.v1.GetSubscriptionResponse
+	76,  // 181: payrudder.plans.v1.PlansService.ListSubscriptions:output_type -> payrudder.plans.v1.ListSubscriptionsResponse
+	56,  // 182: payrudder.plans.v1.PlansService.GetRoutingRules:output_type -> payrudder.plans.v1.GetRoutingRulesResponse
+	58,  // 183: payrudder.plans.v1.PlansService.SetRoutingRules:output_type -> payrudder.plans.v1.SetRoutingRulesResponse
+	52,  // 184: payrudder.plans.v1.PlansService.GetMailSettings:output_type -> payrudder.plans.v1.GetMailSettingsResponse
+	54,  // 185: payrudder.plans.v1.PlansService.SetMailSettings:output_type -> payrudder.plans.v1.SetMailSettingsResponse
+	60,  // 186: payrudder.plans.v1.PlansService.PreviewRouting:output_type -> payrudder.plans.v1.PreviewRoutingResponse
+	63,  // 187: payrudder.plans.v1.PlansService.StartProviderMigration:output_type -> payrudder.plans.v1.StartProviderMigrationResponse
+	65,  // 188: payrudder.plans.v1.PlansService.CompleteProviderMigration:output_type -> payrudder.plans.v1.CompleteProviderMigrationResponse
+	67,  // 189: payrudder.plans.v1.PlansService.AbortProviderMigration:output_type -> payrudder.plans.v1.AbortProviderMigrationResponse
+	69,  // 190: payrudder.plans.v1.PlansService.GetProviderMigration:output_type -> payrudder.plans.v1.GetProviderMigrationResponse
+	72,  // 191: payrudder.plans.v1.PlansService.GetSubscriptionReport:output_type -> payrudder.plans.v1.GetSubscriptionReportResponse
+	74,  // 192: payrudder.plans.v1.PlansService.GetCustomerStats:output_type -> payrudder.plans.v1.GetCustomerStatsResponse
+	48,  // 193: payrudder.plans.v1.PlansService.SyncProviderSubscription:output_type -> payrudder.plans.v1.SyncProviderSubscriptionResponse
+	40,  // 194: payrudder.plans.v1.PlansService.PauseSubscription:output_type -> payrudder.plans.v1.PauseSubscriptionResponse
+	42,  // 195: payrudder.plans.v1.PlansService.ResumeSubscription:output_type -> payrudder.plans.v1.ResumeSubscriptionResponse
+	44,  // 196: payrudder.plans.v1.PlansService.ScheduleCancellation:output_type -> payrudder.plans.v1.ScheduleCancellationResponse
+	46,  // 197: payrudder.plans.v1.PlansService.ChangePlan:output_type -> payrudder.plans.v1.ChangePlanResponse
+	85,  // 198: payrudder.plans.v1.PlansService.PreviewSubscriptionChange:output_type -> payrudder.plans.v1.PreviewSubscriptionChangeResponse
+	86,  // 199: payrudder.plans.v1.PlansService.ChangeSubscription:output_type -> payrudder.plans.v1.ChangeSubscriptionResponse
+	88,  // 200: payrudder.plans.v1.PlansService.CancelScheduledChange:output_type -> payrudder.plans.v1.CancelScheduledChangeResponse
+	90,  // 201: payrudder.plans.v1.PlansService.ApplyScheduledChanges:output_type -> payrudder.plans.v1.ApplyScheduledChangesResponse
+	93,  // 202: payrudder.plans.v1.PlansService.ListSubscriptionAdjustments:output_type -> payrudder.plans.v1.ListSubscriptionAdjustmentsResponse
+	95,  // 203: payrudder.plans.v1.PlansService.MarkSubscriptionAdjustmentBilled:output_type -> payrudder.plans.v1.MarkSubscriptionAdjustmentBilledResponse
+	122, // 204: payrudder.plans.v1.PlansService.GetTaxRates:output_type -> payrudder.plans.v1.GetTaxRatesResponse
+	124, // 205: payrudder.plans.v1.PlansService.SetTaxRates:output_type -> payrudder.plans.v1.SetTaxRatesResponse
+	97,  // 206: payrudder.plans.v1.PlansService.CreateCoupon:output_type -> payrudder.plans.v1.CreateCouponResponse
+	99,  // 207: payrudder.plans.v1.PlansService.ListCoupons:output_type -> payrudder.plans.v1.ListCouponsResponse
+	101, // 208: payrudder.plans.v1.PlansService.DeactivateCoupon:output_type -> payrudder.plans.v1.DeactivateCouponResponse
+	103, // 209: payrudder.plans.v1.PlansService.ApplyCoupon:output_type -> payrudder.plans.v1.ApplyCouponResponse
+	105, // 210: payrudder.plans.v1.PlansService.RemoveCoupon:output_type -> payrudder.plans.v1.RemoveCouponResponse
+	107, // 211: payrudder.plans.v1.PlansService.CreatePromotionCodes:output_type -> payrudder.plans.v1.CreatePromotionCodesResponse
+	109, // 212: payrudder.plans.v1.PlansService.ListPromotionCodes:output_type -> payrudder.plans.v1.ListPromotionCodesResponse
+	111, // 213: payrudder.plans.v1.PlansService.DeactivatePromotionCode:output_type -> payrudder.plans.v1.DeactivatePromotionCodeResponse
+	113, // 214: payrudder.plans.v1.PlansService.ListCouponRedemptions:output_type -> payrudder.plans.v1.ListCouponRedemptionsResponse
+	115, // 215: payrudder.plans.v1.PlansService.RedeemPromotion:output_type -> payrudder.plans.v1.RedeemPromotionResponse
+	117, // 216: payrudder.plans.v1.PlansService.ReversePromotion:output_type -> payrudder.plans.v1.ReversePromotionResponse
+	119, // 217: payrudder.plans.v1.PlansService.GrantCustomerCoupon:output_type -> payrudder.plans.v1.GrantCustomerCouponResponse
+	79,  // 218: payrudder.plans.v1.PlansService.ListSubscriptionsFeeDue:output_type -> payrudder.plans.v1.ListSubscriptionsFeeDueResponse
+	81,  // 219: payrudder.plans.v1.PlansService.AdvanceSubscriptionFee:output_type -> payrudder.plans.v1.AdvanceSubscriptionFeeResponse
+	36,  // 220: payrudder.plans.v1.PlansService.ListSubscriptionsForPeriod:output_type -> payrudder.plans.v1.ListSubscriptionsForPeriodResponse
+	164, // [164:221] is the sub-list for method output_type
+	107, // [107:164] is the sub-list for method input_type
+	107, // [107:107] is the sub-list for extension type_name
+	107, // [107:107] is the sub-list for extension extendee
+	0,   // [0:107] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_plans_proto_init() }

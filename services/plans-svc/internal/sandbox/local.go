@@ -14,10 +14,10 @@ import (
 // Tables are the tables of plans_db a reset deletes from; Kept are the tables with tenant rows it leaves alone on purpose: the sandbox's configuration, its keys and
 // the record of resets themselves.
 var (
-	Tables = []string{"customer_coupons", "coupon_redemptions", "subscription_adjustments", "subscription_changes", "subscription_coupons", "provider_migrations",
+	Tables = []string{"affiliate_reversals", "affiliate_commissions", "affiliate_attributions", "affiliate_attribution_rejections", "affiliate_clicks_daily", "customer_coupons", "coupon_redemptions", "subscription_adjustments", "subscription_changes", "subscription_coupons", "provider_migrations",
 		"subscriptions", "customers", "webhook_deliveries", "webhook_events", "outbox"}
 	Kept = []string{"meters", "plans", "plan_versions", "plan_prices", "plan_entitlements", "plan_version_fees", "plan_currency_prices", "routing_rules", "tax_rates",
-		"coupons", "promotion_codes", "webhook_endpoints", "tenant_mail_settings", "api_keys", "sandbox_resets"}
+		"affiliate_programs", "affiliates", "coupons", "promotion_codes", "webhook_endpoints", "tenant_mail_settings", "api_keys", "sandbox_resets"}
 )
 
 // Local is plans-svc's own part of a reset, on the system pool: each statement names the tenant.
@@ -38,6 +38,8 @@ func (l *Local) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]int64
 			table string
 			run   func(context.Context, uuid.UUID) (int64, error)
 		}{
+			{"affiliate_reversals", q.ResetAffiliateReversals}, {"affiliate_commissions", q.ResetAffiliateCommissions}, {"affiliate_attributions", q.ResetAffiliateAttributions},
+			{"affiliate_attribution_rejections", q.ResetAffiliateAttributionRejections}, {"affiliate_clicks_daily", q.ResetAffiliateClicks},
 			{"customer_coupons", q.ResetCustomerCoupons}, {"coupon_redemptions", q.ResetCouponRedemptions}, {"subscription_adjustments", q.ResetSubscriptionAdjustments},
 			{"subscription_changes", q.ResetSubscriptionChanges}, {"subscription_coupons", q.ResetSubscriptionCoupons}, {"provider_migrations", q.ResetProviderMigrations},
 			{"subscriptions", q.ResetSubscriptions}, {"customers", q.ResetCustomers}, {"webhook_deliveries", q.ResetWebhookDeliveries}, {"webhook_events", q.ResetWebhookEvents},

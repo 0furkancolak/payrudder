@@ -1,8 +1,9 @@
 package ubl
 
 import (
-	"strconv"
 	"strings"
+
+	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 // writer is a tiny deterministic XML writer: two-space indentation, attributes in the order given, text escaped.
@@ -82,25 +83,5 @@ func escape(s string) string {
 	return b.String()
 }
 
-// formatMinor renders a minor-unit amount with exp decimals using integer math only: (12345, 2) is "123.45", (-5, 2) is "-0.05".
-func formatMinor(v int64, exp int) string {
-	neg := v < 0
-	u := uint64(v) //nolint:gosec // negated below
-	if neg {
-		u = -u
-	}
-	s := strconv.FormatUint(u, 10)
-	if exp > 0 {
-		for len(s) <= exp {
-			s = "0" + s
-		}
-		s = s[:len(s)-exp] + "." + s[len(s)-exp:]
-	}
-	if neg {
-		s = "-" + s
-	}
-	return s
-}
-
 // formatBps renders basis points as a percentage with two decimals: 2000 is "20.00", 750 is "7.50".
-func formatBps(bps int) string { return formatMinor(int64(bps), 2) }
+func formatBps(bps int) string { return money.FormatBps(int64(bps), false) }

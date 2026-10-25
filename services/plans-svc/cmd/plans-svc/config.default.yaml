@@ -17,3 +17,5 @@ PAYRUDDER_APP_URL: "http://localhost:42301"
 PAYRUDDER_SANDBOX_RETENTION: "2160h"
 # The least time between two resets of one sandbox that a person asks for.
 PAYRUDDER_SANDBOX_RESET_COOLDOWN: "5m"
+# How often the job that ends the hold of affiliate commissions (pending to approved) looks. The holds are days long; an hour is plenty.
+PAYRUDDER_AFFILIATE_APPROVE_EVERY: "1h"

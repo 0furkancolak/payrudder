@@ -22,7 +22,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/maintenance"
 )
 
@@ -57,7 +57,7 @@ func generate(seed uint64, tenants []uuid.UUID, n int, dupPct int) ([]*eventsv1.
 	rng := rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
 	led := newLedger()
 	meterNames := []string{"sum_m", "count_m", "max_m"}
-	aggOf := map[string]domain.Aggregation{"sum_m": domain.Sum, "count_m": domain.Count, "max_m": domain.Max}
+	aggOf := map[string]usage.Aggregation{"sum_m": usage.Sum, "count_m": usage.Count, "max_m": usage.Max}
 	customers := map[uuid.UUID][]uuid.UUID{}
 	for _, tn := range tenants {
 		for range 20 {

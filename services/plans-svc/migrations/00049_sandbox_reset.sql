@@ -35,17 +35,39 @@ END $$;
 -- +goose StatementEnd
 CREATE TRIGGER sandbox_resets_sandbox_only BEFORE INSERT ON sandbox_resets FOR EACH ROW EXECUTE FUNCTION sandbox_resets_only_sandbox();
 
+-- No row level security on purpose: only the system role touches the table, which names the tenant itself (listed in the RLS allowlist of the integration test).
 GRANT SELECT, INSERT, UPDATE ON sandbox_resets TO plans_system;
 
 GRANT DELETE ON customer_coupons, coupon_redemptions, subscription_adjustments, subscription_changes, subscription_coupons, provider_migrations, subscriptions, customers,
-  webhook_deliveries, webhook_events, outbox TO plans_system;
+  webhook_deliveries, webhook_events, outbox, affiliate_commissions, affiliate_reversals, affiliate_attributions, affiliate_attribution_rejections,
+  affiliate_clicks_daily TO plans_system;
 GRANT SELECT ON customer_coupons, coupon_redemptions, webhook_deliveries, webhook_events TO plans_system;
 -- A coupon's count of redemptions starts at zero again with the ledger it counts.
 GRANT UPDATE (redeemed) ON coupons, promotion_codes TO plans_system;
 
+-- An attribution is set once and never changes (00047). A reset of a sandbox deletes the customers it names, so a DELETE is allowed there, for a sandbox tenant
+-- only: UPDATE stays refused everywhere, and so does any DELETE in a live tenant.
+-- +goose StatementBegin
+CREATE OR REPLACE FUNCTION affiliate_attributions_immutable() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' AND EXISTS (SELECT 1 FROM tenants WHERE id = OLD.tenant_id AND environment = 'sandbox') THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'an affiliate attribution is set once and never changes' USING ERRCODE = 'P0001', HINT = 'attribution_immutable';
+END $$;
+-- +goose StatementEnd
+
 -- +goose Down
+-- +goose StatementBegin
+CREATE OR REPLACE FUNCTION affiliate_attributions_immutable() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'an affiliate attribution is set once and never changes' USING ERRCODE = 'P0001', HINT = 'attribution_immutable';
+END $$;
+-- +goose StatementEnd
 REVOKE UPDATE (redeemed) ON coupons, promotion_codes FROM plans_system;
 REVOKE DELETE ON customer_coupons, coupon_redemptions, subscription_adjustments, subscription_changes, subscription_coupons, provider_migrations, subscriptions, customers,
-  webhook_deliveries, webhook_events FROM plans_system;
+  webhook_deliveries, webhook_events, affiliate_commissions, affiliate_reversals, affiliate_attributions, affiliate_attribution_rejections, affiliate_clicks_daily FROM plans_system;
 DROP TABLE sandbox_resets;
 DROP FUNCTION sandbox_resets_only_sandbox();

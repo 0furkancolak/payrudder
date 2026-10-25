@@ -27,7 +27,7 @@ import (
 
 // Tables with tenant_id that are deliberately not RLS'd (docs/05-data-model.md#plans_db): operator-only api_keys,
 // and outbox, which only the system role reads.
-var rlsAllowlist = []string{"api_keys", "outbox"}
+var rlsAllowlist = []string{"api_keys", "outbox", "sandbox_resets"}
 
 // TestPlansSvc runs every scenario against one shared Postgres container.
 func TestPlansSvc(t *testing.T) {
@@ -42,6 +42,9 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("SubscriptionChanges", testSubscriptionChanges)
 	t.Run("Coupons", testCoupons)
 	t.Run("Promotions", testPromotions)
+	t.Run("Affiliates", testAffiliates)
+	t.Run("AffiliateRole", testAffiliateRole)
+	t.Run("AffiliateCommissions", testAffiliateCommissions)
 	t.Run("CancelCredit", testCancelCredit)
 	t.Run("ProviderMigrationKeepsTheFeeTiming", testProviderMigrationKeepsTheFeeTiming)
 	t.Run("PlanChangeWithACouponIsPricedAfterTheCoupon", testPlanChangeWithACouponIsPricedAfterTheCoupon)
@@ -120,6 +123,7 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	seedAffiliates(t, e, tenantID, suffix)
 }
 
 func testRLSIsolationEveryTable(t *testing.T) {

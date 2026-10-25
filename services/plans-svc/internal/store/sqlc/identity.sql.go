@@ -179,7 +179,7 @@ func (q *Queries) ExpireOpenInvites(ctx context.Context, arg ExpireOpenInvitesPa
 
 const getAppForUser = `-- name: GetAppForUser :one
 SELECT a.id, a.account_id, a.name, a.slug, a.created_at, m.role
-FROM apps a JOIN account_members m ON m.account_id = a.account_id AND m.user_id = $1
+FROM apps a JOIN account_members m ON m.account_id = a.account_id AND m.user_id = $1 AND m.role <> 'affiliate'
 WHERE a.id = $2
 `
 
@@ -358,7 +358,7 @@ func (q *Queries) GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (s
 const getMembership = `-- name: GetMembership :one
 SELECT m.role, a.name AS account_name, a.created_at
 FROM account_members m JOIN accounts a ON a.id = m.account_id
-WHERE m.account_id = $1 AND m.user_id = $2
+WHERE m.account_id = $1 AND m.user_id = $2 AND m.role <> 'affiliate'
 `
 
 type GetMembershipParams struct {
@@ -372,6 +372,7 @@ type GetMembershipRow struct {
 	CreatedAt   time.Time
 }
 
+// An affiliate (phase 47) is a member of the account only so that the console knows to show the partner portal: every account-wide read leaves the role out.
 func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (GetMembershipRow, error) {
 	row := q.db.QueryRow(ctx, getMembership, arg.AccountID, arg.UserID)
 	var i GetMembershipRow
@@ -437,7 +438,7 @@ func (q *Queries) GetOpenInviteInAccount(ctx context.Context, arg GetOpenInviteI
 
 const getTenantForUser = `-- name: GetTenantForUser :one
 SELECT t.id, t.account_id, t.environment, t.name, t.tier, t.currency, t.timezone, t.grace_period, t.created_at, t.invoice_logo_asset_id, t.app_id, t.address, t.bank_transfer, t.legal, t.e_invoice_on, t.status, t.activated_at, t.terms_accepted_at, t.terms_accepted_by, m.role
-FROM tenants t JOIN account_members m ON m.account_id = t.account_id AND m.user_id = $1
+FROM tenants t JOIN account_members m ON m.account_id = t.account_id AND m.user_id = $1 AND m.role <> 'affiliate'
 WHERE t.id = $2
 `
 
@@ -835,7 +836,7 @@ func (q *Queries) LastUserTokenAt(ctx context.Context, arg LastUserTokenAtParams
 const listAccountMembers = `-- name: ListAccountMembers :many
 SELECT u.id AS user_id, u.email, u.display_name, m.role, m.created_at
 FROM account_members m JOIN users u ON u.id = m.user_id
-WHERE m.account_id = $1 ORDER BY m.created_at, u.id
+WHERE m.account_id = $1 AND m.role <> 'affiliate' ORDER BY m.created_at, u.id
 `
 
 type ListAccountMembersRow struct {
