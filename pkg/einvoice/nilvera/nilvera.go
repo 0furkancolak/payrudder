@@ -23,6 +23,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
+	"github.com/0furkancolak/payrudder/pkg/strx"
 )
 
 // Name is the registry name.
@@ -260,13 +261,6 @@ type earsivStatus struct {
 	CancelStatus bool    `json:"CancelStatus"`
 }
 
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
 // Status implements einvoice.Provider.
 func (p *Provider) Status(ctx context.Context, ref einvoice.Ref) (einvoice.StatusResult, error) {
 	fam, err := family(ref.Type)
@@ -286,7 +280,7 @@ func (p *Provider) Status(ctx context.Context, ref einvoice.Ref) (einvoice.Statu
 		if s.CancelStatus {
 			st = einvoice.StateCancelled
 		}
-		return einvoice.StatusResult{State: st, Detail: p.redact(deref(s.StatusDetail))}, nil
+		return einvoice.StatusResult{State: st, Detail: p.redact(strx.Deref(s.StatusDetail))}, nil
 	}
 	var s efaturaStatus
 	if json.Unmarshal(raw, &s) != nil {
@@ -296,9 +290,9 @@ func (p *Provider) Status(ctx context.Context, ref einvoice.Ref) (einvoice.Statu
 	if s.Answer.AnswerCode == "rejected" { // the buyer refused it
 		st = einvoice.StateRejected
 	}
-	detail := deref(s.InvoiceStatus.DetailDescription)
+	detail := strx.Deref(s.InvoiceStatus.DetailDescription)
 	if detail == "" {
-		detail = deref(s.InvoiceStatus.Description)
+		detail = strx.Deref(s.InvoiceStatus.Description)
 	}
 	return einvoice.StatusResult{State: st, Detail: p.redact(detail)}, nil
 }

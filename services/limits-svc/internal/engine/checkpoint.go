@@ -11,6 +11,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 var (
@@ -175,7 +177,7 @@ func (a *Applier) resolve(ctx context.Context, cp *Checkpoint) {
 		fixed = append(fixed, k.Key)
 		res.Corrections++
 		corrections.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", "drift")))
-		reconDriftAbs.Record(ctx, abs(drift))
+		reconDriftAbs.Record(ctx, money.Abs(drift))
 		a.log.WarnContext(ctx, "counter drift corrected", "key", k.Key, "redis", have, "aggregator", k.Want, "drift", drift)
 	}
 	for _, k := range fixed {
@@ -184,11 +186,4 @@ func (a *Applier) resolve(ctx context.Context, cp *Checkpoint) {
 		}
 	}
 	cp.finish(res)
-}
-
-func abs(v int64) int64 {
-	if v < 0 {
-		return -v
-	}
-	return v
 }
