@@ -29,6 +29,7 @@ import (
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/einvoice"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/payments"
 	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
@@ -128,7 +129,7 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) admin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.Token == "" || subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Internal-Token")), []byte(s.Token)) != 1 {
-			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			fail(w, http.StatusUnauthorized, errkey.Key("common.unauthenticated"), "unauthorized")
 			return
 		}
 		next(w, r)
@@ -141,8 +142,32 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func fail(w http.ResponseWriter, code int, msg string) {
-	writeJSON(w, code, map[string]string{"error": msg})
+// fail answers with the keyed error envelope, the one the gateway writes ({"error": {"code", "key", "message"}}), so the console can translate the key.
+// The code name follows the HTTP status; key is listed in docs/error-keys.md.
+func fail(w http.ResponseWriter, code int, key, msg string) {
+	keyFail(w, code, codeName(code), key, msg)
+}
+
+// codeName is the API error code that goes with an HTTP status.
+func codeName(httpStatus int) string {
+	switch httpStatus {
+	case http.StatusBadRequest:
+		return "INVALID_ARGUMENT"
+	case http.StatusUnauthorized:
+		return "UNAUTHENTICATED"
+	case http.StatusNotFound:
+		return "NOT_FOUND"
+	case http.StatusConflict:
+		return "FAILED_PRECONDITION"
+	case http.StatusRequestEntityTooLarge:
+		return "REQUEST_TOO_LARGE"
+	case http.StatusNotImplemented:
+		return "UNIMPLEMENTED"
+	case http.StatusBadGateway, http.StatusServiceUnavailable:
+		return "UNAVAILABLE"
+	default:
+		return "INTERNAL"
+	}
 }
 
 func (s *Server) result(ctx context.Context, provider, result string) {
@@ -160,7 +185,7 @@ func (s *Server) tenantNotification(w http.ResponseWriter, r *http.Request) {
 	t, err := uuid.Parse(r.PathValue("tenant"))
 	env := r.PathValue("environment")
 	if err != nil || (env != "sandbox" && env != "live") {
-		fail(w, http.StatusNotFound, "no such webhook")
+		fail(w, http.StatusNotFound, "payments.webhook.not_found", "no such webhook")
 		return
 	}
 	s.receive(w, r, r.PathValue("provider"), t, env)
@@ -171,24 +196,24 @@ func (s *Server) receive(w http.ResponseWriter, r *http.Request, name string, te
 	ctx := r.Context()
 	parse, ok := s.Registry.Parser(name)
 	if !ok {
-		fail(w, http.StatusNotFound, "unknown provider")
+		fail(w, http.StatusNotFound, "payments.provider.unknown", "unknown provider")
 		return
 	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
 	if err != nil {
-		fail(w, http.StatusRequestEntityTooLarge, "body too large")
+		fail(w, http.StatusRequestEntityTooLarge, "payments.request.too_large", "body too large")
 		return
 	}
 	ref, err := parse(body, r.Header)
 	if err != nil {
 		s.result(ctx, name, "malformed")
-		fail(w, http.StatusBadRequest, err.Error())
+		fail(w, http.StatusBadRequest, "payments.webhook.malformed", err.Error())
 		return
 	}
 	fresh, err := s.Events.Receive(ctx, name, ref.EventID, inboxBody(body))
 	if err != nil {
 		s.Log.ErrorContext(ctx, "webhook inbox write failed", "provider", name, "err", err)
-		fail(w, http.StatusInternalServerError, "try again")
+		fail(w, http.StatusInternalServerError, "payments.webhook.not_recorded", "try again")
 		return
 	}
 	if !fresh {
@@ -236,7 +261,7 @@ func (d *delivery) retry(tenant uuid.UUID, err error) {
 		d.s.Log.ErrorContext(ctx, "webhook inbox cleanup failed", "provider", d.name, "event", d.eventID, "err", err)
 	}
 	d.s.result(ctx, d.name, "retry")
-	fail(d.w, http.StatusServiceUnavailable, "try again")
+	fail(d.w, http.StatusServiceUnavailable, "payments.webhook.try_again", "try again")
 }
 
 func (d *delivery) ignore(tenant uuid.UUID, why string) {
@@ -294,7 +319,7 @@ func (d *delivery) confirm(body []byte) (payments.Notification, bool) {
 		d.s.Log.WarnContext(ctx, "webhook failed verification", "provider", d.name, "tenant", d.tenant, "err", err)
 		_ = d.s.Events.Forget(ctx, d.name, d.eventID)
 		d.s.result(ctx, d.name, "unverified")
-		fail(d.w, http.StatusUnauthorized, "verification failed")
+		fail(d.w, http.StatusUnauthorized, "payments.webhook.unverified", "verification failed")
 		return payments.Notification{}, false
 	}
 	if err != nil {
@@ -489,7 +514,7 @@ func (s *Server) releaseSource(ctx context.Context, tenant uuid.UUID, env string
 func (s *Server) tenant(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 	t, err := uuid.Parse(r.PathValue("tenant"))
 	if err != nil {
-		fail(w, http.StatusBadRequest, "tenant must be a UUID")
+		fail(w, http.StatusBadRequest, "payments.request.bad_tenant", "tenant must be a UUID")
 		return uuid.Nil, false
 	}
 	return t, true
@@ -498,7 +523,7 @@ func (s *Server) tenant(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool
 func environment(w http.ResponseWriter, r *http.Request) (string, bool) {
 	env := r.URL.Query().Get("environment")
 	if env != "sandbox" && env != "live" {
-		fail(w, http.StatusBadRequest, "environment must be sandbox or live")
+		fail(w, http.StatusBadRequest, "payments.request.bad_environment", "environment must be sandbox or live")
 		return "", false
 	}
 	return env, true
@@ -511,7 +536,7 @@ func (s *Server) listAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := s.Accounts.List(r.Context(), t)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"accounts": list})
@@ -530,27 +555,27 @@ func (s *Server) putAccount(w http.ResponseWriter, r *http.Request) {
 	provider := r.PathValue("provider")
 	settings, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
 	if err != nil {
-		fail(w, http.StatusRequestEntityTooLarge, "body too large")
+		fail(w, http.StatusRequestEntityTooLarge, "payments.request.too_large", "body too large")
 		return
 	}
 	if _, err := s.Registry.Build(provider, settings); err != nil {
 		if errors.Is(err, payments.ErrUnknownProvider) {
-			fail(w, http.StatusNotFound, "unknown provider; known: "+join(s.Registry.Names()))
+			fail(w, http.StatusNotFound, "payments.provider.unknown", "unknown provider; known: "+join(s.Registry.Names()))
 			return
 		}
-		fail(w, http.StatusBadRequest, err.Error())
+		fail(w, http.StatusBadRequest, "payments.account.bad_settings", err.Error())
 		return
 	}
 	makeDefault, _ := strconv.ParseBool(r.URL.Query().Get("default"))
 	if err := s.Accounts.Put(r.Context(), t, provider, env, settings, makeDefault); err != nil {
 		s.Log.ErrorContext(r.Context(), "provider account write failed", "err", err)
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	if env == "live" && (provider == banktransfer.Name || makeDefault) {
 		if err := s.syncBankTransfer(r.Context(), t); err != nil {
 			s.Log.ErrorContext(r.Context(), "bank details not passed on to plans-svc", "err", err)
-			fail(w, http.StatusBadGateway, "the account is stored, but plans-svc could not be told the bank details for the invoices; send the request again")
+			fail(w, http.StatusBadGateway, "payments.account.sync_failed", "the account is stored, but plans-svc could not be told the bank details for the invoices; send the request again")
 			return
 		}
 	}
@@ -569,11 +594,11 @@ func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	deleted, err := s.Accounts.Delete(r.Context(), t, r.PathValue("provider"), env)
 	switch {
 	case err != nil:
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 	case !deleted:
-		fail(w, http.StatusNotFound, "no such account")
+		fail(w, http.StatusNotFound, "payments.account.not_found", "no such account")
 	case env == "live" && r.PathValue("provider") == banktransfer.Name && s.syncBankTransfer(r.Context(), t) != nil:
-		fail(w, http.StatusBadGateway, "the account is removed, but plans-svc could not be told; its bank details stay on new invoices until the request is sent again")
+		fail(w, http.StatusBadGateway, "payments.account.sync_failed", "the account is removed, but plans-svc could not be told; its bank details stay on new invoices until the request is sent again")
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}
@@ -588,14 +613,14 @@ func (s *Server) ledger(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("limit"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n < 1 || n > 1000 {
-			fail(w, http.StatusBadRequest, "limit must be 1..1000")
+			fail(w, http.StatusBadRequest, "payments.ledger.bad_limit", "limit must be 1..1000")
 			return
 		}
 		limit = n
 	}
 	rows, err := s.Ledger.List(r.Context(), t, limit)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"entries": rows})
@@ -619,7 +644,7 @@ func (s *Server) listSubscriptions(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := s.Subscriptions.List(r.Context(), t)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"subscriptions": list})
@@ -642,23 +667,23 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 		QuotifySubscriptionID string `json:"quotify_subscription_id"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&in); err != nil || in.Provider == "" || in.PriceRef == "" {
-		fail(w, http.StatusBadRequest, "provider and price_ref are required")
+		fail(w, http.StatusBadRequest, "payments.checkout.fields_required", "provider and price_ref are required")
 		return
 	}
 	prov, err := s.Resolver.Named(r.Context(), t, in.Provider, env)
 	if err != nil {
-		fail(w, http.StatusNotFound, "no such provider account")
+		fail(w, http.StatusNotFound, "payments.account.not_found", "no such provider account")
 		return
 	}
 	cp, ok := prov.(payments.CheckoutProvider)
 	if !ok {
-		fail(w, http.StatusConflict, in.Provider+" has no hosted checkout")
+		fail(w, http.StatusConflict, "payments.checkout.unsupported", in.Provider+" has no hosted checkout")
 		return
 	}
 	co, err := cp.CreateCheckout(r.Context(), payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: in.Quantity, QuotifySubscriptionID: in.QuotifySubscriptionID})
 	if err != nil {
 		s.Log.WarnContext(r.Context(), "checkout failed", "provider", in.Provider, "err", err)
-		fail(w, http.StatusBadGateway, err.Error())
+		fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"url": co.URL, "ref": co.Ref})
@@ -681,12 +706,12 @@ func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
+		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return
 	}
 	var in migrationInput
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&in); err != nil || in.SubscriptionID == "" || in.ToProvider == "" {
-		fail(w, http.StatusBadRequest, "subscription_id and to_provider are required")
+		fail(w, http.StatusBadRequest, "payments.migration.fields_required", "subscription_id and to_provider are required")
 		return
 	}
 	ctx := r.Context()
@@ -697,7 +722,7 @@ func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
 	}
 	target, err := s.Resolver.Named(ctx, t, in.ToProvider, env)
 	if err != nil {
-		fail(w, http.StatusNotFound, "no account at "+in.ToProvider+" for this tenant")
+		fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+in.ToProvider+" for this tenant")
 		return
 	}
 	if target.Capabilities().Owner() == payments.OwnerProvider {
@@ -718,7 +743,7 @@ func (s *Server) migrateViaCheckout(w http.ResponseWriter, r *http.Request, t uu
 	ctx := r.Context()
 	cp, ok := target.(payments.CheckoutProvider)
 	if !ok || in.PriceRef == "" {
-		fail(w, http.StatusBadRequest, in.ToProvider+" runs subscriptions itself: price_ref (its catalogue price) is required")
+		fail(w, http.StatusBadRequest, "payments.migration.price_ref_required", in.ToProvider+" runs subscriptions itself: price_ref (its catalogue price) is required")
 		return
 	}
 	mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider})
@@ -732,7 +757,7 @@ func (s *Server) migrateViaCheckout(w http.ResponseWriter, r *http.Request, t uu
 		if aerr := s.Plans.AbortProviderMigration(ctx, t, mig.GetId()); aerr != nil {
 			s.Log.ErrorContext(ctx, "could not abort a migration after a failed checkout", "migration", mig.GetId(), "err", aerr)
 		}
-		fail(w, http.StatusBadGateway, err.Error())
+		fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "started", "checkout_url": co.URL})
@@ -764,25 +789,25 @@ func (s *Server) stopRenewals(w http.ResponseWriter, r *http.Request, t uuid.UUI
 	ctx := r.Context()
 	next, found, err := s.Subscriptions.NextBilledAt(ctx, t, sub.GetProvider(), env, sub.GetProviderRef())
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return nil, false
 	}
 	if !found {
-		fail(w, http.StatusConflict, "the end of the paid period at "+sub.GetProvider()+" is not known yet (no notification has told us)")
+		fail(w, http.StatusConflict, "payments.subscription.period_end_unknown", "the end of the paid period at "+sub.GetProvider()+" is not known yet (no notification has told us)")
 		return nil, false
 	}
 	old, err := s.Resolver.Named(ctx, t, sub.GetProvider(), env)
 	if err != nil {
-		fail(w, http.StatusNotFound, "no account at "+sub.GetProvider()+" for this tenant")
+		fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+sub.GetProvider()+" for this tenant")
 		return nil, false
 	}
 	m, ok := old.(payments.SubscriptionManager)
 	if !ok {
-		fail(w, http.StatusConflict, sub.GetProvider()+" cannot cancel a subscription through Payrudder")
+		fail(w, http.StatusConflict, "payments.subscription.cannot_cancel", sub.GetProvider()+" cannot cancel a subscription through Payrudder")
 		return nil, false
 	}
 	if err := m.CancelSubscription(ctx, sub.GetProviderRef(), true); err != nil {
-		fail(w, http.StatusBadGateway, err.Error())
+		fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
 		return nil, false
 	}
 	return timestamppb.New(next), true
@@ -794,7 +819,7 @@ func (s *Server) abortMigration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
+		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return
 	}
 	if err := s.Plans.AbortProviderMigration(r.Context(), t, r.PathValue("migration")); err != nil {
@@ -804,16 +829,20 @@ func (s *Server) abortMigration(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"state": "aborted"})
 }
 
-// planFail relays a plans-svc refusal: its status code becomes the HTTP one.
+// planFail relays a plans-svc refusal: its status code becomes the HTTP one, and its error key travels on (the code's common.* default when it has none).
 func planFail(w http.ResponseWriter, err error) {
+	key := errkey.Of(err)
+	if key == "" {
+		key = errkey.Default(status.Code(err))
+	}
 	switch status.Code(err) {
 	case codes.NotFound:
-		fail(w, http.StatusNotFound, status.Convert(err).Message())
+		fail(w, http.StatusNotFound, key, status.Convert(err).Message())
 	case codes.InvalidArgument:
-		fail(w, http.StatusBadRequest, status.Convert(err).Message())
+		fail(w, http.StatusBadRequest, key, status.Convert(err).Message())
 	case codes.FailedPrecondition, codes.AlreadyExists, codes.Aborted:
-		fail(w, http.StatusConflict, status.Convert(err).Message())
+		fail(w, http.StatusConflict, key, status.Convert(err).Message())
 	default:
-		fail(w, http.StatusBadGateway, "plans-svc: "+status.Convert(err).Message())
+		fail(w, http.StatusBadGateway, errkey.Key("payments.plans.failed"), "plans-svc: "+status.Convert(err).Message())
 	}
 }

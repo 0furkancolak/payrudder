@@ -1381,6 +1381,74 @@
         "nothing_pending": "No hay ninguna transferencia pendiente que rechazar.",
         "bad_outcome": "El resultado debe ser rechazada o caducada.",
         "unavailable": "El servicio de pagos no está disponible ahora. Inténtelo de nuevo en un momento."
+      },
+      "account": {
+        "bad_settings": "Estos ajustes del proveedor no son válidos. Revisa las credenciales y los campos obligatorios.",
+        "not_found": "Esta cuenta no tiene configurado ese proveedor de pago.",
+        "sync_failed": "La cuenta del proveedor se modificó, pero los datos bancarios no pudieron pasarse a las facturas. Envía la solicitud de nuevo."
+      },
+      "billing": {
+        "not_configured": "La facturación no está configurada en este despliegue."
+      },
+      "plans": {
+        "not_configured": "Los planes no están configurados en este despliegue.",
+        "failed": "El servicio de planes no pudo completar esto. Inténtalo de nuevo en un momento."
+      },
+      "checkout": {
+        "currency_unsupported": "Este proveedor no puede cobrar un pago de checkout en esta moneda.",
+        "fields_required": "Se requieren el proveedor y la referencia de precio.",
+        "unsupported": "Este proveedor no tiene una página de pago alojada."
+      },
+      "customer": {
+        "not_ready": "No se pudo preparar al cliente en el proveedor."
+      },
+      "invoice": {
+        "amount_required": "Se requieren el importe y la moneda.",
+        "bad_id": "El identificador de la factura no es válido.",
+        "bad_ids": "Los identificadores de factura no son válidos.",
+        "no_instructions": "Este proveedor no tiene instrucciones de pago para esta moneda.",
+        "not_live": "Solo las facturas en producción se pagan a través de un proveedor.",
+        "payment_in_progress": "Se está iniciando un pago para esta factura. Inténtalo de nuevo en un momento.",
+        "return_url_required": "Se requiere una dirección de retorno para un pago de checkout.",
+        "unknown_method": "Este método de pago no se conoce."
+      },
+      "ledger": {
+        "bad_limit": "El límite debe estar entre 1 y 1000.",
+        "too_many_invoices": "Se pidieron demasiadas facturas a la vez."
+      },
+      "migration": {
+        "fields_required": "Se requieren la suscripción y el proveedor de destino.",
+        "price_ref_required": "Este proveedor gestiona las suscripciones por sí mismo: se requiere la referencia de precio de su catálogo."
+      },
+      "plan": {
+        "code_required": "Se requiere el código del plan."
+      },
+      "provider": {
+        "failed": "El proveedor de pago no pudo completar esto. Inténtalo de nuevo en un momento.",
+        "not_supported": "Este proveedor de pago no admite esto.",
+        "unknown": "Este proveedor de pago no se conoce."
+      },
+      "reconcile": {
+        "bad_period": "El período debe tener el formato 2026-10."
+      },
+      "request": {
+        "bad_body": "El cuerpo de la solicitud debe ser un JSON válido.",
+        "bad_environment": "El entorno debe ser sandbox o live.",
+        "bad_tenant": "El identificador de la cuenta no es válido.",
+        "too_large": "La solicitud es demasiado grande."
+      },
+      "subscription": {
+        "cannot_cancel": "Este proveedor no puede cancelar una suscripción desde aquí.",
+        "change_refused": "No se puede hacer este cambio de suscripción.",
+        "period_end_unknown": "El fin del período pagado en el proveedor aún no se conoce: ninguna notificación nos lo ha indicado.",
+        "wrong_provider": "Este proveedor no gestiona esta suscripción."
+      },
+      "webhook": {
+        "malformed": "No se pudo leer la notificación.",
+        "not_found": "No existe esa dirección de notificaciones.",
+        "not_recorded": "No se pudo registrar la notificación. Envíala de nuevo.",
+        "try_again": "La notificación aún no pudo confirmarse. Envíala de nuevo.",
+        "unverified": "No se pudo verificar que la notificación venga del proveedor."
       }
     },
     "einvoice": {

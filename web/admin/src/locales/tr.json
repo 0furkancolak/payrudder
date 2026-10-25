@@ -1381,6 +1381,74 @@
         "nothing_pending": "Reddedilecek bekleyen bir havale yok.",
         "bad_outcome": "Sonuç reddedildi veya süresi doldu olmalı.",
         "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin."
+      },
+      "account": {
+        "bad_settings": "Bu sağlayıcı ayarları geçerli değil. Kimlik bilgilerini ve zorunlu alanları kontrol edin.",
+        "not_found": "Bu hesapta böyle bir ödeme sağlayıcısı kurulu değil.",
+        "sync_failed": "Sağlayıcı hesabı değişti ama banka bilgileri faturalara aktarılamadı. İsteği yeniden gönderin."
+      },
+      "billing": {
+        "not_configured": "Bu kurulumda faturalama yapılandırılmamış."
+      },
+      "plans": {
+        "not_configured": "Bu kurulumda planlar yapılandırılmamış.",
+        "failed": "Planlar servisi bunu tamamlayamadı. Biraz sonra yeniden deneyin."
+      },
+      "checkout": {
+        "currency_unsupported": "Bu sağlayıcı bu para biriminde ödeme sayfasıyla tahsilat yapamıyor.",
+        "fields_required": "Sağlayıcı ve fiyat referansı gerekli.",
+        "unsupported": "Bu sağlayıcının barındırılan bir ödeme sayfası yok."
+      },
+      "customer": {
+        "not_ready": "Müşteri sağlayıcıda hazırlanamadı."
+      },
+      "invoice": {
+        "amount_required": "Tutar ve para birimi gerekli.",
+        "bad_id": "Fatura kimliği geçerli bir kimlik değil.",
+        "bad_ids": "Fatura kimlikleri geçerli kimlikler değil.",
+        "no_instructions": "Bu sağlayıcının bu para birimi için ödeme talimatı yok.",
+        "not_live": "Yalnızca canlı faturalar bir sağlayıcı üzerinden ödenir.",
+        "payment_in_progress": "Bu fatura için bir ödeme başlatılıyor. Birazdan yeniden deneyin.",
+        "return_url_required": "Ödeme sayfası için bir dönüş adresi gerekli.",
+        "unknown_method": "Bu ödeme yöntemi tanınmıyor."
+      },
+      "ledger": {
+        "bad_limit": "Sınır 1 ile 1000 arasında olmalı.",
+        "too_many_invoices": "Aynı anda çok fazla fatura istendi."
+      },
+      "migration": {
+        "fields_required": "Abonelik ve hedef sağlayıcı gerekli.",
+        "price_ref_required": "Bu sağlayıcı abonelikleri kendisi yürütür: kataloğundaki fiyat referansı gerekli."
+      },
+      "plan": {
+        "code_required": "Plan kodu gerekli."
+      },
+      "provider": {
+        "failed": "Ödeme sağlayıcısı bunu tamamlayamadı. Biraz sonra yeniden deneyin.",
+        "not_supported": "Bu ödeme sağlayıcısı bunu desteklemiyor.",
+        "unknown": "Bu ödeme sağlayıcısı tanınmıyor."
+      },
+      "reconcile": {
+        "bad_period": "Dönem 2026-10 biçiminde olmalı."
+      },
+      "request": {
+        "bad_body": "İstek gövdesi geçerli bir JSON olmalı.",
+        "bad_environment": "Ortam sandbox ya da live olmalı.",
+        "bad_tenant": "Hesap kimliği geçerli bir kimlik değil.",
+        "too_large": "İstek çok büyük."
+      },
+      "subscription": {
+        "cannot_cancel": "Bu sağlayıcı aboneliği buradan iptal edemiyor.",
+        "change_refused": "Bu abonelik değişikliği yapılamıyor.",
+        "period_end_unknown": "Sağlayıcıdaki ödenmiş dönemin sonu henüz bilinmiyor: henüz bir bildirim gelmedi.",
+        "wrong_provider": "Bu abonelik bu sağlayıcı tarafından yürütülmüyor."
+      },
+      "webhook": {
+        "malformed": "Bildirim okunamadı.",
+        "not_found": "Böyle bir bildirim adresi yok.",
+        "not_recorded": "Bildirim kaydedilemedi. Yeniden gönderin.",
+        "try_again": "Bildirim henüz doğrulanamadı. Yeniden gönderin.",
+        "unverified": "Bildirimin sağlayıcıdan geldiği doğrulanamadı."
       }
     },
     "einvoice": {

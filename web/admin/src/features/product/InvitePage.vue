@@ -47,6 +47,9 @@ const toApp = () => navigate({ to: "/app" });
 const joinAsMe = () => acceptMe.mutate(token, { onSuccess: toApp });
 const joinNew = () => longEnough.value && acceptNew.mutate({ token, password: password.value, displayName: name.value.trim() }, { onSuccess: toApp });
 const signInAndJoin = () => login.mutate({ email: info.value?.email ?? "", password: password.value }, { onSuccess: joinAsMe });
+async function switchUser() {
+  await signOut.mutateAsync();
+}
 </script>
 
 <template>
@@ -69,7 +72,7 @@ const signInAndJoin = () => login.mutate({ email: info.value?.email ?? "", passw
       <!-- Signed in as somebody else: the invitation is for another address. -->
       <div v-else-if="signedInAsSomeoneElse" class="flex flex-col gap-4">
         <p class="bg-warning-soft text-warning rounded-2xl px-4 py-3 text-sm" role="status">{{ t("product.invite.otherUser", { invited: info.email ?? '', current: myAddress }) }}</p>
-        <Button size="lg" variant="outline" :disabled="signOut.isPending.value" @click="signOut.mutate()">{{ t("nav.signOut") }}</Button>
+        <Button size="lg" variant="outline" :disabled="signOut.isPending.value" @click="switchUser">{{ t("nav.signOut") }}</Button>
       </div>
 
       <!-- The address has an account: sign in, then join. -->

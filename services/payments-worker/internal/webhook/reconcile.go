@@ -91,18 +91,18 @@ func (s *Server) reconcile(w http.ResponseWriter, r *http.Request) {
 	}
 	period := r.URL.Query().Get("period")
 	if !reconcilePeriod.MatchString(period) {
-		fail(w, http.StatusBadRequest, "period must look like 2026-10")
+		fail(w, http.StatusBadRequest, "payments.reconcile.bad_period", "period must look like 2026-10")
 		return
 	}
 	if s.Billing == nil {
-		fail(w, http.StatusServiceUnavailable, "billing-svc is not configured")
+		fail(w, http.StatusServiceUnavailable, "payments.billing.not_configured", "billing-svc is not configured")
 		return
 	}
 	rec, err := s.Reconcile(r.Context(), t, period)
 	if err != nil {
 		if status.Code(err) == codes.Unknown {
 			s.Log.ErrorContext(r.Context(), "reconciliation failed", "err", err)
-			fail(w, http.StatusInternalServerError, "internal error")
+			fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 			return
 		}
 		planFail(w, err)

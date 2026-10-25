@@ -68,10 +68,14 @@ export function tenantApi(tenantId: string) {
 export const asTenant = (key: string) => createClient<paths>({ baseUrl: "/gw", headers: { Authorization: `Bearer ${key}` } });
 
 export type Tenant = components["schemas"]["Tenant"];
+export type Customer = components["schemas"]["Customer"];
 export type Plan = components["schemas"]["Plan"];
 export type PlanVersion = components["schemas"]["PlanVersion"];
 export type Subscription = components["schemas"]["Subscription"];
 export type Invoice = components["schemas"]["Invoice"];
+export type InvoiceLine = components["schemas"]["InvoiceLine"];
+export type InvoiceSaga = components["schemas"]["InvoiceSaga"];
+export type SagaEvent = components["schemas"]["SagaEvent"];
 
 /** An error from the gateway: its envelope's code and message, or a generic one. */
 export class ApiError extends Error {

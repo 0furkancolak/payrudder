@@ -17,7 +17,7 @@ func (s *Server) goLive(w http.ResponseWriter, r *http.Request) {
 	list, err := s.Accounts.List(r.Context(), t)
 	if err != nil {
 		s.Log.ErrorContext(r.Context(), "go-live: accounts not listed", "err", err)
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	working := []string{}

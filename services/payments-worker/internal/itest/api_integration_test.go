@@ -273,7 +273,7 @@ func TestProviderAPIThroughTheWorker(t *testing.T) {
 		before := fake.count("PATCH /subscriptions/sub_77")
 		plans.sub.PlanVersionId = pvPro.Id
 		code, out = do("POST", "/subscriptions/"+plans.sub.Id+"/change", `{"plan_code":"basic"}`)
-		if code != 409 || !strings.Contains(out["error"].(string), "sync the catalogue") || fake.count("PATCH /subscriptions/sub_77") != before {
+		if code != 409 || !strings.Contains(out["error"].(map[string]any)["message"].(string), "sync the catalogue") || fake.count("PATCH /subscriptions/sub_77") != before {
 			t.Fatalf("change to an unsynced plan = %d %v", code, out)
 		}
 		// A change for the end of the period is something Paddle cannot do.

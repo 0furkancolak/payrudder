@@ -1,5 +1,5 @@
 /** What a provider account's settings look like. The secrets are blank: they are typed in, sealed by the server and never shown again. */
-const SETTINGS_TEMPLATES: Record<string, Record<string, unknown>> = {
+export const SETTINGS_TEMPLATES: Record<string, Record<string, unknown>> = {
   iyzico: {
     api_key: "",
     secret_key: "",
@@ -12,6 +12,8 @@ const SETTINGS_TEMPLATES: Record<string, Record<string, unknown>> = {
     usage_product_id: "pro_",
     base_url: "https://sandbox-api.paddle.com",
   },
+  // The console edits this one with a form (BankTransferForm); the template is for tools that read the JSON shape.
+  banktransfer: { bank_name: "", account_holder: "", iban: "", bic: "", reference_template: "{invoice_number}", currencies: [], payment_window_days: 0 },
 };
 
 export function templateText(provider: string): string {

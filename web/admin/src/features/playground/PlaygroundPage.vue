@@ -12,8 +12,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PageHeader } from "@/shared/ui/page-header";
 import { Table, TableBody, TableCell, TableRow } from "@/shared/ui/table";
-import type { Currency } from "@/shared/lib/currencies";
-import { SCENARIOS, usePlayground, type Scenario } from "./usePlayground";
+import { SCENARIOS, usePlayground, type Currency, type Scenario } from "./usePlayground";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 
 const { t, locale } = useI18n();
