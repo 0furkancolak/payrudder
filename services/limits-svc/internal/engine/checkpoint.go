@@ -150,7 +150,11 @@ func (a *Applier) resolve(ctx context.Context, cp *Checkpoint) {
 	for i, k := range cp.Keys {
 		have := int64(0)
 		if s, ok := vals[i].(string); ok {
-			have, _ = strconv.ParseInt(s, 10, 64)
+			var perr error
+			if have, perr = strconv.ParseInt(s, 10, 64); perr != nil {
+				a.log.WarnContext(ctx, "counter holds a non-number, treated as 0", "key", k.Key, "value", s)
+				have = 0
+			}
 		}
 		res.Checked++
 		reconChecked.Add(ctx, 1)
@@ -175,7 +179,9 @@ func (a *Applier) resolve(ctx context.Context, cp *Checkpoint) {
 		a.log.WarnContext(ctx, "counter drift corrected", "key", k.Key, "redis", have, "aggregator", k.Want, "drift", drift)
 	}
 	for _, k := range fixed {
-		a.cfg.Redis.ExpireNX(ctx, k, firedTTL)
+		if err := a.cfg.Redis.ExpireNX(ctx, k, firedTTL).Err(); err != nil {
+			a.log.WarnContext(ctx, "reconcile could not set the expiry of a corrected counter", "key", k, "error", err)
+		}
 	}
 	cp.finish(res)
 }
