@@ -394,6 +394,21 @@ type RoutingRule struct {
 	Provider string
 }
 
+type SandboxReset struct {
+	ID          uuid.UUID
+	AppID       uuid.UUID
+	TenantID    uuid.UUID
+	RequestedBy *uuid.UUID
+	Kind        string
+	State       string
+	Steps       json.RawMessage
+	Error       string
+	LeaseUntil  *time.Time
+	CreatedAt   time.Time
+	StartedAt   *time.Time
+	FinishedAt  *time.Time
+}
+
 type Subscription struct {
 	TenantID          uuid.UUID
 	ID                uuid.UUID

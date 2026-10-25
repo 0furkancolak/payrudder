@@ -1753,6 +1753,9 @@
       },
       "storage": {
         "not_configured": "El almacenamiento de archivos no está configurado en este despliegue."
+      },
+      "sandbox": {
+        "unknown_scenario": "Este escenario de pago no existe. Consulta el catálogo de escenarios."
       }
     },
     "coupon": {
@@ -2082,6 +2085,9 @@
       },
       "promote": {
         "stale": "La configuración cambió desde la vista previa. Vuelve a previsualizar la promoción."
+      },
+      "sandbox": {
+        "reset_rate_limited": "El sandbox se restableció hace un momento. Espera unos minutos antes de restablecerlo de nuevo."
       }
     },
     "gateway": {
@@ -2290,6 +2296,12 @@
         "not_open": "Este pago ya no está abierto: se pagó o se canceló.",
         "nothing_to_pay": "Tras los reembolsos este pago se queda en nada. Cancélelo; el saldo pasa al siguiente.",
         "tenant_not_active": "Este entorno live no está activo, así que no se puede crear ni pagar ningún pago."
+      }
+    },
+    "admin": {
+      "sandbox": {
+        "live_refused": "Solo se puede restablecer un entorno sandbox. Un entorno live nunca se toca.",
+        "bad_tenant": "El entorno que se quiere restablecer no es válido."
       }
     }
   },

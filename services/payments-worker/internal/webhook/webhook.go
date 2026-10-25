@@ -60,6 +60,8 @@ type Server struct {
 	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status, and runs
 	// provider migrations.
 	Plans PlansAPI
+	// Reset deletes a sandbox tenant's attempts, ledger and receipts (POST /admin/tenants/{tenant}/sandbox-reset); nil answers 503.
+	Reset ResetFunc
 	// Modules are the operator endpoints of other modules (the bank transfers), served next to these.
 	Modules []RouteRegistrar
 }
@@ -115,6 +117,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.putAccount))
 	mux.HandleFunc("DELETE /admin/tenants/{tenant}/provider-accounts/{provider}", s.admin(s.deleteAccount))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/go-live", s.admin(s.goLive))
+	mux.HandleFunc("POST /admin/tenants/{tenant}/sandbox-reset", s.admin(s.sandboxReset))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/ledger", s.admin(s.ledger))
 	mux.HandleFunc("GET /admin/tenants/{tenant}/invoice-methods", s.admin(s.invoiceMethods))
 	mux.HandleFunc("POST /admin/tenants/{tenant}/invoice-payments", s.admin(s.invoicePayment))

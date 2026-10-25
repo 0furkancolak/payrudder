@@ -80,6 +80,7 @@ type fakeIdentity struct {
 	activates []*plansv1.ActivateMyAppRequest
 	rotates   []*plansv1.RotateMyApiKeyRequest
 	promotes  []*plansv1.PromoteMyAppRequest
+	resets    []*plansv1.ResetMySandboxRequest
 	lastScope plansv1.ApiKey_Scope
 }
 
@@ -336,6 +337,29 @@ func (f *fakeIdentity) PromoteMyApp(_ context.Context, req *plansv1.PromoteMyApp
 	f.mu.Unlock()
 	return &plansv1.PromoteMyAppResponse{DryRun: req.GetDryRun(), PlanHash: "h1", Created: 1,
 		Changes: []*plansv1.PromoteChange{{Family: "meters", Key: "gb", Action: plansv1.PromoteChange_ACTION_CREATE, Secret: "whsec_x"}}}, nil
+}
+
+func (f *fakeIdentity) ResetMySandbox(_ context.Context, req *plansv1.ResetMySandboxRequest) (*plansv1.ResetMySandboxResponse, error) {
+	f.seen(req.GetUserId())
+	_, role := f.mine(req.GetUserId(), req.GetAppId())
+	switch role {
+	case "":
+		return nil, notFound("app")
+	case "viewer":
+		return nil, errkey.New(codes.PermissionDenied, "identity.account.forbidden", "read-only")
+	}
+	f.mu.Lock()
+	f.resets = append(f.resets, req)
+	f.mu.Unlock()
+	return &plansv1.ResetMySandboxResponse{SandboxReset: &plansv1.SandboxReset{Id: "r1", State: "queued", Kind: "manual"}}, nil
+}
+
+func (f *fakeIdentity) GetMySandboxReset(_ context.Context, req *plansv1.GetMySandboxResetRequest) (*plansv1.GetMySandboxResetResponse, error) {
+	f.seen(req.GetUserId())
+	if _, role := f.mine(req.GetUserId(), req.GetAppId()); role == "" {
+		return nil, notFound("app")
+	}
+	return &plansv1.GetMySandboxResetResponse{SandboxReset: &plansv1.SandboxReset{Id: "r1", State: "done"}}, nil
 }
 
 func (f *fakeIdentity) RotateMyApiKey(_ context.Context, req *plansv1.RotateMyApiKeyRequest) (*plansv1.RotateMyApiKeyResponse, error) {

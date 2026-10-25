@@ -361,6 +361,13 @@ services:
       PAYRUDDER_APP_URL: ${PAYRUDDER_APP_URL:-http://localhost:42301}
       # Keys the hash of one-time sign-in codes (a code has only a million values). Local stack only: generate your own with `openssl rand -hex 32`.
       PAYRUDDER_OTP_PEPPER: ${PAYRUDDER_OTP_PEPPER:-local-otp-pepper-change-me-0123456789}
+      # The services a sandbox reset empties (phase 45 E).
+      PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
+      PAYRUDDER_AGGREGATOR_ADDR: dns:///aggregator:7003
+      PAYRUDDER_ANALYTICS_ADDR: dns:///analytics-svc:7006
+      PAYRUDDER_BILLING_ADDR: dns:///billing-svc:7005
+      PAYRUDDER_PAYMENTS_URL: http://payments-worker:8095
+      PAYRUDDER_PAYMENTS_INTERNAL_TOKEN: ${PAYRUDDER_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
     ports: ["42701:7001", "42911:9101"]
     depends_on:
       postgres: { condition: service_healthy }

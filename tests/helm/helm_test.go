@@ -211,8 +211,9 @@ func TestNetworkPolicies(t *testing.T) {
 		}
 		return out
 	}
-	if got := strings.Join(callers("allow-ingest-svc"), ","); got != "gateway,billing-svc" {
-		t.Errorf("ingest-svc accepts calls from %q, want gateway,billing-svc", got)
+	if got := strings.Join(callers("allow-ingest-svc"), ","); got != "gateway,billing-svc,plans-svc" {
+		// plans-svc is there for the sandbox reset (phase 45 E): it asks every service that keeps tenant data to empty a sandbox.
+		t.Errorf("ingest-svc accepts calls from %q, want gateway,billing-svc,plans-svc", got)
 	}
 	if got := strings.Join(callers("allow-mockpsp"), ","); got != "payments-worker" {
 		t.Errorf("mockpsp accepts calls from %q, want only payments-worker", got)
@@ -351,8 +352,9 @@ func TestPaymentProvidersAreWiredThroughTheGateway(t *testing.T) {
 	for _, f := range rules[0].(map[string]any)["from"].([]any) {
 		from = append(from, obj(f.(map[string]any)).str("podSelector", "matchLabels", "app.kubernetes.io/name"))
 	}
-	if strings.Join(from, ",") != "gateway" {
-		t.Errorf("payments-worker accepts calls from %v, want only the gateway", from)
+	if strings.Join(from, ",") != "gateway,plans-svc" {
+		// plans-svc resets a sandbox's payments through it (phase 45 E), with the internal token.
+		t.Errorf("payments-worker accepts calls from %v, want the gateway and plans-svc", from)
 	}
 	for _, callee := range []string{"allow-plans-svc", "allow-billing-svc"} {
 		p := find(docs, "NetworkPolicy", callee)

@@ -1753,6 +1753,9 @@
       },
       "storage": {
         "not_configured": "Bu kurulumda dosya depolama yapılandırılmamış."
+      },
+      "sandbox": {
+        "unknown_scenario": "Böyle bir ödeme senaryosu yok. Liste için senaryo kataloğuna bakın."
       }
     },
     "coupon": {
@@ -2082,6 +2085,9 @@
       },
       "promote": {
         "stale": "Önizlemeden sonra yapılandırma değişti. Aktarımı yeniden önizleyin."
+      },
+      "sandbox": {
+        "reset_rate_limited": "Sandbox az önce sıfırlandı. Yeniden sıfırlamak için birkaç dakika bekleyin."
       }
     },
     "gateway": {
@@ -2290,6 +2296,12 @@
         "not_open": "Bu ödeme artık açık değil: ödendi veya iptal edildi.",
         "nothing_to_pay": "İadelerden sonra bu ödemeden geriye bir şey kalmadı. İptal edin; bakiye sonraki ödemeye devreder.",
         "tenant_not_active": "Bu canlı ortam etkin değil; ödeme oluşturulamaz veya ödenemez."
+      }
+    },
+    "admin": {
+      "sandbox": {
+        "live_refused": "Yalnızca sandbox ortamı sıfırlanabilir. Canlı ortama asla dokunulmaz.",
+        "bad_tenant": "Sıfırlanacak ortam geçerli değil."
       }
     }
   },

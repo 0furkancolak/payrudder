@@ -1753,6 +1753,9 @@
       },
       "storage": {
         "not_configured": "Der Dateispeicher ist in dieser Installation nicht eingerichtet."
+      },
+      "sandbox": {
+        "unknown_scenario": "Dieses Zahlungsszenario gibt es nicht. Die Liste steht im Szenarienkatalog."
       }
     },
     "coupon": {
@@ -2082,6 +2085,9 @@
       },
       "promote": {
         "stale": "Die Konfiguration hat sich seit der Vorschau geändert. Zeigen Sie die Übernahme erneut in der Vorschau an."
+      },
+      "sandbox": {
+        "reset_rate_limited": "Die Sandbox wurde gerade erst zurückgesetzt. Warten Sie einige Minuten, bevor Sie sie erneut zurücksetzen."
       }
     },
     "gateway": {
@@ -2290,6 +2296,12 @@
         "not_open": "Diese Auszahlung ist nicht mehr offen: Sie wurde bezahlt oder storniert.",
         "nothing_to_pay": "Nach Erstattungen bleibt von dieser Auszahlung nichts übrig. Stornieren Sie sie; das Guthaben wird übertragen.",
         "tenant_not_active": "Diese Live-Umgebung ist nicht aktiv, daher kann keine Auszahlung erstellt oder bezahlt werden."
+      }
+    },
+    "admin": {
+      "sandbox": {
+        "live_refused": "Nur eine Sandbox-Umgebung kann zurückgesetzt werden. Eine Live-Umgebung wird nie angetastet.",
+        "bad_tenant": "Die zurückzusetzende Umgebung ist ungültig."
       }
     }
   },

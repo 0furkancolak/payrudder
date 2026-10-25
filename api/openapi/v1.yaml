@@ -2719,6 +2719,95 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/sandbox/reset:
+    get:
+      operationId: appSandboxResetStatus
+      tags: [Product]
+      summary: The latest reset of the app's sandbox, running or finished
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK (an empty object when the sandbox was never reset), content: { application/json: { schema: { type: object, properties: { sandbox_reset: { $ref: "#/components/schemas/SandboxReset" } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: appSandboxReset
+      tags: [Product]
+      summary: Reset the app's sandbox
+      description: >
+        Queues a job that deletes the sandbox's customers, subscriptions, usage, invoices, payments and their history in every service, and keeps its configuration (meters,
+        plans, prices, tax rates, coupons, webhook endpoints, mail settings, keys). Owners and admins. One reset runs at a time (asking again returns it); a person can
+        ask once every few minutes (429 identity.sandbox.reset_rate_limited). The live environment is never touched. Poll the GET for the steps.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "202": { description: Queued (or the one already running), content: { application/json: { schema: { type: object, properties: { sandbox_reset: { $ref: "#/components/schemas/SandboxReset" } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /v1/sandbox/scenarios:
+    get:
+      operationId: sandboxScenarios
+      tags: [Sandbox]
+      summary: The payment scenarios of a sandbox customer
+      description: What each pm_sandbox_* payment method does. Sandbox keys only.
+      security: [{ apiKey: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarios:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        scenario: { type: string, examples: [declined] }
+                        payment_method: { type: string, examples: [pm_sandbox_declined] }
+                        outcome: { type: string, enum: [paid, uncollectible, paid_after_retry, paid_after_status_query, paid_after_recharge] }
+                        default: { type: boolean }
+                        description: { type: string }
+        "403": { $ref: "#/components/responses/Error" }
+  /v1/sandbox/invoices/{id}/simulate:
+    post:
+      operationId: sandboxSimulateInvoice
+      tags: [Sandbox]
+      summary: Run an invoice's payment again under a scenario
+      description: >
+        Sets the invoice's customer to the scenario (it stays their payment method) and retries the invoice's payment. When the payment cannot run again now (paid, or in
+        progress) the scenario is still set and `retried` is false with the reason in `retry_error`. Sandbox keys only.
+      security: [{ apiKey: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenario]
+              properties:
+                scenario: { type: string, description: "A name from /v1/sandbox/scenarios, with or without the pm_sandbox_ prefix." }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoice_id: { type: string }
+                  customer_external_id: { type: string }
+                  scenario: { type: string }
+                  payment_method: { type: string }
+                  retried: { type: boolean }
+                  retry_error: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/promote:
     post:
       operationId: appPromote
@@ -5589,6 +5678,24 @@ components:
         status: { type: string, enum: [TENANT_STATUS_INACTIVE, TENANT_STATUS_ACTIVE, TENANT_STATUS_SUSPENDED], description: "A sandbox tenant is always active. A live tenant starts inactive: no keys, no webhook endpoints, no invoices, until the go-live checklist is complete." }
         activate_time: { type: string, format: date-time }
         terms_accept_time: { type: string, format: date-time }
+    SandboxReset:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        state: { type: string, enum: [queued, running, done, failed] }
+        kind: { type: string, enum: [manual, retention] }
+        error: { type: string }
+        create_time: { type: string, format: date-time }
+        finish_time: { type: string, format: date-time }
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string, enum: [plans, ingest, aggregator, analytics, billing, payments] }
+              state: { type: string, enum: [pending, done, failed, skipped] }
+              deleted: { type: object, additionalProperties: { type: integer }, description: Rows deleted, by table. }
+              error: { type: string }
     GoLive:
       type: object
       properties:

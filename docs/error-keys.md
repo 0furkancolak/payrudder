@@ -2,6 +2,8 @@
 
 Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in `error.key` of every API error; translate keys, not messages.
 
+- `admin.sandbox.bad_tenant`
+- `admin.sandbox.live_refused`
 - `affiliate.bad_id`
 - `affiliate.bad_kind`
 - `affiliate.bad_page_token`
@@ -192,6 +194,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.run.sandbox_only`
 - `billing.saga.event_not_possible`
 - `billing.saga.not_found`
+- `billing.sandbox.unknown_scenario`
 - `billing.storage.not_configured`
 - `billing.tenant.bad_id`
 - `common.already_exists`
@@ -290,6 +293,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.operator.required`
 - `identity.otp.invalid`
 - `identity.promote.stale`
+- `identity.sandbox.reset_rate_limited`
 - `identity.session.act_as_required`
 - `identity.session.invalid`
 - `identity.session.unavailable`
