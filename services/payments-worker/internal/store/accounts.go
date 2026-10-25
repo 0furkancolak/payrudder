@@ -38,8 +38,21 @@ func aad(tenant uuid.UUID, provider, env string) []byte {
 	return []byte(fmt.Sprintf("%s|%s|%s", tenant, provider, env))
 }
 
+// Audit says who changed an account and what was established when they did; it is written in the same transaction as the change. No secret goes in it.
+type Audit struct {
+	// Actor is "user:<id>" for a person in the console, "operator" for support, or empty when nobody was named.
+	Actor string
+	// VerifiedRemote: the provider itself accepted the credentials before they were stored.
+	VerifiedRemote bool
+}
+
 // Put stores (or replaces) an account. makeDefault makes it the account live charges go to; the previous default stops being one.
 func (a Accounts) Put(ctx context.Context, tenant uuid.UUID, provider, env string, settings []byte, makeDefault bool) error {
+	return a.PutAudited(ctx, tenant, provider, env, settings, makeDefault, Audit{})
+}
+
+// PutAudited is Put with the entry of the audit trail.
+func (a Accounts) PutAudited(ctx context.Context, tenant uuid.UUID, provider, env string, settings []byte, makeDefault bool, audit Audit) error {
 	sealed, err := a.Box.Seal(settings, aad(tenant, provider, env))
 	if err != nil {
 		return err
@@ -51,16 +64,42 @@ func (a Accounts) Put(ctx context.Context, tenant uuid.UUID, provider, env strin
 				return err
 			}
 		}
-		return q.UpsertProviderAccount(ctx, sqlc.UpsertProviderAccountParams{
+		_, err := q.GetProviderAccountSettings(ctx, sqlc.GetProviderAccountSettingsParams{TenantID: tenant, Provider: provider, Environment: env})
+		action := "connected"
+		switch {
+		case err == nil:
+			action = "replaced"
+		case !errors.Is(err, pgx.ErrNoRows):
+			return err
+		}
+		if err := q.UpsertProviderAccount(ctx, sqlc.UpsertProviderAccountParams{
 			TenantID: tenant, Provider: provider, Environment: env, IsDefault: makeDefault, SettingsEnc: sealed,
-		})
+		}); err != nil {
+			return err
+		}
+		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Provider: provider, Environment: env, Action: action,
+			Actor: audit.Actor, IsDefault: makeDefault, VerifiedRemote: audit.VerifiedRemote})
 	})
 }
 
 // Delete removes an account. It reports whether there was one.
 func (a Accounts) Delete(ctx context.Context, tenant uuid.UUID, provider, env string) (bool, error) {
-	n, err := sqlc.New(a.DB).DeleteProviderAccount(ctx, sqlc.DeleteProviderAccountParams{TenantID: tenant, Provider: provider, Environment: env})
-	return n == 1, err
+	return a.DeleteAudited(ctx, tenant, provider, env, Audit{})
+}
+
+// DeleteAudited is Delete with the entry of the audit trail (written only when there was an account to remove).
+func (a Accounts) DeleteAudited(ctx context.Context, tenant uuid.UUID, provider, env string, audit Audit) (bool, error) {
+	var deleted bool
+	err := pgxx.InTx(ctx, a.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		n, err := q.DeleteProviderAccount(ctx, sqlc.DeleteProviderAccountParams{TenantID: tenant, Provider: provider, Environment: env})
+		if err != nil || n != 1 {
+			return err
+		}
+		deleted = true
+		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Provider: provider, Environment: env, Action: "removed", Actor: audit.Actor})
+	})
+	return deleted, err
 }
 
 // List returns a tenant's accounts without secrets.

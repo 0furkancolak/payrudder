@@ -268,6 +268,11 @@ export interface LiveState {
   hash: string;
   /** When set, applying a promote answers 409 stale. */
   stale: boolean;
+  /** The live provider accounts payments-worker reports, and the status and key a new account is refused with, when set. */
+  accounts: { provider: string; default: boolean; working: boolean; checked: boolean; problem?: string }[];
+  refuseProvider: { status: number; key: string } | null;
+  /** The billing profile the owner saved. */
+  profile: Record<string, unknown> | null;
 }
 
 const goLiveBody = (s: LiveState) => {
@@ -277,8 +282,31 @@ const goLiveBody = (s: LiveState) => {
 
 /** The go-live checklist, promote, sandbox reset and key rotation of the product API (phase 45). `state` is the test's to change while it runs. */
 export function liveGateway(gw: MockGateway, state: Partial<LiveState> = {}): { gw: MockGateway; state: LiveState } {
-  const s: LiveState = { done: { email_verified: true }, status: "INACTIVE", reset: null, changes: [], hash: "h1", stale: false, ...state };
+  const s: LiveState = { done: { email_verified: true }, status: "INACTIVE", reset: null, changes: [], hash: "h1", stale: false, accounts: [], refuseProvider: null, profile: null, ...state };
   gw.on((c) => {
+    const providers = `/app/v1/apps/${APP}/go-live/providers`;
+    if (c.path === `/app/v1/apps/${APP}/go-live/terms` && c.method === "POST") {
+      s.done.terms_accepted = true;
+      return { body: { accept_time: "2026-10-21T10:00:00Z" } };
+    }
+    if (c.path === `/app/v1/apps/${APP}/billing-profile` && c.method === "PUT") {
+      s.profile = c.body;
+      s.done.legal_profile = true;
+      return { body: { id: LIVE, ...c.body } };
+    }
+    if (c.path === providers && c.method === "GET") return { body: { ready: s.accounts.some((a) => a.working), providers: s.accounts.filter((a) => a.working).map((a) => a.provider), accounts: s.accounts } };
+    if (c.path.startsWith(`${providers}/`) && c.method === "PUT") {
+      if (s.refuseProvider) return { status: s.refuseProvider.status, body: { error: { code: "INVALID_ARGUMENT", key: s.refuseProvider.key, message: "refused" } } };
+      const provider = c.path.split("/").pop() ?? "";
+      s.accounts = [...s.accounts.filter((a) => a.provider !== provider), { provider, default: s.accounts.length === 0, working: true, checked: provider !== "banktransfer" }];
+      s.done.payment_provider = true;
+      return { body: { provider, environment: "live", default: s.accounts.length === 1 } };
+    }
+    if (c.path.startsWith(`${providers}/`) && c.method === "DELETE") {
+      s.accounts = s.accounts.filter((a) => a.provider !== c.path.split("/").pop());
+      s.done.payment_provider = s.accounts.some((a) => a.working);
+      return { status: 204, body: {} };
+    }
     if (c.path === `/app/v1/apps/${APP}/go-live` && c.method === "GET") return { body: { go_live: goLiveBody(s) } };
     if (c.path === `/app/v1/apps/${APP}/go-live` && c.method === "POST") {
       const body = goLiveBody({ ...s, done: { ...s.done, terms_accepted: s.done.terms_accepted || c.body?.accept_terms === true } });

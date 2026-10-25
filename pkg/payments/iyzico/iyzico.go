@@ -337,6 +337,22 @@ func (c *Client) Status(ctx context.Context, key string) (payments.StatusResult,
 	return payments.StatusResult{}, fmt.Errorf("iyzico: status lookup failed: %s %s", out.ErrorCode, out.ErrorMessage)
 }
 
+// healthBIN is the card BIN the health check looks up: iyzico's published test BIN, a public number that identifies no cardholder.
+const healthBIN = "554960"
+
+// CheckHealth implements payments.HealthChecker with /payment/bin/check, a signed, read-only lookup that charges nothing: iyzico answers "failure" when the
+// signature (the api key and secret key) is not accepted. UNVERIFIED against iyzico's sandbox or live host (the tests run against a fake).
+func (c *Client) CheckHealth(ctx context.Context) error {
+	out, err := c.do(ctx, "/payment/bin/check", map[string]any{"locale": "en", "conversationId": "payrudder-health", "binNumber": healthBIN})
+	if err != nil {
+		return err
+	}
+	if !out.ok() {
+		return fmt.Errorf("iyzico refused the check: %s %s", out.ErrorCode, out.ErrorMessage)
+	}
+	return nil
+}
+
 // WebhookEvent is an iyzico payment notification.
 type WebhookEvent struct {
 	Type           string `json:"iyziEventType"`

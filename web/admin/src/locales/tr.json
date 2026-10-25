@@ -1998,7 +1998,10 @@
         "bad_settings": "Bu sağlayıcı ayarları geçerli değil. Kimlik bilgilerini ve zorunlu alanları kontrol edin.",
         "not_found": "Bu hesapta böyle bir ödeme sağlayıcısı kurulu değil.",
         "sync_failed": "Sağlayıcı hesabı değişti ama banka bilgileri faturalara aktarılamadı. İsteği yeniden gönderin.",
-        "livemode_mismatch": "Bu sağlayıcı hesabı sağlayıcının diğer moduna işaret ediyor: canlı ortam sağlayıcının canlı uç noktasını ve canlı anahtarlarını, sandbox ortamı ise test uç noktasını kullanmalıdır."
+        "livemode_mismatch": "Bu sağlayıcı hesabı sağlayıcının diğer moduna işaret ediyor: canlı ortam sağlayıcının canlı uç noktasını ve canlı anahtarlarını, sandbox ortamı ise test uç noktasını kullanmalıdır.",
+        "endpoint_not_allowed": "Yalnızca sağlayıcının kendi canlı adresine izin verilir. Adres alanını boş bırakın.",
+        "health_check_failed": "Sağlayıcı bu kimlik bilgilerini kabul etmedi. Anahtarları ve canlı anahtar olduklarını denetleyin.",
+        "health_check_unreachable": "Kimlik bilgilerini denetlemek için sağlayıcıya ulaşılamadı. Biraz sonra yeniden deneyin."
       },
       "billing": {
         "not_configured": "Bu kurulumda faturalama yapılandırılmamış.",
@@ -2187,6 +2190,12 @@
       },
       "sandbox": {
         "reset_rate_limited": "Sandbox az önce sıfırlandı. Yeniden sıfırlamak için birkaç dakika bekleyin."
+      },
+      "billing_profile": {
+        "legal_name_required": "İşletmenin yasal adını girin.",
+        "country_required": "İşletmenin ülkesini seçin.",
+        "address_required": "Sokak adresini ve şehri girin.",
+        "tax_id_required": "Bu ülkedeki faturalar için vergi numarası zorunludur."
       }
     },
     "gateway": {
@@ -2825,12 +2834,11 @@
       },
       "help": {
         "email_verified": "Size gönderdiğimiz iletideki bağlantıyı açın ya da banttan yenisini isteyin.",
-        "legal_profile": "Satıcının adı, ülkesi ve vergi numarası her canlı faturada basılır.",
-        "payment_provider": "Gerçek ödemeler için bağlanmış ve sağlık kontrolünü geçmiş bir sağlayıcı.",
+        "legal_profile": "Yasal adınız, adresiniz ve vergi numaranız her canlı faturada yazdırılır. Aşağıdaki fatura profilini doldurun.",
+        "payment_provider": "Aşağıdan bir sağlayıcı bağlayın. Anahtarlarınız sayılmadan önce sağlayıcıya onaylatılır.",
         "plan_published": "Aşağıdan sandbox planlarınızı canlıya kopyalayın ya da canlıda bir plan oluşturun.",
-        "terms_accepted": "Aşağıdaki etkinleştirme ile birlikte, sahip tarafından kabul edilir."
+        "terms_accepted": "Aşağıdaki hizmet şartlarını okuyup kabul edin. Bunu yalnızca hesap sahibi yapabilir."
       },
-      "askTeam": "Şimdilik bunu Payrudder ekibi sizinle birlikte kurar. Destekle iletişime geçin.",
       "open": "Aç",
       "nothingYet": "Canlı ortam etkinleşene kadar rakam göstermez.",
       "continue": "Kuruluma devam et",
@@ -2839,7 +2847,79 @@
       "activate": "Canlıyı aç",
       "notReady": "Önce diğer adımları tamamlayın.",
       "inactiveNote": "Canlı ortam etkinleşene kadar veri içermez. Bu arada sandbox çalışmaya devam eder.",
-      "toSandbox": "Sandbox'ı aç"
+      "toSandbox": "Sandbox'ı aç",
+      "fillIn": "Doldur",
+      "acceptTermsButton": "Şartları kabul et",
+      "termsAccepted": "Hizmet şartları kabul edildi.",
+      "profile": {
+        "title": "Fatura profili",
+        "intro": "Canlı faturalarınızda satıcı olarak yazdırılan bilgiler: kim olduğunuz, nerede olduğunuz ve vergi numaranız.",
+        "ownerOnly": "Fatura profilini yalnızca hesabın sahibi değiştirebilir.",
+        "legalName": "Yasal ad",
+        "taxId": "Vergi numarası",
+        "taxIdRequired": "{country} için kesilen faturalarda zorunludur. Boşluk ve tireler yok sayılır.",
+        "taxIdOptional": "Bu ülke için isteğe bağlıdır. Boşluk ve tireler yok sayılır.",
+        "taxOffice": "Vergi dairesi (isteğe bağlı)",
+        "save": "Fatura profilini kaydet",
+        "saved": "Fatura profili kaydedildi.",
+        "problems": {
+          "required": "Zorunlu.",
+          "taxIdFormat": "5 ile 20 arasında harf ve rakam."
+        }
+      },
+      "provider": {
+        "title": "Ödeme sağlayıcısı",
+        "intro": "Müşterilerinizin canlı modda ödeme yaptığı sağlayıcıyı bağlayın. Anahtarlar bir kez yazılır ve şifreli saklanır. Sayılmadan önce sağlayıcıdan onay istenir.",
+        "ownerOnly": "Sağlayıcıyı yalnızca hesabın sahibi bağlayabilir veya kaldırabilir.",
+        "none": "Canlı modda henüz bağlı bir sağlayıcı yok.",
+        "connected": "Bağlı sağlayıcılar",
+        "connectedNow": "{provider} bağlandı.",
+        "connectTitle": "Sağlayıcı bağla",
+        "provider": "Sağlayıcı",
+        "choose": "Sağlayıcı seçin",
+        "secretsOnce": "Gizli anahtarlar kaydettikten sonra bir daha gösterilmez. Test anahtarlarını değil, canlı anahtarları kullanın.",
+        "optional": "isteğe bağlı",
+        "checkAndConnect": "Denetle ve bağla",
+        "saveBank": "Banka bilgilerini kaydet",
+        "checking": "Sağlayıcıyla denetleniyor...",
+        "remove": "Kaldır",
+        "confirmRemove": "{provider} canlı hesabı kaldırılsın mı? Müşteriler artık bunun üzerinden ödeme yapamaz.",
+        "default": "varsayılan",
+        "working": "Çalışıyor",
+        "notWorking": "Çalışmıyor",
+        "checkedYes": "Sağlayıcı bu anahtarları kabul ediyor.",
+        "checkedNo": "Yalnızca banka bilgileri: bir sağlayıcıda denetlenecek bir şey yok.",
+        "names": {
+          "iyzico": "iyzico",
+          "paddle": "Paddle",
+          "banktransfer": "Banka havalesi"
+        },
+        "fields": {
+          "api_key": "API anahtarı",
+          "secret_key": "Gizli anahtar",
+          "webhook_secret": "Webhook gizli anahtarı",
+          "usage_product_id": "Kullanım ürün kimliği (pro_...)",
+          "buyer_name": "Alıcı adı",
+          "buyer_surname": "Alıcı soyadı",
+          "buyer_identity_number": "Alıcı kimlik numarası",
+          "buyer_email": "Alıcı e-postası",
+          "buyer_address": "Alıcı adresi",
+          "buyer_city": "Alıcı şehri",
+          "buyer_country": "Alıcı ülkesi",
+          "buyer_zip_code": "Alıcı posta kodu",
+          "buyer_ip": "İşletmenizin genel IP adresi",
+          "buyer_gsm_number": "Alıcı telefon numarası"
+        },
+        "problems": {
+          "required": "Zorunlu.",
+          "badFormat": "Bu doğru görünmüyor."
+        },
+        "accountProblems": {
+          "unreadable": "Saklanan anahtarlar okunamıyor. Sağlayıcıyı yeniden bağlayın.",
+          "refused": "Sağlayıcı bu anahtarları artık kabul etmiyor. Yeni anahtarlarla yeniden bağlayın.",
+          "unreachable": "Sağlayıcıya şu an ulaşılamadı. Kısa süre sonra yeniden denetlenecek."
+        }
+      }
     },
     "promote": {
       "title": "Sandbox yapılandırmasını canlıya kopyala",

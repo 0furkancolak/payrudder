@@ -107,6 +107,52 @@ func TestLiveAndSandboxAcceptance(t *testing.T) {
 		}
 	})
 
+	t.Run("the owner fills the billing profile and accepts the terms alone; a provider cannot be pointed at a host of their own", func(t *testing.T) {
+		item := func(key string) bool {
+			t.Helper()
+			g := call(t, "GET", base+"/go-live", session, nil)
+			gl, _ := g.body["go_live"].(map[string]any)
+			items, _ := gl["items"].([]any)
+			for _, raw := range items {
+				if it, _ := raw.(map[string]any); it["key"] == key {
+					done, _ := it["done"].(bool)
+					return done
+				}
+			}
+			t.Fatalf("no checklist item %q in %v", key, g.body)
+			return false
+		}
+		if item("legal_profile") || item("terms_accepted") {
+			t.Fatal("the profile and the terms were done before anything was saved")
+		}
+		// A German seller needs a tax id: the refusal names it.
+		profile := map[string]any{"legal": map[string]any{"legal_name": "E2E Live Co"}, "address": map[string]any{"line1": "Hauptstr. 1", "city": "Berlin", "country": "DE"}}
+		if r := call(t, "PUT", base+"/billing-profile", session, profile); r.status != 400 || r.errKey() != "identity.billing_profile.tax_id_required" {
+			t.Fatalf("a German seller without a tax id: %d %v", r.status, r.body)
+		}
+		profile["legal"] = map[string]any{"legal_name": "E2E Live Co", "tax_id": "DE 123 456 789"}
+		if r := call(t, "PUT", base+"/billing-profile", session, profile); r.status != 200 {
+			t.Fatalf("billing profile: %d %v", r.status, r.body)
+		}
+		if r := call(t, "POST", base+"/go-live/terms", session, nil); r.status != 200 {
+			t.Fatalf("terms: %d %v", r.status, r.body)
+		}
+		if !item("legal_profile") || !item("terms_accepted") {
+			t.Error("the checklist does not see the profile and the terms")
+		}
+		// Provider steps need payments-worker in the stack. A host of the person's own would be sent their secret keys: refused before any request is made.
+		custom := map[string]any{"api_key": "a", "secret_key": "b", "base_url": "http://127.0.0.1:1"}
+		if r := call(t, "PUT", base+"/go-live/providers/iyzico", session, custom); r.status != 400 || r.errKey() != "payments.account.endpoint_not_allowed" {
+			t.Errorf("a provider at a host of the person's own: %d %v", r.status, r.body)
+		}
+		if r := call(t, "PUT", base+"/go-live/providers/mockpsp", session, map[string]any{}); r.status != 404 || r.errKey() != "payments.provider.unknown" {
+			t.Errorf("the mock as a live provider: %d %v", r.status, r.body)
+		}
+		if item("payment_provider") {
+			t.Error("a refused provider counted")
+		}
+	})
+
 	k := call(t, "POST", base+"/api-keys", session, map[string]any{"environment": "sandbox", "scope": "full"})
 	if k.status != 201 {
 		t.Fatalf("sandbox key: %d %v", k.status, k.body)
@@ -116,7 +162,8 @@ func TestLiveAndSandboxAcceptance(t *testing.T) {
 		t.Fatalf("sandbox key %q", sandboxKey)
 	}
 
-	// Support switches live on (the checklist needs a provider and a legal profile no person can set yet), then the live key can be issued.
+	// Support switches live on: the last checklist item is a payment provider connected in live mode, which needs the provider's real host and real keys, and an
+	// end-to-end run has neither. The profile and the terms above were done by the person. Then the live key can be issued.
 	if s := call(t, "PUT", "/admin/v1/tenants/"+liveTenant+"/status", operatorToken, map[string]any{"status": "active", "reason": "e2e"}); s.status != 200 {
 		t.Fatalf("activate live: %d %v", s.status, s.body)
 	}

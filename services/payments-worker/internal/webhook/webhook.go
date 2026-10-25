@@ -82,6 +82,9 @@ type Server struct {
 	Reset ledgercommand.ResetFunc
 	// Modules are the operator endpoints of other modules (the bank transfers), served next to these.
 	Modules []RouteRegistrar
+
+	// accountHealth remembers, for a few seconds, what a provider said about a tenant's credentials (the go-live answer is asked for often).
+	accountHealth accountsquery.HealthCache
 }
 
 // PlansAPI is what payments-worker asks of plans-svc, as the tenant.
@@ -138,7 +141,7 @@ func (s *Server) modules() []RouteRegistrar {
 	mods := []RouteRegistrar{
 		&accounts.Handler{Log: s.Log,
 			Command: accountscommand.Deps{Registry: s.Registry, Accounts: s.Accounts, Plans: s.Plans, Log: s.Log},
-			Query:   accountsquery.Deps{Registry: s.Registry, Accounts: s.Accounts, Log: s.Log}},
+			Query:   accountsquery.Deps{Registry: s.Registry, Accounts: s.Accounts, Health: &s.accountHealth, Log: s.Log}},
 		&einvoiceaccounts.Handler{Log: s.Log, Deps: einvoicecommand.Deps{Accounts: s.EInvoiceAccounts, Registry: s.EInvoiceRegistry, AllowMockLive: s.AllowMockLive}},
 		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger}, Command: ledgercommand.Deps{Reset: s.Reset}},
 		&reconciliation.Handler{Log: s.Log, Query: reconciliationquery.Deps{Ledger: s.Ledger, Billing: s.Billing}},

@@ -1,8 +1,11 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -11,6 +14,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/payments/providers"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
@@ -22,6 +26,11 @@ func (s *Server) goLiveRoutes() []Route {
 	return []Route{
 		{"GET", "/app/v1/apps/{id}/go-live", AccessSession, ratelimit.ClassRead, s.appGoLive},
 		{"POST", "/app/v1/apps/{id}/go-live", AccessSession, ratelimit.ClassWrite, s.appGoLiveActivate},
+		{"PUT", "/app/v1/apps/{id}/billing-profile", AccessSession, ratelimit.ClassWrite, s.appBillingProfile},
+		{"POST", "/app/v1/apps/{id}/go-live/terms", AccessSession, ratelimit.ClassWrite, s.appAcceptTerms},
+		{"GET", "/app/v1/apps/{id}/go-live/providers", AccessSession, ratelimit.ClassRead, s.appLiveProviders},
+		{"PUT", "/app/v1/apps/{id}/go-live/providers/{provider}", AccessSession, ratelimit.ClassWrite, s.appLiveProviderPut},
+		{"DELETE", "/app/v1/apps/{id}/go-live/providers/{provider}", AccessSession, ratelimit.ClassWrite, s.appLiveProviderDelete},
 		{"POST", "/app/v1/apps/{id}/api-keys/{key_id}/rotate", AccessSession, ratelimit.ClassWrite, s.appKeyRotate},
 		{"POST", "/app/v1/apps/{id}/promote", AccessSession, ratelimit.ClassWrite, s.appPromote},
 		{"PUT", "/admin/v1/tenants/{id}/status", AccessOperator, "", s.setTenantStatus},
@@ -72,6 +81,138 @@ func (s *Server) appGoLiveActivate(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Identity.ActivateMyApp(r.Context(), &plansv1.ActivateMyAppRequest{UserId: sess.UserID, AppId: appID, AcceptTerms: body.AcceptTerms,
 		ProviderReady: s.providerReady(r, sess.UserID, appID, true)})
 	respond(w, r, http.StatusOK, resp, err)
+}
+
+// The owner's own steps to go live (phase 45 follow-up): the seller's billing profile, the terms, and the live payment provider. Nothing in a request names a
+// tenant or an environment: both are the app's live environment, found through the signed-in person's membership, and only the owner may change anything.
+
+// appBillingProfile saves the legal name, tax id and address of the app's live environment.
+func (s *Server) appBillingProfile(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	req := &plansv1.UpdateMyBillingProfileRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.UserId, req.AppId = sess.UserID, r.PathValue("id")
+	resp, err := s.d.Identity.UpdateMyBillingProfile(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetTenant(), err)
+}
+
+// appAcceptTerms records the owner's acceptance of the terms of service.
+func (s *Server) appAcceptTerms(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	resp, err := s.d.Identity.AcceptMyTerms(r.Context(), &plansv1.AcceptMyTermsRequest{UserId: sess.UserID, AppId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// liveTenantOf is the live tenant of an app the person belongs to, and whether they own it. An app that is not theirs is not found; a deployment without a
+// live environment says so.
+func (s *Server) liveTenantOf(r *http.Request, userID, appID string) (tenantID string, owner bool, err error) {
+	app, err := s.d.Identity.GetMyApp(r.Context(), &plansv1.GetMyAppRequest{UserId: userID, AppId: appID})
+	if err != nil {
+		return "", false, err
+	}
+	for _, t := range app.GetApp().GetTenants() {
+		if t.GetEnvironment() == env.Live.Proto() {
+			return t.GetId(), app.GetRole() == "owner", nil
+		}
+	}
+	return "", false, errkey.New(codes.FailedPrecondition, "identity.go_live.no_live", "this deployment has no live environment")
+}
+
+// ownerLiveTenant is liveTenantOf for a change: only the owner passes.
+func (s *Server) ownerLiveTenant(r *http.Request, userID, appID string) (string, error) {
+	tenant, owner, err := s.liveTenantOf(r, userID, appID)
+	if err != nil {
+		return "", err
+	}
+	if !owner {
+		return "", errkey.New(codes.PermissionDenied, "identity.go_live.owner_only", "only an owner of the account can connect a payment provider")
+	}
+	return tenant, nil
+}
+
+// connectableProviders are the providers a person may connect to their live environment: the ones Payrudder has adapters for. The mock never is one.
+func connectableProviders(name string) bool {
+	_, ok := providers.Lookup(name)
+	return ok
+}
+
+// appLiveProviders lists the live provider accounts of the app and whether each one works, as payments-worker's go-live check sees them. No setting is in it.
+// Any member reads it, like the checklist.
+func (s *Server) appLiveProviders(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	tenant, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	var out json.RawMessage
+	code, err := s.paymentsDo(r.Context(), http.MethodGet, "/admin/tenants/"+url.PathEscape(tenant)+"/go-live", nil, nil, &out)
+	if err != nil || code/100 != 2 {
+		writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.unreachable", "payments-worker is not reachable"))
+		return
+	}
+	noStoreJSON(w)
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(out)
+}
+
+// appLiveProviderPut connects (or replaces) the app's live account at a provider. The settings go to payments-worker as they came and are never answered
+// back; the environment is live whatever the request says, the provider must accept the credentials before they are stored (and only the provider's own hosts
+// are allowed: payments-worker's ?verify=true), and the change is recorded for this person. The first account becomes the default.
+func (s *Server) appLiveProviderPut(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	tenant, err := s.ownerLiveTenant(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	provider := r.PathValue("provider")
+	if !connectableProviders(provider) {
+		writeError(w, r, errkey.New(codes.NotFound, "payments.provider.unknown", "unknown provider"))
+		return
+	}
+	var existing struct {
+		Accounts []struct {
+			Default bool `json:"default"`
+		} `json:"accounts"`
+	}
+	hasDefault := false
+	if code, err := s.paymentsDo(r.Context(), http.MethodGet, "/admin/tenants/"+url.PathEscape(tenant)+"/go-live", nil, nil, &existing); err == nil && code/100 == 2 {
+		for _, a := range existing.Accounts {
+			hasDefault = hasDefault || a.Default
+		}
+	}
+	noStore(w)
+	s.paymentsForward(func(*http.Request) string {
+		return "/admin/tenants/" + url.PathEscape(tenant) + "/provider-accounts/" + url.PathEscape(provider)
+	}, func(pr *httputil.ProxyRequest) {
+		pr.Out.URL.RawQuery = url.Values{"environment": {env.Live.String()}, "verify": {"true"}, "default": {strconv.FormatBool(!hasDefault)}}.Encode()
+		pr.Out.Header.Set("X-Payrudder-Actor", "user:"+sess.UserID)
+	})(w, r)
+}
+
+// appLiveProviderDelete removes the app's live account at a provider. Only the owner; recorded for this person.
+func (s *Server) appLiveProviderDelete(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	tenant, err := s.ownerLiveTenant(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	provider := r.PathValue("provider")
+	if !connectableProviders(provider) {
+		writeError(w, r, errkey.New(codes.NotFound, "payments.provider.unknown", "unknown provider"))
+		return
+	}
+	s.paymentsForward(func(*http.Request) string {
+		return "/admin/tenants/" + url.PathEscape(tenant) + "/provider-accounts/" + url.PathEscape(provider)
+	}, func(pr *httputil.ProxyRequest) {
+		pr.Out.URL.RawQuery = url.Values{"environment": {env.Live.String()}}.Encode()
+		pr.Out.Header.Set("X-Payrudder-Actor", "user:"+sess.UserID)
+	})(w, r)
 }
 
 func (s *Server) appKeyRotate(w http.ResponseWriter, r *http.Request) {

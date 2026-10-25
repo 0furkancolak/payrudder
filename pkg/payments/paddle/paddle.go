@@ -127,6 +127,12 @@ func Caps() payments.Capabilities {
 		Currencies: []string{"USD", "EUR", "GBP", "CHF", "JPY"}}
 }
 
+// CheckHealth implements payments.HealthChecker: GET /event-types needs a valid API key and changes nothing. UNVERIFIED against a live Paddle account (the
+// tests run against a fake): the endpoint is documented as authenticated and read-only.
+func (c *Client) CheckHealth(ctx context.Context) error {
+	return c.do(ctx, http.MethodGet, "/event-types", nil, nil)
+}
+
 // apiError is Paddle's error body.
 type apiError struct {
 	Error struct {

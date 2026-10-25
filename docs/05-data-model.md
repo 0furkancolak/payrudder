@@ -75,6 +75,14 @@ CREATE TABLE config_promotions (                      -- phase 45 D: one row per
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE go_live_audit (                          -- phase 45 follow-up: what an owner did on the way to going live; append-only, nothing updated or deleted
+  id uuid PRIMARY KEY, app_id uuid NOT NULL REFERENCES apps(id), user_id uuid NOT NULL REFERENCES users(id),
+  live_tenant_id uuid NOT NULL REFERENCES tenants(id),   -- a trigger: the live tenant of that app
+  action text NOT NULL CHECK (action IN ('billing_profile_saved','terms_accepted')),
+  detail jsonb NOT NULL DEFAULT '{}',                    -- the country and whether a tax id was given, never the profile
+  created_at timestamptz NOT NULL DEFAULT now()
+);   -- the provider connection is audited in payments_db (provider_account_events)
+
 CREATE TABLE api_keys (
   id          uuid PRIMARY KEY,
   tenant_id   uuid NOT NULL REFERENCES tenants(id),

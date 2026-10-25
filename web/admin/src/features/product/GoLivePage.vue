@@ -3,10 +3,12 @@ import { useParams } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { StatusPill } from "@/shared/ui/status-pill";
+import BillingProfileCard from "./BillingProfileCard.vue";
 import GoLiveChecklist from "./GoLiveChecklist.vue";
+import LiveProviderCard from "./LiveProviderCard.vue";
 import PromoteCard from "./PromoteCard.vue";
 
-/** Going live: the checklist and its button, and the copy of the sandbox's configuration to live. */
+/** Going live: the checklist and its button, the billing profile and the payment provider the owner fills in, and the copy of the sandbox's configuration to live. */
 const { t } = useI18n();
 const params = useParams({ strict: false });
 const appId = computed(() => String(params.value.appId ?? ""));
@@ -22,6 +24,8 @@ const appId = computed(() => String(params.value.appId ?? ""));
       <p class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ t("product.goLive.pageIntro") }}</p>
     </header>
     <GoLiveChecklist :app-id="appId" />
+    <BillingProfileCard :app-id="appId" />
+    <LiveProviderCard :app-id="appId" />
     <PromoteCard :app-id="appId" />
   </section>
 </template>

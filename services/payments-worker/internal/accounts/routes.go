@@ -13,6 +13,16 @@ import (
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/httpx"
 )
 
+// ActorHeader names who an account change is recorded for: "user:<id>" for a person in the console, set by the gateway. Without it the change is the operator's.
+const ActorHeader = "X-Payrudder-Actor"
+
+func actor(r *http.Request) string {
+	if a := r.Header.Get(ActorHeader); a != "" {
+		return a
+	}
+	return "operator"
+}
+
 // Handler serves the provider account endpoints.
 type Handler struct {
 	Command command.Deps
@@ -59,8 +69,11 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) {
 	}
 	// ?default= is a flag: anything that is not a boolean is not a request to make the account the default.
 	makeDefault, _ := strconv.ParseBool(r.URL.Query().Get("default"))
+	// ?verify= is set by the gateway for a person who connects their own account: the provider is asked to accept the credentials, and only its own hosts are allowed.
+	verify, _ := strconv.ParseBool(r.URL.Query().Get("verify"))
 	provider := r.PathValue("provider")
-	if err := command.PutAccount(r.Context(), h.Command, command.Put{Tenant: t, Provider: provider, Environment: mode, Settings: settings, MakeDefault: makeDefault}); err != nil {
+	if err := command.PutAccount(r.Context(), h.Command, command.Put{Tenant: t, Provider: provider, Environment: mode, Settings: settings, MakeDefault: makeDefault,
+		Actor: actor(r), Verify: verify}); err != nil {
 		httpx.Reply(h.Log, w, r, err)
 		return
 	}
@@ -76,7 +89,7 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := command.DeleteAccount(r.Context(), h.Command, t, r.PathValue("provider"), mode); err != nil {
+	if err := command.DeleteAccount(r.Context(), h.Command, t, r.PathValue("provider"), mode, actor(r)); err != nil {
 		httpx.Reply(h.Log, w, r, err)
 		return
 	}

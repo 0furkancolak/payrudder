@@ -9,15 +9,14 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { isOperator } from "@/shared/lib/session";
-import { useActivateLive, useApp, useGoLive } from "./api";
+import { useAcceptTerms, useActivateLive, useApp, useGoLive } from "./api";
 import { checklist, nextStep, progress, type GoLiveKey } from "./golive";
 
 /**
  * The go-live checklist of an app's live environment, from the server (the same answer for every member; the server checks it again when the owner
  * activates). `compact` is the card on the home and on the live dashboard: the list and the count, with a link to the page that does the work. The full
- * version also has the button, which only an owner sees. Two of the items (the seller's legal profile and the payment provider) are set up by the
- * platform team for now: an operator gets the link to the page, everybody else is told who to ask.
+ * version also has the owner's steps: the terms are accepted here, and the button switches live on. The other two things only a person can do are cards on the
+ * same page (the billing profile and the payment provider); their items scroll to them.
  */
 const props = defineProps<{ appId: string; compact?: boolean }>();
 const { t } = useI18n();
@@ -25,6 +24,7 @@ const app = useApp(() => props.appId);
 const live = computed(() => tenantOf(app.data.value?.app, "live"));
 const goLive = useGoLive(() => props.appId, () => live.value !== "");
 const activate = useActivateLive(() => props.appId);
+const acceptTerms = useAcceptTerms(() => props.appId);
 const accept = ref(false);
 
 const items = computed(() => checklist(goLive.data.value));
@@ -33,27 +33,41 @@ const next = computed(() => nextStep(goLive.data.value));
 const active = computed(() => goLive.data.value?.status === "TENANT_STATUS_ACTIVE");
 const suspended = computed(() => goLive.data.value?.status === "TENANT_STATUS_SUSPENDED");
 const isOwner = computed(() => app.data.value?.role === "owner");
-/** Everything but the terms is done: the terms are accepted in the same click as the activation. */
-const readyForTerms = computed(() => items.value.every((i) => i.done || i.key === "terms_accepted"));
 const termsDone = computed(() => items.value.find((i) => i.key === "terms_accepted")?.done === true);
-const canActivate = computed(() => isOwner.value && !active.value && !suspended.value && readyForTerms.value && (termsDone.value || accept.value));
+const allDone = computed(() => items.value.every((i) => i.done));
+const canActivate = computed(() => isOwner.value && !active.value && !suspended.value && allDone.value);
 
-/** Where the work of an item is done, or null when the person cannot do it themselves. */
-function target(key: GoLiveKey): { to: string; search?: Record<string, string> } | null {
+/** Where the work of an item is done: a page, or a card further down this page (its id). */
+function target(key: GoLiveKey): { to: string } | { anchor: string } | null {
   switch (key) {
     case "plan_published":
       return live.value ? { to: `/app/t/${live.value}/packages` } : null;
     case "legal_profile":
-      return isOperator.value && live.value ? { to: `/tenants/${live.value}/address` } : null;
+      return { anchor: "billing-profile" };
     case "payment_provider":
-      return isOperator.value && live.value ? { to: `/tenants/${live.value}/providers` } : null;
+      return { anchor: "live-provider" };
+    case "terms_accepted":
+      return { anchor: "go-live-terms-box" };
     default:
       return null;
   }
 }
 
+/** The link of an item, as a router link or null (the anchors are drawn as buttons that scroll). */
+const pageTarget = (key: GoLiveKey): string | null => {
+  const t = target(key);
+  return t && "to" in t ? t.to : null;
+};
+function scrollTo(key: GoLiveKey) {
+  const t = target(key);
+  if (t && "anchor" in t) document.getElementById(t.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function go() {
-  activate.mutate(termsDone.value || accept.value);
+  activate.mutate(false);
+}
+function acceptNow() {
+  acceptTerms.mutate(undefined, { onSuccess: () => (accept.value = false) });
 }
 </script>
 
@@ -86,9 +100,9 @@ function go() {
             {{ t(`product.goLive.items.${i.key}`) }}<span class="sr-only"> - {{ i.done ? t("product.goLive.done") : t("product.goLive.todo") }}</span>
           </p>
           <p v-if="!i.done && !compact" class="text-muted-foreground text-xs">{{ t(`product.goLive.help.${i.key}`) }}</p>
-          <p v-if="!i.done && !compact && (i.key === 'legal_profile' || i.key === 'payment_provider') && !target(i.key)" class="text-muted-foreground text-xs">{{ t("product.goLive.askTeam") }}</p>
         </div>
-        <Link v-if="!i.done && !compact && target(i.key)" :to="target(i.key)!.to" class="text-primary shrink-0 text-xs font-medium hover:underline">{{ t("product.goLive.open") }}</Link>
+        <Link v-if="!i.done && !compact && pageTarget(i.key)" :to="pageTarget(i.key)!" class="text-primary shrink-0 text-xs font-medium hover:underline">{{ t("product.goLive.open") }}</Link>
+        <button v-else-if="!i.done && !compact && target(i.key)" type="button" class="text-primary shrink-0 text-xs font-medium hover:underline" :data-testid="`go-live-go-${i.key}`" @click="scrollTo(i.key)">{{ t("product.goLive.fillIn") }}</button>
       </li>
     </ol>
 
@@ -98,14 +112,23 @@ function go() {
     </div>
 
     <div v-if="!compact && goLive.data.value && !active && !suspended" class="flex flex-col gap-3 border-t pt-4">
-      <label v-if="!termsDone" class="flex items-start gap-3 text-sm">
-        <Checkbox :model-value="accept" class="mt-0.5" :disabled="!isOwner" data-testid="go-live-terms" @update:model-value="accept = $event === true" />
-        <span>{{ t("product.goLive.acceptTerms") }}</span>
-      </label>
+      <div id="go-live-terms-box" class="flex flex-col gap-2" data-testid="go-live-terms-box">
+        <p v-if="termsDone" class="text-success text-sm" data-testid="go-live-terms-done">{{ t("product.goLive.termsAccepted") }}</p>
+        <template v-else>
+          <label class="flex items-start gap-3 text-sm">
+            <Checkbox :model-value="accept" class="mt-0.5" :disabled="!isOwner" data-testid="go-live-terms" @update:model-value="accept = $event === true" />
+            <span>{{ t("product.goLive.acceptTerms") }}</span>
+          </label>
+          <div class="flex flex-wrap items-center gap-3">
+            <Button variant="outline" :disabled="!isOwner || !accept || acceptTerms.isPending.value" data-testid="go-live-accept-terms" @click="acceptNow">{{ t("product.goLive.acceptTermsButton") }}</Button>
+          </div>
+          <ErrorText :error="acceptTerms.error.value" />
+        </template>
+      </div>
       <p v-if="!isOwner" class="text-muted-foreground text-xs" data-testid="go-live-owner-only">{{ t("product.goLive.ownerOnly") }}</p>
       <div class="flex flex-wrap items-center gap-3">
         <Button :disabled="!canActivate || activate.isPending.value" data-testid="go-live-activate" @click="go"><Rocket />{{ t("product.goLive.activate") }}</Button>
-        <p v-if="!readyForTerms" class="text-muted-foreground text-xs">{{ t("product.goLive.notReady") }}</p>
+        <p v-if="!allDone" class="text-muted-foreground text-xs">{{ t("product.goLive.notReady") }}</p>
       </div>
       <ErrorText :error="activate.error.value" />
     </div>

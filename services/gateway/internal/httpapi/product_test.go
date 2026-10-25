@@ -81,6 +81,8 @@ type fakeIdentity struct {
 	rotates   []*plansv1.RotateMyApiKeyRequest
 	promotes  []*plansv1.PromoteMyAppRequest
 	resets    []*plansv1.ResetMySandboxRequest
+	profiles  []*plansv1.UpdateMyBillingProfileRequest
+	terms     []*plansv1.AcceptMyTermsRequest
 	lastScope plansv1.ApiKey_Scope
 }
 
@@ -321,6 +323,38 @@ func (f *fakeIdentity) ActivateMyApp(_ context.Context, req *plansv1.ActivateMyA
 	f.activates = append(f.activates, req)
 	f.mu.Unlock()
 	return &plansv1.ActivateMyAppResponse{GoLive: &plansv1.GoLive{Ready: req.GetProviderReady()}}, nil
+}
+
+// ownerOnly answers like the real service for the owner's go-live steps: another account's app is not found, a member who is not the owner is refused.
+func (f *fakeIdentity) ownerOnly(user, app string) error {
+	f.seen(user)
+	switch _, role := f.mine(user, app); role {
+	case "":
+		return notFound("app")
+	case "owner":
+		return nil
+	}
+	return errkey.New(codes.PermissionDenied, "identity.go_live.owner_only", "owner only")
+}
+
+func (f *fakeIdentity) UpdateMyBillingProfile(_ context.Context, req *plansv1.UpdateMyBillingProfileRequest) (*plansv1.UpdateMyBillingProfileResponse, error) {
+	if err := f.ownerOnly(req.GetUserId(), req.GetAppId()); err != nil {
+		return nil, err
+	}
+	f.mu.Lock()
+	f.profiles = append(f.profiles, req)
+	f.mu.Unlock()
+	return &plansv1.UpdateMyBillingProfileResponse{Tenant: &plansv1.Tenant{Id: adaLive, Legal: req.GetLegal(), Address: req.GetAddress()}}, nil
+}
+
+func (f *fakeIdentity) AcceptMyTerms(_ context.Context, req *plansv1.AcceptMyTermsRequest) (*plansv1.AcceptMyTermsResponse, error) {
+	if err := f.ownerOnly(req.GetUserId(), req.GetAppId()); err != nil {
+		return nil, err
+	}
+	f.mu.Lock()
+	f.terms = append(f.terms, req)
+	f.mu.Unlock()
+	return &plansv1.AcceptMyTermsResponse{AcceptTime: timestamppb.New(time.Unix(1_700_000_000, 0))}, nil
 }
 
 func (f *fakeIdentity) PromoteMyApp(_ context.Context, req *plansv1.PromoteMyAppRequest) (*plansv1.PromoteMyAppResponse, error) {

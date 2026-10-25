@@ -1998,7 +1998,10 @@
         "bad_settings": "Diese Anbietereinstellungen sind ungültig. Prüfen Sie die Zugangsdaten und die Pflichtfelder.",
         "not_found": "Für dieses Konto ist dieser Zahlungsanbieter nicht eingerichtet.",
         "sync_failed": "Das Anbieterkonto wurde geändert, die Bankdaten konnten aber nicht an die Rechnungen weitergegeben werden. Senden Sie die Anfrage erneut.",
-        "livemode_mismatch": "Dieses Anbieterkonto zeigt auf den anderen Modus des Anbieters: Eine Live-Umgebung braucht den Live-Endpunkt und die Live-Schlüssel des Anbieters, eine Sandbox-Umgebung den Test-Endpunkt."
+        "livemode_mismatch": "Dieses Anbieterkonto zeigt auf den anderen Modus des Anbieters: Eine Live-Umgebung braucht den Live-Endpunkt und die Live-Schlüssel des Anbieters, eine Sandbox-Umgebung den Test-Endpunkt.",
+        "endpoint_not_allowed": "Nur der eigene Live-Endpunkt des Anbieters ist erlaubt. Lassen Sie den Endpunkt weg.",
+        "health_check_failed": "Der Anbieter hat diese Zugangsdaten nicht akzeptiert. Prüfen Sie die Schlüssel und ob es Live-Schlüssel sind.",
+        "health_check_unreachable": "Der Anbieter war zur Prüfung der Zugangsdaten nicht erreichbar. Versuchen Sie es gleich noch einmal."
       },
       "billing": {
         "not_configured": "Die Abrechnung ist in dieser Installation nicht eingerichtet.",
@@ -2187,6 +2190,12 @@
       },
       "sandbox": {
         "reset_rate_limited": "Die Sandbox wurde gerade erst zurückgesetzt. Warten Sie einige Minuten, bevor Sie sie erneut zurücksetzen."
+      },
+      "billing_profile": {
+        "legal_name_required": "Geben Sie den Firmennamen ein.",
+        "country_required": "Wählen Sie das Land des Unternehmens.",
+        "address_required": "Geben Sie Straße und Ort ein.",
+        "tax_id_required": "Für Rechnungen in diesem Land ist eine Steuernummer erforderlich."
       }
     },
     "gateway": {
@@ -2825,12 +2834,11 @@
       },
       "help": {
         "email_verified": "Öffnen Sie den Link in unserer Nachricht oder fordern Sie über das Banner einen neuen an.",
-        "legal_profile": "Name, Land und Steuernummer des Verkäufers stehen auf jeder Live-Rechnung.",
-        "payment_provider": "Ein für echte Zahlungen verbundener Anbieter, dessen Systemprüfung bestanden ist.",
+        "legal_profile": "Ihr Firmenname, Ihre Adresse und Ihre Steuernummer stehen auf jeder Live-Rechnung. Füllen Sie unten das Rechnungsprofil aus.",
+        "payment_provider": "Verbinden Sie unten einen Anbieter. Er muss Ihre Schlüssel bestätigen, bevor sie zählen.",
         "plan_published": "Kopieren Sie unten Ihre Sandbox-Tarife nach Live oder legen Sie in Live einen an.",
-        "terms_accepted": "Wird vom Inhaber zusammen mit der Aktivierung unten akzeptiert."
+        "terms_accepted": "Lesen und akzeptieren Sie unten die Nutzungsbedingungen. Das kann nur der Inhaber."
       },
-      "askTeam": "Das richtet das Payrudder-Team vorerst gemeinsam mit Ihnen ein. Wenden Sie sich an den Support.",
       "open": "Öffnen",
       "nothingYet": "Live zeigt keine Zahlen, bis es aktiv ist.",
       "continue": "Einrichtung fortsetzen",
@@ -2839,7 +2847,79 @@
       "activate": "Live einschalten",
       "notReady": "Erledigen Sie zuerst die anderen Schritte.",
       "inactiveNote": "Live hat keine Daten, bis es aktiv ist. Ihre Sandbox funktioniert in der Zwischenzeit weiter.",
-      "toSandbox": "Sandbox öffnen"
+      "toSandbox": "Sandbox öffnen",
+      "fillIn": "Ausfüllen",
+      "acceptTermsButton": "Bedingungen akzeptieren",
+      "termsAccepted": "Die Nutzungsbedingungen sind akzeptiert.",
+      "profile": {
+        "title": "Rechnungsprofil",
+        "intro": "Die Verkäuferangaben auf Ihren Live-Rechnungen: wer Sie sind, wo Sie sitzen und Ihre Steuernummer.",
+        "ownerOnly": "Nur der Inhaber des Kontos kann das Rechnungsprofil ändern.",
+        "legalName": "Firmenname",
+        "taxId": "Steuernummer",
+        "taxIdRequired": "Für Rechnungen in {country} erforderlich. Leerzeichen und Bindestriche werden ignoriert.",
+        "taxIdOptional": "Für dieses Land optional. Leerzeichen und Bindestriche werden ignoriert.",
+        "taxOffice": "Finanzamt (optional)",
+        "save": "Rechnungsprofil speichern",
+        "saved": "Rechnungsprofil gespeichert.",
+        "problems": {
+          "required": "Pflichtfeld.",
+          "taxIdFormat": "5 bis 20 Buchstaben und Ziffern."
+        }
+      },
+      "provider": {
+        "title": "Zahlungsanbieter",
+        "intro": "Verbinden Sie den Anbieter, über den Ihre Kunden im Live-Modus zahlen. Schlüssel werden einmal eingegeben und verschlüsselt gespeichert. Der Anbieter muss sie bestätigen, bevor sie zählen.",
+        "ownerOnly": "Nur der Inhaber des Kontos kann einen Anbieter verbinden oder entfernen.",
+        "none": "Im Live-Modus ist noch kein Anbieter verbunden.",
+        "connected": "Verbundene Anbieter",
+        "connectedNow": "{provider} ist verbunden.",
+        "connectTitle": "Anbieter verbinden",
+        "provider": "Anbieter",
+        "choose": "Anbieter wählen",
+        "secretsOnce": "Geheime Schlüssel werden nach dem Speichern nicht mehr angezeigt. Verwenden Sie Live-Schlüssel, keine Testschlüssel.",
+        "optional": "optional",
+        "checkAndConnect": "Prüfen und verbinden",
+        "saveBank": "Bankdaten speichern",
+        "checking": "Wird beim Anbieter geprüft ...",
+        "remove": "Entfernen",
+        "confirmRemove": "Das Live-Konto bei {provider} entfernen? Kunden können dann nicht mehr darüber zahlen.",
+        "default": "Standard",
+        "working": "Funktioniert",
+        "notWorking": "Funktioniert nicht",
+        "checkedYes": "Der Anbieter akzeptiert diese Schlüssel.",
+        "checkedNo": "Nur Bankdaten: Bei einem Anbieter gibt es nichts zu prüfen.",
+        "names": {
+          "iyzico": "iyzico",
+          "paddle": "Paddle",
+          "banktransfer": "Banküberweisung"
+        },
+        "fields": {
+          "api_key": "API-Schlüssel",
+          "secret_key": "Geheimer Schlüssel",
+          "webhook_secret": "Webhook-Geheimnis",
+          "usage_product_id": "Produkt-ID für Nutzung (pro_...)",
+          "buyer_name": "Vorname des Käufers",
+          "buyer_surname": "Nachname des Käufers",
+          "buyer_identity_number": "Ausweisnummer des Käufers",
+          "buyer_email": "E-Mail des Käufers",
+          "buyer_address": "Adresse des Käufers",
+          "buyer_city": "Stadt des Käufers",
+          "buyer_country": "Land des Käufers",
+          "buyer_zip_code": "Postleitzahl des Käufers",
+          "buyer_ip": "Öffentliche IP-Adresse Ihres Unternehmens",
+          "buyer_gsm_number": "Telefonnummer des Käufers"
+        },
+        "problems": {
+          "required": "Pflichtfeld.",
+          "badFormat": "Das sieht nicht richtig aus."
+        },
+        "accountProblems": {
+          "unreadable": "Die gespeicherten Schlüssel sind nicht lesbar. Verbinden Sie den Anbieter erneut.",
+          "refused": "Der Anbieter akzeptiert diese Schlüssel nicht mehr. Verbinden Sie ihn mit neuen Schlüsseln erneut.",
+          "unreachable": "Der Anbieter war gerade nicht erreichbar. Er wird in Kürze erneut geprüft."
+        }
+      }
     },
     "promote": {
       "title": "Sandbox-Konfiguration nach Live kopieren",

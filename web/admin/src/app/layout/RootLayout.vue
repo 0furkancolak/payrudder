@@ -8,7 +8,7 @@ import { BrandLogo } from "@/shared/ui/brand-logo";
 import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
 import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
-import { rememberEnv } from "@/shared/lib/environment";
+import { envOf, rememberEnv } from "@/shared/lib/environment";
 import Breadcrumbs from "./Breadcrumbs.vue";
 import ContextSwitcher from "./ContextSwitcher.vue";
 import EnvBanner from "./EnvBanner.vue";
@@ -42,7 +42,12 @@ const pageEnv = computed(() => {
   const c = shell.context.value;
   return isPerson.value && (c.level === "app" || (c.level === "org" && shell.path.value === "/app")) ? c.env : undefined;
 });
-const sandboxPage = computed(() => pageEnv.value === "sandbox");
+/** The environment of the tenant an operator is looking at (/tenants/<id>), once the tenant has arrived: a sandbox tenant is marked like any sandbox page. */
+const operatorTenantEnv = computed(() => {
+  const tenant = shell.tenant.data.value;
+  return shell.context.value.level === "tenant" && tenant?.environment ? envOf(tenant.environment) : undefined;
+});
+const sandboxPage = computed(() => (operatorTenantEnv.value ?? pageEnv.value) === "sandbox");
 const orgHome = computed(() => isPerson.value && shell.context.value.level === "org" && shell.path.value === "/app");
 
 // The app opens next time where the person was: every app page that knows its environment remembers it.
