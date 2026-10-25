@@ -1381,6 +1381,9 @@
         "nothing_pending": "Reddedilecek bekleyen bir havale yok.",
         "bad_outcome": "Sonuç reddedildi veya süresi doldu olmalı.",
         "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin."
+      },
+      "account": {
+        "livemode_mismatch": "Bu sağlayıcı hesabı sağlayıcının diğer moduna işaret ediyor: canlı ortam sağlayıcının canlı uç noktasını ve canlı anahtarlarını, sandbox ortamı ise test uç noktasını kullanmalıdır."
       }
     },
     "einvoice": {

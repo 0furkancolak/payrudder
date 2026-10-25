@@ -8,6 +8,7 @@ import (
 	"time"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/money"
 )
 
@@ -51,14 +52,11 @@ func TierFromDB(s string) plansv1.TenantTier {
 
 // EnvironmentFromDB maps "sandbox"/"live" to the API enum.
 func EnvironmentFromDB(s string) plansv1.Environment {
-	switch s {
-	case "sandbox":
-		return plansv1.Environment_ENVIRONMENT_SANDBOX
-	case "live":
-		return plansv1.Environment_ENVIRONMENT_LIVE
-	default:
+	e, err := env.Parse(s)
+	if err != nil {
 		return plansv1.Environment_ENVIRONMENT_UNSPECIFIED
 	}
+	return e.Proto()
 }
 
 // Quotas per tier (docs/06-multi-tenancy.md#quotas-and-fairness). 0 = unlimited.
@@ -164,7 +162,7 @@ func ValidatePaymentMethod(environment, pm string) error {
 	}
 	isScenario := strings.HasPrefix(pm, "pm_sandbox_")
 	switch environment {
-	case "sandbox":
+	case env.Sandbox.String():
 		for _, s := range SandboxPaymentMethods {
 			if pm == s {
 				return nil

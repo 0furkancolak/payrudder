@@ -12,10 +12,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/google/uuid"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/0furkancolak/quotify/pkg/env"
 )
 
 // Metadata keys.
@@ -28,10 +31,10 @@ const (
 	MDOperator    = "x-quotify-operator"
 )
 
-// Environment values (ADR 0011).
+// Environment values (ADR 0011). pkg/env owns the spelling; these are its strings for code that carries the environment as one.
 const (
-	EnvSandbox = "sandbox"
-	EnvLive    = "live"
+	EnvSandbox = string(env.Sandbox)
+	EnvLive    = string(env.Live)
 )
 
 // Info is the tenant of the current request.

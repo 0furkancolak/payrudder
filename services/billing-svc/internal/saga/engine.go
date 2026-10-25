@@ -20,7 +20,7 @@ import (
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
 	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/kafkax"
 	"github.com/0furkancolak/quotify/pkg/outbox"
 	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
@@ -114,6 +114,8 @@ type Config struct {
 	// does not wait for it: payments-worker nudges the saga.
 	TransferPoll time.Duration
 	Log          *slog.Logger
+	// Tenants, when set, is asked for the environment of the saga's tenant before a command goes out (see publishCommand).
+	Tenants *env.Directory
 }
 
 // DefaultTransferPoll is how often a pending bank transfer is looked for in the ledger when nobody has nudged the saga.
@@ -434,7 +436,7 @@ func i32(n int) int32 { return int32(n) } //nolint:gosec // attempt counters and
 func (e *Engine) dunningDelays(s *saga) []time.Duration {
 	if s.RetryHours != nil {
 		unit := time.Hour
-		if s.Snap.Environment == "sandbox" {
+		if s.Snap.Environment == env.Sandbox.String() {
 			unit = time.Minute
 		}
 		out := make([]time.Duration, len(s.RetryHours))
@@ -443,7 +445,7 @@ func (e *Engine) dunningDelays(s *saga) []time.Duration {
 		}
 		return out
 	}
-	if s.Snap.Environment == "sandbox" {
+	if s.Snap.Environment == env.Sandbox.String() {
 		return e.cfg.DunningSandbox
 	}
 	return e.cfg.DunningLive
@@ -515,16 +517,25 @@ func CommandID(sagaID uuid.UUID, step string, attempt int) uuid.UUID {
 	return uuid.NewSHA1(commandNS, fmt.Appendf(nil, "%s|%s|%d", sagaID, step, attempt))
 }
 
-func (e *Engine) publishCommand(ctx context.Context, tx pgx.Tx, s *saga, env *commandsv1.CommandEnvelope, step, route string) error {
+func (e *Engine) publishCommand(ctx context.Context, tx pgx.Tx, s *saga, cmd *commandsv1.CommandEnvelope, step, route string) error {
 	id := CommandID(s.ID, step, s.Attempt)
-	env.CommandId, env.SagaId, env.TenantId = id.String(), s.ID.String(), s.TenantID.String()
-	env.Attempt = int32(s.Attempt) //nolint:gosec // small
-	env.IssuedAt = timestamppb.New(e.cfg.Now())
-	env.Environment = plansv1.Environment_ENVIRONMENT_LIVE
-	if s.Snap.Environment == "sandbox" {
-		env.Environment = plansv1.Environment_ENVIRONMENT_SANDBOX
+	cmd.CommandId, cmd.SagaId, cmd.TenantId = id.String(), s.ID.String(), s.TenantID.String()
+	cmd.Attempt = int32(s.Attempt) //nolint:gosec // small
+	cmd.IssuedAt = timestamppb.New(e.cfg.Now())
+	// The environment is the tenant's, from the snapshot frozen with the invoice, and it is never defaulted: a snapshot that names none sends nothing. Where the
+	// engine can reach plans-svc it also asserts that the snapshot agrees with the tenant (a tenant's environment never changes, so it only can not if a row was
+	// written by hand).
+	environment, err := env.Parse(s.Snap.Environment)
+	if err != nil {
+		return fmt.Errorf("saga %s: %w", s.ID, err)
 	}
-	body, err := proto.Marshal(env)
+	cmd.Environment = environment.Proto()
+	if e.cfg.Tenants != nil {
+		if err := e.cfg.Tenants.Check(ctx, s.TenantID, cmd.Environment, "saga "+s.ID.String()+" command"); err != nil {
+			return err
+		}
+	}
+	body, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
 	}
@@ -589,7 +600,7 @@ func (e *Engine) notification(s *saga) *commandsv1.SendNotification {
 	data := map[string]string{
 		"invoice_number": s.Number, "invoice_id": s.InvoiceID.String(), "period": s.PeriodID, "amount": amount,
 		"currency": s.Currency, "customer_name": s.Snap.CustomerName, "tenant_name": s.Snap.TenantName,
-		"sandbox": fmt.Sprint(s.Snap.Environment == "sandbox"),
+		env.Sandbox.String(): fmt.Sprint(s.Snap.Environment == env.Sandbox.String()),
 	}
 	if tmpl == "payment_failed.v1" {
 		instructionData(s, data) // a customer who did not pay by transfer is told once more where to

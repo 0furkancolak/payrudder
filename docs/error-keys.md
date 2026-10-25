@@ -174,6 +174,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `limits.customer.bad_id`
 - `limits.meter.code_required`
 - `limits.period.bad_id`
+- `payments.account.livemode_mismatch`
 - `payments.transfer.bad_amount`
 - `payments.transfer.bad_currency`
 - `payments.transfer.bad_date`

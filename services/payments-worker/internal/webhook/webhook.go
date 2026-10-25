@@ -29,6 +29,8 @@ import (
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/einvoice"
+	"github.com/0furkancolak/quotify/pkg/env"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/payments"
 	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
@@ -158,12 +160,12 @@ func (s *Server) notification(w http.ResponseWriter, r *http.Request) {
 // tenantNotification handles a webhook whose URL names the tenant and environment (Paddle: one notification destination per account).
 func (s *Server) tenantNotification(w http.ResponseWriter, r *http.Request) {
 	t, err := uuid.Parse(r.PathValue("tenant"))
-	env := r.PathValue("environment")
-	if err != nil || (env != "sandbox" && env != "live") {
+	mode, perr := env.Parse(r.PathValue("environment"))
+	if err != nil || perr != nil {
 		fail(w, http.StatusNotFound, "no such webhook")
 		return
 	}
-	s.receive(w, r, r.PathValue("provider"), t, env)
+	s.receive(w, r, r.PathValue("provider"), t, mode.String())
 }
 
 // receive is the shared path of a notification. With tenant set the URL decided whose account it is; otherwise the body's charge does.
@@ -496,12 +498,12 @@ func (s *Server) tenant(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool
 }
 
 func environment(w http.ResponseWriter, r *http.Request) (string, bool) {
-	env := r.URL.Query().Get("environment")
-	if env != "sandbox" && env != "live" {
+	mode, err := env.Parse(r.URL.Query().Get("environment"))
+	if err != nil {
 		fail(w, http.StatusBadRequest, "environment must be sandbox or live")
 		return "", false
 	}
-	return env, true
+	return mode.String(), true
 }
 
 func (s *Server) listAccounts(w http.ResponseWriter, r *http.Request) {
@@ -523,7 +525,7 @@ func (s *Server) putAccount(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	env, ok := environment(w, r)
+	mode, ok := environment(w, r)
 	if !ok {
 		return
 	}
@@ -533,7 +535,8 @@ func (s *Server) putAccount(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusRequestEntityTooLarge, "body too large")
 		return
 	}
-	if _, err := s.Registry.Build(provider, settings); err != nil {
+	built, err := s.Registry.Build(provider, settings)
+	if err != nil {
 		if errors.Is(err, payments.ErrUnknownProvider) {
 			fail(w, http.StatusNotFound, "unknown provider; known: "+join(s.Registry.Names()))
 			return
@@ -541,20 +544,25 @@ func (s *Server) putAccount(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// A provider connection has a mode of its own (live or test at the provider), and it must be the environment's.
+	if err := payments.CheckLivemode(built, mode); err != nil {
+		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", errkey.Key("payments.account.livemode_mismatch"), err.Error())
+		return
+	}
 	makeDefault, _ := strconv.ParseBool(r.URL.Query().Get("default"))
-	if err := s.Accounts.Put(r.Context(), t, provider, env, settings, makeDefault); err != nil {
+	if err := s.Accounts.Put(r.Context(), t, provider, mode, settings, makeDefault); err != nil {
 		s.Log.ErrorContext(r.Context(), "provider account write failed", "err", err)
 		fail(w, http.StatusInternalServerError, "internal error")
 		return
 	}
-	if env == "live" && (provider == banktransfer.Name || makeDefault) {
+	if mode == env.Live.String() && (provider == banktransfer.Name || makeDefault) {
 		if err := s.syncBankTransfer(r.Context(), t); err != nil {
 			s.Log.ErrorContext(r.Context(), "bank details not passed on to plans-svc", "err", err)
 			fail(w, http.StatusBadGateway, "the account is stored, but plans-svc could not be told the bank details for the invoices; send the request again")
 			return
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"provider": provider, "environment": env, "default": makeDefault})
+	writeJSON(w, http.StatusOK, map[string]any{"provider": provider, "environment": mode, "default": makeDefault})
 }
 
 func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) {
@@ -562,17 +570,17 @@ func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	env, ok := environment(w, r)
+	mode, ok := environment(w, r)
 	if !ok {
 		return
 	}
-	deleted, err := s.Accounts.Delete(r.Context(), t, r.PathValue("provider"), env)
+	deleted, err := s.Accounts.Delete(r.Context(), t, r.PathValue("provider"), mode)
 	switch {
 	case err != nil:
 		fail(w, http.StatusInternalServerError, "internal error")
 	case !deleted:
 		fail(w, http.StatusNotFound, "no such account")
-	case env == "live" && r.PathValue("provider") == banktransfer.Name && s.syncBankTransfer(r.Context(), t) != nil:
+	case mode == env.Live.String() && r.PathValue("provider") == banktransfer.Name && s.syncBankTransfer(r.Context(), t) != nil:
 		fail(w, http.StatusBadGateway, "the account is removed, but plans-svc could not be told; its bank details stay on new invoices until the request is sent again")
 	default:
 		w.WriteHeader(http.StatusNoContent)

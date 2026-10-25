@@ -1381,6 +1381,9 @@
         "nothing_pending": "Aucun virement en attente à rejeter.",
         "bad_outcome": "Le résultat doit être rejeté ou expiré.",
         "unavailable": "Le service de paiement est indisponible pour le moment. Réessayez dans un instant."
+      },
+      "account": {
+        "livemode_mismatch": "Ce compte fournisseur pointe vers l'autre mode du fournisseur : un environnement live exige le point de terminaison et les clés live du fournisseur, un environnement sandbox son point de terminaison de test."
       }
     },
     "einvoice": {

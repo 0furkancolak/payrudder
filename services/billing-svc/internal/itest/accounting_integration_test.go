@@ -26,7 +26,7 @@ func seedPaidInvoice(t *testing.T, tid uuid.UUID, currency string, total, tax in
 		status = "void"
 	}
 	if _, err := shared.system.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
-		VALUES ($1,$2,$3,'2026-09','REGULAR',$4,$5,$6,$7,$8,'{"customer_external_id":"cus_acc"}'::jsonb,'')`, tid, id, uuid.New(), uuid.New(), currency, total-tax, total, status); err != nil {
+		VALUES ($1,$2,$3,'2026-09','REGULAR',$4,$5,$6,$7,$8,'{"customer_external_id":"cus_acc","environment":"live"}'::jsonb,'')`, tid, id, uuid.New(), uuid.New(), currency, total-tax, total, status); err != nil {
 		t.Fatal(err)
 	}
 	if tax > 0 {
@@ -112,7 +112,7 @@ func testAccounting(t *testing.T) {
 	seedCreditNote(t, tid, creditedPaid, "TRY", 300, oct(9, 12))
 	openInvoice := uuid.New()
 	if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
-		VALUES ($1,$2,$3,'2026-10','REGULAR',$4,'TRY',700,700,'open','{}'::jsonb,'')`, tid, openInvoice, uuid.New(), uuid.New()); err != nil {
+		VALUES ($1,$2,$3,'2026-10','REGULAR',$4,'TRY',700,700,'open','{"environment":"live"}'::jsonb,'')`, tid, openInvoice, uuid.New(), uuid.New()); err != nil {
 		t.Fatal(err)
 	}
 	seedCreditNote(t, tid, openInvoice, "TRY", 700, oct(9, 12)) // against an invoice nobody paid: not a refund of money

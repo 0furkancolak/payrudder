@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
 )
@@ -22,7 +23,7 @@ func (s *Server) syncBankTransfer(ctx context.Context, tenant uuid.UUID) error {
 	if s.Plans == nil {
 		return nil
 	}
-	settings, _, err := s.Accounts.Settings(ctx, tenant, banktransfer.Name, "live")
+	settings, _, err := s.Accounts.Settings(ctx, tenant, banktransfer.Name, env.Live.String())
 	if errors.Is(err, store.ErrNoAccount) {
 		return s.Plans.SetBankTransfer(ctx, tenant, nil)
 	}
@@ -33,7 +34,7 @@ func (s *Server) syncBankTransfer(ctx context.Context, tenant uuid.UUID) error {
 	if err != nil {
 		return fmt.Errorf("stored bank transfer account: %w", err)
 	}
-	name, hasDefault, err := s.Accounts.Default(ctx, tenant, "live")
+	name, hasDefault, err := s.Accounts.Default(ctx, tenant, env.Live.String())
 	if err != nil {
 		return err
 	}

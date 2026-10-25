@@ -345,7 +345,7 @@ CREATE TABLE invoices (
   customer_id      uuid NOT NULL,
   period_id        text NOT NULL,
   kind             text NOT NULL CHECK (kind IN ('REGULAR','CORRECTION')),
-  number           text,                               -- 'INV-2026-000123', set at FINALIZED
+  number           text,                               -- 'INV-2026-000123', or 'SBX-2026-000123' for a sandbox tenant, set at FINALIZED; CHECK invoice_number_series ties the series to snapshot.environment (phase 45)
   plan_version_id  uuid NOT NULL,
   currency         char(3) NOT NULL,
   subtotal_minor   bigint NOT NULL,

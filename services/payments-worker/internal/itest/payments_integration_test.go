@@ -6,6 +6,7 @@ package itest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -216,6 +217,28 @@ func TestRoutingByEnvironment(t *testing.T) {
 	r, err = h.Handle(ctx, decode(chargeCmd(plansv1.Environment_ENVIRONMENT_LIVE, uuid.New(), uuid.New(), 0)))
 	if err != nil || r.GetPaymentErrored().GetCode() != handler.CodeNotConfigured || r.GetPaymentErrored().GetRetryable() {
 		t.Fatalf("unconfigured live charge = %v, %v", r, err)
+	}
+
+	// The other direction: live never reaches mock-psp. With the mock as the live provider and no statement that this is not production, a live command is
+	// refused (a permanent error, not a retry) and mock-psp is not called at all; a command without an environment never gets as far as a provider.
+	mockHits := newScripted(t, 200)
+	hMock := &handler.Handler{Sandbox: payments.NewMockPSP(psp.srv.URL, time.Second), Live: payments.NewMockPSP(mockHits.srv.URL, time.Second), Attempts: store.Attempts{DB: pool}}
+	r, err = hMock.Handle(ctx, decode(chargeCmd(plansv1.Environment_ENVIRONMENT_LIVE, uuid.New(), uuid.New(), 0)))
+	if err != nil || r.GetPaymentErrored().GetCode() != handler.CodeNotConfigured || r.GetPaymentErrored().GetRetryable() {
+		t.Fatalf("live charge to the mock = %v, %v; want a permanent PROVIDER_NOT_CONFIGURED", r, err)
+	}
+	if _, err = hMock.Handle(ctx, decode(chargeCmd(plansv1.Environment_ENVIRONMENT_UNSPECIFIED, uuid.New(), uuid.New(), 0))); !errors.Is(err, workerx.ErrPoison) {
+		t.Fatalf("a command without an environment = %v, want poison", err)
+	}
+	mockHits.mu.Lock()
+	mockCalls := len(mockHits.times)
+	mockHits.mu.Unlock()
+	if mockCalls != 0 {
+		t.Fatalf("mock-psp was called %d times for live commands", mockCalls)
+	}
+	hMock.AllowMockLive = true // a local stack: the same command goes through the mock
+	if r, err = hMock.Handle(ctx, decode(chargeCmd(plansv1.Environment_ENVIRONMENT_LIVE, uuid.New(), uuid.New(), 0))); err != nil || r.GetPaymentSucceeded() == nil {
+		t.Fatalf("allowed live charge to the mock = %v, %v", r, err)
 	}
 
 	// Error mapping: 402 → declined, a timeout → errored (not retryable), status lookups.

@@ -35,7 +35,7 @@ func seedInvoices(t *testing.T, tid uuid.UUID, rows []seedInvoice) {
 		if _, err := shared.system.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, country)
 			VALUES ($1,$2,$3,$4,'REGULAR',$5,$6,$7,$7,$8,$9::jsonb,$10,$11)`,
 			tid, id, uuid.New(), r.period, uuid.New(), r.currency, r.total, r.status,
-			`{"customer_external_id":"cus_`+string(rune('a'+i))+`"}`, r.provider, country); err != nil {
+			`{"customer_external_id":"cus_`+string(rune('a'+i))+`","environment":"live"}`, r.provider, country); err != nil {
 			t.Fatal(err)
 		}
 		if r.saga == "" {

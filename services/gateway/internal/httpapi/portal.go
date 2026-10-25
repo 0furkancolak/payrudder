@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/errkey"
 )
 
@@ -63,7 +64,7 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 	}
 	q := langSuffix(r)
 	v := &portalView{pageBase: newBase(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName()}
-	v.Test = resp.GetEnvironment() == "sandbox"
+	v.Test = resp.GetEnvironment() == env.Sandbox.String()
 	if resp.GetLogoAvailable() {
 		v.Logo = scope{portal: token}.logo()
 	}

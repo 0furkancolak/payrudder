@@ -13,6 +13,18 @@
 | ClickHouse | Mandatory `tenant_id` predicate in the query builder | analytics-svc |
 | Resources | Per-tenant rate limits (GCRA), batch caps, outbox back-pressure, per-tenant lag metrics | gateway, ingest-svc |
 
+## Environment guards (phase 45)
+
+The tenant is the unit of isolation; the environment (sandbox or live) is asserted at every edge, never defaulted ([ADR 0022](adr/0022-live-and-sandbox-guards.md)):
+
+| Edge | Guard |
+|---|---|
+| gateway | the environment is the key's tenant's: the prefix is checked against it on every request, and nothing the caller sends (header, query) names it |
+| billing-svc | every saga command is stamped from the invoice's frozen snapshot and checked against the tenant (plans-svc); a snapshot with no environment sends nothing; CHECK `invoice_number_series` and a trigger on credit notes keep the `SBX-` series apart |
+| payments-worker | a command with no environment, or another than its tenant's, is dead-lettered; sandbox is served by mock-psp and nothing else, live never by the mock; provider accounts have a checked mode |
+| invoice-worker | refuses a command whose invoice number is in the other series |
+| `pkg/env` | the one place that parses, compares and requires an environment (`env.Parse`, `env.Same`, `env.Directory`) |
+
 ## API keys
 
 - Format: `qk_{live|test}_{prefix8}_{secret}`, where `secret` is 32 random bytes in base62 (≈ 190 bits).

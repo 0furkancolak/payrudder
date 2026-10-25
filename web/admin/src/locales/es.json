@@ -1381,6 +1381,9 @@
         "nothing_pending": "No hay ninguna transferencia pendiente que rechazar.",
         "bad_outcome": "El resultado debe ser rechazada o caducada.",
         "unavailable": "El servicio de pagos no está disponible ahora. Inténtelo de nuevo en un momento."
+      },
+      "account": {
+        "livemode_mismatch": "Esta cuenta de proveedor apunta al otro modo del proveedor: un entorno live necesita el endpoint y las claves live del proveedor, un entorno sandbox su endpoint de prueba."
       }
     },
     "einvoice": {

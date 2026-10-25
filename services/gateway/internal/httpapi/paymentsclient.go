@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/0furkancolak/quotify/pkg/env"
 )
 
 // The gateway composes two things from payments-worker's internal HTTP API for the hosted pages and the operator's customer payments: the ledger rows
@@ -155,7 +157,7 @@ type paymentMethod struct {
 }
 
 func (s *Server) liveMethods(ctx context.Context, tenantID, currency, country, provider string) ([]paymentMethod, error) {
-	q := url.Values{"environment": {"live"}, "currency": {currency}}
+	q := url.Values{"environment": {env.Live.String()}, "currency": {currency}}
 	if country != "" {
 		q.Set("country", country)
 	}

@@ -129,6 +129,7 @@ S3_FORCE_PATH_STYLE=true
 # payments-worker: sandbox always uses mock-psp (not configurable)
 MOCKPSP_URL=http://mock-psp:8090
 PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live charges fail with PROVIDER_NOT_CONFIGURED
+PAYMENTS_ALLOW_MOCK_LIVE=true                  # required with the line above: payments-worker refuses live → mock otherwise
 ```
 
 `.env.example` is committed. `.env` is git-ignored.

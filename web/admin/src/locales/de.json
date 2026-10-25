@@ -1381,6 +1381,9 @@
         "nothing_pending": "Es gibt keine ausstehende Überweisung, die abgelehnt werden könnte.",
         "bad_outcome": "Das Ergebnis muss abgelehnt oder abgelaufen sein.",
         "unavailable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich noch einmal."
+      },
+      "account": {
+        "livemode_mismatch": "Dieses Anbieterkonto zeigt auf den anderen Modus des Anbieters: Eine Live-Umgebung braucht den Live-Endpunkt und die Live-Schlüssel des Anbieters, eine Sandbox-Umgebung den Test-Endpunkt."
       }
     },
     "einvoice": {

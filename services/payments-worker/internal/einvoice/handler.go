@@ -11,11 +11,11 @@ import (
 	"github.com/google/uuid"
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/blob"
 	pkg "github.com/0furkancolak/quotify/pkg/einvoice"
 	"github.com/0furkancolak/quotify/pkg/einvoice/mock"
 	"github.com/0furkancolak/quotify/pkg/einvoice/ubl"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/workerx"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
@@ -59,6 +59,9 @@ type Handler struct {
 	Log       *slog.Logger
 	// Demo makes every tenant, live ones too, use the mock: a demo stack can never reach a real integrator. It also allows a live account to be the mock.
 	Demo bool
+	// Tenants, when set, is asked for the environment of the command's tenant, and a command that disagrees is refused. Without it a command is still
+	// refused when it names no environment.
+	Tenants *env.Directory
 
 	mockOnce sync.Once
 	mock     *mock.Provider
@@ -96,33 +99,37 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 	if c == nil || err != nil || err2 != nil {
 		return nil, fmt.Errorf("%w: not an e-invoice command", workerx.ErrPoison)
 	}
-	sandbox := cmd.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX
-	env := "live"
-	if sandbox {
-		env = "sandbox"
+	// No environment, or one that disagrees with the tenant's, is never executed (the sandbox/live choice below picks a mock or a real integrator).
+	parsed, err := env.FromProto(cmd.GetEnvironment())
+	if err == nil && h.Tenants != nil {
+		err = h.Tenants.Check(ctx, tenantID, cmd.GetEnvironment(), "e-invoice command")
 	}
+	if err != nil {
+		return nil, workerx.RefuseEnvironment(err)
+	}
+	sandbox, environment := parsed.IsSandbox(), parsed.String()
 	switch c.GetAction() {
 	case "issue":
 		if c.GetDocument() == nil {
 			return nil, fmt.Errorf("%w: no document", workerx.ErrPoison)
 		}
-		return h.issue(ctx, c, doc, tenantID, env, sandbox)
+		return h.issue(ctx, c, doc, tenantID, environment, sandbox)
 	case "cancel":
-		return h.cancel(ctx, c, doc, tenantID, env, sandbox)
+		return h.cancel(ctx, c, doc, tenantID, environment, sandbox)
 	}
 	return nil, fmt.Errorf("%w: unknown action %q", workerx.ErrPoison, c.GetAction())
 }
 
 // provider resolves the adapter for a tenant and environment: sandbox (and demo) always the mock, live the tenant's sealed account.
 // A non-nil reply is the answer when there is none.
-func (h *Handler) provider(ctx context.Context, tenantID uuid.UUID, env string) (pkg.Provider, string, *commandsv1.ReplyEnvelope, error) {
-	if env == "sandbox" || h.Demo {
+func (h *Handler) provider(ctx context.Context, tenantID uuid.UUID, environment string) (pkg.Provider, string, *commandsv1.ReplyEnvelope, error) {
+	if environment == env.Sandbox.String() || h.Demo {
 		return h.mockProvider(), mock.Name, nil, nil
 	}
 	if h.Accounts == nil {
 		return nil, "", failed(KeyAccountMissing, "e-invoice accounts are disabled on this deployment (QUOTIFY_SECRETS_KEY)", false), nil
 	}
-	name, settings, err := h.Accounts.Settings(ctx, tenantID, "live")
+	name, settings, err := h.Accounts.Settings(ctx, tenantID, env.Live.String())
 	if errors.Is(err, store.ErrNoAccount) {
 		return nil, "", failed(KeyAccountMissing, "no e-invoice account is configured for the live environment", false), nil
 	}

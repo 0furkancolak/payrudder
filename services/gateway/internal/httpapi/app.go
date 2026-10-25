@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
 )
@@ -39,6 +40,20 @@ func (s *Server) appRoutes() []Route {
 		{"POST", "/app/v1/apps/{id}/api-keys", AccessSession, ratelimit.ClassWrite, s.appKeyCreate},
 		{"DELETE", "/app/v1/apps/{id}/api-keys/{key_id}", AccessSession, ratelimit.ClassWrite, s.appKeyRevoke},
 	}
+}
+
+// environmentParam reads ?environment=sandbox|live of an app route. Absent means live, as these routes always have; anything else that is not one of the two
+// is a 400. The console passes it explicitly and never relies on the default.
+func environmentParam(r *http.Request) (env.Env, error) {
+	v := r.URL.Query().Get("environment")
+	if v == "" {
+		return env.Live, nil
+	}
+	e, err := env.Parse(v)
+	if err != nil {
+		return "", invalid("environment", "sandbox or live")
+	}
+	return e, nil
 }
 
 // accountOf names the account a request is about: ?account_id= when given (it must be one of the session's), else the first. A person with no account
@@ -132,18 +147,14 @@ func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, invalid("scope", "full, ingest or read"))
 		return
 	}
-	var env plansv1.Environment
-	switch body.Environment {
-	case "sandbox":
-		env = plansv1.Environment_ENVIRONMENT_SANDBOX
-	case "live":
-		env = plansv1.Environment_ENVIRONMENT_LIVE
-	default:
+	// The environment of a key is always named: there is no default, so a key is never made for live by leaving a field out.
+	keyEnv, err := env.Parse(body.Environment)
+	if err != nil {
 		writeError(w, r, invalid("environment", "sandbox or live"))
 		return
 	}
 	noStore(w)
-	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: env, Scope: scope})
+	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: keyEnv.Proto(), Scope: scope})
 	respond(w, r, http.StatusCreated, resp, err)
 }
 

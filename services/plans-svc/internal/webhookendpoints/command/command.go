@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/safehttp"
@@ -90,7 +91,7 @@ func requireActive(ctx context.Context, q *sqlc.Queries) error {
 	if err != nil {
 		return err
 	}
-	if t.Environment == "live" && t.Status != domain.StatusActive {
+	if t.Environment == env.Live.String() && t.Status != domain.StatusActive {
 		return errkey.New(codes.FailedPrecondition, "plans.webhook.tenant_not_active", "this environment is not active: finish the go-live checklist before adding webhook endpoints")
 	}
 	return nil

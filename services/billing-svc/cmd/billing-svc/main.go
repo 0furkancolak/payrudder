@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"golang.org/x/sync/errgroup"
@@ -26,6 +27,7 @@ import (
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
 	"github.com/0furkancolak/quotify/pkg/blob"
 	"github.com/0furkancolak/quotify/pkg/config"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/grpcx"
 	"github.com/0furkancolak/quotify/pkg/health"
 	"github.com/0furkancolak/quotify/pkg/kafkax"
@@ -195,7 +197,16 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	pub := rabbitx.NewPublisher(cfg.RabbitMQURL)
 	defer pub.Close()
 
-	eng, err := saga.NewEngine(saga.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log})
+	// Every command the sagas publish is stamped with the environment of the invoice's snapshot; this asks plans-svc that it is also the tenant's own.
+	adminClient := plansv1.NewAdminServiceClient(be.plans)
+	tenantEnvs := env.NewDirectory(func(ctx context.Context, id uuid.UUID) (env.Env, error) {
+		r, err := adminClient.GetTenant(tenant.OutgoingContext(tenant.WithOperator(ctx)), &plansv1.GetTenantRequest{TenantId: id.String()})
+		if err != nil {
+			return "", err
+		}
+		return env.FromProto(r.GetTenant().GetEnvironment())
+	}, 0)
+	eng, err := saga.NewEngine(saga.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log, Tenants: tenantEnvs})
 	if err != nil {
 		return err
 	}

@@ -15,7 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/outbox"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/pkg/rabbitx"
@@ -69,8 +69,8 @@ type CreditNote struct {
 // CreditNoteNumber formats a credit note number: CN-2026-000007 for live tenants, SBX-CN-2026-000007 for sandbox ones.
 func CreditNoteNumber(environment string, year int, seq int64) string {
 	prefix := "CN"
-	if environment == "sandbox" {
-		prefix = "SBX-CN"
+	if environment == env.Sandbox.String() {
+		prefix = env.SandboxNumberPrefix + "CN"
 	}
 	return fmt.Sprintf("%s-%d-%06d", prefix, year, seq)
 }
@@ -188,16 +188,17 @@ func (m *Manager) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.UU
 	if generation > 0 {
 		key += ":" + strconv.Itoa(generation)
 	}
-	env := &commandsv1.CommandEnvelope{
+	parsed, err := env.Parse(environment)
+	if err != nil {
+		return fmt.Errorf("refund of credit note %s: %w", cn.ID, err)
+	}
+	envelope := &commandsv1.CommandEnvelope{
 		CommandId: cmdID.String(), SagaId: sagaID.String(), TenantId: tenantID.String(), Attempt: int32(attempt), //nolint:gosec // 1..3
-		IssuedAt: timestamppb.New(now), Environment: plansv1.Environment_ENVIRONMENT_LIVE,
+		IssuedAt: timestamppb.New(now), Environment: parsed.Proto(),
 		Command: &commandsv1.CommandEnvelope_RefundPayment{RefundPayment: &commandsv1.RefundPayment{
 			InvoiceId: cn.InvoiceID.String(), AmountMinor: cn.TotalMinor, Currency: cn.Currency, IdempotencyKey: key}},
 	}
-	if environment == "sandbox" {
-		env.Environment = plansv1.Environment_ENVIRONMENT_SANDBOX
-	}
-	body, err := proto.Marshal(env)
+	body, err := proto.Marshal(envelope)
 	if err != nil {
 		return err
 	}

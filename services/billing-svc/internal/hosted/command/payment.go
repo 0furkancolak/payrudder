@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/0furkancolak/quotify/pkg/env"
 	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/pgxx"
 	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/query"
@@ -177,7 +178,7 @@ func RequestPayment(ctx context.Context, d Deps, qd query.Deps, req PaymentReque
 		}
 		return &Paid{Page: page}, nil
 	}
-	if page.Environment != "sandbox" && !d.Demo {
+	if page.Environment != env.Sandbox.String() && !d.Demo {
 		return nil, errkey.New(codes.FailedPrecondition, "billing.payment.method_unavailable", "the mock payment is only for sandbox tenants and demo stacks")
 	}
 	id := req.Scope.InvoiceID

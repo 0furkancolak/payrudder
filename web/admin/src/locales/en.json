@@ -1381,6 +1381,9 @@
         "nothing_pending": "There is no pending transfer to reject.",
         "bad_outcome": "The outcome must be rejected or expired.",
         "unavailable": "The payments service is not available right now. Try again in a moment."
+      },
+      "account": {
+        "livemode_mismatch": "This provider account points at the provider's other mode: a live environment needs the provider's live endpoint and live keys, a sandbox environment its test endpoint."
       }
     },
     "einvoice": {
