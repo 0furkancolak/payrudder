@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -137,34 +136,6 @@ func hostedNotFound(w http.ResponseWriter, lang string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
 	_ = hostedGone.Execute(w, map[string]any{"L": hostedText(lang), "Lang": lang, "Dir": hostedDir(lang)})
-}
-
-// formatMinor prints minor units as a decimal: 123456 with exponent 2 is 1,234.56.
-func formatMinor(v int64, exponent int) string {
-	neg := v < 0
-	if neg {
-		v = -v
-	}
-	digits := strconv.FormatInt(v, 10)
-	for len(digits) <= exponent {
-		digits = "0" + digits
-	}
-	whole, frac := digits[:len(digits)-exponent], digits[len(digits)-exponent:]
-	var b strings.Builder
-	for i, c := range whole {
-		if i > 0 && (len(whole)-i)%3 == 0 {
-			b.WriteByte(',')
-		}
-		b.WriteRune(c)
-	}
-	out := b.String()
-	if exponent > 0 {
-		out += "." + frac
-	}
-	if neg {
-		out = "-" + out
-	}
-	return out
 }
 
 var hostedLangs = []string{"en", "tr", "de", "fr", "es", "ar"}

@@ -17,7 +17,7 @@ import (
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	"github.com/0furkancolak/payrudder/pkg/usage"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/meters"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/replay"
 )
 
@@ -293,7 +293,7 @@ func testReplayFixesAFilterAndPromotesUnderLoad(t *testing.T) {
 		t.Fatalf("generation statuses = %v, want [retired active]", statuses)
 	}
 	_ = aggregatorv1.ReplayStatus_REPLAY_STATUS_READY
-	_ = meters.ErrNotFound
+	_ = apply.ErrMeterNotFound
 }
 
 // A discarded replay leaves the live generation and its rows alone and deletes what it built; another replay can follow.

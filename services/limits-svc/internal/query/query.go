@@ -16,12 +16,12 @@ import (
 
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/meters"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
 )
 
 // Service implements limitsv1.LimitsServiceServer.
@@ -84,8 +84,8 @@ func (s *Service) CheckEntitlement(ctx context.Context, req *limitsv1.CheckEntit
 		scale = ent.Scale
 	} else {
 		m, err := s.meters.Get(ctx, ti.ID, req.GetMeterCode())
-		if errors.Is(err, meters.ErrNotFound) {
-			return nil, errkey.New(codes.NotFound, "limits.meter.not_found", "meter not found")
+		if errors.Is(err, engine.ErrMeterNotFound) {
+			return nil, engine.ErrMeterNotFound
 		}
 		if err != nil {
 			return nil, errkey.New(codes.Unavailable, "limits.meter.unavailable", "meter lookup failed")

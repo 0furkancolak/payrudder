@@ -29,14 +29,14 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/meters"
 	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/query"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/tenants"
 )
 
 const (
@@ -137,8 +137,8 @@ func run() error {
 	}
 	defer producer.Close()
 
-	ms := meters.New(plansv1.NewPlansServiceClient(plansConn), time.Minute)
-	tn := tenants.New(plansv1.NewAdminServiceClient(plansConn), time.Minute)
+	ms := meters.New(plansv1.NewPlansServiceClient(plansConn), time.Minute, engine.ErrMeterNotFound)
+	tn := tenantinfo.New(plansv1.NewAdminServiceClient(plansConn), time.Minute)
 	ents := entitlements.New(rdb, log)
 	applier, err := engine.NewApplier(engine.Config{
 		Redis: rdb, Meters: ms, Tenants: tn, Ents: ents, Producer: producer, LimitTopic: cfg.LimitTopic, Log: log,
