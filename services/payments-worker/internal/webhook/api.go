@@ -14,6 +14,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/httpx"
 )
 
@@ -66,20 +67,6 @@ func priceKey(planVersionID, interval, currency string) string {
 	return planVersionID + "|" + interval + "|" + strings.ToUpper(currency)
 }
 
-func intervalName(i plansv1.SubscriptionInterval) string {
-	if i == plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR {
-		return "year"
-	}
-	return "month"
-}
-
-func intervalFromName(name string) plansv1.SubscriptionInterval {
-	if name == "year" {
-		return plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR
-	}
-	return plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
-}
-
 // catalogueTarget finds the plan version and interval a provider's price ids stand for, if Payrudder created them.
 func (s *Server) catalogueTarget(ctx context.Context, tenant uuid.UUID, provider, env string, refs []string) (string, plansv1.SubscriptionInterval, bool) {
 	for _, ref := range refs {
@@ -89,7 +76,7 @@ func (s *Server) catalogueTarget(ctx context.Context, tenant uuid.UUID, provider
 		}
 		parts := strings.Split(key, "|")
 		if len(parts) == 3 {
-			return parts[0], intervalFromName(parts[1]), true
+			return parts[0], subscription.Interval(parts[1]).Proto(), true
 		}
 	}
 	return "", plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED, false
@@ -176,7 +163,7 @@ func (s *Server) missingPrices(ctx context.Context, tg target, in catalogueInput
 	}
 	fees := []fee{{"month", tenantCurrency, pv.GetBaseFeeMinor()}}
 	for _, f := range pv.GetFees() {
-		fees = append(fees, fee{intervalName(f.GetInterval()), f.GetCurrency(), f.GetBaseFeeMinor()})
+		fees = append(fees, fee{subscription.IntervalFromProto(f.GetInterval()).Word(), f.GetCurrency(), f.GetBaseFeeMinor()})
 	}
 	existing := map[string]string{}
 	var specs []payments.PriceSpec
@@ -355,12 +342,12 @@ func (s *Server) planChange(ctx context.Context, tg target, sub *plansv1.Subscri
 	if pvID == sub.GetPlanVersionId() && iv == sub.GetInterval() {
 		return payments.ProviderChange{}, "", 0, http.StatusBadRequest, errors.New("the subscription is already on this plan version and interval")
 	}
-	ref, found, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "price", priceKey(pvID, intervalName(iv), sub.GetCurrency()))
+	ref, found, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "price", priceKey(pvID, subscription.IntervalFromProto(iv).Word(), sub.GetCurrency()))
 	if err != nil {
 		return payments.ProviderChange{}, "", 0, http.StatusInternalServerError, errors.New("internal error")
 	}
 	if !found {
-		return payments.ProviderChange{}, "", 0, http.StatusConflict, fmt.Errorf("%s has no %sly price in %s for this plan version; sync the catalogue first", tg.provider, intervalName(iv), sub.GetCurrency())
+		return payments.ProviderChange{}, "", 0, http.StatusConflict, fmt.Errorf("%s has no %sly price in %s for this plan version; sync the catalogue first", tg.provider, subscription.IntervalFromProto(iv).Word(), sub.GetCurrency())
 	}
 	timing := enumWord(in.Timing, "change_timing_")
 	if timing == "" {
