@@ -103,6 +103,7 @@ func TestBilling(t *testing.T) {
 		{"PlanChangeTaxIsOnWhatIsLeftAfterTheUnusedTime", testPlanChangeTaxIsOnWhatIsLeftAfterTheUnusedTime},
 		{"RerateKeepsTheWaivedFixedFeesWaived", testRerateKeepsTheWaivedFixedFeesWaived},
 		{"NumberSeriesIsEnforcedByTheDatabase", testNumberSeriesIsEnforcedByTheDatabase},
+		{"SandboxResetKeepsConfigurationAndOtherTenants", testSandboxResetKeepsConfigurationAndOtherTenants},
 		{"EnvironmentIdsAreNotFoundInTheOtherEnvironment", testEnvironmentIdsAreNotFoundInTheOtherEnvironment},
 	} {
 		t.Run(tc.name, tc.fn)

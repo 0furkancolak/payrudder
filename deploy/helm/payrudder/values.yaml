@@ -122,10 +122,16 @@ services:
     metricsPort: 9101
     migrate: true
     db: { role: plans, name: plans_db, app: true, system: true }
-    uses: [secretsKey, otpPepper]   # seals the signing secrets of tenants' webhook endpoints; keys the hash of one-time sign-in codes
+    uses: [secretsKey, otpPepper, paymentsToken]   # seals the signing secrets of tenants' webhook endpoints; keys the hash of one-time sign-in codes; the token for payments-worker (sandbox reset)
     allowFrom: [gateway, ingest-svc, aggregator, limits-svc, billing-svc, notifier, payments-worker]
     env:
       PAYRUDDER_GRPC_ADDR: ":7001"
+      # The services a sandbox reset empties (phase 45 E): plans-svc calls them, so each allows it (allowFrom).
+      PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
+      PAYRUDDER_AGGREGATOR_ADDR: dns:///aggregator:7003
+      PAYRUDDER_ANALYTICS_ADDR: dns:///analytics-svc:7006
+      PAYRUDDER_BILLING_ADDR: dns:///billing-svc:7005
+      PAYRUDDER_PAYMENTS_URL: http://payments-worker:8095
       PAYRUDDER_APP_URL: "{{ .Values.auth.appURL }}"
       PAYRUDDER_REDIS_URL: "{{ .Values.global.redisURL }}"
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
@@ -139,7 +145,7 @@ services:
     replicas: 1
     hpa: { enabled: false, max: 4, cpu: 70 }
     db: { role: ingest, name: ingest_db, app: true, system: true }
-    allowFrom: [gateway, billing-svc]
+    allowFrom: [gateway, billing-svc, plans-svc]
     env:
       PAYRUDDER_GRPC_ADDR: ":7002"
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
@@ -150,7 +156,7 @@ services:
     metricsPort: 9103
     migrate: true
     db: { role: aggregator, name: aggregator_db, app: true, system: true }
-    allowFrom: [gateway, billing-svc, limits-svc]
+    allowFrom: [gateway, billing-svc, limits-svc, plans-svc]
     resources:
       requests: { cpu: 25m, memory: 32Mi }
       limits: { memory: 256Mi }
@@ -177,7 +183,7 @@ services:
     migrate: true
     uses: [rabbitmq, s3]
     db: { role: billing, name: billing_db, app: true, system: true }
-    allowFrom: [gateway, payments-worker]
+    allowFrom: [gateway, payments-worker, plans-svc]
     resources:
       requests: { cpu: 25m, memory: 32Mi }
       limits: { memory: 256Mi }
@@ -199,7 +205,7 @@ services:
     metricsPort: 9106
     migrate: true
     uses: [clickhouse]
-    allowFrom: [gateway]
+    allowFrom: [gateway, plans-svc]
     env:
       PAYRUDDER_GRPC_ADDR: ":7006"
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
@@ -230,7 +236,7 @@ services:
     migrate: true
     uses: [rabbitmq, paymentsSecrets, s3]   # s3: the UBL and PDF of e-invoices (phase 30), in the invoices bucket
     db: { role: payments, name: payments_db, system: true }
-    allowFrom: [gateway]
+    allowFrom: [gateway, plans-svc]
     env:
       S3_BUCKET: "{{ .Values.s3.invoicesBucket }}"
       MOCKPSP_URL: http://mockpsp:8090

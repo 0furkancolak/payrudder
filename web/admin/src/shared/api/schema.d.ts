@@ -2419,6 +2419,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/sandbox/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The latest reset of the app's sandbox, running or finished */
+        get: operations["appSandboxResetStatus"];
+        put?: never;
+        /**
+         * Reset the app's sandbox
+         * @description Queues a job that deletes the sandbox's customers, subscriptions, usage, invoices, payments and their history in every service, and keeps its configuration (meters, plans, prices, tax rates, coupons, webhook endpoints, mail settings, keys). Owners and admins. One reset runs at a time (asking again returns it); a person can ask once every few minutes (429 identity.sandbox.reset_rate_limited). The live environment is never touched. Poll the GET for the steps.
+         */
+        post: operations["appSandboxReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandbox/scenarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The payment scenarios of a sandbox customer
+         * @description What each pm_sandbox_* payment method does. Sandbox keys only.
+         */
+        get: operations["sandboxScenarios"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sandbox/invoices/{id}/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run an invoice's payment again under a scenario
+         * @description Sets the invoice's customer to the scenario (it stays their payment method) and retries the invoice's payment. When the payment cannot run again now (paid, or in progress) the scenario is still set and `retried` is false with the reason in `retry_error`. Sandbox keys only.
+         */
+        post: operations["sandboxSimulateInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/promote": {
         parameters: {
             query?: never;
@@ -5262,6 +5323,30 @@ export interface components {
             activate_time?: string;
             /** Format: date-time */
             terms_accept_time?: string;
+        };
+        SandboxReset: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            state?: "queued" | "running" | "done" | "failed";
+            /** @enum {string} */
+            kind?: "manual" | "retention";
+            error?: string;
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            finish_time?: string;
+            steps?: {
+                /** @enum {string} */
+                name?: "plans" | "ingest" | "aggregator" | "analytics" | "billing" | "payments";
+                /** @enum {string} */
+                state?: "pending" | "done" | "failed" | "skipped";
+                /** @description Rows deleted */
+                deleted?: {
+                    [key: string]: number;
+                };
+                error?: string;
+            }[];
         };
         GoLive: {
             /** Format: uuid */
@@ -9999,6 +10084,131 @@ export interface operations {
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
+        };
+    };
+    appSandboxResetStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK (an empty object when the sandbox was never reset) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sandbox_reset?: components["schemas"]["SandboxReset"];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSandboxReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued (or the one already running) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sandbox_reset?: components["schemas"]["SandboxReset"];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    sandboxScenarios: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        scenarios?: {
+                            /** @example declined */
+                            scenario?: string;
+                            /** @example pm_sandbox_declined */
+                            payment_method?: string;
+                            /** @enum {string} */
+                            outcome?: "paid" | "uncollectible" | "paid_after_retry" | "paid_after_status_query" | "paid_after_recharge";
+                            default?: boolean;
+                            description?: string;
+                        }[];
+                    };
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    sandboxSimulateInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description A name from /v1/sandbox/scenarios, with or without the pm_sandbox_ prefix. */
+                    scenario: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        invoice_id?: string;
+                        customer_external_id?: string;
+                        scenario?: string;
+                        payment_method?: string;
+                        retried?: boolean;
+                        retry_error?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     appPromote: {

@@ -1458,6 +1458,9 @@
       },
       "storage": {
         "not_configured": "Le stockage de fichiers n'est pas configuré sur ce déploiement."
+      },
+      "sandbox": {
+        "unknown_scenario": "Ce scénario de paiement n'existe pas. Consultez le catalogue des scénarios."
       }
     },
     "coupon": {
@@ -1787,6 +1790,9 @@
       },
       "promote": {
         "stale": "La configuration a changé depuis l'aperçu. Prévisualisez à nouveau la promotion."
+      },
+      "sandbox": {
+        "reset_rate_limited": "Le sandbox vient d'être réinitialisé. Attendez quelques minutes avant de le réinitialiser à nouveau."
       }
     },
     "gateway": {
@@ -1965,6 +1971,12 @@
         "size_mismatch": "La taille du fichier téléversé ne correspond pas à la taille déclarée.",
         "size_required": "La taille du fichier est requise pour les téléversements directs.",
         "unsupported_content_type": "Ce type de fichier n'est pas pris en charge."
+      }
+    },
+    "admin": {
+      "sandbox": {
+        "live_refused": "Seul un environnement sandbox peut être réinitialisé. Un environnement live n'est jamais touché.",
+        "bad_tenant": "L'environnement à réinitialiser n'est pas valide."
       }
     }
   },

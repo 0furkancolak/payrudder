@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
@@ -25,10 +26,12 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/logx"
 	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/api"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/chmigrate"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/consumer"
+	analyticsreset "github.com/0furkancolak/payrudder/services/analytics-svc/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/analytics-svc/migrations"
 )
 
@@ -127,6 +130,7 @@ func run() error {
 		},
 	})
 	analyticsv1.RegisterAnalyticsServiceServer(srv, api.New(conn))
+	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(analyticsreset.New(conn).Reset))
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
 		return err

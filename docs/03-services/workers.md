@@ -167,6 +167,8 @@ and hosted checkouts under `/admin/tenants/{tenant}/`, and `PAYRUDDER_PLANS_ADDR
 
 Phase 45 adds `GET /admin/tenants/{tenant}/go-live` (internal token): `{"ready": bool, "providers": [...]}`, true when the tenant has a live-mode account whose sealed settings still open and still build an adapter. The gateway asks it for the go-live checklist; plans-svc never reads provider data. See [ADR 0023](../adr/0023-live-and-sandbox-guards.md).
 
+payments-worker's part of a sandbox reset (phase 45 E) is `POST /admin/tenants/{tenant}/sandbox-reset` with `{"environment":"sandbox"}` (internal token): it deletes the tenant's attempts, ledger rows, receipts, provider subscriptions and events and e-invoice issuances, and keeps its provider accounts.
+
 ## As built: e-invoices in payments-worker (Phase 30)
 
 payments-worker also consumes `einvoice.issue` (`IssueEInvoice`: issue or cancel one document) and answers with an `EInvoiceResult` (`issued`, `cancelled`, `failed` with

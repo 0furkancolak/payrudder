@@ -1458,6 +1458,9 @@
       },
       "storage": {
         "not_configured": "Der Dateispeicher ist in dieser Installation nicht eingerichtet."
+      },
+      "sandbox": {
+        "unknown_scenario": "Dieses Zahlungsszenario gibt es nicht. Die Liste steht im Szenarienkatalog."
       }
     },
     "coupon": {
@@ -1787,6 +1790,9 @@
       },
       "promote": {
         "stale": "Die Konfiguration hat sich seit der Vorschau geändert. Zeigen Sie die Übernahme erneut in der Vorschau an."
+      },
+      "sandbox": {
+        "reset_rate_limited": "Die Sandbox wurde gerade erst zurückgesetzt. Warten Sie einige Minuten, bevor Sie sie erneut zurücksetzen."
       }
     },
     "gateway": {
@@ -1965,6 +1971,12 @@
         "size_mismatch": "Die Größe der hochgeladenen Datei passt nicht zur angegebenen Größe.",
         "size_required": "Für direkte Uploads ist die Dateigröße erforderlich.",
         "unsupported_content_type": "Dieser Dateityp wird nicht unterstützt."
+      }
+    },
+    "admin": {
+      "sandbox": {
+        "live_refused": "Nur eine Sandbox-Umgebung kann zurückgesetzt werden. Eine Live-Umgebung wird nie angetastet.",
+        "bad_tenant": "Die zurückzusetzende Umgebung ist ungültig."
       }
     }
   },

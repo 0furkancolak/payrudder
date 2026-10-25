@@ -36,6 +36,8 @@ import (
 	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
+	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
 )
 
@@ -102,6 +104,9 @@ type env struct {
 	hooks   plansv1.WebhookServiceClient
 	box     *secretbox.Box
 	evicted *recordingEvictor
+	// runner runs the sandbox resets (a test calls RunOnce itself, so nothing happens behind its back); remotes records what the other services were asked.
+	runner  *sandbox.Runner
+	remotes *recordingRemotes
 }
 
 var (
@@ -158,9 +163,11 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	adminSrv := admin.New(system, ev, allowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	mail := &recordingMail{}
+	remotes := &recordingRemotes{}
+	sbx, runner := sandboxapi.Wire(system, remotes.steps(), time.Hour, sandbox.Settings{Retention: time.Hour}, log)
 	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, mail, testAppURL, log).WithPepper(testPepper), identityqry.New(system),
 		golive.New(golivecmd.New(system, log), goliveqry.New(system)),
-		promote.Wire(app, system, box, true, log)))
+		promote.Wire(app, system, box, true, log), sbx))
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -170,7 +177,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cc.Close() })
-	return &env{db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
+	return &env{runner: runner, remotes: remotes, db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
 		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 

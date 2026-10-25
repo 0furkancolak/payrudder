@@ -1458,6 +1458,9 @@
       },
       "storage": {
         "not_configured": "Bu kurulumda dosya depolama yapılandırılmamış."
+      },
+      "sandbox": {
+        "unknown_scenario": "Böyle bir ödeme senaryosu yok. Liste için senaryo kataloğuna bakın."
       }
     },
     "coupon": {
@@ -1787,6 +1790,9 @@
       },
       "promote": {
         "stale": "Önizlemeden sonra yapılandırma değişti. Aktarımı yeniden önizleyin."
+      },
+      "sandbox": {
+        "reset_rate_limited": "Sandbox az önce sıfırlandı. Yeniden sıfırlamak için birkaç dakika bekleyin."
       }
     },
     "gateway": {
@@ -1965,6 +1971,12 @@
         "size_mismatch": "Yüklenen dosyanın boyutu bildirilen boyutla uyuşmuyor.",
         "size_required": "Doğrudan yüklemeler için dosya boyutu gerekli.",
         "unsupported_content_type": "Bu dosya türü desteklenmiyor."
+      }
+    },
+    "admin": {
+      "sandbox": {
+        "live_refused": "Yalnızca sandbox ortamı sıfırlanabilir. Canlı ortama asla dokunulmaz.",
+        "bad_tenant": "Sıfırlanacak ortam geçerli değil."
       }
     }
   },

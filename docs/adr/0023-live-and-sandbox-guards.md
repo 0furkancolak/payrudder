@@ -33,7 +33,15 @@ ADR 0011 gives every app a sandbox tenant and a live tenant and keeps them apart
    - **Not atomic, but repeatable.** Each module command is its own transaction; a failure is recorded on its change and a second run completes the rest. An applied run writes a row to `config_promotions` (counts and the changes, no secret); a trigger allows only sandbox → live of one app.
    - Owners and admins only; a viewer is refused.
 
-Later parts of the phase (the sandbox lifecycle and the console) are recorded in the sections below as they land.
+7. **Sandbox lifecycle** (`internal/sandbox`, `POST /app/v1/apps/{id}/sandbox/reset`).
+   - A reset is a durable job in plans-svc (`sandbox_resets`, one open job per sandbox, a trigger that allows only a sandbox tenant). A runner (any number of replicas; `FOR UPDATE SKIP LOCKED`, a lease taken over when a replica dies) runs the steps in order: plans-svc's own first (customers, subscriptions and their history, webhook history, coupon counters: with those gone nothing can bill the tenant while the rest is emptied), then ingest-svc, aggregator, analytics-svc, billing-svc and payments-worker. The first failure stops the job and is shown on its step; asking again repeats every step, which is safe because each is idempotent. A step whose service has no address is skipped, not failed.
+   - Each service deletes only what it lists in SQL it can be reviewed in (`queries/reset.sql`, the order of the foreign keys), through `SandboxResetService` (`pkg/sandboxreset`: operator only, environment must be SANDBOX, so a live tenant is refused by the service as well as by plans-svc and the database); payments-worker has the same behind its internal token. The configuration stays: meters, plans, prices, tax, coupons, mail settings, webhook endpoints, keys, provider accounts, credit packs, dunning settings. A test per service fails when a table with tenant rows is neither deleted from nor kept on purpose (`sandboxreset.MissingTables`), so a new table cannot be forgotten. The grants for it are narrow: DELETE on the listed tables for the `_system` role, nothing else (the append-only payment ledger included).
+   - Numbering starts again (`SBX-…000001`). Events already on the topic can still be read by a consumer after the reset; run it again if one was in flight.
+   - Owners and admins; a running reset is returned when asked for again; at most one manual reset per sandbox in `PAYRUDDER_SANDBOX_RESET_COOLDOWN` (5 minutes).
+   - **Retention.** A sandbox untouched for `PAYRUDDER_SANDBOX_RETENTION` (default 90 days, 0 = off) — no key used, no customer or subscription made, no reset — is reset by the same job (`kind = retention`), by a sweep each replica runs hourly; the configuration is kept. Work done only through the console on existing data does not count as activity; creating a customer does.
+   - **Scenarios.** `GET /v1/sandbox/scenarios` lists the `pm_sandbox_*` payment methods and what each does; `POST /v1/sandbox/invoices/{id}/simulate` sets the invoice's customer to a scenario and runs the invoice's payment again (the scenario stays the customer's payment method; if the payment cannot run again now it says so).
+
+Later parts of the phase (the console) are recorded in the sections below as they land.
 
 ## Consequences
 
