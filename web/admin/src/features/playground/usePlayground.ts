@@ -4,7 +4,6 @@ import { api, asTenant, unwrap, type Invoice } from "@/shared/api/client";
 
 import type { Currency } from "@/shared/lib/currencies";
 
-export { CURRENCIES, type Currency } from "@/shared/lib/currencies";
 export const SCENARIOS = ["success", "declined", "insufficient_funds_once", "error_then_success", "timeout_committed", "timeout_not_committed"] as const;
 export type Scenario = (typeof SCENARIOS)[number];
 
