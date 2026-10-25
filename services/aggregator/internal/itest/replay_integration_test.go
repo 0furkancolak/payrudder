@@ -16,7 +16,7 @@ import (
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/meters"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/replay"
 )
@@ -24,12 +24,12 @@ import (
 // switchMeters serves sum_m with a definition that can be swapped at run time (the "fix"); other codes come from defaultMeters.
 type switchMeters struct {
 	mu sync.Mutex
-	m  domain.Meter
+	m  usage.Meter
 }
 
-func (s *switchMeters) set(m domain.Meter) { s.mu.Lock(); s.m = m; s.mu.Unlock() }
+func (s *switchMeters) set(m usage.Meter) { s.mu.Lock(); s.m = m; s.mu.Unlock() }
 
-func (s *switchMeters) Get(ctx context.Context, tn uuid.UUID, code string) (domain.Meter, error) {
+func (s *switchMeters) Get(ctx context.Context, tn uuid.UUID, code string) (usage.Meter, error) {
 	if code == "sum_m" {
 		s.mu.Lock()
 		defer s.mu.Unlock()
@@ -100,8 +100,8 @@ func waitJob(t *testing.T, m *replay.Manager, tn, id uuid.UUID, want string, wit
 // (for the tenant and for a bystander). The promoted generation equals the corrected ledger of every event, none lost, none
 // counted twice; the retired one is untouched; the bystander never leaves generation 1.
 func testReplayFixesAFilterAndPromotesUnderLoad(t *testing.T) {
-	buggy := domain.Meter{Code: "sum_m", Aggregation: domain.Sum, Filter: map[string][]string{"region": {"eu"}}}
-	fixed := domain.Meter{Code: "sum_m", Aggregation: domain.Sum}
+	buggy := usage.Meter{Code: "sum_m", Aggregation: usage.Sum, Filter: map[string][]string{"region": {"eu"}}}
+	fixed := usage.Meter{Code: "sum_m", Aggregation: usage.Sum}
 	ms := &switchMeters{m: buggy}
 	r := newRun(t, runOpts{meters: ms})
 	r.start(r.group)
@@ -133,7 +133,7 @@ func testReplayFixesAFilterAndPromotesUnderLoad(t *testing.T) {
 		return e
 	}
 	// expected: every event of A is counted once the filter is fixed; B's meter has no filter.
-	addExpect := func(e *eventsv1.UsageEvent, agg domain.Aggregation) {
+	addExpect := func(e *eventsv1.UsageEvent, agg usage.Aggregation) {
 		k := rowKey{tenant: uuid.MustParse(e.TenantId), customer: uuid.MustParse(e.CustomerId), meter: e.MeterCode, period: "2026-11"}
 		led.add(led.onTime, k, agg, e.QuantityUnits)
 	}
@@ -143,10 +143,10 @@ func testReplayFixesAFilterAndPromotesUnderLoad(t *testing.T) {
 	for i := 0; i < 4000; i++ {
 		e := mk(a, custA, "sum_m", false)
 		history = append(history, e)
-		addExpect(e, domain.Sum)
+		addExpect(e, usage.Sum)
 		eb := mk(b, custB, "count_m", true)
 		history = append(history, eb)
-		addExpect(eb, domain.Count)
+		addExpect(eb, usage.Count)
 	}
 	r.produce(history...)
 	r.drain(60 * time.Second)
@@ -189,8 +189,8 @@ func testReplayFixesAFilterAndPromotesUnderLoad(t *testing.T) {
 				eb := mk(b, custB, "count_m", true)
 				batch = append(batch, ea, eb)
 				liveMu.Lock()
-				addExpect(ea, domain.Sum)
-				addExpect(eb, domain.Count)
+				addExpect(ea, usage.Sum)
+				addExpect(eb, usage.Count)
 				liveMu.Unlock()
 			}
 			r.produce(batch...)

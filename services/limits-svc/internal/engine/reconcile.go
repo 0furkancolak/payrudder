@@ -18,7 +18,7 @@ import (
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
 )
 
@@ -227,7 +227,7 @@ func (r *Reconciler) checkpointFor(ctx context.Context, p int32, tid uuid.UUID, 
 		if err != nil {
 			return nil, "", fmt.Errorf("aggregator quantity %q: %w", u.GetQuantity(), err)
 		}
-		keys[i] = CheckKey{Key: ref.Key(), Want: want, Max: m.Aggregation == domain.Max}
+		keys[i] = CheckKey{Key: ref.Key(), Want: want, Max: m.Aggregation == usage.Max}
 	}
 	kept := keys[:0]
 	for _, k := range keys {

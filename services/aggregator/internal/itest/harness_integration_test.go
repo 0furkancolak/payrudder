@@ -39,8 +39,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/meters"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/query"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
@@ -62,20 +62,20 @@ var (
 )
 
 // fakeMeters stands in for plans-svc.
-type fakeMeters map[string]domain.Meter
+type fakeMeters map[string]usage.Meter
 
-func (f fakeMeters) Get(_ context.Context, _ uuid.UUID, code string) (domain.Meter, error) {
+func (f fakeMeters) Get(_ context.Context, _ uuid.UUID, code string) (usage.Meter, error) {
 	if m, ok := f[code]; ok {
 		return m, nil
 	}
-	return domain.Meter{}, meters.ErrNotFound
+	return usage.Meter{}, meters.ErrNotFound
 }
 
 var defaultMeters = fakeMeters{
-	"sum_m":   {Code: "sum_m", Aggregation: domain.Sum},
-	"count_m": {Code: "count_m", Aggregation: domain.Count},
-	"max_m":   {Code: "max_m", Aggregation: domain.Max},
-	"eu_only": {Code: "eu_only", Aggregation: domain.Sum, Filter: map[string][]string{"region": {"eu"}}},
+	"sum_m":   {Code: "sum_m", Aggregation: usage.Sum},
+	"count_m": {Code: "count_m", Aggregation: usage.Count},
+	"max_m":   {Code: "max_m", Aggregation: usage.Max},
+	"eu_only": {Code: "eu_only", Aggregation: usage.Sum, Filter: map[string][]string{"region": {"eu"}}},
 }
 
 func infra(t *testing.T) {
@@ -343,14 +343,14 @@ type expect struct {
 
 func newLedger() *ledger { return &ledger{onTime: map[rowKey]*expect{}, late: map[rowKey]*expect{}} }
 
-func (l *ledger) add(m map[rowKey]*expect, k rowKey, agg domain.Aggregation, units int64) {
+func (l *ledger) add(m map[rowKey]*expect, k rowKey, agg usage.Aggregation, units int64) {
 	e := m[k]
 	v := units
-	if agg == domain.Count {
+	if agg == usage.Count {
 		v = 1
 	}
 	if e == nil {
-		m[k] = &expect{qty: big.NewInt(v), count: 1, max: agg == domain.Max}
+		m[k] = &expect{qty: big.NewInt(v), count: 1, max: agg == usage.Max}
 		return
 	}
 	e.count++
