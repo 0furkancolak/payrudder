@@ -41,7 +41,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/query"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
 	"github.com/0furkancolak/payrudder/services/aggregator/migrations"
 )
@@ -392,10 +392,10 @@ func ev(id string, tenantID, customer uuid.UUID, meter string, units int64, scal
 	}
 }
 
-// queryClient serves query.Service over bufconn, with the tenant metadata the gateway would send.
+// queryClient serves grpcapi.Server over bufconn, with the tenant metadata the gateway would send.
 func queryClient(t *testing.T, r *run) aggregatorv1.UsageQueryServiceClient {
 	t.Helper()
-	svc := query.New(shared.app, r.src, r.group, r.topic)
+	svc := grpcapi.New(shared.app, r.src, r.group, r.topic)
 	srv, _ := grpcx.NewServer(grpcx.ServerOptions{Extra: []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
 		grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),

@@ -9,9 +9,6 @@ import (
 	"fmt"
 	"net"
 	"time"
-	_ "time/tzdata" // tenant time zones must load in distroless images
-
-	"google.golang.org/grpc"
 
 	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
@@ -23,9 +20,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
-	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/ingest"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/lookup"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/maintenance"
 	ingestreset "github.com/0furkancolak/payrudder/services/ingest-svc/internal/sandboxreset"
@@ -83,14 +79,13 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer producer.Close()
 
-	plansConn, err := grpcx.NewClient(cfg.PlansAddr,
-		grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	plansConn, err := grpcx.NewTenantClient("plans-svc", cfg.PlansAddr)
 	if err != nil {
-		return fmt.Errorf("plans-svc client: %w", err)
+		return err
 	}
 	defer func() { _ = plansConn.Close() }()
 
-	svc, err := ingest.New(ingest.Options{
+	svc, err := grpcapi.New(grpcapi.Options{
 		App: appPool, System: systemPool, Log: log, MaxOutboxDepth: cfg.MaxOutboxDepth,
 		Lookup: lookup.NewPlans(plansv1.NewPlansServiceClient(plansConn), lookup.Options{}),
 	})

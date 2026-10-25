@@ -26,7 +26,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/meters"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
@@ -156,11 +155,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 
 // dialPeer connects to another service, forwarding the tenant on every call.
 func dialPeer(name, addr string) (*grpc.ClientConn, error) {
-	conn, err := grpcx.NewClient(addr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
-	if err != nil {
-		return nil, fmt.Errorf("%s client: %w", name, err)
-	}
-	return conn, nil
+	return grpcx.NewTenantClient(name, addr)
 }
 
 // newConsumers builds the usage consumer and the entitlement consumer; closeAll closes both.
