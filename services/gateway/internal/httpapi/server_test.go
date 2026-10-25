@@ -52,6 +52,12 @@ func (fakeAuth) Authenticate(_ context.Context, key string) (auth.Principal, err
 		return auth.Principal{Tenant: tenant.Info{ID: uuid.New(), Environment: "live"}, Tier: "limited"}, nil
 	case "down-key":
 		return auth.Principal{}, auth.ErrUnavailable
+	case "ingest-key":
+		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Scope: auth.ScopeIngest}, nil
+	case "read-key":
+		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Scope: auth.ScopeRead}, nil
+	case "suspended-key":
+		return auth.Principal{}, auth.ErrSuspended
 	default:
 		return auth.Principal{}, auth.ErrUnauthenticated
 	}

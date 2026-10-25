@@ -27,7 +27,7 @@ func keyFail(w http.ResponseWriter, status int, code, key, msg string) {
 func pathEnvironment(w http.ResponseWriter, r *http.Request) (string, bool) {
 	env := r.PathValue("environment")
 	if env != "sandbox" && env != "live" {
-		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", "common.invalid_argument", "environment must be sandbox or live")
+		keyFail(w, http.StatusBadRequest, "INVALID_ARGUMENT", errkey.Key("common.invalid_argument"), "environment must be sandbox or live")
 		return "", false
 	}
 	return env, true
@@ -35,7 +35,7 @@ func pathEnvironment(w http.ResponseWriter, r *http.Request) (string, bool) {
 
 func (s *Server) einvoiceReady(w http.ResponseWriter) bool {
 	if s.EInvoiceAccounts.DB == nil || s.EInvoiceRegistry == nil {
-		keyFail(w, http.StatusServiceUnavailable, "UNAVAILABLE", "common.unavailable", "e-invoice accounts are not configured on this deployment (QUOTIFY_SECRETS_KEY)")
+		keyFail(w, http.StatusServiceUnavailable, "UNAVAILABLE", errkey.Key("common.unavailable"), "e-invoice accounts are not configured on this deployment (QUOTIFY_SECRETS_KEY)")
 		return false
 	}
 	return true
@@ -48,7 +48,7 @@ func (s *Server) listEInvoiceAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := s.EInvoiceAccounts.List(r.Context(), t)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	if list == nil {
@@ -111,7 +111,7 @@ func (s *Server) putEInvoiceAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.EInvoiceAccounts.Put(r.Context(), t, env, in.Provider, in.Mode, raw); err != nil {
 		s.Log.ErrorContext(r.Context(), "e-invoice account write failed", "err", err)
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, store.EInvoiceAccountInfo{Environment: env, Provider: in.Provider, Mode: in.Mode, HasCredentials: len(in.Credentials) > 0})
@@ -129,7 +129,7 @@ func (s *Server) deleteEInvoiceAccount(w http.ResponseWriter, r *http.Request) {
 	deleted, err := s.EInvoiceAccounts.Delete(r.Context(), t, env)
 	switch {
 	case err != nil:
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 	case !deleted:
 		keyFail(w, http.StatusNotFound, "NOT_FOUND", errkey.Key("einvoice.account.missing"), "no such account")
 	default:

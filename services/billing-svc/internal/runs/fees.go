@@ -34,6 +34,9 @@ func (m *Manager) BillFees(ctx context.Context) error {
 			return err
 		}
 		for _, t := range resp.GetTenants() {
+			if !billable(t) {
+				continue
+			}
 			id, err := uuid.Parse(t.GetId())
 			if err != nil {
 				continue

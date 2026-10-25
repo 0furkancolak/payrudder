@@ -258,6 +258,10 @@ func testIdentityApps(t *testing.T, e *env, ada *plansv1.SignInResponse) {
 		t.Fatal(err)
 	}
 	e.verify(t, "ada@example.com")
+	// A proven address is not enough: live is earned by the go-live checklist (phase 45), so the tenant has no keys until it is active.
+	_, err = e.ident.CreateMyApiKey(ctx, &plansv1.CreateMyApiKeyRequest{UserId: uid, AppId: a.GetId(), Environment: plansv1.Environment_ENVIRONMENT_LIVE})
+	wantCode(t, "live key of an inactive tenant", err, codes.FailedPrecondition, "plans.api_key.tenant_not_active")
+	e.activate(t, live.GetId())
 
 	// Keys: made per environment, shown once, listed without secrets, revoked and evicted.
 	lk, err := e.ident.CreateMyApiKey(ctx, &plansv1.CreateMyApiKeyRequest{UserId: uid, AppId: a.GetId(), Environment: plansv1.Environment_ENVIRONMENT_LIVE})

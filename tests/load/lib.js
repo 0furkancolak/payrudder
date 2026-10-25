@@ -6,6 +6,14 @@ export const GATEWAY = __ENV.GATEWAY_URL || 'http://localhost:42800';
 export const OPERATOR = __ENV.QUOTIFY_OPERATOR_TOKEN || 'local-operator-token-change-me-0123456789';
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+function put(path, token, body, expect) {
+  const res = http.put(`${GATEWAY}${path}`, JSON.stringify(body), {
+    headers: { ...JSON_HEADERS, Authorization: `Bearer ${token}` }, tags: { name: 'setup' },
+  });
+  if (res.status !== expect) fail(`PUT ${path}: ${res.status} ${res.body}`);
+  return res.json();
+}
+
 function post(path, token, body, expect) {
   const res = http.post(`${GATEWAY}${path}`, JSON.stringify(body), {
     headers: { ...JSON_HEADERS, Authorization: `Bearer ${token}` }, tags: { name: 'setup' },
@@ -21,6 +29,8 @@ export function createTenant(name, tier, { sandbox = false } = {}) {
   }, 201);
   const want = sandbox ? 'ENVIRONMENT_SANDBOX' : 'ENVIRONMENT_LIVE';
   const tn = acct.tenants.find((t) => t.environment === want);
+  // A live tenant is created inactive and has no keys: activate it the way support does, with a reason.
+  if (!sandbox) put(`/admin/v1/tenants/${tn.id}/status`, OPERATOR, { status: 'active', reason: 'k6 setup' }, 200);
   const key = post(`/admin/v1/tenants/${tn.id}/api-keys`, OPERATOR, {}, 201).plaintext;
   return { id: tn.id, key, name };
 }

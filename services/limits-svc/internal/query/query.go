@@ -12,10 +12,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/period"
 	"github.com/0furkancolak/quotify/pkg/quantity"
 	"github.com/0furkancolak/quotify/pkg/tenant"
@@ -41,12 +41,13 @@ func New(rdb *redis.Client, ents *entitlements.Store, ms meters.Source, rec *eng
 	return &Service{rdb: rdb, ents: ents, meters: ms, reconciler: rec, now: time.Now}
 }
 
-func invalid(msg string) error { return status.Error(codes.InvalidArgument, msg) }
+// invalid is an InvalidArgument status with the error key key.
+func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
 
 func (s *Service) periodFor(ti tenant.Info, id string) (string, error) {
 	if id != "" {
 		if !periodRe.MatchString(id) {
-			return "", invalid("period_id must look like 2026-11")
+			return "", invalid("limits.period.bad_id", "period_id must look like 2026-11")
 		}
 		return id, nil
 	}
@@ -67,10 +68,10 @@ func (s *Service) CheckEntitlement(ctx context.Context, req *limitsv1.CheckEntit
 	}
 	customer, err := uuid.Parse(req.GetCustomerId())
 	if err != nil {
-		return nil, invalid("customer_id must be a UUID")
+		return nil, invalid("limits.customer.bad_id", "customer_id must be a UUID")
 	}
 	if req.GetMeterCode() == "" {
-		return nil, invalid("meter_code is required")
+		return nil, invalid("limits.meter.code_required", "meter_code is required")
 	}
 	pid, err := s.periodFor(ti, req.GetPeriodId())
 	if err != nil {
@@ -86,10 +87,10 @@ func (s *Service) CheckEntitlement(ctx context.Context, req *limitsv1.CheckEntit
 	} else {
 		m, err := s.meters.Get(ctx, ti.ID, req.GetMeterCode())
 		if errors.Is(err, meters.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "meter not found")
+			return nil, errkey.New(codes.NotFound, "limits.meter.not_found", "meter not found")
 		}
 		if err != nil {
-			return nil, status.Error(codes.Unavailable, "meter lookup failed")
+			return nil, errkey.New(codes.Unavailable, "limits.meter.unavailable", "meter lookup failed")
 		}
 		scale = m.Scale
 	}
@@ -108,7 +109,7 @@ func (s *Service) GetLimitStatus(ctx context.Context, req *limitsv1.GetLimitStat
 	}
 	customer, err := uuid.Parse(req.GetCustomerId())
 	if err != nil {
-		return nil, invalid("customer_id must be a UUID")
+		return nil, invalid("limits.customer.bad_id", "customer_id must be a UUID")
 	}
 	pid, err := s.periodFor(ti, req.GetPeriodId())
 	if err != nil {
@@ -128,7 +129,7 @@ func (s *Service) GetLimitStatus(ctx context.Context, req *limitsv1.GetLimitStat
 func (s *Service) statusOf(ctx context.Context, tid, customer uuid.UUID, meter, pid string, ent *entitlements.State, scale int) (*limitsv1.LimitStatus, error) {
 	vals, err := s.rdb.MGet(ctx, engine.CounterKey(tid, customer, meter, pid), engine.TSKey(tid)).Result()
 	if err != nil {
-		return nil, status.Error(codes.Unavailable, "counter store unavailable")
+		return nil, errkey.New(codes.Unavailable, "limits.counter.unavailable", "counter store unavailable")
 	}
 	var used, limit int64
 	if v, ok := vals[0].(string); ok {
@@ -158,11 +159,11 @@ func (s *Service) ReconcileNow(ctx context.Context, _ *limitsv1.ReconcileNowRequ
 		return nil, err
 	}
 	if s.reconciler == nil {
-		return nil, status.Error(codes.Unimplemented, "reconciliation is not configured")
+		return nil, errkey.New(codes.Unimplemented, "limits.reconcile.not_configured", "reconciliation is not configured")
 	}
 	res, err := s.reconciler.RunOnce(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Unavailable, "reconcile: %v", err)
+		return nil, errkey.Newf(codes.Unavailable, "limits.reconcile.unavailable", "reconcile: %v", err)
 	}
 	return &limitsv1.ReconcileNowResponse{KeysChecked: res.Checked, Corrections: res.Corrections, PartitionsSkipped: res.Skipped}, nil
 }

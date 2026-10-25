@@ -45,10 +45,10 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 
 func ids(r *http.Request) (tenant, invoice uuid.UUID, err error) {
 	if tenant, err = uuid.Parse(r.PathValue("tenant")); err != nil {
-		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "tenant must be a UUID")
+		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "payments.transfer.bad_tenant", "tenant must be a UUID")
 	}
 	if invoice, err = uuid.Parse(r.PathValue("invoice")); err != nil {
-		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invoice must be a UUID")
+		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "payments.transfer.bad_invoice_id", "invoice must be a UUID")
 	}
 	return tenant, invoice, nil
 }
@@ -140,13 +140,13 @@ func (h *Handler) reject(w http.ResponseWriter, r *http.Request) {
 func decode(w http.ResponseWriter, r *http.Request, v any) error {
 	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
 	if err != nil {
-		return status.Error(codes.InvalidArgument, "unreadable or too large body")
+		return errkey.New(codes.InvalidArgument, "payments.transfer.bad_body", "unreadable or too large body")
 	}
 	if len(bytes.TrimSpace(b)) == 0 {
 		return nil
 	}
 	if err := json.Unmarshal(b, v); err != nil {
-		return status.Errorf(codes.InvalidArgument, "malformed JSON: %v", err)
+		return errkey.Newf(codes.InvalidArgument, "payments.transfer.bad_body", "malformed JSON: %v", err)
 	}
 	return nil
 }

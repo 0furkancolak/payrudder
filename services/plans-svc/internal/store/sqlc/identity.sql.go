@@ -436,7 +436,7 @@ func (q *Queries) GetOpenInviteInAccount(ctx context.Context, arg GetOpenInviteI
 }
 
 const getTenantForUser = `-- name: GetTenantForUser :one
-SELECT t.id, t.account_id, t.environment, t.name, t.tier, t.currency, t.timezone, t.grace_period, t.created_at, t.invoice_logo_asset_id, t.app_id, t.address, t.bank_transfer, t.legal, t.e_invoice_on, m.role
+SELECT t.id, t.account_id, t.environment, t.name, t.tier, t.currency, t.timezone, t.grace_period, t.created_at, t.invoice_logo_asset_id, t.app_id, t.address, t.bank_transfer, t.legal, t.e_invoice_on, t.status, t.activated_at, t.terms_accepted_at, t.terms_accepted_by, m.role
 FROM tenants t JOIN account_members m ON m.account_id = t.account_id AND m.user_id = $1
 WHERE t.id = $2
 `
@@ -462,6 +462,10 @@ type GetTenantForUserRow struct {
 	BankTransfer       json.RawMessage
 	Legal              json.RawMessage
 	EInvoiceOn         string
+	Status             string
+	ActivatedAt        *time.Time
+	TermsAcceptedAt    *time.Time
+	TermsAcceptedBy    *uuid.UUID
 	Role               string
 }
 
@@ -484,6 +488,10 @@ func (q *Queries) GetTenantForUser(ctx context.Context, arg GetTenantForUserPara
 		&i.BankTransfer,
 		&i.Legal,
 		&i.EInvoiceOn,
+		&i.Status,
+		&i.ActivatedAt,
+		&i.TermsAcceptedAt,
+		&i.TermsAcceptedBy,
 		&i.Role,
 	)
 	return i, err
@@ -865,7 +873,7 @@ func (q *Queries) ListAccountMembers(ctx context.Context, accountID uuid.UUID) (
 }
 
 const listApiKeysOfTenants = `-- name: ListApiKeysOfTenants :many
-SELECT id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at FROM api_keys WHERE tenant_id = ANY($1::uuid[]) ORDER BY created_at DESC, id
+SELECT id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, scope, last_used_at, expires_at FROM api_keys WHERE tenant_id = ANY($1::uuid[]) ORDER BY created_at DESC, id
 `
 
 func (q *Queries) ListApiKeysOfTenants(ctx context.Context, tenantIds []uuid.UUID) ([]ApiKey, error) {
@@ -886,6 +894,9 @@ func (q *Queries) ListApiKeysOfTenants(ctx context.Context, tenantIds []uuid.UUI
 			&i.Status,
 			&i.CreatedAt,
 			&i.RevokedAt,
+			&i.Scope,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -898,7 +909,7 @@ func (q *Queries) ListApiKeysOfTenants(ctx context.Context, tenantIds []uuid.UUI
 }
 
 const listAppTenants = `-- name: ListAppTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on FROM tenants WHERE app_id = $1 ORDER BY environment DESC
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by FROM tenants WHERE app_id = $1 ORDER BY environment DESC
 `
 
 func (q *Queries) ListAppTenants(ctx context.Context, appID uuid.UUID) ([]Tenant, error) {
@@ -926,6 +937,10 @@ func (q *Queries) ListAppTenants(ctx context.Context, appID uuid.UUID) ([]Tenant
 			&i.BankTransfer,
 			&i.Legal,
 			&i.EInvoiceOn,
+			&i.Status,
+			&i.ActivatedAt,
+			&i.TermsAcceptedAt,
+			&i.TermsAcceptedBy,
 		); err != nil {
 			return nil, err
 		}

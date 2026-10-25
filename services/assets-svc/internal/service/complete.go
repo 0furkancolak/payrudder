@@ -6,11 +6,11 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
 	"github.com/0furkancolak/quotify/pkg/blob"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
 	"github.com/0furkancolak/quotify/services/assets-svc/internal/store/sqlc"
@@ -88,21 +88,21 @@ func (s *Service) completeFile(ctx context.Context, q *sqlc.Queries, ti tenant.I
 		return a, err
 	}
 	if !inSession(a, sid) {
-		return a, status.Error(codes.NotFound, "asset not found in this session")
+		return a, errkey.New(codes.NotFound, "assets.asset.not_in_session", "asset not found in this session")
 	}
 	switch a.Status {
 	case "READY", "REJECTED":
 		return a, nil // completing twice returns the same asset
 	case "PENDING", "UPLOADING":
 	default:
-		return a, status.Errorf(codes.FailedPrecondition, "the file is %s", a.Status)
+		return a, errkey.Newf(codes.FailedPrecondition, "assets.asset.bad_status", "the file is %s", a.Status)
 	}
 	sess, err := loadSession(ctx, q, sid, false)
 	if err != nil {
 		return a, err
 	}
 	if !s.sessionOpen(sess) {
-		return a, status.Error(codes.FailedPrecondition, "the upload session is no longer open")
+		return a, errkey.New(codes.FailedPrecondition, "assets.session.closed", "the upload session is no longer open")
 	}
 
 	parts, err := s.blob.ListParts(ctx, a.ObjectKey, *a.S3UploadID)
@@ -110,29 +110,29 @@ func (s *Service) completeFile(ctx context.Context, q *sqlc.Queries, ti tenant.I
 		// A previous CompleteFile assembled the object and crashed before recording it: finish from the object.
 		info, herr := s.blob.Head(ctx, a.ObjectKey)
 		if herr != nil {
-			return a, status.Error(codes.FailedPrecondition, "the multipart upload no longer exists")
+			return a, errkey.New(codes.FailedPrecondition, "assets.upload.multipart_gone", "the multipart upload no longer exists")
 		}
 		return s.finish(ctx, q, ti, a, info.Size, nil)
 	}
 	if err != nil {
-		return a, status.Error(codes.Unavailable, "object storage unavailable")
+		return a, errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 	}
 
 	if reason := checkParts(a, given, parts); reason != "" {
 		if err := s.blob.AbortMultipart(ctx, a.ObjectKey, *a.S3UploadID); err != nil {
-			return a, status.Error(codes.Unavailable, "object storage unavailable")
+			return a, errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 		}
 		return reject(ctx, q, a.ID, reason)
 	}
 	if err := s.blob.CompleteMultipart(ctx, a.ObjectKey, *a.S3UploadID, parts); err != nil {
 		if errors.Is(err, blob.ErrNoSuchUpload) {
-			return a, status.Error(codes.Aborted, "the upload changed concurrently; retry")
+			return a, errkey.New(codes.Aborted, "assets.upload.changed", "the upload changed concurrently; retry")
 		}
-		return a, status.Error(codes.Unavailable, "object storage unavailable")
+		return a, errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 	}
 	info, err := s.blob.Head(ctx, a.ObjectKey)
 	if err != nil {
-		return a, status.Error(codes.Unavailable, "object storage unavailable")
+		return a, errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 	}
 	return s.finish(ctx, q, ti, a, info.Size, nil)
 }
@@ -215,7 +215,7 @@ func (s *Service) abortAssets(ctx context.Context, q *sqlc.Queries, sessionID uu
 	for _, a := range as {
 		if a.S3UploadID != nil {
 			if err := s.blob.AbortMultipart(ctx, a.ObjectKey, *a.S3UploadID); err != nil {
-				return status.Error(codes.Unavailable, "object storage unavailable")
+				return errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 			}
 		}
 		if err := q.MarkAssetAborted(ctx, a.ID); err != nil {
@@ -255,13 +255,13 @@ func (s *Service) ListAssets(ctx context.Context, req *assetsv1.ListAssetsReques
 		size = 100
 	}
 	if size > 500 {
-		return nil, status.Error(codes.InvalidArgument, "page_size must be 1..500")
+		return nil, errkey.New(codes.InvalidArgument, "assets.list.bad_page_size", "page_size must be 1..500")
 	}
 	after := uuid.Nil
 	if t := req.GetPageToken(); t != "" {
 		var err error
 		if after, err = uuid.Parse(t); err != nil {
-			return nil, status.Error(codes.InvalidArgument, "page_token is invalid")
+			return nil, errkey.New(codes.InvalidArgument, "assets.list.bad_page_token", "page_token is invalid")
 		}
 	}
 	var rows []sqlc.Asset
@@ -295,11 +295,11 @@ func (s *Service) GetDownloadUrl(ctx context.Context, req *assetsv1.GetDownloadU
 		return nil, internal(err)
 	}
 	if a.Status != "READY" {
-		return nil, status.Errorf(codes.FailedPrecondition, "the asset is %s, only READY assets can be downloaded", a.Status)
+		return nil, errkey.Newf(codes.FailedPrecondition, "assets.download.not_ready", "the asset is %s, only READY assets can be downloaded", a.Status)
 	}
 	u, err := s.blob.PresignDownload(ctx, a.ObjectKey, a.Filename, s.cfg.DownloadTTL)
 	if err != nil {
-		return nil, status.Error(codes.Unavailable, "could not sign the download link")
+		return nil, errkey.New(codes.Unavailable, "assets.download.sign_failed", "could not sign the download link")
 	}
 	return &assetsv1.GetDownloadUrlResponse{Url: u, ExpireTime: timestamppb.New(s.now().Add(s.cfg.DownloadTTL))}, nil
 }
@@ -331,10 +331,10 @@ func (s *Service) deleteAsset(ctx context.Context, q *sqlc.Queries, id uuid.UUID
 		return a, nil
 	}
 	if a.Status != "READY" && a.Status != "CORRUPT" {
-		return a, status.Errorf(codes.FailedPrecondition, "the asset is %s; abort the upload instead", a.Status)
+		return a, errkey.Newf(codes.FailedPrecondition, "assets.asset.cannot_abort", "the asset is %s; abort the upload instead", a.Status)
 	}
 	if err := s.blob.Delete(ctx, a.ObjectKey); err != nil {
-		return a, status.Error(codes.Unavailable, "object storage unavailable")
+		return a, errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 	}
 	if a.SizeBytes != nil {
 		if err := q.ReleaseStorage(ctx, *a.SizeBytes); err != nil {

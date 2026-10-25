@@ -50,6 +50,17 @@ func (m *Manager) Tick(ctx context.Context) error {
 	return nil
 }
 
+// billable reports whether the scheduler may raise invoices for a tenant: a live tenant that is not active yet (the go-live gate) or is suspended is
+// left alone. A status the plans-svc did not send (an older release during a rollout) counts as active.
+func billable(t *plansv1.Tenant) bool {
+	switch t.GetStatus() {
+	case plansv1.TenantStatus_TENANT_STATUS_INACTIVE, plansv1.TenantStatus_TENANT_STATUS_SUSPENDED:
+		return false
+	case plansv1.TenantStatus_TENANT_STATUS_UNSPECIFIED, plansv1.TenantStatus_TENANT_STATUS_ACTIVE:
+	}
+	return true
+}
+
 // discover creates a run for every recently closed period of every tenant that has none yet.
 func (m *Manager) discover(ctx context.Context) error {
 	now := m.cfg.Now()
@@ -60,6 +71,9 @@ func (m *Manager) discover(ctx context.Context) error {
 			return err
 		}
 		for _, t := range resp.GetTenants() {
+			if !billable(t) {
+				continue
+			}
 			id, err := uuid.Parse(t.GetId())
 			if err != nil {
 				continue

@@ -248,7 +248,8 @@ func (q *Queries) Tenant(ctx context.Context, userID, tenantID string) (*plansv1
 	return convert.Tenant(sqlc.Tenant{
 		ID: row.ID, AccountID: row.AccountID, Environment: row.Environment, Name: row.Name, Tier: row.Tier, Currency: row.Currency, Timezone: row.Timezone,
 		GracePeriod: row.GracePeriod, CreatedAt: row.CreatedAt, InvoiceLogoAssetID: row.InvoiceLogoAssetID, AppID: row.AppID, Address: row.Address,
-		BankTransfer: row.BankTransfer, Legal: row.Legal, EInvoiceOn: row.EInvoiceOn,
+		BankTransfer: row.BankTransfer, Legal: row.Legal, EInvoiceOn: row.EInvoiceOn, Status: row.Status, ActivatedAt: row.ActivatedAt,
+		TermsAcceptedAt: row.TermsAcceptedAt, TermsAcceptedBy: row.TermsAcceptedBy,
 	}), row.Role, nil
 }
 
