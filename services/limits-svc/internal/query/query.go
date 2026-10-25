@@ -4,6 +4,7 @@ package query
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"regexp"
 	"strconv"
 	"time"
@@ -153,6 +154,12 @@ func (s *Service) statusOf(ctx context.Context, tid, customer uuid.UUID, meter, 
 	return out, nil
 }
 
+// reconcileFailed answers for a reconciliation that did not run: the cause goes to the log, the client gets a fixed message.
+func reconcileFailed(ctx context.Context, err error) error {
+	slog.WarnContext(ctx, "reconcile failed", "error", err)
+	return errkey.New(codes.Unavailable, "limits.reconcile.unavailable", "reconciliation could not run right now")
+}
+
 // ReconcileNow implements limitsv1.LimitsServiceServer.
 func (s *Service) ReconcileNow(ctx context.Context, _ *limitsv1.ReconcileNowRequest) (*limitsv1.ReconcileNowResponse, error) {
 	if err := tenant.RequireOperator(ctx); err != nil {
@@ -163,7 +170,7 @@ func (s *Service) ReconcileNow(ctx context.Context, _ *limitsv1.ReconcileNowRequ
 	}
 	res, err := s.reconciler.RunOnce(ctx)
 	if err != nil {
-		return nil, errkey.Newf(codes.Unavailable, "limits.reconcile.unavailable", "reconcile: %v", err)
+		return nil, reconcileFailed(ctx, err)
 	}
 	return &limitsv1.ReconcileNowResponse{KeysChecked: res.Checked, Corrections: res.Corrections, PartitionsSkipped: res.Skipped}, nil
 }

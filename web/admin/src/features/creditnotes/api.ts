@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, tenantApi, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
 
 export const creditNoteKeys = {
+  all: (tenantId: string) => ["tenants", tenantId, "credit-notes"] as const,
   list: (tenantId: string, invoiceId: string) => ["tenants", tenantId, "credit-notes", invoiceId] as const,
 };
 
@@ -12,7 +14,7 @@ export function useCreditNotes(tenantId: MaybeRefOrGetter<string>, invoiceId: Ma
     queryKey: computed(() => creditNoteKeys.list(toValue(tenantId), toValue(invoiceId))),
     queryFn: () => {
       const id = toValue(invoiceId);
-      return unwrap(tenantApi(toValue(tenantId)).GET("/v1/credit-notes", { params: { query: { page_size: 100, ...(id ? { invoice_id: id } : {}) } } }));
+      return unwrap(tenantApi(toValue(tenantId)).GET("/v1/credit-notes", { params: { query: { page_size: PAGE.long, ...(id ? { invoice_id: id } : {}) } } }));
     },
   });
 }
@@ -28,7 +30,7 @@ export function useCreateCreditNote(tenantId: MaybeRefOrGetter<string>) {
           body: { tenant_id: toValue(tenantId), amount_minor: v.amountMinor, reason: v.reason, ...(v.refundToCard ? { refund_to_card: true } : {}) },
         }),
       ),
-    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "credit-notes"] }),
+    onSuccess: () => queries.invalidateQueries({ queryKey: creditNoteKeys.all(toValue(tenantId)) }),
   });
 }
 
@@ -38,6 +40,6 @@ export function useRetryCreditNoteRefund(tenantId: MaybeRefOrGetter<string>) {
   return useMutation({
     mutationFn: (creditNoteId: string) =>
       unwrap(api.POST("/admin/v1/credit-notes/{id}/retry-refund", { params: { path: { id: creditNoteId } }, body: { tenant_id: toValue(tenantId) } })),
-    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "credit-notes"] }),
+    onSuccess: () => queries.invalidateQueries({ queryKey: creditNoteKeys.all(toValue(tenantId)) }),
   });
 }

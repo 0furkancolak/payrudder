@@ -107,7 +107,7 @@ on its metrics port.
 
 ## Configuration
 
-Environment variables only (12-factor), parsed by `pkg/config` into typed structs (`caarlos0/env`). Every setting is a `PAYRUDDER_*` variable. The old `QUOTIFY_*` spelling still works for the services and `payrudderctl` and logs a deprecation warning; when both are set, `PAYRUDDER_*` wins ([ADR 0022](adr/0022-payrudder-rename.md)). Example:
+Environment variables only (12-factor), parsed by `pkg/config` into typed structs (`caarlos0/env`). Every setting is a `PAYRUDDER_*` variable. The old `PAYRUDDER_*` spelling still works for the services and `payrudderctl` and logs a deprecation warning; when both are set, `PAYRUDDER_*` wins ([ADR 0022](adr/0022-payrudder-rename.md)). Example:
 
 ```
 PAYRUDDER_ENV=local

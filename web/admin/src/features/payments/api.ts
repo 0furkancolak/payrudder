@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
 
 export const paymentKeys = {
   ledger: (tenantId: string) => ["tenants", tenantId, "ledger"] as const,
@@ -10,7 +11,7 @@ export const paymentKeys = {
 export function useLedger(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => paymentKeys.ledger(toValue(tenantId))),
-    queryFn: () => unwrap(api.GET("/admin/v1/tenants/{tenant_id}/ledger", { params: { path: { tenant_id: toValue(tenantId) }, query: { limit: 200 } } })),
+    queryFn: () => unwrap(api.GET("/admin/v1/tenants/{tenant_id}/ledger", { params: { path: { tenant_id: toValue(tenantId) }, query: { limit: PAGE.whole } } })),
   });
 }
 

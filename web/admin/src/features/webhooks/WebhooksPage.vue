@@ -10,7 +10,7 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { EVENT_TYPES, useWebhookActions, useWebhookDeliveries, useWebhookEndpoints } from "./api";
+import { EVENT_TYPES, useWebhookActions, useWebhookDeliveries, useWebhookEndpoints, isEventType, type EventType } from "./api";
 
 const { t } = useI18n();
 const fmt = useFormat();
@@ -21,7 +21,7 @@ const act = useWebhookActions(tenantId);
 
 const url = ref("");
 const description = ref("");
-const types = ref<string[]>([]);
+const types = ref<EventType[]>([]);
 const selected = ref("");
 const deliveries = useWebhookDeliveries(tenantId, selected);
 const list = computed(() => endpoints.data.value?.endpoints ?? []);
@@ -40,7 +40,7 @@ function remove(id: string | undefined) {
   if (id && window.confirm(t("billing.webhooks.confirmDelete"))) act.remove.mutate(id);
 }
 function toggle(e: { id?: string; url?: string; description?: string; event_types?: string[]; active?: boolean }) {
-  act.update.mutate({ id: e.id ?? "", url: e.url ?? "", description: e.description ?? "", event_types: e.event_types ?? [], active: !e.active });
+  act.update.mutate({ id: e.id ?? "", url: e.url ?? "", description: e.description ?? "", event_types: (e.event_types ?? []).filter(isEventType), active: !e.active });
 }
 </script>
 

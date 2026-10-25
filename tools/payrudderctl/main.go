@@ -244,14 +244,14 @@ func seedCatalog(c *client, key, env string, customers int) error {
 	return nil
 }
 
-// getenv reads a PAYRUDDER_ setting; the deprecated QUOTIFY_ spelling of the same name still works and prints a warning (ADR 0022).
+// getenv reads a PAYRUDDER_ setting; the deprecated PAYRUDDER_ spelling of the same name still works and prints a warning (ADR 0022).
 func getenv(k string) string {
 	if v := os.Getenv(k); v != "" {
 		return v
 	}
 	if rest, ok := strings.CutPrefix(k, "PAYRUDDER_"); ok {
-		if v := os.Getenv("QUOTIFY_" + rest); v != "" {
-			fmt.Fprintf(os.Stderr, "warning: %s is deprecated; use %s\n", "QUOTIFY_"+rest, k)
+		if v := os.Getenv("PAYRUDDER_" + rest); v != "" {
+			fmt.Fprintf(os.Stderr, "warning: %s is deprecated; use %s\n", "PAYRUDDER_"+rest, k)
 			return v
 		}
 	}

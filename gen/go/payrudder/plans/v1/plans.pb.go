@@ -2500,7 +2500,7 @@ type SyncProviderSubscriptionRequest struct {
 	SubscriptionId string                 `protobuf:"bytes,1,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
 	Provider       string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
 	ProviderRef    string                 `protobuf:"bytes,3,opt,name=provider_ref,json=providerRef,proto3" json:"provider_ref,omitempty"`
-	// "quotify" or "provider", from the provider's capabilities.
+	// "payrudder" or "provider", from the provider's capabilities.
 	Owner string `protobuf:"bytes,4,opt,name=owner,proto3" json:"owner,omitempty"`
 	// The provider's status word: active, trialing, past_due, paused or canceled. Empty links without changing the state.
 	ProviderStatus string `protobuf:"bytes,5,opt,name=provider_status,json=providerStatus,proto3" json:"provider_status,omitempty"`
@@ -3158,7 +3158,7 @@ type PreviewRoutingResponse struct {
 	Provider string `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
 	// Position of the matching rule, -1 when none matched.
 	RuleIndex int32 `protobuf:"varint,2,opt,name=rule_index,json=ruleIndex,proto3" json:"rule_index,omitempty"`
-	// "quotify" or "provider": who renews and retries a subscription sold through it; empty when no provider is chosen.
+	// "payrudder" or "provider": who renews and retries a subscription sold through it; empty when no provider is chosen.
 	Owner string `protobuf:"bytes,3,opt,name=owner,proto3" json:"owner,omitempty"`
 	// Whether the chosen provider can charge in the currency (always true when no provider is chosen).
 	CanCharge     bool `protobuf:"varint,4,opt,name=can_charge,json=canCharge,proto3" json:"can_charge,omitempty"`
