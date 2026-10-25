@@ -6,8 +6,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
 )
 
 // Targets a coupon can be used on.

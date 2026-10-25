@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 // The calls below are written from Paddle's API reference (https://developer.paddle.com/api-reference). Where the reference does not
@@ -38,7 +38,7 @@ func (c *Client) SyncCatalogue(ctx context.Context, r payments.CatalogueRequest)
 		if tax == "" {
 			tax = "saas"
 		}
-		body := map[string]any{"name": r.ProductName, "tax_category": tax, "custom_data": map[string]string{"quotify_plan_code": r.QuotifyPlanCode}}
+		body := map[string]any{"name": r.ProductName, "tax_category": tax, "custom_data": map[string]string{"quotify_plan_code": r.PayrudderPlanCode}}
 		if r.Description != "" {
 			body["description"] = r.Description
 		}
@@ -69,7 +69,7 @@ func (c *Client) SyncCatalogue(ctx context.Context, r payments.CatalogueRequest)
 			"billing_cycle": map[string]any{"interval": spec.Interval, "frequency": 1},
 			"quantity":      map[string]int{"minimum": 1, "maximum": 1},
 			"tax_mode":      c.s.TaxMode,
-			"custom_data":   map[string]string{"quotify_key": spec.Key},
+			"custom_data":   map[string]string{"payrudder_key": spec.Key},
 		}
 		if spec.Name != "" {
 			body["name"] = spec.Name
@@ -105,7 +105,7 @@ func (c *Client) EnsureCustomer(ctx context.Context, s payments.CustomerSpec) (p
 	if len(found.Data) > 0 {
 		refs.CustomerRef = found.Data[0].ID
 	} else {
-		body := map[string]any{"email": s.Email, "custom_data": map[string]string{"quotify_customer_id": s.QuotifyCustomerID}}
+		body := map[string]any{"email": s.Email, "custom_data": map[string]string{"quotify_customer_id": s.PayrudderCustomerID}}
 		if s.Name != "" {
 			body["name"] = s.Name
 		}
@@ -206,7 +206,7 @@ func (c *Client) PortalLink(ctx context.Context, customerRef string, subscriptio
 	return out.Data.URLs.General.Overview, nil
 }
 
-// prorationMode maps Quotify's timing and proration onto Paddle's proration_billing_mode. Paddle changes the items at once; it can bill
+// prorationMode maps Payrudder's timing and proration onto Paddle's proration_billing_mode. Paddle changes the items at once; it can bill
 // the difference now or at the next renewal, but cannot hold an item change back until the end of the period. A change at the period end is
 // refused rather than approximated: the customer would get the new plan at once while the caller believed they would not.
 func prorationMode(timing, proration string) (string, error) {

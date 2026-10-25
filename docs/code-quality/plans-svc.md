@@ -57,7 +57,7 @@ Bulgu sayıları: Kod tekrarı 35 (2'si test kodu), Overengineering 11, Spagetti
   - `services/plans-svc/internal/reports/query/query.go:72-81`
 
   **Öneri:** `tenantsqry.CurrentIn(ctx, q) (row, *time.Location, error)`.
-- **[Orta]** "Değiştirilebilir mi" guard'ı 5 varyantla tekrar ediyor (RequireQuotifyOwned + OpenEnded/CancelAtPeriodEnd + Active/Trialing):
+- **[Orta]** "Değiştirilebilir mi" guard'ı 5 varyantla tekrar ediyor (RequirePayrudderOwned + OpenEnded/CancelAtPeriodEnd + Active/Trialing):
   - `services/plans-svc/internal/providermigrations/command/command.go:117-127`
   - `services/plans-svc/internal/subscriptions/command/planchange.go:115-133`
   - `services/plans-svc/internal/changes/query/query.go:146-161`
@@ -170,7 +170,7 @@ Bulgu sayıları: Kod tekrarı 35 (2'si test kodu), Overengineering 11, Spagetti
 
 ### Clean code ihlalleri
 
-- **[Orta]** Sahip ve ücret zamanlaması sihirli string: `"advance"` 11, `"arrears"` 5, `"quotify"` 8, `"provider"` 16 kez. Örnekler: `services/plans-svc/internal/subscriptions/command/create.go:133`, `:198-210`, `coupons/command/command.go:146`, `providermigrations/command/command.go:60`, `:69`, `:134`, `changes/command/command.go:70`, `:138`, `subscriptions/command/sync.go:49`, `:101`, `:199`, `domain/subscription.go:17`, `convert/convert.go:258`, `:295`. Oysa `pkg/payments/capabilities.go:58-59`'da `OwnerQuotify`/`OwnerProvider` var ve kullanılmıyor. **Öneri:** bu sabitleri kullanın; FeeTiming sabitlerini `pkg/subscription`'a ekleyin.
+- **[Orta]** Sahip ve ücret zamanlaması sihirli string: `"advance"` 11, `"arrears"` 5, `"payrudder"` 8, `"provider"` 16 kez. Örnekler: `services/plans-svc/internal/subscriptions/command/create.go:133`, `:198-210`, `coupons/command/command.go:146`, `providermigrations/command/command.go:60`, `:69`, `:134`, `changes/command/command.go:70`, `:138`, `subscriptions/command/sync.go:49`, `:101`, `:199`, `domain/subscription.go:17`, `convert/convert.go:258`, `:295`. Oysa `pkg/payments/capabilities.go:58-59`'da `OwnerPayrudder`/`OwnerProvider` var ve kullanılmıyor. **Öneri:** bu sabitleri kullanın; FeeTiming sabitlerini `pkg/subscription`'a ekleyin.
 - **[Orta]** Yutulan ya da yanlış sınıflanan hatalar:
   - `services/plans-svc/internal/coupons/command/command.go:149`: `err == nil` dışındaki her hata "kupon yok" sayılıyor. Aynı kontrol `changes/query/query.go:307-311`'de doğru yapılmış.
   - `changes/command/command.go:113`: hata yutuluyor.

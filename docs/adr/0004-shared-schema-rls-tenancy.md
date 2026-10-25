@@ -5,7 +5,7 @@
 
 ## Context
 
-Quotify serves many tenants from the same services. A cross-tenant data leak in a billing system is the worst failure
+Payrudder serves many tenants from the same services. A cross-tenant data leak in a billing system is the worst failure
 mode. We want isolation that survives a missing `WHERE tenant_id = …` in application code, without the operational cost
 of per-tenant databases.
 

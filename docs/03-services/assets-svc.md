@@ -105,7 +105,7 @@ stateDiagram-v2
 ## gRPC API (sketch)
 
 ```proto
-package quotify.assets.v1;
+package payrudder.assets.v1;
 
 service AssetsService {
   rpc CreateUploadSession(CreateUploadSessionRequest) returns (UploadSession);       // direct multipart, ≤ 50 files
@@ -149,7 +149,7 @@ None in v1. A ready asset is referenced by ID (e.g. `tenants.invoice_logo_asset_
 
 ## Scaling notes
 
-Direct uploads scale with S3, not with Quotify: assets-svc only signs URLs and does metadata writes. The proxied path is
+Direct uploads scale with S3, not with Payrudder: assets-svc only signs URLs and does metadata writes. The proxied path is
 bounded by gateway and assets-svc network bandwidth, which is why it is limited to small files.
 **Targets:** 1 GiB file direct-uploaded with 8 parallel parts on the local stack without assets-svc memory exceeding 64 MiB.
 Proxied: 20 × 1 MiB files in one request with gateway RSS growth < 16 MiB.

@@ -1,5 +1,5 @@
 # OpenTelemetry Collector (local). Tail sampling keeps every trace with an error or a span slower than 1 s, and a
-# fraction of the rest (QUOTIFY_TRACE_SAMPLE_PERCENT, default 100 locally; docs/08-observability.md#sampling).
+# fraction of the rest (PAYRUDDER_TRACE_SAMPLE_PERCENT, default 100 locally; docs/08-observability.md#sampling).
 receivers:
   otlp:
     protocols:
@@ -26,11 +26,11 @@ processors:
         latency: { threshold_ms: 1000 }
       - name: debug-marked
         type: boolean_attribute
-        boolean_attribute: { key: quotify.debug, value: true }
+        boolean_attribute: { key: payrudder.debug, value: true }
       - name: baseline
         type: probabilistic
         probabilistic:
-          sampling_percentage: ${env:QUOTIFY_TRACE_SAMPLE_PERCENT:-100}
+          sampling_percentage: ${env:PAYRUDDER_TRACE_SAMPLE_PERCENT:-100}
   batch: {}
 
 exporters:

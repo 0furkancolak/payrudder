@@ -7,8 +7,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
 )
 
 func TestFailureCarriesTheKeyAndKeepsTheReasonFirst(t *testing.T) {

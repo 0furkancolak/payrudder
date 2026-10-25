@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
 // Transfers is the bank transfer side of the ledger: the pending row a charge leaves, the receipts an operator confirms, and the row that closes a transfer.

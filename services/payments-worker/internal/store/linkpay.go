@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
 // LedgerLine is a ledger row as a customer-facing page may see it: no provider reference, no detail.

@@ -2,7 +2,7 @@
 import { Link, useNavigate, useSearch } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -16,7 +16,6 @@ import PasswordField from "./PasswordField.vue";
 
 // The three ways to sign in: e-mail and password, a one-time code mailed to the address, and Google (only when the deployment has set it up).
 const { t } = useI18n();
-const errorText = useErrorText();
 const navigate = useNavigate();
 const search = useSearch({ strict: false });
 const methods = useAuthMethods();
@@ -67,7 +66,7 @@ function submit() {
           <PasswordField id="si-password" v-model="password" autocomplete="current-password" />
           <Link to="/forgot" class="text-muted-foreground hover:text-foreground self-end text-xs underline-offset-4 hover:underline">{{ t("product.signIn.forgot") }}</Link>
         </div>
-        <p v-if="login.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(login.error.value) }}</p>
+        <ErrorText :error="login.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
         <Button type="submit" size="lg" :disabled="login.isPending.value || email.trim() === '' || password === ''">{{ t("product.signIn.submit") }}</Button>
       </form>
       <OtpFlow v-else mode="signin" />

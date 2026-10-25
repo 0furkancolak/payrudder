@@ -3,17 +3,17 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { useErrorText } from "@/shared/lib/errors";
+import { firstError } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { EVENT_TYPES, useWebhookActions, useWebhookDeliveries, useWebhookEndpoints } from "./api";
+import { EVENT_TYPES, useWebhookActions, useWebhookDeliveries, useWebhookEndpoints, isEventType, type EventType } from "./api";
 
 const { t } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const endpoints = useWebhookEndpoints(tenantId);
@@ -21,7 +21,7 @@ const act = useWebhookActions(tenantId);
 
 const url = ref("");
 const description = ref("");
-const types = ref<string[]>([]);
+const types = ref<EventType[]>([]);
 const selected = ref("");
 const deliveries = useWebhookDeliveries(tenantId, selected);
 const list = computed(() => endpoints.data.value?.endpoints ?? []);
@@ -31,10 +31,7 @@ const secret = computed(() => ((act.create.data.value ?? act.rotate.data.value) 
 const when = (v?: string) => fmt.date(v, "shortSeconds", "—");
 const stateVariant = (s?: string) => (s === "WEBHOOK_DELIVERY_STATE_DELIVERED" ? "success" : s === "WEBHOOK_DELIVERY_STATE_FAILED" ? "destructive" : "secondary");
 const stateWord = (s?: string) => t(`billing.webhooks.state.${(s ?? "").replace("WEBHOOK_DELIVERY_STATE_", "").toLowerCase()}`);
-const failure = computed(() => {
-  for (const m of Object.values(act)) if (m.error.value) return errorText(m.error.value);
-  return "";
-});
+const failure = computed(() => firstError(...Object.values(act)));
 
 function create() {
   act.create.mutate({ url: url.value.trim(), description: description.value.trim(), event_types: [...types.value] }, { onSuccess: () => (url.value = description.value = "") });
@@ -43,7 +40,7 @@ function remove(id: string | undefined) {
   if (id && window.confirm(t("billing.webhooks.confirmDelete"))) act.remove.mutate(id);
 }
 function toggle(e: { id?: string; url?: string; description?: string; event_types?: string[]; active?: boolean }) {
-  act.update.mutate({ id: e.id ?? "", url: e.url ?? "", description: e.description ?? "", event_types: e.event_types ?? [], active: !e.active });
+  act.update.mutate({ id: e.id ?? "", url: e.url ?? "", description: e.description ?? "", event_types: (e.event_types ?? []).filter(isEventType), active: !e.active });
 }
 </script>
 
@@ -53,7 +50,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
     <p class="text-muted-foreground text-sm">{{ t("billing.webhooks.hint") }}</p>
     <form class="grid gap-3" role="form" :aria-label="t('billing.webhooks.formLabel')" @submit.prevent="create">
       <div class="grid gap-3 sm:grid-cols-2">
-        <Input v-model="url" type="url" required :aria-label="t('billing.webhooks.url')" placeholder="https://example.com/quotify-webhook" />
+        <Input v-model="url" type="url" required :aria-label="t('billing.webhooks.url')" placeholder="https://example.com/payrudder-webhook" />
         <Input v-model="description" maxlength="200" :aria-label="t('billing.webhooks.description')" :placeholder="t('billing.webhooks.description')" />
       </div>
       <fieldset class="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -69,8 +66,8 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       <p class="text-sm font-medium">{{ t("billing.webhooks.secretOnce") }}</p>
       <p class="mono break-all text-sm" data-testid="webhook-secret">{{ secret }}</p>
     </div>
-    <p v-if="failure" class="text-destructive text-sm" role="alert">{{ failure }}</p>
-    <p v-if="endpoints.error.value" class="text-destructive text-sm" role="alert">{{ errorText(endpoints.error.value) }}</p>
+    <ErrorText :error="failure" />
+    <ErrorText :error="endpoints.error.value" />
   </Card>
 
   <Card class="mb-6 p-3">

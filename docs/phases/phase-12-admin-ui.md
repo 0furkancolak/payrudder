@@ -20,7 +20,7 @@ read-only views, plus two actions: DLQ redrive and saga retry.
 - [ ] (not done) Sandbox/live toggle per account. Sandbox actions: set payment scenario per customer, "close period now"
 - [~] Views: tenants list and invoices list done; meters/plans/customers and the usage chart are not
 - [x] Invoice detail: lines, saga state, `saga_events` timeline, PDF link
-- [~] DLQ view with redrive action (confirmation dialog): RabbitMQ only, Kafka DLQs stay in `quotifyctl dlq`
+- [~] DLQ view with redrive action (confirmation dialog): RabbitMQ only, Kafka DLQs stay in `payrudderctl dlq`
 - [~] Replay/re-rating jobs: lookup by job id only, no listing
 - [x] Compose `app` profile entry. Playwright smoke test
 - [x] CI job: `npm` lint, typecheck, build, Playwright smoke

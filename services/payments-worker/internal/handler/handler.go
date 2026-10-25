@@ -13,12 +13,14 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/grpc/codes"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/workerx"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // Handler routes commands by environment (ADR 0011) and, for live tenants, by their provider account.
@@ -134,8 +136,21 @@ func envName(env plansv1.Environment) string {
 	return "live"
 }
 
+// codeKeys are the error keys (docs/error-keys.md) of the codes PaymentErrored carries.
+var codeKeys = map[string]string{
+	CodeNotConfigured: errkey.Key("payments.charge.provider_not_configured"),
+	CodeTimeout:       errkey.Key("payments.charge.timeout"),
+	CodeRejected:      errkey.Key("payments.charge.rejected"),
+	CodeCurrency:      errkey.Key("payments.charge.currency_not_supported"),
+	CodePending:       errkey.Key("payments.charge.pending"),
+}
+
 func errored(retryable bool, code, msg string) *commandsv1.ReplyEnvelope {
-	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentErrored{PaymentErrored: &commandsv1.PaymentErrored{Retryable: retryable, Code: code, Message: msg}}}
+	key, ok := codeKeys[code]
+	if !ok {
+		key = errkey.Default(codes.Internal)
+	}
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentErrored{PaymentErrored: &commandsv1.PaymentErrored{Retryable: retryable, Code: code, Message: msg, ErrorKey: key}}}
 }
 
 // Handle implements workerx.Handler.
@@ -174,7 +189,7 @@ func (h *Handler) count(ctx context.Context, reply *commandsv1.ReplyEnvelope, er
 }
 
 var paymentsTotal = func() metric.Int64Counter {
-	c, err := otel.Meter("github.com/0furkancolak/quotify/services/payments-worker").Int64Counter("payments",
+	c, err := otel.Meter("github.com/0furkancolak/payrudder/services/payments-worker").Int64Counter("payments",
 		metric.WithDescription("Payment commands handled, by result"))
 	if err != nil {
 		panic(err)
@@ -323,7 +338,7 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 		return reply, nil
 	}
 	if !capabilities(prov).Refunds {
-		// The credit note then shows the refund as failed, with this reason: the money goes back outside Quotify (for a bank transfer, by a transfer back).
+		// The credit note then shows the refund as failed, with this reason: the money goes back outside Payrudder (for a bank transfer, by a transfer back).
 		return errored(false, CodeRejected, prov.Name()+" has no refund API; refund the customer outside Payrudder"), nil
 	}
 	if _, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, "refund", run.env, prov.Name(), rf.GetIdempotencyKey(), rf); err != nil {

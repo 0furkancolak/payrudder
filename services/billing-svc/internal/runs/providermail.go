@@ -3,15 +3,15 @@ package runs
 import (
 	"slices"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/address"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
-	"github.com/0furkancolak/quotify/pkg/payments/providers"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/address"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/pkg/payments/providers"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 )
 
 // providerMails reports whether the named provider mails the customer its own receipt for what it charges (Paddle does as merchant of record; iyzico does
-// not). An empty or unknown name is the tenant's default provider account, which sends nothing Quotify can rely on.
+// not). An empty or unknown name is the tenant's default provider account, which sends nothing Payrudder can rely on.
 func providerMails(name string) bool {
 	c, ok := providers.Lookup(name)
 	return ok && c.SendsOwnReceipts

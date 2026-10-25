@@ -11,8 +11,8 @@ api:
 sources:
   containers:
     type: docker_logs
-    include_labels: ["com.docker.compose.project=quotify"]
-    exclude_containers: ["quotify-vector"]
+    include_labels: ["com.docker.compose.project=payrudder"]
+    exclude_containers: ["payrudder-vector"]
 
 transforms:
   label:

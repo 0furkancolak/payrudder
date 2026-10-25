@@ -98,7 +98,7 @@
             "rate": 73.23060064867802,
             "count": 20534
         },
-        "quotify_429": {
+        "payrudder_429": {
             "rate": 0.03566309566995131,
             "count": 10
         },
@@ -107,7 +107,7 @@
             "passes": 20534,
             "value": 1
         },
-        "quotify_5xx": {
+        "payrudder_5xx": {
             "count": 0,
             "rate": 0,
             "thresholds": {

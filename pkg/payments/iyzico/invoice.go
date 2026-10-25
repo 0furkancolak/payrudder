@@ -5,10 +5,10 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
-// checkoutResponse is the part of the checkout form answer that Quotify reads.
+// checkoutResponse is the part of the checkout form answer that Payrudder reads.
 type checkoutResponse struct {
 	Status         string `json:"status"`
 	ErrorCode      string `json:"errorCode"`

@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/config"
 )
 
 // The embedded defaults name only settings this service has, hold no secret and give no default to a required setting.

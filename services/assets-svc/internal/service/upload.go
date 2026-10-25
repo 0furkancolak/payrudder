@@ -13,13 +13,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/store/sqlc"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store/sqlc"
 )
 
 // errTooLarge ends a stream that goes beyond its purpose's size limit.

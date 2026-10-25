@@ -76,7 +76,7 @@ describe("headers", () => {
 describe("envScript", () => {
   it("renders the settings and strips characters that could break out of the string", () => {
     const js = envScript({ BRAND_NAME: 'Pay"rudder</script>', CONSOLE_DEMO: "true" });
-    expect(js).toBe('window.__QUOTIFY__={"prefill":false,"brand":"Payrudderscript","demo":true};');
+    expect(js).toBe('window.__PAYRUDDER__={"prefill":false,"brand":"Payrudderscript","demo":true};');
   });
 });
 

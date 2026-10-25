@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap } from "@/shared/api/client";
+import { POLL } from "@/shared/api/limits";
 import { isOperator } from "@/shared/lib/session";
 import { toParams, type DashQuery } from "./lib";
 import type { Environment } from "@/shared/lib/environment";
@@ -37,6 +38,6 @@ export function useDashboard(source: MaybeRefOrGetter<DashSource | null>, query:
     },
     enabled: computed(() => toValue(source) !== null && (toValue(source)?.kind === "tenant" ? isOperator.value : true)),
     placeholderData: keepPreviousData,
-    refetchInterval: 60_000,
+    refetchInterval: POLL.figures,
   });
 }

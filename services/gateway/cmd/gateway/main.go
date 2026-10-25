@@ -1,4 +1,4 @@
-// Command gateway is Quotify's single public entry point: HTTP/JSON in, gRPC out.
+// Command gateway is Payrudder's single public entry point: HTTP/JSON in, gRPC out.
 package main
 
 import (
@@ -20,24 +20,24 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
-	"github.com/0furkancolak/quotify/services/gateway/internal/auth"
-	"github.com/0furkancolak/quotify/services/gateway/internal/httpapi"
-	"github.com/0furkancolak/quotify/services/gateway/internal/oidc"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
+	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/httpapi"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 //go:embed config.default.yaml
@@ -45,58 +45,58 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	HTTPAddr       string `env:"QUOTIFY_HTTP_ADDR"`
-	PlansAddr      string `env:"QUOTIFY_PLANS_ADDR"`
-	IngestAddr     string `env:"QUOTIFY_INGEST_ADDR"`
-	AggregatorAddr string `env:"QUOTIFY_AGGREGATOR_ADDR"`
-	LimitsAddr     string `env:"QUOTIFY_LIMITS_ADDR"`
-	BillingAddr    string `env:"QUOTIFY_BILLING_ADDR"`
-	AnalyticsAddr  string `env:"QUOTIFY_ANALYTICS_ADDR"`
-	AssetsAddr     string `env:"QUOTIFY_ASSETS_ADDR"`
-	RedisURL       string `env:"QUOTIFY_REDIS_URL"`
-	OperatorToken  string `env:"QUOTIFY_OPERATOR_TOKEN,required"`
+	HTTPAddr       string `env:"PAYRUDDER_HTTP_ADDR"`
+	PlansAddr      string `env:"PAYRUDDER_PLANS_ADDR"`
+	IngestAddr     string `env:"PAYRUDDER_INGEST_ADDR"`
+	AggregatorAddr string `env:"PAYRUDDER_AGGREGATOR_ADDR"`
+	LimitsAddr     string `env:"PAYRUDDER_LIMITS_ADDR"`
+	BillingAddr    string `env:"PAYRUDDER_BILLING_ADDR"`
+	AnalyticsAddr  string `env:"PAYRUDDER_ANALYTICS_ADDR"`
+	AssetsAddr     string `env:"PAYRUDDER_ASSETS_ADDR"`
+	RedisURL       string `env:"PAYRUDDER_REDIS_URL"`
+	OperatorToken  string `env:"PAYRUDDER_OPERATOR_TOKEN,required"`
 	// PaymentsURL is payments-worker's HTTP address; empty disables provider webhooks and provider accounts.
-	PaymentsURL   string   `env:"QUOTIFY_PAYMENTS_URL"`
-	PaymentsToken string   `env:"QUOTIFY_PAYMENTS_INTERNAL_TOKEN"`
-	Replicas      int      `env:"QUOTIFY_GATEWAY_REPLICAS"`
-	AllowedEnvs   []string `env:"QUOTIFY_ALLOWED_ENVIRONMENTS" envSeparator:","`
+	PaymentsURL   string   `env:"PAYRUDDER_PAYMENTS_URL"`
+	PaymentsToken string   `env:"PAYRUDDER_PAYMENTS_INTERNAL_TOKEN"`
+	Replicas      int      `env:"PAYRUDDER_GATEWAY_REPLICAS"`
+	AllowedEnvs   []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// PublicURL is the address customers reach the gateway at, for the invoice links it hands out (https://api.example.com). Empty: relative links.
-	PublicURL string `env:"QUOTIFY_PUBLIC_URL"`
+	PublicURL string `env:"PAYRUDDER_PUBLIC_URL"`
 	// TrustForwardedFor counts the public sign-in limits by X-Forwarded-For, for requests that come from a private address (the console's Worker or proxy).
-	TrustForwardedFor bool `env:"QUOTIFY_TRUST_FORWARDED_FOR"`
+	TrustForwardedFor bool `env:"PAYRUDDER_TRUST_FORWARDED_FOR"`
 	// TrustedProxies (CIDRs, comma separated) are networks whose X-Forwarded-For is believed even from a public address. Empty by default.
-	TrustedProxies []string `env:"QUOTIFY_TRUSTED_PROXIES" envSeparator:","`
+	TrustedProxies []string `env:"PAYRUDDER_TRUSTED_PROXIES" envSeparator:","`
 	// TrustedProxySecret is the shared secret an edge proxy (the console's Worker) sends as X-Edge-Auth to have its X-Forwarded-For believed. A secret:
 	// environment only. Prefer it for Cloudflare, whose Worker egress addresses are not stable.
-	TrustedProxySecret string `env:"QUOTIFY_TRUSTED_PROXY_SECRET"`
+	TrustedProxySecret string `env:"PAYRUDDER_TRUSTED_PROXY_SECRET"`
 	// OperatorEmails lists the addresses of the platform operators (comma separated). A person who signs in with one of them and has verified it may use the
-	// operator console. Empty: nobody does; the machine token (QUOTIFY_OPERATOR_TOKEN) is still the credential of the API.
-	OperatorEmails []string `env:"QUOTIFY_OPERATOR_EMAILS" envSeparator:","`
+	// operator console. Empty: nobody does; the machine token (PAYRUDDER_OPERATOR_TOKEN) is still the credential of the API.
+	OperatorEmails []string `env:"PAYRUDDER_OPERATOR_EMAILS" envSeparator:","`
 	// AppURL is the console's public address: the browser is sent back to it after "Continue with Google", and the Google redirect address defaults to
 	// <AppURL>/gw/auth/google/callback.
-	AppURL string `env:"QUOTIFY_APP_URL"`
+	AppURL string `env:"PAYRUDDER_APP_URL"`
 	// GoogleClientID and GoogleClientSecret register this deployment at Google. Both set: the Google button is shown. The secret is never in YAML or a log.
-	GoogleClientID     string `env:"QUOTIFY_GOOGLE_CLIENT_ID"`
-	GoogleClientSecret string `env:"QUOTIFY_GOOGLE_CLIENT_SECRET"`
+	GoogleClientID     string `env:"PAYRUDDER_GOOGLE_CLIENT_ID"`
+	GoogleClientSecret string `env:"PAYRUDDER_GOOGLE_CLIENT_SECRET"`
 	// GoogleRedirectURL overrides <AppURL>/gw/auth/google/callback when the browser reaches the gateway at another address than the console.
-	GoogleRedirectURL string `env:"QUOTIFY_GOOGLE_REDIRECT_URL"`
+	GoogleRedirectURL string `env:"PAYRUDDER_GOOGLE_REDIRECT_URL"`
 	// GoogleIssuer is the OpenID provider's address. Google's by default; development points it at the in-repo mock (tools/mockoidc).
-	GoogleIssuer string `env:"QUOTIFY_GOOGLE_ISSUER"`
+	GoogleIssuer string `env:"PAYRUDDER_GOOGLE_ISSUER"`
 }
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	if len(c.OperatorToken) < 32 {
-		errs = append(errs, errors.New("QUOTIFY_OPERATOR_TOKEN must be at least 32 characters"))
+		errs = append(errs, errors.New("PAYRUDDER_OPERATOR_TOKEN must be at least 32 characters"))
 	}
 	if c.Replicas < 1 {
-		errs = append(errs, errors.New("QUOTIFY_GATEWAY_REPLICAS must be ≥ 1"))
+		errs = append(errs, errors.New("PAYRUDDER_GATEWAY_REPLICAS must be ≥ 1"))
 	}
 	if (c.GoogleClientID == "") != (c.GoogleClientSecret == "") {
-		errs = append(errs, errors.New("QUOTIFY_GOOGLE_CLIENT_ID and QUOTIFY_GOOGLE_CLIENT_SECRET must be set together"))
+		errs = append(errs, errors.New("PAYRUDDER_GOOGLE_CLIENT_ID and PAYRUDDER_GOOGLE_CLIENT_SECRET must be set together"))
 	}
 	if c.GoogleClientID != "" {
-		for name, v := range map[string]string{"QUOTIFY_APP_URL": c.AppURL, "QUOTIFY_GOOGLE_ISSUER": c.GoogleIssuer} {
+		for name, v := range map[string]string{"PAYRUDDER_APP_URL": c.AppURL, "PAYRUDDER_GOOGLE_ISSUER": c.GoogleIssuer} {
 			if u, err := url.Parse(v); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
 				errs = append(errs, fmt.Errorf("%s must be an http(s) address when Google sign-in is set up", name))
 			}
@@ -106,12 +106,12 @@ func (c *Config) Validate() error {
 		errs = append(errs, err)
 	}
 	if c.TrustedProxySecret != "" && len(c.TrustedProxySecret) < 32 {
-		errs = append(errs, errors.New("QUOTIFY_TRUSTED_PROXY_SECRET must be at least 32 characters"))
+		errs = append(errs, errors.New("PAYRUDDER_TRUSTED_PROXY_SECRET must be at least 32 characters"))
 	}
 	return errors.Join(errs...)
 }
 
-// parseProxies reads QUOTIFY_TRUSTED_PROXIES: CIDRs, or single addresses (taken as /32 or /128).
+// parseProxies reads PAYRUDDER_TRUSTED_PROXIES: CIDRs, or single addresses (taken as /32 or /128).
 func parseProxies(list []string) ([]netip.Prefix, error) {
 	var out []netip.Prefix
 	for _, raw := range list {
@@ -123,7 +123,7 @@ func parseProxies(list []string) ([]netip.Prefix, error) {
 		if err != nil {
 			a, aerr := netip.ParseAddr(raw)
 			if aerr != nil {
-				return nil, fmt.Errorf("QUOTIFY_TRUSTED_PROXIES: %q is not a CIDR or an address", raw)
+				return nil, fmt.Errorf("PAYRUDDER_TRUSTED_PROXIES: %q is not a CIDR or an address", raw)
 			}
 			p = netip.PrefixFrom(a, a.BitLen())
 		}
@@ -168,7 +168,7 @@ func run() error {
 
 	opts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
-		return fmt.Errorf("QUOTIFY_REDIS_URL: %w", err)
+		return fmt.Errorf("PAYRUDDER_REDIS_URL: %w", err)
 	}
 	rdb := redis.NewClient(opts)
 	defer func() { _ = rdb.Close() }()
@@ -251,7 +251,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 	var paymentsURL *url.URL
 	if cfg.PaymentsURL != "" {
 		if paymentsURL, err = url.Parse(cfg.PaymentsURL); err != nil {
-			return nil, fmt.Errorf("QUOTIFY_PAYMENTS_URL: %w", err)
+			return nil, fmt.Errorf("PAYRUDDER_PAYMENTS_URL: %w", err)
 		}
 	}
 	proxies, err := parseProxies(cfg.TrustedProxies)

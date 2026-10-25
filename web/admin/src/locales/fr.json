@@ -125,7 +125,7 @@
     },
     "jobs": {
       "title": "Tâches de rejeu et de retarification",
-      "hint": "Retrouvez une tâche par son id (on les lance avec quotifyctl ou l'API d'administration).",
+      "hint": "Retrouvez une tâche par son id (on les lance avec payrudderctl ou l'API d'administration).",
       "idLabel": "Id de la tâche",
       "replay": "Tâche de rejeu",
       "rerating": "Tâche de retarification"
@@ -789,7 +789,7 @@
     },
     "webhooks": {
       "title": "Webhooks",
-      "hint": "Payrudder envoie un POST JSON signé à ces points de terminaison HTTPS quand il se passe quelque chose dans le compte : une facture est payée, un avoir est émis, un abonnement change. Vérifiez l'en-tête Quotify-Signature avec le secret du point de terminaison ; les livraisons échouées sont retentées pendant environ un jour et demi.",
+      "hint": "Payrudder envoie un POST JSON signé à ces points de terminaison HTTPS quand il se passe quelque chose dans le compte : une facture est payée, un avoir est émis, un abonnement change. Vérifiez l'en-tête Payrudder-Signature avec le secret du point de terminaison ; les livraisons échouées sont retentées pendant environ un jour et demi.",
       "formLabel": "nouveau point de terminaison webhook",
       "url": "URL du point de terminaison",
       "description": "Description",
@@ -1326,7 +1326,8 @@
         "bad_customer_id": "L'identifiant du client n'est pas valide.",
         "bad_page_size": "La taille de page doit être comprise entre 1 et 500.",
         "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste.",
-        "pdf_sign_failed": "Le lien de téléchargement du PDF n'a pas pu être créé. Réessayez dans un instant."
+        "pdf_sign_failed": "Le lien de téléchargement du PDF n'a pas pu être créé. Réessayez dans un instant.",
+        "pdf_failed": "Le PDF de la facture n'a pas pu être généré. Vérifiez les données de la facture."
       },
       "invoice_link": {
         "bad_expiry": "Le lien doit expirer dans 1 à 365 jours.",
@@ -1600,7 +1601,8 @@
         "sync_failed": "Le compte du prestataire a été modifié, mais les coordonnées bancaires n'ont pas pu être transmises aux factures. Renvoyez la requête."
       },
       "billing": {
-        "not_configured": "La facturation n'est pas configurée sur ce déploiement."
+        "not_configured": "La facturation n'est pas configurée sur ce déploiement.",
+        "failed": "Le service de facturation n'a pas pu terminer cette opération. Réessayez dans un instant."
       },
       "plans": {
         "not_configured": "Les plans ne sont pas configurés sur ce déploiement.",
@@ -1661,6 +1663,13 @@
         "not_recorded": "La notification n'a pas pu être enregistrée. Renvoyez-la.",
         "try_again": "La notification n'a pas encore pu être confirmée. Renvoyez-la.",
         "unverified": "Il n'a pas été possible de vérifier que la notification provient du prestataire."
+      },
+      "charge": {
+        "currency_not_supported": "Ce prestataire de paiement ne peut pas encaisser dans cette devise.",
+        "pending": "Le paiement a été accepté et attend son règlement.",
+        "provider_not_configured": "Aucun prestataire de paiement n'est configuré pour ce compte.",
+        "rejected": "Le prestataire de paiement a rejeté la demande.",
+        "timeout": "Le prestataire de paiement n'a pas répondu à temps."
       }
     },
     "einvoice": {

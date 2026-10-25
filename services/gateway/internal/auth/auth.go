@@ -22,10 +22,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/apikey"
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // CacheTTL bounds how stale a cached key can be if the revocation eviction fails.
@@ -110,7 +110,7 @@ type Authenticator struct {
 
 // New returns an Authenticator.
 func New(cache Cache, resolver Resolver, allowedEnvs []string, log *slog.Logger) (*Authenticator, error) {
-	c, err := otel.Meter("github.com/0furkancolak/quotify/services/gateway/auth").
+	c, err := otel.Meter("github.com/0furkancolak/payrudder/services/gateway/auth").
 		Int64Counter("gateway_auth_failures", metric.WithDescription("Rejected API keys by reason"))
 	if err != nil {
 		return nil, err

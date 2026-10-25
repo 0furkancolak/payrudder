@@ -4,7 +4,7 @@ Status: accepted; pooled mode is built, cells are built in stages (phase 28).
 
 ## Context
 
-Today every table carries `tenant_id` and Postgres row-level security, forced, scopes each transaction to one tenant (`app.tenant_id`). That is cheap and correct for thousands of small tenants in one database. The owner may sell Quotify as a service and wants isolation in the style of
+Today every table carries `tenant_id` and Postgres row-level security, forced, scopes each transaction to one tenant (`app.tenant_id`). That is cheap and correct for thousands of small tenants in one database. The owner may sell Payrudder as a service and wants isolation in the style of
 [pgcells](https://github.com/0furkancolak/pgcells): a tenant is a schema in exactly one **cell** (a Postgres cluster behind a transaction-mode pooler), a small **directory** says where, connections are a budget, every call names its target.
 
 ## Decision

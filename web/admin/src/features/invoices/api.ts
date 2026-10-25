@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, ApiError, tenantApi, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
 
 export const invoiceKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "invoices"] as const,
@@ -12,7 +13,7 @@ export const invoiceKeys = {
 export function useTenantInvoices(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => invoiceKeys.list(toValue(tenantId))),
-    queryFn: () => unwrap(api.GET("/admin/v1/tenants/{tenant_id}/invoices", { params: { path: { tenant_id: toValue(tenantId) }, query: { page_size: 100 } } })),
+    queryFn: () => unwrap(api.GET("/admin/v1/tenants/{tenant_id}/invoices", { params: { path: { tenant_id: toValue(tenantId) }, query: { page_size: PAGE.long } } })),
   });
 }
 

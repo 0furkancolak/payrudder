@@ -16,13 +16,13 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/pkg/workerx"
-	"github.com/0furkancolak/quotify/services/invoice-worker/internal/handler"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/invoice-worker/internal/handler"
 )
 
 // countingStore counts the writes that reach the bucket.
@@ -159,7 +159,7 @@ func TestInvoiceWorker(t *testing.T) {
 		bad, _ := proto.Marshal(&cmd)
 		send(bad)
 		got := replies(1)
-		if len(got) != 1 || got[0].GetPdfFailed() == nil {
+		if len(got) != 1 || got[0].GetPdfFailed() == nil || got[0].GetPdfFailed().GetErrorKey() != "billing.invoice.pdf_failed" {
 			t.Fatalf("replies = %v, want PdfFailed", got)
 		}
 	})

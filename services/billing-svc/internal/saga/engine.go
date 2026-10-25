@@ -18,15 +18,15 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/outbox"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
-	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // MaxStepAttempts is how often the sweeper issues the command of one step before giving up.
@@ -55,7 +55,7 @@ type Snapshot struct {
 	Environment      string `json:"environment"` // "sandbox" | "live"
 	CurrencyExponent int    `json:"currency_exponent"`
 	LogoObjectKey    string `json:"logo_object_key,omitempty"`
-	// ProviderMails: the provider takes the payment and mails the customer its own receipt (decided when the draft was made), so Quotify sends none.
+	// ProviderMails: the provider takes the payment and mails the customer its own receipt (decided when the draft was made), so Payrudder sends none.
 	ProviderMails bool `json:"provider_mails,omitempty"`
 	// The postal addresses as printed lines, frozen when the draft was made.
 	SellerAddress   []string `json:"seller_address,omitempty"`
@@ -153,7 +153,7 @@ func NewEngine(cfg Config) (*Engine, error) {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
-	m := otel.Meter("github.com/0furkancolak/quotify/services/billing-svc/saga")
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/billing-svc/saga")
 	e := &Engine{cfg: cfg}
 	var err error
 	if e.transitions, err = m.Int64Counter("saga_transitions", metric.WithDescription("Saga transitions applied, by from, to and cause")); err != nil {
@@ -319,10 +319,10 @@ func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev Event, r
 	now := e.cfg.Now()
 	from, next := s.State, res.To
 	causeKind := strings.SplitN(cause, ":", 2)[0]
-	ctx, span := otel.Tracer("github.com/0furkancolak/quotify/services/billing-svc/saga").Start(ctx, "saga.transition",
+	ctx, span := otel.Tracer("github.com/0furkancolak/payrudder/services/billing-svc/saga").Start(ctx, "saga.transition",
 		trace.WithAttributes(attribute.String("saga.id", s.ID.String()), attribute.String("saga.from", string(from)),
 			attribute.String("saga.to", string(next)), attribute.String("saga.cause", causeKind),
-			attribute.String("quotify.tenant_id", s.TenantID.String())))
+			attribute.String("payrudder.tenant_id", s.TenantID.String())))
 	defer span.End()
 
 	st := e.planStep(s, ev, res, now)

@@ -9,7 +9,7 @@ import (
 )
 
 func TestHeadersAreSortedAndRoundTrip(t *testing.T) {
-	m := Standard("quotify.events.v1.UsageEvent", "01JD", "tenant-1")
+	m := Standard("payrudder.events.v1.UsageEvent", "01JD", "tenant-1")
 	hs := Headers(m)
 	for i := 1; i < len(hs); i++ {
 		if hs[i-1].Key >= hs[i].Key {
@@ -17,7 +17,7 @@ func TestHeadersAreSortedAndRoundTrip(t *testing.T) {
 		}
 	}
 	back := HeaderMap(hs)
-	if len(back) != 4 || back[HeaderCEType] != "quotify.events.v1.UsageEvent" || back[HeaderContentType] != ContentTypeProtobuf ||
+	if len(back) != 4 || back[HeaderCEType] != "payrudder.events.v1.UsageEvent" || back[HeaderContentType] != ContentTypeProtobuf ||
 		back[HeaderCEID] != "01JD" || back[HeaderTenantID] != "tenant-1" {
 		t.Fatalf("round trip = %v", back)
 	}

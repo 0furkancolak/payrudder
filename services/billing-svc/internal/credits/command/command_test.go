@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 func TestCreatePackRefusesBadInputBeforeTouchingTheDatabase(t *testing.T) {

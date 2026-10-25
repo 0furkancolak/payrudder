@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
+	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
 )
 
 type fakeAnalytics struct {

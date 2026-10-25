@@ -125,7 +125,7 @@
     },
     "jobs": {
       "title": "Trabajos de repetición y retarificación",
-      "hint": "Busque un trabajo por su id (se inician con quotifyctl o la API de administración).",
+      "hint": "Busque un trabajo por su id (se inician con payrudderctl o la API de administración).",
       "idLabel": "Id del trabajo",
       "replay": "Trabajo de repetición",
       "rerating": "Trabajo de retarificación"
@@ -789,7 +789,7 @@
     },
     "webhooks": {
       "title": "Webhooks",
-      "hint": "Payrudder envía un POST JSON firmado a estos endpoints HTTPS cuando ocurre algo en la cuenta: se paga una factura, se emite una nota de crédito, cambia una suscripción. Verifica la cabecera Quotify-Signature con el secreto del endpoint; las entregas fallidas se reintentan durante día y medio aproximadamente.",
+      "hint": "Payrudder envía un POST JSON firmado a estos endpoints HTTPS cuando ocurre algo en la cuenta: se paga una factura, se emite una nota de crédito, cambia una suscripción. Verifica la cabecera Payrudder-Signature con el secreto del endpoint; las entregas fallidas se reintentan durante día y medio aproximadamente.",
       "formLabel": "nuevo endpoint de webhook",
       "url": "URL del endpoint",
       "description": "Descripción",
@@ -1326,7 +1326,8 @@
         "bad_customer_id": "El identificador del cliente no es válido.",
         "bad_page_size": "El tamaño de página debe estar entre 1 y 500.",
         "bad_page_token": "El token de página no es válido. Empieza la lista de nuevo.",
-        "pdf_sign_failed": "No se pudo crear el enlace de descarga del PDF. Inténtalo de nuevo en un momento."
+        "pdf_sign_failed": "No se pudo crear el enlace de descarga del PDF. Inténtalo de nuevo en un momento.",
+        "pdf_failed": "No se pudo generar el PDF de la factura. Revisa los datos de la factura."
       },
       "invoice_link": {
         "bad_expiry": "El enlace debe caducar entre 1 y 365 días.",
@@ -1600,7 +1601,8 @@
         "sync_failed": "La cuenta del proveedor se modificó, pero los datos bancarios no pudieron pasarse a las facturas. Envía la solicitud de nuevo."
       },
       "billing": {
-        "not_configured": "La facturación no está configurada en este despliegue."
+        "not_configured": "La facturación no está configurada en este despliegue.",
+        "failed": "El servicio de facturación no pudo completar esto. Inténtalo de nuevo en un momento."
       },
       "plans": {
         "not_configured": "Los planes no están configurados en este despliegue.",
@@ -1661,6 +1663,13 @@
         "not_recorded": "No se pudo registrar la notificación. Envíala de nuevo.",
         "try_again": "La notificación aún no pudo confirmarse. Envíala de nuevo.",
         "unverified": "No se pudo verificar que la notificación venga del proveedor."
+      },
+      "charge": {
+        "currency_not_supported": "Este proveedor de pago no puede cobrar en esta moneda.",
+        "pending": "El pago fue aceptado y está esperando a liquidarse.",
+        "provider_not_configured": "No hay ningún proveedor de pago configurado para esta cuenta.",
+        "rejected": "El proveedor de pago rechazó la solicitud.",
+        "timeout": "El proveedor de pago no respondió a tiempo."
       }
     },
     "einvoice": {

@@ -125,7 +125,7 @@
     },
     "jobs": {
       "title": "Replay and re-rating jobs",
-      "hint": "Look a job up by id (start them with quotifyctl or the admin API).",
+      "hint": "Look a job up by id (start them with payrudderctl or the admin API).",
       "idLabel": "Job id",
       "replay": "Replay job",
       "rerating": "Re-rating job"
@@ -789,7 +789,7 @@
     },
     "webhooks": {
       "title": "Webhooks",
-      "hint": "Payrudder sends a signed JSON POST to these HTTPS endpoints when something happens in the account: an invoice is paid, a credit note is issued, a subscription changes. Verify the Quotify-Signature header with the endpoint's secret; failed deliveries are retried for about a day and a half.",
+      "hint": "Payrudder sends a signed JSON POST to these HTTPS endpoints when something happens in the account: an invoice is paid, a credit note is issued, a subscription changes. Verify the Payrudder-Signature header with the endpoint's secret; failed deliveries are retried for about a day and a half.",
       "formLabel": "new webhook endpoint",
       "url": "Endpoint URL",
       "description": "Description",
@@ -1326,7 +1326,8 @@
         "bad_customer_id": "The customer id is not a valid id.",
         "bad_page_size": "The page size must be between 1 and 500.",
         "bad_page_token": "The page token is not valid. Start the list again.",
-        "pdf_sign_failed": "The PDF download link could not be created. Try again shortly."
+        "pdf_sign_failed": "The PDF download link could not be created. Try again shortly.",
+        "pdf_failed": "The invoice PDF could not be rendered. Check the invoice data."
       },
       "invoice_link": {
         "bad_expiry": "The link must expire in 1 to 365 days.",
@@ -1600,7 +1601,8 @@
         "sync_failed": "The provider account was changed, but the bank details could not be passed on to the invoices. Send the request again."
       },
       "billing": {
-        "not_configured": "Billing is not set up on this deployment."
+        "not_configured": "Billing is not set up on this deployment.",
+        "failed": "The billing service could not complete this. Try again shortly."
       },
       "plans": {
         "not_configured": "Plans are not set up on this deployment.",
@@ -1661,6 +1663,13 @@
         "not_recorded": "The notification could not be recorded. Send it again.",
         "try_again": "The notification could not be confirmed yet. Send it again.",
         "unverified": "The notification could not be verified as coming from the provider."
+      },
+      "charge": {
+        "currency_not_supported": "This payment provider cannot charge in this currency.",
+        "pending": "The payment was accepted and is waiting to be settled.",
+        "provider_not_configured": "No payment provider is set up for this account.",
+        "rejected": "The payment provider rejected the request.",
+        "timeout": "The payment provider did not answer in time."
       }
     },
     "einvoice": {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 func (e *env) setTax(rates ...*plansv1.TaxRate) {
@@ -27,7 +27,7 @@ func (e *env) invoiceAmounts(period, customer string) (subtotal, total int64) {
 	return subtotal, total
 }
 
-func testTaxIsAddedOnTopOfTheInvoicesQuotifyRaises(t *testing.T) {
+func testTaxIsAddedOnTopOfTheInvoicesPayrudderRaises(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	e.startWorkers(nil)
 	pv := e.pv() // base fee 1000

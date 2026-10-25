@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
@@ -12,7 +12,6 @@ import { useVoidExpense, type Expense } from "./api";
 const props = defineProps<{ tenantId: string; expense: Expense | null }>();
 const open = defineModel<boolean>("open", { required: true });
 const { t } = useI18n();
-const errorText = useErrorText();
 const voidIt = useVoidExpense(() => props.tenantId);
 const reason = ref("");
 
@@ -40,7 +39,7 @@ function submit() {
           <Label for="void-reason">{{ t("billing.accounting.void.reason") }}</Label>
           <Input id="void-reason" v-model="reason" maxlength="200" autocomplete="off" />
         </div>
-        <p v-if="voidIt.error.value" class="text-destructive text-sm" role="alert">{{ errorText(voidIt.error.value) }}</p>
+        <ErrorText :error="voidIt.error.value" />
         <DialogFooter>
           <Button type="button" variant="outline" @click="open = false">{{ t("billing.accounting.form.cancel") }}</Button>
           <Button type="submit" variant="destructive" :disabled="voidIt.isPending.value || reason.trim() === ''">{{ t("billing.accounting.void.submit") }}</Button>

@@ -1,0 +1,443 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+// Environment of a tenant. qk_test_ keys resolve to the sandbox tenant, qk_live_ keys to the live tenant (ADR 0011).
+enum Environment {
+  ENVIRONMENT_UNSPECIFIED = 0;
+  ENVIRONMENT_SANDBOX = 1;
+  ENVIRONMENT_LIVE = 2;
+}
+
+// Where a tenant is in its life (phase 45). A sandbox tenant is always ACTIVE. A live tenant is created INACTIVE: it has no API keys and no webhook
+// endpoints until the go-live checklist is complete and it is activated. An operator can SUSPEND an active tenant: its keys stop working.
+enum TenantStatus {
+  TENANT_STATUS_UNSPECIFIED = 0;
+  TENANT_STATUS_INACTIVE = 1;
+  TENANT_STATUS_ACTIVE = 2;
+  TENANT_STATUS_SUSPENDED = 3;
+}
+
+// Rate-limit and quota tier of a tenant (docs/06-multi-tenancy.md#quotas-and-fairness).
+enum TenantTier {
+  TENANT_TIER_UNSPECIFIED = 0;
+  TENANT_TIER_FREE = 1;
+  TENANT_TIER_STANDARD = 2;
+  TENANT_TIER_ENTERPRISE = 3;
+}
+
+// Address is a postal address as printed on an invoice. Every part is optional; country is ISO 3166-1 alpha-2.
+message Address {
+  string line1 = 1;
+  string line2 = 2;
+  string city = 3;
+  // State, province or county.
+  string region = 4;
+  string postal_code = 5;
+  string country = 6;
+}
+
+// BankTransferDetails are the public part of a tenant's bank transfer account, printed on its invoices.
+message BankTransferDetails {
+  string bank_name = 1;
+  string account_holder = 2;
+  // Normalised: capitals, no spaces.
+  string iban = 3;
+  string bic = 4;
+  // The payment reference template, e.g. "{invoice_number}".
+  string reference_template = 5;
+  // Currencies the account takes; empty means any.
+  repeated string currencies = 6;
+  // The tenant's default payment account: invoices of customers without a provider of their own show these details.
+  bool is_default = 7;
+}
+
+// LegalInfo is the seller's company data printed on its invoices and sent in e-invoices (docs/phases/phase-30-e-invoice.md). Every part is optional.
+message LegalInfo {
+  string legal_name = 1;
+  // VKN or TCKN in Turkey, the VAT id (with country prefix) in the EU.
+  string tax_id = 2;
+  // Turkey's vergi dairesi.
+  string tax_office = 3;
+  string mersis_no = 4;
+  string trade_registry_no = 5;
+}
+
+// Account is a company using Payrudder. It has apps; each app has a sandbox and a live tenant.
+message Account {
+  string id = 1;
+  string name = 2;
+  // Every tenant of every app, as before.
+  repeated Tenant tenants = 3;
+  google.protobuf.Timestamp create_time = 4;
+  repeated App apps = 5;
+}
+
+// App is one application of an account, with a sandbox and a live environment (tenants). Its keys, customers, plans, subscriptions and invoices are its own.
+message App {
+  string id = 1;
+  string account_id = 2;
+  string name = 3;
+  // Lower case with dashes, unique within the account: "web-shop".
+  string slug = 4;
+  repeated Tenant tenants = 5;
+  google.protobuf.Timestamp create_time = 6;
+}
+
+// Tenant is one environment of an account and the unit of isolation.
+message Tenant {
+  string id = 1;
+  string account_id = 2;
+  Environment environment = 3;
+  string name = 4;
+  TenantTier tier = 5;
+  // ISO 4217 code, chosen at creation, immutable.
+  string currency = 6;
+  // IANA time zone, chosen at creation, immutable. Billing periods are calendar months in it.
+  string timezone = 7;
+  // 0..7 days. Changes apply from the next period.
+  google.protobuf.Duration grace_period = 8;
+  google.protobuf.Timestamp create_time = 9;
+  // READY invoice_logo asset (assets-svc) drawn on the tenant's invoice PDFs; empty = no logo.
+  string invoice_logo_asset_id = 10;
+  // The app this environment belongs to.
+  string app_id = 11;
+  // The seller address printed on the tenant's invoices.
+  Address address = 12;
+  // The bank transfer account printed on invoices paid by transfer; unset when the tenant has none.
+  BankTransferDetails bank_transfer = 13;
+  // The company data of the seller, for e-invoices.
+  LegalInfo legal = 14;
+  // When an invoice becomes an e-invoice: "off" (default), "finalized" or "paid". Credit notes follow the invoice.
+  string e_invoice_on = 15;
+  TenantStatus status = 16;
+  // When the tenant was activated (live) — empty while INACTIVE.
+  google.protobuf.Timestamp activate_time = 17;
+  // When the owner accepted the terms of service; empty until then.
+  google.protobuf.Timestamp terms_accept_time = 18;
+}
+
+// ApiKey metadata. The plaintext key is returned once, by CreateApiKey.
+message ApiKey {
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_ACTIVE = 1;
+    STATUS_REVOKED = 2;
+  }
+  enum Scope {
+    SCOPE_UNSPECIFIED = 0;
+    SCOPE_FULL = 1;
+    SCOPE_INGEST = 2;
+    SCOPE_READ = 3;
+  }
+  string id = 1;
+  string tenant_id = 2;
+  // 8 characters, the non-secret lookup part of qk_{env}_{prefix}_{secret}.
+  string prefix = 3;
+  Environment environment = 4;
+  Status status = 5;
+  google.protobuf.Timestamp create_time = 6;
+  google.protobuf.Timestamp revoke_time = 7;
+  // What the key may do: FULL everything the tenant API offers, INGEST only POST /v1/events, READ only GET requests.
+  Scope scope = 8;
+  // When the key last authenticated a request (kept to within a few minutes); empty when never used.
+  google.protobuf.Timestamp last_used_time = 9;
+  // When the key stops working although it is not revoked: the old key of a rotation, valid for its overlap window. Empty for a key without an end.
+  google.protobuf.Timestamp expire_time = 10;
+}
+
+// Customer is a tenant's end customer, the entity that gets invoiced.
+message Customer {
+  string id = 1;
+  string external_id = 2;
+  string name = 3;
+  string email = 4;
+  // Opaque PSP token. In sandbox, one of the pm_sandbox_* scenario tokens.
+  string payment_method = 5;
+  google.protobuf.Timestamp create_time = 6;
+  // ISO 3166-1 alpha-2, e.g. "TR". Empty = unknown. Provider routing (Phase 16) reads it.
+  string country = 7;
+  // ISO 4217 code the customer is billed in. Empty = the tenant's currency.
+  string billing_currency = 8;
+  // The billing address printed on the customer's invoices. Its country is the customer's country.
+  Address address = 9;
+  // The customer's tax id (VKN/TCKN, VAT id), tax office and whether it is registered for e-fatura; used on e-invoices.
+  string tax_id = 10;
+  string tax_office = 11;
+  bool e_invoice_registered = 12;
+}
+
+enum Aggregation {
+  AGGREGATION_UNSPECIFIED = 0;
+  AGGREGATION_SUM = 1;
+  AGGREGATION_COUNT = 2;
+  AGGREGATION_MAX = 3;
+}
+
+// FilterValues is the set of accepted values for one event property (equality only).
+message FilterValues {
+  repeated string values = 1;
+}
+
+// Meter defines what is measured. Versions are append-only; quantity_scale is fixed per code.
+message Meter {
+  string code = 1;
+  int32 version = 2;
+  Aggregation aggregation = 3;
+  // Event property holding the quantity. Empty for COUNT.
+  string value_property = 4;
+  map<string, FilterValues> filter = 5;
+  // Decimal places accepted in event quantities (0..6, ADR 0010).
+  uint32 quantity_scale = 6;
+  string unit_label = 7;
+  google.protobuf.Timestamp create_time = 8;
+}
+
+message Plan {
+  string id = 1;
+  string code = 2;
+  string name = 3;
+  // 0 until the first version is published.
+  int32 latest_version = 4;
+  google.protobuf.Timestamp create_time = 5;
+}
+
+// PriceTier is one band of a graduated price. Quantities are decimals in meter units.
+message PriceTier {
+  // Inclusive upper bound. Empty means unbounded; only the last tier may be unbounded.
+  string up_to = 1;
+  // Decimal in minor units per meter unit, e.g. "0.002".
+  string unit_price = 2;
+  int64 flat_fee_minor = 3;
+}
+
+message PerUnitPrice {
+  string unit_price = 1;
+}
+
+message TieredGraduatedPrice {
+  repeated PriceTier tiers = 1;
+}
+
+message PackagePrice {
+  // Decimal in meter units, > 0.
+  string package_size = 1;
+  int64 package_price_minor = 2;
+}
+
+// Price turns a meter's quantity into money within a plan version.
+message Price {
+  string meter_code = 1;
+  oneof model {
+    PerUnitPrice per_unit = 2;
+    TieredGraduatedPrice tiered = 3;
+    PackagePrice package = 4;
+  }
+}
+
+// Entitlement is a per-period limit on a meter.
+message Entitlement {
+  string meter_code = 1;
+  // Decimal in meter units. "0" means unlimited.
+  string limit = 2;
+  repeated int32 alert_thresholds_pct = 3;
+}
+
+// PlanVersion is an immutable snapshot of prices and entitlements.
+message PlanVersion {
+  string id = 1;
+  string plan_id = 2;
+  string plan_code = 3;
+  int32 version = 4;
+  int64 base_fee_minor = 5;
+  repeated Price prices = 6;
+  repeated Entitlement entitlements = 7;
+  google.protobuf.Timestamp publish_time = 8;
+  // Fixed fee in other currencies than the tenant's. The tenant currency's fee is base_fee_minor.
+  repeated CurrencyFee fees = 9;
+  // Usage prices in the currencies of fees, when the plan version has metered prices.
+  repeated CurrencyPrices currency_prices = 10;
+}
+
+// CurrencyPrices prices every metered component of a plan version in one currency (minor units of that currency).
+message CurrencyPrices {
+  string currency = 1;
+  repeated Price prices = 2;
+}
+
+// CurrencyFee is the fixed fee of a plan version in one currency, in minor units.
+message CurrencyFee {
+  string currency = 1;
+  int64 base_fee_minor = 2;
+  // The billing interval the fee is for. Unspecified = month. A fee in the tenant's currency is only listed here for the year: the monthly one is base_fee_minor.
+  SubscriptionInterval interval = 3;
+}
+
+// Subscription links a customer to a plan version over [start_time, end_time).
+message Subscription {
+  string id = 1;
+  string customer_id = 2;
+  string customer_external_id = 3;
+  string plan_version_id = 4;
+  google.protobuf.Timestamp start_time = 5;
+  // Unset means open-ended.
+  google.protobuf.Timestamp end_time = 6;
+  google.protobuf.Timestamp create_time = 7;
+  SubscriptionState state = 8;
+  SubscriptionInterval interval = 9;
+  // ISO 4217 code, fixed for the life of the subscription.
+  string currency = 10;
+  // Unset = no trial. While now < trial_end_time the subscription is TRIALING and its fixed fee is not charged.
+  google.protobuf.Timestamp trial_end_time = 11;
+  // The subscription ends at the end of its current billing period instead of continuing.
+  bool cancel_at_period_end = 12;
+  google.protobuf.Timestamp pause_time = 13;
+  // The subscription this one replaced in a plan change; billing splits the fixed fee of the month between them.
+  string changed_from_id = 14;
+  // The payment provider that sells this subscription (empty: the tenant's default). Chosen when the subscription is created.
+  string provider = 15;
+  // The provider's id of the subscription, when the provider runs it (for Paddle, "sub_...").
+  string provider_ref = 16;
+  // Who renews the subscription and retries its failed renewals: "quotify" (the default) or "provider". A provider-owned subscription is
+  // changed at the provider; its fixed fee is billed by the provider, not on Payrudder's invoice.
+  string owner = 17;
+  // The package (plan) and its version this subscription is on.
+  string plan_code = 18;
+  int32 plan_version = 19;
+  // When the fixed fee is invoiced: in advance at the start of each period, or in arrears with the month's usage.
+  FeeTiming fee_timing = 20;
+  // A change of plan or interval that is waiting for the end of the period the customer has paid for.
+  ScheduledChange scheduled_change = 21;
+  // The coupon taking something off the fixed fee, if any.
+  string coupon_code = 22;
+}
+
+message ScheduledChange {
+  string plan_code = 1;
+  int32 plan_version = 2;
+  SubscriptionInterval interval = 3;
+  google.protobuf.Timestamp effective_time = 4;
+}
+
+enum FeeTiming {
+  FEE_TIMING_UNSPECIFIED = 0;
+  FEE_TIMING_ADVANCE = 1;
+  FEE_TIMING_ARREARS = 2;
+}
+
+enum SubscriptionState {
+  SUBSCRIPTION_STATE_UNSPECIFIED = 0;
+  SUBSCRIPTION_STATE_TRIALING = 1;
+  SUBSCRIPTION_STATE_ACTIVE = 2;
+  SUBSCRIPTION_STATE_PAST_DUE = 3;
+  SUBSCRIPTION_STATE_PAUSED = 4;
+  SUBSCRIPTION_STATE_CANCELLED = 5;
+}
+
+enum SubscriptionInterval {
+  SUBSCRIPTION_INTERVAL_UNSPECIFIED = 0;
+  SUBSCRIPTION_INTERVAL_MONTH = 1;
+  SUBSCRIPTION_INTERVAL_YEAR = 2;
+}
+
+
+// Coupon is the definition of a discount: a percentage or an amount off, or bonus credits on a credit purchase. It takes something off the fixed fee of a
+// subscription Payrudder renews, off a credit purchase, or off a payment link or invoice, as applies_to says. Customers type a PromotionCode, not the coupon.
+message Coupon {
+  string code = 1;
+  string name = 2;
+  // 1..10000 (1000 = 10 %); zero for an amount or a bonus coupon.
+  int32 percent_bps = 3;
+  // Minor units of currency; zero for another kind. An amount coupon applies only in its currency.
+  int64 amount_minor = 4;
+  string currency = 5;
+  CouponDuration duration = 6;
+  // For REPEATING: how many periods.
+  int32 duration_periods = 7;
+  // 0 = unlimited. Counts the redemptions of the coupon through all its promotion codes.
+  int32 max_redemptions = 8;
+  // The redemptions that count against the limit (the redemption ledger).
+  int32 redeemed = 9;
+  google.protobuf.Timestamp expire_time = 10;
+  bool active = 11;
+  google.protobuf.Timestamp create_time = 12;
+  string id = 13;
+  // Extra credits on a credit purchase, as a share of the credits bought: 1000 = 10 % more, in the same lot. Zero for another kind. Only for CREDIT_PURCHASE.
+  int32 bonus_percent_bps = 14;
+  // Where the coupon works. Empty on create means subscription, credit purchase and payment; a bonus coupon is for CREDIT_PURCHASE only.
+  repeated CouponTarget applies_to = 15;
+  int32 promotion_code_count = 16;
+  // Create only: do not make the promotion code with the coupon's own text that a new coupon gets by default.
+  bool without_default_code = 17;
+}
+
+// CouponTarget is what a coupon is used on.
+enum CouponTarget {
+  COUPON_TARGET_UNSPECIFIED = 0;
+  // The fixed fee of a subscription.
+  COUPON_TARGET_SUBSCRIPTION = 1;
+  // The price of a credit pack purchase (a discount) or its credits (a bonus).
+  COUPON_TARGET_CREDIT_PURCHASE = 2;
+  // A payment link, a hosted checkout or an invoice raised by hand.
+  COUPON_TARGET_PAYMENT = 3;
+}
+
+// PromotionCode is what a customer types. Many codes can point to one coupon, each with its own limit, expiry and restrictions.
+message PromotionCode {
+  string id = 1;
+  string coupon_code = 2;
+  string code = 3;
+  bool active = 4;
+  // 0 = unlimited.
+  int32 max_redemptions = 5;
+  int32 redeemed = 6;
+  google.protobuf.Timestamp expire_time = 7;
+  // Only a customer who has bought nothing yet.
+  bool first_purchase_only = 8;
+  // Each customer once.
+  bool one_per_customer = 9;
+  // A purchase under this amount (in min_amount_currency) cannot use the code.
+  int64 min_amount_minor = 10;
+  string min_amount_currency = 11;
+  // Empty means any.
+  repeated string allowed_plans = 12;
+  repeated string allowed_packs = 13;
+  repeated string allowed_currencies = 14;
+  // A void or full refund gives the redemption back to the count. Off by default.
+  bool restore_on_reversal = 15;
+  google.protobuf.Timestamp create_time = 16;
+  string coupon_id = 17;
+}
+
+// CouponRedemption is one use of a coupon.
+message CouponRedemption {
+  string id = 1;
+  string coupon_code = 2;
+  // Empty when the coupon was applied by an operator or came from a grant.
+  string promotion_code = 3;
+  string customer_external_id = 4;
+  CouponTarget target = 5;
+  // The subscription, or the invoice of the purchase or payment. Rows of migrated coupons that no subscription holds have a made-up one.
+  string target_id = 6;
+  string invoice_id = 7;
+  // What it took off (a subscription's grows with each fee it is taken off), and the credits it added.
+  int64 discount_minor = 8;
+  int64 bonus_credits = 9;
+  string currency = 10;
+  google.protobuf.Timestamp create_time = 11;
+  // Set when a void or a full refund reversed it.
+  google.protobuf.Timestamp reverse_time = 12;
+}
+
+enum CouponDuration {
+  COUPON_DURATION_UNSPECIFIED = 0;
+  // The first fee only.
+  COUPON_DURATION_ONCE = 1;
+  // The first duration_periods fees.
+  COUPON_DURATION_REPEATING = 2;
+  // Every fee, for as long as the subscription lasts.
+  COUPON_DURATION_FOREVER = 3;
+}

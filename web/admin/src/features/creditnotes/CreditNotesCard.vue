@@ -2,20 +2,20 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { useErrorText } from "@/shared/lib/errors";
-import { formatMinor, parseMajor } from "@/shared/lib/money";
+import { formatMinor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
 import { useCreateCreditNote, useCreditNotes, useRetryCreditNoteRefund } from "./api";
+import { creditAmountMinor } from "./lib";
 
 /** Credit notes of a tenant, or of one invoice; with `issuable` a paid invoice can be credited here. */
 const props = defineProps<{ tenantId: string; invoiceId?: string; currency?: string; issuable?: boolean }>();
 const { t, locale } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const notes = useCreditNotes(
   () => props.tenantId,
   () => props.invoiceId ?? "",
@@ -43,14 +43,10 @@ function where(n: { disposition?: string; refund_state?: string }) {
 
 function issue() {
   formError.value = "";
-  let minor = "0";
-  if (amount.value.trim() !== "") {
-    const parsed = parseMajor(amount.value, props.currency ?? "USD");
-    if (parsed === null || parsed === "0") {
-      formError.value = t("billing.creditNotes.badAmount", { currency: props.currency ?? "" });
-      return;
-    }
-    minor = parsed;
+  const minor = creditAmountMinor(amount.value, props.currency);
+  if (minor === null) {
+    formError.value = t("billing.creditNotes.badAmount", { currency: props.currency ?? "" });
+    return;
   }
   create.mutate(
     { invoiceId: props.invoiceId ?? "", amountMinor: minor, reason: reason.value.trim(), refundToCard: toCard.value },
@@ -68,10 +64,10 @@ function issue() {
       <label class="flex items-center gap-2 text-sm"><input v-model="toCard" type="checkbox" class="size-4" />{{ t("billing.creditNotes.refundToCard") }}</label>
       <Button type="submit" :disabled="create.isPending.value">{{ t("billing.creditNotes.create") }}</Button>
     </form>
-    <p v-if="formError" class="text-destructive px-3 text-sm" role="alert">{{ formError }}</p>
-    <p v-if="create.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(create.error.value) }}</p>
-    <p v-if="retry.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(retry.error.value) }}</p>
-    <p v-if="notes.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(notes.error.value) }}</p>
+    <ErrorText :message="formError" class="px-3" />
+    <ErrorText :error="create.error.value" class="px-3" />
+    <ErrorText :error="retry.error.value" class="px-3" />
+    <ErrorText :error="notes.error.value" class="px-3" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

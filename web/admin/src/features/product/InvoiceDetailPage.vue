@@ -5,9 +5,9 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { ManualPaymentsCard } from "@/features/invoices";
-import { useErrorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
@@ -19,7 +19,6 @@ import { useInvoice, useOpenInvoicePdf } from "./billingApi";
  */
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const invoiceId = computed(() => String(params.value.invoiceId ?? ""));
@@ -35,7 +34,7 @@ const day = (v?: string) => fmt.date(v, "day");
       <ArrowLeft class="size-4 rtl:rotate-180" />{{ t("product.billing.invoice.back") }}
     </Link>
 
-    <p v-if="invoice.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(invoice.error.value) }}</p>
+    <ErrorText :error="invoice.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
     <Skeleton v-if="invoice.isPending.value" class="h-48 rounded-3xl" />
 
     <template v-if="inv">
@@ -56,7 +55,7 @@ const day = (v?: string) => fmt.date(v, "day");
             <dd>{{ day(inv.finalize_time || inv.create_time) }}</dd>
           </dl>
           <Button :disabled="!inv.number || pdf.isPending.value" @click="pdf.mutate()"><FileText />{{ t("product.billing.invoice.openPdf") }}</Button>
-          <p v-if="pdf.error.value" class="text-destructive text-sm" role="alert">{{ errorText(pdf.error.value) }}</p>
+          <ErrorText :error="pdf.error.value" />
         </div>
       </div>
 

@@ -1,10 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { useI18n } from "vue-i18n";
 import { api, unwrap } from "@/shared/api/client";
+import { POLL } from "@/shared/api/limits";
 import type { components } from "@/shared/api/schema";
 import type { Currency } from "@/shared/lib/currencies";
 import type { Environment } from "@/shared/lib/environment";
+import { toApiLocale } from "@/shared/lib/locale";
 import { personToken, setActiveAccount, setOperatorFlag, setPersonToken } from "@/shared/lib/session";
 
 // The product API (/auth, /app/v1): what a signed-in person sees in their accounts. Types come from the OpenAPI file.
@@ -22,11 +24,18 @@ export const productKeys = {
   me: ["app", "me"] as const,
   account: ["app", "account"] as const,
   apps: ["app", "apps"] as const,
+  authMethods: ["auth", "methods"] as const,
   app: (id: string) => ["app", "apps", id] as const,
   overview: (id: string, env: Environment) => ["app", "apps", id, "overview", env] as const,
   keys: (id: string) => ["app", "apps", id, "keys"] as const,
   invitations: ["app", "account", "invitations"] as const,
 };
+
+/** A new session starts from nothing cached (another person's data must not show) and keeps the token of this tab. */
+function startSession(queries: QueryClient, s: { token?: string; operator?: boolean }): void {
+  queries.clear();
+  setPersonToken(s.token ?? null, s.operator === true);
+}
 
 /** Signs in and keeps the session token of this tab. */
 export function useSignIn() {
@@ -34,8 +43,7 @@ export function useSignIn() {
   return useMutation({
     mutationFn: (body: { email: string; password: string }) => unwrap(api.POST("/auth/signin", { body })),
     onSuccess: (s) => {
-      queries.clear();
-      setPersonToken(s.token ?? null, s.operator === true);
+      startSession(queries, s);
     },
   });
 }
@@ -50,11 +58,10 @@ export function useSignUp() {
   const { locale } = useI18n();
   return useMutation({
     mutationFn: async (body: { email: string; password: string; display_name: string; account_name: string }) => {
-      await unwrap(api.POST("/auth/signup", { body: { ...body, locale: locale.value as "en" } }));
+      await unwrap(api.POST("/auth/signup", { body: { ...body, locale: toApiLocale(locale.value) } }));
       try {
         const s = await unwrap(api.POST("/auth/signin", { body: { email: body.email, password: body.password } }));
-        queries.clear();
-        setPersonToken(s.token ?? null, s.operator === true);
+        startSession(queries, s);
         return { signedIn: true };
       } catch {
         return { signedIn: false };
@@ -80,7 +87,7 @@ export function useResendVerification() {
 /** "Forgot password": the answer is the same for every address. */
 export function useForgotPassword() {
   const { locale } = useI18n();
-  return useMutation({ mutationFn: (email: string) => unwrap(api.POST("/auth/forgot", { body: { email, locale: locale.value as "en" } })) });
+  return useMutation({ mutationFn: (email: string) => unwrap(api.POST("/auth/forgot", { body: { email, locale: toApiLocale(locale.value) } })) });
 }
 
 export function useResetPassword() {
@@ -123,7 +130,7 @@ export function useMe() {
 /** Which sign-in methods this deployment offers (the Google button shows only when it is set up). Password and one-time codes are always on. */
 export function useAuthMethods() {
   return useQuery({
-    queryKey: ["auth", "methods"] as const,
+    queryKey: productKeys.authMethods,
     queryFn: () => unwrap(api.GET("/auth/methods")),
     staleTime: 5 * 60_000,
     // The page works while this loads or fails: the password form is always there.
@@ -134,7 +141,7 @@ export function useAuthMethods() {
 /** Asks for a one-time code by mail. The answer is the same whether the address has an account or not. */
 export function useRequestCode() {
   const { locale } = useI18n();
-  return useMutation({ mutationFn: (email: string) => unwrap(api.POST("/auth/otp/request", { body: { email, locale: locale.value as "en" } })) });
+  return useMutation({ mutationFn: (email: string) => unwrap(api.POST("/auth/otp/request", { body: { email, locale: toApiLocale(locale.value) } })) });
 }
 
 /** Signs in (or signs up, for an address without an account) with the code that was mailed; keeps the session token of this tab. */
@@ -143,10 +150,9 @@ export function useVerifyCode() {
   const { locale } = useI18n();
   return useMutation({
     mutationFn: (v: { email: string; code: string; display_name?: string; account_name?: string }) =>
-      unwrap(api.POST("/auth/otp/verify", { body: { ...v, locale: locale.value as "en" } })),
+      unwrap(api.POST("/auth/otp/verify", { body: { ...v, locale: toApiLocale(locale.value) } })),
     onSuccess: (s) => {
-      queries.clear();
-      setPersonToken(s.token ?? null, s.operator === true);
+      startSession(queries, s);
     },
   });
 }
@@ -173,7 +179,7 @@ export function useOverview(id: MaybeRefOrGetter<string>, env: MaybeRefOrGetter<
     queryFn: () => unwrap(api.GET("/app/v1/apps/{id}/overview", { params: { path: { id: toValue(id) }, query: { environment: toValue(env) } } })),
     enabled: computed(() => enabled.value && toValue(id) !== ""),
     // The numbers move while the page is open (a payment arrives): look again once a minute.
-    refetchInterval: 60_000,
+    refetchInterval: POLL.figures,
   });
 }
 
@@ -234,7 +240,7 @@ export function useInviteMember() {
   const queries = useQueryClient();
   const { locale } = useI18n();
   return useMutation({
-    mutationFn: (body: { email: string; role: Role }) => unwrap(api.POST("/app/v1/account/invitations", { body: { ...body, locale: locale.value as "en" } })),
+    mutationFn: (body: { email: string; role: Role }) => unwrap(api.POST("/app/v1/account/invitations", { body: { ...body, locale: toApiLocale(locale.value) } })),
     onSuccess: () => refreshAccount(queries),
   });
 }
@@ -291,10 +297,9 @@ export function useAcceptInvitation() {
   const { locale } = useI18n();
   return useMutation({
     mutationFn: (v: { token: string; password: string; displayName: string }) =>
-      unwrap(api.POST("/auth/invitations/accept", { body: { token: v.token, password: v.password, display_name: v.displayName, locale: locale.value as "en" } })),
+      unwrap(api.POST("/auth/invitations/accept", { body: { token: v.token, password: v.password, display_name: v.displayName, locale: toApiLocale(locale.value) } })),
     onSuccess: (s) => {
-      queries.clear();
-      setPersonToken(s.token ?? null, s.operator === true);
+      startSession(queries, s);
     },
   });
 }

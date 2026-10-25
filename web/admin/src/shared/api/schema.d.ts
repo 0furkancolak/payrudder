@@ -258,7 +258,7 @@ export interface paths {
         /**
          * Usage of one meter against the customer's limit
          * @description Answered from near-real-time counters. They are eventually consistent (typically well under 2 s behind ingest):
-         *     `as_of` is the ingest time of the newest event reflected in `used`. Quotify never blocks ingest on a limit; call
+         *     `as_of` is the ingest time of the newest event reflected in `used`. Payrudder never blocks ingest on a limit; call
          *     this before serving your customer and decide what to do. A customer without an entitlement on the meter is
          *     `unlimited`. `period` defaults to the current period in the tenant's time zone.
          */
@@ -354,7 +354,7 @@ export interface paths {
         post?: never;
         /**
          * End a subscription (now, or at end_time)
-         * @description With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in advance that Quotify runs, ended now, without a coupon); the response is then {subscription, credited_minor}.
+         * @description With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in advance that Payrudder runs, ended now, without a coupon); the response is then {subscription, credited_minor}.
          */
         delete: operations["cancelSubscription"];
         options?: never;
@@ -484,7 +484,7 @@ export interface paths {
         put?: never;
         /**
          * Redeem a coupon on a subscription that has none
-         * @description A coupon takes something off a fixed fee Quotify invoices in advance. A subscription a provider renews uses a discount at the provider instead.
+         * @description A coupon takes something off a fixed fee Payrudder invoices in advance. A subscription a provider renews uses a discount at the provider instead.
          */
         post: operations["applyCoupon"];
         /** Take the coupon off a subscription (the redemption is not given back) */
@@ -501,11 +501,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The tax Quotify adds to the invoices it raises, by customer country */
+        /** The tax Payrudder adds to the invoices it raises, by customer country */
         get: operations["getTaxRates"];
         /**
          * Replace the tax rates
-         * @description Quotify applies the rates as given, exclusive of the price, to the invoices it raises (monthly usage, fees in advance, plan changes) for customers whose country has a rate, or the rate with an empty country. It does not work out what is due where; the rates and their correctness are the tenant's. Invoices of a subscription a provider runs are taxed by the provider.
+         * @description Payrudder applies the rates as given, exclusive of the price, to the invoices it raises (monthly usage, fees in advance, plan changes) for customers whose country has a rate, or the rate with an empty country. It does not work out what is due where; the rates and their correctness are the tenant's. Invoices of a subscription a provider runs are taxed by the provider.
          */
         put: operations["setTaxRates"];
         post?: never;
@@ -522,7 +522,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** How long Quotify waits before it retries a declined payment */
+        /** How long Payrudder waits before it retries a declined payment */
         get: operations["getDunningSettings"];
         /**
          * Replace the retry delays
@@ -625,7 +625,7 @@ export interface paths {
         put?: never;
         /**
          * Add credits to a customer
-         * @description For a promotion, a goodwill gesture or a sale made outside Quotify. With an `idempotency_key` (or the `Idempotency-Key` header) a repeat of the call adds nothing and returns `replayed: true`; the same key with other values is `billing.credits.key_reused`.
+         * @description For a promotion, a goodwill gesture or a sale made outside Payrudder. With an `idempotency_key` (or the `Idempotency-Key` header) a repeat of the call adds nothing and returns `replayed: true`; the same key with other values is `billing.credits.key_reused`.
          */
         post: operations["grantCredits"];
         delete?: never;
@@ -728,7 +728,7 @@ export interface paths {
         };
         /**
          * Income and expenses of a period, one block per currency
-         * @description Currencies are never converted or added together. Income is read from the invoices: an invoice counts on the UTC day its payment succeeded (gross is its total, tax its TAX lines), credit notes against paid invoices and invoices refunded in full are the refunds. Provider commission is not recorded by Quotify; `provider_fees_minor` is what the tenant entered as `payment_fees` expenses, and `provider_fees_recorded` is false when there is none. `expenses_minor` includes those fees. `profit_minor` is net income minus expenses. The series has one point for every day (or month) of the period. `app_id` limits the expenses, not the income.
+         * @description Currencies are never converted or added together. Income is read from the invoices: an invoice counts on the UTC day its payment succeeded (gross is its total, tax its TAX lines), credit notes against paid invoices and invoices refunded in full are the refunds. Provider commission is not recorded by Payrudder; `provider_fees_minor` is what the tenant entered as `payment_fees` expenses, and `provider_fees_recorded` is false when there is none. `expenses_minor` includes those fees. `profit_minor` is net income minus expenses. The series has one point for every day (or month) of the period. `app_id` limits the expenses, not the income.
          */
         get: operations["getAccountingSummary"];
         put?: never;
@@ -811,8 +811,8 @@ export interface paths {
         get: operations["listWebhookEndpoints"];
         put?: never;
         /**
-         * Register an HTTPS endpoint that receives Quotify's events
-         * @description Quotify sends a signed JSON POST to the endpoint for each event of the types it asks for (all types if none). The response carries the signing secret, once; it cannot be read again, only rotated. Verify each delivery with the `Quotify-Signature` header: `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<raw body>" with the secret>` (two `v1` while a rotated secret is still accepted); reject a timestamp more than five minutes from your clock. Answer 2xx within 10 seconds; anything else is retried after 1 minute, 5 minutes, 30 minutes, 2 hours, 6 hours and 24 hours, then given up (a delivery can be sent again by hand). Events are delivered at least once and not in order: use the event `id` to ignore repeats. The URL must be https and public; at most 20 endpoints.
+         * Register an HTTPS endpoint that receives Payrudder's events
+         * @description Payrudder sends a signed JSON POST to the endpoint for each event of the types it asks for (all types if none). The response carries the signing secret, once; it cannot be read again, only rotated. Verify each delivery with the `Payrudder-Signature` header: `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<raw body>" with the secret>` (two `v1` while a rotated secret is still accepted); reject a timestamp more than five minutes from your clock. Answer 2xx within 10 seconds; anything else is retried after 1 minute, 5 minutes, 30 minutes, 2 hours, 6 hours and 24 hours, then given up (a delivery can be sent again by hand). Events are delivered at least once and not in order: use the event `id` to ignore repeats. The URL must be https and public; at most 20 endpoints.
          */
         post: operations["createWebhookEndpoint"];
         delete?: never;
@@ -1150,9 +1150,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Which kinds of e-mail Quotify sends for the tenant (all on until switched off)
+         * Which kinds of e-mail Payrudder sends for the tenant (all on until switched off)
          * @description Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`. A mail of a category that is off is dropped by the notifier
-         *     (counted in `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule (Paddle does, so Quotify sends none for its payments).
+         *     (counted in `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule (Paddle does, so Payrudder sends none for its payments).
          */
         get: operations["getMailSettings"];
         /**
@@ -1263,7 +1263,7 @@ export interface paths {
         put?: never;
         /**
          * Make a link to the invoice that its customer can open without signing in
-         * @description The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the gateway knows its public address (QUOTIFY_PUBLIC_URL).
+         * @description The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL).
          */
         post: operations["createInvoiceLink"];
         /** Make every link to the invoice stop working */
@@ -1935,7 +1935,7 @@ export interface paths {
         };
         /**
          * Which sign-in methods this deployment offers
-         * @description The page asks this to show only buttons that work. `password` and `otp` are always on; `google` is on when `QUOTIFY_GOOGLE_CLIENT_ID` and `QUOTIFY_GOOGLE_CLIENT_SECRET` are set. Public.
+         * @description The page asks this to show only buttons that work. `password` and `otp` are always on; `google` is on when `PAYRUDDER_GOOGLE_CLIENT_ID` and `PAYRUDDER_GOOGLE_CLIENT_SECRET` are set. Public.
          */
         get: operations["authMethods"];
         put?: never;
@@ -2806,7 +2806,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm money that arrived by bank transfer for an invoice
-         * @description Records one transfer. It is idempotent per (invoice, bank_reference): the same reference again answers 200 with `duplicate: true` (409 `payments.transfer.reference_reused` when the amount differs). The currency must be the invoice's and the amount positive and at most what is outstanding (`payments.transfer.overpayment` otherwise: record what the invoice needs and handle the rest outside Quotify). A partial amount is recorded and the invoice stays unpaid; when the receipts add up to the total the invoice saga is told and the invoice is paid. The actor is taken from the X-Quotify-Actor header.
+         * @description Records one transfer. It is idempotent per (invoice, bank_reference): the same reference again answers 200 with `duplicate: true` (409 `payments.transfer.reference_reused` when the amount differs). The currency must be the invoice's and the amount positive and at most what is outstanding (`payments.transfer.overpayment` otherwise: record what the invoice needs and handle the rest outside Payrudder). A partial amount is recorded and the invoice stays unpaid; when the receipts add up to the total the invoice saga is told and the invoice is paid. The actor is taken from the X-Payrudder-Actor header.
          */
         post: operations["confirmInvoiceTransfer"];
         delete?: never;
@@ -2914,7 +2914,7 @@ export interface paths {
         put?: never;
         /**
          * Move a subscription to another payment provider without charging the customer twice
-         * @description To a provider that runs subscriptions itself (Paddle) a checkout is returned and the old subscription is untouched until the customer has subscribed there. To a provider Quotify runs (iyzico) the new subscription takes over at once, or from a provider-run subscription at the end of the period the old provider was paid for; the old provider is told to stop renewing first.
+         * @description To a provider that runs subscriptions itself (Paddle) a checkout is returned and the old subscription is untouched until the customer has subscribed there. To a provider Payrudder runs (iyzico) the new subscription takes over at once, or from a provider-run subscription at the end of the period the old provider was paid for; the old provider is told to stop renewing first.
          */
         post: operations["startProviderMigration"];
         delete?: never;
@@ -2967,7 +2967,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** What Quotify has created at the provider (products, prices, discounts) */
+        /** What Payrudder has created at the provider (products, prices, discounts) */
         get: operations["listProviderCatalogue"];
         put?: never;
         post?: never;
@@ -3041,8 +3041,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Change the plan or interval of a subscription the provider runs, at the provider, and let Quotify's copy follow
-         * @description 200 when the provider applied the change and Quotify followed; 202 when the provider applied it and Quotify will follow when the provider's notification arrives. A payment that fails prevents the change.
+         * Change the plan or interval of a subscription the provider runs, at the provider, and let Payrudder's copy follow
+         * @description 200 when the provider applied the change and Payrudder followed; 202 when the provider applied it and Payrudder will follow when the provider's notification arrives. A payment that fails prevents the change.
          */
         post: operations["changeProviderSubscription"];
         delete?: never;
@@ -3474,7 +3474,7 @@ export interface paths {
         put?: never;
         /**
          * Record money received outside a payment provider (a bank transfer, cash, other) against an invoice
-         * @description For an invoice that was not charged through Quotify, or whose charge is stuck. Partial payments are recorded; the invoice is paid when they add up to the total. More than is outstanding is refused (`billing.payment.overpayment`). Allowed while the invoice is open or uncollectible and its saga is waiting for or has failed a payment. Idempotent per (invoice, method, reference) when a reference is given: the same call again answers 200 with `duplicate: true`. Who and when are recorded (X-Quotify-Actor, `operator` when absent). An invoice charged by bank transfer is confirmed through its transfer endpoint instead.
+         * @description For an invoice that was not charged through Payrudder, or whose charge is stuck. Partial payments are recorded; the invoice is paid when they add up to the total. More than is outstanding is refused (`billing.payment.overpayment`). Allowed while the invoice is open or uncollectible and its saga is waiting for or has failed a payment. Idempotent per (invoice, method, reference) when a reference is given: the same call again answers 200 with `duplicate: true`. Who and when are recorded (X-Payrudder-Actor, `operator` when absent). An invoice charged by bank transfer is confirmed through its transfer endpoint instead.
          */
         post: operations["adminRecordInvoicePayment"];
         delete?: never;
@@ -3939,7 +3939,7 @@ export interface components {
              * @description 14 days from now; slides on use
              */
             expire_time?: string;
-            /** @description The server's verdict: the person is a platform operator (verified address listed in QUOTIFY_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
+            /** @description The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
             operator?: boolean;
         };
         SessionInfo: {
@@ -3947,7 +3947,7 @@ export interface components {
             memberships?: components["schemas"]["Membership"][];
             /** Format: date-time */
             expire_time?: string;
-            /** @description The server's verdict: the person is a platform operator (verified address listed in QUOTIFY_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
+            /** @description The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
             operator?: boolean;
         };
         MyAccount: {
@@ -4527,7 +4527,7 @@ export interface components {
             invoice_id?: string;
             /** Format: uuid */
             credit_note_id?: string | null;
-            /** @description Quotify's invoice or credit note number */
+            /** @description Payrudder's invoice or credit note number */
             number?: string;
             /** @enum {string} */
             status?: "pending" | "issued" | "failed" | "cancelled";
@@ -4925,7 +4925,7 @@ export interface components {
         CreatedPaymentLink: components["schemas"]["PaymentLink"] & {
             /** @description The secret part of the link; shown once, empty on a replay */
             token?: string;
-            /** @description Absolute when the gateway knows its public address (QUOTIFY_PUBLIC_URL); empty on a replay */
+            /** @description Absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL); empty on a replay */
             url?: string;
             replayed?: boolean;
         };
@@ -4962,7 +4962,7 @@ export interface components {
             id?: string;
             /**
              * Format: uuid
-             * @description The id inside the delivered body and the Quotify-Event-Id header
+             * @description The id inside the delivered body and the Payrudder-Event-Id header
              */
             event_id?: string;
             event_type?: string;
@@ -10723,7 +10723,7 @@ export interface operations {
             query?: never;
             header?: {
                 /** @description Who confirms it (shown in the audit trail); "operator" when absent */
-                "X-Quotify-Actor"?: string;
+                "X-Payrudder-Actor"?: string;
             };
             path: {
                 tenant_id: string;
@@ -10778,7 +10778,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                "X-Quotify-Actor"?: string;
+                "X-Payrudder-Actor"?: string;
             };
             path: {
                 tenant_id: string;
@@ -11064,7 +11064,7 @@ export interface operations {
                     "application/json": {
                         plan_version_id?: string;
                         product_ref?: string;
-                        /** @description Quotify's key of each price created to the provider's id */
+                        /** @description Payrudder's key of each price created to the provider's id */
                         created?: {
                             [key: string]: string;
                         };
@@ -11255,7 +11255,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Changed at the provider; Quotify follows later */
+            /** @description Changed at the provider; Payrudder follows later */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -11293,7 +11293,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Requested; Quotify's copy follows the provider's notification */
+            /** @description Requested; Payrudder's copy follows the provider's notification */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -11323,7 +11323,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Requested; Quotify's copy follows the provider's notification */
+            /** @description Requested; Payrudder's copy follows the provider's notification */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -12046,7 +12046,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                "X-Quotify-Actor"?: string;
+                "X-Payrudder-Actor"?: string;
             };
             path: {
                 id: string;

@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/quantity"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
 )
 
 // Options are the parts of a render that are not in the snapshot.

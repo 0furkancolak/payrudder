@@ -3,10 +3,9 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { toApiError } from "@/shared/api/client";
-import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
 import { useTenantCurrency } from "@/features/tenants/currency";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -16,9 +15,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { usePaymentLinkActions, usePaymentLinks } from "./api";
 import { absoluteUrl, newKey, statusVariant, toRequest, type LinkForm } from "./lib";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 const { t, locale } = useI18n();
-const errorText = useErrorText();
 const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -30,7 +29,7 @@ const form = ref<LinkForm>({
   kind: prefillInvoice ? "invoice" : "adhoc",
   invoiceId: prefillInvoice,
   amount: "",
-  currency: "USD",
+  currency: FALLBACK_CURRENCY,
   description: "",
   customer: query.get("customer") ?? "",
   promotion: "",
@@ -126,8 +125,8 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
       <Button type="submit" class="sm:col-span-2" :disabled="act.create.isPending.value">{{ t("billing.paymentLinks.create") }}</Button>
     </form>
     <p class="text-muted-foreground text-xs">{{ t(form.kind === "adhoc" ? "billing.paymentLinks.adhocHint" : "billing.paymentLinks.invoiceHint") }}</p>
-    <p v-if="formError" class="text-destructive text-sm" role="alert">{{ formError }}</p>
-    <p v-if="act.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(act.create.error.value) }}</p>
+    <ErrorText :message="formError" />
+    <ErrorText :error="act.create.error.value" />
     <div v-if="created && act.create.isSuccess.value" class="border-warning/50 bg-warning/10 grid gap-2 rounded-md border p-3" role="status">
       <template v-if="shownUrl">
         <p class="text-sm font-medium">{{ t("billing.paymentLinks.shownOnce") }}</p>
@@ -154,8 +153,8 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
         <option v-for="s in ['active', 'paid', 'expired', 'revoked']" :key="s" :value="s">{{ t(`billing.paymentLinks.statuses.${s}`) }}</option>
       </NativeSelect>
     </div>
-    <p v-if="links.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(links.error.value).message }}</p>
-    <p v-if="act.revoke.error.value" class="text-destructive px-3 text-sm" role="alert">{{ toApiError(act.revoke.error.value).message }}</p>
+    <ErrorText :error="links.error.value" class="px-3" />
+    <ErrorText :error="act.revoke.error.value" class="px-3" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

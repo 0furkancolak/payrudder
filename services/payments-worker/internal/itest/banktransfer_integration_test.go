@@ -19,20 +19,20 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/secretbox"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/transfers"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/transfers/command"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/transfers/query"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/quotify/services/payments-worker/migrations"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/command"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/query"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
+	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // transferBilling answers for billing-svc: the status of an invoice, and what the saga nudges count.
@@ -178,7 +178,7 @@ func TestBankTransferThroughTheWorker(t *testing.T) {
 	}
 	receipt := func(inv uuid.UUID, amount int64, ref string) (int, map[string]any) {
 		return do("POST", transferPath(inv, "/receipts"), `{"amount_minor":`+itoa(amount)+`,"currency":"TRY","bank_reference":"`+ref+`","note":"statement line","received_at":"2026-11-05T10:00:00Z"}`,
-			"X-Quotify-Actor", "alice@example.com")
+			"X-Payrudder-Actor", "alice@example.com")
 	}
 
 	// 1. The charge calls nothing: it is accepted as pending, with the reference in the ledger, and the status waits.
@@ -227,7 +227,7 @@ func TestBankTransferThroughTheWorker(t *testing.T) {
 		"wrong currency": {`{"amount_minor":100,"currency":"USD","bank_reference":"Z"}`, 400, "payments.transfer.bad_currency"},
 		"future date":    {`{"amount_minor":100,"currency":"TRY","bank_reference":"Z","received_at":"2026-12-01T00:00:00Z"}`, 400, "payments.transfer.bad_date"},
 		"too much":       {`{"amount_minor":150001,"currency":"TRY","bank_reference":"Z"}`, 409, "payments.transfer.overpayment"},
-		"garbage amount": {`{"amount_minor":"abc","currency":"TRY","bank_reference":"Z"}`, 400, "common.invalid_argument"},
+		"garbage amount": {`{"amount_minor":"abc","currency":"TRY","bank_reference":"Z"}`, 400, "payments.transfer.bad_body"},
 	} {
 		if got, out := do("POST", transferPath(invoice, "/receipts"), c.body); got != c.code || errKey(out) != c.key {
 			t.Errorf("%s: %d %v; want %d %s", name, got, out, c.code, c.key)

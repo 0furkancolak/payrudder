@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/quotify/services/aggregator/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
 
 // Once drops expired partitions and returns their names.

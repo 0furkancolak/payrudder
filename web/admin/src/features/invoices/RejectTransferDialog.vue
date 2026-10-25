@@ -2,8 +2,8 @@
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { errorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -12,7 +12,7 @@ import { useInvoicePayments } from "./paymentApi";
 /** Gives up on a pending bank transfer: it was refused (`rejected`) or its time is up (`expired`). The tenant's dunning schedule then applies. */
 const props = defineProps<{ tenantId: string; invoiceId: string; outcome: "rejected" | "expired" }>();
 const open = defineModel<boolean>("open", { required: true });
-const { t, te } = useI18n();
+const { t } = useI18n();
 const pay = useInvoicePayments(
   () => props.tenantId,
   () => props.invoiceId,
@@ -49,7 +49,7 @@ function confirm() {
           <Label for="reject-reason">{{ t("invoice.transfer.reason") }}</Label>
           <Input id="reject-reason" v-model="reason" maxlength="500" autocomplete="off" />
         </div>
-        <p v-if="pay.rejectTransfer.error.value" class="text-destructive text-sm" role="alert">{{ errorText(t, te, pay.rejectTransfer.error.value) }}</p>
+        <ErrorText :error="pay.rejectTransfer.error.value" />
         <DialogFooter>
           <Button type="button" variant="outline" @click="open = false">{{ t("invoice.payment.cancel") }}</Button>
           <Button type="submit" variant="destructive" :disabled="pay.rejectTransfer.isPending.value">{{ outcome === "expired" ? t("invoice.transfer.expire") : t("invoice.transfer.reject") }}</Button>

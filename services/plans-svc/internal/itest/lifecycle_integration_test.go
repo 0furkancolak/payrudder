@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 func testSubscriptionLifecycle(t *testing.T) {
@@ -320,7 +320,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 			return r.GetSubscription()
 		}
 
-		// iyzico (run by Quotify) to Paddle (run by Paddle): the customer has to subscribe at Paddle first.
+		// iyzico (run by Payrudder) to Paddle (run by Paddle): the customer has to subscribe at Paddle first.
 		mkUSD("cus_mig1")
 		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig1", PlanCode: "basic", Provider: "iyzico",
 			StartTime: timestamppb.New(time.Now().Add(-2 * time.Hour))})
@@ -408,7 +408,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatalf("a new migration after an abort: %v", err)
 		}
 
-		// Paddle (run by Paddle) to iyzico (run by Quotify): at the end of the period Paddle has been paid for.
+		// Paddle (run by Paddle) to iyzico (run by Payrudder): at the end of the period Paddle has been paid for.
 		paid := get(nw.GetId())
 		if _, err := e.plans.StartProviderMigration(ctx, &plansv1.StartProviderMigrationRequest{SubscriptionId: paid.GetId(), ToProvider: "iyzico"}); code(t, err) != codes.InvalidArgument {
 			t.Fatalf("no cutover time for a provider-run subscription: %v", err)

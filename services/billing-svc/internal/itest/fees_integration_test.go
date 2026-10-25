@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 func (e *env) feeDue(customer string, pv *plansv1.PlanVersion, interval plansv1.SubscriptionInterval, start, end time.Time, fee int64, mutate func(*plansv1.Subscription)) *plansv1.FeeDue {

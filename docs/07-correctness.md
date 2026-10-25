@@ -325,7 +325,7 @@ Re-rating twice → one correction invoice.
   only in the new generation, and the first 100 differences, stored in the job.
 - `PromoteGeneration` retires N and activates N+1 in one transaction (after locking the tenant's generation rows, so it waits for live batches and they wait for it);
   `DiscardGeneration` deletes the rows of an abandoned generation. Billing runs pin the generation they used, so a promotion does not move a run that already read N.
-- Operator API: `POST /admin/v1/tenants/{tenant_id}/replays`, `GET .../replays/{job_id}`, `POST .../promote`, `POST .../discard`; `quotifyctl replay`.
+- Operator API: `POST /admin/v1/tenants/{tenant_id}/replays`, `GET .../replays/{job_id}`, `POST .../promote`, `POST .../discard`; `payrudderctl replay`.
 
 ---
 
@@ -340,7 +340,7 @@ Re-rating twice → one correction invoice.
   Use `optional` when zero is meaningful.
 - Enums: first value `*_UNSPECIFIED = 0`. Consumers handle unknown enum values (proto3 open enums) as "unknown", never panic.
 - Renames are allowed by wire rules, but **we disallow them** (JSON and logs would break). `buf` lint `FIELD_NO_DELETE` plus review.
-- A semantic change (e.g. quantity unit) is a **new major version**: `quotify.events.v2.UsageEvent` on topic `usage.events.v2`.
+- A semantic change (e.g. quantity unit) is a **new major version**: `payrudder.events.v2.UsageEvent` on topic `usage.events.v2`.
   The producer dual-writes during migration. Consumers move over, then v1 is retired after the retention window.
 - Every Kafka record carries `ce-type` with the fully qualified message name, so consumers can route multiple types or versions.
 
@@ -373,7 +373,7 @@ decoded by current consumers in CI.
 - Crash loop → quorum queue `x-delivery-limit=5` → DLX.
 - DLQ'd command → no reply → saga step deadline → `*_FAILED` → visible to the operator, retryable.
 
-**Operations.** `quotifyctl dlq ls|show|redrive|purge` for both brokers. Alert when DLQ depth > 0 for 5 min
+**Operations.** `payrudderctl dlq ls|show|redrive|purge` for both brokers. Alert when DLQ depth > 0 for 5 min
 (`dlq_messages{queue}`). A DLQ is an inbox for humans, so it must not fill up silently.
 
 **Tests.** Inject a malformed record mid-batch → it lands in the DLQ with correct headers, all other records aggregate, partition

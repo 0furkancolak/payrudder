@@ -1,0 +1,40 @@
+<!-- Local development: keep ClickHouse inside its 1 GiB container limit and idle when nobody queries it. -->
+<clickhouse>
+    <max_server_memory_usage_to_ram_ratio>0.75</max_server_memory_usage_to_ram_ratio>
+    <mark_cache_size>33554432</mark_cache_size>
+    <index_mark_cache_size>8388608</index_mark_cache_size>
+    <max_concurrent_queries>16</max_concurrent_queries>
+    <max_thread_pool_size>128</max_thread_pool_size>
+    <!-- Default pools are sized by core count (16 merge threads, 128 schedule threads); a dev stack merges almost nothing. -->
+    <background_pool_size>2</background_pool_size>
+    <background_schedule_pool_size>4</background_schedule_pool_size>
+    <background_common_pool_size>2</background_common_pool_size>
+    <background_move_pool_size>1</background_move_pool_size>
+    <background_fetches_pool_size>1</background_fetches_pool_size>
+    <background_buffer_flush_schedule_pool_size>1</background_buffer_flush_schedule_pool_size>
+    <background_message_broker_schedule_pool_size>1</background_message_broker_schedule_pool_size>
+    <uncompressed_cache_size>0</uncompressed_cache_size>
+    <logger>
+        <level>warning</level>
+    </logger>
+    <!-- ClickHouse's own diagnostic tables are written and merged in the background all the time (trace_log alone grew to
+         ~90 MiB with no query running). Payrudder never reads them; query_log stays for debugging. -->
+    <!-- The defaults (20/8) assume a 16-thread pool; ClickHouse refuses to start when they exceed background_pool_size x concurrency ratio (here 2 x 2). -->
+    <merge_tree>
+        <number_of_free_entries_in_pool_to_execute_mutation>2</number_of_free_entries_in_pool_to_execute_mutation>
+        <number_of_free_entries_in_pool_to_lower_max_size_of_merge>2</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+        <number_of_free_entries_in_pool_to_execute_optimize_entire_partition>2</number_of_free_entries_in_pool_to_execute_optimize_entire_partition>
+    </merge_tree>
+    <trace_log remove="1"/>
+    <text_log remove="1"/>
+    <metric_log remove="1"/>
+    <asynchronous_metric_log remove="1"/>
+    <processors_profile_log remove="1"/>
+    <profiles>
+        <default>
+            <!-- These feed trace_log; without it the samplers only burn CPU. -->
+            <global_profiler_real_time_period_ns>0</global_profiler_real_time_period_ns>
+            <global_profiler_cpu_time_period_ns>0</global_profiler_cpu_time_period_ns>
+        </default>
+    </profiles>
+</clickhouse>

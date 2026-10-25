@@ -23,7 +23,7 @@ func TestSandbox(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	key := "quotify-sandbox-" + randomKey()
+	key := "payrudder-sandbox-" + randomKey()
 	if _, err := c.Status(ctx, key); err == nil {
 		t.Log("Status of an unknown key answered without an error; set NotFoundCodes accordingly")
 	} else {

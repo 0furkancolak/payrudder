@@ -26,14 +26,14 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // Server serves /webhooks/{provider} and the operator endpoints under /admin.
@@ -87,7 +87,7 @@ type RouteRegistrar interface {
 const maxBody = 64 << 10
 
 var (
-	meter       = otel.Meter("github.com/0furkancolak/quotify/services/payments-worker/webhook")
+	meter       = otel.Meter("github.com/0furkancolak/payrudder/services/payments-worker/webhook")
 	events      = counter("provider_events", "Provider notifications handled, by provider and result")
 	discrepancy = counter("payment_discrepancies", "Charges whose recorded outcomes disagree")
 )
@@ -438,7 +438,7 @@ func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provi
 		return errors.New("subscription notification without a subscription")
 	}
 	var q *uuid.UUID
-	if id, err := uuid.Parse(ev.QuotifySubscriptionID); err == nil {
+	if id, err := uuid.Parse(ev.PayrudderSubscriptionID); err == nil {
 		q = &id
 	}
 	occurred := n.OccurredAt
@@ -452,7 +452,7 @@ func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provi
 	owner := string(prov.Capabilities().Owner())
 
 	// A subscription that completes a provider migration: the cutover happens now, in plans-svc, and the old one is released.
-	if mig := ev.QuotifyMigrationID; mig != "" && s.Plans != nil {
+	if mig := ev.PayrudderMigrationID; mig != "" && s.Plans != nil {
 		done, err := s.Plans.CompleteProviderMigration(ctx, tenant, &plansv1.CompleteProviderMigrationRequest{
 			MigrationId: mig, ProviderRef: ev.ProviderRef, CutoverTime: timestamppb.New(occurred)})
 		if err != nil {
@@ -475,7 +475,7 @@ func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provi
 	}
 	if q == nil {
 		// Later events of a subscription we already know carry no id of ours; the row remembers it.
-		known, found, err := s.Subscriptions.QuotifyID(ctx, tenant, provider, env, ev.ProviderRef)
+		known, found, err := s.Subscriptions.PayrudderID(ctx, tenant, provider, env, ev.ProviderRef)
 		if err != nil {
 			return err
 		}
@@ -487,7 +487,7 @@ func (s *Server) recordSubscription(ctx context.Context, tenant uuid.UUID, provi
 	req := &plansv1.SyncProviderSubscriptionRequest{
 		SubscriptionId: q.String(), Provider: provider, ProviderRef: ev.ProviderRef, Owner: owner, ProviderStatus: ev.Status, OccurredAt: timestamppb.New(occurred),
 	}
-	// What the provider bills the subscription for: if it is a price Quotify created, the plan version and interval follow.
+	// What the provider bills the subscription for: if it is a price Payrudder created, the plan version and interval follow.
 	if pv, iv, ok := s.catalogueTarget(ctx, tenant, provider, env, ev.PriceRefs); ok {
 		req.PlanVersionId, req.Interval = pv, iv
 	}
@@ -661,10 +661,10 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Provider              string `json:"provider"`
-		PriceRef              string `json:"price_ref"`
-		Quantity              int    `json:"quantity"`
-		QuotifySubscriptionID string `json:"quotify_subscription_id"`
+		Provider                string `json:"provider"`
+		PriceRef                string `json:"price_ref"`
+		Quantity                int    `json:"quantity"`
+		PayrudderSubscriptionID string `json:"quotify_subscription_id"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&in); err != nil || in.Provider == "" || in.PriceRef == "" {
 		fail(w, http.StatusBadRequest, "payments.checkout.fields_required", "provider and price_ref are required")
@@ -680,10 +680,10 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusConflict, "payments.checkout.unsupported", in.Provider+" has no hosted checkout")
 		return
 	}
-	co, err := cp.CreateCheckout(r.Context(), payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: in.Quantity, QuotifySubscriptionID: in.QuotifySubscriptionID})
+	co, err := cp.CreateCheckout(r.Context(), payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: in.Quantity, PayrudderSubscriptionID: in.PayrudderSubscriptionID})
 	if err != nil {
 		s.Log.WarnContext(r.Context(), "checkout failed", "provider", in.Provider, "err", err)
-		fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
+		fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"url": co.URL, "ref": co.Ref})
@@ -693,7 +693,7 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 //
 // To a provider that runs subscriptions itself (Paddle) the customer has to subscribe there first: a migration is started and a checkout returned. The
 // old subscription is untouched until the provider confirms, so a customer who never completes the checkout costs nothing.
-// To a provider Quotify runs (iyzico) the new subscription takes over at once, or, from a provider-run subscription, at the end of the period that provider
+// To a provider Payrudder runs (iyzico) the new subscription takes over at once, or, from a provider-run subscription, at the end of the period that provider
 // was paid for. The old provider is told to stop renewing first: a failure after that leaves a subscription that ends without a successor (an operator
 // retries), never two that both bill.
 func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
@@ -717,7 +717,7 @@ func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sub, err := s.Plans.GetSubscription(ctx, t, in.SubscriptionID)
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	target, err := s.Resolver.Named(ctx, t, in.ToProvider, env)
@@ -729,7 +729,7 @@ func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
 		s.migrateViaCheckout(w, r, t, target, in)
 		return
 	}
-	s.migrateToQuotify(w, r, t, env, sub, in)
+	s.migrateToPayrudder(w, r, t, env, sub, in)
 }
 
 type migrationInput struct {
@@ -748,24 +748,25 @@ func (s *Server) migrateViaCheckout(w http.ResponseWriter, r *http.Request, t uu
 	}
 	mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider})
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
-	co, err := cp.CreateCheckout(ctx, payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: 1, QuotifyMigrationID: mig.GetId()})
+	co, err := cp.CreateCheckout(ctx, payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: 1, PayrudderMigrationID: mig.GetId()})
 	if err != nil {
 		// No checkout, no migration: leave the subscription as it was.
 		if aerr := s.Plans.AbortProviderMigration(ctx, t, mig.GetId()); aerr != nil {
 			s.Log.ErrorContext(ctx, "could not abort a migration after a failed checkout", "migration", mig.GetId(), "err", aerr)
 		}
-		fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
+		s.Log.WarnContext(ctx, "migration checkout failed", "provider", in.ToProvider, "err", err)
+		fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "started", "checkout_url": co.URL})
 }
 
-// migrateToQuotify moves a subscription to a provider Quotify runs. From a provider-run subscription, it waits for the end of the period
+// migrateToPayrudder moves a subscription to a provider Payrudder runs. From a provider-run subscription, it waits for the end of the period
 // that provider was paid for.
-func (s *Server) migrateToQuotify(w http.ResponseWriter, r *http.Request, t uuid.UUID, env string, sub *plansv1.Subscription, in migrationInput) {
+func (s *Server) migrateToPayrudder(w http.ResponseWriter, r *http.Request, t uuid.UUID, env string, sub *plansv1.Subscription, in migrationInput) {
 	ctx := r.Context()
 	var cutover *timestamppb.Timestamp
 	if sub.GetOwner() == "provider" {
@@ -776,7 +777,7 @@ func (s *Server) migrateToQuotify(w http.ResponseWriter, r *http.Request, t uuid
 	}
 	mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider, CutoverTime: cutover})
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "completed", "new_subscription": mig.GetNewSubscriptionId(),
@@ -807,7 +808,8 @@ func (s *Server) stopRenewals(w http.ResponseWriter, r *http.Request, t uuid.UUI
 		return nil, false
 	}
 	if err := m.CancelSubscription(ctx, sub.GetProviderRef(), true); err != nil {
-		fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
+		s.Log.WarnContext(ctx, "provider cancel failed", "provider", sub.GetProvider(), "err", err)
+		fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
 		return nil, false
 	}
 	return timestamppb.New(next), true
@@ -823,14 +825,26 @@ func (s *Server) abortMigration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.Plans.AbortProviderMigration(r.Context(), t, r.PathValue("migration")); err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"state": "aborted"})
 }
 
-// planFail relays a plans-svc refusal: its status code becomes the HTTP one, and its error key travels on (the code's common.* default when it has none).
-func planFail(w http.ResponseWriter, err error) {
+// planFail relays a plans-svc refusal.
+func (s *Server) planFail(w http.ResponseWriter, r *http.Request, err error) {
+	s.relay(w, r, "plans-svc", errkey.Key("payments.plans.failed"), err)
+}
+
+// billingFail relays a billing-svc refusal.
+func (s *Server) billingFail(w http.ResponseWriter, r *http.Request, err error) {
+	s.relay(w, r, "billing-svc", errkey.Key("payments.billing.failed"), err)
+}
+
+// relay answers for a refusal of another service. A refusal about the request (not found, invalid, wrong state) keeps its status, its key (the code's
+// common.* default when it has none) and its message, which was written for the caller. Anything else is the other service's trouble: the cause goes to
+// the log and the caller gets a bad gateway with a fixed message and failKey.
+func (s *Server) relay(w http.ResponseWriter, r *http.Request, svc, failKey string, err error) {
 	key := errkey.Of(err)
 	if key == "" {
 		key = errkey.Default(status.Code(err))
@@ -843,6 +857,7 @@ func planFail(w http.ResponseWriter, err error) {
 	case codes.FailedPrecondition, codes.AlreadyExists, codes.Aborted:
 		fail(w, http.StatusConflict, key, status.Convert(err).Message())
 	default:
-		fail(w, http.StatusBadGateway, errkey.Key("payments.plans.failed"), "plans-svc: "+status.Convert(err).Message())
+		s.Log.WarnContext(r.Context(), svc+" request failed", "err", err)
+		fail(w, http.StatusBadGateway, failKey, svc+" could not complete the request")
 	}
 }

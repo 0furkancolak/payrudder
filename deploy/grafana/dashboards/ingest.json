@@ -1,8 +1,8 @@
 {
-  "uid": "quotify-ingest",
-  "title": "Quotify / Ingest",
+  "uid": "payrudder-ingest",
+  "title": "Payrudder / Ingest",
   "tags": [
-    "quotify"
+    "payrudder"
   ],
   "schemaVersion": 39,
   "version": 1,

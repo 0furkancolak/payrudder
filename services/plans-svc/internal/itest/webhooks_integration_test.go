@@ -17,10 +17,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/safehttp"
-	"github.com/0furkancolak/quotify/pkg/webhooksig"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/safehttp"
+	"github.com/0furkancolak/payrudder/pkg/webhooksig"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 )
 
 // receiver is a tenant's endpoint: it records what it is sent and answers with a status it is told to.
@@ -164,7 +164,7 @@ func testWebhooks(t *testing.T) {
 		if err := webhooksig.Verify(c.header.Get(webhooksig.Header()), c.body, secret, *clock, 0); err != nil {
 			t.Fatalf("signature: %v", err)
 		}
-		if c.header.Get("Quotify-Event-Type") != webhooks.SubscriptionCreated || c.header.Get("Content-Type") != "application/json" {
+		if c.header.Get("Payrudder-Event-Type") != webhooks.SubscriptionCreated || c.header.Get("Content-Type") != "application/json" {
 			t.Errorf("headers = %v", c.header)
 		}
 		var env struct {
@@ -179,7 +179,7 @@ func testWebhooks(t *testing.T) {
 		if err := json.Unmarshal(c.body, &env); err != nil {
 			t.Fatal(err)
 		}
-		if env.Type != webhooks.SubscriptionCreated || env.Data.Subscription.ID != sub.GetSubscription().GetId() || env.Data.Subscription.PlanCode != "basic" || env.ID != c.header.Get("Quotify-Event-Id") {
+		if env.Type != webhooks.SubscriptionCreated || env.Data.Subscription.ID != sub.GetSubscription().GetId() || env.Data.Subscription.PlanCode != "basic" || env.ID != c.header.Get("Payrudder-Event-Id") {
 			t.Fatalf("body = %s", c.body)
 		}
 		if d := deliveries(endpoint.GetId()); d[0].GetState() != plansv1.WebhookDeliveryState_WEBHOOK_DELIVERY_STATE_DELIVERED || d[0].GetAttempts() != 1 {
@@ -276,8 +276,8 @@ func testWebhooks(t *testing.T) {
 			t.Fatalf("calls = %d, want %d", len(got), before+1)
 		}
 		c := got[len(got)-1]
-		if c.header.Get("Quotify-Event-Type") != webhooks.Ping {
-			t.Errorf("event type = %s", c.header.Get("Quotify-Event-Type"))
+		if c.header.Get("Payrudder-Event-Type") != webhooks.Ping {
+			t.Errorf("event type = %s", c.header.Get("Payrudder-Event-Type"))
 		}
 		for _, s := range []string{secret, rot.GetEndpoint().GetSecret()} {
 			if err := webhooksig.Verify(c.header.Get(webhooksig.Header()), c.body, s, *clock, 0); err != nil {

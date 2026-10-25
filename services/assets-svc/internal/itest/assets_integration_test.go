@@ -25,15 +25,15 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/background"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/service"
-	"github.com/0furkancolak/quotify/services/assets-svc/migrations"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/background"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/service"
+	"github.com/0furkancolak/payrudder/services/assets-svc/migrations"
 )
 
 type world struct {

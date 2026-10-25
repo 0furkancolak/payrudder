@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
-	"github.com/0furkancolak/quotify/services/payments-worker/migrations"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // Two tenants may both have an invoice "INV-2026-000001", and the bank-transfer reference is the invoice number: the same (provider, kind, ref, status) in

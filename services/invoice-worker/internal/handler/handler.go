@@ -7,13 +7,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/workerx"
-	"github.com/0furkancolak/quotify/services/invoice-worker/internal/render"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/invoice-worker/internal/render"
 )
 
 // Store is the object storage the worker needs (pkg/blob.Store satisfies it).
@@ -28,8 +30,17 @@ type Handler struct {
 	Store Store
 	// Logos is the assets bucket the tenants' invoice logos live in (nil: no logos).
 	Logos Store
+	// Log receives what is kept out of the reply; nil is slog.Default().
+	Log *slog.Logger
 
 	locks workerx.KeyedMutex // by object key
+}
+
+func (h *Handler) log() *slog.Logger {
+	if h.Log != nil {
+		return h.Log
+	}
+	return slog.Default()
 }
 
 // ObjectKey is {tenant_id}/{invoice_id}/v{invoice_version}.pdf.
@@ -38,7 +49,7 @@ func ObjectKey(tenantID string, inv *commandsv1.InvoiceSnapshot) string {
 }
 
 func failed(reason string) *commandsv1.ReplyEnvelope {
-	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PdfFailed{PdfFailed: &commandsv1.PdfFailed{Reason: reason}}}
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PdfFailed{PdfFailed: &commandsv1.PdfFailed{Reason: reason, ErrorKey: errkey.Key("billing.invoice.pdf_failed")}}}
 }
 
 // Handle implements workerx.Handler.
@@ -78,7 +89,9 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 	}
 	pdf, err := render.PDF(inv, render.Options{Sandbox: sandbox, Logo: logo})
 	if errors.Is(err, render.ErrInvalid) {
-		return failed(err.Error()), nil
+		// The detail is for the log; the reply carries a fixed reason and the key.
+		h.log().WarnContext(ctx, "invoice PDF not rendered", "invoice", inv.GetInvoiceId(), "version", inv.GetVersion(), "err", err)
+		return failed("the invoice cannot be rendered"), nil
 	}
 	if err != nil {
 		return nil, err

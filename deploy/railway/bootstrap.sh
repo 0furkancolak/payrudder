@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Creates Quotify's services on Railway, sets their variables and deploys them in dependency order, with the Railway CLI.
+# Creates Payrudder's services on Railway, sets their variables and deploys them in dependency order, with the Railway CLI.
 # Idempotent: existing services, volumes and domains are skipped, variables are set to the same values again, and a generated secret is
 # only generated when the variable does not exist yet. --dry-run prints every command and runs none (the CLI need not be installed).
 # Read deploy/railway/README.md first; this script is its "Quick path". Variable values use Railway's reference syntax, ${{service.NAME}}.
@@ -7,7 +7,7 @@
 #   deploy/railway/bootstrap.sh [--dry-run] [--profile full|small] [--demo] [--repo owner/name] [--branch main] [--source github|local] [--wait SECONDS]
 #
 #   --profile small  leaves out ClickHouse and analytics-svc (the console's analytics views stay empty); full is the default
-#   --demo           QUOTIFY_DEMO=true: every tenant is served by the mock provider (never next to real provider accounts)
+#   --demo           PAYRUDDER_DEMO=true: every tenant is served by the mock provider (never next to real provider accounts)
 #   --source local   deploy this checkout with `railway up` instead of connecting the GitHub repo (--repo is then not needed)
 set -euo pipefail
 
@@ -29,7 +29,7 @@ done
 [[ $PROFILE == full || $PROFILE == small ]] || { echo "--profile must be full or small" >&2; exit 2; }
 [[ $SOURCE == github || $SOURCE == local ]] || { echo "--source must be github or local" >&2; exit 2; }
 [[ $SOURCE == local || -n $REPO || $DRY_RUN == 1 ]] || { echo "--repo owner/name is required with --source github" >&2; exit 2; }
-REPO=${REPO:-owner/quotify}
+REPO=${REPO:-owner/payrudder}
 # OPERATOR_EMAILS (environment, comma separated): the people who are platform operators once they sign in and verify the address; empty: nobody.
 
 # --- helpers ---------------------------------------------------------------------------------------------------------------------------------
@@ -82,20 +82,20 @@ b64() { openssl rand -base64 32; }
 # Private addresses. PORT is set on every service (below) so these are fixed, not whatever Railway picks.
 PG='${{Postgres.RAILWAY_PRIVATE_DOMAIN}}'
 KAFKA='redpanda.railway.internal:9092'
-AMQP='amqp://quotify:${{rabbitmq.RABBITMQ_PASSWORD}}@rabbitmq.railway.internal:5672/'
+AMQP='amqp://payrudder:${{rabbitmq.RABBITMQ_PASSWORD}}@rabbitmq.railway.internal:5672/'
 grpc_addr() { printf 'dns:///%s.railway.internal:%s' "$1" "$2"; }
 # dsn <role kind: app|system|migrator> <service short name>
 dsn() { printf 'postgres://%s_%s:${{init-postgres.PG_%s_PASSWORD}}@%s:5432/%s_db' "$2" "$1" "$(tr a-z A-Z <<<"$1")" "$PG" "$2"; }
 pg_vars() { # <service name> <db short name> <kinds...>
   local svc=$1 db=$2; shift 2
   local out=()
-  for k in "$@"; do out+=("QUOTIFY_PG_$(tr a-z A-Z <<<"$k")_DSN=$(dsn "$k" "$db")"); done
-  vars "$svc" "${out[@]}" QUOTIFY_MIGRATE_ON_START=true
+  for k in "$@"; do out+=("PAYRUDDER_PG_$(tr a-z A-Z <<<"$k")_DSN=$(dsn "$k" "$db")"); done
+  vars "$svc" "${out[@]}" PAYRUDDER_MIGRATE_ON_START=true
 }
 S3_VARS=('S3_ENDPOINT=http://minio.railway.internal:9000' 'S3_PUBLIC_ENDPOINT=https://${{minio.RAILWAY_PUBLIC_DOMAIN}}'
   'S3_ACCESS_KEY=${{minio.MINIO_ROOT_USER}}' 'S3_SECRET_KEY=${{minio.MINIO_ROOT_PASSWORD}}' 'S3_FORCE_PATH_STYLE=true')
 common() { # <service name> <port>
-  vars "$1" QUOTIFY_ENV=railway "QUOTIFY_SERVICE_NAME=$1" "PORT=$2"
+  vars "$1" PAYRUDDER_ENV=railway "PAYRUDDER_SERVICE_NAME=$1" "PORT=$2"
 }
 # Railway bills by resident memory and gives a container no cgroup limit for the Go runtime to read, so the soft limit is set here: the collector
 # works before the heap grows past it. GOGC is 50 by default (pkg/memlimit). Raise GOMEMLIMIT on a service that logs "memory limit" pressure.
@@ -132,10 +132,10 @@ volume rabbitmq /var/lib/rabbitmq
 
 vars redpanda RAILWAY_RUN_UID=0 PORT=9644 RAILWAY_DOCKERFILE_PATH=deploy/railway/images/redpanda/Dockerfile
 volume redpanda /var/lib/redpanda/data
-vars init-redpanda "QUOTIFY_KAFKA_BROKERS=$KAFKA" RAILWAY_DOCKERFILE_PATH=deploy/railway/images/redpanda-init/Dockerfile
+vars init-redpanda "PAYRUDDER_KAFKA_BROKERS=$KAFKA" RAILWAY_DOCKERFILE_PATH=deploy/railway/images/redpanda-init/Dockerfile
 
 secret minio MINIO_ROOT_PASSWORD hex24
-vars minio MINIO_ROOT_USER=quotify RAILWAY_RUN_UID=0 PORT=9000 RAILWAY_DOCKERFILE_PATH=deploy/railway/images/minio/Dockerfile
+vars minio MINIO_ROOT_USER=payrudder RAILWAY_RUN_UID=0 PORT=9000 RAILWAY_DOCKERFILE_PATH=deploy/railway/images/minio/Dockerfile
 volume minio /data
 vars init-minio S3_ENDPOINT=http://minio.railway.internal:9000 'S3_ACCESS_KEY=${{minio.MINIO_ROOT_USER}}' 'S3_SECRET_KEY=${{minio.MINIO_ROOT_PASSWORD}}' \
   RAILWAY_DOCKERFILE_PATH=deploy/railway/images/minio-init/Dockerfile
@@ -145,43 +145,43 @@ vars mailpit PORT=8025 RAILWAY_DOCKERFILE_PATH=deploy/railway/images/mailpit/Doc
 
 if [[ $PROFILE == full ]]; then
   secret clickhouse CLICKHOUSE_PASSWORD hex24
-  vars clickhouse CLICKHOUSE_DB=quotify CLICKHOUSE_USER=quotify CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 RAILWAY_RUN_UID=0 PORT=8123 \
+  vars clickhouse CLICKHOUSE_DB=payrudder CLICKHOUSE_USER=payrudder CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 RAILWAY_RUN_UID=0 PORT=8123 \
     RAILWAY_DOCKERFILE_PATH=deploy/railway/images/clickhouse/Dockerfile
   volume clickhouse /var/lib/clickhouse
 fi
 
 note "Secrets shared by services"
-secret gateway QUOTIFY_OPERATOR_TOKEN hex32
-secret payments-worker QUOTIFY_SECRETS_KEY b64
-secret plans-svc QUOTIFY_OTP_PEPPER hex32
+secret gateway PAYRUDDER_OPERATOR_TOKEN hex32
+secret payments-worker PAYRUDDER_SECRETS_KEY b64
+secret plans-svc PAYRUDDER_OTP_PEPPER hex32
 secret payments-worker PAYMENTS_INTERNAL_TOKEN hex32
 
 note "plans-svc"
 go_service plans-svc services/plans-svc 9100
 pg_vars plans-svc plans app system migrator
-vars plans-svc 'QUOTIFY_REDIS_URL=${{Redis.REDIS_URL}}' "QUOTIFY_KAFKA_BROKERS=$KAFKA" 'QUOTIFY_SECRETS_KEY=${{payments-worker.QUOTIFY_SECRETS_KEY}}' \
-  QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox,live 'QUOTIFY_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}'
+vars plans-svc 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_KAFKA_BROKERS=$KAFKA" 'PAYRUDDER_SECRETS_KEY=${{payments-worker.PAYRUDDER_SECRETS_KEY}}' \
+  PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}'
 
 note "ingest-svc"
 go_service ingest-svc services/ingest-svc 9100
 pg_vars ingest-svc ingest app system migrator
-vars ingest-svc "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "QUOTIFY_KAFKA_BROKERS=$KAFKA"
+vars ingest-svc "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_KAFKA_BROKERS=$KAFKA"
 
 note "aggregator"
 go_service aggregator services/aggregator 9100
 pg_vars aggregator aggregator app system migrator
-vars aggregator "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "QUOTIFY_KAFKA_BROKERS=$KAFKA"
+vars aggregator "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_KAFKA_BROKERS=$KAFKA"
 
 note "limits-svc"
 go_service limits-svc services/limits-svc 9100
-vars limits-svc 'QUOTIFY_REDIS_URL=${{Redis.REDIS_URL}}' "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "QUOTIFY_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" \
-  "QUOTIFY_KAFKA_BROKERS=$KAFKA"
+vars limits-svc 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" \
+  "PAYRUDDER_KAFKA_BROKERS=$KAFKA"
 
 note "billing-svc"
 go_service billing-svc services/billing-svc 9100
 pg_vars billing-svc billing app system migrator
-vars billing-svc "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "QUOTIFY_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" \
-  "QUOTIFY_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "QUOTIFY_KAFKA_BROKERS=$KAFKA" "QUOTIFY_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices "${S3_VARS[@]}"
+vars billing-svc "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" \
+  "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices "${S3_VARS[@]}"
 
 note "assets-svc"
 go_service assets-svc services/assets-svc 9100
@@ -191,8 +191,8 @@ vars assets-svc S3_BUCKET=assets "${S3_VARS[@]}"
 if [[ $PROFILE == full ]]; then
   note "analytics-svc"
   go_service analytics-svc services/analytics-svc 9100
-  vars analytics-svc CLICKHOUSE_ADDR=clickhouse.railway.internal:9000 CLICKHOUSE_DB=quotify CLICKHOUSE_USER=quotify \
-    'CLICKHOUSE_PASSWORD=${{clickhouse.CLICKHOUSE_PASSWORD}}' "QUOTIFY_KAFKA_BROKERS=$KAFKA"
+  vars analytics-svc CLICKHOUSE_ADDR=clickhouse.railway.internal:9000 CLICKHOUSE_DB=payrudder CLICKHOUSE_USER=payrudder \
+    'CLICKHOUSE_PASSWORD=${{clickhouse.CLICKHOUSE_PASSWORD}}' "PAYRUDDER_KAFKA_BROKERS=$KAFKA"
 fi
 
 note "mockpsp"
@@ -202,31 +202,31 @@ pg_vars mockpsp mockpsp app migrator
 note "payments-worker"
 go_service payments-worker services/payments-worker 9100
 pg_vars payments-worker payments system migrator
-vars payments-worker "QUOTIFY_RABBITMQ_URL=$AMQP" MOCKPSP_URL=http://mockpsp.railway.internal:8090 "QUOTIFY_DEMO=$DEMO" \
-  "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "QUOTIFY_BILLING_ADDR=$(grpc_addr billing-svc 7005)"
+vars payments-worker "PAYRUDDER_RABBITMQ_URL=$AMQP" MOCKPSP_URL=http://mockpsp.railway.internal:8090 "PAYRUDDER_DEMO=$DEMO" \
+  "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_BILLING_ADDR=$(grpc_addr billing-svc 7005)"
 
 note "invoice-worker"
 go_service invoice-worker services/invoice-worker 9100
-vars invoice-worker "QUOTIFY_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices S3_ASSETS_BUCKET=assets "${S3_VARS[@]}"
+vars invoice-worker "PAYRUDDER_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices S3_ASSETS_BUCKET=assets "${S3_VARS[@]}"
 
 note "notifier"
 go_service notifier services/notifier 9100
 pg_vars notifier notifier system migrator
-vars notifier "QUOTIFY_RABBITMQ_URL=$AMQP" "QUOTIFY_KAFKA_BROKERS=$KAFKA" "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" SMTP_ADDR=mailpit.railway.internal:1025
+vars notifier "PAYRUDDER_RABBITMQ_URL=$AMQP" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" SMTP_ADDR=mailpit.railway.internal:1025
 
 note "gateway"
 go_service gateway services/gateway 8000
 GW_ANALYTICS=()
-[[ $PROFILE == full ]] && GW_ANALYTICS=("QUOTIFY_ANALYTICS_ADDR=$(grpc_addr analytics-svc 7006)")
-vars gateway "QUOTIFY_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "QUOTIFY_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" \
-  "QUOTIFY_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "QUOTIFY_LIMITS_ADDR=$(grpc_addr limits-svc 7004)" \
-  "QUOTIFY_BILLING_ADDR=$(grpc_addr billing-svc 7005)" "QUOTIFY_ASSETS_ADDR=$(grpc_addr assets-svc 7007)" ${GW_ANALYTICS[@]+"${GW_ANALYTICS[@]}"} \
-  'QUOTIFY_REDIS_URL=${{Redis.REDIS_URL}}' QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox,live \
-  QUOTIFY_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'QUOTIFY_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}' \
-  'QUOTIFY_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'QUOTIFY_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "QUOTIFY_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}"
+[[ $PROFILE == full ]] && GW_ANALYTICS=("PAYRUDDER_ANALYTICS_ADDR=$(grpc_addr analytics-svc 7006)")
+vars gateway "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" \
+  "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_LIMITS_ADDR=$(grpc_addr limits-svc 7004)" \
+  "PAYRUDDER_BILLING_ADDR=$(grpc_addr billing-svc 7005)" "PAYRUDDER_ASSETS_ADDR=$(grpc_addr assets-svc 7007)" ${GW_ANALYTICS[@]+"${GW_ANALYTICS[@]}"} \
+  'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live \
+  PAYRUDDER_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'PAYRUDDER_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}' \
+  'PAYRUDDER_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}"
 
 note "admin-ui"
-vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "QUOTIFY_DEMO=$DEMO" BRAND_NAME=Payrudder
+vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "PAYRUDDER_DEMO=$DEMO" BRAND_NAME=Payrudder
 
 # --- 3. public domains ------------------------------------------------------------------------------------------------------------------------
 note "Public domains (the gateway, the console, and MinIO for presigned links)"

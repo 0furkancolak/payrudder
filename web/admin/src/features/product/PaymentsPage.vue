@@ -3,8 +3,8 @@ import { Link, useParams } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { usePayments } from "./billingApi";
@@ -15,7 +15,6 @@ import { usePayments } from "./billingApi";
  */
 const { t, locale } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const payments = usePayments(tenantId);
@@ -33,7 +32,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
       <span v-if="payments.data.value?.truncated" class="text-muted-foreground text-xs">{{ t("product.payments.truncated") }}</span>
     </div>
 
-    <p v-if="payments.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(payments.error.value) }}</p>
+    <ErrorText :error="payments.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
     <Skeleton v-if="payments.isPending.value" class="h-40 rounded-2xl" />
     <p v-else-if="rows.length === 0 && !payments.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t("product.billing.payments.empty") }}</p>
     <div v-else class="relative -mx-2 overflow-x-auto px-2">

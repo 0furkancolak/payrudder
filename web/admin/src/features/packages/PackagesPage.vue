@@ -3,10 +3,10 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { useCanWrite } from "@/shared/lib/access";
 import { useTenantCurrency } from "@/features/tenants/currency";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -15,9 +15,9 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreatePackage, usePackages } from "./api";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 const { t, locale } = useI18n();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenantCurrency = useTenantCurrency(tenantId);
@@ -32,7 +32,7 @@ const extra = ref<{ currency: string; interval: "month" | "year"; amount: string
 const formError = ref("");
 
 function addFee() {
-  extra.value.push({ currency: tenantCurrency.value || "USD", interval: "year", amount: "0" });
+  extra.value.push({ currency: tenantCurrency.value || FALLBACK_CURRENCY, interval: "year", amount: "0" });
 }
 
 function submit() {
@@ -92,13 +92,13 @@ function submit() {
         <Button type="submit" :disabled="create.isPending.value || tenantCurrency === ''">{{ t("billing.packages.publish") }}</Button>
       </div>
     </form>
-    <p v-if="formError" class="text-destructive text-sm" role="alert">{{ formError }}</p>
-    <p v-if="create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(create.error.value) }}</p>
+    <ErrorText :message="formError" />
+    <ErrorText :error="create.error.value" />
   </Card>
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.tabs.packages") }}</h2>
-    <p v-if="packages.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(packages.error.value) }}</p>
+    <ErrorText :error="packages.error.value" class="px-3" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

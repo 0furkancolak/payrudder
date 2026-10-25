@@ -11,7 +11,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/0furkancolak/quotify/pkg/testkit"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 )
 
 func TestRedisScriptMatchesGoImplementation(t *testing.T) {

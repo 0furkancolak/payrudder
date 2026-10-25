@@ -9,7 +9,7 @@ The durable result is three real-stack specs in `web/admin/e2e/`:
 | Spec | What it does |
 |---|---|
 | `product-real.spec.ts` | Signs a fresh person up through the API, creates an app, seeds the **sandbox** with real money (plan with a TRY and a EUR fee, four customers incl. a declined card and a EUR payer, `close-period`, the saga and the mock provider play the payments, a 30.00 refund to the card, expenses in TRY and EUR incl. a recurring and a voided one, a webhook endpoint, a credit pack, an ad hoc payment link, a portal link). Then checks in the browser: dashboard numbers per currency in both environments, live key create/see-once/revoke (and that the revoked key is 401), six languages (Arabic is `dir=rtl`), dark mode, phone/tablet/desktop with no sideways scroll and no console error or failed request, the hosted `/i/{token}` page paid with "Pay (test)", the portal `/c/{token}` selling the credit pack (balance 100 afterwards), sign out/in, wrong password, five wrong passwords then the right one (locked, same message), another person cannot see the app or the tenant, a person is not an operator, a revoked session goes back to sign-in. Takes about 3 minutes (the sandbox billing run starts ~30 s after the cutoff). |
-| `operator-real.spec.ts` | Operator console: opens the console as the operator user (a real session of `user1@example.com`, listed in `QUOTIFY_OPERATOR_EMAILS`) and opens 16 tabs of a tenant that has data (overview, apps, customers, subscriptions, packages, pricing, payments, reports, credits, payment links, accounting, providers, e-invoice, mail, address, webhooks) at 1280 and 375: no console error/warning, no failed request, no sideways scroll. |
+| `operator-real.spec.ts` | Operator console: opens the console as the operator user (a real session of `user1@example.com`, listed in `PAYRUDDER_OPERATOR_EMAILS`) and opens 16 tabs of a tenant that has data (overview, apps, customers, subscriptions, packages, pricing, payments, reports, credits, payment links, accounting, providers, e-invoice, mail, address, webhooks) at 1280 and 375: no console error/warning, no failed request, no sideways scroll. |
 | `product.spec.ts` (mock) | One assertion updated (see "refund sign"). |
 
 `make web-e2e` runs them with the others (`ADMIN_URL` selects the console, `SHOTS=<dir>` saves screenshots).
@@ -26,7 +26,7 @@ The durable result is three real-stack specs in `web/admin/e2e/`:
 
 No console error, console warning, page error or failed request was seen on any product page (desktop, tablet, phone, six languages, dark) or on any of
 the 16 operator tabs, and no page scrolled sideways at 375 px. Cross-account checks (user B on user A's app, overview, keys, tenant via
-`X-Quotify-Tenant`; a session on `/admin/v1/*`; a garbage token) all answer 404 / 401 as designed, in the API and in the browser.
+`X-Payrudder-Tenant`; a session on `/admin/v1/*`; a garbage token) all answer 404 / 401 as designed, in the API and in the browser.
 
 ## Numbers checked against what was seeded
 

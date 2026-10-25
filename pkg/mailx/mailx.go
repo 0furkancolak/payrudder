@@ -56,7 +56,7 @@ func (s SMTP) Send(ctx context.Context, m Message) (string, error) {
 	id := messageID(m)
 	boundary := "qb-" + id[:16]
 	var body bytes.Buffer
-	fmt.Fprintf(&body, "From: %s\r\nTo: %s\r\nSubject: %s\r\nMessage-ID: <%s@quotify.local>\r\nDate: %s\r\nMIME-Version: 1.0\r\n", m.From, m.To, encodeHeader(m.Subject), id,
+	fmt.Fprintf(&body, "From: %s\r\nTo: %s\r\nSubject: %s\r\nMessage-ID: <%s@payrudder.local>\r\nDate: %s\r\nMIME-Version: 1.0\r\n", m.From, m.To, encodeHeader(m.Subject), id,
 		time.Now().UTC().Format(time.RFC1123Z))
 	fmt.Fprintf(&body, "Content-Type: multipart/alternative; boundary=%q\r\n\r\n", boundary)
 	for _, part := range []struct{ typ, text string }{{"text/plain", m.Text}, {"text/html", m.HTML}} {
@@ -106,7 +106,7 @@ func (s SMTP) Send(ctx context.Context, m Message) (string, error) {
 		return "", fmt.Errorf("mail: end of data: %w", err)
 	}
 	_ = c.Quit()
-	return id + "@quotify.local", nil
+	return id + "@payrudder.local", nil
 }
 
 func messageID(m Message) string {

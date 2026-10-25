@@ -20,17 +20,17 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/gateway/internal/auth"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 const operatorToken = "op-token-0123456789abcdef0123456789abcdef"
@@ -278,7 +278,7 @@ func TestOperatorActsAsATenant(t *testing.T) {
 		req, _ := http.NewRequest("POST", ts.URL+"/v1/customers", strings.NewReader(`{"external_id":"cus_1","name":"Ada","email":"a@x.io"}`))
 		req.Header.Set("Authorization", "Bearer "+token)
 		if actAs != "" {
-			req.Header.Set("X-Quotify-Tenant", actAs)
+			req.Header.Set("X-Payrudder-Tenant", actAs)
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {

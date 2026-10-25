@@ -36,7 +36,7 @@ type lagState struct {
 // was when it was applied (a per-tenant freshness figure, so one slow tenant is visible).
 func (c *Consumer) initMetrics() error {
 	c.lag = &lagState{records: map[int32]int64{}, seconds: map[lagKey]lagReading{}}
-	m := otel.Meter("github.com/0furkancolak/quotify/pkg/kafkax")
+	m := otel.Meter("github.com/0furkancolak/payrudder/pkg/kafkax")
 	group := attribute.String("group", c.cfg.GroupID)
 	rec, err := m.Int64ObservableGauge("consumer_lag_records", metric.WithDescription("Records between the applied offset and the log end, per partition"))
 	if err != nil {

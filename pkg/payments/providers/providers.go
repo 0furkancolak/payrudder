@@ -1,14 +1,14 @@
-// Package providers is the catalogue of the payment providers Quotify has adapters for and what each can do, independent of any
+// Package providers is the catalogue of the payment providers Payrudder has adapters for and what each can do, independent of any
 // tenant's account. plans-svc checks routing rules against it; the workers build the adapters.
 package providers
 
 import (
 	"sort"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
-	"github.com/0furkancolak/quotify/pkg/payments/iyzico"
-	"github.com/0furkancolak/quotify/pkg/payments/paddle"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
+	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
 )
 
 var catalogue = map[string]payments.Capabilities{

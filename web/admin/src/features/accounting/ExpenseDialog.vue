@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
 import { minorToMajor, parseMajor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
@@ -12,18 +12,18 @@ import { Textarea } from "@/shared/ui/textarea";
 import { CATEGORIES, useSaveExpense, type Category, type Expense } from "./api";
 import { ymd } from "@/shared/lib/dates";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 /** Adds an expense, or edits `expense`. A recurring expense is edited as a whole: every occurrence changes with it. */
 const props = defineProps<{ tenantId: string; expense: Expense | null; defaultCurrency: string; apps: { id: string; name: string }[] }>();
 const open = defineModel<boolean>("open", { required: true });
 const { t } = useI18n();
-const errorText = useErrorText();
 const save = useSaveExpense(() => props.tenantId);
 
 const vendor = ref("");
 const category = ref<Category>("infrastructure");
 const amount = ref("");
-const currency = ref("USD");
+const currency = ref<string>(FALLBACK_CURRENCY);
 const incurredOn = ref("");
 const recurring = ref<"none" | "monthly" | "yearly">("none");
 const until = ref("");
@@ -139,8 +139,8 @@ function submit() {
           <Label for="exp-note">{{ t("billing.accounting.form.note") }}</Label>
           <Textarea id="exp-note" v-model="note" rows="2" maxlength="500" />
         </div>
-        <p v-if="formError" class="text-destructive text-sm" role="alert">{{ formError }}</p>
-        <p v-if="save.error.value" class="text-destructive text-sm" role="alert">{{ errorText(save.error.value) }}</p>
+        <ErrorText :message="formError" />
+        <ErrorText :error="save.error.value" />
         <DialogFooter>
           <Button type="button" variant="outline" @click="open = false">{{ t("billing.accounting.form.cancel") }}</Button>
           <Button type="submit" :disabled="save.isPending.value">{{ t("billing.accounting.form.save") }}</Button>

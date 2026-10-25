@@ -1,10 +1,10 @@
-module github.com/0furkancolak/quotify/services/gateway
+module github.com/0furkancolak/payrudder/services/gateway
 
 go 1.27.2
 
 require (
-	github.com/0furkancolak/quotify/gen/go v0.0.0
-	github.com/0furkancolak/quotify/pkg v0.0.0
+	github.com/0furkancolak/payrudder/gen/go v0.0.0
+	github.com/0furkancolak/payrudder/pkg v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/redis/go-redis/v9 v9.7.3
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.72.0
@@ -101,6 +101,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20261005182115-fad411399dd8 // indirect
 )
 
-replace github.com/0furkancolak/quotify/pkg => ../../pkg
+replace github.com/0furkancolak/payrudder/pkg => ../../pkg
 
-replace github.com/0furkancolak/quotify/gen/go => ../../gen/go
+replace github.com/0furkancolak/payrudder/gen/go => ../../gen/go

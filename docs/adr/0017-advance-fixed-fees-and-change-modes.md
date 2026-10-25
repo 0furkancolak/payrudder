@@ -12,7 +12,7 @@ credit that exceeds a charge, and it gives the customer no preview. Paddle and t
 1. Fixed fees are invoiced at the start of each period (month or year); usage stays in arrears per tenant calendar month.
 2. A change has explicit `timing` and `proration`; defaults depend on direction. One function computes the lines for both the preview and the real change.
 3. Corrections are credit notes and a per-customer credit balance, never edits of an issued invoice; a card refund is a separate, explicit act.
-4. For a provider-owned subscription the provider prorates; Quotify maps modes onto the provider's and refuses combinations the provider cannot do.
+4. For a provider-owned subscription the provider prorates; Payrudder maps modes onto the provider's and refuses combinations the provider cannot do.
 5. Existing subscriptions keep their calendar-month, arrears behaviour; new ones use anniversary anchors and advance fees.
 
 ## Consequences

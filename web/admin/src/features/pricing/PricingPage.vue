@@ -3,8 +3,8 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
 import { COUNTRY_HINTS } from "@/shared/lib/currencies";
+import { ErrorText } from "@/shared/ui/error-text";
 import { useCanWrite } from "@/shared/lib/access";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -15,7 +15,6 @@ import RedemptionsCard from "./RedemptionsCard.vue";
 
 const { t } = useI18n();
 const canWrite = useCanWrite();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 
@@ -74,7 +73,7 @@ function saveDunning() {
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.dunning.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.pricing.dunning.hint") }}</p>
       <p v-if="dunningStored.data.value?.defaults_in_use" class="text-muted-foreground text-sm">{{ t("billing.pricing.dunning.defaults") }}</p>
-      <p v-if="dunningStored.error.value" class="text-destructive text-sm" role="alert">{{ errorText(dunningStored.error.value) }}</p>
+      <ErrorText :error="dunningStored.error.value" />
       <div v-for="(_, i) in retryHours" :key="i" class="flex items-center gap-3" role="group" :aria-label="t('billing.pricing.dunning.retry', { n: i + 1 })">
         <Input v-model="retryHours[i]" inputmode="numeric" class="max-w-32" :aria-label="t('billing.pricing.dunning.delay', { n: i + 1 })" required />
         <Button type="button" variant="ghost" size="icon" :aria-label="t('billing.common.remove')" @click="retryHours.splice(i, 1)"><X class="size-4" /></Button>
@@ -84,15 +83,15 @@ function saveDunning() {
         <Button type="button" variant="outline" :disabled="retryHours.length >= 6" @click="retryHours.push('24')"><Plus class="size-4" />{{ t("billing.pricing.dunning.add") }}</Button>
         <Button type="button" :disabled="setDunning.isPending.value" @click="saveDunning">{{ t("billing.pricing.dunning.save") }}</Button>
       </div>
-      <p v-if="dunningError" class="text-destructive text-sm" role="alert">{{ dunningError }}</p>
-      <p v-if="setDunning.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setDunning.error.value) }}</p>
+      <ErrorText :message="dunningError" />
+      <ErrorText :error="setDunning.error.value" />
       <p v-if="setDunning.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.pricing.dunning.saved") }}</p>
     </Card>
 
     <Card>
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.tax.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.pricing.tax.hint") }}</p>
-      <p v-if="stored.error.value" class="text-destructive text-sm" role="alert">{{ errorText(stored.error.value) }}</p>
+      <ErrorText :error="stored.error.value" />
       <datalist id="tax-countries"><option v-for="c in COUNTRY_HINTS" :key="c" :value="c" /></datalist>
       <div v-for="(r, i) in rates" :key="i" class="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3" role="group" :aria-label="t('billing.pricing.tax.rate', { n: i + 1 })">
         <Input v-model="r.country" list="tax-countries" maxlength="2" :aria-label="t('billing.pricing.tax.country', { n: i + 1 })" :placeholder="t('billing.pricing.tax.anyCountry')" />
@@ -105,8 +104,8 @@ function saveDunning() {
         <Button type="button" variant="outline" @click="rates.push({ country: '', name: '', percent: '' })"><Plus class="size-4" />{{ t("billing.pricing.tax.add") }}</Button>
         <Button type="button" :disabled="setRates.isPending.value" @click="saveRates">{{ t("billing.pricing.tax.save") }}</Button>
       </div>
-      <p v-if="taxError" class="text-destructive text-sm" role="alert">{{ taxError }}</p>
-      <p v-if="setRates.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setRates.error.value) }}</p>
+      <ErrorText :message="taxError" />
+      <ErrorText :error="setRates.error.value" />
       <p v-if="setRates.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.pricing.tax.saved") }}</p>
     </Card>
   </fieldset>

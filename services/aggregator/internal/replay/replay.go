@@ -35,9 +35,9 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/apply"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
 
 // Job statuses (replay_jobs.status).
@@ -234,7 +234,7 @@ func validateStart(from, to, reason string) (time.Time, error) {
 	}
 	start, err := time.Parse("2006-01", from)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: %w", ErrInvalid, err)
+		return time.Time{}, fmt.Errorf("%w: periods must look like 2026-10", ErrInvalid)
 	}
 	return start, nil
 }

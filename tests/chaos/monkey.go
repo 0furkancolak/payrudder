@@ -20,7 +20,7 @@ import (
 //   - once, Redis flushed and restarted (all limit counters lost; the reconcile loop must rebuild them).
 //
 // Everything it does is counted, because a green run without real chaos proves nothing. The platform it acts on is
-// QUOTIFY_CHAOS_PLATFORM: "compose" (default) or "kubernetes".
+// PAYRUDDER_CHAOS_PLATFORM: "compose" (default) or "kubernetes".
 type Monkey struct {
 	rng *rand.Rand
 	p   platform
@@ -68,10 +68,10 @@ type platform interface {
 }
 
 func newPlatform() platform {
-	if envOr("QUOTIFY_CHAOS_PLATFORM", "compose") == "kubernetes" {
-		return &k8sPlatform{ns: envOr("QUOTIFY_K8S_NAMESPACE", "quotify"), ctx: envOr("QUOTIFY_K8S_CONTEXT", "kind-quotify")}
+	if envOr("PAYRUDDER_CHAOS_PLATFORM", "compose") == "kubernetes" {
+		return &k8sPlatform{ns: envOr("PAYRUDDER_K8S_NAMESPACE", "payrudder"), ctx: envOr("PAYRUDDER_K8S_CONTEXT", "kind-payrudder")}
 	}
-	return &composePlatform{project: "quotify", toxi: toxiproxyURL}
+	return &composePlatform{project: "payrudder", toxi: toxiproxyURL}
 }
 
 // StartMonkey begins injecting faults. Call Stop to end them and wait for the stack to recover. total is the expected

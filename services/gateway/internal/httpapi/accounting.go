@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // accountingRoutes is the table for expenses and the accounting summary.

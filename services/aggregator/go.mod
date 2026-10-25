@@ -1,10 +1,10 @@
-module github.com/0furkancolak/quotify/services/aggregator
+module github.com/0furkancolak/payrudder/services/aggregator
 
 go 1.27.2
 
 require (
-	github.com/0furkancolak/quotify/gen/go v0.0.0
-	github.com/0furkancolak/quotify/pkg v0.0.0
+	github.com/0furkancolak/payrudder/gen/go v0.0.0
+	github.com/0furkancolak/payrudder/pkg v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jackc/pgx/v5 v5.11.0
@@ -106,6 +106,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/0furkancolak/quotify/pkg => ../../pkg
+replace github.com/0furkancolak/payrudder/pkg => ../../pkg
 
-replace github.com/0furkancolak/quotify/gen/go => ../../gen/go
+replace github.com/0furkancolak/payrudder/gen/go => ../../gen/go

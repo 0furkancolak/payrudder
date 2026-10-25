@@ -68,7 +68,7 @@ Phase 03 (aggregator read APIs, `pkg/period`). Phase 01 (plans data).
 - **Reconciliation is per partition and per tenant** (`GetUsageBatch` is a tenant API), one checkpoint per
   `(tenant, ≤1000 keys)`. The checkpoint is served by the partition's apply loop under the partition lock; an idle
   partition at exactly the checkpoint offset is served immediately. Skips: `ahead`, `no_offset`, `timeout`.
-- plans-svc relays `plans.entitlements.v1` through its outbox (`QUOTIFY_KAFKA_BROKERS`; without it rows wait). Creating a
+- plans-svc relays `plans.entitlements.v1` through its outbox (`PAYRUDDER_KAFKA_BROKERS`; without it rows wait). Creating a
   subscription publishes one state per entitlement; cancelling publishes the state with `valid_until`, or a tombstone when
   the end is not in the future. Publishing a plan version emits nothing (subscriptions are pinned to a version).
   Known limitation: a subscription that starts in the future replaces the current entitlement of that customer in the

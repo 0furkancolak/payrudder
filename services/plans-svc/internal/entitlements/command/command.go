@@ -10,9 +10,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	metersqry "github.com/0furkancolak/quotify/services/plans-svc/internal/meters/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	metersqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/meters/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Topic is the compacted topic limits-svc builds its entitlement map from.

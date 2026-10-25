@@ -5,8 +5,8 @@ import { useI18n } from "vue-i18n";
 import { useCustomers } from "@/features/customers/api";
 import { absoluteUrl } from "@/features/paymentlinks/lib";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
-import { useErrorText } from "@/shared/lib/errors";
 import { useTenantCurrency } from "@/features/tenants/currency";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -14,6 +14,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 import {
   useCreateCreditPack,
   useCreatePurchaseLink,
@@ -27,7 +28,6 @@ import {
 } from "./api";
 
 const { t, locale } = useI18n();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const number = computed(() => new Intl.NumberFormat(locale.value));
@@ -41,7 +41,7 @@ const setActive = useSetCreditPackActive(tenantId);
 const packName = ref("");
 const packCredits = ref("");
 const packPrice = ref("");
-const packCurrency = ref<string>("USD");
+const packCurrency = ref<string>(FALLBACK_CURRENCY);
 // The pack is priced in the tenant's own currency unless the person picks another one.
 const tenantCurrency = useTenantCurrency(tenantId);
 let currencySeeded = false;
@@ -161,12 +161,12 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
       <Input v-model="packValidity" inputmode="numeric" :aria-label="t('billing.credits.packs.validity')" :placeholder="t('billing.credits.packs.validity')" />
       <Button type="submit" :disabled="createPack.isPending.value || !priceMinor || !creditsValid || !validityValid">{{ t("billing.credits.packs.create") }}</Button>
     </form>
-    <p v-if="createPack.error.value" class="text-destructive text-sm" role="alert">{{ errorText(createPack.error.value) }}</p>
+    <ErrorText :error="createPack.error.value" />
   </Card>
 
   <Card class="mb-6 p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.credits.packs.title") }}</h2>
-    <p v-if="packs.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(packs.error.value) }}</p>
+    <ErrorText :error="packs.error.value" class="px-3" />
     <p v-if="packs.data.value && !(packs.data.value.packs ?? []).length" class="text-muted-foreground px-3 py-2 text-sm">{{ t("billing.credits.packs.none") }}</p>
     <Table v-else>
       <TableHeader>
@@ -197,7 +197,7 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="setActive.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(setActive.error.value) }}</p>
+    <ErrorText :error="setActive.error.value" class="px-3" />
   </Card>
 
   <Card v-if="linkPack" class="mb-6">
@@ -213,7 +213,7 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
       <Button type="submit" :disabled="createLink.isPending.value || !linkCustomer || !quantityValid">{{ t("billing.credits.purchase.create") }}</Button>
       <Button type="button" variant="outline" @click="linkPack = null">{{ t("billing.credits.purchase.close") }}</Button>
     </form>
-    <p v-if="createLink.error.value" class="text-destructive text-sm" role="alert">{{ errorText(createLink.error.value) }}</p>
+    <ErrorText :error="createLink.error.value" />
     <div v-if="created && createLink.isSuccess.value && shownUrl" class="border-warning/50 bg-warning/10 grid gap-2 rounded-md border p-3" role="status">
       <p class="text-sm font-medium">{{ t("billing.credits.purchase.shownOnce") }}</p>
       <div class="flex flex-wrap items-center gap-2">
@@ -231,7 +231,7 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
       <Button type="submit" :disabled="setSettings.isPending.value || !thresholdValid">{{ t("billing.credits.settings.save") }}</Button>
       <span v-if="setSettings.isSuccess.value" class="text-muted-foreground self-center text-sm" role="status">{{ t("billing.credits.settings.saved") }}</span>
     </form>
-    <p v-if="setSettings.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setSettings.error.value) }}</p>
+    <ErrorText :error="setSettings.error.value" />
   </Card>
 
   <Card class="mb-6">
@@ -242,7 +242,7 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
     </NativeSelect>
 
     <template v-if="customer">
-      <p v-if="balance.error.value" class="text-destructive text-sm" role="alert">{{ errorText(balance.error.value) }}</p>
+      <ErrorText :error="balance.error.value" />
       <div v-if="balance.data.value" class="flex flex-wrap items-baseline gap-x-4 gap-y-1" role="status" :aria-label="t('billing.credits.customer.balance')">
         <span class="text-3xl font-semibold tabular-nums">{{ credits(balance.data.value.balance) }}</span>
         <span class="text-muted-foreground text-sm">{{ t("billing.credits.customer.balance") }}</span>
@@ -280,13 +280,13 @@ const kindVariant = (kind?: string) => (kind === "grant" ? "success" : kind === 
         <Input v-model="grantReason" maxlength="200" :aria-label="t('billing.credits.grant.reason')" :placeholder="t('billing.credits.grant.reason')" />
         <Button type="submit" :disabled="grant.isPending.value || !grantValid">{{ t("billing.credits.grant.submit") }}</Button>
       </form>
-      <p v-if="grant.error.value" class="text-destructive text-sm" role="alert">{{ errorText(grant.error.value) }}</p>
+      <ErrorText :error="grant.error.value" />
     </template>
   </Card>
 
   <Card v-if="customer" class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.credits.ledger.title") }}</h2>
-    <p v-if="ledger.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(ledger.error.value) }}</p>
+    <ErrorText :error="ledger.error.value" class="px-3" />
     <p v-if="ledger.data.value && !(ledger.data.value.entries ?? []).length" class="text-muted-foreground px-3 py-2 text-sm">{{ t("billing.credits.ledger.none") }}</p>
     <Table v-else>
       <TableHeader>

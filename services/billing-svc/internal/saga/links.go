@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	creditscommand "github.com/0furkancolak/quotify/services/billing-svc/internal/credits/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	creditscommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // linksPaid records that the invoice was paid through its payment links (its own, and the parents of the child links an ad-hoc link handed out) and tells the

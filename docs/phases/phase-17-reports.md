@@ -18,10 +18,10 @@ payment provider, customer country and currency. See [14-billing-platform.md](..
 - **Revenue comes from invoices (billing-svc).** *Billed* is finalized invoices that are not void; *collected* paid; *outstanding* open; *uncollectible*; *void*; *refunded* the invoices whose saga passed through `REFUNDED`,
   whatever their status now (voiding a paid invoice refunds it first). Invoices gained `provider` and `country` columns, set when the draft is made.
 - **Subscriptions and MRR come from plans-svc.** A subscription counts at the month's last instant if its range then contained it; MRR is the fixed fee, in the subscription's currency, of the active and past due ones (a provider-run subscription
-  counts: its fee is recurring revenue even though Paddle, not Quotify, invoices it). *New* excludes plan changes and provider migrations (they have a predecessor); *churned* excludes subscriptions that have a successor.
+  counts: its fee is recurring revenue even though Paddle, not Payrudder, invoices it). *New* excludes plan changes and provider migrations (they have a predecessor); *churned* excludes subscriptions that have a successor.
   What a subscription was in a past month is only as good as what is stored: a resumed pause or a cleared past-due is not remembered, so for a past month the paused and past due counts are those still in that state.
 - **Reconciliation compares the invoices billing calls paid with the ledger's successful charges** and reports `paid_without_charge`, `amount_mismatch`, `duplicate_charge` (two distinct successful charges for one invoice),
-  `charge_without_paid` and `conflicting_outcomes` (a success and a failure under one provider reference), with complete counts and at most 200 listed. It needs billing-svc (`QUOTIFY_BILLING_ADDR`).
+  `charge_without_paid` and `conflicting_outcomes` (a success and a failure under one provider reference), with complete counts and at most 200 listed. It needs billing-svc (`PAYRUDDER_BILLING_ADDR`).
 - **Zero-total invoices are not charged**, so reconciliation does not expect a charge for them.
 
 ## Tasks

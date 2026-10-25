@@ -3,7 +3,7 @@ managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: github.com/0furkancolak/quotify/gen/go
+      value: github.com/0furkancolak/payrudder/gen/go
 plugins:
   - local: bin/protoc-gen-go
     out: gen/go

@@ -17,13 +17,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/domain"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/maintenance"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/maintenance"
 )
 
 // TestAggregator runs every scenario against one shared Postgres and Redpanda.

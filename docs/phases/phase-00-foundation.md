@@ -18,7 +18,7 @@ the skeleton end to end.
 - [x] `go.work` with modules `pkg`, `gen/go`, `tests`, `services/hello` (deleted at end of Phase 01). `tools` kept outside the workspace (see risks)
 - [x] `tools/go.mod` with `tool` directives: `buf`, `sqlc`, `goose`, `golangci-lint`, `protoc-gen-go`, `protoc-gen-go-grpc`
 - [x] `buf.yaml` (v2, lint `STANDARD`, breaking `WIRE_JSON`), `buf.gen.yaml` → `gen/go`
-- [x] `proto/quotify/hello/v1/hello.proto` (temporary) → generated code committed
+- [x] `proto/payrudder/hello/v1/hello.proto` (temporary) → generated code committed
 - [x] `pkg/config`: typed env loading with validation
 - [x] `pkg/logx`: JSON `slog` handler adding `service`, `version`, `trace_id`, `span_id`. Redaction `LogValuer`
 - [x] `pkg/otelx`: tracer + meter provider init (OTLP gRPC), W3C propagator, `KafkaHeadersCarrier`, `AMQPTableCarrier` + unit tests
@@ -61,4 +61,4 @@ None.
 - Go 1.27 `tool` directive support in all tools: works for all six (`go build tool` into `./bin`).
 - **Changed while building:** `tools/` is not part of `go.work`. Its dependency graph would otherwise raise versions for every service module.
 - **Changed while building:** MinIO images are no longer on Docker Hub/Quay. Chainguard's build is used, pinned by digest ([ADR 0013](../adr/0013-s3-compatible-object-storage.md)).
-- Host ports 5432/8080 often clash with other local stacks: overridable via `QUOTIFY_PG_HOST_PORT` / `QUOTIFY_CONSOLE_HOST_PORT`. hello uses 7099 (7000 is macOS AirPlay).
+- Host ports 5432/8080 often clash with other local stacks: overridable via `PAYRUDDER_PG_HOST_PORT` / `PAYRUDDER_CONSOLE_HOST_PORT`. hello uses 7099 (7000 is macOS AirPlay).

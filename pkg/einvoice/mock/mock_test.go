@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/einvoice/mock"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/mock"
 )
 
 func doc(uuid string, sandbox bool) einvoice.Document {

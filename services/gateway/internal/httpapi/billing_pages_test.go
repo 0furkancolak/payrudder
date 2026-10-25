@@ -7,7 +7,7 @@ import (
 )
 
 // What the billing pages of the product app call: invoices, the payments ledger, packages and pricing, reports. All of them are tenant routes, which a
-// session reaches by acting as a tenant of its own accounts (X-Quotify-Tenant); a viewer may only read. The operator-only copies stay out of reach.
+// session reaches by acting as a tenant of its own accounts (X-Payrudder-Tenant); a viewer may only read. The operator-only copies stay out of reach.
 
 // tenantReads are the reads the product pages make; none names a tenant in its path or query, so the tenant can only come from the header.
 var tenantReads = []string{

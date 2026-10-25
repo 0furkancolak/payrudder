@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, ref } from "vue";
 import { api, asTenant, unwrap, type Invoice } from "@/shared/api/client";
+import { POLL } from "@/shared/api/limits";
 
 import type { Currency } from "@/shared/lib/currencies";
 
@@ -8,6 +9,8 @@ export const SCENARIOS = ["success", "declined", "insufficient_funds_once", "err
 export type Scenario = (typeof SCENARIOS)[number];
 
 const CUSTOMER = "cus_playground";
+
+const playgroundKeys = { invoices: (tenantId: string | null) => ["playground", tenantId, "invoices"] as const };
 
 /** What the walk-through has done so far, kept as message keys so it re-renders when the language changes. */
 export type LogLine = { key: string; params?: Record<string, string | number> };
@@ -109,10 +112,10 @@ export function usePlayground() {
 
   // After the close, follow the invoice through its saga until it stops moving.
   const invoices = useQuery({
-    queryKey: computed(() => ["playground", tenantId.value, "invoices"]),
+    queryKey: computed(() => playgroundKeys.invoices(tenantId.value)),
     queryFn: async (): Promise<Invoice[]> => (await unwrap(asTenant(requireKey()).GET("/v1/invoices", {}))).invoices ?? [],
     enabled: computed(() => closed.value && key.value !== null),
-    refetchInterval: 2000,
+    refetchInterval: POLL.quick,
   });
 
   function requireKey(): string {

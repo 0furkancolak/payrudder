@@ -6,8 +6,8 @@ import { pickLanguage } from "../e2e-mock/ui";
 // The product app against the REAL stack (make dev / make up): nothing is mocked. It signs a fresh person up, seeds real money data in the app's sandbox
 // through the public API (the mock payment provider plays the payments out), and checks what the pages show against what was seeded.
 // SHOTS=<dir> also saves screenshots (desktop and phone) so the pages can be looked at.
-const gateway = process.env.QUOTIFY_GATEWAY_URL ?? "http://localhost:42800";
-const operatorToken = process.env.QUOTIFY_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
+const gateway = process.env.PAYRUDDER_GATEWAY_URL ?? "http://localhost:42800";
+const operatorToken = process.env.PAYRUDDER_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
 const shots = process.env.SHOTS;
 const password = "correct horse battery";
 
@@ -286,7 +286,7 @@ test.describe("product app, real stack", () => {
     await expect(page.getByText("c_ok1")).toHaveCount(0);
     // The API says the same: not found, never forbidden.
     expect((await api("GET", `/app/v1/apps/${appId}`, other.token)).status).toBe(404);
-    expect((await api("GET", "/v1/customers", other.token, undefined, { "x-quotify-tenant": sandbox })).status).toBe(404);
+    expect((await api("GET", "/v1/customers", other.token, undefined, { "x-payrudder-tenant": sandbox })).status).toBe(404);
     // A person who is not on the operator list is signed in but not an operator: 403, not 401.
     expect((await api("GET", "/admin/v1/tenants", other.token)).status).toBe(403);
 

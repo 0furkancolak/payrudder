@@ -30,7 +30,7 @@ export interface Env {
   BRAND_NAME?: string;
   /** "true" shows the demo banner. */
   CONSOLE_DEMO?: string;
-  /** Shared secret (a Worker secret: `wrangler secret put EDGE_AUTH_SECRET`) sent to the gateway as X-Edge-Auth. The gateway, holding the same value as QUOTIFY_TRUSTED_PROXY_SECRET, then believes X-Forwarded-For. */
+  /** Shared secret (a Worker secret: `wrangler secret put EDGE_AUTH_SECRET`) sent to the gateway as X-Edge-Auth. The gateway, holding the same value as PAYRUDDER_TRUSTED_PROXY_SECRET, then believes X-Forwarded-For. */
   EDGE_AUTH_SECRET?: string;
 }
 
@@ -79,10 +79,10 @@ export function downstreamHeaders(upstream: Headers): Headers {
   return out;
 }
 
-/** /env.js: the runtime settings the page reads (window.__QUOTIFY__), the Worker's counterpart of what the container generated from its environment. */
+/** /env.js: the runtime settings the page reads (window.__PAYRUDDER__), the Worker's counterpart of what the container generated from its environment. */
 export function envScript(env: Pick<Env, "BRAND_NAME" | "CONSOLE_DEMO">): string {
   const brand = (env.BRAND_NAME ?? "").replace(/[^\p{L}\p{N} ._-]/gu, "");
-  return `window.__QUOTIFY__=${JSON.stringify({ prefill: false, brand, demo: env.CONSOLE_DEMO === "true" })};`;
+  return `window.__PAYRUDDER__=${JSON.stringify({ prefill: false, brand, demo: env.CONSOLE_DEMO === "true" })};`;
 }
 
 export async function handle(request: Request, env: Env): Promise<Response> {

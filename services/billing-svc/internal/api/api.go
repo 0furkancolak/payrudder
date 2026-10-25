@@ -8,25 +8,25 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/accounting"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/billingruns"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/creditnotes"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/credits"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/deadletters"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/dunning"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices"
-	einvoicecmd "github.com/0furkancolak/quotify/services/billing-svc/internal/einvoices/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/invoices"
-	invoicequery "github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/payments"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/reports"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/rerating"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/sagas"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/deadletters"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dunning"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices"
+	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices"
+	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/payments"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/reports"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas"
 )
 
 // PDFSigner presigns downloads of invoice PDFs (pkg/blob.Store).
@@ -102,7 +102,7 @@ func (s *Server) WithDeadLetters(a *dlq.Admin) *Server {
 	return s
 }
 
-// WithDemo allows the mock payment on hosted pages for live tenants too (QUOTIFY_DEMO).
+// WithDemo allows the mock payment on hosted pages for live tenants too (PAYRUDDER_DEMO).
 func (s *Server) WithDemo(demo bool) *Server {
 	s.hostedHandler.WithDemo(demo)
 	return s

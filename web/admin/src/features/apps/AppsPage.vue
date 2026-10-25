@@ -6,8 +6,9 @@ import { keyMask } from "@/shared/lib/environment";
 import { useFormat } from "@/shared/lib/format";
 import { useTenant } from "@/features/tenants";
 import { type Currency } from "@/shared/lib/currencies";
-import { useErrorText } from "@/shared/lib/errors";
+import { firstError } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -18,7 +19,6 @@ import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 
 const { t, te } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
@@ -76,10 +76,7 @@ function revoke(id: string) {
     },
   });
 }
-const failure = computed(() => {
-  for (const m of [createApp, createKey, revokeKey]) if (m.error.value) return errorText(m.error.value);
-  return "";
-});
+const failure = computed(() => firstError(createApp, createKey, revokeKey));
 const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId === tenant);
 </script>
 
@@ -96,8 +93,8 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
       <Button type="submit" :disabled="createApp.isPending.value || !accountId || !slugOk">{{ t("apps.create") }}</Button>
     </form>
     <p v-if="!slugOk" class="text-destructive text-sm" role="alert">{{ t("apps.badSlug") }}</p>
-    <p v-if="failure" class="text-destructive text-sm" role="alert">{{ failure }}</p>
-    <p v-if="apps.error.value" class="text-destructive text-sm" role="alert">{{ errorText(apps.error.value) }}</p>
+    <ErrorText :error="failure" />
+    <ErrorText :error="apps.error.value" />
   </Card>
 
   <Card class="mb-6 p-3">

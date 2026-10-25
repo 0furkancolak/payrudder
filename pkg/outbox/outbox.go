@@ -97,7 +97,7 @@ func NewRelay(pool *pgxpool.Pool, sink Sink, cfg Config, log *slog.Logger) (*Rel
 	if log == nil {
 		log = slog.Default()
 	}
-	m := otel.Meter("github.com/0furkancolak/quotify/pkg/outbox")
+	m := otel.Meter("github.com/0furkancolak/payrudder/pkg/outbox")
 	r := &Relay{pool: pool, sink: sink, cfg: cfg, log: log}
 	var err error
 	if r.published, err = m.Int64Counter("outbox_published", metric.WithDescription("Rows published to the sink")); err != nil {

@@ -94,7 +94,7 @@ so replays stay deterministic. Rejected with `FAILED_PRECONDITION` for live tena
 ## gRPC API (sketch)
 
 ```proto
-package quotify.aggregator.v1;
+package payrudder.aggregator.v1;
 
 service UsageQueryService {
   rpc GetCustomerUsage(GetCustomerUsageRequest) returns (GetCustomerUsageResponse);   // customer, period → per-meter qty

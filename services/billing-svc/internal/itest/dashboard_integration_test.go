@@ -10,9 +10,9 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/accounting"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting"
 )
 
 // seedInvoiceOf inserts an invoice of a named customer; a paid one also gets its saga history, an open one a finalize time `age` days ago.

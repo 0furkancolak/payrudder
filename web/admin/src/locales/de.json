@@ -125,7 +125,7 @@
     },
     "jobs": {
       "title": "Replay- und Neubewertungsjobs",
-      "hint": "Einen Job über seine ID nachschlagen (gestartet werden sie mit quotifyctl oder der Admin-API).",
+      "hint": "Einen Job über seine ID nachschlagen (gestartet werden sie mit payrudderctl oder der Admin-API).",
       "idLabel": "Job-ID",
       "replay": "Replay-Job",
       "rerating": "Neubewertungsjob"
@@ -789,7 +789,7 @@
     },
     "webhooks": {
       "title": "Webhooks",
-      "hint": "Payrudder sendet an diese HTTPS-Endpunkte einen signierten JSON-POST, wenn im Konto etwas passiert: eine Rechnung wird bezahlt, eine Gutschrift ausgestellt, ein Abonnement ändert sich. Prüfen Sie den Header Quotify-Signature mit dem Secret des Endpunkts; fehlgeschlagene Zustellungen werden etwa eineinhalb Tage lang wiederholt.",
+      "hint": "Payrudder sendet an diese HTTPS-Endpunkte einen signierten JSON-POST, wenn im Konto etwas passiert: eine Rechnung wird bezahlt, eine Gutschrift ausgestellt, ein Abonnement ändert sich. Prüfen Sie den Header Payrudder-Signature mit dem Secret des Endpunkts; fehlgeschlagene Zustellungen werden etwa eineinhalb Tage lang wiederholt.",
       "formLabel": "neuer Webhook-Endpunkt",
       "url": "Endpunkt-URL",
       "description": "Beschreibung",
@@ -1326,7 +1326,8 @@
         "bad_customer_id": "Die Kunden-ID ist keine gültige ID.",
         "bad_page_size": "Die Seitengröße muss zwischen 1 und 500 liegen.",
         "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
-        "pdf_sign_failed": "Der PDF-Download-Link konnte nicht erstellt werden. Versuchen Sie es gleich erneut."
+        "pdf_sign_failed": "Der PDF-Download-Link konnte nicht erstellt werden. Versuchen Sie es gleich erneut.",
+        "pdf_failed": "Das Rechnungs-PDF konnte nicht erstellt werden. Prüfen Sie die Rechnungsdaten."
       },
       "invoice_link": {
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
@@ -1600,7 +1601,8 @@
         "sync_failed": "Das Anbieterkonto wurde geändert, die Bankdaten konnten aber nicht an die Rechnungen weitergegeben werden. Senden Sie die Anfrage erneut."
       },
       "billing": {
-        "not_configured": "Die Abrechnung ist in dieser Installation nicht eingerichtet."
+        "not_configured": "Die Abrechnung ist in dieser Installation nicht eingerichtet.",
+        "failed": "Der Abrechnungsdienst konnte dies nicht abschließen. Versuchen Sie es gleich erneut."
       },
       "plans": {
         "not_configured": "Pläne sind in dieser Installation nicht eingerichtet.",
@@ -1661,6 +1663,13 @@
         "not_recorded": "Die Benachrichtigung konnte nicht gespeichert werden. Senden Sie sie erneut.",
         "try_again": "Die Benachrichtigung konnte noch nicht bestätigt werden. Senden Sie sie erneut.",
         "unverified": "Es konnte nicht bestätigt werden, dass die Benachrichtigung vom Anbieter stammt."
+      },
+      "charge": {
+        "currency_not_supported": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen.",
+        "pending": "Die Zahlung wurde angenommen und wartet auf die Abwicklung.",
+        "provider_not_configured": "Für dieses Konto ist kein Zahlungsanbieter eingerichtet.",
+        "rejected": "Der Zahlungsanbieter hat die Anfrage abgelehnt.",
+        "timeout": "Der Zahlungsanbieter hat nicht rechtzeitig geantwortet."
       }
     },
     "einvoice": {
