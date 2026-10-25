@@ -1600,7 +1600,8 @@
       "account": {
         "bad_settings": "Diese Anbietereinstellungen sind ungültig. Prüfen Sie die Zugangsdaten und die Pflichtfelder.",
         "not_found": "Für dieses Konto ist dieser Zahlungsanbieter nicht eingerichtet.",
-        "sync_failed": "Das Anbieterkonto wurde geändert, die Bankdaten konnten aber nicht an die Rechnungen weitergegeben werden. Senden Sie die Anfrage erneut."
+        "sync_failed": "Das Anbieterkonto wurde geändert, die Bankdaten konnten aber nicht an die Rechnungen weitergegeben werden. Senden Sie die Anfrage erneut.",
+        "livemode_mismatch": "Dieses Anbieterkonto zeigt auf den anderen Modus des Anbieters: Eine Live-Umgebung braucht den Live-Endpunkt und die Live-Schlüssel des Anbieters, eine Sandbox-Umgebung den Test-Endpunkt."
       },
       "billing": {
         "not_configured": "Die Abrechnung ist in dieser Installation nicht eingerichtet.",

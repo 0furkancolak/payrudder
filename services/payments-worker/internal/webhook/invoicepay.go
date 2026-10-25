@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
@@ -48,7 +49,7 @@ func (s *Server) routedProvider(ctx context.Context, tenant uuid.UUID, named, co
 			return name, nil
 		}
 	}
-	name, _, err := s.Accounts.Default(ctx, tenant, "live")
+	name, _, err := s.Accounts.Default(ctx, tenant, env.Live.String())
 	return name, err
 }
 
@@ -60,7 +61,7 @@ func (s *Server) invoiceMethods(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	methods := []PaymentMethod{}
-	if q.Get("environment") != "live" {
+	if q.Get("environment") != env.Live.String() {
 		writeJSON(w, http.StatusOK, map[string]any{"methods": methods})
 		return
 	}
@@ -77,10 +78,10 @@ func (s *Server) invoiceMethods(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, a := range accounts {
-		if a.Environment != "live" {
+		if a.Environment != env.Live.String() {
 			continue
 		}
-		prov, err := s.Resolver.Named(ctx, t, a.Provider, "live")
+		prov, err := s.Resolver.Named(ctx, t, a.Provider, env.Live.String())
 		if err != nil {
 			s.Log.WarnContext(ctx, "provider account not usable for payment methods", "tenant", t, "provider", a.Provider, "err", err)
 			continue
@@ -165,7 +166,7 @@ func (s *Server) startCheckout(w http.ResponseWriter, r *http.Request, t, invoic
 		fail(w, http.StatusConflict, "payments.account.not_found", "the tenant has no provider account for this payment")
 		return
 	}
-	prov, err := s.Resolver.Named(ctx, t, name, "live")
+	prov, err := s.Resolver.Named(ctx, t, name, env.Live.String())
 	if err != nil {
 		fail(w, http.StatusConflict, "payments.account.not_found", "no account at "+name+" for this tenant")
 		return
@@ -190,7 +191,7 @@ func (s *Server) startCheckout(w http.ResponseWriter, r *http.Request, t, invoic
 	}
 	key := fmt.Sprintf("%s%s:%d", LinkKeyPrefix, invoice, n+1)
 	// The key decides the command id, so two requests racing for the same attempt number are one attempt: the loser does not open a second checkout.
-	redelivered, err := s.Attempts.Start(ctx, uuid.NewSHA1(linkNS, []byte(key)), t, invoice, "charge", "live", name, key,
+	redelivered, err := s.Attempts.Start(ctx, uuid.NewSHA1(linkNS, []byte(key)), t, invoice, "charge", env.Live.String(), name, key,
 		attemptRequest{AmountMinor: in.AmountMinor, Currency: in.Currency, Method: methodCheckout, SagaID: in.SagaID})
 	if err != nil {
 		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
@@ -207,7 +208,7 @@ func (s *Server) startCheckout(w http.ResponseWriter, r *http.Request, t, invoic
 		return
 	}
 	// Pending is a fact about money at the provider: the customer was sent there. The notification adds the outcome.
-	if _, err := s.Ledger.Append(ctx, store.LedgerEntry{TenantID: t, InvoiceID: invoice, Provider: name, Environment: "live", Kind: "charge", Status: "pending",
+	if _, err := s.Ledger.Append(ctx, store.LedgerEntry{TenantID: t, InvoiceID: invoice, Provider: name, Environment: env.Live.String(), Kind: "charge", Status: "pending",
 		AmountMinor: in.AmountMinor, Currency: in.Currency, ProviderRef: co.Ref, IdempotencyKey: key, Source: "command", Detail: "checkout:" + co.URL}); err != nil {
 		s.Log.ErrorContext(ctx, "ledger write failed for a checkout", "provider", name, "invoice", invoice, "err", err)
 	}
@@ -216,7 +217,7 @@ func (s *Server) startCheckout(w http.ResponseWriter, r *http.Request, t, invoic
 
 func (s *Server) startInstructions(w http.ResponseWriter, r *http.Request, t, invoice uuid.UUID, name string, in invoicePaymentInput) {
 	ctx := r.Context()
-	prov, err := s.Resolver.Named(ctx, t, name, "live")
+	prov, err := s.Resolver.Named(ctx, t, name, env.Live.String())
 	if err != nil {
 		fail(w, http.StatusConflict, "payments.account.not_found", "no account at "+name+" for this tenant")
 		return
@@ -228,7 +229,7 @@ func (s *Server) startInstructions(w http.ResponseWriter, r *http.Request, t, in
 	}
 	// One attempt per invoice and provider: the page can be shown again and again and the customer always gets the same reference.
 	key := fmt.Sprintf("%s%s:i:%s", LinkKeyPrefix, invoice, name)
-	if _, err := s.Attempts.Start(ctx, uuid.NewSHA1(linkNS, []byte(key)), t, invoice, "charge", "live", name, key,
+	if _, err := s.Attempts.Start(ctx, uuid.NewSHA1(linkNS, []byte(key)), t, invoice, "charge", env.Live.String(), name, key,
 		attemptRequest{AmountMinor: in.AmountMinor, Currency: in.Currency, Method: in.Method, SagaID: in.SagaID}); err != nil {
 		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
@@ -239,7 +240,7 @@ func (s *Server) startInstructions(w http.ResponseWriter, r *http.Request, t, in
 		return
 	}
 	ref := ins.Reference
-	if _, err := s.Ledger.Append(ctx, store.LedgerEntry{TenantID: t, InvoiceID: invoice, Provider: name, Environment: "live", Kind: "charge", Status: "pending",
+	if _, err := s.Ledger.Append(ctx, store.LedgerEntry{TenantID: t, InvoiceID: invoice, Provider: name, Environment: env.Live.String(), Kind: "charge", Status: "pending",
 		AmountMinor: in.AmountMinor, Currency: in.Currency, ProviderRef: ref, IdempotencyKey: key, Source: "command", Detail: "instructions:" + ref}); err != nil {
 		s.Log.ErrorContext(ctx, "ledger write failed for payment instructions", "provider", name, "invoice", invoice, "err", err)
 	}

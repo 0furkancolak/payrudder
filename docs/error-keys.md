@@ -293,6 +293,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `limits.reconcile.not_configured`
 - `limits.reconcile.unavailable`
 - `payments.account.bad_settings`
+- `payments.account.livemode_mismatch`
 - `payments.account.not_found`
 - `payments.account.sync_failed`
 - `payments.billing.failed`

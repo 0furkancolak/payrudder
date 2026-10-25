@@ -43,6 +43,10 @@ func (r *Resolver) Named(ctx context.Context, tenant uuid.UUID, provider, env st
 	if err != nil {
 		return nil, fmt.Errorf("provider account %s/%s: %w", provider, env, err)
 	}
+	// An account stored in one mode that points at the provider's other mode is never used (it may predate the check at the door).
+	if err := payments.CheckLivemode(p, env); err != nil {
+		return nil, fmt.Errorf("provider account %s/%s: %w", provider, env, err)
+	}
 	if r.cache == nil {
 		r.cache = map[string]cached{}
 	}

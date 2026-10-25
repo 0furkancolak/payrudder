@@ -1600,7 +1600,8 @@
       "account": {
         "bad_settings": "Ces paramètres du prestataire ne sont pas valides. Vérifiez les identifiants et les champs obligatoires.",
         "not_found": "Ce compte n'a pas ce prestataire de paiement configuré.",
-        "sync_failed": "Le compte du prestataire a été modifié, mais les coordonnées bancaires n'ont pas pu être transmises aux factures. Renvoyez la requête."
+        "sync_failed": "Le compte du prestataire a été modifié, mais les coordonnées bancaires n'ont pas pu être transmises aux factures. Renvoyez la requête.",
+        "livemode_mismatch": "Ce compte fournisseur pointe vers l'autre mode du fournisseur : un environnement live exige le point de terminaison et les clés live du fournisseur, un environnement sandbox son point de terminaison de test."
       },
       "billing": {
         "not_configured": "La facturation n'est pas configurée sur ce déploiement.",

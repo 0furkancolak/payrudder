@@ -1,4 +1,4 @@
-// Package env is the one place that parses, compares and requires an environment (phase 45, ADR 0011 and ADR 0022).
+// Package env is the one place that parses, compares and requires an environment (phase 45, ADR 0011 and ADR 0023).
 //
 // A tenant is a sandbox or a live one. The tenant stays the unit of isolation, so nothing in a table says "environment"; what keeps the two from being
 // confused is that every edge asserts it: a request, a command or an event whose environment is missing, or disagrees with its tenant's, is refused

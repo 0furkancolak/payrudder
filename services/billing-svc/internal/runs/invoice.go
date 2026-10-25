@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -82,9 +83,8 @@ func (m *Manager) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) e
 // Number formats an invoice number: INV-2026-000123 for live tenants, SBX-2026-000123 for sandbox ones, so a sandbox
 // invoice can't be mistaken for a real one.
 func Number(environment string, year int, seq int64) string {
-	prefix := "INV"
-	if environment == "sandbox" {
-		prefix = "SBX"
+	if environment == env.Sandbox.String() {
+		return fmt.Sprintf("%s%d-%06d", env.SandboxNumberPrefix, year, seq)
 	}
-	return fmt.Sprintf("%s-%d-%06d", prefix, year, seq)
+	return fmt.Sprintf("INV-%d-%06d", year, seq)
 }

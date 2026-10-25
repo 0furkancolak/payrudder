@@ -21,6 +21,7 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
@@ -536,14 +537,12 @@ func (c *dashCache) set(key string, now time.Time, body []byte) {
 // appDashboard is GET /app/v1/apps/{id}/dashboard?environment=&period=&from=&to=&compare=.
 func (s *Server) appDashboard(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
-	envName := r.URL.Query().Get("environment")
-	if envName == "" {
-		envName = "live"
-	}
-	if envName != "live" && envName != "sandbox" {
-		writeError(w, r, invalid("environment", "sandbox or live"))
+	want, err := environmentParam(r)
+	if err != nil {
+		writeError(w, r, err)
 		return
 	}
+	envName := want.String()
 	app, err := s.d.Identity.GetMyApp(r.Context(), &plansv1.GetMyAppRequest{UserId: sess.UserID, AppId: r.PathValue("id")})
 	if err != nil {
 		writeError(w, r, err)
@@ -551,7 +550,7 @@ func (s *Server) appDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	var t *plansv1.Tenant
 	for _, c := range app.GetApp().GetTenants() {
-		if (envName == "live") == (c.GetEnvironment() == plansv1.Environment_ENVIRONMENT_LIVE) {
+		if c.GetEnvironment() == want.Proto() {
 			t = c
 		}
 	}
@@ -570,11 +569,12 @@ func (s *Server) adminTenantDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t := resp.GetTenant()
-	env := "sandbox"
-	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_LIVE {
-		env = "live"
+	tenantEnv, err := env.FromProto(t.GetEnvironment())
+	if err != nil {
+		writeError(w, r, env.Refuse(err))
+		return
 	}
-	s.serveDashboard(w, r, t.GetAppId(), env, t)
+	s.serveDashboard(w, r, t.GetAppId(), tenantEnv.String(), t)
 }
 
 func (s *Server) serveDashboard(w http.ResponseWriter, r *http.Request, appID, envName string, t *plansv1.Tenant) {
