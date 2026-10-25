@@ -3,13 +3,12 @@ package query
 
 import (
 	"context"
-	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
@@ -72,11 +71,8 @@ func (r *Queries) Endpoints(ctx context.Context) ([]*plansv1.WebhookEndpoint, er
 
 // Deliveries lists deliveries, newest first.
 func (r *Queries) Deliveries(ctx context.Context, req *plansv1.ListWebhookDeliveriesRequest) (*plansv1.ListWebhookDeliveriesResponse, error) {
-	size := req.GetPageSize()
-	switch {
-	case size == 0:
-		size = 50
-	case size < 0 || size > 200:
+	size, ok := page.Size(req.GetPageSize(), 50, 200)
+	if !ok {
 		return nil, domain.Invalid("page_size", "1..200")
 	}
 	endpoint := uuid.Nil
@@ -97,20 +93,15 @@ func (r *Queries) Deliveries(ctx context.Context, req *plansv1.ListWebhookDelive
 	case plansv1.WebhookDeliveryState_WEBHOOK_DELIVERY_STATE_FAILED:
 		state = "failed"
 	}
-	afterTime, afterID := time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC), uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")
+	cur := page.Start()
 	if tok := req.GetPageToken(); tok != "" {
-		at, id, ok := strings.Cut(tok, "|")
-		var perr error
-		if afterTime, perr = time.Parse(time.RFC3339Nano, at); !ok || perr != nil {
-			return nil, domain.Invalid("page_token", "not one this API gave")
-		}
-		if afterID, perr = uuid.Parse(id); perr != nil {
+		if cur, ok = page.ParseCursor(tok); !ok {
 			return nil, domain.Invalid("page_token", "not one this API gave")
 		}
 	}
 	resp := &plansv1.ListWebhookDeliveriesResponse{}
 	err := r.db.Tx(ctx, func(q *sqlc.Queries) error {
-		rows, err := q.ListWebhookDeliveries(ctx, sqlc.ListWebhookDeliveriesParams{EndpointID: endpoint, State: state, AfterTime: afterTime, AfterID: afterID, PageSize: size + 1})
+		rows, err := q.ListWebhookDeliveries(ctx, sqlc.ListWebhookDeliveriesParams{EndpointID: endpoint, State: state, AfterTime: cur.At, AfterID: cur.ID, PageSize: size + 1})
 		for _, row := range rows {
 			resp.Deliveries = append(resp.Deliveries, DeliveryMessage(sqlc.GetWebhookDeliveryRow(row)))
 		}
@@ -119,10 +110,11 @@ func (r *Queries) Deliveries(ctx context.Context, req *plansv1.ListWebhookDelive
 	if err != nil {
 		return nil, convert.Err(err, "webhook delivery")
 	}
-	if len(resp.Deliveries) > int(size) {
-		resp.Deliveries = resp.Deliveries[:size]
-		last := resp.Deliveries[size-1]
-		resp.NextPageToken = last.CreateTime.AsTime().UTC().Format(time.RFC3339Nano) + "|" + last.Id
+	var more bool
+	if resp.Deliveries, more = page.Trim(resp.Deliveries, int(size)); more {
+		last := resp.Deliveries[len(resp.Deliveries)-1]
+		id, _ := uuid.Parse(last.Id) // an id we made
+		resp.NextPageToken = page.Cursor{At: last.CreateTime.AsTime(), ID: id}.Token()
 	}
 	return resp, nil
 }

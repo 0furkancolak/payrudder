@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -40,10 +41,11 @@ type ListParams struct {
 
 // List returns a page of expenses, newest first, and the token of the next page ("" at the end).
 func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) ([]model.Expense, string, error) {
-	if p.PageSize < 1 {
-		p.PageSize = 50
+	size, ok := page.Size(p.PageSize, 50, 200)
+	if !ok {
+		return nil, "", errkey.New(codes.InvalidArgument, "billing.accounting.bad_page_size", "page_size must be 1..200")
 	}
-	p.PageSize = min(p.PageSize, 200)
+	p.PageSize = size
 	params := sqlc.ListExpensesParams{TenantID: tenantID, IncludeVoided: p.IncludeVoided, RowLimit: p.PageSize + 1}
 	if p.Category != "" {
 		if !model.ValidCategory(p.Category) {
@@ -84,8 +86,8 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 		return nil, "", internal()
 	}
 	next := ""
-	if int32(len(out)) > p.PageSize { //nolint:gosec // bounded by PageSize+1 <= 201
-		out = out[:p.PageSize]
+	var more bool
+	if out, more = page.Trim(out, int(p.PageSize)); more {
 		last := out[len(out)-1]
 		next = model.FormatDay(last.IncurredOn) + "." + last.ID.String()
 	}

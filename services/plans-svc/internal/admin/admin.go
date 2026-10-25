@@ -25,6 +25,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
@@ -221,11 +222,8 @@ func (s *Server) ListTenants(ctx context.Context, req *plansv1.ListTenantsReques
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
-	size := req.GetPageSize()
-	if size <= 0 {
-		size = 500
-	}
-	if size > 1000 {
+	size, ok := page.Size(req.GetPageSize(), 500, 1000)
+	if !ok {
 		return nil, domain.Invalid("page_size", "must be 1..1000")
 	}
 	after := uuid.Nil

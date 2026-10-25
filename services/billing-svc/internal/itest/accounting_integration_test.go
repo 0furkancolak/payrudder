@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting"
 )
@@ -285,6 +286,12 @@ func testAccounting(t *testing.T) {
 	}
 	if _, err = svc.ListExpenses(ctx, &billingv1.ListExpensesRequest{PageToken: "garbage"}); err == nil {
 		t.Error("a garbage page token was accepted")
+	}
+	// A page size above the maximum is refused like on every other list, not clamped.
+	for _, size := range []int32{201, -1} {
+		if _, err = svc.ListExpenses(ctx, &billingv1.ListExpensesRequest{PageSize: size}); err == nil || errkey.Of(err) != "billing.accounting.bad_page_size" {
+			t.Errorf("page_size %d: err = %v, want billing.accounting.bad_page_size", size, err)
+		}
 	}
 	if l, _ = svc.ListExpenses(otherCtx, &billingv1.ListExpensesRequest{}); len(l.GetExpenses()) != 1 || l.GetExpenses()[0].GetVendor() != "Theirs" {
 		t.Errorf("other tenant list = %v", l)
