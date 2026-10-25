@@ -6,9 +6,9 @@ import (
 	"time"
 	_ "time/tzdata" // tenant time zones must load in distroless images
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/period"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
 var periodParam = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)

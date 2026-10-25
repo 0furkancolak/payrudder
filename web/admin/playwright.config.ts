@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 // The smoke test drives the real console against the real stack (make up): it needs the admin UI on ADMIN_URL, the gateway on
-// QUOTIFY_GATEWAY_URL and RabbitMQ's management API on RABBITMQ_URL. Nothing is mocked.
+// PAYRUDDER_GATEWAY_URL and RabbitMQ's management API on RABBITMQ_URL. Nothing is mocked.
 export default defineConfig({
   testDir: "./e2e",
   timeout: 5 * 60_000,

@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 )
 
 // einvoiceSnapshot adds to a snapshot what an e-invoice needs about the seller and the buyer, as the tenant and the customer are now. With the setting off

@@ -50,7 +50,7 @@ export interface RecordPaymentInput {
 export function useInvoicePayments(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   const refresh = () => queries.invalidateQueries({ queryKey: invoiceKeys.list(toValue(tenantId)) });
-  const header = { "X-Quotify-Actor": ACTOR };
+  const header = { "X-Payrudder-Actor": ACTOR };
   return {
     confirmTransfer: useMutation({
       mutationFn: (v: ConfirmTransferInput) =>

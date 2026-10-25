@@ -8,7 +8,7 @@ const LIVE = TENANT;
 
 /** Switches the console to a language (the saved choice) and reloads; the sign-in form is in English, so this comes after it. */
 async function inLanguage(page: Page, locale: string): Promise<void> {
-  await page.evaluate((l) => window.localStorage.setItem("quotify.locale", l), locale);
+  await page.evaluate((l) => window.localStorage.setItem("payrudder.locale", l), locale);
   await page.reload();
 }
 

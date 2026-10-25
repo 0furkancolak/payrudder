@@ -24,15 +24,15 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/services/analytics-svc/internal/api"
-	"github.com/0furkancolak/quotify/services/analytics-svc/internal/chmigrate"
-	"github.com/0furkancolak/quotify/services/analytics-svc/internal/consumer"
-	"github.com/0furkancolak/quotify/services/analytics-svc/migrations"
+	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/api"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/chmigrate"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/consumer"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/migrations"
 )
 
 type world struct {

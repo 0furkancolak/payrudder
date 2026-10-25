@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/tenantevents"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
 
 // Event types billing-svc announces to the tenant's webhook endpoints (plans-svc has the full list).

@@ -1,8 +1,8 @@
 {
-  "uid": "quotify-k6",
-  "title": "Quotify / k6",
+  "uid": "payrudder-k6",
+  "title": "Payrudder / k6",
   "tags": [
-    "quotify"
+    "payrudder"
   ],
   "schemaVersion": 39,
   "version": 1,

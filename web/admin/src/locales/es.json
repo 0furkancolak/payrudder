@@ -125,7 +125,7 @@
     },
     "jobs": {
       "title": "Trabajos de repetición y retarificación",
-      "hint": "Busque un trabajo por su id (se inician con quotifyctl o la API de administración).",
+      "hint": "Busque un trabajo por su id (se inician con payrudderctl o la API de administración).",
       "idLabel": "Id del trabajo",
       "replay": "Trabajo de repetición",
       "rerating": "Trabajo de retarificación"
@@ -699,7 +699,7 @@
     },
     "webhooks": {
       "title": "Webhooks",
-      "hint": "Payrudder envía un POST JSON firmado a estos endpoints HTTPS cuando ocurre algo en la cuenta: se paga una factura, se emite una nota de crédito, cambia una suscripción. Verifica la cabecera Quotify-Signature con el secreto del endpoint; las entregas fallidas se reintentan durante día y medio aproximadamente.",
+      "hint": "Payrudder envía un POST JSON firmado a estos endpoints HTTPS cuando ocurre algo en la cuenta: se paga una factura, se emite una nota de crédito, cambia una suscripción. Verifica la cabecera Payrudder-Signature con el secreto del endpoint; las entregas fallidas se reintentan durante día y medio aproximadamente.",
       "formLabel": "nuevo endpoint de webhook",
       "url": "URL del endpoint",
       "description": "Descripción",

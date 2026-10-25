@@ -11,9 +11,9 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/accounting"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting"
 )
 
 // seedPaidInvoice inserts an invoice, its saga and the saga events of its history: paidAt is when it reached PAID, refundedAt (zero for none) when it was refunded.

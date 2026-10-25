@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 )
 
 // createInvoiceLink is POST /v1/invoices/{id}/links: an unguessable link to the invoice for the tenant to send to its customer.

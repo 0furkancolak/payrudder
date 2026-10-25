@@ -15,11 +15,11 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/meters"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
 )
 
 const (

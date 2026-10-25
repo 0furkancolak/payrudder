@@ -11,4 +11,4 @@ serde:
       refreshInterval: 5m
     mappings:
       - topicName: usage.events.v1
-        valueProtoType: quotify.events.v1.UsageEvent
+        valueProtoType: payrudder.events.v1.UsageEvent

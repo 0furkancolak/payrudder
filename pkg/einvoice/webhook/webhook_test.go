@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/einvoice/webhook"
-	"github.com/0furkancolak/quotify/pkg/webhooksig"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/webhook"
+	"github.com/0furkancolak/payrudder/pkg/webhooksig"
 )
 
 const secret = "s3cret-value"
@@ -51,7 +51,7 @@ func TestIssueSignedAndParsed(t *testing.T) {
 		if string(body) != "<Invoice/>" || r.Header.Get("Content-Type") != "application/xml" || r.URL.Query().Get("action") != "issue" {
 			t.Errorf("request: %q %s %s", body, r.Header.Get("Content-Type"), r.URL.RawQuery)
 		}
-		if r.Header.Get("Quotify-Document-Uuid") != "uuid-1" || r.Header.Get("Quotify-Document-Type") != "peppol" || r.Header.Get("Quotify-Document-Kind") != "invoice" || r.Header.Get("Quotify-Action") != "issue" {
+		if r.Header.Get("Payrudder-Document-Uuid") != "uuid-1" || r.Header.Get("Payrudder-Document-Type") != "peppol" || r.Header.Get("Payrudder-Document-Kind") != "invoice" || r.Header.Get("Payrudder-Action") != "issue" {
 			t.Errorf("headers: %v", r.Header)
 		}
 		_, _ = w.Write([]byte(`{"state":"issued","legal_number":"L1","external_id":"E1","pdf_base64":"` + pdf + `"}`))

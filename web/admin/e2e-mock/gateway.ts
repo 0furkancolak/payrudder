@@ -2,7 +2,7 @@ import type { Page, Route } from "@playwright/test";
 import { dashboardFixture } from "./dashboard";
 
 export const TENANT = "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e";
-/** The session token of the operator user the console tests sign in as (a person whose address the gateway lists in QUOTIFY_OPERATOR_EMAILS). */
+/** The session token of the operator user the console tests sign in as (a person whose address the gateway lists in PAYRUDDER_OPERATOR_EMAILS). */
 export const OPERATOR = "qs_" + "O".repeat(43);
 export const OPERATOR_EMAIL = "user1@example.com";
 export const OPERATOR_PASSWORD = "password123";

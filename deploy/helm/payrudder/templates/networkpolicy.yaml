@@ -1,0 +1,50 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- /* Default deny for ingress to the Payrudder pods; then each service's port is opened to its callers only. The gateway's port is open to the world
+(it is the only entry point). Metrics ports are open to pods labelled payrudder.io/scrape=true (Prometheus). */}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  labels:
+    app.kubernetes.io/part-of: payrudder
+spec:
+  # Only Payrudder's own pods: the infrastructure of the payrudder-infra chart shares the namespace and stays open to them.
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: payrudder
+  policyTypes: [Ingress]
+{{- range $name, $svc := .Values.services }}
+{{- if and (include "payrudder.enabled" $svc) $svc.port }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-{{ $name }}
+  labels:
+    {{- include "payrudder.labels" (dict "root" $ "name" $name) | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "payrudder.selector" (dict "root" $ "name" $name) | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - { port: {{ $svc.port }}, protocol: TCP }
+      {{- if $svc.allowFrom }}
+      from:
+        {{- range $svc.allowFrom }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ . }}
+              app.kubernetes.io/instance: {{ $.Release.Name }}
+        {{- end }}
+      {{- end }}
+    - ports:
+        - { port: {{ $svc.metricsPort }}, protocol: TCP }
+      from:
+        - podSelector:
+            matchLabels:
+              payrudder.io/scrape: "true"
+{{- end }}
+{{- end }}
+{{- end }}

@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 )
 
 const goodToken = "0123456789abcdefghijklmnopqrstuvwxyz0123456"

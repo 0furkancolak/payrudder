@@ -9,11 +9,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/model"
-	couponsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/model"
+	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // ClaimInput is a purchase asking to use a coupon.

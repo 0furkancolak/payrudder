@@ -8,7 +8,7 @@ package tenant
 import (
 	"context"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -21,12 +21,12 @@ import (
 
 // Metadata keys.
 const (
-	MDTenantID    = "x-quotify-tenant-id"
-	MDEnvironment = "x-quotify-environment"
-	MDTimezone    = "x-quotify-timezone"
-	MDAPIKeyID    = "x-quotify-api-key-id" //nolint:gosec // metadata key name, not a credential
-	MDTier        = "x-quotify-tier"
-	MDOperator    = "x-quotify-operator"
+	MDTenantID    = "x-payrudder-tenant-id"
+	MDEnvironment = "x-payrudder-environment"
+	MDTimezone    = "x-payrudder-timezone"
+	MDAPIKeyID    = "x-payrudder-api-key-id" //nolint:gosec // metadata key name, not a credential
+	MDTier        = "x-payrudder-tier"
+	MDOperator    = "x-payrudder-operator"
 )
 
 // Environment values (ADR 0011).
@@ -111,7 +111,7 @@ func fromIncoming(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return ctx, errkey.Newf(codes.InvalidArgument, "identity.tenant.bad_metadata", "malformed %s", MDTenantID)
 	}
-	trace.SpanFromContext(ctx).SetAttributes(attribute.String("quotify.tenant_id", id.String()))
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String("payrudder.tenant_id", id.String()))
 	return NewContext(ctx, Info{
 		ID:          id,
 		Environment: first(md, MDEnvironment),

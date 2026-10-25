@@ -3,7 +3,7 @@ import { safeGet, safeSet } from "./storage";
 
 export type ThemeChoice = "system" | "light" | "dark";
 
-const KEY = "quotify.theme";
+const KEY = "payrudder.theme";
 
 function read(): ThemeChoice {
   const v = safeGet("local", KEY);

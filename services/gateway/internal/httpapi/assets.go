@@ -14,10 +14,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // Limits of the proxied form-data upload (docs/03-services/assets-svc.md#b-proxied-multipartform-data).

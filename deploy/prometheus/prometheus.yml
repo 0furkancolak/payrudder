@@ -10,9 +10,9 @@ scrape_configs:
     static_configs:
       - targets: ["otel-collector:8888"]
 
-  # Quotify services expose /metrics on their metrics port (docs/10-local-dev.md).
+  # Payrudder services expose /metrics on their metrics port (docs/10-local-dev.md).
   # Each service adds its target here when it joins the compose `app` profile.
-  - job_name: quotify
+  - job_name: payrudder
     static_configs:
       - targets: ["gateway:9100"]
         labels:

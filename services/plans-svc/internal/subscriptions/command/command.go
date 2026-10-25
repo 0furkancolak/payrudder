@@ -5,7 +5,7 @@ package command
 import (
 	"time"
 
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 )
 
 // Commands changes subscriptions.

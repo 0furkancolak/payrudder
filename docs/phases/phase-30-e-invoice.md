@@ -3,7 +3,7 @@
 ## Goal
 
 A tenant that sells in Turkey (or to EU businesses) must hand every invoice and credit note to a government-approved channel: Turkey's GİB through an
-integrator (e-fatura for registered businesses, e-arşiv for everyone else), the EU through a Peppol access point or a national platform. Quotify already
+integrator (e-fatura for registered businesses, e-arşiv for everyone else), the EU through a Peppol access point or a national platform. Payrudder already
 numbers, totals and renders invoices; this phase turns the same invoice into a legal e-document (UBL 2.1) and delivers it through the integrator the tenant has
 a contract with. See [14-billing-platform.md](../14-billing-platform.md), [15-billing-lifecycle.md](../15-billing-lifecycle.md), [ADR 0016](../adr/0016-provider-capabilities-and-routing.md)
 (capabilities and a registry, here applied to e-invoice providers) and [ADR 0020](../adr/0020-modules-cqrs-errors-config.md).
@@ -37,7 +37,7 @@ Read this first. Nothing in this phase has been run against a real integrator or
 
 - Calculating tax. Rates stay the tenant's ([phase 22](phase-22-billing-documents.md)); the document carries what the invoice says. No withholding (tevkifat),
   ÖTV, reverse charge, intra-EU zero rating, tax exemptions per line, multiple rates on one invoice.
-- Receiving purchase invoices (inbox), e-irsaliye (despatch), e-müstahsil, e-SMM, and Peppol network participation by Quotify itself (an access point is an
+- Receiving purchase invoices (inbox), e-irsaliye (despatch), e-müstahsil, e-SMM, and Peppol network participation by Payrudder itself (an access point is an
   integrator reached through the `webhook` adapter).
 - Re-issuing a legal document. An issued document is never modified; the correction is a credit note (iade) and a new invoice. Cancellation exists only where
   the integrator and the law allow it (e-arşiv within its rules) and is an explicit operator action.
@@ -73,13 +73,13 @@ Read this first. Nothing in this phase has been run against a real integrator or
 6. **Idempotent, and a legal number is never reused.** The document UUID is `uuidv5(tenant|kind|source id)` and travels as the UBL `cbc:UUID`, so an integrator that dedups on UUID
    (all Turkish ones do) answers "exists" for a repeat; adapters turn "exists" into a status fetch, never into a second document. `einvoice_issuances.document_id`
    is the primary key and `(tenant_id, environment, legal_number)` is unique. Legal numbers come from the integrator's series (the mock fabricates
-   `MCK{year}{9 digits}`); Quotify's own invoice number (`INV-2026-000123`) is the UBL `cbc:ID` only for e-arşiv/Peppol where the sender numbers, and a note
+   `MCK{year}{9 digits}`); Payrudder's own invoice number (`INV-2026-000123`) is the UBL `cbc:ID` only for e-arşiv/Peppol where the sender numbers, and a note
    otherwise. A failed document keeps its UUID, so a retry can never produce a second legal document for the same invoice.
 7. **Sandbox can only reach the mock.** A sandbox tenant's documents always go to the `mock` adapter, whatever account is stored; an account whose environment is
    `sandbox` with another provider is refused. A live account may not be the mock (except in demo mode, like `PAYMENTS_LIVE_PROVIDER=mockpsp`). Sandbox
    documents are numbered `SBX…` by the mock and their objects are tagged `environment=sandbox` for the bucket's 30-day lifecycle rule.
 8. **Credentials.** `provider_accounts` pattern: the settings JSON (API key, base URL, webhook URL and secret, mode) is sealed with AES-256-GCM
-   (`QUOTIFY_SECRETS_KEY`), bound to tenant|provider|environment. The API never returns them (only `has_credentials` and non-secret fields). They are never
+   (`PAYRUDDER_SECRETS_KEY`), bound to tenant|provider|environment. The API never returns them (only `has_credentials` and non-secret fields). They are never
    logged; adapters redact the `Authorization` header and error bodies are truncated before they are stored as `last_error`.
 9. **Company legal data** live on the tenant (plans-svc, migration 00015): legal name, tax id (VKN/TCKN or VAT id), tax office, MERSIS number, trade registry
    number. They are also printed on the PDF. A customer gets `tax_id`, `tax_office` and `e_invoice_registered` (migration 00015). Without a seller tax id a

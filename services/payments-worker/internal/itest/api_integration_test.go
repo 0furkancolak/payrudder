@@ -19,17 +19,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/iyzico"
-	"github.com/0furkancolak/quotify/pkg/payments/paddle"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/secretbox"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/quotify/services/payments-worker/migrations"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
+	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
+	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 func (r *recPlans) GetPlanVersion(_ context.Context, _ uuid.UUID, req *plansv1.GetPlanVersionRequest) (*plansv1.PlanVersion, error) {

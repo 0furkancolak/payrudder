@@ -1,8 +1,8 @@
 {
-  "uid": "quotify-services",
-  "title": "Quotify / Services",
+  "uid": "payrudder-services",
+  "title": "Payrudder / Services",
   "tags": [
-    "quotify"
+    "payrudder"
   ],
   "schemaVersion": 39,
   "version": 1,
@@ -346,7 +346,7 @@
     {
       "id": 11,
       "type": "timeseries",
-      "title": "Resident memory, Quotify services",
+      "title": "Resident memory, Payrudder services",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -364,7 +364,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "process_resident_memory_bytes{job=\"quotify\"}",
+          "expr": "process_resident_memory_bytes{job=\"payrudder\"}",
           "legendFormat": "{{service}}"
         }
       ],

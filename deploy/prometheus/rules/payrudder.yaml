@@ -1,0 +1,89 @@
+# Alerts from docs/08-observability.md. Metric names are what the OpenTelemetry Prometheus exporter produces
+# (counters gain _total, histograms _bucket/_sum/_count). Unit tests: deploy/prometheus/tests (make test-rules).
+groups:
+  - name: payrudder-recording
+    rules:
+      # dlq_messages{broker,queue_or_topic}: messages waiting in a dead-letter queue or topic.
+      # Kafka has no "ready" count: pending = records ever dead-lettered (max_offset) minus what `payrudderctl dlq redrive
+      # --broker kafka` has moved on (the payrudderctl-redrive group's committed offset).
+      - record: dlq_messages
+        expr: |
+          sum by (broker, queue_or_topic) (
+            label_replace(label_replace(rabbitmq_detailed_queue_messages_ready{queue=~".*[.]dlq"},
+              "queue_or_topic", "$1", "queue", "(.*)"), "broker", "rabbitmq", "queue", ".*"))
+          or
+          sum by (broker, queue_or_topic) (
+            label_replace(label_replace(
+              sum by (redpanda_topic) (redpanda_kafka_max_offset{redpanda_topic=~".*[.]dlq[.].*"})
+              - (sum by (redpanda_topic) (redpanda_kafka_consumer_group_committed_offset{redpanda_group="payrudderctl-redrive", redpanda_topic=~".*[.]dlq[.].*"})
+                 or sum by (redpanda_topic) (redpanda_kafka_max_offset{redpanda_topic=~".*[.]dlq[.].*"}) * 0),
+              "queue_or_topic", "$1", "redpanda_topic", "(.*)"), "broker", "kafka", "redpanda_topic", ".*"))
+
+  - name: payrudder-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job="payrudder"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "{{ $labels.service }} is not being scraped"
+
+      - alert: OutboxStalled
+        expr: ingest_outbox_oldest_age_seconds > 60
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "ingest outbox has had an unpublished row for over a minute (relay or Kafka down)"
+
+      - alert: ConsumerLagHigh
+        expr: max by (group) (consumer_lag_seconds) > 30
+        for: 5m
+        labels: { severity: warn }
+        annotations:
+          summary: "consumer group {{ $labels.group }} is {{ $value }}s behind"
+
+      - alert: TenantLagOutlier
+        expr: |
+          (max by (group, tenant) (consumer_lag_seconds)
+            > on(group) group_left() (5 * quantile by (group) (0.5, max by (group, tenant) (consumer_lag_seconds))))
+          and on(group, tenant) (max by (group, tenant) (consumer_lag_seconds) > 5)
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "tenant {{ $labels.tenant }} lags 5x the median in group {{ $labels.group }}"
+
+      - alert: DLQNotEmpty
+        expr: sum by (broker, queue_or_topic) (dlq_messages) > 0
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "{{ $labels.broker }} {{ $labels.queue_or_topic }} holds {{ $value }} dead-lettered messages"
+
+      - alert: BillingRunStuck
+        expr: billing_runs{status="WAITING_WATERMARK"} > 0
+        for: 1h
+        labels: { severity: warn }
+        annotations:
+          summary: "a billing run has been waiting for the watermark for over an hour"
+
+      - alert: SagaStuck
+        expr: sum by (state) (saga_state{state=~".*_FAILED|PAYMENT_UNKNOWN"}) > 0
+        for: 15m
+        labels: { severity: page }
+        annotations:
+          summary: "{{ $value }} invoice sagas are in {{ $labels.state }}"
+
+      - alert: FrozenPeriodViolation
+        expr: increase(aggregator_frozen_period_violations_total[5m]) > 0
+        labels: { severity: page }
+        annotations:
+          summary: "an on-time event arrived for a frozen period (tenant {{ $labels.tenant }})"
+
+      - alert: ReconcileDriftHigh
+        expr: |
+          sum(increase(limits_reconcile_corrections_total[10m]))
+            > 0.01 * clamp_min(sum(increase(limits_reconcile_keys_checked_total[10m])), 1)
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "more than 1% of limit counters needed a reconcile correction"

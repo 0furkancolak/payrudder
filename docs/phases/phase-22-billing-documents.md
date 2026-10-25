@@ -12,13 +12,13 @@ Invoices, credit notes, coupons and tax that a finance team accepts. See [15-bil
   `CreateCreditNote` (operator) and `GetCreditNote`/`ListCreditNotes` (tenant); the revenue report has a `credited_minor` column.
 - **Typed lines with service periods:** invoice lines can be `DISCOUNT` or `TAX`, and carry `service_from`/`service_to` (the month for usage, the exact segment for a fixed fee, the fee period for an advance fee).
 - **Coupons** (plans-svc): percentage (basis points) or amount in a currency; once, for N fees, or forever; redemption limit and expiry; one per subscription; carried over a plan change with the fees it has used; a `DISCOUNT` line on the advance fee invoice.
-- **Tax rates** (plans-svc): per customer country, with a rate for every other country; added as a `TAX` line, exclusive of the price, on the invoices Quotify raises (monthly usage, advance fees, what a plan change moved). The subtotal is before tax.
+- **Tax rates** (plans-svc): per customer country, with a rate for every other country; added as a `TAX` line, exclusive of the price, on the invoices Payrudder raises (monthly usage, advance fees, what a plan change moved). The subtotal is before tax.
 - Gateway routes and OpenAPI for all of these; console: a **Coupons & tax** tab, a credit-note card on the invoice page and a list on Payments, a coupon field and buttons on subscriptions, the service period on invoice lines, a "Credited" report column; six languages.
 
 **Out of scope (not done):**
 
 - ~~**Outbound events** and a **hosted invoice page**~~: built in [phase 23](phase-23-remaining-gaps.md).
-- ~~**Per-tenant dunning settings**~~: built in phase 23 (the deployment's `QUOTIFY_DUNNING_*` stay the default).
+- ~~**Per-tenant dunning settings**~~: built in phase 23 (the deployment's `PAYRUDDER_DUNNING_*` stay the default).
 - ~~**A credit note that refunds the card**~~: built in phase 23.
 - Tax calculation (what is due where), inclusive prices, reverse charge, and tax on re-rating corrections. The rates and their correctness are the tenant's.
 - Coupons on subscriptions a provider runs (Paddle's own discounts are created through the provider API, phase 21), on usage charges, and on a plan change's proration charge.
@@ -29,7 +29,7 @@ Invoices, credit notes, coupons and tax that a finance team accepts. See [15-bil
 - **A credit balance has a currency** (migration `credit_balances.currency`) and is applied only to invoices in it; before, any credit could land on any invoice. It has exactly one source: a re-rating, a plan-change adjustment or a credit note.
 - **Coupons are applied where the fee is invoiced.** plans-svc computes the discount when it lists the fee that is due and counts the period when the fee period is advanced (compare-and-set, so once), so a crash between the invoice and the count repeats harmlessly and a coupon can never be used up twice.
 - **Tax base:** everything except a credit balance and tax itself. A discount lowers the base; a credit does not (it pays the invoice, it does not change what was sold). Rounded half-even once per invoice.
-- **A provider taxes what it charges for.** An invoice for a subscription a provider runs gets no `TAX` line from Quotify (Paddle's merchant-of-record tax is Paddle's).
+- **A provider taxes what it charges for.** An invoice for a subscription a provider runs gets no `TAX` line from Payrudder (Paddle's merchant-of-record tax is Paddle's).
 - **`FEE` invoices are real invoices:** gap-free numbers, the same payment saga, PDF with the new lines (the PDF's subtotal excludes tax).
 
 ## Tasks

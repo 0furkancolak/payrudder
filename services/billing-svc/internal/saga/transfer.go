@@ -3,8 +3,8 @@ package saga
 import (
 	"fmt"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/quantity"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
 )
 
 // instructionData adds the bank details and the payment reference to the data of a mail, when the invoice is paid by bank transfer.

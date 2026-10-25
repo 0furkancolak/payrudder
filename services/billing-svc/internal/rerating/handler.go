@@ -8,12 +8,12 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/rerating/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/rerating/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 )
 
 // Handler implements the re-rating methods of billingv1.BillingAdminServiceServer.

@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 )
 
 // Start starts, or finds, the re-rating job of a period under a plan version. created says whether it is new.

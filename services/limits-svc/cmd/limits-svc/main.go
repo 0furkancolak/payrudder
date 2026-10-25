@@ -21,22 +21,22 @@ import (
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/engine"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/meters"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/query"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/tenants"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/query"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/tenants"
 )
 
 const (
@@ -49,27 +49,27 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	GRPCAddr          string        `env:"QUOTIFY_GRPC_ADDR"`
-	RedisURL          string        `env:"QUOTIFY_REDIS_URL"`
-	PlansAddr         string        `env:"QUOTIFY_PLANS_ADDR"`
-	AggregatorAddr    string        `env:"QUOTIFY_AGGREGATOR_ADDR"`
-	KafkaBrokers      []string      `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	LimitTopic        string        `env:"QUOTIFY_LIMIT_TOPIC"`
-	GroupID           string        `env:"QUOTIFY_CONSUMER_GROUP"`
-	PodName           string        `env:"QUOTIFY_POD_NAME"`
-	PollRecords       int           `env:"QUOTIFY_POLL_RECORDS"`
-	Backoff           time.Duration `env:"QUOTIFY_CONSUMER_BACKOFF"`
-	SessionTimeout    time.Duration `env:"QUOTIFY_CONSUMER_SESSION_TIMEOUT"`
-	ReconcileInterval time.Duration `env:"QUOTIFY_RECONCILE_INTERVAL"`
+	GRPCAddr          string        `env:"PAYRUDDER_GRPC_ADDR"`
+	RedisURL          string        `env:"PAYRUDDER_REDIS_URL"`
+	PlansAddr         string        `env:"PAYRUDDER_PLANS_ADDR"`
+	AggregatorAddr    string        `env:"PAYRUDDER_AGGREGATOR_ADDR"`
+	KafkaBrokers      []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
+	LimitTopic        string        `env:"PAYRUDDER_LIMIT_TOPIC"`
+	GroupID           string        `env:"PAYRUDDER_CONSUMER_GROUP"`
+	PodName           string        `env:"PAYRUDDER_POD_NAME"`
+	PollRecords       int           `env:"PAYRUDDER_POLL_RECORDS"`
+	Backoff           time.Duration `env:"PAYRUDDER_CONSUMER_BACKOFF"`
+	SessionTimeout    time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
+	ReconcileInterval time.Duration `env:"PAYRUDDER_RECONCILE_INTERVAL"`
 }
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	if c.PollRecords < 1 {
-		errs = append(errs, errors.New("QUOTIFY_POLL_RECORDS must be ≥ 1"))
+		errs = append(errs, errors.New("PAYRUDDER_POLL_RECORDS must be ≥ 1"))
 	}
 	if c.ReconcileInterval < time.Second {
-		errs = append(errs, errors.New("QUOTIFY_RECONCILE_INTERVAL must be ≥ 1s"))
+		errs = append(errs, errors.New("PAYRUDDER_RECONCILE_INTERVAL must be ≥ 1s"))
 	}
 	return errors.Join(errs...)
 }
@@ -115,7 +115,7 @@ func run() error {
 
 	opts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
-		return fmt.Errorf("QUOTIFY_REDIS_URL: %w", err)
+		return fmt.Errorf("PAYRUDDER_REDIS_URL: %w", err)
 	}
 	rdb := redis.NewClient(opts)
 	defer func() { _ = rdb.Close() }()

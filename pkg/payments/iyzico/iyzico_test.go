@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 func TestAuthorizationMatchesTheDocumentedFormat(t *testing.T) {
@@ -257,7 +257,7 @@ func TestWebhookParseAndConfirm(t *testing.T) {
 	}
 
 	f, c := newFake(t, nil)
-	// A forged notification claims success; iyzico says the payment failed. Quotify believes iyzico.
+	// A forged notification claims success; iyzico says the payment failed. Payrudder believes iyzico.
 	f.reply = func(string, map[string]any) (int, string) {
 		return 200, `{"status":"success","paymentId":"23456","paymentStatus":"FAILURE","basketId":"inv-1"}`
 	}
@@ -276,7 +276,7 @@ func TestFactoryAndCapabilities(t *testing.T) {
 		t.Fatal(err)
 	}
 	caps := p.Capabilities()
-	if p.Name() != "iyzico" || caps.Owner() != payments.OwnerQuotify || !caps.CanCharge("TRY") || caps.CanCharge("JPY") || !caps.Refunds {
+	if p.Name() != "iyzico" || caps.Owner() != payments.OwnerPayrudder || !caps.CanCharge("TRY") || caps.CanCharge("JPY") || !caps.Refunds {
 		t.Errorf("capabilities = %+v", caps)
 	}
 	if _, err := Factory([]byte(`{"api_key":"a"}`)); err == nil {
@@ -331,7 +331,7 @@ func TestConfirmRefusesAPaymentOfAnotherInvoice(t *testing.T) {
 			t.Errorf("%s: %v, want ErrUnverified", name, err)
 		}
 	}
-	// A conversation id that is not one of Quotify's charge keys names no invoice.
+	// A conversation id that is not one of Payrudder's charge keys names no invoice.
 	f.reply = func(string, map[string]any) (int, string) {
 		return 200, `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS","basketId":"big-invoice"}`
 	}

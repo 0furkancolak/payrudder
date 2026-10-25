@@ -43,7 +43,7 @@ Today an app has a sandbox tenant and a live tenant ([ADR 0011](../adr/0011-sand
 - No view mixes environments; cross-environment totals are explicitly labelled and off by default.
 
 ### G. Deployment
-- `QUOTIFY_ALLOWED_ENVIRONMENTS` enforced in plans-svc and gateway (exists for the demo profile): test that `values-sandbox.yaml` cannot create a live tenant.
+- `PAYRUDDER_ALLOWED_ENVIRONMENTS` enforced in plans-svc and gateway (exists for the demo profile): test that `values-sandbox.yaml` cannot create a live tenant.
 - The dev seed stays sandbox-only and refuses non-local gateways (exists); add a test that no live tenant or key is ever created by it.
 
 ## Acceptance

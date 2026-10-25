@@ -12,7 +12,7 @@ set -eu
 : "${PGHOST:?}" "${PGUSER:?}" "${PGPASSWORD:?}"
 : "${PG_MIGRATOR_PASSWORD:?}" "${PG_APP_PASSWORD:?}" "${PG_SYSTEM_PASSWORD:?}"
 export PGDATABASE="${PGDATABASE:-postgres}"
-SERVICES="${QUOTIFY_PG_SERVICES:-plans ingest aggregator billing payments notifier assets mockpsp}"
+SERVICES="${PAYRUDDER_PG_SERVICES:-plans ingest aggregator billing payments notifier assets mockpsp}"
 
 for pw in "$PG_MIGRATOR_PASSWORD" "$PG_APP_PASSWORD" "$PG_SYSTEM_PASSWORD"; do
   case "$pw" in

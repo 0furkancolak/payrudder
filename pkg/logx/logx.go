@@ -1,4 +1,4 @@
-// Package logx builds the structured JSON logger every Quotify process uses.
+// Package logx builds the structured JSON logger every Payrudder process uses.
 //
 // Records always carry service and version. When the context holds a valid span, trace_id and span_id are added,
 // so logs and traces can be joined in Grafana.

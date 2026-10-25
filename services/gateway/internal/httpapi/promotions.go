@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // promotionRoutes is the table for promotion codes, their redemptions, quotes and customer grants (phase 46). The coupon routes are in subscriptionRoutes.

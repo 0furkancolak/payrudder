@@ -8,7 +8,7 @@ each idempotent and using the TTL retry tiers and dead-letter exchanges.
 ## Scope
 
 **In:** shared worker skeleton in `pkg/rabbitx`, retry/DLX topology, the three workers, `tools/mockpsp`, limit-exceeded
-emails in notifier (Kafka consumer), `quotifyctl dlq` for RabbitMQ, `pkg/blob` (S3 API), `PaymentProvider` routing and sandbox payment scenarios.
+emails in notifier (Kafka consumer), `payrudderctl dlq` for RabbitMQ, `pkg/blob` (S3 API), `PaymentProvider` routing and sandbox payment scenarios.
 
 **Out of scope:** real PSPs, real email providers, PDF localization.
 
@@ -23,7 +23,7 @@ emails in notifier (Kafka consumer), `quotifyctl dlq` for RabbitMQ, `pkg/blob` (
 - [x] payments-worker: `PaymentProvider` interface, routing by `environment` (sandbox ⇒ mockpsp, hard-coded; live ⇒ `PAYMENTS_LIVE_PROVIDER`), HTTP client with timeouts, error mapping (402 → declined, 5xx → transient, timeout → errored), `payment_attempts`
 - [x] notifier: SMTP client, `[SANDBOX]` prefix + sandbox SMTP sink, embedded templates, `sent_notifications` SENDING/SENT protocol
 - [x] notifier: Kafka consumer on `usage.limit-exceeded.v1` (group `notifier`) → limit email
-- [x] `quotifyctl dlq ls|show|redrive|purge --broker rabbitmq`
+- [x] `payrudderctl dlq ls|show|redrive|purge --broker rabbitmq`
 - [x] Remove stub-worker usage from e2e (kept in billing-svc's integration tests for speed)
 
 ## Deliverables
@@ -77,7 +77,7 @@ Phase 05 (command contracts, saga). Phase 04 (limit events) for the notifier Kaf
   Limit alerts: a Kafka consumer with offsets in `notifier_db`, dedup on `LimitExceeded.event_id`, DLQ for undecodable events
   and unknown customers (plans-svc `GetCustomer` now also takes the internal `id`).
 - **Gateway/billing:** `GET /v1/invoices/{id}/pdf` returns a presigned link (5 min) built by billing-svc from the stored
-  object key (`S3_PUBLIC_ENDPOINT` is the host-reachable MinIO address). `QUOTIFY_DUNNING_SANDBOX` / `QUOTIFY_DUNNING_LIVE`
+  object key (`S3_PUBLIC_ENDPOINT` is the host-reachable MinIO address). `PAYRUDDER_DUNNING_SANDBOX` / `PAYRUDDER_DUNNING_LIVE`
   configure the dunning delays; CI sets the sandbox ones to seconds.
-- **quotifyctl dlq** (`ls|show|redrive|purge`, RabbitMQ only) talks to the broker directly: dead letters are not part of the
+- **payrudderctl dlq** (`ls|show|redrive|purge`, RabbitMQ only) talks to the broker directly: dead letters are not part of the
   public API. Kafka dead letters are inspected with Redpanda Console; `redrive` for Kafka is left to Phase 09.

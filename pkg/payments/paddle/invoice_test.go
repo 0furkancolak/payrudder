@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 func TestCreateInvoiceCheckout(t *testing.T) {
@@ -22,7 +22,7 @@ func TestCreateInvoiceCheckout(t *testing.T) {
 		t.Errorf("request %s %s", f.method, f.path)
 	}
 	cd := f.body["custom_data"].(map[string]any)
-	if cd["quotify_key"] != "link:inv-1:1" {
+	if cd["payrudder_key"] != "link:inv-1:1" {
 		t.Errorf("custom_data = %v", cd)
 	}
 	item := f.body["items"].([]any)[0].(map[string]any)

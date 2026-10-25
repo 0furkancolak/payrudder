@@ -7,7 +7,7 @@ disruption budgets, HPA), and pass the chaos suite using pod deletion.
 
 ## Scope
 
-**In:** `deploy/kind/cluster.yaml`, umbrella Helm chart `deploy/helm/quotify` with one subchart per service, infra via upstream
+**In:** `deploy/kind/cluster.yaml`, umbrella Helm chart `deploy/helm/payrudder` with one subchart per service, infra via upstream
 charts or operators (Redpanda, RabbitMQ cluster operator, CloudNativePG, Redis, ClickHouse, MinIO, Mailpit), a migrations Job per
 service, NetworkPolicies, HPA, PDBs, `make kind-up helm-install`, chaos via `kubectl delete pod`, mock-psp as a chart component,
 S3 configuration via values (in-cluster MinIO by default), and a sandbox-only deployment profile (`values-sandbox.yaml`, [ADR 0011](../adr/0011-sandbox-environment.md)).
@@ -24,7 +24,7 @@ S3 configuration via values (in-cluster MinIO by default), and a sandbox-only de
 - [x] HPA: gateway/ingest on CPU. Consumers capped at the partition count
 - [x] NetworkPolicy: only gateway reachable from outside the namespace. Internal gRPC only from allowed callers
 - [x] `values-kind.yaml` with replicas matching the chaos profile (sandbox + live tenants, mock-psp deployed)
-- [x] `values-sandbox.yaml`: namespace `quotify-sandbox`, `QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox`, `PAYMENTS_LIVE_PROVIDER` unset, SMTP → Mailpit, shorter Kafka/ClickHouse retention, `free` tier defaults
+- [x] `values-sandbox.yaml`: namespace `payrudder-sandbox`, `PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox`, `PAYMENTS_LIVE_PROVIDER` unset, SMTP → Mailpit, shorter Kafka/ClickHouse retention, `free` tier defaults
 - [x] S3 values (`s3.endpoint`, `s3.bucket`, `s3.existingSecret`, `s3.forcePathStyle`). MinIO bucket + lifecycle via a Helm hook Job. Switching to an external S3 is values-only
 - [x] mock-psp subchart (Deployment + its Postgres DB in the CNPG cluster), reachable only from payments-worker (NetworkPolicy)
 - [x] `make demo-k8s`: the sandbox demo flow against the kind cluster
@@ -58,16 +58,16 @@ Phase 09 (chaos suite, stable services).
 
 ## Notes (as built)
 
-- **Two charts, not an umbrella with a subchart per service.** `quotify-infra` (plain StatefulSets: Postgres, Redpanda, RabbitMQ with k8s
-  peer discovery, Redis, ClickHouse, MinIO, Mailpit, the topics Job) and `quotify` (one template looping over `values.yaml: services`). Two
+- **Two charts, not an umbrella with a subchart per service.** `payrudder-infra` (plain StatefulSets: Postgres, Redpanda, RabbitMQ with k8s
+  peer discovery, Redis, ClickHouse, MinIO, Mailpit, the topics Job) and `payrudder` (one template looping over `values.yaml: services`). Two
   releases because the pre-install migration Jobs need their databases to exist. Postgres is one StatefulSet, not CloudNativePG: the
   operator is the production path and replaces the `postgres` component; it was not installed here. Details: [12-kubernetes.md](../12-kubernetes.md).
 - **No local registry**: `make kind-images` builds the images one at a time and `kind load`s them. Twelve parallel Go builds exhaust a 3 GiB Docker VM.
-- **`QUOTIFY_MIGRATE_ONLY`** (in `config.Base`, honoured by every service that migrates) makes the service's own image the migration Job.
+- **`PAYRUDDER_MIGRATE_ONLY`** (in `config.Base`, honoured by every service that migrates) makes the service's own image the migration Job.
 - **Verified on this laptop** with the one-node profile (`cluster-min.yaml`, `values-kind-min.yaml`, 3 GiB): the install, `make netpol-test` (a pod with the
   gateway's labels reaches `ingest-svc:7002`; an unlabelled pod and a pod in another namespace do not) and `make demo-k8s` (the sandbox billing and payment
   scenarios, PDFs, receipts). The three-worker, three-broker cluster, `e2e-kind`, `rollout-test` and `chaos-kind` are wired into CI and the Makefile but were
   not run on this machine (the Docker VM cannot hold them); the `kind` job in `ci.yml` runs the first three.
-- Chaos on Kubernetes: `QUOTIFY_CHAOS_PLATFORM=kubernetes` makes the monkey delete pods (including a Redpanda broker and Redis), and partition services with
+- Chaos on Kubernetes: `PAYRUDDER_CHAOS_PLATFORM=kubernetes` makes the monkey delete pods (including a Redpanda broker and Redis), and partition services with
   a temporary deny-all NetworkPolicy in place of Toxiproxy (`make chaos-kind`).
 - Not done: an observability stack on kind; a `values-sandbox.yaml` namespace install is rendered and tested, not run.

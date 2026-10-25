@@ -4,7 +4,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/accounting/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/model"
 )
 
 // Granularity of a time series.

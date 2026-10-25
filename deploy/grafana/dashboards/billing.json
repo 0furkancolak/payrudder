@@ -1,8 +1,8 @@
 {
-  "uid": "quotify-billing",
-  "title": "Quotify / Billing",
+  "uid": "payrudder-billing",
+  "title": "Payrudder / Billing",
   "tags": [
-    "quotify"
+    "payrudder"
   ],
   "schemaVersion": 39,
   "version": 1,

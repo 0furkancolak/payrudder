@@ -18,13 +18,13 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	"github.com/0furkancolak/quotify/pkg/stubworker"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/stubworker"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 )
 
 func TestBilling(t *testing.T) {
@@ -88,7 +88,7 @@ func TestBilling(t *testing.T) {
 		{"InvoiceAndCreditNoteEventsAreHandedToPlansOnce", testTenantEvents},
 		{"CreditNoteRefundsToTheCardAndIsRetriedUntilAnswered", testCreditNoteRefundToCard},
 		{"FeeInvoiceCarriesTheCouponAndServicePeriod", testFeeInvoiceCarriesTheCouponAndServicePeriod},
-		{"TaxIsAddedOnTopOfTheInvoicesQuotifyRaises", testTaxIsAddedOnTopOfTheInvoicesQuotifyRaises},
+		{"TaxIsAddedOnTopOfTheInvoicesPayrudderRaises", testTaxIsAddedOnTopOfTheInvoicesPayrudderRaises},
 		{"FeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit", testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit},
 		{"EInvoiceFinalizedIssuesInvoicesAndCreditNotes", testEInvoiceFinalizedIssuesInvoicesAndCreditNotes},
 		{"EInvoicePaidModeWaitsForPayment", testEInvoicePaidModeWaitsForPayment},

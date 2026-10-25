@@ -1,6 +1,6 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
-QUOTIFY_GRPC_ADDR: ":7007"
-QUOTIFY_MIGRATE_ON_START: "false"
+PAYRUDDER_GRPC_ADDR: ":7007"
+PAYRUDDER_MIGRATE_ON_START: "false"
 S3_REGION: "us-east-1"
 S3_BUCKET: "assets"
 S3_FORCE_PATH_STYLE: "false"

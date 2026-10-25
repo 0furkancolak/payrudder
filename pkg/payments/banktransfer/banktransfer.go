@@ -2,7 +2,7 @@
 //
 // Nothing is ever sent to a bank. A charge tells the customer where to send the money: it returns a *payments.PendingError that carries the payment
 // reference (by default the invoice number), and the operator confirms what arrived through payments-worker's receipt endpoint, which writes the
-// ledger. Quotify owns renewal and dunning; there is no hosted checkout and no refund API (Refunds=false: money goes back to the customer outside Quotify).
+// ledger. Payrudder owns renewal and dunning; there is no hosted checkout and no refund API (Refunds=false: money goes back to the customer outside Payrudder).
 // Because a charge has no side effect it needs no idempotency of its own, but IdempotentCharges is false so that the status query reads the ledger.
 package banktransfer
 
@@ -17,7 +17,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 // Name is the registry name.
@@ -135,7 +135,7 @@ func Factory(settings []byte) (payments.Provider, error) {
 	return &Provider{s: s}, nil
 }
 
-// Register adds the provider to a registry. It has no webhook: nothing notifies Quotify of a transfer, the operator confirms it.
+// Register adds the provider to a registry. It has no webhook: nothing notifies Payrudder of a transfer, the operator confirms it.
 func Register(r *payments.Registry) { r.Register(Name, Factory) }
 
 // Name implements payments.PaymentProvider.
@@ -149,7 +149,7 @@ func Caps() payments.Capabilities {
 	return payments.Capabilities{Name: Name}
 }
 
-// Capabilities implements payments.Provider: Quotify owns renewal and dunning, there is no hosted checkout and no refund API, and the status query reads
+// Capabilities implements payments.Provider: Payrudder owns renewal and dunning, there is no hosted checkout and no refund API, and the status query reads
 // the ledger (IdempotentCharges=false).
 func (p *Provider) Capabilities() payments.Capabilities {
 	c := Caps()
@@ -182,7 +182,7 @@ func (p *Provider) Charge(_ context.Context, r payments.ChargeRequest) (payments
 	return payments.ChargeResult{}, &payments.PendingError{Ref: p.Instructions(r.InvoiceNumber, r.InvoiceID).Reference}
 }
 
-// Refund implements payments.PaymentProvider: there is no refund API; the operator pays the customer back and records it outside Quotify.
+// Refund implements payments.PaymentProvider: there is no refund API; the operator pays the customer back and records it outside Payrudder.
 func (p *Provider) Refund(context.Context, payments.RefundRequest) (payments.RefundResult, error) {
 	return payments.RefundResult{}, payments.ErrUnsupported
 }

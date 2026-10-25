@@ -1,4 +1,4 @@
-// Package rabbitx is Quotify's RabbitMQ toolkit: the single definition of the topology (docs/04-messaging.md), a
+// Package rabbitx is Payrudder's RabbitMQ toolkit: the single definition of the topology (docs/04-messaging.md), a
 // publisher with confirms, and a consumer with manual acks and the retry/dead-letter policy.
 package rabbitx
 
@@ -169,9 +169,9 @@ func Definitions() ([]byte, error) {
 		Exchanges   []je     `json:"exchanges"`
 		Bindings    []jb     `json:"bindings"`
 	}{
-		Users:       []juser{{Name: "quotify", Password: "quotify_local", Tags: []string{"administrator"}}}, //nolint:gosec // local-development login only
+		Users:       []juser{{Name: "payrudder", Password: "payrudder_local", Tags: []string{"administrator"}}}, //nolint:gosec // local-development login only
 		Vhosts:      []jvhost{{Name: "/"}},
-		Permissions: []jperm{{User: "quotify", Vhost: "/", Configure: ".*", Write: ".*", Read: ".*"}},
+		Permissions: []jperm{{User: "payrudder", Vhost: "/", Configure: ".*", Write: ".*", Read: ".*"}},
 		Queues:      []jq{}, Exchanges: []je{}, Bindings: []jb{},
 	}
 	for _, e := range exchanges() {

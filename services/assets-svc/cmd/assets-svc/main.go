@@ -18,19 +18,19 @@ import (
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/background"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/service"
-	"github.com/0furkancolak/quotify/services/assets-svc/migrations"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/background"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/service"
+	"github.com/0furkancolak/payrudder/services/assets-svc/migrations"
 )
 
 //go:embed config.default.yaml
@@ -38,11 +38,11 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	GRPCAddr       string        `env:"QUOTIFY_GRPC_ADDR"`
-	PGAppDSN       string        `env:"QUOTIFY_PG_APP_DSN,required"`
-	PGSystemDSN    string        `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
+	GRPCAddr       string        `env:"PAYRUDDER_GRPC_ADDR"`
+	PGAppDSN       string        `env:"PAYRUDDER_PG_APP_DSN,required"`
+	PGSystemDSN    string        `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
+	PGMigratorDSN  string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
+	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
 	S3Endpoint     string        `env:"S3_ENDPOINT"`
 	S3Public       string        `env:"S3_PUBLIC_ENDPOINT"`
 	S3Region       string        `env:"S3_REGION"`
@@ -94,14 +94,14 @@ func run() error {
 
 	if cfg.MigrateOnStart {
 		if cfg.PGMigratorDSN == "" {
-			return errors.New("QUOTIFY_PG_MIGRATOR_DSN is required with QUOTIFY_MIGRATE_ON_START")
+			return errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START")
 		}
 		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
 			return err
 		}
 	}
 	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
 		return nil
 	}
 	appPool, err := pgxx.NewPool(ctx, cfg.PGAppDSN)

@@ -15,22 +15,22 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/pkg/workerx"
-	"github.com/0furkancolak/quotify/services/notifier/internal/handler"
-	"github.com/0furkancolak/quotify/services/notifier/internal/limits"
-	"github.com/0furkancolak/quotify/services/notifier/internal/mail"
-	"github.com/0furkancolak/quotify/services/notifier/internal/store"
-	"github.com/0furkancolak/quotify/services/notifier/migrations"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/mail"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
+	"github.com/0furkancolak/payrudder/services/notifier/migrations"
 )
 
 //go:embed config.default.yaml
@@ -38,26 +38,26 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	PGSystemDSN    string        `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
-	RabbitMQURL    string        `env:"QUOTIFY_RABBITMQ_URL,required"`
-	KafkaBrokers   []string      `env:"QUOTIFY_KAFKA_BROKERS,required" envSeparator:","`
-	PlansAddr      string        `env:"QUOTIFY_PLANS_ADDR"`
+	PGSystemDSN    string        `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
+	PGMigratorDSN  string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
+	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
+	RabbitMQURL    string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
+	KafkaBrokers   []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
+	PlansAddr      string        `env:"PAYRUDDER_PLANS_ADDR"`
 	SMTPAddr       string        `env:"SMTP_ADDR"`
 	SandboxSMTP    string        `env:"SANDBOX_SMTP_ADDR"`
 	MailFrom       string        `env:"MAIL_FROM"`
 	SendingStale   time.Duration `env:"NOTIFIER_SENDING_STALE"`
 	MailSwitchTTL  time.Duration `env:"NOTIFIER_MAIL_SWITCH_TTL"`
-	Group          string        `env:"QUOTIFY_CONSUMER_GROUP"`
-	DLQTopic       string        `env:"QUOTIFY_DLQ_TOPIC"`
-	SessionTimeout time.Duration `env:"QUOTIFY_CONSUMER_SESSION_TIMEOUT"`
+	Group          string        `env:"PAYRUDDER_CONSUMER_GROUP"`
+	DLQTopic       string        `env:"PAYRUDDER_DLQ_TOPIC"`
+	SessionTimeout time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("QUOTIFY_PG_MIGRATOR_DSN is required with QUOTIFY_MIGRATE_ON_START"))
+		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
 	}
 	return errors.Join(errs...)
 }
@@ -101,7 +101,7 @@ func run() error {
 		}
 	}
 	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
 		return nil
 	}
 	pool, err := pgxx.NewPool(ctx, cfg.PGSystemDSN)

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Quotify deploys to [Railway](https://railway.com) from this repository: a config-as-code file per service, images for the backing services Railway has no
+Payrudder deploys to [Railway](https://railway.com) from this repository: a config-as-code file per service, images for the backing services Railway has no
 plugin for, a bootstrap script on the Railway CLI, and a step-by-step guide ([deploy/railway/README.md](../../deploy/railway/README.md)). Nothing could be
 deployed while writing it (no account), so everything is checked statically and the guide says what was not.
 
@@ -14,19 +14,19 @@ One project, one environment, the private network between services (`<name>.rail
 
 ## Decisions
 
-1. **`PORT` in `pkg/config`.** Railway health-checks and routes to `PORT`. It fills `QUOTIFY_HTTP_ADDR`, else `MOCKPSP_HTTP_ADDR`, else `QUOTIFY_METRICS_ADDR`,
+1. **`PORT` in `pkg/config`.** Railway health-checks and routes to `PORT`. It fills `PAYRUDDER_HTTP_ADDR`, else `MOCKPSP_HTTP_ADDR`, else `PAYRUDDER_METRICS_ADDR`,
    unless that variable is set; absent `PORT`, nothing changes. gRPC ports stay fixed (private network only). The alternative, a per-service flag, would
    touch twelve mains.
 2. **Health checks.** The gRPC services and workers are checked on `/readyz` of the ops port (`PORT`). The gateway's public port gets a liveness-only
    `/healthz` (`withLiveness`) so `/metrics` never becomes public.
 3. **Listeners.** Go `:port` is dual-stack: no change. nginx gets `listen [::]`. Third-party images are set to `::` (RabbitMQ, ClickHouse, Mailpit);
    Redpanda is a switch (`REDPANDA_BIND`) because its IPv6 binding is the one thing I could not confirm.
-4. **`QUOTIFY_ENV=railway`** is added to the accepted values rather than reusing `kind`.
+4. **`PAYRUDDER_ENV=railway`** is added to the accepted values rather than reusing `kind`.
 5. **One Dockerfile for the Go services** (`go.Dockerfile`, `SERVICE_DIR` build argument) because Railway needs cache-mount ids no shared file can spell;
    the per-service Dockerfiles stay as they are for compose, kind and CI. The console has its own (`admin.Dockerfile`, repo-root context).
 6. **Postgres:** one managed instance, a database and three roles per service as in compose, created by an idempotent `init-postgres` job with
-   three shared role passwords (a role reaches only its own database). The alternative, a Postgres service per Quotify service, costs more than it isolates.
-7. **Migrations at start** (`QUOTIFY_MIGRATE_ON_START=true`, one replica): Railway's pre-deploy command cannot run `QUOTIFY_MIGRATE_ONLY` on a distroless image.
+   three shared role passwords (a role reaches only its own database). The alternative, a Postgres service per Payrudder service, costs more than it isolates.
+7. **Migrations at start** (`PAYRUDDER_MIGRATE_ON_START=true`, one replica): Railway's pre-deploy command cannot run `PAYRUDDER_MIGRATE_ONLY` on a distroless image.
 8. **Secrets** live only in Railway, generated once by the script and never overwritten; services reference them with `${{service.VAR}}`, so there are no
    shared variables to create by hand.
 9. **Profiles.** `full`, and `small` without ClickHouse and `analytics-svc`. Observability (Prometheus, Grafana, Tempo) is not offered on Railway in either.

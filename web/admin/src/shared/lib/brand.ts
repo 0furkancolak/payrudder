@@ -4,7 +4,7 @@ const DEFAULT_BRAND = "Payrudder";
 
 /** The name the product goes by: served by /env.js (BRAND_NAME), else the default. */
 export function brandName(): string {
-  return ((typeof window === "undefined" ? undefined : window.__QUOTIFY__?.brand) ?? "").trim() || DEFAULT_BRAND;
+  return ((typeof window === "undefined" ? undefined : window.__PAYRUDDER__?.brand) ?? "").trim() || DEFAULT_BRAND;
 }
 
 /** Every text of a locale with the default product name replaced by the configured one. */

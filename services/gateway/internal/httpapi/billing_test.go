@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 )
 
 type fakeBilling struct {
@@ -90,7 +90,7 @@ func TestRecordInvoicePaymentTakesTheActorFromTheHeaderAndNeedsTheOperator(t *te
 	}
 	req, _ := http.NewRequest("POST", ts.URL+"/admin/v1/invoices/i1/payments", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+operatorToken)
-	req.Header.Set("X-Quotify-Actor", "  alice@example.com ")
+	req.Header.Set("X-Payrudder-Actor", "  alice@example.com ")
 	r2, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -99,13 +99,13 @@ func TestRecordInvoicePaymentTakesTheActorFromTheHeaderAndNeedsTheOperator(t *te
 	var m2 map[string]any
 	_ = json.NewDecoder(r2.Body).Decode(&m2)
 	if got := m2["payment"].(map[string]any)["recorded_by"]; got != "alice@example.com" {
-		t.Errorf("actor = %v, want the trimmed X-Quotify-Actor header", got)
+		t.Errorf("actor = %v, want the trimmed X-Payrudder-Actor header", got)
 	}
 	if resp, m := do(t, ts, "POST", "/admin/v1/invoices/i1/payments", operatorToken, `{"tenant_id":"t1","method":"cash","amount_minor":"500","reference":"again"}`); resp.StatusCode != 200 || m["duplicate"] != true {
 		t.Errorf("a repeat: %d %v; want 200 with duplicate", resp.StatusCode, m)
 	}
 	long := httptest.NewRequest("POST", "/", nil)
-	long.Header.Set("X-Quotify-Actor", strings.Repeat("é", 200))
+	long.Header.Set("X-Payrudder-Actor", strings.Repeat("é", 200))
 	if got := []rune(actorOf(long)); len(got) != 120 {
 		t.Errorf("actor length = %d, want it cut to 120 characters", len(got))
 	}

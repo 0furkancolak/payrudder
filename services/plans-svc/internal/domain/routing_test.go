@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/providers"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/providers"
 )
 
 func caps(name string) (payments.Capabilities, bool) { return providers.Lookup(name) }

@@ -20,10 +20,10 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store/sqlc"
 )
 
 // Store is the object storage the jobs use (*blob.Store).
@@ -62,7 +62,7 @@ func (j *Jobs) init() error {
 	if j.swept != nil {
 		return nil
 	}
-	m := otel.Meter("github.com/0furkancolak/quotify/services/assets-svc/background")
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/assets-svc/background")
 	var err error
 	if j.swept, err = m.Int64Counter("assets_sessions_swept", metric.WithDescription("Expired upload sessions aborted")); err != nil {
 		return err

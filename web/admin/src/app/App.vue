@@ -5,8 +5,8 @@ import { Toaster } from "@/shared/ui/sonner";
 import { router } from "./router";
 
 const { t } = useI18n();
-/** Served by /env.js (QUOTIFY_DEMO): the stack is a demo, no real provider is ever called. */
-const demo = window.__QUOTIFY__?.demo === true;
+/** Served by /env.js (PAYRUDDER_DEMO): the stack is a demo, no real provider is ever called. */
+const demo = window.__PAYRUDDER__?.demo === true;
 </script>
 
 <template>

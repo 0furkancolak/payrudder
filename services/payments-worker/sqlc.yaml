@@ -10,6 +10,8 @@ sql:
         sql_package: pgx/v5
         emit_pointers_for_null_types: true
         emit_empty_slices: true
+        rename:
+          quotify_subscription_id: PayrudderSubscriptionID
         overrides:
           - db_type: uuid
             go_type: github.com/google/uuid.UUID

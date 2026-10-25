@@ -15,14 +15,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/engine"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/meters"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
 )
 
 var periodRe = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)

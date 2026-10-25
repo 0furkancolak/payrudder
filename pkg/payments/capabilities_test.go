@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 func TestCapabilities(t *testing.T) {
@@ -20,8 +20,8 @@ func TestCapabilities(t *testing.T) {
 		want payments.Owner
 	}{
 		"renewal and dunning both":   {payments.Capabilities{OwnsRenewal: true, OwnsDunning: true}, payments.OwnerProvider},
-		"renewal without dunning":    {payments.Capabilities{OwnsRenewal: true}, payments.OwnerQuotify},
-		"nothing (a plain provider)": {payments.Capabilities{}, payments.OwnerQuotify},
+		"renewal without dunning":    {payments.Capabilities{OwnsRenewal: true}, payments.OwnerPayrudder},
+		"nothing (a plain provider)": {payments.Capabilities{}, payments.OwnerPayrudder},
 	} {
 		if got := tc.c.Owner(); got != tc.want {
 			t.Errorf("%s: owner %s, want %s", name, got, tc.want)
@@ -31,7 +31,7 @@ func TestCapabilities(t *testing.T) {
 
 func TestMockPSPCapabilities(t *testing.T) {
 	var p payments.Provider = payments.NewMockPSP("http://x", 0)
-	if c := p.Capabilities(); c.Name != "mockpsp" || !c.Refunds || c.Owner() != payments.OwnerQuotify {
+	if c := p.Capabilities(); c.Name != "mockpsp" || !c.Refunds || c.Owner() != payments.OwnerPayrudder {
 		t.Errorf("capabilities = %+v", c)
 	}
 }

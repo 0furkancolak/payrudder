@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 )
 
 // newVersion adds another version of the "pro" plan to the world: base fee, gb_hours per unit and the price per call

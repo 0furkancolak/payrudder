@@ -5,9 +5,9 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // The product API (/app/v1): what a signed-in person sees and does in their accounts. Every handler takes the user from the session and names no

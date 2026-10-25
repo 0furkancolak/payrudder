@@ -30,10 +30,10 @@ jobs:
           cache-dependency-path: "**/go.sum"
       - name: make chaos
         env:
-          QUOTIFY_CHAOS_TENANTS: "50"
-          QUOTIFY_CHAOS_MIN_KILLS: "30"
-          QUOTIFY_CHAOS_MIN_FAULTS: "10"
-          QUOTIFY_CHAOS_REPORT: ${{ github.workspace }}/chaos-report.json
+          PAYRUDDER_CHAOS_TENANTS: "50"
+          PAYRUDDER_CHAOS_MIN_KILLS: "30"
+          PAYRUDDER_CHAOS_MIN_FAULTS: "10"
+          PAYRUDDER_CHAOS_REPORT: ${{ github.workspace }}/chaos-report.json
         run: make chaos N=${{ github.event.inputs.events || '1000000' }}
       - name: Summary
         if: always()

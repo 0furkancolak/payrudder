@@ -4,9 +4,9 @@ package plans
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/plans/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/plans/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
 )
 
 // Handler serves the plan methods of PlansService.

@@ -4,9 +4,9 @@ package webhookendpoints
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhookendpoints/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhookendpoints/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhookendpoints/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhookendpoints/query"
 )
 
 // Handler serves plansv1.WebhookService.

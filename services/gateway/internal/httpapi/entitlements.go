@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 type entitlementJSON struct {

@@ -7,11 +7,11 @@ import (
 
 	"github.com/google/uuid"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Queries reads customers.
@@ -49,7 +49,7 @@ func (r *Queries) ByExternalID(ctx context.Context, externalID string) (*plansv1
 	return convert.Customer(out), nil
 }
 
-// ByID returns the customer with the given Quotify id.
+// ByID returns the customer with the given Payrudder id.
 func (r *Queries) ByID(ctx context.Context, id string) (*plansv1.Customer, error) {
 	uid, err := uuid.Parse(id)
 	if err != nil {

@@ -14,19 +14,19 @@ import (
 // ErrUnsupported is returned when a provider is asked for something outside its Capabilities.
 var ErrUnsupported = errors.New("payments: the provider does not support this operation")
 
-// Capabilities says what a provider does for the merchant. Quotify does the rest (docs/14-billing-platform.md).
+// Capabilities says what a provider does for the merchant. Payrudder does the rest (docs/14-billing-platform.md).
 type Capabilities struct {
 	// Name is the provider's registry name, e.g. "iyzico".
 	Name string
 	// OwnsRenewal: the provider schedules the renewals of a subscription and charges them itself.
 	OwnsRenewal bool
-	// OwnsDunning: the provider retries failed renewals. Quotify must not retry a payment the provider owns.
+	// OwnsDunning: the provider retries failed renewals. Payrudder must not retry a payment the provider owns.
 	OwnsDunning bool
 	// CalculatesTax: the provider works out and collects tax.
 	CalculatesTax bool
 	// HostedCheckout: the customer enters the payment method on a page the provider hosts.
 	HostedCheckout bool
-	// SendsOwnReceipts: the provider mails the customer a receipt or invoice for what it charges (a merchant of record does). Quotify then does not send
+	// SendsOwnReceipts: the provider mails the customer a receipt or invoice for what it charges (a merchant of record does). Payrudder then does not send
 	// its own paid-invoice mail for a payment that provider took, so the customer is not mailed twice.
 	SendsOwnReceipts bool
 	// Refunds: the provider has a refund API.
@@ -48,15 +48,15 @@ func (c Capabilities) Owner() Owner {
 	if c.OwnsRenewal && c.OwnsDunning {
 		return OwnerProvider
 	}
-	return OwnerQuotify
+	return OwnerPayrudder
 }
 
 // Owner of renewal and dunning.
 type Owner string
 
 const (
-	OwnerQuotify  Owner = "quotify"
-	OwnerProvider Owner = "provider"
+	OwnerPayrudder Owner = "quotify"
+	OwnerProvider  Owner = "provider"
 )
 
 // Provider is a PaymentProvider that declares what it does.
@@ -65,7 +65,7 @@ type Provider interface {
 	Capabilities() Capabilities
 }
 
-// Capabilities implements Provider: mock-psp is a plain charge-and-refund provider, so Quotify drives everything.
+// Capabilities implements Provider: mock-psp is a plain charge-and-refund provider, so Payrudder drives everything.
 func (m *MockPSP) Capabilities() Capabilities {
 	return Capabilities{Name: m.Name(), Refunds: true, IdempotentCharges: true}
 }
@@ -119,7 +119,7 @@ func (r *Registry) Names() []string {
 // ErrUnknownProvider: no provider is registered under that name.
 var ErrUnknownProvider = errors.New("payments: unknown provider")
 
-// NotificationRef is what Quotify can read from a provider's webhook without credentials: which notification it is and which of
+// NotificationRef is what Payrudder can read from a provider's webhook without credentials: which notification it is and which of
 // our charges it is about (the idempotency key we sent as the provider's reference).
 type NotificationRef struct {
 	EventID        string
@@ -134,7 +134,7 @@ const (
 	KindCharge       NotificationKind = ""
 	KindRefund       NotificationKind = "refund"
 	KindSubscription NotificationKind = "subscription"
-	// KindIgnored is an event Quotify has no use for (a transaction that was merely created, for example).
+	// KindIgnored is an event Payrudder has no use for (a transaction that was merely created, for example).
 	KindIgnored NotificationKind = "ignored"
 )
 
@@ -164,17 +164,17 @@ type SubscriptionEvent struct {
 	ProviderRef string
 	// Status is the provider's own word: active, trialing, past_due, paused, canceled.
 	Status string
-	// QuotifySubscriptionID is the subscription this one was created for (carried in the provider's custom data), if it says.
-	QuotifySubscriptionID string
-	// QuotifyMigrationID is the provider migration this subscription completes, if it says.
-	QuotifyMigrationID string
-	NextBilledAt       *time.Time
+	// PayrudderSubscriptionID is the subscription this one was created for (carried in the provider's custom data), if it says.
+	PayrudderSubscriptionID string
+	// PayrudderMigrationID is the provider migration this subscription completes, if it says.
+	PayrudderMigrationID string
+	NextBilledAt         *time.Time
 	// PriceRefs are the provider's ids of the prices the subscription is billed for, when the notification says.
 	PriceRefs []string
 }
 
 // ManualCollector is a provider whose payments the merchant confirms by hand (a bank transfer): Charge only tells the customer how to pay and returns a
-// *PendingError, nothing is ever sent to the provider, and the outcome is whatever the operator records in the ledger. Quotify therefore waits for it for a
+// *PendingError, nothing is ever sent to the provider, and the outcome is whatever the operator records in the ledger. Payrudder therefore waits for it for a
 // payment window and gives up (declines) when it passes. A charge of such a provider has no side effect, so a redelivered one needs no Status call first.
 type ManualCollector interface {
 	Provider
@@ -183,7 +183,7 @@ type ManualCollector interface {
 }
 
 // PendingError is returned by a charge the provider accepted but has not settled: the outcome arrives as a notification. It is not a failure,
-// and it must not be retried; Quotify asks Status (which finds the notification's outcome in the ledger).
+// and it must not be retried; Payrudder asks Status (which finds the notification's outcome in the ledger).
 type PendingError struct{ Ref string }
 
 func (e *PendingError) Error() string {
@@ -196,10 +196,10 @@ type CheckoutRequest struct {
 	// PriceRef is the provider's id of what is sold (a catalogue price).
 	PriceRef string
 	Quantity int
-	// QuotifySubscriptionID ties the provider's subscription to ours; the provider hands it back in its notifications.
-	QuotifySubscriptionID string
-	// QuotifyMigrationID ties the checkout to a provider migration that completes when the customer has subscribed.
-	QuotifyMigrationID string
+	// PayrudderSubscriptionID ties the provider's subscription to ours; the provider hands it back in its notifications.
+	PayrudderSubscriptionID string
+	// PayrudderMigrationID ties the checkout to a provider migration that completes when the customer has subscribed.
+	PayrudderMigrationID string
 }
 
 // Checkout is a hosted page.
@@ -242,7 +242,7 @@ func (r *Registry) Parser(name string) (ParseNotification, bool) {
 	return p, ok
 }
 
-// SubscriptionManager is a provider that lets Quotify end a subscription the provider runs.
+// SubscriptionManager is a provider that lets Payrudder end a subscription the provider runs.
 type SubscriptionManager interface {
 	Provider
 	// CancelSubscription cancels the provider's subscription ref: at the end of the period already paid for, or immediately.

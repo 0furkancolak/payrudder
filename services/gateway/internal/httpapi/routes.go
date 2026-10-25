@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 func (s *Server) routes() []Route {
@@ -90,7 +90,7 @@ func (s *Server) subscriptionRoutes() []Route {
 // webhookAndInvoiceLinkRoutes is the table for webhook endpoints and deliveries, and the hosted invoice page.
 func (s *Server) webhookAndInvoiceLinkRoutes() []Route {
 	return []Route{
-		// Webhooks: where Quotify sends what happens in the account
+		// Webhooks: where Payrudder sends what happens in the account
 		{"POST", "/v1/webhook-endpoints", AccessTenant, ratelimit.ClassWrite, s.createWebhookEndpoint},
 		{"GET", "/v1/webhook-endpoints", AccessTenant, ratelimit.ClassRead, s.listWebhookEndpoints},
 		{"PUT", "/v1/webhook-endpoints/{id}", AccessTenant, ratelimit.ClassWrite, s.updateWebhookEndpoint},

@@ -18,9 +18,9 @@ func TestStackStaysInBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := os.Getenv("QUOTIFY_COMPOSE_PROJECT")
+	project := os.Getenv("PAYRUDDER_COMPOSE_PROJECT")
 	if project == "" {
-		project = "quotify"
+		project = "payrudder"
 	}
 	services := containersByService(t, project)
 	if len(services) == 0 {

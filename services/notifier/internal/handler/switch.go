@@ -12,9 +12,9 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/mailcategory"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/mailcategory"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // Switch tells whether a tenant has a category of mail on (the tenant's mail switch, stored by plans-svc).
@@ -80,7 +80,7 @@ func (s *PlansSwitch) Enabled(ctx context.Context, tenantID uuid.UUID, category 
 }
 
 var droppedTotal = func() metric.Int64Counter {
-	c, err := otel.Meter("github.com/0furkancolak/quotify/services/notifier").Int64Counter("notifier_mail_dropped",
+	c, err := otel.Meter("github.com/0furkancolak/payrudder/services/notifier").Int64Counter("notifier_mail_dropped",
 		metric.WithDescription("Mails not sent because the tenant switched their category off, by category"))
 	if err != nil {
 		panic(err)

@@ -50,8 +50,8 @@ func composeApps(t *testing.T, repo string) []string {
 	}
 	var apps []string
 	for name, s := range c.Services {
-		// A development stand-in (label quotify.dev-only, e.g. mockoidc, the fake Google) is never deployed, so it has no Railway service.
-		if labels, _ := s["labels"].(map[string]any); labels["quotify.dev-only"] == "true" {
+		// A development stand-in (label payrudder.dev-only, e.g. mockoidc, the fake Google) is never deployed, so it has no Railway service.
+		if labels, _ := s["labels"].(map[string]any); labels["payrudder.dev-only"] == "true" {
 			continue
 		}
 		if _, ok := s["build"]; ok {

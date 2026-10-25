@@ -36,11 +36,11 @@ make test-integration
 make lint
 ```
 
-If ports 5432 or 8080 are taken, set `QUOTIFY_PG_HOST_PORT` / `QUOTIFY_CONSOLE_HOST_PORT` (see `.env.example`).
+If ports 5432 or 8080 are taken, set `PAYRUDDER_PG_HOST_PORT` / `PAYRUDDER_CONSOLE_HOST_PORT` (see `.env.example`).
 
 ## Adding a service
 
-1. `services/<name>/go.mod` (module `github.com/0furkancolak/quotify/services/<name>`) with `replace` directives to `../../pkg`
+1. `services/<name>/go.mod` (module `github.com/0furkancolak/payrudder/services/<name>`) with `replace` directives to `../../pkg`
    and `../../gen/go`, then `go work use ./services/<name>` and add it to `MODULES` in the Makefile.
 2. Copy `services/plans-svc/Dockerfile` and change the paths.
 3. Add the service to the compose `app` profile and to `deploy/prometheus/prometheus.yml`.

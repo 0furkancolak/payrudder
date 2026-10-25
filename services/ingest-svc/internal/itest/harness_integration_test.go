@@ -23,17 +23,17 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/outbox"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/ingest"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/lookup"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/store/sqlc"
-	"github.com/0furkancolak/quotify/services/ingest-svc/migrations"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/ingest"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/lookup"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/migrations"
 )
 
 var (

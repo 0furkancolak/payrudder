@@ -15,13 +15,13 @@ rate-limited public HTTP API, with Postgres RLS isolating every row.
 
 ## Tasks
 
-- [x] `proto/quotify/plans/v1/*.proto` per [plans-svc.md](../03-services/plans-svc.md)
+- [x] `proto/payrudder/plans/v1/*.proto` per [plans-svc.md](../03-services/plans-svc.md)
 - [x] Migrations for `accounts`, `tenants` (environment, currency, timezone, grace; immutability trigger), `api_keys`, `customers`, `meters`, `plans`, `plan_versions`, `plan_prices`, `plan_entitlements`, `subscriptions`, `outbox`
 - [x] Roles `plans_app`, `plans_system`, `plans_migrator`. RLS policies + `FORCE` on tenant tables
 - [x] `pkg/pgxx`: `NewPools(appDSN, systemDSN)`, `InTenantTx`, goose migration runner
-- [x] `pkg/tenant`: context key, gRPC server interceptor reading `x-quotify-tenant-id`, client interceptor propagating it
+- [x] `pkg/tenant`: context key, gRPC server interceptor reading `x-payrudder-tenant-id`, client interceptor propagating it
 - [x] sqlc queries + store layer for plans-svc
-- [x] `AdminService.CreateAccount`: sandbox + live tenant pair, required currency (supported ISO 4217 list + exponent table) / IANA timezone / grace, no defaults. `QUOTIFY_ALLOWED_ENVIRONMENTS`
+- [x] `AdminService.CreateAccount`: sandbox + live tenant pair, required currency (supported ISO 4217 list + exponent table) / IANA timezone / grace, no defaults. `PAYRUDDER_ALLOWED_ENVIRONMENTS`
 - [x] Domain validation: meter aggregation/value_property rules, `quantity_scale` 0–6 fixed per code, decimal limits/tier bounds within scale, price config validation (tiers ascending, last tier open-ended)
 - [x] Immutable `plan_versions` + `meters` (no UPDATE grants)
 - [x] Subscription exclusion constraint + `ALREADY_EXISTS` mapping
@@ -30,7 +30,7 @@ rate-limited public HTTP API, with Postgres RLS isolating every row.
 - [x] gateway: `net/http` mux (decided: hand-written, see [gateway.md](../03-services/gateway.md#why-a-hand-written-http-layer-not-grpc-gateway)), `UseNumber` decoding, middleware chain, JSON ↔ proto mapping, error model (`{"error":{"code","message","details"}}`)
 - [x] gateway: API-key cache in Redis (60 s), revocation deletes the cache key
 - [x] gateway: GCRA Lua script + per-tier limits + fail-open local bucket
-- [x] `quotifyctl seed` (account with explicit currency/timezone/grace, sandbox + live keys, 2 meters incl. one fractional, 1 plan, 10 customers)
+- [x] `payrudderctl seed` (account with explicit currency/timezone/grace, sandbox + live keys, 2 meters incl. one fractional, 1 plan, 10 customers)
 - [x] `api/openapi/v1.yaml` + contract test over the route table
 - [x] RLS test generator over `pg_policies`. CI check for `relforcerowsecurity`
 - [x] Remove `services/hello` (its trace-propagation role is taken by gateway → plans-svc → Postgres traces; Kafka/AMQP carriers stay unit-tested in `pkg/otelx`)
@@ -51,7 +51,7 @@ rate-limited public HTTP API, with Postgres RLS isolating every row.
 - [x] Integration: invalid tiered price config (non-ascending tiers) → `400` with a field-level error
 - [x] Integration: `CreateAccount` without currency or timezone → `INVALID_ARGUMENT`. Updating currency/timezone → rejected by trigger
 - [x] Integration: a `qk_test_` key reads only sandbox data, a `qk_live_` key only live data (same account)
-- [x] Integration: `values-sandbox` mode (`QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox`) refuses to create a live tenant or key
+- [x] Integration: `values-sandbox` mode (`PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox`) refuses to create a live tenant or key
 - [x] CI fails if a new table with `tenant_id` lacks forced RLS (verified by a deliberately broken test migration in the check's own test)
 
 ## Dependencies

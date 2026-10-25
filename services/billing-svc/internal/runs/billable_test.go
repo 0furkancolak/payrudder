@@ -3,7 +3,7 @@ package runs
 import (
 	"testing"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // The scheduler never invoices a live tenant that has not been activated, or one an operator suspended; a status it was not sent counts as active so a

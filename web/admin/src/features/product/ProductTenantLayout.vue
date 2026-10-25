@@ -11,7 +11,7 @@ import { useApps, useMe } from "./api";
  * The deeper views of one environment of an app: customers, subscriptions, credits, packages, pricing, invoices, payments, payment links, accounting,
  * reports, webhooks and e-mail. They are the console's own pages where those speak the tenant API (reused as they are) and pages of the product where the
  * console's version needs operator-only routes (invoices, payments). All of them speak the tenant API with the person's session token and the tenant as
- * X-Quotify-Tenant, and the gateway lets that through only for a tenant of the person's accounts; a viewer's session may only read. The sidebar is the
+ * X-Payrudder-Tenant, and the gateway lets that through only for a tenant of the person's accounts; a viewer's session may only read. The sidebar is the
  * navigation; this is the page head.
  */
 const { t } = useI18n();

@@ -11,9 +11,9 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // Limits (docs/03-services/ingest-svc.md#validation-rules).

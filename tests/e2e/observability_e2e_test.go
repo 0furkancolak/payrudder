@@ -17,15 +17,15 @@ import (
 )
 
 var (
-	tempoURL      = envOr("QUOTIFY_TEMPO_URL", "http://localhost:42200")
-	prometheusURL = envOr("QUOTIFY_PROMETHEUS_URL", "http://localhost:42990")
+	tempoURL      = envOr("PAYRUDDER_TEMPO_URL", "http://localhost:42200")
+	prometheusURL = envOr("PAYRUDDER_PROMETHEUS_URL", "http://localhost:42990")
 )
 
 // skipWithoutObservability skips a test on a stack that has no Tempo and Prometheus (the kind install has none yet).
 func skipWithoutObservability(t *testing.T) {
 	t.Helper()
-	if os.Getenv("QUOTIFY_SKIP_OBSERVABILITY") == "1" {
-		t.Skip("QUOTIFY_SKIP_OBSERVABILITY=1: no Tempo and Prometheus on this stack")
+	if os.Getenv("PAYRUDDER_SKIP_OBSERVABILITY") == "1" {
+		t.Skip("PAYRUDDER_SKIP_OBSERVABILITY=1: no Tempo and Prometheus on this stack")
 	}
 }
 
@@ -121,7 +121,7 @@ func TestTraceFollowsAnEventThroughThePipeline(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+k)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("traceparent", fmt.Sprintf("00-%s-%s-01", traceID, spanID))
-	req.Header.Set("X-Quotify-Debug", "1")
+	req.Header.Set("X-Payrudder-Debug", "1")
 	resp, err := httpc.Do(req)
 	if err != nil {
 		t.Fatal(err)

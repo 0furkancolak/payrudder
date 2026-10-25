@@ -1,0 +1,485 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "payrudder/plans/v1/resources.proto";
+
+// IdentityService is the people side of the platform (phase 38): users who sign up, own an account and manage its apps and keys.
+// Only the gateway calls it. Everything after sign-in takes the user id the gateway resolved from the session token and checks the
+// membership itself, in SQL, so a request for another account's app finds nothing even if the gateway had a bug.
+service IdentityService {
+  // SignUp creates the user, an account and the owner membership in one transaction and mails a verification link. It opens no session, and it answers the
+  // same whether the address was free or taken (in that case the existing owner is mailed instead), so it does not tell who has an account.
+  rpc SignUp(SignUpRequest) returns (SignUpResponse);
+  // SignIn checks the password and opens a session. Every failure (unknown e-mail, wrong password, locked) is the same error.
+  rpc SignIn(SignInRequest) returns (SignInResponse);
+  // SignOut revokes the session of the token. An unknown or already revoked token is not an error.
+  rpc SignOut(SignOutRequest) returns (SignOutResponse);
+  // GetSession resolves a session token to its user and memberships, and slides the expiry.
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+
+  // VerifyEmail consumes a verification token and marks the address as proven. The token is single use and expires after 24 hours.
+  rpc VerifyEmail(VerifyEmailRequest) returns (VerifyEmailResponse);
+  // ResendVerification mails a new verification link to the signed-in user (at most one a minute); older links stop working.
+  rpc ResendVerification(ResendVerificationRequest) returns (ResendVerificationResponse);
+  // RequestPasswordReset mails a reset link when the address has an account. It always succeeds and never says whether the address is known.
+  rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
+  // ResetPassword consumes a reset token (single use, one hour), sets the new password, proves the address and revokes every session of the user.
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+
+  // RequestLoginCode mails a six-digit one-time code to an address (phase 42). It always succeeds for a well-formed address and never says whether the address
+  // has an account; at most one code a minute and five an hour per address are sent.
+  rpc RequestLoginCode(RequestLoginCodeRequest) returns (RequestLoginCodeResponse);
+  // VerifyLoginCode checks a code and opens a session. The code is single use, lives ten minutes and is burned after five wrong tries. An address without an
+  // account gets one (a user and an organisation): the code proved the mailbox. Every failure is the same error.
+  rpc VerifyLoginCode(VerifyLoginCodeRequest) returns (VerifyLoginCodeResponse);
+  // SignInWithIdentity opens a session for a person an identity provider has authenticated (the gateway verified the provider's ID token; this service only
+  // trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
+  rpc SignInWithIdentity(SignInWithIdentityRequest) returns (SignInWithIdentityResponse);
+
+  rpc GetMyAccount(GetMyAccountRequest) returns (GetMyAccountResponse);
+  // RenameMyAccount renames an account; only an owner may.
+  rpc RenameMyAccount(RenameMyAccountRequest) returns (RenameMyAccountResponse);
+
+  // InviteMember mails an invitation to an address. An owner or administrator may invite, an owner may invite owners, and the inviter's own address must be
+  // verified. A second invitation to the same address refreshes the first.
+  rpc InviteMember(InviteMemberRequest) returns (InviteMemberResponse);
+  // ListInvitations lists the open invitations of an account (owner or administrator).
+  rpc ListInvitations(ListInvitationsRequest) returns (ListInvitationsResponse);
+  // RevokeInvitation cancels an open invitation.
+  rpc RevokeInvitation(RevokeInvitationRequest) returns (RevokeInvitationResponse);
+  // ResendInvitation mails a new link for an open invitation (at most one a minute); the old link stops working.
+  rpc ResendInvitation(ResendInvitationRequest) returns (ResendInvitationResponse);
+  // UpdateMemberRole changes a member's role. The last owner of an account cannot be demoted.
+  rpc UpdateMemberRole(UpdateMemberRoleRequest) returns (UpdateMemberRoleResponse);
+  // RemoveMember removes a member, or lets a member leave (their own id). The last owner cannot be removed.
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse);
+  // LookupInvitation says what a live invitation token is for, so the accept page can ask for the right thing. Public: the token is the credential.
+  rpc LookupInvitation(LookupInvitationRequest) returns (LookupInvitationResponse);
+  // AcceptInvitation turns an invitation into a new user (verified, because the token was mailed to the address) who is a member of the account, with a
+  // session. For an address that has a user already it fails with identity.invite.sign_in_required: that person signs in and uses AcceptInvitationAsUser.
+  rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse);
+  // AcceptInvitationAsUser adds the signed-in user to the account when the invitation was sent to the user's own address.
+  rpc AcceptInvitationAsUser(AcceptInvitationAsUserRequest) returns (AcceptInvitationAsUserResponse);
+  // CreateMyApp adds an app (a sandbox and a live tenant) to an account the user owns or administers. Free tier, no grace period.
+  rpc CreateMyApp(CreateMyAppRequest) returns (CreateMyAppResponse);
+  rpc ListMyApps(ListMyAppsRequest) returns (ListMyAppsResponse);
+  rpc GetMyApp(GetMyAppRequest) returns (GetMyAppResponse);
+  // ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
+  rpc ResolveMyTenant(ResolveMyTenantRequest) returns (ResolveMyTenantResponse);
+  rpc CreateMyApiKey(CreateMyApiKeyRequest) returns (CreateMyApiKeyResponse);
+  rpc ListMyApiKeys(ListMyApiKeysRequest) returns (ListMyApiKeysResponse);
+  rpc RevokeMyApiKey(RevokeMyApiKeyRequest) returns (RevokeMyApiKeyResponse);
+  // RotateMyApiKey issues a replacement with the same scope and lets the old key live for an overlap window, so a deployment can switch without a gap.
+  rpc RotateMyApiKey(RotateMyApiKeyRequest) returns (RotateMyApiKeyResponse);
+  // GetMyGoLive computes the go-live checklist of an app's live environment. provider_ready is what the gateway learned from payments-worker.
+  rpc GetMyGoLive(GetMyGoLiveRequest) returns (GetMyGoLiveResponse);
+  // ActivateMyApp activates the live environment when every item is done (the owner only).
+  rpc ActivateMyApp(ActivateMyAppRequest) returns (ActivateMyAppResponse);
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string display_name = 3;
+  google.protobuf.Timestamp create_time = 4;
+  // True once the person has opened a mailed link for this address (or reset the password through one).
+  bool email_verified = 5;
+}
+
+// Membership is a user's role in an account: "owner", "admin" or "viewer".
+message Membership {
+  string account_id = 1;
+  string account_name = 2;
+  string role = 3;
+}
+
+message SignUpRequest {
+  string email = 1;
+  // At least 10 characters.
+  string password = 2;
+  string display_name = 3;
+  // The organisation the user starts.
+  string account_name = 4;
+  // The language of the mails to this address: en, tr, de, fr, es or ar. Anything else is English.
+  string locale = 5;
+}
+
+// SignUpResponse is empty on purpose: it must not tell a new address from a taken one. The person signs in (or follows the mailed link).
+message SignUpResponse {
+  reserved 1, 2, 3, 4;
+  reserved "user", "memberships", "token", "expire_time";
+}
+
+message SignInRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message SignInResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_time = 4;
+}
+
+message RequestLoginCodeRequest {
+  string email = 1;
+  // The language of the mail: en, tr, de, fr, es or ar. An existing user's own language wins.
+  string locale = 2;
+}
+
+message RequestLoginCodeResponse {}
+
+message VerifyLoginCodeRequest {
+  string email = 1;
+  string code = 2;
+  // Used only when the address has no account yet and the code creates one.
+  string display_name = 3;
+  string account_name = 4;
+  string locale = 5;
+}
+
+// VerifyLoginCodeResponse is a session, shaped like SignInResponse.
+message VerifyLoginCodeResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_time = 4;
+}
+
+message SignInWithIdentityRequest {
+  // "google".
+  string provider = 1;
+  // The provider's stable id of the person (the ID token's "sub").
+  string subject = 2;
+  string email = 3;
+  // Must be true: an address the provider has not verified is never used to find or create a user.
+  bool email_verified = 4;
+  string display_name = 5;
+  string locale = 6;
+}
+
+// SignInWithIdentityResponse is a session, shaped like SignInResponse.
+message SignInWithIdentityResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_time = 4;
+}
+
+message SignOutRequest {
+  string token = 1;
+}
+
+message SignOutResponse {}
+
+message GetSessionRequest {
+  string token = 1;
+}
+
+message GetSessionResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  google.protobuf.Timestamp expire_time = 3;
+}
+
+message AccountMember {
+  string user_id = 1;
+  string email = 2;
+  string display_name = 3;
+  string role = 4;
+  google.protobuf.Timestamp create_time = 5;
+}
+
+message GetMyAccountRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message GetMyAccountResponse {
+  string id = 1;
+  string name = 2;
+  // The caller's own role in the account.
+  string role = 3;
+  repeated AccountMember members = 4;
+  google.protobuf.Timestamp create_time = 5;
+}
+
+message CreateMyAppRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string name = 3;
+  // Empty: the name in lower case with dashes.
+  string slug = 4;
+  string currency = 5;
+  string timezone = 6;
+}
+
+message CreateMyAppResponse {
+  App app = 1;
+}
+
+message ListMyAppsRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message ListMyAppsResponse {
+  repeated App apps = 1;
+}
+
+message GetMyAppRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message GetMyAppResponse {
+  App app = 1;
+  string role = 2;
+}
+
+message ResolveMyTenantRequest {
+  string user_id = 1;
+  string tenant_id = 2;
+}
+
+message ResolveMyTenantResponse {
+  Tenant tenant = 1;
+  string role = 2;
+}
+
+message CreateMyApiKeyRequest {
+  string user_id = 1;
+  string app_id = 2;
+  Environment environment = 3;
+  // Unset is FULL.
+  ApiKey.Scope scope = 4;
+}
+
+message CreateMyApiKeyResponse {
+  ApiKey api_key = 1;
+  // qk_{test|live}_{prefix}_{secret}. Shown once, never stored.
+  string plaintext = 2;
+}
+
+message ListMyApiKeysRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message ListMyApiKeysResponse {
+  repeated ApiKey api_keys = 1;
+}
+
+message RevokeMyApiKeyRequest {
+  string user_id = 1;
+  string app_id = 2;
+  string api_key_id = 3;
+}
+
+message RevokeMyApiKeyResponse {
+  ApiKey api_key = 1;
+}
+
+message RotateMyApiKeyRequest {
+  string user_id = 1;
+  string app_id = 2;
+  string api_key_id = 3;
+  // How long the old key stays valid: 0 (the default is 24 hours) up to 7 days; revoke it by hand to end it sooner.
+  google.protobuf.Duration overlap = 4;
+}
+
+message RotateMyApiKeyResponse {
+  // The replacement, with its plaintext shown once.
+  ApiKey api_key = 1;
+  string plaintext = 2;
+  // The old key, now with expire_time.
+  ApiKey previous = 3;
+}
+
+// One line of the go-live checklist.
+message GoLiveItem {
+  // email_verified, legal_profile, payment_provider, plan_published, terms_accepted.
+  string key = 1;
+  bool done = 2;
+}
+
+message GoLive {
+  TenantStatus status = 1;
+  repeated GoLiveItem items = 2;
+  // Every item is done: the owner may activate.
+  bool ready = 3;
+  // The live tenant the checklist is about.
+  string tenant_id = 4;
+}
+
+message GetMyGoLiveRequest {
+  string user_id = 1;
+  string app_id = 2;
+  bool provider_ready = 3;
+}
+
+message GetMyGoLiveResponse {
+  GoLive go_live = 1;
+}
+
+message ActivateMyAppRequest {
+  string user_id = 1;
+  string app_id = 2;
+  bool provider_ready = 3;
+  // Accepts the terms of service in the same call.
+  bool accept_terms = 4;
+}
+
+message ActivateMyAppResponse {
+  GoLive go_live = 1;
+}
+
+message VerifyEmailRequest {
+  string token = 1;
+}
+
+message VerifyEmailResponse {
+  User user = 1;
+}
+
+message ResendVerificationRequest {
+  string user_id = 1;
+}
+
+message ResendVerificationResponse {}
+
+message RequestPasswordResetRequest {
+  string email = 1;
+  string locale = 2;
+}
+
+message RequestPasswordResetResponse {}
+
+message ResetPasswordRequest {
+  string token = 1;
+  string new_password = 2;
+}
+
+message ResetPasswordResponse {}
+
+message RenameMyAccountRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string name = 3;
+}
+
+message RenameMyAccountResponse {
+  string name = 1;
+}
+
+// Invitation is an open invitation. The token is never part of it: it exists only in the mail.
+message Invitation {
+  string id = 1;
+  string email = 2;
+  string role = 3;
+  string invited_by_email = 4;
+  string invited_by_name = 5;
+  google.protobuf.Timestamp create_time = 6;
+  google.protobuf.Timestamp send_time = 7;
+  google.protobuf.Timestamp expire_time = 8;
+}
+
+message InviteMemberRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string email = 3;
+  // "owner", "admin" or "viewer".
+  string role = 4;
+  string locale = 5;
+}
+
+message InviteMemberResponse {
+  Invitation invitation = 1;
+}
+
+message ListInvitationsRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message ListInvitationsResponse {
+  repeated Invitation invitations = 1;
+}
+
+message RevokeInvitationRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string invitation_id = 3;
+}
+
+message RevokeInvitationResponse {}
+
+message ResendInvitationRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string invitation_id = 3;
+}
+
+message ResendInvitationResponse {
+  Invitation invitation = 1;
+}
+
+message UpdateMemberRoleRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string member_user_id = 3;
+  string role = 4;
+}
+
+message UpdateMemberRoleResponse {
+  string role = 1;
+}
+
+message RemoveMemberRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string member_user_id = 3;
+}
+
+message RemoveMemberResponse {}
+
+message LookupInvitationRequest {
+  string token = 1;
+}
+
+message LookupInvitationResponse {
+  string account_name = 1;
+  string email = 2;
+  string role = 3;
+  // True when the address already has a user: the page then asks to sign in instead of to choose a password.
+  bool has_account = 4;
+  string invited_by_name = 5;
+}
+
+message AcceptInvitationRequest {
+  string token = 1;
+  string password = 2;
+  string display_name = 3;
+  string locale = 4;
+}
+
+message AcceptInvitationResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_time = 4;
+}
+
+message AcceptInvitationAsUserRequest {
+  string user_id = 1;
+  string token = 2;
+}
+
+message AcceptInvitationAsUserResponse {
+  repeated Membership memberships = 1;
+  string account_id = 2;
+}

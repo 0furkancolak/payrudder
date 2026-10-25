@@ -4,7 +4,7 @@ import "testing"
 
 func TestRenaming(t *testing.T) {
 	t.Cleanup(func() { Set("") })
-	if Name() != "Payrudder" || Slug() != "quotify" || Header("Signature") != "Quotify-Signature" || UserAgent("Webhooks", 1) != "Quotify-Webhooks/1" {
+	if Name() != "Payrudder" || Slug() != "payrudder" || Header("Signature") != "Payrudder-Signature" || UserAgent("Webhooks", 1) != "Payrudder-Webhooks/1" {
 		t.Fatalf("defaults: %q %q %q", Name(), Slug(), Header("Signature"))
 	}
 	Set("  Acme Billing! ")
