@@ -182,6 +182,10 @@ A **coupon** is the definition of a discount (`percent_bps`, `amount_minor` + cu
 
 Bulk generation (`CreatePromotionCodes`): the codes named, or `count` (1 to 1000) random ones, `prefix` + 8 characters from an alphabet without `0 O 1 I L`, all with the template's rules.
 
+## As built: the affiliate program (Phase 47)
+
+Module `affiliates` (ADR 0020 shape: `model/` pure rules, `command/`, `query/`, `portal/`, one `grpc.go`). Tables (all tenant-scoped, forced RLS): `affiliate_programs`, `affiliates`, `affiliate_clicks_daily`, `affiliate_attributions` (set once; a trigger refuses UPDATE/DELETE), `affiliate_attribution_rejections`, `affiliate_commissions`, `affiliate_reversals`, `affiliate_payouts`, `affiliate_journal` (append-only, balanced per payout and currency by a deferred trigger). Services: `AffiliateService` (owner, key-scoped), `AffiliatePublicService` (`/r/<code>` clicks, system pool), `AffiliatePortalService` (a signed-in partner). billing-svc's `invoice.paid`, `invoice.voided` and `credit_note.created` events are read in `RecordTenantEvent` (an `EventHook`), a job approves commissions after their hold (`PAYRUDDER_AFFILIATE_APPROVE_EVERY`, default 1h). See [phase 47](../phases/phase-47-affiliates.md).
+
 ## As built: webhooks and early-cancel credit (Phase 23)
 
 `WebhookService` (same server, `webhooks.proto`) owns the tenant's webhook endpoints, the events and their deliveries (tables `webhook_endpoints`, `webhook_events`, `webhook_deliveries`, RLS like the rest). Subscription RPCs write their event in the same transaction as the change (`Server.emit`);
