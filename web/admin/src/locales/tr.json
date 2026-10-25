@@ -1365,7 +1365,8 @@
       "timeout": "İstek çok uzun sürdü. Tekrar deneyin.",
       "conflict": "Siz çalışırken veri değişti. Sayfayı yenileyip tekrar deneyin.",
       "not_implemented": "Bu henüz desteklenmiyor.",
-      "internal": "Bizim tarafta bir sorun oluştu. Tekrar deneyin; sürerse istek kimliğiyle günlüklere bakın."
+      "internal": "Bizim tarafta bir sorun oluştu. Tekrar deneyin; sürerse istek kimliğiyle günlüklere bakın.",
+      "canceled": "İstek iptal edildi."
     },
     "payments": {
       "transfer": {
@@ -1380,7 +1381,11 @@
         "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
         "nothing_pending": "Reddedilecek bekleyen bir havale yok.",
         "bad_outcome": "Sonuç reddedildi veya süresi doldu olmalı.",
-        "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin."
+        "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin.",
+        "bad_body": "İstek gövdesi okunamadı: çok büyük olmayan geçerli bir JSON gönderin.",
+        "bad_invoice_id": "Fatura kimliği geçerli bir kimlik değil.",
+        "bad_tenant": "Hesap kimliği geçerli bir kimlik değil.",
+        "invoice_not_found": "Bu fatura bulunamadı."
       },
       "account": {
         "bad_settings": "Bu sağlayıcı ayarları geçerli değil. Kimlik bilgilerini ve zorunlu alanları kontrol edin.",
@@ -1508,7 +1513,9 @@
         "invalid": "Oturumunuz sona erdi. Yeniden giriş yapın."
       },
       "tenant": {
-        "not_found": "Bu ortam yok ya da size ait değil."
+        "not_found": "Bu ortam yok ya da size ait değil.",
+        "bad_metadata": "İstekteki hesap geçerli değil.",
+        "metadata_missing": "İstek hangi hesap için olduğunu belirtmiyor."
       },
       "token": {
         "invalid": "Bu bağlantı geçersiz, süresi dolmuş ya da daha önce kullanılmış. Yenisini isteyin."
@@ -1576,10 +1583,25 @@
       },
       "period": {
         "bad_id": "Dönem 2026-11 biçiminde olmalı.",
-        "cannot_compute": "Bu dönemin ayarları hesaplanamıyor. Dönemi ve hesabın saat dilimini kontrol edin."
+        "cannot_compute": "Bu dönemin ayarları hesaplanamıyor. Dönemi ve hesabın saat dilimini kontrol edin.",
+        "frozen": "Bu dönem dondurulmuş ya da zaten beş saniye içinde kapanıyor, bu yüzden erken kapatılamaz.",
+        "not_sandbox": "Dönemler yalnızca sandbox hesabında erken kapatılabilir."
       },
       "usage": {
         "bad_batch_size": "Bir seferde 1 ile izin verilen en fazla kullanım anahtarı kadar isteyin."
+      },
+      "meter": {
+        "not_found": "Bu sayaç bulunamadı."
+      },
+      "replay": {
+        "bad_job_id": "Yeniden oynatma işi kimliği geçerli bir kimlik değil.",
+        "bad_state": "Yeniden oynatma işi bunun yapılabileceği bir durumda değil.",
+        "bad_tenant_id": "Hesap kimliği geçerli bir kimlik değil.",
+        "invalid": "Bu yeniden oynatma isteği geçerli değil.",
+        "not_found": "Bu yeniden oynatma işi bulunamadı."
+      },
+      "store": {
+        "unavailable": "Kullanım verisi şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
       }
     },
     "analytics": {
@@ -1587,7 +1609,8 @@
         "bad_id": "Müşteri kimliği geçerli bir kimlik değil."
       },
       "tenant": {
-        "bad_id": "Hesap kimliği geçerli bir kimlik değil."
+        "bad_id": "Hesap kimliği geçerli bir kimlik değil.",
+        "unknown": "Bu hesap analitik tarafından tanınmıyor."
       },
       "granularity": {
         "unknown": "Bu ayrıntı düzeyi desteklenmiyor. Saat veya gün kullanın."
@@ -1600,6 +1623,9 @@
         "daily_too_long": "Günlük bir seri en fazla 400 günü kapsar.",
         "hourly_too_long": "Saatlik bir seri en fazla 31 günü kapsar.",
         "required": "Aralığın başlangıcı ve bitişi birlikte gerekli."
+      },
+      "store": {
+        "unavailable": "Analitik şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
       }
     },
     "limits": {
@@ -1607,10 +1633,42 @@
         "bad_id": "Müşteri kimliği geçerli bir kimlik değil."
       },
       "meter": {
-        "code_required": "Sayaç kodu gerekli."
+        "code_required": "Sayaç kodu gerekli.",
+        "not_found": "Bu sayaç bulunamadı.",
+        "unavailable": "Sayaç şu anda sorgulanamadı. Biraz sonra yeniden deneyin."
       },
       "period": {
         "bad_id": "Dönem 2026-11 biçiminde olmalı."
+      },
+      "counter": {
+        "unavailable": "Kullanım sayaçları şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
+      },
+      "reconcile": {
+        "not_configured": "Bu kurulumda mutabakat yapılandırılmamış.",
+        "unavailable": "Mutabakat şu anda çalıştırılamadı. Biraz sonra yeniden deneyin."
+      }
+    },
+    "ingest": {
+      "backlog": {
+        "full": "Veri alımı şu anda yoğun. Hiçbir şey kabul edilmedi; daha sonra yeniden deneyin."
+      },
+      "batch": {
+        "bad_size": "Bir istek 1 ile 500 arasında olay taşımalı."
+      },
+      "db": {
+        "conflict": "Veri aynı anda değişti. Hiçbir şey kabul edilmedi; yeniden denemek güvenli.",
+        "slow": "Veritabanı çok yavaş yanıt verdi. Hiçbir şey kabul edilmedi; yeniden denemek güvenli.",
+        "timeout": "Veri alımı zaman aşımına uğradı. Hiçbir şey kabul edilmedi; yeniden denemek güvenli.",
+        "unavailable": "Veritabanı kullanılamıyor. Hiçbir şey kabul edilmedi; yeniden denemek güvenli."
+      },
+      "outbox": {
+        "unavailable": "Veri alımı olayları şu anda iletemiyor. Biraz sonra yeniden deneyin."
+      },
+      "plans": {
+        "unavailable": "Planlar servisi kullanılamıyor, bu yüzden olaylar doğrulanamıyor. Biraz sonra yeniden deneyin."
+      },
+      "tenant": {
+        "bad_timezone": "Bu hesabın saat dilimi kullanılamıyor. Hesap ayarlarından kontrol edin."
       }
     }
   },

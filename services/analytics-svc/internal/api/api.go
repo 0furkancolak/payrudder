@@ -10,7 +10,6 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
@@ -41,7 +40,7 @@ func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, k
 
 func unavailable(err error) error {
 	slog.Warn("clickhouse query failed", "error", err)
-	return status.Error(codes.Unavailable, "analytics store unavailable")
+	return errkey.New(codes.Unavailable, "analytics.store.unavailable", "analytics store unavailable")
 }
 
 // QueryUsage implements analyticsv1.AnalyticsServiceServer.
@@ -52,7 +51,7 @@ func (s *Server) QueryUsage(ctx context.Context, req *analyticsv1.QueryUsageRequ
 	}
 	b, err := query.ForTenant(ti.ID)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "unknown tenant")
+		return nil, errkey.New(codes.Unauthenticated, "analytics.tenant.unknown", "unknown tenant")
 	}
 	f := query.UsageFilter{Meter: req.GetMeterCode(), Timezone: ti.Timezone, Exact: req.GetExact()}
 	if c := req.GetCustomerId(); c != "" {
@@ -127,7 +126,7 @@ func (s *Server) TopCustomers(ctx context.Context, req *analyticsv1.TopCustomers
 	}
 	b, err := query.ForTenant(ti.ID)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "unknown tenant")
+		return nil, errkey.New(codes.Unauthenticated, "analytics.tenant.unknown", "unknown tenant")
 	}
 	limit := int(req.GetLimit())
 	if limit == 0 {

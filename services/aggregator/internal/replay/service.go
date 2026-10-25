@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 )
 
@@ -25,14 +26,14 @@ func NewService(m *Manager) *Service { return &Service{m: m} }
 func ids(tenantID, jobID string) (uuid.UUID, uuid.UUID, error) {
 	t, err := uuid.Parse(tenantID)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "tenant_id must be a UUID")
+		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "aggregator.replay.bad_tenant_id", "tenant_id must be a UUID")
 	}
 	if jobID == "" {
 		return t, uuid.Nil, nil
 	}
 	j, err := uuid.Parse(jobID)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "job_id must be a UUID")
+		return uuid.Nil, uuid.Nil, errkey.New(codes.InvalidArgument, "aggregator.replay.bad_job_id", "job_id must be a UUID")
 	}
 	return t, j, nil
 }
@@ -42,11 +43,11 @@ func mapErr(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, ErrInvalid):
-		return status.Error(codes.InvalidArgument, err.Error())
+		return errkey.New(codes.InvalidArgument, "aggregator.replay.invalid", err.Error())
 	case errors.Is(err, ErrNotFound):
-		return status.Error(codes.NotFound, "no such replay job")
+		return errkey.New(codes.NotFound, "aggregator.replay.not_found", "no such replay job")
 	case errors.Is(err, ErrOpen), errors.Is(err, ErrState):
-		return status.Error(codes.FailedPrecondition, err.Error())
+		return errkey.New(codes.FailedPrecondition, "aggregator.replay.bad_state", err.Error())
 	}
 	return status.Error(codes.Internal, "internal error")
 }

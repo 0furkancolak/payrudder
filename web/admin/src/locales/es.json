@@ -1365,7 +1365,8 @@
       "timeout": "La solicitud tardó demasiado. Inténtelo de nuevo.",
       "conflict": "Los datos cambiaron mientras trabajaba. Recargue e inténtelo de nuevo.",
       "not_implemented": "Aún no es compatible.",
-      "internal": "Algo falló por nuestra parte. Inténtelo de nuevo; si sigue fallando, busque en los registros con el id de la solicitud."
+      "internal": "Algo falló por nuestra parte. Inténtelo de nuevo; si sigue fallando, busque en los registros con el id de la solicitud.",
+      "canceled": "La solicitud se canceló."
     },
     "payments": {
       "transfer": {
@@ -1380,7 +1381,11 @@
         "bad_date": "La fecha de recepción no es válida o es futura.",
         "nothing_pending": "No hay ninguna transferencia pendiente que rechazar.",
         "bad_outcome": "El resultado debe ser rechazada o caducada.",
-        "unavailable": "El servicio de pagos no está disponible ahora. Inténtelo de nuevo en un momento."
+        "unavailable": "El servicio de pagos no está disponible ahora. Inténtelo de nuevo en un momento.",
+        "bad_body": "No se pudo leer el cuerpo de la solicitud: envía un JSON válido que no sea demasiado grande.",
+        "bad_invoice_id": "El identificador de la factura no es válido.",
+        "bad_tenant": "El identificador de la cuenta no es válido.",
+        "invoice_not_found": "No se encontró esta factura."
       },
       "account": {
         "bad_settings": "Estos ajustes del proveedor no son válidos. Revisa las credenciales y los campos obligatorios.",
@@ -1508,7 +1513,9 @@
         "invalid": "Su sesión ha terminado. Inicie sesión de nuevo."
       },
       "tenant": {
-        "not_found": "Este entorno no existe o no es suyo."
+        "not_found": "Este entorno no existe o no es suyo.",
+        "bad_metadata": "La cuenta de la solicitud no es válida.",
+        "metadata_missing": "La solicitud no indica para qué cuenta es."
       },
       "token": {
         "invalid": "Este enlace no es válido, ha caducado o ya se usó. Solicita uno nuevo."
@@ -1576,10 +1583,25 @@
       },
       "period": {
         "bad_id": "El período debe tener el formato 2026-11.",
-        "cannot_compute": "No se pueden calcular los ajustes de este período. Revisa el período y la zona horaria de la cuenta."
+        "cannot_compute": "No se pueden calcular los ajustes de este período. Revisa el período y la zona horaria de la cuenta.",
+        "frozen": "Este período está congelado o ya se cierra en cinco segundos, así que no se puede cerrar antes.",
+        "not_sandbox": "Los períodos solo se pueden cerrar antes en una cuenta sandbox."
       },
       "usage": {
         "bad_batch_size": "Pide entre 1 y el máximo de claves de uso a la vez."
+      },
+      "meter": {
+        "not_found": "No se encontró este medidor."
+      },
+      "replay": {
+        "bad_job_id": "El identificador del trabajo de reproducción no es válido.",
+        "bad_state": "El trabajo de reproducción no está en un estado en el que se pueda hacer esto.",
+        "bad_tenant_id": "El identificador de la cuenta no es válido.",
+        "invalid": "Esta solicitud de reproducción no es válida.",
+        "not_found": "No se encontró este trabajo de reproducción."
+      },
+      "store": {
+        "unavailable": "Los datos de uso no están disponibles ahora mismo. Inténtalo de nuevo en un momento."
       }
     },
     "analytics": {
@@ -1587,7 +1609,8 @@
         "bad_id": "El identificador del cliente no es válido."
       },
       "tenant": {
-        "bad_id": "El identificador de la cuenta no es válido."
+        "bad_id": "El identificador de la cuenta no es válido.",
+        "unknown": "Esta cuenta no es conocida por las analíticas."
       },
       "granularity": {
         "unknown": "Esta granularidad no es compatible. Usa hora o día."
@@ -1600,6 +1623,9 @@
         "daily_too_long": "Una serie diaria cubre como máximo 400 días.",
         "hourly_too_long": "Una serie por horas cubre como máximo 31 días.",
         "required": "Se requieren el inicio y el fin del rango."
+      },
+      "store": {
+        "unavailable": "Las analíticas no están disponibles ahora mismo. Inténtalo de nuevo en un momento."
       }
     },
     "limits": {
@@ -1607,10 +1633,42 @@
         "bad_id": "El identificador del cliente no es válido."
       },
       "meter": {
-        "code_required": "Se requiere el código del medidor."
+        "code_required": "Se requiere el código del medidor.",
+        "not_found": "No se encontró este medidor.",
+        "unavailable": "No se pudo consultar el medidor ahora mismo. Inténtalo de nuevo en un momento."
       },
       "period": {
         "bad_id": "El período debe tener el formato 2026-11."
+      },
+      "counter": {
+        "unavailable": "Los contadores de uso no están disponibles ahora mismo. Inténtalo de nuevo en un momento."
+      },
+      "reconcile": {
+        "not_configured": "La conciliación no está configurada en este despliegue.",
+        "unavailable": "La conciliación no pudo ejecutarse ahora mismo. Inténtalo de nuevo en un momento."
+      }
+    },
+    "ingest": {
+      "backlog": {
+        "full": "La ingesta está saturada ahora mismo. No se aceptó nada; inténtalo más tarde."
+      },
+      "batch": {
+        "bad_size": "Una solicitud debe incluir entre 1 y 500 eventos."
+      },
+      "db": {
+        "conflict": "Los datos cambiaron al mismo tiempo. No se aceptó nada; reintentar es seguro.",
+        "slow": "La base de datos fue demasiado lenta. No se aceptó nada; reintentar es seguro.",
+        "timeout": "La ingesta agotó el tiempo. No se aceptó nada; reintentar es seguro.",
+        "unavailable": "La base de datos no está disponible. No se aceptó nada; reintentar es seguro."
+      },
+      "outbox": {
+        "unavailable": "La ingesta no puede entregar eventos ahora mismo. Inténtalo de nuevo en un momento."
+      },
+      "plans": {
+        "unavailable": "El servicio de planes no está disponible, así que no se pueden comprobar los eventos. Inténtalo de nuevo en un momento."
+      },
+      "tenant": {
+        "bad_timezone": "La zona horaria de esta cuenta no se puede usar. Revísala en los ajustes de la cuenta."
       }
     }
   },
