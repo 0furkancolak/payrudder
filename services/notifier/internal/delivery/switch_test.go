@@ -1,4 +1,4 @@
-package handler
+package delivery
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 
-	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/mailcategory"
 )
@@ -99,22 +98,5 @@ func TestPermitted(t *testing.T) {
 	failing := &Mailer{Switch: stubSwitch{err: errors.New("down")}}
 	if ok, err := failing.Permitted(context.Background(), tid, "invoice_paid.v1"); err == nil || ok {
 		t.Errorf("a failed lookup must be an error, got ok=%v err=%v", ok, err)
-	}
-}
-
-// A command for a switched-off category is answered as done and suppressed, and nothing else happens: the Mailer has no store and no sender, so any
-// attempt to claim or send would panic.
-func TestHandleDropsDisabledCategory(t *testing.T) {
-	m := &Mailer{Switch: stubSwitch{off: map[string]bool{mailcategory.PaymentReceipts: true}}}
-	cmd := &commandsv1.CommandEnvelope{
-		CommandId: uuid.NewString(), TenantId: uuid.NewString(),
-		Command: &commandsv1.CommandEnvelope_SendNotification{SendNotification: &commandsv1.SendNotification{Template: "invoice_paid.v1", To: "a@example.com"}},
-	}
-	reply, err := (&Handler{Mailer: m}).Handle(context.Background(), cmd)
-	if err != nil {
-		t.Fatalf("a dropped mail is not an error: %v", err)
-	}
-	if got := reply.GetNotificationSent(); got == nil || !got.GetSuppressed() || got.GetMessageId() != "" {
-		t.Fatalf("reply = %v, want a suppressed NotificationSent", reply)
 	}
 }

@@ -12,12 +12,13 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
-	"github.com/0furkancolak/payrudder/services/notifier/internal/mail"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
 	"github.com/0furkancolak/payrudder/services/notifier/migrations"
 )
@@ -67,11 +68,11 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	defer func() { _ = plansConn.Close() }()
 
 	notes := store.Notifications{DB: pool, Stale: cfg.SendingStale}
-	mailer := &handler.Mailer{Default: mail.SMTP{Addr: cfg.SMTPAddr}, From: cfg.MailFrom, Notes: notes}
+	mailer := &delivery.Mailer{Default: mailx.SMTP{Addr: cfg.SMTPAddr}, From: cfg.MailFrom, Notes: notes}
 	// A tenant's mail switch (plans-svc) is read before every send.
-	mailer.Switch = &handler.PlansSwitch{Client: plansv1.NewPlansServiceClient(plansConn), TTL: cfg.MailSwitchTTL}
+	mailer.Switch = &delivery.PlansSwitch{Client: plansv1.NewPlansServiceClient(plansConn), TTL: cfg.MailSwitchTTL}
 	if cfg.SandboxSMTP != "" {
-		mailer.Sandbox = mail.SMTP{Addr: cfg.SandboxSMTP}
+		mailer.Sandbox = mailx.SMTP{Addr: cfg.SandboxSMTP}
 	}
 	w := &workerx.Worker{URL: cfg.RabbitMQURL, Handler: &handler.Handler{Mailer: mailer}, Inbox: notes, Log: log,
 		Queues: []string{rabbitx.QueueNotificationSend}}
