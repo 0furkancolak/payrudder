@@ -1495,7 +1495,8 @@
         "sync_failed": "Le compte du prestataire a été modifié, mais les coordonnées bancaires n'ont pas pu être transmises aux factures. Renvoyez la requête."
       },
       "billing": {
-        "not_configured": "La facturation n'est pas configurée sur ce déploiement."
+        "not_configured": "La facturation n'est pas configurée sur ce déploiement.",
+        "failed": "Le service de facturation n'a pas pu terminer cette opération. Réessayez dans un instant."
       },
       "plans": {
         "not_configured": "Les plans ne sont pas configurés sur ce déploiement.",

@@ -66,6 +66,9 @@ func unsupported(w http.ResponseWriter, provider, what string) {
 	fail(w, http.StatusNotImplemented, "payments.provider.not_supported", provider+" does not support "+what)
 }
 
+// providerTrouble is what a caller is told when a provider call failed; the cause is in the log.
+const providerTrouble = "the payment provider could not complete the request"
+
 // providerFail relays an error from a provider: a request it refused is the caller's to fix, anything else is a bad gateway.
 func (s *Server) providerFail(w http.ResponseWriter, r *http.Request, what string, err error) {
 	s.Log.WarnContext(r.Context(), what+" failed", "err", err)
@@ -73,7 +76,7 @@ func (s *Server) providerFail(w http.ResponseWriter, r *http.Request, what strin
 		fail(w, http.StatusConflict, "payments.provider.not_supported", err.Error())
 		return
 	}
-	fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
+	fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
 }
 
 func decodeBody(w http.ResponseWriter, r *http.Request, v any) bool {
@@ -145,12 +148,12 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	pv, err := s.Plans.GetPlanVersion(ctx, tg.tenant, &plansv1.GetPlanVersionRequest{PlanCode: in.PlanCode, Version: in.PlanVersion})
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	tenantCurrency, err := s.Plans.TenantCurrency(ctx, tg.tenant)
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	specs, existing, err := s.missingPrices(ctx, tg, in, pv, tenantCurrency)
@@ -345,7 +348,7 @@ func (s *Server) providerSubscription(w http.ResponseWriter, r *http.Request, tg
 	}
 	sub, err := s.Plans.GetSubscription(r.Context(), tg.tenant, r.PathValue("id"))
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return nil, false
 	}
 	if sub.GetOwner() != "provider" || sub.GetProvider() != tg.provider || sub.GetProviderRef() == "" {
