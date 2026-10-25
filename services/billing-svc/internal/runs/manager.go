@@ -80,6 +80,13 @@ type Admin interface {
 	ListTenants(ctx context.Context, in *plansv1.ListTenantsRequest, opts ...grpc.CallOption) (*plansv1.ListTenantsResponse, error)
 }
 
+// Chore is a piece of upkeep another module owns (the resending of credit note refunds, ...) that the scheduler runs on every tick. A failure is logged as
+// "scheduler: <Name>" and does not stop the tick.
+type Chore struct {
+	Name string
+	Run  func(ctx context.Context) error
+}
+
 // Config configures a Manager.
 type Config struct {
 	Pool   *pgxpool.Pool // billing_system
@@ -97,6 +104,8 @@ type Config struct {
 	// WatermarkDelay is how long after the cutoff the watermark check starts (default 30 s: longer than ingest's 5 s
 	// transaction timeout).
 	WatermarkDelay time.Duration
+	// Chores run after the scheduler's own work on every tick, in order.
+	Chores []Chore
 	// PageSize is how many customers are rated per transaction (default 500).
 	PageSize int
 	// Lookback is how many closed periods the scheduler considers per tenant (default 3).

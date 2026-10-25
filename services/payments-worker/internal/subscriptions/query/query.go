@@ -15,6 +15,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
 	catalogue "github.com/0furkancolak/payrudder/services/payments-worker/internal/catalogue/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
@@ -106,13 +107,13 @@ func PlanChange(ctx context.Context, d Deps, tg target.Target, sub *plansv1.Subs
 	if pvID == sub.GetPlanVersionId() && iv == sub.GetInterval() {
 		return Change{}, changeRefused(http.StatusBadRequest, "the subscription is already on this plan version and interval")
 	}
-	ref, found, err := d.Objects.Get(ctx, tg.Tenant, tg.Provider, tg.Env, catalogue.KindPrice, catalogue.PriceKey(pvID, catalogue.IntervalName(iv), sub.GetCurrency()))
+	ref, found, err := d.Objects.Get(ctx, tg.Tenant, tg.Provider, tg.Env, catalogue.KindPrice, catalogue.PriceKey(pvID, subscription.IntervalFromProto(iv).Word(), sub.GetCurrency()))
 	if err != nil {
 		d.Log.ErrorContext(ctx, "provider price not looked up", "provider", tg.Provider, "err", err)
 		return Change{}, changeRefused(http.StatusInternalServerError, "internal error")
 	}
 	if !found {
-		return Change{}, changeRefused(http.StatusConflict, fmt.Sprintf("%s has no %sly price in %s for this plan version; sync the catalogue first", tg.Provider, catalogue.IntervalName(iv), sub.GetCurrency()))
+		return Change{}, changeRefused(http.StatusConflict, fmt.Sprintf("%s has no %sly price in %s for this plan version; sync the catalogue first", tg.Provider, subscription.IntervalFromProto(iv).Word(), sub.GetCurrency()))
 	}
 	timing := enumWord(in.Timing, "change_timing_")
 	if timing == "" {

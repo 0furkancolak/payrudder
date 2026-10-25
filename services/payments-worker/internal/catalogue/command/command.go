@@ -12,6 +12,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/catalogue/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
@@ -109,7 +110,7 @@ func missingPrices(ctx context.Context, d Deps, tg target.Target, in Sync, pv *p
 	}
 	fees := []fee{{"month", tenantCurrency, pv.GetBaseFeeMinor()}}
 	for _, f := range pv.GetFees() {
-		fees = append(fees, fee{query.IntervalName(f.GetInterval()), f.GetCurrency(), f.GetBaseFeeMinor()})
+		fees = append(fees, fee{subscription.IntervalFromProto(f.GetInterval()).Word(), f.GetCurrency(), f.GetBaseFeeMinor()})
 	}
 	existing := map[string]string{}
 	var specs []payments.PriceSpec

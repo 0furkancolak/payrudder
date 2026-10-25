@@ -31,7 +31,7 @@ type linkEnv struct {
 func newLinkEnv(t *testing.T, o envOpts, demo bool) *linkEnv {
 	t.Helper()
 	e := newEnv(t, o)
-	return &linkEnv{env: e, svc: api.New(shared.app, shared.system, e.mgr, e.eng).WithPDFs(fakePDFs{}).WithDemo(demo),
+	return &linkEnv{env: e, svc: e.api().WithPDFs(fakePDFs{}).WithDemo(demo),
 		mine: tenant.NewContext(context.Background(), tenant.Info{ID: e.tid}), visitor: context.Background()}
 }
 

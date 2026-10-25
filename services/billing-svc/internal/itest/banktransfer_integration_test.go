@@ -19,7 +19,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
 // mine are the commands of this test's tenant that a stub worker received: the queues are shared with the other tests of the package, whose leftovers a stub may take.
@@ -125,7 +124,7 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 		t.Fatalf("mails after a poll = %d, want still 2", mails)
 	}
 
-	admin := api.New(shared.app, shared.system, e.mgr, e.eng)
+	admin := e.api()
 	inv := func(customer string) string {
 		var id string
 		if err := shared.system.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND period_id = '2026-10' AND snapshot->>'customer_external_id' = $2`, e.tid, customer).Scan(&id); err != nil {
@@ -135,7 +134,7 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 	}
 
 	// The hosted page of the open invoice says where to pay, with the reference; once paid it does not.
-	hosted := api.New(shared.app, shared.system, e.mgr, e.eng)
+	hosted := e.api()
 	mine := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
 	link, err := hosted.CreateInvoiceLink(mine, &billingv1.CreateInvoiceLinkRequest{InvoiceId: inv("cus_a")})
 	if err != nil {
@@ -188,7 +187,7 @@ func testExpiredTransferFollowsDunning(t *testing.T) {
 		}
 		return stubworker.Action{Reply: stubworker.Succeed}
 	})
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	tctx := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
 	if _, err := svc.SetDunningSettings(tctx, &billingv1.SetDunningSettingsRequest{RetryHours: []int32{2}}); err != nil {
 		t.Fatal(err)
@@ -244,7 +243,7 @@ func testOfflinePaymentsSettleAnInvoice(t *testing.T) {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "PAYMENT_DECLINED" && s["cus_b"] == "PAYMENT_DECLINED"
 	})
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	var id string
 	if err := shared.system.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_b'`, e.tid).Scan(&id); err != nil {
 		t.Fatal(err)

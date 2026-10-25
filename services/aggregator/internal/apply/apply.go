@@ -15,13 +15,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
@@ -114,28 +114,21 @@ func (h *Handler) init() {
 		if h.Log == nil {
 			h.Log = slog.Default()
 		}
-		mt := otel.Meter("github.com/0furkancolak/payrudder/services/aggregator")
-		ctr := func(name, desc string) metric.Int64Counter {
-			c, err := mt.Int64Counter(name, metric.WithDescription(desc))
-			if err != nil {
-				panic(err) // only on duplicate instrument names with different kinds: a programming error
-			}
-			return c
-		}
+		b := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/aggregator")
 		prefix := "aggregator_"
 		if h.Replay != nil {
 			prefix = "aggregator_replay_" // a replay is not live traffic: its counters must not move the live ones
 		}
-		h.m.applied = ctr(prefix+"events_applied", "Events applied to an aggregate")
-		h.m.duplicates = ctr(prefix+"duplicates_skipped", "Events skipped because the inbox already had them")
-		h.m.late = ctr(prefix+"late_events", "Events routed to late usage")
-		h.m.filtered = ctr(prefix+"filtered_events", "Events ignored by the meter filter")
-		h.m.frozen = ctr(prefix+"frozen_period_violations", "On-time events that arrived for a frozen period")
-		h.m.dlq = ctr(prefix+"dlq_records", "Records sent to the dead-letter topic")
-		h.m.fenced = ctr(prefix+"fenced_batches", "Batches whose offset write was fenced (a zombie behind the leader)")
-		var err error
-		if h.m.batchSecs, err = mt.Float64Histogram(prefix+"batch_seconds", metric.WithUnit("s")); err != nil {
-			panic(err)
+		h.m.applied = b.Counter(prefix+"events_applied", "Events applied to an aggregate")
+		h.m.duplicates = b.Counter(prefix+"duplicates_skipped", "Events skipped because the inbox already had them")
+		h.m.late = b.Counter(prefix+"late_events", "Events routed to late usage")
+		h.m.filtered = b.Counter(prefix+"filtered_events", "Events ignored by the meter filter")
+		h.m.frozen = b.Counter(prefix+"frozen_period_violations", "On-time events that arrived for a frozen period")
+		h.m.dlq = b.Counter(prefix+"dlq_records", "Records sent to the dead-letter topic")
+		h.m.fenced = b.Counter(prefix+"fenced_batches", "Batches whose offset write was fenced (a zombie behind the leader)")
+		h.m.batchSecs = b.Histogram(prefix+"batch_seconds", "", metric.WithUnit("s"))
+		if err := b.Err(); err != nil {
+			panic(err) // only on duplicate instrument names with different kinds: a programming error
 		}
 	})
 }

@@ -16,7 +16,6 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	paymentscmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/payments/command"
 )
 
@@ -83,7 +82,7 @@ func testVoidRefundsWhatCreditNotesLeft(t *testing.T) {
 		return stubworker.Action{Reply: stubworker.Succeed}
 	})
 	completeOctober(e)
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	note := func(inv uuid.UUID, amount int64) (*billingv1.CreateCreditNoteResponse, error) {
 		return svc.CreateCreditNote(opCtx(), &billingv1.CreateCreditNoteRequest{TenantId: e.tid.String(), InvoiceId: inv.String(), AmountMinor: amount, RefundToCard: true})
 	}
@@ -162,7 +161,7 @@ func testVoidingAnInvoiceReopensTheCreditsItConsumed(t *testing.T) {
 	if applied, apps, left := remaining(); !applied || apps != 1 || left != 0 {
 		t.Fatalf("before the void: applied %v, %d applications, %d left; want the lot consumed by the invoice", applied, apps, left)
 	}
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	if _, err := svc.VoidInvoice(opCtx(), &billingv1.VoidInvoiceRequest{TenantId: e.tid.String(), InvoiceId: e.invoiceIDOf("cus_a").String(), Reason: "wrong"}); err != nil {
 		t.Fatal(err)
 	}

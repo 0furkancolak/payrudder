@@ -12,7 +12,6 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
 type seedInvoice struct {
@@ -68,7 +67,7 @@ func testReports(t *testing.T) {
 		{period: "2026-10", currency: "USD", provider: "paddle", country: "US", status: "draft", total: 99999},
 	})
 	seedInvoices(t, other, []seedInvoice{{period: "2026-10", currency: "USD", provider: "paddle", country: "US", status: "paid", total: 123456, saga: "COMPLETED"}})
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	ctx := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
 
 	rows := func(from, to string, group ...string) map[string]*billingv1.RevenueRow {

@@ -15,12 +15,11 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
 func testTenantDunningSettings(t *testing.T) {
 	e := newEnv(t, envOpts{})
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	tctx := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
 
 	got, err := svc.GetDunningSettings(tctx, &billingv1.GetDunningSettingsRequest{})

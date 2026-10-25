@@ -11,8 +11,10 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { useAccount, useApps, useMe } from "./api";
 import AccountSwitcher from "./AccountSwitcher.vue";
 import AppCard from "./AppCard.vue";
+import AppGoLiveCard from "./AppGoLiveCard.vue";
 import CreateAppDialog from "./CreateAppDialog.vue";
-import type { Environment } from "@/shared/lib/environment";
+import { defaultOrgEnv, isEnvironment, liveState, tenantOf, type Environment } from "@/shared/lib/environment";
+import type { App } from "./api";
 
 const { t } = useI18n();
 const me = useMe();
@@ -22,14 +24,23 @@ const creating = ref(false);
 const search = useSearch({ strict: false });
 const navigate = useNavigate();
 const query = computed(() => parseQuery(search.value as Record<string, unknown>));
-const env = computed<Environment>(() => ((search.value as { env?: string }).env === "sandbox" ? "sandbox" : "live"));
+const list = computed(() => apps.data.value?.apps ?? []);
+/** The address's environment, else live when some app is active there, else the sandbox. Decided once the apps have arrived, so the home never flips. */
+const env = computed<Environment | null>(() => {
+  const v = (search.value as { env?: string }).env;
+  if (isEnvironment(v)) return v;
+  return apps.data.value ? defaultOrgEnv(list.value) : null;
+});
 
 /** The dashboard keeps its period, currency and environment in the address, like an app's dashboard does. */
 function go(q: DashQuery, e: Environment) {
-  void navigate({ to: "/app", search: { ...(e === "sandbox" ? { env: "sandbox" } : {}), ...toSearch(q) } as never, replace: true });
+  void navigate({ to: "/app", search: { env: e, ...toSearch(q) } as never, replace: true });
 }
 
-const list = computed(() => apps.data.value?.apps ?? []);
+/** Apps with something to add up in this environment: every app in the sandbox, and in live the ones whose live environment is active. */
+const withFigures = computed(() => list.value.filter((a) => env.value !== null && tenantOf(a, env.value) !== "" && (env.value === "sandbox" || liveState(a) === "active")));
+/** On the live view: apps whose live environment is not active show their checklist, not zeros. */
+const notLive = (a: App) => env.value === "live" && liveState(a) !== "active";
 const canCreate = computed(() => account.data.value?.role !== "viewer");
 /** A person who left (or was removed from) every account has nothing to show; the page says so instead of listing errors. */
 const noAccount = computed(() => me.data.value?.user !== undefined && (me.data.value.memberships ?? []).length === 0);
@@ -58,10 +69,13 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
       <Skeleton v-for="n in 3" :key="n" class="h-52 rounded-3xl" />
     </div>
 
-    <OrgDashboard v-else-if="list.length > 0" :apps="list" :query="query" :env="env" @update:query="go($event, env)" @update:env="go({ ...query, cur: undefined }, $event)" />
+    <OrgDashboard v-else-if="env && withFigures.length > 0" :apps="list" :query="query" :env="env" @update:query="go($event, env)" />
 
-    <div v-if="list.length > 0" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-      <AppCard v-for="app in list" :key="app.id" :app="app" />
+    <div v-if="env && list.length > 0" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" :data-env="env">
+      <template v-for="app in list" :key="app.id">
+        <AppGoLiveCard v-if="notLive(app)" :app="app" />
+        <AppCard v-else :app="app" :env="env" />
+      </template>
       <button
         v-if="canCreate"
         type="button"
@@ -73,7 +87,7 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
       </button>
     </div>
 
-    <div v-else-if="!apps.error.value" class="surface flex flex-col items-center gap-4 px-6 py-16 text-center">
+    <div v-else-if="!apps.error.value && !apps.isPending.value" class="surface flex flex-col items-center gap-4 px-6 py-16 text-center">
       <span class="bg-brand-soft text-brand-strong flex size-16 items-center justify-center rounded-3xl"><Rocket class="size-8" /></span>
       <div>
         <h2 class="text-xl font-semibold tracking-tight">{{ t("product.home.emptyTitle") }}</h2>
