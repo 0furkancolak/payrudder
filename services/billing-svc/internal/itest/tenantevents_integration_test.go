@@ -13,7 +13,6 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
 func testTenantEvents(t *testing.T) {
@@ -49,7 +48,7 @@ func testTenantEvents(t *testing.T) {
 	}
 
 	// A credit note is announced like an invoice.
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	var inv string
 	if err := shared.system.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a' AND kind = 'REGULAR'`, e.tid).Scan(&inv); err != nil {
 		t.Fatal(err)

@@ -25,6 +25,16 @@ type Target struct {
 	Prov     payments.Provider
 }
 
+// As is the adapter of the target as the interface T, which not every provider implements. The answer for one that does not is a 501 saying what it cannot do.
+func As[T any](tg Target, what string) (T, error) {
+	api, ok := tg.Prov.(T)
+	if !ok {
+		var zero T
+		return zero, refuse.New(http.StatusNotImplemented, errkey.Key("payments.provider.not_supported"), tg.Provider+" does not support "+what)
+	}
+	return api, nil
+}
+
 // Resolve finds the adapter of the tenant's account at the provider, or refuses with 404 when it has none that works.
 func Resolve(ctx context.Context, res Resolver, tenant uuid.UUID, env, provider string) (Target, error) {
 	prov, err := res.Named(ctx, tenant, provider, env)

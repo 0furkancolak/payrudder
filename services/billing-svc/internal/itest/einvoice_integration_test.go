@@ -20,7 +20,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 )
 
@@ -111,7 +110,7 @@ func testEInvoiceFinalizedIssuesInvoicesAndCreditNotes(t *testing.T) {
 	}
 
 	// A credit note for the first invoice.
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	cn, err := svc.CreateCreditNote(tenant.WithOperator(context.Background()), &billingv1.CreateCreditNoteRequest{TenantId: e.tid.String(), InvoiceId: invoiceID(t, e, "cus_a"), AmountMinor: 300, Reason: "goodwill"})
 	if err != nil {
 		t.Fatal(err)
@@ -283,7 +282,7 @@ func testEInvoiceRetriesWithBackoffAndTheOperatorRetriesFailures(t *testing.T) {
 			failedID = d.ID
 		}
 	}
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	op := tenant.WithOperator(context.Background())
 	if _, err := svc.RetryEInvoice(op, &billingv1.RetryEInvoiceRequest{TenantId: e.tid.String(), Id: uuid.NewString()}); errkey.Of(err) != "einvoice.document.not_found" {
 		t.Fatalf("retry of an unknown document: %v", err)

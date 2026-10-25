@@ -12,7 +12,6 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
 // testNumberSeriesIsEnforcedByTheDatabase: the sandbox series (SBX-) is not a convention the code keeps, it is a CHECK. Whatever wrote the row, a sandbox
@@ -75,7 +74,7 @@ func testNumberSeriesIsEnforcedByTheDatabase(t *testing.T) {
 // both ways round, and an operator naming the wrong tenant for an id finds nothing either.
 func testEnvironmentIdsAreNotFoundInTheOtherEnvironment(t *testing.T) {
 	e := newEnv(t, envOpts{})
-	svc := api.New(shared.app, shared.system, e.mgr, e.eng)
+	svc := e.api()
 	liveTenant, sandboxTenant := uuid.New(), uuid.New()
 	asLive := tenant.NewContext(context.Background(), tenant.Info{ID: liveTenant, Environment: tenant.EnvLive})
 	asSandbox := tenant.NewContext(context.Background(), tenant.Info{ID: sandboxTenant, Environment: tenant.EnvSandbox})
