@@ -45,6 +45,7 @@ import (
 	identitycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
 	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
 )
@@ -273,7 +274,8 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 	adminSrv := admin.New(systemPool, evictor, cfg.AllowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log).WithPepper(cfg.OTPPepper), identityqry.New(systemPool),
-		golive.New(golivecmd.New(systemPool, log), goliveqry.New(systemPool))))
+		golive.New(golivecmd.New(systemPool, log), goliveqry.New(systemPool)),
+		promote.Wire(appPool, systemPool, box, cfg.WebhookAllowPrivate, log)))
 	return srv, grpcHealth, box, nil
 }
 

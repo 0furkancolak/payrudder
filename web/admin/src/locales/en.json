@@ -1784,6 +1784,9 @@
         "no_live": "This deployment has no live environment.",
         "owner_only": "Only an owner of the account can activate the live environment.",
         "suspended": "The live environment is suspended. Contact support."
+      },
+      "promote": {
+        "stale": "The configuration changed since the preview. Preview the promotion again."
       }
     },
     "gateway": {

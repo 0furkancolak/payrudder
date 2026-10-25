@@ -78,6 +78,10 @@ service IdentityService {
   rpc GetMyGoLive(GetMyGoLiveRequest) returns (GetMyGoLiveResponse);
   // ActivateMyApp activates the live environment when every item is done (the owner only).
   rpc ActivateMyApp(ActivateMyAppRequest) returns (ActivateMyAppResponse);
+  // PromoteMyApp copies the configuration of an app's sandbox to its live environment (meters, plans and prices, taxes, coupons, webhook endpoints, mail
+  // settings), never customers, usage, invoices or payments. With dry_run it only returns the diff. It only adds: what exists in live and differs is
+  // reported as a conflict and left alone.
+  rpc PromoteMyApp(PromoteMyAppRequest) returns (PromoteMyAppResponse);
 }
 
 message User {
@@ -482,4 +486,51 @@ message AcceptInvitationAsUserRequest {
 message AcceptInvitationAsUserResponse {
   repeated Membership memberships = 1;
   string account_id = 2;
+}
+
+message PromoteChange {
+  enum Action {
+    ACTION_UNSPECIFIED = 0;
+    // Live has no such object: promoting adds it.
+    ACTION_CREATE = 1;
+    // Live has it, the same.
+    ACTION_UNCHANGED = 2;
+    // Live has it and it differs: shown, never overwritten.
+    ACTION_CONFLICT = 3;
+    // Cannot be promoted now; detail says why (an inactive live environment takes no webhook endpoints).
+    ACTION_SKIPPED = 4;
+  }
+  // meters, plans, taxes, coupons, webhooks, mail.
+  string family = 1;
+  // The stable key the object is matched by: meter code, plan code, tax country, coupon code, webhook URL, "settings".
+  string key = 2;
+  Action action = 3;
+  // For a conflict what differs; for a skip why.
+  string detail = 4;
+  // After an apply: the create was done.
+  bool applied = 5;
+  // After an apply: why a create failed (empty when it did not).
+  string error = 6;
+  // A webhook endpoint made by the promotion: its new signing secret, shown once. Secrets are never copied from the sandbox.
+  string secret = 7;
+}
+
+message PromoteMyAppRequest {
+  string user_id = 1;
+  string app_id = 2;
+  bool dry_run = 3;
+  // From a dry run: refuses to apply when the diff is no longer the one that was previewed.
+  string plan_hash = 4;
+}
+
+message PromoteMyAppResponse {
+  repeated PromoteChange changes = 1;
+  bool dry_run = 2;
+  // Identifies the diff of the creates, conflicts and skips; pass it back to apply what was shown.
+  string plan_hash = 3;
+  int32 created = 4;
+  int32 unchanged = 5;
+  int32 conflicts = 6;
+  int32 skipped = 7;
+  int32 failed = 8;
 }

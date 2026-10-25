@@ -1784,6 +1784,9 @@
         "no_live": "Este despliegue no tiene entorno live.",
         "owner_only": "Solo un propietario de la cuenta puede activar el entorno live.",
         "suspended": "El entorno live está suspendido. Contacta con soporte."
+      },
+      "promote": {
+        "stale": "La configuración cambió desde la vista previa. Vuelve a previsualizar la promoción."
       }
     },
     "gateway": {

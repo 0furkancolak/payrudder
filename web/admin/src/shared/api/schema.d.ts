@@ -2419,6 +2419,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy the app's sandbox configuration to its live environment
+         * @description Meters, plans and their prices, tax rates, coupons, mail settings and webhook endpoints. Never customers, usage, invoices or payments. It only adds: an object that exists in live and differs is a conflict, reported and left alone. Objects are matched by a stable key (meter code, plan code, tax country, coupon code, webhook URL), so running it again does nothing. A new webhook endpoint gets a new signing secret, in the answer once; the sandbox's is never copied. An inactive live environment takes no webhook endpoints (they are skipped). Owners and admins only. With dry_run it returns the diff and writes nothing; send its plan_hash back to apply exactly that diff (409 identity.promote.stale if the configuration moved since).
+         */
+        post: operations["appPromote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/api-keys/{key_id}/rotate": {
         parameters: {
             query?: never;
@@ -9979,6 +9999,59 @@ export interface operations {
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
+        };
+    };
+    appPromote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    dry_run?: boolean;
+                    plan_hash?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The changes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        dry_run?: boolean;
+                        plan_hash?: string;
+                        created?: number;
+                        unchanged?: number;
+                        conflicts?: number;
+                        skipped?: number;
+                        failed?: number;
+                        changes?: {
+                            /** @enum {string} */
+                            family?: "meters" | "plans" | "taxes" | "coupons" | "mail" | "webhooks";
+                            key?: string;
+                            /** @enum {string} */
+                            action?: "ACTION_CREATE" | "ACTION_UNCHANGED" | "ACTION_CONFLICT" | "ACTION_SKIPPED";
+                            detail?: string;
+                            applied?: boolean;
+                            error?: string;
+                            /** @description A webhook endpoint made by the promotion: its new signing secret, shown once. */
+                            secret?: string;
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     appRotateApiKey: {

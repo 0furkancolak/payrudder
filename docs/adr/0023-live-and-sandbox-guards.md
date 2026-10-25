@@ -26,7 +26,14 @@ ADR 0011 gives every app a sandbox tenant and a live tenant and keeps them apart
    - invoice-worker refuses a command whose invoice number is of the other series.
    - A sandbox id sent to a live route is "not found", for every resource family (plans-svc and billing-svc each have a test per family, in both directions), and a random walk of the tenant API as the sandbox tenant, with live ids mixed in, leaves a fingerprint of every live row unchanged.
 
-Later parts of the phase (promoting configuration, the sandbox lifecycle and the console) are recorded in the sections below as they land.
+6. **Promoting configuration sandbox → live** (`internal/promote`, `POST /app/v1/apps/{id}/promote`). It copies meters, plans with their prices and entitlements, tax rates, coupons, mail settings and webhook endpoints, and never customers, usage, invoices or payments. It reads each side through the owning module's queries as that side's tenant, decides with pure rules (`promote/query`), and writes only through the modules' commands as the live tenant, so every rule a module has about its objects (validation, quotas, the webhook go-live gate) holds for a promoted object, and RLS keeps each side to its own tenant.
+   - **Only adds.** Objects are matched by a stable key (meter code, plan code, tax country, coupon code, webhook URL), so promoting again does nothing. An object that exists in live and differs (a plan whose latest version is not the sandbox's, a tax rate, a coupon's terms, a webhook's event types) is a *conflict*: shown, never overwritten. Mail settings are one object: live takes the sandbox's choice only while it has made none of its own.
+   - **Secrets are not copied.** A new webhook endpoint is created with a new signing secret, returned once. An inactive live environment takes no webhook endpoints, so they are *skipped* with the reason; the rest of the configuration goes in, which is how a plan gets published before go-live.
+   - **Dry run first.** `dry_run` returns the diff and writes nothing. It also returns a `plan_hash` of the creates, conflicts and skips; sending it back applies exactly that diff, or is refused (`identity.promote.stale`) when the configuration moved since.
+   - **Not atomic, but repeatable.** Each module command is its own transaction; a failure is recorded on its change and a second run completes the rest. An applied run writes a row to `config_promotions` (counts and the changes, no secret); a trigger allows only sandbox → live of one app.
+   - Owners and admins only; a viewer is refused.
+
+Later parts of the phase (the sandbox lifecycle and the console) are recorded in the sections below as they land.
 
 ## Consequences
 
