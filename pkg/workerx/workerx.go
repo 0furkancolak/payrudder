@@ -59,7 +59,7 @@ type Worker struct {
 	pubOnce sync.Once
 	pub     *rabbitx.Publisher
 
-	locks sync.Map // command id -> *sync.Mutex: duplicates of one command in this process run one at a time
+	locks KeyedMutex // by command id: duplicates of one command in this process run one at a time
 
 	handled  metric.Int64Counter
 	replayed metric.Int64Counter
@@ -142,12 +142,7 @@ func (w *Worker) handle(ctx context.Context, queue string, d amqp.Delivery) rabb
 	// Two deliveries of the same command can be in flight in this process (prefetch > 1): run them one after the other,
 	// so the second finds the first one's reply in the inbox. Across processes the handlers' own idempotency applies
 	// (deterministic object keys, PSP idempotency keys, the notification claim).
-	mu, _ := w.locks.LoadOrStore(commandID, &sync.Mutex{})
-	mu.(*sync.Mutex).Lock()
-	defer func() {
-		mu.(*sync.Mutex).Unlock()
-		w.locks.Delete(commandID)
-	}()
+	defer w.locks.Lock(commandID.String())()
 
 	if w.Inbox != nil {
 		reply, found, err := w.Inbox.Lookup(ctx, commandID)

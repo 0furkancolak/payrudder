@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
@@ -30,7 +29,7 @@ type Handler struct {
 	// Logos is the assets bucket the tenants' invoice logos live in (nil: no logos).
 	Logos Store
 
-	locks sync.Map // object key -> *sync.Mutex
+	locks workerx.KeyedMutex // by object key
 }
 
 // ObjectKey is {tenant_id}/{invoice_id}/v{invoice_version}.pdf.
@@ -57,12 +56,7 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 
 	// Attempts of the same step (billing re-issues a silent command with a fresh command id) can arrive together: the
 	// first renders, the others find its object. Across pods a duplicate write is harmless, the bytes are identical.
-	mu, _ := h.locks.LoadOrStore(key, &sync.Mutex{})
-	mu.(*sync.Mutex).Lock()
-	defer func() {
-		mu.(*sync.Mutex).Unlock()
-		h.locks.Delete(key)
-	}()
+	defer h.locks.Lock(key)()
 
 	info, err := h.Store.Head(ctx, key)
 	switch {

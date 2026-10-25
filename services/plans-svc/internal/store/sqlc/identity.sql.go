@@ -1045,37 +1045,6 @@ func (q *Queries) MarkEmailVerified(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const recordFailedLogin = `-- name: RecordFailedLogin :one
-UPDATE users SET
-  failed_logins = CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END,
-  locked_until = CASE
-    WHEN locked_until <= now() THEN NULL
-    WHEN failed_logins + 1 >= $1::int THEN now() + $2::interval
-    ELSE locked_until
-  END
-WHERE id = $3
-RETURNING failed_logins, locked_until
-`
-
-type RecordFailedLoginParams struct {
-	MaxFailures int32
-	LockFor     pgtype.Interval
-	ID          uuid.UUID
-}
-
-type RecordFailedLoginRow struct {
-	FailedLogins int32
-	LockedUntil  *time.Time
-}
-
-// A wrong password. After a lock has run out the count starts again at one instead of locking at once on the next slip.
-func (q *Queries) RecordFailedLogin(ctx context.Context, arg RecordFailedLoginParams) (RecordFailedLoginRow, error) {
-	row := q.db.QueryRow(ctx, recordFailedLogin, arg.MaxFailures, arg.LockFor, arg.ID)
-	var i RecordFailedLoginRow
-	err := row.Scan(&i.FailedLogins, &i.LockedUntil)
-	return i, err
-}
-
 const recordSuccessfulLogin = `-- name: RecordSuccessfulLogin :exec
 UPDATE users SET failed_logins = 0, locked_until = NULL, last_login_at = now() WHERE id = $1
 `
@@ -1311,6 +1280,45 @@ func (q *Queries) TryLoginCode(ctx context.Context, arg TryLoginCodeParams) (Try
 		&i.Salt,
 		&i.CodeHash,
 		&i.Attempts,
+	)
+	return i, err
+}
+
+const tryPassword = `-- name: TryPassword :one
+UPDATE users SET
+  failed_logins = CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END,
+  locked_until = CASE
+    WHEN (CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END) >= $1::int THEN now() + $2::interval
+    ELSE NULL
+  END
+WHERE id = $3 AND password_hash <> '' AND (locked_until IS NULL OR locked_until <= now())
+RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at
+`
+
+type TryPasswordParams struct {
+	MaxFailures int32
+	LockFor     pgtype.Interval
+	ID          uuid.UUID
+}
+
+// One password try. The attempt is counted in the same statement that checks the lock and returns the hash, so parallel guesses cannot get more tries
+// than the limit: the try that reaches it sets the lock, and every later one finds no row. After a lock has run out the count starts again at one.
+// A successful sign-in resets the count (RecordSuccessfulLogin). An account that is locked or has no password returns no row.
+func (q *Queries) TryPassword(ctx context.Context, arg TryPasswordParams) (User, error) {
+	row := q.db.QueryRow(ctx, tryPassword, arg.MaxFailures, arg.LockFor, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.PasswordHash,
+		&i.FailedLogins,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.CreatedAt,
+		&i.EmailVerifiedAt,
+		&i.Locale,
+		&i.TakenNoticeAt,
 	)
 	return i, err
 }
