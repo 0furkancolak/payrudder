@@ -7,7 +7,8 @@ import type { components } from "@/shared/api/schema";
 import type { Currency } from "@/shared/lib/currencies";
 import type { Environment } from "@/shared/lib/environment";
 import { toApiLocale } from "@/shared/lib/locale";
-import { personToken, setActiveAccount, setOperatorFlag, setPersonToken } from "@/shared/lib/session";
+import { activeAccount, personToken, setActiveAccount, setOperatorFlag, setPersonToken } from "@/shared/lib/session";
+import { AFFILIATE_ROLE, ownMemberships } from "./lib";
 
 // The product API (/auth, /app/v1): what a signed-in person sees in their accounts. Types come from the OpenAPI file.
 
@@ -115,12 +116,22 @@ export function useSignOut() {
 const enabled = computed(() => personToken.value !== null);
 
 export function useMe() {
+  const queries = useQueryClient();
   return useQuery({
     queryKey: productKeys.me,
     queryFn: async () => {
       const me = await unwrap(api.GET("/auth/me"));
       // The server's verdict on whether this person is a platform operator decides whether the shell shows the operator console.
       setOperatorFlag(me.operator === true);
+      // The account routes act on the person's first membership unless one is named. When that is a seller's account (the role affiliate: a partner of the
+      // seller, not a member of anything) or a chosen account the person no longer belongs to, name their first own account instead.
+      const own = ownMemberships(me.memberships);
+      const chosen = activeAccount.value;
+      if (own.length > 0 && ((me.memberships?.[0]?.role as string | undefined) === AFFILIATE_ROLE || (chosen && !own.some((m) => m.account_id === chosen)))) {
+        setActiveAccount(own[0]?.account_id ?? null);
+        void queries.invalidateQueries({ queryKey: ["app", "account"] });
+        void queries.invalidateQueries({ queryKey: ["app", "apps"] });
+      }
       return me;
     },
     enabled,

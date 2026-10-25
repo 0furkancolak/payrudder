@@ -1410,6 +1410,105 @@
       }
     }
   },
+  "partner": {
+    "title": "Portail partenaire",
+    "intro": "Les vendeurs dont vous êtes partenaire : vos liens, ce que vous avez gagné et ce qui vous a été versé.",
+    "verifyHint": "Confirmez votre adresse e-mail pour voir les fiches partenaire que des vendeurs ont créées pour elle.",
+    "verifyResend": "Renvoyer l'e-mail",
+    "verifySent": "E-mail envoyé",
+    "empty": {
+      "title": "Vous n'êtes encore partenaire d'aucun vendeur",
+      "body": "Demandez à un vendeur de vous ajouter comme partenaire avec cette adresse e-mail, ou ouvrez le lien de candidature qu'un vendeur vous a donné. Les fiches créées pour votre adresse e-mail vérifiée apparaissent ici d'elles-mêmes."
+    },
+    "code": "Code",
+    "environment": {
+      "sandbox": "Sandbox",
+      "live": "Production"
+    },
+    "status": {
+      "pending": "En attente d'approbation",
+      "active": "Actif",
+      "suspended": "Suspendu"
+    },
+    "link": "Votre lien de recommandation",
+    "copyLink": "Copier le lien",
+    "open": "Ouvrir",
+    "back": "Retour au portail partenaire",
+    "banner": {
+      "pending": "Votre candidature attend l'approbation du vendeur. Votre lien commence à rapporter une fois approuvé ; ce que vous voyez ci-dessous est déjà à vous.",
+      "suspended": "Le vendeur vous a suspendu. Les nouveaux clients ne vous sont pas attribués et rien de nouveau n'est gagné. Ce qui était déjà approuvé reste à vous ; interrogez le vendeur.",
+      "sandbox": "Ceci est une sandbox : le vendeur fait des essais. Tout ici est de l'argent fictif et rien ne sera réellement payé."
+    },
+    "terms": {
+      "title": "Les conditions du vendeur",
+      "percent": "Vous gagnez {pct} % du montant net hors taxes de chaque facture payée par un client que vous avez amené.",
+      "fixed": "Vous gagnez {amount} sur chaque facture payée par un client que vous avez amené.",
+      "firstInvoices": "Gagné sur les {n} premières factures de chaque client.",
+      "months": "Gagné pendant les {n} premiers mois de chaque client.",
+      "lifetime": "Gagné tant que le client continue de payer.",
+      "window": "Un client compte comme le vôtre pendant {days} jours après avoir suivi votre lien.",
+      "hold": "Une commission attend {days} jours, le délai de remboursement, avant de pouvoir être versée.",
+      "minPayout": "Le vendeur verse à partir de {amount}.",
+      "noMinimum": "Le vendeur ne fixe pas de versement minimum."
+    },
+    "stats": {
+      "clicks": "Clics sur le lien",
+      "referrals": "Clients que vous avez amenés",
+      "paying": "Clients payants"
+    },
+    "earned": {
+      "title": "Gagné sur cette période",
+      "none": "Rien de gagné sur cette période.",
+      "takenBack": "{amount} repris",
+      "note": "Par devise, jamais additionnées. Les chiffres couvrent la période choisie ; les soldes ci-dessous sont ceux d'aujourd'hui."
+    },
+    "balances": {
+      "title": "Votre solde",
+      "none": "Vous n'avez encore rien gagné.",
+      "pending": "En attente",
+      "pendingHint": "Attend la fin du délai de remboursement avant de pouvoir être versée",
+      "available": "Disponible pour versement",
+      "paid": "Versé",
+      "takenBack": "Repris"
+    },
+    "tabsLabel": "Sections partenaire",
+    "tabs": {
+      "referrals": "Recommandations",
+      "commissions": "Commissions",
+      "payouts": "Versements",
+      "settings": "Réglages"
+    },
+    "referrals": {
+      "hint": "Les adresses e-mail de vos clients sont masquées. Le vendeur garde tout le reste à leur sujet.",
+      "empty": "Vous n'avez pas encore amené de client.",
+      "customer": "Client",
+      "source": "Source",
+      "time": "Attribué le"
+    },
+    "commissions": {
+      "hint": "Un remboursement reprend une commission au prorata. Une commission déjà versée est déduite de votre prochain versement par une ligne négative.",
+      "empty": "Aucune commission pour l'instant.",
+      "payableFrom": "Payable à partir du {date}"
+    },
+    "payouts": {
+      "empty": "Rien ne vous a encore été versé.",
+      "paidOn": "Payé le"
+    },
+    "settings": {
+      "name": "Votre nom",
+      "detailsHint": "Ce dont le vendeur a besoin pour vous payer, par exemple votre IBAN et le titulaire du compte.",
+      "saved": "Enregistré."
+    },
+    "apply": {
+      "title": "Devenir partenaire",
+      "missing": "Cette page a besoin du lien du programme d'un vendeur. Ouvrez le lien de candidature que le vendeur vous a donné.",
+      "submit": "Postuler",
+      "pendingTitle": "Candidature envoyée",
+      "pendingBody": "Le vendeur doit l'approuver. Vous voyez déjà votre lien et vos chiffres.",
+      "activeTitle": "Vous êtes partenaire",
+      "activeBody": "Le vendeur approuve les candidatures automatiquement. Votre lien est prêt."
+    }
+  },
   "einvoice": {
     "title": "Facture électronique",
     "confirmCancel": "Annuler ce document électronique légal ? C'est irréversible.",
@@ -2734,7 +2833,8 @@
       "appSettings": "Paramètres de l'application",
       "operator": "Console opérateur",
       "myApps": "Mes applications",
-      "affiliates": "Affiliés"
+      "affiliates": "Affiliés",
+      "partner": "Portail partenaire"
     }
   },
   "privacy": {

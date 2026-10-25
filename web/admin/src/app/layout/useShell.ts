@@ -1,7 +1,8 @@
 import { useRouterState } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { useApps, useAccount, type App } from "@/features/product/api";
+import { useApps, useAccount, useMe, type App } from "@/features/product/api";
+import { hasPartnerRole } from "@/features/product/lib";
 import { useTenant } from "@/features/tenants/api";
 import { envEnum, findTenant, type Environment } from "@/shared/lib/environment";
 import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
@@ -28,6 +29,8 @@ export function useShell() {
   const location = useRouterState({ select: (s) => s.location });
   const apps = useApps();
   const account = useAccount();
+  const me = useMe();
+  const partner = computed(() => hasPartnerRole(me.data.value?.memberships));
 
   const path = computed(() => location.value.pathname.replace(/\/+$/, "") || "/");
   const search = computed(() => (location.value.search ?? {}) as Record<string, unknown>);
@@ -58,7 +61,7 @@ export function useShell() {
     if (path.value.startsWith("/app/t/")) {
       return { level: "app", tenantId: tenantInPath.value, ...(located.value ? { appId: located.value.app.id ?? "", env: located.value.env } : {}) };
     }
-    return { level: "org", operator: isOperator.value };
+    return { level: "org", operator: isOperator.value, partner: partner.value };
   });
 
   const sections = computed<NavSection[]>(() => buildNav(context.value));
@@ -87,7 +90,10 @@ export function useShell() {
       if (section && current.value?.key !== "dashboard") list.push(section);
     } else {
       list.push({ label: orgName.value || t("shell.org"), to: "/app" });
-      if (section && current.value?.key !== "overview") list.push(section);
+      if (path.value.startsWith("/app/partner")) {
+        // The partner portal is the person's own, whether or not the sidebar lists it (the apply page is open to everybody signed in).
+        list.push({ label: t("shell.items.partner"), ...(path.value === "/app/partner" ? {} : { to: "/app/partner" }) });
+      } else if (section && current.value?.key !== "overview") list.push(section);
     }
     return list;
   });

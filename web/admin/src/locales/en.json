@@ -1410,6 +1410,105 @@
       }
     }
   },
+  "partner": {
+    "title": "Partner portal",
+    "intro": "The sellers whose program you are a partner of: your links, what you earned and what was paid to you.",
+    "verifyHint": "Confirm your e-mail address to see the partner records that sellers made for it.",
+    "verifyResend": "Send the e-mail again",
+    "verifySent": "E-mail sent",
+    "empty": {
+      "title": "You are not a partner of any seller yet",
+      "body": "Ask a seller to add you as a partner using this e-mail address, or open the application link a seller gave you. Records made for your verified e-mail address show up here by themselves."
+    },
+    "code": "Code",
+    "environment": {
+      "sandbox": "Sandbox",
+      "live": "Live"
+    },
+    "status": {
+      "pending": "Waiting for approval",
+      "active": "Active",
+      "suspended": "Suspended"
+    },
+    "link": "Your referral link",
+    "copyLink": "Copy link",
+    "open": "Open",
+    "back": "Back to the partner portal",
+    "banner": {
+      "pending": "Your application is waiting for the seller's approval. Your link starts to earn once you are approved; what you see below is already yours.",
+      "suspended": "The seller has suspended you. New customers are not attributed to you and nothing new is earned. What was already approved stays yours; ask the seller.",
+      "sandbox": "This is a sandbox: the seller is testing. Everything here is fake money and nothing will really be paid."
+    },
+    "terms": {
+      "title": "The seller's terms",
+      "percent": "You earn {pct} % of the net amount, before tax, of every invoice a customer you brought pays.",
+      "fixed": "You earn {amount} on every invoice a customer you brought pays.",
+      "firstInvoices": "Earned on the first {n} invoices of each customer.",
+      "months": "Earned for the first {n} months of each customer.",
+      "lifetime": "Earned for as long as the customer keeps paying.",
+      "window": "A customer counts as yours for {days} days after following your link.",
+      "hold": "A commission waits {days} days, the refund window, before it can be paid out.",
+      "minPayout": "The seller pays out from {amount}.",
+      "noMinimum": "The seller sets no minimum payout."
+    },
+    "stats": {
+      "clicks": "Link clicks",
+      "referrals": "Customers you brought",
+      "paying": "Paying customers"
+    },
+    "earned": {
+      "title": "Earned in this period",
+      "none": "Nothing earned in this period.",
+      "takenBack": "{amount} taken back",
+      "note": "Per currency, never added together. Figures cover the period you picked; balances below are as of now."
+    },
+    "balances": {
+      "title": "Your balance",
+      "none": "You have not earned anything yet.",
+      "pending": "Pending",
+      "pendingHint": "Waiting out the refund window before it can be paid",
+      "available": "Available for payout",
+      "paid": "Paid to you",
+      "takenBack": "Taken back"
+    },
+    "tabsLabel": "Partner sections",
+    "tabs": {
+      "referrals": "Referrals",
+      "commissions": "Commissions",
+      "payouts": "Payouts",
+      "settings": "Settings"
+    },
+    "referrals": {
+      "hint": "The e-mail addresses of your customers are masked. The seller keeps everything else about them.",
+      "empty": "You have not brought a customer yet.",
+      "customer": "Customer",
+      "source": "Source",
+      "time": "Attributed"
+    },
+    "commissions": {
+      "hint": "A refund takes a commission back in proportion. One that was already paid is netted from your next payout by a negative row.",
+      "empty": "No commissions yet.",
+      "payableFrom": "Payable from {date}"
+    },
+    "payouts": {
+      "empty": "Nothing has been paid to you yet.",
+      "paidOn": "Paid on"
+    },
+    "settings": {
+      "name": "Your name",
+      "detailsHint": "What the seller needs to pay you, for example your IBAN and account holder.",
+      "saved": "Saved."
+    },
+    "apply": {
+      "title": "Become a partner",
+      "missing": "This page needs the link of a seller's program. Open the application link the seller gave you.",
+      "submit": "Apply",
+      "pendingTitle": "Application sent",
+      "pendingBody": "The seller has to approve it. You can see your link and your figures already.",
+      "activeTitle": "You are a partner",
+      "activeBody": "The seller approves applications automatically. Your link is ready."
+    }
+  },
   "einvoice": {
     "title": "E-invoice",
     "confirmCancel": "Cancel this legal e-document? This cannot be undone.",
@@ -2734,7 +2833,8 @@
       "appSettings": "App settings",
       "operator": "Operator console",
       "myApps": "My apps",
-      "affiliates": "Affiliates"
+      "affiliates": "Affiliates",
+      "partner": "Partner portal"
     }
   },
   "privacy": {
