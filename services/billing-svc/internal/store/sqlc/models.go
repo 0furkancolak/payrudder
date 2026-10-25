@@ -173,26 +173,30 @@ type InboxReply struct {
 }
 
 type Invoice struct {
-	TenantID      uuid.UUID
-	ID            uuid.UUID
-	CustomerID    uuid.UUID
-	PeriodID      string
-	Kind          string
-	Number        *string
-	PlanVersionID uuid.UUID
-	Currency      string
-	SubtotalMinor int64
-	TotalMinor    int64
-	Status        string
-	Version       int32
-	PdfObjectKey  *string
-	Snapshot      json.RawMessage
-	CreatedAt     time.Time
-	FinalizedAt   *time.Time
-	ReratingJobID *uuid.UUID
-	Provider      string
-	Country       *string
-	FeeKey        *string
+	TenantID        uuid.UUID
+	ID              uuid.UUID
+	CustomerID      uuid.UUID
+	PeriodID        string
+	Kind            string
+	Number          *string
+	PlanVersionID   uuid.UUID
+	Currency        string
+	SubtotalMinor   int64
+	TotalMinor      int64
+	Status          string
+	Version         int32
+	PdfObjectKey    *string
+	Snapshot        json.RawMessage
+	CreatedAt       time.Time
+	FinalizedAt     *time.Time
+	ReratingJobID   *uuid.UUID
+	Provider        string
+	Country         *string
+	FeeKey          *string
+	CouponCode      *string
+	PromotionCode   *string
+	PromotionTarget *string
+	BonusCredits    int64
 }
 
 type InvoiceLine struct {
@@ -284,6 +288,7 @@ type PaymentLink struct {
 	Quantity           *int32
 	Credits            *int64
 	ValidityDays       *int32
+	PromotionCode      *string
 }
 
 type PortalLink struct {
@@ -295,6 +300,15 @@ type PortalLink struct {
 	ExpiresAt          time.Time
 	RevokedAt          *time.Time
 	CustomerExternalID *string
+}
+
+type PromotionReversal struct {
+	TenantID   uuid.UUID
+	InvoiceID  uuid.UUID
+	TargetKind string
+	CreatedAt  time.Time
+	Attempts   int32
+	DoneAt     *time.Time
 }
 
 type ReratingJob struct {

@@ -14,6 +14,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	"github.com/0furkancolak/quotify/pkg/brand"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/money"
 	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
 )
@@ -29,6 +30,7 @@ func (s *Server) hostedPublicRoutes() []Route {
 		{"GET", "/i/{token}/receipt", AccessPublic, "", s.hostedInvoiceReceipt},
 		{"GET", "/i/{token}/logo", AccessPublic, "", s.hostedInvoiceLogo},
 		{"POST", "/i/{token}/start", AccessPublic, "", s.hostedLinkStart},
+		{"POST", "/i/{token}/promo", AccessPublic, "", s.hostedLinkPromo},
 		{"POST", "/i/{token}/pay", AccessPublic, "", s.hostedInvoicePay},
 		{"GET", "/c/{token}", AccessPublic, "", s.portalPage},
 		{"GET", "/c/{token}/logo", AccessPublic, "", s.portalLogo},
@@ -303,6 +305,25 @@ type adhocView struct {
 	Start               string
 	// Pack is set for a credit-pack link: what the payer gets.
 	Pack *packView
+	// PromoAction is where the promotion code field posts to. Code is what was typed, Quote what billing says the code takes off, PromoError why it was refused.
+	PromoAction string
+	Code        string
+	Quote       *quoteView
+	PromoError  string
+}
+
+// quoteView is what a promotion code takes off the purchase, as the payer reads it.
+type quoteView struct {
+	Discount, Total, Bonus string
+	HasDiscount            bool
+}
+
+// promoInput is what a page is shown with after a code was typed or the link carries one.
+type promoInput struct {
+	Code   string
+	Quote  *billingv1.QuoteLinkPromotionResponse
+	ErrKey string
+	Status int
 }
 
 // packView is what a credit-pack link sells, as the payer reads it.
@@ -314,17 +335,39 @@ type packView struct {
 func (v *adhocView) Title() string { return v.Description }
 
 func (s *Server) adhocPage(w http.ResponseWriter, r *http.Request, sc scope, lang string, resp *billingv1.GetHostedInvoiceResponse) {
+	in := promoInput{Status: http.StatusOK}
+	if a := resp.GetAdhoc(); a.GetPromotionCode() != "" && !a.GetConsumed() {
+		// The seller chose a code for this link: the page shows what it takes off. A code that stopped working shows nothing, and the payer sees the plain price.
+		if q, err := s.d.Hosted.QuoteLinkPromotion(r.Context(), &billingv1.QuoteLinkPromotionRequest{Token: sc.token}); err == nil && q.GetApplied() {
+			in.Quote = q
+		}
+	}
+	s.adhocPageWith(w, r, sc, lang, resp, in)
+}
+
+func (s *Server) adhocPageWith(w http.ResponseWriter, r *http.Request, sc scope, lang string, resp *billingv1.GetHostedInvoiceResponse, in promoInput) {
 	a := resp.GetAdhoc()
 	v := &adhocView{pageBase: newBase(lang), Seller: orDefault(a.GetSellerName(), resp.GetSellerName()), Description: a.GetDescription(),
-		Amount: formatMinor(a.GetAmountMinor(), int(a.GetCurrencyExponent())), Currency: a.GetCurrency(), Consumed: a.GetConsumed(), Start: sc.page() + "/start" + langSuffix(r)}
+		Amount: formatMinor(a.GetAmountMinor(), int(a.GetCurrencyExponent())), Currency: a.GetCurrency(), Consumed: a.GetConsumed(), Start: sc.page() + "/start" + langSuffix(r),
+		PromoAction: sc.page() + "/promo" + langSuffix(r), Code: in.Code}
 	v.Test = orDefault(a.GetEnvironment(), resp.GetEnvironment()) == "sandbox"
 	if k := a.GetPack(); k != nil {
 		v.Pack = &packView{Name: k.GetName(), Credits: formatMinor(k.GetCredits(), 0), Valid: validText(v.L, k.GetValidityDays()), Quantity: k.GetQuantity()}
 	}
+	if q := in.Quote; q != nil {
+		exp := int(a.GetCurrencyExponent())
+		v.Quote = &quoteView{Discount: formatMinor(q.GetDiscountMinor(), exp), Total: formatMinor(q.GetTotalMinor(), exp), HasDiscount: q.GetDiscountMinor() > 0}
+		if q.GetBonusCredits() > 0 {
+			v.Quote.Bonus = formatMinor(q.GetBonusCredits(), 0)
+		}
+	}
+	if in.ErrKey != "" {
+		v.PromoError = promoErrorText(v.L, in.ErrKey)
+	}
 	if a.GetLogoAvailable() || resp.GetLogoAvailable() {
 		v.Logo = sc.logo()
 	}
-	s.render(w, r, http.StatusOK, "adhoc", v)
+	s.render(w, r, orStatus(in.Status), "adhoc", v)
 }
 
 func orDefault(a, b string) string {
@@ -340,8 +383,12 @@ func (s *Server) hostedLinkStart(w http.ResponseWriter, r *http.Request) {
 	if !s.hostedPayAllowed(w, r) {
 		return
 	}
-	resp, err := s.d.Hosted.StartLinkPayment(r.Context(), &billingv1.StartLinkPaymentRequest{Token: r.PathValue("token")})
+	code := formCode(r)
+	resp, err := s.d.Hosted.StartLinkPayment(r.Context(), &billingv1.StartLinkPaymentRequest{Token: r.PathValue("token"), PromotionCode: code})
 	switch {
+	case isPromoError(errkey.Of(err)):
+		// The code did not work: no invoice was made. The payer sees why, with the code still in the field.
+		s.adhocAgain(w, r, lang, promoInput{Code: code, ErrKey: errkey.Of(err), Status: http.StatusUnprocessableEntity})
 	case goneError(err):
 		hostedNotFound(w, lang)
 	case status.Code(err) == codes.FailedPrecondition:
@@ -351,6 +398,69 @@ func (s *Server) hostedLinkStart(w http.ResponseWriter, r *http.Request) {
 	default:
 		hostedHeaders(w)
 		http.Redirect(w, r, "/i/"+resp.GetInvoiceToken()+langSuffix(r), http.StatusSeeOther)
+	}
+}
+
+// formCode is the promotion code a payer typed (one line, at most 40 characters), or "".
+func formCode(r *http.Request) string {
+	if err := r.ParseForm(); err != nil {
+		return ""
+	}
+	c := strings.TrimSpace(r.PostForm.Get("code"))
+	if len(c) > 40 {
+		return c[:40]
+	}
+	return c
+}
+
+func orStatus(code int) int {
+	if code == 0 {
+		return http.StatusOK
+	}
+	return code
+}
+
+// adhocAgain shows the page of an ad-hoc link again, after a code was typed.
+func (s *Server) adhocAgain(w http.ResponseWriter, r *http.Request, lang string, in promoInput) {
+	sc := scope{token: r.PathValue("token")}
+	resp, err := s.d.Hosted.GetHostedInvoice(r.Context(), sc.get())
+	switch {
+	case goneError(err):
+		hostedNotFound(w, lang)
+	case err != nil:
+		s.message(w, r, http.StatusServiceUnavailable, lang, hostedText(lang)["adhoc_title"], hostedText(lang)["pay_unavailable"], "")
+	case resp.GetAdhoc() == nil || resp.GetInvoice() != nil:
+		hostedHeaders(w)
+		http.Redirect(w, r, sc.page()+langSuffix(r), http.StatusSeeOther)
+	default:
+		s.adhocPageWith(w, r, sc, lang, resp, in)
+	}
+}
+
+// hostedLinkPromo is POST /i/{token}/promo: the payer typed a promotion code. Billing says what it would take off, or why it cannot be used; nothing is claimed until
+// the payer presses Continue.
+func (s *Server) hostedLinkPromo(w http.ResponseWriter, r *http.Request) {
+	lang := pickLang(r)
+	if !s.hostedPayAllowed(w, r) {
+		return
+	}
+	code := formCode(r)
+	if code == "" {
+		s.adhocAgain(w, r, lang, promoInput{Status: http.StatusOK})
+		return
+	}
+	q, err := s.d.Hosted.QuoteLinkPromotion(r.Context(), &billingv1.QuoteLinkPromotionRequest{Token: r.PathValue("token"), PromotionCode: code})
+	switch {
+	case err == nil && q.GetApplied():
+		s.adhocAgain(w, r, lang, promoInput{Code: code, Quote: q, Status: http.StatusOK})
+	case err == nil:
+		s.adhocAgain(w, r, lang, promoInput{Code: code, ErrKey: "coupon.not_applicable", Status: http.StatusUnprocessableEntity})
+	case isPromoError(errkey.Of(err)):
+		s.adhocAgain(w, r, lang, promoInput{Code: code, ErrKey: errkey.Of(err), Status: http.StatusUnprocessableEntity})
+	case goneError(err):
+		hostedNotFound(w, lang)
+	default:
+		s.message(w, r, http.StatusServiceUnavailable, lang, hostedText(lang)["adhoc_title"], hostedText(lang)["pay_unavailable"], "")
 	}
 }
 

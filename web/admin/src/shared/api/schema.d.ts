@@ -1301,9 +1301,29 @@ export interface paths {
         put?: never;
         /**
          * First use of an ad-hoc payment link — makes the invoice and continues on its page
-         * @description The payer presses *Continue*. This is the point at which the invoice gets its number, not when the page is fetched. A redirect to the invoice page. At most 10 a minute per address.
+         * @description The payer presses *Continue*. This is the point at which the invoice gets its number, not when the page is fetched. A redirect to the invoice page. Form field `code`, optional, is a promotion code; it takes something off the price (a DISCOUNT line on the invoice; the amount of a payment link is the total the payer pays) or adds bonus credits to a credit purchase, and is claimed here. A code that cannot be used shows the page again with the reason (422) and makes no invoice. At most 10 a minute per address.
          */
         post: operations["hostedLinkStart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/promo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check a promotion code on an ad-hoc or credit-pack payment link and show the new total
+         * @description Form field `code`. The page is shown again with what the code takes off (or the bonus credits), or the reason it cannot be used (422). Nothing is claimed until *Continue*. At most 10 a minute per address.
+         */
+        post: operations["hostedLinkPromo"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4810,6 +4830,8 @@ export interface components {
             quantity?: number;
             /** @description kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string */
             credits?: string;
+            /** @description The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another */
+            promotion_code?: string;
             /** @description kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
             invoice_id?: string;
             customer_external_id?: string;
@@ -4857,6 +4879,8 @@ export interface components {
             customer_external_id?: string;
             /** @description Default true for adhoc, false for invoice */
             single_use?: boolean;
+            /** @description adhoc and credit_pack, optional: a promotion code the payer gets without typing it (a one-off invoice with a discount). Checked against the link's own amount now (a coupon.* error if it does not work); claimed when the payer continues. An invoice that exists is not changed, so a kind invoice link takes none */
+            promotion_code?: string;
             /** @description Default 30 for adhoc, 90 for invoice */
             expires_in_days?: number;
             idempotency_key?: string;
@@ -7698,7 +7722,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    code?: string;
+                };
+            };
+        };
         responses: {
             /** @description Redirect to the invoice page (/i/{invoice token}) */
             303: {
@@ -7709,6 +7739,68 @@ export interface operations {
             };
             /** @description The link does not exist, has expired, or a single-use link was already paid */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The promotion code cannot be used; the page is shown again with the reason */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedLinkPromo: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    code?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The page with the discounted total */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The link does not exist or has expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The promotion code cannot be used */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7931,6 +8023,8 @@ export interface operations {
                     /** Format: uuid */
                     pack_id: string;
                     quantity?: number;
+                    /** @description A promotion code */
+                    code?: string;
                 };
             };
         };

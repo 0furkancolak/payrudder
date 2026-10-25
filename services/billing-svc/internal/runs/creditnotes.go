@@ -122,6 +122,14 @@ func (m *Manager) CreateCreditNote(ctx context.Context, tenantID, invoiceID uuid
 			Currency: inv.Currency, TotalMinor: amount, Reason: reason, CreatedAt: now, Disposition: disposition}); err != nil {
 			return err
 		}
+		// Credited in full is a full refund of the purchase: a coupon it used gives its redemption back (the scheduler tells plans-svc).
+		if credited, err := q.SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: tenantID, InvoiceID: invoiceID}); err != nil {
+			return err
+		} else if credited >= inv.TotalMinor {
+			if err := q.QueuePromotionReversal(ctx, sqlc.QueuePromotionReversalParams{TenantID: tenantID, ID: invoiceID}); err != nil {
+				return err
+			}
+		}
 		if refund {
 			cn.Refund = true
 			err = m.requestRefund(ctx, tx, tenantID, cn, inv.Environment, 1, 0, 0)

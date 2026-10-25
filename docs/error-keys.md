@@ -116,10 +116,12 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.payment_link.bad_key`
 - `billing.payment_link.bad_kind`
 - `billing.payment_link.bad_page`
+- `billing.payment_link.bad_promotion_code`
 - `billing.payment_link.bad_status`
 - `billing.payment_link.consumed`
 - `billing.payment_link.customer_not_found`
 - `billing.payment_link.customer_required`
+- `billing.payment_link.free_total`
 - `billing.payment_link.idempotency_conflict`
 - `billing.payment_link.invoice_not_payable`
 - `billing.payment_link.invoice_required`

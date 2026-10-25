@@ -1232,6 +1232,8 @@
         "reference_reused": "Diese Referenz wurde bereits mit einem anderen Betrag erfasst."
       },
       "payment_link": {
+        "bad_promotion_code": "Ein Aktionscode besteht aus 2 bis 40 Buchstaben, Ziffern, - oder _ und gehört zu einem Einzel- oder Credit-Paket-Link; eine bestehende Rechnung wird nicht geändert.",
+        "free_total": "Dieser Aktionscode deckt den ganzen Preis, es bliebe nichts zu zahlen. Buchen Sie den Kauf stattdessen direkt.",
         "bad_amount": "Der Betrag muss eine positive Zahl in der kleinsten Einheit sein.",
         "bad_currency": "Diese Währung wird nicht unterstützt.",
         "bad_description": "Eine Beschreibung ist erforderlich (höchstens 200 Zeichen).",

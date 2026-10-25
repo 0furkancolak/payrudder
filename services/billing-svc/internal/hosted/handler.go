@@ -111,6 +111,7 @@ func (h *Handler) CreatePaymentLink(ctx context.Context, req *billingv1.CreatePa
 	in := command.CreateInput{
 		Kind: req.GetKind(), AmountMinor: req.GetAmountMinor(), Currency: req.GetCurrency(), Description: req.GetDescription(), CustomerExternalID: req.GetCustomerExternalId(),
 		SingleUse: req.SingleUse, ExpiresInDays: req.GetExpiresInDays(), IdempotencyKey: req.GetIdempotencyKey(), RequireOpen: true, Quantity: req.GetQuantity(),
+		PromotionCode: req.GetPromotionCode(),
 	}
 	if req.GetPackId() != "" {
 		if in.PackID, err = parseUUID("pack_id", req.GetPackId()); err != nil {
@@ -266,7 +267,7 @@ func (h *Handler) GetHostedLogoUrl(ctx context.Context, req *billingv1.GetHosted
 
 // StartLinkPayment implements billingv1.HostedInvoiceServiceServer.
 func (h *Handler) StartLinkPayment(ctx context.Context, req *billingv1.StartLinkPaymentRequest) (*billingv1.StartLinkPaymentResponse, error) {
-	token, err := command.StartLinkPayment(ctx, h.d, req.GetToken())
+	token, err := command.StartLinkPayment(ctx, h.d, req.GetToken(), req.GetPromotionCode())
 	if err != nil {
 		return nil, err
 	}
@@ -332,9 +333,19 @@ func (h *Handler) GetPortal(ctx context.Context, req *billingv1.GetPortalRequest
 	return resp, nil
 }
 
+// QuoteLinkPromotion implements billingv1.HostedInvoiceServiceServer.
+func (h *Handler) QuoteLinkPromotion(ctx context.Context, req *billingv1.QuoteLinkPromotionRequest) (*billingv1.QuoteLinkPromotionResponse, error) {
+	q, err := command.QuoteLinkPromotion(ctx, h.d, req.GetToken(), req.GetPromotionCode())
+	if err != nil {
+		return nil, err
+	}
+	return &billingv1.QuoteLinkPromotionResponse{Applied: q.Applied, PromotionCode: q.PromotionCode, CouponName: q.CouponName, DiscountMinor: q.DiscountMinor, BonusCredits: q.BonusCredits,
+		TotalMinor: q.TotalMinor}, nil
+}
+
 // StartPortalPurchase implements billingv1.HostedInvoiceServiceServer.
 func (h *Handler) StartPortalPurchase(ctx context.Context, req *billingv1.StartPortalPurchaseRequest) (*billingv1.StartPortalPurchaseResponse, error) {
-	token, err := command.StartPortalPurchase(ctx, h.d, h.q, req.GetPortalToken(), req.GetPackId(), req.GetQuantity())
+	token, err := command.StartPortalPurchase(ctx, h.d, h.q, req.GetPortalToken(), req.GetPackId(), req.GetQuantity(), req.GetPromotionCode())
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +358,8 @@ func pageProto(scope *query.Scope, p *query.Page) *billingv1.GetHostedInvoiceRes
 	}
 	if p.Adhoc != nil {
 		resp.Adhoc = &billingv1.HostedAdhoc{Description: p.Adhoc.Description, AmountMinor: p.Adhoc.AmountMinor, Currency: p.Adhoc.Currency,
-			CurrencyExponent: p.Adhoc.CurrencyExponent, Consumed: p.Adhoc.Consumed, SellerName: p.SellerName, LogoAvailable: p.LogoAvailable, Environment: p.Environment}
+			CurrencyExponent: p.Adhoc.CurrencyExponent, Consumed: p.Adhoc.Consumed, SellerName: p.SellerName, LogoAvailable: p.LogoAvailable, Environment: p.Environment,
+			PromotionCode: p.Adhoc.PromotionCode}
 		if k := p.Adhoc.Pack; k != nil {
 			resp.Adhoc.Pack = &billingv1.HostedCreditPack{Name: k.Name, Credits: k.Credits, Quantity: k.Quantity, ValidityDays: k.ValidityDays}
 		}
@@ -398,6 +410,9 @@ func linkProto(l sqlc.GetPaymentLinkRowRow) *billingv1.PaymentLink {
 	}
 	if l.Description != nil {
 		out.Description = *l.Description
+	}
+	if l.PromotionCode != nil {
+		out.PromotionCode = *l.PromotionCode
 	}
 	if l.RevokedAt != nil {
 		out.RevokeTime = timestamppb.New(*l.RevokedAt)
