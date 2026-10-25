@@ -21,7 +21,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/admin"
+	accountscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/accounts/command"
+	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/credential"
@@ -42,23 +43,11 @@ const (
 	HashSlots = 4
 )
 
-// AppFactory creates an app with its tenants inside the caller's transaction (admin.Server).
-type AppFactory interface {
-	InsertApp(ctx context.Context, q *sqlc.Queries, accountID uuid.UUID, settings domain.AccountSettings, slug string) (*plansv1.App, error)
-}
-
-// KeyAdmin issues and revokes API keys without the operator check (admin.Server); this package does the membership check first.
-type KeyAdmin interface {
-	IssueAPIKey(ctx context.Context, tenantID uuid.UUID, scope string) (*plansv1.ApiKey, string, error)
-	RevokeKey(ctx context.Context, id uuid.UUID) (*plansv1.ApiKey, error)
-	ExpireKey(ctx context.Context, id uuid.UUID, until time.Time) (*plansv1.ApiKey, error)
-}
-
 // Commands changes people.
 type Commands struct {
 	pool  *pgxpool.Pool
-	apps  AppFactory
-	keys  KeyAdmin
+	apps  *accountscmd.Commands
+	keys  *apikeyscmd.Commands
 	log   *slog.Logger
 	slots chan struct{}
 	now   func() time.Time
@@ -77,7 +66,7 @@ func (c *Commands) WithPepper(p string) *Commands {
 }
 
 // New returns the identity commands on the system pool. mail sends the verification, reset, invitation and warning mails; appURL is the console's base URL.
-func New(systemPool *pgxpool.Pool, apps AppFactory, keys KeyAdmin, mail usermail.Sender, appURL string, log *slog.Logger) *Commands {
+func New(systemPool *pgxpool.Pool, apps *accountscmd.Commands, keys *apikeyscmd.Commands, mail usermail.Sender, appURL string, log *slog.Logger) *Commands {
 	return &Commands{pool: systemPool, apps: apps, keys: keys, log: log, slots: make(chan struct{}, HashSlots), now: time.Now, mail: mail,
 		appURL: strings.TrimRight(appURL, "/")}
 }
@@ -328,7 +317,7 @@ func (c *Commands) CreateApp(ctx context.Context, req *plansv1.CreateMyAppReques
 	if err != nil {
 		return nil, err
 	}
-	slug, err := admin.ResolveSlug(settings.Name, req.GetSlug())
+	slug, err := accountscmd.ResolveSlug(settings.Name, req.GetSlug())
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +345,7 @@ func (c *Commands) CreateApp(ctx context.Context, req *plansv1.CreateMyAppReques
 		return err
 	})
 	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
-		return nil, errkey.New(codes.AlreadyExists, "plans.app.slug_taken", "this account already has an app with that slug")
+		return nil, accountscmd.SlugTaken()
 	}
 	if err != nil {
 		return nil, convert.Err(err, "app")
@@ -422,7 +411,7 @@ func (c *Commands) CreateAPIKey(ctx context.Context, req *plansv1.CreateMyApiKey
 		return nil, "", errkey.New(codes.InvalidArgument, "identity.api_key.bad_scope", "scope: full, ingest or read")
 	}
 	tid, _ := uuid.Parse(target.GetId())
-	return c.keys.IssueAPIKey(ctx, tid, scope)
+	return c.keys.Issue(ctx, tid, scope)
 }
 
 // Rotation overlap: the old key of a rotation keeps working for 24 hours unless the caller says otherwise, and for at most a week.
@@ -468,15 +457,15 @@ func (c *Commands) RotateAPIKey(ctx context.Context, req *plansv1.RotateMyApiKey
 	scope, _ := domain.ScopeToDB(old.GetScope())
 	tid, _ := uuid.Parse(old.GetTenantId())
 	oldID, _ := uuid.Parse(old.GetId())
-	fresh, plaintext, err = c.keys.IssueAPIKey(ctx, tid, scope)
+	fresh, plaintext, err = c.keys.Issue(ctx, tid, scope)
 	if err != nil {
 		return nil, "", nil, err
 	}
-	previous, err = c.keys.ExpireKey(ctx, oldID, c.now().Add(overlap))
+	previous, err = c.keys.Expire(ctx, oldID, c.now().Add(overlap))
 	if err != nil {
 		// Two valid keys and one plaintext nobody saw: take the new one back rather than leave a key no one holds.
 		if id, perr := uuid.Parse(fresh.GetId()); perr == nil {
-			if _, rerr := c.keys.RevokeKey(ctx, id); rerr != nil {
+			if _, rerr := c.keys.Revoke(ctx, id); rerr != nil {
 				c.log.ErrorContext(ctx, "rotation: new key not revoked after the old one could not be ended", "api_key_id", fresh.GetId(), "err", rerr)
 			}
 		}
@@ -500,7 +489,7 @@ func (c *Commands) RevokeAPIKey(ctx context.Context, req *plansv1.RevokeMyApiKey
 	for _, k := range keys {
 		if k.GetId() == req.GetApiKeyId() {
 			id, _ := uuid.Parse(k.GetId())
-			return c.keys.RevokeKey(ctx, id)
+			return c.keys.Revoke(ctx, id)
 		}
 	}
 	return nil, query.NotFound("api_key")

@@ -20,7 +20,8 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/pkg/webhooksig"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
+	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
+	webhooksworker "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/worker"
 )
 
 // receiver is a tenant's endpoint: it records what it is sent and answers with a status it is told to.
@@ -70,7 +71,7 @@ func testWebhooks(t *testing.T) {
 	}
 	now := time.Now().Add(time.Minute) // the dispatcher's clock runs a little ahead of the rows the database stamps
 	clock := &now
-	disp := &webhooks.Dispatcher{Pool: e.system, Box: e.box, Client: safehttp.NewClient(2*time.Second, true), Now: func() time.Time { return *clock }}
+	disp := &webhooksworker.Dispatcher{Pool: e.system, Box: e.box, Client: safehttp.NewClient(2*time.Second, true), Now: func() time.Time { return *clock }}
 	pump := func() int {
 		t.Helper()
 		n, err := disp.Once(ctx)
@@ -100,7 +101,7 @@ func testWebhooks(t *testing.T) {
 				t.Errorf("%s: %v", name, err)
 			}
 		}
-		made, err := e.hooks.CreateWebhookEndpoint(ctx, &plansv1.CreateWebhookEndpointRequest{Url: rcv.URL, Description: "main", EventTypes: []string{webhooks.SubscriptionCreated, webhooks.SubscriptionCreated}})
+		made, err := e.hooks.CreateWebhookEndpoint(ctx, &plansv1.CreateWebhookEndpointRequest{Url: rcv.URL, Description: "main", EventTypes: []string{webhooksmodel.SubscriptionCreated, webhooksmodel.SubscriptionCreated}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -129,7 +130,7 @@ func testWebhooks(t *testing.T) {
 		if err := e.system.QueryRow(ctx, `SELECT secret_enc FROM webhook_endpoints WHERE id = $1`, endpoint.GetId()).Scan(&sealed); err != nil {
 			t.Fatal(err)
 		}
-		b, err := e.box.Open(sealed, webhooks.SecretAAD(uuid.MustParse(endpoint.GetId())))
+		b, err := e.box.Open(sealed, webhooksmodel.SecretAAD(uuid.MustParse(endpoint.GetId())))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -150,7 +151,7 @@ func testWebhooks(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if d := deliveries(endpoint.GetId()); len(d) != 1 || d[0].GetState() != plansv1.WebhookDeliveryState_WEBHOOK_DELIVERY_STATE_PENDING || d[0].GetEventType() != webhooks.SubscriptionCreated {
+		if d := deliveries(endpoint.GetId()); len(d) != 1 || d[0].GetState() != plansv1.WebhookDeliveryState_WEBHOOK_DELIVERY_STATE_PENDING || d[0].GetEventType() != webhooksmodel.SubscriptionCreated {
 			t.Fatalf("queued = %v", d)
 		}
 		if pump() != 1 {
@@ -164,7 +165,7 @@ func testWebhooks(t *testing.T) {
 		if err := webhooksig.Verify(c.header.Get(webhooksig.Header()), c.body, secret, *clock, 0); err != nil {
 			t.Fatalf("signature: %v", err)
 		}
-		if c.header.Get("Payrudder-Event-Type") != webhooks.SubscriptionCreated || c.header.Get("Content-Type") != "application/json" {
+		if c.header.Get("Payrudder-Event-Type") != webhooksmodel.SubscriptionCreated || c.header.Get("Content-Type") != "application/json" {
 			t.Errorf("headers = %v", c.header)
 		}
 		var env struct {
@@ -179,7 +180,7 @@ func testWebhooks(t *testing.T) {
 		if err := json.Unmarshal(c.body, &env); err != nil {
 			t.Fatal(err)
 		}
-		if env.Type != webhooks.SubscriptionCreated || env.Data.Subscription.ID != sub.GetSubscription().GetId() || env.Data.Subscription.PlanCode != "basic" || env.ID != c.header.Get("Payrudder-Event-Id") {
+		if env.Type != webhooksmodel.SubscriptionCreated || env.Data.Subscription.ID != sub.GetSubscription().GetId() || env.Data.Subscription.PlanCode != "basic" || env.ID != c.header.Get("Payrudder-Event-Id") {
 			t.Fatalf("body = %s", c.body)
 		}
 		if d := deliveries(endpoint.GetId()); d[0].GetState() != plansv1.WebhookDeliveryState_WEBHOOK_DELIVERY_STATE_DELIVERED || d[0].GetAttempts() != 1 {
@@ -204,7 +205,7 @@ func testWebhooks(t *testing.T) {
 		}
 		ev := uuid.NewString()
 		rec := func(id string) int32 {
-			r, err := e.hooks.RecordTenantEvent(ctx, &plansv1.RecordTenantEventRequest{EventId: id, Type: webhooks.InvoicePaid, DataJson: `{"invoice_id":"inv_1"}`, OccurredTime: timestamppb.New(*clock)})
+			r, err := e.hooks.RecordTenantEvent(ctx, &plansv1.RecordTenantEventRequest{EventId: id, Type: webhooksmodel.InvoicePaid, DataJson: `{"invoice_id":"inv_1"}`, OccurredTime: timestamppb.New(*clock)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -223,7 +224,7 @@ func testWebhooks(t *testing.T) {
 			t.Fatal("delivery not found")
 			return nil
 		}
-		for attempt := 1; attempt <= len(webhooks.Backoff)+1; attempt++ {
+		for attempt := 1; attempt <= len(webhooksmodel.Backoff)+1; attempt++ {
 			if pump() != 1 {
 				t.Fatalf("attempt %d: nothing was due", attempt)
 			}
@@ -231,14 +232,14 @@ func testWebhooks(t *testing.T) {
 			if d.GetAttempts() != int32(attempt) || d.GetLastStatus() != 500 || !strings.Contains(d.GetLastError(), "HTTP 500") { //nolint:gosec // small
 				t.Fatalf("attempt %d: %v", attempt, d)
 			}
-			if attempt <= len(webhooks.Backoff) {
+			if attempt <= len(webhooksmodel.Backoff) {
 				if d.GetState() != plansv1.WebhookDeliveryState_WEBHOOK_DELIVERY_STATE_PENDING {
 					t.Fatalf("attempt %d: state %v", attempt, d.GetState())
 				}
 				if pump() != 0 {
 					t.Fatalf("attempt %d: retried before its backoff", attempt)
 				}
-				*clock = clock.Add(webhooks.Backoff[attempt-1] + time.Second)
+				*clock = clock.Add(webhooksmodel.Backoff[attempt-1] + time.Second)
 			}
 		}
 		if d.GetState() != plansv1.WebhookDeliveryState_WEBHOOK_DELIVERY_STATE_FAILED {
@@ -255,7 +256,7 @@ func testWebhooks(t *testing.T) {
 		if _, err := e.hooks.RecordTenantEvent(ctx, &plansv1.RecordTenantEventRequest{EventId: uuid.NewString(), Type: "nope", DataJson: `{}`}); code(err) != codes.InvalidArgument {
 			t.Errorf("unknown type: %v", err)
 		}
-		if _, err := e.hooks.RecordTenantEvent(ctx, &plansv1.RecordTenantEventRequest{EventId: uuid.NewString(), Type: webhooks.InvoicePaid, DataJson: `[1]`}); code(err) != codes.InvalidArgument {
+		if _, err := e.hooks.RecordTenantEvent(ctx, &plansv1.RecordTenantEventRequest{EventId: uuid.NewString(), Type: webhooksmodel.InvoicePaid, DataJson: `[1]`}); code(err) != codes.InvalidArgument {
 			t.Errorf("data that is not an object: %v", err)
 		}
 	})
@@ -276,7 +277,7 @@ func testWebhooks(t *testing.T) {
 			t.Fatalf("calls = %d, want %d", len(got), before+1)
 		}
 		c := got[len(got)-1]
-		if c.header.Get("Payrudder-Event-Type") != webhooks.Ping {
+		if c.header.Get("Payrudder-Event-Type") != webhooksmodel.Ping {
 			t.Errorf("event type = %s", c.header.Get("Payrudder-Event-Type"))
 		}
 		for _, s := range []string{secret, rot.GetEndpoint().GetSecret()} {
@@ -303,7 +304,7 @@ func testWebhooks(t *testing.T) {
 		if _, err := e.hooks.UpdateWebhookEndpoint(ctx, &plansv1.UpdateWebhookEndpointRequest{Id: endpoint.GetId(), Url: rcv.URL, Active: false}); err != nil {
 			t.Fatal(err)
 		}
-		r, err := e.hooks.RecordTenantEvent(ctx, &plansv1.RecordTenantEventRequest{EventId: uuid.NewString(), Type: webhooks.InvoicePaid, DataJson: `{}`})
+		r, err := e.hooks.RecordTenantEvent(ctx, &plansv1.RecordTenantEventRequest{EventId: uuid.NewString(), Type: webhooksmodel.InvoicePaid, DataJson: `{}`})
 		if err != nil || r.GetQueued() != 0 {
 			t.Fatalf("queued for an inactive endpoint: %v, %v", r, err)
 		}

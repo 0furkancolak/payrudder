@@ -1,14 +1,14 @@
-// Package webhooks records the events a tenant can subscribe to and delivers them, signed, to the tenant's endpoints.
-package webhooks
+// Package model is what the webhook module shares: the event types a tenant can subscribe to, the body of a delivery, the associated data an endpoint
+// secret is sealed with and the wait between attempts.
+package model
 
 import (
-	"context"
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
-
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // Event types a tenant can subscribe an endpoint to. An endpoint with no types gets all of them.
@@ -50,25 +50,22 @@ var Types = []string{
 }
 
 // Known reports whether t is an event type (ping is sent only on request and cannot be subscribed to).
-func Known(t string) bool {
-	for _, k := range Types {
-		if k == t {
-			return true
-		}
-	}
-	return false
-}
+func Known(t string) bool { return slices.Contains(Types, t) }
 
-// Emit records the event and queues a delivery for each active endpoint that wants its type, in the caller's tenant transaction. It is a no-op when no
-// endpoint would receive it. A repeated event id is ignored. It returns how many deliveries were queued.
-func Emit(ctx context.Context, q *sqlc.Queries, id uuid.UUID, typ string, data json.RawMessage, at time.Time) (int64, error) {
-	any, err := q.HasWebhookTargets(ctx, typ)
-	if err != nil || !any {
-		return 0, err
-	}
-	n, err := q.InsertWebhookEvent(ctx, sqlc.InsertWebhookEventParams{ID: id, Type: typ, Data: data, OccurredAt: at})
-	if err != nil || n == 0 {
-		return 0, err
-	}
-	return q.QueueWebhookDeliveries(ctx, sqlc.QueueWebhookDeliveriesParams{EventID: id, EventType: typ})
+// EventJSON writes API messages the way the API returns them, for the data of an event.
+var EventJSON = protojson.MarshalOptions{UseProtoNames: true}
+
+// Backoff is the wait before attempt 2, 3, ...; a delivery that fails after the last one is failed (7 attempts in about 32 hours).
+var Backoff = []time.Duration{time.Minute, 5 * time.Minute, 30 * time.Minute, 2 * time.Hour, 6 * time.Hour, 24 * time.Hour}
+
+// SecretAAD is the associated data an endpoint's secret is sealed with.
+func SecretAAD(endpoint uuid.UUID) []byte { return []byte("webhook:" + endpoint.String()) }
+
+// Envelope is the body of a delivery.
+type Envelope struct {
+	ID       string          `json:"id"`
+	Type     string          `json:"type"`
+	Created  string          `json:"created"`
+	TenantID string          `json:"tenant_id"`
+	Data     json.RawMessage `json:"data"`
 }

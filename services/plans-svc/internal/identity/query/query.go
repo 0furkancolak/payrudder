@@ -194,17 +194,7 @@ func (q *Queries) Apps(ctx context.Context, userID, accountID string) ([]*plansv
 	if err != nil {
 		return nil, convert.Err(err, "tenant")
 	}
-	out := make([]*plansv1.App, 0, len(apps))
-	for _, a := range apps {
-		var mine []sqlc.Tenant
-		for _, t := range tenants {
-			if t.AppID == a.ID {
-				mine = append(mine, t)
-			}
-		}
-		out = append(out, convert.App(a, mine))
-	}
-	return out, nil
+	return convert.Apps(apps, tenants), nil
 }
 
 // App returns an app of one of the user's accounts with its tenants, and the user's role there.

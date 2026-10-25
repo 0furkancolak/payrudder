@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
@@ -120,6 +121,19 @@ func App(a sqlc.App, tenants []sqlc.Tenant) *plansv1.App {
 	out := &plansv1.App{Id: a.ID.String(), AccountId: a.AccountID.String(), Name: a.Name, Slug: a.Slug, CreateTime: ts(a.CreatedAt)}
 	for _, t := range tenants {
 		out.Tenants = append(out.Tenants, Tenant(t))
+	}
+	return out
+}
+
+// Apps maps the apps of an account, each with the tenants that belong to it (in the order given).
+func Apps(apps []sqlc.App, tenants []sqlc.Tenant) []*plansv1.App {
+	byApp := make(map[uuid.UUID][]sqlc.Tenant, len(apps))
+	for _, t := range tenants {
+		byApp[t.AppID] = append(byApp[t.AppID], t)
+	}
+	out := make([]*plansv1.App, 0, len(apps))
+	for _, a := range apps {
+		out = append(out, App(a, byApp[a.ID]))
 	}
 	return out
 }

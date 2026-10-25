@@ -24,7 +24,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
+	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
+	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
 
 // createArgs is what a CreateSubscription request says before the database is read.
@@ -239,7 +240,7 @@ func (c *Commands) announceCreated(ctx context.Context, q *sqlc.Queries, tenantI
 	if err := subsqry.AttachExtras(ctx, q, out); err != nil {
 		return nil, err
 	}
-	if err := webhooks.EmitSubscription(ctx, q, c.now(), webhooks.SubscriptionCreated, out, nil); err != nil {
+	if err := webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionCreated, out, nil); err != nil {
 		return nil, err
 	}
 	return out, entitlementscmd.Publish(ctx, q, tenantID, r.CustomerID, r.PlanVersionID, r.StartTime, nil, c.now())

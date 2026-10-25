@@ -26,7 +26,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/admin"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
 	golivecmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/command"
 	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
@@ -163,12 +162,12 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	plansv1.RegisterAffiliateServiceServer(srv, grpcapi.NewAffiliates(plansSrv))
 	plansv1.RegisterAffiliatePublicServiceServer(srv, grpcapi.NewAffiliatesPublic(system, log))
 	plansv1.RegisterAffiliatePortalServiceServer(srv, grpcapi.NewAffiliatePortal(plansSrv, system))
-	adminSrv := admin.New(system, ev, allowedEnvs, log)
+	adminSrv := grpcapi.NewAdmin(system, ev, allowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	mail := &recordingMail{}
 	remotes := &recordingRemotes{}
 	sbx, runner := sandboxapi.Wire(system, remotes.steps(), time.Hour, sandbox.Settings{Retention: time.Hour}, log)
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, mail, testAppURL, log).WithPepper(testPepper), identityqry.New(system),
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv.Accounts(), adminSrv.Keys(), mail, testAppURL, log).WithPepper(testPepper), identityqry.New(system),
 		golive.New(golivecmd.New(system, log), goliveqry.New(system)),
 		promote.Wire(app, system, box, true, log), sbx))
 	lis := bufconn.Listen(1 << 20)
