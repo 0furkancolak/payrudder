@@ -8,20 +8,19 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	couponsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	plansqry "github.com/0furkancolak/quotify/services/plans-svc/internal/plans/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
 var (
@@ -131,7 +130,7 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 		return nil, err
 	}
 	if due != nil && !due.After(at) {
-		return nil, status.Error(codes.Aborted, "the fee of the current period has not been invoiced yet; try again in a moment")
+		return nil, errkey.New(codes.Aborted, "plans.change.fee_not_invoiced", "the fee of the current period has not been invoiced yet; try again in a moment")
 	}
 	cr := subscription.ChangeRequest{
 		Old: subscription.Plan{FeeMinor: oldFee, Interval: oldInterval}, New: subscription.Plan{FeeMinor: newFee, Interval: newInterval},
@@ -139,7 +138,7 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 	}
 	pc.Quote, err = subscription.QuoteChange(cr)
 	if errors.Is(err, subscription.ErrBadChange) {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, errkey.New(codes.InvalidArgument, "plans.change.invalid", err.Error())
 	}
 	if err != nil {
 		return pc, err
@@ -171,18 +170,18 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 
 // requireChangeable refuses a subscription that cannot change and returns its effective state.
 func requireChangeable(row sqlc.GetSubscriptionRow, now time.Time) (subscription.State, error) {
-	if err := domain.RequireQuotifyOwned(row.Owner, row.Provider); err != nil {
+	if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 		return "", err
 	}
 	if row.FeeTiming != "advance" {
-		return "", status.Error(codes.FailedPrecondition, "this subscription is billed in arrears; ChangePlan splits the month by time")
+		return "", errkey.New(codes.FailedPrecondition, "plans.change.billed_in_arrears", "this subscription is billed in arrears; ChangePlan splits the month by time")
 	}
 	if !row.OpenEnded || row.CancelAtPeriodEnd {
-		return "", status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot change")
+		return "", errkey.New(codes.FailedPrecondition, "plans.change.subscription_ended", "an ended or ending subscription cannot change")
 	}
 	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
 	if eff != subscription.Active && eff != subscription.Trialing {
-		return "", status.Errorf(codes.FailedPrecondition, "a %s subscription cannot change", eff)
+		return "", errkey.Newf(codes.FailedPrecondition, "plans.change.state_not_changeable", "a %s subscription cannot change", eff)
 	}
 	return eff, nil
 }

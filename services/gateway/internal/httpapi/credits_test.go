@@ -7,8 +7,8 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 func (fakeBilling) CreateCreditPack(_ context.Context, req *billingv1.CreateCreditPackRequest) (*billingv1.CreateCreditPackResponse, error) {

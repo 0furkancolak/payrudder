@@ -8,20 +8,20 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	changesqry "github.com/0furkancolak/quotify/services/plans-svc/internal/changes/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/quotify/services/plans-svc/internal/entitlements/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 )
 
 // Commands changes subscriptions from one plan version or interval to another.
@@ -54,7 +54,7 @@ func SwitchTo(ctx context.Context, q *sqlc.Queries, now time.Time, tenantID uuid
 	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: old.ID, EndTime: at}); err != nil {
 		return sqlc.InsertSubscriptionRow{}, err
 	} else if n != 1 {
-		return sqlc.InsertSubscriptionRow{}, status.Error(codes.Aborted, "subscription changed concurrently; retry")
+		return sqlc.InsertSubscriptionRow{}, errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
 	}
 	if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: old.ID, State: string(subscription.Cancelled), PausedAt: old.PausedAt}); err != nil {
 		return sqlc.InsertSubscriptionRow{}, err
@@ -174,7 +174,7 @@ func (c *Commands) CancelScheduled(ctx context.Context, req *plansv1.CancelSched
 		}
 		pending, err := q.GetPendingChange(ctx, id)
 		if err != nil {
-			return status.Error(codes.FailedPrecondition, "no change is scheduled")
+			return errkey.New(codes.FailedPrecondition, "plans.change.none_scheduled", "no change is scheduled")
 		}
 		if _, err := q.SettleChange(ctx, sqlc.SettleChangeParams{ID: pending.ID, State: "cancelled"}); err != nil {
 			return err

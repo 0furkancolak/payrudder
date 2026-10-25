@@ -3,7 +3,7 @@ package httpapi
 import (
 	"net/http"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 )
 
 // Replay admin routes: rebuild one tenant's aggregates into a new generation, verify the difference, promote or discard

@@ -1,0 +1,218 @@
+syntax = "proto3";
+
+package payrudder.assets.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// AssetsService stores tenant files in S3-compatible object storage. Two upload paths: direct multipart (presigned part
+// URLs, the bytes never touch Payrudder) and a proxied stream for small files. The tenant comes from gRPC metadata.
+service AssetsService {
+  // CreateUploadSession opens a session for up to 50 files and returns presigned URLs for each file's first parts.
+  rpc CreateUploadSession(CreateUploadSessionRequest) returns (CreateUploadSessionResponse);
+  // PresignParts returns more (or refreshed) part URLs of one file.
+  rpc PresignParts(PresignPartsRequest) returns (PresignPartsResponse);
+  // GetUploadFile reports a file's state including the parts S3 already has, so an interrupted upload can resume.
+  rpc GetUploadFile(GetUploadFileRequest) returns (GetUploadFileResponse);
+  // CompleteFile verifies the uploaded parts, assembles the object and makes the asset READY. Idempotent.
+  rpc CompleteFile(CompleteFileRequest) returns (CompleteFileResponse);
+  // AbortUpload aborts a whole session, or one file when asset_id is set.
+  rpc AbortUpload(AbortUploadRequest) returns (AbortUploadResponse);
+  // UploadAsset stores one file from a client stream: a header, then chunks of at most 256 KiB.
+  rpc UploadAsset(stream UploadAssetRequest) returns (UploadAssetResponse);
+  rpc GetAsset(GetAssetRequest) returns (GetAssetResponse);
+  rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
+  // GetDownloadUrl returns a presigned link (5 minutes) that downloads the file as an attachment.
+  rpc GetDownloadUrl(GetDownloadUrlRequest) returns (GetDownloadUrlResponse);
+  rpc DeleteAsset(DeleteAssetRequest) returns (DeleteAssetResponse);
+}
+
+enum Purpose {
+  PURPOSE_UNSPECIFIED = 0;
+  PURPOSE_INVOICE_LOGO = 1;
+  PURPOSE_INVOICE_ATTACHMENT = 2;
+  PURPOSE_GENERAL = 3;
+}
+
+enum AssetStatus {
+  ASSET_STATUS_UNSPECIFIED = 0;
+  ASSET_STATUS_PENDING = 1;
+  ASSET_STATUS_UPLOADING = 2;
+  ASSET_STATUS_SCANNING = 3;
+  ASSET_STATUS_READY = 4;
+  ASSET_STATUS_REJECTED = 5;
+  ASSET_STATUS_ABORTED = 6;
+  ASSET_STATUS_CORRUPT = 7;
+  ASSET_STATUS_DELETED = 8;
+}
+
+message Asset {
+  string id = 1;
+  string session_id = 2;
+  Purpose purpose = 3;
+  string filename = 4;
+  string content_type = 5;
+  int64 size_bytes = 6;
+  // Hex sha256 once known (declared by the client, or computed by the proxied upload).
+  string sha256 = 7;
+  AssetStatus status = 8;
+  // Why a REJECTED asset was refused: UNSUPPORTED_CONTENT_TYPE, CONTENT_TYPE_MISMATCH, FILE_TOO_LARGE,
+  // STORAGE_QUOTA_EXCEEDED, PART_MISMATCH, SIZE_MISMATCH, ...
+  string reject_reason = 9;
+  google.protobuf.Timestamp create_time = 10;
+  google.protobuf.Timestamp complete_time = 11;
+}
+
+message FileSpec {
+  string filename = 1;
+  string content_type = 2;
+  // Bytes; required for direct uploads (it fixes the part size and the part count).
+  int64 size = 3;
+  Purpose purpose = 4;
+  // Optional hex sha256 of the whole file; a background verifier checks it.
+  string sha256 = 5;
+}
+
+message CreateUploadSessionRequest {
+  // 1..50 files.
+  repeated FileSpec files = 1;
+  // Same key, same session and asset ids.
+  string idempotency_key = 2;
+}
+
+message PresignedPart {
+  int32 part_number = 1;
+  string url = 2;
+}
+
+message UploadedPart {
+  int32 part_number = 1;
+  int64 size = 2;
+  string etag = 3;
+}
+
+message UploadFile {
+  string asset_id = 1;
+  string filename = 2;
+  AssetStatus status = 3;
+  string reject_reason = 4;
+  int64 size = 5;
+  int64 part_size = 6;
+  int32 part_count = 7;
+  // The first (up to 100) part URLs; more through PresignParts.
+  repeated PresignedPart presigned_parts = 8;
+  // Parts S3 already has (GetUploadFile).
+  repeated UploadedPart uploaded_parts = 9;
+}
+
+message UploadSession {
+  string id = 1;
+  // OPEN, COMPLETED, EXPIRED or ABORTED.
+  string status = 2;
+  google.protobuf.Timestamp expire_time = 3;
+  repeated UploadFile files = 4;
+}
+
+message CreateUploadSessionResponse {
+  UploadSession session = 1;
+}
+
+message GetUploadFileResponse {
+  UploadFile file = 1;
+}
+
+message CompleteFileResponse {
+  Asset asset = 1;
+}
+
+message AbortUploadResponse {
+  UploadSession session = 1;
+}
+
+message UploadAssetResponse {
+  Asset asset = 1;
+}
+
+message GetAssetResponse {
+  Asset asset = 1;
+}
+
+message DeleteAssetResponse {
+  Asset asset = 1;
+}
+
+message PresignPartsRequest {
+  string session_id = 1;
+  string asset_id = 2;
+  // First part number (1-based) and how many (1..100).
+  int32 from_part = 3;
+  int32 count = 4;
+}
+
+message PresignPartsResponse {
+  repeated PresignedPart parts = 1;
+}
+
+message GetUploadFileRequest {
+  string session_id = 1;
+  string asset_id = 2;
+}
+
+message PartETag {
+  int32 part_number = 1;
+  string etag = 2;
+}
+
+message CompleteFileRequest {
+  string session_id = 1;
+  string asset_id = 2;
+  repeated PartETag parts = 3;
+}
+
+message AbortUploadRequest {
+  string session_id = 1;
+  // Empty aborts every file of the session.
+  string asset_id = 2;
+}
+
+message UploadHeader {
+  string filename = 1;
+  string content_type = 2;
+  Purpose purpose = 3;
+  // Optional declared size; the stream is cut off beyond the purpose limit anyway.
+  int64 size = 4;
+}
+
+message UploadAssetRequest {
+  oneof msg {
+    UploadHeader header = 1;
+    bytes chunk = 2;
+  }
+}
+
+message GetAssetRequest {
+  string asset_id = 1;
+}
+
+message ListAssetsRequest {
+  Purpose purpose = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListAssetsResponse {
+  repeated Asset assets = 1;
+  string next_page_token = 2;
+}
+
+message GetDownloadUrlRequest {
+  string asset_id = 1;
+}
+
+message GetDownloadUrlResponse {
+  string url = 1;
+  google.protobuf.Timestamp expire_time = 2;
+}
+
+message DeleteAssetRequest {
+  string asset_id = 1;
+}

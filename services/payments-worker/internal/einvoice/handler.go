@@ -10,15 +10,15 @@ import (
 
 	"github.com/google/uuid"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	pkg "github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/einvoice/mock"
-	"github.com/0furkancolak/quotify/pkg/einvoice/ubl"
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/workerx"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	pkg "github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/mock"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/ubl"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // Accounts gives the sealed settings of a tenant's integrator account (store.EInvoiceAccounts).
@@ -127,7 +127,7 @@ func (h *Handler) provider(ctx context.Context, tenantID uuid.UUID, environment 
 		return h.mockProvider(), mock.Name, nil, nil
 	}
 	if h.Accounts == nil {
-		return nil, "", failed(KeyAccountMissing, "e-invoice accounts are disabled on this deployment (QUOTIFY_SECRETS_KEY)", false), nil
+		return nil, "", failed(KeyAccountMissing, "e-invoice accounts are disabled on this deployment (PAYRUDDER_SECRETS_KEY)", false), nil
 	}
 	name, settings, err := h.Accounts.Settings(ctx, tenantID, env.Live.String())
 	if errors.Is(err, store.ErrNoAccount) {

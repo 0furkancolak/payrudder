@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // Resolver builds the provider adapter of a tenant's account from its stored, sealed settings. Adapters are cached until the

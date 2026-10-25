@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { firstError } from "@/shared/lib/errors";
+import { useFormat } from "@/shared/lib/format";
 import { toast } from "vue-sonner";
-import { errorText } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
-import { formatMinor, minorToMajor, parseMajor } from "@/shared/lib/money";
+import { minorToMajor, parseMajor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
@@ -16,11 +18,12 @@ import { offlineSettlement, PAYMENT_METHODS, receivedAtToIso, toLocalInput, tran
 
 /**
  * "Record payment" for an invoice. When the invoice was charged by bank transfer (`transfer`) this is "Confirm bank transfer" and goes to the transfer
- * endpoint (the bank reference is then required); otherwise it records a payment received outside Quotify.
+ * endpoint (the bank reference is then required); otherwise it records a payment received outside Payrudder.
  */
 const props = defineProps<{ tenantId: string; invoiceId: string; currency: string; outstandingMinor: string; transfer: boolean }>();
 const open = defineModel<boolean>("open", { required: true });
-const { t, te, locale } = useI18n();
+const { t, te } = useI18n();
+const fmt = useFormat();
 const pay = useInvoicePayments(
   () => props.tenantId,
   () => props.invoiceId,
@@ -44,11 +47,11 @@ watch(open, (isOpen) => {
   pay.recordPayment.reset();
 });
 
-const error = () => pay.confirmTransfer.error.value ?? pay.recordPayment.error.value;
+const error = () => firstError(pay.confirmTransfer, pay.recordPayment);
 const pending = () => pay.confirmTransfer.isPending.value || pay.recordPayment.isPending.value;
 
 function announce(s: Settlement) {
-  const money = (m: string) => formatMinor(m, props.currency, locale.value);
+  const money = (m: string) => fmt.money(m, props.currency);
   let text = s.paid ? t("invoice.payment.toast.paid", { received: money(s.received) }) : t("invoice.payment.toast.partly", { received: money(s.received), outstanding: money(s.outstanding) });
   if (s.duplicate) text += " " + t("invoice.payment.toast.duplicate");
   toast.success(text);
@@ -105,7 +108,7 @@ function submit() {
         <div class="grid gap-1.5">
           <Label for="pay-amount">{{ t("invoice.payment.amount", { currency }) }}</Label>
           <Input id="pay-amount" v-model="amount" inputmode="decimal" autocomplete="off" />
-          <p class="text-muted-foreground text-xs">{{ t("invoice.payment.amountHint", { outstanding: formatMinor(outstandingMinor, currency, locale) }) }}</p>
+          <p class="text-muted-foreground text-xs">{{ t("invoice.payment.amountHint", { outstanding: fmt.money(outstandingMinor, currency) }) }}</p>
         </div>
         <div class="grid gap-1.5">
           <Label for="pay-date">{{ t("invoice.payment.receivedAt") }}</Label>
@@ -120,8 +123,8 @@ function submit() {
           <Label for="pay-note">{{ t("invoice.payment.note") }}</Label>
           <Textarea id="pay-note" v-model="note" rows="2" maxlength="500" />
         </div>
-        <p v-if="formError" class="text-destructive text-sm" role="alert">{{ formError }}</p>
-        <p v-if="error()" class="text-destructive text-sm" role="alert">{{ errorText(t, te, error()) }}</p>
+        <ErrorText :message="formError" />
+        <ErrorText :error="error()" />
         <DialogFooter>
           <Button type="button" variant="outline" @click="open = false">{{ t("invoice.payment.cancel") }}</Button>
           <Button type="submit" :disabled="pending()">{{ transfer ? t("invoice.payment.confirmSubmit") : t("invoice.payment.submit") }}</Button>

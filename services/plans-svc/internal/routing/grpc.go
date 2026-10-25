@@ -4,9 +4,9 @@ package routing
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/routing/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/routing/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/routing/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/routing/query"
 )
 
 // Handler serves the routing methods of PlansService.

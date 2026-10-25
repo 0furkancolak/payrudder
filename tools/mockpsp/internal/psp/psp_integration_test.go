@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/tools/mockpsp/internal/psp"
-	"github.com/0furkancolak/quotify/tools/mockpsp/migrations"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/tools/mockpsp/internal/psp"
+	"github.com/0furkancolak/payrudder/tools/mockpsp/migrations"
 )
 
 func start(t *testing.T, cfg psp.Config) (*payments.MockPSP, func()) {

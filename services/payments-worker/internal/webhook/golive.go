@@ -3,7 +3,7 @@ package webhook
 import (
 	"net/http"
 
-	"github.com/0furkancolak/quotify/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/env"
 )
 
 // goLive answers the one go-live question that payments-worker owns (phase 45): does the tenant have a payment provider connected in live mode that works?
@@ -17,7 +17,7 @@ func (s *Server) goLive(w http.ResponseWriter, r *http.Request) {
 	list, err := s.Accounts.List(r.Context(), t)
 	if err != nil {
 		s.Log.ErrorContext(r.Context(), "go-live: accounts not listed", "err", err)
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	working := []string{}

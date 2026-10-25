@@ -8,15 +8,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/invoices/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/payments"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/payments"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Handler implements the invoice methods of billingv1.BillingServiceServer.
@@ -42,7 +42,7 @@ func (h *Handler) GetInvoicePdfUrl(ctx context.Context, req *billingv1.GetInvoic
 	}
 	id, err := uuid.Parse(req.GetInvoiceId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invoice_id must be a UUID")
+		return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
 	}
 	url, expires, err := query.PDFURL(ctx, h.app, h.pdfs, ti.ID, id)
 	if err != nil {
@@ -59,7 +59,7 @@ func (h *Handler) GetInvoice(ctx context.Context, req *billingv1.GetInvoiceReque
 	}
 	id, err := uuid.Parse(req.GetInvoiceId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invoice_id must be a UUID")
+		return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
 	}
 	inv, err := query.Get(ctx, h.app, ti.ID, id)
 	if err != nil {

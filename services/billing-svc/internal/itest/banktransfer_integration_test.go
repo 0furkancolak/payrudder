@@ -12,13 +12,13 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/stubworker"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/api"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/stubworker"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
 // mine are the commands of this test's tenant that a stub worker received: the queues are shared with the other tests of the package, whose leftovers a stub may take.
@@ -227,7 +227,7 @@ func testExpiredTransferFollowsDunning(t *testing.T) {
 	}
 }
 
-// Money received outside a provider settles an invoice that was never charged through Quotify (here: its card payment was declined), with who and when
+// Money received outside a provider settles an invoice that was never charged through Payrudder (here: its card payment was declined), with who and when
 // recorded; partial payments add up, an overpayment is refused with an error key, and a repeat is a no-op.
 func testOfflinePaymentsSettleAnInvoice(t *testing.T) {
 	e := newEnv(t, envOpts{})

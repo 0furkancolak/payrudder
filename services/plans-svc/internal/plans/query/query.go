@@ -7,17 +7,17 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	metersqry "github.com/0furkancolak/quotify/services/plans-svc/internal/meters/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	metersqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/meters/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Queries reads plans.
@@ -153,7 +153,7 @@ func FeeIn(ctx context.Context, q *sqlc.Queries, planVersionID uuid.UUID, baseFe
 			return f.BaseFeeMinor, nil
 		}
 	}
-	return 0, status.Errorf(codes.FailedPrecondition, "plan version has no %sly fixed fee in %s", interval, currency)
+	return 0, errkey.Newf(codes.FailedPrecondition, "plans.plan.no_fixed_fee", "plan version has no %sly fixed fee in %s", interval, currency)
 }
 
 // RequireUsagePrices refuses a currency in which the plan version has metered prices but no price set. Fixed-fee-only plan
@@ -178,5 +178,5 @@ func RequireUsagePrices(ctx context.Context, q *sqlc.Queries, planVersionID uuid
 			return nil
 		}
 	}
-	return status.Errorf(codes.FailedPrecondition, "plan version has metered prices but none in %s", currency)
+	return errkey.Newf(codes.FailedPrecondition, "plans.plan.no_metered_price", "plan version has metered prices but none in %s", currency)
 }

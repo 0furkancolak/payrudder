@@ -12,10 +12,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	paymentquery "github.com/0furkancolak/quotify/services/billing-svc/internal/payments/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	paymentquery "github.com/0furkancolak/payrudder/services/billing-svc/internal/payments/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // PDFSigner presigns downloads of invoice PDFs (pkg/blob.Store).
@@ -61,7 +62,7 @@ func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (*Invoi
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, status.Error(codes.NotFound, "invoice not found")
+		return nil, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
@@ -91,13 +92,13 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 		size = 100
 	}
 	if size > 500 {
-		return nil, status.Error(codes.InvalidArgument, "page_size must be 1..500")
+		return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_page_size", "page_size must be 1..500")
 	}
 	var customer *uuid.UUID
 	if p.CustomerID != "" {
 		id, err := uuid.Parse(p.CustomerID)
 		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "customer_id must be a UUID")
+			return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_customer_id", "customer_id must be a UUID")
 		}
 		customer = &id
 	}
@@ -105,7 +106,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 	if p.PageToken != "" {
 		var err error
 		if after, err = uuid.Parse(p.PageToken); err != nil {
-			return nil, status.Error(codes.InvalidArgument, "page_token is invalid")
+			return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_page_token", "page_token is invalid")
 		}
 	}
 	var rows []sqlc.ListInvoicesRow
@@ -132,7 +133,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 // PDFURL returns a presigned link to the PDF of a tenant's invoice.
 func PDFURL(ctx context.Context, app *pgxpool.Pool, pdfs PDFSigner, tenantID, id uuid.UUID) (url string, expires time.Time, err error) {
 	if pdfs == nil {
-		return "", time.Time{}, status.Error(codes.Unimplemented, "object storage is not configured")
+		return "", time.Time{}, errkey.New(codes.Unimplemented, "billing.storage.not_configured", "object storage is not configured")
 	}
 	var key string
 	err = pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
@@ -146,13 +147,13 @@ func PDFURL(ctx context.Context, app *pgxpool.Pool, pdfs PDFSigner, tenantID, id
 		return nil
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", time.Time{}, status.Error(codes.NotFound, "invoice not found")
+		return "", time.Time{}, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
 		return "", time.Time{}, status.Error(codes.Internal, "internal error")
 	}
 	if key == "" {
-		return "", time.Time{}, status.Error(codes.FailedPrecondition, "the invoice PDF is not rendered yet")
+		return "", time.Time{}, errkey.New(codes.FailedPrecondition, "billing.invoice.pdf_not_ready", "the invoice PDF is not rendered yet")
 	}
 	return Sign(ctx, pdfs, key)
 }
@@ -161,7 +162,7 @@ func PDFURL(ctx context.Context, app *pgxpool.Pool, pdfs PDFSigner, tenantID, id
 func Sign(ctx context.Context, pdfs PDFSigner, key string) (string, time.Time, error) {
 	url, err := pdfs.PresignGet(ctx, key, PDFLinkTTL)
 	if err != nil {
-		return "", time.Time{}, status.Error(codes.Unavailable, "could not sign the download link")
+		return "", time.Time{}, errkey.New(codes.Unavailable, "billing.invoice.pdf_sign_failed", "could not sign the download link")
 	}
 	return url, time.Now().Add(PDFLinkTTL), nil
 }

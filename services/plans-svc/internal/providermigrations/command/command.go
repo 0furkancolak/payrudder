@@ -10,21 +10,22 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/payments/providers"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	changescmd "github.com/0furkancolak/quotify/services/plans-svc/internal/changes/command"
-	changesqry "github.com/0furkancolak/quotify/services/plans-svc/internal/changes/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/quotify/services/plans-svc/internal/entitlements/command"
-	provmigqry "github.com/0furkancolak/quotify/services/plans-svc/internal/providermigrations/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/payments/providers"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
+	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
+	provmigqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/providermigrations/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 )
 
 // Commands changes provider migrations.
@@ -47,7 +48,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: old.ID, EndTime: when}); err != nil {
 		return sqlc.InsertSubscriptionRow{}, err
 	} else if n != 1 {
-		return sqlc.InsertSubscriptionRow{}, status.Error(codes.Aborted, "subscription changed concurrently; retry")
+		return sqlc.InsertSubscriptionRow{}, errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
 	}
 	eff := convert.SubscriptionState(old.State, old.TrialEndsAt, old.OpenEnded, old.EndTime, now)
 	if !when.After(now) {
@@ -55,7 +56,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 			return sqlc.InsertSubscriptionRow{}, err
 		}
 	}
-	// What the successor pays, and when. A Quotify-run subscription whose fee is already paid in advance goes on with the period it paid for (no credit, the
+	// What the successor pays, and when. A Payrudder-run subscription whose fee is already paid in advance goes on with the period it paid for (no credit, the
 	// same renewal, its coupon); a yearly one that a provider ran comes back billed in advance from the cutover, as a year cannot be waited out in arrears.
 	timing, anchor, feeDue, creditUnused := "arrears", old.BillingAnchor, (*time.Time)(nil), old.Owner == "quotify"
 	if owner == "quotify" {
@@ -106,7 +107,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 	return nr, webhooks.EmitSubscription(ctx, q, now, webhooks.SubscriptionMovedToProvider, subsqry.Message(moved, now), map[string]any{"previous_subscription_id": old.ID.String(), "to_provider": toProvider})
 }
 
-// Start begins moving a subscription to another provider: at once when Quotify runs it there, else when the customer has subscribed there.
+// Start begins moving a subscription to another provider: at once when Payrudder runs it there, else when the customer has subscribed there.
 func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigrationRequest) (*plansv1.ProviderMigration, error) {
 	id, err := subsqry.ParseID(req.GetSubscriptionId())
 	if err != nil {
@@ -139,13 +140,13 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 		eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
 		switch {
 		case !row.OpenEnded || row.CancelAtPeriodEnd:
-			return status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot be moved")
+			return errkey.New(codes.FailedPrecondition, "plans.migration.subscription_ended", "an ended or ending subscription cannot be moved")
 		case eff != subscription.Active && eff != subscription.Trialing:
-			return status.Errorf(codes.FailedPrecondition, "a %s subscription cannot be moved", eff)
+			return errkey.Newf(codes.FailedPrecondition, "plans.migration.state_not_movable", "a %s subscription cannot be moved", eff)
 		case convert.Str(row.Provider) == req.GetToProvider():
 			return domain.Invalid("to_provider", "the subscription is already with "+req.GetToProvider())
 		case !target.CanCharge(row.Currency):
-			return status.Errorf(codes.FailedPrecondition, "%s cannot charge in %s", req.GetToProvider(), row.Currency)
+			return errkey.Newf(codes.FailedPrecondition, "plans.subscription.provider_currency", "%s cannot charge in %s", req.GetToProvider(), row.Currency)
 		}
 		mig, err := q.InsertProviderMigration(ctx, sqlc.InsertProviderMigrationParams{
 			ID: idgen.NewUUIDv7(), SubscriptionID: id, FromProvider: convert.Str(row.Provider), ToProvider: req.GetToProvider(), State: "started", CutoverAt: cutoverAt,
@@ -158,7 +159,7 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 			out = provmigqry.Message(mig)
 			return nil
 		}
-		// Quotify runs it at the target: take over now, or at the end of the paid period the old provider has been paid for.
+		// Payrudder runs it at the target: take over now, or at the end of the paid period the old provider has been paid for.
 		when := now
 		if cutoverAt != nil {
 			when = *cutoverAt
@@ -220,19 +221,19 @@ func (c *Commands) Complete(ctx context.Context, req *plansv1.CompleteProviderMi
 				return err
 			}
 			if convert.Str(nr.ProviderRef) != req.GetProviderRef() {
-				return status.Errorf(codes.FailedPrecondition, "migration already completed with %s", convert.Str(nr.ProviderRef))
+				return errkey.Newf(codes.FailedPrecondition, "plans.migration.already_completed", "migration already completed with %s", convert.Str(nr.ProviderRef))
 			}
 			resp.Migration, resp.Subscription = provmigqry.Message(mig), subsqry.Message(nr, c.now())
 			return nil
 		case "aborted":
-			return status.Error(codes.FailedPrecondition, "migration was aborted")
+			return errkey.New(codes.FailedPrecondition, "plans.migration.aborted", "migration was aborted")
 		}
 		when := c.now()
 		if req.GetCutoverTime() != nil {
 			when = req.GetCutoverTime().AsTime()
 		}
 		if !old.OpenEnded {
-			return status.Error(codes.FailedPrecondition, "the subscription ended while the migration was waiting")
+			return errkey.New(codes.FailedPrecondition, "plans.migration.subscription_ended", "the subscription ended while the migration was waiting")
 		}
 		nr, err := c.cutover(ctx, q, ti.ID, old, when, mig.ToProvider, new(req.GetProviderRef()), "provider")
 		if err != nil {
@@ -272,7 +273,7 @@ func (c *Commands) Abort(ctx context.Context, migrationID string) (*plansv1.Prov
 			out = provmigqry.Message(mig)
 			return nil
 		case "completed":
-			return status.Error(codes.FailedPrecondition, "the migration has completed; it cannot be aborted")
+			return errkey.New(codes.FailedPrecondition, "plans.migration.cannot_abort", "the migration has completed; it cannot be aborted")
 		}
 		done, err := q.FinishProviderMigration(ctx, sqlc.FinishProviderMigrationParams{ID: id, State: "aborted", NewSubscriptionID: nil, CutoverAt: mig.CutoverAt})
 		if err != nil {

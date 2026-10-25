@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/oidctest"
-	"github.com/0furkancolak/quotify/services/gateway/internal/oidc"
+	"github.com/0furkancolak/payrudder/pkg/oidctest"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
 )
 
 const (

@@ -9,7 +9,7 @@ export type InvoicePayment = components["schemas"]["InvoicePayment"];
 export const PAYMENT_METHODS = ["bank_transfer", "cash", "other"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
-/** The operator label sent as X-Quotify-Actor: the console sends one fixed label (the gateway does not take the actor from the session yet). */
+/** The operator label sent as X-Payrudder-Actor: the console sends one fixed label (the gateway does not take the actor from the session yet). */
 export const ACTOR = "console";
 
 /** Invoices that can still be paid by hand. */
@@ -40,12 +40,7 @@ export function outstandingAfter(totalMinor: string | undefined, payments: { amo
   return (left < 0n ? 0n : left).toString();
 }
 
-const two = (n: number) => String(n).padStart(2, "0");
-
-/** A date as the value of an <input type="datetime-local"> in the browser's time zone ("2026-10-20T14:05"). */
-export function toLocalInput(d: Date): string {
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`;
-}
+export { toLocalInput } from "@/shared/lib/dates";
 
 /** The RFC 3339 instant for what the operator picked, or null when it is not a date or lies after `now` (the server refuses both). */
 export function receivedAtToIso(local: string, now: Date): string | null {

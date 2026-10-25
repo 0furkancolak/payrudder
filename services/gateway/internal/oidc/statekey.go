@@ -9,6 +9,6 @@ import (
 // attacker does not have; the derivation keeps the secret itself out of the MAC.
 func (c *Client) StateKey() []byte {
 	m := hmac.New(sha256.New, []byte(c.cfg.ClientSecret))
-	m.Write([]byte("quotify:oidc:login-state:v1"))
+	m.Write([]byte("payrudder:oidc:login-state:v1"))
 	return m.Sum(nil)
 }

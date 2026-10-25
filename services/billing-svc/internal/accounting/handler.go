@@ -9,12 +9,12 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/accounting/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/accounting/model"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/accounting/query"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/query"
 )
 
 // Handler implements the accounting methods of billingv1.BillingServiceServer.
@@ -100,13 +100,17 @@ func (h *Handler) GetAccountingSummary(ctx context.Context, req *billingv1.GetAc
 		c := &r.Currencies[i]
 		pc := &billingv1.AccountingCurrency{Currency: c.Currency, GrossIncomeMinor: c.Gross, TaxMinor: c.Tax, RefundsMinor: c.Refunds, NetIncomeMinor: c.Net, ExpensesMinor: c.Expenses,
 			ProviderFeesMinor: c.ProviderFees, ProviderFeesRecorded: c.ProviderFeesRecorded, ProfitMinor: c.Profit, PaidInvoices: c.PaidInvoices,
-			ExpenseByCategory: make([]*billingv1.AccountingCategoryTotal, 0, len(c.ByCategory)), Series: make([]*billingv1.AccountingPoint, 0, len(c.Series))}
+			ExpenseByCategory: make([]*billingv1.AccountingCategoryTotal, 0, len(c.ByCategory)), Series: make([]*billingv1.AccountingPoint, 0, len(c.Series)),
+			DiscountsMinor: c.Discounts, SalesMinor: c.Sales, Coupons: make([]*billingv1.AccountingCoupon, 0, len(c.Coupons))}
+		for _, k := range c.Coupons {
+			pc.Coupons = append(pc.Coupons, &billingv1.AccountingCoupon{CouponCode: k.CouponCode, Invoices: k.Invoices, GrossMinor: k.Gross, DiscountMinor: k.Discount, NetMinor: k.Net})
+		}
 		for _, k := range c.ByCategory {
 			pc.ExpenseByCategory = append(pc.ExpenseByCategory, &billingv1.AccountingCategoryTotal{Category: k.Category, AmountMinor: k.Amount})
 		}
 		for _, p := range c.Series {
 			pc.Series = append(pc.Series, &billingv1.AccountingPoint{Bucket: model.FormatDay(p.Bucket), GrossIncomeMinor: p.Gross, TaxMinor: p.Tax, RefundsMinor: p.Refunds,
-				NetIncomeMinor: p.Net, ExpensesMinor: p.Expenses, ProfitMinor: p.Profit})
+				NetIncomeMinor: p.Net, ExpensesMinor: p.Expenses, ProfitMinor: p.Profit, DiscountsMinor: p.Discounts})
 		}
 		out.Currencies = append(out.Currencies, pc)
 	}

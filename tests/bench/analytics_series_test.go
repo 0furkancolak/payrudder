@@ -16,8 +16,8 @@ import (
 // target p95 < 300 ms): ROWS synthetic events spread over 30 days are inserted into ClickHouse for a fresh tenant, then
 // GET /v1/analytics/usage is called N times through the gateway.
 func TestUsageSeriesLatency(t *testing.T) {
-	rows := envInt("QUOTIFY_BENCH_ROWS", 3000000)
-	calls := envInt("QUOTIFY_BENCH_CALLS", 200)
+	rows := envInt("PAYRUDDER_BENCH_ROWS", 3000000)
+	calls := envInt("PAYRUDDER_BENCH_CALLS", 200)
 	var acct struct {
 		Tenants []struct{ ID, Environment string } `json:"tenants"`
 	}
@@ -42,10 +42,10 @@ func TestUsageSeriesLatency(t *testing.T) {
 		t.Fatalf("meter: %d", c)
 	}
 
-	chURL := envOr("QUOTIFY_CLICKHOUSE_URL", "http://localhost:42123")
+	chURL := envOr("PAYRUDDER_CLICKHOUSE_URL", "http://localhost:42123")
 	exec := func(q string) string {
-		req, _ := http.NewRequest("POST", chURL+"/?database=quotify", strings.NewReader(q))
-		req.SetBasicAuth("quotify", "quotify_local")
+		req, _ := http.NewRequest("POST", chURL+"/?database=payrudder", strings.NewReader(q))
+		req.SetBasicAuth("payrudder", "payrudder_local")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatal(err)

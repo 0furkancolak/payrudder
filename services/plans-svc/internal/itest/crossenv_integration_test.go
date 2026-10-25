@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // liveOnly is what one row of each family of a tenant is called, under names no row of the other environment has: what a caller of the other environment

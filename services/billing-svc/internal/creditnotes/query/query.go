@@ -13,9 +13,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Get reads one credit note of a tenant.
@@ -27,7 +28,7 @@ func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.G
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return out, status.Error(codes.NotFound, "credit note not found")
+		return out, errkey.New(codes.NotFound, "billing.credit_note.not_found", "credit note not found")
 	}
 	if err != nil {
 		return out, status.Error(codes.Internal, "internal error")
@@ -56,13 +57,13 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 	case size == 0:
 		size = 50
 	case size < 0 || size > 200:
-		return nil, status.Error(codes.InvalidArgument, "page_size must be 1..200")
+		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_page_size", "page_size must be 1..200")
 	}
 	var invoice *uuid.UUID
 	if p.InvoiceID != "" {
 		id, err := uuid.Parse(p.InvoiceID)
 		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "invoice_id must be a UUID")
+			return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_id", "invoice_id must be a UUID")
 		}
 		invoice = &id
 	}
@@ -72,10 +73,10 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 		at, id, ok := strings.Cut(p.PageToken, "|")
 		var perr error
 		if after, perr = time.Parse(time.RFC3339Nano, at); !ok || perr != nil {
-			return nil, status.Error(codes.InvalidArgument, "page_token is not one this API gave")
+			return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_page_token", "page_token is not one this API gave")
 		}
 		if afterID, perr = uuid.Parse(id); perr != nil {
-			return nil, status.Error(codes.InvalidArgument, "page_token is not one this API gave")
+			return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_page_token", "page_token is not one this API gave")
 		}
 	}
 	var rows []sqlc.ListCreditNotesRow

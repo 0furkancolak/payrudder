@@ -3,7 +3,7 @@ import http from 'k6/http';
 import { check, fail, sleep } from 'k6';
 
 export const GATEWAY = __ENV.GATEWAY_URL || 'http://localhost:42800';
-export const OPERATOR = __ENV.QUOTIFY_OPERATOR_TOKEN || 'local-operator-token-change-me-0123456789';
+export const OPERATOR = __ENV.PAYRUDDER_OPERATOR_TOKEN || 'local-operator-token-change-me-0123456789';
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 function put(path, token, body, expect) {

@@ -38,7 +38,7 @@ server works without code changes, because services only speak the S3 API.
 | `bytea` in a worker database | Simple, but bloats Postgres backups, and presigned download links would need a custom endpoint |
 | MinIO SDK (`minio-go`) | Works with S3 too, but makes it tempting to use MinIO-only features |
 | Local filesystem / PVC | Not shared across replicas, no presigned URLs |
-| Single-request uploads only (`PutObject` via the gateway) | Bytes flow through Quotify, uploads can't resume, and 5 GiB is S3's single-PUT limit |
+| Single-request uploads only (`PutObject` via the gateway) | Bytes flow through Payrudder, uploads can't resume, and 5 GiB is S3's single-PUT limit |
 | tus / resumable protocol server | Another protocol and component. S3 multipart already gives resumable, parallel parts |
 
 ## Consequences

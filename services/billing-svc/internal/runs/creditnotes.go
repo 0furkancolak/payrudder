@@ -14,13 +14,13 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/outbox"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Refusals of CreateCreditNote.
@@ -121,6 +121,14 @@ func (m *Manager) CreateCreditNote(ctx context.Context, tenantID, invoiceID uuid
 		if err := q.InsertCreditNote(ctx, sqlc.InsertCreditNoteParams{TenantID: tenantID, ID: cn.ID, CustomerID: inv.CustomerID, InvoiceID: invoiceID, Number: cn.Number,
 			Currency: inv.Currency, TotalMinor: amount, Reason: reason, CreatedAt: now, Disposition: disposition}); err != nil {
 			return err
+		}
+		// Credited in full is a full refund of the purchase: a coupon it used gives its redemption back (the scheduler tells plans-svc).
+		if credited, err := q.SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: tenantID, InvoiceID: invoiceID}); err != nil {
+			return err
+		} else if credited >= inv.TotalMinor {
+			if err := q.QueuePromotionReversal(ctx, sqlc.QueuePromotionReversalParams{TenantID: tenantID, ID: invoiceID}); err != nil {
+				return err
+			}
 		}
 		if refund {
 			cn.Refund = true

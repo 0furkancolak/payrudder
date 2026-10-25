@@ -1,12 +1,12 @@
-# Quotify local stack. Ports and profiles: docs/10-local-dev.md
+# Payrudder local stack. Ports and profiles: docs/10-local-dev.md
 #   default (no profile): infrastructure       make up-infra
 #   obs:   otel-collector, prometheus, tempo, loki, vector, grafana, postgres-exporter, redis-exporter
-#   app:   Quotify services                    make up
+#   app:   Payrudder services                    make up
 #   chaos: toxiproxy                           Phase 09
 #   init:  minio-init (one-shot, run by make)
-# Host ports that often clash can be moved with QUOTIFY_PG_HOST_PORT and QUOTIFY_CONSOLE_HOST_PORT (.env).
+# Host ports that often clash can be moved with PAYRUDDER_PG_HOST_PORT and PAYRUDDER_CONSOLE_HOST_PORT (.env).
 # Images are pinned; testkit (pkg/testkit) uses the same versions.
-name: quotify
+name: payrudder
 
 x-defaults: &defaults
   restart: unless-stopped
@@ -22,7 +22,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_local
     command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=200", "-c", "wal_level=logical"]
-    ports: ["${QUOTIFY_PG_HOST_PORT:-42432}:5432"]
+    ports: ["${PAYRUDDER_PG_HOST_PORT:-42432}:5432"]
     volumes:
       - ./postgres/01-databases.sh:/docker-entrypoint-initdb.d/01-databases.sh:ro
       - postgres-data:/var/lib/postgresql/data
@@ -70,7 +70,7 @@ services:
     volumes:
       - ./console/config.yaml:/etc/console/config.yaml:ro
       - ../../proto:/etc/console/proto:ro
-    ports: ["${QUOTIFY_CONSOLE_HOST_PORT:-42080}:8080"]
+    ports: ["${PAYRUDDER_CONSOLE_HOST_PORT:-42080}:8080"]
     depends_on:
       redpanda: { condition: service_healthy }
     healthcheck:
@@ -89,7 +89,7 @@ services:
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +sbwt none +sbwtdcpu none +sbwtdio none +A 4"
     ports: ["42672:5672", "42673:15672"]
     volumes:
-      - ../rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/20-quotify.conf:ro
+      - ../rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/20-payrudder.conf:ro
       - ../rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -116,9 +116,9 @@ services:
     <<: *defaults
     image: clickhouse/clickhouse-server:25.8.33.6-alpine
     environment:
-      CLICKHOUSE_DB: quotify
-      CLICKHOUSE_USER: quotify
-      CLICKHOUSE_PASSWORD: quotify_local
+      CLICKHOUSE_DB: payrudder
+      CLICKHOUSE_USER: payrudder
+      CLICKHOUSE_PASSWORD: payrudder_local
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports: ["42123:8123", "42900:9000"]
     volumes:
@@ -141,8 +141,8 @@ services:
     image: cgr.dev/chainguard/minio@sha256:c93745c56fccdaf0e5dcb88999a96a65a136428beb045ef5d546255a80d747a7
     command: ["server", "/data", "--address", ":9000", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: quotify
-      MINIO_ROOT_PASSWORD: quotify_local
+      MINIO_ROOT_USER: payrudder
+      MINIO_ROOT_PASSWORD: payrudder_local
       # MinIO's equivalent of an AbortIncompleteMultipartUpload lifecycle rule (assets-svc backstop).
       MINIO_API_STALE_UPLOADS_EXPIRY: 48h
       MINIO_API_STALE_UPLOADS_CLEANUP_INTERVAL: 6h
@@ -169,7 +169,7 @@ services:
     command:
       - |
         set -euo pipefail
-        mc alias set local http://minio:9000 quotify quotify_local
+        mc alias set local http://minio:9000 payrudder payrudder_local
         for b in invoices assets; do
           mc mb --ignore-existing "local/$$b"
           rules=$$(mc ilm rule ls --json "local/$$b" 2>/dev/null || true)
@@ -199,7 +199,7 @@ services:
     command: ["--config=/etc/otelcol/collector.yaml"]
     volumes: [../otel/collector.yaml:/etc/otelcol/collector.yaml:ro]
     environment:
-      QUOTIFY_TRACE_SAMPLE_PERCENT: "${QUOTIFY_TRACE_SAMPLE_PERCENT:-100}"
+      PAYRUDDER_TRACE_SAMPLE_PERCENT: "${PAYRUDDER_TRACE_SAMPLE_PERCENT:-100}"
     ports: ["42317:4317", "42318:4318", "42133:13133"]
     depends_on: [tempo]
     # Distroless image: no shell for an exec healthcheck. `--wait` treats it as ready once running; :13133 serves health.
@@ -338,29 +338,29 @@ services:
     build:
       context: ../..
       dockerfile: services/plans-svc/Dockerfile
-    image: quotify/plans-svc:dev
+    image: payrudder/plans-svc:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: plans-svc
-      QUOTIFY_GRPC_ADDR: ":7001"
-      QUOTIFY_METRICS_ADDR: ":9101"
-      QUOTIFY_PG_APP_DSN: postgres://plans_app:plans_app_local@postgres:5432/plans_db
-      QUOTIFY_PG_SYSTEM_DSN: postgres://plans_system:plans_system_local@postgres:5432/plans_db
-      QUOTIFY_PG_MIGRATOR_DSN: postgres://plans_migrator:plans_migrator_local@postgres:5432/plans_db
-      QUOTIFY_MIGRATE_ON_START: "true"
-      QUOTIFY_REDIS_URL: redis://redis:6379/0
-      QUOTIFY_KAFKA_BROKERS: redpanda:9092
-      QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: plans-svc
+      PAYRUDDER_GRPC_ADDR: ":7001"
+      PAYRUDDER_METRICS_ADDR: ":9101"
+      PAYRUDDER_PG_APP_DSN: postgres://plans_app:plans_app_local@postgres:5432/plans_db
+      PAYRUDDER_PG_SYSTEM_DSN: postgres://plans_system:plans_system_local@postgres:5432/plans_db
+      PAYRUDDER_PG_MIGRATOR_DSN: postgres://plans_migrator:plans_migrator_local@postgres:5432/plans_db
+      PAYRUDDER_MIGRATE_ON_START: "true"
+      PAYRUDDER_REDIS_URL: redis://redis:6379/0
+      PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_ALLOWED_ENVIRONMENTS: ${PAYRUDDER_ALLOWED_ENVIRONMENTS:-sandbox,live}
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
       # Seals the signing secrets of tenants' webhook endpoints (the same key as payments-worker's; local default only).
-      QUOTIFY_SECRETS_KEY: ${QUOTIFY_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
+      PAYRUDDER_SECRETS_KEY: ${PAYRUDDER_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
       # The local stack may deliver webhooks to http:// and private addresses (host.docker.internal, other containers). Never set this in production.
-      QUOTIFY_WEBHOOK_ALLOW_PRIVATE: ${QUOTIFY_WEBHOOK_ALLOW_PRIVATE:-true}
+      PAYRUDDER_WEBHOOK_ALLOW_PRIVATE: ${PAYRUDDER_WEBHOOK_ALLOW_PRIVATE:-true}
       # Mail to people (e-mail verification, password reset, invitations) goes to Mailpit; its links open the console.
       SMTP_ADDR: mailpit:1025
-      QUOTIFY_APP_URL: ${QUOTIFY_APP_URL:-http://localhost:42301}
+      PAYRUDDER_APP_URL: ${PAYRUDDER_APP_URL:-http://localhost:42301}
       # Keys the hash of one-time sign-in codes (a code has only a million values). Local stack only: generate your own with `openssl rand -hex 32`.
-      QUOTIFY_OTP_PEPPER: ${QUOTIFY_OTP_PEPPER:-local-otp-pepper-change-me-0123456789}
+      PAYRUDDER_OTP_PEPPER: ${PAYRUDDER_OTP_PEPPER:-local-otp-pepper-change-me-0123456789}
     ports: ["42701:7001", "42911:9101"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -375,19 +375,19 @@ services:
     build:
       context: ../..
       dockerfile: services/ingest-svc/Dockerfile
-    image: quotify/ingest-svc:dev
+    image: payrudder/ingest-svc:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: ingest-svc
-      QUOTIFY_GRPC_ADDR: ":7002"
-      QUOTIFY_METRICS_ADDR: ":9102"
-      QUOTIFY_PG_APP_DSN: postgres://ingest_app:ingest_app_local@postgres:5432/ingest_db
-      QUOTIFY_PG_SYSTEM_DSN: postgres://ingest_system:ingest_system_local@postgres:5432/ingest_db
-      QUOTIFY_PG_MIGRATOR_DSN: postgres://ingest_migrator:ingest_migrator_local@postgres:5432/ingest_db
-      QUOTIFY_MIGRATE_ON_START: "true"
-      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
-      QUOTIFY_KAFKA_BROKERS: redpanda:9092
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: ingest-svc
+      PAYRUDDER_GRPC_ADDR: ":7002"
+      PAYRUDDER_METRICS_ADDR: ":9102"
+      PAYRUDDER_PG_APP_DSN: postgres://ingest_app:ingest_app_local@postgres:5432/ingest_db
+      PAYRUDDER_PG_SYSTEM_DSN: postgres://ingest_system:ingest_system_local@postgres:5432/ingest_db
+      PAYRUDDER_PG_MIGRATOR_DSN: postgres://ingest_migrator:ingest_migrator_local@postgres:5432/ingest_db
+      PAYRUDDER_MIGRATE_ON_START: "true"
+      PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42702:7002", "42912:9102"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -401,19 +401,19 @@ services:
     build:
       context: ../..
       dockerfile: services/aggregator/Dockerfile
-    image: quotify/aggregator:dev
+    image: payrudder/aggregator:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: aggregator
-      QUOTIFY_GRPC_ADDR: ":7003"
-      QUOTIFY_METRICS_ADDR: ":9103"
-      QUOTIFY_PG_APP_DSN: postgres://aggregator_app:aggregator_app_local@postgres:5432/aggregator_db
-      QUOTIFY_PG_SYSTEM_DSN: postgres://aggregator_system:aggregator_system_local@postgres:5432/aggregator_db
-      QUOTIFY_PG_MIGRATOR_DSN: postgres://aggregator_migrator:aggregator_migrator_local@postgres:5432/aggregator_db
-      QUOTIFY_MIGRATE_ON_START: "true"
-      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
-      QUOTIFY_KAFKA_BROKERS: redpanda:9092
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: aggregator
+      PAYRUDDER_GRPC_ADDR: ":7003"
+      PAYRUDDER_METRICS_ADDR: ":9103"
+      PAYRUDDER_PG_APP_DSN: postgres://aggregator_app:aggregator_app_local@postgres:5432/aggregator_db
+      PAYRUDDER_PG_SYSTEM_DSN: postgres://aggregator_system:aggregator_system_local@postgres:5432/aggregator_db
+      PAYRUDDER_PG_MIGRATOR_DSN: postgres://aggregator_migrator:aggregator_migrator_local@postgres:5432/aggregator_db
+      PAYRUDDER_MIGRATE_ON_START: "true"
+      PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42703:7003", "42913:9103"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -427,18 +427,18 @@ services:
     build:
       context: ../..
       dockerfile: services/limits-svc/Dockerfile
-    image: quotify/limits-svc:dev
+    image: payrudder/limits-svc:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: limits-svc
-      QUOTIFY_GRPC_ADDR: ":7004"
-      QUOTIFY_METRICS_ADDR: ":9104"
-      QUOTIFY_REDIS_URL: redis://redis:6379/0
-      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
-      QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003
-      QUOTIFY_KAFKA_BROKERS: redpanda:9092
-      QUOTIFY_RECONCILE_INTERVAL: ${QUOTIFY_RECONCILE_INTERVAL:-5m}
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: limits-svc
+      PAYRUDDER_GRPC_ADDR: ":7004"
+      PAYRUDDER_METRICS_ADDR: ":9104"
+      PAYRUDDER_REDIS_URL: redis://redis:6379/0
+      PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_AGGREGATOR_ADDR: dns:///aggregator:7003
+      PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_RECONCILE_INTERVAL: ${PAYRUDDER_RECONCILE_INTERVAL:-5m}
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42704:7004", "42914:9104"]
     depends_on:
       redis: { condition: service_healthy }
@@ -453,15 +453,15 @@ services:
     build:
       context: ../..
       dockerfile: tools/mockpsp/Dockerfile
-    image: quotify/mockpsp:dev
+    image: payrudder/mockpsp:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: mockpsp
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: mockpsp
       MOCKPSP_HTTP_ADDR: ":8090"
-      QUOTIFY_METRICS_ADDR: ":9110"
-      QUOTIFY_PG_APP_DSN: postgres://mockpsp_app:mockpsp_app_local@postgres:5432/mockpsp_db
-      QUOTIFY_PG_MIGRATOR_DSN: postgres://mockpsp_migrator:mockpsp_migrator_local@postgres:5432/mockpsp_db
-      QUOTIFY_MIGRATE_ON_START: "true"
+      PAYRUDDER_METRICS_ADDR: ":9110"
+      PAYRUDDER_PG_APP_DSN: postgres://mockpsp_app:mockpsp_app_local@postgres:5432/mockpsp_db
+      PAYRUDDER_PG_MIGRATOR_DSN: postgres://mockpsp_migrator:mockpsp_migrator_local@postgres:5432/mockpsp_db
+      PAYRUDDER_MIGRATE_ON_START: "true"
       MOCKPSP_DECLINE_RATE: ${MOCKPSP_DECLINE_RATE:-0}
       MOCKPSP_ERROR_RATE: ${MOCKPSP_ERROR_RATE:-0}
       MOCKPSP_TIMEOUT_RATE: ${MOCKPSP_TIMEOUT_RATE:-0}
@@ -477,35 +477,35 @@ services:
     build:
       context: ../..
       dockerfile: services/payments-worker/Dockerfile
-    image: quotify/payments-worker:dev
+    image: payrudder/payments-worker:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: payments-worker
-      QUOTIFY_METRICS_ADDR: ":9108"
-      QUOTIFY_PG_SYSTEM_DSN: postgres://payments_system:payments_system_local@postgres:5432/payments_db
-      QUOTIFY_PG_MIGRATOR_DSN: postgres://payments_migrator:payments_migrator_local@postgres:5432/payments_db
-      QUOTIFY_MIGRATE_ON_START: "true"
-      QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: payments-worker
+      PAYRUDDER_METRICS_ADDR: ":9108"
+      PAYRUDDER_PG_SYSTEM_DSN: postgres://payments_system:payments_system_local@postgres:5432/payments_db
+      PAYRUDDER_PG_MIGRATOR_DSN: postgres://payments_migrator:payments_migrator_local@postgres:5432/payments_db
+      PAYRUDDER_MIGRATE_ON_START: "true"
+      PAYRUDDER_RABBITMQ_URL: amqp://payrudder:payrudder_local@rabbitmq:5672/
       MOCKPSP_URL: http://mockpsp:8090
       # Live tenants use mock-psp in the local demo; sandbox tenants always do, whatever this says.
       PAYMENTS_LIVE_PROVIDER: ${PAYMENTS_LIVE_PROVIDER:-mockpsp}
       # The worker refuses to start with the mock as the live provider unless this says the stack is not production (ADR 0022). This compose file is the local stack.
       PAYMENTS_ALLOW_MOCK_LIVE: ${PAYMENTS_ALLOW_MOCK_LIVE:-true}
       # Demo mode: every tenant uses the mock provider, whatever accounts exist. See docs/phases/phase-26-demo-and-mail.md.
-      QUOTIFY_DEMO: ${QUOTIFY_DEMO:-false}
+      PAYRUDDER_DEMO: ${PAYRUDDER_DEMO:-false}
       # Seals tenants' provider credentials (32 bytes, base64). This default is for the local stack only: generate your own with `openssl rand -base64 32`.
-      QUOTIFY_SECRETS_KEY: ${QUOTIFY_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
+      PAYRUDDER_SECRETS_KEY: ${PAYRUDDER_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
       PAYMENTS_HTTP_ADDR: ":8095"
-      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
-      QUOTIFY_BILLING_ADDR: dns:///billing-svc:7005
-      PAYMENTS_INTERNAL_TOKEN: ${QUOTIFY_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_BILLING_ADDR: dns:///billing-svc:7005
+      PAYMENTS_INTERNAL_TOKEN: ${PAYRUDDER_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
       # The UBL and PDF of e-invoices (phase 30) go to the invoices bucket, next to the invoice PDFs.
       S3_ENDPOINT: http://minio:9000
       S3_REGION: us-east-1
       S3_BUCKET: invoices
-      S3_ACCESS_KEY: quotify
-      S3_SECRET_KEY: quotify_local
+      S3_ACCESS_KEY: payrudder
+      S3_SECRET_KEY: payrudder_local
       S3_FORCE_PATH_STYLE: "true"
       # The local stack may point an e-invoice webhook account at http:// and private addresses. Never set this in production.
       EINVOICE_ALLOW_PRIVATE_URLS: ${EINVOICE_ALLOW_PRIVATE_URLS:-true}
@@ -526,20 +526,20 @@ services:
     build:
       context: ../..
       dockerfile: services/invoice-worker/Dockerfile
-    image: quotify/invoice-worker:dev
+    image: payrudder/invoice-worker:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: invoice-worker
-      QUOTIFY_METRICS_ADDR: ":9107"
-      QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: invoice-worker
+      PAYRUDDER_METRICS_ADDR: ":9107"
+      PAYRUDDER_RABBITMQ_URL: amqp://payrudder:payrudder_local@rabbitmq:5672/
       S3_ENDPOINT: http://minio:9000
       S3_REGION: us-east-1
       S3_BUCKET: invoices
       S3_ASSETS_BUCKET: assets
-      S3_ACCESS_KEY: quotify
-      S3_SECRET_KEY: quotify_local
+      S3_ACCESS_KEY: payrudder
+      S3_SECRET_KEY: payrudder_local
       S3_FORCE_PATH_STYLE: "true"
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     depends_on:
       rabbitmq: { condition: service_healthy }
       minio: { condition: service_healthy }
@@ -551,19 +551,19 @@ services:
     build:
       context: ../..
       dockerfile: services/notifier/Dockerfile
-    image: quotify/notifier:dev
+    image: payrudder/notifier:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: notifier
-      QUOTIFY_METRICS_ADDR: ":9109"
-      QUOTIFY_PG_SYSTEM_DSN: postgres://notifier_system:notifier_system_local@postgres:5432/notifier_db
-      QUOTIFY_PG_MIGRATOR_DSN: postgres://notifier_migrator:notifier_migrator_local@postgres:5432/notifier_db
-      QUOTIFY_MIGRATE_ON_START: "true"
-      QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
-      QUOTIFY_KAFKA_BROKERS: redpanda:9092
-      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: notifier
+      PAYRUDDER_METRICS_ADDR: ":9109"
+      PAYRUDDER_PG_SYSTEM_DSN: postgres://notifier_system:notifier_system_local@postgres:5432/notifier_db
+      PAYRUDDER_PG_MIGRATOR_DSN: postgres://notifier_migrator:notifier_migrator_local@postgres:5432/notifier_db
+      PAYRUDDER_MIGRATE_ON_START: "true"
+      PAYRUDDER_RABBITMQ_URL: amqp://payrudder:payrudder_local@rabbitmq:5672/
+      PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       SMTP_ADDR: mailpit:1025
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
@@ -578,34 +578,34 @@ services:
     build:
       context: ../..
       dockerfile: services/billing-svc/Dockerfile
-    image: quotify/billing-svc:dev
+    image: payrudder/billing-svc:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: billing-svc
-      QUOTIFY_GRPC_ADDR: ":7005"
-      QUOTIFY_METRICS_ADDR: ":9105"
-      QUOTIFY_PG_APP_DSN: postgres://billing_app:billing_app_local@postgres:5432/billing_db
-      QUOTIFY_PG_SYSTEM_DSN: postgres://billing_system:billing_system_local@postgres:5432/billing_db
-      QUOTIFY_PG_MIGRATOR_DSN: postgres://billing_migrator:billing_migrator_local@postgres:5432/billing_db
-      QUOTIFY_MIGRATE_ON_START: "true"
-      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
-      QUOTIFY_INGEST_ADDR: dns:///ingest-svc:7002
-      QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003
-      QUOTIFY_KAFKA_BROKERS: redpanda:9092
-      QUOTIFY_RABBITMQ_URL: amqp://quotify:quotify_local@rabbitmq:5672/
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: billing-svc
+      PAYRUDDER_GRPC_ADDR: ":7005"
+      PAYRUDDER_METRICS_ADDR: ":9105"
+      PAYRUDDER_PG_APP_DSN: postgres://billing_app:billing_app_local@postgres:5432/billing_db
+      PAYRUDDER_PG_SYSTEM_DSN: postgres://billing_system:billing_system_local@postgres:5432/billing_db
+      PAYRUDDER_PG_MIGRATOR_DSN: postgres://billing_migrator:billing_migrator_local@postgres:5432/billing_db
+      PAYRUDDER_MIGRATE_ON_START: "true"
+      PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
+      PAYRUDDER_AGGREGATOR_ADDR: dns:///aggregator:7003
+      PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_RABBITMQ_URL: amqp://payrudder:payrudder_local@rabbitmq:5672/
       S3_ENDPOINT: http://minio:9000
       # Presigned links are opened by clients on the host, where MinIO's S3 API is published on 42901.
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:42901}
       S3_BUCKET: invoices
-      S3_ACCESS_KEY: quotify
-      S3_SECRET_KEY: quotify_local
+      S3_ACCESS_KEY: payrudder
+      S3_SECRET_KEY: payrudder_local
       S3_FORCE_PATH_STYLE: "true"
-      QUOTIFY_SCHEDULER_INTERVAL: ${QUOTIFY_SCHEDULER_INTERVAL:-1m}
-      QUOTIFY_SWEEP_INTERVAL: ${QUOTIFY_SWEEP_INTERVAL:-30s}
-      QUOTIFY_STEP_TIMEOUT: ${QUOTIFY_STEP_TIMEOUT:-2m}
-      QUOTIFY_WATERMARK_DELAY: ${QUOTIFY_WATERMARK_DELAY:-30s}
-      QUOTIFY_DUNNING_SANDBOX: ${QUOTIFY_DUNNING_SANDBOX:-1m,3m,7m}
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_SCHEDULER_INTERVAL: ${PAYRUDDER_SCHEDULER_INTERVAL:-1m}
+      PAYRUDDER_SWEEP_INTERVAL: ${PAYRUDDER_SWEEP_INTERVAL:-30s}
+      PAYRUDDER_STEP_TIMEOUT: ${PAYRUDDER_STEP_TIMEOUT:-2m}
+      PAYRUDDER_WATERMARK_DELAY: ${PAYRUDDER_WATERMARK_DELAY:-30s}
+      PAYRUDDER_DUNNING_SANDBOX: ${PAYRUDDER_DUNNING_SANDBOX:-1m,3m,7m}
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42705:7005", "42915:9105"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -623,18 +623,18 @@ services:
     build:
       context: ../..
       dockerfile: services/analytics-svc/Dockerfile
-    image: quotify/analytics-svc:dev
+    image: payrudder/analytics-svc:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: analytics-svc
-      QUOTIFY_GRPC_ADDR: ":7006"
-      QUOTIFY_METRICS_ADDR: ":9106"
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: analytics-svc
+      PAYRUDDER_GRPC_ADDR: ":7006"
+      PAYRUDDER_METRICS_ADDR: ":9106"
       CLICKHOUSE_ADDR: clickhouse:9000
-      CLICKHOUSE_DB: quotify
-      CLICKHOUSE_USER: quotify
-      CLICKHOUSE_PASSWORD: quotify_local
-      QUOTIFY_KAFKA_BROKERS: redpanda:9092
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      CLICKHOUSE_DB: payrudder
+      CLICKHOUSE_USER: payrudder
+      CLICKHOUSE_PASSWORD: payrudder_local
+      PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42706:7006", "42916:9106"]
     depends_on:
       clickhouse: { condition: service_healthy }
@@ -647,26 +647,26 @@ services:
     build:
       context: ../..
       dockerfile: services/assets-svc/Dockerfile
-    image: quotify/assets-svc:dev
+    image: payrudder/assets-svc:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: assets-svc
-      QUOTIFY_GRPC_ADDR: ":7007"
-      QUOTIFY_METRICS_ADDR: ":9111"
-      QUOTIFY_PG_APP_DSN: postgres://assets_app:assets_app_local@postgres:5432/assets_db
-      QUOTIFY_PG_SYSTEM_DSN: postgres://assets_system:assets_system_local@postgres:5432/assets_db
-      QUOTIFY_PG_MIGRATOR_DSN: postgres://assets_migrator:assets_migrator_local@postgres:5432/assets_db
-      QUOTIFY_MIGRATE_ON_START: "true"
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: assets-svc
+      PAYRUDDER_GRPC_ADDR: ":7007"
+      PAYRUDDER_METRICS_ADDR: ":9111"
+      PAYRUDDER_PG_APP_DSN: postgres://assets_app:assets_app_local@postgres:5432/assets_db
+      PAYRUDDER_PG_SYSTEM_DSN: postgres://assets_system:assets_system_local@postgres:5432/assets_db
+      PAYRUDDER_PG_MIGRATOR_DSN: postgres://assets_migrator:assets_migrator_local@postgres:5432/assets_db
+      PAYRUDDER_MIGRATE_ON_START: "true"
       S3_ENDPOINT: http://minio:9000
       # Presigned part and download URLs are opened by clients on the host, where MinIO's S3 API is published on 42901.
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:42901}
       S3_BUCKET: assets
-      S3_ACCESS_KEY: quotify
-      S3_SECRET_KEY: quotify_local
+      S3_ACCESS_KEY: payrudder
+      S3_SECRET_KEY: payrudder_local
       S3_FORCE_PATH_STYLE: "true"
       ASSETS_VERIFY_INTERVAL: ${ASSETS_VERIFY_INTERVAL:-30s}
       ASSETS_SWEEP_INTERVAL: ${ASSETS_SWEEP_INTERVAL:-1m}
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42707:7007", "42921:9111"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -674,7 +674,7 @@ services:
     deploy: { resources: { limits: { memory: 96m } } }
 
   # A stand-in for Google (pkg/oidctest), only with `--profile oidc`: "Continue with Google" works without a Google client. Development only.
-  # To use it: QUOTIFY_GOOGLE_CLIENT_ID=mock-client-id QUOTIFY_GOOGLE_CLIENT_SECRET=mock-client-secret QUOTIFY_GOOGLE_ISSUER=http://mockoidc:8099
+  # To use it: PAYRUDDER_GOOGLE_CLIENT_ID=mock-client-id PAYRUDDER_GOOGLE_CLIENT_SECRET=mock-client-secret PAYRUDDER_GOOGLE_ISSUER=http://mockoidc:8099
   # (the gateway reaches it by name; the browser goes to http://localhost:42899).
   mockoidc:
     <<: *defaults
@@ -682,15 +682,15 @@ services:
     build:
       context: ../..
       dockerfile: pkg/oidctest/cmd/mockoidc/Dockerfile
-    image: quotify/mockoidc:dev
-    labels: { quotify.dev-only: "true" }   # never deployed: no Railway service, no memory budget (tests/railway, tests/membudget)
+    image: payrudder/mockoidc:dev
+    labels: { payrudder.dev-only: "true" }   # never deployed: no Railway service, no memory budget (tests/railway, tests/membudget)
     environment:
       MOCKOIDC_ADDR: ":8099"
       MOCKOIDC_ISSUER: http://mockoidc:8099
       MOCKOIDC_BROWSER_URL: http://localhost:42899
       MOCKOIDC_CLIENT_ID: mock-client-id
       MOCKOIDC_CLIENT_SECRET: mock-client-secret
-      MOCKOIDC_REDIRECT_URI: ${QUOTIFY_APP_URL:-http://localhost:42301}/gw/auth/google/callback
+      MOCKOIDC_REDIRECT_URI: ${PAYRUDDER_APP_URL:-http://localhost:42301}/gw/auth/google/callback
     ports: ["42899:8099"]
     deploy: { resources: { limits: { memory: 32m } } }
 
@@ -701,10 +701,10 @@ services:
     profiles: [app]
     build:
       context: ../../web/admin
-    image: quotify/admin-ui:dev
+    image: payrudder/admin-ui:dev
     environment:
       GATEWAY_URL: http://gateway:8000
-      QUOTIFY_DEMO: ${QUOTIFY_DEMO:-false}
+      PAYRUDDER_DEMO: ${PAYRUDDER_DEMO:-false}
       BRAND_NAME: ${BRAND_NAME:-Payrudder}
       # Local stack only: the operator playground's account form comes pre-filled.
       PREFILL_PLAYGROUND: "true"
@@ -724,41 +724,41 @@ services:
     build:
       context: ../..
       dockerfile: services/gateway/Dockerfile
-    image: quotify/gateway:dev
+    image: payrudder/gateway:dev
     environment:
-      QUOTIFY_ENV: local
-      QUOTIFY_SERVICE_NAME: gateway
-      QUOTIFY_HTTP_ADDR: ":8000"
-      QUOTIFY_METRICS_ADDR: ":9100"
+      PAYRUDDER_ENV: local
+      PAYRUDDER_SERVICE_NAME: gateway
+      PAYRUDDER_HTTP_ADDR: ":8000"
+      PAYRUDDER_METRICS_ADDR: ":9100"
       # Where customers reach the gateway: the hosted invoice links it hands out start with this.
-      QUOTIFY_PUBLIC_URL: ${QUOTIFY_PUBLIC_URL:-http://localhost:42800}
-      QUOTIFY_PLANS_ADDR: dns:///plans-svc:7001
-      QUOTIFY_INGEST_ADDR: dns:///ingest-svc:7002
-      QUOTIFY_AGGREGATOR_ADDR: dns:///aggregator:7003
-      QUOTIFY_LIMITS_ADDR: dns:///limits-svc:7004
-      QUOTIFY_BILLING_ADDR: dns:///billing-svc:7005
-      QUOTIFY_ANALYTICS_ADDR: dns:///analytics-svc:7006
-      QUOTIFY_ASSETS_ADDR: dns:///assets-svc:7007
-      QUOTIFY_REDIS_URL: redis://redis:6379/0
-      QUOTIFY_OPERATOR_TOKEN: ${QUOTIFY_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
-      QUOTIFY_ALLOWED_ENVIRONMENTS: ${QUOTIFY_ALLOWED_ENVIRONMENTS:-sandbox,live}
-      QUOTIFY_PAYMENTS_URL: http://payments-worker:8095
-      QUOTIFY_PAYMENTS_INTERNAL_TOKEN: ${QUOTIFY_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
+      PAYRUDDER_PUBLIC_URL: ${PAYRUDDER_PUBLIC_URL:-http://localhost:42800}
+      PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
+      PAYRUDDER_AGGREGATOR_ADDR: dns:///aggregator:7003
+      PAYRUDDER_LIMITS_ADDR: dns:///limits-svc:7004
+      PAYRUDDER_BILLING_ADDR: dns:///billing-svc:7005
+      PAYRUDDER_ANALYTICS_ADDR: dns:///analytics-svc:7006
+      PAYRUDDER_ASSETS_ADDR: dns:///assets-svc:7007
+      PAYRUDDER_REDIS_URL: redis://redis:6379/0
+      PAYRUDDER_OPERATOR_TOKEN: ${PAYRUDDER_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
+      PAYRUDDER_ALLOWED_ENVIRONMENTS: ${PAYRUDDER_ALLOWED_ENVIRONMENTS:-sandbox,live}
+      PAYRUDDER_PAYMENTS_URL: http://payments-worker:8095
+      PAYRUDDER_PAYMENTS_INTERNAL_TOKEN: ${PAYRUDDER_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
       # A proxy in front of the gateway (the console's Worker in production, `vite preview` here) passes the visitor's address; the sign-in limits count by it (docs/phases/phase-38-product-app.md).
-      QUOTIFY_TRUST_FORWARDED_FOR: "true"
+      PAYRUDDER_TRUST_FORWARDED_FOR: "true"
       # Optional: believe X-Forwarded-For from a public proxy that sends this value as X-Edge-Auth (the console Worker's EDGE_AUTH_SECRET), or from these CIDRs. Both empty here.
-      QUOTIFY_TRUSTED_PROXY_SECRET: ${QUOTIFY_TRUSTED_PROXY_SECRET:-}
-      QUOTIFY_TRUSTED_PROXIES: ${QUOTIFY_TRUSTED_PROXIES:-}
+      PAYRUDDER_TRUSTED_PROXY_SECRET: ${PAYRUDDER_TRUSTED_PROXY_SECRET:-}
+      PAYRUDDER_TRUSTED_PROXIES: ${PAYRUDDER_TRUSTED_PROXIES:-}
       # The operator console is for people: whoever signs in with one of these addresses (and has verified it) is a platform operator. The dev seed's
-      # first user by default. The operator token above is the machine credential only (scripts, quotifyctl, tests); no page asks for it.
-      QUOTIFY_OPERATOR_EMAILS: ${QUOTIFY_OPERATOR_EMAILS:-user1@example.com}
+      # first user by default. The operator token above is the machine credential only (scripts, payrudderctl, tests); no page asks for it.
+      PAYRUDDER_OPERATOR_EMAILS: ${PAYRUDDER_OPERATOR_EMAILS:-user1@example.com}
       # "Continue with Google": shown only when both are set. For a real client see docs/13-admin-ui.md; for the in-repo mock provider start the `oidc`
       # profile and set the three values listed in docs/10-local-dev.md.
-      QUOTIFY_APP_URL: ${QUOTIFY_APP_URL:-http://localhost:42301}
-      QUOTIFY_GOOGLE_CLIENT_ID: ${QUOTIFY_GOOGLE_CLIENT_ID:-}
-      QUOTIFY_GOOGLE_CLIENT_SECRET: ${QUOTIFY_GOOGLE_CLIENT_SECRET:-}
-      QUOTIFY_GOOGLE_ISSUER: ${QUOTIFY_GOOGLE_ISSUER:-https://accounts.google.com}
-      QUOTIFY_OTLP_ENDPOINT: otel-collector:4317
+      PAYRUDDER_APP_URL: ${PAYRUDDER_APP_URL:-http://localhost:42301}
+      PAYRUDDER_GOOGLE_CLIENT_ID: ${PAYRUDDER_GOOGLE_CLIENT_ID:-}
+      PAYRUDDER_GOOGLE_CLIENT_SECRET: ${PAYRUDDER_GOOGLE_CLIENT_SECRET:-}
+      PAYRUDDER_GOOGLE_ISSUER: ${PAYRUDDER_GOOGLE_ISSUER:-https://accounts.google.com}
+      PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42800:8000", "42910:9100"]
     depends_on:
       plans-svc: { condition: service_started }

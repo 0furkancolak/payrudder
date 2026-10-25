@@ -125,7 +125,7 @@
     },
     "jobs": {
       "title": "Yeniden oynatma ve yeniden fiyatlama işleri",
-      "hint": "Bir işi kimliğiyle sorgulayın (işleri quotifyctl veya yönetici API'si ile başlatın).",
+      "hint": "Bir işi kimliğiyle sorgulayın (işleri payrudderctl veya yönetici API'si ile başlatın).",
       "idLabel": "İş kimliği",
       "replay": "Yeniden oynatma işi",
       "rerating": "Yeniden fiyatlama işi"
@@ -699,7 +699,7 @@
     },
     "webhooks": {
       "title": "Webhooklar",
-      "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Payrudder bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Quotify-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
+      "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Payrudder bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Payrudder-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
       "formLabel": "yeni webhook uç noktası",
       "url": "Uç nokta URL'si",
       "description": "Açıklama",
@@ -1203,7 +1203,11 @@
         "not_paid": "Yalnızca ödenmiş bir fatura için alacak dekontu düzenlenebilir.",
         "nothing_to_refund": "Bu alacak dekontu için karta iade edilecek bir tutar yok.",
         "refund_not_failed": "Yalnızca iadesi başarısız olan bir alacak dekontu yeniden denenebilir.",
-        "bad_id": "Alacak dekontu kimliği geçerli bir kimlik değil."
+        "bad_id": "Alacak dekontu kimliği geçerli bir kimlik değil.",
+        "bad_page_size": "Sayfa boyutu 1 ile 200 arasında olmalı.",
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
+        "not_found": "Bu alacak dekontu bulunamadı.",
+        "reason_too_long": "Gerekçe en fazla 500 karakter olabilir."
       },
       "dunning": {
         "bad_delay": "Her yeniden deneme gecikmesi 1 ile 720 saat arasında olmalı.",
@@ -1212,12 +1216,18 @@
       "invoice": {
         "not_found": "Fatura bulunamadı.",
         "pdf_not_ready": "Fatura PDF'i henüz hazırlanmadı. Birazdan tekrar deneyin.",
-        "bad_id": "Fatura kimliği geçerli bir kimlik değil."
+        "bad_id": "Fatura kimliği geçerli bir kimlik değil.",
+        "bad_customer_id": "Müşteri kimliği geçerli bir kimlik değil.",
+        "bad_page_size": "Sayfa boyutu 1 ile 500 arasında olmalı.",
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
+        "pdf_sign_failed": "PDF indirme bağlantısı oluşturulamadı. Biraz sonra yeniden deneyin.",
+        "pdf_failed": "Fatura PDF'i oluşturulamadı. Fatura verilerini kontrol edin."
       },
       "invoice_link": {
         "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
         "draft_invoice": "Taslak bir fatura bağlantıyla paylaşılamaz.",
-        "not_found": "Fatura bağlantısı bulunamadı."
+        "not_found": "Fatura bağlantısı bulunamadı.",
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın."
       },
       "payment": {
         "amount_mismatch": "Ödeme, faturanın tutarı için değil.",
@@ -1232,6 +1242,8 @@
         "reference_reused": "Bu referans farklı bir tutarla zaten kaydedilmiş."
       },
       "payment_link": {
+        "bad_promotion_code": "Promosyon kodu 2 ila 40 harf, rakam, - veya _ olmalıdır ve tek seferlik ya da kredi paketi bağlantısına aittir; var olan bir fatura değiştirilmez.",
+        "free_total": "Bu promosyon kodu fiyatın tamamını düşüyor, ödenecek bir şey kalmıyor. Bunun yerine satın alımı doğrudan tanımlayın.",
         "bad_amount": "Tutar, küçük birimlerde pozitif bir sayı olmalıdır.",
         "bad_currency": "Bu para birimi desteklenmiyor.",
         "bad_description": "Açıklama zorunludur, en fazla 200 karakter.",
@@ -1288,14 +1300,56 @@
         "unknown_currency": "Para birimi desteklenmiyor."
       },
       "einvoice": {
-        "bad_id": "E-fatura veya hesap kimliği geçerli bir kimlik değil."
+        "bad_id": "E-fatura veya hesap kimliği geçerli bir kimlik değil.",
+        "bad_file_kind": "Dosya türü xml ya da pdf olmalı.",
+        "bad_page_size": "Sayfa boyutu 1 ile 200 arasında olmalı.",
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
+        "bad_status": "Durum pending, issued, failed ya da cancelled olmalı."
       },
       "tenant": {
         "bad_id": "Hesap kimliği geçerli bir kimlik değil."
       },
       "rerating": {
         "bad_job_id": "Yeniden fiyatlama işi kimliği geçerli bir kimlik değil.",
-        "bad_plan_version_id": "Plan sürümü kimliği geçerli bir kimlik değil."
+        "bad_plan_version_id": "Plan sürümü kimliği geçerli bir kimlik değil.",
+        "not_found": "Bu yeniden fiyatlama işi bulunamadı.",
+        "run_not_completed": "O dönemin faturalama çalışması henüz tamamlanmadı.",
+        "unavailable": "Yeniden fiyatlama şu anda başlatılamadı. Yeniden deneyin.",
+        "unknown_plan_version": "Bu plan sürümü yok."
+      },
+      "dead_letter": {
+        "broker_unavailable": "Mesaj aracısına şu anda ulaşılamıyor. Yeniden deneyin.",
+        "invalid": "Bu ölü mektup isteği geçerli değil.",
+        "not_configured": "Bu kurulumda ölü mektup işlemleri yapılandırılmamış."
+      },
+      "hosted": {
+        "customer_unavailable": "Müşteri şu anda sorgulanamadı. Biraz sonra yeniden deneyin.",
+        "seller_unavailable": "Satıcı bilgileri şu anda sorgulanamadı. Biraz sonra yeniden deneyin.",
+        "tenant_unavailable": "Hesap şu anda sorgulanamadı. Biraz sonra yeniden deneyin."
+      },
+      "report": {
+        "bad_group_by": "Gruplama yalnızca dönem, sağlayıcı ve ülkeyi içerebilir.",
+        "bad_limit": "Sınır 1 ile 500 arasında olmalı.",
+        "bad_period": "İlk ve son dönem 2026-10 biçiminde olmalı.",
+        "period_order": "İlk dönem son dönemden sonra olamaz."
+      },
+      "request": {
+        "bad_id": "İstekteki bir kimlik geçerli bir kimlik değil."
+      },
+      "run": {
+        "bad_period": "Dönem 2026-11 biçiminde olmalı.",
+        "not_closable": "Bu dönem şu anda kapatılamaz.",
+        "not_found": "O dönem için faturalama çalışması yok.",
+        "period_open": "O dönem henüz kapanmadı, bu yüzden faturalanamaz.",
+        "retry_later": "Faturalama çalışması şu anda ilerleyemedi. Yeniden denenecek.",
+        "sandbox_only": "Bir dönemi hemen kapatmak yalnızca sandbox hesaplarında mümkün."
+      },
+      "saga": {
+        "event_not_possible": "Fatura mevcut ödeme durumundayken bu yapılamaz.",
+        "not_found": "Bu faturanın henüz bir ödeme süreci yok: kesinleştirilmemiş."
+      },
+      "storage": {
+        "not_configured": "Bu kurulumda dosya depolama yapılandırılmamış."
       }
     },
     "coupon": {
@@ -1323,7 +1377,16 @@
       "subscription": {
         "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın.",
         "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin.",
-        "period_overlap": "Bu müşterinin o dönemle çakışan bir aboneliği zaten var."
+        "period_overlap": "Bu müşterinin o dönemle çakışan bir aboneliği zaten var.",
+        "already_linked": "Bu abonelik zaten bir ödeme sağlayıcısına bağlı.",
+        "bad_period": "Bu aboneliğin faturalama dönemi hesaplanamıyor.",
+        "billed_in_arrears": "Bu abonelik dönem sonunda faturalanıyor: peşin ücret ödenmedi.",
+        "changed_concurrently": "Abonelik aynı anda değişti. Sayfayı yenileyip yeniden deneyin.",
+        "ended": "Abonelik zaten sona erdi.",
+        "ending_or_ended": "Abonelik zaten sona erdi ya da sona ermesi planlandı.",
+        "no_scheduled_cancel": "Geri çekilecek planlanmış bir iptal yok.",
+        "run_by_provider": "Bu abonelik bir ödeme sağlayıcısı tarafından yürütülüyor. Değişikliği orada yapın.",
+        "transition_not_allowed": "Bu işlem aboneliğin mevcut durumunda yapılamaz."
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
@@ -1331,7 +1394,8 @@
         "tenant_not_active": "Bu ortam etkin olmadığı için webhook uç noktası ekleyemez. Önce canlıya geçiş listesini tamamlayın."
       },
       "customer": {
-        "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil."
+        "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil.",
+        "quota_reached": "Bu hesabın planının müşteri sınırına ulaşıldı."
       },
       "common": {
         "not_found": "Bulunamadı.",
@@ -1343,7 +1407,8 @@
         "settings_immutable": "Bir hesabın para birimi, saat dilimi ve ortamı değiştirilemez.",
         "bad_status": "Durum active veya suspended olmalıdır.",
         "bad_transition": "Bu durum değişikliği bu ortam için mümkün değil.",
-        "reason_required": "Bir ortamı listesi tamamlanmadan etkinleştirmek için gerekçe gerekir."
+        "reason_required": "Bir ortamı listesi tamamlanmadan etkinleştirmek için gerekçe gerekir.",
+        "unknown": "Bu hesap tanınmıyor."
       },
       "request": {
         "invalid": "{field} geçerli değil: {detail}"
@@ -1351,6 +1416,43 @@
       "api_key": {
         "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
         "tenant_not_active": "Bu ortam etkin olmadığı için API anahtarı alamaz. Önce canlıya geçiş listesini tamamlayın."
+      },
+      "change": {
+        "bad_proration": "Bu plan değişikliğinin ücreti bu dönem için hesaplanamıyor.",
+        "billed_in_arrears": "Bu abonelik dönem sonunda faturalanıyor. Planını, ayı zamana göre bölen ChangePlan ile değiştirin.",
+        "fee_not_invoiced": "Mevcut dönemin ücreti henüz faturalanmadı. Birazdan yeniden deneyin.",
+        "invalid": "Bu değişiklik bu abonelik için geçerli değil.",
+        "none_scheduled": "Bu abonelik için planlanmış bir değişiklik yok.",
+        "state_not_changeable": "Mevcut durumdaki bir abonelik plan değiştiremez.",
+        "subscription_ended": "Sona ermiş ya da sona ermekte olan bir abonelik plan değiştiremez.",
+        "use_change_subscription": "Ücreti peşin faturalanan bir abonelik ChangeSubscription ile değiştirilir."
+      },
+      "coupon": {
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
+        "bad_state": "Durum active, inactive ya da boş olmalı.",
+        "codes_exhausted": "Yeterince kullanılmamış kod bulunamadı. Daha uzun bir önek deneyin.",
+        "fee_not_in_advance": "Kupon, peşin faturalanan bir ücretten indirim yapar. Bu aboneliğin ücreti başka şekilde faturalanıyor.",
+        "none_on_subscription": "Bu aboneliğin kuponu yok.",
+        "subscription_ended": "Sona ermiş bir aboneliğe kupon uygulanamaz."
+      },
+      "fee": {
+        "invalid_period": "Bu aboneliğin faturalama dönemi hesaplanamıyor.",
+        "not_period_start": "Bu bir faturalama döneminin başlangıcı değil."
+      },
+      "meter": {
+        "changed_concurrently": "Aynı anda başka bir sayaç sürümü oluşturuldu. Yeniden deneyin.",
+        "quota_reached": "Bu hesabın planının sayaç sınırına ulaşıldı."
+      },
+      "migration": {
+        "aborted": "Geçiş iptal edildi.",
+        "already_completed": "Geçiş zaten tamamlandı.",
+        "cannot_abort": "Geçiş tamamlandı ve iptal edilemez.",
+        "state_not_movable": "Mevcut durumdaki bir abonelik başka bir sağlayıcıya taşınamaz.",
+        "subscription_ended": "Abonelik sona erdi ya da sona eriyor, bu yüzden taşınamaz."
+      },
+      "plan": {
+        "no_fixed_fee": "Bu plan sürümünün bu para biriminde bu aralık için sabit ücreti yok.",
+        "no_metered_price": "Bu plan sürümünün ölçümlü fiyatları var ama bu para biriminde yok."
       }
     },
     "common": {
@@ -1365,7 +1467,8 @@
       "timeout": "İstek çok uzun sürdü. Tekrar deneyin.",
       "conflict": "Siz çalışırken veri değişti. Sayfayı yenileyip tekrar deneyin.",
       "not_implemented": "Bu henüz desteklenmiyor.",
-      "internal": "Bizim tarafta bir sorun oluştu. Tekrar deneyin; sürerse istek kimliğiyle günlüklere bakın."
+      "internal": "Bizim tarafta bir sorun oluştu. Tekrar deneyin; sürerse istek kimliğiyle günlüklere bakın.",
+      "canceled": "İstek iptal edildi."
     },
     "payments": {
       "transfer": {
@@ -1380,10 +1483,88 @@
         "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
         "nothing_pending": "Reddedilecek bekleyen bir havale yok.",
         "bad_outcome": "Sonuç reddedildi veya süresi doldu olmalı.",
-        "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin."
+        "unavailable": "Ödeme servisi şu an kullanılamıyor. Biraz sonra yeniden deneyin.",
+        "bad_body": "İstek gövdesi okunamadı: çok büyük olmayan geçerli bir JSON gönderin.",
+        "bad_invoice_id": "Fatura kimliği geçerli bir kimlik değil.",
+        "bad_tenant": "Hesap kimliği geçerli bir kimlik değil.",
+        "invoice_not_found": "Bu fatura bulunamadı."
       },
       "account": {
+        "bad_settings": "Bu sağlayıcı ayarları geçerli değil. Kimlik bilgilerini ve zorunlu alanları kontrol edin.",
+        "not_found": "Bu hesapta böyle bir ödeme sağlayıcısı kurulu değil.",
+        "sync_failed": "Sağlayıcı hesabı değişti ama banka bilgileri faturalara aktarılamadı. İsteği yeniden gönderin.",
         "livemode_mismatch": "Bu sağlayıcı hesabı sağlayıcının diğer moduna işaret ediyor: canlı ortam sağlayıcının canlı uç noktasını ve canlı anahtarlarını, sandbox ortamı ise test uç noktasını kullanmalıdır."
+      },
+      "billing": {
+        "not_configured": "Bu kurulumda faturalama yapılandırılmamış.",
+        "failed": "Faturalama servisi bunu tamamlayamadı. Biraz sonra yeniden deneyin."
+      },
+      "plans": {
+        "not_configured": "Bu kurulumda planlar yapılandırılmamış.",
+        "failed": "Planlar servisi bunu tamamlayamadı. Biraz sonra yeniden deneyin."
+      },
+      "checkout": {
+        "currency_unsupported": "Bu sağlayıcı bu para biriminde ödeme sayfasıyla tahsilat yapamıyor.",
+        "fields_required": "Sağlayıcı ve fiyat referansı gerekli.",
+        "unsupported": "Bu sağlayıcının barındırılan bir ödeme sayfası yok."
+      },
+      "customer": {
+        "not_ready": "Müşteri sağlayıcıda hazırlanamadı."
+      },
+      "invoice": {
+        "amount_required": "Tutar ve para birimi gerekli.",
+        "bad_id": "Fatura kimliği geçerli bir kimlik değil.",
+        "bad_ids": "Fatura kimlikleri geçerli kimlikler değil.",
+        "no_instructions": "Bu sağlayıcının bu para birimi için ödeme talimatı yok.",
+        "not_live": "Yalnızca canlı faturalar bir sağlayıcı üzerinden ödenir.",
+        "payment_in_progress": "Bu fatura için bir ödeme başlatılıyor. Birazdan yeniden deneyin.",
+        "return_url_required": "Ödeme sayfası için bir dönüş adresi gerekli.",
+        "unknown_method": "Bu ödeme yöntemi tanınmıyor."
+      },
+      "ledger": {
+        "bad_limit": "Sınır 1 ile 1000 arasında olmalı.",
+        "too_many_invoices": "Aynı anda çok fazla fatura istendi."
+      },
+      "migration": {
+        "fields_required": "Abonelik ve hedef sağlayıcı gerekli.",
+        "price_ref_required": "Bu sağlayıcı abonelikleri kendisi yürütür: kataloğundaki fiyat referansı gerekli."
+      },
+      "plan": {
+        "code_required": "Plan kodu gerekli."
+      },
+      "provider": {
+        "failed": "Ödeme sağlayıcısı bunu tamamlayamadı. Biraz sonra yeniden deneyin.",
+        "not_supported": "Bu ödeme sağlayıcısı bunu desteklemiyor.",
+        "unknown": "Bu ödeme sağlayıcısı tanınmıyor."
+      },
+      "reconcile": {
+        "bad_period": "Dönem 2026-10 biçiminde olmalı."
+      },
+      "request": {
+        "bad_body": "İstek gövdesi geçerli bir JSON olmalı.",
+        "bad_environment": "Ortam sandbox ya da live olmalı.",
+        "bad_tenant": "Hesap kimliği geçerli bir kimlik değil.",
+        "too_large": "İstek çok büyük."
+      },
+      "subscription": {
+        "cannot_cancel": "Bu sağlayıcı aboneliği buradan iptal edemiyor.",
+        "change_refused": "Bu abonelik değişikliği yapılamıyor.",
+        "period_end_unknown": "Sağlayıcıdaki ödenmiş dönemin sonu henüz bilinmiyor: henüz bir bildirim gelmedi.",
+        "wrong_provider": "Bu abonelik bu sağlayıcı tarafından yürütülmüyor."
+      },
+      "webhook": {
+        "malformed": "Bildirim okunamadı.",
+        "not_found": "Böyle bir bildirim adresi yok.",
+        "not_recorded": "Bildirim kaydedilemedi. Yeniden gönderin.",
+        "try_again": "Bildirim henüz doğrulanamadı. Yeniden gönderin.",
+        "unverified": "Bildirimin sağlayıcıdan geldiği doğrulanamadı."
+      },
+      "charge": {
+        "currency_not_supported": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamıyor.",
+        "pending": "Ödeme kabul edildi ve tahsilatın tamamlanması bekleniyor.",
+        "provider_not_configured": "Bu hesap için bir ödeme sağlayıcısı kurulu değil.",
+        "rejected": "Ödeme sağlayıcısı isteği reddetti.",
+        "timeout": "Ödeme sağlayıcısı zamanında yanıt vermedi."
       }
     },
     "einvoice": {
@@ -1429,7 +1610,11 @@
         "already_rotating": "Bu anahtar zaten yenilendi ve yakında sona erecek. İptal edin ya da bitmesini bekleyin.",
         "bad_overlap": "Geçiş süresi 0 saat ile 7 gün arasında olmalıdır.",
         "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
-        "not_active": "Bu API anahtarı iptal edilmiş."
+        "not_active": "Bu API anahtarı iptal edilmiş.",
+        "invalid": "API anahtarı geçerli değil.",
+        "missing": "API anahtarınızı Authorization başlığında Bearer belirteci olarak gönderin.",
+        "sandbox_only": "Bu uç nokta yalnızca sandbox anahtarları (qk_test_) içindir.",
+        "prefix_unavailable": "Benzersiz bir anahtar öneki ayrılamadı. Yeniden deneyin."
       },
       "app": {
         "not_found": "Bu uygulama yok ya da size ait değil.",
@@ -1437,13 +1622,20 @@
       },
       "auth": {
         "invalid_credentials": "E-posta ya da parola yanlış veya çok fazla deneme yapıldı. Beş yanlış paroladan sonra o adres için giriş, doğru parolayla bile 15 dakika durdurulur.",
-        "rate_limited": "Bu adresten çok fazla deneme yapıldı. Bir dakika sonra yeniden deneyin."
+        "rate_limited": "Bu adresten çok fazla deneme yapıldı. Bir dakika sonra yeniden deneyin.",
+        "unavailable": "Kimlik doğrulama şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
       },
       "session": {
-        "invalid": "Oturumunuz sona erdi. Yeniden giriş yapın."
+        "invalid": "Oturumunuz sona erdi. Yeniden giriş yapın.",
+        "act_as_required": "Oturum açılmış bir oturum hangi hesap adına işlem yaptığını belirtmeli.",
+        "unavailable": "Oturum açma geçici olarak kullanılamıyor. Biraz sonra yeniden deneyin."
       },
       "tenant": {
-        "not_found": "Bu ortam yok ya da size ait değil."
+        "not_found": "Bu ortam yok ya da size ait değil.",
+        "bad_metadata": "İstekteki hesap geçerli değil.",
+        "metadata_missing": "İstek hangi hesap için olduğunu belirtmiyor.",
+        "bad_act_as": "İşlem yapılacak hesap geçerli bir hesap kimliği olmalı.",
+        "lookup_unavailable": "Hesap şu anda sorgulanamadı. Biraz sonra yeniden deneyin."
       },
       "token": {
         "invalid": "Bu bağlantı geçersiz, süresi dolmuş ya da daha önce kullanılmış. Yenisini isteyin."
@@ -1476,7 +1668,8 @@
         "not_configured": "Google ile giriş burada kurulu değil."
       },
       "operator": {
-        "forbidden": "Bu alan platform operatörlerine ayrılmıştır."
+        "forbidden": "Bu alan platform operatörlerine ayrılmıştır.",
+        "required": "Bu alan platform operatörleri içindir. Operatör olarak oturum açın."
       },
       "go_live": {
         "incomplete": "Canlıya geçiş listesi henüz tamamlanmadı.",
@@ -1488,15 +1681,34 @@
     "gateway": {
       "dashboard": {
         "bad_period": "Bu dönem geçerli değil. 7, 30 ya da 90 gün, bu yıl veya ilki sonuncudan sonra olmayan iki gün seçin.",
-        "range_too_long": "Bir dönem en fazla iki yıl olabilir."
+        "range_too_long": "Bir dönem en fazla iki yıl olabilir.",
+        "limits_unavailable": "Kullanım limitleri şu anda kullanılamıyor, bu yüzden bu görünüm oluşturulamıyor. Biraz sonra yeniden deneyin.",
+        "payments_unavailable": "Ödemeler şu anda kullanılamıyor, bu yüzden bu görünüm oluşturulamıyor. Biraz sonra yeniden deneyin."
       },
       "request": {
         "invalid": "{field} geçerli değil: {detail}",
-        "too_large": "İstek çok büyük."
+        "too_large": "İstek çok büyük.",
+        "bad_tenant_id": "Hesap kimliği geçerli bir kimlik değil.",
+        "malformed_json": "İstek gövdesi geçerli bir JSON değil.",
+        "unreadable_body": "İstek gövdesi okunamadı."
       },
       "auth": {
         "scope_denied": "Bu API anahtarının kapsamı bu isteğe izin vermiyor. Daha geniş kapsamlı bir anahtar kullanın.",
         "tenant_not_active": "Bu ortam askıya alınmış ya da henüz etkin değil. Canlıya geçiş listesini tamamlayın veya destekle iletişime geçin."
+      },
+      "assets": {
+        "bad_invoice_logo": "Fatura logosu, fatura logosu türünde tamamlanmış bir yükleme olmalı."
+      },
+      "payments": {
+        "ledger_unreachable": "Ödeme defterine şu anda ulaşılamıyor. Biraz sonra yeniden deneyin.",
+        "not_configured": "Bu kurulumda ödeme sağlayıcıları yapılandırılmamış.",
+        "unreachable": "Ödeme servisine şu anda ulaşılamıyor. Biraz sonra yeniden deneyin."
+      },
+      "rate_limit": {
+        "exceeded": "Bu türden çok fazla istek var. Biraz bekleyip yeniden deneyin."
+      },
+      "route": {
+        "not_found": "API'de böyle bir adres yok."
       }
     },
     "env": {
@@ -1511,10 +1723,25 @@
       },
       "period": {
         "bad_id": "Dönem 2026-11 biçiminde olmalı.",
-        "cannot_compute": "Bu dönemin ayarları hesaplanamıyor. Dönemi ve hesabın saat dilimini kontrol edin."
+        "cannot_compute": "Bu dönemin ayarları hesaplanamıyor. Dönemi ve hesabın saat dilimini kontrol edin.",
+        "frozen": "Bu dönem dondurulmuş ya da zaten beş saniye içinde kapanıyor, bu yüzden erken kapatılamaz.",
+        "not_sandbox": "Dönemler yalnızca sandbox hesabında erken kapatılabilir."
       },
       "usage": {
         "bad_batch_size": "Bir seferde 1 ile izin verilen en fazla kullanım anahtarı kadar isteyin."
+      },
+      "meter": {
+        "not_found": "Bu sayaç bulunamadı."
+      },
+      "replay": {
+        "bad_job_id": "Yeniden oynatma işi kimliği geçerli bir kimlik değil.",
+        "bad_state": "Yeniden oynatma işi bunun yapılabileceği bir durumda değil.",
+        "bad_tenant_id": "Hesap kimliği geçerli bir kimlik değil.",
+        "invalid": "Bu yeniden oynatma isteği geçerli değil.",
+        "not_found": "Bu yeniden oynatma işi bulunamadı."
+      },
+      "store": {
+        "unavailable": "Kullanım verisi şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
       }
     },
     "analytics": {
@@ -1522,7 +1749,8 @@
         "bad_id": "Müşteri kimliği geçerli bir kimlik değil."
       },
       "tenant": {
-        "bad_id": "Hesap kimliği geçerli bir kimlik değil."
+        "bad_id": "Hesap kimliği geçerli bir kimlik değil.",
+        "unknown": "Bu hesap analitik tarafından tanınmıyor."
       },
       "granularity": {
         "unknown": "Bu ayrıntı düzeyi desteklenmiyor. Saat veya gün kullanın."
@@ -1535,6 +1763,9 @@
         "daily_too_long": "Günlük bir seri en fazla 400 günü kapsar.",
         "hourly_too_long": "Saatlik bir seri en fazla 31 günü kapsar.",
         "required": "Aralığın başlangıcı ve bitişi birlikte gerekli."
+      },
+      "store": {
+        "unavailable": "Analitik şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
       }
     },
     "limits": {
@@ -1542,10 +1773,87 @@
         "bad_id": "Müşteri kimliği geçerli bir kimlik değil."
       },
       "meter": {
-        "code_required": "Sayaç kodu gerekli."
+        "code_required": "Sayaç kodu gerekli.",
+        "not_found": "Bu sayaç bulunamadı.",
+        "unavailable": "Sayaç şu anda sorgulanamadı. Biraz sonra yeniden deneyin."
       },
       "period": {
         "bad_id": "Dönem 2026-11 biçiminde olmalı."
+      },
+      "counter": {
+        "unavailable": "Kullanım sayaçları şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
+      },
+      "reconcile": {
+        "not_configured": "Bu kurulumda mutabakat yapılandırılmamış.",
+        "unavailable": "Mutabakat şu anda çalıştırılamadı. Biraz sonra yeniden deneyin."
+      }
+    },
+    "ingest": {
+      "backlog": {
+        "full": "Veri alımı şu anda yoğun. Hiçbir şey kabul edilmedi; daha sonra yeniden deneyin."
+      },
+      "batch": {
+        "bad_size": "Bir istek 1 ile 500 arasında olay taşımalı."
+      },
+      "db": {
+        "conflict": "Veri aynı anda değişti. Hiçbir şey kabul edilmedi; yeniden denemek güvenli.",
+        "slow": "Veritabanı çok yavaş yanıt verdi. Hiçbir şey kabul edilmedi; yeniden denemek güvenli.",
+        "timeout": "Veri alımı zaman aşımına uğradı. Hiçbir şey kabul edilmedi; yeniden denemek güvenli.",
+        "unavailable": "Veritabanı kullanılamıyor. Hiçbir şey kabul edilmedi; yeniden denemek güvenli."
+      },
+      "outbox": {
+        "unavailable": "Veri alımı olayları şu anda iletemiyor. Biraz sonra yeniden deneyin."
+      },
+      "plans": {
+        "unavailable": "Planlar servisi kullanılamıyor, bu yüzden olaylar doğrulanamıyor. Biraz sonra yeniden deneyin."
+      },
+      "tenant": {
+        "bad_timezone": "Bu hesabın saat dilimi kullanılamıyor. Hesap ayarlarından kontrol edin."
+      }
+    },
+    "assets": {
+      "asset": {
+        "bad_status": "Dosya bunun yapılabileceği bir durumda değil.",
+        "cannot_abort": "Bu dosya zaten yüklendi ya da tamamlandı. Tamamlamak yerine yüklemeyi iptal edin.",
+        "not_found": "Dosya bulunamadı.",
+        "not_in_session": "Bu dosya bu yükleme oturumunun parçası değil.",
+        "not_uploadable": "Bu dosya artık yüklenemez."
+      },
+      "download": {
+        "not_ready": "Yalnızca yüklemesi tamamlanmış dosyalar indirilebilir.",
+        "sign_failed": "İndirme bağlantısı oluşturulamadı. Biraz sonra yeniden deneyin."
+      },
+      "list": {
+        "bad_page_size": "Sayfa boyutu 1 ile 500 arasında olmalı.",
+        "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın."
+      },
+      "request": {
+        "bad_id": "İstekteki bir kimlik geçerli bir kimlik değil."
+      },
+      "session": {
+        "bad_file_count": "Bir oturum 1 ile izin verilen en fazla dosya sayısı arasında dosya alır.",
+        "closed": "Yükleme oturumu artık açık değil.",
+        "not_found": "Yükleme oturumu bulunamadı."
+      },
+      "storage": {
+        "quota_exceeded": "Bu dosyalar bu hesabın depolama kotasına sığmıyor.",
+        "sign_failed": "Yükleme adresleri oluşturulamadı. Biraz sonra yeniden deneyin.",
+        "unavailable": "Dosya depolama şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
+      },
+      "upload": {
+        "bad_from_part": "Başlangıç parçası bu dosyanın parça sayısının ötesinde.",
+        "bad_part_count": "Bir seferde geçerli sayıda parça adresi isteyin.",
+        "bad_sha256": "SHA-256 sağlama toplamı 64 onaltılık karakter olmalı.",
+        "changed": "Yükleme aynı anda değişti. Yeniden deneyin.",
+        "content_type_mismatch": "Dosyanın içeriği bildirilen türle uyuşmuyor.",
+        "file_too_large": "Dosya çok büyük.",
+        "header_required": "Bir yüklemenin ilk mesajı yükleme başlığı olmalı.",
+        "invalid_filename": "Dosya adı kullanılamaz.",
+        "multipart_gone": "Parçalı yükleme artık yok. Yüklemeyi yeniden başlatın.",
+        "part_mismatch": "Yüklenen parçalar dosyayla uyuşmuyor.",
+        "size_mismatch": "Yüklenen dosyanın boyutu bildirilen boyutla uyuşmuyor.",
+        "size_required": "Doğrudan yüklemeler için dosya boyutu gerekli.",
+        "unsupported_content_type": "Bu dosya türü desteklenmiyor."
       }
     }
   },

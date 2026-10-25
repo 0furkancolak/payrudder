@@ -2,8 +2,9 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
+import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { usePayments } from "./billingApi";
@@ -13,12 +14,12 @@ import { usePayments } from "./billingApi";
  * The operator's ledger (provider references, decline details) and the reconciliation are operator tools and are not here.
  */
 const { t, locale } = useI18n();
-const errorText = useErrorText();
+const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const payments = usePayments(tenantId);
 const rows = computed(() => payments.data.value?.payments ?? []);
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(v)) : "");
+const when = (v?: string) => fmt.date(v, "dateTime");
 </script>
 
 <template>
@@ -31,7 +32,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       <span v-if="payments.data.value?.truncated" class="text-muted-foreground text-xs">{{ t("product.payments.truncated") }}</span>
     </div>
 
-    <p v-if="payments.error.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">{{ errorText(payments.error.value) }}</p>
+    <ErrorText :error="payments.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
     <Skeleton v-if="payments.isPending.value" class="h-40 rounded-2xl" />
     <p v-else-if="rows.length === 0 && !payments.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t("product.billing.payments.empty") }}</p>
     <div v-else class="relative -mx-2 overflow-x-auto px-2">

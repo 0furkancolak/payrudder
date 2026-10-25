@@ -10,7 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
 )
 
 // Once creates missing partitions and drops expired ones as of now, and reports what it did.

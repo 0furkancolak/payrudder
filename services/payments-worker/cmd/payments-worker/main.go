@@ -18,36 +18,36 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/config"
-	"github.com/0furkancolak/quotify/pkg/einvoice"
-	"github.com/0furkancolak/quotify/pkg/einvoice/mock"
-	"github.com/0furkancolak/quotify/pkg/einvoice/nilvera"
-	einvoicewebhook "github.com/0furkancolak/quotify/pkg/einvoice/webhook"
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/grpcx"
-	"github.com/0furkancolak/quotify/pkg/health"
-	"github.com/0furkancolak/quotify/pkg/logx"
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
-	"github.com/0furkancolak/quotify/pkg/payments/iyzico"
-	"github.com/0furkancolak/quotify/pkg/payments/paddle"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
-	"github.com/0furkancolak/quotify/pkg/secretbox"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/pkg/workerx"
-	einvoiceworker "github.com/0furkancolak/quotify/services/payments-worker/internal/einvoice"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/transfers"
-	transfercommand "github.com/0furkancolak/quotify/services/payments-worker/internal/transfers/command"
-	transferquery "github.com/0furkancolak/quotify/services/payments-worker/internal/transfers/query"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/quotify/services/payments-worker/migrations"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/mock"
+	"github.com/0furkancolak/payrudder/pkg/einvoice/nilvera"
+	einvoicewebhook "github.com/0furkancolak/payrudder/pkg/einvoice/webhook"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/logx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
+	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/workerx"
+	einvoiceworker "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoice"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers"
+	transfercommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/command"
+	transferquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/query"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
+	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 //go:embed config.default.yaml
@@ -55,10 +55,10 @@ var defaults []byte
 
 type Config struct {
 	config.Base
-	PGSystemDSN    string        `env:"QUOTIFY_PG_SYSTEM_DSN,required"`
-	PGMigratorDSN  string        `env:"QUOTIFY_PG_MIGRATOR_DSN"`
-	MigrateOnStart bool          `env:"QUOTIFY_MIGRATE_ON_START"`
-	RabbitMQURL    string        `env:"QUOTIFY_RABBITMQ_URL,required"`
+	PGSystemDSN    string        `env:"PAYRUDDER_PG_SYSTEM_DSN,required"`
+	PGMigratorDSN  string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
+	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
+	RabbitMQURL    string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
 	MockPSPURL     string        `env:"MOCKPSP_URL"`
 	PSPTimeout     time.Duration `env:"PAYMENTS_PSP_TIMEOUT"`
 	// LiveProvider selects the provider for live tenants: "mockpsp" (the local demo) or empty (not configured: live
@@ -67,16 +67,16 @@ type Config struct {
 	// AllowMockLive must be true to run with PAYMENTS_LIVE_PROVIDER=mockpsp: live tenants then pay through the mock. It is for a local stack and CI, where no real
 	// provider exists. Without it the worker refuses to start with the mock as the live provider, and refuses at run time any live command routed to the mock.
 	AllowMockLive bool `env:"PAYMENTS_ALLOW_MOCK_LIVE"`
-	Prefetch      int  `env:"QUOTIFY_PREFETCH"`
+	Prefetch      int  `env:"PAYRUDDER_PREFETCH"`
 	// SecretsKey (base64, 32 bytes) seals the credentials of tenants' provider accounts. Without it provider accounts, and with them
 	// provider webhooks, are disabled.
-	SecretsKey string `env:"QUOTIFY_SECRETS_KEY"`
+	SecretsKey string `env:"PAYRUDDER_SECRETS_KEY"`
 	// HTTPAddr serves provider webhooks and the operator endpoints for provider accounts and the ledger; the gateway forwards to it.
 	HTTPAddr string `env:"PAYMENTS_HTTP_ADDR"`
 	// PlansAddr is plans-svc, which is told about subscriptions a provider runs. Empty skips that.
-	PlansAddr string `env:"QUOTIFY_PLANS_ADDR"`
+	PlansAddr string `env:"PAYRUDDER_PLANS_ADDR"`
 	// BillingAddr is billing-svc, whose invoices the reconciliation compares with the ledger. Empty disables the reconciliation.
-	BillingAddr string `env:"QUOTIFY_BILLING_ADDR"`
+	BillingAddr string `env:"PAYRUDDER_BILLING_ADDR"`
 	// InternalToken is the shared secret the gateway sends on /admin calls. Empty disables them.
 	InternalToken string `env:"PAYMENTS_INTERNAL_TOKEN"`
 	// The object storage e-invoices (UBL, PDF) are kept in: the invoices bucket invoice-worker writes to. Without S3_ACCESS_KEY documents are issued but have no files.
@@ -96,11 +96,11 @@ type Config struct {
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	if c.MigrateOnStart && c.PGMigratorDSN == "" {
-		errs = append(errs, errors.New("QUOTIFY_PG_MIGRATOR_DSN is required with QUOTIFY_MIGRATE_ON_START"))
+		errs = append(errs, errors.New("PAYRUDDER_PG_MIGRATOR_DSN is required with PAYRUDDER_MIGRATE_ON_START"))
 	}
 	if c.SecretsKey != "" {
 		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
-			errs = append(errs, fmt.Errorf("QUOTIFY_SECRETS_KEY: %w", err))
+			errs = append(errs, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err))
 		}
 	}
 	if c.TransferWindowDays < 1 || c.TransferWindowDays > banktransfer.MaxPaymentWindowDays {
@@ -110,7 +110,7 @@ func (c *Config) Validate() error {
 	return errors.Join(errs...)
 }
 
-// checkLiveProvider is the startup rule for PAYMENTS_LIVE_PROVIDER. Live never reaches the mock (ADR 0022): the mock as the live provider needs an explicit
+// checkLiveProvider is the startup rule for PAYMENTS_LIVE_PROVIDER. Live never reaches the mock (ADR 0023): the mock as the live provider needs an explicit
 // "this is not production" (PAYMENTS_ALLOW_MOCK_LIVE), or the demo, which is the mock everywhere. Any other value is not a provider this release ships.
 func checkLiveProvider(provider string, allowMock, demo bool) error {
 	switch provider {
@@ -161,7 +161,7 @@ func run() error {
 	return start(ctx, &cfg, log, health.New(reg, 2*time.Second))
 }
 
-// migrate applies the migrations when asked to; done reports that the process should exit afterwards (QUOTIFY_MIGRATE_ONLY).
+// migrate applies the migrations when asked to; done reports that the process should exit afterwards (PAYRUDDER_MIGRATE_ONLY).
 func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err error) {
 	if cfg.MigrateOnStart {
 		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
@@ -169,7 +169,7 @@ func migrate(ctx context.Context, cfg *Config, log *slog.Logger) (done bool, err
 		}
 	}
 	if cfg.MigrateOnly {
-		log.Info("migrations applied; exiting (QUOTIFY_MIGRATE_ONLY)")
+		log.Info("migrations applied; exiting (PAYRUDDER_MIGRATE_ONLY)")
 		return true, nil
 	}
 	return false, nil
@@ -219,7 +219,7 @@ func start(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	return serve(ctx, cfg, log, hh, w, httpHandler)
 }
 
-// tenantDirectory is how the worker learns the environment of a command's tenant, to refuse a command that disagrees (ADR 0022). It asks plans-svc and keeps
+// tenantDirectory is how the worker learns the environment of a command's tenant, to refuse a command that disagrees (ADR 0023). It asks plans-svc and keeps
 // the answers (a tenant's environment never changes). Without QUOTIFY_PLANS_ADDR it is nil and commands are checked for having an environment only.
 func tenantDirectory(cfg *Config) (*env.Directory, func(), error) {
 	if cfg.PlansAddr == "" {
@@ -257,7 +257,7 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	if httpHandler != nil {
 		g.Go(func() error { return serveHTTP(gctx, cfg.HTTPAddr, httpHandler, log) })
 	} else {
-		log.Warn("QUOTIFY_SECRETS_KEY is not set: provider accounts and provider webhooks are disabled")
+		log.Warn("PAYRUDDER_SECRETS_KEY is not set: provider accounts and provider webhooks are disabled")
 	}
 	g.Go(func() error {
 		log.Info("payments-worker consuming", "live_provider", cfg.LiveProvider)
@@ -346,7 +346,7 @@ func newEInvoiceRegistry(cfg *Config) *einvoice.Registry {
 }
 
 // wireEInvoice gives the command handler its e-invoice side. Sandbox documents need only the database (the mock); live ones also need the sealed accounts
-// (QUOTIFY_SECRETS_KEY); files need object storage.
+// (PAYRUDDER_SECRETS_KEY); files need object storage.
 func wireEInvoice(cfg *Config, pool *pgxpool.Pool, h *handler.Handler, registry *einvoice.Registry, log *slog.Logger) error {
 	ew := &einvoiceworker.Handler{Registry: registry, Issuances: store.EInvoiceIssuances{DB: pool}, Log: log, Demo: cfg.Demo}
 	if cfg.SecretsKey != "" {

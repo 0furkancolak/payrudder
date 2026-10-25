@@ -122,7 +122,7 @@ flowchart LR
 | [invoice-worker](03-services/workers.md#invoice-worker) | RabbitMQ worker | S3 bucket `invoices` (MinIO locally, [ADR 0013](adr/0013-s3-compatible-object-storage.md)) | `invoice.render` | `billing.replies` |
 | [payments-worker](03-services/workers.md#payments-worker) | RabbitMQ worker | `payments_db` | `payment.charge` | `billing.replies` |
 | [notifier](03-services/workers.md#notifier) | RabbitMQ worker | `notifier_db` | `notification.send` | `billing.replies` |
-| [analytics-svc](03-services/analytics-svc.md) | Kafka consumer + gRPC | ClickHouse `quotify` DB | `usage.events.v1`, `usage.limit-exceeded.v1`, `billing.invoices.v1` | gRPC reads |
+| [analytics-svc](03-services/analytics-svc.md) | Kafka consumer + gRPC | ClickHouse `payrudder` DB | `usage.events.v1`, `usage.limit-exceeded.v1`, `billing.invoices.v1` | gRPC reads |
 | [assets-svc](03-services/assets-svc.md) | gRPC service | `assets_db` + S3 prefix `{tenant}/assets/` | gRPC (incl. client streaming) | presigned S3 URLs |
 | mock-psp | Fake external HTTP API; the sandbox payment provider ([ADR 0011](adr/0011-sandbox-environment.md)) | own Postgres schema | HTTP | — |
 
@@ -229,7 +229,7 @@ The hot path (ingest) has exactly one synchronous hop after the gateway. Plans l
 | Level | Sandbox | Live |
 |---|---|---|
 | Tenant (every deployment) | `qk_test_` keys → sandbox tenant. Payments always via mock-psp with scenario tokens. Early period close. `SBX-` invoices | `qk_live_` keys → live tenant. Payments via `PAYMENTS_LIVE_PROVIDER` (v1: mock-psp in the local demo only) |
-| Deployment | Compose default and kind `values-kind.yaml` run both. `values-sandbox.yaml` (namespace `quotify-sandbox`) runs sandbox-only, for a public demo | — (no production deployment in scope) |
+| Deployment | Compose default and kind `values-kind.yaml` run both. `values-sandbox.yaml` (namespace `payrudder-sandbox`) runs sandbox-only, for a public demo | — (no production deployment in scope) |
 
 ## Deployment shape
 

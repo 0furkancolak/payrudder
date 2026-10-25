@@ -11,12 +11,11 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // The overview of one environment of an app: what a person wants to see first about "my application's payments". It is composed here from the services
@@ -406,7 +405,7 @@ func (s *Server) buildOverview(ctx context.Context, appID, envName string, t *pl
 		entries, err := s.recentLedger(ctx, t.GetId())
 		if err != nil {
 			paymentsUp = false
-			return status.Error(codes.Unavailable, "payments")
+			return errkey.New(codes.Unavailable, "gateway.dashboard.payments_unavailable", "payments")
 		}
 		rows = entries
 		var accts struct {

@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	creditscommand "github.com/0furkancolak/quotify/services/billing-svc/internal/credits/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	creditscommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // linksPaid records that the invoice was paid through its payment links (its own, and the parents of the child links an ad-hoc link handed out) and tells the
@@ -40,6 +40,13 @@ func (e *Engine) creditsPurchased(ctx context.Context, tx pgx.Tx, s *saga, l sql
 		TenantID: s.TenantID, CustomerID: *l.CustomerID, CustomerExternalID: deref(l.CustomerExternalID), LinkID: l.ID, PackID: l.PackID, PackName: deref(l.Description),
 		Credits: *l.Credits, InvoiceID: s.InvoiceID, InvoiceNo: s.Number, Currency: s.Currency, AmountMinor: s.TotalMinor, Now: now,
 	}
+	// A coupon with bonus credits adds them to the same lot, so they expire with the rest.
+	bonus, err := sqlc.New(tx).GetInvoiceBonusCredits(ctx, sqlc.GetInvoiceBonusCreditsParams{TenantID: s.TenantID, ID: s.InvoiceID})
+	if err != nil {
+		return err
+	}
+	p.Credits += bonus
+	p.BonusCredits = bonus
 	if l.Quantity != nil {
 		p.Quantity = *l.Quantity
 	}

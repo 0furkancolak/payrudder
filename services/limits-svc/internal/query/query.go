@@ -4,6 +4,7 @@ package query
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"regexp"
 	"strconv"
 	"time"
@@ -12,17 +13,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/engine"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/meters"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
 )
 
 var periodRe = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])$`)
@@ -88,10 +88,10 @@ func (s *Service) CheckEntitlement(ctx context.Context, req *limitsv1.CheckEntit
 	} else {
 		m, err := s.meters.Get(ctx, ti.ID, req.GetMeterCode())
 		if errors.Is(err, meters.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "meter not found")
+			return nil, errkey.New(codes.NotFound, "limits.meter.not_found", "meter not found")
 		}
 		if err != nil {
-			return nil, status.Error(codes.Unavailable, "meter lookup failed")
+			return nil, errkey.New(codes.Unavailable, "limits.meter.unavailable", "meter lookup failed")
 		}
 		scale = m.Scale
 	}
@@ -130,7 +130,7 @@ func (s *Service) GetLimitStatus(ctx context.Context, req *limitsv1.GetLimitStat
 func (s *Service) statusOf(ctx context.Context, tid, customer uuid.UUID, meter, pid string, ent *entitlements.State, scale int) (*limitsv1.LimitStatus, error) {
 	vals, err := s.rdb.MGet(ctx, engine.CounterKey(tid, customer, meter, pid), engine.TSKey(tid)).Result()
 	if err != nil {
-		return nil, status.Error(codes.Unavailable, "counter store unavailable")
+		return nil, errkey.New(codes.Unavailable, "limits.counter.unavailable", "counter store unavailable")
 	}
 	var used, limit int64
 	if v, ok := vals[0].(string); ok {
@@ -154,17 +154,23 @@ func (s *Service) statusOf(ctx context.Context, tid, customer uuid.UUID, meter, 
 	return out, nil
 }
 
+// reconcileFailed answers for a reconciliation that did not run: the cause goes to the log, the client gets a fixed message.
+func reconcileFailed(ctx context.Context, err error) error {
+	slog.WarnContext(ctx, "reconcile failed", "error", err)
+	return errkey.New(codes.Unavailable, "limits.reconcile.unavailable", "reconciliation could not run right now")
+}
+
 // ReconcileNow implements limitsv1.LimitsServiceServer.
 func (s *Service) ReconcileNow(ctx context.Context, _ *limitsv1.ReconcileNowRequest) (*limitsv1.ReconcileNowResponse, error) {
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err
 	}
 	if s.reconciler == nil {
-		return nil, status.Error(codes.Unimplemented, "reconciliation is not configured")
+		return nil, errkey.New(codes.Unimplemented, "limits.reconcile.not_configured", "reconciliation is not configured")
 	}
 	res, err := s.reconciler.RunOnce(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Unavailable, "reconcile: %v", err)
+		return nil, reconcileFailed(ctx, err)
 	}
 	return &limitsv1.ReconcileNowResponse{KeysChecked: res.Checked, Corrections: res.Corrections, PartitionsSkipped: res.Skipped}, nil
 }

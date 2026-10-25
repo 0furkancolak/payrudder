@@ -1,4 +1,4 @@
-// Package env is the one place that parses, compares and requires an environment (phase 45, ADR 0011 and ADR 0022).
+// Package env is the one place that parses, compares and requires an environment (phase 45, ADR 0011 and ADR 0023).
 //
 // A tenant is a sandbox or a live one. The tenant stays the unit of isolation, so nothing in a table says "environment"; what keeps the two from being
 // confused is that every edge asserts it: a request, a command or an event whose environment is missing, or disagrees with its tenant's, is refused
@@ -13,9 +13,9 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/apikey"
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // Env is the environment of a tenant.
@@ -141,7 +141,7 @@ func SameProto(cmd plansv1.Environment, tenant Env, what string) error {
 	return Same(c, tenant, what)
 }
 
-// ParseList reads a comma-separated QUOTIFY_ALLOWED_ENVIRONMENTS. An empty or unknown entry is an error.
+// ParseList reads a comma-separated PAYRUDDER_ALLOWED_ENVIRONMENTS. An empty or unknown entry is an error.
 func ParseList(s string) ([]Env, error) {
 	var out []Env
 	for _, part := range strings.Split(s, ",") {

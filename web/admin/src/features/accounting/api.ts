@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import { toApiError, tenantApi, unwrap } from "@/shared/api/client";
+import { tenantApi, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
 import type { components } from "@/shared/api/schema";
-import { currentToken } from "@/shared/lib/session";
 
 export type ExpenseInput = components["schemas"]["ExpenseInput"];
 export type Expense = components["schemas"]["Expense"];
@@ -44,7 +44,7 @@ export function useExpenses(tenantId: MaybeRefOrGetter<string>, app: MaybeRefOrG
     queryFn: () =>
       unwrap(
         tenantApi(toValue(tenantId)).GET("/v1/expenses", {
-          params: { query: { app_id: toValue(app) || undefined, include_voided: toValue(includeVoided) || undefined, page_size: 200 } },
+          params: { query: { app_id: toValue(app) || undefined, include_voided: toValue(includeVoided) || undefined, page_size: PAGE.whole } },
         }),
       ),
   });
@@ -72,15 +72,15 @@ export function useVoidExpense(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** Downloads the CSV of the period. The file needs the operator's token, so it is fetched and saved from a blob, not linked. */
-export async function downloadCsv(tenantId: string, from: string, to: string, app: string, granularity: string): Promise<void> {
-  const query = new URLSearchParams({ from, to, granularity });
-  if (app) query.set("app_id", app);
-  const res = await fetch(`/gw/v1/accounting/export.csv?${query.toString()}`, {
-    headers: { Authorization: `Bearer ${currentToken() ?? ""}`, "X-Quotify-Tenant": tenantId },
-  });
-  if (!res.ok) throw toApiError(await res.json().catch(() => ({})));
-  const url = URL.createObjectURL(await res.blob());
+/** Downloads the CSV of the period. The file needs the session token, so it is fetched through the API client and saved from a blob, not linked. */
+export async function downloadCsv(tenantId: string, from: string, to: string, app: string, granularity: "day" | "month"): Promise<void> {
+  const blob = await unwrap(
+    tenantApi(tenantId).GET("/v1/accounting/export.csv", {
+      params: { query: { from, to, granularity, ...(app ? { app_id: app } : {}) } },
+      parseAs: "blob",
+    }),
+  );
+  const url = URL.createObjectURL(blob as Blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = `accounting-${from}-${to}.csv`;

@@ -32,8 +32,8 @@ risk of real charges.
 
 **Deployment-level sandbox (Kubernetes).**
 - The Helm chart deploys mock-psp as a first-class component, so the tenant sandbox works in kind exactly as in Compose.
-- `values-sandbox.yaml` is a deployment profile for a public demo in namespace `quotify-sandbox`: `CreateAccount` creates only
-  sandbox tenants (`live` disabled by `QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox`, enforced in plans-svc and gateway),
+- `values-sandbox.yaml` is a deployment profile for a public demo in namespace `payrudder-sandbox`: `CreateAccount` creates only
+  sandbox tenants (`live` disabled by `PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox`, enforced in plans-svc and gateway),
   `PAYMENTS_LIVE_PROVIDER` unset, SMTP pointed at Mailpit, shorter retention.
 
 ## Alternatives considered
@@ -47,7 +47,7 @@ risk of real charges.
 
 ## Addendum (phase 45)
 
-The decision above stands. [ADR 0022](0022-live-and-sandbox-guards.md) adds what sits around it: a live tenant starts `inactive` and is activated by a go-live checklist, API keys carry a scope and a rotation overlap, and the environment is asserted at every edge (`pkg/env`).
+The decision above stands. [ADR 0023](0023-live-and-sandbox-guards.md) adds what sits around it: a live tenant starts `inactive` and is activated by a go-live checklist, API keys carry a scope and a rotation overlap, and the environment is asserted at every edge (`pkg/env`).
 
 ## Consequences
 

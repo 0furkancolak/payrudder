@@ -8,6 +8,9 @@ package tenant
 import (
 	"context"
 
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -16,19 +19,16 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
-
-	"github.com/0furkancolak/quotify/pkg/env"
 )
 
 // Metadata keys.
 const (
-	MDTenantID    = "x-quotify-tenant-id"
-	MDEnvironment = "x-quotify-environment"
-	MDTimezone    = "x-quotify-timezone"
-	MDAPIKeyID    = "x-quotify-api-key-id" //nolint:gosec // metadata key name, not a credential
-	MDTier        = "x-quotify-tier"
-	MDOperator    = "x-quotify-operator"
+	MDTenantID    = "x-payrudder-tenant-id"
+	MDEnvironment = "x-payrudder-environment"
+	MDTimezone    = "x-payrudder-timezone"
+	MDAPIKeyID    = "x-payrudder-api-key-id" //nolint:gosec // metadata key name, not a credential
+	MDTier        = "x-payrudder-tier"
+	MDOperator    = "x-payrudder-operator"
 )
 
 // Environment values (ADR 0011). pkg/env owns the spelling; these are its strings for code that carries the environment as one.
@@ -65,7 +65,7 @@ func FromContext(ctx context.Context) (Info, bool) {
 func Require(ctx context.Context) (Info, error) {
 	info, ok := FromContext(ctx)
 	if !ok {
-		return Info{}, status.Error(codes.Unauthenticated, "tenant metadata missing")
+		return Info{}, errkey.New(codes.Unauthenticated, "identity.tenant.metadata_missing", "tenant metadata missing")
 	}
 	return info, nil
 }
@@ -84,7 +84,7 @@ func IsOperator(ctx context.Context) bool {
 // RequireOperator returns PermissionDenied unless ctx is an operator call.
 func RequireOperator(ctx context.Context) error {
 	if !IsOperator(ctx) {
-		return status.Error(codes.PermissionDenied, "operator only")
+		return errkey.New(codes.PermissionDenied, "identity.operator.forbidden", "operator only")
 	}
 	return nil
 }
@@ -111,9 +111,9 @@ func fromIncoming(ctx context.Context) (context.Context, error) {
 	}
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		return ctx, status.Errorf(codes.InvalidArgument, "malformed %s", MDTenantID)
+		return ctx, errkey.Newf(codes.InvalidArgument, "identity.tenant.bad_metadata", "malformed %s", MDTenantID)
 	}
-	trace.SpanFromContext(ctx).SetAttributes(attribute.String("quotify.tenant_id", id.String()))
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String("payrudder.tenant_id", id.String()))
 	return NewContext(ctx, Info{
 		ID:          id,
 		Environment: first(md, MDEnvironment),

@@ -1,10 +1,10 @@
-module github.com/0furkancolak/quotify/tests
+module github.com/0furkancolak/payrudder/tests
 
 go 1.27.2
 
 require (
-	github.com/0furkancolak/quotify/gen/go v0.0.0
-	github.com/0furkancolak/quotify/pkg v0.0.0-00010101000000-000000000000
+	github.com/0furkancolak/payrudder/gen/go v0.0.0
+	github.com/0furkancolak/payrudder/pkg v0.0.0-00010101000000-000000000000
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/twmb/franz-go v1.22.2
 	github.com/twmb/franz-go/pkg/kadm v1.19.0
@@ -24,6 +24,6 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 )
 
-replace github.com/0furkancolak/quotify/gen/go => ../gen/go
+replace github.com/0furkancolak/payrudder/gen/go => ../gen/go
 
-replace github.com/0furkancolak/quotify/pkg => ../pkg
+replace github.com/0furkancolak/payrudder/pkg => ../pkg

@@ -4,7 +4,7 @@
 
 [Phase 38](phase-38-product-app.md) let a person sign up, open an organisation, create apps and watch their payments, and listed what it left out. This phase builds those parts so the product app is complete for an end user:
 
-1. **E-mail verification and password reset**, through a mail path Quotify itself owns for mail to *people* (not to a tenant's customers).
+1. **E-mail verification and password reset**, through a mail path Payrudder itself owns for mail to *people* (not to a tenant's customers).
 2. **Invitations and members**: invite by e-mail, accept, change a role, remove a member, never lose the last owner.
 3. **The billing pages for people**: invoices (list, detail, PDF), the payments ledger, packages, reports, under `/app/t/{tenant}`, backed by routes a session may call; operator-only routes stay out of the app.
 
@@ -14,13 +14,13 @@ It shipped in three pull requests, in that order.
 
 ### The mail path
 
-Mail Quotify writes to a person (a verification link, a reset link, an invitation, a warning) is sent by **plans-svc** itself, through the same SMTP code the notifier uses (`pkg/mailx`, moved out of the notifier; the notifier keeps thin aliases). It is separate from the tenant mail switch on purpose: the switch (phase 26/33) decides whether a *tenant's* mail to *its customers* is delivered; mail to people is the platform talking to its own users and is always sent.
+Mail Payrudder writes to a person (a verification link, a reset link, an invitation, a warning) is sent by **plans-svc** itself, through the same SMTP code the notifier uses (`pkg/mailx`, moved out of the notifier; the notifier keeps thin aliases). It is separate from the tenant mail switch on purpose: the switch (phase 26/33) decides whether a *tenant's* mail to *its customers* is delivered; mail to people is the platform talking to its own users and is always sent.
 
 | Setting (YAML default, env overrides) | Default | Meaning |
 |---|---|---|
 | `SMTP_ADDR` | `localhost:42025` | SMTP relay without authentication (the dev Mailpit; UI at <http://localhost:42825>). Compose sets `mailpit:1025`. |
-| `MAIL_FROM` | `Quotify <no-reply@quotify.local>` | The sender. |
-| `QUOTIFY_APP_URL` | `http://localhost:42301` | The console's public address; the links in mails open `<url>/verify`, `/reset`, `/invite`. |
+| `MAIL_FROM` | `Payrudder <no-reply@payrudder.local>` | The sender. |
+| `PAYRUDDER_APP_URL` | `http://localhost:42301` | The console's public address; the links in mails open `<url>/verify`, `/reset`, `/invite`. |
 
 Sending is **in the background** (`identity/usermail`): the request never waits for the relay, at most eight mails are in flight and one more waits half a second before it is dropped and logged, and a failed send is logged without the address. A lost mail is something the person asks for again (resend, forgot password); there is no outbox because every mail has a "send again" path and a stored token that would otherwise be wasted. Texts exist in the six console languages (`en`, `tr`, `de`, `fr`, `es`, `ar`, the last right-to-left); the language is the `locale` the page sends, else `Accept-Language`, else English, and the user's choice at sign-up is stored for later mails. Names in a mail are escaped in the HTML, stripped of line breaks, and the subject carries no name from outside the invitation's account name.
 
@@ -56,7 +56,7 @@ The mailed link carries the token in the **URL fragment** (`/reset#token=…`). 
 - `usermail` unit tests: six languages for every mail with equal placeholders, escaping and header safety, right-to-left Arabic.
 - Gateway tests: 202 for any address, locale choice, session required for resend, throttling, rate limits, the body cannot name a user.
 - Vitest (fragment token reader, error keys in six languages, locale parity) and mocked Playwright specs (taken-address notice, forgot → reset, used link, banner → resend → verify → live key enabled).
-- **Not verified:** delivery through a real SMTP relay other than Mailpit; the mail clients' rendering (HTML is simple, inline-styled, with a text part); Kubernetes values only pass `SMTP_ADDR` (set `QUOTIFY_APP_URL` for the plans-svc deployment).
+- **Not verified:** delivery through a real SMTP relay other than Mailpit; the mail clients' rendering (HTML is simple, inline-styled, with a text part); Kubernetes values only pass `SMTP_ADDR` (set `PAYRUDDER_APP_URL` for the plans-svc deployment).
 
 ## 2. Members and invitations
 
@@ -111,7 +111,7 @@ Phase 38 gave people the customers, payment links, credits and webhooks pages (t
 
 | Page | Calls | Notes |
 |---|---|---|
-| Invoices (list, status filter, load more) | `GET /v1/invoices` | Tenant route that existed already; a session reaches it by acting as its own tenant (`X-Quotify-Tenant`). |
+| Invoices (list, status filter, load more) | `GET /v1/invoices` | Tenant route that existed already; a session reaches it by acting as its own tenant (`X-Payrudder-Tenant`). |
 | Invoice (lines, totals, payments recorded by hand, PDF) | `GET /v1/invoices/{id}`, `/pdf` | The PDF is a presigned link (five minutes) opened in a new tab. |
 | Payments | **`GET /v1/payments`** (new) | The tenant's ledger as a person reads it: charges and refunds, each folded to its settled outcome (paid, processing, failed, refunded), newest first, minor-unit strings per currency, `truncated` when the newest 1000 ledger rows were all read, `503` when payments-worker does not answer. No provider references, no decline details, no payouts or disputes. |
 | Packages | `GET /v1/plans`, `/v1/plans/{code}/versions/{version}` | Publishing is `POST` on the same routes (owner and administrator). |

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // E-mail verification and password reset (phase 39). The routes are public: the secret is the token in the mailed link, 256 random bits that plans-svc looks up

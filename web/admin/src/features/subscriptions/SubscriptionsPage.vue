@@ -2,14 +2,17 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { type Subscription } from "@/shared/api/client";
-import { useErrorText } from "@/shared/lib/errors";
+import { firstError } from "@/shared/lib/errors";
 import { PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
+import { envOf } from "@/shared/lib/environment";
 import { enumWord, label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { useCustomers } from "@/features/customers";
 import { usePackages } from "@/features/packages";
 import { useTenant } from "@/features/tenants";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -23,11 +26,11 @@ import { operatorView } from "@/shared/lib/session";
 import { CurrencySelect } from "@/shared/ui/search-select";
 
 const { t, te, locale } = useI18n();
-const errorText = useErrorText();
+const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
-const environment = computed(() => (tenant.data.value?.environment === "ENVIRONMENT_SANDBOX" ? "sandbox" : "live"));
+const environment = computed(() => envOf(tenant.data.value?.environment));
 const subs = useSubscriptions(tenantId);
 const customers = useCustomers(tenantId);
 const packages = usePackages(tenantId);
@@ -82,11 +85,8 @@ const credited = computed(() => {
   const r = act.endNowCredit.data.value as { credited_minor?: string } | undefined;
   return r?.credited_minor ?? "";
 });
-const failure = computed(() => {
-  for (const m of Object.values(act)) if (m.error.value) return errorText(m.error.value);
-  return "";
-});
-const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
+const failure = computed(() => firstError(...Object.values(act)));
+const date = (v?: string | null) => fmt.date(v, "day", "—");
 </script>
 
 <template>
@@ -115,11 +115,11 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
       <Button type="submit" class="sm:col-span-2 lg:col-span-7" :disabled="act.create.isPending.value">{{ t("billing.subscriptions.create") }}</Button>
     </form>
   </Card>
-  <p v-if="failure" class="text-destructive bg-destructive/10 mb-4 rounded-2xl px-4 py-3 text-sm" role="alert">{{ failure }}</p>
+  <ErrorText :error="failure" class="bg-destructive/10 mb-4 rounded-2xl px-4 py-3" />
 
   <Card class="mb-6 p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.tabs.subscriptions") }}</h2>
-    <p v-if="subs.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(subs.error.value) }}</p>
+    <ErrorText :error="subs.error.value" class="px-3" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -233,7 +233,7 @@ const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
     </div>
     <div role="region" :aria-label="t('billing.subscriptions.usage')" class="grid gap-2">
       <h3 class="text-base font-semibold">{{ t("billing.subscriptions.usage") }}</h3>
-      <p v-if="entitlements.error.value" class="text-destructive text-sm" role="alert">{{ errorText(entitlements.error.value) }}</p>
+      <ErrorText :error="entitlements.error.value" />
       <Table v-if="(entitlements.data.value?.items ?? []).length > 0">
         <TableHeader>
           <TableRow class="hover:bg-transparent">

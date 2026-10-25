@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/0furkancolak/quotify/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/env"
 )
 
 // RefuseEnvironment is how a worker answers the failure of an environment check (pkg/env): a command or event that names no environment, or one that

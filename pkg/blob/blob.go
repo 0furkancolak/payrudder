@@ -1,4 +1,4 @@
-// Package blob is Quotify's object storage client. It speaks only the S3 API (ADR 0013): MinIO in Compose and kind,
+// Package blob is Payrudder's object storage client. It speaks only the S3 API (ADR 0013): MinIO in Compose and kind,
 // any S3-compatible service elsewhere, so switching is configuration, not code.
 package blob
 

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -20,16 +21,16 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/money"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	sagacommand "github.com/0furkancolak/quotify/services/billing-svc/internal/sagas/command"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Lifetimes of links, in days.
@@ -59,6 +60,8 @@ const (
 	MaxQuantity = 1000
 )
 
+var promotionCodeRe = regexp.MustCompile(`^[A-Za-z0-9_-]{2,40}$`)
+
 // factory reports whether a link of this kind makes an invoice when it is used (rather than being an invoice's link).
 func factory(kind string) bool { return kind == KindAdhoc || kind == KindCreditPack }
 
@@ -67,6 +70,8 @@ type Directory interface {
 	Customer(ctx context.Context, tenantID uuid.UUID, externalID string) (*plansv1.Customer, bool, error)
 	TenantCurrency(ctx context.Context, tenantID uuid.UUID) (string, error)
 	CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spec runs.LinkInvoiceSpec) (uuid.UUID, error)
+	// QuotePromotion says what the spec's promotion code takes off, claiming nothing.
+	QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec runs.LinkInvoiceSpec) (runs.PromotionQuote, error)
 }
 
 // Deps are the pools, the saga engine and the directory the commands work with. System is billing_system: every query it runs names the tenant.
@@ -75,7 +80,7 @@ type Deps struct {
 	System *pgxpool.Pool
 	Engine *saga.Engine
 	Dir    Directory
-	// Demo allows the mock payment for live tenants too (QUOTIFY_DEMO).
+	// Demo allows the mock payment for live tenants too (PAYRUDDER_DEMO).
 	Demo bool
 	Now  func() time.Time
 }
@@ -113,8 +118,10 @@ type CreateInput struct {
 	Description        string
 	CustomerExternalID string
 	// PackID and Quantity are for kind credit_pack: the pack to sell (it must be active) and how many of it (0 means 1).
-	PackID         uuid.UUID
-	Quantity       int32
+	PackID   uuid.UUID
+	Quantity int32
+	// PromotionCode (kinds adhoc and credit_pack) is applied when the payer continues, unless the payer types another.
+	PromotionCode  string
 	SingleUse      *bool
 	ExpiresInDays  int32
 	IdempotencyKey string
@@ -146,6 +153,11 @@ func (in *CreateInput) normalize() error {
 	}
 	if in.Kind != KindCreditPack && (in.PackID != uuid.Nil || in.Quantity != 0) {
 		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "pack_id and quantity belong to a credit_pack link")
+	}
+	in.PromotionCode = strings.TrimSpace(in.PromotionCode)
+	if in.PromotionCode != "" && (in.Kind == KindInvoice || !promotionCodeRe.MatchString(in.PromotionCode)) {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_promotion_code",
+			"promotion_code is 2 to 40 letters, digits, - or _, and belongs to an adhoc or credit_pack link: an invoice that exists is not changed")
 	}
 	switch in.Kind {
 	case KindInvoice:
@@ -214,8 +226,8 @@ func (in *CreateInput) singleUse() bool {
 
 // fingerprint is what an idempotency key is bound to: the same key with other parameters is a mistake, not a repeat.
 func (in *CreateInput) fingerprint() []byte {
-	h := sha256.Sum256(fmt.Appendf(nil, "%s|%s|%d|%s|%s|%s|%t|%d|%s|%d", in.Kind, in.InvoiceID, in.AmountMinor, in.Currency, in.Description, in.CustomerExternalID, in.singleUse(), in.days(),
-		in.PackID, in.Quantity))
+	h := sha256.Sum256(fmt.Appendf(nil, "%s|%s|%d|%s|%s|%s|%t|%d|%s|%d|%s", in.Kind, in.InvoiceID, in.AmountMinor, in.Currency, in.Description, in.CustomerExternalID, in.singleUse(), in.days(),
+		in.PackID, in.Quantity, strings.ToUpper(in.PromotionCode)))
 	return h[:]
 }
 
@@ -229,7 +241,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 		if in.Currency == "" {
 			c, err := d.Dir.TenantCurrency(ctx, tenantID)
 			if err != nil {
-				return nil, status.Error(codes.Unavailable, "tenant lookup unavailable")
+				return nil, errkey.New(codes.Unavailable, "billing.hosted.tenant_unavailable", "tenant lookup unavailable")
 			}
 			in.Currency = c
 		}
@@ -237,7 +249,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 			_, found, err := d.Dir.Customer(ctx, tenantID, in.CustomerExternalID)
 			switch {
 			case err != nil:
-				return nil, status.Error(codes.Unavailable, "customer lookup unavailable")
+				return nil, errkey.New(codes.Unavailable, "billing.hosted.customer_unavailable", "customer lookup unavailable")
 			case !found:
 				return nil, errkey.New(codes.NotFound, "billing.payment_link.customer_not_found", "no such customer")
 			}
@@ -248,7 +260,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 		cu, found, err := d.Dir.Customer(ctx, tenantID, in.CustomerExternalID)
 		switch {
 		case err != nil:
-			return nil, status.Error(codes.Unavailable, "customer lookup unavailable")
+			return nil, errkey.New(codes.Unavailable, "billing.hosted.customer_unavailable", "customer lookup unavailable")
 		case !found:
 			return nil, errkey.New(codes.NotFound, "billing.payment_link.customer_not_found", "no such customer")
 		}
@@ -287,6 +299,17 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 		default:
 			p.AmountMinor, p.Currency, p.Description = &in.AmountMinor, &in.Currency, &in.Description
 			p.CustomerExternalID = store.NilIfEmpty(in.CustomerExternalID)
+		}
+		if in.PromotionCode != "" {
+			// The code must work for this link's own amount, or the payer would meet the refusal at the end. It is claimed only when the payer continues.
+			spec := runs.LinkInvoiceSpec{AmountMinor: *p.AmountMinor, Currency: *p.Currency, CustomerExternalID: deref(p.CustomerExternalID), PromotionCode: in.PromotionCode}
+			if p.PackID != nil {
+				spec.PackID, spec.Credits = p.PackID.String(), *p.Credits
+			}
+			if _, err := d.Dir.QuotePromotion(ctx, tenantID, spec); err != nil {
+				return err
+			}
+			p.PromotionCode = &in.PromotionCode
 		}
 		if err := q.InsertPaymentLink(ctx, p); err != nil {
 			return err
@@ -342,6 +365,13 @@ func fillFromPack(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, in C
 	return nil
 }
 
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 func nilIfEmptyBytes(key string, b []byte) []byte {
 	if key == "" {
 		return nil
@@ -372,7 +402,7 @@ func replay(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, in CreateI
 func checkInvoice(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, in CreateInput) (string, error) {
 	inv, err := q.GetInvoiceForLink(ctx, sqlc.GetInvoiceForLinkParams{TenantID: tenantID, ID: in.InvoiceID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", status.Error(codes.NotFound, "invoice not found")
+		return "", errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
 		return "", err
@@ -419,7 +449,7 @@ func RevokeLinks(ctx context.Context, d Deps, tenantID, invoiceID uuid.UUID) (in
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, status.Error(codes.NotFound, "invoice not found")
+		return 0, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
 		return 0, status.Error(codes.Internal, "internal error")
@@ -490,7 +520,7 @@ func CreatePortalLink(ctx context.Context, d Deps, tenantID uuid.UUID, externalI
 	cu, found, lerr := d.Dir.Customer(ctx, tenantID, externalID)
 	switch {
 	case lerr != nil:
-		return "", time.Time{}, uuid.Nil, status.Error(codes.Unavailable, "customer lookup unavailable")
+		return "", time.Time{}, uuid.Nil, errkey.New(codes.Unavailable, "billing.hosted.customer_unavailable", "customer lookup unavailable")
 	case !found:
 		return "", time.Time{}, uuid.Nil, errkey.New(codes.NotFound, "billing.portal_link.customer_not_found", "no such customer")
 	}
@@ -515,7 +545,7 @@ func RevokePortalLinks(ctx context.Context, d Deps, tenantID uuid.UUID, external
 	cu, found, err := d.Dir.Customer(ctx, tenantID, externalID)
 	switch {
 	case err != nil:
-		return 0, status.Error(codes.Unavailable, "customer lookup unavailable")
+		return 0, errkey.New(codes.Unavailable, "billing.hosted.customer_unavailable", "customer lookup unavailable")
 	case !found:
 		return 0, errkey.New(codes.NotFound, "billing.portal_link.customer_not_found", "no such customer")
 	}

@@ -10,7 +10,7 @@ WHERE provider_subscriptions.updated_at <= EXCLUDED.updated_at;
 SELECT provider, environment, provider_ref, quotify_subscription_id, status, next_billed_at, updated_at
 FROM provider_subscriptions WHERE tenant_id = @tenant_id ORDER BY updated_at DESC LIMIT 500;
 
--- name: GetProviderSubscriptionQuotifyID :one
+-- name: GetProviderSubscriptionPayrudderID :one
 SELECT quotify_subscription_id FROM provider_subscriptions
 WHERE tenant_id = @tenant_id AND provider = @provider AND environment = @environment AND provider_ref = @provider_ref;
 

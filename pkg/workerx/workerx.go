@@ -1,4 +1,4 @@
-// Package workerx is the skeleton of Quotify's RabbitMQ workers (docs/03-services/workers.md): decode the command
+// Package workerx is the skeleton of Payrudder's RabbitMQ workers (docs/03-services/workers.md): decode the command
 // envelope, answer redeliveries from an inbox, run the handler, classify its error, publish the reply with confirms and
 // only then ack the command.
 package workerx
@@ -16,8 +16,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/protobuf/proto"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 )
 
 // Handler executes one command and returns the reply to publish.
@@ -80,7 +80,7 @@ func (w *Worker) init() error {
 			w.Prefetch = 16
 		}
 		w.pub = rabbitx.NewPublisher(w.URL)
-		m := otel.Meter("github.com/0furkancolak/quotify/pkg/workerx")
+		m := otel.Meter("github.com/0furkancolak/payrudder/pkg/workerx")
 		if w.handled, err = m.Int64Counter("worker_commands_handled", metric.WithDescription("Commands handled, by queue and result")); err != nil {
 			return
 		}

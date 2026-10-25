@@ -11,10 +11,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/sagas/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Retry retries a stuck saga of an invoice.
@@ -30,7 +31,7 @@ func Void(ctx context.Context, system *pgxpool.Pool, eng *saga.Engine, tenantID,
 func sagaOf(ctx context.Context, tx pgx.Tx, tid, invoiceID uuid.UUID) (uuid.UUID, error) {
 	id, err := sqlc.New(tx).GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tid, InvoiceID: invoiceID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, status.Error(codes.NotFound, "invoice has no saga (it is not finalized)")
+		return uuid.Nil, errkey.New(codes.NotFound, "billing.saga.not_found", "invoice has no saga (it is not finalized)")
 	}
 	return id, err
 }
@@ -55,7 +56,7 @@ func drive(ctx context.Context, system *pgxpool.Pool, eng *saga.Engine, tid, inv
 		return sqlc.GetSagaRow{}, status.Error(codes.Internal, "internal error")
 	}
 	if !applied {
-		return sqlc.GetSagaRow{}, status.Errorf(codes.FailedPrecondition, "%s is not possible while the invoice saga is in %s", ev, state)
+		return sqlc.GetSagaRow{}, errkey.Newf(codes.FailedPrecondition, "billing.saga.event_not_possible", "%s is not possible while the invoice saga is in %s", ev, state)
 	}
 	return query.Saga(ctx, system, tid, sagaID)
 }

@@ -28,24 +28,25 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/outbox"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/lookup"
-	"github.com/0furkancolak/quotify/services/ingest-svc/internal/store/sqlc"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/lookup"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
 )
 
 // Topic is where accepted events go.
 const Topic = "usage.events.v1"
 
 // ceType is the fully-qualified protobuf message name, carried in the ce-type header.
-const ceType = "quotify.events.v1.UsageEvent"
+const ceType = "payrudder.events.v1.UsageEvent"
 
 // Lookups resolves meters and customers (cached in production).
 type Lookups interface {
@@ -106,13 +107,13 @@ func New(o Options) (*Service, error) {
 	if o.Propagator == nil {
 		o.Propagator = otel.GetTextMapPropagator()
 	}
-	ctr, err := otel.Meter("github.com/0furkancolak/quotify/services/ingest-svc").Int64Counter("ingest_events",
+	ctr, err := otel.Meter("github.com/0furkancolak/payrudder/services/ingest-svc").Int64Counter("ingest_events",
 		metric.WithDescription("Ingested events by outcome"))
 	if err != nil {
 		return nil, err
 	}
 	s := &Service{o: o, log: o.Log, locs: map[string]*time.Location{}, events: ctr}
-	m := otel.Meter("github.com/0furkancolak/quotify/services/ingest-svc")
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/ingest-svc")
 	depthG, err := m.Int64ObservableGauge("ingest_outbox_depth", metric.WithDescription("Estimated rows waiting in the outbox"))
 	if err != nil {
 		return nil, err
@@ -194,14 +195,14 @@ func (s *Service) IngestEvents(ctx context.Context, req *ingestv1.IngestEventsRe
 	}
 	n := len(req.GetEvents())
 	if n == 0 || n > domain.MaxBatch {
-		return nil, status.Errorf(codes.InvalidArgument, "events: need 1..%d events, got %d", domain.MaxBatch, n)
+		return nil, errkey.Newf(codes.InvalidArgument, "ingest.batch.bad_size", "events: need 1..%d events, got %d", domain.MaxBatch, n)
 	}
 	loc, err := s.location(ti.Timezone)
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "tenant time zone %q is unusable", ti.Timezone)
+		return nil, errkey.Newf(codes.FailedPrecondition, "ingest.tenant.bad_timezone", "tenant time zone %q is unusable", ti.Timezone)
 	}
 	if max := s.o.MaxOutboxDepth; max > 0 && s.depth.Load() > max {
-		return nil, status.Error(codes.ResourceExhausted, "ingest backlog is full, retry later")
+		return nil, errkey.New(codes.ResourceExhausted, "ingest.backlog.full", "ingest backlog is full, retry later")
 	}
 
 	results := make([]*ingestv1.EventResult, n)
@@ -215,7 +216,7 @@ func (s *Service) IngestEvents(ctx context.Context, req *ingestv1.IngestEventsRe
 		p, rej, err := s.prepare(ctx, ti, loc, tid, now, i, ev)
 		if err != nil {
 			// Infrastructure failure: nothing has been written, so the whole batch can be retried safely.
-			return nil, status.Error(codes.Unavailable, "plans-svc unavailable")
+			return nil, errkey.New(codes.Unavailable, "ingest.plans.unavailable", "plans-svc unavailable")
 		}
 		if rej != nil {
 			results[i] = rejected(rej)
@@ -512,18 +513,18 @@ func existingResult(r sqlc.FindIdempotencyKeysRow, p *pending) *ingestv1.EventRe
 func mapDBError(err error) error {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
-		return status.Error(codes.DeadlineExceeded, "ingest timed out; nothing was accepted, retry is safe")
+		return errkey.New(codes.DeadlineExceeded, "ingest.db.timeout", "ingest timed out; nothing was accepted, retry is safe")
 	case errors.Is(err, context.Canceled):
 		return status.Error(codes.Canceled, "canceled")
 	}
 	switch pgxx.ErrCode(err) {
 	case "57014", "25P03": // query_canceled (transaction_timeout), idle_in_transaction_session_timeout
-		return status.Error(codes.Unavailable, "database too slow; nothing was accepted, retry is safe")
+		return errkey.New(codes.Unavailable, "ingest.db.slow", "database too slow; nothing was accepted, retry is safe")
 	case "40001", "40P01":
-		return status.Error(codes.Aborted, "conflict; retry is safe")
+		return errkey.New(codes.Aborted, "ingest.db.conflict", "conflict; retry is safe")
 	}
 	slog.Error("ingest: write failed", "error", err)
-	return status.Error(codes.Unavailable, "database unavailable; nothing was accepted, retry is safe")
+	return errkey.New(codes.Unavailable, "ingest.db.unavailable", "database unavailable; nothing was accepted, retry is safe")
 }
 
 // count records one ingest_events increment per event, aggregated per (result, error_code) so a 500-event request is
@@ -544,7 +545,7 @@ func (s *Service) count(ctx context.Context, tenantID uuid.UUID, results []*inge
 func (s *Service) GetOutboxWatermark(ctx context.Context, _ *ingestv1.GetOutboxWatermarkRequest) (*ingestv1.GetOutboxWatermarkResponse, error) {
 	oldest, ok, err := outbox.Watermark(ctx, s.o.System)
 	if err != nil {
-		return nil, status.Error(codes.Unavailable, "outbox unavailable")
+		return nil, errkey.New(codes.Unavailable, "ingest.outbox.unavailable", "outbox unavailable")
 	}
 	resp := &ingestv1.GetOutboxWatermarkResponse{ServerNow: timestamppb.Now()}
 	if ok {

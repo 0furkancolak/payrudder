@@ -10,14 +10,13 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/analytics-svc/internal/query"
+	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/analytics-svc/internal/query"
 )
 
 // Longest ranges per granularity (points stay in the hundreds).
@@ -39,9 +38,15 @@ func New(conn driver.Conn) *Server { return &Server{conn: conn, now: time.Now} }
 // invalid is an InvalidArgument status with the error key key.
 func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
 
+// badQuery answers for a query the builder refused: the builder's text names internals, so it goes to the log and the client gets a fixed message.
+func badQuery(err error) error {
+	slog.Warn("analytics query refused", "error", err)
+	return invalid("analytics.query.invalid", "the query is not valid")
+}
+
 func unavailable(err error) error {
 	slog.Warn("clickhouse query failed", "error", err)
-	return status.Error(codes.Unavailable, "analytics store unavailable")
+	return errkey.New(codes.Unavailable, "analytics.store.unavailable", "analytics store unavailable")
 }
 
 // QueryUsage implements analyticsv1.AnalyticsServiceServer.
@@ -52,7 +57,7 @@ func (s *Server) QueryUsage(ctx context.Context, req *analyticsv1.QueryUsageRequ
 	}
 	b, err := query.ForTenant(ti.ID)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "unknown tenant")
+		return nil, errkey.New(codes.Unauthenticated, "analytics.tenant.unknown", "unknown tenant")
 	}
 	f := query.UsageFilter{Meter: req.GetMeterCode(), Timezone: ti.Timezone, Exact: req.GetExact()}
 	if c := req.GetCustomerId(); c != "" {
@@ -84,7 +89,7 @@ func (s *Server) QueryUsage(ctx context.Context, req *analyticsv1.QueryUsageRequ
 	}
 	q, err := b.Usage(f)
 	if err != nil {
-		return nil, invalid("analytics.query.invalid", err.Error())
+		return nil, badQuery(err)
 	}
 	rows, err := s.conn.Query(ctx, q.SQL, q.Args...)
 	if err != nil {
@@ -127,7 +132,7 @@ func (s *Server) TopCustomers(ctx context.Context, req *analyticsv1.TopCustomers
 	}
 	b, err := query.ForTenant(ti.ID)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "unknown tenant")
+		return nil, errkey.New(codes.Unauthenticated, "analytics.tenant.unknown", "unknown tenant")
 	}
 	limit := int(req.GetLimit())
 	if limit == 0 {
@@ -135,7 +140,7 @@ func (s *Server) TopCustomers(ctx context.Context, req *analyticsv1.TopCustomers
 	}
 	q, err := b.TopCustomers(req.GetMeterCode(), req.GetPeriodId(), limit)
 	if err != nil {
-		return nil, invalid("analytics.query.invalid", err.Error())
+		return nil, badQuery(err)
 	}
 	rows, err := s.conn.Query(ctx, q.SQL, q.Args...)
 	if err != nil {
@@ -183,11 +188,11 @@ func (s *Server) GetIngestStats(ctx context.Context, req *analyticsv1.GetIngestS
 		b, err = query.AllTenants(true)
 	}
 	if err != nil {
-		return nil, invalid("analytics.query.invalid", err.Error())
+		return nil, badQuery(err)
 	}
 	q, err := b.IngestStats(window, s.now())
 	if err != nil {
-		return nil, invalid("analytics.query.invalid", err.Error())
+		return nil, badQuery(err)
 	}
 	rows, err := s.conn.Query(ctx, q.SQL, q.Args...)
 	if err != nil {

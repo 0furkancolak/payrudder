@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -14,6 +15,7 @@ import { absoluteUrl } from "./lib";
 const props = defineProps<{ tenantId: string; customer: string }>();
 const emit = defineEmits<{ close: [] }>();
 const { t, locale } = useI18n();
+const fmt = useFormat();
 
 const days = ref("30");
 const daysError = ref("");
@@ -44,7 +46,7 @@ async function copy() {
     /* the field is selectable */
   }
 }
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "short", timeStyle: "short" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "short", "—");
 </script>
 
 <template>
@@ -65,12 +67,12 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       <span class="text-muted-foreground text-xs">{{ t("billing.paymentLinks.shownOnce") }}</span>
     </div>
     <p v-if="act.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.paymentLinks.portal.revoked") }}</p>
-    <p v-if="daysError" class="text-destructive text-sm" role="alert">{{ daysError }}</p>
-    <p v-if="act.create.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(act.create.error.value).message }}</p>
-    <p v-if="act.revoke.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(act.revoke.error.value).message }}</p>
+    <ErrorText :message="daysError" />
+    <ErrorText :error="act.create.error.value" />
+    <ErrorText :error="act.revoke.error.value" />
 
     <h3 class="mt-2 font-medium">{{ t("billing.paymentLinks.portal.payments") }}</h3>
-    <p v-if="payments.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(payments.error.value).message }}</p>
+    <ErrorText :error="payments.error.value" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

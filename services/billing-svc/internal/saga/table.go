@@ -124,7 +124,7 @@ type Ctx struct {
 	Paid           bool // the invoice was paid (status = paid)
 	DunningAttempt int
 	MaxDunning     int
-	// ProviderMails: the provider that took the payment sends the customer its own receipt, so Quotify sends none.
+	// ProviderMails: the provider that took the payment sends the customer its own receipt, so Payrudder sends none.
 	ProviderMails bool
 	// Link: the invoice is collected through a payment link (the customer pays), not charged by the saga.
 	Link bool

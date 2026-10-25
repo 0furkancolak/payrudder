@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 // A 404 answers a status lookup ("no charge under this key"); for a charge or a refund it is a wrong URL, and must never read as a payment that went through.

@@ -2,9 +2,11 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
+import { ym } from "@/shared/lib/dates";
+import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -14,17 +16,17 @@ import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
 import { useLedger, useReconcile } from "./api";
 
 const { t, te, locale } = useI18n();
-const errorText = useErrorText();
+const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const ledger = useLedger(tenantId);
 const reconcile = useReconcile(tenantId);
 
 const now = new Date();
-const period = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+const period = ref(ym(now));
 const result = computed(() => reconcile.data.value);
 const kinds = computed(() => Object.entries(result.value?.discrepancy_counts ?? {}));
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "short", timeStyle: "short" }).format(new Date(v)) : "");
+const when = (v?: string) => fmt.date(v, "short");
 const variant = (status?: string) => (status === "succeeded" ? "success" : status === "declined" || status === "failed" ? "destructive" : "secondary");
 </script>
 
@@ -36,7 +38,7 @@ const variant = (status?: string) => (status === "succeeded" ? "success" : statu
       <Input v-model="period" class="w-40" :aria-label="t('billing.payments.period')" placeholder="2026-10" pattern="\d{4}-(0[1-9]|1[0-2])" required />
       <Button type="submit" :disabled="reconcile.isPending.value">{{ t("billing.payments.run") }}</Button>
     </form>
-    <p v-if="reconcile.error.value" class="text-destructive text-sm" role="alert">{{ errorText(reconcile.error.value) }}</p>
+    <ErrorText :error="reconcile.error.value" />
     <div v-if="result" role="region" :aria-label="t('billing.payments.reconcileResult')">
       <p class="text-sm">{{ t("billing.payments.summary", { paid: result.paid_invoices ?? 0, charges: result.successful_charges ?? 0 }) }}</p>
       <p v-if="kinds.length === 0" class="bg-success/10 text-success mt-2 rounded-2xl px-4 py-3 text-sm" role="status">{{ t("billing.payments.agree") }}</p>
@@ -73,7 +75,7 @@ const variant = (status?: string) => (status === "succeeded" ? "success" : statu
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.payments.ledger") }}</h2>
-    <p v-if="ledger.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(ledger.error.value) }}</p>
+    <ErrorText :error="ledger.error.value" class="px-3" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

@@ -7,15 +7,15 @@ import (
 	"log/slog"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/dlq"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
 )
 
 // List returns the depth of the dead-letter queues and up to limit messages of queue.
 func List(ctx context.Context, admin *dlq.Admin, queue string, limit int) ([]dlq.Depth, []dlq.Message, error) {
 	if admin == nil {
-		return nil, nil, status.Error(codes.Unimplemented, "dead-letter operations are not configured")
+		return nil, nil, errkey.New(codes.Unimplemented, "billing.dead_letter.not_configured", "dead-letter operations are not configured")
 	}
 	depths, msgs, err := admin.List(ctx, queue, limit)
 	if err != nil {
@@ -28,9 +28,9 @@ func List(ctx context.Context, admin *dlq.Admin, queue string, limit int) ([]dlq
 func brokerErr(err error) error {
 	switch {
 	case errors.Is(err, dlq.ErrUnknownQueue):
-		return status.Error(codes.InvalidArgument, err.Error())
+		return errkey.New(codes.InvalidArgument, "billing.dead_letter.invalid", err.Error())
 	default:
 		slog.Error("dead letters", "error", err)
-		return status.Error(codes.Unavailable, "the broker could not be reached; retry")
+		return errkey.New(codes.Unavailable, "billing.dead_letter.broker_unavailable", "the broker could not be reached; retry")
 	}
 }

@@ -13,12 +13,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/store/sqlc"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store/sqlc"
 )
 
 // errTooLarge ends a stream that goes beyond its purpose's size limit.
@@ -113,7 +114,7 @@ func (u *proxiedUpload) complete(size int64, sha []byte) (sqlc.Asset, error) {
 func receiveHeader(stream uploadStream) (*assetsv1.UploadHeader, error) {
 	first, err := stream.Recv()
 	if err != nil || first.GetHeader() == nil {
-		return nil, status.Error(codes.InvalidArgument, "the first message must be the upload header")
+		return nil, errkey.New(codes.InvalidArgument, "assets.upload.header_required", "the first message must be the upload header")
 	}
 	return first.GetHeader(), nil
 }
@@ -197,12 +198,12 @@ func (u *proxiedUpload) store(ctx context.Context, stream uploadStream, body io.
 		if ctx.Err() != nil {
 			return 0, false, status.FromContextError(ctx.Err()).Err()
 		}
-		return 0, false, status.Error(codes.Unavailable, "object storage unavailable")
+		return 0, false, errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 	}
 	info, err := u.s.blob.Head(u.ctx, u.key)
 	if err != nil {
 		_, _ = u.end("ABORTED", "")
-		return 0, false, status.Error(codes.Unavailable, "object storage unavailable")
+		return 0, false, errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 	}
 	return info.Size, false, nil
 }

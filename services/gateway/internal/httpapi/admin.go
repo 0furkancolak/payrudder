@@ -7,11 +7,11 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // The operator console's reads (web/admin): tenants, a tenant's invoices with their saga history, and the dead-letter queues.
@@ -20,7 +20,7 @@ import (
 func operatorAs(r *http.Request) (context.Context, error) {
 	id, err := uuid.Parse(r.PathValue("tenant_id"))
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id must be a UUID")
+		return nil, errkey.New(codes.InvalidArgument, "gateway.request.bad_tenant_id", "tenant_id must be a UUID")
 	}
 	return tenant.NewContext(r.Context(), tenant.Info{ID: id}), nil
 }

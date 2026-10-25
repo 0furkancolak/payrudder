@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, api, unwrap, type Tenant } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
+import { findTenant } from "@/shared/lib/environment";
 import { operatorView } from "@/shared/lib/session";
 
 export const tenantKeys = {
@@ -8,10 +10,12 @@ export const tenantKeys = {
   detail: (id: string) => ["tenants", id] as const,
 };
 
-export function useTenants() {
+/** The operator's list of tenants. `enabled` lets a caller that may be a person (who has no admin API) switch it off. */
+export function useTenants(options: { enabled?: MaybeRefOrGetter<boolean> } = {}) {
   return useQuery({
     queryKey: tenantKeys.list,
-    queryFn: () => unwrap(api.GET("/admin/v1/tenants", { params: { query: { page_size: 200 } } })),
+    queryFn: () => unwrap(api.GET("/admin/v1/tenants", { params: { query: { page_size: PAGE.whole } } })),
+    enabled: computed(() => toValue(options.enabled ?? true)),
   });
 }
 
@@ -21,11 +25,9 @@ export function useTenants() {
  */
 async function personTenant(id: string): Promise<Tenant> {
   const apps = await unwrap(api.GET("/app/v1/apps"));
-  for (const app of apps.apps ?? []) {
-    const hit = app.tenants?.find((x) => x.id === id);
-    if (hit) return hit;
-  }
-  throw new ApiError("tenant not found", "NOT_FOUND");
+  const hit = findTenant(apps.apps, id);
+  if (!hit) throw new ApiError("tenant not found", "NOT_FOUND");
+  return hit.tenant;
 }
 
 export function useTenant(id: MaybeRefOrGetter<string>) {

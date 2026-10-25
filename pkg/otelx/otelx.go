@@ -1,4 +1,4 @@
-// Package otelx initialises OpenTelemetry for a Quotify process and provides the message-header carriers that
+// Package otelx initialises OpenTelemetry for a Payrudder process and provides the message-header carriers that
 // keep one trace across HTTP, gRPC, Kafka and RabbitMQ hops.
 package otelx
 

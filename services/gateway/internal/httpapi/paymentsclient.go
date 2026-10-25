@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/env"
 )
 
 // The gateway composes two things from payments-worker's internal HTTP API for the hosted pages and the operator's customer payments: the ledger rows

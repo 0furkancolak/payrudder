@@ -29,19 +29,19 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	analyticsv1 "github.com/0furkancolak/quotify/gen/go/quotify/analytics/v1"
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/gateway/internal/auth"
-	"github.com/0furkancolak/quotify/services/gateway/internal/oidc"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // MaxBodyBytes is the request body limit of every route, POST /v1/events included (1 MiB, ≤ 500 events).
@@ -85,15 +85,15 @@ type Deps struct {
 	// TrustForwardedFor makes the sign-in limits count by the address a proxy in front passes in X-Forwarded-For (the console's proxy does), but only for
 	// a request that really arrived from a private or loopback address, so a client cannot choose its own bucket by sending the header.
 	TrustForwardedFor bool
-	// TrustedProxies are networks (QUOTIFY_TRUSTED_PROXIES) whose connections are believed about the client address, even when public.
+	// TrustedProxies are networks (PAYRUDDER_TRUSTED_PROXIES) whose connections are believed about the client address, even when public.
 	TrustedProxies []netip.Prefix
-	// TrustedProxySecret (QUOTIFY_TRUSTED_PROXY_SECRET) is the shared secret an edge proxy sends in X-Edge-Auth; a request carrying it is believed about the
+	// TrustedProxySecret (PAYRUDDER_TRUSTED_PROXY_SECRET) is the shared secret an edge proxy sends in X-Edge-Auth; a request carrying it is believed about the
 	// client address wherever it comes from. Empty: the header is ignored.
 	TrustedProxySecret string
-	// Demo makes the hosted pages offer the mock payment for every tenant (QUOTIFY_DEMO); a sandbox tenant always gets it.
+	// Demo makes the hosted pages offer the mock payment for every tenant (PAYRUDDER_DEMO); a sandbox tenant always gets it.
 	Demo bool
-	// OperatorEmails lists the addresses of the people who are platform operators (QUOTIFY_OPERATOR_EMAILS), lower case. A session of a user with one of these
-	// addresses, proven by verification, may use the operator routes; OperatorToken stays as the machine credential of the API, quotifyctl and the tests.
+	// OperatorEmails lists the addresses of the people who are platform operators (PAYRUDDER_OPERATOR_EMAILS), lower case. A session of a user with one of these
+	// addresses, proven by verification, may use the operator routes; OperatorToken stays as the machine credential of the API, payrudderctl and the tests.
 	OperatorEmails []string
 	// Google is the "Continue with Google" client; nil or unconfigured hides the button and answers 404 on its routes.
 	Google *oidc.Client
@@ -131,7 +131,7 @@ func New(d Deps) *Server {
 			otelhttp.WithSpanNameFormatter(func(string, *http.Request) string { return name })))
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, r, status.Error(codes.NotFound, "no such route"))
+		writeError(w, r, errkey.New(codes.NotFound, "gateway.route.not_found", "no such route"))
 	})
 	s.handler = requestIDMiddleware(s.recoverMiddleware(mux))
 	return s
@@ -184,7 +184,7 @@ func (s *Server) wrap(rt Route) http.Handler {
 				return
 			}
 			ctx = context.WithValue(ctx, sessionKey{}, sess)
-			span.SetAttributes(attribute.String("quotify.user_id", sess.UserID))
+			span.SetAttributes(attribute.String("payrudder.user_id", sess.UserID))
 		case AccessOperator:
 			ok, err := s.operatorAllowed(r)
 			if err != nil {
@@ -192,7 +192,7 @@ func (s *Server) wrap(rt Route) http.Handler {
 				return
 			}
 			if !ok {
-				writeError(w, r, status.Error(codes.Unauthenticated, "operator access required"))
+				writeError(w, r, errkey.New(codes.Unauthenticated, "identity.operator.required", "operator access required"))
 				return
 			}
 			ctx = tenant.WithOperator(ctx)
@@ -207,7 +207,7 @@ func (s *Server) wrap(rt Route) http.Handler {
 				return
 			}
 			if rt.Access == AccessSandbox && p.Tenant.Environment != tenant.EnvSandbox {
-				writeError(w, r, status.Error(codes.PermissionDenied, "sandbox endpoints require a qk_test_ key"))
+				writeError(w, r, errkey.New(codes.PermissionDenied, "identity.api_key.sandbox_only", "sandbox endpoints require a qk_test_ key"))
 				return
 			}
 			// The ingest class is charged per event, which only the handler knows after reading the body.
@@ -218,14 +218,14 @@ func (s *Server) wrap(rt Route) http.Handler {
 			ti := p.Tenant
 			ti.Tier = p.Tier
 			ctx = tenant.NewContext(ctx, ti)
-			span.SetAttributes(attribute.String("quotify.tenant_id", p.Tenant.ID.String()),
-				attribute.String("quotify.environment", p.Tenant.Environment))
+			span.SetAttributes(attribute.String("payrudder.tenant_id", p.Tenant.ID.String()),
+				attribute.String("payrudder.environment", p.Tenant.Environment))
 		}
 		ctx = metadata.AppendToOutgoingContext(ctx, "x-request-id", requestID(r.Context()))
 		// Only sandbox tenants and operators may force a trace through every consumer (see docs/08-observability.md).
-		if r.Header.Get("X-Quotify-Debug") == "1" && (rt.Access == AccessOperator || (rt.Access != AccessPublic && principalFrom(ctx).Tenant.Environment == tenant.EnvSandbox)) {
-			ctx = metadata.AppendToOutgoingContext(ctx, "x-quotify-debug", "1")
-			span.SetAttributes(attribute.Bool("quotify.debug", true))
+		if r.Header.Get("X-Payrudder-Debug") == "1" && (rt.Access == AccessOperator || (rt.Access != AccessPublic && principalFrom(ctx).Tenant.Environment == tenant.EnvSandbox)) {
+			ctx = metadata.AppendToOutgoingContext(ctx, "x-payrudder-debug", "1")
+			span.SetAttributes(attribute.Bool("payrudder.debug", true))
 		}
 		rt.Handle(w, r.WithContext(ctx))
 	})
@@ -243,7 +243,7 @@ func (s *Server) chargeKey(w http.ResponseWriter, r *http.Request, key, tier str
 	d, err := s.d.Limiter.Allow(r.Context(), key, tier, class, cost)
 	if err == nil && !d.Allowed {
 		w.Header().Set("Retry-After", ratelimit.RetryAfterSeconds(d.RetryAfter))
-		writeError(w, r, status.Error(codes.ResourceExhausted, "rate limit exceeded for "+string(class)))
+		writeError(w, r, errkey.New(codes.ResourceExhausted, "gateway.rate_limit.exceeded", "rate limit exceeded for "+string(class)))
 		return false
 	}
 	return true
@@ -255,12 +255,12 @@ func principalFrom(ctx context.Context) auth.Principal {
 }
 
 // ActAsHeader names the tenant an operator acts as on the tenant API.
-const ActAsHeader = "X-Quotify-Tenant"
+const ActAsHeader = "X-Payrudder-Tenant"
 
 func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !ok || token == "" {
-		return auth.Principal{}, status.Error(codes.Unauthenticated, "missing Authorization: Bearer <api key>")
+		return auth.Principal{}, errkey.New(codes.Unauthenticated, "identity.api_key.missing", "missing Authorization: Bearer <api key>")
 	}
 	// A person's session token, with a tenant named, is that tenant for the call, if the tenant belongs to one of the person's accounts.
 	if strings.HasPrefix(token, sessionPrefix) {
@@ -274,11 +274,11 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	p, err := s.d.Auth.Authenticate(r.Context(), token)
 	switch {
 	case errors.Is(err, auth.ErrUnavailable):
-		return p, status.Error(codes.Unavailable, "authentication temporarily unavailable")
+		return p, errkey.New(codes.Unavailable, "identity.auth.unavailable", "authentication temporarily unavailable")
 	case errors.Is(err, auth.ErrSuspended):
 		return p, errkey.New(codes.PermissionDenied, "gateway.auth.tenant_not_active", "this environment is suspended or not active yet: contact support")
 	case err != nil:
-		return p, status.Error(codes.Unauthenticated, "invalid api key")
+		return p, errkey.New(codes.Unauthenticated, "identity.api_key.invalid", "invalid api key")
 	}
 	return p, nil
 }
@@ -299,14 +299,14 @@ func scopeAllows(scope, method, path string) bool {
 func (s *Server) actAs(ctx context.Context, id string) (auth.Principal, error) {
 	tid, err := uuid.Parse(id)
 	if err != nil {
-		return auth.Principal{}, status.Error(codes.InvalidArgument, ActAsHeader+" must be a tenant id")
+		return auth.Principal{}, errkey.New(codes.InvalidArgument, "identity.tenant.bad_act_as", ActAsHeader+" must be a tenant id")
 	}
 	resp, err := s.d.Admin.GetTenant(tenant.WithOperator(ctx), &plansv1.GetTenantRequest{TenantId: tid.String()})
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return auth.Principal{}, status.Error(codes.NotFound, "no such tenant")
+			return auth.Principal{}, errkey.New(codes.NotFound, "identity.tenant.not_found", "no such tenant")
 		}
-		return auth.Principal{}, status.Error(codes.Unavailable, "tenant lookup unavailable")
+		return auth.Principal{}, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable")
 	}
 	return principalOf(resp.GetTenant()), nil
 }
@@ -328,7 +328,7 @@ func principalOf(t *plansv1.Tenant) auth.Principal {
 	return auth.Principal{Tenant: tenant.Info{ID: id, Environment: env, Timezone: t.GetTimezone()}, Tier: tier}
 }
 
-// operatorOK reports whether the request carries the machine operator token (QUOTIFY_OPERATOR_TOKEN): the credential of the API, quotifyctl, the demo and the
+// operatorOK reports whether the request carries the machine operator token (PAYRUDDER_OPERATOR_TOKEN): the credential of the API, payrudderctl, the demo and the
 // tests. It is never typed into a page.
 func (s *Server) operatorOK(r *http.Request) bool {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -418,13 +418,13 @@ func decode(r *http.Request, msg proto.Message) error {
 		if errors.As(err, &mbe) {
 			return errTooLarge{limit: mbe.Limit}
 		}
-		return status.Error(codes.InvalidArgument, "unreadable body")
+		return errkey.New(codes.InvalidArgument, "gateway.request.unreadable_body", "unreadable body")
 	}
 	if len(strings.TrimSpace(string(body))) == 0 {
 		return nil
 	}
 	if err := unmarshal.Unmarshal(body, msg); err != nil {
-		return status.Errorf(codes.InvalidArgument, "malformed JSON: %v", err)
+		return errkey.Newf(codes.InvalidArgument, "gateway.request.malformed_json", "malformed JSON: %v", err)
 	}
 	return nil
 }
@@ -448,7 +448,7 @@ func respond(w http.ResponseWriter, r *http.Request, code int, msg proto.Message
 		tag := `W/"` + hex.EncodeToString(sum[:8]) + `"`
 		h := w.Header()
 		h.Set("ETag", tag)
-		h.Set("Vary", "Authorization, X-Quotify-Tenant")
+		h.Set("Vary", "Authorization, X-Payrudder-Tenant")
 		if h.Get("Cache-Control") == "" {
 			h.Set("Cache-Control", "private, no-cache")
 		}

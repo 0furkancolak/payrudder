@@ -16,16 +16,16 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/money"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/rating"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 type meterInfo struct {
@@ -42,7 +42,7 @@ type subscription struct {
 	TrialEnd, PausedAt       *time.Time
 	Paused                   bool
 	// Provider, ProviderRef and Owner: the payment provider that sells the subscription and, when it runs it, its id there. A provider-owned
-	// subscription's fixed fee is billed by the provider, so it is not on Quotify's invoice.
+	// subscription's fixed fee is billed by the provider, so it is not on Payrudder's invoice.
 	Provider, ProviderRef, Owner string
 	// AdvanceFee: the fixed fee is invoiced at the start of each billing period (kind FEE), not with the month's usage.
 	AdvanceFee bool
@@ -540,7 +540,7 @@ func (m *Manager) draftFor(ctx context.Context, rr *rateRun, cid string) (*draft
 	if err != nil {
 		return nil, fmt.Errorf("get customer %s: %w", snapExternal, err)
 	}
-	// Tax at the tenant's rate for the customer's country, on an invoice Quotify raises. What a provider charges for is taxed by the provider.
+	// Tax at the tenant's rate for the customer's country, on an invoice Payrudder raises. What a provider charges for is taxed by the provider.
 	if !subscribed || sub.Owner != "provider" {
 		if name, bps, ok := rr.taxes.rateFor(cu.GetCustomer().GetCountry()); ok {
 			if tl, ok := rating.TaxLine(ls.lines, name, bps); ok {
@@ -851,7 +851,7 @@ func insertLines(ctx context.Context, q *sqlc.Queries, tenantID, invoiceID uuid.
 		p := sqlc.InsertInvoiceLineParams{
 			TenantID: tenantID, InvoiceID: invoiceID, LineNo: i32(i + 1), Kind: string(l.Kind), MeterCode: store.NilIfEmpty(l.MeterCode),
 			OriginPeriodID: store.NilIfEmpty(l.OriginPeriod), UnitPrice: store.NilIfEmpty(l.UnitPrice), AmountMinor: l.AmountMinor, Description: l.Description,
-			ServiceFrom: store.NilIfZero(l.ServiceFrom), ServiceTo: store.NilIfZero(l.ServiceTo),
+			ServiceFrom: store.NilIfZero(l.ServiceFrom), ServiceTo: store.NilIfZero(l.ServiceTo), CouponCode: store.NilIfEmpty(l.CouponCode),
 		}
 		if l.Quantity != nil {
 			units, err := unitsOf(l.Quantity, scales[i])

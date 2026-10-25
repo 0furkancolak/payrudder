@@ -10,14 +10,15 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Current returns the caller's tenant row. The tenant must exist (the gateway resolved it from an API key).
 func Current(ctx context.Context, q *sqlc.Queries) (sqlc.CurrentTenantRow, error) {
 	t, err := q.CurrentTenant(ctx)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return t, status.Error(codes.Unauthenticated, "unknown tenant")
+		return t, errkey.New(codes.Unauthenticated, "plans.tenant.unknown", "unknown tenant")
 	}
 	return t, err
 }

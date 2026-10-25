@@ -10,8 +10,8 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/0furkancolak/quotify/pkg/otelx"
-	"github.com/0furkancolak/quotify/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
+	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 )
 
 // DestinationHeader selects the sink of a row in a Router. Absent means Kafka.
@@ -46,10 +46,10 @@ func (s AMQPSink) Publish(ctx context.Context, rows []Row) error {
 		}
 		// A "<queue> publish" span, child of the context the transition stored with the row; the consumer continues from it.
 		pctx := otel.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier(r.Headers))
-		pctx, span := otel.Tracer("github.com/0furkancolak/quotify/pkg/outbox").Start(pctx, r.PartitionKey+" publish",
+		pctx, span := otel.Tracer("github.com/0furkancolak/payrudder/pkg/outbox").Start(pctx, r.PartitionKey+" publish",
 			trace.WithSpanKind(trace.SpanKindProducer), trace.WithAttributes(
 				attribute.String("messaging.system", "rabbitmq"), attribute.String("messaging.destination.name", r.Topic),
-				attribute.String("messaging.rabbitmq.destination.routing_key", r.PartitionKey), attribute.String("quotify.tenant_id", r.TenantID)))
+				attribute.String("messaging.rabbitmq.destination.routing_key", r.PartitionKey), attribute.String("payrudder.tenant_id", r.TenantID)))
 		spans = append(spans, span)
 		otel.GetTextMapPropagator().Inject(pctx, otelx.AMQPTableCarrier(hdr))
 		msgs[i] = rabbitx.Message{

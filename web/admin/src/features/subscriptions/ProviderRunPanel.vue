@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { type Subscription } from "@/shared/api/client";
-import { useErrorText } from "@/shared/lib/errors";
-import { formatMinor } from "@/shared/lib/money";
+import { firstError } from "@/shared/lib/errors";
 import type { Package } from "@/features/packages";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { useProviderRunActions, type ChangeInput } from "./api";
 
 const props = defineProps<{ subscription: Subscription; packages: Package[]; tenantId: string; environment: string }>();
-const { t, locale } = useI18n();
-const errorText = useErrorText();
+const { t } = useI18n();
+const fmt = useFormat();
 const act = useProviderRunActions(
   () => props.tenantId,
   () => props.environment,
@@ -26,16 +27,13 @@ const atPeriodEnd = ref(true);
 const input = computed<ChangeInput>(() => ({ id: props.subscription.id ?? "", plan_code: plan.value, interval: interval.value, timing: "", proration: proration.value }));
 const nothingChosen = computed(() => plan.value === "" && interval.value === "");
 const quote = computed(() => act.preview.data.value);
-const money = (v?: string) => formatMinor(v, quote.value?.currency ?? props.subscription.currency, locale.value);
+const money = (v?: string) => fmt.money(v, quote.value?.currency ?? props.subscription.currency);
 const outcome = computed(() => {
   const net = quote.value?.net_minor;
   if (net === undefined || net === "0") return t("billing.subscriptions.change.nothing");
   return net.startsWith("-") ? t("billing.subscriptions.change.creditAdded", { amount: money(net.slice(1)) }) : t("billing.subscriptions.change.due", { amount: money(net) });
 });
-const failure = computed(() => {
-  for (const m of Object.values(act)) if (m.error.value) return errorText(m.error.value);
-  return "";
-});
+const failure = computed(() => firstError(...Object.values(act)));
 const paymentUrl = computed(() => (act.paymentLink.data.value as { url?: string } | undefined)?.url);
 </script>
 
@@ -83,6 +81,6 @@ const paymentUrl = computed(() => (act.paymentLink.data.value as { url?: string 
     </div>
     <p v-if="act.pause.isSuccess.value || act.resume.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.subscriptions.providerRun.requested") }}</p>
     <p v-if="paymentUrl" class="text-sm" role="status"><a :href="paymentUrl" target="_blank" rel="noopener" class="underline">{{ paymentUrl }}</a></p>
-    <p v-if="failure" class="text-destructive text-sm" role="alert">{{ failure }}</p>
+    <ErrorText :error="failure" />
   </section>
 </template>

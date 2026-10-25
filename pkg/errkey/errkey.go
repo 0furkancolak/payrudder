@@ -12,7 +12,7 @@ import (
 )
 
 // Domain is the ErrorInfo domain every key travels under.
-const Domain = "quotify"
+const Domain = "payrudder"
 
 // MetaKey is the ErrorInfo metadata entry that holds the key.
 const MetaKey = "key"
@@ -74,6 +74,8 @@ func Default(c codes.Code) string {
 		return "common.conflict"
 	case codes.Unimplemented:
 		return "common.not_implemented"
+	case codes.Canceled:
+		return "common.canceled"
 	default:
 		return "common.internal"
 	}

@@ -12,11 +12,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/payments/banktransfer"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/handler"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
-	"github.com/0furkancolak/quotify/services/payments-worker/internal/transfers/query"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/query"
 )
 
 // Billing is what the commands ask of billing-svc.
@@ -182,7 +182,7 @@ func (d Deps) checkOpen(ctx context.Context, tenant, invoice uuid.UUID) error {
 	case err != nil:
 		return errkey.New(codes.Unavailable, "payments.transfer.unavailable", "billing-svc could not be asked about the invoice; try again")
 	case !found:
-		return status.Error(codes.NotFound, "no such invoice")
+		return errkey.New(codes.NotFound, "payments.transfer.invoice_not_found", "no such invoice")
 	case st == "open":
 		return nil
 	case st == "uncollectible":

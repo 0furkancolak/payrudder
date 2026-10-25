@@ -10,8 +10,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 func (fakeBilling) CreateExpense(_ context.Context, req *billingv1.CreateExpenseRequest) (*billingv1.CreateExpenseResponse, error) {
@@ -48,7 +48,8 @@ func (fakeBilling) GetAccountingSummary(_ context.Context, req *billingv1.GetAcc
 		{Currency: "EUR", ExpensesMinor: 40, ProfitMinor: -40, Series: []*billingv1.AccountingPoint{{Bucket: req.GetFromDate(), ExpensesMinor: 40, ProfitMinor: -40}}},
 		{Currency: "TRY", GrossIncomeMinor: 10000, NetIncomeMinor: 10000, ExpensesMinor: 4000, ProfitMinor: 6000, ProviderFeesMinor: 250, ProviderFeesRecorded: true,
 			ExpenseByCategory: []*billingv1.AccountingCategoryTotal{{Category: "infrastructure", AmountMinor: 4000}},
-			Series:            []*billingv1.AccountingPoint{{Bucket: req.GetFromDate(), GrossIncomeMinor: 10000, NetIncomeMinor: 10000, ExpensesMinor: 4000, ProfitMinor: 6000}}},
+			DiscountsMinor:    1000, SalesMinor: 11000, Coupons: []*billingv1.AccountingCoupon{{CouponCode: "-WELCOME", Invoices: 2, GrossMinor: 11000, DiscountMinor: 1000, NetMinor: 10000}},
+			Series: []*billingv1.AccountingPoint{{Bucket: req.GetFromDate(), GrossIncomeMinor: 10000, NetIncomeMinor: 10000, ExpensesMinor: 4000, ProfitMinor: 6000, DiscountsMinor: 1000}}},
 	}}, nil
 }
 
@@ -113,6 +114,29 @@ func TestAccountingSummaryKeepsCurrenciesApart(t *testing.T) {
 	}
 }
 
+func TestCouponsExportCSV(t *testing.T) {
+	ts, _ := newTestServer(t)
+	req, _ := http.NewRequest("GET", ts.URL+"/v1/accounting/coupons.csv?from=2026-10-01&to=2026-10-31", nil)
+	req.Header.Set("Authorization", "Bearer live-key")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	b, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 || !strings.Contains(resp.Header.Get("Content-Disposition"), "coupons-2026-10-01-2026-10-31.csv") {
+		t.Fatalf("headers: %d %v", resp.StatusCode, resp.Header)
+	}
+	// One row per currency and coupon; a code that starts like a formula is quoted so that a spreadsheet does not run it.
+	want := "currency,coupon,invoices,gross_minor,discount_minor,net_minor\nTRY,'-WELCOME,2,11000,1000,10000\n"
+	if string(b) != want {
+		t.Errorf("csv = %q, want %q", string(b), want)
+	}
+	if resp, m := do(t, ts, "GET", "/v1/accounting/coupons.csv", "live-key", ""); resp.StatusCode != 400 || errKey(m) != "billing.accounting.bad_period" {
+		t.Errorf("no period: %d %v", resp.StatusCode, m)
+	}
+}
+
 func TestAccountingExportCSV(t *testing.T) {
 	ts, _ := newTestServer(t)
 	req, _ := http.NewRequest("GET", ts.URL+"/v1/accounting/export.csv?from=2026-10-01&to=2026-10-31", nil)
@@ -128,11 +152,11 @@ func TestAccountingExportCSV(t *testing.T) {
 		t.Fatalf("headers: %d %v", resp.StatusCode, resp.Header)
 	}
 	want := []string{
-		"currency,bucket,gross_income_minor,tax_minor,refunds_minor,net_income_minor,expenses_minor,provider_fees_minor,profit_minor",
-		"EUR,2026-10-01,0,0,0,0,40,,-40",
-		"EUR,total,0,0,0,0,40,not_recorded,-40",
-		"TRY,2026-10-01,10000,0,0,10000,4000,,6000",
-		"TRY,total,10000,0,0,10000,4000,250,6000",
+		"currency,bucket,gross_income_minor,tax_minor,refunds_minor,net_income_minor,expenses_minor,provider_fees_minor,profit_minor,discounts_minor,sales_before_discounts_minor",
+		"EUR,2026-10-01,0,0,0,0,40,,-40,0,0",
+		"EUR,total,0,0,0,0,40,not_recorded,-40,0,0",
+		"TRY,2026-10-01,10000,0,0,10000,4000,,6000,1000,11000",
+		"TRY,total,10000,0,0,10000,4000,250,6000,1000,11000",
 	}
 	if len(lines) != len(want) {
 		t.Fatalf("csv = %q", string(b))

@@ -18,12 +18,12 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/tenant"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // The dashboard of one environment of an app (GET /app/v1/apps/{id}/dashboard, and the operator's twin under /admin/v1/tenants/{id}/dashboard): the
@@ -680,7 +680,7 @@ func (s *Server) buildDashboard(ctx context.Context, appID, envName string, t *p
 		rows, err := s.recentLedger(ctx, t.GetId())
 		if err != nil {
 			paymentsUp = false
-			return status.Error(codes.Unavailable, "payments")
+			return errkey.New(codes.Unavailable, "gateway.dashboard.payments_unavailable", "payments")
 		}
 		ledger = rows
 		var accts struct {
@@ -702,7 +702,7 @@ func (s *Server) buildDashboard(ctx context.Context, appID, envName string, t *p
 	var usagePeriod string
 	section("usage", func() error {
 		if s.d.Limits == nil {
-			return status.Error(codes.Unavailable, "limits")
+			return errkey.New(codes.Unavailable, "gateway.dashboard.limits_unavailable", "limits")
 		}
 		// Which customers to look at comes from the subscriptions; the limits are read for at most ten of them.
 		list, err := s.d.Plans.ListSubscriptions(ctx, &plansv1.ListSubscriptionsRequest{PageSize: 50})
@@ -745,7 +745,7 @@ func (s *Server) buildDashboard(ctx context.Context, appID, envName string, t *p
 		_ = eg.Wait()
 		usageSampled = len(picks)
 		if len(picks) > 0 && failed == len(picks) {
-			return status.Error(codes.Unavailable, "limits")
+			return errkey.New(codes.Unavailable, "gateway.dashboard.limits_unavailable", "limits")
 		}
 		return nil
 	})

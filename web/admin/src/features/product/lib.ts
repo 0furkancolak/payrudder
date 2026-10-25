@@ -1,4 +1,4 @@
-import type { AppOverview, Environment } from "./api";
+import type { AppOverview } from "./api";
 
 type Payments = NonNullable<AppOverview["payments"]>;
 
@@ -17,16 +17,6 @@ export function seriesOf(payments: Payments | null | undefined, currency: string
 /** The count of a payment status in the donut. */
 export function countOf(payments: Payments | null | undefined, status: string): number {
   return payments?.by_status?.find((s) => s.status === status)?.count ?? 0;
-}
-
-export function isEnvironment(v: unknown): v is Environment {
-  return v === "live" || v === "sandbox";
-}
-
-/** The tenant of an app for an environment. */
-export function tenantOf(app: { tenants?: { id?: string; environment?: string }[] } | undefined, env: Environment): string {
-  const want = env === "live" ? "ENVIRONMENT_LIVE" : "ENVIRONMENT_SANDBOX";
-  return app?.tenants?.find((t) => t.environment === want)?.id ?? "";
 }
 
 /** The reasons /signin?oauth_error= can carry (the gateway's Google callback sends one of them); anything else in the address is ignored. */

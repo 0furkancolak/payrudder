@@ -1,14 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, tenantApi, unwrap } from "@/shared/api/client";
+import type { Environment } from "@/shared/lib/environment";
 
 export const providerKeys = {
   accounts: (tenantId: string) => ["tenants", tenantId, "provider-accounts"] as const,
   rules: (tenantId: string) => ["tenants", tenantId, "routing-rules"] as const,
   subscriptions: (tenantId: string) => ["tenants", tenantId, "provider-subscriptions"] as const,
+  /** Every catalogue of the tenant (a prefix of `catalogue`). */
+  allCatalogues: (tenantId: string) => ["tenants", tenantId, "catalogue"] as const,
+  catalogue: (tenantId: string, provider: string, environment: Environment) => ["tenants", tenantId, "catalogue", provider, environment] as const,
 };
 
-type Env = "sandbox" | "live";
 
 export function useProviderAccounts(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
@@ -22,7 +25,7 @@ export function useAccountActions(tenantId: MaybeRefOrGetter<string>) {
   const refresh = () => queries.invalidateQueries({ queryKey: providerKeys.accounts(toValue(tenantId)) });
   return {
     save: useMutation({
-      mutationFn: (v: { provider: string; environment: Env; makeDefault: boolean; settings: Record<string, unknown> }) =>
+      mutationFn: (v: { provider: string; environment: Environment; makeDefault: boolean; settings: Record<string, unknown> }) =>
         unwrap(
           api.PUT("/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}", {
             params: { path: { tenant_id: toValue(tenantId), provider: v.provider }, query: { environment: v.environment, default: v.makeDefault } },
@@ -32,7 +35,7 @@ export function useAccountActions(tenantId: MaybeRefOrGetter<string>) {
       onSuccess: refresh,
     }),
     remove: useMutation({
-      mutationFn: (v: { provider: string; environment: Env }) =>
+      mutationFn: (v: { provider: string; environment: Environment }) =>
         unwrap(
           api.DELETE("/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}", {
             params: { path: { tenant_id: toValue(tenantId), provider: v.provider }, query: { environment: v.environment } },
@@ -86,10 +89,10 @@ export function useProviderSubscriptions(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** What Quotify has created at a provider: products, prices and discounts. Only providers with a catalogue answer. */
-export function useCatalogue(tenantId: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<Env>) {
+/** What Payrudder has created at a provider: products, prices and discounts. Only providers with a catalogue answer. */
+export function useCatalogue(tenantId: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<Environment>) {
   return useQuery({
-    queryKey: computed(() => ["tenants", toValue(tenantId), "catalogue", toValue(provider), toValue(environment)] as const),
+    queryKey: computed(() => providerKeys.catalogue(toValue(tenantId), toValue(provider), toValue(environment))),
     enabled: computed(() => toValue(provider) !== ""),
     queryFn: () =>
       unwrap(
@@ -101,7 +104,7 @@ export function useCatalogue(tenantId: MaybeRefOrGetter<string>, provider: Maybe
 }
 
 /** Makes the provider hold a plan version: its product once, and a price per interval and currency. */
-export function useSyncCatalogue(tenantId: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<Env>) {
+export function useSyncCatalogue(tenantId: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<Environment>) {
   const queries = useQueryClient();
   return useMutation({
     mutationFn: (plan_code: string) =>
@@ -111,6 +114,6 @@ export function useSyncCatalogue(tenantId: MaybeRefOrGetter<string>, provider: M
           body: { plan_code },
         }),
       ),
-    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "catalogue"] }),
+    onSuccess: () => queries.invalidateQueries({ queryKey: providerKeys.allCatalogues(toValue(tenantId)) }),
   });
 }

@@ -10,7 +10,7 @@ It never aggregates.
 ## gRPC API (sketch)
 
 ```proto
-package quotify.ingest.v1;
+package payrudder.ingest.v1;
 
 service IngestService {
   rpc IngestEvents(IngestEventsRequest) returns (IngestEventsResponse);
@@ -128,7 +128,7 @@ See [05-data-model.md](../05-data-model.md#ingest_db).
 
 ## Produced messages
 
-`usage.events.v1` (key `tenant_id`, value `quotify.events.v1.UsageEvent`).
+`usage.events.v1` (key `tenant_id`, value `payrudder.events.v1.UsageEvent`).
 
 ## Consumed messages
 
@@ -137,14 +137,14 @@ None.
 ## Back-pressure
 
 A background loop refreshes an estimate of the outbox depth every second (`max(id) - min(id) + 1`, two index probes; gaps
-left by concurrent relays make it overestimate slightly). Above `QUOTIFY_MAX_OUTBOX_DEPTH` (default 5,000,000)
+left by concurrent relays make it overestimate slightly). Above `PAYRUDDER_MAX_OUTBOX_DEPTH` (default 5,000,000)
 `IngestEvents` answers `RESOURCE_EXHAUSTED` and the gateway sets `Retry-After: 5`.
 
 ## Partition maintenance
 
 `maintain_idempotency_partitions(now)` (SECURITY DEFINER, executable by `ingest_system` only) creates the partitions of the
 current month and the next two, and drops those that ended more than 45 days ago. ingest-svc calls it on start and
-every hour (`QUOTIFY_PARTITION_MAINTENANCE_INTERVAL`); the migration calls it once too. If a month has no partition,
+every hour (`PAYRUDDER_PARTITION_MAINTENANCE_INTERVAL`); the migration calls it once too. If a month has no partition,
 ingest answers `UNAVAILABLE` for keyed events until the job succeeds, so alert on `partition maintenance failed` logs.
 
 ## Failure modes

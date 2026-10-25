@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 func (e *env) setTax(rates ...*plansv1.TaxRate) {
@@ -27,7 +27,7 @@ func (e *env) invoiceAmounts(period, customer string) (subtotal, total int64) {
 	return subtotal, total
 }
 
-func testTaxIsAddedOnTopOfTheInvoicesQuotifyRaises(t *testing.T) {
+func testTaxIsAddedOnTopOfTheInvoicesPayrudderRaises(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	e.startWorkers(nil)
 	pv := e.pv() // base fee 1000
@@ -101,5 +101,10 @@ func testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit(t *testing.T) {
 	}
 	if sub != 6500 || total != 8000 {
 		t.Errorf("subtotal %d total %d; want 6500 (7500 less the credit) and 8000", sub, total)
+	}
+	// The DISCOUNT line names its coupon, which is what the accounting report groups by.
+	var coupon *string
+	if err := shared.system.QueryRow(context.Background(), `SELECT coupon_code FROM invoice_lines WHERE tenant_id = $1 AND kind = 'DISCOUNT'`, e.tid).Scan(&coupon); err != nil || coupon == nil || *coupon != "WELCOME" {
+		t.Errorf("coupon of the discount line = %v, %v", coupon, err)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 
 	"github.com/google/uuid"
@@ -14,13 +15,13 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/apply"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/settings"
-	"github.com/0furkancolak/quotify/services/aggregator/internal/store/sqlc"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
 
 // MaxBatchKeys is the size limit of GetUsageBatch.
@@ -52,6 +53,12 @@ func New(app *pgxpool.Pool, src *settings.Source, group, topic string) *Service 
 // invalid is an InvalidArgument status with the error key key.
 func invalid(key, msg string) error { return errkey.New(codes.InvalidArgument, key, msg) }
 
+// cannotCompute answers for a period whose settings could not be worked out: the cause goes to the log, the client gets a fixed message.
+func cannotCompute(ctx context.Context, tenantID uuid.UUID, periodID string, err error) error {
+	slog.WarnContext(ctx, "period settings not computed", "tenant", tenantID, "period", periodID, "error", err)
+	return invalid("aggregator.period.cannot_compute", "the settings of this period cannot be worked out")
+}
+
 func validPeriod(p string) error {
 	if !periodRe.MatchString(p) {
 		return invalid("aggregator.period.bad_id", "period_id must look like 2026-11")
@@ -66,7 +73,7 @@ func mapErr(err error) error {
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return status.FromContextError(err).Err()
 	}
-	return status.Error(codes.Unavailable, "database unavailable")
+	return errkey.New(codes.Unavailable, "aggregator.store.unavailable", "database unavailable")
 }
 
 // generation returns the pinned generation, or the tenant's active one.
@@ -288,7 +295,7 @@ func (s *Service) ensurePeriod(ctx context.Context, tx pgx.Tx, tenantID uuid.UUI
 	}
 	snap, err := settings.Compute(t, periodID)
 	if err != nil {
-		return invalid("aggregator.period.cannot_compute", err.Error())
+		return cannotCompute(ctx, tenantID, periodID, err)
 	}
 	return sqlc.New(tx).EnsurePeriodSettingsApp(ctx, sqlc.EnsurePeriodSettingsAppParams{
 		PeriodID: periodID, Timezone: snap.Timezone, PeriodStart: snap.Start, PeriodEnd: snap.End,
@@ -333,7 +340,7 @@ func (s *Service) ClosePeriodEarly(ctx context.Context, req *aggregatorv1.CloseP
 	}
 	// The environment comes from the authenticated tenant, never from the request.
 	if ti.Environment != tenant.EnvSandbox {
-		return nil, status.Error(codes.FailedPrecondition, "periods can only be closed early in a sandbox tenant")
+		return nil, errkey.New(codes.FailedPrecondition, "aggregator.period.not_sandbox", "periods can only be closed early in a sandbox tenant")
 	}
 	if err := validPeriod(req.GetPeriodId()); err != nil {
 		return nil, err
@@ -345,7 +352,7 @@ func (s *Service) ClosePeriodEarly(ctx context.Context, req *aggregatorv1.CloseP
 		}
 		at, err := sqlc.New(tx).ClosePeriodEarly(ctx, req.GetPeriodId())
 		if errors.Is(err, pgx.ErrNoRows) {
-			return status.Error(codes.FailedPrecondition, "period is frozen or already closes within 5 seconds")
+			return errkey.New(codes.FailedPrecondition, "aggregator.period.frozen", "period is frozen or already closes within 5 seconds")
 		}
 		if err != nil {
 			return err

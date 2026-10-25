@@ -6,19 +6,19 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/quotify/services/plans-svc/internal/entitlements/command"
-	plansqry "github.com/0furkancolak/quotify/services/plans-svc/internal/plans/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
+	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
 // PlanChanged is the outcome of ChangePlan: the new subscription and the time-split fees of the month.
@@ -113,18 +113,18 @@ func (c *Commands) changePlan(ctx context.Context, q *sqlc.Queries, tenantID, id
 
 // requirePlanChangeable refuses a subscription ChangePlan cannot move and returns its effective state.
 func (c *Commands) requirePlanChangeable(row sqlc.GetSubscriptionRow, at time.Time) (subscription.State, error) {
-	if err := domain.RequireQuotifyOwned(row.Owner, row.Provider); err != nil {
+	if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 		return "", err
 	}
 	if !row.OpenEnded || row.CancelAtPeriodEnd {
-		return "", status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot change plan")
+		return "", errkey.New(codes.FailedPrecondition, "plans.change.subscription_ended", "an ended or ending subscription cannot change plan")
 	}
 	if row.FeeTiming == "advance" {
-		return "", status.Error(codes.FailedPrecondition, "a subscription whose fee is invoiced in advance is changed with ChangeSubscription (POST /v1/subscriptions/{id}/change), which prices the change and credits the unused time")
+		return "", errkey.New(codes.FailedPrecondition, "plans.change.use_change_subscription", "a subscription whose fee is invoiced in advance is changed with ChangeSubscription (POST /v1/subscriptions/{id}/change), which prices the change and credits the unused time")
 	}
 	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, c.now())
 	if eff != subscription.Active && eff != subscription.Trialing {
-		return "", status.Errorf(codes.FailedPrecondition, "a %s subscription cannot change plan", eff)
+		return "", errkey.Newf(codes.FailedPrecondition, "plans.change.state_not_changeable", "a %s subscription cannot change plan", eff)
 	}
 	if !at.After(row.StartTime) {
 		return "", domain.Invalid("change_time", "must be after the subscription start")
@@ -135,10 +135,10 @@ func (c *Commands) requirePlanChangeable(row sqlc.GetSubscriptionRow, at time.Ti
 // splitFees is the part of each plan's fee the period is charged for: the old plan up to at, the new one from at.
 func splitFees(oldFee, newFee int64, at, periodStart, periodEnd time.Time) (oldPortion, newPortion int64, err error) {
 	if oldPortion, err = subscription.Portion(oldFee, periodStart, at, periodStart, periodEnd); err != nil {
-		return 0, 0, status.Error(codes.FailedPrecondition, err.Error())
+		return 0, 0, errkey.New(codes.FailedPrecondition, "plans.change.bad_proration", err.Error())
 	}
 	if newPortion, err = subscription.Portion(newFee, at, periodEnd, periodStart, periodEnd); err != nil {
-		return oldPortion, 0, status.Error(codes.FailedPrecondition, err.Error())
+		return oldPortion, 0, errkey.New(codes.FailedPrecondition, "plans.change.bad_proration", err.Error())
 	}
 	return oldPortion, newPortion, nil
 }
@@ -148,7 +148,7 @@ func (c *Commands) replacePlan(ctx context.Context, q *sqlc.Queries, tenantID uu
 	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: row.ID, EndTime: at}); err != nil {
 		return nil, err
 	} else if n != 1 {
-		return nil, status.Error(codes.Aborted, "subscription changed concurrently; retry")
+		return nil, errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
 	}
 	if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: row.ID, State: string(subscription.Cancelled), PausedAt: row.PausedAt}); err != nil {
 		return nil, err

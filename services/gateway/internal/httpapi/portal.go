@@ -8,9 +8,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/errkey"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // The customer portal: GET /c/{token}. Read-only, for one customer of one tenant. billing-svc resolves the token to the tenant and the customer and returns only
@@ -134,10 +134,11 @@ func (s *Server) portalCreditsBuy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := r.PathValue("token")
-	var packID string
+	var packID, code string
 	var quantity int32
 	if err := r.ParseForm(); err == nil {
 		packID = r.PostForm.Get("pack_id")
+		code = formCode(r)
 		if v := r.PostForm.Get("quantity"); v != "" {
 			n, perr := strconv.ParseInt(v, 10, 32)
 			if perr != nil {
@@ -148,11 +149,13 @@ func (s *Server) portalCreditsBuy(w http.ResponseWriter, r *http.Request) {
 	}
 	back := "/c/" + token + langSuffix(r)
 	l := hostedText(lang)
-	resp, err := s.d.Hosted.StartPortalPurchase(r.Context(), &billingv1.StartPortalPurchaseRequest{PortalToken: token, PackId: packID, Quantity: quantity})
+	resp, err := s.d.Hosted.StartPortalPurchase(r.Context(), &billingv1.StartPortalPurchaseRequest{PortalToken: token, PackId: packID, Quantity: quantity, PromotionCode: code})
 	switch {
 	case err == nil:
 		hostedHeaders(w)
 		http.Redirect(w, r, "/i/"+resp.GetInvoiceToken()+langSuffix(r), http.StatusSeeOther)
+	case isPromoError(errkey.Of(err)):
+		s.message(w, r, http.StatusUnprocessableEntity, lang, l["cr_buy_title"], promoErrorText(l, errkey.Of(err)), back)
 	case status.Code(err) == codes.PermissionDenied || status.Code(err) == codes.InvalidArgument || errkey.Of(err) == "billing.invoice_link.not_found":
 		hostedNotFound(w, lang)
 	case status.Code(err) == codes.NotFound || status.Code(err) == codes.FailedPrecondition:

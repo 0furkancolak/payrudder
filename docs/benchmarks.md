@@ -9,7 +9,7 @@ last column says whether the measurement met it. Where it did not, that is state
 | | |
 |---|---|
 | Host | Apple M4, 10 cores, 16 GiB RAM, macOS |
-| Docker | OrbStack, Docker 29.8.2, **6 vCPU and 2.9 GiB for the whole VM**, which runs Postgres, Redpanda, RabbitMQ, ClickHouse, Redis, MinIO, the observability stack and every Quotify service (one replica each) next to k6 |
+| Docker | OrbStack, Docker 29.8.2, **6 vCPU and 2.9 GiB for the whole VM**, which runs Postgres, Redpanda, RabbitMQ, ClickHouse, Redis, MinIO, the observability stack and every Payrudder service (one replica each) next to k6 |
 | Code | `origin/main` at `ebc054c` (Phase 08) plus this branch's test tooling; service code is identical |
 | Configuration | `deploy/compose/compose.yaml` defaults: containers capped at 96-192 MiB, Postgres `shared_buffers=128MB`, `synchronous_commit=on`, default pool sizes |
 | Method | `make load S=<scenario>` (k6 2.3.0 on the compose network), `--summary-export` JSON kept in `docs/benchmarks/`; lag from `consumer_lag_seconds` in Prometheus over the test window |
@@ -48,7 +48,7 @@ workload paced to 100 events/s so that faults land during it), 10 tenants x 20 c
 | Workload | 20,000 events, 19,976 accepted at first answer, 1,012 duplicate answers (the 5 % duplicates), 63 client retries |
 | A1 usage_aggregates == ledger, A2 late_usage == ledger, A3 totals, A4 limits counters == aggregator (after a wiped Redis), A8 ClickHouse FINAL == accepted, A9 DLQs empty | **all pass, zero mismatches** |
 | A5 invoice totals, A6 one successful charge per invoice | pass in `TestMonthCloseSurvivesBrokerRestart` (60 customers, RabbitMQ restarted mid-close) |
-| A7 frozen-period violations | skipped here (no Prometheus in the chaos stack); `QUOTIFY_PROMETHEUS_URL` enables it |
+| A7 frozen-period violations | skipped here (no Prometheus in the chaos stack); `PAYRUDDER_PROMETHEUS_URL` enables it |
 
 Artifact: [chaos_20k_local.json](benchmarks/chaos_20k_local.json). **Not yet done:** the 1M-event run and three consecutive green nightlies (the acceptance
 criteria of Phase 09) need the nightly workflow to run on a CI runner; `.github/workflows/nightly.yml` is in place and has not run. The fault counts of a
@@ -56,7 +56,7 @@ criteria of Phase 09) need the nightly workflow to run on a CI runner; `.github/
 
 ## Memory budgets
 
-The `e2e` job of `ci.yml` ends with `make mem-budget`: after the stack has served the e2e scenarios and the console test, the memory of every Quotify
+The `e2e` job of `ci.yml` ends with `make mem-budget`: after the stack has served the e2e scenarios and the console test, the memory of every Payrudder
 service (`docker stats`, the container's working set, which for these processes is the resident set; the highest of three samples) must be at or below its
 `budget_mib` in [`deploy/compose/memory-budgets.yaml`](../deploy/compose/memory-budgets.yaml). The job writes the table (measured, budget, suggested budget) to the
 run summary. This is a regression alarm, not a benchmark: the compose limit stays the hard ceiling, the budget sits below it.

@@ -14,8 +14,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	ingestv1 "github.com/0furkancolak/quotify/gen/go/quotify/ingest/v1"
-	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // MaxEventsPerRequest is the batch size limit of POST /v1/events.
@@ -65,16 +66,16 @@ func parseEvents(r *http.Request) (*ingestv1.IngestEventsRequest, error) {
 		if errors.As(err, &mbe) {
 			return nil, errTooLarge{limit: mbe.Limit}
 		}
-		return nil, status.Error(codes.InvalidArgument, "unreadable body")
+		return nil, errkey.New(codes.InvalidArgument, "gateway.request.unreadable_body", "unreadable body")
 	}
 	var in eventsRequest
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&in); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "malformed JSON: %v", err)
+		return nil, errkey.Newf(codes.InvalidArgument, "gateway.request.malformed_json", "malformed JSON: %v", err)
 	}
 	if dec.More() {
-		return nil, status.Error(codes.InvalidArgument, "malformed JSON: trailing data")
+		return nil, errkey.New(codes.InvalidArgument, "gateway.request.malformed_json", "malformed JSON: trailing data")
 	}
 	switch n := len(in.Events); {
 	case n == 0:

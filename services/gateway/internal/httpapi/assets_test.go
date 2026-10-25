@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
 )
 
 type fakeAssets struct {

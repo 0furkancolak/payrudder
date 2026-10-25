@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, ApiError, unwrap, type Tenant } from "@/shared/api/client";
+import { PAGE, POLL } from "@/shared/api/limits";
 import type { components } from "@/shared/api/schema";
 import { tenantKeys } from "@/features/tenants/api";
+import type { Environment } from "@/shared/lib/environment";
 
 export type EInvoiceDocument = components["schemas"]["EInvoiceDocument"];
 export type EInvoiceAccount = components["schemas"]["EInvoiceAccount"];
@@ -27,13 +29,13 @@ export function useEInvoiceDocuments(tenantId: MaybeRefOrGetter<string>, source:
       const s = toValue(source);
       const r = await unwrap(
         api.GET("/admin/v1/tenants/{tenant_id}/e-invoices", {
-          params: { path: { tenant_id: toValue(tenantId) }, query: s.creditNoteId ? { credit_note_id: s.creditNoteId, page_size: 20 } : { invoice_id: s.invoiceId, page_size: 20 } },
+          params: { path: { tenant_id: toValue(tenantId) }, query: s.creditNoteId ? { credit_note_id: s.creditNoteId, page_size: PAGE.few } : { invoice_id: s.invoiceId, page_size: PAGE.few } },
         }),
       );
       const wanted = s.creditNoteId ? "credit_note" : "invoice";
       return (r.documents ?? []).filter((d) => d.kind === wanted);
     },
-    refetchInterval: (q) => ((q.state.data ?? []).some((d) => d.status === "pending") ? 5000 : false),
+    refetchInterval: (q) => ((q.state.data ?? []).some((d) => d.status === "pending") ? POLL.pending : false),
   });
 }
 
@@ -73,7 +75,7 @@ export function useEInvoiceAccountActions(tenantId: MaybeRefOrGetter<string>) {
   const done = () => queries.invalidateQueries({ queryKey: einvoiceKeys.accounts(toValue(tenantId)) });
   return {
     save: useMutation({
-      mutationFn: (v: { environment: "sandbox" | "live"; provider: "mock" | "nilvera" | "webhook"; mode: "test" | "production"; credentials: Record<string, string> }) =>
+      mutationFn: (v: { environment: Environment; provider: "mock" | "nilvera" | "webhook"; mode: "test" | "production"; credentials: Record<string, string> }) =>
         unwrap(
           api.PUT("/admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}", {
             params: { path: { tenant_id: toValue(tenantId), environment: v.environment } },
@@ -83,7 +85,7 @@ export function useEInvoiceAccountActions(tenantId: MaybeRefOrGetter<string>) {
       onSuccess: done,
     }),
     remove: useMutation({
-      mutationFn: (environment: "sandbox" | "live") =>
+      mutationFn: (environment: Environment) =>
         unwrap(api.DELETE("/admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}", { params: { path: { tenant_id: toValue(tenantId), environment } } })),
       onSuccess: done,
     }),

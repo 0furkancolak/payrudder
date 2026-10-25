@@ -1,15 +1,15 @@
 openapi: 3.1.0
 info:
-  title: Quotify API
+  title: Payrudder API
   version: v1
   description: |
-    Public HTTP/JSON API of the Quotify gateway (docs/03-services/gateway.md).
+    Public HTTP/JSON API of the Payrudder gateway (docs/03-services/gateway.md).
 
     - Tenant routes authenticate with `Authorization: Bearer qk_{test|live}_<prefix>_<secret>`. `qk_test_` keys act on the
       account's sandbox tenant, `qk_live_` keys on its live tenant.
-    - `/admin/v1` routes require `Authorization: Bearer <operator token>` (the machine credential `QUOTIFY_OPERATOR_TOKEN`, for scripts, `quotifyctl` and tests;
+    - `/admin/v1` routes require `Authorization: Bearer <operator token>` (the machine credential `PAYRUDDER_OPERATOR_TOKEN`, for scripts, `payrudderctl` and tests;
       it is never typed into a page) **or** the session token of a platform operator: a person who signed in and verified an address listed in
-      `QUOTIFY_OPERATOR_EMAILS`. The server decides this on every request.
+      `PAYRUDDER_OPERATOR_EMAILS`. The server decides this on every request.
     - Field names are snake_case. Enums are strings. Per the protobuf JSON mapping, int64 values (`*_minor`) are
       rendered as JSON strings and accepted as strings or numbers. Decimal quantities and prices are strings.
     - Errors always use the `Error` envelope. 429 responses carry `Retry-After` (seconds).
@@ -249,7 +249,7 @@ paths:
       summary: Usage of one meter against the customer's limit
       description: |
         Answered from near-real-time counters. They are eventually consistent (typically well under 2 s behind ingest):
-        `as_of` is the ingest time of the newest event reflected in `used`. Quotify never blocks ingest on a limit; call
+        `as_of` is the ingest time of the newest event reflected in `used`. Payrudder never blocks ingest on a limit; call
         this before serving your customer and decide what to do. A customer without an entitlement on the meter is
         `unlimited`. `period` defaults to the current period in the tenant's time zone.
       parameters:
@@ -374,7 +374,7 @@ paths:
       summary: End a subscription (now, or at end_time)
       description: >
         With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in
-        advance that Quotify runs, ended now, without a coupon); the response is then {subscription, credited_minor}.
+        advance that Payrudder runs, ended now, without a coupon); the response is then {subscription, credited_minor}.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: end_time, in: query, schema: { type: string, format: date-time } }
@@ -502,7 +502,7 @@ paths:
     post:
       operationId: applyCoupon
       summary: Redeem a coupon on a subscription that has none
-      description: A coupon takes something off a fixed fee Quotify invoices in advance. A subscription a provider renews uses a discount at the provider instead.
+      description: A coupon takes something off a fixed fee Payrudder invoices in advance. A subscription a provider renews uses a discount at the provider instead.
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
         required: true
@@ -523,14 +523,14 @@ paths:
   /v1/tax-rates:
     get:
       operationId: getTaxRates
-      summary: The tax Quotify adds to the invoices it raises, by customer country
+      summary: The tax Payrudder adds to the invoices it raises, by customer country
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TaxRates" } } } }
     put:
       operationId: setTaxRates
       summary: Replace the tax rates
       description: >
-        Quotify applies the rates as given, exclusive of the price, to the invoices it raises (monthly usage, fees in advance, plan changes) for customers whose country has a rate, or the
+        Payrudder applies the rates as given, exclusive of the price, to the invoices it raises (monthly usage, fees in advance, plan changes) for customers whose country has a rate, or the
         rate with an empty country. It does not work out what is due where; the rates and their correctness are the tenant's. Invoices of a subscription a provider runs are taxed by the provider.
       requestBody:
         required: true
@@ -541,7 +541,7 @@ paths:
   /v1/dunning-settings:
     get:
       operationId: getDunningSettings
-      summary: How long Quotify waits before it retries a declined payment
+      summary: How long Payrudder waits before it retries a declined payment
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DunningSettings" } } } }
     put:
@@ -604,7 +604,7 @@ paths:
       operationId: grantCredits
       summary: Add credits to a customer
       description: >
-        For a promotion, a goodwill gesture or a sale made outside Quotify. With an `idempotency_key` (or the `Idempotency-Key` header) a repeat of the call adds nothing and
+        For a promotion, a goodwill gesture or a sale made outside Payrudder. With an `idempotency_key` (or the `Idempotency-Key` header) a repeat of the call adds nothing and
         returns `replayed: true`; the same key with other values is `billing.credits.key_reused`.
       parameters: [{ $ref: "#/components/parameters/ExternalID" }]
       requestBody:
@@ -708,7 +708,7 @@ paths:
       summary: Income and expenses of a period, one block per currency
       description: >
         Currencies are never converted or added together. Income is read from the invoices: an invoice counts on the UTC day its payment succeeded (gross is its total, tax its TAX lines),
-        credit notes against paid invoices and invoices refunded in full are the refunds. Provider commission is not recorded by Quotify; `provider_fees_minor` is what the tenant entered as
+        credit notes against paid invoices and invoices refunded in full are the refunds. Provider commission is not recorded by Payrudder; `provider_fees_minor` is what the tenant entered as
         `payment_fees` expenses, and `provider_fees_recorded` is false when there is none. `expenses_minor` includes those fees. `profit_minor` is net income minus expenses.
         The series has one point for every day (or month) of the period. `app_id` limits the expenses, not the income.
       parameters:
@@ -725,7 +725,7 @@ paths:
       summary: The accounting series as CSV
       description: >
         The query of the summary. One row per currency and day (or month), then a `total` row per currency; amounts are minor units. The `provider_fees_minor` of a total row is
-        `not_recorded` when no `payment_fees` expense exists.
+        `not_recorded` when no `payment_fees` expense exists. `discounts_minor` is what coupons took off (contra-revenue) and `sales_before_discounts_minor` is gross - tax + discounts.
       parameters:
         - { name: from, in: query, required: true, schema: { type: string, format: date } }
         - { name: to, in: query, required: true, schema: { type: string, format: date } }
@@ -733,6 +733,21 @@ paths:
         - { name: granularity, in: query, schema: { type: string, enum: [day, month] } }
       responses:
         "200": { description: OK, content: { text/csv: { schema: { type: string } } } }
+  /v1/accounting/coupons.csv:
+    get:
+      operationId: exportAccountingCouponsCsv
+      summary: Gross sales, discounts and net per coupon as CSV
+      description: >
+        The query of the summary. One row per currency and coupon over the invoices paid in the period: their number, what they came to before the coupon (positive lines, tax excluded),
+        what the coupon took off, and the net. Currencies are never added together.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: app_id, in: query, schema: { type: string, format: uuid } }
+        - { name: granularity, in: query, schema: { type: string, enum: [day, month] } }
+      responses:
+        "200": { description: OK, content: { text/csv: { schema: { type: string } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /v1/credits/settings:
     get:
       operationId: getCreditSettings
@@ -753,10 +768,10 @@ paths:
   /v1/webhook-endpoints:
     post:
       operationId: createWebhookEndpoint
-      summary: Register an HTTPS endpoint that receives Quotify's events
+      summary: Register an HTTPS endpoint that receives Payrudder's events
       description: >
-        Quotify sends a signed JSON POST to the endpoint for each event of the types it asks for (all types if none). The response carries the signing secret, once; it cannot be
-        read again, only rotated. Verify each delivery with the `Quotify-Signature` header: `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<raw body>" with the secret>` (two `v1` while a
+        Payrudder sends a signed JSON POST to the endpoint for each event of the types it asks for (all types if none). The response carries the signing secret, once; it cannot be
+        read again, only rotated. Verify each delivery with the `Payrudder-Signature` header: `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<raw body>" with the secret>` (two `v1` while a
         rotated secret is still accepted); reject a timestamp more than five minutes from your clock. Answer 2xx within 10 seconds; anything else is retried after 1 minute, 5 minutes, 30 minutes,
         2 hours, 6 hours and 24 hours, then given up (a delivery can be sent again by hand). Events are delivered at least once and not in order: use the event `id` to ignore repeats.
         The URL must be https and public; at most 20 endpoints.
@@ -1073,10 +1088,10 @@ paths:
   /v1/mail-settings:
     get:
       operationId: getMailSettings
-      summary: Which kinds of e-mail Quotify sends for the tenant (all on until switched off)
+      summary: Which kinds of e-mail Payrudder sends for the tenant (all on until switched off)
       description: |
         Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`. A mail of a category that is off is dropped by the notifier
-        (counted in `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule (Paddle does, so Quotify sends none for its payments).
+        (counted in `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule (Paddle does, so Payrudder sends none for its payments).
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MailSettings" } } } }
     put:
@@ -1184,7 +1199,7 @@ paths:
       description: >
         The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days
         (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in
-        English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the gateway knows its public address (QUOTIFY_PUBLIC_URL).
+        English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL).
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
         required: false
@@ -1237,12 +1252,35 @@ paths:
     post:
       operationId: hostedLinkStart
       summary: First use of an ad-hoc payment link — makes the invoice and continues on its page
-      description: The payer presses *Continue*. This is the point at which the invoice gets its number, not when the page is fetched. A redirect to the invoice page. At most 10 a minute per address.
+      description: The payer presses *Continue*. This is the point at which the invoice gets its number, not when the page is fetched. A redirect to the invoice page. Form field `code`, optional, is a promotion code; it takes something off the price (a DISCOUNT line on the invoice; the amount of a payment link is the total the payer pays) or adds bonus credits to a credit purchase, and is claimed here. A code that cannot be used shows the page again with the reason (422) and makes no invoice. At most 10 a minute per address.
       security: []
       parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { code: { type: string, maxLength: 40 } } }
       responses:
         "303": { description: "Redirect to the invoice page (/i/{invoice token})" }
+        "422": { description: "The promotion code cannot be used; the page is shown again with the reason", content: { text/html: { schema: { type: string } } } }
         "404": { description: "The link does not exist, has expired, or a single-use link was already paid", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /i/{token}/promo:
+    post:
+      operationId: hostedLinkPromo
+      summary: Check a promotion code on an ad-hoc or credit-pack payment link and show the new total
+      description: Form field `code`. The page is shown again with what the code takes off (or the bonus credits), or the reason it cannot be used (422). Nothing is claimed until *Continue*. At most 10 a minute per address.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { code: { type: string, maxLength: 40 } } }
+      responses:
+        "200": { description: "The page with the discounted total", content: { text/html: { schema: { type: string } } } }
+        "422": { description: "The promotion code cannot be used", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The link does not exist or has expired" }
         "429": { description: "Too many requests" }
   /i/{token}/pay:
     post:
@@ -1320,7 +1358,7 @@ paths:
       requestBody:
         content:
           application/x-www-form-urlencoded:
-            schema: { type: object, properties: { pack_id: { type: string, format: uuid }, quantity: { type: integer, minimum: 1, maximum: 1000 } }, required: [pack_id] }
+            schema: { type: object, properties: { pack_id: { type: string, format: uuid }, quantity: { type: integer, minimum: 1, maximum: 1000 }, code: { type: string, maxLength: 40, description: "A promotion code" } }, required: [pack_id] }
       responses:
         "303": { description: "Redirect to the invoice page (/i/{invoice token})" }
         "404": { description: "The link does not exist or has expired, or the pack is not on sale", content: { text/html: { schema: { type: string } } } }
@@ -1881,8 +1919,8 @@ paths:
       tags: [Product]
       summary: Which sign-in methods this deployment offers
       description: >
-        The page asks this to show only buttons that work. `password` and `otp` are always on; `google` is on when `QUOTIFY_GOOGLE_CLIENT_ID` and
-        `QUOTIFY_GOOGLE_CLIENT_SECRET` are set. Public.
+        The page asks this to show only buttons that work. `password` and `otp` are always on; `google` is on when `PAYRUDDER_GOOGLE_CLIENT_ID` and
+        `PAYRUDDER_GOOGLE_CLIENT_SECRET` are set. Public.
       security: []
       responses:
         "200":
@@ -2900,13 +2938,13 @@ paths:
       description: >
         Records one transfer. It is idempotent per (invoice, bank_reference): the same reference again answers 200 with `duplicate: true` (409
         `payments.transfer.reference_reused` when the amount differs). The currency must be the invoice's and the amount positive and at most what is outstanding
-        (`payments.transfer.overpayment` otherwise: record what the invoice needs and handle the rest outside Quotify). A partial amount is recorded and the invoice
-        stays unpaid; when the receipts add up to the total the invoice saga is told and the invoice is paid. The actor is taken from the X-Quotify-Actor header.
+        (`payments.transfer.overpayment` otherwise: record what the invoice needs and handle the rest outside Payrudder). A partial amount is recorded and the invoice
+        stays unpaid; when the receipts add up to the total the invoice saga is told and the invoice is paid. The actor is taken from the X-Payrudder-Actor header.
       security: [{ operatorToken: [] }]
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: invoice_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: X-Quotify-Actor, in: header, description: Who confirms it (shown in the audit trail); "operator" when absent, schema: { type: string, maxLength: 120 } }
+        - { name: X-Payrudder-Actor, in: header, description: Who confirms it (shown in the audit trail); "operator" when absent, schema: { type: string, maxLength: 120 } }
       requestBody:
         required: true
         content:
@@ -2938,7 +2976,7 @@ paths:
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: invoice_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: X-Quotify-Actor, in: header, schema: { type: string, maxLength: 120 } }
+        - { name: X-Payrudder-Actor, in: header, schema: { type: string, maxLength: 120 } }
       requestBody:
         content:
           application/json:
@@ -3054,7 +3092,7 @@ paths:
       summary: Move a subscription to another payment provider without charging the customer twice
       description: >
         To a provider that runs subscriptions itself (Paddle) a checkout is returned and the old subscription is untouched until the customer has subscribed
-        there. To a provider Quotify runs (iyzico) the new subscription takes over at once, or from a provider-run subscription at the end of the period
+        there. To a provider Payrudder runs (iyzico) the new subscription takes over at once, or from a provider-run subscription at the end of the period
         the old provider was paid for; the old provider is told to stop renewing first.
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -3133,7 +3171,7 @@ paths:
                 properties:
                   plan_version_id: { type: string }
                   product_ref: { type: string }
-                  created: { type: object, additionalProperties: { type: string }, description: Quotify's key of each price created to the provider's id }
+                  created: { type: object, additionalProperties: { type: string }, description: Payrudder's key of each price created to the provider's id }
                   existing: { type: object, additionalProperties: { type: string } }
                   skipped: { type: object, additionalProperties: { type: string }, description: Key to the reason }
         "400": { $ref: "#/components/responses/Error" }
@@ -3145,7 +3183,7 @@ paths:
   /admin/v1/tenants/{tenant_id}/providers/{provider}/catalogue:
     get:
       operationId: listProviderCatalogue
-      summary: What Quotify has created at the provider (products, prices, discounts)
+      summary: What Payrudder has created at the provider (products, prices, discounts)
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
@@ -3236,9 +3274,9 @@ paths:
   /admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change:
     post:
       operationId: changeProviderSubscription
-      summary: Change the plan or interval of a subscription the provider runs, at the provider, and let Quotify's copy follow
+      summary: Change the plan or interval of a subscription the provider runs, at the provider, and let Payrudder's copy follow
       description: >
-        200 when the provider applied the change and Quotify followed; 202 when the provider applied it and Quotify will follow when the provider's notification arrives.
+        200 when the provider applied the change and Payrudder followed; 202 when the provider applied it and Payrudder will follow when the provider's notification arrives.
         A payment that fails prevents the change.
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -3250,7 +3288,7 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/ChangeRequest" } } }
       responses:
         "200": { description: Changed and followed }
-        "202": { description: Changed at the provider; Quotify follows later }
+        "202": { description: Changed at the provider; Payrudder follows later }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -3276,7 +3314,7 @@ paths:
                 at_period_end: { type: boolean }
                 resume_at: { type: string, format: date-time }
       responses:
-        "202": { description: Requested; Quotify's copy follows the provider's notification }
+        "202": { description: Requested; Payrudder's copy follows the provider's notification }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -3293,7 +3331,7 @@ paths:
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
-        "202": { description: Requested; Quotify's copy follows the provider's notification }
+        "202": { description: Requested; Payrudder's copy follows the provider's notification }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -3705,14 +3743,14 @@ paths:
       operationId: adminRecordInvoicePayment
       summary: Record money received outside a payment provider (a bank transfer, cash, other) against an invoice
       description: >
-        For an invoice that was not charged through Quotify, or whose charge is stuck. Partial payments are recorded; the invoice is paid when they add up to the total.
+        For an invoice that was not charged through Payrudder, or whose charge is stuck. Partial payments are recorded; the invoice is paid when they add up to the total.
         More than is outstanding is refused (`billing.payment.overpayment`). Allowed while the invoice is open or uncollectible and its saga is waiting for or has
         failed a payment. Idempotent per (invoice, method, reference) when a reference is given: the same call again answers 200 with `duplicate: true`.
-        Who and when are recorded (X-Quotify-Actor, `operator` when absent). An invoice charged by bank transfer is confirmed through its transfer endpoint instead.
+        Who and when are recorded (X-Payrudder-Actor, `operator` when absent). An invoice charged by bank transfer is confirmed through its transfer endpoint instead.
       security: [{ operatorToken: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: X-Quotify-Actor, in: header, schema: { type: string, maxLength: 120 } }
+        - { name: X-Payrudder-Actor, in: header, schema: { type: string, maxLength: 120 } }
       requestBody:
         required: true
         content:
@@ -3792,8 +3830,8 @@ paths:
 components:
   securitySchemes:
     apiKey: { type: http, scheme: bearer, description: "qk_{test|live}_<prefix>_<secret>" }
-    operatorToken: { type: http, scheme: bearer, description: "Operator access: the machine token (QUOTIFY_OPERATOR_TOKEN, for the API, quotifyctl and tests) or the session token (qs_...) of a platform operator, a person with a verified address listed in QUOTIFY_OPERATOR_EMAILS. A session of anybody else is refused with 403 identity.operator.forbidden." }
-    sessionToken: { type: http, scheme: bearer, description: "A person's session token (qs_..., from /auth/signin). It also works on /v1 routes together with X-Quotify-Tenant, for a tenant of one of the person's accounts (a viewer may only read)." }
+    operatorToken: { type: http, scheme: bearer, description: "Operator access: the machine token (PAYRUDDER_OPERATOR_TOKEN, for the API, payrudderctl and tests) or the session token (qs_...) of a platform operator, a person with a verified address listed in PAYRUDDER_OPERATOR_EMAILS. A session of anybody else is refused with 403 identity.operator.forbidden." }
+    sessionToken: { type: http, scheme: bearer, description: "A person's session token (qs_..., from /auth/signin). It also works on /v1 routes together with X-Payrudder-Tenant, for a tenant of one of the person's accounts (a viewer may only read)." }
   parameters:
     ExternalID: { name: external_id, in: path, required: true, schema: { type: string } }
     PlanCode: { name: code, in: path, required: true, schema: { type: string } }
@@ -4133,14 +4171,14 @@ components:
         memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
         token: { type: string, description: "qs_..., shown once; send as Authorization: Bearer" }
         expire_time: { type: string, format: date-time, description: 14 days from now; slides on use, never beyond 90 days from sign-in }
-        operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in QUOTIFY_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
+        operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
     SessionInfo:
       type: object
       properties:
         user: { $ref: "#/components/schemas/AuthUser" }
         memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
         expire_time: { type: string, format: date-time }
-        operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in QUOTIFY_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
+        operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
     MyAccount:
       type: object
       properties:
@@ -4640,7 +4678,7 @@ components:
         kind: { type: string, enum: [invoice, credit_note] }
         invoice_id: { type: string, format: uuid }
         credit_note_id: { type: [string, "null"], format: uuid }
-        number: { type: string, description: Quotify's invoice or credit note number }
+        number: { type: string, description: Payrudder's invoice or credit note number }
         status: { type: string, enum: [pending, issued, failed, cancelled] }
         document_type: { type: string, enum: ["", e-fatura, e-arsiv, peppol], description: Empty until known }
         provider: { type: string }
@@ -4830,6 +4868,7 @@ components:
         net_income_minor: { type: string }
         expenses_minor: { type: string }
         profit_minor: { type: string }
+        discounts_minor: { type: string, description: "What coupons took off the invoices paid in this bucket" }
     AccountingCurrency:
       type: object
       description: One currency of the period. Every amount is int64 minor units as a string.
@@ -4848,6 +4887,17 @@ components:
           type: array
           items: { type: object, properties: { category: { $ref: "#/components/schemas/ExpenseCategory" }, amount_minor: { type: string } } }
         series: { type: array, items: { $ref: "#/components/schemas/AccountingPoint" } }
+        discounts_minor: { type: string, description: "What coupons took off the paid invoices (contra-revenue, a positive number). gross_income_minor is already after it" }
+        sales_minor: { type: string, description: "Revenue before discounts: gross - tax + discounts" }
+        coupons: { type: array, items: { $ref: "#/components/schemas/AccountingCoupon" }, description: "Gross, discounts and net per coupon, most discount first" }
+    AccountingCoupon:
+      type: object
+      properties:
+        coupon_code: { type: string }
+        invoices: { type: string }
+        gross_minor: { type: string, description: "What those invoices came to before the coupon: positive lines, tax excluded" }
+        discount_minor: { type: string }
+        net_minor: { type: string, description: "gross - discount" }
     AccountingSummary:
       type: object
       properties:
@@ -4900,6 +4950,7 @@ components:
         pack_id: { type: string, description: "kind credit_pack: the pack sold" }
         quantity: { type: integer, description: "kind credit_pack: how many packs one use buys" }
         credits: { type: string, description: "kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string" }
+        promotion_code: { type: string, description: "The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another" }
         invoice_id: { type: string, description: "kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)" }
         customer_external_id: { type: string }
         single_use: { type: boolean }
@@ -4925,6 +4976,7 @@ components:
         description: { type: string, maxLength: 200, description: "adhoc: what it is for; printed on the invoice" }
         customer_external_id: { type: string, description: "adhoc: make the invoice out to this customer. credit_pack: required, the customer who receives the credits" }
         single_use: { type: boolean, description: "Default true for adhoc, false for invoice" }
+        promotion_code: { type: string, description: "adhoc and credit_pack, optional: a promotion code the payer gets without typing it (a one-off invoice with a discount). Checked against the link's own amount now (a coupon.* error if it does not work); claimed when the payer continues. An invoice that exists is not changed, so a kind invoice link takes none" }
         expires_in_days: { type: integer, minimum: 1, maximum: 365, description: "Default 30 for adhoc, 90 for invoice" }
         idempotency_key: { type: string, maxLength: 200 }
     CreatedPaymentLink:
@@ -4933,7 +4985,7 @@ components:
         - type: object
           properties:
             token: { type: string, description: "The secret part of the link; shown once, empty on a replay" }
-            url: { type: string, description: "Absolute when the gateway knows its public address (QUOTIFY_PUBLIC_URL); empty on a replay" }
+            url: { type: string, description: "Absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL); empty on a replay" }
             replayed: { type: boolean }
     CustomerPayment:
       type: object
@@ -4961,7 +5013,7 @@ components:
       type: object
       properties:
         id: { type: string, format: uuid }
-        event_id: { type: string, format: uuid, description: "The id inside the delivered body and the Quotify-Event-Id header" }
+        event_id: { type: string, format: uuid, description: "The id inside the delivered body and the Payrudder-Event-Id header" }
         event_type: { type: string }
         endpoint_id: { type: string, format: uuid }
         state: { type: string, enum: [WEBHOOK_DELIVERY_STATE_PENDING, WEBHOOK_DELIVERY_STATE_DELIVERED, WEBHOOK_DELIVERY_STATE_FAILED] }

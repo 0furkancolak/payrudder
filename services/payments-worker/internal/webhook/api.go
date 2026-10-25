@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/payments"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 // The operator API over what a provider can do beyond charging: its catalogue, customers, subscriptions, discounts and documents. Each
@@ -55,7 +55,7 @@ func (s *Server) target(w http.ResponseWriter, r *http.Request) (target, bool) {
 	name := r.PathValue("provider")
 	prov, err := s.Resolver.Named(r.Context(), t, name, env)
 	if err != nil {
-		fail(w, http.StatusNotFound, "no account at "+name+" for this tenant")
+		fail(w, http.StatusNotFound, "payments.account.not_found", "no account at "+name+" for this tenant")
 		return target{}, false
 	}
 	return target{tenant: t, env: env, provider: name, prov: prov}, true
@@ -63,28 +63,31 @@ func (s *Server) target(w http.ResponseWriter, r *http.Request) (target, bool) {
 
 // unsupported answers for a provider whose adapter lacks the interface an endpoint needs.
 func unsupported(w http.ResponseWriter, provider, what string) {
-	fail(w, http.StatusNotImplemented, provider+" does not support "+what)
+	fail(w, http.StatusNotImplemented, "payments.provider.not_supported", provider+" does not support "+what)
 }
+
+// providerTrouble is what a caller is told when a provider call failed; the cause is in the log.
+const providerTrouble = "the payment provider could not complete the request"
 
 // providerFail relays an error from a provider: a request it refused is the caller's to fix, anything else is a bad gateway.
 func (s *Server) providerFail(w http.ResponseWriter, r *http.Request, what string, err error) {
 	s.Log.WarnContext(r.Context(), what+" failed", "err", err)
 	if errors.Is(err, payments.ErrUnsupported) {
-		fail(w, http.StatusConflict, err.Error())
+		fail(w, http.StatusConflict, "payments.provider.not_supported", err.Error())
 		return
 	}
-	fail(w, http.StatusBadGateway, err.Error())
+	fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
 }
 
 func decodeBody(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(v); err != nil {
-		fail(w, http.StatusBadRequest, "the body must be JSON: "+err.Error())
+		fail(w, http.StatusBadRequest, "payments.request.bad_body", "the body must be JSON: "+err.Error())
 		return false
 	}
 	return true
 }
 
-// priceKey is Quotify's name for one price of a plan version.
+// priceKey is Payrudder's name for one price of a plan version.
 func priceKey(planVersionID, interval, currency string) string {
 	return planVersionID + "|" + interval + "|" + strings.ToUpper(currency)
 }
@@ -103,7 +106,7 @@ func intervalFromName(name string) plansv1.SubscriptionInterval {
 	return plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
 }
 
-// catalogueTarget finds the plan version and interval a provider's price ids stand for, if Quotify created them.
+// catalogueTarget finds the plan version and interval a provider's price ids stand for, if Payrudder created them.
 func (s *Server) catalogueTarget(ctx context.Context, tenant uuid.UUID, provider, env string, refs []string) (string, plansv1.SubscriptionInterval, bool) {
 	for _, ref := range refs {
 		key, ok, err := s.Objects.ByRef(ctx, tenant, provider, env, "price", ref)
@@ -131,7 +134,7 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
+		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return
 	}
 	var in catalogueInput
@@ -139,35 +142,35 @@ func (s *Server) syncCatalogue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.PlanCode == "" {
-		fail(w, http.StatusBadRequest, "plan_code is required")
+		fail(w, http.StatusBadRequest, "payments.plan.code_required", "plan_code is required")
 		return
 	}
 	ctx := r.Context()
 	pv, err := s.Plans.GetPlanVersion(ctx, tg.tenant, &plansv1.GetPlanVersionRequest{PlanCode: in.PlanCode, Version: in.PlanVersion})
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	tenantCurrency, err := s.Plans.TenantCurrency(ctx, tg.tenant)
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	specs, existing, err := s.missingPrices(ctx, tg, in, pv, tenantCurrency)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	productKey := "plan:" + in.PlanCode
 	productRef, _, err := s.Objects.Get(ctx, tg.tenant, tg.provider, tg.env, "product", productKey)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	res := payments.CatalogueResult{ProductRef: productRef, Prices: map[string]string{}, Skipped: map[string]string{}}
 	var syncErr error
 	if len(specs) > 0 {
-		res, syncErr = cat.SyncCatalogue(ctx, payments.CatalogueRequest{ProductRef: productRef, ProductName: in.productName(), TaxCategory: in.TaxCategory, QuotifyPlanCode: in.PlanCode, Prices: specs})
+		res, syncErr = cat.SyncCatalogue(ctx, payments.CatalogueRequest{ProductRef: productRef, ProductName: in.productName(), TaxCategory: in.TaxCategory, PayrudderPlanCode: in.PlanCode, Prices: specs})
 	}
 	s.rememberCatalogue(ctx, tg, productKey, productRef, res)
 	if syncErr != nil {
@@ -246,7 +249,7 @@ func (s *Server) listCatalogue(w http.ResponseWriter, r *http.Request) {
 	}
 	list, err := s.Objects.List(r.Context(), tg.tenant, tg.provider, tg.env, "product", "price", "discount")
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "internal error")
+		fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"objects": list})
@@ -268,7 +271,7 @@ func (s *Server) ensureCustomer(w http.ResponseWriter, r *http.Request) {
 		if status == 0 {
 			s.providerFail(w, r, "ensure customer", err)
 		} else {
-			fail(w, status, err.Error())
+			fail(w, status, "payments.customer.not_ready", err.Error())
 		}
 		return
 	}
@@ -284,7 +287,7 @@ func (s *Server) customerRefs(ctx context.Context, tg target, api payments.Custo
 	if err != nil {
 		return payments.CustomerRefs{}, http.StatusNotFound, errors.New("no such customer")
 	}
-	refs, err := api.EnsureCustomer(ctx, payments.CustomerSpec{QuotifyCustomerID: c.GetId(), Email: c.GetEmail(), Name: c.GetName(), Country: c.GetCountry()})
+	refs, err := api.EnsureCustomer(ctx, payments.CustomerSpec{PayrudderCustomerID: c.GetId(), Email: c.GetEmail(), Name: c.GetName(), Country: c.GetCountry()})
 	if err != nil {
 		return refs, 0, err
 	}
@@ -314,7 +317,7 @@ func (s *Server) portalLink(w http.ResponseWriter, r *http.Request) {
 		if status == 0 {
 			s.providerFail(w, r, "ensure customer", err)
 		} else {
-			fail(w, status, err.Error())
+			fail(w, status, "payments.customer.not_ready", err.Error())
 		}
 		return
 	}
@@ -337,19 +340,19 @@ type changeRequest struct {
 
 func enumWord(v, prefix string) string { return strings.TrimPrefix(strings.ToLower(v), prefix) }
 
-// providerSubscription loads a subscription Quotify mirrors and checks the provider runs it.
+// providerSubscription loads a subscription Payrudder mirrors and checks the provider runs it.
 func (s *Server) providerSubscription(w http.ResponseWriter, r *http.Request, tg target) (*plansv1.Subscription, bool) {
 	if s.Plans == nil {
-		fail(w, http.StatusServiceUnavailable, "plans-svc is not configured")
+		fail(w, http.StatusServiceUnavailable, "payments.plans.not_configured", "plans-svc is not configured")
 		return nil, false
 	}
 	sub, err := s.Plans.GetSubscription(r.Context(), tg.tenant, r.PathValue("id"))
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return nil, false
 	}
 	if sub.GetOwner() != "provider" || sub.GetProvider() != tg.provider || sub.GetProviderRef() == "" {
-		fail(w, http.StatusConflict, "this subscription is not run by "+tg.provider)
+		fail(w, http.StatusConflict, "payments.subscription.wrong_provider", "this subscription is not run by "+tg.provider)
 		return nil, false
 	}
 	return sub, true
@@ -412,7 +415,7 @@ func (s *Server) previewChange(w http.ResponseWriter, r *http.Request) {
 	}
 	ch, _, iv, code, err := s.planChange(r.Context(), tg, sub, in)
 	if err != nil {
-		fail(w, code, err.Error())
+		fail(w, code, "payments.subscription.change_refused", err.Error())
 		return
 	}
 	p, err := api.PreviewChange(r.Context(), sub.GetProviderRef(), ch)
@@ -438,7 +441,7 @@ func orCurrency(a, b string) string {
 	return b
 }
 
-// applyChange changes the subscription at the provider and then lets Quotify's copy follow at once. If the provider took the change and plans-svc
+// applyChange changes the subscription at the provider and then lets Payrudder's copy follow at once. If the provider took the change and plans-svc
 // could not follow, the provider's notification will make it follow, which the answer says.
 func (s *Server) applyChange(w http.ResponseWriter, r *http.Request) {
 	tg, ok := s.target(w, r)
@@ -461,7 +464,7 @@ func (s *Server) applyChange(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	ch, pvID, iv, code, err := s.planChange(ctx, tg, sub, in)
 	if err != nil {
-		fail(w, code, err.Error())
+		fail(w, code, "payments.subscription.change_refused", err.Error())
 		return
 	}
 	if err := api.ApplyChange(ctx, sub.GetProviderRef(), ch); err != nil {

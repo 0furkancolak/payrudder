@@ -32,6 +32,6 @@ go.work.sum.local
 tests/load/results/*
 !tests/load/results/.gitkeep
 tests/chaos/chaos-report.json
-tools/quotifyctl/quotifyctl
+tools/payrudderctl/payrudderctl
 
 .playwright-mcp/

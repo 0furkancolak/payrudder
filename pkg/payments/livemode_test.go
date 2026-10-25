@@ -4,9 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/iyzico"
-	"github.com/0furkancolak/quotify/pkg/payments/paddle"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
+	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
 )
 
 func TestLivemodeOfAnAccountMustBeTheEnvironments(t *testing.T) {

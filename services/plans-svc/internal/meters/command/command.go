@@ -7,15 +7,15 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
 // Commands changes meters.
@@ -50,7 +50,7 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreateMeterRequest) 
 				return err
 			}
 			if n >= quota {
-				return status.Errorf(codes.ResourceExhausted, "meter quota of %d reached for tier %s", quota, t.Tier)
+				return errkey.Newf(codes.ResourceExhausted, "plans.meter.quota_reached", "meter quota of %d reached for tier %s", quota, t.Tier)
 			}
 		}
 		out, err = q.InsertMeter(ctx, sqlc.InsertMeterParams{
@@ -58,7 +58,7 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreateMeterRequest) 
 			Filter: in.Filter, QuantityScale: in.Scale, UnitLabel: in.UnitLabel,
 		})
 		if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
-			return status.Error(codes.Aborted, "concurrent meter version created; retry")
+			return errkey.New(codes.Aborted, "plans.meter.changed_concurrently", "concurrent meter version created; retry")
 		}
 		return err
 	})

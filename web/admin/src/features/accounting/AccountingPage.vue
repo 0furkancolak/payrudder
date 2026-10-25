@@ -2,11 +2,13 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { toast } from "vue-sonner";
 import { useApps } from "@/features/apps/api";
 import { useTenant } from "@/features/tenants";
 import { useErrorText } from "@/shared/lib/errors";
-import { formatMinor } from "@/shared/lib/money";
+import { formatUtcDay } from "@/shared/lib/format";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -22,6 +24,7 @@ import { granularityOf, PRESETS, presetRange, validRange, type Preset, type Rang
 import VoidDialog from "./VoidDialog.vue";
 
 const { t, locale } = useI18n();
+const fmt = useFormat();
 const errorText = useErrorText();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -41,12 +44,12 @@ const appName = (id?: string) => appList.value.find((a) => a.id === id)?.name ??
 
 const summary = useAccountingSummary(tenantId, () => range.value.from, () => range.value.to, app, granularity, rangeOk);
 const currencies = computed(() => summary.data.value?.currencies ?? []);
-const money = (v: string | number | undefined, currency?: string) => formatMinor(v === undefined ? "0" : String(v), currency, locale.value);
+const money = (v: string | number | undefined, currency?: string) => fmt.amount(v, currency);
 
 // --- the expenses
 const showVoided = ref(false);
 const expenses = useExpenses(tenantId, app, showVoided);
-const day = (iso?: string) => (iso ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`)) : "");
+const day = (iso?: string) => formatUtcDay(iso, locale.value);
 
 const dialogOpen = ref(false);
 const editing = ref<Expense | null>(null);
@@ -109,7 +112,7 @@ async function exportCsv() {
     <p class="text-muted-foreground text-xs">{{ t("billing.accounting.currencyNote") }}</p>
   </Card>
 
-  <p v-if="summary.error.value" class="text-destructive mb-4 text-sm" role="alert">{{ errorText(summary.error.value) }}</p>
+  <ErrorText :error="summary.error.value" class="mb-4" />
   <p v-if="rangeOk && summary.data.value && !currencies.length" class="text-muted-foreground mb-6 text-sm">{{ t("billing.accounting.empty") }}</p>
 
   <section v-for="c in currencies" :key="c.currency" class="mb-6" :aria-label="c.currency">
@@ -172,7 +175,7 @@ async function exportCsv() {
         {{ t("billing.accounting.expenses.showVoided") }}
       </label>
     </div>
-    <p v-if="expenses.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(expenses.error.value) }}</p>
+    <ErrorText :error="expenses.error.value" class="px-3" />
     <p v-if="expenses.data.value && !(expenses.data.value.expenses ?? []).length" class="text-muted-foreground px-3 py-2 text-sm">{{ t("billing.accounting.expenses.none") }}</p>
     <Table v-else>
       <TableHeader>

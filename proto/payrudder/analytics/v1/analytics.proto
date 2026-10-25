@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package payrudder.analytics.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// AnalyticsService serves near-real-time usage series and rankings from ClickHouse. Its numbers are estimates: invoices
+// always come from the aggregator and billing-svc. The tenant comes from gRPC metadata, never from a request body.
+service AnalyticsService {
+  // QueryUsage returns a usage series for one meter. The default answer comes from the hourly rollup (fast, may over-count
+  // by the duplicate rate); exact=true recomputes it from the deduplicated events and is limited to ranges of one day.
+  rpc QueryUsage(QueryUsageRequest) returns (QueryUsageResponse);
+  // TopCustomers ranks customers by their usage of a meter in a billing period.
+  rpc TopCustomers(TopCustomersRequest) returns (TopCustomersResponse);
+  // GetIngestStats reports events per second, late and duplicate percentages per tenant. Operator only.
+  rpc GetIngestStats(GetIngestStatsRequest) returns (GetIngestStatsResponse);
+}
+
+enum Granularity {
+  GRANULARITY_UNSPECIFIED = 0;
+  GRANULARITY_HOUR = 1;
+  GRANULARITY_DAY = 2;
+}
+
+message QueryUsageRequest {
+  string meter_code = 1;
+  // Internal customer id; empty = all customers.
+  string customer_id = 2;
+  google.protobuf.Timestamp from = 3;
+  google.protobuf.Timestamp to = 4;
+  Granularity granularity = 5;
+  bool exact = 6;
+}
+
+message UsagePoint {
+  google.protobuf.Timestamp start = 1;
+  // Exact decimal with quantity_scale fractional digits.
+  string quantity = 2;
+  int64 event_count = 3;
+}
+
+message QueryUsageResponse {
+  repeated UsagePoint points = 1;
+  uint32 quantity_scale = 2;
+  // "estimated" (hourly rollup) or "exact" (deduplicated events).
+  string precision = 3;
+}
+
+message TopCustomersRequest {
+  string meter_code = 1;
+  // "YYYY-MM".
+  string period_id = 2;
+  // 1..100, default 10.
+  int32 limit = 3;
+}
+
+message CustomerUsage {
+  string customer_id = 1;
+  string customer_external_id = 2;
+  string quantity = 3;
+  int64 event_count = 4;
+}
+
+message TopCustomersResponse {
+  repeated CustomerUsage customers = 1;
+  uint32 quantity_scale = 2;
+  string precision = 3;
+}
+
+message GetIngestStatsRequest {
+  // Empty = every tenant.
+  string tenant_id = 1;
+  // Seconds, 1..86400; default 300.
+  int32 window_seconds = 2;
+}
+
+message TenantIngestStats {
+  string tenant_id = 1;
+  int64 events = 2;
+  double events_per_second = 3;
+  // Share of events ingested more than 24 h after their event time.
+  double late_percent = 4;
+  // Share of rows whose event id appears more than once (before ClickHouse merges them).
+  double duplicate_percent = 5;
+}
+
+message GetIngestStatsResponse {
+  repeated TenantIngestStats tenants = 1;
+}

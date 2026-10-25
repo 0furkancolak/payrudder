@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/rating"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 )
 
 func TestFixedFeeLines(t *testing.T) {

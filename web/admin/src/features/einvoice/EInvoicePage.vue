@@ -2,8 +2,9 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { toApiError } from "@/shared/api/client";
+import { useFormat } from "@/shared/lib/format";
 import { useTenant } from "@/features/tenants/api";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -11,10 +12,12 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useEInvoiceAccountActions, useEInvoiceAccounts, useSaveEInvoiceSettings, type EInvoiceOn, type LegalInfo } from "./api";
+import type { Environment } from "@/shared/lib/environment";
 
 type Provider = "mock" | "nilvera" | "webhook";
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
@@ -39,7 +42,7 @@ function saveSettings() {
 // --- the integrator account
 const accounts = useEInvoiceAccounts(tenantId);
 const actions = useEInvoiceAccountActions(tenantId);
-const environment = ref<"sandbox" | "live">("live");
+const environment = ref<Environment>("live");
 const provider = ref<Provider>("nilvera");
 const mode = ref<"test" | "production">("test");
 const apiKey = ref("");
@@ -63,17 +66,17 @@ function saveAccount() {
     { onSuccess: () => (apiKey.value = hookSecret.value = "") },
   );
 }
-function removeAccount(env: "sandbox" | "live", p: string) {
+function removeAccount(env: Environment, p: string) {
   if (window.confirm(t("einvoice.settings.confirmRemove", { provider: p, environment: env }))) actions.remove.mutate(env);
 }
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "day", "—");
 </script>
 
 <template>
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("einvoice.settings.title") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("einvoice.settings.hint") }}</p>
-    <p v-if="tenant.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(tenant.error.value).message }}</p>
+    <ErrorText :error="tenant.error.value" />
     <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="form" :aria-label="t('einvoice.settings.formLabel')" @submit.prevent="saveSettings">
       <NativeSelect v-model="eInvoiceOn" :aria-label="t('einvoice.settings.on')">
         <option value="off">{{ t("einvoice.settings.onOff") }}</option>
@@ -87,14 +90,14 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       <Input v-model="legal.trade_registry_no" maxlength="40" :aria-label="t('einvoice.settings.tradeRegistry')" :placeholder="t('einvoice.settings.tradeRegistry')" />
       <div class="sm:col-span-2 lg:col-span-3"><Button type="submit" :disabled="save.isPending.value">{{ t("einvoice.settings.save") }}</Button></div>
     </form>
-    <p v-if="save.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(save.error.value).message }}</p>
+    <ErrorText :error="save.error.value" />
     <p v-if="save.isSuccess.value" class="text-success text-sm" role="status">{{ t("einvoice.settings.saved") }}</p>
   </Card>
 
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("einvoice.account.title") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("einvoice.account.hint") }}</p>
-    <p v-if="accounts.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(accounts.error.value).message }}</p>
+    <ErrorText :error="accounts.error.value" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -146,8 +149,8 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       <p v-if="provider !== 'mock'" class="text-muted-foreground text-xs">{{ t("einvoice.account.neverShown") }}</p>
       <div><Button type="submit" :disabled="actions.save.isPending.value">{{ t("einvoice.account.save") }}</Button></div>
     </form>
-    <p v-if="actions.save.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(actions.save.error.value).message }}</p>
-    <p v-if="actions.remove.error.value" class="text-destructive text-sm" role="alert">{{ toApiError(actions.remove.error.value).message }}</p>
+    <ErrorText :error="actions.save.error.value" />
+    <ErrorText :error="actions.remove.error.value" />
     <p v-if="actions.save.isSuccess.value" class="text-success text-sm" role="status">{{ t("einvoice.account.saved") }}</p>
   </Card>
 </template>

@@ -6,9 +6,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 )
 
 // Handler serves the subscription methods of PlansService.

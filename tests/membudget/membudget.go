@@ -1,4 +1,4 @@
-// Package membudget checks the memory of the running compose stack against budgets kept in deploy/compose/memory-budgets.yaml: after a smoke run, no Quotify
+// Package membudget checks the memory of the running compose stack against budgets kept in deploy/compose/memory-budgets.yaml: after a smoke run, no Payrudder
 // service may use more memory than its budget. The numbers are a container's memory as `docker stats` reports it (the cgroup's usage without reclaimable page
 // cache, so in practice the process's resident set), the same measure tests/bench uses.
 package membudget
@@ -121,7 +121,7 @@ func Table(rows []Row) string {
 	return sb.String()
 }
 
-// BuiltServices lists the services of a compose file that are built from this repository, which are the Quotify services that need a budget.
+// BuiltServices lists the services of a compose file that are built from this repository, which are the Payrudder services that need a budget.
 func BuiltServices(composePath string) ([]string, error) {
 	b, err := os.ReadFile(composePath) //nolint:gosec // a fixed repository path
 	if err != nil {
@@ -138,8 +138,8 @@ func BuiltServices(composePath string) ([]string, error) {
 	}
 	var out []string
 	for name, s := range c.Services {
-		// A development stand-in (label quotify.dev-only, e.g. mockoidc, the fake Google) is never part of a deployed stack and has no budget.
-		if s.Build != nil && s.Labels["quotify.dev-only"] != "true" {
+		// A development stand-in (label payrudder.dev-only, e.g. mockoidc, the fake Google) is never part of a deployed stack and has no budget.
+		if s.Build != nil && s.Labels["payrudder.dev-only"] != "true" {
 			out = append(out, name)
 		}
 	}

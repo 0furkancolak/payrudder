@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
+	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 )
 
 func line(kind string, amount int64) *commandsv1.InvoiceLineSnapshot {

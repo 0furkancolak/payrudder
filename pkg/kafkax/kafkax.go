@@ -1,4 +1,4 @@
-// Package kafkax builds Kafka producers with Quotify's settings (docs/04-messaging.md) and carries the required
+// Package kafkax builds Kafka producers with Payrudder's settings (docs/04-messaging.md) and carries the required
 // record headers: content-type, ce-type, ce-id, tenant-id and the W3C trace context.
 package kafkax
 

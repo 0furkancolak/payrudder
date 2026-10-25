@@ -11,14 +11,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/money"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/rating"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // BillFees invoices the fixed fees that are due in advance, for every tenant: for each advance-billed subscription whose next period has
@@ -103,7 +103,7 @@ func (m *Manager) billFee(ctx context.Context, tenantID uuid.UUID, t *plansv1.Te
 		lines := []rating.Line{{Kind: rating.KindBaseFee, AmountMinor: d.GetFeeMinor(), ServiceFrom: start, ServiceTo: end,
 			Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", feeWord(sub), sub.GetPlanCode(), day(start, loc), day(end, loc))}}
 		if d.GetDiscountMinor() > 0 {
-			lines = append(lines, rating.Line{Kind: rating.KindDiscount, AmountMinor: -d.GetDiscountMinor(), ServiceFrom: start, ServiceTo: end, Description: "Coupon " + d.GetCouponCode()})
+			lines = append(lines, rating.Line{Kind: rating.KindDiscount, AmountMinor: -d.GetDiscountMinor(), ServiceFrom: start, ServiceTo: end, Description: "Coupon " + d.GetCouponCode(), CouponCode: d.GetCouponCode()})
 		}
 		id, err := m.draftFeeInvoice(ctx, tenantID, t, loc, feeInvoiceSpec{
 			Key: sub.GetId() + "|" + start.UTC().Format(time.RFC3339), Sub: sub, PeriodStart: start, Lines: lines})

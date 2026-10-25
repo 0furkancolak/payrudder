@@ -305,10 +305,10 @@ func (q *Queries) InsertDraftInvoice(ctx context.Context, arg InsertDraftInvoice
 
 const insertInvoiceLine = `-- name: InsertInvoiceLine :exec
 INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, meter_code, origin_period_id, quantity, quantity_scale, unit_label, unit_price,
-                           amount_minor, description, service_from, service_to)
+                           amount_minor, description, service_from, service_to, coupon_code)
 VALUES ($1, $2, $3, $4, $5, $6, $7::text::numeric,
         $8, $9, $10::text::numeric, $11, $12,
-        $13, $14)
+        $13, $14, $15)
 `
 
 type InsertInvoiceLineParams struct {
@@ -326,6 +326,7 @@ type InsertInvoiceLineParams struct {
 	Description    string
 	ServiceFrom    *time.Time
 	ServiceTo      *time.Time
+	CouponCode     *string
 }
 
 func (q *Queries) InsertInvoiceLine(ctx context.Context, arg InsertInvoiceLineParams) error {
@@ -344,6 +345,7 @@ func (q *Queries) InsertInvoiceLine(ctx context.Context, arg InsertInvoiceLinePa
 		arg.Description,
 		arg.ServiceFrom,
 		arg.ServiceTo,
+		arg.CouponCode,
 	)
 	return err
 }

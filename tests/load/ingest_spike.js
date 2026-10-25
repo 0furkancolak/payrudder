@@ -8,8 +8,8 @@ const PEAK = envNum('PEAK_EVENTS_PER_SEC', 20000);
 const BASE = envNum('BASE_EVENTS_PER_SEC', 1000);
 const TENANTS = envNum('TENANTS', 10);
 const rl = (eps) => Math.max(1, Math.round(eps / BATCH));
-const status5xx = new Counter('quotify_5xx');
-const status429 = new Counter('quotify_429');
+const status5xx = new Counter('payrudder_5xx');
+const status429 = new Counter('payrudder_429');
 
 export const options = {
   scenarios: {
@@ -22,7 +22,7 @@ export const options = {
       ],
     },
   },
-  thresholds: { quotify_5xx: ['count==0'] },
+  thresholds: { payrudder_5xx: ['count==0'] },
   summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
 

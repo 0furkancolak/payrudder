@@ -3,8 +3,9 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { useErrorText } from "@/shared/lib/errors";
+import { useFormat } from "@/shared/lib/format";
 import { COUNTRY_HINTS, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -18,9 +19,10 @@ import CatalogueCard from "./CatalogueCard.vue";
 import BankTransferForm from "./BankTransferForm.vue";
 import { templateText } from "./templates";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import type { Environment } from "@/shared/lib/environment";
 
-const { t, locale } = useI18n();
-const errorText = useErrorText();
+const { t } = useI18n();
+const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 
@@ -28,7 +30,7 @@ const tenantId = computed(() => String(params.value.id ?? ""));
 const accounts = useProviderAccounts(tenantId);
 const actions = useAccountActions(tenantId);
 const provider = ref("");
-const environment = ref<"sandbox" | "live">("live");
+const environment = ref<Environment>("live");
 const makeDefault = ref(true);
 const settings = ref("");
 const settingsError = ref("");
@@ -59,7 +61,7 @@ function saveAccount() {
     { onSuccess: () => (settings.value = templateText(provider.value)) },
   );
 }
-function removeAccount(p: string, env: "sandbox" | "live") {
+function removeAccount(p: string, env: Environment) {
   if (window.confirm(t("billing.providers.confirmRemove", { provider: p, environment: env }))) actions.remove.mutate({ provider: p, environment: env });
 }
 const webhookPath = computed(() => `/webhooks/${provider.value || "{provider}"}/${tenantId.value}/${environment.value}`);
@@ -79,14 +81,14 @@ const pCurrency = ref("");
 
 // --- what providers run
 const providerSubs = useProviderSubscriptions(tenantId);
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "day", "—");
 </script>
 
 <template>
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.providers.accounts") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.providers.accountsHint") }}</p>
-    <p v-if="accounts.error.value" class="text-destructive text-sm" role="alert">{{ errorText(accounts.error.value) }}</p>
+    <ErrorText :error="accounts.error.value" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -129,16 +131,16 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       <p v-if="!isBank" class="text-muted-foreground text-xs">{{ t("billing.providers.webhookHint", { path: webhookPath }) }}</p>
       <div><Button type="submit" :disabled="actions.save.isPending.value || provider === ''">{{ t("billing.providers.saveAccount") }}</Button></div>
     </form>
-    <p v-if="settingsError" class="text-destructive text-sm" role="alert">{{ settingsError }}</p>
-    <p v-if="actions.save.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.save.error.value) }}</p>
-    <p v-if="actions.remove.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.remove.error.value) }}</p>
+    <ErrorText :message="settingsError" />
+    <ErrorText :error="actions.save.error.value" />
+    <ErrorText :error="actions.remove.error.value" />
     <p v-if="actions.save.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.providers.saved") }}</p>
   </Card>
 
   <Card class="mb-6">
     <h2 class="text-lg font-semibold">{{ t("billing.providers.routing") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.providers.routingHint") }}</p>
-    <p v-if="stored.error.value" class="text-destructive text-sm" role="alert">{{ errorText(stored.error.value) }}</p>
+    <ErrorText :error="stored.error.value" />
     <datalist id="countries"><option v-for="c in COUNTRY_HINTS" :key="c" :value="c" /></datalist>
     <div v-for="(r, i) in rules" :key="i" class="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3" role="group" :aria-label="t('billing.providers.rule', { n: i + 1 })">
       <Input v-model="r.country" list="countries" maxlength="2" :aria-label="t('billing.providers.country', { n: i + 1 })" :placeholder="t('billing.providers.anyCountry')" />
@@ -153,7 +155,7 @@ const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateSt
       <Button type="button" variant="outline" @click="rules.push({ country: '', currency: '', provider: ROUTABLE_PROVIDERS[0]?.name ?? '' })"><Plus class="size-4" />{{ t("billing.providers.addRule") }}</Button>
       <Button type="button" :disabled="setRules.isPending.value" @click="setRules.mutate(rules.map((r) => ({ ...r, country: r.country.trim().toUpperCase() })))">{{ t("billing.providers.saveRules") }}</Button>
     </div>
-    <p v-if="setRules.error.value" class="text-destructive text-sm" role="alert">{{ errorText(setRules.error.value) }}</p>
+    <ErrorText :error="setRules.error.value" />
     <p v-if="setRules.isSuccess.value" class="text-success text-sm" role="status">{{ t("billing.providers.rulesSaved") }}</p>
 
     <form class="flex flex-wrap items-center gap-3 border-t pt-4" role="form" :aria-label="t('billing.providers.preview')" @submit.prevent="preview.mutate({ country: pCountry.trim().toUpperCase(), currency: pCurrency })">

@@ -9,15 +9,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
-	"github.com/0furkancolak/quotify/pkg/blob"
-	"github.com/0furkancolak/quotify/pkg/idgen"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/policy"
-	"github.com/0furkancolak/quotify/services/assets-svc/internal/store/sqlc"
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
+	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store/sqlc"
 )
 
 // plannedFile is one validated file of a CreateUploadSession request.
@@ -37,7 +37,7 @@ type plannedFile struct {
 func (s *Service) planFiles(req *assetsv1.CreateUploadSessionRequest) ([]*plannedFile, int64, error) {
 	n := len(req.GetFiles())
 	if n < 1 || n > maxFiles {
-		return nil, 0, status.Errorf(codes.InvalidArgument, "a session takes 1..%d files, got %d", maxFiles, n)
+		return nil, 0, errkey.Newf(codes.InvalidArgument, "assets.session.bad_file_count", "a session takes 1..%d files, got %d", maxFiles, n)
 	}
 	files := make([]*plannedFile, n)
 	var total int64
@@ -58,7 +58,7 @@ func (s *Service) planFile(i int, f *assetsv1.FileSpec) (*plannedFile, error) {
 		return nil, failure(codes.InvalidArgument, policy.InvalidFilename, fmt.Sprintf("files[%d].filename: unusable", i))
 	}
 	if f.GetSize() <= 0 {
-		return nil, status.Errorf(codes.InvalidArgument, "files[%d].size is required for direct uploads", i)
+		return nil, errkey.Newf(codes.InvalidArgument, "assets.upload.size_required", "files[%d].size is required for direct uploads", i)
 	}
 	ct, v := s.pol.Check(f.GetPurpose(), f.GetContentType(), f.GetSize())
 	if v != nil {
@@ -68,7 +68,7 @@ func (s *Service) planFile(i int, f *assetsv1.FileSpec) (*plannedFile, error) {
 	p := &plannedFile{id: idgen.NewUUIDv7(), filename: name, contentType: ct, size: f.GetSize(), purpose: f.GetPurpose()}
 	if h := f.GetSha256(); h != "" {
 		if p.sha, err = hex.DecodeString(h); err != nil || len(p.sha) != 32 {
-			return nil, status.Errorf(codes.InvalidArgument, "files[%d].sha256 must be 64 hex characters", i)
+			return nil, errkey.Newf(codes.InvalidArgument, "assets.upload.bad_sha256", "files[%d].sha256 must be 64 hex characters", i)
 		}
 	}
 	p.partSize = policy.PartSize(p.size)
@@ -115,7 +115,7 @@ func (s *Service) startMultipart(ctx context.Context, ti tenant.Info, files []*p
 			Tags: map[string]string{"purpose": policy.PurposeName(p.purpose)}})
 		if err != nil {
 			s.abortMultipart(ctx, ti, files)
-			return status.Error(codes.Unavailable, "object storage unavailable")
+			return errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 		}
 	}
 	return nil
@@ -230,7 +230,7 @@ func (s *Service) sessionView(ctx context.Context, q *sqlc.Queries, id uuid.UUID
 		if sess.Status == "OPEN" && uploadable(a) && a.S3UploadID != nil {
 			count := min(int(*a.PartCount), presignBatch)
 			if f.PresignedParts, err = s.presign(ctx, a, 1, count); err != nil {
-				return nil, status.Error(codes.Unavailable, "could not sign part URLs")
+				return nil, errkey.New(codes.Unavailable, "assets.storage.sign_failed", "could not sign part URLs")
 			}
 		}
 		out.Files = append(out.Files, f)
@@ -279,10 +279,10 @@ func (s *Service) openForUpload(ctx context.Context, q *sqlc.Queries, sessionID,
 		return a, err
 	}
 	if !inSession(a, sessionID) {
-		return a, status.Error(codes.NotFound, "asset not found in this session")
+		return a, errkey.New(codes.NotFound, "assets.asset.not_in_session", "asset not found in this session")
 	}
 	if !s.sessionOpen(sess) {
-		return a, status.Error(codes.FailedPrecondition, "the upload session is no longer open")
+		return a, errkey.New(codes.FailedPrecondition, "assets.session.closed", "the upload session is no longer open")
 	}
 	return a, nil
 }
@@ -302,7 +302,7 @@ func (s *Service) PresignParts(ctx context.Context, req *assetsv1.PresignPartsRe
 		from = 1
 	}
 	if count < 1 || count > presignBatch {
-		return nil, status.Errorf(codes.InvalidArgument, "count must be 1..%d", presignBatch)
+		return nil, errkey.Newf(codes.InvalidArgument, "assets.upload.bad_part_count", "count must be 1..%d", presignBatch)
 	}
 	var parts []*assetsv1.PresignedPart
 	err = s.tx(ctx, func(q *sqlc.Queries) error {
@@ -311,10 +311,10 @@ func (s *Service) PresignParts(ctx context.Context, req *assetsv1.PresignPartsRe
 			return err
 		}
 		if !uploadable(a) {
-			return status.Error(codes.FailedPrecondition, "the file is no longer uploadable")
+			return errkey.New(codes.FailedPrecondition, "assets.asset.not_uploadable", "the file is no longer uploadable")
 		}
 		if from > int(*a.PartCount) {
-			return status.Errorf(codes.InvalidArgument, "from_part is beyond the %d parts of this file", *a.PartCount)
+			return errkey.Newf(codes.InvalidArgument, "assets.upload.bad_from_part", "from_part is beyond the %d parts of this file", *a.PartCount)
 		}
 		parts, err = s.presign(ctx, a, from, count)
 		return err
@@ -342,7 +342,7 @@ func (s *Service) GetUploadFile(ctx context.Context, req *assetsv1.GetUploadFile
 			return err
 		}
 		if !inSession(a, sid) {
-			return status.Error(codes.NotFound, "asset not found in this session")
+			return errkey.New(codes.NotFound, "assets.asset.not_in_session", "asset not found in this session")
 		}
 		out = fileView(a)
 		if uploadable(a) && a.S3UploadID != nil {
@@ -360,7 +360,7 @@ func (s *Service) GetUploadFile(ctx context.Context, req *assetsv1.GetUploadFile
 func (s *Service) addUploadedParts(ctx context.Context, q *sqlc.Queries, a sqlc.Asset, out *assetsv1.UploadFile) error {
 	parts, err := s.blob.ListParts(ctx, a.ObjectKey, *a.S3UploadID)
 	if err != nil && !errors.Is(err, blob.ErrNoSuchUpload) {
-		return status.Error(codes.Unavailable, "object storage unavailable")
+		return errkey.New(codes.Unavailable, "assets.storage.unavailable", "object storage unavailable")
 	}
 	for _, p := range parts {
 		out.UploadedParts = append(out.UploadedParts, &assetsv1.UploadedPart{PartNumber: p.Number, Size: p.Size, Etag: etagOf(p.ETag)})

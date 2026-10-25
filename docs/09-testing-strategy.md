@@ -92,7 +92,7 @@ Results are published in `docs/benchmarks.md` (Phase 9) with hardware, commit SH
 - Writes an expected-totals ledger `(tenant, customer, meter, period, on_time|late) → quantity, count`, counting only events whose
   final response was `accepted` or `duplicate` (the first acceptance).
 
-**Clock control.** Periods are long, so the suite runs with `QUOTIFY_CLOCK_OFFSET` and a configurable grace of 2 minutes
+**Clock control.** Periods are long, so the suite runs with `PAYRUDDER_CLOCK_OFFSET` and a configurable grace of 2 minutes
 via test-only tenant settings. A "month" is simulated by setting the period boundary a few minutes into the test.
 
 **Chaos schedule** (`tests/chaos/cmd/chaosmonkey`), for the whole duration:
@@ -127,15 +127,15 @@ via test-only tenant settings. A "month" is simulated by setting the period boun
 
 `make chaos N=100000` starts the compose stack with `compose.chaos.yaml`: two replicas each of ingest-svc, aggregator and limits-svc,
 all built with the `chaos` tag, with their Postgres, Redis and Kafka connections routed through Toxiproxy (Redpanda has a
-third, `proxied` listener advertised as `toxiproxy:19093`). `QUOTIFY_CHAOS_MONKEY=1` enables `tests/chaos/monkey.go`, which
+third, `proxied` listener advertised as `toxiproxy:19093`). `PAYRUDDER_CHAOS_MONKEY=1` enables `tests/chaos/monkey.go`, which
 kills random replicas, injects Toxiproxy faults, stops Redpanda for 30 s and wipes and restarts Redis, and counts everything
-it did; the report (`chaos-report.json`) lists the counts next to A1-A9. Knobs: `QUOTIFY_CHAOS_TENANTS` (default 10, the
-nightly uses 50), `QUOTIFY_CHAOS_RATE` (events/s cap, to make a small run last long enough for faults),
-`QUOTIFY_CHAOS_MIN_KILLS` / `QUOTIFY_CHAOS_MIN_FAULTS` (fail a run that injected less chaos than required; when the workload ends before the schedule reached them, the monkey keeps going at a faster pace for up to `QUOTIFY_CHAOS_TOPUP_MINUTES`, default 8, while the backlog drains, so the requirement does not depend on the runner's speed), `QUOTIFY_CHAOS_DRAIN_MINUTES` (how long to wait for the aggregator to apply every accepted event, default 40).
+it did; the report (`chaos-report.json`) lists the counts next to A1-A9. Knobs: `PAYRUDDER_CHAOS_TENANTS` (default 10, the
+nightly uses 50), `PAYRUDDER_CHAOS_RATE` (events/s cap, to make a small run last long enough for faults),
+`PAYRUDDER_CHAOS_MIN_KILLS` / `PAYRUDDER_CHAOS_MIN_FAULTS` (fail a run that injected less chaos than required; when the workload ends before the schedule reached them, the monkey keeps going at a faster pace for up to `PAYRUDDER_CHAOS_TOPUP_MINUTES`, default 8, while the backlog drains, so the requirement does not depend on the runner's speed), `PAYRUDDER_CHAOS_DRAIN_MINUTES` (how long to wait for the aggregator to apply every accepted event, default 40).
 
 A5/A6 are asserted by `TestMonthCloseSurvivesBrokerRestart`, which closes a sandbox period for 60 customers, restarts RabbitMQ
 while their sagas are in flight, and then checks every invoice total, `COMPLETED` saga and exactly one successful charge.
-A7 needs Prometheus (`QUOTIFY_PROMETHEUS_URL`) and is reported as skipped without it; the report never hides a skip.
+A7 needs Prometheus (`PAYRUDDER_PROMETHEUS_URL`) and is reported as skipped without it; the report never hides a skip.
 
 ### Additional chaos scenarios
 

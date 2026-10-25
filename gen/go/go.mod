@@ -1,4 +1,4 @@
-module github.com/0furkancolak/quotify/gen/go
+module github.com/0furkancolak/payrudder/gen/go
 
 go 1.27.2
 

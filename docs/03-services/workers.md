@@ -15,7 +15,7 @@ Retry topology is in [04-messaging.md](../04-messaging.md#retry-and-dead-letter-
 ## Command envelope
 
 ```proto
-package quotify.commands.v1;
+package payrudder.commands.v1;
 
 message CommandEnvelope {
   string command_id = 1;          // uuidv5(saga_id|step|attempt), dedup key
@@ -153,9 +153,9 @@ differ from the sketches above.
 
 ## As built: payments-worker and providers (Phase 14)
 
-payments-worker also serves HTTP on `PAYMENTS_HTTP_ADDR` (default `:8095`), only when `QUOTIFY_SECRETS_KEY` is set: `POST /webhooks/{provider}` (provider notifications, confirmed
+payments-worker also serves HTTP on `PAYMENTS_HTTP_ADDR` (default `:8095`), only when `PAYRUDDER_SECRETS_KEY` is set: `POST /webhooks/{provider}` (provider notifications, confirmed
 with the provider before anything is recorded), and, behind `X-Internal-Token`, tenants' provider accounts and the payment ledger. The gateway forwards to it
-(`QUOTIFY_PAYMENTS_URL`, `QUOTIFY_PAYMENTS_INTERNAL_TOKEN`). A live tenant's commands go to its default provider account, else to `PAYMENTS_LIVE_PROVIDER`;
+(`PAYRUDDER_PAYMENTS_URL`, `PAYRUDDER_PAYMENTS_INTERNAL_TOKEN`). A live tenant's commands go to its default provider account, else to `PAYMENTS_LIVE_PROVIDER`;
 sandbox commands always go to mock-psp. See [phase 14](../phases/phase-14-provider-contract-iyzico.md).
 
 Phase 29 adds `banktransfer`: its charge calls nothing and answers `PaymentErrored{PENDING}`, the status query reads the ledger (`PENDING`, `SUCCEEDED` when the confirmed receipts add up to the charge, `DECLINED` after the payment
@@ -163,16 +163,16 @@ window or a rejection), and the operator endpoints `GET /admin/tenants/{tenant}/
 `PAYMENTS_TRANSFER_WINDOW_DAYS` (14) is the window when the tenant's account sets none. See [phase 29](../phases/phase-29-bank-transfer.md).
 
 Phase 15 adds Paddle: `POST /webhooks/{provider}/{tenant}/{environment}` (a notification destination per account, verified by signature), the tenant's provider subscriptions
-and hosted checkouts under `/admin/tenants/{tenant}/`, and `QUOTIFY_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See [phase 15](../phases/phase-15-paddle.md).
+and hosted checkouts under `/admin/tenants/{tenant}/`, and `PAYRUDDER_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See [phase 15](../phases/phase-15-paddle.md).
 
-Phase 45 adds `GET /admin/tenants/{tenant}/go-live` (internal token): `{"ready": bool, "providers": [...]}`, true when the tenant has a live-mode account whose sealed settings still open and still build an adapter. The gateway asks it for the go-live checklist; plans-svc never reads provider data. See [ADR 0022](../adr/0022-live-and-sandbox-guards.md).
+Phase 45 adds `GET /admin/tenants/{tenant}/go-live` (internal token): `{"ready": bool, "providers": [...]}`, true when the tenant has a live-mode account whose sealed settings still open and still build an adapter. The gateway asks it for the go-live checklist; plans-svc never reads provider data. See [ADR 0023](../adr/0023-live-and-sandbox-guards.md).
 
 ## As built: e-invoices in payments-worker (Phase 30)
 
 payments-worker also consumes `einvoice.issue` (`IssueEInvoice`: issue or cancel one document) and answers with an `EInvoiceResult` (`issued`, `cancelled`, `failed` with
 `retryable` and an error key). The choice of this worker over invoice-worker or a new service is in [phase 30](../phases/phase-30-e-invoice.md#decisions): it already has the
 database, the sealed per-tenant accounts and the HTTP port the gateway forwards to, and gains only the `S3_*` settings for the UBL and PDF files (`{tenant}/einvoice/{document}/document.xml|pdf`
-in the invoices bucket). A sandbox tenant's documents always go to the `mock` adapter; a live tenant's go to its sealed account (`nilvera`, `webhook`), and `QUOTIFY_DEMO` forces the mock.
+in the invoices bucket). A sandbox tenant's documents always go to the `mock` adapter; a live tenant's go to its sealed account (`nilvera`, `webhook`), and `PAYRUDDER_DEMO` forces the mock.
 `einvoice_issuances` is the idempotency record (one row per document UUID, written before the integrator is called, the legal number unique per tenant and environment).
 Operator endpoints: `GET /admin/tenants/{tenant}/e-invoice-accounts`, `PUT|DELETE …/e-invoice-accounts/{environment}`. Settings: `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`,
 `S3_SECRET_KEY`, `S3_FORCE_PATH_STYLE`, `EINVOICE_ALLOW_PRIVATE_URLS` (development only).

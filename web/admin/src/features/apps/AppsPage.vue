@@ -2,10 +2,13 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { keyMask } from "@/shared/lib/environment";
+import { useFormat } from "@/shared/lib/format";
 import { useTenant } from "@/features/tenants";
 import { type Currency } from "@/shared/lib/currencies";
-import { useErrorText } from "@/shared/lib/errors";
+import { firstError } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -14,8 +17,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { environmentWord, isValidSlug, useApps, useCreateApiKey, useCreateApp, useRevokeApiKey, type CreatedKey } from "./api";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 
-const { t, te, locale } = useI18n();
-const errorText = useErrorText();
+const { t, te } = useI18n();
+const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
@@ -27,7 +30,7 @@ const createKey = useCreateApiKey();
 const revokeKey = useRevokeApiKey();
 
 const list = computed(() => apps.data.value?.apps ?? []);
-const when = (v?: string) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
+const when = (v?: string) => fmt.date(v, "day", "—");
 
 // --- a new app
 const name = ref("");
@@ -73,10 +76,7 @@ function revoke(id: string) {
     },
   });
 }
-const failure = computed(() => {
-  for (const m of [createApp, createKey, revokeKey]) if (m.error.value) return errorText(m.error.value);
-  return "";
-});
+const failure = computed(() => firstError(createApp, createKey, revokeKey));
 const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId === tenant);
 </script>
 
@@ -93,8 +93,8 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
       <Button type="submit" :disabled="createApp.isPending.value || !accountId || !slugOk">{{ t("apps.create") }}</Button>
     </form>
     <p v-if="!slugOk" class="text-destructive text-sm" role="alert">{{ t("apps.badSlug") }}</p>
-    <p v-if="failure" class="text-destructive text-sm" role="alert">{{ failure }}</p>
-    <p v-if="apps.error.value" class="text-destructive text-sm" role="alert">{{ errorText(apps.error.value) }}</p>
+    <ErrorText :error="failure" />
+    <ErrorText :error="apps.error.value" />
   </Card>
 
   <Card class="mb-6 p-3">
@@ -149,7 +149,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
       </div>
       <ul v-if="sessionOf(e.id).length" class="grid gap-1 text-sm">
         <li v-for="k in sessionOf(e.id)" :key="k.id" class="flex flex-wrap items-center gap-2">
-          <span class="mono text-xs">qk_{{ k.environment === "live" ? "live" : "test" }}_{{ k.prefix }}…</span>
+          <span class="mono text-xs">{{ keyMask(k.environment, k.prefix) }}…</span>
           <span class="mono text-muted-foreground text-xs">{{ k.id }}</span>
           <Badge v-if="k.revoked" variant="destructive">{{ t("apps.keys.revoked") }}</Badge>
           <Button v-else size="sm" variant="destructive" class="ms-auto" :disabled="revokeKey.isPending.value" @click="revoke(k.id)">{{ t("apps.keys.revoke") }}</Button>

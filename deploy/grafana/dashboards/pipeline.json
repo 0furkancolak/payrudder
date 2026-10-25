@@ -1,8 +1,8 @@
 {
-  "uid": "quotify-pipeline",
-  "title": "Quotify / Pipeline lag",
+  "uid": "payrudder-pipeline",
+  "title": "Payrudder / Pipeline lag",
   "tags": [
-    "quotify"
+    "payrudder"
   ],
   "schemaVersion": 39,
   "version": 1,

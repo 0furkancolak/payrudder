@@ -16,14 +16,14 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/services/gateway/internal/auth"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
 )
 
 // People sign in at /auth/* and use the product API at /app/v1/* with a session token: Authorization: Bearer qs_<token>. The token is opaque and random;
 // plans-svc stores only its hash and checks it on every request (a primary-key lookup), so a sign-out or a revocation takes effect at once. The gateway
-// keeps no session state of its own. A session can also act on a tenant of /v1/* (X-Quotify-Tenant) when the tenant belongs to one of its accounts.
+// keeps no session state of its own. A session can also act on a tenant of /v1/* (X-Payrudder-Tenant) when the tenant belongs to one of its accounts.
 
 // sessionPrefix starts every session token (an API key starts with qk_).
 const sessionPrefix = "qs_"
@@ -61,7 +61,7 @@ func (s *Server) session(r *http.Request) (session, error) {
 	case codes.Unauthenticated, codes.InvalidArgument, codes.NotFound:
 		return session{}, errkey.New(codes.Unauthenticated, "identity.session.invalid", "sign in to continue")
 	case codes.Unavailable, codes.DeadlineExceeded:
-		return session{}, status.Error(codes.Unavailable, "sign-in is temporarily unavailable")
+		return session{}, errkey.New(codes.Unavailable, "identity.session.unavailable", "sign-in is temporarily unavailable")
 	default:
 		return session{}, err
 	}
@@ -73,7 +73,7 @@ func (s *Server) session(r *http.Request) (session, error) {
 func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	id := r.Header.Get(ActAsHeader)
 	if id == "" {
-		return auth.Principal{}, status.Error(codes.Unauthenticated, "a session token needs "+ActAsHeader+": the tenant to act on")
+		return auth.Principal{}, errkey.New(codes.Unauthenticated, "identity.session.act_as_required", "a session token needs "+ActAsHeader+": the tenant to act on")
 	}
 	sess, err := s.session(r)
 	if err != nil {
@@ -89,7 +89,7 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	case codes.NotFound, codes.InvalidArgument:
 		return auth.Principal{}, errkey.New(codes.NotFound, "identity.tenant.not_found", "no such tenant")
 	case codes.Unavailable, codes.DeadlineExceeded:
-		return auth.Principal{}, status.Error(codes.Unavailable, "tenant lookup unavailable")
+		return auth.Principal{}, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable")
 	default:
 		return auth.Principal{}, err
 	}
@@ -99,7 +99,7 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	return principalOf(resp.GetTenant()), nil
 }
 
-// EdgeAuthHeader carries the shared secret (QUOTIFY_TRUSTED_PROXY_SECRET) that an edge proxy such as the console's Worker adds to prove it is the one
+// EdgeAuthHeader carries the shared secret (PAYRUDDER_TRUSTED_PROXY_SECRET) that an edge proxy such as the console's Worker adds to prove it is the one
 // that wrote the forwarded address headers.
 const EdgeAuthHeader = "X-Edge-Auth"
 
@@ -240,13 +240,13 @@ func decodeJSON(r *http.Request, v any) error {
 		if errors.As(err, &mbe) {
 			return errTooLarge{limit: mbe.Limit}
 		}
-		return status.Error(codes.InvalidArgument, "unreadable body")
+		return errkey.New(codes.InvalidArgument, "gateway.request.unreadable_body", "unreadable body")
 	}
 	if len(strings.TrimSpace(string(raw))) == 0 {
 		return nil
 	}
 	if err := json.Unmarshal(raw, v); err != nil {
-		return status.Error(codes.InvalidArgument, "malformed JSON body")
+		return errkey.New(codes.InvalidArgument, "gateway.request.malformed_json", "malformed JSON body")
 	}
 	return nil
 }

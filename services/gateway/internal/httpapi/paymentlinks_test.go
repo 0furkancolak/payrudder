@@ -16,7 +16,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // Scenarios: a token names what the fake billing-svc answers for it.
@@ -115,7 +116,16 @@ func (fakeBilling) RevokePortalLinks(context.Context, *billingv1.RevokePortalLin
 	return &billingv1.RevokePortalLinksResponse{Revoked: 1}, nil
 }
 
+// startedWith is the promotion code the last StartLinkPayment was given.
+var startedWith string
+
 func (fakeBilling) StartLinkPayment(_ context.Context, req *billingv1.StartLinkPaymentRequest) (*billingv1.StartLinkPaymentResponse, error) {
+	billingMu.Lock()
+	startedWith = req.GetPromotionCode()
+	billingMu.Unlock()
+	if strings.EqualFold(req.GetPromotionCode(), "old") {
+		return nil, errkey.New(codes.FailedPrecondition, "coupon.expired", "expired")
+	}
 	switch req.GetToken() {
 	case tokAdhoc:
 		return &billingv1.StartLinkPaymentResponse{InvoiceToken: tokOpenSandbox}, nil

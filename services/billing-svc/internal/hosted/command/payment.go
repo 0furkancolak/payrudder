@@ -4,20 +4,20 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	"github.com/0furkancolak/quotify/pkg/env"
-	"github.com/0furkancolak/quotify/pkg/errkey"
-	"github.com/0furkancolak/quotify/pkg/pgxx"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/hosted/query"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/saga"
-	"github.com/0furkancolak/quotify/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // MockToken is the payment method the mock payment charges: the sandbox provider's "approve" scenario.
@@ -25,17 +25,17 @@ const MockToken = "pm_sandbox_success" //nolint:gosec // a sandbox scenario name
 
 // StartLinkPayment is the first use of an ad-hoc link: it makes the invoice (numbered, with its saga) and hands out the invoice link the payer continues on. A single-use
 // link whose invoice is still unpaid hands out a fresh link to the same invoice (the payer came back); once that invoice is paid the link is consumed.
-func StartLinkPayment(ctx context.Context, d Deps, token string) (string, error) {
+func StartLinkPayment(ctx context.Context, d Deps, token, promotionCode string) (string, error) {
 	link, err := query.ResolveLink(ctx, d.System, token)
 	if err != nil {
 		return "", err
 	}
-	return startLink(ctx, d, link.Row)
+	return startLink(ctx, d, link.Row, promotionCode)
 }
 
 // StartPortalPurchase is the "Buy" button of a customer's portal: it makes the credit-pack link for the portal's customer (or continues the one an earlier press made
 // and nobody paid, so pressing twice leads to one invoice), then starts it like a visitor pressing Continue. It returns the token of the invoice link to pay on.
-func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken, packID string, quantity int32) (string, error) {
+func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken, packID string, quantity int32, promotionCode string) (string, error) {
 	scope, err := query.Resolve(ctx, qd.System, "", portalToken, "")
 	if err != nil {
 		return "", err
@@ -68,7 +68,7 @@ func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken
 		return "", internal(err)
 	}
 	if open != nil {
-		return startLink(ctx, d, *open)
+		return startLink(ctx, d, *open, promotionCode)
 	}
 	days := int32(ChildDays)
 	if left := int32(scope.ExpiresAt.Sub(d.now()).Hours() / 24); left >= 1 && left < days { //nolint:gosec // at most 365
@@ -79,11 +79,47 @@ func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken
 	if err != nil {
 		return "", err
 	}
-	return StartLinkPayment(ctx, d, created.Token)
+	return StartLinkPayment(ctx, d, created.Token, promotionCode)
+}
+
+// specOf is what one use of a factory link asks for: the link's own amount, currency and (for a pack) credits, and the promotion code the payer typed, or else the
+// one the link carries. The price never comes from the payer.
+func specOf(r sqlc.FindActiveInvoiceLinkRow, typed string) runs.LinkInvoiceSpec {
+	spec := runs.LinkInvoiceSpec{AmountMinor: *r.AmountMinor, Currency: *r.Currency, PromotionCode: strings.TrimSpace(typed)}
+	if spec.PromotionCode == "" {
+		spec.PromotionCode = deref(r.PromotionCode)
+	}
+	if r.Description != nil {
+		spec.Description = *r.Description
+	}
+	if r.CustomerExternalID != nil {
+		spec.CustomerExternalID = *r.CustomerExternalID
+	}
+	if r.Kind == KindCreditPack && r.PackID != nil && r.Credits != nil {
+		spec.PackID, spec.Credits = r.PackID.String(), *r.Credits
+	}
+	return spec
+}
+
+// QuoteLinkPromotion says what a promotion code would take off the purchase a factory link offers, claiming nothing. The page shows it before the payer continues.
+func QuoteLinkPromotion(ctx context.Context, d Deps, token, promotionCode string) (runs.PromotionQuote, error) {
+	link, err := query.ResolveLink(ctx, d.System, token)
+	if err != nil {
+		return runs.PromotionQuote{}, err
+	}
+	r := link.Row
+	if !factory(r.Kind) || r.AmountMinor == nil || r.Currency == nil {
+		return runs.PromotionQuote{}, query.NoLink()
+	}
+	q, err := d.Dir.QuotePromotion(ctx, r.TenantID, specOf(r, promotionCode))
+	if err != nil {
+		return runs.PromotionQuote{}, internal(err)
+	}
+	return q, nil
 }
 
 // startLink makes the invoice of one use of a factory link and the invoice link the payer continues on.
-func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow) (string, error) {
+func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow, promotionCode string) (string, error) {
 	var err error
 	if !factory(r.Kind) || r.AmountMinor == nil || r.Currency == nil {
 		return "", query.NoLink()
@@ -112,15 +148,9 @@ func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow) (st
 			}
 		}
 		if invoiceID == uuid.Nil {
-			spec := runs.LinkInvoiceSpec{AmountMinor: *r.AmountMinor, Currency: *r.Currency}
-			if r.Description != nil {
-				spec.Description = *r.Description
-			}
+			spec := specOf(r, promotionCode)
 			if r.Kind == KindCreditPack && r.Quantity != nil && *r.Quantity > 1 {
 				spec.Description += " x" + strconv.Itoa(int(*r.Quantity))
-			}
-			if r.CustomerExternalID != nil {
-				spec.CustomerExternalID = *r.CustomerExternalID
 			}
 			if invoiceID, err = d.Dir.CreateLinkInvoice(ctx, r.TenantID, spec); err != nil {
 				return err
@@ -156,7 +186,7 @@ type Paid struct {
 	Page    *query.Page
 }
 
-// RequestPayment starts a payment the visitor asked for. "mock" (a sandbox invoice, or any with QUOTIFY_DEMO) charges through the saga; any other method leaves
+// RequestPayment starts a payment the visitor asked for. "mock" (a sandbox invoice, or any with PAYRUDDER_DEMO) charges through the saga; any other method leaves
 // the page's context to the gateway, which asks payments-worker for a provider checkout or payment instructions. Nothing is marked paid here.
 func RequestPayment(ctx context.Context, d Deps, qd query.Deps, req PaymentRequest) (*Paid, error) {
 	page, err := query.Get(ctx, qd, req.Scope)
@@ -240,7 +270,7 @@ func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in Se
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, status.Error(codes.NotFound, "invoice not found")
+		return false, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
 		return false, internal(err)

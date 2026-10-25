@@ -4,16 +4,16 @@ Status: phases 13 to 18 are built (see the notes below); phases 19–22 are prop
 
 ## Why
 
-Quotify meters usage and turns a closed period into an invoice and a payment. That is one slice of billing. A SaaS company that bills its own customers also needs
+Payrudder meters usage and turns a closed period into an invoice and a payment. That is one slice of billing. A SaaS company that bills its own customers also needs
 packages that renew, trials, plan changes, payment history, refunds, and more than one payment provider because no single provider covers every country and currency.
 Two providers are the first targets: **iyzico** (Turkey, TRY) and **Paddle** (international, merchant of record).
 
-Quotify stays the billing engine of the SaaS company (the tenant). It is not a merchant of record. Card data never touches Quotify.
+Payrudder stays the billing engine of the SaaS company (the tenant). It is not a merchant of record. Card data never touches Payrudder.
 
 ## Goals
 
 - Subscriptions with packages: fixed fee, usage-based fee, or both on one invoice. Trial, active, past due, paused, cancelled. Upgrade, downgrade, proration.
-- Each payment provider is used for what it can do. The rest is done by Quotify.
+- Each payment provider is used for what it can do. The rest is done by Payrudder.
 - Routing: the provider is chosen per customer from country and currency by rules the tenant edits.
 - Migration of a customer's subscription from one provider to another without losing history or double charging.
 - One ledger of every charge, refund, dispute and payout across providers, and reports by provider, country and currency.
@@ -50,17 +50,17 @@ The existing `invoice` and billing saga stay. An invoice gains `customer_id`, `s
 
 ## Provider capabilities
 
-A provider adapter declares what it does for us. Quotify does the remainder.
+A provider adapter declares what it does for us. Payrudder does the remainder.
 
 | Capability | iyzico (planned) | Paddle (planned) | Mock PSP (today) |
 |---|---|---|---|
-| Recurring schedule and renewal | Quotify (provider has subscription products, but Quotify drives it from its own schedule so usage and fixed fees land on one invoice) | Provider | Quotify |
-| Dunning (retry failed payment) | Quotify | Provider | Quotify |
+| Recurring schedule and renewal | Payrudder (provider has subscription products, but Payrudder drives it from its own schedule so usage and fixed fees land on one invoice) | Provider | Payrudder |
+| Dunning (retry failed payment) | Payrudder | Provider | Payrudder |
 | Tax calculation | Tenant | Provider | none |
-| Invoice document | Quotify | Provider | Quotify |
+| Invoice document | Payrudder | Provider | Payrudder |
 | Hosted payment form | Provider | Provider | none |
 | Refund API | Provider | Provider | Provider |
-| Usage-based charges | Quotify bills a closed-period invoice | Quotify reports usage, Paddle charges | Quotify |
+| Usage-based charges | Payrudder bills a closed-period invoice | Payrudder reports usage, Paddle charges | Payrudder |
 
 These rows are the starting position from public provider documentation and must be confirmed against each provider's sandbox in phases 14 and 15.
 When the real behaviour differs the table and the adapter change, not the contract.
@@ -69,7 +69,7 @@ The contract is a Go interface in `pkg/payments`, extended from today's `Payment
 `CreateCheckout`, `CancelSubscription`, `ReportUsage` for providers that own part of the lifecycle. A call outside a provider's capabilities returns `ErrUnsupported`,
 and the capability flags let the saga decide before it asks.
 
-**Ownership rule:** every subscription has one `owner` (`quotify` or a provider) for renewal and dunning. The saga skips steps the provider owns and waits for the provider's webhook instead.
+**Ownership rule:** every subscription has one `owner` (`payrudder` or a provider) for renewal and dunning. The saga skips steps the provider owns and waits for the provider's webhook instead.
 
 ## Webhooks
 
@@ -104,21 +104,21 @@ Differences from the design above, decided while building (details in [phase 13]
 ## As built: phase 14
 
 Details in [phase 14](phases/phase-14-provider-contract-iyzico.md). In short: providers declare `Capabilities` and are built from a tenant's sealed
-account settings; iyzico is the first adapter (stored-card charges, refunds, status, confirmation of webhooks) and Quotify keeps ownership of
+account settings; iyzico is the first adapter (stored-card charges, refunds, status, confirmation of webhooks) and Payrudder keeps ownership of
 renewal and dunning for it. Every charge and refund lands in an append-only ledger in `payments_db`; notifications arrive on the gateway's public
 `/webhooks/{provider}`, are never believed, and are confirmed with the provider. The `Owner` of a subscription is derived from the capabilities but
-not yet stored on it, since only Quotify-owned providers exist until Paddle (phase 15).
+not yet stored on it, since only Payrudder-owned providers exist until Paddle (phase 15).
 
 ## As built: phase 15
 
 Details in [phase 15](phases/phase-15-paddle.md). Paddle is the first provider that owns renewal and dunning: a subscription gets `provider`, `provider_ref` and `owner`
-(plans-svc), Paddle's signed notifications link and follow it, its fixed fee stays off Quotify's invoice, and the usage total is charged on the customer's Paddle subscription as a
-one-time charge that settles asynchronously. Dunning of that usage charge stays Quotify's saga; renewals are Paddle's.
+(plans-svc), Paddle's signed notifications link and follow it, its fixed fee stays off Payrudder's invoice, and the usage total is charged on the customer's Paddle subscription as a
+one-time charge that settles asynchronously. Dunning of that usage charge stays Payrudder's saga; renewals are Paddle's.
 
 ## As built: phase 16
 
 Details in [phase 16](phases/phase-16-routing-migration.md). Routing rules live in plans-svc and are checked against the provider catalogue; a subscription's provider is fixed at creation. A migration is
-`started` while the customer subscribes at a provider that runs subscriptions, and the old subscription is untouched until the provider confirms; from a provider-run subscription to Quotify's the old provider is told to
+`started` while the customer subscribes at a provider that runs subscriptions, and the old subscription is untouched until the provider confirms; from a provider-run subscription to Payrudder's the old provider is told to
 stop first and the cutover is the end of the period it was paid for. The design's step list (freeze renewal, create at B, cancel at A after B's first charge) is realised as that confirmation-then-cutover rule.
 
 ## As built: phase 17
@@ -128,7 +128,7 @@ ledger in payments-worker. A currency is never added to another.
 
 ## As built: phase 18
 
-Details in [phase 18](phases/phase-18-billing-console.md). The console's tenant page is a layout with seven tabs; the billing pages call the tenant API as the tenant (operator token plus `X-Quotify-Tenant`) and the operator routes
+Details in [phase 18](phases/phase-18-billing-console.md). The console's tenant page is a layout with seven tabs; the billing pages call the tenant API as the tenant (operator token plus `X-Payrudder-Tenant`) and the operator routes
 as the operator, are in six languages, and are tested against a mocked gateway.
 
 ## As built: phase 19
@@ -143,7 +143,7 @@ yearly-to-monthly at the end of the paid period, as a scheduled change the custo
 
 ## As built: phase 21
 
-Details in [phase 21](phases/phase-21-paddle-api.md). Optional provider interfaces (catalogue, customers, subscriptions, discounts, documents) let Quotify create a plan's product and prices at Paddle, ensure customers, preview and apply plan or interval changes, pause, resume, hand out payment-method and portal links, create discounts and fetch invoice links, all through operator endpoints and the console. Quotify's copy of a Paddle-run subscription follows a plan change the provider billed, with no money moved on Quotify's side.
+Details in [phase 21](phases/phase-21-paddle-api.md). Optional provider interfaces (catalogue, customers, subscriptions, discounts, documents) let Payrudder create a plan's product and prices at Paddle, ensure customers, preview and apply plan or interval changes, pause, resume, hand out payment-method and portal links, create discounts and fetch invoice links, all through operator endpoints and the console. Payrudder's copy of a Paddle-run subscription follows a plan change the provider billed, with no money moved on Payrudder's side.
 Nothing has run against Paddle's sandbox; the points the reference does not settle are marked UNVERIFIED.
 
 ## As built: phase 22
@@ -187,5 +187,5 @@ and the live sandbox test is skipped with a clear message; it is not reported as
 ## Open points for the owner
 
 - Confirm the currency rule above (tenant default, currency fixed per subscription) instead of separate tenants per currency.
-- iyzico and Paddle sandbox credentials, and whether iyzico should use its own subscription product or Quotify's scheduler (table row 1 is our default).
+- iyzico and Paddle sandbox credentials, and whether iyzico should use its own subscription product or Payrudder's scheduler (table row 1 is our default).
 - Which countries go to which provider by default.

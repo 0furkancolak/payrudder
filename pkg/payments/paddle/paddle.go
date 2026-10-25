@@ -1,10 +1,10 @@
 // Package paddle is the Paddle Billing adapter of payments.Provider (https://developer.paddle.com).
 //
 // Paddle is the merchant of record: it collects the payment, works out and remits tax, issues the receipt, and runs the
-// subscriptions it sells, renewing them and retrying failed renewals itself. So Quotify does not charge a card here. What it does:
+// subscriptions it sells, renewing them and retrying failed renewals itself. So Payrudder does not charge a card here. What it does:
 //
 //   - CreateCheckout: a hosted page where the customer subscribes (a transaction for a catalogue price, tied to our subscription by custom data);
-//   - Charge: a one-time charge on the customer's Paddle subscription (Quotify's usage invoice), as a non-catalogue price. Paddle settles it asynchronously, so
+//   - Charge: a one-time charge on the customer's Paddle subscription (Payrudder's usage invoice), as a non-catalogue price. Paddle settles it asynchronously, so
 //     Charge reports payments.PendingError and the outcome arrives as a notification;
 //   - Refund: a full refund adjustment of a transaction;
 //   - ConfirmNotification: verifies the Paddle-Signature of a webhook and turns the event into payments.Notification.
@@ -30,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
 // Name is the registry name.
@@ -48,9 +48,9 @@ type Settings struct {
 	APIKey string `json:"api_key"`
 	// BaseURL defaults to the live API; use SandboxURL for a sandbox account.
 	BaseURL string `json:"base_url,omitempty"`
-	// WebhookSecret is the secret key of the notification destination Paddle sends to Quotify's webhook URL.
+	// WebhookSecret is the secret key of the notification destination Paddle sends to Payrudder's webhook URL.
 	WebhookSecret string `json:"webhook_secret"`
-	// UsageProductID is the catalogue product (pro_...) Quotify's usage invoices are billed under, as non-catalogue prices.
+	// UsageProductID is the catalogue product (pro_...) Payrudder's usage invoices are billed under, as non-catalogue prices.
 	UsageProductID string `json:"usage_product_id"`
 	// TaxMode of those charges: account_setting (default), external, internal or location.
 	TaxMode string `json:"tax_mode,omitempty"`
@@ -118,7 +118,7 @@ func (c *Client) Livemode() (live, known bool) {
 }
 
 // Capabilities implements payments.Provider: Paddle runs renewals and retries, calculates tax and hosts the checkout.
-// Charges are not idempotent by key. Paddle bills in more currencies than Quotify lists; the intersection is declared.
+// Charges are not idempotent by key. Paddle bills in more currencies than Payrudder lists; the intersection is declared.
 func (c *Client) Capabilities() payments.Capabilities { return Caps() }
 
 // Caps are Paddle's capabilities, which do not depend on an account.
@@ -194,7 +194,7 @@ type money struct {
 	CurrencyCode string `json:"currency_code"`
 }
 
-// Charge bills Quotify's invoice to the customer's Paddle subscription (PaymentMethod is the subscription id, sub_...). Paddle
+// Charge bills Payrudder's invoice to the customer's Paddle subscription (PaymentMethod is the subscription id, sub_...). Paddle
 // answers when it has accepted the charge, not when the customer has paid: the result is payments.PendingError, and the transaction's
 // notification settles it. The idempotency key rides along as custom data on the price, which is how that notification finds its invoice.
 func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments.ChargeResult, error) {
@@ -219,7 +219,7 @@ func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments
 				"tax_mode":    c.s.TaxMode,
 				"unit_price":  money{Amount: strconv.FormatInt(r.AmountMinor, 10), CurrencyCode: r.Currency},
 				"quantity":    map[string]int{"minimum": 1, "maximum": 1},
-				"custom_data": map[string]string{"quotify_key": r.IdempotencyKey, "quotify_invoice_id": r.InvoiceID},
+				"custom_data": map[string]string{"payrudder_key": r.IdempotencyKey, "payrudder_invoice_id": r.InvoiceID},
 			},
 		}},
 		"on_payment_failure": "prevent_change",
@@ -231,7 +231,7 @@ func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments
 }
 
 // Refund refunds the whole transaction (ChargeID is its id, txn_...) with a full adjustment. Paddle may hold a refund for approval; the
-// adjustment's notification reports the outcome. UNVERIFIED: that the amount of a partial refund is not needed by Quotify: the saga
+// adjustment's notification reports the outcome. UNVERIFIED: that the amount of a partial refund is not needed by Payrudder: the saga
 // refunds the whole invoice.
 func (c *Client) Refund(ctx context.Context, r payments.RefundRequest) (payments.RefundResult, error) {
 	if !strings.HasPrefix(r.ChargeID, "txn_") {
@@ -254,7 +254,7 @@ func (c *Client) Refund(ctx context.Context, r payments.RefundRequest) (payments
 	return payments.RefundResult{RefundID: out.Data.ID}, nil
 }
 
-// Status cannot be told from Paddle's API by Quotify's key (the key lives in custom data of a transaction's price, which cannot be searched).
+// Status cannot be told from Paddle's API by Payrudder's key (the key lives in custom data of a transaction's price, which cannot be searched).
 // The answer comes from the notification: the worker reads the ledger first. Until it is there, Status says so with an error, and never
 // "not found": a second charge would be a second bill.
 func (c *Client) Status(context.Context, string) (payments.StatusResult, error) {
@@ -262,7 +262,7 @@ func (c *Client) Status(context.Context, string) (payments.StatusResult, error) 
 }
 
 // CreateCheckout starts a hosted checkout for a catalogue price. When the customer completes it, Paddle creates the subscription and
-// tells Quotify (subscription.created), carrying QuotifySubscriptionID in its custom data.
+// tells Payrudder (subscription.created), carrying PayrudderSubscriptionID in its custom data.
 func (c *Client) CreateCheckout(ctx context.Context, r payments.CheckoutRequest) (payments.Checkout, error) {
 	if !strings.HasPrefix(r.PriceRef, "pri_") {
 		return payments.Checkout{}, errors.New(`paddle: price must be a Paddle price id ("pri_...")`)
@@ -276,11 +276,11 @@ func (c *Client) CreateCheckout(ctx context.Context, r payments.CheckoutRequest)
 		"collection_mode": "automatic",
 	}
 	custom := map[string]string{}
-	if r.QuotifySubscriptionID != "" {
-		custom["quotify_subscription_id"] = r.QuotifySubscriptionID
+	if r.PayrudderSubscriptionID != "" {
+		custom["quotify_subscription_id"] = r.PayrudderSubscriptionID
 	}
-	if r.QuotifyMigrationID != "" {
-		custom["quotify_migration_id"] = r.QuotifyMigrationID
+	if r.PayrudderMigrationID != "" {
+		custom["quotify_migration_id"] = r.PayrudderMigrationID
 	}
 	if len(custom) > 0 {
 		req["custom_data"] = custom
@@ -459,12 +459,12 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		n.Kind, n.ProviderRef, n.Currency = payments.KindCharge, t.ID, t.CurrencyCode
 		n.AmountMinor = minor(t.Details.Totals.GrandTotal)
 		for _, it := range t.Items {
-			if k := it.Price.CustomData.str("quotify_key"); k != "" {
+			if k := it.Price.CustomData.str("payrudder_key"); k != "" {
 				n.Ref.IdempotencyKey = k
 			}
 		}
 		if n.Ref.IdempotencyKey == "" {
-			n.Ref.IdempotencyKey = t.CustomData.str("quotify_key")
+			n.Ref.IdempotencyKey = t.CustomData.str("payrudder_key")
 		}
 		if e.EventType == "transaction.completed" {
 			n.State = payments.StateSucceeded
@@ -482,8 +482,8 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		if err := json.Unmarshal(e.Data, &s); err != nil {
 			return n, fmt.Errorf("paddle: subscription: %w", err)
 		}
-		ev := &payments.SubscriptionEvent{ProviderRef: s.ID, Status: s.Status, QuotifySubscriptionID: s.CustomData.str("quotify_subscription_id"),
-			QuotifyMigrationID: s.CustomData.str("quotify_migration_id")}
+		ev := &payments.SubscriptionEvent{ProviderRef: s.ID, Status: s.Status, PayrudderSubscriptionID: s.CustomData.str("quotify_subscription_id"),
+			PayrudderMigrationID: s.CustomData.str("quotify_migration_id")}
 		if s.NextBilledAt != nil {
 			if t, err := time.Parse(time.RFC3339, *s.NextBilledAt); err == nil {
 				ev.NextBilledAt = &t

@@ -26,7 +26,7 @@ proxied streaming `multipart/form-data`, sweeper, verifier, quota), `pkg/blob` m
 
 **assets-svc**
 
-- [x] `proto/quotify/assets/v1`, `assets_db` migrations + RLS (`upload_sessions`, `assets`, `storage_usage`)
+- [x] `proto/payrudder/assets/v1`, `assets_db` migrations + RLS (`upload_sessions`, `assets`, `storage_usage`)
 - [x] `pkg/blob`: `CreateMultipart`, `PresignPart` (optional `x-amz-checksum-sha256`), `ListParts`, `CompleteMultipart`, `AbortMultipart`, `PutStream`
 - [x] `CreateUploadSession` (≤ 50 files, part-size rule, first 100 presigned parts, `Idempotency-Key`), `PresignParts`, `GetUploadFile` (resume)
 - [x] `CompleteFile`: `ListParts` verification → complete → `HeadObject` → quota update + `READY` in one transaction. Idempotent
@@ -97,6 +97,6 @@ token per extra file); `PUT /v1/tenant/invoice-logo` sets the tenant's invoice l
 snapshot and invoice-worker draws from the assets bucket (only from the command tenant's own prefix).
 `pkg/blob` gained the multipart toolkit (`CreateMultipart`, `PresignPart`, `ListParts`, `CompleteMultipart`, `AbortMultipart`,
 `ListMultipartUploads`, `PutStream`, `Open`, `GetRange`, `PresignDownload`, `Keys`). Tenant metadata now carries the tier
-(`x-quotify-tier`) for quotas.
+(`x-payrudder-tier`) for quotas.
 Deviations: the heap-growth measurement of the form upload and the 1 GiB direct upload memory target are left to Phase 09's
 load work; `usage_hourly` p95 is likewise a Phase 09 measurement.

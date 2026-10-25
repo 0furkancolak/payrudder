@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // Every method of PlansService is served by a module. A method no module defines would silently fall through to Unimplemented.

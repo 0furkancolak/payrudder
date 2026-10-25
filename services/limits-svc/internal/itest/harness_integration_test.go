@@ -23,17 +23,17 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	aggregatorv1 "github.com/0furkancolak/quotify/gen/go/quotify/aggregator/v1"
-	eventsv1 "github.com/0furkancolak/quotify/gen/go/quotify/events/v1"
-	"github.com/0furkancolak/quotify/pkg/kafkax"
-	"github.com/0furkancolak/quotify/pkg/period"
-	"github.com/0furkancolak/quotify/pkg/quantity"
-	"github.com/0furkancolak/quotify/pkg/testkit"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/domain"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/engine"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/entitlements"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/meters"
-	"github.com/0furkancolak/quotify/services/limits-svc/internal/tenants"
+	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/engine"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/entitlements"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/meters"
+	"github.com/0furkancolak/payrudder/services/limits-svc/internal/tenants"
 )
 
 var (

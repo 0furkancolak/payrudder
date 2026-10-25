@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	limitsv1 "github.com/0furkancolak/quotify/gen/go/quotify/limits/v1"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 )
 
 type fakeLimits struct {

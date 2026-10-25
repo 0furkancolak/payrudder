@@ -5,13 +5,13 @@
 
 ## Context
 
-Quotify has ten services, shared protobuf contracts and a small set of shared libraries (outbox, Kafka/AMQP helpers,
+Payrudder has ten services, shared protobuf contracts and a small set of shared libraries (outbox, Kafka/AMQP helpers,
 OTel carriers, period/money definitions). There's one developer. Contract changes often touch a producer and its consumers
 in the same change, and we want `buf breaking` and cross-service tests to run against one tree.
 
 ## Decision
 
-- A single repository `github.com/0furkancolak/quotify` using a **Go workspace** (`go.work`) on the latest stable Go (1.27).
+- A single repository `github.com/0furkancolak/payrudder` using a **Go workspace** (`go.work`) on the latest stable Go (1.27).
 - One **module per service** (`services/<svc>/go.mod`), plus library modules `pkg`, `gen/go`, `tools`, `tests`.
 - `go.work` is committed. Docker builds use the repo root as context so the workspace resolves.
 - Protobuf in `proto/`, generated with `buf` into `gen/go` (committed).

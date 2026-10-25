@@ -11,8 +11,8 @@ func TestErrorsCarryAKey(t *testing.T) {
 	ts, _ := newTestServer(t)
 	resp, m := do(t, ts, http.MethodPost, "/v1/customers", "", `{}`)
 	e, _ := m["error"].(map[string]any)
-	if resp.StatusCode != http.StatusUnauthorized || e["key"] != "common.unauthenticated" {
-		t.Fatalf("no key: %d %v", resp.StatusCode, m)
+	if resp.StatusCode != http.StatusUnauthorized || e["key"] != "identity.api_key.missing" {
+		t.Fatalf("missing api key: %d %v", resp.StatusCode, m)
 	}
 	// An error that names its own key keeps it.
 	resp, m = do(t, ts, http.MethodPost, "/v1/invoices/draft/links", "live-key", "")

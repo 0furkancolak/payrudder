@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/0furkancolak/quotify/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/env"
 )
 
 // LiveModer is implemented by a provider adapter that can tell, from the endpoint its settings point at, whether the account is a live-mode or a test-mode one

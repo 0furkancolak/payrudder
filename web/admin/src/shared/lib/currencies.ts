@@ -11,6 +11,9 @@ export const CURRENCIES = [
 ] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
+/** What a form starts with before the tenant's own currency is known (it switches as soon as that arrives). Never used to read an amount a person typed: that waits for the real currency. */
+export const FALLBACK_CURRENCY: Currency = "USD";
+
 /**
  * The minor-unit exponent of every currency above, copied from pkg/money (the backend table that drives every invoice amount; tests/currencies_test.go
  * fails when the two differ). Not taken from Intl: ICU disagrees with the backend for HUF, IDR, COP, IQD and a dozen more, and a wrong exponent shows
@@ -32,7 +35,7 @@ export const CURRENCY_EXPONENTS: Record<Currency, number> = {
 export const COUNTRY_HINTS = ["TR", "DE", "FR", "ES", "GB", "US", "NL", "IT", "CH", "JP"] as const;
 
 /**
- * The payment providers Quotify has adapters for, whether the provider runs subscriptions itself, and whether the API's routing rules and provider
+ * The payment providers Payrudder has adapters for, whether the provider runs subscriptions itself, and whether the API's routing rules and provider
  * migrations name it (the OpenAPI enums list iyzico and paddle only: bank transfer is a tenant's default account, not a routing target).
  */
 export const PROVIDERS = [

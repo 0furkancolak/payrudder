@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { type Subscription } from "@/shared/api/client";
-import { useErrorText } from "@/shared/lib/errors";
-import { formatMinor } from "@/shared/lib/money";
+import { firstError } from "@/shared/lib/errors";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Alert } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -11,8 +12,8 @@ import type { Package } from "@/features/packages";
 import { useSubscriptionActions, type ChangeInput } from "./api";
 
 const props = defineProps<{ subscription: Subscription; packages: Package[]; tenantId: string; environment: string }>();
-const { t, locale } = useI18n();
-const errorText = useErrorText();
+const { t } = useI18n();
+const fmt = useFormat();
 const act = useSubscriptionActions(
   () => props.tenantId,
   () => props.environment,
@@ -26,8 +27,8 @@ const input = computed<ChangeInput>(() => ({ id: props.subscription.id ?? "", pl
 const nothingChosen = computed(() => plan.value === "" && interval.value === "");
 const quote = computed(() => act.previewChange.data.value);
 const scheduled = computed(() => props.subscription.scheduled_change);
-const date = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, { dateStyle: "medium" }).format(new Date(v)) : "—");
-const money = (v?: string) => formatMinor(v, props.subscription.currency, locale.value);
+const date = (v?: string | null) => fmt.date(v, "day", "—");
+const money = (v?: string) => fmt.money(v, props.subscription.currency);
 const intervalName = (v?: string) => (v === "SUBSCRIPTION_INTERVAL_YEAR" ? t("billing.subscriptions.yearly") : t("billing.subscriptions.monthly"));
 /** What the change does with money now, in words: invoiced, credited or nothing. */
 const outcome = computed(() => {
@@ -35,10 +36,7 @@ const outcome = computed(() => {
   if (net === undefined || net === "0") return t("billing.subscriptions.change.nothing");
   return net.startsWith("-") ? t("billing.subscriptions.change.creditAdded", { amount: money(net.slice(1)) }) : t("billing.subscriptions.change.due", { amount: money(net) });
 });
-const failure = computed(() => {
-  for (const m of [act.previewChange, act.change, act.cancelScheduledChange]) if (m.error.value) return errorText(m.error.value);
-  return "";
-});
+const failure = computed(() => firstError(act.previewChange, act.change, act.cancelScheduledChange));
 
 function reset() {
   act.previewChange.reset();
@@ -103,6 +101,6 @@ function apply() {
       <dt class="text-muted-foreground">{{ t("billing.subscriptions.change.next") }}</dt>
       <dd class="tabular-nums">{{ money(quote.next_renewal_minor) }} · {{ date(quote.next_renewal_time) }}</dd>
     </dl>
-    <p v-if="failure" class="text-destructive text-sm" role="alert">{{ failure }}</p>
+    <ErrorText :error="failure" />
   </section>
 </template>

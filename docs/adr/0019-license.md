@@ -4,7 +4,7 @@ Status: accepted (the owner's decision; have it reviewed by a lawyer before rely
 
 ## Context
 
-The owner wants individuals and companies to run Quotify for their own applications, but not to sell it to third parties as a hosted or managed service; the owner may. The repository is Apache-2.0 today, which allows exactly that resale.
+The owner wants individuals and companies to run Payrudder for their own applications, but not to sell it to third parties as a hosted or managed service; the owner may. The repository is Apache-2.0 today, which allows exactly that resale.
 
 ## Decision
 

@@ -13,7 +13,7 @@ Turns closed usage into invoices and drives each invoice through its lifecycle:
 ## gRPC API (sketch)
 
 ```proto
-package quotify.billing.v1;
+package payrudder.billing.v1;
 
 service BillingService {
   rpc GetInvoice(GetInvoiceRequest) returns (Invoice);
@@ -174,7 +174,7 @@ stateDiagram-v2
 - **PAYMENT_UNKNOWN.** Never re-charge blindly. Publish `payment.status` (query PSP by idempotency key) first.
   This is the classic "did my timed-out charge go through?" problem.
 - **A payment that settles later** (a bank transfer, phase 29) leaves the saga in `PAYMENT_PENDING`: no command is outstanding, so there is no step deadline and nothing to retry or dead-letter. The first time it is entered the
-  customer is mailed the bank details and the payment reference (`invoice_transfer.v1`); then the status is asked again every `QUOTIFY_TRANSFER_POLL`, and at once when payments-worker nudges the saga (`RetryInvoiceSaga`) after an
+  customer is mailed the bank details and the payment reference (`invoice_transfer.v1`); then the status is asked again every `PAYRUDDER_TRANSFER_POLL`, and at once when payments-worker nudges the saga (`RetryInvoiceSaga`) after an
   operator confirmed a receipt. The payment window is enforced by the status answer: past it the status is a decline, and the tenant's dunning delays decide whether a new window opens (a new charge, a new mail) or the invoice becomes uncollectible.
   `RecordInvoicePayment` (`OfflineSettlement`) settles an invoice with money received outside any provider, from `PAYMENT_UNKNOWN`, `PAYMENT_PENDING`, `PAYMENT_DECLINED` or after the saga gave up; the payments are rows of `invoice_payments` (who, when, method, reference).
 - **Dunning** delays are days long, so they're scheduled in Postgres (`next_attempt_at`), not as RabbitMQ TTLs. A tenant may set its own delays (0 to 6 retries, 1–720 hours each; minutes in a sandbox tenant) with `PUT /v1/dunning-settings`; without a row the service-wide defaults apply, and an empty list gives up on the first decline.
@@ -221,7 +221,7 @@ Usage is never re-counted. Only prices change. Full rationale: [07-correctness.m
 - Idempotency is layered: the job is unique per `(tenant, period, plan version)`; a correction is unique per `(tenant, customer, job)` and a credit per
   `(tenant, customer, job)`, so a job interrupted by a crash is finished by the scheduler (`ResumeRerating`) without duplicating anything.
 - Operator API: `POST /admin/v1/tenants/{tenant_id}/billing-runs/{period}/rerating` (201 on creation, 200 on a repeat), `GET .../rerating-jobs/{job_id}`;
-  `quotifyctl rerate`.
+  `payrudderctl rerate`.
 
 ## Owned data (`billing_db`)
 
@@ -254,9 +254,9 @@ Customers within a run are rated in pages of 500 streamed from aggregator. **Tar
 
 ## As built (Phase 05)
 
-Code: `services/billing-svc` (`internal/{rating,saga,runs,replies,api}`), commands in `proto/quotify/commands/v1`, the RabbitMQ
+Code: `services/billing-svc` (`internal/{rating,saga,runs,replies,api}`), commands in `proto/payrudder/commands/v1`, the RabbitMQ
 topology in `pkg/rabbitx` (exported to `deploy/rabbitmq/definitions.json`, checked by a test). Configuration:
-`QUOTIFY_SCHEDULER_INTERVAL` (1m), `QUOTIFY_SWEEP_INTERVAL` (30s), `QUOTIFY_STEP_TIMEOUT` (2m), `QUOTIFY_WATERMARK_DELAY` (30s), `QUOTIFY_TRANSFER_POLL` (6h, phase 29).
+`PAYRUDDER_SCHEDULER_INTERVAL` (1m), `PAYRUDDER_SWEEP_INTERVAL` (30s), `PAYRUDDER_STEP_TIMEOUT` (2m), `PAYRUDDER_WATERMARK_DELAY` (30s), `PAYRUDDER_TRANSFER_POLL` (6h, phase 29).
 Gateway routes: `GET /v1/invoices[/{id}]`, `POST /v1/sandbox/close-period`, and the operator routes under `/admin/v1`
 (`billing/close-period`, `tenants/{id}/billing-runs/{period}`, `invoices/{id}/retry|void`).
 
@@ -314,6 +314,16 @@ Module `credits`. `credit_packs` (what a tenant sells), `credit_lots` (one per g
 
 A payment link may be of kind `credit_pack` (`payment_links.pack_id`, `quantity`, `credits`, `validity_days`; the amount, currency and description are the pack's, read in the creating transaction and frozen). It is a factory like an ad-hoc link: `StartLinkPayment` makes the `LINK` invoice and a child invoice link. When that invoice's saga reaches `PAID`, `saga.linksPaid` marks the links and calls `credits.PurchasePaid` in the same transaction: `GrantPurchase` inserts the lot (`source = purchase`, `source_ref` = the invoice id, expiry = now + `validity_days`) and its ledger row, and the `credits.purchased` event is written to the outbox only when a lot was added. The unique `(tenant, source, source_ref)` makes a duplicate webhook, a replayed settlement or a retried step grant nothing; a voided or never-paid invoice never reaches `PAID`. `StartPortalPurchase` (`HostedInvoiceService`) is the portal's *Buy*: it creates (or finds, `FindOpenPortalPackLink`) the customer's credit-pack link and starts it; `GetPortal` carries the balance, lots and active packs. `credit_settings.low_threshold` (per tenant, `Get/SetCreditSettings`) makes `Consume` write `credits.low` when it takes a balance from at least the threshold to below it; `billing_app` may therefore insert into `tenant_event_outbox` (`internal/tenantevents` is the shared writer). Details: [phase 36](../phases/phase-36-credit-purchase.md).
 
+## As built: promotion codes on payments and credit purchases (Phase 46)
+
+The coupon, the promotion code and the redemption ledger are plans-svc's ([plans-svc](plans-svc.md)); billing asks it. A factory link (`adhoc`, `credit_pack`) takes a promotion code in three places: the operator's `promotion_code` when the link is made (checked then against the link's own amount, claimed later), the payer's `code` field on `/i/{token}` (`QuoteLinkPromotion` shows the new total, nothing is claimed), and `StartLinkPayment` / `StartPortalPurchase` (`promotion_code`). Without a code, a coupon *waiting* for the customer (`GrantCustomerCoupon`, phase 47) is used. The price is always the link's own, frozen when it was made; the payer sends only the code.
+
+`runs.CreateLinkInvoice` does the work in this order: a **preview** (a code that would leave nothing to pay is refused with `billing.payment_link.free_total` before it uses a redemption), then the **claim** (`RedeemPromotion`, target = the new invoice's id, so asking twice is one redemption), then the invoice: the base line, a negative `DISCOUNT` line (`Promotion code X` or `Coupon X`) and the discounted total; `invoices.coupon_code`, `promotion_code`, `promotion_target` and `bonus_credits` remember what it used. If the invoice is not made, the claim is given back. A link invoice carries no tax (the amount is what the payer pays); a subscription fee invoice takes its tax on the discounted fee, as before.
+
+A credit pack with a bonus coupon (`bonus_percent_bps`) keeps its price; `bonus_credits` are added to the **same lot** when the invoice is paid (`creditsPurchased` reads `invoices.bonus_credits`), so they expire with the pack's credits, and `credits.purchased` carries both. A void, or credit notes that add up to the invoice, queue a row in `promotion_reversals` in the same transaction; the scheduler's `ReversePromotions` pass calls `ReversePromotion` (retried until plans-svc answers), and the code decides whether the place goes back to its count.
+
+"First purchase only" is judged here: the customer has no paid invoice (`CustomerHasPaidInvoice`).
+
 ## As built: e-documents (Phase 30)
 
 The `einvoices` module (`command/`, `query/`, `handler.go`) owns `einvoice_documents`. `saga.EnqueueEInvoice` creates a document and its `IssueEInvoice` command in the transaction of
@@ -325,3 +335,5 @@ serve the tenant (RLS). Snapshots now freeze the seller and buyer parties and `e
 ## As built: accounting (Phase 37)
 
 Module `accounting` (`model/` for the expense and its recurrence, `command/`, `query/`, `handler.go`). The one table is `expenses` (vendor, category, `amount_minor` and `currency`, `incurred_on`, `recurring` none/monthly/yearly with an optional `recurring_until`, an optional `app_id` tag, `voided_at` and `void_reason`), under RLS. Income is not stored: `GetAccountingSummary` reads `invoices` (gross, on the day the saga reached `PAID` in `saga_events`), the `TAX` lines of `invoice_lines`, `credit_notes` and refunded sagas, and adds the expense occurrences, one block per currency, never across currencies. A recurring expense is one row, expanded when asked. Provider commission is not in the payment ledger and is shown as "not recorded" unless the tenant enters `payment_fees` expenses. The table of sources, the profit definition and the limits are in [phase 37](../phases/phase-37-accounting.md).
+
+**Discounts (phase 46).** A discount posts as contra-revenue: `invoice_lines.coupon_code` names the coupon of a `DISCOUNT` line (migration `00032`; older lines are filled from "Coupon CODE"), `AccountingIncome` sums them per bucket (`discounts_minor`) and `AccountingCoupons` groups them per currency and coupon (invoices, gross sales before the coupon, discount, net). The summary block has `discounts_minor`, `sales_minor` (gross - tax + discounts) and `coupons`; net income and profit are unchanged because gross is already the amount paid. The CSV export has two more columns, and `GET /v1/accounting/coupons.csv` is the per-coupon report.

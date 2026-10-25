@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/0furkancolak/quotify/pkg/payments"
-	"github.com/0furkancolak/quotify/pkg/payments/providers"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/payments/providers"
 )
 
 func TestCatalogue(t *testing.T) {
@@ -13,7 +13,7 @@ func TestCatalogue(t *testing.T) {
 		t.Fatalf("Names = %v", got)
 	}
 	iy, ok := providers.Lookup("iyzico")
-	if !ok || iy.Owner() != payments.OwnerQuotify || !iy.CanCharge("TRY") || iy.CanCharge("JPY") {
+	if !ok || iy.Owner() != payments.OwnerPayrudder || !iy.CanCharge("TRY") || iy.CanCharge("JPY") {
 		t.Errorf("iyzico = %+v", iy)
 	}
 	pd, ok := providers.Lookup("paddle")
@@ -35,7 +35,7 @@ func TestWhoMailsReceipts(t *testing.T) {
 
 func TestBankTransferCapabilities(t *testing.T) {
 	bt, ok := providers.Lookup("banktransfer")
-	if !ok || bt.Owner() != payments.OwnerQuotify || bt.Refunds || bt.HostedCheckout || bt.IdempotentCharges || bt.SendsOwnReceipts || !bt.CanCharge("TRY") {
+	if !ok || bt.Owner() != payments.OwnerPayrudder || bt.Refunds || bt.HostedCheckout || bt.IdempotentCharges || bt.SendsOwnReceipts || !bt.CanCharge("TRY") {
 		t.Errorf("banktransfer = %+v: Payrudder owns renewal and dunning, there is no refund API, no hosted checkout, and the status query reads the ledger", bt)
 	}
 }

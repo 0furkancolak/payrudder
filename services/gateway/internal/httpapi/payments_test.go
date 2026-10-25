@@ -19,7 +19,7 @@ func paymentsGateway(t *testing.T, token string) (*httptest.Server, *seen) {
 	got := &seen{}
 	worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
-		*got = seen{r.Method, r.URL.Path, r.URL.RawQuery, r.Header.Get("X-Internal-Token"), r.Header.Get("Authorization"), string(b), r.Header.Get("X-Quotify-Actor")}
+		*got = seen{r.Method, r.URL.Path, r.URL.RawQuery, r.Header.Get("X-Internal-Token"), r.Header.Get("Authorization"), string(b), r.Header.Get("X-Payrudder-Actor")}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(w, `{"ok":true}`)
 	}))
@@ -89,7 +89,7 @@ func TestTransferRoutesAreOperatorOnlyAndForwardedWithTheActor(t *testing.T) {
 	for _, c := range []struct{ method, tail, body string }{{"GET", "", ""}, {"POST", "/receipts", `{"amount_minor":1}`}, {"POST", "/reject", `{"outcome":"expired"}`}} {
 		req, _ := http.NewRequest(c.method, ts.URL+base+c.tail, strings.NewReader(c.body))
 		req.Header.Set("Authorization", "Bearer "+operatorToken)
-		req.Header.Set("X-Quotify-Actor", "alice@example.com")
+		req.Header.Set("X-Payrudder-Actor", "alice@example.com")
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil || resp.StatusCode != 200 {
 			t.Fatalf("%s %s: %v %v", c.method, c.tail, resp, err)

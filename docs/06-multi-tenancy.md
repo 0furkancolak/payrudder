@@ -5,7 +5,7 @@
 | Layer | Mechanism | Enforced by |
 |---|---|---|
 | Edge | API key → `tenant_id`. The tenant is **never** taken from the request body | gateway |
-| Service-to-service | `x-quotify-tenant-id` gRPC metadata, set only by gateway. Internal callers propagate it | `pkg/tenant` interceptor |
+| Service-to-service | `x-payrudder-tenant-id` gRPC metadata, set only by gateway. Internal callers propagate it | `pkg/tenant` interceptor |
 | Postgres | Shared schema + `tenant_id` column + **Row Level Security** | Postgres ([ADR 0004](adr/0004-shared-schema-rls-tenancy.md)) |
 | Kafka | `tenant_id` partition key + `tenant-id` header. Consumers validate that payload and header agree | consumers |
 | RabbitMQ | `tenant-id` header + `tenant_id` field in the command. Workers set it on their spans and metrics | workers |
@@ -15,7 +15,7 @@
 
 ## Environment guards (phase 45)
 
-The tenant is the unit of isolation; the environment (sandbox or live) is asserted at every edge, never defaulted ([ADR 0022](adr/0022-live-and-sandbox-guards.md)):
+The tenant is the unit of isolation; the environment (sandbox or live) is asserted at every edge, never defaulted ([ADR 0023](adr/0023-live-and-sandbox-guards.md)):
 
 | Edge | Guard |
 |---|---|
@@ -36,7 +36,7 @@ The tenant is the unit of isolation; the environment (sandbox or live) is assert
 - `test` keys resolve to the account's **sandbox tenant** and `live` keys to its live tenant. A sandbox is a separate `tenant_id`,
   so sandbox and live data are isolated by the same RLS and partitioning as any two tenants ([ADR 0011](adr/0011-sandbox-environment.md)).
   plans-svc rejects creating a `live` key for a sandbox tenant and vice versa, and a trigger in the database refuses it too. The gateway checks the prefix against the tenant's environment on every request: a `qk_test_` key whose tenant is live (or the reverse) is a hard `401`.
-- A key has a **scope** (`full`, `ingest` = only `POST /v1/events`, `read` = only `GET`), a `last_used_at` and, when it was rotated, an `expires_at`: the old key keeps working for the overlap window (default 24 hours, at most 7 days) and then stops, with no cache eviction needed ([ADR 0022](adr/0022-live-and-sandbox-guards.md)).
+- A key has a **scope** (`full`, `ingest` = only `POST /v1/events`, `read` = only `GET`), a `last_used_at` and, when it was rotated, an `expires_at`: the old key keeps working for the overlap window (default 24 hours, at most 7 days) and then stops, with no cache eviction needed ([ADR 0023](adr/0023-live-and-sandbox-guards.md)).
 - A **live** tenant is created `inactive`: no keys, no webhook endpoints, no invoices, until its go-live checklist is complete and the owner activates it. An operator can suspend an active tenant; its keys stop at once (`403 gateway.auth.tenant_not_active`).
 
 ## Row Level Security
@@ -101,6 +101,6 @@ Fairness beyond rate limits (partition hot-spotting, lag isolation) is in [07-co
 2. Operator: `POST /admin/v1/tenants/{id}/api-keys` → plaintext key returned once (`qk_test_` for the sandbox, `qk_live_` for live; a live tenant must be active first: `PUT /admin/v1/tenants/{id}/status`, or the owner's go-live checklist in the console).
 3. Tenant integrates in the sandbox: meters, plans, customers with `pm_sandbox_*` scenarios, events, `POST /v1/sandbox/periods/{p}/close`.
    Then it repeats the setup in live. Copying config from sandbox to live is a documented extension, not in v1.
-4. A deployment running `values-sandbox.yaml` (`QUOTIFY_ALLOWED_ENVIRONMENTS=sandbox`) creates only the sandbox tenant.
+4. A deployment running `values-sandbox.yaml` (`PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox`) creates only the sandbox tenant.
 5. Off-boarding (out of scope for v1): documented as revoke keys → final billing run → data export → delete by
    `tenant_id` per service. RLS makes "delete everything of tenant X" a straightforward `DELETE ... WHERE tenant_id = $1` as `_system`.

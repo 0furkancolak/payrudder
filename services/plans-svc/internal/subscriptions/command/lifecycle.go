@@ -7,19 +7,19 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/pkg/subscription"
-	"github.com/0furkancolak/quotify/pkg/tenant"
-	changescmd "github.com/0furkancolak/quotify/services/plans-svc/internal/changes/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
-	entitlementscmd "github.com/0furkancolak/quotify/services/plans-svc/internal/entitlements/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/subscriptions/query"
-	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
+	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks"
 )
 
 // Cancelled is the outcome of Cancel: the subscription and the unused fee credited to the customer.
@@ -61,7 +61,7 @@ func (c *Commands) Cancel(ctx context.Context, req *plansv1.CancelSubscriptionRe
 			return err
 		}
 		if n != 1 {
-			return status.Error(codes.Aborted, "subscription changed concurrently; retry")
+			return errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
 		}
 		if req.GetCreditUnused() {
 			// The row as it was before it ended: it still says what was prepaid.
@@ -92,20 +92,20 @@ func (c *Commands) Cancel(ctx context.Context, req *plansv1.CancelSubscriptionRe
 
 // requireCancellable refuses a subscription that cannot end at end, or whose unused fee cannot be credited.
 func requireCancellable(row sqlc.GetSubscriptionRow, end time.Time, creditUnused bool) error {
-	if err := domain.RequireQuotifyOwned(row.Owner, row.Provider); err != nil {
+	if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 		return err
 	}
 	if !row.OpenEnded {
-		return status.Error(codes.FailedPrecondition, "subscription already ended")
+		return errkey.New(codes.FailedPrecondition, "plans.subscription.ended", "subscription already ended")
 	}
 	if creditUnused && row.FeeTiming != "advance" {
-		return status.Error(codes.FailedPrecondition, "this subscription is billed in arrears: no fee was paid in advance")
+		return errkey.New(codes.FailedPrecondition, "plans.subscription.billed_in_arrears", "this subscription is billed in arrears: no fee was paid in advance")
 	}
 	if !end.After(row.StartTime) {
 		return domain.Invalid("end_time", "must be after the subscription start")
 	}
 	if _, err := subscription.Next(subscription.State(row.State), subscription.Cancel); err != nil {
-		return status.Error(codes.FailedPrecondition, err.Error())
+		return errkey.New(codes.FailedPrecondition, "plans.subscription.transition_not_allowed", err.Error())
 	}
 	return nil
 }
@@ -132,16 +132,16 @@ func (c *Commands) move(ctx context.Context, id uuid.UUID, ev subscription.Event
 			return err
 		}
 		row := sqlc.GetSubscriptionRow(cur)
-		if err := domain.RequireQuotifyOwned(row.Owner, row.Provider); err != nil {
+		if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 			return err
 		}
 		if !row.OpenEnded {
-			return status.Error(codes.FailedPrecondition, "subscription already ended")
+			return errkey.New(codes.FailedPrecondition, "plans.subscription.ended", "subscription already ended")
 		}
 		eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, c.now())
 		next, err := subscription.Next(eff, ev)
 		if err != nil {
-			return status.Error(codes.FailedPrecondition, err.Error())
+			return errkey.New(codes.FailedPrecondition, "plans.subscription.transition_not_allowed", err.Error())
 		}
 		paused, cancelAtEnd := mutate(row, next)
 		if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{
@@ -216,7 +216,7 @@ func (c *Commands) ScheduleCancellation(ctx context.Context, req *plansv1.Schedu
 			return err
 		}
 		row := sqlc.GetSubscriptionRow(cur)
-		if err := domain.RequireQuotifyOwned(row.Owner, row.Provider); err != nil {
+		if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 			return err
 		}
 		now := c.now()
@@ -248,7 +248,7 @@ func (c *Commands) ScheduleCancellation(ctx context.Context, req *plansv1.Schedu
 func currentPeriod(sub sqlc.GetSubscriptionRow, loc *time.Location, at time.Time) (start, end time.Time, err error) {
 	n, err := subscription.PeriodIndex(sub.BillingAnchor, subscription.Interval(sub.Interval), at, loc)
 	if err != nil {
-		return start, end, status.Error(codes.FailedPrecondition, err.Error())
+		return start, end, errkey.New(codes.FailedPrecondition, "plans.subscription.bad_period", err.Error())
 	}
 	if start, err = subscription.PeriodStart(sub.BillingAnchor, subscription.Interval(sub.Interval), n, loc); err != nil {
 		return start, end, err
@@ -260,11 +260,11 @@ func currentPeriod(sub sqlc.GetSubscriptionRow, loc *time.Location, at time.Time
 // scheduleEnd makes the subscription end with its current billing period.
 func scheduleEnd(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row sqlc.GetSubscriptionRow, loc *time.Location, now time.Time) error {
 	if !row.OpenEnded {
-		return status.Error(codes.FailedPrecondition, "subscription already ended or already scheduled to end")
+		return errkey.New(codes.FailedPrecondition, "plans.subscription.ending_or_ended", "subscription already ended or already scheduled to end")
 	}
 	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
 	if _, err := subscription.Next(eff, subscription.PeriodEndedCancelling); err != nil {
-		return status.Error(codes.FailedPrecondition, err.Error())
+		return errkey.New(codes.FailedPrecondition, "plans.subscription.transition_not_allowed", err.Error())
 	}
 	// A subscription that has not started yet ends with its first period.
 	ref := now
@@ -278,7 +278,7 @@ func scheduleEnd(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row s
 	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: row.ID, EndTime: end}); err != nil {
 		return err
 	} else if n != 1 {
-		return status.Error(codes.Aborted, "subscription changed concurrently; retry")
+		return errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
 	}
 	if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: row.ID, State: row.State, PausedAt: row.PausedAt, CancelAtPeriodEnd: true}); err != nil {
 		return err
@@ -289,12 +289,12 @@ func scheduleEnd(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row s
 // withdrawScheduledEnd reopens a subscription that was scheduled to end.
 func withdrawScheduledEnd(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row sqlc.GetSubscriptionRow, now time.Time) error {
 	if !row.CancelAtPeriodEnd || row.OpenEnded || !row.EndTime.After(now) {
-		return status.Error(codes.FailedPrecondition, "no scheduled cancellation to withdraw")
+		return errkey.New(codes.FailedPrecondition, "plans.subscription.no_scheduled_cancel", "no scheduled cancellation to withdraw")
 	}
 	if n, err := q.ReopenSubscription(ctx, sqlc.ReopenSubscriptionParams{ID: row.ID, Now: now}); err != nil {
 		return err
 	} else if n != 1 {
-		return status.Error(codes.Aborted, "subscription changed concurrently; retry")
+		return errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
 	}
 	if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: row.ID, State: row.State, PausedAt: row.PausedAt, CancelAtPeriodEnd: false}); err != nil {
 		return err

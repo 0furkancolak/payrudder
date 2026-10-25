@@ -4,9 +4,9 @@ package tax
 import (
 	"context"
 
-	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/tax/command"
-	"github.com/0furkancolak/quotify/services/plans-svc/internal/tax/query"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/tax/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/tax/query"
 )
 
 // Handler serves the tax rate methods of PlansService.

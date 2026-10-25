@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, tenantApi, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
+import type { Environment } from "@/shared/lib/environment";
 
 export const subscriptionKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "subscriptions"] as const,
+  entitlements: (tenantId: string, customer: string) => ["tenants", tenantId, "entitlements", customer] as const,
 };
 
 export function useSubscriptions(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => subscriptionKeys.list(toValue(tenantId))),
-    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/subscriptions", { params: { query: { page_size: 100 } } })),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/subscriptions", { params: { query: { page_size: PAGE.long } } })),
   });
 }
 
@@ -29,7 +32,7 @@ export interface ChangeInput {
   plan_code: string;
   /** Empty keeps the interval. */
   interval: "" | "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
-  /** Empty lets Quotify decide by the direction of the change. */
+  /** Empty lets Payrudder decide by the direction of the change. */
   timing: "" | "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
   proration: "" | "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
 }
@@ -48,31 +51,31 @@ function changeBody(v: ChangeInput) {
 export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   const refresh = () => queries.invalidateQueries({ queryKey: subscriptionKeys.list(toValue(tenantId)) });
-  const t = () => tenantApi(toValue(tenantId));
+  const client = () => tenantApi(toValue(tenantId));
   const path = (id: string) => ({ params: { path: { id } } });
   return {
-    create: useMutation({ mutationFn: (body: NewSubscription) => unwrap(t().POST("/v1/subscriptions", { body })), onSuccess: refresh }),
-    pause: useMutation({ mutationFn: (id: string) => unwrap(t().POST("/v1/subscriptions/{id}/pause", path(id))), onSuccess: refresh }),
-    resume: useMutation({ mutationFn: (id: string) => unwrap(t().POST("/v1/subscriptions/{id}/resume", path(id))), onSuccess: refresh }),
-    scheduleCancel: useMutation({ mutationFn: (id: string) => unwrap(t().POST("/v1/subscriptions/{id}/cancel-at-period-end", path(id))), onSuccess: refresh }),
-    withdrawCancel: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}/cancel-at-period-end", path(id))), onSuccess: refresh }),
-    endNow: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}", path(id))), onSuccess: refresh }),
+    create: useMutation({ mutationFn: (body: NewSubscription) => unwrap(client().POST("/v1/subscriptions", { body })), onSuccess: refresh }),
+    pause: useMutation({ mutationFn: (id: string) => unwrap(client().POST("/v1/subscriptions/{id}/pause", path(id))), onSuccess: refresh }),
+    resume: useMutation({ mutationFn: (id: string) => unwrap(client().POST("/v1/subscriptions/{id}/resume", path(id))), onSuccess: refresh }),
+    scheduleCancel: useMutation({ mutationFn: (id: string) => unwrap(client().POST("/v1/subscriptions/{id}/cancel-at-period-end", path(id))), onSuccess: refresh }),
+    withdrawCancel: useMutation({ mutationFn: (id: string) => unwrap(client().DELETE("/v1/subscriptions/{id}/cancel-at-period-end", path(id))), onSuccess: refresh }),
+    endNow: useMutation({ mutationFn: (id: string) => unwrap(client().DELETE("/v1/subscriptions/{id}", path(id))), onSuccess: refresh }),
     /** Ends it now and credits the customer's balance with the unused part of the fee paid in advance. */
     endNowCredit: useMutation({
-      mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}", { params: { path: { id }, query: { credit_unused: true } } })),
+      mutationFn: (id: string) => unwrap(client().DELETE("/v1/subscriptions/{id}", { params: { path: { id }, query: { credit_unused: true } } })),
       onSuccess: refresh,
     }),
     /** Prices a change of plan or interval without making it. */
-    previewChange: useMutation({ mutationFn: (v: ChangeInput) => unwrap(t().POST("/v1/subscriptions/{id}/change-preview", { ...path(v.id), body: changeBody(v) })) }),
-    change: useMutation({ mutationFn: (v: ChangeInput) => unwrap(t().POST("/v1/subscriptions/{id}/change", { ...path(v.id), body: changeBody(v) })), onSuccess: refresh }),
-    cancelScheduledChange: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}/scheduled-change", path(id))), onSuccess: refresh }),
+    previewChange: useMutation({ mutationFn: (v: ChangeInput) => unwrap(client().POST("/v1/subscriptions/{id}/change-preview", { ...path(v.id), body: changeBody(v) })) }),
+    change: useMutation({ mutationFn: (v: ChangeInput) => unwrap(client().POST("/v1/subscriptions/{id}/change", { ...path(v.id), body: changeBody(v) })), onSuccess: refresh }),
+    cancelScheduledChange: useMutation({ mutationFn: (id: string) => unwrap(client().DELETE("/v1/subscriptions/{id}/scheduled-change", path(id))), onSuccess: refresh }),
     applyCoupon: useMutation({
-      mutationFn: (v: { id: string; code: string }) => unwrap(t().POST("/v1/subscriptions/{id}/coupon", { ...path(v.id), body: { code: v.code } })),
+      mutationFn: (v: { id: string; code: string }) => unwrap(client().POST("/v1/subscriptions/{id}/coupon", { ...path(v.id), body: { code: v.code } })),
       onSuccess: refresh,
     }),
-    removeCoupon: useMutation({ mutationFn: (id: string) => unwrap(t().DELETE("/v1/subscriptions/{id}/coupon", path(id))), onSuccess: refresh }),
+    removeCoupon: useMutation({ mutationFn: (id: string) => unwrap(client().DELETE("/v1/subscriptions/{id}/coupon", path(id))), onSuccess: refresh }),
     changePlan: useMutation({
-      mutationFn: (v: { id: string; plan_code: string }) => unwrap(t().POST("/v1/subscriptions/{id}/change-plan", { ...path(v.id), body: { plan_code: v.plan_code } })),
+      mutationFn: (v: { id: string; plan_code: string }) => unwrap(client().POST("/v1/subscriptions/{id}/change-plan", { ...path(v.id), body: { plan_code: v.plan_code } })),
       onSuccess: refresh,
     }),
     /** Moves a subscription to another payment provider (an operator action: it goes through the provider accounts, not the tenant API). */
@@ -80,7 +83,7 @@ export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, envir
       mutationFn: (v: { subscription_id: string; to_provider: string; price_ref?: string }) =>
         unwrap(
           api.POST("/admin/v1/tenants/{tenant_id}/provider-migrations", {
-            params: { path: { tenant_id: toValue(tenantId) }, query: { environment: toValue(environment) as "sandbox" | "live" } },
+            params: { path: { tenant_id: toValue(tenantId) }, query: { environment: toValue(environment) as Environment } },
             body: { ...v, to_provider: v.to_provider as "iyzico" | "paddle" },
           }),
         ),
@@ -92,20 +95,18 @@ export function useSubscriptionActions(tenantId: MaybeRefOrGetter<string>, envir
 /** A customer's usage against the limits of its package, this period: the numbers the product shows next to a subscription. */
 export function useEntitlements(tenantId: MaybeRefOrGetter<string>, customer: MaybeRefOrGetter<string>) {
   return useQuery({
-    queryKey: computed(() => ["tenants", toValue(tenantId), "entitlements", toValue(customer)] as const),
+    queryKey: computed(() => subscriptionKeys.entitlements(toValue(tenantId), toValue(customer))),
     enabled: computed(() => toValue(customer) !== ""),
     queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/entitlements", { params: { path: { external_id: toValue(customer) } } })),
   });
 }
 
-type Env = "sandbox" | "live";
-
-/** What an operator can do to a subscription a provider runs, through the provider's API. Quotify's copy follows the provider's notification. */
+/** What an operator can do to a subscription a provider runs, through the provider's API. Payrudder's copy follows the provider's notification. */
 export function useProviderRunActions(tenantId: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   const refresh = () => queries.invalidateQueries({ queryKey: subscriptionKeys.list(toValue(tenantId)) });
   const at = (id: string) => ({
-    params: { path: { tenant_id: toValue(tenantId), provider: toValue(provider) as "paddle", id }, query: { environment: toValue(environment) as Env } },
+    params: { path: { tenant_id: toValue(tenantId), provider: toValue(provider) as "paddle", id }, query: { environment: toValue(environment) as Environment } },
   });
   return {
     preview: useMutation({
