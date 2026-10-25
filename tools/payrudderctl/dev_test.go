@@ -33,13 +33,13 @@ func TestHostServices(t *testing.T) {
 			Target    int    `json:"target"`
 			Published string `json:"published"`
 		}{{5432, "5432"}}},
-		"gateway": {Build: &struct{ Dockerfile string }{"services/gateway/Dockerfile"}, Environment: map[string]string{"PAYRUDDER_PLANS_ADDR": "dns:///plans-svc:7001", "PAYRUDDER_OTLP_ENDPOINT": "otel-collector:4317", "PAYRUDDER_KAFKA_BROKERS": "redpanda:9092"}},
-		"plans-svc": {Build: &struct{ Dockerfile string }{"services/plans-svc/Dockerfile"}, Environment: map[string]string{"PAYRUDDER_PG_APP_DSN": "postgres://u:p@postgres:5432/db", "PAYRUDDER_GRPC_ADDR": ":7001"},
+		"gateway": {Build: &composeBuild{Args: map[string]string{"SERVICE_DIR": "services/gateway"}}, Environment: map[string]string{"PAYRUDDER_PLANS_ADDR": "dns:///plans-svc:7001", "PAYRUDDER_OTLP_ENDPOINT": "otel-collector:4317", "PAYRUDDER_KAFKA_BROKERS": "redpanda:9092"}},
+		"plans-svc": {Build: &composeBuild{Args: map[string]string{"SERVICE_DIR": "services/plans-svc"}}, Environment: map[string]string{"PAYRUDDER_PG_APP_DSN": "postgres://u:p@postgres:5432/db", "PAYRUDDER_GRPC_ADDR": ":7001"},
 			Ports: []struct {
 				Target    int    `json:"target"`
 				Published string `json:"published"`
 			}{{7001, "42701"}}},
-		"mockpsp": {Build: &struct{ Dockerfile string }{"tools/mockpsp/Dockerfile"}},
+		"mockpsp": {Build: &composeBuild{Args: map[string]string{"SERVICE_DIR": "tools/mockpsp"}}},
 	}
 	got := hostServices(cf)
 	var names []string
