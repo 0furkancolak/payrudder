@@ -32,8 +32,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/admin"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
+	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
 	golivecmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/command"
 	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
@@ -165,7 +165,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 
 // newEvictor connects to Redis for gateway API-key cache eviction; without PAYRUDDER_REDIS_URL it returns a nil evictor.
 // The returned func releases the connection.
-func newEvictor(cfg *Config, log *slog.Logger) (admin.CacheEvictor, func(), error) {
+func newEvictor(cfg *Config, log *slog.Logger) (apikeyscmd.Evictor, func(), error) {
 	if cfg.RedisURL == "" {
 		log.Warn("PAYRUDDER_REDIS_URL unset: revoked keys stay valid in the gateway cache until its TTL")
 		return nil, func() {}, nil
@@ -256,7 +256,7 @@ func newSandbox(cfg *Config, log *slog.Logger, _, systemPool *pgxpool.Pool) (*sa
 }
 
 // newGRPCServer builds the gRPC server with the plans, webhook and admin services registered.
-func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor admin.CacheEvictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, error) {
+func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor apikeyscmd.Evictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, error) {
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
 	plansSrv := grpcapi.New(appPool, log)
 	plansv1.RegisterPlansServiceServer(srv, plansSrv)
@@ -268,9 +268,9 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 	plansv1.RegisterAffiliateServiceServer(srv, grpcapi.NewAffiliates(plansSrv))
 	plansv1.RegisterAffiliatePublicServiceServer(srv, grpcapi.NewAffiliatesPublic(systemPool, log))
 	plansv1.RegisterAffiliatePortalServiceServer(srv, grpcapi.NewAffiliatePortal(plansSrv, systemPool))
-	adminSrv := admin.New(systemPool, evictor, cfg.AllowedEnvs, log)
+	adminSrv := grpcapi.NewAdmin(systemPool, evictor, cfg.AllowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log).WithPepper(cfg.OTPPepper), identityqry.New(systemPool),
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv.Accounts(), adminSrv.Keys(), usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log).WithPepper(cfg.OTPPepper), identityqry.New(systemPool),
 		golive.New(golivecmd.New(systemPool, log), goliveqry.New(systemPool)),
 		promote.Wire(appPool, systemPool, box, cfg.WebhookAllowPrivate, log), sbx))
 	return srv, grpcHealth, box, nil
