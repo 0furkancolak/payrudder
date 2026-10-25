@@ -798,6 +798,10 @@ message StartLinkPaymentRequest {
   string token = 1;
   // What the payer typed. Empty uses the code of the link, if it has one, or the coupon waiting for the link's customer.
   string promotion_code = 2;
+  // The affiliate code in the visitor's referral cookie and when they followed that link (phase 47). Billing tells the affiliate program, which decides; it never
+  // fails a payment. A guest payment has no customer, so nothing is attributed.
+  string referral_code = 3;
+  google.protobuf.Timestamp referral_touch_time = 4;
 }
 message QuoteLinkPromotionRequest {
   string token = 1;
@@ -824,6 +828,9 @@ message RequestHostedPaymentRequest {
   string invoice_id = 3;
   // "mock" or the id of a method the gateway got from payments-worker (checkout, bank_transfer…).
   string method = 4;
+  // The referral cookie of the visitor, as on StartLinkPaymentRequest.
+  string referral_code = 5;
+  google.protobuf.Timestamp referral_touch_time = 6;
 }
 message RequestHostedPaymentResponse {
   // "started" when billing took the payment on (mock); "provider" when the gateway has to continue with payments-worker using payment.
@@ -884,6 +891,9 @@ message StartPortalPurchaseRequest {
   int32 quantity = 3;
   // What the customer typed; empty uses the coupon waiting for the customer, if any.
   string promotion_code = 4;
+  // The referral cookie of the visitor, as on StartLinkPaymentRequest.
+  string referral_code = 5;
+  google.protobuf.Timestamp referral_touch_time = 6;
 }
 message StartPortalPurchaseResponse {
   // The token of the invoice link the customer continues on; shown once, in the redirect.

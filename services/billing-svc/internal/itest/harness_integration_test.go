@@ -116,6 +116,9 @@ type world struct {
 	applyCall int
 	taxRates  []*plansv1.TaxRate
 	promo     promoState
+	// referrals are the attributions billing asked the affiliate program for (phase 47); referralErr makes it fail.
+	referrals   []*plansv1.AttributeCustomerRequest
+	referralErr error
 
 	usage     map[string][]*aggregatorv1.UsageAggregate // by period id
 	late      map[string][]*aggregatorv1.LateUsage      // by billed period id
@@ -135,6 +138,17 @@ func (f fakeAll) GetCustomer(_ context.Context, in *plansv1.GetCustomerRequest, 
 	f.w.mu.Lock()
 	defer f.w.mu.Unlock()
 	return &plansv1.GetCustomerResponse{Customer: f.w.customers[in.GetExternalId()]}, nil
+}
+
+// AttributeCustomer is the affiliate program of plans-svc, as far as billing depends on it: it keeps what it was asked.
+func (f fakeAll) AttributeCustomer(_ context.Context, in *plansv1.AttributeCustomerRequest, _ ...grpc.CallOption) (*plansv1.AttributeCustomerResponse, error) {
+	f.w.mu.Lock()
+	defer f.w.mu.Unlock()
+	f.w.referrals = append(f.w.referrals, in)
+	if f.w.referralErr != nil {
+		return nil, f.w.referralErr
+	}
+	return &plansv1.AttributeCustomerResponse{Attributed: true}, nil
 }
 
 func (f fakeAll) ListMeters(context.Context, *plansv1.ListMetersRequest, ...grpc.CallOption) (*plansv1.ListMetersResponse, error) {
@@ -388,7 +402,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 	e.events = &fakeEvents{}
 	allEvents.add(e.events)
 	e.mgr, err = runs.NewManager(runs.Config{
-		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Ingest: f, Aggregator: f, Events: e.events,
+		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Affiliates: f, Ingest: f, Aggregator: f, Events: e.events,
 		EndOffsets: func(context.Context) (map[int32]int64, error) { return map[int32]int64{0: 10, 1: 20}, nil },
 		Now:        clk.Now, WatermarkDelay: o.watermarkGap, PageSize: 2, Log: testkit.Logger(),
 	})

@@ -6,6 +6,9 @@
 -- balances (debits = credits) in its currency, and the database refuses to commit one that does not.
 --
 -- A payout of a sandbox tenant is fake: it moves nothing, is marked so, and its postings carry the mark.
+--
+-- Resetting a sandbox (00049_sandbox_reset) empties the customers' side of it, the payouts and their postings included, since they describe commissions that are gone.
+-- The system role may delete them for that, and a trigger lets it only for a sandbox: the journal of a live tenant is never rewritten.
 -- +goose Up
 CREATE TABLE affiliate_payouts (
   tenant_id        uuid NOT NULL,
@@ -91,13 +94,27 @@ BEGIN
 END $$;
 -- +goose StatementEnd
 
--- The journal is append-only: no UPDATE, no DELETE.
+-- The journal is append-only: no UPDATE, no DELETE for the application role.
 GRANT SELECT, INSERT, UPDATE ON affiliate_payouts TO plans_app;
 GRANT SELECT, INSERT ON affiliate_journal TO plans_app;
 GRANT SELECT ON affiliate_payouts, affiliate_journal TO plans_system;
+GRANT DELETE ON affiliate_payouts, affiliate_journal TO plans_system;
+
+-- +goose StatementBegin
+CREATE FUNCTION affiliate_journal_append_only() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' AND EXISTS (SELECT 1 FROM tenants WHERE id = OLD.tenant_id AND environment = 'sandbox') THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'the affiliate journal is append-only' USING ERRCODE = 'P0001', HINT = 'journal_append_only';
+END $$;
+-- +goose StatementEnd
+CREATE TRIGGER affiliate_journal_append_only BEFORE UPDATE OR DELETE ON affiliate_journal FOR EACH ROW EXECUTE FUNCTION affiliate_journal_append_only();
 
 -- +goose Down
 DROP TABLE affiliate_journal;
+DROP FUNCTION affiliate_journal_append_only();
 DROP FUNCTION affiliate_journal_balanced();
 DROP INDEX affiliate_commissions_payable;
 DROP INDEX affiliate_commissions_by_payout;

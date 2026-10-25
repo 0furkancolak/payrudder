@@ -69,6 +69,11 @@ type Plans interface {
 	ReversePromotion(ctx context.Context, in *plansv1.ReversePromotionRequest, opts ...grpc.CallOption) (*plansv1.ReversePromotionResponse, error)
 }
 
+// Affiliates is the part of plans-svc's AffiliateService billing uses (phase 47): telling the program which partner a paying customer came through.
+type Affiliates interface {
+	AttributeCustomer(ctx context.Context, in *plansv1.AttributeCustomerRequest, opts ...grpc.CallOption) (*plansv1.AttributeCustomerResponse, error)
+}
+
 // Admin is the part of plans-svc's AdminService billing uses.
 type Admin interface {
 	GetTenant(ctx context.Context, in *plansv1.GetTenantRequest, opts ...grpc.CallOption) (*plansv1.GetTenantResponse, error)
@@ -77,10 +82,12 @@ type Admin interface {
 
 // Config configures a Manager.
 type Config struct {
-	Pool       *pgxpool.Pool // billing_system
-	Engine     *saga.Engine
-	Plans      Plans
-	Events     Events // optional: without it tenant events stay in tenant_event_outbox
+	Pool   *pgxpool.Pool // billing_system
+	Engine *saga.Engine
+	Plans  Plans
+	Events Events // optional: without it tenant events stay in tenant_event_outbox
+	// Affiliates is optional: without it a payer's referral cookie is not passed on.
+	Affiliates Affiliates
 	Admin      Admin
 	Ingest     Ingest
 	Aggregator Aggregator

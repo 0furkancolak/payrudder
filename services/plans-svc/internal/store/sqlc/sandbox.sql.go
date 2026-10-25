@@ -242,6 +242,31 @@ func (q *Queries) ResetAffiliateCommissions(ctx context.Context, tenantID uuid.U
 	return result.RowsAffected(), nil
 }
 
+const resetAffiliateJournal = `-- name: ResetAffiliateJournal :execrows
+DELETE FROM affiliate_journal WHERE tenant_id = $1
+`
+
+// The payouts made to partners and their postings: they describe commissions that are gone. The journal first, it refers to the payouts.
+func (q *Queries) ResetAffiliateJournal(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetAffiliateJournal, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetAffiliatePayouts = `-- name: ResetAffiliatePayouts :execrows
+DELETE FROM affiliate_payouts WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetAffiliatePayouts(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetAffiliatePayouts, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetAffiliateReversals = `-- name: ResetAffiliateReversals :execrows
 DELETE FROM affiliate_reversals WHERE tenant_id = $1
 `

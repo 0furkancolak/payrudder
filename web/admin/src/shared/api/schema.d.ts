@@ -1577,6 +1577,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/r/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A partner's public link (public)
+         * @description Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address.
+         */
+        get: operations["affiliateLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/privacy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the referral cookie holds, what is counted and what a visitor can do (public) */
+        get: operations["privacyPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/i/{token}": {
         parameters: {
             query?: never;
@@ -4766,6 +4803,8 @@ export interface components {
             approve_time?: string;
             /** Format: date-time */
             create_time?: string;
+            /** @description The partner's public referral link, https://<gateway>/r/<code> */
+            link?: string;
         };
         AffiliateCommission: {
             /** Format: uuid */
@@ -8875,6 +8914,82 @@ export interface operations {
                 };
             };
             404: components["responses"]["Error"];
+        };
+    };
+    affiliateLink: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A thank-you page, when the program has no landing page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Redirect to the program's landing page, with the cookie set */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    privacyPage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The privacy page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     hostedInvoicePage: {

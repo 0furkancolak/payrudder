@@ -11,6 +11,11 @@ DELETE FROM coupon_redemptions WHERE tenant_id = $1;
 DELETE FROM affiliate_reversals WHERE tenant_id = $1;
 -- name: ResetAffiliateCommissions :execrows
 DELETE FROM affiliate_commissions WHERE tenant_id = $1;
+-- The payouts made to partners and their postings: they describe commissions that are gone. The journal first, it refers to the payouts.
+-- name: ResetAffiliateJournal :execrows
+DELETE FROM affiliate_journal WHERE tenant_id = $1;
+-- name: ResetAffiliatePayouts :execrows
+DELETE FROM affiliate_payouts WHERE tenant_id = $1;
 -- name: ResetAffiliateAttributions :execrows
 DELETE FROM affiliate_attributions WHERE tenant_id = $1;
 -- name: ResetAffiliateAttributionRejections :execrows

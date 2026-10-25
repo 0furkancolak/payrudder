@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -21,8 +22,33 @@ import (
 type fakeAffiliates struct {
 	plansv1.UnimplementedAffiliateServiceServer
 	plansv1.UnimplementedAffiliatePublicServiceServer
-	mu   sync.Mutex
-	last map[string]proto.Message
+	mu      sync.Mutex
+	last    map[string]proto.Message
+	tracked []*plansv1.TrackAffiliateClickRequest
+}
+
+// TrackAffiliateClick knows three partners: ANN (no landing page), LAND (a landing page that has a query already) and BOB (no landing page, a 7-day window).
+func (f *fakeAffiliates) TrackAffiliateClick(_ context.Context, r *plansv1.TrackAffiliateClickRequest) (*plansv1.TrackAffiliateClickResponse, error) {
+	f.mu.Lock()
+	f.tracked = append(f.tracked, r)
+	f.mu.Unlock()
+	switch strings.ToUpper(r.GetCode()) {
+	case "ANN":
+		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: "ANN", AttributionWindowDays: 30, Counted: !r.GetSkipCount()}, nil
+	case "LAND":
+		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: "LAND", AttributionWindowDays: 30, LandingUrl: "https://shop.example.com/welcome?utm=x", Counted: true}, nil
+	case "BOB":
+		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: "BOB", AttributionWindowDays: 7, Counted: !r.GetSkipCount()}, nil
+	case "BROKEN":
+		return nil, status.Error(codes.Unavailable, "down")
+	}
+	return &plansv1.TrackAffiliateClickResponse{}, nil
+}
+
+func (f *fakeAffiliates) clicks() []*plansv1.TrackAffiliateClickRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]*plansv1.TrackAffiliateClickRequest(nil), f.tracked...)
 }
 
 func (f *fakeAffiliates) remember(name string, m proto.Message) {
@@ -218,7 +244,8 @@ func TestAffiliateRoutes(t *testing.T) {
 	if p := fa.got("SetAffiliateProgram").(*plansv1.SetAffiliateProgramRequest).GetProgram(); p.GetCommissionValue() != 1000 || p.GetHoldDays() != 30 {
 		t.Errorf("program as sent to plans-svc: %v", p)
 	}
-	if r, m := do(t, ts, http.MethodPost, "/v1/affiliates", "live-key", `{"email":"ann@partners.test","name":"Ann"}`); r.StatusCode != http.StatusCreated || m["code"] != "ANN" {
+	if r, m := do(t, ts, http.MethodPost, "/v1/affiliates", "live-key", `{"email":"ann@partners.test","name":"Ann"}`); r.StatusCode != http.StatusCreated || m["code"] != "ANN" ||
+		m["link"] != "https://api.example.test/r/ANN" {
 		t.Errorf("create: %d %v", r.StatusCode, m)
 	}
 	if r, m := do(t, ts, http.MethodGet, "/v1/affiliates?status=pending&search=an&page_size=5&page_token=10", "live-key", ""); r.StatusCode != http.StatusOK || m["total"] != float64(1) {

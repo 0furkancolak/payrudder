@@ -171,6 +171,10 @@ func testAffiliates(t *testing.T) {
 		if want := []bool{true, true, true, false, false}; !equalBools(counted, want) {
 			t.Fatalf("counted = %v, want %v (the cap is 3 a day)", counted, want)
 		}
+		// A visitor who carries the code already is answered, and not counted.
+		if r, err := e.pub.TrackAffiliateClick(context.Background(), &plansv1.TrackAffiliateClickRequest{Code: a, SkipCount: true}); err != nil || !r.GetValid() || r.GetCounted() || r.GetAttributionWindowDays() != 30 {
+			t.Fatalf("skip count: %v %v", r, err)
+		}
 		list, _ := e.aff.ListAffiliates(ctx, &plansv1.ListAffiliatesRequest{Search: a})
 		if list.GetAffiliates()[0].GetClicks() != 3 {
 			t.Fatalf("clicks = %d", list.GetAffiliates()[0].GetClicks())

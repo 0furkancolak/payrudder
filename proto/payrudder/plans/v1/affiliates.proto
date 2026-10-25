@@ -107,6 +107,8 @@ message Affiliate {
   int64 referrals = 11;
   google.protobuf.Timestamp approve_time = 12;
   google.protobuf.Timestamp create_time = 13;
+  // The public referral link https://<gateway>/r/<code>. Filled in by the gateway, which knows its public address.
+  string link = 14;
 }
 
 message CreateAffiliateRequest {
@@ -203,6 +205,8 @@ message ListAffiliateReferralsResponse {
 
 message TrackAffiliateClickRequest {
   string code = 1;
+  // The visitor carries this code already (their cookie): answer, but count nothing, so that a reload is not a second click.
+  bool skip_count = 2;
 }
 message TrackAffiliateClickResponse {
   // The code belongs to an active affiliate of an active program. When false nothing was counted and no cookie should be set.
