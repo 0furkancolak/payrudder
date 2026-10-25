@@ -1495,7 +1495,8 @@
         "sync_failed": "Das Anbieterkonto wurde geändert, die Bankdaten konnten aber nicht an die Rechnungen weitergegeben werden. Senden Sie die Anfrage erneut."
       },
       "billing": {
-        "not_configured": "Die Abrechnung ist in dieser Installation nicht eingerichtet."
+        "not_configured": "Die Abrechnung ist in dieser Installation nicht eingerichtet.",
+        "failed": "Der Abrechnungsdienst konnte dies nicht abschließen. Versuchen Sie es gleich erneut."
       },
       "plans": {
         "not_configured": "Pläne sind in dieser Installation nicht eingerichtet.",

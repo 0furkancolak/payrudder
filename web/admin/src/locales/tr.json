@@ -1495,7 +1495,8 @@
         "sync_failed": "Sağlayıcı hesabı değişti ama banka bilgileri faturalara aktarılamadı. İsteği yeniden gönderin."
       },
       "billing": {
-        "not_configured": "Bu kurulumda faturalama yapılandırılmamış."
+        "not_configured": "Bu kurulumda faturalama yapılandırılmamış.",
+        "failed": "Faturalama servisi bunu tamamlayamadı. Biraz sonra yeniden deneyin."
       },
       "plans": {
         "not_configured": "Bu kurulumda planlar yapılandırılmamış.",

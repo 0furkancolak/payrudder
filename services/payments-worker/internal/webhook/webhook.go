@@ -683,7 +683,7 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 	co, err := cp.CreateCheckout(r.Context(), payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: in.Quantity, PayrudderSubscriptionID: in.PayrudderSubscriptionID})
 	if err != nil {
 		s.Log.WarnContext(r.Context(), "checkout failed", "provider", in.Provider, "err", err)
-		fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
+		fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"url": co.URL, "ref": co.Ref})
@@ -717,7 +717,7 @@ func (s *Server) migrate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sub, err := s.Plans.GetSubscription(ctx, t, in.SubscriptionID)
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	target, err := s.Resolver.Named(ctx, t, in.ToProvider, env)
@@ -748,7 +748,7 @@ func (s *Server) migrateViaCheckout(w http.ResponseWriter, r *http.Request, t uu
 	}
 	mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider})
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	co, err := cp.CreateCheckout(ctx, payments.CheckoutRequest{PriceRef: in.PriceRef, Quantity: 1, PayrudderMigrationID: mig.GetId()})
@@ -757,7 +757,8 @@ func (s *Server) migrateViaCheckout(w http.ResponseWriter, r *http.Request, t uu
 		if aerr := s.Plans.AbortProviderMigration(ctx, t, mig.GetId()); aerr != nil {
 			s.Log.ErrorContext(ctx, "could not abort a migration after a failed checkout", "migration", mig.GetId(), "err", aerr)
 		}
-		fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
+		s.Log.WarnContext(ctx, "migration checkout failed", "provider", in.ToProvider, "err", err)
+		fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "started", "checkout_url": co.URL})
@@ -776,7 +777,7 @@ func (s *Server) migrateToPayrudder(w http.ResponseWriter, r *http.Request, t uu
 	}
 	mig, err := s.Plans.StartProviderMigration(ctx, t, &plansv1.StartProviderMigrationRequest{SubscriptionId: in.SubscriptionID, ToProvider: in.ToProvider, CutoverTime: cutover})
 	if err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"migration": mig.GetId(), "state": "completed", "new_subscription": mig.GetNewSubscriptionId(),
@@ -807,7 +808,8 @@ func (s *Server) stopRenewals(w http.ResponseWriter, r *http.Request, t uuid.UUI
 		return nil, false
 	}
 	if err := m.CancelSubscription(ctx, sub.GetProviderRef(), true); err != nil {
-		fail(w, http.StatusBadGateway, "payments.provider.failed", err.Error())
+		s.Log.WarnContext(ctx, "provider cancel failed", "provider", sub.GetProvider(), "err", err)
+		fail(w, http.StatusBadGateway, "payments.provider.failed", providerTrouble)
 		return nil, false
 	}
 	return timestamppb.New(next), true
@@ -823,14 +825,26 @@ func (s *Server) abortMigration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.Plans.AbortProviderMigration(r.Context(), t, r.PathValue("migration")); err != nil {
-		planFail(w, err)
+		s.planFail(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"state": "aborted"})
 }
 
-// planFail relays a plans-svc refusal: its status code becomes the HTTP one, and its error key travels on (the code's common.* default when it has none).
-func planFail(w http.ResponseWriter, err error) {
+// planFail relays a plans-svc refusal.
+func (s *Server) planFail(w http.ResponseWriter, r *http.Request, err error) {
+	s.relay(w, r, "plans-svc", errkey.Key("payments.plans.failed"), err)
+}
+
+// billingFail relays a billing-svc refusal.
+func (s *Server) billingFail(w http.ResponseWriter, r *http.Request, err error) {
+	s.relay(w, r, "billing-svc", errkey.Key("payments.billing.failed"), err)
+}
+
+// relay answers for a refusal of another service. A refusal about the request (not found, invalid, wrong state) keeps its status, its key (the code's
+// common.* default when it has none) and its message, which was written for the caller. Anything else is the other service's trouble: the cause goes to
+// the log and the caller gets a bad gateway with a fixed message and failKey.
+func (s *Server) relay(w http.ResponseWriter, r *http.Request, svc, failKey string, err error) {
 	key := errkey.Of(err)
 	if key == "" {
 		key = errkey.Default(status.Code(err))
@@ -843,6 +857,7 @@ func planFail(w http.ResponseWriter, err error) {
 	case codes.FailedPrecondition, codes.AlreadyExists, codes.Aborted:
 		fail(w, http.StatusConflict, key, status.Convert(err).Message())
 	default:
-		fail(w, http.StatusBadGateway, errkey.Key("payments.plans.failed"), "plans-svc: "+status.Convert(err).Message())
+		s.Log.WarnContext(r.Context(), svc+" request failed", "err", err)
+		fail(w, http.StatusBadGateway, failKey, svc+" could not complete the request")
 	}
 }

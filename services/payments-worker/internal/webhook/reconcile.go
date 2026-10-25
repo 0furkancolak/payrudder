@@ -105,7 +105,7 @@ func (s *Server) reconcile(w http.ResponseWriter, r *http.Request) {
 			fail(w, http.StatusInternalServerError, "common.internal", "internal error")
 			return
 		}
-		planFail(w, err)
+		s.billingFail(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, rec)

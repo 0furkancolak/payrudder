@@ -227,7 +227,7 @@ func TestBankTransferThroughTheWorker(t *testing.T) {
 		"wrong currency": {`{"amount_minor":100,"currency":"USD","bank_reference":"Z"}`, 400, "payments.transfer.bad_currency"},
 		"future date":    {`{"amount_minor":100,"currency":"TRY","bank_reference":"Z","received_at":"2026-12-01T00:00:00Z"}`, 400, "payments.transfer.bad_date"},
 		"too much":       {`{"amount_minor":150001,"currency":"TRY","bank_reference":"Z"}`, 409, "payments.transfer.overpayment"},
-		"garbage amount": {`{"amount_minor":"abc","currency":"TRY","bank_reference":"Z"}`, 400, "common.invalid_argument"},
+		"garbage amount": {`{"amount_minor":"abc","currency":"TRY","bank_reference":"Z"}`, 400, "payments.transfer.bad_body"},
 	} {
 		if got, out := do("POST", transferPath(invoice, "/receipts"), c.body); got != c.code || errKey(out) != c.key {
 			t.Errorf("%s: %d %v; want %d %s", name, got, out, c.code, c.key)

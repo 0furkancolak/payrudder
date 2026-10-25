@@ -1495,7 +1495,8 @@
         "sync_failed": "La cuenta del proveedor se modificó, pero los datos bancarios no pudieron pasarse a las facturas. Envía la solicitud de nuevo."
       },
       "billing": {
-        "not_configured": "La facturación no está configurada en este despliegue."
+        "not_configured": "La facturación no está configurada en este despliegue.",
+        "failed": "El servicio de facturación no pudo completar esto. Inténtalo de nuevo en un momento."
       },
       "plans": {
         "not_configured": "Los planes no están configurados en este despliegue.",
