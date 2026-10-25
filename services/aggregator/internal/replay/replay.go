@@ -80,6 +80,10 @@ type Manager struct {
 	mu       sync.Mutex
 	running  map[uuid.UUID]bool
 	failures map[uuid.UUID]int
+	// jobs counts the goroutines of running jobs: Run does not return before they have.
+	jobs sync.WaitGroup
+	// run advances one job; runJob, except in tests.
+	run func(ctx context.Context, tenantID, jobID uuid.UUID) error
 }
 
 const (
@@ -112,7 +116,9 @@ func New(cfg Config) *Manager {
 	if cfg.BatchSize == 0 {
 		cfg.BatchSize = 1000
 	}
-	return &Manager{cfg: cfg, running: map[uuid.UUID]bool{}, failures: map[uuid.UUID]int{}}
+	m := &Manager{cfg: cfg, running: map[uuid.UUID]bool{}, failures: map[uuid.UUID]int{}}
+	m.run = m.runJob
+	return m
 }
 
 // Job is a replay_jobs row.
@@ -308,10 +314,11 @@ func insertJob(ctx context.Context, q *sqlc.Queries, nj newJob) error {
 	})
 }
 
-// Run looks for jobs that need work until ctx ends.
+// Run looks for jobs that need work until ctx ends, and then waits for the jobs it started: they use the pool the caller closes once Run returns.
 func (m *Manager) Run(ctx context.Context) error {
 	t := time.NewTicker(m.cfg.Scan)
 	defer t.Stop()
+	defer m.jobs.Wait()
 	for {
 		m.scan(ctx)
 		select {
@@ -351,9 +358,11 @@ func (m *Manager) launch(ctx context.Context, j *Job) {
 	if busy {
 		return
 	}
+	m.jobs.Add(1)
 	go func() {
+		defer m.jobs.Done()
 		defer func() { m.mu.Lock(); delete(m.running, j.ID); m.mu.Unlock() }()
-		m.afterRun(ctx, j, m.runJob(ctx, j.TenantID, j.ID))
+		m.afterRun(ctx, j, m.run(ctx, j.TenantID, j.ID))
 	}()
 }
 
