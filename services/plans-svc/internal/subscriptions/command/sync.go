@@ -11,7 +11,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
@@ -195,7 +194,7 @@ func (c *Commands) followProviderPlan(ctx context.Context, q *sqlc.Queries, tena
 	if !a.known {
 		next = convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, at)
 	}
-	nr, err := changescmd.SwitchTo(ctx, q, c.now(), tenantID, row, changescmd.Successor{PlanVersionID: pv.ID, Interval: iv, State: next, TrialEnds: row.TrialEndsAt, At: at,
+	nr, err := SwitchTo(ctx, q, c.now(), tenantID, row, Successor{PlanVersionID: pv.ID, Interval: iv, State: next, TrialEnds: row.TrialEndsAt, At: at,
 		Anchor: row.BillingAnchor, FeeTiming: "arrears", Owner: "provider", ProviderRef: row.ProviderRef})
 	if err != nil {
 		return row.ID, err
