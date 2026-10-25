@@ -21,7 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invoices "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -143,10 +143,10 @@ func State(invoiceStatus, sagaState string) (state string, payable bool) {
 	case "uncollectible":
 		return "failed", false
 	}
-	switch saga.State(sagaState) {
-	case saga.AwaitingPayment:
+	switch sagamodel.State(sagaState) {
+	case sagamodel.AwaitingPayment:
 		return "open", true
-	case saga.PaymentDeclined:
+	case sagamodel.PaymentDeclined:
 		return "failed", true
 	}
 	return "processing", false
@@ -205,7 +205,7 @@ type Page struct {
 	Invoice *invoices.Invoice
 	Adhoc   *Adhoc
 	// Meta of the invoice.
-	Snapshot             saga.Snapshot
+	Snapshot             sagamodel.Snapshot
 	SagaState            string
 	SagaID               uuid.UUID
 	Provider             string
@@ -223,7 +223,7 @@ type Page struct {
 	State                string
 	Payable              bool
 	// PaymentInstructions say where to send the money, for an open invoice paid by bank transfer.
-	PaymentInstructions *saga.BankInstructions
+	PaymentInstructions *sagamodel.BankInstructions
 }
 
 // Get returns what the visitor in scope sees. An ad-hoc link before its first use returns the Adhoc part and no invoice.
@@ -434,7 +434,7 @@ func GetPortal(ctx context.Context, d Deps, s *Scope) (*PortalPage, error) {
 		st, pay := State(r.Status, r.SagaState)
 		out.Invoices = append(out.Invoices, PortalInvoice{Row: r, State: st, Pay: pay})
 	}
-	var snap saga.Snapshot
+	var snap sagamodel.Snapshot
 	if latest != nil {
 		_ = json.Unmarshal(latest, &snap)
 	}

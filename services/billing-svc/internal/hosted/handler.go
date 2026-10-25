@@ -19,7 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices"
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -31,7 +31,7 @@ type Handler struct {
 
 // New returns the handler over the billing_app and billing_system pools. mgr makes the invoices of ad-hoc links and looks up customers and sellers; eng drives
 // their sagas.
-func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) *Handler {
+func New(app, system *pgxpool.Pool, mgr *runs.Manager, eng *sagacommand.Engine) *Handler {
 	h := &Handler{d: command.Deps{App: app, System: system, Engine: eng}, q: query.Deps{App: app, System: system}}
 	if mgr != nil {
 		h.d.Dir = mgr

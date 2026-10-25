@@ -16,7 +16,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -199,7 +199,7 @@ func (m *Manager) buildFeeDraft(ctx context.Context, tenantID uuid.UUID, t *plan
 			tax += l.AmountMinor
 		}
 	}
-	snapshot := saga.Snapshot{
+	snapshot := sagamodel.Snapshot{
 		CustomerExternalID: sub.GetCustomerExternalId(), CustomerName: cu.GetCustomer().GetName(), CustomerEmail: cu.GetCustomer().GetEmail(),
 		PaymentMethod: cu.GetCustomer().GetPaymentMethod(), Provider: sub.GetProvider(), TenantName: t.GetName(), Environment: environmentOf(t), CurrencyExponent: cur.Exponent,
 		LogoObjectKey: logoKeyOf(tenantID, t), ProviderMails: providerMails(sub.GetProvider()), SellerAddress: addressLines(t.GetAddress()), CustomerAddress: addressLines(cu.GetCustomer().GetAddress()),
