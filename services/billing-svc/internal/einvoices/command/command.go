@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -56,11 +57,12 @@ func (c *Commands) now() time.Time {
 	return time.Now()
 }
 
+// truncate cuts s to n characters (not bytes: a cut in the middle of a character would leave invalid UTF-8).
 func truncate(s string, n int) string {
-	if len(s) > n {
-		return s[:n]
+	if utf8.RuneCountInString(s) <= n {
+		return s
 	}
-	return s
+	return string([]rune(s)[:n])
 }
 
 // ApplyResult applies the worker's answer to the document it is about, in the reply consumer's transaction. An answer for an unknown document is dropped.

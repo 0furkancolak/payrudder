@@ -92,7 +92,7 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 			return nil
 		}
 		// A refund of a credit note is answered like any command, but no saga is waiting for it.
-		if handled, err := creditnotecmd.SettleRefund(ctx, tx, tenantID, cmdID, &reply); err != nil || handled {
+		if handled, err := creditnotecmd.SettleRefund(ctx, tx, c.Engine.Now(), tenantID, cmdID, &reply); err != nil || handled {
 			return err
 		}
 		out, err := c.Engine.Handle(ctx, tx, tenantID, sagaID, ev, cause, &cmdID)

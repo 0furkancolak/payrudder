@@ -150,50 +150,70 @@ func (in *CreateInput) normalize() error {
 		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_promotion_code",
 			"promotion_code is 2 to 40 letters, digits, - or _, and belongs to an adhoc or credit_pack link: an invoice that exists is not changed")
 	}
+	var err error
 	switch in.Kind {
 	case KindInvoice:
-		if in.InvoiceID == uuid.Nil {
-			return errkey.New(codes.InvalidArgument, "billing.payment_link.invoice_required", "a payment link of kind invoice needs invoice_id")
-		}
-		if in.AmountMinor != 0 || in.Description != "" || in.CustomerExternalID != "" || in.Currency != "" {
-			return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "amount, currency, description and customer belong to an ad-hoc link; an invoice link takes them from the invoice")
-		}
+		err = in.checkInvoiceLink()
 	case KindAdhoc:
-		if in.InvoiceID != uuid.Nil {
-			return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "an ad-hoc link has no invoice: the invoice is made when the customer uses it")
-		}
-		if in.AmountMinor <= 0 || in.AmountMinor > maxAmount {
-			return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_amount", "amount_minor must be a positive number of minor units")
-		}
-		if in.Description == "" || len([]rune(in.Description)) > maxDescription {
-			return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_description", "description is required and at most 200 characters")
-		}
-		if in.Currency != "" {
-			if _, ok := money.LookupCurrency(in.Currency); !ok {
-				return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_currency", "currency is not supported")
-			}
-		}
+		err = in.checkAdhocLink()
 	case KindCreditPack:
-		if in.PackID == uuid.Nil {
-			return errkey.New(codes.InvalidArgument, "billing.payment_link.pack_required", "a payment link of kind credit_pack needs pack_id")
-		}
-		if in.InvoiceID != uuid.Nil || in.AmountMinor != 0 || in.Description != "" || in.Currency != "" {
-			return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "a credit_pack link takes its amount, currency and description from the pack; pass pack_id and the customer")
-		}
-		if in.CustomerExternalID == "" {
-			return errkey.New(codes.InvalidArgument, "billing.payment_link.customer_required", "a credit_pack link needs customer_external_id: the credits go to that customer")
-		}
-		var err error
-		if in.Quantity, err = packQuantity(in.Quantity); err != nil {
-			return err
-		}
+		err = in.checkCreditPackLink()
 	default:
-		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "kind must be invoice, adhoc or credit_pack")
+		err = errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "kind must be invoice, adhoc or credit_pack")
+	}
+	if err != nil {
+		return err
 	}
 	if in.ExpiresInDays < 0 || in.ExpiresInDays > MaxDays {
 		return errkey.New(codes.InvalidArgument, "billing.invoice_link.bad_expiry", "expires_in_days must be 1..365")
 	}
 	return nil
+}
+
+// checkInvoiceLink: a link to an invoice that exists takes everything but the invoice from it.
+func (in *CreateInput) checkInvoiceLink() error {
+	if in.InvoiceID == uuid.Nil {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.invoice_required", "a payment link of kind invoice needs invoice_id")
+	}
+	if in.AmountMinor != 0 || in.Description != "" || in.CustomerExternalID != "" || in.Currency != "" {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "amount, currency, description and customer belong to an ad-hoc link; an invoice link takes them from the invoice")
+	}
+	return nil
+}
+
+// checkAdhocLink: an ad-hoc link says what is paid for and how much; the invoice is made when it is used.
+func (in *CreateInput) checkAdhocLink() error {
+	if in.InvoiceID != uuid.Nil {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "an ad-hoc link has no invoice: the invoice is made when the customer uses it")
+	}
+	if in.AmountMinor <= 0 || in.AmountMinor > maxAmount {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_amount", "amount_minor must be a positive number of minor units")
+	}
+	if in.Description == "" || len([]rune(in.Description)) > maxDescription {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_description", "description is required and at most 200 characters")
+	}
+	if in.Currency != "" {
+		if _, ok := money.LookupCurrency(in.Currency); !ok {
+			return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_currency", "currency is not supported")
+		}
+	}
+	return nil
+}
+
+// checkCreditPackLink: a credit-pack link sells a pack to a customer and takes the amount, the currency and the description from the pack.
+func (in *CreateInput) checkCreditPackLink() error {
+	if in.PackID == uuid.Nil {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.pack_required", "a payment link of kind credit_pack needs pack_id")
+	}
+	if in.InvoiceID != uuid.Nil || in.AmountMinor != 0 || in.Description != "" || in.Currency != "" {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "a credit_pack link takes its amount, currency and description from the pack; pass pack_id and the customer")
+	}
+	if in.CustomerExternalID == "" {
+		return errkey.New(codes.InvalidArgument, "billing.payment_link.customer_required", "a credit_pack link needs customer_external_id: the credits go to that customer")
+	}
+	var err error
+	in.Quantity, err = packQuantity(in.Quantity)
+	return err
 }
 
 func (in *CreateInput) days() int32 {

@@ -64,7 +64,7 @@ func (c *Commands) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.U
 
 // SettleRefund applies a worker's reply to the credit note whose refund command it answers. handled is false when no credit note sent that command.
 // A refund that was not accepted for a reason that will not change fails the note; one that may succeed later stays requested for the resend.
-func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID, reply *commandsv1.ReplyEnvelope) (handled bool, err error) {
+func SettleRefund(ctx context.Context, tx pgx.Tx, now time.Time, tenantID, commandID uuid.UUID, reply *commandsv1.ReplyEnvelope) (handled bool, err error) {
 	q := sqlc.New(tx)
 	row, err := q.LockCreditNoteByRefundCommand(ctx, sqlc.LockCreditNoteByRefundCommandParams{TenantID: tenantID, RefundCommandID: commandID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -82,7 +82,7 @@ func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID,
 			return true, err
 		}
 		cn.RefundState = model.RefundRefunded
-		return true, creditNoteEvent(ctx, tx, tenantID, tenantevents.EventCreditNoteRefunded, commandID.String(), time.Now(), cn)
+		return true, creditNoteEvent(ctx, tx, tenantID, tenantevents.EventCreditNoteRefunded, commandID.String(), now, cn)
 	case *commandsv1.ReplyEnvelope_PaymentErrored:
 		if r.PaymentErrored.GetRetryable() {
 			return true, nil
@@ -91,7 +91,7 @@ func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID,
 		if err := q.MarkRefundFailed(ctx, sqlc.MarkRefundFailedParams{RefundError: cn.RefundError, TenantID: tenantID, ID: cn.ID}); err != nil {
 			return true, err
 		}
-		return true, creditNoteEvent(ctx, tx, tenantID, tenantevents.EventCreditNoteRefundFailed, commandID.String(), time.Now(), cn)
+		return true, creditNoteEvent(ctx, tx, tenantID, tenantevents.EventCreditNoteRefundFailed, commandID.String(), now, cn)
 	}
 	return true, nil
 }

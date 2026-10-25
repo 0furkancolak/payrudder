@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -47,7 +48,7 @@ const (
 // validityDays is how many days the credits of a purchase last (1..3650); 0 means they never expire.
 func CreatePack(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, name string, credits, priceMinor int64, currency string, validityDays int32) (*model.Pack, error) {
 	name = strings.TrimSpace(name)
-	if name == "" || len(name) > maxNameLen {
+	if name == "" || utf8.RuneCountInString(name) > maxNameLen {
 		return nil, errkey.New(codes.InvalidArgument, "billing.credits.bad_pack", "a pack needs a name of 1 to 80 characters")
 	}
 	if credits < 1 || credits > maxCredits || priceMinor < 1 {
@@ -248,44 +249,17 @@ func Consume(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.U
 		if err := q.LockCustomerCredits(ctx, sqlc.LockCustomerCreditsParams{TenantID: tenantID, CustomerID: customerID}); err != nil {
 			return err
 		}
-		prior, err := q.GetLedgerByKey(ctx, sqlc.GetLedgerByKeyParams{TenantID: tenantID, CustomerID: customerID, IdempotencyKey: &key})
+		replayed, err := replayConsume(ctx, q, tenantID, customerID, credits, key)
 		if err != nil {
 			return err
 		}
-		if len(prior) > 0 {
-			var took int64
-			for _, e := range prior {
-				if e.Kind != "consume" {
-					return errkey.New(codes.AlreadyExists, "billing.credits.key_reused", "the idempotency key was used for a different request")
-				}
-				took -= e.Amount
-			}
-			if took != credits {
-				return errkey.New(codes.AlreadyExists, "billing.credits.key_reused", "the idempotency key was used for a different request")
-			}
+		if replayed {
 			out.Replayed = true
 			return balanceInto(ctx, q, tenantID, customerID, out)
 		}
-		lots, err := q.SpendableLots(ctx, sqlc.SpendableLotsParams{TenantID: tenantID, CustomerID: customerID})
+		need, err := takeFromLots(ctx, q, tenantID, customerID, credits, reason, key)
 		if err != nil {
 			return err
-		}
-		need := credits
-		for _, l := range lots {
-			if need == 0 {
-				break
-			}
-			take := min(l.Remaining, need)
-			if n, err := q.TakeFromLot(ctx, sqlc.TakeFromLotParams{TenantID: tenantID, ID: l.ID, Amount: take}); err != nil || n != 1 {
-				if err == nil {
-					err = errors.New("credits: a locked lot changed under the lock")
-				}
-				return err
-			}
-			if err := q.InsertLedger(ctx, sqlc.InsertLedgerParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, LotID: l.ID, Kind: "consume", Amount: -take, IdempotencyKey: &key, Reason: reason}); err != nil {
-				return err
-			}
-			need -= take
 		}
 		if need > 0 {
 			return errInsufficient // the transaction rolls back: nothing was taken
@@ -300,6 +274,53 @@ func Consume(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.U
 	}
 	return out, nil
 }
+
+// replayConsume tells whether the key already consumed these credits: a repeat of the same request is a replay, the same key for anything else is refused.
+func replayConsume(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UUID, credits int64, key string) (bool, error) {
+	prior, err := q.GetLedgerByKey(ctx, sqlc.GetLedgerByKeyParams{TenantID: tenantID, CustomerID: customerID, IdempotencyKey: &key})
+	if err != nil || len(prior) == 0 {
+		return false, err
+	}
+	var took int64
+	for _, e := range prior {
+		if e.Kind != "consume" {
+			return false, errKeyReused
+		}
+		took -= e.Amount
+	}
+	if took != credits {
+		return false, errKeyReused
+	}
+	return true, nil
+}
+
+// takeFromLots takes credits from the lots that expire first, one ledger row per lot, and returns what the lots could not give.
+func takeFromLots(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UUID, credits int64, reason, key string) (int64, error) {
+	lots, err := q.SpendableLots(ctx, sqlc.SpendableLotsParams{TenantID: tenantID, CustomerID: customerID})
+	if err != nil {
+		return 0, err
+	}
+	need := credits
+	for _, l := range lots {
+		if need == 0 {
+			break
+		}
+		take := min(l.Remaining, need)
+		if n, err := q.TakeFromLot(ctx, sqlc.TakeFromLotParams{TenantID: tenantID, ID: l.ID, Amount: take}); err != nil || n != 1 {
+			if err == nil {
+				err = errors.New("credits: a locked lot changed under the lock")
+			}
+			return 0, err
+		}
+		if err := q.InsertLedger(ctx, sqlc.InsertLedgerParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, LotID: l.ID, Kind: "consume", Amount: -take, IdempotencyKey: &key, Reason: reason}); err != nil {
+			return 0, err
+		}
+		need -= take
+	}
+	return need, nil
+}
+
+var errKeyReused = errkey.New(codes.AlreadyExists, "billing.credits.key_reused", "the idempotency key was used for a different request")
 
 // announceLow tells the tenant that a customer's balance crossed below the tenant's threshold. after is the balance now, spent what this consume took.
 func announceLow(ctx context.Context, tx pgx.Tx, tenantID, customerID uuid.UUID, externalID, key string, after, spent int64) error {
@@ -368,10 +389,10 @@ func checkAmount(credits int64, reason, key string) error {
 	if credits < 1 || credits > maxCredits {
 		return errkey.New(codes.InvalidArgument, "billing.credits.bad_amount", "the amount must be a whole number of credits above zero")
 	}
-	if len(reason) > maxReason {
+	if utf8.RuneCountInString(reason) > maxReason {
 		return errkey.New(codes.InvalidArgument, "billing.credits.bad_reason", "the reason is too long (at most 200 characters)")
 	}
-	if len(key) > maxKeyLen {
+	if utf8.RuneCountInString(key) > maxKeyLen {
 		return errkey.New(codes.InvalidArgument, "billing.credits.bad_key", "the idempotency key is too long (at most 128 characters)")
 	}
 	return nil
