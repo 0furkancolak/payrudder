@@ -32,6 +32,11 @@ const (
 	AffiliateService_ReverseAffiliateCommission_FullMethodName = "/payrudder.plans.v1.AffiliateService/ReverseAffiliateCommission"
 	AffiliateService_GetAffiliateBalances_FullMethodName       = "/payrudder.plans.v1.AffiliateService/GetAffiliateBalances"
 	AffiliateService_GetAffiliateFunnel_FullMethodName         = "/payrudder.plans.v1.AffiliateService/GetAffiliateFunnel"
+	AffiliateService_ListAffiliatePayouts_FullMethodName       = "/payrudder.plans.v1.AffiliateService/ListAffiliatePayouts"
+	AffiliateService_CreateAffiliatePayouts_FullMethodName     = "/payrudder.plans.v1.AffiliateService/CreateAffiliatePayouts"
+	AffiliateService_MarkAffiliatePayoutPaid_FullMethodName    = "/payrudder.plans.v1.AffiliateService/MarkAffiliatePayoutPaid"
+	AffiliateService_CancelAffiliatePayout_FullMethodName      = "/payrudder.plans.v1.AffiliateService/CancelAffiliatePayout"
+	AffiliateService_ListAffiliateJournal_FullMethodName       = "/payrudder.plans.v1.AffiliateService/ListAffiliateJournal"
 )
 
 // AffiliateServiceClient is the client API for AffiliateService service.
@@ -65,6 +70,16 @@ type AffiliateServiceClient interface {
 	GetAffiliateBalances(ctx context.Context, in *GetAffiliateBalancesRequest, opts ...grpc.CallOption) (*GetAffiliateBalancesResponse, error)
 	// GetAffiliateFunnel counts clicks, referred customers, paying customers and commissions over a period.
 	GetAffiliateFunnel(ctx context.Context, in *GetAffiliateFunnelRequest, opts ...grpc.CallOption) (*GetAffiliateFunnelResponse, error)
+	ListAffiliatePayouts(ctx context.Context, in *ListAffiliatePayoutsRequest, opts ...grpc.CallOption) (*ListAffiliatePayoutsResponse, error)
+	// CreateAffiliatePayouts puts the approved commissions (and the negative rows that net earlier payments taken back) of one affiliate, or of all, into open
+	// payouts, one per currency. A batch below the program's minimum, or not above zero, is skipped and said so.
+	CreateAffiliatePayouts(ctx context.Context, in *CreateAffiliatePayoutsRequest, opts ...grpc.CallOption) (*CreateAffiliatePayoutsResponse, error)
+	// MarkAffiliatePayoutPaid records that the owner paid an open payout (by hand or bank transfer; nothing moves here) and posts it to the journal.
+	MarkAffiliatePayoutPaid(ctx context.Context, in *MarkAffiliatePayoutPaidRequest, opts ...grpc.CallOption) (*MarkAffiliatePayoutPaidResponse, error)
+	// CancelAffiliatePayout releases an open payout's commissions to be paid in another.
+	CancelAffiliatePayout(ctx context.Context, in *CancelAffiliatePayoutRequest, opts ...grpc.CallOption) (*CancelAffiliatePayoutResponse, error)
+	// ListAffiliateJournal lists the postings of paid payouts with debit and credit totals per currency.
+	ListAffiliateJournal(ctx context.Context, in *ListAffiliateJournalRequest, opts ...grpc.CallOption) (*ListAffiliateJournalResponse, error)
 }
 
 type affiliateServiceClient struct {
@@ -205,6 +220,56 @@ func (c *affiliateServiceClient) GetAffiliateFunnel(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *affiliateServiceClient) ListAffiliatePayouts(ctx context.Context, in *ListAffiliatePayoutsRequest, opts ...grpc.CallOption) (*ListAffiliatePayoutsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAffiliatePayoutsResponse)
+	err := c.cc.Invoke(ctx, AffiliateService_ListAffiliatePayouts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *affiliateServiceClient) CreateAffiliatePayouts(ctx context.Context, in *CreateAffiliatePayoutsRequest, opts ...grpc.CallOption) (*CreateAffiliatePayoutsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateAffiliatePayoutsResponse)
+	err := c.cc.Invoke(ctx, AffiliateService_CreateAffiliatePayouts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *affiliateServiceClient) MarkAffiliatePayoutPaid(ctx context.Context, in *MarkAffiliatePayoutPaidRequest, opts ...grpc.CallOption) (*MarkAffiliatePayoutPaidResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MarkAffiliatePayoutPaidResponse)
+	err := c.cc.Invoke(ctx, AffiliateService_MarkAffiliatePayoutPaid_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *affiliateServiceClient) CancelAffiliatePayout(ctx context.Context, in *CancelAffiliatePayoutRequest, opts ...grpc.CallOption) (*CancelAffiliatePayoutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelAffiliatePayoutResponse)
+	err := c.cc.Invoke(ctx, AffiliateService_CancelAffiliatePayout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *affiliateServiceClient) ListAffiliateJournal(ctx context.Context, in *ListAffiliateJournalRequest, opts ...grpc.CallOption) (*ListAffiliateJournalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAffiliateJournalResponse)
+	err := c.cc.Invoke(ctx, AffiliateService_ListAffiliateJournal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AffiliateServiceServer is the server API for AffiliateService service.
 // All implementations must embed UnimplementedAffiliateServiceServer
 // for forward compatibility.
@@ -236,6 +301,16 @@ type AffiliateServiceServer interface {
 	GetAffiliateBalances(context.Context, *GetAffiliateBalancesRequest) (*GetAffiliateBalancesResponse, error)
 	// GetAffiliateFunnel counts clicks, referred customers, paying customers and commissions over a period.
 	GetAffiliateFunnel(context.Context, *GetAffiliateFunnelRequest) (*GetAffiliateFunnelResponse, error)
+	ListAffiliatePayouts(context.Context, *ListAffiliatePayoutsRequest) (*ListAffiliatePayoutsResponse, error)
+	// CreateAffiliatePayouts puts the approved commissions (and the negative rows that net earlier payments taken back) of one affiliate, or of all, into open
+	// payouts, one per currency. A batch below the program's minimum, or not above zero, is skipped and said so.
+	CreateAffiliatePayouts(context.Context, *CreateAffiliatePayoutsRequest) (*CreateAffiliatePayoutsResponse, error)
+	// MarkAffiliatePayoutPaid records that the owner paid an open payout (by hand or bank transfer; nothing moves here) and posts it to the journal.
+	MarkAffiliatePayoutPaid(context.Context, *MarkAffiliatePayoutPaidRequest) (*MarkAffiliatePayoutPaidResponse, error)
+	// CancelAffiliatePayout releases an open payout's commissions to be paid in another.
+	CancelAffiliatePayout(context.Context, *CancelAffiliatePayoutRequest) (*CancelAffiliatePayoutResponse, error)
+	// ListAffiliateJournal lists the postings of paid payouts with debit and credit totals per currency.
+	ListAffiliateJournal(context.Context, *ListAffiliateJournalRequest) (*ListAffiliateJournalResponse, error)
 	mustEmbedUnimplementedAffiliateServiceServer()
 }
 
@@ -284,6 +359,21 @@ func (UnimplementedAffiliateServiceServer) GetAffiliateBalances(context.Context,
 }
 func (UnimplementedAffiliateServiceServer) GetAffiliateFunnel(context.Context, *GetAffiliateFunnelRequest) (*GetAffiliateFunnelResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAffiliateFunnel not implemented")
+}
+func (UnimplementedAffiliateServiceServer) ListAffiliatePayouts(context.Context, *ListAffiliatePayoutsRequest) (*ListAffiliatePayoutsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAffiliatePayouts not implemented")
+}
+func (UnimplementedAffiliateServiceServer) CreateAffiliatePayouts(context.Context, *CreateAffiliatePayoutsRequest) (*CreateAffiliatePayoutsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAffiliatePayouts not implemented")
+}
+func (UnimplementedAffiliateServiceServer) MarkAffiliatePayoutPaid(context.Context, *MarkAffiliatePayoutPaidRequest) (*MarkAffiliatePayoutPaidResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MarkAffiliatePayoutPaid not implemented")
+}
+func (UnimplementedAffiliateServiceServer) CancelAffiliatePayout(context.Context, *CancelAffiliatePayoutRequest) (*CancelAffiliatePayoutResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelAffiliatePayout not implemented")
+}
+func (UnimplementedAffiliateServiceServer) ListAffiliateJournal(context.Context, *ListAffiliateJournalRequest) (*ListAffiliateJournalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAffiliateJournal not implemented")
 }
 func (UnimplementedAffiliateServiceServer) mustEmbedUnimplementedAffiliateServiceServer() {}
 func (UnimplementedAffiliateServiceServer) testEmbeddedByValue()                          {}
@@ -540,6 +630,96 @@ func _AffiliateService_GetAffiliateFunnel_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AffiliateService_ListAffiliatePayouts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAffiliatePayoutsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AffiliateServiceServer).ListAffiliatePayouts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AffiliateService_ListAffiliatePayouts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AffiliateServiceServer).ListAffiliatePayouts(ctx, req.(*ListAffiliatePayoutsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AffiliateService_CreateAffiliatePayouts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAffiliatePayoutsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AffiliateServiceServer).CreateAffiliatePayouts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AffiliateService_CreateAffiliatePayouts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AffiliateServiceServer).CreateAffiliatePayouts(ctx, req.(*CreateAffiliatePayoutsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AffiliateService_MarkAffiliatePayoutPaid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkAffiliatePayoutPaidRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AffiliateServiceServer).MarkAffiliatePayoutPaid(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AffiliateService_MarkAffiliatePayoutPaid_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AffiliateServiceServer).MarkAffiliatePayoutPaid(ctx, req.(*MarkAffiliatePayoutPaidRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AffiliateService_CancelAffiliatePayout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelAffiliatePayoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AffiliateServiceServer).CancelAffiliatePayout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AffiliateService_CancelAffiliatePayout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AffiliateServiceServer).CancelAffiliatePayout(ctx, req.(*CancelAffiliatePayoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AffiliateService_ListAffiliateJournal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAffiliateJournalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AffiliateServiceServer).ListAffiliateJournal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AffiliateService_ListAffiliateJournal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AffiliateServiceServer).ListAffiliateJournal(ctx, req.(*ListAffiliateJournalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AffiliateService_ServiceDesc is the grpc.ServiceDesc for AffiliateService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -598,6 +778,26 @@ var AffiliateService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAffiliateFunnel",
 			Handler:    _AffiliateService_GetAffiliateFunnel_Handler,
+		},
+		{
+			MethodName: "ListAffiliatePayouts",
+			Handler:    _AffiliateService_ListAffiliatePayouts_Handler,
+		},
+		{
+			MethodName: "CreateAffiliatePayouts",
+			Handler:    _AffiliateService_CreateAffiliatePayouts_Handler,
+		},
+		{
+			MethodName: "MarkAffiliatePayoutPaid",
+			Handler:    _AffiliateService_MarkAffiliatePayoutPaid_Handler,
+		},
+		{
+			MethodName: "CancelAffiliatePayout",
+			Handler:    _AffiliateService_CancelAffiliatePayout_Handler,
+		},
+		{
+			MethodName: "ListAffiliateJournal",
+			Handler:    _AffiliateService_ListAffiliateJournal_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -103,6 +103,38 @@ type AffiliateCommission struct {
 	PaidAt            *time.Time
 	PayoutID          *uuid.UUID
 	CreatedAt         time.Time
+	SettledMinor      *int64
+}
+
+type AffiliateJournal struct {
+	TenantID    uuid.UUID
+	ID          uuid.UUID
+	PayoutID    uuid.UUID
+	AffiliateID uuid.UUID
+	PostedAt    time.Time
+	Currency    string
+	Account     string
+	DebitMinor  int64
+	CreditMinor int64
+	Memo        string
+	Sandbox     bool
+}
+
+type AffiliatePayout struct {
+	TenantID        uuid.UUID
+	ID              uuid.UUID
+	AffiliateID     uuid.UUID
+	Currency        string
+	TotalMinor      int64
+	CommissionCount int32
+	Method          string
+	PayoutDetails   string
+	Reference       string
+	Status          string
+	Sandbox         bool
+	CreatedAt       time.Time
+	PaidAt          *time.Time
+	CancelledAt     *time.Time
 }
 
 type AffiliateProgram struct {

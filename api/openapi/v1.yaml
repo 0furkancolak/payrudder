@@ -1053,6 +1053,81 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AffiliateFunnel" } } } }
         "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/payouts:
+    get:
+      operationId: listAffiliatePayouts
+      summary: Payouts to partners, newest first
+      description: "A payout is the approved commissions of one partner in one currency (no conversion), with the negative rows that net earlier payments taken back. An open payout is worth what its commissions are worth now."
+      parameters:
+        - { name: affiliate_id, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [open, paid, cancelled] } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { payouts: { type: array, items: { $ref: "#/components/schemas/AffiliatePayout" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createAffiliatePayouts
+      summary: Batch the approved commissions into open payouts
+      description: "For one partner or for every active partner, one payout per currency. A batch below the program's minimum payout, or not above zero, is skipped and reported; what is approved later joins a payout that is still open. A suspended partner is not paid; their balance is kept. A live environment that is not active pays nobody (affiliate.payout.tenant_not_active)."
+      requestBody:
+        required: false
+        content: { application/json: { schema: { type: object, properties: { affiliate_id: { type: string, format: uuid }, currency: { type: string } } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { payouts: { type: array, items: { $ref: "#/components/schemas/AffiliatePayout" } }, skipped: { type: array, items: { type: object, properties: { affiliate_id: { type: string, format: uuid }, currency: { type: string }, total_minor: { type: string }, reason: { type: string, enum: [below_minimum, not_positive] } } } } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/payouts/{id}/pay:
+    post:
+      operationId: markAffiliatePayoutPaid
+      summary: Record that you paid a payout, and post it
+      description: "Payrudder moves no money: pay by hand or bank transfer, then say so. The commissions become paid and the journal gets the commission expense against the payable, and the payable against cash, balanced in the payout's currency. Doing it again changes nothing. In the sandbox the payout is fake and its postings say so."
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: false
+        content: { application/json: { schema: { type: object, properties: { reference: { type: string, maxLength: 200, description: "Your note, e.g. the bank transfer reference" } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AffiliatePayout" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/payouts/{id}/cancel:
+    post:
+      operationId: cancelAffiliatePayout
+      summary: Drop an open payout
+      description: Its commissions go back to being payable in another payout.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AffiliatePayout" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/journal:
+    get:
+      operationId: listAffiliateJournal
+      summary: The postings of paid payouts, with debit and credit totals per currency
+      description: "totals cover the whole filter, not only the page. The books balance when debits equal credits in every currency; the database refuses to commit postings that do not."
+      parameters:
+        - { name: payout_id, in: query, schema: { type: string, format: uuid } }
+        - { name: currency, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { entries: { type: array, items: { $ref: "#/components/schemas/AffiliateJournalEntry" } }, totals: { type: array, items: { type: object, properties: { currency: { type: string }, debit_minor: { type: string }, credit_minor: { type: string } } } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/affiliates/journal.csv:
+    get:
+      operationId: exportAffiliateJournal
+      summary: The same postings as a CSV file, with a total line per currency
+      parameters:
+        - { name: payout_id, in: query, schema: { type: string, format: uuid } }
+        - { name: currency, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses:
+        "200": { description: OK, content: { text/csv: { schema: { type: string } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /v1/affiliates/{id}:
     get:
       operationId: getAffiliate
@@ -4787,6 +4862,36 @@ components:
         referrals: { type: string, description: Customers attributed in the period }
         paying_customers: { type: string, description: Customers with a commission earned in the period }
         commissions: { type: array, items: { type: object, properties: { currency: { type: string }, earned_minor: { type: string }, reversed_minor: { type: string } } } }
+    AffiliatePayout:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        affiliate_id: { type: string, format: uuid }
+        affiliate_code: { type: string }
+        currency: { type: string }
+        total_minor: { type: string, description: "Open: what its commissions are worth now. Paid: what was paid" }
+        commission_count: { type: integer }
+        method: { type: string, enum: [manual, bank_transfer] }
+        payout_details: { type: string }
+        reference: { type: string }
+        status: { type: string, enum: [open, paid, cancelled] }
+        fake: { type: boolean, description: "A payout of a sandbox environment: nothing was or will be paid" }
+        create_time: { type: string, format: date-time }
+        pay_time: { type: string, format: date-time }
+        cancel_time: { type: string, format: date-time }
+    AffiliateJournalEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        payout_id: { type: string, format: uuid }
+        affiliate_id: { type: string, format: uuid }
+        post_time: { type: string, format: date-time }
+        currency: { type: string }
+        account: { type: string, enum: [commission_expense, commissions_payable, cash] }
+        debit_minor: { type: string }
+        credit_minor: { type: string }
+        memo: { type: string }
+        fake: { type: boolean }
     AffiliateReferral:
       type: object
       properties:
