@@ -424,7 +424,7 @@ func (s *Server) previewChange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := map[string]any{
-		"timing": "CHANGE_TIMING_IMMEDIATELY", "currency": orCurrency(p.Currency, sub.GetCurrency()), "interval": iv.String(),
+		"timing": previewTiming(ch.Timing), "currency": orCurrency(p.Currency, sub.GetCurrency()), "interval": iv.String(),
 		"credit_minor": strconv.FormatInt(p.CreditMinor, 10), "charge_minor": strconv.FormatInt(p.ChargeMinor, 10), "net_minor": strconv.FormatInt(p.ResultMinor, 10),
 		"next_renewal_minor": strconv.FormatInt(p.NextAmountMinor, 10), "by_provider": true,
 	}
@@ -432,6 +432,14 @@ func (s *Server) previewChange(w http.ResponseWriter, r *http.Request) {
 		out["next_renewal_time"] = p.NextBilledAt.UTC().Format(time.RFC3339)
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// previewTiming is the tenant API's word for the timing a preview was asked about: the one the request named, not always "immediately".
+func previewTiming(timing string) string {
+	if timing == "period_end" {
+		return plansv1.ChangeTiming_CHANGE_TIMING_PERIOD_END.String()
+	}
+	return plansv1.ChangeTiming_CHANGE_TIMING_IMMEDIATELY.String()
 }
 
 func orCurrency(a, b string) string {
