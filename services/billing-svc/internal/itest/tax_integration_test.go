@@ -102,4 +102,9 @@ func testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit(t *testing.T) {
 	if sub != 6500 || total != 8000 {
 		t.Errorf("subtotal %d total %d; want 6500 (7500 less the credit) and 8000", sub, total)
 	}
+	// The DISCOUNT line names its coupon, which is what the accounting report groups by.
+	var coupon *string
+	if err := shared.system.QueryRow(context.Background(), `SELECT coupon_code FROM invoice_lines WHERE tenant_id = $1 AND kind = 'DISCOUNT'`, e.tid).Scan(&coupon); err != nil || coupon == nil || *coupon != "WELCOME" {
+		t.Errorf("coupon of the discount line = %v, %v", coupon, err)
+	}
 }

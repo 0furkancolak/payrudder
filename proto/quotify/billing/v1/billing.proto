@@ -1236,6 +1236,18 @@ message AccountingPoint {
   int64 net_income_minor = 5;
   int64 expenses_minor = 6;
   int64 profit_minor = 7;
+  // What coupons took off the invoices paid in this bucket (contra-revenue).
+  int64 discounts_minor = 8;
+}
+// AccountingCoupon is the report of one coupon over the invoices paid in the period: gross sales (before the coupon), the discount it gave, and net.
+message AccountingCoupon {
+  string coupon_code = 1;
+  int64 invoices = 2;
+  // What those invoices came to before the coupon: their positive lines, tax excluded.
+  int64 gross_minor = 3;
+  int64 discount_minor = 4;
+  // gross - discount.
+  int64 net_minor = 5;
 }
 // One currency of a summary. Every amount is in minor units of that currency.
 message AccountingCurrency {
@@ -1259,6 +1271,12 @@ message AccountingCurrency {
   int64 paid_invoices = 10;
   repeated AccountingCategoryTotal expense_by_category = 11;
   repeated AccountingPoint series = 12;
+  // What coupons took off the paid invoices, a positive number: contra-revenue. gross_income_minor is already after it.
+  int64 discounts_minor = 13;
+  // Revenue before discounts: gross - tax + discounts.
+  int64 sales_minor = 14;
+  // Gross, discounts and net per coupon, most discount first.
+  repeated AccountingCoupon coupons = 15;
 }
 message GetAccountingSummaryResponse {
   string from_date = 1;

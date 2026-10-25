@@ -748,9 +748,29 @@ export interface paths {
         };
         /**
          * The accounting series as CSV
-         * @description The query of the summary. One row per currency and day (or month), then a `total` row per currency; amounts are minor units. The `provider_fees_minor` of a total row is `not_recorded` when no `payment_fees` expense exists.
+         * @description The query of the summary. One row per currency and day (or month), then a `total` row per currency; amounts are minor units. The `provider_fees_minor` of a total row is `not_recorded` when no `payment_fees` expense exists. `discounts_minor` is what coupons took off (contra-revenue) and `sales_before_discounts_minor` is gross - tax + discounts.
          */
         get: operations["exportAccountingCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/accounting/coupons.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gross sales, discounts and net per coupon as CSV
+         * @description The query of the summary. One row per currency and coupon over the invoices paid in the period: their number, what they came to before the coupon (positive lines, tax excluded), what the coupon took off, and the net. Currencies are never added together.
+         */
+        get: operations["exportAccountingCouponsCsv"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4762,6 +4782,8 @@ export interface components {
             net_income_minor?: string;
             expenses_minor?: string;
             profit_minor?: string;
+            /** @description What coupons took off the invoices paid in this bucket */
+            discounts_minor?: string;
         };
         /** @description One currency of the period. Every amount is int64 minor units as a string. */
         AccountingCurrency: {
@@ -4788,6 +4810,21 @@ export interface components {
                 amount_minor?: string;
             }[];
             series?: components["schemas"]["AccountingPoint"][];
+            /** @description What coupons took off the paid invoices (contra-revenue, a positive number). gross_income_minor is already after it */
+            discounts_minor?: string;
+            /** @description Revenue before discounts: gross - tax + discounts */
+            sales_minor?: string;
+            /** @description Gross, discounts and net per coupon, most discount first */
+            coupons?: components["schemas"]["AccountingCoupon"][];
+        };
+        AccountingCoupon: {
+            coupon_code?: string;
+            invoices?: string;
+            /** @description What those invoices came to before the coupon: positive lines, tax excluded */
+            gross_minor?: string;
+            discount_minor?: string;
+            /** @description gross - discount */
+            net_minor?: string;
         };
         AccountingSummary: {
             /** Format: date */
@@ -6684,6 +6721,32 @@ export interface operations {
                     "text/csv": string;
                 };
             };
+        };
+    };
+    exportAccountingCouponsCsv: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                app_id?: string;
+                granularity?: "day" | "month";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            400: components["responses"]["Error"];
         };
     };
     getCreditSettings: {

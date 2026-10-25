@@ -847,7 +847,7 @@ func insertLines(ctx context.Context, q *sqlc.Queries, tenantID, invoiceID uuid.
 		p := sqlc.InsertInvoiceLineParams{
 			TenantID: tenantID, InvoiceID: invoiceID, LineNo: i32(i + 1), Kind: string(l.Kind), MeterCode: store.NilIfEmpty(l.MeterCode),
 			OriginPeriodID: store.NilIfEmpty(l.OriginPeriod), UnitPrice: store.NilIfEmpty(l.UnitPrice), AmountMinor: l.AmountMinor, Description: l.Description,
-			ServiceFrom: store.NilIfZero(l.ServiceFrom), ServiceTo: store.NilIfZero(l.ServiceTo),
+			ServiceFrom: store.NilIfZero(l.ServiceFrom), ServiceTo: store.NilIfZero(l.ServiceTo), CouponCode: store.NilIfEmpty(l.CouponCode),
 		}
 		if l.Quantity != nil {
 			units, err := unitsOf(l.Quantity, scales[i])
