@@ -3,6 +3,7 @@
 #   obs:   otel-collector, prometheus, tempo, loki, vector, grafana, postgres-exporter, redis-exporter
 #   app:   Payrudder services                    make up
 #   chaos: toxiproxy                           Phase 09
+#   oidc:  mockoidc, a stand-in for Google    (development only)
 #   init:  minio-init (one-shot, run by make)
 # Host ports that often clash can be moved with PAYRUDDER_PG_HOST_PORT and PAYRUDDER_CONSOLE_HOST_PORT (.env).
 # Images are pinned; testkit (pkg/testkit) uses the same versions.
@@ -337,7 +338,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/plans-svc/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/plans-svc
     image: payrudder/plans-svc:dev
     environment:
       PAYRUDDER_ENV: local
@@ -381,7 +384,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/ingest-svc/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/ingest-svc
     image: payrudder/ingest-svc:dev
     environment:
       PAYRUDDER_ENV: local
@@ -407,7 +412,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/aggregator/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/aggregator
     image: payrudder/aggregator:dev
     environment:
       PAYRUDDER_ENV: local
@@ -433,7 +440,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/limits-svc/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/limits-svc
     image: payrudder/limits-svc:dev
     environment:
       PAYRUDDER_ENV: local
@@ -459,7 +468,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: tools/mockpsp/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: tools/mockpsp
     image: payrudder/mockpsp:dev
     environment:
       PAYRUDDER_ENV: local
@@ -483,7 +494,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/payments-worker/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/payments-worker
     image: payrudder/payments-worker:dev
     environment:
       PAYRUDDER_ENV: local
@@ -532,7 +545,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/invoice-worker/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/invoice-worker
     image: payrudder/invoice-worker:dev
     environment:
       PAYRUDDER_ENV: local
@@ -557,7 +572,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/notifier/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/notifier
     image: payrudder/notifier:dev
     environment:
       PAYRUDDER_ENV: local
@@ -584,7 +601,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/billing-svc/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/billing-svc
     image: payrudder/billing-svc:dev
     environment:
       PAYRUDDER_ENV: local
@@ -629,7 +648,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/analytics-svc/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/analytics-svc
     image: payrudder/analytics-svc:dev
     environment:
       PAYRUDDER_ENV: local
@@ -653,7 +674,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/assets-svc/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/assets-svc
     image: payrudder/assets-svc:dev
     environment:
       PAYRUDDER_ENV: local
@@ -688,7 +711,10 @@ services:
     profiles: [oidc]
     build:
       context: ../..
-      dockerfile: pkg/oidctest/cmd/mockoidc/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: pkg
+        MAIN_PKG: ./oidctest/cmd/mockoidc
     image: payrudder/mockoidc:dev
     labels: { payrudder.dev-only: "true" }   # never deployed: no Railway service, no memory budget (tests/railway, tests/membudget)
     environment:
@@ -730,7 +756,9 @@ services:
     profiles: [app]
     build:
       context: ../..
-      dockerfile: services/gateway/Dockerfile
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        SERVICE_DIR: services/gateway
     image: payrudder/gateway:dev
     environment:
       PAYRUDDER_ENV: local

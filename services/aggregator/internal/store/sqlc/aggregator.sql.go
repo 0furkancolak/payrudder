@@ -270,43 +270,6 @@ func (q *Queries) ListOffsets(ctx context.Context, arg ListOffsetsParams) ([]Lis
 	return items, nil
 }
 
-const loadOffsets = `-- name: LoadOffsets :many
-SELECT partition, next_offset
-FROM consumer_offsets
-WHERE consumer_group = $1 AND topic = $2 AND partition = ANY($3::int[])
-`
-
-type LoadOffsetsParams struct {
-	ConsumerGroup string
-	Topic         string
-	Partitions    []int32
-}
-
-type LoadOffsetsRow struct {
-	Partition  int32
-	NextOffset int64
-}
-
-func (q *Queries) LoadOffsets(ctx context.Context, arg LoadOffsetsParams) ([]LoadOffsetsRow, error) {
-	rows, err := q.db.Query(ctx, loadOffsets, arg.ConsumerGroup, arg.Topic, arg.Partitions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []LoadOffsetsRow{}
-	for rows.Next() {
-		var i LoadOffsetsRow
-		if err := rows.Scan(&i.Partition, &i.NextOffset); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const lockGenerations = `-- name: LockGenerations :many
 SELECT tenant_id, generation, status
 FROM aggregate_generations

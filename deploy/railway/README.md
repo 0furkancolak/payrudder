@@ -37,8 +37,8 @@ Service names are the compose names, lower-case, because they become DNS names. 
   as it is. The console (`admin-ui`, `vite preview`) listens on `::` too, RabbitMQ and ClickHouse are configured for `::`, Redpanda listens on `REDPANDA_BIND`
   (default `0.0.0.0`; set it to `::` if your environment is IPv6-only).
 - **`PAYRUDDER_ENV=railway`**, a new accepted value (it only labels traces and keeps gRPC reflection off).
-- **Dockerfiles.** Railway rejects BuildKit cache mounts without its own `id`, so the services build from `go.Dockerfile`, which is the per-service
-  Dockerfile minus the cache mounts and with the service directory as the build argument `SERVICE_DIR` (a service variable).
+- **Dockerfiles.** Railway rejects BuildKit cache mounts without its own `id`, so the services build from `go.Dockerfile`, which is
+  `deploy/docker/go.Dockerfile` minus the cache mounts and with the service directory as the build argument `SERVICE_DIR` (a service variable).
 - **Migrations** run at start (`PAYRUDDER_MIGRATE_ON_START=true`, one replica of each service), not in a Job. See [Migrations](#migrations).
 - **Postgres** is one managed instance with a database and three roles per service, created by `init-postgres` (the same layout as
   `deploy/compose/postgres/01-databases.sh`). The role passwords are shared by service: three secrets, `PG_MIGRATOR_PASSWORD`, `PG_APP_PASSWORD`,

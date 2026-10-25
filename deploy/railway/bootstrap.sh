@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
     --branch) BRANCH=$2; shift ;;
     --source) SOURCE=$2; shift ;;
     --wait) WAIT=$2; shift ;;
-    -h | --help) sed -n '2,13p' "$0"; exit 0 ;;
+    -h | --help) sed -n '2,11p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
   shift

@@ -5,7 +5,6 @@ import (
 	"context"
 	_ "embed" // config.default.yaml
 	"errors"
-	"fmt"
 	"log/slog"
 	"net"
 	"time"
@@ -25,11 +24,10 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/meters"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/maintenance"
-	"github.com/0furkancolak/payrudder/services/aggregator/internal/query"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/replay"
 	aggregatorreset "github.com/0furkancolak/payrudder/services/aggregator/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
@@ -76,9 +74,9 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	defer appPool.Close()
 	defer systemPool.Close()
 
-	plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	plansConn, err := grpcx.NewTenantClient("plans-svc", cfg.PlansAddr)
 	if err != nil {
-		return fmt.Errorf("plans-svc client: %w", err)
+		return err
 	}
 	defer func() { _ = plansConn.Close() }()
 	src := settings.NewSource(plansv1.NewAdminServiceClient(plansConn), time.Minute)
@@ -124,7 +122,7 @@ func newConsumer(cfg *Config, log *slog.Logger, handler *apply.Handler) (*kafkax
 // newGRPCServer builds the gRPC server with the usage query and replay services registered; the replay runner is returned to be run.
 func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, handler *apply.Handler, src *settings.Source) (*grpc.Server, *grpchealth.Server, *replay.Manager) {
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
-	aggregatorv1.RegisterUsageQueryServiceServer(srv, query.New(appPool, src, cfg.GroupID, apply.Topic))
+	aggregatorv1.RegisterUsageQueryServiceServer(srv, grpcapi.New(appPool, src, cfg.GroupID, apply.Topic))
 	replays := replay.New(replay.Config{
 		Pool: systemPool, Brokers: cfg.KafkaBrokers, Topic: apply.Topic, LiveGroup: cfg.GroupID,
 		Meters: handler.Meters, Settings: src, Log: log,
