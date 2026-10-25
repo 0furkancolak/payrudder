@@ -23,6 +23,7 @@ func (s *Server) goLiveRoutes() []Route {
 		{"GET", "/app/v1/apps/{id}/go-live", AccessSession, ratelimit.ClassRead, s.appGoLive},
 		{"POST", "/app/v1/apps/{id}/go-live", AccessSession, ratelimit.ClassWrite, s.appGoLiveActivate},
 		{"POST", "/app/v1/apps/{id}/api-keys/{key_id}/rotate", AccessSession, ratelimit.ClassWrite, s.appKeyRotate},
+		{"POST", "/app/v1/apps/{id}/promote", AccessSession, ratelimit.ClassWrite, s.appPromote},
 		{"PUT", "/admin/v1/tenants/{id}/status", AccessOperator, "", s.setTenantStatus},
 	}
 }
@@ -118,4 +119,21 @@ func (s *Server) setTenantStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := s.d.Admin.SetTenantStatus(r.Context(), &plansv1.SetTenantStatusRequest{TenantId: r.PathValue("id"), Status: st, Reason: body.Reason})
 	respond(w, r, http.StatusOK, resp.GetTenant(), err)
+}
+
+// appPromote copies the app's sandbox configuration to its live environment (phase 45 D). With dry_run it only returns the diff; without, it applies it, and
+// plan_hash (from a dry run) makes it refuse when the diff is no longer the one that was looked at. Nothing in the body names a tenant: both are the app's.
+func (s *Server) appPromote(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	var body struct {
+		DryRun   bool   `json:"dry_run"`
+		PlanHash string `json:"plan_hash"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStore(w) // a new webhook secret is in the answer
+	resp, err := s.d.Identity.PromoteMyApp(r.Context(), &plansv1.PromoteMyAppRequest{UserId: sess.UserID, AppId: r.PathValue("id"), DryRun: body.DryRun, PlanHash: body.PlanHash})
+	respond(w, r, http.StatusOK, resp, err)
 }

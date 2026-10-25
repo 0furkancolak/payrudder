@@ -49,6 +49,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("Apps", testApps)
 	t.Run("Identity", testIdentity)
 	t.Run("GoLive", testGoLive)
+	t.Run("Promote", testPromote)
 	t.Run("CrossEnvironmentIDs", testCrossEnvironmentIDs)
 	t.Run("SandboxKeyNeverTouchesLive", testSandboxKeyNeverTouchesLive)
 	t.Run("APIKeyScopesAndRotation", testAPIKeyScopesAndRotation)

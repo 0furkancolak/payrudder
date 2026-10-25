@@ -12,6 +12,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 )
 
 // Handler serves plansv1.IdentityService.
@@ -20,11 +21,16 @@ type Handler struct {
 	cmd    *command.Commands
 	qry    *query.Queries
 	goLive *golive.Handler
+	promo  *promote.Handler
 }
 
 // New returns the identity handlers. goLive serves the two go-live calls (phase 45).
-func New(cmd *command.Commands, qry *query.Queries, goLive *golive.Handler) *Handler {
-	return &Handler{cmd: cmd, qry: qry, goLive: goLive}
+func New(cmd *command.Commands, qry *query.Queries, goLive *golive.Handler, promo *promote.Handler) *Handler {
+	return &Handler{cmd: cmd, qry: qry, goLive: goLive, promo: promo}
+}
+
+func (h *Handler) PromoteMyApp(ctx context.Context, req *plansv1.PromoteMyAppRequest) (*plansv1.PromoteMyAppResponse, error) {
+	return h.promo.PromoteMyApp(ctx, req)
 }
 
 func (h *Handler) GetMyGoLive(ctx context.Context, req *plansv1.GetMyGoLiveRequest) (*plansv1.GetMyGoLiveResponse, error) {

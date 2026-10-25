@@ -8,6 +8,9 @@ import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
+import { validLinkDays } from "@/shared/lib/rules";
+import { absoluteUrl } from "@/shared/lib/url";
+import { CopyField } from "@/shared/ui/copy-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -41,23 +44,13 @@ const linkError = ref("");
 function makeLink() {
   linkError.value = "";
   const days = Number(linkDays.value);
-  if (!Number.isInteger(days) || days < 1 || days > 365) {
+  if (!validLinkDays(days)) {
     linkError.value = t("invoice.share.badDays");
     return;
   }
   links.create.mutate(days);
 }
-const shareUrl = computed(() => {
-  const u = (links.create.data.value as { url?: string } | undefined)?.url ?? "";
-  return u.startsWith("/") ? window.location.origin + u : u;
-});
-async function copy() {
-  try {
-    await navigator.clipboard.writeText(shareUrl.value);
-  } catch {
-    /* the field is selectable; copying by hand works */
-  }
-}
+const shareUrl = computed(() => absoluteUrl((links.create.data.value as { url?: string } | undefined)?.url, window.location.origin));
 const inv = computed(() => invoice.data.value);
 
 // --- money: a bank transfer that is awaited, and payments recorded by hand
@@ -145,10 +138,7 @@ const day = (v?: string) => fmt.date(v, "day");
       <Button type="submit" :disabled="links.create.isPending.value">{{ t("invoice.share.create") }}</Button>
       <Button type="button" variant="outline" :disabled="links.revoke.isPending.value" @click="links.revoke.mutate()">{{ t("invoice.share.revoke") }}</Button>
     </form>
-    <div v-if="shareUrl" class="flex flex-wrap items-center gap-2">
-      <Input :model-value="shareUrl" readonly class="mono max-w-xl" :aria-label="t('invoice.share.link')" @focus="($event.target as HTMLInputElement).select()" />
-      <Button type="button" variant="outline" @click="copy">{{ t("invoice.share.copy") }}</Button>
-    </div>
+    <CopyField v-if="shareUrl" :value="shareUrl" :label="t('invoice.share.link')" :copy-label="t('invoice.share.copy')" />
     <Link to="/tenants/$id/payment-links" :params="{ id: tenantId }" :search="{ invoice: invoiceId } as never" class="text-sm underline">{{ t("invoice.share.paymentLink") }}</Link>
     <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
     <ErrorText :message="linkError" />

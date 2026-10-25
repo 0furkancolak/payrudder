@@ -265,6 +265,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.operator.forbidden`
 - `identity.operator.required`
 - `identity.otp.invalid`
+- `identity.promote.stale`
 - `identity.session.act_as_required`
 - `identity.session.invalid`
 - `identity.session.unavailable`

@@ -51,6 +51,7 @@ const (
 	IdentityService_RotateMyApiKey_FullMethodName         = "/payrudder.plans.v1.IdentityService/RotateMyApiKey"
 	IdentityService_GetMyGoLive_FullMethodName            = "/payrudder.plans.v1.IdentityService/GetMyGoLive"
 	IdentityService_ActivateMyApp_FullMethodName          = "/payrudder.plans.v1.IdentityService/ActivateMyApp"
+	IdentityService_PromoteMyApp_FullMethodName           = "/payrudder.plans.v1.IdentityService/PromoteMyApp"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -125,6 +126,10 @@ type IdentityServiceClient interface {
 	GetMyGoLive(ctx context.Context, in *GetMyGoLiveRequest, opts ...grpc.CallOption) (*GetMyGoLiveResponse, error)
 	// ActivateMyApp activates the live environment when every item is done (the owner only).
 	ActivateMyApp(ctx context.Context, in *ActivateMyAppRequest, opts ...grpc.CallOption) (*ActivateMyAppResponse, error)
+	// PromoteMyApp copies the configuration of an app's sandbox to its live environment (meters, plans and prices, taxes, coupons, webhook endpoints, mail
+	// settings), never customers, usage, invoices or payments. With dry_run it only returns the diff. It only adds: what exists in live and differs is
+	// reported as a conflict and left alone.
+	PromoteMyApp(ctx context.Context, in *PromoteMyAppRequest, opts ...grpc.CallOption) (*PromoteMyAppResponse, error)
 }
 
 type identityServiceClient struct {
@@ -455,6 +460,16 @@ func (c *identityServiceClient) ActivateMyApp(ctx context.Context, in *ActivateM
 	return out, nil
 }
 
+func (c *identityServiceClient) PromoteMyApp(ctx context.Context, in *PromoteMyAppRequest, opts ...grpc.CallOption) (*PromoteMyAppResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PromoteMyAppResponse)
+	err := c.cc.Invoke(ctx, IdentityService_PromoteMyApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IdentityServiceServer is the server API for IdentityService service.
 // All implementations must embed UnimplementedIdentityServiceServer
 // for forward compatibility.
@@ -527,6 +542,10 @@ type IdentityServiceServer interface {
 	GetMyGoLive(context.Context, *GetMyGoLiveRequest) (*GetMyGoLiveResponse, error)
 	// ActivateMyApp activates the live environment when every item is done (the owner only).
 	ActivateMyApp(context.Context, *ActivateMyAppRequest) (*ActivateMyAppResponse, error)
+	// PromoteMyApp copies the configuration of an app's sandbox to its live environment (meters, plans and prices, taxes, coupons, webhook endpoints, mail
+	// settings), never customers, usage, invoices or payments. With dry_run it only returns the diff. It only adds: what exists in live and differs is
+	// reported as a conflict and left alone.
+	PromoteMyApp(context.Context, *PromoteMyAppRequest) (*PromoteMyAppResponse, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
 
@@ -632,6 +651,9 @@ func (UnimplementedIdentityServiceServer) GetMyGoLive(context.Context, *GetMyGoL
 }
 func (UnimplementedIdentityServiceServer) ActivateMyApp(context.Context, *ActivateMyAppRequest) (*ActivateMyAppResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ActivateMyApp not implemented")
+}
+func (UnimplementedIdentityServiceServer) PromoteMyApp(context.Context, *PromoteMyAppRequest) (*PromoteMyAppResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PromoteMyApp not implemented")
 }
 func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
 func (UnimplementedIdentityServiceServer) testEmbeddedByValue()                         {}
@@ -1230,6 +1252,24 @@ func _IdentityService_ActivateMyApp_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_PromoteMyApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PromoteMyAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).PromoteMyApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_PromoteMyApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).PromoteMyApp(ctx, req.(*PromoteMyAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IdentityService_ServiceDesc is the grpc.ServiceDesc for IdentityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1364,6 +1404,10 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ActivateMyApp",
 			Handler:    _IdentityService_ActivateMyApp_Handler,
+		},
+		{
+			MethodName: "PromoteMyApp",
+			Handler:    _IdentityService_PromoteMyApp_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
