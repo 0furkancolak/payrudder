@@ -21,6 +21,7 @@ import (
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
+	"github.com/0furkancolak/payrudder/pkg/chaos"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
@@ -109,7 +110,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	ents := entitlements.New(rdb, log)
 	applier, err := engine.NewApplier(engine.Config{
 		Redis: rdb, Meters: ms, Tenants: tn, Ents: ents, Producer: producer, LimitTopic: cfg.LimitTopic, Log: log,
-		AfterLua: afterLuaFault(),
+		AfterLua: chaos.Crash("LIMITS_CRASH_AFTER_LUA", "chaos build: limits-svc will crash after the script", "chaos: crashing after the script"),
 	})
 	if err != nil {
 		return err
