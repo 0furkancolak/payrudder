@@ -11,6 +11,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -66,7 +67,7 @@ func (m *Manager) redeem(ctx context.Context, tenantID uuid.UUID, spec LinkInvoi
 	if !preview {
 		req.InvoiceId = targetID.String()
 	}
-	resp, err := m.cfg.Plans.RedeemPromotion(tenantCtx(ctx, tenantID), req)
+	resp, err := m.in.Plans.RedeemPromotion(inputs.TenantCtx(ctx, tenantID), req)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +122,7 @@ func (m *Manager) QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec L
 // giveBack tells plans-svc that the purchase of invoice id will not happen, after it claimed a promotion for it. Best effort: a failure leaves the redemption
 // counted against a purchase that does not exist, which an operator sees in the redemption list.
 func (m *Manager) giveBack(ctx context.Context, tenantID, id uuid.UUID, target plansv1.CouponTarget) {
-	if _, err := m.cfg.Plans.ReversePromotion(tenantCtx(ctx, tenantID), &plansv1.ReversePromotionRequest{Target: target, TargetId: id.String()}); err != nil {
+	if _, err := m.in.Plans.ReversePromotion(inputs.TenantCtx(ctx, tenantID), &plansv1.ReversePromotionRequest{Target: target, TargetId: id.String()}); err != nil {
 		m.log.WarnContext(ctx, "promotion not given back", "tenant", tenantID, "invoice", id, "error", err)
 	}
 }
@@ -141,7 +142,7 @@ func (m *Manager) ReversePromotions(ctx context.Context) error {
 		if d.TargetKind == PromotionCreditPurchase {
 			target = plansv1.CouponTarget_COUPON_TARGET_CREDIT_PURCHASE
 		}
-		_, err := m.cfg.Plans.ReversePromotion(tenantCtx(ctx, d.TenantID), &plansv1.ReversePromotionRequest{Target: target, TargetId: d.InvoiceID.String()})
+		_, err := m.in.Plans.ReversePromotion(inputs.TenantCtx(ctx, d.TenantID), &plansv1.ReversePromotionRequest{Target: target, TargetId: d.InvoiceID.String()})
 		if err != nil && status.Code(err) != codes.NotFound {
 			m.log.WarnContext(ctx, "promotion reversal not delivered", "tenant", d.TenantID, "invoice", d.InvoiceID, "error", err)
 			if berr := m.q.BumpPromotionReversalAttempts(ctx, sqlc.BumpPromotionReversalAttemptsParams{TenantID: d.TenantID, InvoiceID: d.InvoiceID}); berr != nil && !errors.Is(berr, pgx.ErrNoRows) {

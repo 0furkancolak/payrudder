@@ -34,8 +34,13 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
+	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
+	feecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/fees/command"
+	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
+	reratecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
@@ -333,17 +338,21 @@ func (k *kafkaSink) count() int {
 
 // env is one test's deployment under test.
 type env struct {
-	t      *testing.T
-	clk    *clock
-	w      *world
-	eng    *sagacommand.Engine
-	mgr    *runs.Manager
-	notes  *creditnotecmd.Commands
-	events *fakeEvents
-	kafka  *kafkaSink
-	tid    uuid.UUID
-	stubs  []*stubworker.Worker
-	cancel []context.CancelFunc
+	t        *testing.T
+	clk      *clock
+	w        *world
+	eng      *sagacommand.Engine
+	mgr      *runs.Manager
+	notes    *creditnotecmd.Commands
+	fees     *feecmd.Commands
+	rerating *reratecmd.Commands
+	inv      *invoicecmd.Commands
+	in       *inputs.Inputs
+	events   *fakeEvents
+	kafka    *kafkaSink
+	tid      uuid.UUID
+	stubs    []*stubworker.Worker
+	cancel   []context.CancelFunc
 }
 
 type envOpts struct {
@@ -401,15 +410,27 @@ func newEnv(t *testing.T, o envOpts) *env {
 	if o.watermarkGap == 0 {
 		o.watermarkGap = 30 * time.Second
 	}
-	f := fakeAll{w: w}
 	e.events = &fakeEvents{}
 	allEvents.add(e.events)
+	f := fakeAll{w: w}
+	in := &inputs.Inputs{Plans: f, Admin: f, Aggregator: f}
+	e.in = in
+	e.inv, err = invoicecmd.New(invoicecmd.Config{Pool: shared.system, Engine: e.eng, Now: clk.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
 	e.notes = creditnotecmd.New(creditnotecmd.Config{Pool: shared.system, Engine: e.eng, Now: clk.Now, Log: testkit.Logger()})
+	e.fees = feecmd.New(feecmd.Config{Pool: shared.system, Inputs: in, Invoices: e.inv, Now: clk.Now, PageSize: 2, Log: testkit.Logger()})
+	e.rerating = reratecmd.New(reratecmd.Config{Pool: shared.system, Inputs: in, Invoices: e.inv, Now: clk.Now, Log: testkit.Logger()})
 	e.mgr, err = runs.NewManager(runs.Config{
-		Pool: shared.system, Engine: e.eng, Plans: f, Admin: f, Affiliates: f, Ingest: f, Aggregator: f, Events: e.events,
+		Pool: shared.system, Engine: e.eng, Inputs: in, Invoices: e.inv, Affiliates: f, Ingest: f, Events: e.events,
 		EndOffsets: func(context.Context) (map[int32]int64, error) { return map[int32]int64{0: 10, 1: 20}, nil },
 		Now:        clk.Now, WatermarkDelay: o.watermarkGap, PageSize: 2, Log: testkit.Logger(),
-		Chores: []runs.Chore{{Name: "credit note refunds not swept", Run: e.notes.SweepRefunds}},
+		Chores: []runs.Chore{
+			{Name: "fee billing failed", Run: e.fees.Bill},
+			{Name: "credit note refunds not swept", Run: e.notes.SweepRefunds},
+			{Name: "re-rating resume failed", Run: e.rerating.Resume},
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -419,7 +440,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 
 // api is the billing API over this deployment's modules.
 func (e *env) api() *api.Server {
-	return api.New(api.Deps{App: shared.app, System: shared.system, Runs: e.mgr, Engine: e.eng, CreditNotes: e.notes})
+	return api.New(api.Deps{App: shared.app, System: shared.system, Runs: e.mgr, Engine: e.eng, CreditNotes: e.notes, Rerating: e.rerating, Inputs: e.in})
 }
 
 func (e *env) customer(name string) *plansv1.Customer { return e.w.customers[name] }
@@ -481,7 +502,7 @@ func (e *env) startRelay(ctx context.Context) {
 }
 
 // closeOctober runs the October run to completion of the rating/invoicing stages.
-func (e *env) driveRun(period string) *runs.Run {
+func (e *env) driveRun(period string) *runmodel.Run {
 	e.t.Helper()
 	_, end, _ := periodBounds(period)
 	if _, err := e.mgr.EnsureRun(context.Background(), e.tid, period, end, false); err != nil {

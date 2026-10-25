@@ -12,11 +12,12 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
 )
 
 // ClosePeriodNow closes a period of a sandbox tenant at once; an empty periodID means the current one in the tenant's time zone.
-func ClosePeriodNow(ctx context.Context, mgr *runs.Manager, ti tenant.Info, periodID string) (*runs.Run, error) {
+func ClosePeriodNow(ctx context.Context, mgr *runs.Manager, ti tenant.Info, periodID string) (*runmodel.Run, error) {
 	if ti.Environment != tenant.EnvSandbox {
 		return nil, errkey.New(codes.FailedPrecondition, "billing.run.sandbox_only", "ClosePeriodNow is only available to sandbox tenants")
 	}
@@ -49,12 +50,12 @@ func retryLater(ctx context.Context, tenantID uuid.UUID, periodID string, err er
 }
 
 // ClosePeriod closes a period of a tenant for the operator, retries a failed run and drives it as far as it goes now.
-func ClosePeriod(ctx context.Context, mgr *runs.Manager, tenantID uuid.UUID, periodID string) (*runs.Run, error) {
+func ClosePeriod(ctx context.Context, mgr *runs.Manager, tenantID uuid.UUID, periodID string) (*runmodel.Run, error) {
 	run, err := mgr.ClosePeriod(ctx, tenantID, periodID)
 	if err != nil {
 		return nil, err
 	}
-	if run.Status == runs.Failed {
+	if run.Status == runmodel.Failed {
 		if err := mgr.RetryRun(ctx, tenantID, periodID); err != nil {
 			return nil, notClosable(ctx, tenantID, periodID, err)
 		}

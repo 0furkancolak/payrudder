@@ -63,7 +63,7 @@ func testAdvanceFeesAreInvoicedOncePerPeriod(t *testing.T) {
 	e.feeDue("cus_c", pv, month, nov3, time.Date(2026, 12, 3, 0, 0, 0, 0, time.UTC), 1000, func(s *plansv1.Subscription) { s.State = plansv1.SubscriptionState_SUBSCRIPTION_STATE_PAUSED })
 	e.feeDue("cus_d", pv, month, nov3, time.Date(2026, 12, 3, 0, 0, 0, 0, time.UTC), 0, nil)
 
-	if err := e.mgr.BillFees(context.Background()); err != nil {
+	if err := e.fees.Bill(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -99,7 +99,7 @@ func testAdvanceFeesAreInvoicedOncePerPeriod(t *testing.T) {
 	e.w.mu.Lock()
 	e.w.advanced = nil
 	e.w.mu.Unlock()
-	if err := e.mgr.BillFees(context.Background()); err != nil {
+	if err := e.fees.Bill(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if n, _, _ := e.feeInvoices("cus_a"); n != 1 {
@@ -190,7 +190,7 @@ func testPlanChangesAreInvoicedOrCredited(t *testing.T) {
 	e.adjustment("cus_c", pv, 1000, 1000)         // moves nothing
 	pass := func() {
 		t.Helper()
-		if err := e.mgr.BillFees(context.Background()); err != nil {
+		if err := e.fees.Bill(context.Background()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -253,7 +253,7 @@ func testFeeInvoiceCarriesTheCouponAndServicePeriod(t *testing.T) {
 	start, end := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC), time.Date(2026, 12, 3, 0, 0, 0, 0, time.UTC)
 	d := e.feeDue("cus_a", pv, plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH, start, end, 10000, nil)
 	d.DiscountMinor, d.CouponCode = 2500, "WELCOME"
-	if err := e.mgr.BillFees(context.Background()); err != nil {
+	if err := e.fees.Bill(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	l := e.feeInvoiceLines("cus_a")

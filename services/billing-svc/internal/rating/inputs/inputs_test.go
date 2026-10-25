@@ -1,4 +1,4 @@
-package runs
+package inputs
 
 import (
 	"testing"
@@ -15,8 +15,8 @@ func TestBillableFollowsTheTenantStatus(t *testing.T) {
 		plansv1.TenantStatus_TENANT_STATUS_INACTIVE:    false,
 		plansv1.TenantStatus_TENANT_STATUS_SUSPENDED:   false,
 	} {
-		if got := billable(&plansv1.Tenant{Status: st}); got != want {
-			t.Errorf("billable(%v) = %v, want %v", st, got, want)
+		if got := Billable(&plansv1.Tenant{Status: st}); got != want {
+			t.Errorf("Billable(%v) = %v, want %v", st, got, want)
 		}
 	}
 }

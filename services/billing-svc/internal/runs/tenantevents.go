@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -29,7 +30,7 @@ func (m *Manager) FlushTenantEvents(ctx context.Context) error {
 		return err
 	}
 	for _, p := range batch {
-		_, err := m.cfg.Events.RecordTenantEvent(tenantCtx(ctx, p.TenantID), &plansv1.RecordTenantEventRequest{
+		_, err := m.cfg.Events.RecordTenantEvent(inputs.TenantCtx(ctx, p.TenantID), &plansv1.RecordTenantEventRequest{
 			EventId: p.EventID.String(), Type: p.Type, DataJson: string(p.Data), OccurredTime: timestamppb.New(p.OccurredAt)})
 		switch status.Code(err) {
 		case codes.OK:

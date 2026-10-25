@@ -2,12 +2,10 @@ package runs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
@@ -15,6 +13,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -23,17 +23,11 @@ func (m *Manager) Tick(ctx context.Context) error {
 	if err := m.discover(ctx); err != nil {
 		m.log.WarnContext(ctx, "scheduler: discovery failed", "error", err)
 	}
-	if err := m.BillFees(ctx); err != nil {
-		m.log.WarnContext(ctx, "scheduler: fee billing failed", "error", err)
-	}
 	if err := m.ExpireLinks(ctx); err != nil {
 		m.log.WarnContext(ctx, "scheduler: payment links not expired", "error", err)
 	}
 	if err := m.ReversePromotions(ctx); err != nil {
 		m.log.WarnContext(ctx, "scheduler: promotion reversals not delivered", "error", err)
-	}
-	if err := m.ResumeRerating(ctx); err != nil {
-		m.log.WarnContext(ctx, "scheduler: re-rating resume failed", "error", err)
 	}
 	for _, ch := range m.cfg.Chores {
 		if err := ch.Run(ctx); err != nil {
@@ -52,67 +46,39 @@ func (m *Manager) Tick(ctx context.Context) error {
 	return nil
 }
 
-// billable reports whether the scheduler may raise invoices for a tenant: a live tenant that is not active yet (the go-live gate) or is suspended is
-// left alone. A status the plans-svc did not send (an older release during a rollout) counts as active.
-func billable(t *plansv1.Tenant) bool {
-	switch t.GetStatus() {
-	case plansv1.TenantStatus_TENANT_STATUS_INACTIVE, plansv1.TenantStatus_TENANT_STATUS_SUSPENDED:
-		return false
-	case plansv1.TenantStatus_TENANT_STATUS_UNSPECIFIED, plansv1.TenantStatus_TENANT_STATUS_ACTIVE:
-	}
-	return true
-}
-
 // discover creates a run for every recently closed period of every tenant that has none yet.
 func (m *Manager) discover(ctx context.Context) error {
 	now := m.cfg.Now()
-	token := ""
-	for {
-		resp, err := m.cfg.Admin.ListTenants(operatorCtx(ctx), &plansv1.ListTenantsRequest{PageSize: 500, PageToken: token})
+	return m.in.EachBillableTenant(ctx, func(id uuid.UUID, t *plansv1.Tenant) error {
+		loc, err := time.LoadLocation(t.GetTimezone())
 		if err != nil {
-			return err
-		}
-		for _, t := range resp.GetTenants() {
-			if !billable(t) {
-				continue
-			}
-			id, err := uuid.Parse(t.GetId())
-			if err != nil {
-				continue
-			}
-			loc, err := time.LoadLocation(t.GetTimezone())
-			if err != nil {
-				continue
-			}
-			created := t.GetCreateTime().AsTime()
-			cur := time.Date(now.In(loc).Year(), now.In(loc).Month(), 1, 0, 0, 0, 0, loc)
-			for back := 1; back <= m.cfg.Lookback; back++ {
-				start := cur.AddDate(0, -back, 0)
-				pid := period.PeriodOf(start, loc)
-				_, end, err := period.Bounds(pid, loc)
-				if err != nil || end.Before(created) {
-					continue // the tenant did not exist yet
-				}
-				cutoff := end.Add(t.GetGracePeriod().AsDuration())
-				if now.Before(cutoff.Add(m.cfg.WatermarkDelay)) {
-					continue
-				}
-				if err := m.q.InsertBillingRun(ctx, sqlc.InsertBillingRunParams{TenantID: id, PeriodID: pid, CutoffAt: cutoff}); err != nil {
-					return err
-				}
-			}
-		}
-		if resp.GetNextPageToken() == "" {
 			return nil
 		}
-		token = resp.GetNextPageToken()
-	}
+		created := t.GetCreateTime().AsTime()
+		cur := time.Date(now.In(loc).Year(), now.In(loc).Month(), 1, 0, 0, 0, 0, loc)
+		for back := 1; back <= m.cfg.Lookback; back++ {
+			start := cur.AddDate(0, -back, 0)
+			pid := period.PeriodOf(start, loc)
+			_, end, err := period.Bounds(pid, loc)
+			if err != nil || end.Before(created) {
+				continue // the tenant did not exist yet
+			}
+			cutoff := end.Add(t.GetGracePeriod().AsDuration())
+			if now.Before(cutoff.Add(m.cfg.WatermarkDelay)) {
+				continue
+			}
+			if err := m.q.InsertBillingRun(ctx, sqlc.InsertBillingRunParams{TenantID: id, PeriodID: pid, CutoffAt: cutoff}); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // ClosePeriod schedules the close of a period now (operator). It is idempotent per (tenant, period). A live period
 // can only be closed after its cutoff.
-func (m *Manager) ClosePeriod(ctx context.Context, tenantID uuid.UUID, periodID string) (*Run, error) {
-	resp, err := m.cfg.Admin.GetTenant(operatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
+func (m *Manager) ClosePeriod(ctx context.Context, tenantID uuid.UUID, periodID string) (*runmodel.Run, error) {
+	resp, err := m.in.Admin.GetTenant(inputs.OperatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -137,9 +103,9 @@ func (m *Manager) ClosePeriod(ctx context.Context, tenantID uuid.UUID, periodID 
 // ClosePeriodNow is the sandbox flow: the aggregator lowers the period's cutoff to now + 5 s, and the normal run takes
 // over (the watermark check starts WatermarkDelay after the new cutoff). The caller has checked that the tenant is a
 // sandbox tenant.
-func (m *Manager) ClosePeriodNow(ctx context.Context, ti tenant.Info, periodID string) (*Run, error) {
+func (m *Manager) ClosePeriodNow(ctx context.Context, ti tenant.Info, periodID string) (*runmodel.Run, error) {
 	tenantID := ti.ID
-	resp, err := m.cfg.Aggregator.ClosePeriodEarly(tenant.OutgoingContext(tenant.NewContext(ctx, ti)), &aggregatorv1.ClosePeriodEarlyRequest{PeriodId: periodID})
+	resp, err := m.in.Aggregator.ClosePeriodEarly(tenant.OutgoingContext(tenant.NewContext(ctx, ti)), &aggregatorv1.ClosePeriodEarlyRequest{PeriodId: periodID})
 	if err != nil {
 		return nil, err
 	}
@@ -149,13 +115,4 @@ func (m *Manager) ClosePeriodNow(ctx context.Context, ti tenant.Info, periodID s
 		return nil, fmt.Errorf("ensure run: %w", err)
 	}
 	return run, nil
-}
-
-// RunExists reports whether a run exists.
-func (m *Manager) RunExists(ctx context.Context, tenantID uuid.UUID, periodID string) (bool, error) {
-	_, err := m.GetRun(ctx, tenantID, periodID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
-	}
-	return err == nil, err
 }

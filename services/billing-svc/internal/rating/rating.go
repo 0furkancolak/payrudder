@@ -276,3 +276,14 @@ func Total(lines []Line) (int64, error) {
 	}
 	return total, nil
 }
+
+// Subtotal is the sum of the lines before tax: every line but the tax lines.
+func Subtotal(lines []Line) int64 {
+	var sub int64
+	for _, l := range lines {
+		if l.Kind != KindTax {
+			sub += l.AmountMinor
+		}
+	}
+	return sub
+}

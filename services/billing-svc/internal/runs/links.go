@@ -15,7 +15,9 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -38,7 +40,7 @@ type LinkInvoiceSpec struct {
 
 // Customer is a customer of a tenant as plans-svc knows it; ok is false when there is none.
 func (m *Manager) Customer(ctx context.Context, tenantID uuid.UUID, externalID string) (*plansv1.Customer, bool, error) {
-	resp, err := m.cfg.Plans.GetCustomer(tenantCtx(ctx, tenantID), &plansv1.GetCustomerRequest{ExternalId: externalID})
+	resp, err := m.in.Plans.GetCustomer(inputs.TenantCtx(ctx, tenantID), &plansv1.GetCustomerRequest{ExternalId: externalID})
 	if isNotFound(err) {
 		return nil, false, nil
 	}
@@ -62,17 +64,17 @@ type Seller struct {
 
 // Seller looks the tenant up: its name, the object key of its logo and its environment.
 func (m *Manager) Seller(ctx context.Context, tenantID uuid.UUID) (Seller, error) {
-	tn, err := m.cfg.Admin.GetTenant(operatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
+	tn, err := m.in.Admin.GetTenant(inputs.OperatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
 	if err != nil {
 		return Seller{}, fmt.Errorf("get tenant: %w", err)
 	}
 	t := tn.GetTenant()
-	return Seller{Name: t.GetName(), LogoKey: logoKeyOf(tenantID, t), Environment: environmentOf(t)}, nil
+	return Seller{Name: t.GetName(), LogoKey: inputs.LogoKey(tenantID, t), Environment: inputs.Environment(t)}, nil
 }
 
 // TenantCurrency is the tenant's default currency, which an ad-hoc link without one is in.
 func (m *Manager) TenantCurrency(ctx context.Context, tenantID uuid.UUID) (string, error) {
-	tn, err := m.cfg.Admin.GetTenant(operatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
+	tn, err := m.in.Admin.GetTenant(inputs.OperatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
 	if err != nil {
 		return "", fmt.Errorf("get tenant: %w", err)
 	}
@@ -83,7 +85,7 @@ func (m *Manager) TenantCurrency(ctx context.Context, tenantID uuid.UUID) (strin
 // through, so its saga renders the PDF and then waits for the customer to pay (the invoice is collected through the link, not charged to a stored method).
 // There is no tax on it: the amount is what the customer pays.
 func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec) (uuid.UUID, error) {
-	tn, err := m.cfg.Admin.GetTenant(operatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
+	tn, err := m.in.Admin.GetTenant(inputs.OperatorCtx(ctx), &plansv1.GetTenantRequest{TenantId: tenantID.String()})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("get tenant: %w", err)
 	}
@@ -92,13 +94,13 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 	if err != nil {
 		return uuid.Nil, err
 	}
-	currency := orDefault(spec.Currency, t.GetCurrency())
+	currency := inputs.OrDefault(spec.Currency, t.GetCurrency())
 	cur, ok := money.LookupCurrency(currency)
 	if !ok {
-		return uuid.Nil, permanent{fmt.Errorf("currency %q is not supported", currency)}
+		return uuid.Nil, inputs.Permanent(fmt.Errorf("currency %q is not supported", currency))
 	}
 	snap := sagamodel.Snapshot{
-		TenantName: t.GetName(), Environment: environmentOf(t), CurrencyExponent: cur.Exponent, LogoObjectKey: logoKeyOf(tenantID, t), SellerAddress: addressLines(t.GetAddress()),
+		TenantName: t.GetName(), Environment: inputs.Environment(t), CurrencyExponent: cur.Exponent, LogoObjectKey: inputs.LogoKey(tenantID, t), SellerAddress: inputs.AddressLines(t.GetAddress()),
 		Collection: sagamodel.CollectionLink, Description: spec.Description,
 	}
 	customerID, country := uuid.Nil, ""
@@ -108,12 +110,12 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 			return uuid.Nil, fmt.Errorf("get customer: %w", err)
 		}
 		if !found {
-			return uuid.Nil, permanent{fmt.Errorf("customer %q does not exist", spec.CustomerExternalID)}
+			return uuid.Nil, inputs.Permanent(fmt.Errorf("customer %q does not exist", spec.CustomerExternalID))
 		}
 		if customerID, err = uuid.Parse(cu.GetId()); err != nil {
 			return uuid.Nil, err
 		}
-		snap.CustomerExternalID, snap.CustomerName, snap.CustomerEmail, snap.CustomerAddress = cu.GetExternalId(), cu.GetName(), cu.GetEmail(), addressLines(cu.GetAddress())
+		snap.CustomerExternalID, snap.CustomerName, snap.CustomerEmail, snap.CustomerAddress = cu.GetExternalId(), cu.GetName(), cu.GetEmail(), inputs.AddressLines(cu.GetAddress())
 		country = cu.GetCountry()
 	}
 	snap.Country = country
@@ -149,7 +151,7 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 		}); err != nil {
 			return err
 		}
-		if err := insertLines(ctx, q, tenantID, id, lines, make([]int, len(lines))); err != nil {
+		if err := invoicecmd.InsertLines(ctx, q, tenantID, id, lines, make([]int, len(lines))); err != nil {
 			return err
 		}
 		if promo == nil {
@@ -165,9 +167,9 @@ func (m *Manager) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 		}
 		return uuid.Nil, err
 	}
-	if err := m.Finalize(ctx, tenantID, id); err != nil {
+	if err := m.cfg.Invoices.Finalize(ctx, tenantID, id); err != nil {
 		return uuid.Nil, err
 	}
-	m.invoices.Add(ctx, 1)
+	m.cfg.Invoices.Drafted(ctx, 1)
 	return id, nil
 }
