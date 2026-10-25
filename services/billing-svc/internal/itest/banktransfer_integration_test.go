@@ -18,6 +18,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
@@ -65,7 +66,7 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 	if run := e.driveRun("2026-10"); run.Status != "INVOICING" {
 		t.Fatalf("run is %s (%s)", run.Status, run.LastError)
 	}
-	eventually(t, 30*time.Second, "both invoices to wait for their transfer", func() bool {
+	testkit.Eventually(t, 30*time.Second, "both invoices to wait for their transfer", func() bool {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "PAYMENT_PENDING" && s["cus_b"] == "PAYMENT_PENDING"
 	})
@@ -109,8 +110,8 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 	if res, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil || res.Polled < 2 {
 		t.Fatalf("poll pass: %+v, %v; want at least our 2 polls", res, err)
 	}
-	eventually(t, 20*time.Second, "the poll to be answered", func() bool { return e.count(stub, "status") == 4 })
-	eventually(t, 20*time.Second, "both sagas to wait again", func() bool {
+	testkit.Eventually(t, 20*time.Second, "the poll to be answered", func() bool { return e.count(stub, "status") == 4 })
+	testkit.Eventually(t, 20*time.Second, "both sagas to wait again", func() bool {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "PAYMENT_PENDING" && s["cus_b"] == "PAYMENT_PENDING"
 	})
@@ -151,13 +152,13 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 	if _, err := admin.RetryInvoiceSaga(opCtx(), &billingv1.RetryInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: inv("cus_a")}); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, 30*time.Second, "cus_a to be paid and completed", func() bool { return e.sagaStates("2026-10")["cus_a"] == "COMPLETED" })
+	testkit.Eventually(t, 30*time.Second, "cus_a to be paid and completed", func() bool { return e.sagaStates("2026-10")["cus_a"] == "COMPLETED" })
 
 	// cus_b will never pay: the invoice is voided straight from PAYMENT_PENDING.
 	if _, err := admin.VoidInvoice(opCtx(), &billingv1.VoidInvoiceRequest{TenantId: e.tid.String(), InvoiceId: inv("cus_b")}); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, 20*time.Second, "cus_b to be voided", func() bool { return e.sagaStates("2026-10")["cus_b"] == "VOIDED" })
+	testkit.Eventually(t, 20*time.Second, "cus_b to be voided", func() bool { return e.sagaStates("2026-10")["cus_b"] == "VOIDED" })
 	if page, err := hosted.GetHostedInvoice(context.Background(), &billingv1.GetHostedInvoiceRequest{Token: link.GetToken()}); err != nil || page.GetPaymentInstructions() != nil {
 		t.Errorf("a paid invoice still shows where to pay: %v, %v", page.GetPaymentInstructions(), err)
 	}
@@ -195,7 +196,7 @@ func testExpiredTransferFollowsDunning(t *testing.T) {
 	e.addUsage("2026-10", "cus_a", "gb_hours", "1.000", 3)
 	e.driveRun("2026-10")
 	// The window ran out as soon as the first status was asked (the stub says so): the invoice goes to dunning, not to a parked state.
-	eventually(t, 30*time.Second, "both invoices to be declined", func() bool {
+	testkit.Eventually(t, 30*time.Second, "both invoices to be declined", func() bool {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "PAYMENT_DECLINED" && s["cus_b"] == "PAYMENT_DECLINED"
 	})
@@ -203,7 +204,7 @@ func testExpiredTransferFollowsDunning(t *testing.T) {
 	if res, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil || res.Dunned < 2 {
 		t.Fatalf("dunning pass: %+v, %v; want at least our 2 retries (each opens a new payment window)", res, err)
 	}
-	eventually(t, 30*time.Second, "uncollectible after the only retry", func() bool {
+	testkit.Eventually(t, 30*time.Second, "uncollectible after the only retry", func() bool {
 		var n int
 		err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1 AND status = 'uncollectible'`, e.tid).Scan(&n)
 		return err == nil && n == 2
@@ -221,7 +222,7 @@ func testExpiredTransferFollowsDunning(t *testing.T) {
 		return n
 	}
 	// The notices are commands the relay sends after the invoices turn uncollectible: wait for them.
-	eventually(t, 20*time.Second, "both give-up notices with the bank details", func() bool { return withBank() >= 2 })
+	testkit.Eventually(t, 20*time.Second, "both give-up notices with the bank details", func() bool { return withBank() >= 2 })
 	if n := withBank(); n != 2 {
 		t.Fatalf("give-up notices with the bank details = %d, want 2", n)
 	}
@@ -239,7 +240,7 @@ func testOfflinePaymentsSettleAnInvoice(t *testing.T) {
 	})
 	e.addUsage("2026-10", "cus_a", "gb_hours", "1.000", 3)
 	e.driveRun("2026-10")
-	eventually(t, 30*time.Second, "both invoices to be declined", func() bool {
+	testkit.Eventually(t, 30*time.Second, "both invoices to be declined", func() bool {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "PAYMENT_DECLINED" && s["cus_b"] == "PAYMENT_DECLINED"
 	})
@@ -289,7 +290,7 @@ func testOfflinePaymentsSettleAnInvoice(t *testing.T) {
 	if err != nil || !done.GetSettled() || done.GetOutstandingMinor() != 0 || done.GetPaidMinor() != total {
 		t.Fatalf("settling payment = %+v, %v", done, err)
 	}
-	eventually(t, 30*time.Second, "cus_b to complete", func() bool { return e.sagaStates("2026-10")["cus_b"] == "COMPLETED" })
+	testkit.Eventually(t, 30*time.Second, "cus_b to complete", func() bool { return e.sagaStates("2026-10")["cus_b"] == "COMPLETED" })
 	var st string
 	if err := shared.system.QueryRow(context.Background(), `SELECT status FROM invoices WHERE id = $1::uuid`, id).Scan(&st); err != nil || st != "paid" {
 		t.Fatalf("invoice status = %q, %v", st, err)

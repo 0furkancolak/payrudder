@@ -15,6 +15,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/query"
 )
@@ -209,7 +210,7 @@ func testAVoidedCreditPurchaseGrantsNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	var invoiceStatus string
-	eventually(t, 30*time.Second, "the invoice to be voided", func() bool {
+	testkit.Eventually(t, 30*time.Second, "the invoice to be voided", func() bool {
 		if err := shared.system.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND kind = 'LINK'`, l.tid).Scan(&invoiceStatus); err != nil {
 			t.Fatal(err)
 		}

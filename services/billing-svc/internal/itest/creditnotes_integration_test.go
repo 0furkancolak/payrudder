@@ -17,6 +17,7 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 )
 
@@ -189,7 +190,7 @@ func testCreditNoteRefundToCard(t *testing.T) {
 	if err != nil || cn.GetDisposition() != billingv1.CreditNoteDisposition_CREDIT_NOTE_DISPOSITION_REFUND || cn.GetRefundState() != billingv1.RefundState_REFUND_STATE_REQUESTED {
 		t.Fatalf("refund = %v, %v", cn, err)
 	}
-	eventually(t, 30*time.Second, "the refund to be confirmed", func() bool { return state(cn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
+	testkit.Eventually(t, 30*time.Second, "the refund to be confirmed", func() bool { return state(cn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
 	var balances int
 	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND source_credit_note_id = $2`, e.tid, cn.GetId()).Scan(&balances); err != nil || balances != 0 {
 		t.Fatalf("a refunded note left %d credit balances, %v", balances, err)
@@ -210,7 +211,7 @@ func testCreditNoteRefundToCard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, 30*time.Second, "the rejected refund to fail", func() bool { return state(fcn.GetId()) == billingv1.RefundState_REFUND_STATE_FAILED })
+	testkit.Eventually(t, 30*time.Second, "the rejected refund to fail", func() bool { return state(fcn.GetId()) == billingv1.RefundState_REFUND_STATE_FAILED })
 	if _, err := svc.RetryCreditNoteRefund(op, &billingv1.RetryCreditNoteRefundRequest{TenantId: e.tid.String(), CreditNoteId: ok.String()}); code(err) != codes.NotFound {
 		t.Errorf("retry of an invoice id: %v", err)
 	}
@@ -220,7 +221,7 @@ func testCreditNoteRefundToCard(t *testing.T) {
 	if _, err := svc.RetryCreditNoteRefund(op, &billingv1.RetryCreditNoteRefundRequest{TenantId: e.tid.String(), CreditNoteId: fcn.GetId()}); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, 30*time.Second, "the retried refund to go through", func() bool { return state(fcn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
+	testkit.Eventually(t, 30*time.Second, "the retried refund to go through", func() bool { return state(fcn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
 
 	// A refund nobody answers is sent again, with the same key, until it is answered.
 	quiet := seedOne(t, e.tid, customer, "cus_rf3", "paid", "USD", "INV-2026-000103", 300, "live")
@@ -231,13 +232,13 @@ func testCreditNoteRefundToCard(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 2; i++ {
-		eventually(t, 20*time.Second, "the unanswered command to arrive", func() bool { return stub.Count("refund") >= 4+i })
+		testkit.Eventually(t, 20*time.Second, "the unanswered command to arrive", func() bool { return stub.Count("refund") >= 4+i })
 		e.clk.Advance(6 * time.Minute)
 		if err := e.mgr.SweepRefunds(context.Background()); err != nil {
 			t.Fatal(err)
 		}
 	}
-	eventually(t, 30*time.Second, "the resent refund to be confirmed", func() bool { return state(scn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
+	testkit.Eventually(t, 30*time.Second, "the resent refund to be confirmed", func() bool { return state(scn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
 	keys := map[string]int{}
 	for _, c := range stub.Commands() {
 		if rf := c.GetRefundPayment(); rf != nil && rf.GetInvoiceId() == quiet.String() {

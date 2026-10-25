@@ -47,10 +47,7 @@ type world struct {
 func start(t *testing.T) *world {
 	t.Helper()
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "assets")
-	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
+	db := testkit.MigratedDB(t, pg, "assets", migrations.FS)
 	w := &world{}
 	var err error
 	if w.app, err = pgxx.NewPool(context.Background(), db.App); err != nil {

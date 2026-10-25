@@ -23,6 +23,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
 )
@@ -120,7 +121,7 @@ func completeOctober(e *env) {
 	if run.Status != "INVOICING" {
 		e.t.Fatalf("after Drive the run is %s (%s), want INVOICING", run.Status, run.LastError)
 	}
-	eventually(e.t, 30*time.Second, "every saga to COMPLETE", func() bool {
+	testkit.Eventually(e.t, 30*time.Second, "every saga to COMPLETE", func() bool {
 		s := e.sagaStates("2026-10")
 		return len(s) == 2 && s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
@@ -190,7 +191,7 @@ func testHappyPath(t *testing.T) {
 			}
 		}
 	}
-	eventually(t, 10*time.Second, "facts to reach the Kafka sink", func() bool { return e.kafka.count() >= 4 })
+	testkit.Eventually(t, 10*time.Second, "facts to reach the Kafka sink", func() bool { return e.kafka.count() >= 4 })
 }
 
 func testWatermark(t *testing.T) {
@@ -248,7 +249,7 @@ func testLateUsage(t *testing.T) {
 	if run.Status != "INVOICING" {
 		t.Fatalf("november run = %s (%s)", run.Status, run.LastError)
 	}
-	eventually(t, 30*time.Second, "november sagas", func() bool {
+	testkit.Eventually(t, 30*time.Second, "november sagas", func() bool {
 		s := e.sagaStates("2026-11")
 		return s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
@@ -270,7 +271,7 @@ func testLateUsage(t *testing.T) {
 	e.addLate("2026-12", "2026-10", "cus_a", "calls", "10", 0)
 	e.clk.t = time.Date(2027, 1, 5, 12, 0, 0, 0, time.UTC)
 	e.driveRun("2026-12")
-	eventually(t, 30*time.Second, "december sagas", func() bool { return e.sagaStates("2026-12")["cus_a"] == "COMPLETED" })
+	testkit.Eventually(t, 30*time.Second, "december sagas", func() bool { return e.sagaStates("2026-12")["cus_a"] == "COMPLETED" })
 	if got := e.invoiceTotal("2026-12", "cus_a"); got != 1020 {
 		t.Fatalf("december cus_a total = %d, want 1020 (base 1000 + 20 late)", got)
 	}
@@ -293,7 +294,7 @@ func testKillAfterCommit(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	// Stub worker and reply consumer run, the relay does not: the process was killed before it published anything.
 	stub := stubworker.New(shared.amqp, nil)
-	stub.Log = logger()
+	stub.Log = testkit.Logger()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	go func() { _ = stub.Run(ctx) }()
@@ -324,7 +325,7 @@ func testKillAfterCommit(t *testing.T) {
 		}
 		return nil
 	})
-	eventually(t, 30*time.Second, "sagas to complete after the restart", func() bool {
+	testkit.Eventually(t, 30*time.Second, "sagas to complete after the restart", func() bool {
 		s := e.sagaStates("2026-10")
 		return len(s) == 2 && s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
@@ -410,7 +411,7 @@ func testSilentWorker(t *testing.T) {
 	stub := e.startWorkers(sw.script)
 	e.addUsage("2026-10", "cus_a", "gb_hours", "1.000", 3)
 	e.driveRun("2026-10")
-	eventually(t, 20*time.Second, "first render commands", func() bool { return stub.Count("render") == 2 })
+	testkit.Eventually(t, 20*time.Second, "first render commands", func() bool { return stub.Count("render") == 2 })
 
 	// Each missed deadline re-issues the command (fresh command id), three times in all, then the step fails.
 	for round := 2; round <= 3; round++ {
@@ -420,7 +421,7 @@ func testSilentWorker(t *testing.T) {
 			t.Fatalf("round %d: %+v, %v; want 2 re-issued", round, res, err)
 		}
 		want := 2 * round
-		eventually(t, 20*time.Second, fmt.Sprintf("render commands = %d", want), func() bool { return stub.Count("render") == want })
+		testkit.Eventually(t, 20*time.Second, fmt.Sprintf("render commands = %d", want), func() bool { return stub.Count("render") == want })
 	}
 	e.clk.Advance(2 * time.Hour)
 	res, err := e.eng.Sweep(context.Background(), shared.system, 100)
@@ -445,7 +446,7 @@ func testSilentWorker(t *testing.T) {
 			t.Fatalf("RetryInvoiceSaga: %v", err)
 		}
 	}
-	eventually(t, 30*time.Second, "sagas to complete after the retry", func() bool {
+	testkit.Eventually(t, 30*time.Second, "sagas to complete after the retry", func() bool {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
@@ -519,7 +520,7 @@ func testDunning(t *testing.T) {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "PAYMENT_DECLINED" && s["cus_b"] == "PAYMENT_DECLINED"
 	}
-	eventually(t, 20*time.Second, "first decline", declined)
+	testkit.Eventually(t, 20*time.Second, "first decline", declined)
 	// +1 d, +3 d, +7 d (the test clock; live tenants), then the invoice is uncollectible.
 	for attempt, delay := range []time.Duration{24 * time.Hour, 72 * time.Hour, 168 * time.Hour} {
 		e.clk.Advance(delay + time.Minute)
@@ -528,12 +529,12 @@ func testDunning(t *testing.T) {
 			t.Fatalf("dunning pass %d: %+v, %v; want 2 retries", attempt+1, res, err)
 		}
 		want := 2 * (attempt + 2)
-		eventually(t, 20*time.Second, fmt.Sprintf("charge commands = %d", want), func() bool { return stub.Count("charge") == want })
+		testkit.Eventually(t, 20*time.Second, fmt.Sprintf("charge commands = %d", want), func() bool { return stub.Count("charge") == want })
 		if attempt < 2 {
-			eventually(t, 20*time.Second, "declined again", declined)
+			testkit.Eventually(t, 20*time.Second, "declined again", declined)
 		}
 	}
-	eventually(t, 30*time.Second, "uncollectible invoices to complete their notification", func() bool {
+	testkit.Eventually(t, 30*time.Second, "uncollectible invoices to complete their notification", func() bool {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
@@ -658,7 +659,7 @@ func testSandbox(t *testing.T) {
 	if err != nil || run.Status != "INVOICING" {
 		t.Fatalf("run = %+v, %v", run, err)
 	}
-	eventually(t, 30*time.Second, "sandbox sagas", func() bool {
+	testkit.Eventually(t, 30*time.Second, "sandbox sagas", func() bool {
 		s := e.sagaStates("2026-11")
 		return s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
@@ -694,7 +695,7 @@ func testVoidRefund(t *testing.T) {
 	if _, err := svc.VoidInvoice(opCtx(), &billingv1.VoidInvoiceRequest{TenantId: e.tid.String(), InvoiceId: invID.String(), Reason: "test"}); err != nil {
 		t.Fatalf("VoidInvoice: %v", err)
 	}
-	eventually(t, 20*time.Second, "refund and void", func() bool { return e.sagaStates("2026-10")["cus_a"] == "VOIDED" })
+	testkit.Eventually(t, 20*time.Second, "refund and void", func() bool { return e.sagaStates("2026-10")["cus_a"] == "VOIDED" })
 	if stub.Count("refund") != 1 {
 		t.Fatalf("refund commands = %d, want 1", stub.Count("refund"))
 	}

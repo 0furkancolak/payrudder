@@ -12,7 +12,6 @@ import (
 	"math/big"
 	"net"
 	"os"
-	"os/exec"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -85,10 +84,7 @@ func infra(t *testing.T) {
 		otel.SetMeterProvider(sdkmetric.NewMeterProvider(sdkmetric.WithReader(shared.reader)))
 
 		shared.pg = testkit.StartPostgres(top)
-		shared.db = testkit.CreateServiceDB(top, shared.pg, "aggregator")
-		if err := pgxx.Migrate(context.Background(), shared.db.Migrator, migrations.FS, nil); err != nil {
-			t.Fatalf("migrate: %v", err)
-		}
+		shared.db = testkit.MigratedDB(top, shared.pg, "aggregator", migrations.FS)
 		shared.kafka = testkit.StartRedpandaContainer(top)
 		var err error
 		if shared.system, err = pgxx.NewPool(context.Background(), shared.db.System); err != nil {
@@ -420,18 +416,6 @@ func queryClient(t *testing.T, r *run) aggregatorv1.UsageQueryServiceClient {
 func as(tenantID uuid.UUID, environment string) context.Context {
 	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 		tenant.MDTenantID, tenantID.String(), tenant.MDEnvironment, environment))
-}
-
-// dockerPause freezes or thaws the Postgres container.
-func dockerPause(t *testing.T, pause bool) {
-	t.Helper()
-	verb := "unpause"
-	if pause {
-		verb = "pause"
-	}
-	if out, err := exec.Command("docker", verb, shared.pg.ContainerID).CombinedOutput(); err != nil {
-		t.Fatalf("docker %s: %v: %s", verb, err, out)
-	}
 }
 
 // consumeTopic reads every record of a topic from the start (used for the DLQ).

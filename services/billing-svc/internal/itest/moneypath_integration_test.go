@@ -15,6 +15,7 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	paymentscmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/payments/command"
 )
@@ -51,7 +52,7 @@ func testDunningChargesWhatIsOutstandingAfterAPartPayment(t *testing.T) {
 	})
 	e.addUsage("2026-10", "cus_a", "gb_hours", "1.000", 3)
 	e.driveRun("2026-10")
-	eventually(t, 30*time.Second, "both invoices to be declined", func() bool {
+	testkit.Eventually(t, 30*time.Second, "both invoices to be declined", func() bool {
 		s := e.sagaStates("2026-10")
 		return s["cus_a"] == "PAYMENT_DECLINED" && s["cus_b"] == "PAYMENT_DECLINED"
 	})
@@ -64,7 +65,7 @@ func testDunningChargesWhatIsOutstandingAfterAPartPayment(t *testing.T) {
 	if res, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil || res.Dunned < 1 {
 		t.Fatalf("dunning pass: %+v, %v", res, err)
 	}
-	eventually(t, 30*time.Second, "the retry charge", func() bool { return len(e.chargeAmounts(stub, id)) == 2 })
+	testkit.Eventually(t, 30*time.Second, "the retry charge", func() bool { return len(e.chargeAmounts(stub, id)) == 2 })
 	got := e.chargeAmounts(stub, id)
 	if got[0] != total || got[1] != total-600 {
 		t.Fatalf("charges by dunning attempt = %v; want the full %d, then the outstanding %d", got, total, total-600)
@@ -107,7 +108,7 @@ func testVoidRefundsWhatCreditNotesLeft(t *testing.T) {
 		t.Fatal(err)
 	}
 	void(a)
-	eventually(t, 30*time.Second, "cus_a to be voided", func() bool { return e.sagaStates("2026-10")["cus_a"] == "VOIDED" })
+	testkit.Eventually(t, 30*time.Second, "cus_a to be voided", func() bool { return e.sagaStates("2026-10")["cus_a"] == "VOIDED" })
 	if got := refunds(a); len(got) != 1 || got[0] != aTotal-400 {
 		t.Fatalf("void refund commands = %v; want one of %d", got, aTotal-400)
 	}
@@ -116,7 +117,7 @@ func testVoidRefundsWhatCreditNotesLeft(t *testing.T) {
 	b := e.invoiceIDOf("cus_b")
 	silent = b
 	void(b)
-	eventually(t, 30*time.Second, "cus_b to wait for its refund", func() bool { return e.sagaStates("2026-10")["cus_b"] == "REFUND_REQUESTED" })
+	testkit.Eventually(t, 30*time.Second, "cus_b to wait for its refund", func() bool { return e.sagaStates("2026-10")["cus_b"] == "REFUND_REQUESTED" })
 	if _, err := note(b, 100); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("credit note while voiding: %v, want FAILED_PRECONDITION", err)
 	}
@@ -165,7 +166,7 @@ func testVoidingAnInvoiceReopensTheCreditsItConsumed(t *testing.T) {
 	if _, err := svc.VoidInvoice(opCtx(), &billingv1.VoidInvoiceRequest{TenantId: e.tid.String(), InvoiceId: e.invoiceIDOf("cus_a").String(), Reason: "wrong"}); err != nil {
 		t.Fatal(err)
 	}
-	eventually(t, 30*time.Second, "cus_a to be voided", func() bool { return e.sagaStates("2026-10")["cus_a"] == "VOIDED" })
+	testkit.Eventually(t, 30*time.Second, "cus_a to be voided", func() bool { return e.sagaStates("2026-10")["cus_a"] == "VOIDED" })
 	if applied, apps, left := remaining(); applied || apps != 0 || left != 300 {
 		t.Fatalf("after the void: applied %v, %d applications, %d left; want the 300 open again", applied, apps, left)
 	}

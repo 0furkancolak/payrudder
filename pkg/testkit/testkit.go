@@ -130,6 +130,48 @@ func StartRedis(t testing.TB) string {
 	return url
 }
 
+// generic is a started container of a plain image: the Host and MappedPort dance of the starters below, in one place.
+type generic struct {
+	t    testing.TB
+	name string
+	ctx  context.Context
+	c    testcontainers.Container
+	host string
+}
+
+// startGeneric starts req (wait strategy included) and fails the test when it cannot; name is for the failure messages.
+func startGeneric(t testing.TB, name string, req testcontainers.ContainerRequest) generic {
+	t.Helper()
+	ctx := startCtx(t)
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{ContainerRequest: req, Started: true})
+	testcontainers.CleanupContainer(t, c)
+	if err != nil {
+		t.Fatalf("testkit: start %s: %v", name, err)
+	}
+	host, err := c.Host(ctx)
+	if err != nil {
+		t.Fatalf("testkit: %s host: %v", name, err)
+	}
+	return generic{t: t, name: name, ctx: ctx, c: c, host: host}
+}
+
+// port is the host port that maps the container's port ("9000/tcp").
+func (g generic) port(containerPort string) string {
+	g.t.Helper()
+	p, err := g.c.MappedPort(g.ctx, containerPort)
+	if err != nil {
+		g.t.Fatalf("testkit: %s port %s: %v", g.name, containerPort, err)
+	}
+	return p.Port()
+}
+
+// Credentials of the test containers; they only exist for the length of a test.
+const (
+	minioAccessKey = "testkey"
+	minioSecretKey = "testsecret-testsecret" //nolint:gosec // test container
+	clickHousePass = "payrudder_test"        //nolint:gosec // test container
+)
+
 // MinioImage is the S3-compatible server of Compose, pinned by digest (docs/adr/0013-s3-compatible-object-storage.md).
 const MinioImage = "cgr.dev/chainguard/minio@sha256:c93745c56fccdaf0e5dcb88999a96a65a136428beb045ef5d546255a80d747a7"
 
@@ -144,30 +186,14 @@ type Minio struct {
 // StartMinio starts a MinIO server and returns its S3 endpoint and credentials.
 func StartMinio(t testing.TB) Minio {
 	t.Helper()
-	ctx := startCtx(t)
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        MinioImage,
-			Cmd:          []string{"server", "/data", "--address", ":9000"},
-			ExposedPorts: []string{"9000/tcp"},
-			Env:          map[string]string{"MINIO_ROOT_USER": "testkey", "MINIO_ROOT_PASSWORD": "testsecret-testsecret"},
-			WaitingFor:   wait.ForHTTP("/minio/health/live").WithPort("9000/tcp").WithStartupTimeout(startTimeout),
-		},
-		Started: true,
+	g := startGeneric(t, "minio", testcontainers.ContainerRequest{
+		Image:        MinioImage,
+		Cmd:          []string{"server", "/data", "--address", ":9000"},
+		ExposedPorts: []string{"9000/tcp"},
+		Env:          map[string]string{"MINIO_ROOT_USER": minioAccessKey, "MINIO_ROOT_PASSWORD": minioSecretKey},
+		WaitingFor:   wait.ForHTTP("/minio/health/live").WithPort("9000/tcp").WithStartupTimeout(startTimeout),
 	})
-	testcontainers.CleanupContainer(t, c)
-	if err != nil {
-		t.Fatalf("testkit: start minio: %v", err)
-	}
-	host, err := c.Host(ctx)
-	if err != nil {
-		t.Fatalf("testkit: minio host: %v", err)
-	}
-	port, err := c.MappedPort(ctx, "9000/tcp")
-	if err != nil {
-		t.Fatalf("testkit: minio port: %v", err)
-	}
-	return Minio{Endpoint: "http://" + host + ":" + port.Port(), AccessKey: "testkey", SecretKey: "testsecret-testsecret"}
+	return Minio{Endpoint: "http://" + g.host + ":" + g.port("9000/tcp"), AccessKey: minioAccessKey, SecretKey: minioSecretKey}
 }
 
 // MailpitImage matches deploy/compose/compose.yaml.
@@ -184,32 +210,12 @@ type Mailpit struct {
 // StartMailpit starts Mailpit.
 func StartMailpit(t testing.TB) Mailpit {
 	t.Helper()
-	ctx := startCtx(t)
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        MailpitImage,
-			ExposedPorts: []string{"1025/tcp", "8025/tcp"},
-			WaitingFor:   wait.ForHTTP("/readyz").WithPort("8025/tcp").WithStartupTimeout(startTimeout),
-		},
-		Started: true,
+	g := startGeneric(t, "mailpit", testcontainers.ContainerRequest{
+		Image:        MailpitImage,
+		ExposedPorts: []string{"1025/tcp", "8025/tcp"},
+		WaitingFor:   wait.ForHTTP("/readyz").WithPort("8025/tcp").WithStartupTimeout(startTimeout),
 	})
-	testcontainers.CleanupContainer(t, c)
-	if err != nil {
-		t.Fatalf("testkit: start mailpit: %v", err)
-	}
-	host, err := c.Host(ctx)
-	if err != nil {
-		t.Fatalf("testkit: mailpit host: %v", err)
-	}
-	smtp, err := c.MappedPort(ctx, "1025/tcp")
-	if err != nil {
-		t.Fatalf("testkit: mailpit smtp port: %v", err)
-	}
-	api, err := c.MappedPort(ctx, "8025/tcp")
-	if err != nil {
-		t.Fatalf("testkit: mailpit api port: %v", err)
-	}
-	return Mailpit{SMTPAddr: host + ":" + smtp.Port(), APIURL: "http://" + host + ":" + api.Port()}
+	return Mailpit{SMTPAddr: g.host + ":" + g.port("1025/tcp"), APIURL: "http://" + g.host + ":" + g.port("8025/tcp")}
 }
 
 // ClickHouseImage matches deploy/compose/compose.yaml.
@@ -228,28 +234,20 @@ type ClickHouse struct {
 // StartClickHouse starts ClickHouse with a database and a user.
 func StartClickHouse(t testing.TB) ClickHouse {
 	t.Helper()
-	ctx := startCtx(t)
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        ClickHouseImage,
-			ExposedPorts: []string{"9000/tcp", "8123/tcp"},
-			Env: map[string]string{"CLICKHOUSE_DB": "payrudder", "CLICKHOUSE_USER": "payrudder", "CLICKHOUSE_PASSWORD": "payrudder_test", //nolint:gosec // test container
-				"CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT": "1"},
-			WaitingFor: wait.ForHTTP("/ping").WithPort("8123/tcp").WithStartupTimeout(startTimeout),
-		},
-		Started: true,
+	g := startGeneric(t, "clickhouse", testcontainers.ContainerRequest{
+		Image:        ClickHouseImage,
+		ExposedPorts: []string{"9000/tcp", "8123/tcp"},
+		Env: map[string]string{"CLICKHOUSE_DB": "payrudder", "CLICKHOUSE_USER": "payrudder", "CLICKHOUSE_PASSWORD": clickHousePass,
+			"CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT": "1"},
+		WaitingFor: wait.ForHTTP("/ping").WithPort("8123/tcp").WithStartupTimeout(startTimeout),
 	})
-	testcontainers.CleanupContainer(t, c)
-	if err != nil {
-		t.Fatalf("testkit: start clickhouse: %v", err)
-	}
-	host, err := c.Host(ctx)
-	if err != nil {
-		t.Fatalf("testkit: clickhouse host: %v", err)
-	}
-	port, err := c.MappedPort(ctx, "9000/tcp")
-	if err != nil {
-		t.Fatalf("testkit: clickhouse port: %v", err)
-	}
-	return ClickHouse{Addr: host + ":" + port.Port(), Database: "payrudder", User: "payrudder", Password: "payrudder_test", ContainerID: c.GetContainerID()} //nolint:gosec // test container
+	return ClickHouse{Addr: g.host + ":" + g.port("9000/tcp"), Database: "payrudder", User: "payrudder", Password: clickHousePass, ContainerID: g.c.GetContainerID()}
+}
+
+// Ctx returns a context cancelled when the test ends.
+func Ctx(t testing.TB) context.Context {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	return ctx
 }

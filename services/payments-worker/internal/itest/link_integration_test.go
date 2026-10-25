@@ -90,10 +90,7 @@ func (b *recBilling) count() int {
 
 func TestHostedPaymentsThroughTheWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "payments")
-	if err := pgxx.Migrate(context.Background(), db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
+	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
 	pool, err := pgxx.NewPool(context.Background(), db.System)
 	if err != nil {
 		t.Fatal(err)

@@ -17,6 +17,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/query"
 )
 
@@ -348,7 +349,7 @@ func testPromotionCodesOnPaymentLinks(t *testing.T) {
 			if _, err := l.svc.RevokePaymentLink(l.mine, &billingv1.RevokePaymentLinkRequest{LinkId: c.GetLink().GetId()}); err != nil {
 				t.Fatal(err)
 			}
-			eventually(t, 30*time.Second, "the reversal of "+code+" to be queued", func() bool {
+			testkit.Eventually(t, 30*time.Second, "the reversal of "+code+" to be queued", func() bool {
 				var n int
 				if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM promotion_reversals WHERE tenant_id = $1 AND done_at IS NULL AND target_kind = 'payment'`, l.tid).Scan(&n); err != nil {
 					t.Fatal(err)

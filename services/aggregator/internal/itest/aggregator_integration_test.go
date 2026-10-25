@@ -22,6 +22,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/maintenance"
 )
@@ -268,16 +269,16 @@ func testPostgresOutage(t *testing.T) {
 
 	r.start(r.group)
 	r.produce(events[:half]...)
-	dockerPause(t, true)
+	testkit.DockerPause(t, shared.pg.ContainerID, true)
 	paused := true
 	defer func() {
 		if paused {
-			dockerPause(t, false)
+			testkit.DockerPause(t, shared.pg.ContainerID, false)
 		}
 	}()
 	r.produce(events[half:]...)
 	time.Sleep(pause)
-	dockerPause(t, false)
+	testkit.DockerPause(t, shared.pg.ContainerID, false)
 	paused = false
 
 	r.drain(2 * time.Minute)

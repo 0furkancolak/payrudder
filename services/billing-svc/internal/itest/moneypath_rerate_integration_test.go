@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/testkit"
 )
 
 // The fixed fee a trial, an advance-fee subscription or a provider already waived on the invoice is not billed by a re-rating either.
@@ -26,7 +27,7 @@ func testRerateKeepsTheWaivedFixedFeesWaived(t *testing.T) {
 		e.addUsage("2026-10", c, "calls", "150", 0) // (150-100) × 2 = 100
 	}
 	e.driveRun("2026-10")
-	eventually(t, 30*time.Second, "every saga to COMPLETE", func() bool {
+	testkit.Eventually(t, 30*time.Second, "every saga to COMPLETE", func() bool {
 		s := e.sagaStates("2026-10")
 		return len(s) == 3 && s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED" && s["cus_c"] == "COMPLETED"
 	})

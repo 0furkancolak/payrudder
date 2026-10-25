@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"os/exec"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -86,10 +85,7 @@ func infra(t *testing.T) {
 	t.Helper()
 	sharedOnce.Do(func() {
 		pg := testkit.StartPostgres(top)
-		shared.db = testkit.CreateServiceDB(top, pg, "ingest")
-		if err := pgxx.Migrate(context.Background(), shared.db.Migrator, migrations.FS, nil); err != nil {
-			t.Fatalf("migrate: %v", err)
-		}
+		shared.db = testkit.MigratedDB(top, pg, "ingest", migrations.FS)
 		shared.kafka = testkit.StartRedpandaContainer(top)
 		createTopic(t)
 		var err error
@@ -269,18 +265,6 @@ func decode(t *testing.T, r *kgo.Record) *eventsv1.UsageEvent {
 		t.Fatal(err)
 	}
 	return e
-}
-
-// dockerPause freezes or thaws the Redpanda container.
-func dockerPause(t *testing.T, pause bool) {
-	t.Helper()
-	verb := "unpause"
-	if pause {
-		verb = "pause"
-	}
-	if out, err := exec.Command("docker", verb, shared.kafka.ContainerID).CombinedOutput(); err != nil {
-		t.Fatalf("docker %s: %v: %s", verb, err, out)
-	}
 }
 
 func timestamppbAt(t time.Time) *timestamppb.Timestamp { return timestamppb.New(t) }
