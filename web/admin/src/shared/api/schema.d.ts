@@ -2265,6 +2265,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/api-keys/{key_id}/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replace an API key; the old one keeps working for an overlap window
+         * @description Issues a key with the same scope and environment and sets an end time on the old one, so a deployment can switch without a gap. The plaintext of the new key is in the answer once. A revoked key, or one that already ends, cannot be rotated (409 identity.api_key.not_active, identity.api_key.already_rotating).
+         */
+        post: operations["appRotateApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/go-live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The go-live checklist of the app's live environment
+         * @description A live environment is created inactive and has no API keys and no webhook endpoints until every item is done: the owner's e-mail address is verified, the legal profile (name, country, tax id where the country needs one) is complete, a payment provider is connected in live mode and works, a plan is published, and the terms are accepted. The list is computed on the server; the answer is the same for every member of the account.
+         */
+        get: operations["appGoLive"];
+        put?: never;
+        /**
+         * Activate the live environment (the owner only)
+         * @description Passes only when the checklist is complete (409 identity.go_live.incomplete otherwise). Idempotent. A suspended environment is not activated by its owner (identity.go_live.suspended).
+         */
+        post: operations["appActivateLive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/api-keys/{key_id}": {
         parameters: {
             query?: never;
@@ -3027,6 +3071,26 @@ export interface paths {
         patch: operations["updateTenant"];
         trace?: never;
     };
+    "/admin/v1/tenants/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Suspend an active live tenant, reinstate a suspended one, or activate an inactive one without its checklist
+         * @description A suspended tenant's API keys stop working at once (403 gateway.auth.tenant_not_active). Activating an inactive tenant needs a reason and is logged.
+         */
+        put: operations["setTenantStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{id}/api-keys": {
         parameters: {
             query?: never;
@@ -3036,7 +3100,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create an API key (qk_test_ for sandbox tenants, qk_live_ for live). The plaintext is returned once. */
+        /**
+         * Create an API key (qk_test_ for sandbox tenants, qk_live_ for live). The plaintext is returned once.
+         * @description A live tenant that is not active has no keys (409 plans.api_key.tenant_not_active).
+         */
         post: operations["createApiKey"];
         delete?: never;
         options?: never;
@@ -4884,6 +4951,28 @@ export interface components {
             grace_period?: string;
             /** Format: date-time */
             create_time?: string;
+            /**
+             * @description A sandbox tenant is always active. A live tenant starts inactive: no keys, no webhook endpoints, no invoices, until the go-live checklist is complete.
+             * @enum {string}
+             */
+            status?: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED";
+            /** Format: date-time */
+            activate_time?: string;
+            /** Format: date-time */
+            terms_accept_time?: string;
+        };
+        GoLive: {
+            /** Format: uuid */
+            tenant_id?: string;
+            /** @enum {string} */
+            status?: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED";
+            /** @description Every item is done. */
+            ready?: boolean;
+            items?: {
+                /** @enum {string} */
+                key?: "email_verified" | "legal_profile" | "payment_provider" | "plan_published" | "terms_accepted";
+                done?: boolean;
+            }[];
         };
         Account: {
             /** Format: uuid */
@@ -4919,6 +5008,21 @@ export interface components {
             create_time?: string;
             /** Format: date-time */
             revoke_time?: string;
+            /**
+             * @description FULL: everything. INGEST: only POST /v1/events. READ: only GET requests. Others are 403 gateway.auth.scope_denied.
+             * @enum {string}
+             */
+            scope?: "SCOPE_FULL" | "SCOPE_INGEST" | "SCOPE_READ";
+            /**
+             * Format: date-time
+             * @description Kept to within a few minutes.
+             */
+            last_used_time?: string;
+            /**
+             * Format: date-time
+             * @description The key stops working at this time although it is not revoked (the old key of a rotation).
+             */
+            expire_time?: string;
         };
     };
     responses: {
@@ -9289,6 +9393,12 @@ export interface operations {
                 "application/json": {
                     /** @enum {string} */
                     environment: "sandbox" | "live";
+                    /**
+                     * @description full: the whole tenant API. ingest: only POST /v1/events. read: only GET requests.
+                     * @default full
+                     * @enum {string}
+                     */
+                    scope?: "full" | "ingest" | "read";
                 };
             };
         };
@@ -9311,6 +9421,110 @@ export interface operations {
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
+        };
+    };
+    appRotateApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description How long the old key keeps working. 0 ends it now.
+                     * @default 24
+                     */
+                    overlap_hours?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        api_key?: components["schemas"]["ApiKey"];
+                        /** @description shown once */
+                        plaintext?: string;
+                        previous?: components["schemas"]["ApiKey"];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appGoLive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        go_live?: components["schemas"]["GoLive"];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appActivateLive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description Accepts the terms of service in the same call. */
+                    accept_terms?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Activated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        go_live?: components["schemas"]["GoLive"];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     appRevokeApiKey: {
@@ -10890,6 +11104,39 @@ export interface operations {
             400: components["responses"]["Error"];
         };
     };
+    setTenantStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "active" | "suspended";
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
     createApiKey: {
         parameters: {
             query?: never;
@@ -10899,7 +11146,17 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /**
+                     * @default SCOPE_FULL
+                     * @enum {string}
+                     */
+                    scope?: "SCOPE_FULL" | "SCOPE_INGEST" | "SCOPE_READ";
+                };
+            };
+        };
         responses: {
             /** @description Created */
             201: {

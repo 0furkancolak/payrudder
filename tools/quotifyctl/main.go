@@ -177,6 +177,13 @@ func seedAccount(c *client, name, currency, timezone string, grace time.Duration
 	res := &seedResult{AccountID: acct.ID, Tenants: map[string]string{}, APIKeys: map[string]string{}}
 	for _, t := range acct.Tenants {
 		env := strings.ToLower(strings.TrimPrefix(t.Environment, "ENVIRONMENT_"))
+		if env == "live" {
+			// A live tenant is created inactive and has no keys (phase 45). This command seeds load-test data on a stack of your own, the way a support person
+			// would: activate without the checklist, with a reason.
+			if err := c.call("PUT", "/admin/v1/tenants/"+t.ID+"/status", c.token, map[string]string{"status": "active", "reason": "quotifyctl seed"}, nil); err != nil {
+				return nil, err
+			}
+		}
 		var key struct {
 			Plaintext string `json:"plaintext"`
 		}

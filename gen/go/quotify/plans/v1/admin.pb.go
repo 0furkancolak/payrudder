@@ -10,6 +10,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -731,8 +732,10 @@ func (x *UpdateTenantSettingsResponse) GetTenant() *Tenant {
 }
 
 type CreateApiKeyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// Unset is FULL.
+	Scope         ApiKey_Scope `protobuf:"varint,2,opt,name=scope,proto3,enum=quotify.plans.v1.ApiKey_Scope" json:"scope,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -772,6 +775,13 @@ func (x *CreateApiKeyRequest) GetTenantId() string {
 		return x.TenantId
 	}
 	return ""
+}
+
+func (x *CreateApiKeyRequest) GetScope() ApiKey_Scope {
+	if x != nil {
+		return x.Scope
+	}
+	return ApiKey_SCOPE_UNSPECIFIED
 }
 
 type CreateApiKeyResponse struct {
@@ -965,10 +975,14 @@ type ResolveApiKeyResponse struct {
 	TenantId string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	Status   ApiKey_Status          `protobuf:"varint,3,opt,name=status,proto3,enum=quotify.plans.v1.ApiKey_Status" json:"status,omitempty"`
 	// sha256(secret)
-	KeyHash       []byte      `protobuf:"bytes,4,opt,name=key_hash,json=keyHash,proto3" json:"key_hash,omitempty"`
-	Environment   Environment `protobuf:"varint,5,opt,name=environment,proto3,enum=quotify.plans.v1.Environment" json:"environment,omitempty"`
-	Tier          TenantTier  `protobuf:"varint,6,opt,name=tier,proto3,enum=quotify.plans.v1.TenantTier" json:"tier,omitempty"`
-	Timezone      string      `protobuf:"bytes,7,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	KeyHash      []byte       `protobuf:"bytes,4,opt,name=key_hash,json=keyHash,proto3" json:"key_hash,omitempty"`
+	Environment  Environment  `protobuf:"varint,5,opt,name=environment,proto3,enum=quotify.plans.v1.Environment" json:"environment,omitempty"`
+	Tier         TenantTier   `protobuf:"varint,6,opt,name=tier,proto3,enum=quotify.plans.v1.TenantTier" json:"tier,omitempty"`
+	Timezone     string       `protobuf:"bytes,7,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	TenantStatus TenantStatus `protobuf:"varint,8,opt,name=tenant_status,json=tenantStatus,proto3,enum=quotify.plans.v1.TenantStatus" json:"tenant_status,omitempty"`
+	Scope        ApiKey_Scope `protobuf:"varint,9,opt,name=scope,proto3,enum=quotify.plans.v1.ApiKey_Scope" json:"scope,omitempty"`
+	// Set for a key that ends although it is not revoked (the old key of a rotation).
+	ExpireTime    *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1052,11 +1066,218 @@ func (x *ResolveApiKeyResponse) GetTimezone() string {
 	return ""
 }
 
+func (x *ResolveApiKeyResponse) GetTenantStatus() TenantStatus {
+	if x != nil {
+		return x.TenantStatus
+	}
+	return TenantStatus_TENANT_STATUS_UNSPECIFIED
+}
+
+func (x *ResolveApiKeyResponse) GetScope() ApiKey_Scope {
+	if x != nil {
+		return x.Scope
+	}
+	return ApiKey_SCOPE_UNSPECIFIED
+}
+
+func (x *ResolveApiKeyResponse) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
+type TouchApiKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ApiKeyId      string                 `protobuf:"bytes,1,opt,name=api_key_id,json=apiKeyId,proto3" json:"api_key_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TouchApiKeyRequest) Reset() {
+	*x = TouchApiKeyRequest{}
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TouchApiKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TouchApiKeyRequest) ProtoMessage() {}
+
+func (x *TouchApiKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TouchApiKeyRequest.ProtoReflect.Descriptor instead.
+func (*TouchApiKeyRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *TouchApiKeyRequest) GetApiKeyId() string {
+	if x != nil {
+		return x.ApiKeyId
+	}
+	return ""
+}
+
+type TouchApiKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TouchApiKeyResponse) Reset() {
+	*x = TouchApiKeyResponse{}
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TouchApiKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TouchApiKeyResponse) ProtoMessage() {}
+
+func (x *TouchApiKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TouchApiKeyResponse.ProtoReflect.Descriptor instead.
+func (*TouchApiKeyResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{19}
+}
+
+type SetTenantStatusRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// ACTIVE or SUSPENDED.
+	Status TenantStatus `protobuf:"varint,2,opt,name=status,proto3,enum=quotify.plans.v1.TenantStatus" json:"status,omitempty"`
+	// Required when activating an inactive tenant.
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetTenantStatusRequest) Reset() {
+	*x = SetTenantStatusRequest{}
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetTenantStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetTenantStatusRequest) ProtoMessage() {}
+
+func (x *SetTenantStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetTenantStatusRequest.ProtoReflect.Descriptor instead.
+func (*SetTenantStatusRequest) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SetTenantStatusRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *SetTenantStatusRequest) GetStatus() TenantStatus {
+	if x != nil {
+		return x.Status
+	}
+	return TenantStatus_TENANT_STATUS_UNSPECIFIED
+}
+
+func (x *SetTenantStatusRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type SetTenantStatusResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *Tenant                `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetTenantStatusResponse) Reset() {
+	*x = SetTenantStatusResponse{}
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetTenantStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetTenantStatusResponse) ProtoMessage() {}
+
+func (x *SetTenantStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_quotify_plans_v1_admin_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetTenantStatusResponse.ProtoReflect.Descriptor instead.
+func (*SetTenantStatusResponse) Descriptor() ([]byte, []int) {
+	return file_quotify_plans_v1_admin_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *SetTenantStatusResponse) GetTenant() *Tenant {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
 var File_quotify_plans_v1_admin_proto protoreflect.FileDescriptor
 
 const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	"\n" +
-	"\x1cquotify/plans/v1/admin.proto\x12\x10quotify.plans.v1\x1a\x1egoogle/protobuf/duration.proto\x1a quotify/plans/v1/resources.proto\"\xd2\x01\n" +
+	"\x1cquotify/plans/v1/admin.proto\x12\x10quotify.plans.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a quotify/plans/v1/resources.proto\"\xd2\x01\n" +
 	"\x14CreateAccountRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\bcurrency\x18\x02 \x01(\tR\bcurrency\x12\x1a\n" +
@@ -1106,9 +1327,10 @@ const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	" \x01(\tR\n" +
 	"eInvoiceOn\"P\n" +
 	"\x1cUpdateTenantSettingsResponse\x120\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x18.quotify.plans.v1.TenantR\x06tenant\"2\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x18.quotify.plans.v1.TenantR\x06tenant\"h\n" +
 	"\x13CreateApiKeyRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"g\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x124\n" +
+	"\x05scope\x18\x02 \x01(\x0e2\x1e.quotify.plans.v1.ApiKey.ScopeR\x05scope\"g\n" +
 	"\x14CreateApiKeyResponse\x121\n" +
 	"\aapi_key\x18\x01 \x01(\v2\x18.quotify.plans.v1.ApiKeyR\x06apiKey\x12\x1c\n" +
 	"\tplaintext\x18\x02 \x01(\tR\tplaintext\"3\n" +
@@ -1118,7 +1340,7 @@ const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	"\x14RevokeApiKeyResponse\x121\n" +
 	"\aapi_key\x18\x01 \x01(\v2\x18.quotify.plans.v1.ApiKeyR\x06apiKey\".\n" +
 	"\x14ResolveApiKeyRequest\x12\x16\n" +
-	"\x06prefix\x18\x01 \x01(\tR\x06prefix\"\xb5\x02\n" +
+	"\x06prefix\x18\x01 \x01(\tR\x06prefix\"\xed\x03\n" +
 	"\x15ResolveApiKeyResponse\x12\x1c\n" +
 	"\n" +
 	"api_key_id\x18\x01 \x01(\tR\bapiKeyId\x12\x1b\n" +
@@ -1127,7 +1349,22 @@ const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	"\bkey_hash\x18\x04 \x01(\fR\akeyHash\x12?\n" +
 	"\venvironment\x18\x05 \x01(\x0e2\x1d.quotify.plans.v1.EnvironmentR\venvironment\x120\n" +
 	"\x04tier\x18\x06 \x01(\x0e2\x1c.quotify.plans.v1.TenantTierR\x04tier\x12\x1a\n" +
-	"\btimezone\x18\a \x01(\tR\btimezone2\xe2\x06\n" +
+	"\btimezone\x18\a \x01(\tR\btimezone\x12C\n" +
+	"\rtenant_status\x18\b \x01(\x0e2\x1e.quotify.plans.v1.TenantStatusR\ftenantStatus\x124\n" +
+	"\x05scope\x18\t \x01(\x0e2\x1e.quotify.plans.v1.ApiKey.ScopeR\x05scope\x12;\n" +
+	"\vexpire_time\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTime\"2\n" +
+	"\x12TouchApiKeyRequest\x12\x1c\n" +
+	"\n" +
+	"api_key_id\x18\x01 \x01(\tR\bapiKeyId\"\x15\n" +
+	"\x13TouchApiKeyResponse\"\x85\x01\n" +
+	"\x16SetTenantStatusRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x126\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x1e.quotify.plans.v1.TenantStatusR\x06status\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"K\n" +
+	"\x17SetTenantStatusResponse\x120\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x18.quotify.plans.v1.TenantR\x06tenant2\xa6\b\n" +
 	"\fAdminService\x12`\n" +
 	"\rCreateAccount\x12&.quotify.plans.v1.CreateAccountRequest\x1a'.quotify.plans.v1.CreateAccountResponse\x12T\n" +
 	"\tCreateApp\x12\".quotify.plans.v1.CreateAppRequest\x1a#.quotify.plans.v1.CreateAppResponse\x12Q\n" +
@@ -1137,7 +1374,9 @@ const file_quotify_plans_v1_admin_proto_rawDesc = "" +
 	"\x14UpdateTenantSettings\x12-.quotify.plans.v1.UpdateTenantSettingsRequest\x1a..quotify.plans.v1.UpdateTenantSettingsResponse\x12]\n" +
 	"\fCreateApiKey\x12%.quotify.plans.v1.CreateApiKeyRequest\x1a&.quotify.plans.v1.CreateApiKeyResponse\x12]\n" +
 	"\fRevokeApiKey\x12%.quotify.plans.v1.RevokeApiKeyRequest\x1a&.quotify.plans.v1.RevokeApiKeyResponse\x12`\n" +
-	"\rResolveApiKey\x12&.quotify.plans.v1.ResolveApiKeyRequest\x1a'.quotify.plans.v1.ResolveApiKeyResponseB\xc5\x01\n" +
+	"\rResolveApiKey\x12&.quotify.plans.v1.ResolveApiKeyRequest\x1a'.quotify.plans.v1.ResolveApiKeyResponse\x12Z\n" +
+	"\vTouchApiKey\x12$.quotify.plans.v1.TouchApiKeyRequest\x1a%.quotify.plans.v1.TouchApiKeyResponse\x12f\n" +
+	"\x0fSetTenantStatus\x12(.quotify.plans.v1.SetTenantStatusRequest\x1a).quotify.plans.v1.SetTenantStatusResponseB\xc5\x01\n" +
 	"\x14com.quotify.plans.v1B\n" +
 	"AdminProtoP\x01Z?github.com/0furkancolak/quotify/gen/go/quotify/plans/v1;plansv1\xa2\x02\x03QPX\xaa\x02\x10Quotify.Plans.V1\xca\x02\x10Quotify\\Plans\\V1\xe2\x02\x1cQuotify\\Plans\\V1\\GPBMetadata\xea\x02\x12Quotify::Plans::V1b\x06proto3"
 
@@ -1153,7 +1392,7 @@ func file_quotify_plans_v1_admin_proto_rawDescGZIP() []byte {
 	return file_quotify_plans_v1_admin_proto_rawDescData
 }
 
-var file_quotify_plans_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_quotify_plans_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_quotify_plans_v1_admin_proto_goTypes = []any{
 	(*CreateAccountRequest)(nil),         // 0: quotify.plans.v1.CreateAccountRequest
 	(*CreateAccountResponse)(nil),        // 1: quotify.plans.v1.CreateAccountResponse
@@ -1173,62 +1412,79 @@ var file_quotify_plans_v1_admin_proto_goTypes = []any{
 	(*RevokeApiKeyResponse)(nil),         // 15: quotify.plans.v1.RevokeApiKeyResponse
 	(*ResolveApiKeyRequest)(nil),         // 16: quotify.plans.v1.ResolveApiKeyRequest
 	(*ResolveApiKeyResponse)(nil),        // 17: quotify.plans.v1.ResolveApiKeyResponse
-	(*durationpb.Duration)(nil),          // 18: google.protobuf.Duration
-	(TenantTier)(0),                      // 19: quotify.plans.v1.TenantTier
-	(*Account)(nil),                      // 20: quotify.plans.v1.Account
-	(*App)(nil),                          // 21: quotify.plans.v1.App
-	(*Tenant)(nil),                       // 22: quotify.plans.v1.Tenant
-	(*Address)(nil),                      // 23: quotify.plans.v1.Address
-	(*BankTransferDetails)(nil),          // 24: quotify.plans.v1.BankTransferDetails
-	(*LegalInfo)(nil),                    // 25: quotify.plans.v1.LegalInfo
-	(*ApiKey)(nil),                       // 26: quotify.plans.v1.ApiKey
-	(ApiKey_Status)(0),                   // 27: quotify.plans.v1.ApiKey.Status
-	(Environment)(0),                     // 28: quotify.plans.v1.Environment
+	(*TouchApiKeyRequest)(nil),           // 18: quotify.plans.v1.TouchApiKeyRequest
+	(*TouchApiKeyResponse)(nil),          // 19: quotify.plans.v1.TouchApiKeyResponse
+	(*SetTenantStatusRequest)(nil),       // 20: quotify.plans.v1.SetTenantStatusRequest
+	(*SetTenantStatusResponse)(nil),      // 21: quotify.plans.v1.SetTenantStatusResponse
+	(*durationpb.Duration)(nil),          // 22: google.protobuf.Duration
+	(TenantTier)(0),                      // 23: quotify.plans.v1.TenantTier
+	(*Account)(nil),                      // 24: quotify.plans.v1.Account
+	(*App)(nil),                          // 25: quotify.plans.v1.App
+	(*Tenant)(nil),                       // 26: quotify.plans.v1.Tenant
+	(*Address)(nil),                      // 27: quotify.plans.v1.Address
+	(*BankTransferDetails)(nil),          // 28: quotify.plans.v1.BankTransferDetails
+	(*LegalInfo)(nil),                    // 29: quotify.plans.v1.LegalInfo
+	(ApiKey_Scope)(0),                    // 30: quotify.plans.v1.ApiKey.Scope
+	(*ApiKey)(nil),                       // 31: quotify.plans.v1.ApiKey
+	(ApiKey_Status)(0),                   // 32: quotify.plans.v1.ApiKey.Status
+	(Environment)(0),                     // 33: quotify.plans.v1.Environment
+	(TenantStatus)(0),                    // 34: quotify.plans.v1.TenantStatus
+	(*timestamppb.Timestamp)(nil),        // 35: google.protobuf.Timestamp
 }
 var file_quotify_plans_v1_admin_proto_depIdxs = []int32{
-	18, // 0: quotify.plans.v1.CreateAccountRequest.grace_period:type_name -> google.protobuf.Duration
-	19, // 1: quotify.plans.v1.CreateAccountRequest.tier:type_name -> quotify.plans.v1.TenantTier
-	20, // 2: quotify.plans.v1.CreateAccountResponse.account:type_name -> quotify.plans.v1.Account
-	18, // 3: quotify.plans.v1.CreateAppRequest.grace_period:type_name -> google.protobuf.Duration
-	19, // 4: quotify.plans.v1.CreateAppRequest.tier:type_name -> quotify.plans.v1.TenantTier
-	21, // 5: quotify.plans.v1.CreateAppResponse.app:type_name -> quotify.plans.v1.App
-	21, // 6: quotify.plans.v1.ListAppsResponse.apps:type_name -> quotify.plans.v1.App
-	22, // 7: quotify.plans.v1.GetTenantResponse.tenant:type_name -> quotify.plans.v1.Tenant
-	22, // 8: quotify.plans.v1.ListTenantsResponse.tenants:type_name -> quotify.plans.v1.Tenant
-	18, // 9: quotify.plans.v1.UpdateTenantSettingsRequest.grace_period:type_name -> google.protobuf.Duration
-	19, // 10: quotify.plans.v1.UpdateTenantSettingsRequest.tier:type_name -> quotify.plans.v1.TenantTier
-	23, // 11: quotify.plans.v1.UpdateTenantSettingsRequest.address:type_name -> quotify.plans.v1.Address
-	24, // 12: quotify.plans.v1.UpdateTenantSettingsRequest.bank_transfer:type_name -> quotify.plans.v1.BankTransferDetails
-	25, // 13: quotify.plans.v1.UpdateTenantSettingsRequest.legal:type_name -> quotify.plans.v1.LegalInfo
-	22, // 14: quotify.plans.v1.UpdateTenantSettingsResponse.tenant:type_name -> quotify.plans.v1.Tenant
-	26, // 15: quotify.plans.v1.CreateApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
-	26, // 16: quotify.plans.v1.RevokeApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
-	27, // 17: quotify.plans.v1.ResolveApiKeyResponse.status:type_name -> quotify.plans.v1.ApiKey.Status
-	28, // 18: quotify.plans.v1.ResolveApiKeyResponse.environment:type_name -> quotify.plans.v1.Environment
-	19, // 19: quotify.plans.v1.ResolveApiKeyResponse.tier:type_name -> quotify.plans.v1.TenantTier
-	0,  // 20: quotify.plans.v1.AdminService.CreateAccount:input_type -> quotify.plans.v1.CreateAccountRequest
-	2,  // 21: quotify.plans.v1.AdminService.CreateApp:input_type -> quotify.plans.v1.CreateAppRequest
-	4,  // 22: quotify.plans.v1.AdminService.ListApps:input_type -> quotify.plans.v1.ListAppsRequest
-	6,  // 23: quotify.plans.v1.AdminService.GetTenant:input_type -> quotify.plans.v1.GetTenantRequest
-	8,  // 24: quotify.plans.v1.AdminService.ListTenants:input_type -> quotify.plans.v1.ListTenantsRequest
-	10, // 25: quotify.plans.v1.AdminService.UpdateTenantSettings:input_type -> quotify.plans.v1.UpdateTenantSettingsRequest
-	12, // 26: quotify.plans.v1.AdminService.CreateApiKey:input_type -> quotify.plans.v1.CreateApiKeyRequest
-	14, // 27: quotify.plans.v1.AdminService.RevokeApiKey:input_type -> quotify.plans.v1.RevokeApiKeyRequest
-	16, // 28: quotify.plans.v1.AdminService.ResolveApiKey:input_type -> quotify.plans.v1.ResolveApiKeyRequest
-	1,  // 29: quotify.plans.v1.AdminService.CreateAccount:output_type -> quotify.plans.v1.CreateAccountResponse
-	3,  // 30: quotify.plans.v1.AdminService.CreateApp:output_type -> quotify.plans.v1.CreateAppResponse
-	5,  // 31: quotify.plans.v1.AdminService.ListApps:output_type -> quotify.plans.v1.ListAppsResponse
-	7,  // 32: quotify.plans.v1.AdminService.GetTenant:output_type -> quotify.plans.v1.GetTenantResponse
-	9,  // 33: quotify.plans.v1.AdminService.ListTenants:output_type -> quotify.plans.v1.ListTenantsResponse
-	11, // 34: quotify.plans.v1.AdminService.UpdateTenantSettings:output_type -> quotify.plans.v1.UpdateTenantSettingsResponse
-	13, // 35: quotify.plans.v1.AdminService.CreateApiKey:output_type -> quotify.plans.v1.CreateApiKeyResponse
-	15, // 36: quotify.plans.v1.AdminService.RevokeApiKey:output_type -> quotify.plans.v1.RevokeApiKeyResponse
-	17, // 37: quotify.plans.v1.AdminService.ResolveApiKey:output_type -> quotify.plans.v1.ResolveApiKeyResponse
-	29, // [29:38] is the sub-list for method output_type
-	20, // [20:29] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	22, // 0: quotify.plans.v1.CreateAccountRequest.grace_period:type_name -> google.protobuf.Duration
+	23, // 1: quotify.plans.v1.CreateAccountRequest.tier:type_name -> quotify.plans.v1.TenantTier
+	24, // 2: quotify.plans.v1.CreateAccountResponse.account:type_name -> quotify.plans.v1.Account
+	22, // 3: quotify.plans.v1.CreateAppRequest.grace_period:type_name -> google.protobuf.Duration
+	23, // 4: quotify.plans.v1.CreateAppRequest.tier:type_name -> quotify.plans.v1.TenantTier
+	25, // 5: quotify.plans.v1.CreateAppResponse.app:type_name -> quotify.plans.v1.App
+	25, // 6: quotify.plans.v1.ListAppsResponse.apps:type_name -> quotify.plans.v1.App
+	26, // 7: quotify.plans.v1.GetTenantResponse.tenant:type_name -> quotify.plans.v1.Tenant
+	26, // 8: quotify.plans.v1.ListTenantsResponse.tenants:type_name -> quotify.plans.v1.Tenant
+	22, // 9: quotify.plans.v1.UpdateTenantSettingsRequest.grace_period:type_name -> google.protobuf.Duration
+	23, // 10: quotify.plans.v1.UpdateTenantSettingsRequest.tier:type_name -> quotify.plans.v1.TenantTier
+	27, // 11: quotify.plans.v1.UpdateTenantSettingsRequest.address:type_name -> quotify.plans.v1.Address
+	28, // 12: quotify.plans.v1.UpdateTenantSettingsRequest.bank_transfer:type_name -> quotify.plans.v1.BankTransferDetails
+	29, // 13: quotify.plans.v1.UpdateTenantSettingsRequest.legal:type_name -> quotify.plans.v1.LegalInfo
+	26, // 14: quotify.plans.v1.UpdateTenantSettingsResponse.tenant:type_name -> quotify.plans.v1.Tenant
+	30, // 15: quotify.plans.v1.CreateApiKeyRequest.scope:type_name -> quotify.plans.v1.ApiKey.Scope
+	31, // 16: quotify.plans.v1.CreateApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
+	31, // 17: quotify.plans.v1.RevokeApiKeyResponse.api_key:type_name -> quotify.plans.v1.ApiKey
+	32, // 18: quotify.plans.v1.ResolveApiKeyResponse.status:type_name -> quotify.plans.v1.ApiKey.Status
+	33, // 19: quotify.plans.v1.ResolveApiKeyResponse.environment:type_name -> quotify.plans.v1.Environment
+	23, // 20: quotify.plans.v1.ResolveApiKeyResponse.tier:type_name -> quotify.plans.v1.TenantTier
+	34, // 21: quotify.plans.v1.ResolveApiKeyResponse.tenant_status:type_name -> quotify.plans.v1.TenantStatus
+	30, // 22: quotify.plans.v1.ResolveApiKeyResponse.scope:type_name -> quotify.plans.v1.ApiKey.Scope
+	35, // 23: quotify.plans.v1.ResolveApiKeyResponse.expire_time:type_name -> google.protobuf.Timestamp
+	34, // 24: quotify.plans.v1.SetTenantStatusRequest.status:type_name -> quotify.plans.v1.TenantStatus
+	26, // 25: quotify.plans.v1.SetTenantStatusResponse.tenant:type_name -> quotify.plans.v1.Tenant
+	0,  // 26: quotify.plans.v1.AdminService.CreateAccount:input_type -> quotify.plans.v1.CreateAccountRequest
+	2,  // 27: quotify.plans.v1.AdminService.CreateApp:input_type -> quotify.plans.v1.CreateAppRequest
+	4,  // 28: quotify.plans.v1.AdminService.ListApps:input_type -> quotify.plans.v1.ListAppsRequest
+	6,  // 29: quotify.plans.v1.AdminService.GetTenant:input_type -> quotify.plans.v1.GetTenantRequest
+	8,  // 30: quotify.plans.v1.AdminService.ListTenants:input_type -> quotify.plans.v1.ListTenantsRequest
+	10, // 31: quotify.plans.v1.AdminService.UpdateTenantSettings:input_type -> quotify.plans.v1.UpdateTenantSettingsRequest
+	12, // 32: quotify.plans.v1.AdminService.CreateApiKey:input_type -> quotify.plans.v1.CreateApiKeyRequest
+	14, // 33: quotify.plans.v1.AdminService.RevokeApiKey:input_type -> quotify.plans.v1.RevokeApiKeyRequest
+	16, // 34: quotify.plans.v1.AdminService.ResolveApiKey:input_type -> quotify.plans.v1.ResolveApiKeyRequest
+	18, // 35: quotify.plans.v1.AdminService.TouchApiKey:input_type -> quotify.plans.v1.TouchApiKeyRequest
+	20, // 36: quotify.plans.v1.AdminService.SetTenantStatus:input_type -> quotify.plans.v1.SetTenantStatusRequest
+	1,  // 37: quotify.plans.v1.AdminService.CreateAccount:output_type -> quotify.plans.v1.CreateAccountResponse
+	3,  // 38: quotify.plans.v1.AdminService.CreateApp:output_type -> quotify.plans.v1.CreateAppResponse
+	5,  // 39: quotify.plans.v1.AdminService.ListApps:output_type -> quotify.plans.v1.ListAppsResponse
+	7,  // 40: quotify.plans.v1.AdminService.GetTenant:output_type -> quotify.plans.v1.GetTenantResponse
+	9,  // 41: quotify.plans.v1.AdminService.ListTenants:output_type -> quotify.plans.v1.ListTenantsResponse
+	11, // 42: quotify.plans.v1.AdminService.UpdateTenantSettings:output_type -> quotify.plans.v1.UpdateTenantSettingsResponse
+	13, // 43: quotify.plans.v1.AdminService.CreateApiKey:output_type -> quotify.plans.v1.CreateApiKeyResponse
+	15, // 44: quotify.plans.v1.AdminService.RevokeApiKey:output_type -> quotify.plans.v1.RevokeApiKeyResponse
+	17, // 45: quotify.plans.v1.AdminService.ResolveApiKey:output_type -> quotify.plans.v1.ResolveApiKeyResponse
+	19, // 46: quotify.plans.v1.AdminService.TouchApiKey:output_type -> quotify.plans.v1.TouchApiKeyResponse
+	21, // 47: quotify.plans.v1.AdminService.SetTenantStatus:output_type -> quotify.plans.v1.SetTenantStatusResponse
+	37, // [37:48] is the sub-list for method output_type
+	26, // [26:37] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_quotify_plans_v1_admin_proto_init() }
@@ -1243,7 +1499,7 @@ func file_quotify_plans_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_quotify_plans_v1_admin_proto_rawDesc), len(file_quotify_plans_v1_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

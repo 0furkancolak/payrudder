@@ -151,6 +151,8 @@ func setup(t *testing.T) ([]*tenantFx, map[string]string) {
 		var key struct {
 			Plaintext string `json:"plaintext"`
 		}
+		// A live tenant is created inactive and has no keys: activate it the way support does, with a reason.
+		a.must("PUT", "/admin/v1/tenants/"+f.id+"/status", operatorToken, map[string]string{"status": "active", "reason": "chaos"}, nil, 200)
 		a.must("POST", "/admin/v1/tenants/"+f.id+"/api-keys", operatorToken, nil, &key, 201)
 		f.key = key.Plaintext
 		var entitlements []any

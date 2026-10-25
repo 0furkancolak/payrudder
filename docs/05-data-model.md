@@ -60,8 +60,12 @@ CREATE TABLE tenants (                                -- the isolation unit ever
   currency      char(3) NOT NULL,                     -- chosen at creation, immutable (trigger), from the supported list
   timezone      text NOT NULL,                        -- IANA name, chosen at creation, immutable; defines period boundaries
   grace_period  interval NOT NULL CHECK (grace_period BETWEEN '0' AND '7 days'),  -- chosen at creation, mutable, snapshotted per period
+  status        text NOT NULL CHECK (status IN ('inactive','active','suspended')),  -- phase 45: a live tenant starts inactive (no keys, no webhooks, not billed)
+  activated_at  timestamptz,                          -- when the go-live checklist was completed (or an operator activated it)
+  terms_accepted_at timestamptz, terms_accepted_by uuid REFERENCES users(id),
   created_at    timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (account_id, environment)
+  UNIQUE (account_id, environment),
+  CONSTRAINT sandbox_is_always_active CHECK (environment = 'live' OR status = 'active')
 );  -- not RLS'd: operator-only via AdminService (plans_system role)
 
 CREATE TABLE api_keys (
@@ -71,9 +75,12 @@ CREATE TABLE api_keys (
   key_hash    bytea NOT NULL,                       -- sha256(secret)
   env         text NOT NULL CHECK (env IN ('live','test')),  -- must match the tenant: test ↔ sandbox, live ↔ live
   status      text NOT NULL CHECK (status IN ('active','revoked')),
+  scope       text NOT NULL DEFAULT 'full' CHECK (scope IN ('full','ingest','read')),  -- phase 45: ingest = POST /v1/events only, read = GET only
+  last_used_at timestamptz,                         -- written at most once a minute
+  expires_at  timestamptz,                          -- the old key of a rotation: valid until then although not revoked
   created_at  timestamptz NOT NULL DEFAULT now(),
   revoked_at  timestamptz
-);
+);  -- a trigger refuses a key whose env disagrees with its tenant's, and a live key of a tenant that is not active
 CREATE INDEX ON api_keys (tenant_id);
 
 CREATE TABLE customers (

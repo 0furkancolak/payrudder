@@ -2,7 +2,7 @@
 -- duplicate what RLS enforces anyway; they keep the (tenant_id, …) indexes obvious to the planner and to readers.
 
 -- name: CurrentTenant :one
-SELECT id, environment, tier, currency, timezone FROM current_tenant();
+SELECT id, environment, status, tier, currency, timezone FROM current_tenant();
 
 -- name: CreateCustomer :one
 INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address)

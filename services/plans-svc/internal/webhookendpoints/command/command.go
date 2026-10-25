@@ -23,6 +23,7 @@ import (
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/store/sqlc"
+	tenantsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/tenants/query"
 	endpointsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/webhookendpoints/query"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/webhooks"
 )
@@ -83,6 +84,18 @@ func (c *Commands) requireBox() error {
 	return nil
 }
 
+// requireActive refuses an active endpoint on a live tenant that is not active: live webhooks, like live keys, are earned by the go-live checklist.
+func requireActive(ctx context.Context, q *sqlc.Queries) error {
+	t, err := tenantsqry.Current(ctx, q)
+	if err != nil {
+		return err
+	}
+	if t.Environment == "live" && t.Status != domain.StatusActive {
+		return errkey.New(codes.FailedPrecondition, "plans.webhook.tenant_not_active", "this environment is not active: finish the go-live checklist before adding webhook endpoints")
+	}
+	return nil
+}
+
 // CreateEndpoint adds an endpoint and returns it with its signing secret, which is shown this once.
 func (c *Commands) CreateEndpoint(ctx context.Context, req *plansv1.CreateWebhookEndpointRequest) (*plansv1.WebhookEndpoint, error) {
 	if err := c.requireBox(); err != nil {
@@ -103,6 +116,9 @@ func (c *Commands) CreateEndpoint(ctx context.Context, req *plansv1.CreateWebhoo
 	}
 	var out *plansv1.WebhookEndpoint
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+		if err := requireActive(ctx, q); err != nil {
+			return err
+		}
 		n, err := q.CountWebhookEndpoints(ctx)
 		if err != nil {
 			return err
@@ -136,6 +152,11 @@ func (c *Commands) UpdateEndpoint(ctx context.Context, req *plansv1.UpdateWebhoo
 	}
 	var out *plansv1.WebhookEndpoint
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+		if req.GetActive() {
+			if err := requireActive(ctx, q); err != nil {
+				return err
+			}
+		}
 		r, err := q.UpdateWebhookEndpoint(ctx, sqlc.UpdateWebhookEndpointParams{ID: id, Url: req.GetUrl(), Description: req.GetDescription(), EventTypes: types, Active: req.GetActive()})
 		if err != nil {
 			return err

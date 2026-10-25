@@ -82,7 +82,15 @@ func Tenant(t sqlc.Tenant) *plansv1.Tenant {
 		GracePeriod: durationpb.New(Duration(t.GracePeriod)), CreateTime: ts(t.CreatedAt),
 		InvoiceLogoAssetId: logoID(t.InvoiceLogoAssetID), AppId: t.AppID.String(), Address: AddressFromJSON(t.Address),
 		Legal: LegalFromJSON(t.Legal), EInvoiceOn: t.EInvoiceOn, BankTransfer: BankTransferFromJSON(t.BankTransfer),
+		Status: domain.StatusFromDB(t.Status), ActivateTime: tsp(t.ActivatedAt), TermsAcceptTime: tsp(t.TermsAcceptedAt),
 	}
+}
+
+func tsp(t *time.Time) *timestamppb.Timestamp {
+	if t == nil {
+		return nil
+	}
+	return timestamppb.New(*t)
 }
 
 // BankTransferJSON is the stored form of the bank transfer details: a JSON object without the empty parts.
@@ -136,6 +144,7 @@ func APIKey(k sqlc.ApiKey) *plansv1.ApiKey {
 	out := &plansv1.ApiKey{
 		Id: k.ID.String(), TenantId: k.TenantID.String(), Prefix: k.Prefix,
 		Environment: APIKeyEnvironment(k.Env), Status: APIKeyStatus(k.Status), CreateTime: ts(k.CreatedAt),
+		Scope: domain.ScopeFromDB(k.Scope), LastUsedTime: tsp(k.LastUsedAt), ExpireTime: tsp(k.ExpiresAt),
 	}
 	if k.RevokedAt != nil {
 		out.RevokeTime = ts(*k.RevokedAt)

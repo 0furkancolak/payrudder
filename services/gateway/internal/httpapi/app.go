@@ -113,9 +113,23 @@ func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
 	var body struct {
 		Environment string `json:"environment"`
+		// Scope is "full" (the default), "ingest" (events only) or "read" (GET only).
+		Scope string `json:"scope"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, r, err)
+		return
+	}
+	var scope plansv1.ApiKey_Scope
+	switch body.Scope {
+	case "", "full":
+		scope = plansv1.ApiKey_SCOPE_FULL
+	case "ingest":
+		scope = plansv1.ApiKey_SCOPE_INGEST
+	case "read":
+		scope = plansv1.ApiKey_SCOPE_READ
+	default:
+		writeError(w, r, invalid("scope", "full, ingest or read"))
 		return
 	}
 	var env plansv1.Environment
@@ -129,7 +143,7 @@ func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	noStore(w)
-	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: env})
+	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: env, Scope: scope})
 	respond(w, r, http.StatusCreated, resp, err)
 }
 

@@ -4,8 +4,13 @@
 INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING *;
 
 -- name: InsertTenant :one
-INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period, status, activated_at)
+VALUES (@id, @account_id, @app_id, @environment, @name, @tier, @currency, @timezone, @grace_period, @status, CASE WHEN @status::text = 'active' THEN now() END)
+RETURNING *;
+
+-- name: SetTenantStatus :one
+UPDATE tenants SET status = @status::text, activated_at = CASE WHEN @status::text = 'active' THEN COALESCE(activated_at, now()) ELSE activated_at END
+WHERE id = @id
 RETURNING *;
 
 -- name: InsertApp :one
@@ -36,9 +41,22 @@ WHERE id = @id
 RETURNING *;
 
 -- name: InsertApiKey :one
-INSERT INTO api_keys (id, tenant_id, prefix, key_hash, env, status)
-VALUES ($1, $2, $3, $4, $5, 'active')
+INSERT INTO api_keys (id, tenant_id, prefix, key_hash, env, status, scope)
+VALUES (@id, @tenant_id, @prefix, @key_hash, @env, 'active', @scope)
 RETURNING *;
+
+-- The old key of a rotation keeps working until expires_at (never extended: a key that ends sooner stays at the sooner time).
+-- name: ExpireApiKey :one
+UPDATE api_keys SET expires_at = LEAST(COALESCE(expires_at, @expires_at::timestamptz), @expires_at::timestamptz)
+WHERE id = @id AND status = 'active'
+RETURNING *;
+
+-- A use is written at most every few minutes (the gateway throttles), and never moves the time back.
+-- name: TouchApiKey :exec
+UPDATE api_keys SET last_used_at = now() WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute');
+
+-- name: ListTenantApiKeyPrefixes :many
+SELECT prefix FROM api_keys WHERE tenant_id = $1;
 
 -- name: GetApiKey :one
 SELECT * FROM api_keys WHERE id = $1;
@@ -49,7 +67,7 @@ WHERE id = $1
 RETURNING *;
 
 -- name: ResolveApiKey :one
-SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, t.environment, t.tier, t.timezone
+SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.scope, k.expires_at, t.environment, t.status AS tenant_status, t.tier, t.timezone
 FROM api_keys k JOIN tenants t ON t.id = k.tenant_id
 WHERE k.prefix = $1;
 

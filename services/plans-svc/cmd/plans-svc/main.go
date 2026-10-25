@@ -37,6 +37,9 @@ import (
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	_ "github.com/0furkancolak/quotify/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/golive"
+	golivecmd "github.com/0furkancolak/quotify/services/plans-svc/internal/golive/command"
+	goliveqry "github.com/0furkancolak/quotify/services/plans-svc/internal/golive/query"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/grpcapi"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity"
 	identitycmd "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/command"
@@ -269,7 +272,8 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, cfg.WebhookAllowPrivate))
 	adminSrv := admin.New(systemPool, evictor, cfg.AllowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log).WithPepper(cfg.OTPPepper), identityqry.New(systemPool)))
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv, adminSrv, usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log).WithPepper(cfg.OTPPepper), identityqry.New(systemPool),
+		golive.New(golivecmd.New(systemPool, log), goliveqry.New(systemPool))))
 	return srv, grpcHealth, box, nil
 }
 

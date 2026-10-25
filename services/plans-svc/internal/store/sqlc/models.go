@@ -40,14 +40,17 @@ type AccountMember struct {
 }
 
 type ApiKey struct {
-	ID        uuid.UUID
-	TenantID  uuid.UUID
-	Prefix    string
-	KeyHash   []byte
-	Env       string
-	Status    string
-	CreatedAt time.Time
-	RevokedAt *time.Time
+	ID         uuid.UUID
+	TenantID   uuid.UUID
+	Prefix     string
+	KeyHash    []byte
+	Env        string
+	Status     string
+	CreatedAt  time.Time
+	RevokedAt  *time.Time
+	Scope      string
+	LastUsedAt *time.Time
+	ExpiresAt  *time.Time
 }
 
 type App struct {
@@ -274,6 +277,10 @@ type Tenant struct {
 	BankTransfer       json.RawMessage
 	Legal              json.RawMessage
 	EInvoiceOn         string
+	Status             string
+	ActivatedAt        *time.Time
+	TermsAcceptedAt    *time.Time
+	TermsAcceptedBy    *uuid.UUID
 }
 
 type TenantMailSetting struct {

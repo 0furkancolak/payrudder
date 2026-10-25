@@ -210,6 +210,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 	if err != nil {
 		return nil, err
 	}
+	authn.WithToucher(auth.AdminToucher{Client: adminClient})
 	limiter, err := ratelimit.NewLimiter(rdb, cfg.Replicas, log)
 	if err != nil {
 		return nil, err

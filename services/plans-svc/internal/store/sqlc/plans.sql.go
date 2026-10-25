@@ -113,12 +113,13 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 
 const currentTenant = `-- name: CurrentTenant :one
 
-SELECT id, environment, tier, currency, timezone FROM current_tenant()
+SELECT id, environment, status, tier, currency, timezone FROM current_tenant()
 `
 
 type CurrentTenantRow struct {
 	ID          uuid.UUID
 	Environment string
+	Status      string
 	Tier        string
 	Currency    string
 	Timezone    string
@@ -132,6 +133,7 @@ func (q *Queries) CurrentTenant(ctx context.Context) (CurrentTenantRow, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Environment,
+		&i.Status,
 		&i.Tier,
 		&i.Currency,
 		&i.Timezone,

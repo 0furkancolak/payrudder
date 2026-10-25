@@ -196,6 +196,10 @@ func (s *Server) wrap(rt Route) http.Handler {
 				writeError(w, r, err)
 				return
 			}
+			if !scopeAllows(p.Scope, rt.Method, rt.Path) {
+				writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.scope_denied", "this API key's scope does not allow this request"))
+				return
+			}
 			if rt.Access == AccessSandbox && p.Tenant.Environment != tenant.EnvSandbox {
 				writeError(w, r, status.Error(codes.PermissionDenied, "sandbox endpoints require a qk_test_ key"))
 				return
@@ -265,10 +269,24 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	switch {
 	case errors.Is(err, auth.ErrUnavailable):
 		return p, status.Error(codes.Unavailable, "authentication temporarily unavailable")
+	case errors.Is(err, auth.ErrSuspended):
+		return p, errkey.New(codes.PermissionDenied, "gateway.auth.tenant_not_active", "this environment is suspended or not active yet: contact support")
 	case err != nil:
 		return p, status.Error(codes.Unauthenticated, "invalid api key")
 	}
 	return p, nil
+}
+
+// scopeAllows reports whether an API key of the scope may call the route: an ingest key only sends events, a read key only reads. Callers that are not
+// API keys carry no scope and are not limited here.
+func scopeAllows(scope, method, path string) bool {
+	switch scope {
+	case auth.ScopeIngest:
+		return method == http.MethodPost && path == "/v1/events"
+	case auth.ScopeRead:
+		return method == http.MethodGet || method == http.MethodHead
+	}
+	return true
 }
 
 // actAs resolves the tenant an operator acts as.

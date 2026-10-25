@@ -49,8 +49,9 @@ type AppFactory interface {
 
 // KeyAdmin issues and revokes API keys without the operator check (admin.Server); this package does the membership check first.
 type KeyAdmin interface {
-	IssueAPIKey(ctx context.Context, tenantID uuid.UUID) (*plansv1.ApiKey, string, error)
+	IssueAPIKey(ctx context.Context, tenantID uuid.UUID, scope string) (*plansv1.ApiKey, string, error)
 	RevokeKey(ctx context.Context, id uuid.UUID) (*plansv1.ApiKey, error)
+	ExpireKey(ctx context.Context, id uuid.UUID, until time.Time) (*plansv1.ApiKey, error)
 }
 
 // Commands changes people.
@@ -411,8 +412,73 @@ func (c *Commands) CreateAPIKey(ctx context.Context, req *plansv1.CreateMyApiKey
 	if active >= MaxActiveKeysPerTenant {
 		return nil, "", errkey.Newf(codes.ResourceExhausted, "identity.api_key.quota", "at most %d active keys per environment: revoke one first", MaxActiveKeysPerTenant)
 	}
+	scope, ok := domain.ScopeToDB(req.GetScope())
+	if !ok {
+		return nil, "", errkey.New(codes.InvalidArgument, "identity.api_key.bad_scope", "scope: full, ingest or read")
+	}
 	tid, _ := uuid.Parse(target.GetId())
-	return c.keys.IssueAPIKey(ctx, tid)
+	return c.keys.IssueAPIKey(ctx, tid, scope)
+}
+
+// Rotation overlap: the old key of a rotation keeps working for 24 hours unless the caller says otherwise, and for at most a week.
+const (
+	DefaultOverlap = 24 * time.Hour
+	MaxOverlap     = 7 * 24 * time.Hour
+)
+
+// RotateAPIKey issues a replacement with the same scope and lets the old key end after the overlap window, so a deployment can switch keys without a gap.
+// A key that is revoked, or already ending, cannot be rotated. The plaintext of the replacement is returned once.
+func (c *Commands) RotateAPIKey(ctx context.Context, req *plansv1.RotateMyApiKeyRequest) (fresh *plansv1.ApiKey, plaintext string, previous *plansv1.ApiKey, err error) {
+	overlap := DefaultOverlap
+	if req.GetOverlap() != nil {
+		overlap = req.GetOverlap().AsDuration()
+	}
+	if overlap < 0 || overlap > MaxOverlap {
+		return nil, "", nil, errkey.New(codes.InvalidArgument, "identity.api_key.bad_overlap", "overlap: between 0 and 7 days")
+	}
+	db := sqlc.New(c.pool)
+	app, err := c.manageableApp(ctx, db, req.GetUserId(), req.GetAppId())
+	if err != nil {
+		return nil, "", nil, err
+	}
+	keys, err := query.KeysOf(ctx, db, app)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	var old *plansv1.ApiKey
+	for _, k := range keys {
+		if k.GetId() == req.GetApiKeyId() {
+			old = k
+		}
+	}
+	if old == nil {
+		return nil, "", nil, query.NotFound("api_key")
+	}
+	if old.GetStatus() != plansv1.ApiKey_STATUS_ACTIVE {
+		return nil, "", nil, errkey.New(codes.FailedPrecondition, "identity.api_key.not_active", "this key is revoked")
+	}
+	if old.GetExpireTime() != nil {
+		return nil, "", nil, errkey.New(codes.FailedPrecondition, "identity.api_key.already_rotating", "this key already ends: it was rotated")
+	}
+	scope, _ := domain.ScopeToDB(old.GetScope())
+	tid, _ := uuid.Parse(old.GetTenantId())
+	oldID, _ := uuid.Parse(old.GetId())
+	fresh, plaintext, err = c.keys.IssueAPIKey(ctx, tid, scope)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	previous, err = c.keys.ExpireKey(ctx, oldID, c.now().Add(overlap))
+	if err != nil {
+		// Two valid keys and one plaintext nobody saw: take the new one back rather than leave a key no one holds.
+		if id, perr := uuid.Parse(fresh.GetId()); perr == nil {
+			if _, rerr := c.keys.RevokeKey(ctx, id); rerr != nil {
+				c.log.ErrorContext(ctx, "rotation: new key not revoked after the old one could not be ended", "api_key_id", fresh.GetId(), "err", rerr)
+			}
+		}
+		return nil, "", nil, err
+	}
+	c.log.InfoContext(ctx, "api key rotated", "user_id", req.GetUserId(), "old_api_key_id", old.GetId(), "new_api_key_id", fresh.GetId(), "overlap", overlap)
+	return fresh, plaintext, previous, nil
 }
 
 // RevokeAPIKey revokes a key of the app; a key of any other app is "not found".

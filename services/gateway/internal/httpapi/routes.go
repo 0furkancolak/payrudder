@@ -26,6 +26,7 @@ func (s *Server) routes() []Route {
 		s.assetRoutes(),
 		s.billingReadRoutes(),
 		s.appRoutes(),
+		s.goLiveRoutes(),
 		s.memberRoutes(),
 		s.operatorProviderRoutes(),
 		s.operatorAdminRoutes(),
@@ -578,7 +579,13 @@ func (s *Server) updateTenant(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) createAPIKey(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Admin.CreateApiKey(r.Context(), &plansv1.CreateApiKeyRequest{TenantId: r.PathValue("id")})
+	req := &plansv1.CreateApiKeyRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.TenantId = r.PathValue("id")
+	resp, err := s.d.Admin.CreateApiKey(r.Context(), req)
 	respond(w, r, http.StatusCreated, resp, err)
 }
 

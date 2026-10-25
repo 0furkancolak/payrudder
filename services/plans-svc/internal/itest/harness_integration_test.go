@@ -27,6 +27,9 @@ import (
 	"github.com/0furkancolak/quotify/pkg/tenant"
 	"github.com/0furkancolak/quotify/pkg/testkit"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/admin"
+	"github.com/0furkancolak/quotify/services/plans-svc/internal/golive"
+	golivecmd "github.com/0furkancolak/quotify/services/plans-svc/internal/golive/command"
+	goliveqry "github.com/0furkancolak/quotify/services/plans-svc/internal/golive/query"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/grpcapi"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/identity"
 	identitycmd "github.com/0furkancolak/quotify/services/plans-svc/internal/identity/command"
@@ -154,7 +157,8 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	adminSrv := admin.New(system, ev, allowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	mail := &recordingMail{}
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, mail, testAppURL, log).WithPepper(testPepper), identityqry.New(system)))
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv, adminSrv, mail, testAppURL, log).WithPepper(testPepper), identityqry.New(system),
+		golive.New(golivecmd.New(system, log), goliveqry.New(system))))
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -176,8 +180,19 @@ func as(tenantID string) context.Context {
 	return metadata.AppendToOutgoingContext(context.Background(), tenant.MDTenantID, tenantID)
 }
 
-// account creates an account and returns its tenants by environment.
+// account creates an account and returns its tenants by environment, the live one already activated (an operator's decision, as in support): most
+// tests are about what a working live tenant does. inactiveAccount keeps the live tenant as it is created.
 func (e *env) account(t *testing.T, name string) map[plansv1.Environment]*plansv1.Tenant {
+	t.Helper()
+	out := e.inactiveAccount(t, name)
+	if live := out[plansv1.Environment_ENVIRONMENT_LIVE]; live != nil {
+		out[plansv1.Environment_ENVIRONMENT_LIVE] = e.activate(t, live.GetId())
+	}
+	return out
+}
+
+// inactiveAccount creates an account whose live tenant is inactive, as every new one is.
+func (e *env) inactiveAccount(t *testing.T, name string) map[plansv1.Environment]*plansv1.Tenant {
 	t.Helper()
 	resp, err := e.admin.CreateAccount(operator(), &plansv1.CreateAccountRequest{
 		Name: name, Currency: "TRY", Timezone: "Europe/Istanbul", GracePeriod: durationpb.New(24 * time.Hour),
@@ -191,4 +206,14 @@ func (e *env) account(t *testing.T, name string) map[plansv1.Environment]*plansv
 		out[tn.GetEnvironment()] = tn
 	}
 	return out
+}
+
+// activate makes a live tenant active without its checklist, the way an operator does.
+func (e *env) activate(t *testing.T, tenantID string) *plansv1.Tenant {
+	t.Helper()
+	resp, err := e.admin.SetTenantStatus(operator(), &plansv1.SetTenantStatusRequest{TenantId: tenantID, Status: plansv1.TenantStatus_TENANT_STATUS_ACTIVE, Reason: "itest"})
+	if err != nil {
+		t.Fatalf("SetTenantStatus: %v", err)
+	}
+	return resp.GetTenant()
 }
