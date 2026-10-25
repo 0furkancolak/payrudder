@@ -191,7 +191,8 @@ test.describe("the organisation", () => {
     await expect(org.getByTestId("kpi-org-revenue-value")).toContainText("€");
     await org.getByText("7 days", { exact: true }).click();
     await expect.poll(() => gw.called("GET", `/app/v1/apps/${APP}/dashboard`).some((c) => c.query.get("period") === "7d")).toBe(true);
-    await org.getByRole("radio", { name: "Sandbox" }).check({ force: true });
+    // The environment switch is in the header of the frame now (it is on every page), not in the dashboard.
+    await page.getByTestId("env-switch").getByRole("radio", { name: "Sandbox" }).check({ force: true });
     await expect.poll(() => gw.called("GET", `/app/v1/apps/${APP}/dashboard`).some((c) => c.query.get("environment") === "sandbox")).toBe(true);
     // The apps themselves are still listed below the totals.
     await expect(page.getByRole("link", { name: "Web shop" }).first()).toBeVisible();

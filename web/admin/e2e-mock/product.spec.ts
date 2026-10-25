@@ -109,7 +109,8 @@ test.describe("organisation home", () => {
     await expect(card).toContainText("Failed payments: 9");
     await shoot(page, "05-home");
     await card.click();
-    await page.waitForURL(`**/app/apps/${APP}`);
+    // The card opens the app in the environment the home is showing, and says so in the address.
+    await page.waitForURL(`**/app/apps/${APP}?env=live`);
   });
 });
 
@@ -137,9 +138,9 @@ test.describe("app dashboard", () => {
     await gw.install(page);
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}`);
-    await expect(page.getByRole("note")).toHaveCount(0);
+    await expect(page.getByTestId("sandbox-banner")).toHaveCount(0);
     await page.getByTestId("env-switch").getByRole("radio", { name: "Sandbox" }).check({ force: true });
-    await expect(page.getByRole("note")).toContainText("Nothing here is real money");
+    await expect(page.getByTestId("sandbox-banner")).toContainText("Nothing here is real money");
     await expect(page).toHaveURL(/env=sandbox/);
     await expect.poll(() => gw.called("GET", `/app/v1/apps/${APP}/dashboard`).some((c) => c.query.get("environment") === "sandbox")).toBe(true);
   });
@@ -172,7 +173,7 @@ test.describe("app dashboard", () => {
     await reveal.getByRole("button", { name: "Copy" }).click();
     await expect(reveal.getByRole("button", { name: "Copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("qk_live_newkey99_SECRETSECRETSECRETSECRET");
-    expect(gw.called("POST", `/app/v1/apps/${APP}/api-keys`)[0]?.body).toEqual({ environment: "live" });
+    expect(gw.called("POST", `/app/v1/apps/${APP}/api-keys`)[0]?.body).toEqual({ environment: "live", scope: "full" });
     await reveal.getByRole("button", { name: "I have saved it" }).click();
     // The secret is gone for good: the list holds the prefix only.
     await expect(page.getByText("SECRETSECRET")).toHaveCount(0);

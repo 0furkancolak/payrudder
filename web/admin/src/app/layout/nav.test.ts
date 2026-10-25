@@ -21,6 +21,12 @@ describe("buildNav", () => {
     expect(to("invoices")).toBe("/app/t/T/invoices");
     expect(to("payments")).toBe("/app/t/T/payments");
     expect(to("apiKeys")).toBe("/app/apps/A/keys");
+    // Going live and the sandbox tools are pages of the app; their links keep the environment the person is in.
+    expect(to("goLive")).toBe("/app/apps/A/go-live");
+    expect(to("sandbox")).toBe("/app/apps/A/sandbox");
+    expect(flat.find((i) => i.key === "goLive")?.search).toEqual({ env: "sandbox" });
+    expect(flat.find((i) => i.key === "sandbox")?.search).toEqual({ env: "sandbox" });
+    expect(flat.find((i) => i.key === "apiKeys")?.search).toEqual({ env: "sandbox" });
     expect(to("appSettings")).toBe("/app/apps/A/settings");
     // Operator-only pages are not offered to a person.
     for (const k of ["providers", "einvoice", "address", "apps"]) expect(keys(nav)).not.toContain(k);
@@ -33,7 +39,7 @@ describe("buildNav", () => {
 
   it("a page that has no route is not listed", () => {
     const nav = buildNav({ level: "app", appId: "A", tenantId: "T" }, new Set(["customers"]));
-    expect(keys(nav)).toEqual(["dashboard", "customers", "apiKeys", "appSettings"]);
+    expect(keys(nav)).toEqual(["dashboard", "goLive", "customers", "apiKeys", "sandbox", "appSettings"]);
   });
 
   it("the operator sees the platform, and a tenant with the operator-only pages too", () => {
