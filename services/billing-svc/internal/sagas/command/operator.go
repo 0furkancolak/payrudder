@@ -30,7 +30,7 @@ func Void(ctx context.Context, system *pgxpool.Pool, eng *Engine, tenantID, invo
 func sagaOf(ctx context.Context, tx pgx.Tx, tid, invoiceID uuid.UUID) (uuid.UUID, error) {
 	id, err := sqlc.New(tx).GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tid, InvoiceID: invoiceID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, errkey.New(codes.NotFound, "billing.saga.not_found", "invoice has no saga (it is not finalized)")
+		return uuid.Nil, query.ErrNoSaga
 	}
 	return id, err
 }

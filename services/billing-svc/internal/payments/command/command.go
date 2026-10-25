@@ -18,6 +18,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -111,7 +112,7 @@ func record(ctx context.Context, tx pgx.Tx, eng *sagacommand.Engine, in Payment,
 			if prev.AmountMinor != in.AmountMinor {
 				return Result{}, errkey.New(codes.FailedPrecondition, "billing.payment.reference_reused", "that reference was recorded before with another amount")
 			}
-			return Result{Payment: sqlc.ListInvoicePaymentsRow(prev), Duplicate: true, Paid: paid, Outstanding: max(inv.TotalMinor-paid, 0), Settled: inv.Status == "paid"}, nil
+			return Result{Payment: sqlc.ListInvoicePaymentsRow(prev), Duplicate: true, Paid: paid, Outstanding: max(inv.TotalMinor-paid, 0), Settled: inv.Status == invmodel.StatusPaid}, nil
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return Result{}, err
@@ -153,9 +154,9 @@ func record(ctx context.Context, tx pgx.Tx, eng *sagacommand.Engine, in Payment,
 // checkPayable refuses a payment the invoice cannot take, and returns the saga to settle.
 func checkPayable(ctx context.Context, q *sqlc.Queries, in Payment, inv sqlc.LockInvoiceForPaymentRow, paid int64) (uuid.UUID, error) {
 	switch inv.Status {
-	case "paid":
+	case invmodel.StatusPaid:
 		return uuid.Nil, errkey.New(codes.FailedPrecondition, "billing.payment.already_paid", "the invoice is paid")
-	case "open", "uncollectible":
+	case invmodel.StatusOpen, invmodel.StatusUncollectible:
 	default:
 		return uuid.Nil, errkey.Newf(codes.FailedPrecondition, "billing.payment.invoice_not_payable", "a %s invoice takes no payment", inv.Status)
 	}

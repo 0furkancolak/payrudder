@@ -14,6 +14,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
@@ -101,7 +102,7 @@ func (b *Backend) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 		q := b.q.WithTx(tx)
 		// plan_version_id has no meaning for a payment link: the nil id says so.
 		if _, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
-			TenantID: tenantID, ID: id, CustomerID: customerID, PeriodID: period.PeriodOf(b.cfg.Now(), loc), Kind: "LINK", PlanVersionID: uuid.Nil, Currency: currency,
+			TenantID: tenantID, ID: id, CustomerID: customerID, PeriodID: period.PeriodOf(b.cfg.Now(), loc), Kind: invmodel.KindLink, PlanVersionID: uuid.Nil, Currency: currency,
 			SubtotalMinor: total, TotalMinor: total, Snapshot: body, Provider: "", Country: store.NilIfEmpty(country),
 		}); err != nil {
 			return err

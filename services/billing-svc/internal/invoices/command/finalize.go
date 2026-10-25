@@ -9,6 +9,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
@@ -23,7 +24,7 @@ func (c *Commands) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) 
 		if err != nil {
 			return err
 		}
-		if inv.Status != "draft" {
+		if inv.Status != invmodel.StatusDraft {
 			return nil
 		}
 		now := c.cfg.Now()
@@ -46,7 +47,7 @@ func (c *Commands) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) 
 			return err
 		}
 		if err := tenantevents.Write(ctx, tx, tenantID, tenantevents.EventInvoiceFinalized, invoiceID.String(), now,
-			tenantevents.InvoiceData(invoiceID, inv.CustomerID, inv.CustomerExternalID, number, inv.PeriodID, inv.Currency, inv.TotalMinor, "open")); err != nil {
+			tenantevents.InvoiceData(invoiceID, inv.CustomerID, inv.CustomerExternalID, number, inv.PeriodID, inv.Currency, inv.TotalMinor, invmodel.StatusOpen)); err != nil {
 			return err
 		}
 		sagaID, err := c.cfg.Engine.Start(ctx, tx, tenantID, invoiceID)

@@ -83,8 +83,8 @@ type Config struct {
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	errs = append(errs, c.CheckMigration())
-	if len(c.DunningLive) != sagacommand.MaxDunning || len(c.DunningSandbox) != sagacommand.MaxDunning {
-		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", sagacommand.MaxDunning))
+	if len(c.DunningLive) != sagacommand.DefaultDunningAttempts || len(c.DunningSandbox) != sagacommand.DefaultDunningAttempts {
+		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", sagacommand.DefaultDunningAttempts))
 	}
 	if c.TransferPoll < time.Minute {
 		errs = append(errs, errors.New("PAYRUDDER_TRANSFER_POLL must be at least 1m"))

@@ -14,6 +14,7 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -39,7 +40,7 @@ func (e *Engine) invoiceSnapshot(s *saga, lines []sqlc.ListInvoiceLinesForSnapsh
 	for _, l := range lines {
 		ls := &commandsv1.InvoiceLineSnapshot{LineNo: l.LineNo, Kind: l.Kind, Description: l.Description, AmountMinor: l.AmountMinor}
 		if l.Quantity != "" && l.QuantityScale != nil {
-			if units, err := parseUnits(l.Quantity); err == nil {
+			if units, err := rating.StoredUnits(l.Quantity); err == nil {
 				ls.Quantity = quantity.FormatUnits(units, int(*l.QuantityScale))
 			}
 		}
@@ -53,12 +54,6 @@ func (e *Engine) invoiceSnapshot(s *saga, lines []sqlc.ListInvoiceLinesForSnapsh
 	}
 	snap.SubtotalMinor = sub
 	return snap
-}
-
-func parseUnits(s string) (int64, error) {
-	var v int64
-	_, err := fmt.Sscan(s, &v)
-	return v, err
 }
 
 // SweepResult counts what a sweep did.
@@ -245,7 +240,7 @@ func (e *Engine) Start(ctx context.Context, tx pgx.Tx, tenantID, invoiceID uuid.
 	return sagaID, nil
 }
 
-// ReplyEvents maps a worker reply to the saga event it triggers.
+// ReplyEvent maps a worker reply to the saga event it triggers.
 func ReplyEvent(r *commandsv1.ReplyEnvelope) (model.Event, string, bool) {
 	switch x := r.GetReply().(type) {
 	case *commandsv1.ReplyEnvelope_PdfRendered:

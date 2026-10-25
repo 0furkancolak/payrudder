@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -99,14 +100,6 @@ func Dashboard(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, fromD
 		})
 		out = append(out, *c)
 	}
-	slices.SortFunc(out, func(a, b DashboardCurrency) int {
-		switch {
-		case a.Currency < b.Currency:
-			return -1
-		case a.Currency > b.Currency:
-			return 1
-		}
-		return 0
-	})
+	slices.SortFunc(out, func(a, b DashboardCurrency) int { return strings.Compare(a.Currency, b.Currency) })
 	return out, recent, nil
 }

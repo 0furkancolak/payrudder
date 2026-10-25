@@ -32,24 +32,6 @@ FROM invoice_lines WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id ORD
 -- name: GetInvoicePDFKey :one
 SELECT pdf_object_key FROM invoices WHERE id = @id;
 
--- name: GetInvoiceStatus :one
-SELECT status FROM invoices WHERE id = @id;
-
--- name: InvoiceExists :one
-SELECT EXISTS (SELECT 1 FROM invoices WHERE id = @id);
-
--- name: GetInvoiceHostedFields :one
-SELECT COALESCE(snapshot->>'tenant_name', '')::text AS seller_name, COALESCE(snapshot->>'customer_name', '')::text AS customer_name,
-       COALESCE((snapshot->>'currency_exponent')::int, 2)::int AS currency_exponent
-FROM invoices WHERE id = @id;
-
--- name: GetInvoiceAddresses :one
-SELECT COALESCE(snapshot->'seller_address', '[]'::jsonb)::jsonb AS seller_address, COALESCE(snapshot->'customer_address', '[]'::jsonb)::jsonb AS customer_address
-FROM invoices WHERE id = @id;
-
--- name: GetInvoiceBankTransfer :one
-SELECT COALESCE(number, '')::text AS number, COALESCE(snapshot->'bank_transfer', 'null'::jsonb)::jsonb AS bank_transfer FROM invoices WHERE id = @id;
-
 -- name: GetInvoiceCustomerExternalID :one
 SELECT COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id FROM invoices WHERE tenant_id = @tenant_id AND id = @id;
 

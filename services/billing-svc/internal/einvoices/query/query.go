@@ -15,12 +15,11 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
+	einvoicemodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/model"
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
-
-var errNotFound = errkey.New(codes.NotFound, "einvoice.document.not_found", "e-document not found")
 
 // Get reads one e-document of a tenant.
 func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.GetEInvoiceDocumentRow, error) {
@@ -31,7 +30,7 @@ func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.G
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return out, errNotFound
+		return out, einvoicemodel.ErrNotFound
 	}
 	if err != nil {
 		return out, apierr.Internal(ctx, err)
@@ -126,7 +125,7 @@ func FileURL(ctx context.Context, app *pgxpool.Pool, signer invoicequery.PDFSign
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", time.Time{}, errNotFound
+		return "", time.Time{}, einvoicemodel.ErrNotFound
 	}
 	if err != nil {
 		return "", time.Time{}, apierr.Internal(ctx, err)

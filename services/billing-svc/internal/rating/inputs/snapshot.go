@@ -11,6 +11,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/address"
 	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
 	"github.com/0furkancolak/payrudder/pkg/payments/providers"
+	einvoicemodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/model"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 )
 
@@ -66,14 +67,11 @@ func AddressLines(a *plansv1.Address) []string {
 	return address.Lines(a.GetLine1(), a.GetLine2(), a.GetCity(), a.GetRegion(), a.GetPostalCode(), a.GetCountry())
 }
 
-// EInvoiceEnabled reports whether the tenant's e_invoice_on setting asks for e-invoices at all.
-func EInvoiceEnabled(on string) bool { return on != "" && on != "off" }
-
 // EInvoiceSnapshot adds to a snapshot what an e-invoice needs about the seller and the buyer, as the tenant and the customer are now. With the setting off
 // nothing is stored, so invoices of tenants that do not use e-invoicing keep their small snapshots.
 func EInvoiceSnapshot(s *sagamodel.Snapshot, t *plansv1.Tenant, cu *plansv1.Customer) {
 	on := t.GetEInvoiceOn()
-	if !EInvoiceEnabled(on) {
+	if !einvoicemodel.Enabled(on) {
 		return
 	}
 	s.EInvoiceOn = on

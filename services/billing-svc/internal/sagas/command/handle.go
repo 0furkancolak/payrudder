@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
@@ -38,7 +39,7 @@ func (e *Engine) Handle(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UU
 }
 
 func (e *Engine) guardCtx(s *saga) model.Ctx {
-	return model.Ctx{TotalMinor: s.TotalMinor, CreditedMinor: s.CreditedMinor, Paid: s.InvoiceStatus == "paid", DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)),
+	return model.Ctx{TotalMinor: s.TotalMinor, CreditedMinor: s.CreditedMinor, Paid: s.InvoiceStatus == invmodel.StatusPaid, DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)),
 		ProviderMails: s.Snap.ProviderMails || s.Snap.SkipMail, Link: s.Snap.Collection == model.CollectionLink}
 }
 

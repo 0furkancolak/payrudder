@@ -52,7 +52,7 @@ func (c *Commands) einvoiceCreditNote(ctx context.Context, tx pgx.Tx, tenantID u
 	if err != nil {
 		return err
 	}
-	if on == "" || on == "off" {
+	if !einvoicemodel.Enabled(on) {
 		return nil
 	}
 	_, err = einvoicecmd.Enqueue(ctx, tx, c.cfg.Now(), tenantID, environment, einvoicemodel.KindCreditNote, cn.InvoiceID, &cn.ID, cn.Number, cmd)

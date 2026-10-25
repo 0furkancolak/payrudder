@@ -21,6 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -113,13 +114,6 @@ func parseDay(s string, now time.Time) (time.Time, error) {
 	return d, nil
 }
 
-func (c *checked) untilPtr() *time.Time {
-	if c.until.IsZero() {
-		return nil
-	}
-	return &c.until
-}
-
 // Create records an expense.
 func Create(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, in *Input) (*model.Expense, error) {
 	c, err := in.check(time.Now())
@@ -127,7 +121,7 @@ func Create(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, in *Inpu
 		return nil, err
 	}
 	e := &model.Expense{ID: uuid.New(), AppID: c.app, Vendor: c.vendor, Category: in.Category, AmountMinor: in.AmountMinor, Currency: in.Currency, IncurredOn: c.incurredOn,
-		Note: c.note, Recurring: c.recurring, RecurringUntil: c.untilPtr()}
+		Note: c.note, Recurring: c.recurring, RecurringUntil: store.NilIfZero(c.until)}
 	err = pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		row, err := sqlc.New(tx).InsertExpense(ctx, sqlc.InsertExpenseParams{TenantID: tenantID, ID: e.ID, AppID: c.app, Vendor: c.vendor, Category: in.Category,
 			AmountMinor: in.AmountMinor, Currency: in.Currency, IncurredOn: model.ToPG(c.incurredOn), Note: c.note, Recurring: c.recurring, RecurringUntil: model.ToPG(c.until)})

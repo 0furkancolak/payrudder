@@ -44,7 +44,7 @@ type ListParams struct {
 	PageToken          string
 }
 
-// Page is a page of payment links; NextPageToken is empty on the last one.
+// LinkPage is a page of payment links; NextPageToken is empty on the last one.
 type LinkPage struct {
 	Links         []sqlc.ListPaymentLinksRow
 	NextPageToken string

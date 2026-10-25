@@ -13,6 +13,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
+	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/model"
@@ -134,7 +135,7 @@ func (c *Commands) record(ctx context.Context, job *model.Job, customer uuid.UUI
 		}
 		id := uuid.New()
 		_, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
-			TenantID: job.TenantID, ID: id, CustomerID: customer, PeriodID: job.PeriodID, Kind: "CORRECTION", PlanVersionID: job.PlanVersionID, Currency: currency,
+			TenantID: job.TenantID, ID: id, CustomerID: customer, PeriodID: job.PeriodID, Kind: invmodel.KindCorrection, PlanVersionID: job.PlanVersionID, Currency: currency,
 			SubtotalMinor: total, TotalMinor: total, Snapshot: snapshot, ReratingJobID: &job.ID,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {

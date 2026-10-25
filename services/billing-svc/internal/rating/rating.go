@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/cockroachdb/apd/v3"
@@ -95,7 +97,8 @@ type Line struct {
 // ErrOverflow means an amount does not fit an int64 number of minor units.
 var ErrOverflow = errors.New("rating: amount overflows int64 minor units")
 
-var ctx = apd.Context{
+// decCtx is the arithmetic of rating: 120 digits, round half to even.
+var decCtx = apd.Context{
 	Precision:   120,
 	MaxExponent: apd.MaxExponent,
 	MinExponent: apd.MinExponent,
@@ -113,7 +116,7 @@ func exact(p Price, qty *apd.Decimal) (*apd.Decimal, error) {
 	switch p.Model {
 	case PerUnit:
 		var out apd.Decimal
-		if _, err := ctx.Mul(&out, qty, p.UnitPrice); err != nil {
+		if _, err := decCtx.Mul(&out, qty, p.UnitPrice); err != nil {
 			return nil, err
 		}
 		return &out, nil
@@ -127,17 +130,17 @@ func exact(p Price, qty *apd.Decimal) (*apd.Decimal, error) {
 			}
 			if upper.Cmp(prev) > 0 {
 				var inTier, amount apd.Decimal
-				if _, err := ctx.Sub(&inTier, upper, prev); err != nil {
+				if _, err := decCtx.Sub(&inTier, upper, prev); err != nil {
 					return nil, err
 				}
-				if _, err := ctx.Mul(&amount, &inTier, t.UnitPrice); err != nil {
+				if _, err := decCtx.Mul(&amount, &inTier, t.UnitPrice); err != nil {
 					return nil, err
 				}
-				if _, err := ctx.Add(total, total, &amount); err != nil {
+				if _, err := decCtx.Add(total, total, &amount); err != nil {
 					return nil, err
 				}
 				if t.FlatFeeMinor != 0 {
-					if _, err := ctx.Add(total, total, apd.New(t.FlatFeeMinor, 0)); err != nil {
+					if _, err := decCtx.Add(total, total, apd.New(t.FlatFeeMinor, 0)); err != nil {
 						return nil, err
 					}
 				}
@@ -153,14 +156,14 @@ func exact(p Price, qty *apd.Decimal) (*apd.Decimal, error) {
 			return nil, errors.New("rating: package size must be positive")
 		}
 		var packs apd.Decimal
-		if _, err := ctx.Quo(&packs, qty, p.PackageSize); err != nil {
+		if _, err := decCtx.Quo(&packs, qty, p.PackageSize); err != nil {
 			return nil, err
 		}
-		if _, err := ctx.Ceil(&packs, &packs); err != nil {
+		if _, err := decCtx.Ceil(&packs, &packs); err != nil {
 			return nil, err
 		}
 		var out apd.Decimal
-		if _, err := ctx.Mul(&out, &packs, apd.New(p.PackagePriceMinor, 0)); err != nil {
+		if _, err := decCtx.Mul(&out, &packs, apd.New(p.PackagePriceMinor, 0)); err != nil {
 			return nil, err
 		}
 		return &out, nil
@@ -175,7 +178,7 @@ func Amount(p Price, qty *apd.Decimal) (int64, error) {
 		return 0, err
 	}
 	var r apd.Decimal
-	if _, err := ctx.Quantize(&r, e, 0); err != nil {
+	if _, err := decCtx.Quantize(&r, e, 0); err != nil {
 		return 0, err
 	}
 	v, err := r.Int64()
@@ -189,7 +192,7 @@ func Amount(p Price, qty *apd.Decimal) (int64, error) {
 // it differ from pricing the late quantity alone.
 func Incremental(p Price, base, late *apd.Decimal) (int64, error) {
 	var sum apd.Decimal
-	if _, err := ctx.Add(&sum, base, late); err != nil {
+	if _, err := decCtx.Add(&sum, base, late); err != nil {
 		return 0, err
 	}
 	hi, err := Amount(p, &sum)
@@ -243,11 +246,7 @@ func RateUsage(pv PlanVersion, usage []Usage) ([]Line, error) {
 }
 
 func sortUsage(u []Usage) {
-	for i := 1; i < len(u); i++ {
-		for j := i; j > 0 && u[j].MeterCode < u[j-1].MeterCode; j-- {
-			u[j], u[j-1] = u[j-1], u[j]
-		}
-	}
+	slices.SortStableFunc(u, func(a, b Usage) int { return strings.Compare(a.MeterCode, b.MeterCode) })
 }
 
 // LateLine prices late quantity `late` of an origin period incrementally on top of what that period (and earlier late
