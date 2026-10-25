@@ -3,6 +3,7 @@ import { useQueries } from "@tanstack/vue-query";
 import { Link } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { POLL } from "@/shared/api/limits";
 import { todayYmd } from "@/shared/lib/dates";
 import { useFormat } from "@/shared/lib/format";
 import { type App } from "@/features/product/api";
@@ -14,7 +15,7 @@ import { dashKeys, fetchDashboard } from "./api";
 import BarList from "./BarList.vue";
 import CurrencyTabs from "./CurrencyTabs.vue";
 import KpiCard from "./KpiCard.vue";
-import { bpPercent, delta, type DashCurrency, type DashQuery, type Dashboard } from "./lib";
+import { bpPercent, delta, mergedCurrencies, mergedSeries, ratioBp, sumBlocks, type DashCurrency, type DashQuery, type Dashboard } from "./lib";
 import PeriodBar from "./PeriodBar.vue";
 import RevenueChart from "./RevenueChart.vue";
 import type { Environment } from "@/shared/lib/environment";
@@ -29,13 +30,17 @@ const emit = defineEmits<{ "update:query": [DashQuery]; "update:env": [Environme
 const { t } = useI18n();
 const fmt = useFormat();
 
+/** At most this many apps are read, each with its own dashboard request. */
 const MAX_APPS = 12;
+/** Each app's dashboard is read again this often while the page is open, and counts as fresh for this long. */
+const REFRESH_MS = POLL.figures;
+const FRESH_MS = 15_000;
 const shown = computed(() => props.apps.filter((a) => tenantOf(a, props.env) !== "").slice(0, MAX_APPS));
 const results = useQueries({
   queries: computed(() =>
     shown.value.map((a) => {
       const source = { kind: "app" as const, appId: a.id ?? "", env: props.env };
-      return { queryKey: dashKeys.of(source, props.query), queryFn: () => fetchDashboard(source, props.query), refetchInterval: 60_000, staleTime: 15_000 };
+      return { queryKey: dashKeys.of(source, props.query), queryFn: () => fetchDashboard(source, props.query), refetchInterval: REFRESH_MS, staleTime: FRESH_MS };
     }),
   ),
 });
@@ -51,16 +56,12 @@ const down = computed(() => rows.value.filter((r) => r.failed || (r.data?.unavai
 const compare = computed(() => props.query.compare);
 const today = todayYmd();
 
-const currencies = computed(() => {
-  const by = new Map<string, number>();
-  for (const r of rows.value) for (const c of r.data?.currencies ?? []) by.set(c.currency ?? "", (by.get(c.currency ?? "") ?? 0) + (c.revenue?.net_minor ?? 0));
-  return [...by.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([c]) => c);
-});
+const currencies = computed(() => mergedCurrencies(rows.value.map((r) => r.data)));
 const cur = computed(() => (props.query.cur && currencies.value.includes(props.query.cur) ? props.query.cur : (currencies.value[0] ?? "")));
 
-/** Every app's block of the chosen currency. */
-const blocks = computed(() => rows.value.map((r) => ({ app: r.app, block: r.data?.currencies?.find((c) => c.currency === cur.value) as DashCurrency | undefined })));
-const sum = (pick: (b: DashCurrency) => number | null | undefined) => blocks.value.reduce((n, x) => n + (x.block ? (pick(x.block) ?? 0) : 0), 0);
+/** Every app's dashboard with its block of the chosen currency. */
+const blocks = computed(() => rows.value.map((r) => ({ app: r.app, data: r.data, block: r.data?.currencies?.find((c) => c.currency === cur.value) as DashCurrency | undefined })));
+const sum = (pick: (b: DashCurrency) => number | null | undefined) => sumBlocks(blocks.value.map((x) => x.block), pick);
 const net = computed(() => sum((b) => b.revenue?.net_minor));
 const prevNet = computed(() => sum((b) => b.prev_revenue?.net_minor));
 const mrr = computed(() => sum((b) => b.subscriptions?.mrr_minor));
@@ -69,35 +70,15 @@ const failed = computed(() => sum((b) => b.payments?.failed));
 const paid = computed(() => sum((b) => b.payments?.paid));
 const prevFailed = computed(() => sum((b) => b.prev_payments?.failed));
 const prevPaid = computed(() => sum((b) => b.prev_payments?.paid));
-const rate = computed(() => (failed.value + paid.value > 0 ? Math.round((failed.value * 10000) / (failed.value + paid.value)) : null));
-const prevRate = computed(() => (prevFailed.value + prevPaid.value > 0 ? Math.round((prevFailed.value * 10000) / (prevFailed.value + prevPaid.value)) : null));
-const newCustomers = computed(() => rows.value.reduce((n, r) => n + (r.data?.customers?.new ?? 0), 0));
-const prevNewCustomers = computed(() => rows.value.reduce((n, r) => n + (r.data?.customers?.prev_new ?? 0), 0));
-const totalCustomers = computed(() => rows.value.reduce((n, r) => n + (r.data?.customers?.total ?? 0), 0));
+const rate = computed(() => ratioBp(failed.value, failed.value + paid.value));
+const prevRate = computed(() => ratioBp(prevFailed.value, prevFailed.value + prevPaid.value));
+const customerSum = (pick: (c: NonNullable<Dashboard["customers"]>) => number | undefined) => rows.value.reduce((n, r) => n + (r.data?.customers ? (pick(r.data.customers) ?? 0) : 0), 0);
+const newCustomers = computed(() => customerSum((c) => c.new));
+const prevNewCustomers = computed(() => customerSum((c) => c.prev_new));
+const totalCustomers = computed(() => customerSum((c) => c.total));
 
 /** The series of the apps, added point by point (same period, same buckets). */
-const points = computed(() => {
-  const length = Math.max(0, ...blocks.value.map((x) => x.block?.series?.length ?? 0));
-  return Array.from({ length }, (_, i) => {
-    let value = 0;
-    let prev = 0;
-    let hasPrev = false;
-    let date = "";
-    let prevDate = "";
-    for (const x of blocks.value) {
-      const p = x.block?.series?.[i];
-      if (!p) continue;
-      date = p.date ?? date;
-      value += p.net_minor ?? 0;
-      if (p.prev_net_minor !== undefined && p.prev_net_minor !== null) {
-        hasPrev = true;
-        prev += p.prev_net_minor;
-        prevDate = p.prev_date ?? prevDate;
-      }
-    }
-    return { date, value, ...(hasPrev ? { prev, prevDate } : {}) };
-  });
-});
+const points = computed(() => mergedSeries(blocks.value.map((x) => x.block)));
 const granularity = computed(() => rows.value.find((r) => r.data)?.data?.range?.granularity ?? "day");
 const byApp = computed(() =>
   blocks.value
@@ -105,6 +86,7 @@ const byApp = computed(() =>
     .filter((x) => x.value > 0)
     .sort((a, b) => b.value - a.value),
 );
+const activeSubscriptions = computed(() => sum((b) => b.subscriptions?.active));
 
 const money = (minor: number | null | undefined) => fmt.amount(minor, cur.value);
 const count = fmt.count;
@@ -148,7 +130,7 @@ const envOptions = computed(() => [
         </KpiCard>
         <KpiCard testid="org-mrr" :label="t('dash.kpi.mrr')" :delta="dMrr" :previous="compare ? money(prevMrr) : undefined">
           <template #value>{{ money(mrr) }}</template>
-          <template #sub>{{ t("dash.kpi.mrrSub", { arr: money(mrr * 12), n: count(blocks.reduce((n, x) => n + (x.block?.subscriptions?.active ?? 0), 0)) }) }}</template>
+          <template #sub>{{ t("dash.kpi.mrrSub", { arr: money(mrr * 12), n: count(activeSubscriptions) }) }}</template>
         </KpiCard>
         <KpiCard testid="org-failed" good="down" :label="t('dash.kpi.failedRate')" :delta="dRate" :previous="prevRate !== null ? pct(bpPercent(prevRate)) : undefined">
           <template #value>{{ pct(bpPercent(rate)) }}</template>
@@ -172,7 +154,7 @@ const envOptions = computed(() => [
           <ul class="divide-border/70 mt-1 divide-y border-t pt-1">
             <li v-for="x in blocks" :key="x.app.id" class="flex items-center gap-3 py-2.5 text-sm">
               <span class="min-w-0 flex-1 truncate font-medium">{{ x.app.name }}</span>
-              <StatusPill v-if="rows.find((r) => r.app.id === x.app.id)?.data" :tone="toneOf(rows.find((r) => r.app.id === x.app.id)?.data?.status)">{{ t(`product.appStatus.${rows.find((r) => r.app.id === x.app.id)?.data?.status}`) }}</StatusPill>
+              <StatusPill v-if="x.data" :tone="toneOf(x.data.status)">{{ t(`product.appStatus.${x.data.status}`) }}</StatusPill>
               <Link :to="`/app/apps/${x.app.id}`" :search="(env === 'sandbox' ? { env: 'sandbox' } : {}) as never" class="text-primary text-xs font-medium hover:underline">{{ t("dash.org.open") }}</Link>
             </li>
           </ul>

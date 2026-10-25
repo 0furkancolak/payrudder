@@ -33,8 +33,8 @@ defineProps<{ title: string; intro: string }>();
           label=""
           :segments="[
             { key: 'a', value: 68, color: 'var(--brand)' },
-            { key: 'b', value: 22, color: 'oklch(0.82 0.12 85)' },
-            { key: 'c', value: 10, color: 'oklch(0.7 0.16 25)' },
+            { key: 'b', value: 22, color: 'var(--chart-processing)' },
+            { key: 'c', value: 10, color: 'var(--chart-failed)' },
           ]"
         >
           <span class="text-lg font-semibold tabular">68%</span>
