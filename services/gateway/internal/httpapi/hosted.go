@@ -166,7 +166,7 @@ func hostedDir(lang string) string {
 
 func hostedText(lang string) map[string]string {
 	out := map[string]string{}
-	for _, src := range []map[string]string{hostedStrings["en"], paymentStrings["en"], creditStrings["en"], promoStrings["en"], hostedStrings[lang], paymentStrings[lang], creditStrings[lang], promoStrings[lang]} {
+	for _, src := range []map[string]string{hostedStrings["en"], paymentStrings["en"], creditStrings["en"], promoStrings["en"], affiliateStrings["en"], hostedStrings[lang], paymentStrings[lang], creditStrings[lang], promoStrings[lang], affiliateStrings[lang]} {
 		for k, v := range src {
 			out[k] = v
 		}

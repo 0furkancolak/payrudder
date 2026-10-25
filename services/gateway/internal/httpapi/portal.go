@@ -52,6 +52,7 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 	if !s.hostedAllowed(w, r) {
 		return
 	}
+	s.captureRef(w, r)
 	token := r.PathValue("token")
 	resp, err := s.d.Hosted.GetPortal(r.Context(), &billingv1.GetPortalRequest{PortalToken: token})
 	if goneError(err) {
@@ -150,7 +151,9 @@ func (s *Server) portalCreditsBuy(w http.ResponseWriter, r *http.Request) {
 	}
 	back := "/c/" + token + langSuffix(r)
 	l := hostedText(lang)
-	resp, err := s.d.Hosted.StartPortalPurchase(r.Context(), &billingv1.StartPortalPurchaseRequest{PortalToken: token, PackId: packID, Quantity: quantity, PromotionCode: code})
+	refCode, refAt := referral(r)
+	resp, err := s.d.Hosted.StartPortalPurchase(r.Context(), &billingv1.StartPortalPurchaseRequest{PortalToken: token, PackId: packID, Quantity: quantity, PromotionCode: code,
+		ReferralCode: refCode, ReferralTouchTime: refAt})
 	switch {
 	case err == nil:
 		hostedHeaders(w)

@@ -72,6 +72,9 @@ type Directory interface {
 	CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spec runs.LinkInvoiceSpec) (uuid.UUID, error)
 	// QuotePromotion says what the spec's promotion code takes off, claiming nothing.
 	QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec runs.LinkInvoiceSpec) (runs.PromotionQuote, error)
+	// Attribute tells the affiliate program that a customer who is paying carried a partner's referral code (phase 47). It is best effort: a payment never waits for it
+	// to succeed. touched is when the visitor followed the link, the zero time when unknown.
+	Attribute(ctx context.Context, tenantID, customerID uuid.UUID, code string, touched time.Time)
 }
 
 // Deps are the pools, the saga engine and the directory the commands work with. System is billing_system: every query it runs names the tenant.

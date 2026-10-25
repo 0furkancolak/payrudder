@@ -1449,6 +1449,30 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: object, properties: { revoked: { type: integer } } } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /r/{code}:
+    get:
+      operationId: affiliateLink
+      summary: "A partner's public link (public)"
+      description: "Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address."
+      security: []
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "A thank-you page, when the program has no landing page", content: { text/html: { schema: { type: string } } } }
+        "302": { description: "Redirect to the program's landing page, with the cookie set" }
+        "404": { description: "No such partner", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /privacy:
+    get:
+      operationId: privacyPage
+      summary: "What the referral cookie holds, what is counted and what a visitor can do (public)"
+      security: []
+      parameters:
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "The privacy page", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
   /i/{token}:
     get:
       operationId: hostedInvoicePage
@@ -4911,6 +4935,7 @@ components:
         referrals: { type: string }
         approve_time: { type: string, format: date-time }
         create_time: { type: string, format: date-time }
+        link: { type: string, description: "The partner's public referral link, https://<gateway>/r/<code>" }
     AffiliateCommission:
       type: object
       properties:

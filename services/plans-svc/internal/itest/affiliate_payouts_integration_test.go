@@ -16,6 +16,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 )
 
 // noHold is a program that approves a commission as soon as it is earned, so that a payout can be made at once.
@@ -376,6 +377,35 @@ func testAffiliatePayouts(t *testing.T) {
 			}
 		}
 		balanced(t, j)
+
+		// Resetting the sandbox empties the payouts and their postings with the commissions they describe; the partners and the program stay.
+		if _, err := sandbox.NewLocal(e.system).Reset(context.Background(), uuid.MustParse(w.tenantID)); err != nil {
+			t.Fatal(err)
+		}
+		if got := w.payouts(t, ""); len(got) != 0 {
+			t.Errorf("payouts after a reset: %v", got)
+		}
+		if got := w.journalAll(t); got.GetTotal() != 0 {
+			t.Errorf("journal after a reset: %v", got)
+		}
+		if _, err := e.aff.GetAffiliate(w.ctx, &plansv1.GetAffiliateRequest{Id: w.aff.GetId()}); err != nil {
+			t.Errorf("the partner was reset: %v", err)
+		}
+	})
+
+	t.Run("the journal of a live tenant is never rewritten, not even by the system role", func(t *testing.T) {
+		w := newAffiliateWorld(t, e, "AffPayoutLiveJournal", noHold)
+		w.paid(t, w.newInvoice(w.cust, 10000, 0), time.Now(), "")
+		w.pay(t, w.createPayouts(t).GetPayouts()[0].GetId(), "")
+		for _, stmt := range []string{`DELETE FROM affiliate_journal WHERE tenant_id = $1`, `UPDATE affiliate_journal SET memo = 'x' WHERE tenant_id = $1`} {
+			// A DELETE is refused by the trigger, an UPDATE by the missing grant: either way nothing changes.
+			if _, err := e.system.Exec(context.Background(), stmt, uuid.MustParse(w.tenantID)); err == nil || !(strings.Contains(err.Error(), "append-only") || pgxx.ErrCode(err) == pgxx.CodeInsufficientPriv) {
+				t.Errorf("%s: %v", stmt, err)
+			}
+		}
+		if j := w.journalAll(t); len(j.GetEntries()) != 4 {
+			t.Errorf("journal = %v", j)
+		}
 	})
 
 	t.Run("a live environment that is not active pays nobody", func(t *testing.T) {
