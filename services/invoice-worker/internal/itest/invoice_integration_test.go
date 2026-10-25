@@ -159,7 +159,7 @@ func TestInvoiceWorker(t *testing.T) {
 		bad, _ := proto.Marshal(&cmd)
 		send(bad)
 		got := replies(1)
-		if len(got) != 1 || got[0].GetPdfFailed() == nil {
+		if len(got) != 1 || got[0].GetPdfFailed() == nil || got[0].GetPdfFailed().GetErrorKey() != "billing.invoice.pdf_failed" {
 			t.Fatalf("replies = %v, want PdfFailed", got)
 		}
 	})

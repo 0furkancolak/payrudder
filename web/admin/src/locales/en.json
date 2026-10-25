@@ -1220,7 +1220,8 @@
         "bad_customer_id": "The customer id is not a valid id.",
         "bad_page_size": "The page size must be between 1 and 500.",
         "bad_page_token": "The page token is not valid. Start the list again.",
-        "pdf_sign_failed": "The PDF download link could not be created. Try again shortly."
+        "pdf_sign_failed": "The PDF download link could not be created. Try again shortly.",
+        "pdf_failed": "The invoice PDF could not be rendered. Check the invoice data."
       },
       "invoice_link": {
         "bad_expiry": "The link must expire in 1 to 365 days.",
@@ -1555,6 +1556,13 @@
         "not_recorded": "The notification could not be recorded. Send it again.",
         "try_again": "The notification could not be confirmed yet. Send it again.",
         "unverified": "The notification could not be verified as coming from the provider."
+      },
+      "charge": {
+        "currency_not_supported": "This payment provider cannot charge in this currency.",
+        "pending": "The payment was accepted and is waiting to be settled.",
+        "provider_not_configured": "No payment provider is set up for this account.",
+        "rejected": "The payment provider rejected the request.",
+        "timeout": "The payment provider did not answer in time."
       }
     },
     "einvoice": {

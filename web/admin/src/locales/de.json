@@ -1220,7 +1220,8 @@
         "bad_customer_id": "Die Kunden-ID ist keine gültige ID.",
         "bad_page_size": "Die Seitengröße muss zwischen 1 und 500 liegen.",
         "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
-        "pdf_sign_failed": "Der PDF-Download-Link konnte nicht erstellt werden. Versuchen Sie es gleich erneut."
+        "pdf_sign_failed": "Der PDF-Download-Link konnte nicht erstellt werden. Versuchen Sie es gleich erneut.",
+        "pdf_failed": "Das Rechnungs-PDF konnte nicht erstellt werden. Prüfen Sie die Rechnungsdaten."
       },
       "invoice_link": {
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
@@ -1555,6 +1556,13 @@
         "not_recorded": "Die Benachrichtigung konnte nicht gespeichert werden. Senden Sie sie erneut.",
         "try_again": "Die Benachrichtigung konnte noch nicht bestätigt werden. Senden Sie sie erneut.",
         "unverified": "Es konnte nicht bestätigt werden, dass die Benachrichtigung vom Anbieter stammt."
+      },
+      "charge": {
+        "currency_not_supported": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen.",
+        "pending": "Die Zahlung wurde angenommen und wartet auf die Abwicklung.",
+        "provider_not_configured": "Für dieses Konto ist kein Zahlungsanbieter eingerichtet.",
+        "rejected": "Der Zahlungsanbieter hat die Anfrage abgelehnt.",
+        "timeout": "Der Zahlungsanbieter hat nicht rechtzeitig geantwortet."
       }
     },
     "einvoice": {

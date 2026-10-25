@@ -13,9 +13,11 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/grpc/codes"
 
 	commandsv1 "github.com/0furkancolak/quotify/gen/go/quotify/commands/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/payments"
 	"github.com/0furkancolak/quotify/pkg/workerx"
 	"github.com/0furkancolak/quotify/services/payments-worker/internal/store"
@@ -134,8 +136,21 @@ func envName(env plansv1.Environment) string {
 	return "live"
 }
 
+// codeKeys are the error keys (docs/error-keys.md) of the codes PaymentErrored carries.
+var codeKeys = map[string]string{
+	CodeNotConfigured: errkey.Key("payments.charge.provider_not_configured"),
+	CodeTimeout:       errkey.Key("payments.charge.timeout"),
+	CodeRejected:      errkey.Key("payments.charge.rejected"),
+	CodeCurrency:      errkey.Key("payments.charge.currency_not_supported"),
+	CodePending:       errkey.Key("payments.charge.pending"),
+}
+
 func errored(retryable bool, code, msg string) *commandsv1.ReplyEnvelope {
-	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentErrored{PaymentErrored: &commandsv1.PaymentErrored{Retryable: retryable, Code: code, Message: msg}}}
+	key, ok := codeKeys[code]
+	if !ok {
+		key = errkey.Default(codes.Internal)
+	}
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentErrored{PaymentErrored: &commandsv1.PaymentErrored{Retryable: retryable, Code: code, Message: msg, ErrorKey: key}}}
 }
 
 // Handle implements workerx.Handler.

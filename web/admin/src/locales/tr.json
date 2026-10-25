@@ -1220,7 +1220,8 @@
         "bad_customer_id": "Müşteri kimliği geçerli bir kimlik değil.",
         "bad_page_size": "Sayfa boyutu 1 ile 500 arasında olmalı.",
         "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
-        "pdf_sign_failed": "PDF indirme bağlantısı oluşturulamadı. Biraz sonra yeniden deneyin."
+        "pdf_sign_failed": "PDF indirme bağlantısı oluşturulamadı. Biraz sonra yeniden deneyin.",
+        "pdf_failed": "Fatura PDF'i oluşturulamadı. Fatura verilerini kontrol edin."
       },
       "invoice_link": {
         "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
@@ -1555,6 +1556,13 @@
         "not_recorded": "Bildirim kaydedilemedi. Yeniden gönderin.",
         "try_again": "Bildirim henüz doğrulanamadı. Yeniden gönderin.",
         "unverified": "Bildirimin sağlayıcıdan geldiği doğrulanamadı."
+      },
+      "charge": {
+        "currency_not_supported": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamıyor.",
+        "pending": "Ödeme kabul edildi ve tahsilatın tamamlanması bekleniyor.",
+        "provider_not_configured": "Bu hesap için bir ödeme sağlayıcısı kurulu değil.",
+        "rejected": "Ödeme sağlayıcısı isteği reddetti.",
+        "timeout": "Ödeme sağlayıcısı zamanında yanıt vermedi."
       }
     },
     "einvoice": {
