@@ -1,8 +1,3 @@
--- name: LoadOffsets :many
-SELECT partition, next_offset
-FROM consumer_offsets
-WHERE consumer_group = @consumer_group AND topic = @topic AND partition = ANY(@partitions::int[]);
-
 -- name: ListOffsets :many
 SELECT partition, next_offset
 FROM consumer_offsets

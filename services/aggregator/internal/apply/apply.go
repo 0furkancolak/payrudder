@@ -140,17 +140,7 @@ func (h *Handler) init() {
 // LoadOffsets implements kafkax.OffsetLoader.
 func (h *Handler) LoadOffsets(ctx context.Context, topic string, partitions []int32) (map[int32]int64, error) {
 	h.init()
-	ps := make([]int32, len(partitions))
-	copy(ps, partitions)
-	rows, err := sqlc.New(h.Pool).LoadOffsets(ctx, sqlc.LoadOffsetsParams{ConsumerGroup: h.ConsumerGroup, Topic: topic, Partitions: ps})
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[int32]int64, len(rows))
-	for _, r := range rows {
-		out[r.Partition] = r.NextOffset
-	}
-	return out, nil
+	return kafkax.PGOffsets{DB: h.Pool, Group: h.ConsumerGroup, Table: "consumer_offsets"}.Load(ctx, topic, partitions)
 }
 
 type poison struct {
