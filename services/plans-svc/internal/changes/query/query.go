@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/subscription"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/convert"
+	couponsqry "github.com/0furkancolak/quotify/services/plans-svc/internal/coupons/query"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/domain"
 	plansqry "github.com/0furkancolak/quotify/services/plans-svc/internal/plans/query"
 	"github.com/0furkancolak/quotify/services/plans-svc/internal/store"
@@ -132,14 +133,40 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 	if due != nil && !due.After(at) {
 		return nil, status.Error(codes.Aborted, "the fee of the current period has not been invoiced yet; try again in a moment")
 	}
-	pc.Quote, err = subscription.QuoteChange(subscription.ChangeRequest{
+	cr := subscription.ChangeRequest{
 		Old: subscription.Plan{FeeMinor: oldFee, Interval: oldInterval}, New: subscription.Plan{FeeMinor: newFee, Interval: newInterval},
 		Anchor: row.BillingAnchor, At: at, Loc: loc, Timing: timingFromProto(req.GetTiming()), Proration: prorationFromProto(req.GetProration()),
-	})
+	}
+	pc.Quote, err = subscription.QuoteChange(cr)
 	if errors.Is(err, subscription.ErrBadChange) {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	return pc, err
+	if err != nil {
+		return pc, err
+	}
+	if pc.Quote.Timing == subscription.AtPeriodEnd || (pc.Quote.CreditMinor == 0 && pc.Quote.ChargeMinor == 0) {
+		return pc, nil
+	}
+	// The credit is a share of what was paid and the charge a share of what the new plan costs, both after the coupon that carries over. The change itself
+	// (its timing and proration) was decided on the list fees.
+	discount, known, err := couponsqry.InForce(ctx, q, row.ID, row.Currency)
+	if err != nil {
+		return nil, err
+	}
+	if !known {
+		return nil, ErrCouponOnCredit
+	}
+	if d := discount(oldFee) + discount(newFee); d == 0 {
+		return pc, nil
+	}
+	cr.Old.FeeMinor, cr.New.FeeMinor = oldFee-discount(oldFee), newFee-discount(newFee)
+	cr.Timing, cr.Proration = pc.Quote.Timing, pc.Quote.Proration
+	renewal := pc.Quote.NextRenewalMinor
+	if pc.Quote, err = subscription.QuoteChange(cr); err != nil {
+		return nil, err
+	}
+	pc.Quote.NextRenewalMinor = renewal
+	return pc, nil
 }
 
 // requireChangeable refuses a subscription that cannot change and returns its effective state.

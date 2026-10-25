@@ -26,6 +26,34 @@ func (q *Queries) BumpCreditNoteSeq(ctx context.Context, arg BumpCreditNoteSeqPa
 	return err
 }
 
+const clearCreditsAppliedToInvoice = `-- name: ClearCreditsAppliedToInvoice :exec
+UPDATE credit_balances SET applied_invoice_id = NULL WHERE tenant_id = $1 AND applied_invoice_id = $2::uuid
+`
+
+type ClearCreditsAppliedToInvoiceParams struct {
+	TenantID  uuid.UUID
+	InvoiceID uuid.UUID
+}
+
+func (q *Queries) ClearCreditsAppliedToInvoice(ctx context.Context, arg ClearCreditsAppliedToInvoiceParams) error {
+	_, err := q.db.Exec(ctx, clearCreditsAppliedToInvoice, arg.TenantID, arg.InvoiceID)
+	return err
+}
+
+const deleteCreditApplicationsOfInvoice = `-- name: DeleteCreditApplicationsOfInvoice :exec
+DELETE FROM credit_applications WHERE tenant_id = $1 AND invoice_id = $2
+`
+
+type DeleteCreditApplicationsOfInvoiceParams struct {
+	TenantID  uuid.UUID
+	InvoiceID uuid.UUID
+}
+
+func (q *Queries) DeleteCreditApplicationsOfInvoice(ctx context.Context, arg DeleteCreditApplicationsOfInvoiceParams) error {
+	_, err := q.db.Exec(ctx, deleteCreditApplicationsOfInvoice, arg.TenantID, arg.InvoiceID)
+	return err
+}
+
 const ensureCreditNoteSeq = `-- name: EnsureCreditNoteSeq :exec
 INSERT INTO credit_note_seq (tenant_id, year, next_value) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING
 `

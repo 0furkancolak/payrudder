@@ -245,7 +245,7 @@ func TestStatus(t *testing.T) {
 }
 
 func TestWebhookParseAndConfirm(t *testing.T) {
-	e, err := ParseWebhook([]byte(`{"iyziEventTime":1700000000,"iyziEventType":"API_AUTH","iyziReferenceCode":"ref-1","paymentId":23456,"paymentConversationId":"key-1","status":"SUCCESS"}`))
+	e, err := ParseWebhook([]byte(`{"iyziEventTime":1700000000,"iyziEventType":"API_AUTH","iyziReferenceCode":"ref-1","paymentId":23456,"paymentConversationId":"inv-1:charge:0","status":"SUCCESS"}`))
 	if err != nil || e.ID() != "23456" || e.Reference != "ref-1" || e.Status != "SUCCESS" {
 		t.Fatalf("event = %+v, %v", e, err)
 	}
@@ -259,7 +259,7 @@ func TestWebhookParseAndConfirm(t *testing.T) {
 	f, c := newFake(t, nil)
 	// A forged notification claims success; iyzico says the payment failed. Quotify believes iyzico.
 	f.reply = func(string, map[string]any) (int, string) {
-		return 200, `{"status":"success","paymentId":"23456","paymentStatus":"FAILURE"}`
+		return 200, `{"status":"success","paymentId":"23456","paymentStatus":"FAILURE","basketId":"inv-1"}`
 	}
 	got, err := c.Confirm(context.Background(), e)
 	if err != nil || got.State != payments.StateDeclined {
@@ -303,11 +303,59 @@ func TestNotifier(t *testing.T) {
 	}
 	f, c := newFake(t, nil)
 	f.reply = func(string, map[string]any) (int, string) {
-		return 200, `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS"}`
+		return 200, `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS","basketId":"inv-1"}`
 	}
 	var n payments.Notifier = c
-	got, err := n.ConfirmNotification(context.Background(), []byte(`{"iyziReferenceCode":"ref-1","paymentId":7,"paymentConversationId":"key-1","status":"FAILURE"}`), nil)
-	if err != nil || got.State != payments.StateSucceeded || got.ProviderRef != "7" || got.Ref.IdempotencyKey != "key-1" {
+	got, err := n.ConfirmNotification(context.Background(), []byte(`{"iyziReferenceCode":"ref-1","paymentId":7,"paymentConversationId":"inv-1:charge:0","status":"FAILURE"}`), nil)
+	if err != nil || got.State != payments.StateSucceeded || got.ProviderRef != "7" || got.Ref.IdempotencyKey != "inv-1:charge:0" {
 		t.Fatalf("ConfirmNotification = %+v, %v; the provider's answer, not the body's status, decides", got, err)
+	}
+}
+
+// The webhook is unsigned: its conversation id is a claim. A real payment of a small invoice must not confirm the charge of a big one.
+func TestConfirmRefusesAPaymentOfAnotherInvoice(t *testing.T) {
+	f, c := newFake(t, nil)
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS","basketId":"small-invoice"}`
+	}
+	body := []byte(`{"iyziReferenceCode":"ref-1","paymentId":7,"paymentConversationId":"big-invoice:charge:0","status":"SUCCESS"}`)
+	if got, err := c.ConfirmNotification(context.Background(), body, nil); !errors.Is(err, payments.ErrUnverified) {
+		t.Fatalf("ConfirmNotification = %+v, %v; want ErrUnverified for a payment that belongs to another invoice", got, err)
+	}
+	for name, reply := range map[string]string{
+		"no basket id in the answer":  `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS"}`,
+		"a basket of another invoice": `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS","basketId":"big-invoice-2"}`,
+	} {
+		f.reply = func(string, map[string]any) (int, string) { return 200, reply }
+		if _, err := c.ConfirmNotification(context.Background(), body, nil); !errors.Is(err, payments.ErrUnverified) {
+			t.Errorf("%s: %v, want ErrUnverified", name, err)
+		}
+	}
+	// A conversation id that is not one of Quotify's charge keys names no invoice.
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS","basketId":"big-invoice"}`
+	}
+	if _, err := c.ConfirmNotification(context.Background(), []byte(`{"iyziReferenceCode":"ref-1","paymentId":7,"paymentConversationId":"whatever","status":"SUCCESS"}`), nil); !errors.Is(err, payments.ErrUnverified) {
+		t.Errorf("a conversation id without an invoice: %v, want ErrUnverified", err)
+	}
+}
+
+// An answer that does not say the payment succeeded is not a success: an empty status, or a success without a payment id (it could never be refunded).
+func TestAnUnstatedPaymentIsNotASuccess(t *testing.T) {
+	for name, reply := range map[string]string{
+		"empty status":           `{"status":"success","paymentId":"1","basketId":"inv-1"}`,
+		"success without an id":  `{"status":"success","paymentStatus":"SUCCESS","basketId":"inv-1"}`,
+		"empty status, no id":    `{"status":"success","basketId":"inv-1"}`,
+		"a status nobody speaks": `{"status":"success","paymentId":"1","paymentStatus":"WAITING","basketId":"inv-1"}`,
+	} {
+		f, c := newFake(t, nil)
+		f.reply = func(string, map[string]any) (int, string) { return 200, reply }
+		if got, err := c.Status(context.Background(), "inv-1:charge:0"); err == nil {
+			t.Errorf("Status, %s: %+v, want an error", name, got)
+		}
+		e := WebhookEvent{Reference: "r", PaymentID: "1", ConversationID: "inv-1:charge:0"}
+		if got, err := c.Confirm(context.Background(), e); err == nil {
+			t.Errorf("Confirm, %s: %+v, want an error", name, got)
+		}
 	}
 }

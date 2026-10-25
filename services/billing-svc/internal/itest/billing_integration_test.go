@@ -95,6 +95,11 @@ func TestBilling(t *testing.T) {
 		{"BankTransferSagaWaitsForTheMoneyAndSettlesOnANudge", testBankTransferSagaWaitsForTheMoney},
 		{"ExpiredBankTransferFollowsDunning", testExpiredTransferFollowsDunning},
 		{"OfflinePaymentsSettleAnInvoice", testOfflinePaymentsSettleAnInvoice},
+		{"DunningChargesWhatIsOutstandingAfterAPartPayment", testDunningChargesWhatIsOutstandingAfterAPartPayment},
+		{"VoidRefundsWhatCreditNotesLeft", testVoidRefundsWhatCreditNotesLeft},
+		{"VoidingAnInvoiceReopensTheCreditsItConsumed", testVoidingAnInvoiceReopensTheCreditsItConsumed},
+		{"PlanChangeTaxIsOnWhatIsLeftAfterTheUnusedTime", testPlanChangeTaxIsOnWhatIsLeftAfterTheUnusedTime},
+		{"RerateKeepsTheWaivedFixedFeesWaived", testRerateKeepsTheWaivedFixedFeesWaived},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

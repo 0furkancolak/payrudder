@@ -236,12 +236,17 @@ func (m *Manager) feeSegments(ctx context.Context, plans map[string]rating.PlanV
 		if to.Before(from) {
 			to = from
 		}
-		trialRunsPast := member.TrialEnd != nil && member.TrialEnd.After(end)
-		pausedBefore := member.Paused && member.PausedAt != nil && !member.PausedAt.After(start)
-		providerBills := member.Owner == "provider"
-		segs = append(segs, rating.FeeSegment{PlanCode: pv.PlanCode, FeeMinor: pv.BaseFeeMinor, From: from, To: to, Waived: trialRunsPast || pausedBefore || providerBills || member.AdvanceFee})
+		segs = append(segs, rating.FeeSegment{PlanCode: pv.PlanCode, FeeMinor: pv.BaseFeeMinor, From: from, To: to, Waived: feeWaived(member, start, end)})
 	}
 	return segs, nil
+}
+
+// feeWaived reports whether the fixed fee of the period is not on the month's invoice: a trial runs past the period, the subscription was paused before it
+// began, the provider bills the fee, or it is invoiced in advance on its own.
+func feeWaived(member subscription, start, end time.Time) bool {
+	trialRunsPast := member.TrialEnd != nil && member.TrialEnd.After(end)
+	pausedBefore := member.Paused && member.PausedAt != nil && !member.PausedAt.After(start)
+	return trialRunsPast || pausedBefore || member.Owner == "provider" || member.AdvanceFee
 }
 
 type lateKey struct{ Customer, Meter, Origin string }
