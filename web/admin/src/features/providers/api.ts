@@ -7,6 +7,9 @@ export const providerKeys = {
   accounts: (tenantId: string) => ["tenants", tenantId, "provider-accounts"] as const,
   rules: (tenantId: string) => ["tenants", tenantId, "routing-rules"] as const,
   subscriptions: (tenantId: string) => ["tenants", tenantId, "provider-subscriptions"] as const,
+  /** Every catalogue of the tenant (a prefix of `catalogue`). */
+  allCatalogues: (tenantId: string) => ["tenants", tenantId, "catalogue"] as const,
+  catalogue: (tenantId: string, provider: string, environment: Environment) => ["tenants", tenantId, "catalogue", provider, environment] as const,
 };
 
 
@@ -89,7 +92,7 @@ export function useProviderSubscriptions(tenantId: MaybeRefOrGetter<string>) {
 /** What Quotify has created at a provider: products, prices and discounts. Only providers with a catalogue answer. */
 export function useCatalogue(tenantId: MaybeRefOrGetter<string>, provider: MaybeRefOrGetter<string>, environment: MaybeRefOrGetter<Environment>) {
   return useQuery({
-    queryKey: computed(() => ["tenants", toValue(tenantId), "catalogue", toValue(provider), toValue(environment)] as const),
+    queryKey: computed(() => providerKeys.catalogue(toValue(tenantId), toValue(provider), toValue(environment))),
     enabled: computed(() => toValue(provider) !== ""),
     queryFn: () =>
       unwrap(
@@ -111,6 +114,6 @@ export function useSyncCatalogue(tenantId: MaybeRefOrGetter<string>, provider: M
           body: { plan_code },
         }),
       ),
-    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "catalogue"] }),
+    onSuccess: () => queries.invalidateQueries({ queryKey: providerKeys.allCatalogues(toValue(tenantId)) }),
   });
 }

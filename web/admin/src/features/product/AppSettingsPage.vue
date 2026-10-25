@@ -7,6 +7,7 @@ import { currencyInfo, formatOffset, zoneMinutes } from "@/shared/lib/intl";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useApp } from "./api";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 /**
  * What an app was created with: its name and address, and for each environment its currency, time zone, grace period and plan. The currency and the
@@ -23,7 +24,7 @@ const envs = computed(() =>
     id: x.id ?? "",
     env: envOf(x.environment),
     currency: x.currency ?? "",
-    info: currencyInfo(x.currency ?? "USD", locale.value),
+    info: currencyInfo(x.currency ?? FALLBACK_CURRENCY, locale.value),
     timezone: x.timezone ?? "",
     offset: formatOffset(zoneMinutes(x.timezone ?? "UTC")),
     grace: x.grace_period ?? "",

@@ -11,6 +11,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 import { useCreateApp } from "./api";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 const { t } = useI18n();
 const navigate = useNavigate();
@@ -18,7 +19,7 @@ const open = defineModel<boolean>("open", { required: true });
 const create = useCreateApp();
 
 const name = ref("");
-const currency = ref<Currency>("USD");
+const currency = ref<Currency>(FALLBACK_CURRENCY);
 const timezone = ref(ownZone());
 const ready = computed(() => name.value.trim() !== "");
 

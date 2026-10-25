@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, tenantApi, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
 import type { components } from "@/shared/api/schema";
 
 // The billing pages of the product app speak the tenant API (/v1/*) as the person's tenant: the session token plus X-Quotify-Tenant. Nothing here uses an
@@ -17,7 +18,7 @@ export const billingKeys = {
   payments: (tenantId: string) => ["app", "tenant", tenantId, "payments"] as const,
 };
 
-const PAGE = 50;
+const INVOICES_PAGE = 50;
 
 /** The tenant's invoices, newest page first, with "load more" through the page token. An empty status means all. */
 export function useInvoices(tenantId: MaybeRefOrGetter<string>, status: MaybeRefOrGetter<string>) {
@@ -27,7 +28,7 @@ export function useInvoices(tenantId: MaybeRefOrGetter<string>, status: MaybeRef
     queryFn: ({ pageParam }) =>
       unwrap(
         tenantApi(toValue(tenantId)).GET("/v1/invoices", {
-          params: { query: { page_size: PAGE, page_token: pageParam || undefined, status: (toValue(status) || undefined) as InvoiceStatus | undefined } },
+          params: { query: { page_size: INVOICES_PAGE, page_token: pageParam || undefined, status: (toValue(status) || undefined) as InvoiceStatus | undefined } },
         }),
       ),
     getNextPageParam: (last) => last.next_page_token || undefined,
@@ -59,6 +60,6 @@ export function useOpenInvoicePdf(tenantId: MaybeRefOrGetter<string>, invoiceId:
 export function usePayments(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => billingKeys.payments(toValue(tenantId))),
-    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/payments", { params: { query: { limit: 200 } } })),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/payments", { params: { query: { limit: PAGE.whole } } })),
   });
 }
