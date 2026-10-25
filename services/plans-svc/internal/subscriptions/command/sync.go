@@ -195,7 +195,7 @@ func (c *Commands) followProviderPlan(ctx context.Context, q *sqlc.Queries, tena
 	if !a.known {
 		next = convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, at)
 	}
-	nr, err := changescmd.SwitchTo(ctx, q, c.now(), tenantID, row, changescmd.Successor{PlanVersion: sqlc.GetPlanVersionByCodeRow(pv), Interval: iv, State: next, TrialEnds: row.TrialEndsAt, At: at,
+	nr, err := changescmd.SwitchTo(ctx, q, c.now(), tenantID, row, changescmd.Successor{PlanVersionID: pv.ID, Interval: iv, State: next, TrialEnds: row.TrialEndsAt, At: at,
 		Anchor: row.BillingAnchor, FeeTiming: "arrears", Owner: "provider", ProviderRef: row.ProviderRef})
 	if err != nil {
 		return row.ID, err
