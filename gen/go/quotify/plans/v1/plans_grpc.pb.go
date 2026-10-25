@@ -66,6 +66,13 @@ const (
 	PlansService_DeactivateCoupon_FullMethodName                 = "/quotify.plans.v1.PlansService/DeactivateCoupon"
 	PlansService_ApplyCoupon_FullMethodName                      = "/quotify.plans.v1.PlansService/ApplyCoupon"
 	PlansService_RemoveCoupon_FullMethodName                     = "/quotify.plans.v1.PlansService/RemoveCoupon"
+	PlansService_CreatePromotionCodes_FullMethodName             = "/quotify.plans.v1.PlansService/CreatePromotionCodes"
+	PlansService_ListPromotionCodes_FullMethodName               = "/quotify.plans.v1.PlansService/ListPromotionCodes"
+	PlansService_DeactivatePromotionCode_FullMethodName          = "/quotify.plans.v1.PlansService/DeactivatePromotionCode"
+	PlansService_ListCouponRedemptions_FullMethodName            = "/quotify.plans.v1.PlansService/ListCouponRedemptions"
+	PlansService_RedeemPromotion_FullMethodName                  = "/quotify.plans.v1.PlansService/RedeemPromotion"
+	PlansService_ReversePromotion_FullMethodName                 = "/quotify.plans.v1.PlansService/ReversePromotion"
+	PlansService_GrantCustomerCoupon_FullMethodName              = "/quotify.plans.v1.PlansService/GrantCustomerCoupon"
 	PlansService_ListSubscriptionsFeeDue_FullMethodName          = "/quotify.plans.v1.PlansService/ListSubscriptionsFeeDue"
 	PlansService_AdvanceSubscriptionFee_FullMethodName           = "/quotify.plans.v1.PlansService/AdvanceSubscriptionFee"
 	PlansService_ListSubscriptionsForPeriod_FullMethodName       = "/quotify.plans.v1.PlansService/ListSubscriptionsForPeriod"
@@ -158,6 +165,19 @@ type PlansServiceClient interface {
 	// ApplyCoupon redeems a coupon on a subscription that has none; RemoveCoupon takes it off (the redemption count is not given back).
 	ApplyCoupon(ctx context.Context, in *ApplyCouponRequest, opts ...grpc.CallOption) (*ApplyCouponResponse, error)
 	RemoveCoupon(ctx context.Context, in *RemoveCouponRequest, opts ...grpc.CallOption) (*RemoveCouponResponse, error)
+	// CreatePromotionCodes makes codes for a coupon: the ones named, or count random ones, all with the same limit, expiry and restrictions.
+	CreatePromotionCodes(ctx context.Context, in *CreatePromotionCodesRequest, opts ...grpc.CallOption) (*CreatePromotionCodesResponse, error)
+	ListPromotionCodes(ctx context.Context, in *ListPromotionCodesRequest, opts ...grpc.CallOption) (*ListPromotionCodesResponse, error)
+	// DeactivatePromotionCode stops new redemptions of one code; the coupon and its other codes are not touched.
+	DeactivatePromotionCode(ctx context.Context, in *DeactivatePromotionCodeRequest, opts ...grpc.CallOption) (*DeactivatePromotionCodeResponse, error)
+	ListCouponRedemptions(ctx context.Context, in *ListCouponRedemptionsRequest, opts ...grpc.CallOption) (*ListCouponRedemptionsResponse, error)
+	// RedeemPromotion checks a typed code (or the coupon waiting for the customer when code is empty) against a purchase and, unless preview is set, claims it.
+	// Claiming is idempotent per (target, target_id): asking again for the same purchase returns the same redemption. billing-svc calls it when an invoice is made.
+	RedeemPromotion(ctx context.Context, in *RedeemPromotionRequest, opts ...grpc.CallOption) (*RedeemPromotionResponse, error)
+	// ReversePromotion gives a redemption back after a void or a full refund. Reversing a purchase that used no coupon, or twice, does nothing.
+	ReversePromotion(ctx context.Context, in *ReversePromotionRequest, opts ...grpc.CallOption) (*ReversePromotionResponse, error)
+	// GrantCustomerCoupon puts a coupon in wait for a customer: their next eligible checkout without a typed code uses it. One grant per (customer, source, source_ref).
+	GrantCustomerCoupon(ctx context.Context, in *GrantCustomerCouponRequest, opts ...grpc.CallOption) (*GrantCustomerCouponResponse, error)
 	ListSubscriptionsFeeDue(ctx context.Context, in *ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*ListSubscriptionsFeeDueResponse, error)
 	// AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
 	AdvanceSubscriptionFee(ctx context.Context, in *AdvanceSubscriptionFeeRequest, opts ...grpc.CallOption) (*AdvanceSubscriptionFeeResponse, error)
@@ -642,6 +662,76 @@ func (c *plansServiceClient) RemoveCoupon(ctx context.Context, in *RemoveCouponR
 	return out, nil
 }
 
+func (c *plansServiceClient) CreatePromotionCodes(ctx context.Context, in *CreatePromotionCodesRequest, opts ...grpc.CallOption) (*CreatePromotionCodesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePromotionCodesResponse)
+	err := c.cc.Invoke(ctx, PlansService_CreatePromotionCodes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ListPromotionCodes(ctx context.Context, in *ListPromotionCodesRequest, opts ...grpc.CallOption) (*ListPromotionCodesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPromotionCodesResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListPromotionCodes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) DeactivatePromotionCode(ctx context.Context, in *DeactivatePromotionCodeRequest, opts ...grpc.CallOption) (*DeactivatePromotionCodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeactivatePromotionCodeResponse)
+	err := c.cc.Invoke(ctx, PlansService_DeactivatePromotionCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ListCouponRedemptions(ctx context.Context, in *ListCouponRedemptionsRequest, opts ...grpc.CallOption) (*ListCouponRedemptionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCouponRedemptionsResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListCouponRedemptions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) RedeemPromotion(ctx context.Context, in *RedeemPromotionRequest, opts ...grpc.CallOption) (*RedeemPromotionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RedeemPromotionResponse)
+	err := c.cc.Invoke(ctx, PlansService_RedeemPromotion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ReversePromotion(ctx context.Context, in *ReversePromotionRequest, opts ...grpc.CallOption) (*ReversePromotionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReversePromotionResponse)
+	err := c.cc.Invoke(ctx, PlansService_ReversePromotion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) GrantCustomerCoupon(ctx context.Context, in *GrantCustomerCouponRequest, opts ...grpc.CallOption) (*GrantCustomerCouponResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GrantCustomerCouponResponse)
+	err := c.cc.Invoke(ctx, PlansService_GrantCustomerCoupon_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) ListSubscriptionsFeeDue(ctx context.Context, in *ListSubscriptionsFeeDueRequest, opts ...grpc.CallOption) (*ListSubscriptionsFeeDueResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListSubscriptionsFeeDueResponse)
@@ -768,6 +858,19 @@ type PlansServiceServer interface {
 	// ApplyCoupon redeems a coupon on a subscription that has none; RemoveCoupon takes it off (the redemption count is not given back).
 	ApplyCoupon(context.Context, *ApplyCouponRequest) (*ApplyCouponResponse, error)
 	RemoveCoupon(context.Context, *RemoveCouponRequest) (*RemoveCouponResponse, error)
+	// CreatePromotionCodes makes codes for a coupon: the ones named, or count random ones, all with the same limit, expiry and restrictions.
+	CreatePromotionCodes(context.Context, *CreatePromotionCodesRequest) (*CreatePromotionCodesResponse, error)
+	ListPromotionCodes(context.Context, *ListPromotionCodesRequest) (*ListPromotionCodesResponse, error)
+	// DeactivatePromotionCode stops new redemptions of one code; the coupon and its other codes are not touched.
+	DeactivatePromotionCode(context.Context, *DeactivatePromotionCodeRequest) (*DeactivatePromotionCodeResponse, error)
+	ListCouponRedemptions(context.Context, *ListCouponRedemptionsRequest) (*ListCouponRedemptionsResponse, error)
+	// RedeemPromotion checks a typed code (or the coupon waiting for the customer when code is empty) against a purchase and, unless preview is set, claims it.
+	// Claiming is idempotent per (target, target_id): asking again for the same purchase returns the same redemption. billing-svc calls it when an invoice is made.
+	RedeemPromotion(context.Context, *RedeemPromotionRequest) (*RedeemPromotionResponse, error)
+	// ReversePromotion gives a redemption back after a void or a full refund. Reversing a purchase that used no coupon, or twice, does nothing.
+	ReversePromotion(context.Context, *ReversePromotionRequest) (*ReversePromotionResponse, error)
+	// GrantCustomerCoupon puts a coupon in wait for a customer: their next eligible checkout without a typed code uses it. One grant per (customer, source, source_ref).
+	GrantCustomerCoupon(context.Context, *GrantCustomerCouponRequest) (*GrantCustomerCouponResponse, error)
 	ListSubscriptionsFeeDue(context.Context, *ListSubscriptionsFeeDueRequest) (*ListSubscriptionsFeeDueResponse, error)
 	// AdvanceSubscriptionFee records that the fee period starting at period_start has been dealt with (invoiced or waived). Idempotent.
 	AdvanceSubscriptionFee(context.Context, *AdvanceSubscriptionFeeRequest) (*AdvanceSubscriptionFeeResponse, error)
@@ -922,6 +1025,27 @@ func (UnimplementedPlansServiceServer) ApplyCoupon(context.Context, *ApplyCoupon
 }
 func (UnimplementedPlansServiceServer) RemoveCoupon(context.Context, *RemoveCouponRequest) (*RemoveCouponResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveCoupon not implemented")
+}
+func (UnimplementedPlansServiceServer) CreatePromotionCodes(context.Context, *CreatePromotionCodesRequest) (*CreatePromotionCodesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePromotionCodes not implemented")
+}
+func (UnimplementedPlansServiceServer) ListPromotionCodes(context.Context, *ListPromotionCodesRequest) (*ListPromotionCodesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPromotionCodes not implemented")
+}
+func (UnimplementedPlansServiceServer) DeactivatePromotionCode(context.Context, *DeactivatePromotionCodeRequest) (*DeactivatePromotionCodeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeactivatePromotionCode not implemented")
+}
+func (UnimplementedPlansServiceServer) ListCouponRedemptions(context.Context, *ListCouponRedemptionsRequest) (*ListCouponRedemptionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCouponRedemptions not implemented")
+}
+func (UnimplementedPlansServiceServer) RedeemPromotion(context.Context, *RedeemPromotionRequest) (*RedeemPromotionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RedeemPromotion not implemented")
+}
+func (UnimplementedPlansServiceServer) ReversePromotion(context.Context, *ReversePromotionRequest) (*ReversePromotionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReversePromotion not implemented")
+}
+func (UnimplementedPlansServiceServer) GrantCustomerCoupon(context.Context, *GrantCustomerCouponRequest) (*GrantCustomerCouponResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GrantCustomerCoupon not implemented")
 }
 func (UnimplementedPlansServiceServer) ListSubscriptionsFeeDue(context.Context, *ListSubscriptionsFeeDueRequest) (*ListSubscriptionsFeeDueResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSubscriptionsFeeDue not implemented")
@@ -1799,6 +1923,132 @@ func _PlansService_RemoveCoupon_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_CreatePromotionCodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePromotionCodesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).CreatePromotionCodes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_CreatePromotionCodes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).CreatePromotionCodes(ctx, req.(*CreatePromotionCodesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ListPromotionCodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPromotionCodesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListPromotionCodes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListPromotionCodes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListPromotionCodes(ctx, req.(*ListPromotionCodesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_DeactivatePromotionCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeactivatePromotionCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).DeactivatePromotionCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_DeactivatePromotionCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).DeactivatePromotionCode(ctx, req.(*DeactivatePromotionCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ListCouponRedemptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCouponRedemptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListCouponRedemptions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListCouponRedemptions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListCouponRedemptions(ctx, req.(*ListCouponRedemptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_RedeemPromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RedeemPromotionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).RedeemPromotion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_RedeemPromotion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).RedeemPromotion(ctx, req.(*RedeemPromotionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ReversePromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReversePromotionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ReversePromotion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ReversePromotion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ReversePromotion(ctx, req.(*ReversePromotionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_GrantCustomerCoupon_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GrantCustomerCouponRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).GrantCustomerCoupon(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_GrantCustomerCoupon_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).GrantCustomerCoupon(ctx, req.(*GrantCustomerCouponRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_ListSubscriptionsFeeDue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSubscriptionsFeeDueRequest)
 	if err := dec(in); err != nil {
@@ -2040,6 +2290,34 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveCoupon",
 			Handler:    _PlansService_RemoveCoupon_Handler,
+		},
+		{
+			MethodName: "CreatePromotionCodes",
+			Handler:    _PlansService_CreatePromotionCodes_Handler,
+		},
+		{
+			MethodName: "ListPromotionCodes",
+			Handler:    _PlansService_ListPromotionCodes_Handler,
+		},
+		{
+			MethodName: "DeactivatePromotionCode",
+			Handler:    _PlansService_DeactivatePromotionCode_Handler,
+		},
+		{
+			MethodName: "ListCouponRedemptions",
+			Handler:    _PlansService_ListCouponRedemptions_Handler,
+		},
+		{
+			MethodName: "RedeemPromotion",
+			Handler:    _PlansService_RedeemPromotion_Handler,
+		},
+		{
+			MethodName: "ReversePromotion",
+			Handler:    _PlansService_ReversePromotion_Handler,
+		},
+		{
+			MethodName: "GrantCustomerCoupon",
+			Handler:    _PlansService_GrantCustomerCoupon_Handler,
 		},
 		{
 			MethodName: "ListSubscriptionsFeeDue",

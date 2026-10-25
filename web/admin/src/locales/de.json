@@ -1286,6 +1286,20 @@
         "unknown_currency": "Die Währung wird nicht unterstützt."
       }
     },
+    "coupon": {
+      "not_found": "Diesen Code gibt es nicht. Bitte prüfen Sie ihn und versuchen Sie es erneut.",
+      "inactive": "Dieser Code ist nicht mehr aktiv.",
+      "expired": "Dieser Code ist abgelaufen.",
+      "exhausted": "Dieser Code wurde bereits vollständig eingelöst.",
+      "not_applicable": "Dieser Code gilt für diesen Kauf nicht.",
+      "currency_mismatch": "Dieser Code gilt nicht in der Währung dieses Kaufs.",
+      "already_used": "Sie haben diesen Code bereits verwendet.",
+      "first_purchase_only": "Dieser Code gilt nur für den ersten Kauf.",
+      "below_minimum": "Der Kaufbetrag liegt unter dem Mindestbetrag für diesen Code.",
+      "customer_required": "Dieser Code setzt einen bekannten Kunden voraus und gilt daher nicht für eine Gastzahlung.",
+      "already_applied": "Für diesen Kauf wird bereits ein Gutschein verwendet. Pro Kauf ist nur ein Gutschein möglich.",
+      "code_taken": "Ein Aktionscode mit diesem Text existiert bereits (Groß- und Kleinschreibung zählt nicht)."
+    },
     "plans": {
       "app": {
         "bad_slug": "Das Kürzel der App darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten und höchstens 60 Zeichen lang sein.",

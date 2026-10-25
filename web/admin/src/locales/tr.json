@@ -1286,6 +1286,20 @@
         "unknown_currency": "Para birimi desteklenmiyor."
       }
     },
+    "coupon": {
+      "not_found": "Bu kod mevcut değil. Kontrol edip tekrar deneyin.",
+      "inactive": "Bu kod artık etkin değil.",
+      "expired": "Bu kodun süresi dolmuş.",
+      "exhausted": "Bu kodun kullanım hakkı tükendi.",
+      "not_applicable": "Bu kod bu alışverişte geçerli değil.",
+      "currency_mismatch": "Bu kod, bu alışverişin para biriminde geçerli değil.",
+      "already_used": "Bu kodu zaten kullandınız.",
+      "first_purchase_only": "Bu kod yalnızca ilk alışveriş için geçerlidir.",
+      "below_minimum": "Alışveriş tutarı bu kodun asgari tutarının altında.",
+      "customer_required": "Bu kod müşterinin bilinmesini gerektirir; misafir ödemesinde kullanılamaz.",
+      "already_applied": "Bu alışverişte zaten bir kupon kullanılıyor. Alışveriş başına yalnızca bir kupon.",
+      "code_taken": "Bu metinle bir promosyon kodu zaten var (kodlarda büyük/küçük harf farkı yoktur)."
+    },
     "plans": {
       "app": {
         "bad_slug": "Uygulama kısaltması yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter olmalı.",

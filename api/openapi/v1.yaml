@@ -859,6 +859,81 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Coupon" } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /v1/coupons/{code}/promotion-codes:
+    post:
+      operationId: createPromotionCodes
+      summary: Make promotion codes for a coupon
+      description: "Name the codes (2-40 letters, digits, - or _; the same in any case) or ask for count random ones (1-1000, prefix + 8 characters without 0, O, 1, I, L). Every code gets the template's limit, expiry and restrictions."
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreatePromotionCodes" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { codes: { type: array, items: { $ref: "#/components/schemas/PromotionCode" } } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/promotion-codes:
+    get:
+      operationId: listPromotionCodes
+      summary: Promotion codes, newest first
+      parameters:
+        - { name: coupon, in: query, schema: { type: string }, description: Only the codes of this coupon }
+        - { name: state, in: query, schema: { type: string, enum: [active, inactive] } }
+        - { name: search, in: query, schema: { type: string }, description: Part of the code }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { codes: { type: array, items: { $ref: "#/components/schemas/PromotionCode" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/promotion-codes/{code}:
+    delete:
+      operationId: deactivatePromotionCode
+      summary: Stop new redemptions of one code (the coupon and its other codes keep working)
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PromotionCode" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/coupon-redemptions:
+    get:
+      operationId: listCouponRedemptions
+      summary: Uses of coupons, newest first
+      description: "One row per use: the coupon and the code, the customer, what it was used on (the subscription, or the invoice of the purchase) and what it took off. A void or a full refund marks the row reversed."
+      parameters:
+        - { name: coupon, in: query, schema: { type: string } }
+        - { name: promotion_code, in: query, schema: { type: string } }
+        - { name: customer_external_id, in: query, schema: { type: string } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { redemptions: { type: array, items: { $ref: "#/components/schemas/CouponRedemption" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/promotions/quote:
+    post:
+      operationId: quotePromotion
+      summary: What a code would take off a purchase (claims nothing)
+      description: "For a checkout page of your own. The answer is the discount or the bonus credits, or an error with a coupon.* key: coupon.expired, coupon.exhausted, coupon.not_applicable, coupon.currency_mismatch, coupon.already_used and the others in the error key list."
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PromotionQuoteRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PromotionQuote" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/coupons:
+    post:
+      operationId: grantCustomerCoupon
+      summary: Give a customer a coupon that their next eligible checkout uses without a code
+      description: One grant per (customer, source, source_ref); repeating it grants nothing more.
+      parameters: [{ name: external_id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [coupon_code, source, source_ref], properties: { coupon_code: { type: string }, source: { type: string, description: "Who gives it, e.g. operator or affiliate" }, source_ref: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { granted: { type: boolean } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/subscriptions/{id}/scheduled-change:
     delete:
       operationId: cancelScheduledChange
@@ -4809,16 +4884,87 @@ components:
       properties:
         code: { type: string, description: "2–40 letters, digits, - or _" }
         name: { type: string }
-        percent_bps: { type: integer, minimum: 1, maximum: 10000, description: "1000 is 10 %. Use this or amount_minor" }
-        amount_minor: { type: string, description: "Minor units of currency; applies only to subscriptions in that currency" }
+        id: { type: string, format: uuid, readOnly: true }
+        percent_bps: { type: integer, minimum: 1, maximum: 10000, description: "1000 is 10 %. Use one of percent_bps, amount_minor and bonus_percent_bps" }
+        amount_minor: { type: string, description: "Minor units of currency; applies only in that currency" }
         currency: { type: string }
-        duration: { type: string, enum: [COUPON_DURATION_ONCE, COUPON_DURATION_REPEATING, COUPON_DURATION_FOREVER] }
+        bonus_percent_bps: { type: integer, minimum: 1, maximum: 100000, description: "Extra credits on a credit purchase, in the same lot: 1000 is 10 % more. Credit purchases only" }
+        applies_to: { type: array, items: { type: string, enum: [COUPON_TARGET_SUBSCRIPTION, COUPON_TARGET_CREDIT_PURCHASE, COUPON_TARGET_PAYMENT] }, description: "Where the coupon works; empty means all three (a bonus coupon: credit purchases)" }
+        duration: { type: string, enum: [COUPON_DURATION_ONCE, COUPON_DURATION_REPEATING, COUPON_DURATION_FOREVER], description: "How long a subscription keeps the coupon; required when it applies to subscriptions" }
         duration_periods: { type: integer, description: "For a repeating coupon, how many fees" }
-        max_redemptions: { type: integer, description: "0 or absent = unlimited" }
-        redeemed: { type: integer, readOnly: true }
+        max_redemptions: { type: integer, description: "0 or absent = unlimited. Counts the uses through all the coupon's codes" }
+        redeemed: { type: integer, readOnly: true, description: "The uses that count against the limit" }
         expire_time: { type: string, format: date-time }
         active: { type: boolean, readOnly: true }
         create_time: { type: string, format: date-time, readOnly: true }
+        promotion_code_count: { type: integer, readOnly: true }
+        without_default_code: { type: boolean, writeOnly: true, description: "Do not make the promotion code with the coupon's own text that a new coupon gets" }
+    PromotionCode:
+      type: object
+      description: What a customer types. Many codes point to one coupon, each with its own limit, expiry and restrictions.
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        coupon_id: { type: string, format: uuid, readOnly: true }
+        coupon_code: { type: string, readOnly: true }
+        code: { type: string, readOnly: true }
+        active: { type: boolean, readOnly: true }
+        max_redemptions: { type: integer, description: "0 or absent = unlimited" }
+        redeemed: { type: integer, readOnly: true }
+        expire_time: { type: string, format: date-time }
+        first_purchase_only: { type: boolean, description: Only a customer who has paid for nothing yet }
+        one_per_customer: { type: boolean }
+        min_amount_minor: { type: string, description: "A purchase under this amount cannot use the code; needs min_amount_currency" }
+        min_amount_currency: { type: string }
+        allowed_plans: { type: array, items: { type: string }, description: "Plan codes; empty means any" }
+        allowed_packs: { type: array, items: { type: string }, description: "Credit pack ids; empty means any" }
+        allowed_currencies: { type: array, items: { type: string }, description: "Empty means any" }
+        restore_on_reversal: { type: boolean, description: "A void or full refund gives the use back to the count. Off by default" }
+        create_time: { type: string, format: date-time, readOnly: true }
+    CreatePromotionCodes:
+      type: object
+      properties:
+        template: { $ref: "#/components/schemas/PromotionCode" }
+        codes: { type: array, items: { type: string }, description: "Name the codes, or ask for count" }
+        count: { type: integer, minimum: 1, maximum: 1000 }
+        prefix: { type: string, description: "For random codes; at most 20 characters" }
+    CouponRedemption:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        coupon_code: { type: string }
+        promotion_code: { type: string, description: Empty when an operator applied the coupon or it came from a grant }
+        customer_external_id: { type: string }
+        target: { type: string, enum: [COUPON_TARGET_SUBSCRIPTION, COUPON_TARGET_CREDIT_PURCHASE, COUPON_TARGET_PAYMENT] }
+        target_id: { type: string, format: uuid, description: "The subscription, or the invoice" }
+        invoice_id: { type: string, format: uuid }
+        discount_minor: { type: string, description: "What it took off; a subscription's grows with each fee" }
+        bonus_credits: { type: string }
+        currency: { type: string }
+        create_time: { type: string, format: date-time }
+        reverse_time: { type: string, format: date-time, description: Set when a void or a full refund reversed it }
+    PromotionQuoteRequest:
+      type: object
+      required: [code, target, amount_minor, currency]
+      properties:
+        code: { type: string }
+        customer_external_id: { type: string, description: "Needed by codes that are first-purchase-only or one per customer" }
+        target: { type: string, enum: [COUPON_TARGET_CREDIT_PURCHASE, COUPON_TARGET_PAYMENT] }
+        amount_minor: { type: string, description: The price before the discount }
+        currency: { type: string }
+        item: { type: string, description: "The credit pack id, for codes restricted to some packs" }
+        credits: { type: string, description: "The credits sold, for a bonus coupon" }
+        prior_purchases: { type: boolean, description: The customer has paid for something before }
+    PromotionQuote:
+      type: object
+      properties:
+        applied: { type: boolean }
+        coupon_code: { type: string }
+        coupon_name: { type: string }
+        promotion_code: { type: string }
+        discount_minor: { type: string }
+        bonus_credits: { type: string }
+        total_minor: { type: string, description: The price after the discount, never below zero }
+        currency: { type: string }
     ChangeRequest:
       type: object
       properties:

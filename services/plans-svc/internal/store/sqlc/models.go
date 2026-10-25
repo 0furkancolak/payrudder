@@ -72,6 +72,26 @@ type Coupon struct {
 	ExpiresAt       *time.Time
 	Active          bool
 	CreatedAt       time.Time
+	ID              uuid.UUID
+	BonusPercentBps *int32
+	AppliesTo       []string
+}
+
+type CouponRedemption struct {
+	TenantID        uuid.UUID
+	ID              uuid.UUID
+	CouponID        uuid.UUID
+	PromotionCodeID *uuid.UUID
+	CustomerID      *uuid.UUID
+	TargetKind      string
+	TargetID        uuid.UUID
+	InvoiceID       *uuid.UUID
+	DiscountMinor   int64
+	BonusCredits    int64
+	Currency        *string
+	CreatedAt       time.Time
+	ReversedAt      *time.Time
+	SlotReturned    bool
 }
 
 type Customer struct {
@@ -88,6 +108,18 @@ type Customer struct {
 	TaxID              string
 	TaxOffice          string
 	EInvoiceRegistered bool
+}
+
+type CustomerCoupon struct {
+	TenantID             uuid.UUID
+	ID                   uuid.UUID
+	CustomerID           uuid.UUID
+	CouponID             uuid.UUID
+	Source               string
+	SourceRef            string
+	CreatedAt            time.Time
+	ConsumedAt           *time.Time
+	ConsumedRedemptionID *uuid.UUID
 }
 
 type LoginCode struct {
@@ -173,6 +205,26 @@ type PlanVersionFee struct {
 	Interval      string
 }
 
+type PromotionCode struct {
+	TenantID          uuid.UUID
+	ID                uuid.UUID
+	CouponID          uuid.UUID
+	Code              string
+	Active            bool
+	MaxRedemptions    *int32
+	Redeemed          int32
+	ExpiresAt         *time.Time
+	FirstPurchaseOnly bool
+	OnePerCustomer    bool
+	MinAmountMinor    *int64
+	MinAmountCurrency *string
+	AllowedPlans      []string
+	AllowedPacks      []string
+	AllowedCurrencies []string
+	RestoreOnReversal bool
+	CreatedAt         time.Time
+}
+
 type ProviderMigration struct {
 	TenantID          uuid.UUID
 	ID                uuid.UUID
@@ -249,6 +301,7 @@ type SubscriptionCoupon struct {
 	CouponCode     string
 	RedeemedAt     time.Time
 	PeriodsApplied int32
+	RedemptionID   *uuid.UUID
 }
 
 type TaxRate struct {

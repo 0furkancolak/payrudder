@@ -299,31 +299,6 @@ SELECT id FROM subscriptions WHERE tenant_id = app_tenant_id() AND provider = $1
 -- name: GetChangedFromID :one
 SELECT changed_from_id FROM subscriptions WHERE tenant_id = app_tenant_id() AND id = $1;
 
--- name: InsertCoupon :one
-INSERT INTO coupons (tenant_id, code, name, percent_bps, amount_minor, currency, duration, duration_periods, max_redemptions, expires_at)
-VALUES (app_tenant_id(), @code, @name, @percent_bps, @amount_minor, @currency, @duration, @duration_periods, @max_redemptions, @expires_at)
-RETURNING code, name, percent_bps, amount_minor, currency, duration, duration_periods, max_redemptions, redeemed, expires_at, active, created_at;
-
--- name: ListCoupons :many
-SELECT code, name, percent_bps, amount_minor, currency, duration, duration_periods, max_redemptions, redeemed, expires_at, active, created_at
-FROM coupons WHERE tenant_id = app_tenant_id() ORDER BY created_at DESC, code;
-
--- name: GetCoupon :one
-SELECT code, name, percent_bps, amount_minor, currency, duration, duration_periods, max_redemptions, redeemed, expires_at, active, created_at
-FROM coupons WHERE tenant_id = app_tenant_id() AND code = $1;
-
--- name: DeactivateCoupon :execrows
-UPDATE coupons SET active = false WHERE tenant_id = app_tenant_id() AND code = $1;
-
--- name: RedeemCoupon :execrows
--- Counts a redemption if the coupon can still be redeemed. One statement, so two redemptions cannot both take the last one.
-UPDATE coupons SET redeemed = redeemed + 1
-WHERE tenant_id = app_tenant_id() AND code = @code AND active
-  AND (max_redemptions IS NULL OR redeemed < max_redemptions) AND (expires_at IS NULL OR expires_at > @now::timestamptz);
-
--- name: InsertSubscriptionCoupon :exec
-INSERT INTO subscription_coupons (tenant_id, subscription_id, coupon_code) VALUES (app_tenant_id(), @subscription_id, @coupon_code);
-
 -- name: GetSubscriptionCoupon :one
 SELECT sc.coupon_code, sc.periods_applied, c.percent_bps, c.amount_minor, c.currency, c.duration, c.duration_periods
 FROM subscription_coupons sc JOIN coupons c ON c.tenant_id = sc.tenant_id AND c.code = sc.coupon_code

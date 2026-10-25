@@ -1286,6 +1286,20 @@
         "unknown_currency": "The currency is not supported."
       }
     },
+    "coupon": {
+      "not_found": "This code does not exist. Check it and try again.",
+      "inactive": "This code is no longer active.",
+      "expired": "This code has expired.",
+      "exhausted": "This code has been used up.",
+      "not_applicable": "This code does not work for this purchase.",
+      "currency_mismatch": "This code does not work in the currency of this purchase.",
+      "already_used": "You have already used this code.",
+      "first_purchase_only": "This code is for a first purchase only.",
+      "below_minimum": "The purchase is below the minimum amount for this code.",
+      "customer_required": "This code needs a known customer, so it cannot be used on a guest payment.",
+      "already_applied": "This purchase already uses a coupon. Only one coupon per purchase.",
+      "code_taken": "A promotion code with this text already exists (codes are the same in any letter case)."
+    },
     "plans": {
       "app": {
         "bad_slug": "The app slug may only have lower-case letters, digits and single dashes, and at most 60 characters.",
