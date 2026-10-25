@@ -2296,6 +2296,11 @@
         "not_open": "Bu ödeme artık açık değil: ödendi veya iptal edildi.",
         "nothing_to_pay": "İadelerden sonra bu ödemeden geriye bir şey kalmadı. İptal edin; bakiye sonraki ödemeye devreder.",
         "tenant_not_active": "Bu canlı ortam etkin değil; ödeme oluşturulamaz veya ödenemez."
+      },
+      "portal": {
+        "already_applied": "Bu satıcının zaten ortağısınız ya da başvurdunuz.",
+        "program_unavailable": "Bu satıcının başvuruya açık bir ortaklık programı yok.",
+        "try_again": "Şu anda bir kod üretilemedi. Tekrar deneyin."
       }
     },
     "admin": {

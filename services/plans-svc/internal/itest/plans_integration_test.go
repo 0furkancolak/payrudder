@@ -46,6 +46,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("AffiliateRole", testAffiliateRole)
 	t.Run("AffiliateCommissions", testAffiliateCommissions)
 	t.Run("AffiliatePayouts", testAffiliatePayouts)
+	t.Run("AffiliatePortal", testAffiliatePortal)
 	t.Run("CancelCredit", testCancelCredit)
 	t.Run("ProviderMigrationKeepsTheFeeTiming", testProviderMigrationKeepsTheFeeTiming)
 	t.Run("PlanChangeWithACouponIsPricedAfterTheCoupon", testPlanChangeWithACouponIsPricedAfterTheCoupon)

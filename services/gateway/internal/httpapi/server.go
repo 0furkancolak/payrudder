@@ -59,26 +59,27 @@ type Limiter interface {
 
 // Deps are the upstreams of the API.
 type Deps struct {
-	Plans         plansv1.PlansServiceClient
-	Admin         plansv1.AdminServiceClient
-	Identity      plansv1.IdentityServiceClient
-	Webhooks      plansv1.WebhookServiceClient
-	Affiliates    plansv1.AffiliateServiceClient
-	AffiliatePub  plansv1.AffiliatePublicServiceClient
-	Ingest        ingestv1.IngestServiceClient
-	Usage         aggregatorv1.UsageQueryServiceClient
-	Replay        aggregatorv1.ReplayServiceClient
-	Limits        limitsv1.LimitsServiceClient
-	Analytics     analyticsv1.AnalyticsServiceClient
-	Assets        assetsv1.AssetsServiceClient
-	Billing       billingv1.BillingServiceClient
-	Sandbox       billingv1.SandboxServiceClient
-	BillingAdmin  billingv1.BillingAdminServiceClient
-	Hosted        billingv1.HostedInvoiceServiceClient
-	Auth          Authenticator
-	Limiter       Limiter
-	OperatorToken string
-	Log           *slog.Logger
+	Plans           plansv1.PlansServiceClient
+	Admin           plansv1.AdminServiceClient
+	Identity        plansv1.IdentityServiceClient
+	Webhooks        plansv1.WebhookServiceClient
+	Affiliates      plansv1.AffiliateServiceClient
+	AffiliatePub    plansv1.AffiliatePublicServiceClient
+	AffiliatePortal plansv1.AffiliatePortalServiceClient
+	Ingest          ingestv1.IngestServiceClient
+	Usage           aggregatorv1.UsageQueryServiceClient
+	Replay          aggregatorv1.ReplayServiceClient
+	Limits          limitsv1.LimitsServiceClient
+	Analytics       analyticsv1.AnalyticsServiceClient
+	Assets          assetsv1.AssetsServiceClient
+	Billing         billingv1.BillingServiceClient
+	Sandbox         billingv1.SandboxServiceClient
+	BillingAdmin    billingv1.BillingAdminServiceClient
+	Hosted          billingv1.HostedInvoiceServiceClient
+	Auth            Authenticator
+	Limiter         Limiter
+	OperatorToken   string
+	Log             *slog.Logger
 	// PaymentsURL is payments-worker's HTTP address (provider webhooks, provider accounts, the ledger); nil answers 503 on those routes.
 	PaymentsURL   *url.URL
 	PaymentsToken string

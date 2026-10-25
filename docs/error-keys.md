@@ -22,6 +22,9 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `affiliate.payout.not_open`
 - `affiliate.payout.nothing_to_pay`
 - `affiliate.payout.tenant_not_active`
+- `affiliate.portal.already_applied`
+- `affiliate.portal.program_unavailable`
+- `affiliate.portal.try_again`
 - `affiliate.program.coupon_inactive`
 - `affiliate.program.coupon_not_found`
 - `affiliate.program.not_set`
