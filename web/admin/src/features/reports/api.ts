@@ -1,10 +1,17 @@
 import { useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
+
+export const reportKeys = {
+  revenue: (tenantId: string, from: string, to: string, groupBy: string[]) => ["tenants", tenantId, "reports", "revenue", from, to, [...groupBy].sort()] as const,
+  subscriptions: (tenantId: string, month: string, groupBy: string[]) => ["tenants", tenantId, "reports", "subscriptions", month, [...groupBy].sort()] as const,
+  dunning: (tenantId: string) => ["tenants", tenantId, "reports", "dunning"] as const,
+};
 
 export function useRevenueReport(tenantId: MaybeRefOrGetter<string>, from: MaybeRefOrGetter<string>, to: MaybeRefOrGetter<string>, groupBy: MaybeRefOrGetter<string[]>) {
   return useQuery({
-    queryKey: computed(() => ["tenants", toValue(tenantId), "reports", "revenue", toValue(from), toValue(to), [...toValue(groupBy)].sort()] as const),
+    queryKey: computed(() => reportKeys.revenue(toValue(tenantId), toValue(from), toValue(to), toValue(groupBy))),
     queryFn: () =>
       unwrap(
         tenantApi(toValue(tenantId)).GET("/v1/reports/revenue", {
@@ -16,7 +23,7 @@ export function useRevenueReport(tenantId: MaybeRefOrGetter<string>, from: Maybe
 
 export function useSubscriptionReport(tenantId: MaybeRefOrGetter<string>, month: MaybeRefOrGetter<string>, groupBy: MaybeRefOrGetter<string[]>) {
   return useQuery({
-    queryKey: computed(() => ["tenants", toValue(tenantId), "reports", "subscriptions", toValue(month), [...toValue(groupBy)].sort()] as const),
+    queryKey: computed(() => reportKeys.subscriptions(toValue(tenantId), toValue(month), toValue(groupBy))),
     queryFn: () =>
       unwrap(
         tenantApi(toValue(tenantId)).GET("/v1/reports/subscriptions", {
@@ -28,7 +35,7 @@ export function useSubscriptionReport(tenantId: MaybeRefOrGetter<string>, month:
 
 export function useDunningReport(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
-    queryKey: computed(() => ["tenants", toValue(tenantId), "reports", "dunning"] as const),
-    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/reports/dunning", { params: { query: { limit: 200 } } })),
+    queryKey: computed(() => reportKeys.dunning(toValue(tenantId))),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/reports/dunning", { params: { query: { limit: PAGE.whole } } })),
   });
 }

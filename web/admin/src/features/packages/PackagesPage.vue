@@ -15,6 +15,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreatePackage, usePackages } from "./api";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 const { t, locale } = useI18n();
 const params = useParams({ strict: false });
@@ -31,7 +32,7 @@ const extra = ref<{ currency: string; interval: "month" | "year"; amount: string
 const formError = ref("");
 
 function addFee() {
-  extra.value.push({ currency: tenantCurrency.value || "USD", interval: "year", amount: "0" });
+  extra.value.push({ currency: tenantCurrency.value || FALLBACK_CURRENCY, interval: "year", amount: "0" });
 }
 
 function submit() {

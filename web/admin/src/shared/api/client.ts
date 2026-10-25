@@ -1,4 +1,4 @@
-import createClient from "openapi-fetch";
+import createClient, { type Middleware } from "openapi-fetch";
 import { activeAccount, currentToken, sessionLost } from "@/shared/lib/session";
 import type { components, paths } from "./schema";
 
@@ -9,21 +9,30 @@ export const api = createClient<paths>({ baseUrl: "/gw" });
 /** The product routes that are about "an account": the person's chosen one is named, else the gateway takes their first. */
 const ACCOUNT_ROUTE = /^\/gw\/app\/v1\/(account(\/.*)?|apps)$/;
 
+/** Puts the session token of this tab on a request, if there is one. */
+function withToken(request: Request): void {
+  const token = currentToken();
+  if (token) request.headers.set("Authorization", `Bearer ${token}`);
+}
+
+/** A 401 while a person is signed in means the session is over (expired, revoked): the app is told once and goes to the sign-in page. */
+const endSessionOn401: Pick<Middleware, "onResponse"> = {
+  onResponse({ response }) {
+    if (response.status === 401 && !isAdminCall(response)) sessionLost();
+    return response;
+  },
+};
+
 api.use({
+  ...endSessionOn401,
   onRequest({ request }) {
-    const token = currentToken();
-    if (token) request.headers.set("Authorization", `Bearer ${token}`);
+    withToken(request);
     const url = new URL(request.url);
     if (activeAccount.value && ACCOUNT_ROUTE.test(url.pathname) && !url.searchParams.has("account_id")) {
       url.searchParams.set("account_id", activeAccount.value);
       return new Request(url, request);
     }
     return request;
-  },
-  // A 401 while a person is signed in means the session is over (expired, revoked): the app is told once and goes to the sign-in page.
-  onResponse({ response }) {
-    if (response.status === 401 && !isAdminCall(response)) sessionLost();
-    return response;
   },
 });
 
@@ -48,15 +57,11 @@ export function tenantApi(tenantId: string) {
   if (!client) {
     client = createClient<paths>({ baseUrl: "/gw" });
     client.use({
+      ...endSessionOn401,
       onRequest({ request }) {
-        const token = currentToken();
-        if (token) request.headers.set("Authorization", `Bearer ${token}`);
+        withToken(request);
         request.headers.set("X-Quotify-Tenant", tenantId);
         return request;
-      },
-      onResponse({ response }) {
-        if (response.status === 401 && !isAdminCall(response)) sessionLost();
-        return response;
       },
     });
     asTenantClients.set(tenantId, client);

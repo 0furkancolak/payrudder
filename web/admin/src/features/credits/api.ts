@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
 
 export const creditKeys = {
   packs: (tenantId: string) => ["tenants", tenantId, "credit-packs"] as const,
+  settings: (tenantId: string) => ["tenants", tenantId, "credit-settings"] as const,
   customer: (tenantId: string, customer: string) => ["tenants", tenantId, "credits", customer] as const,
 };
 
@@ -59,7 +61,7 @@ export function useCreditLedger(tenantId: MaybeRefOrGetter<string>, customer: Ma
     queryFn: () =>
       unwrap(
         tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/credits/ledger", {
-          params: { path: { external_id: toValue(customer) }, query: { page_size: 50 } },
+          params: { path: { external_id: toValue(customer) }, query: { page_size: PAGE.history } },
         }),
       ),
     enabled: computed(() => toValue(customer) !== ""),
@@ -92,7 +94,7 @@ export function useGrantCredits(tenantId: MaybeRefOrGetter<string>) {
 /** The balance below which a consume sends the credits.low webhook event (0: off). */
 export function useCreditSettings(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
-    queryKey: computed(() => [...creditKeys.packs(toValue(tenantId)), "settings"]),
+    queryKey: computed(() => creditKeys.settings(toValue(tenantId))),
     queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/credits/settings")),
   });
 }
@@ -101,7 +103,7 @@ export function useSetCreditSettings(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
     mutationFn: (lowThreshold: string) => unwrap(tenantApi(toValue(tenantId)).PUT("/v1/credits/settings", { body: { low_threshold: lowThreshold } })),
-    onSuccess: () => queries.invalidateQueries({ queryKey: [...creditKeys.packs(toValue(tenantId)), "settings"] }),
+    onSuccess: () => queries.invalidateQueries({ queryKey: creditKeys.settings(toValue(tenantId)) }),
   });
 }
 

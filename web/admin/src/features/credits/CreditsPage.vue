@@ -14,6 +14,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 import {
   useCreateCreditPack,
   useCreatePurchaseLink,
@@ -40,7 +41,7 @@ const setActive = useSetCreditPackActive(tenantId);
 const packName = ref("");
 const packCredits = ref("");
 const packPrice = ref("");
-const packCurrency = ref<string>("USD");
+const packCurrency = ref<string>(FALLBACK_CURRENCY);
 // The pack is priced in the tenant's own currency unless the person picks another one.
 const tenantCurrency = useTenantCurrency(tenantId);
 let currencySeeded = false;
