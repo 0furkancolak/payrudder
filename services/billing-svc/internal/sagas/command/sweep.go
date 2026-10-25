@@ -1,4 +1,4 @@
-package saga
+package command
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -83,26 +85,19 @@ func (e *Engine) Sweep(ctx context.Context, pool *pgxpool.Pool, limit int) (Swee
 	return res, err
 }
 
-// sweepPolls asks again for the status of the payments that are awaited (a bank transfer whose money has not been confirmed yet) when their poll is due.
-// The answer is in the ledger, so a poll costs one query; the payment window runs out in the answer, not here.
-func (e *Engine) sweepPolls(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
-	due, err := sqlc.New(pool).ListSagasDueForPoll(ctx, sqlc.ListSagasDueForPollParams{Now: now, RowLimit: i32(limit)})
-	if err != nil {
-		return err
-	}
+// dueSaga is a saga a sweep found due; the sweep locks it again before it acts.
+type dueSaga struct{ tenantID, id uuid.UUID }
+
+// sweepEach handles every due saga in a transaction of its own: lock locks the saga under FOR UPDATE SKIP LOCKED and re-checks the condition of the sweep (it is
+// nil when another pod got there first), handle acts on it.
+func (e *Engine) sweepEach(ctx context.Context, pool *pgxpool.Pool, due []dueSaga, lock func(q *sqlc.Queries, d dueSaga) (uuid.UUID, error), handle func(tx pgx.Tx, s *saga) error) error {
 	for _, d := range due {
 		err := pgxx.InTx(ctx, pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-			s, err := e.lockDue(ctx, tx, d.TenantID, func(q *sqlc.Queries) (uuid.UUID, error) {
-				return q.LockSagaDueForPoll(ctx, sqlc.LockSagaDueForPollParams{TenantID: d.TenantID, ID: d.ID, Now: now})
-			})
+			s, err := e.lockDue(ctx, tx, d.tenantID, func(q *sqlc.Queries) (uuid.UUID, error) { return lock(q, d) })
 			if err != nil || s == nil {
 				return err
 			}
-			out, err := e.handleLoaded(ctx, tx, s, EvPollDue, "poll", nil)
-			if out.Applied {
-				res.Polled++
-			}
-			return err
+			return handle(tx, s)
 		})
 		if err != nil {
 			return err
@@ -111,22 +106,46 @@ func (e *Engine) sweepPolls(ctx context.Context, pool *pgxpool.Pool, now time.Ti
 	return nil
 }
 
-func (e *Engine) sweepDeadlines(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
-	q := sqlc.New(pool)
-	due, err := q.ListSagasPastDeadline(ctx, sqlc.ListSagasPastDeadlineParams{Now: now, RowLimit: i32(limit)})
+// sweepPolls asks again for the status of the payments that are awaited (a bank transfer whose money has not been confirmed yet) when their poll is due.
+// The answer is in the ledger, so a poll costs one query; the payment window runs out in the answer, not here.
+func (e *Engine) sweepPolls(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
+	rows, err := sqlc.New(pool).ListSagasDueForPoll(ctx, sqlc.ListSagasDueForPollParams{Now: now, RowLimit: store.I32(limit)})
 	if err != nil {
 		return err
 	}
-	for _, d := range due {
-		err := pgxx.InTx(ctx, pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-			s, err := e.lockDue(ctx, tx, d.TenantID, func(q *sqlc.Queries) (uuid.UUID, error) {
-				return q.LockSagaPastDeadline(ctx, sqlc.LockSagaPastDeadlineParams{TenantID: d.TenantID, ID: d.ID, Now: now})
-			})
-			if err != nil || s == nil {
-				return err
+	due := make([]dueSaga, len(rows))
+	for i, r := range rows {
+		due[i] = dueSaga{r.TenantID, r.ID}
+	}
+	return e.sweepEach(ctx, pool, due,
+		func(q *sqlc.Queries, d dueSaga) (uuid.UUID, error) {
+			return q.LockSagaDueForPoll(ctx, sqlc.LockSagaDueForPollParams{TenantID: d.tenantID, ID: d.id, Now: now})
+		},
+		func(tx pgx.Tx, s *saga) error {
+			out, err := e.handleLoaded(ctx, tx, s, model.EvPollDue, "poll", nil)
+			if out.Applied {
+				res.Polled++
 			}
+			return err
+		})
+}
+
+func (e *Engine) sweepDeadlines(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
+	rows, err := sqlc.New(pool).ListSagasPastDeadline(ctx, sqlc.ListSagasPastDeadlineParams{Now: now, RowLimit: store.I32(limit)})
+	if err != nil {
+		return err
+	}
+	due := make([]dueSaga, len(rows))
+	for i, r := range rows {
+		due[i] = dueSaga{r.TenantID, r.ID}
+	}
+	return e.sweepEach(ctx, pool, due,
+		func(q *sqlc.Queries, d dueSaga) (uuid.UUID, error) {
+			return q.LockSagaPastDeadline(ctx, sqlc.LockSagaPastDeadlineParams{TenantID: d.tenantID, ID: d.id, Now: now})
+		},
+		func(tx pgx.Tx, s *saga) error {
 			if s.StepAttempt >= MaxStepAttempts {
-				if _, err := e.handleLoaded(ctx, tx, s, EvExhausted, "sweeper", nil); err != nil {
+				if _, err := e.handleLoaded(ctx, tx, s, model.EvExhausted, "sweeper", nil); err != nil {
 					return err
 				}
 				res.Exhausted++
@@ -138,38 +157,28 @@ func (e *Engine) sweepDeadlines(ctx context.Context, pool *pgxpool.Pool, now tim
 			res.Reissued++
 			return nil
 		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (e *Engine) sweepDunning(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
-	q := sqlc.New(pool)
-	due, err := q.ListSagasDueForDunning(ctx, sqlc.ListSagasDueForDunningParams{Now: now, RowLimit: i32(limit)})
+	rows, err := sqlc.New(pool).ListSagasDueForDunning(ctx, sqlc.ListSagasDueForDunningParams{Now: now, RowLimit: store.I32(limit)})
 	if err != nil {
 		return err
 	}
-	for _, d := range due {
-		err := pgxx.InTx(ctx, pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-			s, err := e.lockDue(ctx, tx, d.TenantID, func(q *sqlc.Queries) (uuid.UUID, error) {
-				return q.LockSagaDueForDunning(ctx, sqlc.LockSagaDueForDunningParams{TenantID: d.TenantID, ID: d.ID, Now: now})
-			})
-			if err != nil || s == nil {
-				return err
-			}
-			out, err := e.handleLoaded(ctx, tx, s, EvDunningDue, "dunning", nil)
+	due := make([]dueSaga, len(rows))
+	for i, r := range rows {
+		due[i] = dueSaga{r.TenantID, r.ID}
+	}
+	return e.sweepEach(ctx, pool, due,
+		func(q *sqlc.Queries, d dueSaga) (uuid.UUID, error) {
+			return q.LockSagaDueForDunning(ctx, sqlc.LockSagaDueForDunningParams{TenantID: d.tenantID, ID: d.id, Now: now})
+		},
+		func(tx pgx.Tx, s *saga) error {
+			out, err := e.handleLoaded(ctx, tx, s, model.EvDunningDue, "dunning", nil)
 			if out.Applied {
 				res.Dunned++
 			}
 			return err
 		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // lockDue re-reads a due saga under FOR UPDATE SKIP LOCKED, re-checking the condition the lock query carries: another pod may have handled it.
@@ -187,18 +196,18 @@ func (e *Engine) lockDue(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, loc
 // reissue publishes the command of the saga's current step again with a fresh attempt (a fresh command id; the PSP
 // idempotency key of a charge stays the same).
 func (e *Engine) reissue(ctx context.Context, tx pgx.Tx, s *saga, now time.Time) error {
-	var eff Effect
+	var eff model.Effect
 	switch s.State {
-	case PdfRequested:
-		eff = EffRender
-	case PaymentRequested:
-		eff = EffCharge
-	case PaymentUnknown, PaymentPending:
-		eff = EffQueryStatus
-	case NotifyRequested:
-		eff = EffNotify
-	case RefundRequested:
-		eff = EffRefund
+	case model.PdfRequested:
+		eff = model.EffRender
+	case model.PaymentRequested:
+		eff = model.EffCharge
+	case model.PaymentUnknown, model.PaymentPending:
+		eff = model.EffQueryStatus
+	case model.NotifyRequested:
+		eff = model.EffNotify
+	case model.RefundRequested:
+		eff = model.EffRefund
 	default:
 		return fmt.Errorf("saga %s in %s has a deadline but no command", s.ID, s.State)
 	}
@@ -206,7 +215,7 @@ func (e *Engine) reissue(ctx context.Context, tx pgx.Tx, s *saga, now time.Time)
 	s.StepAttempt++
 	deadline := now.Add(e.cfg.StepTimeout)
 	q := sqlc.New(tx)
-	if err := q.ReissueSaga(ctx, sqlc.ReissueSagaParams{Attempt: i32(s.Attempt), StepAttempt: i32(s.StepAttempt), StepDeadline: deadline, UpdatedAt: now, TenantID: s.TenantID, ID: s.ID}); err != nil {
+	if err := q.ReissueSaga(ctx, sqlc.ReissueSagaParams{Attempt: store.I32(s.Attempt), StepAttempt: store.I32(s.StepAttempt), StepDeadline: deadline, UpdatedAt: now, TenantID: s.TenantID, ID: s.ID}); err != nil {
 		return err
 	}
 	s.Version++
@@ -230,39 +239,39 @@ func (e *Engine) Start(ctx context.Context, tx pgx.Tx, tenantID, invoiceID uuid.
 	if n == 0 {
 		return sagaID, nil // already started: idempotent
 	}
-	if _, err := e.Handle(ctx, tx, tenantID, sagaID, EvStart, "finalize", nil); err != nil {
+	if _, err := e.Handle(ctx, tx, tenantID, sagaID, model.EvStart, "finalize", nil); err != nil {
 		return uuid.Nil, err
 	}
 	return sagaID, nil
 }
 
 // ReplyEvents maps a worker reply to the saga event it triggers.
-func ReplyEvent(r *commandsv1.ReplyEnvelope) (Event, string, bool) {
+func ReplyEvent(r *commandsv1.ReplyEnvelope) (model.Event, string, bool) {
 	switch x := r.GetReply().(type) {
 	case *commandsv1.ReplyEnvelope_PdfRendered:
-		return EvPdfRendered, "reply:PdfRendered", true
+		return model.EvPdfRendered, "reply:PdfRendered", true
 	case *commandsv1.ReplyEnvelope_PdfFailed:
-		return EvPdfFailed, "reply:PdfFailed", true
+		return model.EvPdfFailed, "reply:PdfFailed", true
 	case *commandsv1.ReplyEnvelope_PaymentSucceeded:
-		return EvPaymentOK, "reply:PaymentSucceeded", true
+		return model.EvPaymentOK, "reply:PaymentSucceeded", true
 	case *commandsv1.ReplyEnvelope_PaymentDeclined:
-		return EvPaymentDeclined, "reply:PaymentDeclined", true
+		return model.EvPaymentDeclined, "reply:PaymentDeclined", true
 	case *commandsv1.ReplyEnvelope_PaymentErrored:
-		return EvPaymentErrored, "reply:PaymentErrored", true
+		return model.EvPaymentErrored, "reply:PaymentErrored", true
 	case *commandsv1.ReplyEnvelope_PaymentRefunded:
-		return EvRefunded, "reply:PaymentRefunded", true
+		return model.EvRefunded, "reply:PaymentRefunded", true
 	case *commandsv1.ReplyEnvelope_NotificationSent:
-		return EvNotified, "reply:NotificationSent", true
+		return model.EvNotified, "reply:NotificationSent", true
 	case *commandsv1.ReplyEnvelope_PaymentStatus:
 		switch x.PaymentStatus.GetState() {
 		case commandsv1.PaymentStatus_STATE_SUCCEEDED:
-			return EvStatusSucceeded, "reply:PaymentStatus(succeeded)", true
+			return model.EvStatusSucceeded, "reply:PaymentStatus(succeeded)", true
 		case commandsv1.PaymentStatus_STATE_DECLINED:
-			return EvStatusDeclined, "reply:PaymentStatus(declined)", true
+			return model.EvStatusDeclined, "reply:PaymentStatus(declined)", true
 		case commandsv1.PaymentStatus_STATE_PENDING:
-			return EvStatusPending, "reply:PaymentStatus(pending)", true
+			return model.EvStatusPending, "reply:PaymentStatus(pending)", true
 		case commandsv1.PaymentStatus_STATE_NOT_FOUND:
-			return EvStatusNotFound, "reply:PaymentStatus(not_found)", true
+			return model.EvStatusNotFound, "reply:PaymentStatus(not_found)", true
 		}
 	}
 	return "", "", false

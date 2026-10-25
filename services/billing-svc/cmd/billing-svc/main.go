@@ -40,7 +40,7 @@ import (
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	billingreset "github.com/0furkancolak/payrudder/services/billing-svc/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
@@ -83,8 +83,8 @@ type Config struct {
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	errs = append(errs, c.CheckMigration())
-	if len(c.DunningLive) != saga.MaxDunning || len(c.DunningSandbox) != saga.MaxDunning {
-		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", saga.MaxDunning))
+	if len(c.DunningLive) != sagacommand.MaxDunning || len(c.DunningSandbox) != sagacommand.MaxDunning {
+		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", sagacommand.MaxDunning))
 	}
 	if c.TransferPoll < time.Minute {
 		errs = append(errs, errors.New("PAYRUDDER_TRANSFER_POLL must be at least 1m"))
@@ -136,7 +136,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		}
 		return env.FromProto(r.GetTenant().GetEnvironment())
 	}, 0)
-	eng, err := saga.NewEngine(saga.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log, Tenants: tenantEnvs})
+	eng, err := sagacommand.NewEngine(sagacommand.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log, Tenants: tenantEnvs})
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (b *backends) close() {
 }
 
 // newRunManager builds the billing-run manager from the backend clients and the usage topic's end offsets.
-func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *saga.Engine, be *backends, endOffsets func(context.Context) (map[int32]int64, error)) (*runs.Manager, error) {
+func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, endOffsets func(context.Context) (map[int32]int64, error)) (*runs.Manager, error) {
 	return runs.NewManager(runs.Config{
 		Pool: systemPool, Engine: eng,
 		Plans: plansv1.NewPlansServiceClient(be.plans), Events: plansv1.NewWebhookServiceClient(be.plans), Affiliates: plansv1.NewAffiliateServiceClient(be.plans), Admin: plansv1.NewAdminServiceClient(be.plans),
@@ -243,7 +243,7 @@ func usageEndOffsets(adm *kadm.Client) func(context.Context) (map[int32]int64, e
 }
 
 // newGRPCServer builds the gRPC server with every billing service registered; the PDF store is optional.
-func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, mgr *runs.Manager, eng *saga.Engine) (*grpc.Server, *grpchealth.Server, error) {
+func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, mgr *runs.Manager, eng *sagacommand.Engine) (*grpc.Server, *grpchealth.Server, error) {
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
 	svc := api.New(appPool, systemPool, mgr, eng).WithDeadLetters(&dlq.Admin{URL: cfg.RabbitMQURL}).WithDemo(cfg.Demo)
 	if cfg.S3AccessKey != "" {
@@ -267,7 +267,7 @@ type workers struct {
 	cfg        *Config
 	log        *slog.Logger
 	pool       *pgxpool.Pool
-	eng        *saga.Engine
+	eng        *sagacommand.Engine
 	mgr        *runs.Manager
 	relay      *outbox.Relay
 	replies    *replies.Consumer

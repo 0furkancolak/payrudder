@@ -13,18 +13,20 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/payments/command"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Handler implements RecordInvoicePayment of billingv1.BillingAdminServiceServer.
 type Handler struct {
 	system *pgxpool.Pool
-	eng    *saga.Engine
+	eng    *sagacommand.Engine
 }
 
 // New returns the handler over the billing_system pool.
-func New(system *pgxpool.Pool, eng *saga.Engine) *Handler { return &Handler{system: system, eng: eng} }
+func New(system *pgxpool.Pool, eng *sagacommand.Engine) *Handler {
+	return &Handler{system: system, eng: eng}
+}
 
 // RecordInvoicePayment implements billingv1.BillingAdminServiceServer.
 func (h *Handler) RecordInvoicePayment(ctx context.Context, req *billingv1.RecordInvoicePaymentRequest) (*billingv1.RecordInvoicePaymentResponse, error) {

@@ -35,7 +35,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/runs"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
 
@@ -334,7 +334,7 @@ type env struct {
 	t      *testing.T
 	clk    *clock
 	w      *world
-	eng    *saga.Engine
+	eng    *sagacommand.Engine
 	mgr    *runs.Manager
 	events *fakeEvents
 	kafka  *kafkaSink
@@ -391,7 +391,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 	if o.stepTimeout == 0 {
 		o.stepTimeout = time.Hour
 	}
-	e.eng, err = saga.NewEngine(saga.Config{Now: clk.Now, StepTimeout: o.stepTimeout, Log: testkit.Logger()})
+	e.eng, err = sagacommand.NewEngine(sagacommand.Config{Now: clk.Now, StepTimeout: o.stepTimeout, Log: testkit.Logger()})
 	if err != nil {
 		t.Fatal(err)
 	}

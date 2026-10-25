@@ -1,11 +1,10 @@
-// Package saga is billing-svc's invoice saga: the pure transition table (this file) and the database engine that applies
-// it (engine.go). The table is the single source of truth: tests check it exhaustively and docs/03-services/billing-svc.md
-// embeds the diagram rendered from it.
-package saga
+// Package model is billing-svc's invoice saga as data: the pure transition table (table.go), the snapshot an invoice freezes for its commands and the
+// vocabulary around them. The table is the single source of truth: tests check it exhaustively and docs/03-services/billing-svc.md embeds the diagram
+// rendered from it. The engine that applies it is sagas/command.
+package model
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -291,7 +290,6 @@ func Mermaid() string {
 		}
 		labels[e] = append(labels[e], l)
 	}
-	sort.SliceStable(order, func(i, j int) bool { return false })
 	for _, e := range order {
 		fmt.Fprintf(&b, "    %s --> %s: %s\n", e.from, e.to, strings.Join(labels[e], " / "))
 	}

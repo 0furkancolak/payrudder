@@ -11,16 +11,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
-	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
+	einvoicemodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/model"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/workercmd"
 )
 
 // Refusals of CreateCreditNote.
@@ -87,7 +88,7 @@ func (m *Manager) CreateCreditNote(ctx context.Context, tenantID, invoiceID uuid
 		case errors.Is(err, pgx.ErrNoRows):
 		case err != nil:
 			return err
-		case slices.Contains([]saga.State{saga.RefundRequested, saga.RefundFailed, saga.Refunded, saga.Voided}, saga.State(state)):
+		case slices.Contains([]sagamodel.State{sagamodel.RefundRequested, sagamodel.RefundFailed, sagamodel.Refunded, sagamodel.Voided}, sagamodel.State(state)):
 			return fmt.Errorf("%w (the invoice is being voided)", ErrNotPaid)
 		}
 		inv, err := q.LockInvoiceForCreditNote(ctx, sqlc.LockInvoiceForCreditNoteParams{TenantID: tenantID, ID: invoiceID})
@@ -144,7 +145,7 @@ func (m *Manager) CreateCreditNote(ctx context.Context, tenantID, invoiceID uuid
 			return err
 		}
 		out = cn
-		return creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteCreated, cn.ID.String(), now, cn)
+		return creditNoteEvent(ctx, tx, tenantID, tenantevents.EventCreditNoteCreated, cn.ID.String(), now, cn)
 	})
 	return out, err
 }
@@ -196,26 +197,18 @@ func (m *Manager) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.UU
 	if generation > 0 {
 		key += ":" + strconv.Itoa(generation)
 	}
-	parsed, err := env.Parse(environment)
-	if err != nil {
-		return fmt.Errorf("refund of credit note %s: %w", cn.ID, err)
-	}
 	envelope := &commandsv1.CommandEnvelope{
-		CommandId: cmdID.String(), SagaId: sagaID.String(), TenantId: tenantID.String(), Attempt: int32(attempt), //nolint:gosec // 1..3
-		IssuedAt: timestamppb.New(now), Environment: parsed.Proto(),
 		Command: &commandsv1.CommandEnvelope_RefundPayment{RefundPayment: &commandsv1.RefundPayment{
 			InvoiceId: cn.InvoiceID.String(), AmountMinor: cn.TotalMinor, Currency: cn.Currency, IdempotencyKey: key}},
-	}
-	body, err := proto.Marshal(envelope)
-	if err != nil {
-		return err
 	}
 	if err := q.MarkRefundRequested(ctx, sqlc.MarkRefundRequestedParams{RefundAttempt: i32(attempt), RefundCommandID: cmdID, RefundRequestedAt: now,
 		RefundRunFrom: i32(runFrom), RefundGeneration: i32(generation), TenantID: tenantID, ID: cn.ID}); err != nil {
 		return err
 	}
 	cn.RefundState = RefundRequested
-	return saga.EnqueueOutbox(ctx, tx, tenantID, cmdID, rabbitx.ExchangeCommands, rabbitx.QueuePaymentRefund, outbox.DestRabbitMQ, body)
+	return workercmd.Send(ctx, tx, workercmd.Header{
+		CommandID: cmdID, SagaID: sagaID, TenantID: tenantID, Attempt: attempt, IssuedAt: now, Environment: environment, Subject: "refund of credit note " + cn.ID.String(),
+	}, envelope, rabbitx.QueuePaymentRefund)
 }
 
 // SettleRefund applies a worker's reply to the credit note whose refund command it answers. handled is false when no credit note sent that command.
@@ -238,7 +231,7 @@ func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID,
 			return true, err
 		}
 		cn.RefundState = RefundRefunded
-		return true, creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteRefunded, commandID.String(), time.Now(), cn)
+		return true, creditNoteEvent(ctx, tx, tenantID, tenantevents.EventCreditNoteRefunded, commandID.String(), time.Now(), cn)
 	case *commandsv1.ReplyEnvelope_PaymentErrored:
 		if r.PaymentErrored.GetRetryable() {
 			return true, nil
@@ -247,7 +240,7 @@ func SettleRefund(ctx context.Context, tx pgx.Tx, tenantID, commandID uuid.UUID,
 		if err := q.MarkRefundFailed(ctx, sqlc.MarkRefundFailedParams{RefundError: cn.RefundError, TenantID: tenantID, ID: cn.ID}); err != nil {
 			return true, err
 		}
-		return true, creditNoteEvent(ctx, tx, tenantID, saga.EventCreditNoteRefundFailed, commandID.String(), time.Now(), cn)
+		return true, creditNoteEvent(ctx, tx, tenantID, tenantevents.EventCreditNoteRefundFailed, commandID.String(), time.Now(), cn)
 	}
 	return true, nil
 }
@@ -303,7 +296,7 @@ func (m *Manager) failUnanswered(ctx context.Context, tx pgx.Tx, p *pendingRefun
 		return err
 	}
 	p.cn.Number, p.cn.Reason, p.cn.CustomerID, p.cn.Refund, p.cn.RefundState = row.Number, row.Reason, row.CustomerID, true, RefundFailed
-	return creditNoteEvent(ctx, tx, p.tenant, saga.EventCreditNoteRefundFailed, fmt.Sprintf("%s|gen%d|%d", p.cn.ID, p.generation, attempt), m.cfg.Now(), &p.cn)
+	return creditNoteEvent(ctx, tx, p.tenant, tenantevents.EventCreditNoteRefundFailed, fmt.Sprintf("%s|gen%d|%d", p.cn.ID, p.generation, attempt), m.cfg.Now(), &p.cn)
 }
 
 // RetryRefund asks again for a refund that failed: a new run of attempts.
@@ -357,7 +350,7 @@ func creditNoteEvent(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, ke
 			data["refund_error"] = cn.RefundError
 		}
 	}
-	return saga.TenantEvent(ctx, tx, tenantID, typ, key, at, data)
+	return tenantevents.Write(ctx, tx, tenantID, typ, key, at, data)
 }
 
 // einvoiceCreditNote sends the credit note as an e-document when the invoice it corrects has one that is still alive (pending or issued). An invoice that was never
@@ -370,7 +363,7 @@ func (m *Manager) einvoiceCreditNote(ctx context.Context, tx pgx.Tx, tenantID uu
 	if err != nil {
 		return err
 	}
-	if orig.Status != saga.EInvoicePending && orig.Status != saga.EInvoiceIssued {
+	if orig.Status != einvoicemodel.Pending && orig.Status != einvoicemodel.Issued {
 		return nil
 	}
 	cmd, on, err := m.cfg.Engine.CreditNoteSnapshot(ctx, tx, tenantID, cn.InvoiceID, cn.ID, cn.Number, cn.TotalMinor, cn.CreatedAt)
@@ -380,6 +373,6 @@ func (m *Manager) einvoiceCreditNote(ctx context.Context, tx pgx.Tx, tenantID uu
 	if on == "" || on == "off" {
 		return nil
 	}
-	_, err = saga.EnqueueEInvoice(ctx, tx, m.cfg.Now(), tenantID, environment, saga.EInvoiceKindCreditNote, cn.InvoiceID, &cn.ID, cn.Number, cmd)
+	_, err = einvoicecmd.Enqueue(ctx, tx, m.cfg.Now(), tenantID, environment, einvoicemodel.KindCreditNote, cn.InvoiceID, &cn.ID, cn.Number, cmd)
 	return err
 }

@@ -1,4 +1,3 @@
-// Package command pushes an invoice saga through an operator event (retry, void). The saga engine holds the transition rules.
 package command
 
 import (
@@ -13,19 +12,19 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
 // Retry retries a stuck saga of an invoice.
-func Retry(ctx context.Context, system *pgxpool.Pool, eng *saga.Engine, tenantID, invoiceID uuid.UUID) (sqlc.GetSagaRow, error) {
-	return drive(ctx, system, eng, tenantID, invoiceID, saga.EvRetry, "operator:retry")
+func Retry(ctx context.Context, system *pgxpool.Pool, eng *Engine, tenantID, invoiceID uuid.UUID) (sqlc.GetSagaRow, error) {
+	return drive(ctx, system, eng, tenantID, invoiceID, model.EvRetry, "operator:retry")
 }
 
 // Void voids an invoice through its saga.
-func Void(ctx context.Context, system *pgxpool.Pool, eng *saga.Engine, tenantID, invoiceID uuid.UUID) (sqlc.GetSagaRow, error) {
-	return drive(ctx, system, eng, tenantID, invoiceID, saga.EvVoid, "operator:void")
+func Void(ctx context.Context, system *pgxpool.Pool, eng *Engine, tenantID, invoiceID uuid.UUID) (sqlc.GetSagaRow, error) {
+	return drive(ctx, system, eng, tenantID, invoiceID, model.EvVoid, "operator:void")
 }
 
 func sagaOf(ctx context.Context, tx pgx.Tx, tid, invoiceID uuid.UUID) (uuid.UUID, error) {
@@ -36,10 +35,10 @@ func sagaOf(ctx context.Context, tx pgx.Tx, tid, invoiceID uuid.UUID) (uuid.UUID
 	return id, err
 }
 
-func drive(ctx context.Context, system *pgxpool.Pool, eng *saga.Engine, tid, invID uuid.UUID, ev saga.Event, cause string) (sqlc.GetSagaRow, error) {
+func drive(ctx context.Context, system *pgxpool.Pool, eng *Engine, tid, invID uuid.UUID, ev model.Event, cause string) (sqlc.GetSagaRow, error) {
 	var sagaID uuid.UUID
 	var applied bool
-	var state saga.State
+	var state model.State
 	err := pgxx.InTx(ctx, system, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		var err error
 		if sagaID, err = sagaOf(ctx, tx, tid, invID); err != nil {

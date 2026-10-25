@@ -18,7 +18,8 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/saga"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
+	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
 
@@ -58,7 +59,7 @@ type Result struct {
 // Record writes a payment. The invoice must be open or uncollectible and its saga in a state that can be settled; the payment must not take the sum past the
 // invoice's total. When the payments add up to the total the saga is told (OfflineSettlement) in the same transaction, so the invoice is paid and the
 // customer is mailed the receipt exactly once.
-func Record(ctx context.Context, system *pgxpool.Pool, eng *saga.Engine, in Payment) (Result, error) {
+func Record(ctx context.Context, system *pgxpool.Pool, eng *sagacommand.Engine, in Payment) (Result, error) {
 	ref, note := strings.TrimSpace(in.Reference), strings.TrimSpace(in.Note)
 	if err := validate(in, ref, note, eng.Now()); err != nil {
 		return Result{}, err
@@ -94,7 +95,7 @@ func validate(in Payment, ref, note string, now time.Time) error {
 	return nil
 }
 
-func record(ctx context.Context, tx pgx.Tx, eng *saga.Engine, in Payment, ref, note string) (Result, error) {
+func record(ctx context.Context, tx pgx.Tx, eng *sagacommand.Engine, in Payment, ref, note string) (Result, error) {
 	q := sqlc.New(tx)
 	inv, err := q.LockInvoiceForPayment(ctx, sqlc.LockInvoiceForPaymentParams{TenantID: in.Tenant, ID: in.Invoice})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -141,7 +142,7 @@ func record(ctx context.Context, tx pgx.Tx, eng *saga.Engine, in Payment, ref, n
 	if res.Outstanding > 0 {
 		return res, nil
 	}
-	out, err := eng.Handle(ctx, tx, in.Tenant, sagaID, saga.EvSettled, "operator:payment:"+in.Method, nil)
+	out, err := eng.Handle(ctx, tx, in.Tenant, sagaID, sagamodel.EvSettled, "operator:payment:"+in.Method, nil)
 	if err != nil {
 		return Result{}, err
 	}
@@ -168,7 +169,7 @@ func checkPayable(ctx context.Context, q *sqlc.Queries, in Payment, inv sqlc.Loc
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if _, ok := saga.Next(saga.State(s.State), saga.EvSettled, saga.Ctx{TotalMinor: inv.TotalMinor}); !ok {
+	if _, ok := sagamodel.Next(sagamodel.State(s.State), sagamodel.EvSettled, sagamodel.Ctx{TotalMinor: inv.TotalMinor}); !ok {
 		return uuid.Nil, errkey.Newf(codes.FailedPrecondition, "billing.payment.not_payable",
 			"the invoice's payment is in progress (%s); record the payment when it has settled or failed", s.State)
 	}
