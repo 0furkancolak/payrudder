@@ -29,7 +29,13 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 	if err != nil {
 		return nil, fmt.Errorf("%w: command_id", workerx.ErrPoison)
 	}
-	tenantID, _ := uuid.Parse(cmd.GetTenantId())
+	// A command without a tenant id is allowed (no switch to ask); one with an id that is not a UUID is poison, not a mail the switch is skipped for.
+	var tenantID uuid.UUID
+	if raw := cmd.GetTenantId(); raw != "" {
+		if tenantID, err = uuid.Parse(raw); err != nil {
+			return nil, fmt.Errorf("%w: tenant_id", workerx.ErrPoison)
+		}
+	}
 	ok, err := h.Mailer.Permitted(ctx, tenantID, n.GetTemplate())
 	if err != nil {
 		return nil, err
