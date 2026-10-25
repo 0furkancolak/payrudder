@@ -2,6 +2,7 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { formatDuration } from "@/shared/lib/duration";
 import { envOf } from "@/shared/lib/environment";
 import { currencyInfo, formatOffset, zoneMinutes } from "@/shared/lib/intl";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -27,7 +28,7 @@ const envs = computed(() =>
     info: currencyInfo(x.currency ?? FALLBACK_CURRENCY, locale.value),
     timezone: x.timezone ?? "",
     offset: formatOffset(zoneMinutes(x.timezone ?? "UTC")),
-    grace: x.grace_period ?? "",
+    grace: formatDuration(x.grace_period, locale.value),
     tier: (x.tier ?? "").replace("TENANT_TIER_", "").toLowerCase(),
   })),
 );

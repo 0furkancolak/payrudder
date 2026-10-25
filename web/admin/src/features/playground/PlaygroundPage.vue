@@ -3,6 +3,7 @@ import { Link } from "@tanstack/vue-router";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
+import { formatMinor } from "@/shared/lib/money";
 import { playgroundDefaults, prefillPlayground } from "@/shared/lib/prefill";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
@@ -108,7 +109,7 @@ function create() {
           <TableCell class="font-medium">{{ inv.number }}</TableCell>
           <TableCell><Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ inv.saga_state }}</Badge></TableCell>
           <TableCell><Badge :variant="statusVariant(inv.status)">{{ inv.status }}</Badge></TableCell>
-          <TableCell class="text-end tabular-nums">{{ inv.total_minor }}</TableCell>
+          <TableCell class="text-end tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
           <TableCell class="text-end">
             <Link v-if="play.tenantId.value && inv.id" to="/tenants/$id/invoices/$invoiceId" :params="{ id: play.tenantId.value, invoiceId: inv.id }" class="font-medium underline">
               {{ t("playground.invoice.open") }}
